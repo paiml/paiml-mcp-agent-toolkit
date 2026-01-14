@@ -589,6 +589,36 @@ pub enum Commands {
         hardware: Option<PathBuf>,
     },
 
+    /// Audit dependencies for Sovereign AI stack migration
+    ///
+    /// Analyzes Cargo.toml and identifies:
+    /// - Heavy dependencies that bloat binary size
+    /// - Dependencies replaceable with Sovereign stack (trueno, etc.)
+    /// - Dev-only dependencies
+    /// - Potentially removable dependencies
+    #[command(name = "deps-audit", visible_aliases = &["deps", "audit-deps"])]
+    DepsAudit {
+        /// Project path (defaults to current directory)
+        #[arg(short = 'p', long, default_value = ".")]
+        path: PathBuf,
+
+        /// Output format (text, json, yaml)
+        #[arg(short = 'f', long, default_value = "text")]
+        format: String,
+
+        /// Show all dependencies including Core and Sovereign
+        #[arg(long)]
+        all: bool,
+
+        /// Show 80/20 Pareto analysis: highest ROI removals (transitive deps saved / effort)
+        #[arg(long)]
+        pareto: bool,
+
+        /// Sort results by metric: transitive (default), size, pagerank, name
+        #[arg(long, default_value = "transitive")]
+        sort_by: String,
+    },
+
     /// Start HTTP API server with WebSocket support
     #[command(visible_aliases = &["server", "api"])]
     Serve {

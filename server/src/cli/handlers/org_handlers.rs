@@ -11,8 +11,9 @@ use crate::cli::commands::OrgCommands;
 use anyhow::{Context, Result};
 #[cfg(feature = "org-intelligence")]
 use chrono::{Duration, Utc};
+// NOTE: indicatif removed - using local progress types
 #[cfg(feature = "org-intelligence")]
-use indicatif::{ProgressBar, ProgressStyle};
+use crate::services::progress::{ProgressBar, ProgressStyle};
 #[cfg(feature = "org-intelligence")]
 use organizational_intelligence_plugin::analyzer::OrgAnalyzer;
 #[cfg(feature = "org-intelligence")]

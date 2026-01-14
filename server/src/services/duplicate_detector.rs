@@ -319,7 +319,11 @@ impl LshIndex {
             hasher.update(&val.to_le_bytes());
         }
         let hash_bytes = hasher.finalize();
-        u64::from_le_bytes(hash_bytes.as_bytes()[0..8].try_into().unwrap())
+        u64::from_le_bytes(
+            hash_bytes.as_bytes()[0..8]
+                .try_into()
+                .expect("blake3 hash always has at least 8 bytes"),
+        )
     }
 
     /// Calculate the probability of collision for a given Jaccard similarity

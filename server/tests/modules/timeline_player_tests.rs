@@ -1,3 +1,4 @@
+#![cfg(feature = "dap")]
 //! TIMELINE-001: TimelinePlayer State Management Tests
 //! Sprint 77 - RED Phase
 //!

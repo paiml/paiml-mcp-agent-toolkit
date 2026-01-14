@@ -1,9 +1,26 @@
 use crate::cli::commands::{DiagnosticOutputFormat, StorageCommand, TdgCommand};
 use crate::tdg::{StorageBackendType, StorageConfig, TieredStorageFactory, TieredStore};
 use anyhow::Result;
-use prettytable::row;
 use serde_json::json;
 use std::path::PathBuf;
+
+/// Open URL in default browser using platform-specific command
+/// Replaces webbrowser crate to reduce transitive dependencies
+fn open_browser(url: &str) -> std::io::Result<()> {
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("open").arg(url).spawn()?;
+    }
+    #[cfg(target_os = "linux")]
+    {
+        std::process::Command::new("xdg-open").arg(url).spawn()?;
+    }
+    #[cfg(target_os = "windows")]
+    {
+        std::process::Command::new("cmd").args(["/c", "start", url]).spawn()?;
+    }
+    Ok(())
+}
 
 /// Handle TDG diagnostic commands
 pub async fn handle_tdg_diagnostics(command: &TdgCommand, base_path: &PathBuf) -> Result<()> {
@@ -125,12 +142,26 @@ fn show_yaml_diagnostics(
 }
 
 fn show_table_diagnostics(stats: &crate::tdg::storage::StorageStatistics) {
-    use prettytable::{row, Table};
-
-    let mut table = Table::new();
-    table.add_row(row!["Component", "Status", "Details"]);
-    add_storage_table_rows(&mut table, stats);
-    table.printstd();
+    println!("┌─────────────┬─────────────────────┬─────────────────────────────────┐");
+    println!("│ Component   │ Status              │ Details                         │");
+    println!("├─────────────┼─────────────────────┼─────────────────────────────────┤");
+    println!(
+        "│ Storage     │ {:>17} │ Hot: {}, Warm: {}, Cold: {} │",
+        format!("{} entries", stats.total_entries),
+        stats.hot_entries,
+        stats.warm_entries,
+        stats.cold_entries
+    );
+    println!(
+        "│ Backends    │ Warm: {:>12} │ Cold: {:>24} │",
+        stats.warm_backend, stats.cold_backend
+    );
+    println!(
+        "│ Compression │ {:>16.1}% │ Memory: {:>21} KB │",
+        stats.compression_ratio * 100.0,
+        stats.hot_memory_kb
+    );
+    println!("└─────────────┴─────────────────────┴─────────────────────────────────┘");
 }
 
 fn print_basic_storage_info(stats: &crate::tdg::storage::StorageStatistics) {
@@ -171,31 +202,6 @@ fn show_human_backend_details(
     }
 }
 
-fn add_storage_table_rows(
-    table: &mut prettytable::Table,
-    stats: &crate::tdg::storage::StorageStatistics,
-) {
-    table.add_row(row![
-        "Storage",
-        format!("{} entries", stats.total_entries),
-        format!(
-            "Hot: {}, Warm: {}, Cold: {}",
-            stats.hot_entries, stats.warm_entries, stats.cold_entries
-        )
-    ]);
-
-    table.add_row(row![
-        "Backends",
-        format!("Warm: {}", stats.warm_backend),
-        format!("Cold: {}", stats.cold_backend)
-    ]);
-
-    table.add_row(row![
-        "Compression",
-        format!("{:.1}%", stats.compression_ratio * 100.0),
-        format!("Memory: {} KB", stats.hot_memory_kb)
-    ]);
-}
 
 /// Handle storage management commands
 async fn handle_storage_command(command: &StorageCommand, base_path: &PathBuf) -> Result<()> {
@@ -316,7 +322,7 @@ async fn handle_dashboard_command(
 
     // Open browser if requested
     if open {
-        if let Err(e) = webbrowser::open(&format!("http://{host}:{port}")) {
+        if let Err(e) = open_browser(&format!("http://{host}:{port}")) {
             eprintln!("⚠️  Could not open browser: {e}");
         } else {
             println!("🌐 Opening dashboard in browser...");

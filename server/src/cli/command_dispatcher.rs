@@ -733,6 +733,11 @@ impl CommandDispatcher {
                 };
                 handlers::handle_cuda_tdg_command(config).await
             }
+
+            Commands::DepsAudit { path, format, all, pareto, sort_by } => {
+                // Dependency audit for Sovereign AI stack migration
+                handlers::deps_audit_handlers::handle_deps_audit(&path, &format, all, pareto, &sort_by)
+            }
         }
     }
 

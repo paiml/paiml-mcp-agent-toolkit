@@ -1,3 +1,5 @@
+#![cfg(feature = "dap")]
+
 // TRACE-005: Execution Recording Infrastructure Tests
 // Sprint 72 - RED Phase
 //

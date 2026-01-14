@@ -1,4 +1,4 @@
-#![cfg(feature = "red-phase-tests")]
+#![cfg(feature = "dap")]
 // TRACE-003: Variable Inspection with AST
 // RED Phase Tests - Sprint 71
 //

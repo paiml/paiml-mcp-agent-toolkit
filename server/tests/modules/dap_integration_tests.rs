@@ -6,6 +6,8 @@
 // - Tree-sitter AST caching
 // - Variable inspection integration
 
+#![cfg(feature = "dap")]
+
 use pmat::cli::language_analyzer::Language;
 use serde_json::json;
 

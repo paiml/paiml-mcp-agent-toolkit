@@ -611,3 +611,115 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: PMAT-130
+  github_issue: null
+  item_type: task
+  title: Feature-gate octocrab behind github-api feature (saves 255 transitive deps)
+  status: inprogress
+  priority: high
+  assigned_to: null
+  created: 2026-01-13T20:30:30Z
+  updated: 2026-01-13T20:39:44.262659681+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-131
+  github_issue: null
+  item_type: task
+  title: Feature-gate arrow behind analytics-simd (saves 97 deps)
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-01-13T20:32:39Z
+  updated: 2026-01-13T20:32:39Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-132
+  github_issue: null
+  item_type: task
+  title: Feature-gate octocrab (255 deps) - use gh CLI fallback
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-01-13T20:34:47Z
+  updated: 2026-01-13T20:34:47Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-133
+  github_issue: null
+  item_type: task
+  title: Feature-gate arrow (97 deps)
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-01-13T20:35:46Z
+  updated: 2026-01-13T20:35:46Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-134
+  github_issue: null
+  item_type: task
+  title: Feature-gate git2 (67 deps) - shell to git
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-01-13T20:36:47Z
+  updated: 2026-01-13T20:36:47Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-135
+  github_issue: null
+  item_type: task
+  title: Replace bincode with JSON (9 deps)
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-01-13T20:37:40Z
+  updated: 2026-01-13T20:37:40Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-136
+  github_issue: null
+  item_type: task
+  title: Remove pulldown-cmark (7 deps)
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-01-13T20:38:35Z
+  updated: 2026-01-13T20:38:35Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null

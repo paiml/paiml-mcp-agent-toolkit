@@ -785,6 +785,11 @@ impl CommandExecutor {
             Commands::CudaTdg { .. } => {
                 anyhow::bail!("CudaTdg command should be handled by command_dispatcher.rs")
             }
+
+            // Dependency audit for Sovereign AI stack migration - handled by command_dispatcher.rs
+            Commands::DepsAudit { .. } => {
+                anyhow::bail!("DepsAudit command should be handled by command_dispatcher.rs")
+            }
         }
     }
 }

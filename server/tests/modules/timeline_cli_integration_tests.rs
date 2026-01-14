@@ -1,3 +1,4 @@
+#![cfg(feature = "dap")]
 //! TIMELINE-004: CLI Integration Tests
 //! Sprint 77 - GREEN Phase
 //!

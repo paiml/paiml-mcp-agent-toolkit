@@ -1,6 +1,7 @@
 use crate::cli::ExecutionMode;
 use crate::handlers::tools::handle_tool_call;
 use crate::models::mcp::{McpRequest, McpResponse};
+#[cfg(feature = "git-lib")]
 use crate::services::git_clone::{CloneError, GitCloner};
 use crate::stateless_server::StatelessTemplateServer;
 use anyhow::{anyhow, Result};
@@ -12,7 +13,10 @@ use std::fmt::Write;
 use std::io::{self, Write as IoWrite};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+#[cfg(feature = "git-lib")]
+use std::time::Duration;
+use std::time::Instant;
+#[cfg(feature = "git-lib")]
 use tokio::time::sleep;
 
 pub struct DemoRunner {
@@ -72,6 +76,7 @@ impl DemoRunner {
         }
     }
 
+    #[cfg(feature = "git-lib")]
     async fn clone_and_prepare(&self, url: &str) -> Result<PathBuf> {
         println!("🔄 Cloning repository: {url}");
 
@@ -137,6 +142,45 @@ impl DemoRunner {
                     _ => Err(anyhow!("Failed to clone repository: {e}")),
                 }
             }
+        }
+    }
+
+    #[cfg(not(feature = "git-lib"))]
+    async fn clone_and_prepare(&self, url: &str) -> Result<PathBuf> {
+        use std::process::Command;
+
+        println!("🔄 Cloning repository: {url}");
+
+        // Extract repo name from URL
+        let repo_name = url
+            .trim_end_matches('/')
+            .split('/')
+            .next_back()
+            .unwrap_or("repo")
+            .trim_end_matches(".git");
+
+        // Create a temporary directory for cloning
+        let temp_dir = env::temp_dir().join(format!("paiml-demo-{}", uuid::Uuid::new_v4()));
+        tokio::fs::create_dir_all(&temp_dir).await?;
+
+        let clone_path = temp_dir.join(repo_name);
+        let clone_path_str = clone_path
+            .to_str()
+            .ok_or_else(|| anyhow!("Clone path contains invalid UTF-8"))?;
+
+        // Clone using shell git command
+        let output = Command::new("git")
+            .args(["clone", "--depth", "1", url, clone_path_str])
+            .output()
+            .map_err(|e| anyhow!("Failed to run git clone: {e}"))?;
+
+        if output.status.success() {
+            println!("   ✅ Clone complete!");
+            Ok(clone_path)
+        } else {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            let _ = tokio::fs::remove_dir_all(&temp_dir).await;
+            Err(anyhow!("Git clone failed: {}", stderr.trim()))
         }
     }
 

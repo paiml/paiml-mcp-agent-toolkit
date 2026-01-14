@@ -32,6 +32,7 @@ pub mod deep_wasm_handlers;
 pub mod defect_prediction_handler;
 pub mod demo_handlers;
 pub mod demo_score_handlers; // GH-109/112: Demo Quality scoring (Category G)
+pub mod deps_audit_handlers; // Dependency audit for Sovereign AI stack migration
 pub mod doc_validate_handlers;
 pub mod duplication_analysis;
 pub mod enforce_handlers;

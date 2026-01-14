@@ -2,8 +2,8 @@
 //! Uses proper parallel processing with tokio::join! and rayon
 
 use crate::services::deep_context::*;
+use crate::services::progress::{MultiProgress, ProgressBar, ProgressStyle};
 use anyhow::Result;
-use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use rayon::prelude::*;
 use std::path::Path;
 use std::sync::Arc;

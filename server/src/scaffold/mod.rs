@@ -17,9 +17,10 @@ mod tests;
 mod property_tests;
 
 // Re-export existing agent scaffolding
+// NOTE: InteractiveScaffolder removed to eliminate dialoguer dependency (saves 14 transitive deps)
 pub use agent::{
-    scaffold_agent, AgentContext, AgentContextBuilder, AgentFeature, AgentTemplate,
-    InteractiveScaffolder, QualityLevel, TemplateRegistry as AgentTemplateRegistry,
+    scaffold_agent, AgentContext, AgentContextBuilder, AgentFeature, AgentTemplate, QualityLevel,
+    TemplateRegistry as AgentTemplateRegistry,
 };
 
 // TICKET-PMAT-5001: Core ScaffoldEngine exports

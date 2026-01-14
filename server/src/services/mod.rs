@@ -52,7 +52,8 @@
 pub mod analysis_service;
 pub mod analyzer; // Toyota Way: Unified analyzer framework
 pub mod ast; // Toyota Way: Unified AST module (consolidates 25+ AST files)
-pub mod dap; // Sprint 71: Debug Adapter Protocol server
+#[cfg(feature = "dap")]
+pub mod dap; // Sprint 71: Debug Adapter Protocol server (optional - 13 transitive deps)
 pub mod detection; // Toyota Way: Unified detection framework (consolidates detection services)
 pub mod facades;
 pub mod language_analyzer;
@@ -159,6 +160,7 @@ pub mod file_discovery;
 pub mod five_whys_analyzer;
 pub mod fixed_graph_builder;
 pub mod git_analysis;
+#[cfg(feature = "git-lib")]
 pub mod git_clone;
 pub mod git_test_filter; // Git-aware test filtering for targeted quality gates
 pub mod github_integration;
@@ -244,14 +246,15 @@ mod satd_property_tests;
 #[cfg(test)]
 mod mcp_property_tests;
 
-#[cfg(test)]
+#[cfg(all(test, feature = "git-lib"))]
 mod git_clone_property_tests;
 
 #[cfg(test)]
 mod quality_proxy_property_tests;
 
 pub mod changelog_manager;
-pub mod github_client; // Issue #75: GitHub API integration
+#[cfg(feature = "github-api")]
+pub mod github_client; // Issue #75: GitHub API integration (optional - 255 transitive deps)
 pub mod hook_manager; // Issue #75 Phase 6: Git hooks for workflow
 pub mod roadmap_service;
 pub mod telemetry_service; // Issue #75 Phase 7: CHANGELOG automation

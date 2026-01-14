@@ -9,7 +9,8 @@ pub mod error;
 pub mod features;
 pub mod generator;
 pub mod hybrid;
-pub mod interactive;
+// REMOVED: interactive module requires dialoguer crate (saves 14 transitive deps)
+// pub mod interactive;
 pub mod invariants;
 pub mod registry;
 pub mod subagents;
@@ -23,7 +24,8 @@ pub use hybrid::{
     BoundarySpec, CoreSpec, ErrorPropagation, FallbackStrategy, HybridAgentSpec, ModelType,
     SerializationFormat, ValidationStrategy, VerificationMethod, WrapperSpec,
 };
-pub use interactive::InteractiveScaffolder;
+// REMOVED: InteractiveScaffolder requires dialoguer crate
+// pub use interactive::InteractiveScaffolder;
 pub use invariants::{
     AgentContext as InvariantAgentContext, AgentEvent, AgentState, AgentStateMachine, Invariant,
     InvariantChecker, InvariantViolation, ViolationAction, ViolationHandler,
@@ -227,11 +229,12 @@ mod coverage_tests {
         let _propagation: Option<ErrorPropagation> = None;
     }
 
-    #[test]
-    fn test_interactive_scaffolder_export() {
-        // Verify InteractiveScaffolder type is accessible
-        let _scaffolder: Option<InteractiveScaffolder> = None;
-    }
+    // REMOVED: InteractiveScaffolder requires dialoguer crate
+    // #[test]
+    // fn test_interactive_scaffolder_export() {
+    //     // Verify InteractiveScaffolder type is accessible
+    //     let _scaffolder: Option<InteractiveScaffolder> = None;
+    // }
 
     #[test]
     fn test_agent_state_machine_trait_exists() {

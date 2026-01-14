@@ -1,4 +1,4 @@
-#![cfg(feature = "tui")]
+#![cfg(feature = "dap")]
 
 // Sprint 78: TUI-004 RED phase - Stack Frame Navigator Tests
 //

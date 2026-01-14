@@ -3,6 +3,15 @@
 //! This module provides efficient Git repository cloning with caching,
 //! progress tracking, and automatic cleanup. It supports both HTTPS and SSH
 //! URLs, handles authentication, and prevents redundant clones through
+//!
+//! # Feature Flag
+//!
+//! This module requires the `git-lib` feature for full functionality.
+//! Without it, only basic shell `git clone` is available.
+
+#![cfg(feature = "git-lib")]
+
+//! This module provides efficient Git repository cloning with caching,
 //! intelligent caching strategies.
 //!
 //! # Features

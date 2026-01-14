@@ -549,6 +549,7 @@ fn check_deprecated_features(_project_path: &Path) -> ComplianceCheck {
 
 /// ComputeBrick pattern detection result
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 struct CbPatternViolation {
     pattern_id: String,
     file: String,
@@ -1088,7 +1089,7 @@ fn walkdir_rs_files(dir: &Path) -> Result<Vec<std::path::PathBuf>, std::io::Erro
                 let path = entry.path();
                 if path.is_dir() {
                     visit_dir(&path, files)?;
-                } else if path.extension().map_or(false, |e| e == "rs") {
+                } else if path.extension().is_some_and(|e| e == "rs") {
                     files.push(path);
                 }
             }

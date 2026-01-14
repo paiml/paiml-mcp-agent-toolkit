@@ -53,6 +53,12 @@ pub struct SimpleStableGraph<N, E> {
     edges: Vec<Edge<E>>,
 }
 
+impl<N: Clone, E: Clone> Default for SimpleStableGraph<N, E> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<N: Clone, E: Clone> SimpleStableGraph<N, E> {
     /// Create a new empty stable graph
     #[must_use]
@@ -98,6 +104,7 @@ impl<N: Clone, E: Clone> SimpleStableGraph<N, E> {
         })
     }
 
+    #[allow(dead_code)]
     fn get_node(&self, idx: NodeIndex) -> Option<&N> {
         self.nodes.get(idx.0).and_then(|n| n.as_ref())
     }

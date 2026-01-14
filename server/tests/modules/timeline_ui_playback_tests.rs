@@ -1,3 +1,4 @@
+#![cfg(feature = "dap")]
 //! TIMELINE-002: Timeline UI Integration Tests
 //! Sprint 77 - RED Phase
 //!

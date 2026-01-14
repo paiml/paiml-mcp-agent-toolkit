@@ -1,3 +1,5 @@
+#![cfg(feature = "dap")]
+
 // TRACE-008: Execution Timeline Visualization Tests
 // Sprint 73 - RED Phase
 //

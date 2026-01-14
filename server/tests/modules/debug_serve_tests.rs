@@ -1,3 +1,5 @@
+#![cfg(feature = "dap")]
+
 // DEBUG-002: DAP Server CLI Handler Tests
 // Sprint 74 - RED Phase
 //

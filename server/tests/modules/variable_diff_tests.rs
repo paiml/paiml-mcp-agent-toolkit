@@ -1,3 +1,5 @@
+#![cfg(feature = "dap")]
+
 // TRACE-009: Variable Diff Highlighting Tests
 // Sprint 73 - RED Phase
 //

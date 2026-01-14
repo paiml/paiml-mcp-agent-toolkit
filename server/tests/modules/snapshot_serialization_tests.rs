@@ -1,3 +1,4 @@
+#![cfg(feature = "dap")]
 //! REPLAY-002: Snapshot Serialization Tests
 //! Sprint 75 - RED Phase
 //!

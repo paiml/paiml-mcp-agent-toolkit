@@ -22,8 +22,8 @@ impl StepRegistry {
         self._steps.insert(name.into(), handler);
     }
 
-    pub fn get(&self, name: &str) -> Option<&Box<dyn StepHandler>> {
-        self._steps.get(name)
+    pub fn get(&self, name: &str) -> Option<&dyn StepHandler> {
+        self._steps.get(name).map(|b| b.as_ref())
     }
 
     pub fn remove(&mut self, name: &str) -> Option<Box<dyn StepHandler>> {

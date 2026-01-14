@@ -1,4 +1,5 @@
 //! Property tests for git_clone service
+#![cfg(feature = "git-lib")]
 
 use crate::services::git_clone::{GitCloner, ParsedGitHubUrl};
 use proptest::prelude::*;

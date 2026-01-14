@@ -1,3 +1,4 @@
+#![cfg(feature = "dap")]
 //! REPLAY-001: .pmat Recording Format Tests
 //! Sprint 75 - RED Phase
 //!

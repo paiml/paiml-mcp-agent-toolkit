@@ -5,6 +5,7 @@
 use crate::cli::commands::SyncDirection;
 use crate::models::roadmap::{ItemStatus, Priority, RoadmapItem};
 use crate::services::changelog_manager::{ChangeCategory, ChangelogEntry};
+#[cfg(feature = "github-api")]
 use crate::services::github_client::GitHubClient;
 use crate::services::hook_manager;
 use crate::services::roadmap_service::RoadmapService;
@@ -129,13 +130,9 @@ pub async fn handle_work_start(
                 Ok(gh_issue) => {
                     println!("   ✅ Fetched from GitHub: {}", gh_issue.title);
 
-                    // Extract labels
-                    let labels: Vec<String> =
-                        gh_issue.labels.iter().map(|l| l.name.clone()).collect();
-
                     let mut item =
                         RoadmapItem::from_github_issue(issue_num, gh_issue.title.clone());
-                    item.labels = labels;
+                    item.labels = gh_issue.labels.clone();
 
                     // Parse acceptance criteria from issue body if present
                     if let Some(body) = &gh_issue.body {
@@ -696,8 +693,19 @@ pub async fn handle_work_sync(
     Ok(())
 }
 
-/// Fetch GitHub issue details
-async fn fetch_github_issue(repo: &str, issue_num: u64) -> Result<octocrab::models::issues::Issue> {
+/// Minimal issue info for API-agnostic GitHub operations
+/// Works with either octocrab (github-api feature) or gh CLI fallback
+#[derive(Debug, Clone)]
+pub struct GitHubIssueInfo {
+    pub number: u64,
+    pub title: String,
+    pub body: Option<String>,
+    pub labels: Vec<String>,
+}
+
+/// Fetch GitHub issue details using octocrab (requires github-api feature)
+#[cfg(feature = "github-api")]
+async fn fetch_github_issue(repo: &str, issue_num: u64) -> Result<GitHubIssueInfo> {
     // Try authenticated client first, fall back to unauthenticated
     let client = match GitHubClient::new(repo) {
         Ok(c) => c,
@@ -708,14 +716,58 @@ async fn fetch_github_issue(repo: &str, issue_num: u64) -> Result<octocrab::mode
     };
 
     let issue = client.fetch_issue(issue_num).await?;
-    Ok(issue)
+    Ok(GitHubIssueInfo {
+        number: issue.number,
+        title: issue.title,
+        body: issue.body,
+        labels: issue.labels.iter().map(|l| l.name.clone()).collect(),
+    })
 }
 
-/// Create GitHub issue from roadmap item
-async fn create_github_issue_from_item(
-    repo: &str,
-    item: &RoadmapItem,
-) -> Result<octocrab::models::issues::Issue> {
+/// Fetch GitHub issue details using gh CLI (no octocrab dependency)
+#[cfg(not(feature = "github-api"))]
+async fn fetch_github_issue(repo: &str, issue_num: u64) -> Result<GitHubIssueInfo> {
+    use std::process::Command;
+
+    let output = Command::new("gh")
+        .args([
+            "issue",
+            "view",
+            &issue_num.to_string(),
+            "--repo",
+            repo,
+            "--json",
+            "number,title,body,labels",
+        ])
+        .output()
+        .context("Failed to run gh CLI. Is it installed?")?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        anyhow::bail!("gh issue view failed: {}", stderr);
+    }
+
+    let json: serde_json::Value =
+        serde_json::from_slice(&output.stdout).context("Failed to parse gh output")?;
+
+    Ok(GitHubIssueInfo {
+        number: json["number"].as_u64().unwrap_or(issue_num),
+        title: json["title"].as_str().unwrap_or("").to_string(),
+        body: json["body"].as_str().map(|s| s.to_string()),
+        labels: json["labels"]
+            .as_array()
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|l| l["name"].as_str().map(|s| s.to_string()))
+                    .collect()
+            })
+            .unwrap_or_default(),
+    })
+}
+
+/// Create GitHub issue from roadmap item using octocrab (requires github-api feature)
+#[cfg(feature = "github-api")]
+async fn create_github_issue_from_item(repo: &str, item: &RoadmapItem) -> Result<GitHubIssueInfo> {
     // Requires authentication
     let client = GitHubClient::new(repo)?;
 
@@ -742,7 +794,77 @@ async fn create_github_issue_from_item(
     };
 
     let issue = client.create_issue(&item.title, &body, labels).await?;
-    Ok(issue)
+    Ok(GitHubIssueInfo {
+        number: issue.number,
+        title: issue.title,
+        body: issue.body,
+        labels: issue.labels.iter().map(|l| l.name.clone()).collect(),
+    })
+}
+
+/// Create GitHub issue from roadmap item using gh CLI (no octocrab dependency)
+#[cfg(not(feature = "github-api"))]
+async fn create_github_issue_from_item(repo: &str, item: &RoadmapItem) -> Result<GitHubIssueInfo> {
+    use std::process::Command;
+
+    // Build issue body from acceptance criteria
+    let body = if !item.acceptance_criteria.is_empty() {
+        let criteria_md: Vec<String> = item
+            .acceptance_criteria
+            .iter()
+            .map(|c| format!("- [ ] {}", c))
+            .collect();
+
+        format!(
+            "## Acceptance Criteria\n\n{}\n\n---\n\n*Created via `pmat work start --create-github`*",
+            criteria_md.join("\n")
+        )
+    } else {
+        "*Created via `pmat work start --create-github`*".to_string()
+    };
+
+    let mut args = vec![
+        "issue".to_string(),
+        "create".to_string(),
+        "--repo".to_string(),
+        repo.to_string(),
+        "--title".to_string(),
+        item.title.clone(),
+        "--body".to_string(),
+        body.clone(),
+    ];
+
+    // Add labels if present
+    for label in &item.labels {
+        args.push("--label".to_string());
+        args.push(label.clone());
+    }
+
+    let output = Command::new("gh")
+        .args(&args)
+        .output()
+        .context("Failed to run gh CLI. Is it installed?")?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        anyhow::bail!("gh issue create failed: {}", stderr);
+    }
+
+    // gh issue create outputs the URL, parse the issue number from it
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let issue_num: u64 = stdout
+        .trim()
+        .rsplit('/')
+        .next()
+        .and_then(|s| s.parse().ok())
+        .context("Failed to parse issue number from gh output")?;
+
+    Ok(GitHubIssueInfo {
+        number: issue_num,
+        title: item.title.clone(),
+        body: Some(body),
+        labels: item.labels.clone(),
+    })
 }
 
 /// Parse acceptance criteria from GitHub issue body
@@ -1642,10 +1764,7 @@ pub async fn handle_work_list(
     }
 
     // Print header
-    println!(
-        "{:<12} {:<12} {:<10} {}",
-        "ID", "STATUS", "PRIORITY", "TITLE"
-    );
+    println!("{:<12} {:<12} {:<10} TITLE", "ID", "STATUS", "PRIORITY");
     println!("{}", "-".repeat(70));
 
     // Print items
@@ -2129,7 +2248,7 @@ fn generate_next_id(roadmap: &crate::models::roadmap::Roadmap) -> String {
 
     for item in &roadmap.roadmap {
         // Try to extract number from IDs like "PMAT-001", "GH-123", etc.
-        if let Some(num_str) = item.id.split('-').last() {
+        if let Some(num_str) = item.id.split('-').next_back() {
             if let Ok(num) = num_str.parse::<u32>() {
                 max_num = max_num.max(num);
             }
@@ -2172,7 +2291,7 @@ fn find_item_fuzzy(
             "Ticket '{}' not found. Use 'pmat work list' to see available tickets.",
             id
         ),
-        1 => Ok(matches.pop().unwrap().clone()),
+        1 => Ok(matches.pop().expect("verified 1 element exists").clone()),
         _ => {
             let match_ids: Vec<_> = matches.iter().map(|i| i.id.as_str()).collect();
             anyhow::bail!(

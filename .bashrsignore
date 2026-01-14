@@ -1,0 +1,47 @@
+# bashrs lint ignore configuration for PMAT Makefile
+# =============================================
+# These rules are intentionally suppressed for documented architectural reasons.
+# See: docs/architecture/makefile-decisions.md for full rationale.
+#
+# Usage: bashrs lint Makefile --ignore MAKE003,MAKE006,MAKE012,MAKE017,MAKE018
+
+# MAKE003: Unquoted variable in command
+# Shell variable assignments like THREADS=$(nproc) cannot be quoted.
+# Quoting would include the quotes in the variable value.
+# Example: THREADS="$(nproc)" -> THREADS contains the literal string "4", not 4
+
+# MAKE006: Missing dependencies
+# PHONY targets don't have file dependencies - they always run.
+# Adding file dependencies to mutation test targets would be incorrect.
+
+# MAKE012: Recursive make invocation
+# Intentional workspace delegation: root Makefile -> server/Makefile.
+# "Recursive Make Considered Harmful" applies to complex dependency graphs.
+# Our usage is simple delegation with Make handling dependencies properly.
+
+# MAKE017: Missing .ONESHELL
+# Adding .ONESHELL changes shell execution semantics significantly.
+# Current design: each recipe line in its own shell (Make default).
+# Changing requires careful review of all multi-line recipes.
+
+# MAKE018: Parallel-unsafe patterns
+# Test targets write to /tmp - acceptable for test-only code.
+# These targets are never run in parallel with each other.
+
+# To lint excluding intentional patterns:
+# bashrs lint Makefile --ignore MAKE003,MAKE006,MAKE012,MAKE017,MAKE018
+
+# Remaining MAKE010 warnings are false positives:
+# - git in if/elif conditionals (intentional - checking exit status)
+# - "install" in echo strings (false positives - bashrs matches word in message)
+# - rm -f with || true (bashrs bug - doesn't recognize || true as error handling)
+#
+# All actionable MAKE010 issues have been fixed:
+# - cargo install commands now have || exit 1
+# - curl commands in tests now have -f flag and || exit 1
+#
+# The remaining warnings are technical limitations of bashrs static analysis
+# and not actual issues in the Makefile.
+
+# For CI/CD validation:
+# bashrs lint Makefile --ignore MAKE003,MAKE006,MAKE010,MAKE012,MAKE017,MAKE018

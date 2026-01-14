@@ -6,21 +6,26 @@ use std::io::Write;
 use std::path::Path;
 
 fn main() {
-    println!("cargo:rerun-if-changed=src/installer/mod.rs");
+    // Only watch files that actually exist - missing files cause constant rebuilds
     println!("cargo:rerun-if-changed=../scripts/install.sh");
     println!("cargo:rerun-if-changed=assets/vendor/");
     println!("cargo:rerun-if-changed=assets/demo/");
     println!("cargo:rerun-if-changed=../assets/demo/");
     println!("cargo:rerun-if-changed=templates/");
     println!("cargo:rerun-if-changed=src/schema/refactor_state.capnp");
+    println!("cargo:rerun-if-env-changed=PMAT_FAST_BUILD");
+    println!("cargo:rerun-if-env-changed=CARGO_LLVM_COV");
+    println!("cargo:rerun-if-env-changed=SKIP_MCP_TABLES");
 
     // Declare custom cfg flags
     println!("cargo:rustc-check-cfg=cfg(cargo_publish)");
     println!("cargo:rustc-check-cfg=cfg(coverage)");
 
-    // Fast build mode for development - skip heavy operations
+    // Fast build mode for development - skip heavy operations but generate stubs
     if env::var("PMAT_FAST_BUILD").is_ok() {
         println!("cargo:warning=Fast build mode enabled - skipping heavy build operations");
+        let out_dir = env::var("OUT_DIR").expect("OUT_DIR must be set");
+        generate_stub_files(&out_dir);
         return;
     }
 
@@ -368,7 +373,7 @@ fn write_compressed_templates_file(template_code: &str) {
     let out_dir = env::var("OUT_DIR")
         .expect("OUT_DIR environment variable must be set by Cargo during build");
     let dest_path = Path::new(&out_dir).join("compressed_templates.rs");
-    let _ = fs::write(dest_path, template_code);
+    let _ = write_if_changed(&dest_path, template_code);
 }
 
 /// Print compression statistics (cognitive complexity ≤3)
@@ -861,7 +866,7 @@ fn generate_tool_registry(out_dir: &str) {
 
     registry_code.push_str("    m\n});\n");
 
-    if let Err(e) = fs::write(&dest_path, registry_code) {
+    if let Err(e) = write_if_changed(&dest_path, &registry_code) {
         println!("cargo:warning=Failed to write tool registry: {e}");
     }
 }
@@ -1082,7 +1087,7 @@ fn generate_alias_table(out_dir: &str) {
 
     alias_code.push_str("    m\n});\n");
 
-    if let Err(e) = fs::write(&dest_path, alias_code) {
+    if let Err(e) = write_if_changed(&dest_path, &alias_code) {
         println!("cargo:warning=Failed to write alias table: {e}");
     }
 }
@@ -1159,12 +1164,27 @@ impl TrigramIndex {
 }
 "#;
 
-    if let Err(e) = fs::write(&dest_path, trigram_code) {
+    if let Err(e) = write_if_changed(&dest_path, trigram_code) {
         println!("cargo:warning=Failed to write trigram index: {e}");
     }
 }
 
 /// Generate stub files for coverage builds to avoid compilation errors
+/// Write file only if content changed (avoids triggering recompilation)
+fn write_if_changed(path: &Path, content: &str) -> Result<(), std::io::Error> {
+    if path.exists() {
+        if let Ok(existing) = fs::read_to_string(path) {
+            if existing == content {
+                // Content unchanged - skip write to preserve mtime
+                return Ok(());
+            }
+        }
+    }
+    // Content changed or file doesn't exist - write it
+    println!("cargo:warning=Writing changed file: {}", path.display());
+    fs::write(path, content)
+}
+
 fn generate_stub_files(out_dir: &str) {
     // Generate functional stub for tool_registry.rs with test data
     let tool_registry = r#"
@@ -1260,7 +1280,7 @@ pub static TOOL_REGISTRY: once_cell::sync::Lazy<HashMap<&'static str, ToolMeta>>
 "#;
 
     let dest = Path::new(out_dir).join("tool_registry.rs");
-    if let Err(e) = fs::write(&dest, tool_registry) {
+    if let Err(e) = write_if_changed(&dest, tool_registry) {
         println!("cargo:warning=Failed to write tool registry stub: {e}");
     }
 
@@ -1283,7 +1303,7 @@ pub static ALIAS_TABLE: once_cell::sync::Lazy<std::collections::HashMap<&'static
 "#;
 
     let dest = Path::new(out_dir).join("alias_table.rs");
-    if let Err(e) = fs::write(&dest, alias_table) {
+    if let Err(e) = write_if_changed(&dest, alias_table) {
         println!("cargo:warning=Failed to write alias table stub: {e}");
     }
 
@@ -1368,7 +1388,7 @@ impl TrigramIndex {
 "#;
 
     let dest = Path::new(out_dir).join("trigram_index.rs");
-    if let Err(e) = fs::write(&dest, trigram_index) {
+    if let Err(e) = write_if_changed(&dest, trigram_index) {
         println!("cargo:warning=Failed to write trigram index stub: {e}");
     }
 }

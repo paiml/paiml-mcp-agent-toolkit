@@ -17,7 +17,6 @@
 use crate::services::memory_manager::{global_memory_manager, init_global_memory_manager};
 use anyhow::Result;
 use clap::Subcommand;
-use console::{style, Style};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use tracing::info;
@@ -242,36 +241,32 @@ fn output_csv_format(output: &MemoryStatsOutput) -> Result<()> {
 }
 
 fn print_memory_stats_table(stats: &MemoryStatsOutput, detailed: bool) -> Result<()> {
-    let bold = Style::new().bold();
-
-    print_header(&bold);
-    print_overall_stats(stats, &bold);
+    print_header();
+    print_overall_stats(stats);
 
     if detailed {
-        print_pool_stats(&stats.pool_stats, &bold);
+        print_pool_stats(&stats.pool_stats);
     }
 
-    print_recommendations(&stats.recommendations, &bold);
+    print_recommendations(&stats.recommendations);
 
     Ok(())
 }
 
 /// Print the memory statistics header
-fn print_header(bold: &Style) {
-    println!("{}", bold.apply_to("PMAT Memory Statistics"));
+fn print_header() {
+    println!("PMAT Memory Statistics");
     println!();
 }
 
 /// Print overall memory usage statistics
-fn print_overall_stats(stats: &MemoryStatsOutput, bold: &Style) {
-    println!("{}:", bold.apply_to("Overall Memory Usage"));
+fn print_overall_stats(stats: &MemoryStatsOutput) {
+    println!("Overall Memory Usage:");
     println!("  Total Allocated: {}", format_bytes(stats.total_allocated));
     println!("  Peak Usage:      {}", format_bytes(stats.peak_usage));
-
-    let pressure_color = get_pressure_color(stats.allocation_pressure);
     println!(
-        "  Pressure:        {}",
-        pressure_color.apply_to(format!("{:.1}%", stats.allocation_pressure * 100.0))
+        "  Pressure:        {:.1}%",
+        stats.allocation_pressure * 100.0
     );
     println!(
         "  String Intern:   {}",
@@ -280,68 +275,34 @@ fn print_overall_stats(stats: &MemoryStatsOutput, bold: &Style) {
     println!();
 }
 
-/// Get color based on allocation pressure
-fn get_pressure_color(pressure: f64) -> Style {
-    if pressure > 0.9 {
-        Style::new().red()
-    } else if pressure > 0.8 {
-        Style::new().yellow()
-    } else {
-        Style::new().green()
-    }
-}
-
 /// Print pool-specific statistics
-fn print_pool_stats(pool_stats: &HashMap<String, PoolStatsOutput>, bold: &Style) {
-    println!("{}:", bold.apply_to("Pool Statistics"));
+fn print_pool_stats(pool_stats: &HashMap<String, PoolStatsOutput>) {
+    println!("Pool Statistics:");
     for (pool_name, stats) in pool_stats {
-        print_single_pool_stats(pool_name, stats, bold);
+        print_single_pool_stats(pool_name, stats);
     }
 }
 
 /// Print statistics for a single pool
-fn print_single_pool_stats(pool_name: &str, stats: &PoolStatsOutput, bold: &Style) {
-    println!("  {}:", bold.apply_to(pool_name));
+fn print_single_pool_stats(pool_name: &str, stats: &PoolStatsOutput) {
+    println!("  {}:", pool_name);
     println!("    Buffers:     {}", stats.buffer_count);
     println!("    Size:        {}", format_bytes(stats.total_size));
     println!("    Allocations: {}", stats.allocation_count);
     println!("    Reuses:      {}", stats.reuse_count);
-
-    let efficiency_color = get_efficiency_color(&stats.efficiency_rating);
     println!(
         "    Efficiency:  {} ({:.1}%)",
-        efficiency_color.apply_to(&stats.efficiency_rating),
+        &stats.efficiency_rating,
         stats.reuse_ratio * 100.0
     );
     println!();
 }
 
-/// Get color based on efficiency rating
-fn get_efficiency_color(rating: &str) -> Style {
-    match rating {
-        "Excellent" | "Good" => Style::new().green(),
-        "Fair" => Style::new().yellow(),
-        _ => Style::new().red(),
-    }
-}
-
 /// Print recommendations
-fn print_recommendations(recommendations: &[String], bold: &Style) {
-    println!("{}:", bold.apply_to("Recommendations"));
+fn print_recommendations(recommendations: &[String]) {
+    println!("Recommendations:");
     for rec in recommendations {
-        let rec_color = get_recommendation_color(rec);
-        println!("  • {}", rec_color.apply_to(rec));
-    }
-}
-
-/// Get color based on recommendation severity
-fn get_recommendation_color(rec: &str) -> Style {
-    if rec.contains("CRITICAL") {
-        Style::new().red()
-    } else if rec.contains("WARNING") {
-        Style::new().yellow()
-    } else {
-        Style::new().green()
+        println!("  • {}", rec);
     }
 }
 
@@ -447,8 +408,7 @@ async fn handle_memory_pools(pool: &Option<String>, efficiency: bool) -> Result<
 
 /// Print header for pool statistics
 fn print_pool_statistics_header() {
-    let bold = Style::new().bold();
-    println!("{}", bold.apply_to("Memory Pool Statistics"));
+    println!("Memory Pool Statistics");
     println!();
 }
 
@@ -466,8 +426,7 @@ fn print_pool_basic_stats(
     pool_name: &str,
     pool_stats: &crate::services::memory_manager::PoolStats,
 ) {
-    let bold = Style::new().bold();
-    println!("{}:", bold.apply_to(pool_name));
+    println!("{}:", pool_name);
     println!("  Buffers:     {}", pool_stats.buffer_count);
     println!("  Total Size:  {}", format_bytes(pool_stats.total_size));
     println!("  Allocations: {}", pool_stats.allocation_count);
@@ -523,16 +482,12 @@ async fn handle_memory_pressure(threshold: f64, watch: &Option<u64>) -> Result<(
             let stats = manager.stats();
             let timestamp = chrono::Utc::now().format("%H:%M:%S");
 
-            let pressure_color = if stats.allocation_pressure > threshold {
-                style(format!("{:.1}%", stats.allocation_pressure * 100.0)).red()
-            } else {
-                style(format!("{:.1}%", stats.allocation_pressure * 100.0)).green()
-            };
+            let pressure_str = format!("{:.1}%", stats.allocation_pressure * 100.0);
 
             println!(
                 "[{}] Pressure: {} | Allocated: {}",
                 timestamp,
-                pressure_color,
+                pressure_str,
                 format_bytes(stats.total_allocated)
             );
 
@@ -552,10 +507,10 @@ async fn handle_memory_pressure(threshold: f64, watch: &Option<u64>) -> Result<(
         println!("Threshold:               {:.1}%", threshold * 100.0);
 
         if stats.allocation_pressure > threshold {
-            println!("Status: {} Above threshold", style("WARNING").yellow());
+            println!("Status: WARNING - Above threshold");
             println!("Recommendation: Consider running 'pmat memory cleanup'");
         } else {
-            println!("Status: {} Below threshold", style("OK").green());
+            println!("Status: OK - Below threshold");
         }
     }
 

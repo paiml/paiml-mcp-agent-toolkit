@@ -1,3 +1,7 @@
+//! Git clone validation tests
+//! Requires the `git-lib` feature to be enabled.
+#![cfg(feature = "git-lib")]
+
 use pmat::services::git_clone::{CloneError, GitCloner};
 use tempfile::TempDir;
 

@@ -1,3 +1,5 @@
+#![cfg(feature = "dap")]
+
 // Sprint 78: TUI-001 RED phase - Terminal Event Loop Tests
 //
 // Tests for interactive timeline TUI event handling.
@@ -6,8 +8,6 @@
 // - Event loop lifecycle (start, run, stop)
 // - Terminal state management (raw mode, cleanup)
 // - Event parsing and routing
-
-#![cfg(feature = "tui")]
 
 use pmat::services::dap::timeline_tui::{EventLoop, KeyCode, TerminalEvent};
 

@@ -1,3 +1,4 @@
+#![cfg(feature = "dap")]
 //! TIMELINE-003: Recording Comparison Mode Tests
 //! Sprint 77 - RED Phase
 //!

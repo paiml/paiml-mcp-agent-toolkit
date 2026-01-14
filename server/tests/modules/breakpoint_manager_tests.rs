@@ -1,3 +1,5 @@
+#![cfg(feature = "dap")]
+
 // TRACE-002: Breakpoint Management System
 // RED Phase Tests - Sprint 71
 //

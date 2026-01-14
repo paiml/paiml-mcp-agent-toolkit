@@ -225,9 +225,7 @@ impl ParallelLouvain {
         let sigma_tot = community_data.community_degrees.get(&target_community).copied().unwrap_or(0.0);
 
         // Modularity gain formula from Blondel et al.
-        let gain = ki_in - self.resolution * (sigma_tot * node_degree) / (2.0 * total_weight);
-
-        gain
+        ki_in - self.resolution * (sigma_tot * node_degree) / (2.0 * total_weight)
     }
 
     /// Get unique communities of a node's neighbors.
@@ -367,6 +365,7 @@ impl GraphData {
 
 /// Aggregated community data for efficient calculations.
 #[derive(Debug)]
+#[allow(dead_code)]
 struct CommunityData {
     /// Node to community mapping
     node_to_community: Vec<usize>,

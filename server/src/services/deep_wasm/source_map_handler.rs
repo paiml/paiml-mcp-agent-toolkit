@@ -2,6 +2,8 @@
 //!
 //! Parses JavaScript-style source maps adapted for WASM.
 //! Supports both inline and external source maps.
+//!
+//! Requires the `deep-wasm` feature to be enabled.
 
 use crate::services::deep_wasm::{DeepWasmError, DeepWasmResult, SourceMapEntry};
 use sourcemap::SourceMap;

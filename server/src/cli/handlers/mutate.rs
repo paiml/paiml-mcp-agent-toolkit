@@ -7,7 +7,6 @@ use crate::services::mutation::engine::{MutationConfig, MutationEngine, Mutation
 use crate::services::mutation::types::{MutationResult, MutationScore, SourceLocation};
 use crate::stateless_server::StatelessTemplateServer;
 use anyhow::{Context, Result};
-use console::style;
 use serde::Serialize;
 use std::fs;
 use std::path::Path;
@@ -378,33 +377,30 @@ fn output_text(
     };
 
     if failures_only {
-        println!("\n{}\n", style("Mutation Testing Failures").bold().red());
+        println!("\nMutation Testing Failures\n");
     } else {
-        println!("\n{}\n", style("Mutation Testing Results").bold());
+        println!("\nMutation Testing Results\n");
     }
 
-    // Summary statistics (always show, with color coding)
+    // Summary statistics
     if !failures_only {
         println!("Total mutants:  {}", score.total);
 
         if score.total > 0 {
             println!(
-                "{}         {} ({:.1}%)",
-                style("Killed:").green(),
+                "Killed:         {} ({:.1}%)",
                 score.killed,
                 (score.killed as f64 / score.total as f64) * 100.0
             );
             println!(
-                "{}       {} ({:.1}%)",
-                style("Survived:").red(),
+                "Survived:       {} ({:.1}%)",
                 score.survived,
                 (score.survived as f64 / score.total as f64) * 100.0
             );
 
             if score.compile_errors > 0 {
                 println!(
-                    "{} {} ({:.1}%)",
-                    style("Compile errors:").yellow(),
+                    "Compile errors: {} ({:.1}%)",
                     score.compile_errors,
                     (score.compile_errors as f64 / score.total as f64) * 100.0
                 );
@@ -412,8 +408,7 @@ fn output_text(
 
             if score.timeouts > 0 {
                 println!(
-                    "{}       {} ({:.1}%)",
-                    style("Timeouts:").yellow(),
+                    "Timeouts:       {} ({:.1}%)",
                     score.timeouts,
                     (score.timeouts as f64 / score.total as f64) * 100.0
                 );
@@ -421,24 +416,16 @@ fn output_text(
 
             if score.equivalent > 0 {
                 println!(
-                    "{}     {} ({:.1}%)",
-                    style("Equivalent:").cyan(),
+                    "Equivalent:     {} ({:.1}%)",
                     score.equivalent,
                     (score.equivalent as f64 / score.total as f64) * 100.0
                 );
             }
         }
 
-        // Color-code mutation score
+        // Mutation score
         let score_percent = score.score * 100.0;
-        let score_styled = if score_percent >= 80.0 {
-            style(format!("{:.1}%", score_percent)).green().bold()
-        } else if score_percent >= 60.0 {
-            style(format!("{:.1}%", score_percent)).yellow().bold()
-        } else {
-            style(format!("{:.1}%", score_percent)).red().bold()
-        };
-        println!("\n{} {}\n", style("Mutation Score:").bold(), score_styled);
+        println!("\nMutation Score: {:.1}%\n", score_percent);
     }
 
     // Sprint 62: Show failures with code snippets
@@ -448,40 +435,26 @@ fn output_text(
         .collect();
 
     if !survived.is_empty() {
-        println!(
-            "{}\n",
-            style("Survived Mutants (needs test coverage):")
-                .red()
-                .bold()
-        );
+        println!("Survived Mutants (needs test coverage):\n");
         for (i, result) in survived.iter().enumerate() {
             println!(
-                "{}. {}",
-                style(format!("{}", i + 1)).red().bold(),
-                style(format!(
-                    "{}:{}:{}",
-                    result.mutant.original_file.display(),
-                    result.mutant.location.line,
-                    result.mutant.location.column
-                ))
-                .cyan()
+                "{}. {}:{}:{}",
+                i + 1,
+                result.mutant.original_file.display(),
+                result.mutant.location.line,
+                result.mutant.location.column
             );
-            println!(
-                "   {}: {:?}",
-                style("Operator").bold(),
-                result.mutant.operator
-            );
+            println!("   Operator: {:?}", result.mutant.operator);
 
             // Extract and display code snippet
             if let Ok(snippet) =
                 extract_code_snippet(&result.mutant.original_file, &result.mutant.location)
             {
-                println!("   {}: {}", style("Code").bold(), snippet);
+                println!("   Code: {}", snippet);
             }
 
             println!(
-                "   {}: {:.2}s\n",
-                style("Time").bold(),
+                "   Time: {:.2}s\n",
                 result.execution_time_ms as f64 / 1000.0
             );
         }
@@ -494,24 +467,16 @@ fn output_text(
         .collect();
 
     if !compile_errors.is_empty() {
-        println!("{}\n", style("Compile Errors:").yellow().bold());
+        println!("Compile Errors:\n");
         for (i, result) in compile_errors.iter().enumerate() {
             println!(
-                "{}. {}",
-                style(format!("{}", i + 1)).yellow().bold(),
-                style(format!(
-                    "{}:{}:{}",
-                    result.mutant.original_file.display(),
-                    result.mutant.location.line,
-                    result.mutant.location.column
-                ))
-                .cyan()
+                "{}. {}:{}:{}",
+                i + 1,
+                result.mutant.original_file.display(),
+                result.mutant.location.line,
+                result.mutant.location.column
             );
-            println!(
-                "   {}: {:?}\n",
-                style("Operator").bold(),
-                result.mutant.operator
-            );
+            println!("   Operator: {:?}\n", result.mutant.operator);
         }
     }
 
@@ -522,24 +487,16 @@ fn output_text(
         .collect();
 
     if !timeouts.is_empty() {
-        println!("{}\n", style("Timeouts:").yellow().bold());
+        println!("Timeouts:\n");
         for (i, result) in timeouts.iter().enumerate() {
             println!(
-                "{}. {}",
-                style(format!("{}", i + 1)).yellow().bold(),
-                style(format!(
-                    "{}:{}:{}",
-                    result.mutant.original_file.display(),
-                    result.mutant.location.line,
-                    result.mutant.location.column
-                ))
-                .cyan()
+                "{}. {}:{}:{}",
+                i + 1,
+                result.mutant.original_file.display(),
+                result.mutant.location.line,
+                result.mutant.location.column
             );
-            println!(
-                "   {}: {:?}\n",
-                style("Operator").bold(),
-                result.mutant.operator
-            );
+            println!("   Operator: {:?}\n", result.mutant.operator);
         }
     }
 

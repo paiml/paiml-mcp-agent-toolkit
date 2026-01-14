@@ -5,6 +5,11 @@
 //! - Creating new issues
 //! - Updating issue status and labels
 //! - Syncing with local roadmap.yaml
+//!
+//! Note: This module requires the `github-api` feature to be enabled.
+//! When disabled, use the `gh` CLI fallback in work_handlers.rs instead.
+
+#![cfg(feature = "github-api")]
 
 use anyhow::{Context, Result};
 use octocrab::models::issues::Issue;

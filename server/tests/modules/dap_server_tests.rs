@@ -4,6 +4,8 @@
 // Debug Adapter Protocol (DAP) server foundation tests
 // These tests define the specification for PMAT's DAP server
 
+#![cfg(feature = "dap")]
+
 use serde_json::{json, Value};
 
 // Test fixtures and helpers

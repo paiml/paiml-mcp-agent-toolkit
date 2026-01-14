@@ -141,6 +141,7 @@ impl CliAdapter {
             | Commands::PerfectionScore { .. } // master-plan-pmat-work-system.md: 200-point score (CLI-only)
             | Commands::Spec { .. } // master-plan-pmat-work-system.md: Spec management (CLI-only)
             | Commands::CudaTdg { .. } // CUDA-SIMD TDG: 100-point Popper falsification (CLI-only)
+            | Commands::DepsAudit { .. } // Dependency audit for Sovereign AI stack migration (CLI-only)
             => Self::cli_only_command_error(),
 
             #[cfg(feature = "mutation-testing")]
@@ -1795,7 +1796,7 @@ impl CliInput {
     fn get_command_category(command: &Commands) -> CommandCategory {
         match command {
             Commands::Generate { .. } | Commands::Scaffold { .. } => CommandCategory::Generation,
-            Commands::QualityGate { .. } | Commands::QualityGates { .. } | Commands::Report { .. } | Commands::RepoScore { .. } | Commands::RustProjectScore { .. } | Commands::BrickScore { .. } | Commands::PopperScore { .. } | Commands::DemoScore { .. } | Commands::ValidateDocs(_) | Commands::ValidateReadme(_) | Commands::RedTeam(_) | Commands::Org(_) | Commands::Prompt(_) | Commands::Embed(_) | Commands::Semantic(_) | Commands::ShowMetrics { .. } | Commands::PredictQuality { .. } | Commands::RecordMetric { .. } => CommandCategory::Analysis,
+            Commands::QualityGate { .. } | Commands::QualityGates { .. } | Commands::Report { .. } | Commands::RepoScore { .. } | Commands::RustProjectScore { .. } | Commands::BrickScore { .. } | Commands::PopperScore { .. } | Commands::DemoScore { .. } | Commands::ValidateDocs(_) | Commands::ValidateReadme(_) | Commands::RedTeam(_) | Commands::Org(_) | Commands::Prompt(_) | Commands::Embed(_) | Commands::Semantic(_) | Commands::ShowMetrics { .. } | Commands::PredictQuality { .. } | Commands::RecordMetric { .. } | Commands::DepsAudit { .. } => CommandCategory::Analysis,
             #[cfg(feature = "mutation-testing")]
             Commands::Mutate(_) => CommandCategory::Analysis,
             Commands::Serve { .. }

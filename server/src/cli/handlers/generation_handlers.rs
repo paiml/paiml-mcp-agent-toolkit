@@ -185,7 +185,13 @@ pub async fn handle_scaffold_agent(params: ScaffoldAgentParams) -> Result<()> {
     } = params;
 
     if interactive {
-        return handle_interactive_scaffold(output, dry_run, force).await;
+        // Interactive mode requires dialoguer crate which was removed to save dependencies
+        // Use explicit CLI arguments instead: --name, --template, --features, --quality
+        return Err(anyhow::anyhow!(
+            "Interactive mode is not available. Use explicit arguments instead:\n  \
+            pmat generate agent --name <NAME> --template mcp-tool-server\n  \
+            Available templates: mcp-tool-server, state-machine, hybrid-agent, monitoring"
+        ));
     }
 
     let context = build_agent_context(
@@ -202,44 +208,8 @@ pub async fn handle_scaffold_agent(params: ScaffoldAgentParams) -> Result<()> {
     execute_scaffold_operation(&context, &output_path, &name, dry_run, force).await
 }
 
-/// Handle interactive scaffolding mode
-async fn handle_interactive_scaffold(
-    output: Option<PathBuf>,
-    dry_run: bool,
-    force: bool,
-) -> Result<()> {
-    use crate::cli::progress::ProgressIndicator;
-    use crate::scaffold::agent::{scaffold_agent, InteractiveScaffolder};
-
-    let mut scaffolder = InteractiveScaffolder::new();
-    let context = scaffolder.run()?;
-    let output_path = output.unwrap_or_else(|| PathBuf::from(&context.name));
-
-    if dry_run {
-        eprintln!(
-            "🔍 Dry run - would generate agent '{}' at {}",
-            context.name,
-            output_path.display()
-        );
-        return Ok(());
-    }
-
-    validate_output_path(&output_path, force)?;
-
-    let progress = ProgressIndicator::new(&format!("Scaffolding agent '{}'...", context.name));
-    let start = std::time::Instant::now();
-
-    scaffold_agent(&context, &output_path).await?;
-
-    let duration = start.elapsed();
-    progress.finish_with_message(&format!(
-        "Agent '{}' scaffolded successfully ({:.1}s)",
-        context.name,
-        duration.as_secs_f64()
-    ));
-
-    Ok(())
-}
+// REMOVED: handle_interactive_scaffold function required dialoguer crate
+// Interactive scaffolding now returns an error directing users to CLI args
 
 /// Build agent context from CLI arguments
 fn build_agent_context(

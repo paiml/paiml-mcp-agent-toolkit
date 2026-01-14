@@ -70,7 +70,9 @@
 //! - **NO_COLOR**: Respects `NO_COLOR` environment variable
 //! - **Quiet Mode**: Disabled when `PMAT_QUIET=1`
 
-use indicatif::{ProgressBar, ProgressStyle};
+// NOTE: indicatif dependency removed to reduce transitive deps
+// Using local SimpleProgressBar implementation from services::progress
+use crate::services::progress::{ProgressBar, ProgressStyle};
 use std::io::IsTerminal;
 use std::time::{Duration, Instant};
 

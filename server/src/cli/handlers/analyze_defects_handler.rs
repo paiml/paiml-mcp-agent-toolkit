@@ -5,7 +5,6 @@
 
 use crate::services::defect_detector::{DefectPattern, RustDefectDetector, Severity};
 use anyhow::{Context, Result};
-use console::style;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
@@ -162,10 +161,10 @@ fn calculate_summary(
 }
 
 fn print_text_report(report: &DefectReport) {
-    println!("\n{}", style("Known Defects Report").bold());
-    println!("{}", style("====================").bold());
+    println!("\nKnown Defects Report");
+    println!("====================");
 
-    println!("\n📊 {}", style("Summary").bold());
+    println!("\n📊 Summary");
     println!(
         "  Total Files Scanned: {}",
         report.summary.total_files_scanned
@@ -177,11 +176,11 @@ fn print_text_report(report: &DefectReport) {
     println!("  Total Defects: {}", report.summary.total_defects);
     println!(
         "  Critical: {}",
-        style(report.summary.by_severity.critical).red().bold()
+        report.summary.by_severity.critical
     );
     println!(
         "  High: {}",
-        style(report.summary.by_severity.high).yellow()
+        report.summary.by_severity.high
     );
     println!("  Medium: {}", report.summary.by_severity.medium);
     println!("  Low: {}", report.summary.by_severity.low);
@@ -205,8 +204,7 @@ fn print_text_report(report: &DefectReport) {
 
     if !critical_defects.is_empty() {
         println!(
-            "\n🔴 {} ({})",
-            style("CRITICAL Defects").red().bold(),
+            "\n🔴 CRITICAL Defects ({})",
             critical_defects.len()
         );
         for defect in critical_defects {
@@ -216,8 +214,7 @@ fn print_text_report(report: &DefectReport) {
 
     if !high_defects.is_empty() {
         println!(
-            "\n🟠 {} ({})",
-            style("HIGH Defects").yellow().bold(),
+            "\n🟠 HIGH Defects ({})",
             high_defects.len()
         );
         for defect in high_defects {
@@ -236,9 +233,9 @@ fn print_text_report(report: &DefectReport) {
         "\nExit code: {} {}",
         report.exit_code,
         if report.has_critical_defects {
-            style("(critical defects found)").red()
+            "(critical defects found)"
         } else {
-            style("(no critical defects)").green()
+            "(no critical defects)"
         }
     );
 }

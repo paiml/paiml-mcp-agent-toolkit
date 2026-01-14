@@ -50,6 +50,25 @@ pub use server::{DemoContent, Hotspot, LocalDemoServer};
 use anyhow::Result;
 use tracing::{debug, info};
 
+/// Open URL in default browser using platform-specific command
+/// Replaces webbrowser crate to reduce transitive dependencies
+#[allow(dead_code)] // Used only when "demo" feature is enabled
+fn open_browser(url: &str) -> std::io::Result<()> {
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("open").arg(url).spawn()?;
+    }
+    #[cfg(target_os = "linux")]
+    {
+        std::process::Command::new("xdg-open").arg(url).spawn()?;
+    }
+    #[cfg(target_os = "windows")]
+    {
+        std::process::Command::new("cmd").args(["/c", "start", url]).spawn()?;
+    }
+    Ok(())
+}
+
 pub async fn run_demo(
     args: DemoArgs,
     server: std::sync::Arc<crate::stateless_server::StatelessTemplateServer>,
@@ -538,7 +557,7 @@ async fn run_web_demo(
     // Open browser unless disabled
     #[cfg(feature = "demo")]
     if !no_browser {
-        if let Err(e) = webbrowser::open(&url) {
+        if let Err(e) = open_browser(&url) {
             println!("   Please open {url} in your browser (auto-open failed: {e})");
         }
     }

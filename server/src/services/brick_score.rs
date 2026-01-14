@@ -20,8 +20,9 @@ use std::path::{Path, PathBuf};
 // ============================================================================
 
 /// SIMD instruction set width (matches trueno::hardware::SimdWidth)
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize, Default)]
 pub enum SimdWidth {
+    #[default]
     Scalar,
     Neon128,
     Sse2,
@@ -49,12 +50,6 @@ impl SimdWidth {
             SimdWidth::Avx2 => 10.0,  // 8-12x measured
             SimdWidth::Avx512 => 12.0, // 8-13x measured
         }
-    }
-}
-
-impl Default for SimdWidth {
-    fn default() -> Self {
-        SimdWidth::Scalar
     }
 }
 

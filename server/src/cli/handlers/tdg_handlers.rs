@@ -4,6 +4,27 @@ use crate::tdg::{Grade, TdgAnalyzer, TdgConfig};
 use anyhow::{anyhow, Result};
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::process::Command;
+
+/// Discover git working directory from a path (shell fallback when git-lib disabled)
+fn discover_git_workdir(path: &Path) -> Option<PathBuf> {
+    #[cfg(feature = "git-lib")]
+    {
+        git2::Repository::discover(path)
+            .ok()
+            .and_then(|repo| repo.workdir().map(Path::to_path_buf))
+    }
+    #[cfg(not(feature = "git-lib"))]
+    {
+        Command::new("git")
+            .args(["rev-parse", "--show-toplevel"])
+            .current_dir(path)
+            .output()
+            .ok()
+            .filter(|o| o.status.success())
+            .map(|o| PathBuf::from(String::from_utf8_lossy(&o.stdout).trim()))
+    }
+}
 
 /// Configuration for TDG command handling
 pub struct TdgCommandConfig {
@@ -54,12 +75,8 @@ pub async fn handle_tdg_command(config: TdgCommandConfig) -> Result<()> {
         };
 
         // Discover git repo root from the search path
-        let git_context = if let Ok(repo) = git2::Repository::discover(search_path) {
-            let workdir = repo.workdir().unwrap_or(search_path);
-            crate::models::git_context::GitContext::try_from_current_dir(workdir)
-        } else {
-            None
-        };
+        let git_context = discover_git_workdir(search_path)
+            .and_then(|workdir| crate::models::git_context::GitContext::try_from_current_dir(&workdir));
 
         analyzer.set_git_context(git_context);
     }
@@ -246,24 +263,32 @@ async fn handle_history_command(
     Ok(())
 }
 
-/// Filter records by git "since" reference using git2
+/// Filter records by git "since" reference
 fn filter_by_git_since(
     since_ref: &str,
     mut records: Vec<crate::tdg::storage::FullTdgRecord>,
     repo_path: &Path,
 ) -> Result<Vec<crate::tdg::storage::FullTdgRecord>> {
-    use git2::Repository;
+    // Get timestamp of the "since" commit using shell git
+    let output = Command::new("git")
+        .args(["log", "-1", "--format=%ct", since_ref])
+        .current_dir(repo_path)
+        .output()?;
 
-    let repo = Repository::discover(repo_path)?;
-    let since_commit = repo.revparse_single(since_ref)?.peel_to_commit()?;
-    let since_time = since_commit.time();
+    if !output.status.success() {
+        return Err(anyhow!("Failed to resolve git ref: {since_ref}"));
+    }
+
+    let since_time: i64 = String::from_utf8_lossy(&output.stdout)
+        .trim()
+        .parse()
+        .map_err(|_| anyhow!("Invalid timestamp from git log"))?;
 
     // Filter records to commits after since_time
     records.retain(|r| {
         if let Some(git_ctx) = &r.git_context {
-            // Convert DateTime<Utc> to timestamp for comparison
             let record_time = git_ctx.commit_timestamp.timestamp();
-            record_time > since_time.seconds()
+            record_time > since_time
         } else {
             false
         }
@@ -272,16 +297,12 @@ fn filter_by_git_since(
     Ok(records)
 }
 
-/// Filter records by git commit range using git2
+/// Filter records by git commit range
 fn filter_by_git_range(
     range_ref: &str,
     mut records: Vec<crate::tdg::storage::FullTdgRecord>,
     repo_path: &Path,
 ) -> Result<Vec<crate::tdg::storage::FullTdgRecord>> {
-    use git2::Repository;
-
-    let repo = Repository::discover(repo_path)?;
-
     // Parse range (e.g., "HEAD~10..HEAD" or "v2.177.0..v2.178.0")
     let parts: Vec<&str> = range_ref.split("..").collect();
     if parts.len() != 2 {
@@ -290,16 +311,29 @@ fn filter_by_git_range(
         ));
     }
 
-    let start_commit = repo.revparse_single(parts[0])?.peel_to_commit()?;
-    let end_commit = repo.revparse_single(parts[1])?.peel_to_commit()?;
+    // Get timestamps using shell git
+    let get_timestamp = |git_ref: &str| -> Result<i64> {
+        let output = Command::new("git")
+            .args(["log", "-1", "--format=%ct", git_ref])
+            .current_dir(repo_path)
+            .output()?;
 
-    let start_time = start_commit.time().seconds();
-    let end_time = end_commit.time().seconds();
+        if !output.status.success() {
+            return Err(anyhow!("Failed to resolve git ref: {git_ref}"));
+        }
+
+        String::from_utf8_lossy(&output.stdout)
+            .trim()
+            .parse()
+            .map_err(|_| anyhow!("Invalid timestamp from git log"))
+    };
+
+    let start_time = get_timestamp(parts[0])?;
+    let end_time = get_timestamp(parts[1])?;
 
     // Filter records within time range
     records.retain(|r| {
         if let Some(git_ctx) = &r.git_context {
-            // Convert DateTime<Utc> to timestamp for comparison
             let record_time = git_ctx.commit_timestamp.timestamp();
             record_time >= start_time && record_time <= end_time
         } else {
@@ -1171,26 +1205,27 @@ async fn handle_check_quality(
 
 /// Display gate result in table format
 fn display_gate_result_table(result: &crate::tdg::GateResult) {
-    use prettytable::{row, Table};
-
     println!("\n{}", result.message);
 
     if !result.violations.is_empty() {
         println!("\n📋 Violations:");
-
-        let mut table = Table::new();
-        table.add_row(row!["File", "Type", "Severity", "Message"]);
+        println!("┌────────────────────────────────┬──────────────┬──────────┬────────────────────────────────┐");
+        println!("│ File                           │ Type         │ Severity │ Message                        │");
+        println!("├────────────────────────────────┼──────────────┼──────────┼────────────────────────────────┤");
 
         for violation in &result.violations {
-            table.add_row(row![
-                violation.path.display(),
-                format!("{:?}", violation.violation_type),
-                format!("{:?}", violation.severity),
-                &violation.message
-            ]);
+            let path = format!("{}", violation.path.display());
+            let vtype = format!("{:?}", violation.violation_type);
+            let sev = format!("{:?}", violation.severity);
+            println!(
+                "│ {:<30} │ {:<12} │ {:<8} │ {:<30} │",
+                &path[..path.len().min(30)],
+                &vtype[..vtype.len().min(12)],
+                &sev[..sev.len().min(8)],
+                &violation.message[..violation.message.len().min(30)]
+            );
         }
-
-        table.printstd();
+        println!("└────────────────────────────────┴──────────────┴──────────┴────────────────────────────────┘");
     }
 }
 

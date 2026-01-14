@@ -22,6 +22,7 @@ use std::path::Path;
 ///
 /// PMAT-448: If ~/.pmat/hardware.toml exists, budgets are scaled based on
 /// detected SIMD capability and memory bandwidth.
+#[allow(clippy::too_many_arguments)]
 pub async fn handle_brick_score(
     path: &Path,
     input_file: Option<&Path>,

@@ -46,7 +46,7 @@ pub struct HybridSearchResult {
 
 /// Keyword match from ripgrep
 #[derive(Debug, Clone)]
-struct KeywordMatch {
+pub struct KeywordMatch {
     file_path: String,
     line_number: usize,
     content: String,

@@ -1,3 +1,4 @@
+#![cfg(feature = "dap")]
 //! CAPTURE-003: CLI Recording Workflow End-to-End
 //! Sprint 76 - RED Phase
 //!

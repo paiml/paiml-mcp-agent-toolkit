@@ -26,7 +26,7 @@ use super::performance_scorer::PerformanceScorer;
 use super::rust_tooling_scorer::RustToolingScorer;
 use super::scorer::{Scorer, ScorerError, ScorerResult};
 use super::testing_scorer::TestingScorer;
-use indicatif::ProgressBar;
+use crate::services::progress::ProgressBar;
 use rayon::prelude::*;
 use std::collections::HashMap;
 use std::path::Path;

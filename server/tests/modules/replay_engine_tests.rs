@@ -1,3 +1,5 @@
+#![cfg(feature = "dap")]
+
 // TRACE-007: Replay Engine with Forward/Backward Navigation Tests
 // Sprint 72 - RED Phase
 //

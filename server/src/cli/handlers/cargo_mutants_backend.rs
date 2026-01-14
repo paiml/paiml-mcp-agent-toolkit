@@ -6,7 +6,6 @@
 use crate::services::mutation::cargo_mutants_wrapper::CargoMutantsWrapper;
 use crate::services::mutation::json_parser::{CargoMutantsReport, MutantOutcome};
 use anyhow::{Context, Result};
-use console::style;
 use std::path::PathBuf;
 use std::process::Command;
 
@@ -26,7 +25,7 @@ pub struct CargoMutantsConfig {
 /// Execute cargo-mutants and return path to output directory
 pub fn execute(config: CargoMutantsConfig) -> Result<PathBuf> {
     // 1. Detect and validate cargo-mutants installation
-    eprintln!("{}", style("🧪 cargo-mutants Backend").bold());
+    eprintln!("🧪 cargo-mutants Backend");
     eprintln!();
 
     let wrapper = CargoMutantsWrapper::new().map_err(|e| {
@@ -42,7 +41,7 @@ pub fn execute(config: CargoMutantsConfig) -> Result<PathBuf> {
     let version = wrapper
         .version()
         .map_err(|e| anyhow::anyhow!("Failed to get cargo-mutants version: {}", e))?;
-    eprintln!("{} {}", style("✅ Detected:").green(), version);
+    eprintln!("✅ Detected: {}", version);
     eprintln!();
 
     // Determine output directory
@@ -87,8 +86,7 @@ pub fn execute(config: CargoMutantsConfig) -> Result<PathBuf> {
 
     // Display command being executed
     eprintln!(
-        "{} cargo mutants --output {} --timeout {} {}",
-        style("🔧 Executing:").cyan(),
+        "🔧 Executing: cargo mutants --output {} --timeout {} {}",
         output_dir.display(),
         config.timeout,
         if let Some(j) = config.jobs {
@@ -100,10 +98,7 @@ pub fn execute(config: CargoMutantsConfig) -> Result<PathBuf> {
     eprintln!();
 
     // 3. Execute cargo-mutants
-    eprintln!(
-        "{}",
-        style("⏳ Running mutation tests... (this may take several minutes)").yellow()
-    );
+    eprintln!("⏳ Running mutation tests... (this may take several minutes)");
     eprintln!();
 
     let output_result = cmd
@@ -124,7 +119,7 @@ pub fn execute(config: CargoMutantsConfig) -> Result<PathBuf> {
         );
     }
 
-    eprintln!("{}", style("✅ Mutation testing complete").green());
+    eprintln!("✅ Mutation testing complete");
     eprintln!();
 
     // cargo-mutants may create a nested directory structure
@@ -146,7 +141,7 @@ pub fn execute(config: CargoMutantsConfig) -> Result<PathBuf> {
 
 /// Display mutation testing statistics
 pub fn display_statistics(report: &CargoMutantsReport) {
-    eprintln!("{}", style("📊 Mutation Testing Results:").bold());
+    eprintln!("📊 Mutation Testing Results:");
     eprintln!();
 
     let total = report.mutants.len();
@@ -159,22 +154,19 @@ pub fn display_statistics(report: &CargoMutantsReport) {
 
     if total > 0 {
         eprintln!(
-            "   {} {} ({:.1}%)",
-            style("Caught:").green(),
+            "   Caught: {} ({:.1}%)",
             caught,
             (caught as f64 / total as f64) * 100.0
         );
         eprintln!(
-            "   {} {} ({:.1}%)",
-            style("Missed:").red(),
+            "   Missed: {} ({:.1}%)",
             missed,
             (missed as f64 / total as f64) * 100.0
         );
 
         if timeout > 0 {
             eprintln!(
-                "   {} {} ({:.1}%)",
-                style("Timeout:").yellow(),
+                "   Timeout: {} ({:.1}%)",
                 timeout,
                 (timeout as f64 / total as f64) * 100.0
             );
@@ -182,8 +174,7 @@ pub fn display_statistics(report: &CargoMutantsReport) {
 
         if unviable > 0 {
             eprintln!(
-                "   {} {} ({:.1}%)",
-                style("Unviable:").yellow(),
+                "   Unviable: {} ({:.1}%)",
                 unviable,
                 (unviable as f64 / total as f64) * 100.0
             );
@@ -194,37 +185,17 @@ pub fn display_statistics(report: &CargoMutantsReport) {
 
     // Calculate and display mutation score
     let mutation_score = report.mutation_score();
-    let score_styled = if mutation_score >= 80.0 {
-        style(format!("{:.1}%", mutation_score)).green().bold()
-    } else if mutation_score >= 60.0 {
-        style(format!("{:.1}%", mutation_score)).yellow().bold()
-    } else {
-        style(format!("{:.1}%", mutation_score)).red().bold()
-    };
-
-    eprintln!("{} {}", style("📈 Mutation Score:").bold(), score_styled);
+    eprintln!("📈 Mutation Score: {:.1}%", mutation_score);
 
     // Quality assessment
     if mutation_score >= 90.0 {
-        eprintln!(
-            "{}",
-            style("✅ Excellent! Test suite quality is very high").green()
-        );
+        eprintln!("✅ Excellent! Test suite quality is very high");
     } else if mutation_score >= 75.0 {
-        eprintln!(
-            "{}",
-            style("👍 Good test coverage, but room for improvement").green()
-        );
+        eprintln!("👍 Good test coverage, but room for improvement");
     } else if mutation_score >= 50.0 {
-        eprintln!(
-            "{}",
-            style("⚠️  Moderate coverage - consider adding more tests").yellow()
-        );
+        eprintln!("⚠️  Moderate coverage - consider adding more tests");
     } else {
-        eprintln!(
-            "{}",
-            style("❌ Low coverage - significant test gaps detected").red()
-        );
+        eprintln!("❌ Low coverage - significant test gaps detected");
     }
 
     eprintln!();

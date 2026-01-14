@@ -646,6 +646,7 @@ impl RepositoryContext {
     }
 
     /// Get recent commits from git history
+    #[cfg(feature = "git-lib")]
     pub fn get_recent_commits(&self, limit: usize) -> Vec<CommitInfo> {
         let Some(ref repo_path) = self.git_repo else {
             return vec![];
@@ -679,6 +680,51 @@ impl RepositoryContext {
         }
 
         commits
+    }
+
+    /// Get recent commits from git history (shell git fallback)
+    #[cfg(not(feature = "git-lib"))]
+    pub fn get_recent_commits(&self, limit: usize) -> Vec<CommitInfo> {
+        use std::process::Command;
+
+        let Some(ref repo_path) = self.git_repo else {
+            return vec![];
+        };
+
+        // Use shell git log with a format that gives us message, timestamp, and author
+        let output = Command::new("git")
+            .args([
+                "log",
+                &format!("-{limit}"),
+                "--format=%s|%ct|%an",
+            ])
+            .current_dir(repo_path)
+            .output()
+            .ok();
+
+        let Some(output) = output else {
+            return vec![];
+        };
+
+        if !output.status.success() {
+            return vec![];
+        }
+
+        String::from_utf8_lossy(&output.stdout)
+            .lines()
+            .filter_map(|line| {
+                let parts: Vec<&str> = line.splitn(3, '|').collect();
+                if parts.len() == 3 {
+                    Some(CommitInfo {
+                        message: parts[0].to_string(),
+                        timestamp: parts[1].parse().unwrap_or(0),
+                        author: parts[2].to_string(),
+                    })
+                } else {
+                    None
+                }
+            })
+            .collect()
     }
 
     /// Get test files found in repository
@@ -716,6 +762,7 @@ impl RepositoryContext {
 
     // Helper methods
 
+    #[cfg(feature = "git-lib")]
     fn find_git_repo(path: &Path) -> Option<PathBuf> {
         // Use git2's discover() to properly handle worktrees, gitlinks, etc.
         match git2::Repository::discover(path) {
@@ -724,6 +771,25 @@ impl RepositoryContext {
                 repo.workdir().map(|p| p.to_path_buf())
             }
             Err(_) => None,
+        }
+    }
+
+    #[cfg(not(feature = "git-lib"))]
+    fn find_git_repo(path: &Path) -> Option<PathBuf> {
+        use std::process::Command;
+
+        // Use shell git rev-parse to find repo root
+        let output = Command::new("git")
+            .args(["rev-parse", "--show-toplevel"])
+            .current_dir(path)
+            .output()
+            .ok()?;
+
+        if output.status.success() {
+            let repo_path = String::from_utf8_lossy(&output.stdout);
+            Some(PathBuf::from(repo_path.trim()))
+        } else {
+            None
         }
     }
 

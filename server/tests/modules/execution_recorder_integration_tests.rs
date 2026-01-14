@@ -1,3 +1,4 @@
+#![cfg(feature = "dap")]
 //! CAPTURE-001: ExecutionRecorder with RecordingWriter Integration
 //! Sprint 76 - GREEN Phase
 //!

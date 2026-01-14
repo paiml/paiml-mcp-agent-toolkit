@@ -3,10 +3,21 @@
 //! This example shows how to check the size of GitHub repositories
 //! before cloning them, which is useful for CI/CD systems with
 //! limited disk space.
+//!
+//! Requires the `git-lib` feature to be enabled.
 
+#[cfg(not(feature = "git-lib"))]
+fn main() {
+    println!("This example requires the 'git-lib' feature to be enabled.");
+    println!("Run with: cargo run --example check_github_repo --features git-lib");
+}
+
+#[cfg(feature = "git-lib")]
 use anyhow::Result;
+#[cfg(feature = "git-lib")]
 use pmat::services::git_clone::{GitCloner, ParsedGitHubUrl};
 
+#[cfg(feature = "git-lib")]
 #[tokio::main]
 async fn main() -> Result<()> {
     println!("📦 GitHub Repository Size Checker\n");

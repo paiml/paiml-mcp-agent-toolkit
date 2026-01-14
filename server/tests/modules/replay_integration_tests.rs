@@ -1,3 +1,4 @@
+#![cfg(feature = "dap")]
 //! REPLAY-003: Replay Integration Tests
 //! Sprint 75 - RED Phase
 //!

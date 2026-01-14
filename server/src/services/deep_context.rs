@@ -2374,7 +2374,7 @@ impl DeepContextAnalyzer {
     async fn execute_discovery_phase(
         &self,
         project_path: &PathBuf,
-        progress: &indicatif::ProgressBar,
+        progress: &crate::services::progress::ProgressBar,
     ) -> anyhow::Result<AnnotatedFileTree> {
         progress.set_message("Discovering project structure...");
         let file_tree = self.discover_project_structure(project_path).await?;
@@ -2386,7 +2386,7 @@ impl DeepContextAnalyzer {
         &self,
         project_path: &Path,
         tracker: &crate::services::progress::ProgressTracker,
-        progress: &indicatif::ProgressBar,
+        progress: &crate::services::progress::ProgressBar,
     ) -> anyhow::Result<ParallelAnalysisResults> {
         progress.set_message("Running parallel analyses...");
         let analysis_start = std::time::Instant::now();
@@ -2402,7 +2402,7 @@ impl DeepContextAnalyzer {
         &self,
         file_tree: &mut AnnotatedFileTree,
         analyses: &ParallelAnalysisResults,
-        progress: &indicatif::ProgressBar,
+        progress: &crate::services::progress::ProgressBar,
     ) -> anyhow::Result<()> {
         if let Some(ref dag) = analyses.dependency_graph {
             progress.set_message("Enriching file tree with centrality scores...");
@@ -2415,7 +2415,7 @@ impl DeepContextAnalyzer {
     async fn execute_cross_reference_phase(
         &self,
         analyses: &ParallelAnalysisResults,
-        progress: &indicatif::ProgressBar,
+        progress: &crate::services::progress::ProgressBar,
     ) -> anyhow::Result<FxHashMap<String, Vec<CrossLangReference>>> {
         progress.set_message("Resolving cross-language references...");
         let cross_refs = self.build_cross_language_references(analyses).await?;
@@ -2426,7 +2426,7 @@ impl DeepContextAnalyzer {
     async fn execute_defect_correlation_phase(
         &self,
         analyses: &ParallelAnalysisResults,
-        progress: &indicatif::ProgressBar,
+        progress: &crate::services::progress::ProgressBar,
     ) -> anyhow::Result<(DefectSummary, Vec<DefectHotspot>)> {
         progress.set_message("Correlating defects...");
         let (defect_summary, hotspots) = self.correlate_defects(analyses).await?;
@@ -2438,7 +2438,7 @@ impl DeepContextAnalyzer {
         &self,
         analyses: &ParallelAnalysisResults,
         defect_summary: &DefectSummary,
-        progress: &indicatif::ProgressBar,
+        progress: &crate::services::progress::ProgressBar,
     ) -> anyhow::Result<QualityScorecard> {
         progress.set_message("Calculating quality scores...");
         let quality_scorecard = self
@@ -2452,7 +2452,7 @@ impl DeepContextAnalyzer {
         &self,
         analyses: &ParallelAnalysisResults,
         defect_summary: &DefectSummary,
-        progress: &indicatif::ProgressBar,
+        progress: &crate::services::progress::ProgressBar,
     ) -> anyhow::Result<Vec<PrioritizedRecommendation>> {
         progress.set_message("Generating recommendations...");
         let recommendations = self
@@ -2465,7 +2465,7 @@ impl DeepContextAnalyzer {
     async fn execute_template_provenance_phase(
         &self,
         _analyses: &ParallelAnalysisResults,
-        progress: &indicatif::ProgressBar,
+        progress: &crate::services::progress::ProgressBar,
     ) -> anyhow::Result<Option<TemplateProvenance>> {
         progress.set_message("Analyzing template provenance...");
         // Legacy function - returns None for now
@@ -2475,7 +2475,7 @@ impl DeepContextAnalyzer {
     async fn execute_metadata_analysis_phase(
         &self,
         project_path: &Path,
-        progress: &indicatif::ProgressBar,
+        progress: &crate::services::progress::ProgressBar,
     ) -> anyhow::Result<(Option<BuildInfo>, Option<ProjectOverview>)> {
         progress.set_message("Analyzing project metadata...");
         let (build_info, project_overview) = self.analyze_project_metadata(project_path).await?;
@@ -2527,7 +2527,7 @@ impl DeepContextAnalyzer {
     async fn execute_qa_verification_phase(
         &self,
         deep_context: &DeepContext,
-        progress: &indicatif::ProgressBar,
+        progress: &crate::services::progress::ProgressBar,
     ) -> anyhow::Result<QAVerificationResult> {
         progress.set_message("Running QA verification...");
         let qa_result = self.run_qa_verification(deep_context).await?;
@@ -2984,7 +2984,7 @@ impl DeepContextAnalyzer {
     async fn collect_analysis_results_with_progress(
         &self,
         join_set: &mut tokio::task::JoinSet<AnalysisResult>,
-        progress: &indicatif::ProgressBar,
+        progress: &crate::services::progress::ProgressBar,
     ) -> anyhow::Result<ParallelAnalysisResults> {
         // Direct collection without timeout - let it complete naturally
         let results = self
@@ -2998,7 +2998,7 @@ impl DeepContextAnalyzer {
     async fn process_analysis_results_with_progress(
         &self,
         join_set: &mut tokio::task::JoinSet<AnalysisResult>,
-        progress: &indicatif::ProgressBar,
+        progress: &crate::services::progress::ProgressBar,
     ) -> anyhow::Result<ParallelAnalysisResults> {
         // Collect all results first
         let mut pending_results = Vec::new();

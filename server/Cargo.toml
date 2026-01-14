@@ -81,7 +81,7 @@ arrow = { version = "53", optional = true }  # Arrow columnar format (required f
 # Serialization (pinned to avoid swc_common issue with serde::__private)
 serde = { version = "1.0", default-features = false, features = ["derive", "std"] }
 serde_json = { version = "1.0", default-features = false, features = ["std"] }
-rmp-serde = "1.3"  # MessagePack for .pmat recording format (Sprint 75)
+rmp-serde = { version = "1.3", optional = true }  # MessagePack for .pmat recording format (Sprint 75)
 
 # Template engine
 handlebars = { version = "6.3", default-features = false, features = ["string_helpers"] }
@@ -118,12 +118,13 @@ dirs = "6.0"
 roaring = "0.10"
 rand = "0.9"
 rayon = "1.10"
-git2 = { version = "0.20", default-features = false, features = ["https"] }
+# Optional: saves 67 transitive deps when disabled - falls back to shell `git` commands
+git2 = { version = "0.20", default-features = false, features = ["https"], optional = true }
 
-# CLI utilities
-dialoguer = "0.12"  # Updated for thiserror v2 compatibility
-console = "0.16"
-indicatif = "0.18"
+# CLI utilities - REMOVED to save transitive deps
+# dialoguer = "0.12"  # REMOVED: Replaced with simple stdin (saves 14 transitive deps)
+# console = "0.16"  # REMOVED: Replaced with plain text (saves 3 transitive deps)
+# indicatif = "0.18"  # REMOVED: Replaced with simple println (saves 6 transitive deps)
 url = "2.5"
 
 # Storage
@@ -139,7 +140,8 @@ bincode = "1.3"
 futures = "0.3"
 
 # GitHub API client (Issue #75: Unified GitHub/YAML workflow)
-octocrab = "0.48"
+# Optional: saves 255 transitive deps when disabled - falls back to `gh` CLI
+octocrab = { version = "0.48", optional = true }
 
 # File watching for configuration hot-reload
 notify = "8.0"
@@ -207,7 +209,7 @@ blake3 = { version = "1.8", features = ["serde"] }
 xxhash-rust = { version = "0.8", features = ["xxh64"] }
 
 # Demo/reporting mode dependencies (included by default)
-webbrowser = "1.0"
+# webbrowser = "1.0"  # REMOVED: Replaced with platform-specific shell commands (saves 77 transitive deps)
 bytes = "1.10"
 http = "1.3"
 # httparse = "1.10"  # REMOVED: cargo-machete verified unused (hyper handles HTTP parsing)
@@ -240,8 +242,8 @@ reqwest = { version = "0.12", default-features = false, features = ["json", "rus
 prometheus = { version = "0.14", optional = true }
 warp = { version = "0.3", optional = true }
 
-# Table formatting
-prettytable-rs = "0.10"
+# Table formatting - REMOVED: Using simple println formatting (saves 16 transitive deps)
+# prettytable-rs = "0.10"
 
 # TUI support (presentar-terminal: ratatui-free Brick architecture)
 # presentar-terminal provides: TuiApp, DiffRenderer, BrailleGraph, Meter, Table
@@ -263,7 +265,7 @@ pest_derive = { version = "2.8.2", features = ["default"] }
 # wasm-encoder = "0.239.0"  # REMOVED: cargo-machete verified unused
 # walrus = "0.22" # REMOVED: Unused (0 references in codebase)
 # object = "0.37"  # REMOVED: cargo-machete verified unused
-sourcemap = "9.0"
+sourcemap = { version = "9.0", optional = true }  # Only needed for deep-wasm source map support
 # ahash = "0.8"  # REMOVED: cargo-machete verified unused
 prettyplease = "0.2.37"
 fs2 = "0.4.3"
@@ -345,7 +347,7 @@ polyglot-ruby = []
 # haskell-ast = ["tree-sitter", "tree-sitter-haskell"]
 # ocaml-ast = ["tree-sitter", "tree-sitter-ocaml"]
 wasm-ast = []
-deep-wasm = ["gimli", "wasm-ast"]
+deep-wasm = ["gimli", "wasm-ast", "sourcemap"]
 shell-ast = []
 php-ast = []
 swift-ast = []
@@ -369,6 +371,15 @@ c-ast = ["tree-sitter", "tree-sitter-c", "fixedbitset"]
 cpp-ast = ["c-ast", "tree-sitter-cpp", "cpp_demangle", "gimli", "goblin"]
 # Feature to exclude demo/reporting functionality for minimal builds
 demo = []
+# DAP (Debug Adapter Protocol) for time-travel debugging
+# Requires rmp-serde for MessagePack serialization (13 transitive deps)
+dap = ["rmp-serde"]
+# GitHub API via octocrab (saves 255 transitive deps when disabled)
+# Falls back to `gh` CLI when disabled
+github-api = ["octocrab"]
+# Git operations via libgit2 (saves 67 transitive deps when disabled)
+# Falls back to shell `git` commands when disabled
+git-lib = ["git2"]
 # JavaScript AST support
 javascript-ast = ["typescript-ast", "polyglot-javascript"]
 # TUI mode support (presentar-terminal Brick architecture, ratatui-free)

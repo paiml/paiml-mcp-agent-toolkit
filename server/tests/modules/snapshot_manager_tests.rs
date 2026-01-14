@@ -1,3 +1,5 @@
+#![cfg(feature = "dap")]
+
 // TRACE-006: Snapshot Management and Delta Storage Tests
 // Sprint 72 - RED Phase
 //

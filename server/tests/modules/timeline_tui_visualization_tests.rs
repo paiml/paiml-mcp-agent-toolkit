@@ -1,4 +1,4 @@
-#![cfg(feature = "tui")]
+#![cfg(feature = "dap")]
 
 // Sprint 78: TUI-002 RED phase - Timeline Visualization Tests
 //
