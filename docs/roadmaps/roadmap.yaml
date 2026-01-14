@@ -1103,11 +1103,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: Normalize all scoring to 0-100 scale
-  status: inprogress
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-01-14T12:09:33Z
-  updated: 2026-01-14T12:09:38.058549986+00:00
+  updated: 2026-01-14T12:36:38.460862493+00:00
   spec: null
   acceptance_criteria:
   - Convert all scoring systems (TDG, Repo, Rust, Popper, Brick, Perfection) to use 0-100 normalized scale. Eliminates confusion from different scales (106, 110, 200 points).
@@ -1118,4 +1118,42 @@ roadmap:
   - refactor
   - scoring
   - quality
+  notes: null
+- id: PMAT-455
+  github_issue: null
+  item_type: task
+  title: 'Fix trueno CB-021: Add #[target_feature] to 1269 SIMD functions in src/matrix.rs'
+  status: inprogress
+  priority: high
+  assigned_to: null
+  created: 2026-01-14T12:49:24Z
+  updated: 2026-01-14T12:49:32.013866102+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - trueno
+  - cb-021
+  - simd
+  notes: null
+- id: PMAT-456
+  github_issue: null
+  item_type: task
+  title: 'Fix realizar CB-020: Add // SAFETY: comments to 647 unsafe blocks in src/cuda.rs'
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-01-14T12:49:25Z
+  updated: 2026-01-14T12:49:25Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - realizar
+  - cb-020
+  - unsafe
   notes: null

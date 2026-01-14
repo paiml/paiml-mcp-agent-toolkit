@@ -830,16 +830,23 @@ fn detect_cb021_simd_without_target_feature(project_path: &Path) -> Vec<CbPatter
                 for (i, line) in lines.iter().enumerate() {
                     if line.trim().starts_with("#[target_feature") {
                         // Mark all lines in this function as protected
-                        // Find the fn line (should be within next 3 lines)
-                        for j in i..std::cmp::min(i + 4, lines.len()) {
+                        // Find the fn line (within 15 lines to handle attrs + SAFETY comments)
+                        for j in i..std::cmp::min(i + 15, lines.len()) {
                             if lines[j].contains("fn ") {
                                 // Count braces to find function end
+                                // Must track if we've seen { before checking depth == 0
                                 let mut depth = 0;
+                                let mut seen_opening_brace = false;
                                 for k in j..lines.len() {
-                                    depth += lines[k].matches('{').count();
+                                    let open_count = lines[k].matches('{').count();
+                                    if open_count > 0 {
+                                        seen_opening_brace = true;
+                                    }
+                                    depth += open_count;
                                     depth = depth.saturating_sub(lines[k].matches('}').count());
                                     protected_lines.insert(k);
-                                    if depth == 0 && k > j {
+                                    // Only break when we've seen { and returned to depth 0
+                                    if seen_opening_brace && depth == 0 {
                                         break;
                                     }
                                 }
