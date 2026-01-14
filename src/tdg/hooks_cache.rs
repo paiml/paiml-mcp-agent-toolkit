@@ -476,16 +476,28 @@ impl HooksCacheManager {
         gates.par_iter().for_each(|gate| {
             match runner(gate) {
                 Ok(result) => {
-                    results.lock().unwrap().push((gate.name.clone(), result));
+                    results
+                        .lock()
+                        .expect("mutex not poisoned")
+                        .push((gate.name.clone(), result));
                 }
                 Err(e) => {
-                    errors.lock().unwrap().push((gate.name.clone(), e.to_string()));
+                    errors
+                        .lock()
+                        .expect("mutex not poisoned")
+                        .push((gate.name.clone(), e.to_string()));
                 }
             }
         });
 
-        let results = Arc::try_unwrap(results).unwrap().into_inner().unwrap();
-        let errors = Arc::try_unwrap(errors).unwrap().into_inner().unwrap();
+        let results = Arc::try_unwrap(results)
+            .expect("all parallel tasks completed")
+            .into_inner()
+            .expect("mutex not poisoned");
+        let errors = Arc::try_unwrap(errors)
+            .expect("all parallel tasks completed")
+            .into_inner()
+            .expect("mutex not poisoned");
 
         // Calculate overall result
         let overall = if !errors.is_empty() {
@@ -570,7 +582,11 @@ impl HooksCacheManager {
             overall,
             results: cached_results,
             errors: parallel_results.errors,
-            gates_cached: check_result.uncached.is_empty().then(|| gates.len()).unwrap_or(gates.len() - check_result.uncached.len()),
+            gates_cached: if check_result.uncached.is_empty() {
+                gates.len()
+            } else {
+                gates.len() - check_result.uncached.len()
+            },
             gates_run: check_result.uncached.len(),
             total_duration_ms: start.elapsed().as_millis() as u64,
         })

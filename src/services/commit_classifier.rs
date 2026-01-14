@@ -81,17 +81,17 @@ impl CommitClassifier {
         let text = text.to_lowercase();
         // Remove patterns that aren't useful
         let text = regex::Regex::new(r"co-authored-by:.*")
-            .unwrap()
+            .expect("valid co-authored-by regex")
             .replace_all(&text, "");
         let text = regex::Regex::new(r"[a-f0-9]{40}")
-            .unwrap()
+            .expect("valid SHA regex")
             .replace_all(&text, "");
         let text = regex::Regex::new(r"refs?\s+\w+-\d+")
-            .unwrap()
+            .expect("valid refs regex")
             .replace_all(&text, "");
 
         // Extract words
-        let word_re = regex::Regex::new(r"[a-z]+").unwrap();
+        let word_re = regex::Regex::new(r"[a-z]+").expect("valid word regex");
         let stopwords: std::collections::HashSet<&str> = [
             "the", "a", "an", "and", "or", "but", "in", "on", "at", "to", "for", "of", "with",
             "is", "are", "was", "were", "be", "been", "being", "have", "has", "had", "do", "does",

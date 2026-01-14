@@ -1391,4 +1391,26 @@ impl TrigramIndex {
     if let Err(e) = write_if_changed(&dest, trigram_index) {
         println!("cargo:warning=Failed to write trigram index stub: {e}");
     }
+
+    // Generate stub for compressed_templates.rs (used by binary_size tests)
+    let compressed_templates = r#"
+// Stub compressed templates for fast/coverage builds
+// Real compression happens in full build mode via compress_templates()
+
+use once_cell::sync::Lazy;
+use std::collections::HashMap;
+
+pub static COMPRESSED_TEMPLATES: Lazy<HashMap<&'static str, Vec<u8>>> = Lazy::new(|| {
+    let mut m = HashMap::new();
+    // Stub template data - uses hex::decode pattern expected by tests
+    m.insert("context.md.tera", hex::decode("7374756220746573742064617461").unwrap_or_default());
+    m.insert("satd.md.tera", hex::decode("7374756220746573742064617461").unwrap_or_default());
+    m
+});
+"#;
+
+    let dest = Path::new(out_dir).join("compressed_templates.rs");
+    if let Err(e) = write_if_changed(&dest, compressed_templates) {
+        println!("cargo:warning=Failed to write compressed templates stub: {e}");
+    }
 }
