@@ -10,6 +10,7 @@
 //! - update: Update hooks and configs
 
 use crate::cli::commands::{ComplyCommands, ComplyOutputFormat};
+use crate::services::commit_classifier::CommitClassifier;
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -1586,6 +1587,48 @@ fn check_sovereign_stack_patterns(project_path: &Path) -> ComplianceCheck {
         good_patterns.push(format!("{}+ ticket refs in commits", ticket_refs));
     } else if ticket_refs < 5 {
         issues.push("Few ticket references in recent commits".to_string());
+    }
+
+    // Check 5: ML-based commit classification (if model available)
+    if let Ok(classifier) = CommitClassifier::load_sovereign_stack() {
+        // Get recent commit messages for classification
+        let git_log_full = Command::new("git")
+            .args(["log", "-10", "--format=%B---COMMIT_SEP---"])
+            .current_dir(project_path)
+            .output();
+
+        if let Ok(output) = git_log_full {
+            let log = String::from_utf8_lossy(&output.stdout);
+            let commits: Vec<&str> = log
+                .split("---COMMIT_SEP---")
+                .filter(|s| !s.trim().is_empty())
+                .collect();
+
+            if !commits.is_empty() {
+                let mut class_counts: std::collections::HashMap<String, usize> =
+                    std::collections::HashMap::new();
+                let mut high_confidence = 0;
+
+                for commit in &commits {
+                    let result = classifier.classify(commit);
+                    *class_counts.entry(result.class).or_insert(0) += 1;
+                    if result.confidence > 0.6 {
+                        high_confidence += 1;
+                    }
+                }
+
+                // Find dominant pattern
+                if let Some((dominant_class, count)) = class_counts.iter().max_by_key(|(_, c)| *c) {
+                    if *count >= commits.len() / 2 {
+                        good_patterns.push(format!("ML: {} dominant ({}/{})", dominant_class, count, commits.len()));
+                    }
+                }
+
+                if high_confidence > commits.len() / 2 {
+                    good_patterns.push(format!("ML: {}% high-confidence classifications", high_confidence * 100 / commits.len()));
+                }
+            }
+        }
     }
 
     // Build result

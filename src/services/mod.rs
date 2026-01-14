@@ -51,6 +51,7 @@
 // Service architecture (SPECIFICATION.md Section 2)
 pub mod analysis_service;
 pub mod analyzer; // Toyota Way: Unified analyzer framework
+pub mod commit_classifier; // Sovereign Stack: ML-based commit classification
 pub mod ast; // Toyota Way: Unified AST module (consolidates 25+ AST files)
 #[cfg(feature = "dap")]
 pub mod dap; // Sprint 71: Debug Adapter Protocol server (optional - 13 transitive deps)
