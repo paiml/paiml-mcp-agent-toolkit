@@ -1,1 +1,118 @@
 Professional project quantitative scaffolding and analysis toolkit
+
+Usage: 
+
+Commands:
+  generate            Generate a single template [aliases: gen, g]
+  scaffold            Scaffold complete project or agent [aliases: sc]
+  list                List available templates [aliases: ls]
+  search              Search templates [aliases: find, s]
+  validate            Validate template parameters
+  context             Generate project context (AST analysis) [aliases: ctx, ast]
+  analyze             Analyze code metrics and patterns [aliases: a, an]
+  qdd                 Quality-Driven Development (QDD) tool for creating and refactoring code with guaranteed quality [aliases: q]
+  demo                Run interactive demo of all capabilities [aliases: d, show]
+  validate-docs       Validate documentation links [aliases: docs, doc]
+  validate-readme     Validate README/documentation for hallucinations (Sprint 38) [aliases: readme, hallucination]
+  red-team            Red Team Mode: Automated hallucination detection for commits and code [aliases: rt, hallucination-detect]
+  org                 Organizational intelligence analysis (GitHub org defect patterns) [aliases: organization]
+  prompt              AI prompt generation (defect-aware, ticket-based, spec-based) [aliases: p]
+  quality-gate        Run quality gate checks on the codebase [aliases: check, c, verify, gate]
+  report              Generate enhanced analysis reports [aliases: r, rep]
+  repo-score          Calculate repository health score (0-110 scale) [aliases: score, health]
+  rust-project-score  Calculate Rust project quality score (0-106 scale) [aliases: rust-score]
+  popper-score        Calculate Popper Falsifiability Score (0-100 scale) [aliases: popper, falsifiability]
+  demo-score          Score demo/book repository quality (0-10 Category G scale) [aliases: book-score, score-demo]
+  brick-score         ComputeBrick profiling score (0-100 scale) for trueno/realizar ecosystem [aliases: brick, computebrick]
+  deps-audit          Audit dependencies for Sovereign AI stack migration [aliases: deps, audit-deps]
+  serve               Start HTTP API server with WebSocket support [aliases: server, api]
+  diagnose            Run self-diagnostics to verify all features are working [aliases: diag, doctor]
+  enforce             Enforce extreme quality standards using state machine [aliases: enf]
+  refactor            Refactor code with real-time analysis or interactive mode [aliases: ref, rf]
+  roadmap             Roadmap management with PDMT todos and quality gates [aliases: road, rm]
+  test                Performance testing per SPECIFICATION.md Section 30
+  memory              Memory management and optimization
+  cache               Cache strategy management and optimization
+  telemetry           Telemetry and system monitoring
+  config              Configuration management and settings
+  show-metrics        Show quality metrics and trends (Phase 3 O(1) Quality Gates) [aliases: metrics, trends]
+  predict-quality     Predict when quality metrics will exceed thresholds (Phase 4 O(1) Quality Gates) [aliases: predict]
+  record-metric       Record a quality metric observation (Phase 3.4 O(1) Quality Gates - CI/CD) [aliases: record]
+  agent               Start Claude Code background agent for continuous quality monitoring [aliases: ag]
+  tdg                 Grade technical debt and code quality (TDG - Technical Debt Grading) [aliases: grade, debt-grade]
+  quality-gates       Run quality gates on the current project (TICKET-PMAT-5023, TICKET-PMAT-5024) [aliases: gates, qg]
+  maintain            Project maintenance commands (TICKET-PMAT-5032, TICKET-PMAT-5033) [aliases: maint, m]
+  hooks               Pre-commit hook management (TICKET-PMAT-5034) [aliases: hook, h]
+  embed               Manage semantic search embeddings (PMAT-SEARCH-011) [aliases: emb]
+  semantic            Semantic code search (PMAT-SEARCH-011) [aliases: sem, find-code]
+  debug               Time-travel debugging commands (Sprint 74) [aliases: dbg]
+  work                Unified GitHub/YAML workflow commands (Issue #75) [aliases: w]
+  qa-work             QA validation after work completion - Toyota Way quality gates (GH-102) [aliases: qa, quality]
+  five-whys           Five Whys root cause analysis (Toyota Way methodology) This is the ONLY acceptable debugging method per CLAUDE.md policy [aliases: why, debug-whys]
+  oracle              PMAT Oracle - PDCA loop for automated quality improvement (Toyota Way) Converges ANY Rust project toward perfect quality using CITL signals [aliases: fix, pdca]
+  perfection-score    Unified 200-point Perfection Score (master-plan-pmat-work-system.md) Aggregates TDG, Repo Score, Rust Score, Coverage, Mutation, Docs, Performance [aliases: perfection, perfect, ps]
+  spec                Specification management and validation (master-plan-pmat-work-system.md) [aliases: specification]
+  comply              PMAT compliance and migration system (GH-96) [aliases: compliance]
+  project-diag        Rust project diagnostics (20 checks across 5 categories) Matches lltop Tab 8 diagnostics for any Rust project [aliases: pdiag, proj-diag]
+  test-discovery      Systematic test discovery and fixing (GH-98) [aliases: test-fix, fix-tests]
+  localize            Fault localization using Tarantula SBFL algorithm (GH-103) Identify suspicious code locations based on test coverage data [aliases: fault, fl]
+  cuda-tdg            CUDA-SIMD Technical Debt Gradient (100-point Popper falsification scoring) Analyzes CUDA PTX, SIMD (AVX2/AVX-512/NEON), and WGPU code for defects Integrates Toyota Production System principles with falsificationist methodology [aliases: gpu-tdg, simd-tdg]
+  help                Print this message or the help of the given subcommand(s)
+
+Options:
+      --mode <MODE>
+          Force specific mode (auto-detected by default)
+          
+          [possible values: cli, mcp]
+
+  -v, --verbose
+          Enable verbose output (info level)
+
+  -q, --quiet
+          Enable quiet mode (errors only)
+
+      --debug
+          Enable debug output (debug level)
+
+      --trace
+          Enable trace output (trace level)
+
+      --trace-filter <TRACE_FILTER>
+          Custom trace filter (overrides other flags) Example: --trace-filter="paiml=debug,cache=trace"
+          
+          [env: RUST_LOG=]
+
+      --color <COLOR>
+          Control color output
+
+          Possible values:
+          - auto:   Auto-detect based on TTY and environment
+          - always: Always use colors
+          - never:  Never use colors
+          
+          [default: auto]
+
+  -h, --help
+          Print help (see a summary with '-h')
+
+  -V, --version
+          Print version
+
+EXAMPLES:
+# Analyze code complexity
+pmat analyze complexity --project-path .
+
+# Find technical debt
+pmat analyze satd --path .
+
+# Find dead code
+pmat analyze dead-code --path .
+
+# Generate project context
+pmat context
+
+# Run quality gates
+pmat quality-gate --strict
+
+# Start agent daemon
+pmat agent start

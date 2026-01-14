@@ -2,10 +2,9 @@
 //! This example shows CLI, MCP, and HTTP all using identical contracts
 
 use pmat::contracts::{
-    AnalyzeComplexityContract, BaseAnalysisContract, OutputFormat,
+    AnalyzeComplexityContract, BaseAnalysisContract, ContractValidation, OutputFormat,
     simple_service::SimpleContractService,
     mcp_simple::SimpleMcpHandler,
-    http_impl::create_router,
     adapter::BackwardCompatibility,
 };
 use serde_json::json;
