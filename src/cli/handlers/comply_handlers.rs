@@ -3525,13 +3525,14 @@ fn good_unsafe() {
         let src_dir = temp.path().join("src");
         std::fs::create_dir_all(&src_dir).unwrap();
 
-        // Create file with SIMD intrinsic without #[target_feature]
+        // Create file with AVX intrinsic without #[target_feature]
+        // Note: SSE (_mm_) is now exempted as baseline on x86_64
         let rs_file = src_dir.join("simd.rs");
         std::fs::write(
             &rs_file,
             r#"
 fn bad_simd() {
-    let a = _mm_set1_ps(1.0);
+    let a = _mm256_set1_ps(1.0);
 }
 "#,
         )
@@ -3540,7 +3541,7 @@ fn bad_simd() {
         let violations = detect_cb021_simd_without_target_feature(temp.path());
         assert_eq!(violations.len(), 1);
         assert_eq!(violations[0].pattern_id, "CB-021");
-        assert!(violations[0].description.contains("_mm"));
+        assert!(violations[0].description.contains("_mm256"));
     }
 
     #[test]
@@ -3549,14 +3550,14 @@ fn bad_simd() {
         let src_dir = temp.path().join("src");
         std::fs::create_dir_all(&src_dir).unwrap();
 
-        // Create file with SIMD intrinsic WITH #[target_feature]
+        // Create file with AVX intrinsic WITH #[target_feature]
         let rs_file = src_dir.join("simd.rs");
         std::fs::write(
             &rs_file,
             r#"
-#[target_feature(enable = "sse2")]
+#[target_feature(enable = "avx2")]
 fn good_simd() {
-    let a = _mm_set1_ps(1.0);
+    let a = _mm256_set1_ps(1.0);
 }
 "#,
         )
