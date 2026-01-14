@@ -322,6 +322,55 @@ impl TestingScorer {
         Ok(CategoryScore::new(total_earned, self.max_points))
     }
 
+    /// Check for nextest coverage anti-pattern (Five Whys discovery)
+    ///
+    /// Problem: Using `cargo llvm-cov nextest` generates 1 profraw file per test,
+    /// leading to O(n²) memory usage in llvm-profdata merge (14GB+ RAM, 90+ min).
+    ///
+    /// Solution: Use `cargo llvm-cov test` which generates 1 profraw per binary (~5 files).
+    ///
+    /// Returns a warning message if the anti-pattern is detected.
+    fn check_coverage_config_warning(&self, project_path: &Path) -> Option<String> {
+        // Check Makefile for coverage configuration
+        let makefile_path = project_path.join("Makefile");
+        if let Ok(content) = std::fs::read_to_string(&makefile_path) {
+            // Look for nextest in coverage context
+            let has_nextest_coverage = content.lines().any(|line| {
+                let line_lower = line.to_lowercase();
+                (line_lower.contains("llvm-cov") || line_lower.contains("coverage"))
+                    && line_lower.contains("nextest")
+            });
+
+            // Check if there's a profraw cleanup guard
+            let has_profraw_guard = content.contains("profraw")
+                && (content.contains("-delete") || content.contains("clean"));
+
+            if has_nextest_coverage && !has_profraw_guard {
+                return Some(
+                    "⚠️  Coverage config: Uses nextest (1 profraw/test = slow merge). \
+                     Consider `cargo llvm-cov test` (1 profraw/binary) or add profraw cleanup guard."
+                        .to_string(),
+                );
+            }
+        }
+
+        // Also check .config/nextest.toml for coverage profile without timeout
+        let nextest_config = project_path.join(".config/nextest.toml");
+        if nextest_config.exists() {
+            if let Ok(content) = std::fs::read_to_string(&nextest_config) {
+                if content.contains("[profile.coverage]") && !content.contains("terminate-after") {
+                    return Some(
+                        "⚠️  nextest coverage profile missing timeout. Add `terminate-after = 1` \
+                         to prevent hanging tests from blocking coverage."
+                            .to_string(),
+                    );
+                }
+            }
+        }
+
+        None
+    }
+
     /// Score mutation testing (5pts)
     /// ≥80% mutation score = full points
     fn score_mutation(&self, project_path: &Path) -> ScorerResult<f64> {
@@ -417,6 +466,11 @@ impl Scorer for TestingScorer {
 
     fn recommendations(&self, project_path: &Path) -> Vec<String> {
         let mut recommendations = Vec::new();
+
+        // Check for nextest coverage anti-pattern (Five Whys discovery)
+        if let Some(warning) = self.check_coverage_config_warning(project_path) {
+            recommendations.push(warning);
+        }
 
         // Check coverage - USE FALLBACK (no subprocess, no cache - backward compatibility)
         if let Ok(score) = self.score_coverage_fallback(project_path, None) {
@@ -914,5 +968,78 @@ pub fn foo() {}
 
         // Should count both //! and /// doc tests
         assert!(result >= 1.0);
+    }
+
+    #[test]
+    fn test_coverage_config_warning_nextest_without_guard() {
+        let temp_dir = TempDir::new().unwrap();
+        fs::write(
+            temp_dir.path().join("Makefile"),
+            r#"
+coverage:
+	cargo llvm-cov nextest --lib
+	cargo llvm-cov report
+"#,
+        )
+        .unwrap();
+
+        let scorer = TestingScorer::new();
+        let warning = scorer.check_coverage_config_warning(temp_dir.path());
+
+        // Should warn about nextest without profraw guard
+        assert!(warning.is_some());
+        assert!(warning.unwrap().contains("nextest"));
+    }
+
+    #[test]
+    fn test_coverage_config_warning_nextest_with_guard() {
+        let temp_dir = TempDir::new().unwrap();
+        fs::write(
+            temp_dir.path().join("Makefile"),
+            r#"
+coverage:
+	find . -name "*.profraw" -delete
+	cargo llvm-cov nextest --lib
+	cargo llvm-cov report
+"#,
+        )
+        .unwrap();
+
+        let scorer = TestingScorer::new();
+        let warning = scorer.check_coverage_config_warning(temp_dir.path());
+
+        // Should NOT warn - has profraw cleanup guard
+        assert!(warning.is_none());
+    }
+
+    #[test]
+    fn test_coverage_config_warning_cargo_test_ok() {
+        let temp_dir = TempDir::new().unwrap();
+        fs::write(
+            temp_dir.path().join("Makefile"),
+            r#"
+coverage:
+	cargo llvm-cov test --lib
+	cargo llvm-cov report
+"#,
+        )
+        .unwrap();
+
+        let scorer = TestingScorer::new();
+        let warning = scorer.check_coverage_config_warning(temp_dir.path());
+
+        // Should NOT warn - uses cargo test (not nextest)
+        assert!(warning.is_none());
+    }
+
+    #[test]
+    fn test_coverage_config_warning_no_makefile() {
+        let temp_dir = TempDir::new().unwrap();
+
+        let scorer = TestingScorer::new();
+        let warning = scorer.check_coverage_config_warning(temp_dir.path());
+
+        // Should NOT warn - no Makefile
+        assert!(warning.is_none());
     }
 }
