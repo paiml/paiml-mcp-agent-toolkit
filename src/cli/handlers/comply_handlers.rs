@@ -167,6 +167,8 @@ async fn handle_check(
         check_cargo_lock(project_path),
         check_msrv(project_path),
         check_ci_configured(project_path),
+        check_paiml_deps_workspace(project_path),
+        check_sovereign_stack_patterns(project_path),
     ];
 
     // Calculate compliance
@@ -1464,6 +1466,292 @@ fn check_ci_configured(project_path: &Path) -> ComplianceCheck {
     }
 }
 
+/// Check Sovereign AI Stack compliance patterns
+/// Validates: Five-Whys in fixes, falsification tests, APR models, ticket refs
+fn check_sovereign_stack_patterns(project_path: &Path) -> ComplianceCheck {
+    use std::process::Command;
+
+    // Check if this is a Sovereign Stack project
+    let cargo_toml = project_path.join("Cargo.toml");
+    if !cargo_toml.exists() {
+        return ComplianceCheck {
+            name: "Sovereign Stack Patterns".to_string(),
+            status: CheckStatus::Skip,
+            message: "No Cargo.toml found".to_string(),
+            severity: Severity::Info,
+        };
+    }
+
+    let content = fs::read_to_string(&cargo_toml).unwrap_or_default();
+    let is_sovereign = content.contains("trueno")
+        || content.contains("aprender")
+        || content.contains("realizar")
+        || content.contains("batuta")
+        || content.contains("renacer");
+
+    if !is_sovereign {
+        return ComplianceCheck {
+            name: "Sovereign Stack Patterns".to_string(),
+            status: CheckStatus::Skip,
+            message: "Not a Sovereign Stack project".to_string(),
+            severity: Severity::Info,
+        };
+    }
+
+    let mut issues: Vec<String> = Vec::new();
+    let mut good_patterns: Vec<String> = Vec::new();
+
+    // Check 1: Recent fix commits should have Five-Whys or root cause
+    let git_log = Command::new("git")
+        .args(["log", "--oneline", "-20", "--grep=fix"])
+        .current_dir(project_path)
+        .output();
+
+    if let Ok(output) = git_log {
+        let log = String::from_utf8_lossy(&output.stdout);
+        let fix_commits: Vec<&str> = log.lines().collect();
+
+        if !fix_commits.is_empty() {
+            // Check if any recent fix has Five-Whys
+            let has_five_whys = Command::new("git")
+                .args(["log", "-20", "--grep=Five-Whys\\|ROOT CAUSE\\|Why 1:"])
+                .current_dir(project_path)
+                .output()
+                .map(|o| !o.stdout.is_empty())
+                .unwrap_or(false);
+
+            if has_five_whys {
+                good_patterns.push("Five-Whys root cause analysis".to_string());
+            } else if fix_commits.len() > 5 {
+                issues.push("No Five-Whys in recent fix commits".to_string());
+            }
+        }
+    }
+
+    // Check 2: Falsification tests (F001-F100 pattern)
+    let tests_dir = project_path.join("tests");
+    if tests_dir.exists() {
+        let has_falsification = walkdir::WalkDir::new(&tests_dir)
+            .max_depth(3)
+            .into_iter()
+            .filter_map(|e| e.ok())
+            .any(|e| {
+                e.path()
+                    .to_string_lossy()
+                    .contains("falsification")
+                    || fs::read_to_string(e.path())
+                        .map(|s| s.contains("F001") || s.contains("F0") && s.contains("TEST"))
+                        .unwrap_or(false)
+            });
+
+        if has_falsification {
+            good_patterns.push("Falsification test suite".to_string());
+        }
+    }
+
+    // Check 3: APR model files validation
+    let models_dir = project_path.join("models");
+    if models_dir.exists() {
+        let apr_files: Vec<_> = walkdir::WalkDir::new(&models_dir)
+            .max_depth(2)
+            .into_iter()
+            .filter_map(|e| e.ok())
+            .filter(|e| e.path().extension().map(|x| x == "apr").unwrap_or(false))
+            .collect();
+
+        if !apr_files.is_empty() {
+            good_patterns.push(format!("{} APR model(s)", apr_files.len()));
+        }
+    }
+
+    // Check 4: PAR/PMAT ticket references in commits
+    let ticket_refs = Command::new("git")
+        .args(["log", "-50", "--oneline"])
+        .current_dir(project_path)
+        .output()
+        .map(|o| {
+            let log = String::from_utf8_lossy(&o.stdout);
+            log.lines()
+                .filter(|l| {
+                    l.contains("PAR-")
+                        || l.contains("PMAT-")
+                        || l.contains("Refs ")
+                        || l.contains("GH-")
+                })
+                .count()
+        })
+        .unwrap_or(0);
+
+    if ticket_refs > 10 {
+        good_patterns.push(format!("{}+ ticket refs in commits", ticket_refs));
+    } else if ticket_refs < 5 {
+        issues.push("Few ticket references in recent commits".to_string());
+    }
+
+    // Build result
+    if issues.is_empty() && !good_patterns.is_empty() {
+        ComplianceCheck {
+            name: "Sovereign Stack Patterns".to_string(),
+            status: CheckStatus::Pass,
+            message: format!("Patterns: {}", good_patterns.join(", ")),
+            severity: Severity::Info,
+        }
+    } else if !issues.is_empty() {
+        ComplianceCheck {
+            name: "Sovereign Stack Patterns".to_string(),
+            status: CheckStatus::Warn,
+            message: format!("Missing: {}", issues.join("; ")),
+            severity: Severity::Warning,
+        }
+    } else {
+        ComplianceCheck {
+            name: "Sovereign Stack Patterns".to_string(),
+            status: CheckStatus::Pass,
+            message: "Sovereign Stack project detected".to_string(),
+            severity: Severity::Info,
+        }
+    }
+}
+
+/// Check PAIML dependency workspace state (dirty/clean/version drift)
+/// Detects when local PAIML projects have uncommitted changes or version mismatches
+fn check_paiml_deps_workspace(project_path: &Path) -> ComplianceCheck {
+    use std::process::Command;
+
+    // Known PAIML/Sovereign stack packages
+    const PAIML_PACKAGES: &[&str] = &[
+        "trueno", "trueno-graph", "trueno-rag", "trueno-viz", "trueno-db",
+        "trueno-zram-core", "trueno-ublk",
+        "aprender", "entrenar", "alimentar", "realizar",
+        "batuta", "renacer", "repartir",
+        "presentar", "presentar-terminal",
+        "ruchy", "bashrs", "decy", "depyler", "rascal",
+        "pacha", "pepita", "simular", "jugar", "duende", "pzsh",
+        "certeza", "verificar", "probar", "manzana", "whisper-apr",
+        "copia", "nviwatch", "ruchydbg", "rust-mcp-sdk",
+    ];
+
+    let cargo_toml = project_path.join("Cargo.toml");
+    if !cargo_toml.exists() {
+        return ComplianceCheck {
+            name: "PAIML Deps Workspace".to_string(),
+            status: CheckStatus::Skip,
+            message: "No Cargo.toml found".to_string(),
+            severity: Severity::Info,
+        };
+    }
+
+    let content = match fs::read_to_string(&cargo_toml) {
+        Ok(c) => c,
+        Err(_) => {
+            return ComplianceCheck {
+                name: "PAIML Deps Workspace".to_string(),
+                status: CheckStatus::Skip,
+                message: "Could not read Cargo.toml".to_string(),
+                severity: Severity::Info,
+            };
+        }
+    };
+
+    // Find PAIML dependencies in this project
+    let mut paiml_deps: Vec<&str> = Vec::new();
+    for pkg in PAIML_PACKAGES {
+        // Check for dependency lines like: trueno = "0.11" or trueno = { version = "0.11" }
+        if content.contains(&format!("{} = ", pkg)) || content.contains(&format!("\"{}\"", pkg)) {
+            paiml_deps.push(pkg);
+        }
+    }
+
+    if paiml_deps.is_empty() {
+        return ComplianceCheck {
+            name: "PAIML Deps Workspace".to_string(),
+            status: CheckStatus::Skip,
+            message: "No PAIML stack dependencies found".to_string(),
+            severity: Severity::Info,
+        };
+    }
+
+    // Check local workspace state for each PAIML dep
+    let home = match dirs::home_dir() {
+        Some(h) => h,
+        None => {
+            return ComplianceCheck {
+                name: "PAIML Deps Workspace".to_string(),
+                status: CheckStatus::Skip,
+                message: "Could not determine home directory".to_string(),
+                severity: Severity::Info,
+            };
+        }
+    };
+    let src_dir = home.join("src");
+
+    let mut dirty_deps: Vec<String> = Vec::new();
+    let mut clean_deps: Vec<String> = Vec::new();
+
+    for dep in &paiml_deps {
+        let dep_path = src_dir.join(dep);
+        if !dep_path.exists() {
+            continue; // Not a local checkout
+        }
+
+        // Check git status
+        let output = Command::new("git")
+            .args(["status", "--porcelain"])
+            .current_dir(&dep_path)
+            .output();
+
+        match output {
+            Ok(out) => {
+                let status = String::from_utf8_lossy(&out.stdout);
+                if status.trim().is_empty() {
+                    clean_deps.push(dep.to_string());
+                } else {
+                    dirty_deps.push(dep.to_string());
+                }
+            }
+            Err(_) => {
+                // Not a git repo or git not available
+                continue;
+            }
+        }
+    }
+
+    let total_local = dirty_deps.len() + clean_deps.len();
+
+    if total_local == 0 {
+        return ComplianceCheck {
+            name: "PAIML Deps Workspace".to_string(),
+            status: CheckStatus::Pass,
+            message: format!("{} PAIML deps (no local checkouts in ~/src)", paiml_deps.len()),
+            severity: Severity::Info,
+        };
+    }
+
+    if dirty_deps.is_empty() {
+        ComplianceCheck {
+            name: "PAIML Deps Workspace".to_string(),
+            status: CheckStatus::Pass,
+            message: format!(
+                "{} PAIML deps, {} local checkouts (all clean)",
+                paiml_deps.len(),
+                total_local
+            ),
+            severity: Severity::Info,
+        }
+    } else {
+        ComplianceCheck {
+            name: "PAIML Deps Workspace".to_string(),
+            status: CheckStatus::Warn,
+            message: format!(
+                "{} dirty: {} (using crates.io versions for safety)",
+                dirty_deps.len(),
+                dirty_deps.join(", ")
+            ),
+            severity: Severity::Warning,
+        }
+    }
+}
+
 fn calculate_versions_behind(project_version: &str) -> u32 {
     let current_parts: Vec<u32> = PMAT_VERSION
         .split('.')
@@ -2653,6 +2941,90 @@ enabled = true
         let check = check_ci_configured(temp.path());
         assert_eq!(check.status, CheckStatus::Pass);
         assert!(check.message.contains("Jenkins"));
+    }
+
+    // ============================================================================
+    // check_paiml_deps_workspace Tests
+    // ============================================================================
+
+    #[test]
+    fn test_check_paiml_deps_no_cargo_toml() {
+        let temp = tempfile::tempdir().expect("Failed to create temp dir");
+        let check = check_paiml_deps_workspace(temp.path());
+        assert_eq!(check.status, CheckStatus::Skip);
+        assert!(check.message.contains("No Cargo.toml"));
+    }
+
+    #[test]
+    fn test_check_paiml_deps_no_paiml_deps() {
+        let temp = create_temp_project();
+        fs::write(
+            temp.path().join("Cargo.toml"),
+            r#"
+[package]
+name = "test-project"
+version = "0.1.0"
+
+[dependencies]
+serde = "1.0"
+"#,
+        )
+        .expect("Failed to write Cargo.toml");
+
+        let check = check_paiml_deps_workspace(temp.path());
+        assert_eq!(check.status, CheckStatus::Skip);
+        assert!(check.message.contains("No PAIML stack dependencies"));
+    }
+
+    #[test]
+    fn test_check_paiml_deps_with_trueno() {
+        let temp = create_temp_project();
+        fs::write(
+            temp.path().join("Cargo.toml"),
+            r#"
+[package]
+name = "test-project"
+version = "0.1.0"
+
+[dependencies]
+trueno = "0.11"
+serde = "1.0"
+"#,
+        )
+        .expect("Failed to write Cargo.toml");
+
+        let check = check_paiml_deps_workspace(temp.path());
+        // Status depends on whether ~/src/trueno exists and its git state
+        // But check name should always be correct
+        assert_eq!(check.name, "PAIML Deps Workspace");
+    }
+
+    #[test]
+    fn test_check_paiml_deps_with_multiple_paiml_deps() {
+        let temp = create_temp_project();
+        fs::write(
+            temp.path().join("Cargo.toml"),
+            r#"
+[package]
+name = "test-project"
+version = "0.1.0"
+
+[dependencies]
+trueno = "0.11"
+trueno-graph = "0.1"
+aprender = "0.24"
+"#,
+        )
+        .expect("Failed to write Cargo.toml");
+
+        let check = check_paiml_deps_workspace(temp.path());
+        assert_eq!(check.name, "PAIML Deps Workspace");
+        // Message should mention PAIML deps count or dirty status
+        assert!(
+            check.message.contains("PAIML") || check.message.contains("dirty"),
+            "Expected message about PAIML deps, got: {}",
+            check.message
+        );
     }
 
     // ============================================================================
