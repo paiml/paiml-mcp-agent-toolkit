@@ -1079,3 +1079,23 @@ roadmap:
   - zram
   - config
   notes: null
+- id: PMAT-453
+  github_issue: null
+  item_type: task
+  title: 'PMAT Hooks v2: O(1) Pre-Commit System'
+  status: inprogress
+  priority: high
+  assigned_to: null
+  created: 2026-01-14T09:49:12Z
+  updated: 2026-01-14T09:49:17.219911329+00:00
+  spec: null
+  acceptance_criteria:
+  - 'Implement O(1) hooks per server/docs/specifications/pmat-hooks-v2-spec.md. Phase 1: Git tree hash caching. Phase 2: Per-gate hash caching. Phase 3: Parallel execution.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - hooks
+  - o1
+  - performance
+  notes: null

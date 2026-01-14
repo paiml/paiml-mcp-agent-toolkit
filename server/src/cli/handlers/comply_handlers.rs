@@ -158,6 +158,8 @@ async fn handle_check(
         check_version_currency(project_version),
         check_config_files(project_path),
         check_hooks_installed(project_path),
+        check_hooks_o1_capable(project_path),    // CB-030: O(1) hooks capability
+        check_hooks_cache_health(project_path),   // CB-031: Cache health
         check_quality_thresholds(project_path),
         check_deprecated_features(project_path),
         check_compute_brick(project_path),
@@ -517,6 +519,110 @@ fn check_hooks_installed(project_path: &Path) -> ComplianceCheck {
             message: "No pre-commit hook installed".to_string(),
             severity: Severity::Warning,
         }
+    }
+}
+
+/// CB-030: Check if hooks have O(1) capability (PMAT-453)
+fn check_hooks_o1_capable(project_path: &Path) -> ComplianceCheck {
+    let cache_dir = project_path.join(".pmat").join("hooks-cache");
+
+    if cache_dir.exists() {
+        // Check that the expected structure exists
+        let tree_hash = cache_dir.join("tree-hash.json");
+        let gates_dir = cache_dir.join("gates");
+
+        if tree_hash.exists() || gates_dir.exists() {
+            return ComplianceCheck {
+                name: "CB-030: O(1) Hooks".to_string(),
+                status: CheckStatus::Pass,
+                message: "Hooks cache initialized - O(1) capable".to_string(),
+                severity: Severity::Info,
+            };
+        }
+
+        ComplianceCheck {
+            name: "CB-030: O(1) Hooks".to_string(),
+            status: CheckStatus::Warn,
+            message: "Cache directory exists but not fully initialized".to_string(),
+            severity: Severity::Warning,
+        }
+    } else {
+        ComplianceCheck {
+            name: "CB-030: O(1) Hooks".to_string(),
+            status: CheckStatus::Warn,
+            message: "Run 'pmat hooks cache init' to enable O(1) hooks".to_string(),
+            severity: Severity::Warning,
+        }
+    }
+}
+
+/// CB-031: Check hooks cache health (hit rate >= 60%)
+fn check_hooks_cache_health(project_path: &Path) -> ComplianceCheck {
+    let metrics_path = project_path
+        .join(".pmat")
+        .join("hooks-cache")
+        .join("metrics.json");
+
+    if !metrics_path.exists() {
+        return ComplianceCheck {
+            name: "CB-031: Cache Health".to_string(),
+            status: CheckStatus::Skip,
+            message: "No cache metrics available yet".to_string(),
+            severity: Severity::Info,
+        };
+    }
+
+    // Read and parse metrics
+    match fs::read_to_string(&metrics_path) {
+        Ok(content) => {
+            if let Ok(metrics) = serde_json::from_str::<serde_json::Value>(&content) {
+                let total_runs = metrics["total_runs"].as_u64().unwrap_or(0);
+                let cache_hits = metrics["cache_hits"].as_u64().unwrap_or(0);
+
+                if total_runs < 5 {
+                    return ComplianceCheck {
+                        name: "CB-031: Cache Health".to_string(),
+                        status: CheckStatus::Skip,
+                        message: format!("Insufficient data ({} runs, need 5+)", total_runs),
+                        severity: Severity::Info,
+                    };
+                }
+
+                let hit_rate = (cache_hits as f64 / total_runs as f64) * 100.0;
+
+                if hit_rate >= 60.0 {
+                    ComplianceCheck {
+                        name: "CB-031: Cache Health".to_string(),
+                        status: CheckStatus::Pass,
+                        message: format!("Cache hit rate {:.1}% (target: ≥60%)", hit_rate),
+                        severity: Severity::Info,
+                    }
+                } else {
+                    ComplianceCheck {
+                        name: "CB-031: Cache Health".to_string(),
+                        status: CheckStatus::Warn,
+                        message: format!(
+                            "Cache hit rate {:.1}% below 60% target - consider clearing cache",
+                            hit_rate
+                        ),
+                        severity: Severity::Warning,
+                    }
+                }
+            } else {
+                ComplianceCheck {
+                    name: "CB-031: Cache Health".to_string(),
+                    status: CheckStatus::Warn,
+                    message: "Failed to parse metrics.json".to_string(),
+                    severity: Severity::Warning,
+                }
+            }
+        }
+        Err(_) => ComplianceCheck {
+            name: "CB-031: Cache Health".to_string(),
+            status: CheckStatus::Warn,
+            message: "Failed to read metrics.json".to_string(),
+            severity: Severity::Warning,
+        },
     }
 }
 

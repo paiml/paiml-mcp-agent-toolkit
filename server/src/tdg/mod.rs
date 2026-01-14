@@ -22,6 +22,7 @@ pub mod tdg_graph;
 // Temporarily disable export to fix circular dependency
 // pub mod export;
 pub mod formatters;
+pub mod hooks_cache;
 pub mod language_simple;
 pub mod metrics_aggregator;
 pub mod olap_analytics;

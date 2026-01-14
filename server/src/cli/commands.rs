@@ -5149,6 +5149,45 @@ pub enum HooksCommands {
         /// Verbose output
         #[arg(long, short)]
         verbose: bool,
+
+        /// Enable O(1) cache check (skip if unchanged)
+        #[arg(long, default_value = "true")]
+        cache: bool,
+    },
+
+    /// O(1) cache management for hooks (PMAT-453)
+    Cache {
+        #[command(subcommand)]
+        action: HooksCacheAction,
+    },
+}
+
+/// Cache actions for O(1) hooks (PMAT-453)
+#[derive(Subcommand, Clone)]
+#[cfg_attr(test, derive(Debug))]
+pub enum HooksCacheAction {
+    /// Initialize cache directory structure
+    Init,
+
+    /// Show cache status and metrics
+    Status {
+        /// Output format
+        #[arg(long, value_enum, default_value = "table")]
+        format: OutputFormat,
+    },
+
+    /// Clear cache (forces full re-run on next commit)
+    Clear {
+        /// Clear specific gate cache only
+        #[arg(long)]
+        gate: Option<String>,
+    },
+
+    /// Show detailed metrics (hit rate, timing)
+    Metrics {
+        /// Output format
+        #[arg(long, value_enum, default_value = "table")]
+        format: OutputFormat,
     },
 }
 
