@@ -1,6 +1,6 @@
 [package]
 name = "pmat"
-version = "2.213.10"
+version = "2.213.11"
 edition = "2021"
 rust-version = "1.80.0"
 authors = ["Pragmatic AI Labs"]
@@ -626,12 +626,12 @@ expect_used = "allow"
 
 [profile.release]
 opt-level = 3
-lto = "fat"
-codegen-units = 1
+lto = "thin"           # Changed: fat→thin (10x faster linking, minimal size difference)
+codegen-units = 16     # Changed: 1→16 (parallel codegen for faster builds)
 panic = "abort"
 strip = "symbols"
 overflow-checks = false
-debug = true
+# debug = true         # Removed: debug symbols in release bloat binary + slow linking
 
 [profile.test]
 opt-level = 0
