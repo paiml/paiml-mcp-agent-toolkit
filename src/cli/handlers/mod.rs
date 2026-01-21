@@ -75,6 +75,7 @@ pub mod red_team; // Red Team Mode: Automated hallucination detection
 pub mod refactor_auto_handlers;
 #[cfg(test)]
 pub mod refactor_auto_property_tests;
+pub mod refactor_auto_types; // Types extracted for file health (CB-040)
 pub mod refactor_docs_handlers;
 pub mod refactor_handlers;
 pub mod repo_score_handlers; // Sprint 48: Repository health scoring
@@ -102,6 +103,7 @@ pub mod unified_context_builder;
 #[cfg(test)]
 pub mod unified_context_property_tests;
 pub mod utility_handlers;
+pub mod utility_serve_handlers; // Server handlers extracted for file health (CB-040)
 pub mod wasm_handler;
 pub mod wasm_handlers; // Phase 4: Organizational Intelligence Integration
 pub mod work_handlers; // Issue #75: Unified GitHub/YAML workflow // GH-102: Toyota Way QA validation
