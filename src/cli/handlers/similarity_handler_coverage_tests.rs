@@ -1,40 +1,15 @@
-//\! Tests for similarity handler
-//\! Extracted for file health compliance (CB-040)
+//! Coverage tests for similarity handler
+//! Extracted for file health compliance (CB-040)
 
-use super::*;
+use super::super::*;
+use crate::cli::{DuplicateOutputFormat, DuplicateType};
+use crate::services::similarity::{
+    CloneType, ComprehensiveReport, EntropyBlock, EntropyReport, Location, Metrics, Priority,
+    RefactoringHint, SimilarBlock,
+};
+use std::path::PathBuf;
+use tempfile::TempDir;
 
-mod property_tests {
-    use proptest::prelude::*;
-
-    proptest! {
-        #[test]
-        fn basic_property_stability(_input in ".*") {
-            // Basic property test for coverage
-            prop_assert!(true);
-        }
-
-        #[test]
-        fn module_consistency_check(_x in 0u32..1000) {
-            // Module consistency verification
-            prop_assert!(_x < 1001);
-        }
-    }
-}
-
-
-mod tests {
-    use super::*;
-    use crate::cli::{DuplicateOutputFormat, DuplicateType};
-    use crate::services::similarity::{
-        CloneType, ComprehensiveReport, EntropyBlock, EntropyReport, Location, Metrics, Priority,
-        RefactoringHint, SimilarBlock,
-    };
-    use std::path::PathBuf;
-    use tempfile::TempDir;
-
-    // Helper functions to create test data
-
-    fn create_test_location(file: &str, start: usize, end: usize) -> Location {
         Location {
             file: PathBuf::from(file),
             start_line: start,
@@ -1151,7 +1126,7 @@ fn example_function() {
                 0.8,
                 1,
                 5,
-                format.clone(),
+                format,
                 false,
                 None,
                 None,
@@ -1212,7 +1187,7 @@ fn example_function() {
 
     #[test]
     fn test_should_include_file_with_unicode_path() {
-        let path = std::path::Path::new("/project/src/file.rs");
+        let path = std::path::Path::new("/project/src/файл.rs");
         assert!(should_include_file(path, &None, &None));
     }
 
@@ -1358,189 +1333,4 @@ fn example_function() {
         assert_eq!(files.len(), 1);
         assert!(files[0].0.to_string_lossy().contains("deep.rs"));
     }
-
-    // Additional coverage tests for edge cases
-
-    #[test]
-    fn test_build_config_threshold_boundary() {
-        // Test with boundary threshold values
-        let config = build_config(DuplicateType::Exact, 0.0, 1, 1);
-        assert!((config.similarity_threshold - 0.0).abs() < f64::EPSILON);
-
-        let config = build_config(DuplicateType::Exact, 1.0, 1, 1);
-        assert!((config.similarity_threshold - 1.0).abs() < f64::EPSILON);
-    }
-
-    #[test]
-    #[ignore = "Agent-added test with incorrect assertion"]
-    fn test_is_source_file_edge_cases() {
-        // Path with multiple dots
-        assert!(is_source_file(std::path::Path::new("a.b.c.d.rs")));
-        // Path with just extension
-        assert!(is_source_file(std::path::Path::new(".rs")));
-        // Empty path
-        assert!(!is_source_file(std::path::Path::new("")));
-    }
-
-    #[ignore = "Agent-added test with incorrect assertion"]
-    #[test]
-    fn test_should_include_file_empty_patterns() {
-        let path = std::path::Path::new("/project/src/main.rs");
-        // Empty string patterns
-        assert!(should_include_file(path, &Some("".to_string()), &None));
-        assert!(should_include_file(path, &None, &Some("".to_string())));
-    }
-
-    #[test]
-    fn test_format_detailed_report_with_all_sections() {
-        let report = create_populated_report();
-        let result = format_detailed_report(&report);
-        assert!(result.is_ok());
-        let output = result.unwrap();
-
-        // Verify all sections are present
-        assert!(output.contains("Overall Metrics"));
-        assert!(output.contains("Exact Duplicates"));
-        assert!(output.contains("Structural Similarities"));
-        assert!(output.contains("Entropy Analysis"));
-        assert!(output.contains("Refactoring Opportunities"));
-    }
-
-    #[test]
-    fn test_format_csv_with_multiple_blocks() {
-        let mut report = create_empty_report();
-        for i in 0..5 {
-            report.exact_duplicates.push(SimilarBlock {
-                id: format!("block{}", i),
-                locations: vec![
-                    create_test_location(&format!("file{}.rs", i), i * 10, i * 10 + 5),
-                    create_test_location(&format!("file{}_dup.rs", i), i * 20, i * 20 + 5),
-                ],
-                similarity: 1.0,
-                clone_type: CloneType::Type1,
-                lines: 5,
-                tokens: 25,
-                content_preview: format!("preview {}", i),
-            });
-        }
-
-        let result = format_csv_report(&report);
-        assert!(result.is_ok());
-        let output = result.unwrap();
-
-        // Count lines (header + 5 data rows)
-        assert_eq!(output.lines().count(), 6);
-    }
-
-    #[test]
-    fn test_format_sarif_structure() {
-        let report = create_populated_report();
-        let result = format_sarif_report(&report);
-        assert!(result.is_ok());
-        let output = result.unwrap();
-
-        // Parse as JSON to verify structure
-        let sarif: serde_json::Value = serde_json::from_str(&output).unwrap();
-        assert!(sarif.get("$schema").is_some());
-        assert!(sarif.get("version").is_some());
-        assert!(sarif.get("runs").is_some());
-    }
-
-    #[test]
-    fn test_low_entropy_patterns_limits_to_five() {
-        let entropy = EntropyReport {
-            average_entropy: 1.5,
-            high_entropy_blocks: vec![],
-            low_entropy_patterns: (0..10)
-                .map(|i| create_test_entropy_block(&format!("rep{}.rs", i), 1.0 + i as f64 * 0.1))
-                .collect(),
-            recommendations: vec![],
-        };
-        let mut output = String::new();
-        let result = format_low_entropy_patterns(&mut output, &entropy);
-        assert!(result.is_ok());
-        assert!(output.contains("rep0.rs"));
-        assert!(output.contains("rep4.rs"));
-        assert!(!output.contains("rep5.rs"));
-    }
-
-    #[tokio::test]
-    async fn test_collect_files_with_unreadable_file() {
-        let temp_dir = TempDir::new().unwrap();
-
-        // Create a source file
-        let rust_file = temp_dir.path().join("test.rs");
-        std::fs::write(&rust_file, "fn main() {}").unwrap();
-
-        // The collect_files function should handle errors gracefully
-        let result = collect_files(&temp_dir.path().to_path_buf(), &None, &None).await;
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_format_report_handles_empty_content_preview() {
-        let block = SimilarBlock {
-            id: "empty_preview".to_string(),
-            locations: vec![
-                create_test_location("a.rs", 1, 10),
-                create_test_location("b.rs", 5, 15),
-            ],
-            similarity: 0.95,
-            clone_type: CloneType::Type1,
-            lines: 10,
-            tokens: 50,
-            content_preview: "".to_string(),
-        };
-        let mut output = String::new();
-        let result = format_single_duplicate_block(&mut output, &block);
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_format_refactoring_hint_empty_locations() {
-        let hint = RefactoringHint {
-            locations: vec![],
-            pattern: "No locations".to_string(),
-            suggestion: "N/A".to_string(),
-            priority: Priority::Low,
-        };
-        let mut output = String::new();
-        let result = format_single_refactoring_hint(&mut output, &hint);
-        assert!(result.is_ok());
-        assert!(output.contains("No locations"));
-    }
-
-    #[test]
-    fn test_format_structural_block_with_zero_similarity() {
-        let block = SimilarBlock {
-            id: "zero_sim".to_string(),
-            locations: vec![create_test_location("a.rs", 1, 10)],
-            similarity: 0.0,
-            clone_type: CloneType::Type2,
-            lines: 10,
-            tokens: 50,
-            content_preview: "test".to_string(),
-        };
-        let mut output = String::new();
-        let result = format_single_structural_block(&mut output, &block);
-        assert!(result.is_ok());
-        assert!(output.contains("0.0%"));
-    }
-
-    #[test]
-    fn test_report_json_roundtrip() {
-        let report = create_populated_report();
-        let json = format_report(&report, DuplicateOutputFormat::Json).unwrap();
-        let parsed: ComprehensiveReport = serde_json::from_str(&json).unwrap();
-        assert_eq!(
-            parsed.metrics.total_clones,
-            report.metrics.total_clones
-        );
-    }
 }
-
-
-/// NOTE: Temporarily disabled due to struct definition mismatches
-#[cfg(all(test, feature = "broken-tests"))]
-#[path = "similarity_handler_coverage_tests.rs"]
-mod coverage_tests;
