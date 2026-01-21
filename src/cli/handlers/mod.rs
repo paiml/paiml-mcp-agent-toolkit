@@ -107,6 +107,7 @@ pub mod utility_serve_handlers; // Server handlers extracted for file health (CB
 pub mod wasm_handler;
 pub mod wasm_handlers; // Phase 4: Organizational Intelligence Integration
 pub mod work_handlers; // Issue #75: Unified GitHub/YAML workflow // GH-102: Toyota Way QA validation
+pub mod work_quality_handlers; // Quality gates and falsification extracted for file health (CB-040)
 
 // Re-export handler functions
 pub use advanced_analysis_handlers::{
