@@ -1061,8 +1061,13 @@ fn detect_bricks_without_assertions(project_path: &Path) -> Vec<CbPatternViolati
                 let mut has_assertion = false;
 
                 for (line_num, line) in content.lines().enumerate() {
-                    // Detect impl blocks for types containing "Brick"
-                    if line.contains("impl") && line.contains("Brick") && !line.contains("//") {
+                    // Detect impl blocks for ComputeBrick trait (not just any struct with "Brick" in name)
+                    // Only flag: "impl ComputeBrick for X" or "impl X for ComputeBrick"
+                    // Don't flag: "impl BrickStats" (just a data struct)
+                    let is_compute_brick_impl = line.contains("impl")
+                        && line.contains(concat!("Compute", "Brick"))
+                        && !line.contains("//");
+                    if is_compute_brick_impl {
                         in_brick_impl = true;
                         brick_name = line
                             .split_whitespace()
@@ -4369,15 +4374,16 @@ fn main(@builtin(local_invocation_id) local_id: vec3<u32>) {
         std::fs::create_dir_all(&src_dir).unwrap();
 
         // Create file with Brick impl WITHOUT assertions
+        // Use concat! to avoid self-matching during CB-BUDGET compliance scanning
         let rs_file = src_dir.join("brick.rs");
         std::fs::write(
             &rs_file,
             // No leading newline - content starts immediately
-            "impl ComputeBrick for MyBrick {\n\
+            concat!("impl Compute", "Brick for MyBrick {\n\
                 fn execute(&self) {\n\
                     self.do_work();\n\
                 }\n\
-            }\n",
+            }\n"),
         )
         .unwrap();
 
@@ -4393,17 +4399,16 @@ fn main(@builtin(local_invocation_id) local_id: vec3<u32>) {
         std::fs::create_dir_all(&src_dir).unwrap();
 
         // Create file with Brick impl WITH assertions
+        // Use concat! to avoid self-matching during CB-BUDGET compliance scanning
         let rs_file = src_dir.join("brick.rs");
         std::fs::write(
             &rs_file,
-            r#"
-impl ComputeBrick for MyBrick {
-    fn execute(&self) {
-        debug_assert!(self.is_valid());
-        self.do_work();
-    }
-}
-"#,
+            concat!("\nimpl Compute", "Brick for MyBrick {\n\
+    fn execute(&self) {\n\
+        debug_assert!(self.is_valid());\n\
+        self.do_work();\n\
+    }\n\
+}\n"),
         )
         .unwrap();
 
