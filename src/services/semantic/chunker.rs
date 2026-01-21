@@ -707,10 +707,8 @@ fn extract_go_items(node: Node, source: &str, chunks: &mut Vec<CodeChunk>) {
     }
 }
 
-// ============================================
 // TRUENO-RAG-3-CHUNKER: Text Chunking with Overlap
 // Integrates trueno-rag RecursiveChunker for RAG pipelines
-// ============================================
 
 /// Chunk text with fixed-size chunks and overlap for RAG retrieval
 ///
@@ -864,9 +862,7 @@ mod tests {
 mod coverage_tests {
     use super::*;
 
-    // ============================================
     // Empty and Edge Case Tests
-    // ============================================
 
     #[test]
     fn test_chunk_code_empty_input() {
@@ -891,9 +887,7 @@ mod coverage_tests {
         }
     }
 
-    // ============================================
     // Rust Language Tests
-    // ============================================
 
     #[test]
     fn test_rust_simple_function() {
@@ -1042,9 +1036,7 @@ impl Foo {
         assert_eq!(functions.len(), 2);
     }
 
-    // ============================================
     // TypeScript Language Tests
-    // ============================================
 
     #[test]
     fn test_typescript_simple_function() {
@@ -1193,9 +1185,7 @@ export function exportedFunc(): void {
         assert_eq!(chunks[0].chunk_name, "exportedFunc");
     }
 
-    // ============================================
     // Python Language Tests (feature-gated)
-    // ============================================
 
     #[cfg(feature = "python-ast")]
     #[test]
@@ -1235,9 +1225,7 @@ export function exportedFunc(): void {
         assert!(result.unwrap_err().contains("python-ast feature is disabled"));
     }
 
-    // ============================================
     // C Language Tests (feature-gated)
-    // ============================================
 
     #[cfg(feature = "c-ast")]
     #[test]
@@ -1285,9 +1273,7 @@ export function exportedFunc(): void {
         assert!(result.unwrap_err().contains("c-ast feature is disabled"));
     }
 
-    // ============================================
     // C++ Language Tests (feature-gated)
-    // ============================================
 
     #[cfg(feature = "cpp-ast")]
     #[test]
@@ -1330,9 +1316,7 @@ export function exportedFunc(): void {
         assert!(result.unwrap_err().contains("cpp-ast feature is disabled"));
     }
 
-    // ============================================
     // Go Language Tests (feature-gated)
-    // ============================================
 
     #[cfg(feature = "go-ast")]
     #[test]
@@ -1384,9 +1368,7 @@ export function exportedFunc(): void {
         assert!(result.unwrap_err().contains("go-ast feature is disabled"));
     }
 
-    // ============================================
     // CodeChunk Field Tests
-    // ============================================
 
     #[test]
     fn test_code_chunk_fields() {
@@ -1418,9 +1400,7 @@ export function exportedFunc(): void {
         assert_ne!(chunks1[0].content_checksum, chunks2[0].content_checksum);
     }
 
-    // ============================================
     // Language Enum Tests
-    // ============================================
 
     #[test]
     fn test_language_debug() {
@@ -1461,9 +1441,7 @@ export function exportedFunc(): void {
         }
     }
 
-    // ============================================
     // ChunkType Enum Tests
-    // ============================================
 
     #[test]
     fn test_chunk_type_debug() {
@@ -1495,9 +1473,7 @@ export function exportedFunc(): void {
         }
     }
 
-    // ============================================
     // CodeChunk Struct Tests
-    // ============================================
 
     #[test]
     fn test_code_chunk_debug() {
@@ -1536,9 +1512,7 @@ export function exportedFunc(): void {
         assert_eq!(chunk.chunk_name, cloned.chunk_name);
     }
 
-    // ============================================
     // Complex Code Tests
-    // ============================================
 
     #[test]
     fn test_rust_complex_code() {
@@ -1615,9 +1589,7 @@ function processData(data: string[]): string[] {
         assert!(names.contains(&"processData"));
     }
 
-    // ============================================
     // Edge Case Tests
-    // ============================================
 
     #[test]
     fn test_rust_single_line_function() {
@@ -1651,9 +1623,7 @@ const complexFunc = (
         assert_eq!(chunks[0].chunk_name, "complexFunc");
     }
 
-    // ============================================
     // Checksum Tests
-    // ============================================
 
     #[test]
     fn test_checksum_deterministic() {
@@ -1694,9 +1664,7 @@ const complexFunc = (
         assert_eq!(checksum.len(), 64);
     }
 
-    // ============================================
     // Error Handling Tests
-    // ============================================
 
     #[test]
     fn test_rust_syntax_error_still_parses() {
@@ -1712,9 +1680,7 @@ const complexFunc = (
         assert!(result.is_ok());
     }
 
-    // ============================================
     // Doc Comment Tests
-    // ============================================
 
     #[test]
     fn test_rust_multiple_doc_comments() {
@@ -1734,9 +1700,7 @@ const complexFunc = (
         assert!(chunks[0].content.contains("block doc comment"));
     }
 
-    // ============================================
     // Nested Structure Tests
-    // ============================================
 
     #[test]
     fn test_rust_nested_module() {
@@ -1756,9 +1720,7 @@ const complexFunc = (
         assert!(classes.len() >= 1);
     }
 
-    // ============================================
     // Performance Boundary Tests
-    // ============================================
 
     #[test]
     fn test_many_small_functions() {
@@ -1784,9 +1746,7 @@ const complexFunc = (
         assert_eq!(chunks[0].chunk_name, "large_func");
     }
 
-    // ============================================
     // Language-Specific Feature Tests
-    // ============================================
 
     #[test]
     fn test_rust_trait_impl() {
@@ -1816,9 +1776,7 @@ impl Greeter for Person {
         assert!(func_chunk.is_some());
     }
 
-    // ============================================
     // Whitespace Handling Tests
-    // ============================================
 
     #[test]
     fn test_rust_leading_whitespace() {
@@ -1843,9 +1801,7 @@ impl Greeter for Person {
         assert!(chunks[0].content.contains("\t"));
     }
 
-    // ============================================
     // Parser Edge Cases
-    // ============================================
 
     #[test]
     fn test_parse_rust_success() {
@@ -1880,9 +1836,7 @@ impl Greeter for Person {
         assert_eq!(start, func_node.start_byte());
     }
 
-    // ============================================
     // Function Declarator Name Tests (C/C++)
-    // ============================================
 
     #[cfg(feature = "c-ast")]
     #[test]
@@ -1902,9 +1856,7 @@ impl Greeter for Person {
         assert_eq!(chunks[0].chunk_name, "test");
     }
 
-    // ============================================
     // TypeScript Arrow Function Edge Cases
-    // ============================================
 
     #[test]
     fn test_extract_ts_arrow_function_no_arrow() {
@@ -1923,9 +1875,7 @@ impl Greeter for Person {
         assert_eq!(chunks[0].chunk_name, "myFunc");
     }
 
-    // ============================================
     // Coverage for extract_* helper functions
-    // ============================================
 
     #[test]
     fn test_extract_ts_class_no_name() {
@@ -1954,9 +1904,7 @@ impl Greeter for Person {
         assert!(named_funcs.len() >= 0);
     }
 
-    // ============================================
     // Coverage for recursive extraction
-    // ============================================
 
     #[test]
     fn test_rust_deeply_nested_functions() {
@@ -1991,9 +1939,7 @@ function outer() {
         assert!(functions.len() >= 1);
     }
 
-    // ============================================
     // Block Comment Tests for C-family
-    // ============================================
 
     #[cfg(feature = "c-ast")]
     #[test]
@@ -2013,9 +1959,7 @@ function outer() {
         assert!(chunks[0].content.contains("Block comment"));
     }
 
-    // ============================================
     // Multiple Item Types Together
-    // ============================================
 
     #[test]
     fn test_rust_mixed_items() {
@@ -2048,10 +1992,8 @@ const myArrow = () => {};
         assert!(chunks.len() >= 4);
     }
 
-    // ============================================
     // TRUENO-RAG-3-CHUNKER: RecursiveChunker Integration Tests
     // RED Phase: These tests define expected behavior for RAG chunking
-    // ============================================
 
     /// Test that chunk_text_with_overlap produces chunks with proper overlap
     #[test]

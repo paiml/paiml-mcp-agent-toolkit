@@ -2443,9 +2443,7 @@ mod tests {
         let _: Violation = serde_json::from_str(&warning_json).expect("Should deserialize");
     }
 
-    // ============================================
     // Additional tests for 98%+ coverage
-    // ============================================
 
     #[test]
     fn test_is_simple_boundary_conditions() {

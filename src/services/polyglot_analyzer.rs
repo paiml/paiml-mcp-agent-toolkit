@@ -1278,9 +1278,7 @@ mod coverage_tests {
     use std::fs;
     use tempfile::TempDir;
 
-    // ============================================================================
     // Test Helpers and Fixtures
-    // ============================================================================
 
     /// Create a fresh PolyglotAnalyzer for testing
     fn create_analyzer() -> PolyglotAnalyzer {
@@ -1322,9 +1320,7 @@ mod coverage_tests {
         }
     }
 
-    // ============================================================================
     // Analyzer Construction Tests
-    // ============================================================================
 
     #[test]
     fn test_analyzer_default_impl() {
@@ -1401,9 +1397,7 @@ mod coverage_tests {
         assert!(has_microservices);
     }
 
-    // ============================================================================
     // should_skip_directory Tests
-    // ============================================================================
 
     #[test]
     fn test_should_skip_directory_node_modules() {
@@ -1466,9 +1460,7 @@ mod coverage_tests {
         assert!(!should_skip_directory(path));
     }
 
-    // ============================================================================
     // Language Complexity Score Tests
-    // ============================================================================
 
     #[test]
     fn test_complexity_score_clamped_low() {
@@ -1513,9 +1505,7 @@ mod coverage_tests {
         assert_eq!(coverage, 0.75);
     }
 
-    // ============================================================================
     // Dependency Type Inference Tests
-    // ============================================================================
 
     #[test]
     fn test_infer_dependency_rust_python_ffi() {
@@ -1552,9 +1542,7 @@ mod coverage_tests {
         assert!(matches!(dep_type, DependencyType::ProcessCommunication));
     }
 
-    // ============================================================================
     // has_potential_integration Tests
-    // ============================================================================
 
     #[test]
     fn test_has_potential_integration_rust_python() {
@@ -1592,9 +1580,7 @@ mod coverage_tests {
         assert!(!analyzer.has_potential_integration("java", "csharp"));
     }
 
-    // ============================================================================
     // Risk Level Assessment Tests
-    // ============================================================================
 
     #[test]
     fn test_assess_risk_critical_threshold() {
@@ -1628,9 +1614,7 @@ mod coverage_tests {
         assert!(matches!(analyzer.assess_risk_level(0.39), RiskLevel::Low));
     }
 
-    // ============================================================================
     // Integration Type Mapping Tests
-    // ============================================================================
 
     #[test]
     fn test_map_dependency_ffi_to_memory() {
@@ -1674,9 +1658,7 @@ mod coverage_tests {
         assert!(matches!(int_type, IntegrationType::API));
     }
 
-    // ============================================================================
     // Recommendation Score Tests
-    // ============================================================================
 
     #[test]
     fn test_recommendation_score_small_project() {
@@ -1781,9 +1763,7 @@ mod coverage_tests {
         assert!(score <= 1.0);
     }
 
-    // ============================================================================
     // check_frameworks Helper Tests
-    // ============================================================================
 
     #[test]
     fn test_check_frameworks_finds_matching() {
@@ -1819,9 +1799,7 @@ mod coverage_tests {
         assert_eq!(found.len(), 4);
     }
 
-    // ============================================================================
     // has_directory_pattern Helper Tests
-    // ============================================================================
 
     #[test]
     fn test_has_directory_pattern_finds_match() {
@@ -1851,9 +1829,7 @@ mod coverage_tests {
         assert!(PolyglotAnalyzer::has_directory_pattern(&directories, &patterns));
     }
 
-    // ============================================================================
     // check_layered_architecture Tests
-    // ============================================================================
 
     #[test]
     fn test_check_layered_architecture_full_layers() {
@@ -1930,9 +1906,7 @@ mod coverage_tests {
         assert!(!analyzer.check_layered_architecture(&directories));
     }
 
-    // ============================================================================
     // Polyglot Insights Tests
-    // ============================================================================
 
     #[test]
     fn test_insights_empty_analysis() {
@@ -2088,9 +2062,7 @@ mod coverage_tests {
         assert!(!insights.iter().any(|i| i.contains("high-risk")));
     }
 
-    // ============================================================================
     // Architecture Confidence Calculation Tests
-    // ============================================================================
 
     #[test]
     fn test_architecture_confidence_microservices() {
@@ -2235,9 +2207,7 @@ mod coverage_tests {
         assert_eq!(confidence, 0.5);
     }
 
-    // ============================================================================
     // Async Framework Detection Tests
-    // ============================================================================
 
     #[tokio::test]
     async fn test_detect_rust_frameworks_tokio() {
@@ -2434,9 +2404,7 @@ dependencies = [
         assert!(frameworks.is_empty());
     }
 
-    // ============================================================================
     // File Scanning Tests
-    // ============================================================================
 
     #[test]
     fn test_handle_file_rust_extension() {
@@ -2629,9 +2597,7 @@ dependencies = [
         // d might not be found due to depth limit
     }
 
-    // ============================================================================
     // Language Detection Tests
-    // ============================================================================
 
     #[tokio::test]
     async fn test_detect_languages_rust_project() {
@@ -2695,9 +2661,7 @@ dependencies = [
         assert!(languages.is_empty());
     }
 
-    // ============================================================================
     // Language Stats Calculation Tests
-    // ============================================================================
 
     #[tokio::test]
     async fn test_calculate_language_stats_single() {
@@ -2730,9 +2694,7 @@ dependencies = [
         assert_eq!(stats[2].language, "python");
     }
 
-    // ============================================================================
     // Cross-Language Integration Tests
-    // ============================================================================
 
     #[tokio::test]
     async fn test_analyze_rust_python_integration_pyo3() {
@@ -2909,9 +2871,7 @@ pyo3 = "0.18"
         assert!(files_involved.contains(&"schema.json".to_string()));
     }
 
-    // ============================================================================
     // Build System and Configuration Dependencies Tests
-    // ============================================================================
 
     #[tokio::test]
     async fn test_analyze_build_system_dependencies_makefile() {
@@ -3003,9 +2963,7 @@ pyo3 = "0.18"
         assert!(deps.is_empty());
     }
 
-    // ============================================================================
     // Language Pair Analysis Tests
-    // ============================================================================
 
     #[tokio::test]
     async fn test_analyze_language_pair_rust_python() {
@@ -3058,9 +3016,7 @@ pyo3 = "0.18"
         }
     }
 
-    // ============================================================================
     // Cross-Language Dependencies Tests
-    // ============================================================================
 
     #[tokio::test]
     async fn test_analyze_cross_language_dependencies() {
@@ -3086,9 +3042,7 @@ pyo3 = "0.18"
         assert!(!deps.is_empty());
     }
 
-    // ============================================================================
     // Architecture Detection Tests
-    // ============================================================================
 
     #[tokio::test]
     async fn test_detect_architecture_microservices() {
@@ -3216,9 +3170,7 @@ pyo3 = "0.18"
         assert!(matches!(pattern.unwrap(), ArchitecturePattern::Mixed));
     }
 
-    // ============================================================================
     // Architecture Indicators Analysis Tests
-    // ============================================================================
 
     #[tokio::test]
     async fn test_analyze_architecture_indicators_microservice() {
@@ -3299,9 +3251,7 @@ pyo3 = "0.18"
         assert!(indicators.has_plugin_indicators);
     }
 
-    // ============================================================================
     // Integration Points Identification Tests
-    // ============================================================================
 
     #[tokio::test]
     async fn test_identify_integration_points_empty() {
@@ -3371,9 +3321,7 @@ pyo3 = "0.18"
         assert_eq!(points.len(), 2);
     }
 
-    // ============================================================================
     // Full Project Analysis Tests
-    // ============================================================================
 
     #[tokio::test]
     async fn test_analyze_project_rust_only() {
@@ -3436,9 +3384,7 @@ pyo3 = "0.18"
         );
     }
 
-    // ============================================================================
     // Enum Serialization Tests (for coverage of derive macros)
-    // ============================================================================
 
     #[test]
     fn test_dependency_type_debug() {
@@ -3510,9 +3456,7 @@ pyo3 = "0.18"
         }
     }
 
-    // ============================================================================
     // Struct Serialization Tests
-    // ============================================================================
 
     #[test]
     fn test_language_info_serialization() {

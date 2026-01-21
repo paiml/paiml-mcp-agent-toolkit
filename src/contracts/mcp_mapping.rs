@@ -176,9 +176,7 @@ mod tests {
         "."
     }
 
-    // ==========================================================================
     // Tests for map_mcp_tool - main entry point
-    // ==========================================================================
 
     #[test]
     fn test_map_mcp_tool_analyze_complexity() {
@@ -288,9 +286,7 @@ mod tests {
         assert!(err.to_string().contains("Unknown MCP tool"));
     }
 
-    // ==========================================================================
     // Tests for map_complexity_contract
-    // ==========================================================================
 
     #[test]
     fn test_map_complexity_contract_minimal() {
@@ -343,9 +339,7 @@ mod tests {
         assert!(err.to_string().contains("max_halstead must be positive"));
     }
 
-    // ==========================================================================
     // Tests for map_satd_contract
-    // ==========================================================================
 
     #[test]
     fn test_map_satd_contract_minimal() {
@@ -398,9 +392,7 @@ mod tests {
         assert!(result.is_ok());
     }
 
-    // ==========================================================================
     // Tests for map_dead_code_contract
-    // ==========================================================================
 
     #[test]
     fn test_map_dead_code_contract_minimal() {
@@ -450,9 +442,7 @@ mod tests {
         assert!(result.is_err());
     }
 
-    // ==========================================================================
     // Tests for map_tdg_contract
-    // ==========================================================================
 
     #[test]
     fn test_map_tdg_contract_minimal() {
@@ -490,9 +480,7 @@ mod tests {
         assert!(err.to_string().contains("threshold must be non-negative"));
     }
 
-    // ==========================================================================
     // Tests for map_lint_hotspot_contract
-    // ==========================================================================
 
     #[test]
     fn test_map_lint_hotspot_contract_minimal() {
@@ -567,9 +555,7 @@ mod tests {
         assert!(err.to_string().contains("max_density must be non-negative"));
     }
 
-    // ==========================================================================
     // Tests for map_quality_gate_contract
-    // ==========================================================================
 
     #[test]
     fn test_map_quality_gate_contract_minimal() {
@@ -620,9 +606,7 @@ mod tests {
         assert!(result.is_ok());
     }
 
-    // ==========================================================================
     // Tests for map_refactor_auto_contract
-    // ==========================================================================
 
     #[test]
     fn test_map_refactor_auto_contract_minimal() {
@@ -685,9 +669,7 @@ mod tests {
         assert!(err.to_string().contains("timeout"));
     }
 
-    // ==========================================================================
     // Tests for parse_base_params
-    // ==========================================================================
 
     #[test]
     fn test_parse_base_params_minimal() {
@@ -741,9 +723,7 @@ mod tests {
         assert!(err.to_string().contains("Missing required parameter: path"));
     }
 
-    // ==========================================================================
     // Tests for parse_output_format
-    // ==========================================================================
 
     #[test]
     fn test_parse_output_format_table() {
@@ -811,9 +791,7 @@ mod tests {
         assert_eq!(parse_output_format(&value), OutputFormat::Table); // default
     }
 
-    // ==========================================================================
     // Tests for parse_severity
-    // ==========================================================================
 
     #[test]
     fn test_parse_severity_low() {
@@ -873,9 +851,7 @@ mod tests {
         assert_eq!(parse_severity(&value), None);
     }
 
-    // ==========================================================================
     // Tests for parse_quality_profile
-    // ==========================================================================
 
     #[test]
     fn test_parse_quality_profile_standard() {
@@ -929,9 +905,7 @@ mod tests {
         assert_eq!(parse_quality_profile(&value), QualityProfile::Standard); // defaults
     }
 
-    // ==========================================================================
     // Edge case and error handling tests
-    // ==========================================================================
 
     #[test]
     fn test_map_complexity_with_null_optional_params() {
@@ -1016,9 +990,7 @@ mod tests {
         // Defaults: target_complexity=8, dry_run=false, timeout=60
     }
 
-    // ==========================================================================
     // Tests with various JSON value types for type coercion
-    // ==========================================================================
 
     #[test]
     fn test_top_files_as_u64() {
@@ -1070,9 +1042,7 @@ mod tests {
         }
     }
 
-    // ==========================================================================
     // Integration-style tests
-    // ==========================================================================
 
     #[test]
     fn test_full_complexity_analysis_workflow() {
@@ -1150,9 +1120,7 @@ mod tests {
         assert!(result.is_ok());
     }
 
-    // ==========================================================================
     // Path validation error tests
-    // ==========================================================================
 
     #[test]
     fn test_nonexistent_path_returns_error() {
@@ -1178,9 +1146,7 @@ mod tests {
         assert!(err.to_string().contains("Path not found"));
     }
 
-    // ==========================================================================
     // Contract box behavior tests
-    // ==========================================================================
 
     #[test]
     fn test_returned_contract_is_valid() {
@@ -1223,9 +1189,7 @@ mod tests {
         }
     }
 
-    // ==========================================================================
     // Boundary value tests
-    // ==========================================================================
 
     #[test]
     fn test_max_confidence_boundary() {
@@ -1316,9 +1280,7 @@ mod coverage_tests {
         "."
     }
 
-    // ==========================================================================
     // Tests for map_mcp_tool - main entry point
-    // ==========================================================================
 
     #[test]
     fn test_map_mcp_tool_analyze_complexity() {
@@ -1427,9 +1389,7 @@ mod coverage_tests {
         assert!(result.unwrap_err().to_string().contains("Unknown MCP tool"));
     }
 
-    // ==========================================================================
     // Tests for map_complexity_contract
-    // ==========================================================================
 
     #[test]
     fn test_map_complexity_contract_minimal() {
@@ -1468,9 +1428,7 @@ mod coverage_tests {
         assert!(result.unwrap_err().to_string().contains("Missing required parameter: path"));
     }
 
-    // ==========================================================================
     // Tests for map_satd_contract
-    // ==========================================================================
 
     #[test]
     fn test_map_satd_contract_minimal() {
@@ -1523,9 +1481,7 @@ mod coverage_tests {
         assert!(result.is_ok());
     }
 
-    // ==========================================================================
     // Tests for map_dead_code_contract
-    // ==========================================================================
 
     #[test]
     fn test_map_dead_code_contract_minimal() {
@@ -1562,9 +1518,7 @@ mod coverage_tests {
         assert!(result.is_ok());
     }
 
-    // ==========================================================================
     // Tests for map_tdg_contract
-    // ==========================================================================
 
     #[test]
     fn test_map_tdg_contract_minimal() {
@@ -1600,9 +1554,7 @@ mod coverage_tests {
         assert!(result.is_ok());
     }
 
-    // ==========================================================================
     // Tests for map_lint_hotspot_contract
-    // ==========================================================================
 
     #[test]
     fn test_map_lint_hotspot_contract_minimal() {
@@ -1640,9 +1592,7 @@ mod coverage_tests {
         assert!(result.is_ok());
     }
 
-    // ==========================================================================
     // Tests for map_quality_gate_contract
-    // ==========================================================================
 
     #[test]
     fn test_map_quality_gate_contract_minimal() {
@@ -1693,9 +1643,7 @@ mod coverage_tests {
         assert!(result.is_ok());
     }
 
-    // ==========================================================================
     // Tests for map_refactor_auto_contract
-    // ==========================================================================
 
     #[test]
     fn test_map_refactor_auto_contract_minimal() {
@@ -1731,9 +1679,7 @@ mod coverage_tests {
         assert!(result.is_ok());
     }
 
-    // ==========================================================================
     // Tests for parse_base_params
-    // ==========================================================================
 
     #[test]
     fn test_parse_base_params_minimal() {
@@ -1786,9 +1732,7 @@ mod coverage_tests {
         assert!(result.unwrap_err().to_string().contains("Missing required parameter: path"));
     }
 
-    // ==========================================================================
     // Tests for parse_output_format
-    // ==========================================================================
 
     #[test]
     fn test_parse_output_format_table() {
@@ -1844,9 +1788,7 @@ mod coverage_tests {
         assert_eq!(parse_output_format(&value), OutputFormat::Table); // default
     }
 
-    // ==========================================================================
     // Tests for parse_severity
-    // ==========================================================================
 
     #[test]
     fn test_parse_severity_low() {
@@ -1890,9 +1832,7 @@ mod coverage_tests {
         assert_eq!(parse_severity(&value), None);
     }
 
-    // ==========================================================================
     // Tests for parse_quality_profile
-    // ==========================================================================
 
     #[test]
     fn test_parse_quality_profile_standard() {
@@ -1936,9 +1876,7 @@ mod coverage_tests {
         assert_eq!(parse_quality_profile(&value), QualityProfile::Standard); // default
     }
 
-    // ==========================================================================
     // Edge case and error handling tests
-    // ==========================================================================
 
     #[test]
     fn test_map_complexity_with_null_optional_params() {
@@ -2023,9 +1961,7 @@ mod coverage_tests {
         // Defaults: target_complexity=8, dry_run=false, timeout=60
     }
 
-    // ==========================================================================
     // Tests with various JSON value types for type coercion
-    // ==========================================================================
 
     #[test]
     fn test_top_files_as_u64() {
@@ -2077,9 +2013,7 @@ mod coverage_tests {
         }
     }
 
-    // ==========================================================================
     // Integration-style tests
-    // ==========================================================================
 
     #[test]
     fn test_full_complexity_analysis_workflow() {

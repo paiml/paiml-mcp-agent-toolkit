@@ -735,9 +735,7 @@ mod tests {
         ));
     }
 
-    // ============================================================================
     // EXTREME TDD TESTS - Cross-Language Dependency Coverage
-    // ============================================================================
 
     // Test CrossLanguageDependencies::new() and basic initialization
     #[test]

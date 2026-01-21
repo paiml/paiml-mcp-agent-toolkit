@@ -1348,9 +1348,7 @@ mod coverage_tests {
         TempDir::new().expect("Failed to create temp dir")
     }
 
-    // =========================================================================
     // RepoArchetype Tests - Coverage for all archetype methods
-    // =========================================================================
 
     #[test]
     fn test_repo_archetype_g2_max_scores() {
@@ -1378,9 +1376,7 @@ mod coverage_tests {
         assert_eq!(scorer.max_score(), 10.0);
     }
 
-    // =========================================================================
     // Archetype Detection Tests - Coverage for detect_archetype
-    // =========================================================================
 
     #[tokio::test]
     async fn test_archetype_detection_boilerplate_by_name() {
@@ -1515,9 +1511,7 @@ mod coverage_tests {
         assert_eq!(archetype, RepoArchetype::Library);
     }
 
-    // =========================================================================
     // Time-to-Interaction Tests (G1) - Additional edge cases
-    // =========================================================================
 
     #[tokio::test]
     async fn test_time_to_interaction_demos_dir() {
@@ -1758,9 +1752,7 @@ More content...
         assert_eq!(result.max_score, 3.0);
     }
 
-    // =========================================================================
     // Error Gracefulness Tests (G2) - Additional edge cases
-    // =========================================================================
 
     #[tokio::test]
     async fn test_error_gracefulness_tutorial_archetype() {
@@ -2021,9 +2013,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         );
     }
 
-    // =========================================================================
     // Visual Stability Tests (G3) - Additional edge cases
-    // =========================================================================
 
     #[tokio::test]
     async fn test_visual_stability_package_json_libs() {
@@ -2215,9 +2205,7 @@ fn main() {
         assert!(result.score >= 1.0, "Should detect verified colored usage");
     }
 
-    // =========================================================================
     // Wow Factor Tests (G4) - Additional edge cases
-    // =========================================================================
 
     #[tokio::test]
     async fn test_wow_factor_asciinema() {
@@ -2479,9 +2467,7 @@ fn main() {
         assert_eq!(result.max_score, 2.0);
     }
 
-    // =========================================================================
     // Find Demo Files Tests
-    // =========================================================================
 
     #[tokio::test]
     async fn test_find_demo_files_multiple_dirs() {
@@ -2541,9 +2527,7 @@ fn main() {
         assert_eq!(files.len(), 4, "Should find root demo files");
     }
 
-    // =========================================================================
     // Count Files Tests
-    // =========================================================================
 
     #[tokio::test]
     async fn test_count_code_files() {
@@ -2582,9 +2566,7 @@ fn main() {
         assert_eq!(count, 1, "Should skip hidden directories");
     }
 
-    // =========================================================================
     // Full Integration Tests
-    // =========================================================================
 
     #[tokio::test]
     async fn test_demo_scorer_dynamic_max_score() {

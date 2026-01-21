@@ -2091,9 +2091,7 @@ mod coverage_tests {
     use crate::tdg::{config::TdgConfig, Language, MetricCategory, PenaltyTracker};
     use std::path::Path;
 
-    // ==========================================================================
     // TdgAnalyzerAst Creation Tests
-    // ==========================================================================
 
     #[test]
     fn test_analyzer_with_config() {
@@ -2144,9 +2142,7 @@ mod coverage_tests {
         assert!(analyzer.get_git_context().is_none());
     }
 
-    // ==========================================================================
     // Score Calculation Tests - Structural Complexity
-    // ==========================================================================
 
     #[test]
     fn test_score_structural_complexity_normal() {
@@ -2202,9 +2198,7 @@ mod coverage_tests {
         assert!(score < max_score);
     }
 
-    // ==========================================================================
     // Score Calculation Tests - Semantic Complexity
-    // ==========================================================================
 
     #[test]
     fn test_score_semantic_complexity_normal() {
@@ -2249,9 +2243,7 @@ mod coverage_tests {
         assert!(score < max_score);
     }
 
-    // ==========================================================================
     // Score Calculation Tests - Coupling
-    // ==========================================================================
 
     #[test]
     fn test_score_coupling_normal() {
@@ -2284,9 +2276,7 @@ mod coverage_tests {
         assert!(score < max_score);
     }
 
-    // ==========================================================================
     // Score Calculation Tests - Documentation
-    // ==========================================================================
 
     #[test]
     fn test_score_documentation_full_coverage() {
@@ -2316,9 +2306,7 @@ mod coverage_tests {
         assert_eq!(score, analyzer.config.weights.documentation);
     }
 
-    // ==========================================================================
     // Duplication Analysis Tests
-    // ==========================================================================
 
     #[test]
     fn test_analyze_duplication_ast_no_duplication() {
@@ -2382,9 +2370,7 @@ mod coverage_tests {
         assert!(score > 0.0);
     }
 
-    // ==========================================================================
     // Entropy Analysis Tests
-    // ==========================================================================
 
     #[test]
     fn test_score_entropy_analysis() {
@@ -2422,9 +2408,7 @@ mod coverage_tests {
         assert!(score >= 0.0 && score <= 10.0);
     }
 
-    // ==========================================================================
     // Consistency Score Tests
-    // ==========================================================================
 
     #[test]
     fn test_score_consistency_python_spaces() {
@@ -2491,9 +2475,7 @@ def bar():
         assert!(score > 0.0);
     }
 
-    // ==========================================================================
     // Analyze Source Tests
-    // ==========================================================================
 
     #[test]
     fn test_analyze_source_rust() {
@@ -2551,9 +2533,7 @@ def hello():
         assert!(score.confidence < 1.0);
     }
 
-    // ==========================================================================
     // File Discovery Tests
-    // ==========================================================================
 
     #[test]
     fn test_should_skip_directory() {
@@ -2592,9 +2572,7 @@ def hello():
         assert!(!analyzer.should_analyze_file(Path::new("data.json")));
     }
 
-    // ==========================================================================
     // Language Detection Tests
-    // ==========================================================================
 
     #[test]
     fn test_language_from_extension_all_supported() {
@@ -2630,9 +2608,7 @@ def hello():
         );
     }
 
-    // ==========================================================================
     // Penalty Tracker Tests
-    // ==========================================================================
 
     #[test]
     fn test_penalty_tracker_apply() {
@@ -2693,9 +2669,7 @@ def hello():
         assert_eq!(attributions.len(), 2);
     }
 
-    // ==========================================================================
     // Heuristic Analysis Tests
-    // ==========================================================================
 
     #[test]
     fn test_analyze_heuristic() {
@@ -2719,9 +2693,7 @@ def hello():
         assert!(score.confidence < 1.0);
     }
 
-    // ==========================================================================
     // Edge Case Tests
-    // ==========================================================================
 
     #[test]
     fn test_analyze_source_empty() {

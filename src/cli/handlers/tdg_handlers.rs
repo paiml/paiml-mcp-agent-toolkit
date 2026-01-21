@@ -1395,9 +1395,7 @@ fn truncate_string(s: &str, max_len: usize) -> String {
     }
 }
 
-// ============================================================================
 // trueno-viz: Terminal Graph Visualization
-// ============================================================================
 
 /// Handle --viz mode: render TDG dependency graph in terminal
 ///

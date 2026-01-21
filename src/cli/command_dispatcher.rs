@@ -2122,9 +2122,7 @@ mod tests {
         assert_eq!(1 + 1, 2);
     }
 
-    // ========================================================================
     // Tests for generate_metric_recommendations()
-    // ========================================================================
 
     #[test]
     fn test_generate_metric_recommendations_lint() {
@@ -2175,9 +2173,7 @@ mod tests {
         assert!(recs.is_empty());
     }
 
-    // ========================================================================
     // Tests for convert_demo_protocol()
-    // ========================================================================
 
     #[test]
     fn test_convert_demo_protocol_cli_flag_true() {
@@ -2210,9 +2206,7 @@ mod tests {
         assert!(matches!(result, crate::demo::Protocol::All));
     }
 
-    // ========================================================================
     // Tests for create_demo_args()
-    // ========================================================================
 
     #[test]
     fn test_create_demo_args_defaults() {
@@ -2311,9 +2305,7 @@ mod tests {
         assert!(!args.skip_vendor);
     }
 
-    // ========================================================================
     // Tests for execute_analyze_command() routing
-    // ========================================================================
 
     #[tokio::test]
     async fn test_execute_memory_command_routing() {
@@ -2344,13 +2336,9 @@ mod tests {
         assert!(result.is_ok() || result.is_err());
     }
 
-    // ========================================================================
     // COMPREHENSIVE COVERAGE TESTS - Added for increased test coverage
-    // ========================================================================
 
-    // ------------------------------------------------------------------------
     // Test: execute_scaffold_command routing (all variants)
-    // ------------------------------------------------------------------------
 
     #[tokio::test]
     async fn test_scaffold_project_routing() {
@@ -2441,9 +2429,7 @@ mod tests {
         assert!(result.is_ok());
     }
 
-    // ------------------------------------------------------------------------
     // Test: execute_quality_gate_command with various check types
-    // ------------------------------------------------------------------------
 
     #[tokio::test]
     async fn test_quality_gate_dead_code_check() {
@@ -2576,9 +2562,7 @@ mod tests {
         assert!(result.is_ok() || result.is_err());
     }
 
-    // ------------------------------------------------------------------------
     // Test: execute_report_command with various analysis types
-    // ------------------------------------------------------------------------
 
     #[tokio::test]
     async fn test_report_dead_code_analysis() {
@@ -2705,9 +2689,7 @@ mod tests {
         assert!(result.is_ok() || result.is_err());
     }
 
-    // ------------------------------------------------------------------------
     // Test: execute_show_metrics_command
-    // ------------------------------------------------------------------------
 
     #[tokio::test]
     async fn test_show_metrics_no_trend_error() {
@@ -2762,9 +2744,7 @@ mod tests {
         assert!(result.is_ok() || result.is_err());
     }
 
-    // ------------------------------------------------------------------------
     // Test: execute_record_metric_command
-    // ------------------------------------------------------------------------
 
     #[tokio::test]
     async fn test_record_metric_basic() {
@@ -2789,9 +2769,7 @@ mod tests {
         assert!(result.is_ok() || result.is_err());
     }
 
-    // ------------------------------------------------------------------------
     // Test: generate_metric_recommendations edge cases
-    // ------------------------------------------------------------------------
 
     #[test]
     fn test_metric_recommendations_negative_slope_lint() {
@@ -2822,9 +2800,7 @@ mod tests {
         assert!(recs.iter().any(|r| r.contains("WARNING")));
     }
 
-    // ------------------------------------------------------------------------
     // Test: create_demo_args edge cases
-    // ------------------------------------------------------------------------
 
     #[test]
     fn test_demo_args_with_all_none_options() {
@@ -2901,9 +2877,7 @@ mod tests {
         assert!(!args.skip_vendor);
     }
 
-    // ------------------------------------------------------------------------
     // Test: convert_demo_protocol all variants
-    // ------------------------------------------------------------------------
 
     #[test]
     fn test_convert_protocol_cli_override() {
@@ -2922,9 +2896,7 @@ mod tests {
         ));
     }
 
-    // ------------------------------------------------------------------------
     // Test: create_test_config all suite types
-    // ------------------------------------------------------------------------
 
     #[test]
     fn test_create_config_performance_suite() {
@@ -2956,9 +2928,7 @@ mod tests {
         assert!(config.enable_regression_tests);
     }
 
-    // ------------------------------------------------------------------------
     // Test: print_test_startup_info (doesn't panic)
-    // ------------------------------------------------------------------------
 
     #[test]
     fn test_print_startup_all_suites() {
@@ -2976,9 +2946,7 @@ mod tests {
         }
     }
 
-    // ------------------------------------------------------------------------
     // Test: write_test_results_if_requested
-    // ------------------------------------------------------------------------
 
     #[test]
     fn test_write_results_with_output_success() {
@@ -3028,9 +2996,7 @@ mod tests {
         assert!(content.contains("FAILED"));
     }
 
-    // ------------------------------------------------------------------------
     // Test: execute_config_command variants
-    // ------------------------------------------------------------------------
 
     #[tokio::test]
     async fn test_config_validate() {
@@ -3071,9 +3037,7 @@ mod tests {
         assert!(result.is_ok() || result.is_err());
     }
 
-    // ------------------------------------------------------------------------
     // Test: execute_memory_command variants
-    // ------------------------------------------------------------------------
 
     #[tokio::test]
     async fn test_memory_stats_detailed() {
@@ -3097,9 +3061,7 @@ mod tests {
         assert!(result.is_ok() || result.is_err());
     }
 
-    // ------------------------------------------------------------------------
     // Test: execute_cache_command variants
-    // ------------------------------------------------------------------------
 
     #[tokio::test]
     async fn test_cache_stats_with_history() {
@@ -3113,9 +3075,7 @@ mod tests {
         assert!(result.is_ok() || result.is_err());
     }
 
-    // ------------------------------------------------------------------------
     // Test: execute_scaffold_agent_command directly
-    // ------------------------------------------------------------------------
 
     #[tokio::test]
     async fn test_scaffold_agent_with_features() {
@@ -3153,9 +3113,7 @@ mod tests {
         assert!(result.is_ok() || result.is_err());
     }
 
-    // ------------------------------------------------------------------------
     // Test: Commands routing - additional commands
-    // ------------------------------------------------------------------------
 
     #[tokio::test]
     async fn test_search_command_routing() {
@@ -3202,9 +3160,7 @@ mod tests {
         assert!(result.is_ok() || result.is_err());
     }
 
-    // ------------------------------------------------------------------------
     // Test: execute_analyze_command routing
-    // ------------------------------------------------------------------------
 
     #[tokio::test]
     async fn test_analyze_dead_code_routing() {
@@ -3230,9 +3186,7 @@ mod tests {
         assert!(result.is_ok() || result.is_err());
     }
 
-    // ------------------------------------------------------------------------
     // Test: execute_qdd_command routing
-    // ------------------------------------------------------------------------
 
     #[tokio::test]
     async fn test_qdd_create_routing() {
@@ -3251,9 +3205,7 @@ mod tests {
         assert!(result.is_ok() || result.is_err());
     }
 
-    // ------------------------------------------------------------------------
     // Test: execute_refactor_command routing
-    // ------------------------------------------------------------------------
 
     #[tokio::test]
     async fn test_refactor_status_routing() {
@@ -3272,9 +3224,7 @@ mod tests {
         assert!(result.is_ok() || result.is_err());
     }
 
-    // ------------------------------------------------------------------------
     // Test: execute_roadmap_command routing
-    // ------------------------------------------------------------------------
 
     #[tokio::test]
     async fn test_roadmap_init_routing() {
@@ -3315,9 +3265,7 @@ mod tests {
         assert!(result.is_ok() || result.is_err());
     }
 
-    // ------------------------------------------------------------------------
     // Test: execute_test_command routing with different suites
-    // ------------------------------------------------------------------------
 
     #[tokio::test]
     #[ignore = "Times out in coverage runs - property tests run too long"]
@@ -3356,9 +3304,7 @@ mod tests {
         assert!(result.is_ok() || result.is_err());
     }
 
-    // ------------------------------------------------------------------------
     // Test: CommandHandler trait bounds (compile-time verification)
-    // ------------------------------------------------------------------------
 
     #[test]
     fn test_command_handler_trait_is_send_sync() {
@@ -3367,9 +3313,7 @@ mod tests {
         // The actual handlers that implement this trait need to be Send + Sync
     }
 
-    // ------------------------------------------------------------------------
     // Test: quality gate check type conversions
-    // ------------------------------------------------------------------------
 
     #[tokio::test]
     async fn test_quality_gate_unknown_check_filtered() {
@@ -3395,9 +3339,7 @@ mod tests {
         assert!(result.is_ok() || result.is_err());
     }
 
-    // ------------------------------------------------------------------------
     // Test: report analysis type conversions with hyphen variants
-    // ------------------------------------------------------------------------
 
     #[tokio::test]
     async fn test_report_analysis_hyphen_variants() {
@@ -3425,9 +3367,7 @@ mod tests {
         assert!(result.is_ok() || result.is_err());
     }
 
-    // ------------------------------------------------------------------------
     // Test: handle_spec_command variants
-    // ------------------------------------------------------------------------
 
     #[tokio::test]
     #[ignore = "Calls process::exit"]
@@ -3499,9 +3439,7 @@ mod tests {
         assert!(result.is_ok() || result.is_err());
     }
 
-    // ------------------------------------------------------------------------
     // Test: execute_work_command variants
-    // ------------------------------------------------------------------------
 
     #[tokio::test]
     async fn test_work_init_with_github() {
@@ -3825,9 +3763,7 @@ mod coverage_tests {
         Arc::new(StatelessTemplateServer::new().expect("internal error"))
     }
 
-    // ========================================================================
     // Test: execute_scaffold_command routing
-    // ========================================================================
 
     #[tokio::test]
     async fn test_scaffold_project_command_routing() {
@@ -3946,9 +3882,7 @@ mod coverage_tests {
         assert!(result.is_ok());
     }
 
-    // ========================================================================
     // Test: execute_analyze_command routing
-    // ========================================================================
 
     #[tokio::test]
     async fn test_execute_analyze_command_routing() {
@@ -3975,9 +3909,7 @@ mod coverage_tests {
         assert!(result.is_ok() || result.is_err());
     }
 
-    // ========================================================================
     // Test: execute_qdd_command routing
-    // ========================================================================
 
     #[tokio::test]
     async fn test_execute_qdd_command_routing() {
@@ -3990,9 +3922,7 @@ mod coverage_tests {
         assert!(result.is_ok() || result.is_err());
     }
 
-    // ========================================================================
     // Test: execute_refactor_command routing
-    // ========================================================================
 
     #[tokio::test]
     async fn test_execute_refactor_command_routing() {
@@ -4011,9 +3941,7 @@ mod coverage_tests {
         assert!(result.is_ok() || result.is_err());
     }
 
-    // ========================================================================
     // Test: execute_roadmap_command routing
-    // ========================================================================
 
     #[tokio::test]
     async fn test_execute_roadmap_init_routing() {
@@ -4095,9 +4023,7 @@ mod coverage_tests {
         assert!(result.is_ok() || result.is_err());
     }
 
-    // ========================================================================
     // Test: execute_test_command routing
-    // ========================================================================
 
     #[tokio::test]
     async fn test_execute_test_command_all_suites() {
@@ -4186,9 +4112,7 @@ mod coverage_tests {
         assert!(result.is_ok() || result.is_err());
     }
 
-    // ========================================================================
     // Test: create_test_config variants
-    // ========================================================================
 
     #[test]
     fn test_create_test_config_performance_suite() {
@@ -4245,9 +4169,7 @@ mod coverage_tests {
         assert!(config.enable_regression_tests);
     }
 
-    // ========================================================================
     // Test: print_test_startup_info
-    // ========================================================================
 
     #[test]
     fn test_print_test_startup_info_all_suites() {
@@ -4265,9 +4187,7 @@ mod coverage_tests {
         }
     }
 
-    // ========================================================================
     // Test: write_test_results_if_requested
-    // ========================================================================
 
     #[test]
     fn test_write_test_results_with_output_passed() {
@@ -4317,9 +4237,7 @@ mod coverage_tests {
         assert!(contents.contains("FAILED"));
     }
 
-    // ========================================================================
     // Test: generate_metric_recommendations edge cases
-    // ========================================================================
 
     #[test]
     fn test_generate_metric_recommendations_negative_slope() {
@@ -4336,9 +4254,7 @@ mod coverage_tests {
         assert!(!recs.is_empty());
     }
 
-    // ========================================================================
     // Test: convert_demo_protocol with tui feature
-    // ========================================================================
 
     #[test]
     #[cfg(feature = "tui")]
@@ -4347,9 +4263,7 @@ mod coverage_tests {
         assert!(matches!(result, crate::demo::Protocol::Tui));
     }
 
-    // ========================================================================
     // Test: Commands routing for various command types
-    // ========================================================================
 
     #[tokio::test]
     async fn test_context_command_routing() {
@@ -4398,9 +4312,7 @@ mod coverage_tests {
         assert!(result.is_ok() || result.is_err());
     }
 
-    // ========================================================================
     // Test: execute_quality_gate_command with various checks
-    // ========================================================================
 
     #[tokio::test]
     async fn test_execute_quality_gate_all_check_types() {
@@ -4441,9 +4353,7 @@ mod coverage_tests {
         }
     }
 
-    // ========================================================================
     // Test: execute_report_command with various analysis types
-    // ========================================================================
 
     #[tokio::test]
     async fn test_execute_report_all_analysis_types() {
@@ -4483,9 +4393,7 @@ mod coverage_tests {
         }
     }
 
-    // ========================================================================
     // Test: execute_config_command variants
-    // ========================================================================
 
     #[tokio::test]
     async fn test_execute_config_validate() {
@@ -4535,9 +4443,7 @@ mod coverage_tests {
         assert!(result.is_ok() || result.is_err());
     }
 
-    // ========================================================================
     // Test: execute_show_metrics_command
-    // ========================================================================
 
     #[tokio::test]
     async fn test_execute_show_metrics_no_trend() {
@@ -4597,9 +4503,7 @@ mod coverage_tests {
         assert!(result.is_ok() || result.is_err());
     }
 
-    // ========================================================================
     // Test: execute_record_metric_command
-    // ========================================================================
 
     #[tokio::test]
     async fn test_execute_record_metric_command_basic() {
@@ -4624,9 +4528,7 @@ mod coverage_tests {
         assert!(result.is_ok() || result.is_err());
     }
 
-    // ========================================================================
     // Test: execute_memory_command routing
-    // ========================================================================
 
     #[tokio::test]
     async fn test_execute_memory_clear_command() {
@@ -4649,9 +4551,7 @@ mod coverage_tests {
         assert!(result.is_ok() || result.is_err());
     }
 
-    // ========================================================================
     // Test: execute_cache_command routing
-    // ========================================================================
 
     #[tokio::test]
     async fn test_execute_cache_clear_command() {
@@ -4676,9 +4576,7 @@ mod coverage_tests {
         assert!(result.is_ok() || result.is_err());
     }
 
-    // ========================================================================
     // Test: execute_work_command routing
-    // ========================================================================
 
     #[tokio::test]
     async fn test_execute_work_init_command() {
@@ -4803,9 +4701,7 @@ mod coverage_tests {
         assert!(result.is_ok());
     }
 
-    // ========================================================================
     // Test: handle_spec_command routing
-    // ========================================================================
 
     #[tokio::test]
     async fn test_handle_spec_score_command() {
@@ -4878,9 +4774,7 @@ mod coverage_tests {
         assert!(result.is_ok() || result.is_err());
     }
 
-    // ========================================================================
     // Test: create_demo_args with more edge cases
-    // ========================================================================
 
     #[test]
     fn test_create_demo_args_merge_threshold_rounding() {
@@ -4907,9 +4801,7 @@ mod coverage_tests {
         assert_eq!(args.merge_threshold, 50);
     }
 
-    // ========================================================================
     // Test: execute_scaffold_agent_command directly
-    // ========================================================================
 
     #[tokio::test]
     async fn test_execute_scaffold_agent_with_deterministic_core() {
@@ -4930,9 +4822,7 @@ mod coverage_tests {
         assert!(result.is_ok() || result.is_err());
     }
 
-    // ========================================================================
     // Test: Commands with feature flags
-    // ========================================================================
 
     #[tokio::test]
     #[cfg(not(feature = "org-intelligence"))]

@@ -1773,9 +1773,7 @@ impl CudaSimdAnalyzer {
         let lines: Vec<&str> = content.lines().collect();
         let mut shared_load_regs: Vec<String> = Vec::new();
 
-        // =====================================================================
         // State tracking for multi-line pattern detection
-        // =====================================================================
         let mut loop_labels: std::collections::HashSet<String> = std::collections::HashSet::new();
         let mut loop_end_labels: std::collections::HashSet<String> =
             std::collections::HashSet::new();
@@ -1824,9 +1822,7 @@ impl CudaSimdAnalyzer {
             }
         }
 
-        // =====================================================================
         // Main analysis pass
-        // =====================================================================
         for (line_num, line) in lines.iter().enumerate() {
             let trimmed = line.trim();
 
@@ -2177,9 +2173,7 @@ impl CudaSimdAnalyzer {
             }
         }
 
-        // =====================================================================
         // Post-analysis checks
-        // =====================================================================
 
         // P1 HIGH: Register spills (.local memory usage)
         if content.contains(".local") {
@@ -3869,9 +3863,7 @@ mod coverage_tests {
     use super::*;
     use std::path::PathBuf;
 
-    // ==========================================================================
     // DefectSeverity Tests
-    // ==========================================================================
 
     #[test]
     fn test_defect_severity_equality() {
@@ -3896,9 +3888,7 @@ mod coverage_tests {
         assert_eq!(severity, copied);
     }
 
-    // ==========================================================================
     // DefectClass Tests
-    // ==========================================================================
 
     #[test]
     fn test_defect_class_clone() {
@@ -3932,9 +3922,7 @@ mod coverage_tests {
         assert!(defect.root_cause.is_some());
     }
 
-    // ==========================================================================
     // DefectTaxonomy Tests
-    // ==========================================================================
 
     #[test]
     fn test_taxonomy_trueno_simd_patterns() {
@@ -3996,9 +3984,7 @@ mod coverage_tests {
         }
     }
 
-    // ==========================================================================
     // CudaTdgGrade Tests
-    // ==========================================================================
 
     #[test]
     fn test_grade_default() {
@@ -4021,9 +4007,7 @@ mod coverage_tests {
         assert_eq!(CudaTdgGrade::from_score(-10.0, true), CudaTdgGrade::F);
     }
 
-    // ==========================================================================
     // Score Category Tests
-    // ==========================================================================
 
     #[test]
     fn test_falsifiability_score_partial() {
@@ -4092,9 +4076,7 @@ mod coverage_tests {
         assert_eq!(score.total(), 2.5);
     }
 
-    // ==========================================================================
     // PopperScore Tests
-    // ==========================================================================
 
     #[test]
     fn test_popper_score_gateway_threshold_exact() {
@@ -4145,9 +4127,7 @@ mod coverage_tests {
         assert_eq!(score.grade, CudaTdgGrade::GatewayFail);
     }
 
-    // ==========================================================================
     // BarrierSafetyResult Tests
-    // ==========================================================================
 
     #[test]
     fn test_barrier_safety_result_default() {
@@ -4185,9 +4165,7 @@ mod coverage_tests {
         assert_eq!(result.unsafe_barriers.len(), 2);
     }
 
-    // ==========================================================================
     // CoalescingResult Tests
-    // ==========================================================================
 
     #[test]
     fn test_coalescing_result_full_coalescing() {
@@ -4226,9 +4204,7 @@ mod coverage_tests {
         assert_eq!(result.problematic_accesses.len(), 2);
     }
 
-    // ==========================================================================
     // TileDimensionResult Tests
-    // ==========================================================================
 
     #[test]
     fn test_tile_dimension_result_valid() {
@@ -4273,9 +4249,7 @@ mod coverage_tests {
         assert_eq!(result.issues.len(), 2);
     }
 
-    // ==========================================================================
     // KaizenMetrics Tests
-    // ==========================================================================
 
     #[test]
     fn test_kaizen_metrics_populated() {
@@ -4296,9 +4270,7 @@ mod coverage_tests {
         assert_eq!(metrics.ticket_references.len(), 3);
     }
 
-    // ==========================================================================
     // CudaSimdConfig Tests
-    // ==========================================================================
 
     #[test]
     fn test_config_custom_values() {
@@ -4326,9 +4298,7 @@ mod coverage_tests {
         assert!(!config.fail_on_p0);
     }
 
-    // ==========================================================================
     // DetectedDefect Tests
-    // ==========================================================================
 
     #[test]
     fn test_detected_defect_full() {
@@ -4374,9 +4344,7 @@ mod coverage_tests {
         assert!(defect.suggestion.is_none());
     }
 
-    // ==========================================================================
     // CudaSimdAnalyzer Path Skip Tests
-    // ==========================================================================
 
     #[test]
     fn test_should_skip_path_venv() {
@@ -4449,9 +4417,7 @@ mod coverage_tests {
         )));
     }
 
-    // ==========================================================================
     // PTX Register Extraction Tests
-    // ==========================================================================
 
     #[test]
     fn test_extract_ptx_dest_register_valid() {
@@ -4481,9 +4447,7 @@ mod coverage_tests {
         assert!(result.is_none());
     }
 
-    // ==========================================================================
     // SIMD Pattern Detection Tests
-    // ==========================================================================
 
     #[test]
     fn test_simd_missing_target_feature() {
@@ -4532,9 +4496,7 @@ mod coverage_tests {
         assert_eq!(result.simd_files, 1);
     }
 
-    // ==========================================================================
     // WGSL Pattern Detection Tests
-    // ==========================================================================
 
     #[test]
     fn test_wgsl_small_workgroup() {
@@ -4630,9 +4592,7 @@ mod coverage_tests {
         assert!(!has_workgroup_issue);
     }
 
-    // ==========================================================================
     // PTX Pattern Detection Tests
-    // ==========================================================================
 
     #[test]
     fn test_ptx_shared_u64_detection() {
@@ -4709,9 +4669,7 @@ mod coverage_tests {
         assert!(has_reg_spills);
     }
 
-    // ==========================================================================
     // Access Pattern Tests
-    // ==========================================================================
 
     #[test]
     fn test_access_pattern_debug() {
@@ -4751,9 +4709,7 @@ mod coverage_tests {
         }
     }
 
-    // ==========================================================================
     // Quality Gate Tests
-    // ==========================================================================
 
     #[test]
     fn test_quality_gate_low_score_with_no_p0() {
@@ -4796,9 +4752,7 @@ mod coverage_tests {
         assert!(!analyzer.passes_quality_gate(&result));
     }
 
-    // ==========================================================================
     // CudaSimdTdgResult Tests
-    // ==========================================================================
 
     #[test]
     fn test_cuda_simd_tdg_result_clone() {

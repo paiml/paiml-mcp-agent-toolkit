@@ -10566,18 +10566,14 @@ mod property_tests {
     }
 }
 
-// ============================================================================
 // Sprint 79+: Comprehensive Unit Tests for 95% Coverage Target
-// ============================================================================
 
 #[cfg(test)]
 mod coverage_tests {
     use super::*;
     use std::path::Path;
 
-    // ========================================================================
     // Tests for percentile()
-    // ========================================================================
 
     #[test]
     fn test_percentile_median() {
@@ -10631,9 +10627,7 @@ mod coverage_tests {
         assert_eq!(percentile(&values, 0.5), 0.0);
     }
 
-    // ========================================================================
     // Tests for estimate_refactoring_hours()
-    // ========================================================================
 
     #[test]
     fn test_refactoring_hours_excellent_score() {
@@ -10664,9 +10658,7 @@ mod coverage_tests {
         assert!(hours > 500.0, "High TDG should need major refactoring");
     }
 
-    // ========================================================================
     // Tests for is_build_artifact()
-    // ========================================================================
 
     #[test]
     fn test_is_build_artifact_target() {
@@ -10715,9 +10707,7 @@ mod coverage_tests {
         assert!(!is_build_artifact(Path::new("lib/utils.py")));
     }
 
-    // ========================================================================
     // Tests for normalize_code_content()
-    // ========================================================================
 
     #[test]
     fn test_normalize_removes_whitespace() {
@@ -10740,9 +10730,7 @@ mod coverage_tests {
         assert!(normalized.contains("42"));
     }
 
-    // ========================================================================
     // Tests for calculate_content_hash()
-    // ========================================================================
 
     #[test]
     fn test_content_hash_deterministic() {
@@ -10765,9 +10753,7 @@ mod coverage_tests {
         assert!(hash > 0 || hash == 0); // Should not panic
     }
 
-    // ========================================================================
     // Tests for detect_toolchain()
-    // ========================================================================
 
     #[test]
     fn test_detect_toolchain_rust() {
@@ -10815,9 +10801,7 @@ mod coverage_tests {
         assert!(toolchain.is_none());
     }
 
-    // ========================================================================
     // Tests for get_file_extensions()
-    // ========================================================================
 
     #[test]
     fn test_get_file_extensions_rust() {
@@ -10855,9 +10839,7 @@ mod coverage_tests {
         assert!(!exts.is_empty());
     }
 
-    // ========================================================================
     // Tests for is_excluded_directory()
-    // ========================================================================
 
     #[test]
     fn test_is_excluded_directory_target() {
@@ -10890,9 +10872,7 @@ mod coverage_tests {
         assert!(!is_excluded_directory("lib"));
     }
 
-    // ========================================================================
     // Tests for is_excluded_filename()
-    // ========================================================================
 
     #[test]
     fn test_is_excluded_filename_lock_files() {
@@ -10936,9 +10916,7 @@ mod coverage_tests {
         assert!(!is_excluded_filename("index.js"));
     }
 
-    // ========================================================================
     // Tests for is_test_file()
-    // ========================================================================
 
     #[test]
     fn test_is_test_file_rust() {
@@ -10966,9 +10944,7 @@ mod coverage_tests {
         assert!(!is_test_file("utils.py"));
     }
 
-    // ========================================================================
     // Tests for is_example_or_demo_file()
-    // ========================================================================
 
     #[test]
     fn test_is_example_file() {
@@ -10982,9 +10958,7 @@ mod coverage_tests {
         assert!(!is_example_or_demo_file("lib.rs"));
     }
 
-    // ========================================================================
     // Tests for is_benchmark_file()
-    // ========================================================================
 
     #[test]
     fn test_is_benchmark_file() {
@@ -10997,9 +10971,7 @@ mod coverage_tests {
         assert!(!is_benchmark_file("main.rs"));
     }
 
-    // ========================================================================
     // Tests for is_mock_or_stub_file()
-    // ========================================================================
 
     #[test]
     fn test_is_mock_file() {
@@ -11016,9 +10988,7 @@ mod coverage_tests {
         assert!(!is_mock_or_stub_file("api.py"));
     }
 
-    // ========================================================================
     // Tests for should_analyze_file()
-    // ========================================================================
 
     #[test]
     fn test_should_analyze_rust_source() {
@@ -11053,9 +11023,7 @@ mod coverage_tests {
         ));
     }
 
-    // ========================================================================
     // Property Tests for Coverage Functions
-    // ========================================================================
 
     use proptest::prelude::*;
 
@@ -11094,9 +11062,7 @@ mod coverage_tests {
     }
 }
 
-// ============================================================================
 // Sprint 80+: Extreme TDD Coverage Tests for Analysis Utilities
-// ============================================================================
 
 #[cfg(test)]
 mod extreme_tdd_coverage_tests {
@@ -11104,9 +11070,7 @@ mod extreme_tdd_coverage_tests {
     use std::path::PathBuf;
     use tempfile::TempDir;
 
-    // ========================================================================
     // Tests for identify_primary_factor()
-    // ========================================================================
 
     #[test]
     fn test_identify_primary_factor_high_complexity() {
@@ -11187,9 +11151,7 @@ mod extreme_tdd_coverage_tests {
         assert_eq!(factor, "Frequent Changes");
     }
 
-    // ========================================================================
     // Tests for determine_satd_severity()
-    // ========================================================================
 
     #[test]
     fn test_determine_satd_severity_hack() {
@@ -11221,9 +11183,7 @@ mod extreme_tdd_coverage_tests {
         assert_eq!(determine_satd_severity("UNKNOWN"), "low");
     }
 
-    // ========================================================================
     // Tests for get_coverage_emoji()
-    // ========================================================================
 
     #[test]
     fn test_get_coverage_emoji_positive() {
@@ -11240,9 +11200,7 @@ mod extreme_tdd_coverage_tests {
         assert_eq!(get_coverage_emoji(0.0), "📉");
     }
 
-    // ========================================================================
     // Tests for extract_filename()
-    // ========================================================================
 
     #[test]
     fn test_extract_filename_basic() {
@@ -11268,9 +11226,7 @@ mod extreme_tdd_coverage_tests {
         assert_eq!(extract_filename(path), "unknown");
     }
 
-    // ========================================================================
     // Tests for calculate_files_to_show()
-    // ========================================================================
 
     #[test]
     fn test_calculate_files_to_show_zero_top_files() {
@@ -11345,9 +11301,7 @@ mod extreme_tdd_coverage_tests {
         assert_eq!(calculate_files_to_show(&files, 10), 1);
     }
 
-    // ========================================================================
     // Tests for get_severity_icon()
-    // ========================================================================
 
     #[test]
     fn test_get_severity_icon_error() {
@@ -11369,9 +11323,7 @@ mod extreme_tdd_coverage_tests {
         assert_eq!(get_severity_icon("unknown"), "🟢");
     }
 
-    // ========================================================================
     // Tests for build_complexity_thresholds()
-    // ========================================================================
 
     #[test]
     fn test_build_complexity_thresholds_defaults() {
@@ -11401,9 +11353,7 @@ mod extreme_tdd_coverage_tests {
         assert_eq!(cognitive, 40);
     }
 
-    // ========================================================================
     // Tests for add_top_files_ranking()
-    // ========================================================================
 
     fn make_test_file_metrics(path: &str) -> crate::services::complexity::FileComplexityMetrics {
         crate::services::complexity::FileComplexityMetrics {
@@ -11441,9 +11391,7 @@ mod extreme_tdd_coverage_tests {
         assert_eq!(result.len(), 1);
     }
 
-    // ========================================================================
     // Tests for params_to_json()
-    // ========================================================================
 
     #[test]
     fn test_params_to_json_empty() {
@@ -11473,9 +11421,7 @@ mod extreme_tdd_coverage_tests {
         assert_eq!(result.get("bool").unwrap(), true);
     }
 
-    // ========================================================================
     // Tests for QualityGateResults default
-    // ========================================================================
 
     #[test]
     fn test_quality_gate_results_default_comprehensive() {
@@ -11495,9 +11441,7 @@ mod extreme_tdd_coverage_tests {
         assert!(results.violations.is_empty());
     }
 
-    // ========================================================================
     // Tests for QualityViolation serialization
-    // ========================================================================
 
     #[test]
     fn test_quality_violation_serialization() {
@@ -11531,9 +11475,7 @@ mod extreme_tdd_coverage_tests {
         assert!(json.contains("\"line\":null"));
     }
 
-    // ========================================================================
     // Tests for get_severity_display() and related makefile functions
-    // ========================================================================
 
     #[test]
     fn test_get_severity_display_error() {
@@ -11598,9 +11540,7 @@ mod extreme_tdd_coverage_tests {
         assert_eq!(get_gcc_level(&makefile_linter::Severity::Info), "note");
     }
 
-    // ========================================================================
     // Tests for format_quality_gate_output()
-    // ========================================================================
 
     #[test]
     fn test_format_quality_gate_output_json() {
@@ -11683,9 +11623,7 @@ mod extreme_tdd_coverage_tests {
         assert!(output.contains("10"));
     }
 
-    // ========================================================================
     // Tests for format_incremental_coverage_summary()
-    // ========================================================================
 
     #[test]
     fn test_format_incremental_coverage_summary_basic() {
@@ -11738,9 +11676,7 @@ mod extreme_tdd_coverage_tests {
         assert!(output.contains("Files Changed: 0"));
     }
 
-    // ========================================================================
     // Tests for IncrementalCoverageReport serialization
-    // ========================================================================
 
     #[test]
     fn test_incremental_coverage_report_serialization() {
@@ -11764,9 +11700,7 @@ mod extreme_tdd_coverage_tests {
         assert!(json.contains("\"coverage_threshold\":0.8"));
     }
 
-    // ========================================================================
     // Tests for has_source_extension()
-    // ========================================================================
 
     #[test]
     fn test_has_source_extension_rust() {
@@ -11810,9 +11744,7 @@ mod extreme_tdd_coverage_tests {
         assert!(!has_source_extension(std::path::Path::new("data.json")));
     }
 
-    // ========================================================================
     // Tests for is_excluded_test_path()
-    // ========================================================================
 
     #[test]
     fn test_is_excluded_test_path_tests_dir() {
@@ -11849,9 +11781,7 @@ mod extreme_tdd_coverage_tests {
         )));
     }
 
-    // ========================================================================
     // Async tests for analysis functions
-    // ========================================================================
 
     #[tokio::test]
     async fn test_check_duplicates_empty_dir() {
@@ -11901,9 +11831,7 @@ mod extreme_tdd_coverage_tests {
         assert!(!files.is_empty() || files.is_empty()); // May or may not find depending on discovery
     }
 
-    // ========================================================================
     // Tests for extract_identifiers()
-    // ========================================================================
 
     #[test]
     fn test_extract_identifiers_rust() {
@@ -11961,9 +11889,7 @@ mod extreme_tdd_coverage_tests {
         assert!(identifiers.is_empty());
     }
 
-    // ========================================================================
     // Tests for string similarity functions
-    // ========================================================================
 
     #[test]
     fn test_calculate_string_similarity_identical() {
@@ -12012,9 +11938,7 @@ mod extreme_tdd_coverage_tests {
         assert_eq!(calculate_edit_distance("", ""), 0);
     }
 
-    // ========================================================================
     // Tests for soundex
-    // ========================================================================
 
     #[test]
     fn test_calculate_soundex_basic() {
@@ -12041,9 +11965,7 @@ mod extreme_tdd_coverage_tests {
         assert_eq!(calculate_soundex("123"), "");
     }
 
-    // ========================================================================
     // Property tests for coverage functions
-    // ========================================================================
 
     use proptest::prelude::*;
 

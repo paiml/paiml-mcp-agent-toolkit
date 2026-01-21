@@ -1086,9 +1086,7 @@ mod tests {
         let _trait_obj: &dyn Scorer = &scorer;
     }
 
-    // ============================================================================
     // v2.0 Workspace Lints Tests (RED phase - following EXTREME TDD)
-    // ============================================================================
 
     #[test]
     fn test_workspace_lints_no_cargo_toml() {
@@ -1293,11 +1291,9 @@ bool_assert_comparison = "allow"
         );
     }
 
-    // =====================================================================
     // CI/CD Integration Tests (v2.0 Phase 2)
     // Based on "Learn from Rust Giants" specification
     // Academic Foundation: Hilton 2016 ASE, Memon 2017 ICSE-SEIP
-    // =====================================================================
 
     #[test]
     fn test_ci_cd_full_score() {
@@ -1651,11 +1647,9 @@ jobs:
         );
     }
 
-    // =====================================================================
     // Advanced Metadata Tests (v2.0 Phase 3)
     // Based on "Learn from Rust Giants" specification
     // Academic Foundation: Aghajani 2019 ICSE, FSE 2022
-    // =====================================================================
 
     // docs.rs Metadata Tests (10pts total)
 
@@ -2208,9 +2202,7 @@ mod coverage_tests {
         fs::write(&cargo_toml, content).expect("Failed to write Cargo.toml");
     }
 
-    // =========================================================================
     // Default and Trait Implementation Tests
-    // =========================================================================
 
     #[test]
     fn test_rust_tooling_scorer_default() {
@@ -2226,9 +2218,7 @@ mod coverage_tests {
         assert_eq!(scorer.max_points, 130.0);
     }
 
-    // =========================================================================
     // VulnerabilityCount Tests
-    // =========================================================================
 
     #[test]
     fn test_vulnerability_count_default() {
@@ -2239,9 +2229,7 @@ mod coverage_tests {
         assert_eq!(counts.low, 0);
     }
 
-    // =========================================================================
     // parse_audit_json Tests
-    // =========================================================================
 
     #[test]
     fn test_parse_audit_json_empty_string() {
@@ -2371,9 +2359,7 @@ mod coverage_tests {
         assert_eq!(counts.critical, 0);
     }
 
-    // =========================================================================
     // score_cargo_deny Tests
-    // =========================================================================
 
     #[test]
     fn test_score_cargo_deny_with_deny_toml() {
@@ -2398,9 +2384,7 @@ mod coverage_tests {
         assert_eq!(score, 0.0, "Should get 0pts without deny.toml");
     }
 
-    // =========================================================================
     // score_clippy Tests (Limited - requires cargo)
-    // =========================================================================
 
     #[test]
     fn test_score_clippy_no_cargo_toml() {
@@ -2417,9 +2401,7 @@ mod coverage_tests {
         }
     }
 
-    // =========================================================================
     // score_workspace_lints Tests - Additional Coverage
-    // =========================================================================
 
     #[test]
     fn test_workspace_lints_from_cache() {
@@ -2508,9 +2490,7 @@ unsafe_op_in_unsafe_fn = "warn"
         );
     }
 
-    // =========================================================================
     // score_ci_cd_integration Tests - Additional Coverage
-    // =========================================================================
 
     #[test]
     fn test_ci_cd_stress_loom_workflows() {
@@ -2743,9 +2723,7 @@ jobs:
         assert_eq!(score, 6.0, "Should detect platform variants");
     }
 
-    // =========================================================================
     // score_docs_rs_metadata Tests - Additional Coverage
-    // =========================================================================
 
     #[test]
     fn test_docs_rs_metadata_no_cargo_toml() {
@@ -2779,9 +2757,7 @@ all-features = true
         assert_eq!(score, 8.0, "Should work with cache (5 + 3)");
     }
 
-    // =========================================================================
     // score_workspace_organization Tests - Additional Coverage
-    // =========================================================================
 
     #[test]
     fn test_workspace_organization_no_cargo_toml() {
@@ -2834,9 +2810,7 @@ members = ["crate-a"]
         assert_eq!(score, 6.0, "Should work with cache");
     }
 
-    // =========================================================================
     // score_release_automation Tests - Additional Coverage
-    // =========================================================================
 
     #[test]
     fn test_release_automation_no_cargo_toml() {
@@ -2887,9 +2861,7 @@ tag-name = "v{{version}}"
         assert_eq!(score, 5.0, "Should work with cache");
     }
 
-    // =========================================================================
     // score_msrv_tracking Tests - Additional Coverage
-    // =========================================================================
 
     #[test]
     fn test_msrv_tracking_no_cargo_toml() {
@@ -2949,9 +2921,7 @@ rust-version = "1.74.0"
         assert_eq!(score, 5.0, "Should work with cache");
     }
 
-    // =========================================================================
     // score_release_profiles Tests - Additional Coverage
-    // =========================================================================
 
     #[test]
     fn test_release_profiles_no_cargo_toml() {
@@ -3046,9 +3016,7 @@ lto = true
         assert_eq!(score, 4.0, "Should work with cache");
     }
 
-    // =========================================================================
     // score_internal Tests
-    // =========================================================================
 
     #[test]
     fn test_score_internal_no_cargo_toml() {
@@ -3097,9 +3065,7 @@ lto = true
         assert!(result.earned > 0.0);
     }
 
-    // =========================================================================
     // Scorer Trait Tests
-    // =========================================================================
 
     #[test]
     fn test_scorer_score_method() {
@@ -3145,9 +3111,7 @@ lto = true
         assert!(result.earned >= 0.0);
     }
 
-    // =========================================================================
     // recommendations Tests
-    // =========================================================================
 
     #[test]
     fn test_recommendations_basic() {

@@ -12,9 +12,7 @@ use tempfile::TempDir;
 mod coverage_tests {
     use super::*;
 
-    // ============================================================================
     // ComplexityConfig Tests
-    // ============================================================================
 
     #[test]
     fn test_complexity_config_from_args_with_defaults() {
@@ -81,9 +79,7 @@ mod coverage_tests {
         assert_eq!(cloned.top_files, original.top_files);
     }
 
-    // ============================================================================
     // apply_complexity_filters Tests
-    // ============================================================================
 
     #[test]
     fn test_apply_complexity_filters_no_filters() {
@@ -151,9 +147,7 @@ mod coverage_tests {
         assert!(metrics.is_empty());
     }
 
-    // ============================================================================
     // apply_top_files_limit Tests
-    // ============================================================================
 
     #[test]
     fn test_apply_top_files_limit_zero_no_limit() {
@@ -207,9 +201,7 @@ mod coverage_tests {
         assert!(metrics.is_empty());
     }
 
-    // ============================================================================
     // File Analysis Path Tests
-    // ============================================================================
 
     #[test]
     fn test_is_source_code_file_rust() {
@@ -272,9 +264,7 @@ mod coverage_tests {
         assert!(!should_include_file("examples/demo.rs", &patterns));
     }
 
-    // ============================================================================
     // has_complexity_violations Tests
-    // ============================================================================
 
     #[test]
     fn test_has_complexity_violations_no_violations() {
@@ -313,9 +303,7 @@ mod coverage_tests {
         assert!(has_violations);
     }
 
-    // ============================================================================
     // Dead Code Formatting Tests
-    // ============================================================================
 
     #[test]
     fn test_format_dead_code_summary_section() {
@@ -363,9 +351,7 @@ mod coverage_tests {
         assert!(section.contains("Remove Carefully"));
     }
 
-    // ============================================================================
     // SATD Formatting Tests
-    // ============================================================================
 
     #[test]
     fn test_format_satd_summary_basic() {
@@ -397,9 +383,7 @@ mod coverage_tests {
         assert!(summary.contains("FIXME**: 2"));
     }
 
-    // ============================================================================
     // SyncAnalysisConfig Tests
-    // ============================================================================
 
     #[test]
     fn test_sync_analysis_config_creation() {
@@ -452,9 +436,7 @@ mod coverage_tests {
         assert_eq!(cloned.top_files, config.top_files);
     }
 
-    // ============================================================================
     // DeadCodeAnalysisFilters Tests
-    // ============================================================================
 
     #[test]
     fn test_dead_code_analysis_filters_defaults() {
@@ -498,9 +480,7 @@ mod coverage_tests {
         assert_eq!(filters.max_depth, 5);
     }
 
-    // ============================================================================
     // get_changed_paths Tests
-    // ============================================================================
 
     #[test]
     fn test_get_changed_paths_empty() {
@@ -526,9 +506,7 @@ mod coverage_tests {
         assert_eq!(paths.unwrap().len(), 1);
     }
 
-    // ============================================================================
     // should_reanalyze Tests
-    // ============================================================================
 
     #[test]
     fn test_should_reanalyze_create_event() {
@@ -587,9 +565,7 @@ mod coverage_tests {
         assert!(!should_reanalyze(&event, &[]));
     }
 
-    // ============================================================================
     // Helper Functions for Tests
-    // ============================================================================
 
     fn create_test_file_metrics(
         path: &str,
@@ -774,9 +750,7 @@ mod property_tests {
     }
 }
 
-// ============================================================================
 // Extended Coverage Tests - Dead Code Formatting
-// ============================================================================
 
 #[cfg(test)]
 mod dead_code_format_tests {
@@ -1086,9 +1060,7 @@ mod dead_code_format_tests {
     }
 }
 
-// ============================================================================
 // Extended Coverage Tests - SATD Formatting and Filtering
-// ============================================================================
 
 #[cfg(test)]
 mod satd_format_tests {
@@ -1341,9 +1313,7 @@ mod satd_format_tests {
     }
 }
 
-// ============================================================================
 // Extended Coverage Tests - Churn Analysis
-// ============================================================================
 
 #[cfg(test)]
 mod churn_tests {
@@ -1395,9 +1365,7 @@ mod churn_tests {
     }
 }
 
-// ============================================================================
 // Extended Coverage Tests - Watch Mode Helpers
-// ============================================================================
 
 #[cfg(test)]
 mod watch_mode_tests {
@@ -1459,9 +1427,7 @@ mod watch_mode_tests {
     }
 }
 
-// ============================================================================
 // Extended Coverage Tests - Dead Code Conversion Helpers
-// ============================================================================
 
 #[cfg(test)]
 mod dead_code_conversion_tests {
@@ -1719,9 +1685,7 @@ mod dead_code_conversion_tests {
     }
 }
 
-// ============================================================================
 // Extended Coverage Tests - Complexity Config Additional
-// ============================================================================
 
 #[cfg(test)]
 mod complexity_config_additional_tests {
@@ -1769,9 +1733,7 @@ mod complexity_config_additional_tests {
     }
 }
 
-// ============================================================================
 // Extended Coverage Tests - Edge Cases
-// ============================================================================
 
 #[cfg(test)]
 mod edge_case_tests {
@@ -1921,9 +1883,7 @@ mod edge_case_tests {
     }
 }
 
-// ============================================================================
 // Extended Property Tests
-// ============================================================================
 
 #[cfg(test)]
 mod extended_property_tests {

@@ -546,9 +546,7 @@ impl DapServer {
         serde_json::to_value(&response).expect("DapResponse should be serializable")
     }
 
-    // ========================================================================
     // TRACE-004: DAP-PMAT Integration Methods
-    // ========================================================================
 
     /// Get the current detected language
     pub fn current_language(&self) -> Option<Language> {
@@ -692,9 +690,7 @@ impl DapServer {
         Ok(())
     }
 
-    // ========================================================================
     // Sprint 76 - CAPTURE-002: Recording Capture Methods
-    // ========================================================================
 
     /// Generate a unique recording file path with timestamp
     ///
@@ -799,9 +795,7 @@ impl DapServer {
         }
     }
 
-    // ========================================================================
     // Sprint 74 - DEBUG-002: DAP Server CLI Handler
-    // ========================================================================
 
     /// Run the DAP server on the specified port
     ///
@@ -875,9 +869,7 @@ mod coverage_tests {
     use std::io::Write;
     use tempfile::{tempdir, NamedTempFile};
 
-    // ========================================================================
     // Server Creation Tests
-    // ========================================================================
 
     #[test]
     fn test_server_new_creates_uninitialized_server() {
@@ -908,9 +900,7 @@ mod coverage_tests {
         assert_eq!(server1.is_initialized(), server2.is_initialized());
     }
 
-    // ========================================================================
     // Server State Tests
-    // ========================================================================
 
     #[test]
     fn test_is_initialized_false_initially() {
@@ -960,9 +950,7 @@ mod coverage_tests {
         assert!(server.current_stopped_line().is_none());
     }
 
-    // ========================================================================
     // Handle Request - Invalid Request Tests
-    // ========================================================================
 
     #[test]
     fn test_handle_request_invalid_json() {
@@ -988,9 +976,7 @@ mod coverage_tests {
         assert_eq!(response["success"], false);
     }
 
-    // ========================================================================
     // Initialize Command Tests
-    // ========================================================================
 
     #[test]
     fn test_handle_initialize() {
@@ -1031,9 +1017,7 @@ mod coverage_tests {
         assert!(body.contains_key("supportsTerminateRequest"));
     }
 
-    // ========================================================================
     // Launch Command Tests
-    // ========================================================================
 
     #[test]
     fn test_handle_launch_success() {
@@ -1125,9 +1109,7 @@ mod coverage_tests {
         assert_eq!(response["success"], true);
     }
 
-    // ========================================================================
     // Configuration Done Command Tests
-    // ========================================================================
 
     #[test]
     fn test_handle_configuration_done() {
@@ -1146,9 +1128,7 @@ mod coverage_tests {
         assert_eq!(response["command"], "configurationDone");
     }
 
-    // ========================================================================
     // Disconnect Command Tests
-    // ========================================================================
 
     #[test]
     fn test_handle_disconnect() {
@@ -1220,9 +1200,7 @@ mod coverage_tests {
         assert_eq!(response["success"], true);
     }
 
-    // ========================================================================
     // Terminate Command Tests
-    // ========================================================================
 
     #[test]
     fn test_handle_terminate() {
@@ -1294,9 +1272,7 @@ mod coverage_tests {
         assert_eq!(response["success"], true);
     }
 
-    // ========================================================================
     // SetBreakpoints Command Tests
-    // ========================================================================
 
     #[test]
     fn test_handle_set_breakpoints_success() {
@@ -1389,9 +1365,7 @@ mod coverage_tests {
             .contains("Invalid setBreakpoints arguments"));
     }
 
-    // ========================================================================
     // Threads Command Tests
-    // ========================================================================
 
     #[test]
     fn test_handle_threads() {
@@ -1415,9 +1389,7 @@ mod coverage_tests {
         assert_eq!(threads[0]["name"], "main");
     }
 
-    // ========================================================================
     // StackTrace Command Tests
-    // ========================================================================
 
     #[test]
     fn test_handle_stack_trace() {
@@ -1439,9 +1411,7 @@ mod coverage_tests {
         assert_eq!(response["body"]["totalFrames"], 0);
     }
 
-    // ========================================================================
     // Scopes Command Tests
-    // ========================================================================
 
     #[test]
     fn test_handle_scopes_no_stopped_location() {
@@ -1496,9 +1466,7 @@ mod coverage_tests {
         assert_eq!(scopes[0]["variablesReference"], 1);
     }
 
-    // ========================================================================
     // Variables Command Tests
-    // ========================================================================
 
     #[test]
     fn test_handle_variables_no_stopped_location() {
@@ -1555,9 +1523,7 @@ mod coverage_tests {
         // Variables should include "x"
     }
 
-    // ========================================================================
     // Continue Command Tests
-    // ========================================================================
 
     #[test]
     fn test_handle_continue() {
@@ -1579,9 +1545,7 @@ mod coverage_tests {
         assert_eq!(response["body"]["allThreadsContinued"], true);
     }
 
-    // ========================================================================
     // Step Commands Tests
-    // ========================================================================
 
     #[test]
     fn test_handle_next() {
@@ -1640,9 +1604,7 @@ mod coverage_tests {
         assert_eq!(response["command"], "stepOut");
     }
 
-    // ========================================================================
     // Pause Command Tests
-    // ========================================================================
 
     #[test]
     fn test_handle_pause() {
@@ -1663,9 +1625,7 @@ mod coverage_tests {
         assert_eq!(response["command"], "pause");
     }
 
-    // ========================================================================
     // Unknown Command Tests
-    // ========================================================================
 
     #[test]
     fn test_handle_unknown_command() {
@@ -1685,9 +1645,7 @@ mod coverage_tests {
         assert_eq!(response["message"], "Command not supported");
     }
 
-    // ========================================================================
     // Language Detection Tests
-    // ========================================================================
 
     #[test]
     fn test_detect_language_rust() {
@@ -1887,9 +1845,7 @@ mod coverage_tests {
         assert!(server.current_language().is_none());
     }
 
-    // ========================================================================
     // AST Caching Tests
-    // ========================================================================
 
     #[test]
     fn test_ast_caching_for_rust_file() {
@@ -2008,9 +1964,7 @@ mod coverage_tests {
         assert!(server.has_ast_for(&file_path));
     }
 
-    // ========================================================================
     // Simulate Stop Tests
-    // ========================================================================
 
     #[test]
     fn test_simulate_stop_at_line() {
@@ -2044,9 +1998,7 @@ mod coverage_tests {
         assert_eq!(server.current_stopped_line(), Some(20));
     }
 
-    // ========================================================================
     // Get Variables At Line Tests
-    // ========================================================================
 
     #[test]
     fn test_get_variables_at_line_rust() {
@@ -2154,9 +2106,7 @@ mod coverage_tests {
         assert!(result.unwrap_err().contains("Failed to read file"));
     }
 
-    // ========================================================================
     // Recording Path Generation Tests
-    // ========================================================================
 
     #[test]
     fn test_generate_recording_path_without_dir() {
@@ -2180,9 +2130,7 @@ mod coverage_tests {
         assert!(path.to_string_lossy().ends_with(".pmat"));
     }
 
-    // ========================================================================
     // Step Commands with Recording Tests
-    // ========================================================================
 
     #[test]
     fn test_step_commands_capture_snapshot() {
@@ -2244,9 +2192,7 @@ mod coverage_tests {
         assert_eq!(response["success"], true);
     }
 
-    // ========================================================================
     // Sequence Number Tests
-    // ========================================================================
 
     #[test]
     fn test_sequence_number_increments() {
@@ -2285,9 +2231,7 @@ mod coverage_tests {
         assert!(response2["seq"].as_i64().unwrap() > response1["seq"].as_i64().unwrap());
     }
 
-    // ========================================================================
     // Default Capabilities Tests
-    // ========================================================================
 
     #[test]
     fn test_default_capabilities() {
@@ -2315,9 +2259,7 @@ mod coverage_tests {
         assert_eq!(body["supportsRestartRequest"], false);
     }
 
-    // ========================================================================
     // Full Session Lifecycle Tests
-    // ========================================================================
 
     #[test]
     fn test_full_debug_session_lifecycle() {
@@ -2453,9 +2395,7 @@ mod coverage_tests {
         assert_eq!(response["success"], true);
     }
 
-    // ========================================================================
     // Edge Cases Tests
-    // ========================================================================
 
     #[test]
     fn test_multiple_initialize_calls() {

@@ -729,9 +729,7 @@ mod coverage_tests {
     use std::fs;
     use tempfile::TempDir;
 
-    // ==========================================================================
     // Helper functions for test data creation
-    // ==========================================================================
 
     fn create_function_item(name: &str, is_async: bool, line: usize) -> AstItem {
         AstItem::Function {
@@ -801,9 +799,7 @@ mod coverage_tests {
         }
     }
 
-    // ==========================================================================
     // BaseLanguageMapper Tests
-    // ==========================================================================
 
     #[test]
     fn test_base_language_mapper_new() {
@@ -966,9 +962,7 @@ mod coverage_tests {
         assert_eq!(node.language, Language::Python);
     }
 
-    // ==========================================================================
     // LanguageMapperFactory Tests (in language_mapper.rs)
-    // ==========================================================================
 
     #[test]
     fn test_factory_create_all_languages() {
@@ -1054,9 +1048,7 @@ mod coverage_tests {
         assert!(result.is_err());
     }
 
-    // ==========================================================================
     // JavaMapper Tests
-    // ==========================================================================
 
     #[test]
     fn test_java_mapper_new() {
@@ -1169,9 +1161,7 @@ mod coverage_tests {
         assert!(result.is_ok());
     }
 
-    // ==========================================================================
     // KotlinMapper Tests
-    // ==========================================================================
 
     #[test]
     fn test_kotlin_mapper_new() {
@@ -1302,9 +1292,7 @@ mod coverage_tests {
         assert!(result.is_ok());
     }
 
-    // ==========================================================================
     // ScalaMapper Tests
-    // ==========================================================================
 
     #[test]
     fn test_scala_mapper_new() {
@@ -1419,9 +1407,7 @@ mod coverage_tests {
         assert!(result.is_ok());
     }
 
-    // ==========================================================================
     // TypeScriptMapper Tests
-    // ==========================================================================
 
     #[test]
     fn test_typescript_mapper_new() {
@@ -1533,9 +1519,7 @@ mod coverage_tests {
         assert!(result.is_ok());
     }
 
-    // ==========================================================================
     // JavaScriptMapper Tests
-    // ==========================================================================
 
     #[test]
     fn test_javascript_mapper_new() {
@@ -1646,9 +1630,7 @@ mod coverage_tests {
         assert!(result.is_ok());
     }
 
-    // ==========================================================================
     // CSharpMapper Tests
-    // ==========================================================================
 
     #[test]
     fn test_csharp_mapper_new() {
@@ -1711,9 +1693,7 @@ mod coverage_tests {
         assert!(result.is_ok());
     }
 
-    // ==========================================================================
     // RubyMapper Tests
-    // ==========================================================================
 
     #[test]
     fn test_ruby_mapper_new() {
@@ -1776,9 +1756,7 @@ mod coverage_tests {
         assert!(result.is_ok());
     }
 
-    // ==========================================================================
     // Cross-Mapper Integration Tests
-    // ==========================================================================
 
     #[test]
     fn test_all_mappers_implement_clone_box() {
@@ -1855,9 +1833,7 @@ mod coverage_tests {
         assert!(kotlin_result.is_ok() || kotlin_result.is_err());
     }
 
-    // ==========================================================================
     // Edge Cases and Error Handling Tests
-    // ==========================================================================
 
     #[test]
     fn test_convert_ast_items_with_all_item_types() {

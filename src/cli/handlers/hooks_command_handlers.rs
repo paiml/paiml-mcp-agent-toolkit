@@ -982,9 +982,7 @@ async fn handle_run(
     }
 }
 
-// =============================================================================
 // O(1) CACHE MANAGEMENT (PMAT-453)
-// =============================================================================
 
 /// Handle hooks cache subcommand
 async fn handle_cache(action: &HooksCacheAction) -> Result<()> {
@@ -1186,9 +1184,7 @@ async fn handle_cache_metrics(manager: &HooksCacheManager, format: &OutputFormat
     Ok(())
 }
 
-// =============================================================================
 // TDG ENFORCEMENT HOOKS (Sprint 66 Phase 3)
-// =============================================================================
 
 /// Wrapper function for TDG hooks installation
 async fn install_tdg_hooks_wrapper() -> Result<()> {
@@ -1441,9 +1437,7 @@ mod coverage_tests {
     use std::fs;
     use tempfile::TempDir;
 
-    // =========================================================================
     // HooksCommand struct tests
-    // =========================================================================
 
     #[test]
     fn test_hooks_command_new() {
@@ -1462,9 +1456,7 @@ mod coverage_tests {
         let _ = result;
     }
 
-    // =========================================================================
     // Result struct tests
-    // =========================================================================
 
     #[test]
     fn test_hook_install_result_equality() {
@@ -1648,9 +1640,7 @@ mod coverage_tests {
         assert!(debug_str.contains("checks_failed"));
     }
 
-    // =========================================================================
     // Install tests with temp directory
-    // =========================================================================
 
     #[tokio::test]
     async fn test_install_creates_hooks_directory() {
@@ -1740,9 +1730,7 @@ mod coverage_tests {
         assert!(!result.backup_created); // Backup already existed
     }
 
-    // =========================================================================
     // Uninstall tests
-    // =========================================================================
 
     #[tokio::test]
     async fn test_uninstall_no_hook() {
@@ -1815,9 +1803,7 @@ mod coverage_tests {
         assert!(content.contains("original hook"));
     }
 
-    // =========================================================================
     // Status tests
-    // =========================================================================
 
     #[tokio::test]
     async fn test_status_no_hook() {
@@ -1873,9 +1859,7 @@ mod coverage_tests {
         assert!(!status.config_up_to_date);
     }
 
-    // =========================================================================
     // Verify tests
-    // =========================================================================
 
     #[tokio::test]
     async fn test_verify_no_hook() {
@@ -1944,9 +1928,7 @@ mod coverage_tests {
         assert!(result.fixes_applied.iter().any(|f| f.contains("Updated")));
     }
 
-    // =========================================================================
     // Refresh tests
-    // =========================================================================
 
     #[tokio::test]
     async fn test_refresh_no_hook() {
@@ -1999,9 +1981,7 @@ mod coverage_tests {
         assert!(result.config_changes_detected);
     }
 
-    // =========================================================================
     // Run tests
-    // =========================================================================
 
     #[tokio::test]
     async fn test_run_no_hook() {
@@ -2065,9 +2045,7 @@ mod coverage_tests {
         assert!(result.success);
     }
 
-    // =========================================================================
     // Helper function tests
-    // =========================================================================
 
     #[test]
     fn test_is_pmat_managed_nonexistent() {
@@ -2203,9 +2181,7 @@ mod coverage_tests {
         assert!(updated.contains("min_coverage = 90"));
     }
 
-    // =========================================================================
     // TDG hooks tests
-    // =========================================================================
 
     #[tokio::test]
     async fn test_install_tdg_hooks_no_git() {
@@ -2270,9 +2246,7 @@ mod coverage_tests {
         assert!(content.contains(".pmat/baseline.json")); // Default baseline path
     }
 
-    // =========================================================================
     // Handle function tests
-    // =========================================================================
 
     #[test]
     fn test_print_installed_status() {
@@ -2344,9 +2318,7 @@ mod coverage_tests {
         print_verification_fixes(&result);
     }
 
-    // =========================================================================
     // Handle command integration tests
-    // =========================================================================
 
     #[tokio::test]
     async fn test_handle_hooks_command_init() {
@@ -2398,9 +2370,7 @@ mod coverage_tests {
         let _ = handle_hooks_command(&cmd).await;
     }
 
-    // =========================================================================
     // Normalize content tests
-    // =========================================================================
 
     #[test]
     fn test_normalize_hook_content_empty() {
@@ -2424,9 +2394,7 @@ mod coverage_tests {
         assert!(normalized.contains("echo test"));
     }
 
-    // =========================================================================
     // Detect project type tests
-    // =========================================================================
 
     #[test]
     fn test_detect_project_type_unknown() {
@@ -2546,9 +2514,7 @@ mod coverage_tests {
         assert_eq!(project_type, "Go");
     }
 
-    // =========================================================================
     // Edge case tests
-    // =========================================================================
 
     #[tokio::test]
     async fn test_install_existing_pmat_hook_no_force() {

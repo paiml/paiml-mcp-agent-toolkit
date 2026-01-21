@@ -1690,9 +1690,7 @@ mod coverage_tests {
     use std::path::PathBuf;
     use std::time::Duration;
 
-    // ============================================================================
     // Test Data Builders
-    // ============================================================================
 
     fn create_test_violation(
         file: &str,
@@ -1808,9 +1806,7 @@ mod coverage_tests {
         }
     }
 
-    // ============================================================================
     // LintHotspotParams Tests
-    // ============================================================================
 
     #[test]
     fn test_lint_hotspot_params_creation() {
@@ -1866,9 +1862,7 @@ mod coverage_tests {
         assert!(!params.exclude.is_empty());
     }
 
-    // ============================================================================
     // ViolationDetail Tests
-    // ============================================================================
 
     #[test]
     fn test_violation_detail_clone() {
@@ -1909,9 +1903,7 @@ mod coverage_tests {
         assert!(json.contains("warning"));
     }
 
-    // ============================================================================
     // SeverityDistribution Tests
-    // ============================================================================
 
     #[test]
     fn test_severity_distribution_default() {
@@ -1956,9 +1948,7 @@ mod coverage_tests {
         assert_eq!(deserialized.note, dist.note);
     }
 
-    // ============================================================================
     // FileSummary Tests
-    // ============================================================================
 
     #[test]
     fn test_file_summary_creation() {
@@ -1995,9 +1985,7 @@ mod coverage_tests {
         assert_eq!(deserialized.warnings, summary.warnings);
     }
 
-    // ============================================================================
     // LintHotspot Tests
-    // ============================================================================
 
     #[test]
     fn test_lint_hotspot_creation() {
@@ -2031,9 +2019,7 @@ mod coverage_tests {
         assert_eq!(deserialized.sloc, hotspot.sloc);
     }
 
-    // ============================================================================
     // EnforcementMetadata Tests
-    // ============================================================================
 
     #[test]
     fn test_enforcement_metadata_creation() {
@@ -2072,9 +2058,7 @@ mod coverage_tests {
         );
     }
 
-    // ============================================================================
     // RefactorChain and RefactorStep Tests
-    // ============================================================================
 
     #[test]
     fn test_refactor_step_creation() {
@@ -2136,9 +2120,7 @@ mod coverage_tests {
         assert_eq!(deserialized.estimated_reduction, chain.estimated_reduction);
     }
 
-    // ============================================================================
     // QualityGateStatus and QualityViolation Tests
-    // ============================================================================
 
     #[test]
     fn test_quality_gate_status_passed() {
@@ -2188,9 +2170,7 @@ mod coverage_tests {
         assert!((deserialized.actual - violation.actual).abs() < f64::EPSILON);
     }
 
-    // ============================================================================
     // check_quality_gates Tests
-    // ============================================================================
 
     #[test]
     fn test_check_quality_gates_passes_below_threshold() {
@@ -2233,9 +2213,7 @@ mod coverage_tests {
         assert_eq!(warning.unwrap().severity, "warning");
     }
 
-    // ============================================================================
     // calculate_enforcement_metadata Tests
-    // ============================================================================
 
     #[test]
     fn test_calculate_enforcement_metadata_low_density() {
@@ -2282,9 +2260,7 @@ mod coverage_tests {
         assert!((metadata.automation_confidence - 0.7).abs() < f64::EPSILON); // Default confidence
     }
 
-    // ============================================================================
     // generate_refactor_chain Tests
-    // ============================================================================
 
     #[test]
     fn test_generate_refactor_chain_with_unused_lints() {
@@ -2341,9 +2317,7 @@ mod coverage_tests {
         assert_eq!(chain.estimated_reduction, 8); // 5 + 3
     }
 
-    // ============================================================================
     // count_top_lints Tests
-    // ============================================================================
 
     #[test]
     fn test_count_top_lints_empty() {
@@ -2403,9 +2377,7 @@ mod coverage_tests {
         assert_eq!(top_lints.len(), 10);
     }
 
-    // ============================================================================
     // update_severity_distribution Tests
-    // ============================================================================
 
     #[test]
     fn test_update_severity_distribution_error() {
@@ -2452,9 +2424,7 @@ mod coverage_tests {
         assert_eq!(dist.note, 1);
     }
 
-    // ============================================================================
     // count_sloc Tests
-    // ============================================================================
 
     #[test]
     fn test_count_sloc_empty() {
@@ -2497,9 +2467,7 @@ let y = 10;"#;
         assert_eq!(count_sloc(content), 2);
     }
 
-    // ============================================================================
     // calculate_defect_density Tests
-    // ============================================================================
 
     #[test]
     fn test_calculate_defect_density_normal() {
@@ -2518,9 +2486,7 @@ let y = 10;"#;
         assert!((calculate_defect_density(200, 100) - 2.0).abs() < f64::EPSILON);
     }
 
-    // ============================================================================
     // calculate_total_violations Tests
-    // ============================================================================
 
     #[test]
     fn test_calculate_total_violations() {
@@ -2553,9 +2519,7 @@ let y = 10;"#;
         assert_eq!(total, 0);
     }
 
-    // ============================================================================
     // resolve_absolute_path Tests
-    // ============================================================================
 
     #[test]
     fn test_resolve_absolute_path_already_absolute() {
@@ -2575,9 +2539,7 @@ let y = 10;"#;
         assert_eq!(resolved, PathBuf::from("/project/src/main.rs"));
     }
 
-    // ============================================================================
     // is_target_file Tests
-    // ============================================================================
 
     #[test]
     fn test_is_target_file_exact_match() {
@@ -2619,9 +2581,7 @@ let y = 10;"#;
         assert!(!is_target_file("src/lib.rs", &abs_path, &file_path));
     }
 
-    // ============================================================================
     // is_machine_applicable Tests
-    // ============================================================================
 
     #[test]
     fn test_is_machine_applicable_true() {
@@ -2691,9 +2651,7 @@ let y = 10;"#;
         assert!(!is_machine_applicable(&span));
     }
 
-    // ============================================================================
     // extract_lint_name Tests
-    // ============================================================================
 
     #[test]
     fn test_extract_lint_name_with_code() {
@@ -2723,9 +2681,7 @@ let y = 10;"#;
         assert_eq!(lint_name, "");
     }
 
-    // ============================================================================
     // find_primary_span Tests
-    // ============================================================================
 
     #[test]
     fn test_find_primary_span_with_primary() {
@@ -2801,9 +2757,7 @@ let y = 10;"#;
         assert!(span.is_none());
     }
 
-    // ============================================================================
     // format_output Tests
-    // ============================================================================
 
     #[test]
     fn test_format_output_summary() {
@@ -2892,9 +2846,7 @@ let y = 10;"#;
         assert!(parsed.get("runs").is_some());
     }
 
-    // ============================================================================
     // format_summary Tests
-    // ============================================================================
 
     #[test]
     fn test_format_summary_with_perf() {
@@ -2963,9 +2915,7 @@ let y = 10;"#;
         assert!(file_count > 0, "Should have file entries");
     }
 
-    // ============================================================================
     // format_detailed Tests
-    // ============================================================================
 
     #[test]
     fn test_format_detailed_with_violations() {
@@ -3015,9 +2965,7 @@ let y = 10;"#;
         assert!(output.contains("Remove unused code"));
     }
 
-    // ============================================================================
     // format_json Tests
-    // ============================================================================
 
     #[test]
     fn test_format_json_simple() {
@@ -3047,9 +2995,7 @@ let y = 10;"#;
         assert!(parsed.get("total_project_violations").is_some());
     }
 
-    // ============================================================================
     // format_sarif Tests
-    // ============================================================================
 
     #[test]
     fn test_format_sarif_structure() {
@@ -3110,9 +3056,7 @@ let y = 10;"#;
         assert_eq!(results[1]["ruleId"], "max_single_file_violations");
     }
 
-    // ============================================================================
     // LintHotspotResult Tests
-    // ============================================================================
 
     #[test]
     fn test_lint_hotspot_result_serialization() {
@@ -3155,9 +3099,7 @@ let y = 10;"#;
         assert!(deserialized.refactor_chain.is_some());
     }
 
-    // ============================================================================
     // recalculate_hotspot_metrics Tests
-    // ============================================================================
 
     #[test]
     fn test_recalculate_hotspot_metrics() {
@@ -3188,9 +3130,7 @@ let y = 10;"#;
         // defect_density should not change when sloc is 0
     }
 
-    // ============================================================================
     // should_exit_with_error Tests (comprehensive)
-    // ============================================================================
 
     #[test]
     fn test_should_exit_with_error_comprehensive() {
@@ -3222,9 +3162,7 @@ let y = 10;"#;
         assert!(should_exit_with_error(&result, &params));
     }
 
-    // ============================================================================
     // log_analysis_start Tests
-    // ============================================================================
 
     #[test]
     fn test_log_analysis_start_non_json() {
@@ -3240,9 +3178,7 @@ let y = 10;"#;
         log_analysis_start(&LintHotspotOutputFormat::Json);
     }
 
-    // ============================================================================
     // log_single_file_mode Tests
-    // ============================================================================
 
     #[test]
     fn test_log_single_file_mode_non_json() {
@@ -3257,9 +3193,7 @@ let y = 10;"#;
         log_single_file_mode(&file_path, &LintHotspotOutputFormat::Json);
     }
 
-    // ============================================================================
     // generate_enforcement_metadata_if_needed Tests
-    // ============================================================================
 
     #[test]
     fn test_generate_enforcement_metadata_when_requested() {
@@ -3333,9 +3267,7 @@ let y = 10;"#;
         assert!(metadata.is_none());
     }
 
-    // ============================================================================
     // generate_refactor_chain_if_needed Tests
-    // ============================================================================
 
     #[test]
     fn test_generate_refactor_chain_when_enforce() {
@@ -3417,9 +3349,7 @@ let y = 10;"#;
         assert!(chain.is_none());
     }
 
-    // ============================================================================
     // Property-based Tests
-    // ============================================================================
 
     mod property_tests {
         use super::*;

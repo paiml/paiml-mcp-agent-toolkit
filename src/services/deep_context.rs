@@ -2366,10 +2366,8 @@ impl DeepContextAnalyzer {
         Ok(deep_context)
     }
 
-    // ============================================================================
     // EXTRACTED METHODS - Toyota Way Extract Method Pattern
     // Each method has single responsibility and <10 complexity
-    // ============================================================================
 
     async fn execute_discovery_phase(
         &self,
@@ -5811,10 +5809,8 @@ mod tests {
         assert!(result.is_err());
     }
 
-    // ============================================================================
     // TDD TESTS FOR analyze_project REFACTORING - Sprint 47 Phase 3
     // Toyota Way: Test-Driven Development for Perfect Quality
-    // ============================================================================
 
     #[tokio::test]
     async fn test_analyze_project_phase1_discovery_isolated() {
@@ -6144,9 +6140,7 @@ mod coverage_tests {
     use super::*;
     use std::path::PathBuf;
 
-    // ============================================================================
     // LANGUAGE DETECTION TESTS
-    // ============================================================================
 
     #[test]
     fn test_detect_language_rust() {
@@ -6237,9 +6231,7 @@ mod coverage_tests {
         assert_eq!(detect_language(Path::new("test")), "unknown");
     }
 
-    // ============================================================================
     // EXTRACTION FUNCTION TESTS
-    // ============================================================================
 
     #[test]
     fn test_extract_function_name_valid() {
@@ -6343,9 +6335,7 @@ mod coverage_tests {
         assert!(result.is_empty() || result.capacity() >= 1024);
     }
 
-    // ============================================================================
     // FUNCTION CALL DETECTION TESTS
-    // ============================================================================
 
     #[test]
     fn test_is_function_called_in_file_true() {
@@ -6384,9 +6374,7 @@ mod coverage_tests {
         assert!(!is_type_used_in_file(&lines, "MyType"));
     }
 
-    // ============================================================================
     // INDICATOR AND EMOJI TESTS
-    // ============================================================================
 
     #[test]
     fn test_overall_health_emoji_excellent() {
@@ -6467,9 +6455,7 @@ mod coverage_tests {
         assert_eq!(analyzer.determine_complexity_priority(10), Priority::Medium);
     }
 
-    // ============================================================================
     // ANNOTATION INDICATOR TESTS
-    // ============================================================================
 
     #[test]
     fn test_add_defect_indicator_high() {
@@ -6643,9 +6629,7 @@ mod coverage_tests {
         assert_eq!(result.len(), 0);
     }
 
-    // ============================================================================
     // CONFIG AND AUTO-SCALING TESTS
-    // ============================================================================
 
     #[test]
     fn test_deep_context_config_with_auto_scaling() {
@@ -6682,9 +6666,7 @@ mod coverage_tests {
         assert!(!analyzer.should_exclude_path(Path::new("/project/src/main.rs")));
     }
 
-    // ============================================================================
     // FORMAT IMPORT PATH TESTS
-    // ============================================================================
 
     #[test]
     fn test_format_import_path_with_alias() {
@@ -6711,9 +6693,7 @@ mod coverage_tests {
         assert_eq!(result, "std::io");
     }
 
-    // ============================================================================
     // DEFECT DENSITY CALCULATION TESTS
-    // ============================================================================
 
     #[test]
     fn test_calculate_defect_density_with_loc() {
@@ -6731,9 +6711,7 @@ mod coverage_tests {
         assert_eq!(density, 0.0);
     }
 
-    // ============================================================================
     // SATD SEVERITY CONVERSION TESTS
-    // ============================================================================
 
     #[test]
     fn test_satd_severity_to_level() {
@@ -6750,9 +6728,7 @@ mod coverage_tests {
         assert_eq!(analyzer.satd_severity_to_level(&Severity::Low), "note");
     }
 
-    // ============================================================================
     // COLLECT FILE PATHS TESTS
-    // ============================================================================
 
     #[test]
     fn test_collect_file_paths_single_file() {
@@ -6805,9 +6781,7 @@ mod coverage_tests {
         assert_eq!(paths.len(), 2);
     }
 
-    // ============================================================================
     // NODE DISPLAY FORMAT TESTS
-    // ============================================================================
 
     #[test]
     fn test_format_node_display_file() {
@@ -6867,9 +6841,7 @@ mod coverage_tests {
         assert!(display.contains("💀3"));
     }
 
-    // ============================================================================
     // EXTENSION TO LANGUAGE MATCHING TESTS
-    // ============================================================================
 
     #[test]
     fn test_match_extension_to_language_rust() {
@@ -6940,9 +6912,7 @@ mod coverage_tests {
         assert!(result.is_none());
     }
 
-    // ============================================================================
     // DEAD CODE ANALYSIS TESTS
-    // ============================================================================
 
     #[test]
     fn test_extract_function_name_if_unused_not_called() {
@@ -7032,9 +7002,7 @@ mod coverage_tests {
         assert_eq!(dead_functions, 0);
     }
 
-    // ============================================================================
     // COMPLEXITY METRICS TESTS
-    // ============================================================================
 
     #[test]
     fn test_complexity_metrics_for_qa_default() {
@@ -7075,9 +7043,7 @@ mod coverage_tests {
         assert_eq!(func.cognitive, 3);
     }
 
-    // ============================================================================
     // DEFECT FACTOR AND PRIORITY TESTS
-    // ============================================================================
 
     #[test]
     fn test_priority_variants() {
@@ -7143,9 +7109,7 @@ mod coverage_tests {
         assert!(matches!(typedef, CrossLangReferenceType::TypeDefinition));
     }
 
-    // ============================================================================
     // QUALITY SCORECARD TESTS
-    // ============================================================================
 
     #[test]
     fn test_quality_scorecard_creation() {
@@ -7169,9 +7133,7 @@ mod coverage_tests {
         assert_eq!(scorecard.test_coverage, None);
     }
 
-    // ============================================================================
     // ASYNC LANGUAGE ANALYSIS TESTS
-    // ============================================================================
 
     #[tokio::test]
     async fn test_analyze_elixir_language_empty() {

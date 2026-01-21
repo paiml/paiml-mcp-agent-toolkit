@@ -2339,9 +2339,7 @@ mod coverage_tests {
     use std::fs;
     use tempfile::TempDir;
 
-    // ============================================
     // RustVisitor tests
-    // ============================================
 
     #[test]
     fn test_rust_visitor_new() {
@@ -2495,9 +2493,7 @@ mod coverage_tests {
         }
     }
 
-    // ============================================
     // AstItem tests
-    // ============================================
 
     #[test]
     fn test_ast_item_display_name_function() {
@@ -2618,9 +2614,7 @@ mod coverage_tests {
         assert_ne!(func, struct_item);
     }
 
-    // ============================================
     // Format functions tests
-    // ============================================
 
     #[test]
     fn test_format_module_item() {
@@ -2749,9 +2743,7 @@ mod coverage_tests {
         assert!(!result.contains("for"));
     }
 
-    // ============================================
     // GroupedItems and formatting tests
-    // ============================================
 
     #[test]
     fn test_group_items_by_type() {
@@ -2829,9 +2821,7 @@ mod coverage_tests {
         assert!(output.contains("main"));
     }
 
-    // ============================================
     // calculate_item_counts tests
-    // ============================================
 
     #[test]
     fn test_calculate_item_counts_empty() {
@@ -2916,9 +2906,7 @@ mod coverage_tests {
         assert_eq!(summary.total_impls, 1);
     }
 
-    // ============================================
     // format_context_as_markdown tests
-    // ============================================
 
     #[test]
     fn test_format_context_as_markdown_with_dependencies() {
@@ -2969,9 +2957,7 @@ mod coverage_tests {
         assert!(markdown.contains("# Project Context"));
     }
 
-    // ============================================
     // Async function tests
-    // ============================================
 
     #[tokio::test]
     async fn test_analyze_rust_file_nonexistent() {
@@ -3140,9 +3126,7 @@ fn sync_func() {}
         assert!(has_src_files || ctx.files.is_empty(), "Should have analyzed src files");
     }
 
-    // ============================================
     // Serialization tests
-    // ============================================
 
     #[test]
     fn test_project_context_serialization() {
@@ -3243,9 +3227,7 @@ fn sync_func() {}
         }
     }
 
-    // ============================================
     // Clone tests
-    // ============================================
 
     #[test]
     fn test_project_context_clone() {
@@ -3301,9 +3283,7 @@ fn sync_func() {}
         assert_eq!(item, cloned);
     }
 
-    // ============================================
     // Edge cases
-    // ============================================
 
     #[test]
     fn test_format_header() {

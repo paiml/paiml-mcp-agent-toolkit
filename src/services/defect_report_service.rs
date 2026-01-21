@@ -742,9 +742,7 @@ mod coverage_tests {
     use std::collections::{BTreeMap, HashMap};
     use std::path::PathBuf;
 
-    // =========================================================================
     // Test Fixture Builders
-    // =========================================================================
 
     /// Build a minimal defect for testing
     fn build_defect(id: &str, severity: Severity, category: DefectCategory) -> Defect {
@@ -892,9 +890,7 @@ mod coverage_tests {
         }
     }
 
-    // =========================================================================
     // DefectReportService::new() Tests
-    // =========================================================================
 
     #[test]
     fn test_new_creates_service_with_semaphore() {
@@ -912,9 +908,7 @@ mod coverage_tests {
         assert!(std::mem::size_of_val(&service1) == std::mem::size_of_val(&service2));
     }
 
-    // =========================================================================
     // compute_summary() Tests
-    // =========================================================================
 
     #[test]
     fn test_compute_summary_empty_defects() {
@@ -1063,9 +1057,7 @@ mod coverage_tests {
         assert_eq!(low_file.severity_score, 1.0);
     }
 
-    // =========================================================================
     // format_json() Tests
-    // =========================================================================
 
     #[test]
     fn test_format_json_empty_report() {
@@ -1128,9 +1120,7 @@ mod coverage_tests {
         assert!(defect["fix_suggestion"].as_str().is_some());
     }
 
-    // =========================================================================
     // format_csv() Tests
-    // =========================================================================
 
     #[test]
     fn test_format_csv_headers() {
@@ -1212,9 +1202,7 @@ mod coverage_tests {
         assert_eq!(lines.len(), expected_count + 1);
     }
 
-    // =========================================================================
     // format_markdown() Tests
-    // =========================================================================
 
     #[test]
     fn test_format_markdown_header() {
@@ -1341,9 +1329,7 @@ mod coverage_tests {
         assert!(!md.contains("### Technical Debt ("));
     }
 
-    // =========================================================================
     // format_text() Tests
-    // =========================================================================
 
     #[test]
     fn test_format_text_header() {
@@ -1440,9 +1426,7 @@ mod coverage_tests {
         assert!(text.contains("Extract method to reduce complexity"));
     }
 
-    // =========================================================================
     // generate_filename() Tests
-    // =========================================================================
 
     #[test]
     fn test_generate_filename_json() {
@@ -1496,9 +1480,7 @@ mod coverage_tests {
         assert!(filename2.starts_with("defect-report-"));
     }
 
-    // =========================================================================
     // filter_by_pattern() Tests
-    // =========================================================================
 
     #[test]
     fn test_filter_by_pattern_no_filters() {
@@ -1653,9 +1635,7 @@ mod coverage_tests {
         assert_eq!(filtered.summary.total_defects, 0);
     }
 
-    // =========================================================================
     // ReportFormat Tests
-    // =========================================================================
 
     #[test]
     fn test_report_format_debug() {
@@ -1681,9 +1661,7 @@ mod coverage_tests {
         assert!(matches!(format, ReportFormat::Csv));
     }
 
-    // =========================================================================
     // Edge Cases and Error Handling
-    // =========================================================================
 
     #[test]
     fn test_format_with_unicode_content() {
@@ -1788,9 +1766,7 @@ mod coverage_tests {
         assert!(text.len() > 1000);
     }
 
-    // =========================================================================
     // Property-Based Tests with Proptest
-    // =========================================================================
 
     proptest! {
         /// Property: compute_summary.total_defects always equals input defects count
@@ -1970,9 +1946,7 @@ mod coverage_tests {
         }
     }
 
-    // =========================================================================
     // Concurrency Tests (for semaphore behavior)
-    // =========================================================================
 
     #[test]
     fn test_service_can_be_used_multiple_times() {

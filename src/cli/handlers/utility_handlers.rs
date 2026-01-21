@@ -2161,9 +2161,7 @@ mod coverage_tests {
     use super::*;
     use tempfile::TempDir;
 
-    // ============================================================================
     // MarkdownBuilder Tests
-    // ============================================================================
 
     #[test]
     fn test_markdown_builder_new() {
@@ -2242,9 +2240,7 @@ mod coverage_tests {
         assert!(output.contains("- **Value**: 100"));
     }
 
-    // ============================================================================
     // calculate_pagerank_value Tests
-    // ============================================================================
 
     #[test]
     fn test_calculate_pagerank_value_zero_incoming() {
@@ -2291,9 +2287,7 @@ mod coverage_tests {
         assert_eq!(calculate_pagerank_value(100, 100), 0.85);
     }
 
-    // ============================================================================
     // get_big_o_complexity Tests
-    // ============================================================================
 
     #[test]
     fn test_get_big_o_complexity_constant() {
@@ -2330,9 +2324,7 @@ mod coverage_tests {
         assert_eq!(get_big_o_complexity(100), "O(?)");
     }
 
-    // ============================================================================
     // detect_or_use_toolchain Tests
-    // ============================================================================
 
     #[test]
     fn test_detect_or_use_toolchain_provided() {
@@ -2370,9 +2362,7 @@ mod coverage_tests {
         assert_eq!(result.unwrap(), "rust");
     }
 
-    // ============================================================================
     // Format Helper Tests
-    // ============================================================================
 
     #[test]
     fn test_simple_markdown_format() {
@@ -2433,9 +2423,7 @@ mod coverage_tests {
         assert!(sarif.contains("pmat-context"));
     }
 
-    // ============================================================================
     // Graph Section Tests
-    // ============================================================================
 
     #[test]
     fn test_generate_graph_section_markdown() {
@@ -2485,9 +2473,7 @@ mod coverage_tests {
         assert!(output.contains("Graph Analysis"));
     }
 
-    // ============================================================================
     // write_context_output Tests
-    // ============================================================================
 
     #[tokio::test]
     async fn test_write_context_output_to_file() {
@@ -2512,9 +2498,7 @@ mod coverage_tests {
         assert!(result.is_ok());
     }
 
-    // ============================================================================
     // Static Annotation Helper Tests
-    // ============================================================================
 
     #[test]
     fn test_add_static_annotations() {
@@ -2525,9 +2509,7 @@ mod coverage_tests {
         assert!(annotations.contains("[coverage: 65%]"));
     }
 
-    // ============================================================================
     // Integration Tests
-    // ============================================================================
 
     #[test]
     fn test_context_format_variants() {
@@ -2558,9 +2540,7 @@ mod coverage_tests {
         assert_eq!(formats.len(), 3);
     }
 
-    // ============================================================================
     // Helper Functions for Tests
-    // ============================================================================
 
     fn create_test_project_context(
         files: usize,
@@ -2725,9 +2705,7 @@ mod comprehensive_coverage_tests {
     use std::time::Duration;
     use tempfile::TempDir;
 
-    // ============================================================================
     // Helper Functions for Creating Test Data
-    // ============================================================================
 
     fn create_test_file_context(path: &str, language: &str) -> FileContext {
         FileContext {
@@ -2948,9 +2926,7 @@ mod comprehensive_coverage_tests {
         }
     }
 
-    // ============================================================================
     // Annotation Function Tests
-    // ============================================================================
 
     #[test]
     fn test_add_complexity_annotation_without_data() {
@@ -3024,9 +3000,7 @@ mod comprehensive_coverage_tests {
         assert!(annotations.contains("[churn: low(1)]"));
     }
 
-    // ============================================================================
     // Format Function Tests
-    // ============================================================================
 
     #[test]
     fn test_format_markdown_output() {
@@ -3085,9 +3059,7 @@ mod comprehensive_coverage_tests {
         assert!(output.contains("splitting large files"));
     }
 
-    // ============================================================================
     // Builder Function Tests
-    // ============================================================================
 
     #[test]
     fn test_add_project_structure() {
@@ -3248,9 +3220,7 @@ mod comprehensive_coverage_tests {
         assert!(content.contains("**Import**: `pandas` as `pd`"));
     }
 
-    // ============================================================================
     // Helper Function Tests
-    // ============================================================================
 
     #[test]
     fn test_find_churn_file_metrics_found() {
@@ -3384,9 +3354,7 @@ mod comprehensive_coverage_tests {
         assert_eq!(names[0], "test_function");
     }
 
-    // ============================================================================
     // Dead Code Detection Tests
-    // ============================================================================
 
     #[test]
     fn test_is_dead_code_function_true() {
@@ -3415,9 +3383,7 @@ mod comprehensive_coverage_tests {
         assert!(!result);
     }
 
-    // ============================================================================
     // add_simple_file_section Tests
-    // ============================================================================
 
     #[test]
     fn test_add_simple_file_section_with_complexity() {
@@ -3445,9 +3411,7 @@ mod comprehensive_coverage_tests {
         assert!(content.contains("**Function**: `test_function`"));
     }
 
-    // ============================================================================
     // Quality Insights Format Tests
-    // ============================================================================
 
     #[test]
     fn test_format_quality_insights_low_scores() {
@@ -3496,9 +3460,7 @@ mod comprehensive_coverage_tests {
         assert!(output.is_empty());
     }
 
-    // ============================================================================
     // Project Context Building Tests
-    // ============================================================================
 
     #[test]
     fn test_build_project_context() {
@@ -3607,9 +3569,7 @@ mod comprehensive_coverage_tests {
         assert_eq!(ctx.summary.total_impls, 1);
     }
 
-    // ============================================================================
     // Graph Section Tests
-    // ============================================================================
 
     #[test]
     fn test_generate_graph_section_llm_optimized() {
@@ -3627,9 +3587,7 @@ mod comprehensive_coverage_tests {
         assert!(output.contains("1 files"));
     }
 
-    // ============================================================================
     // Detect Toolchain Tests
-    // ============================================================================
 
     #[test]
     fn test_detect_or_use_toolchain_with_python_marker() {
@@ -3673,9 +3631,7 @@ mod comprehensive_coverage_tests {
         assert!(lang == "go" || lang == "rust");
     }
 
-    // ============================================================================
     // Churn Level Detection Tests
-    // ============================================================================
 
     #[test]
     fn test_add_churn_annotation_medium_churn() {
@@ -3753,9 +3709,7 @@ mod comprehensive_coverage_tests {
         assert!(annotations.contains("[churn: low(3)]"));
     }
 
-    // ============================================================================
     // Dead Code Annotations Tests
-    // ============================================================================
 
     #[test]
     fn test_add_dead_code_annotations_true() {
@@ -3790,9 +3744,7 @@ mod comprehensive_coverage_tests {
         assert!(annotations.is_empty());
     }
 
-    // ============================================================================
     // Async Test for Write Context Output
-    // ============================================================================
 
     #[tokio::test]
     async fn test_write_context_output_creates_parent_dirs() {
@@ -3805,9 +3757,7 @@ mod comprehensive_coverage_tests {
         assert!(result.is_err());
     }
 
-    // ============================================================================
     // Edge Case Tests
-    // ============================================================================
 
     #[test]
     fn test_simple_markdown_format_with_files() {

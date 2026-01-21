@@ -1700,9 +1700,7 @@ mod tests {
     use super::*;
     use crate::cli::{DeepContextCacheStrategy, DeepContextDagType, DagType};
 
-    // ============================================================================
     // Helper Function Tests - convert_deep_context_dag_type
-    // ============================================================================
 
     #[test]
     fn test_convert_dag_type_call_graph() {
@@ -1728,9 +1726,7 @@ mod tests {
         assert!(matches!(result, DagType::FullDependency));
     }
 
-    // ============================================================================
     // Helper Function Tests - convert_cache_strategy
-    // ============================================================================
 
     #[test]
     fn test_convert_cache_strategy_normal() {
@@ -1750,9 +1746,7 @@ mod tests {
         assert_eq!(result, "offline");
     }
 
-    // ============================================================================
     // Helper Function Tests - get_top_violations
-    // ============================================================================
 
     #[test]
     fn test_get_top_violations_empty() {
@@ -1768,9 +1762,7 @@ mod tests {
         assert!(result.is_empty());
     }
 
-    // ============================================================================
     // Helper Function Tests - format_violation_list
-    // ============================================================================
 
     #[test]
     fn test_format_violation_list_empty() {
@@ -1779,9 +1771,7 @@ mod tests {
         assert!(result.is_empty());
     }
 
-    // ============================================================================
     // Helper Function Tests - format_markdown_violations
-    // ============================================================================
 
     #[test]
     fn test_format_markdown_violations_empty() {
@@ -1797,9 +1787,7 @@ mod tests {
         assert!(result.is_empty());
     }
 
-    // ============================================================================
     // Helper Function Tests - output_entropy_results
-    // ============================================================================
 
     #[test]
     fn test_output_entropy_results_stdout() {
@@ -1818,9 +1806,7 @@ mod tests {
         assert_eq!(content, "test content");
     }
 
-    // ============================================================================
     // Helper Function Tests - create_entropy_config
-    // ============================================================================
 
     #[test]
     fn test_create_entropy_config_low_severity() {
@@ -1858,9 +1844,7 @@ mod tests {
         assert!(config.exclude_paths.contains(&"tests/**".to_string()));
     }
 
-    // ============================================================================
     // Enhanced Entropy Tests with real ActionableViolation
-    // ============================================================================
 
     fn create_test_violation(message: &str, loc_reduction: usize) -> crate::entropy::violation_detector::ActionableViolation {
         use crate::entropy::violation_detector::{ActionableViolation, PatternSummary, Severity};
@@ -1968,9 +1952,7 @@ mod tests {
         assert!(result.is_empty());
     }
 
-    // ============================================================================
     // Output entropy results tests
-    // ============================================================================
 
     #[test]
     fn test_output_entropy_results_empty_content() {
@@ -2002,9 +1984,7 @@ mod tests {
         assert!(result.is_ok());
     }
 
-    // ============================================================================
     // DagType conversion tests - additional variants
-    // ============================================================================
 
     #[test]
     fn test_all_deep_context_dag_type_variants() {
@@ -2023,9 +2003,7 @@ mod tests {
         }
     }
 
-    // ============================================================================
     // Cache strategy tests - exhaustive
-    // ============================================================================
 
     #[test]
     fn test_cache_strategy_all_variants() {
@@ -2034,9 +2012,7 @@ mod tests {
         assert_eq!(convert_cache_strategy(DeepContextCacheStrategy::Offline), "offline");
     }
 
-    // ============================================================================
     // Create entropy config with boundary conditions
-    // ============================================================================
 
     #[test]
     fn test_create_entropy_config_boundary_include_tests_true() {
@@ -2096,9 +2072,7 @@ mod coverage_tests {
     use std::path::PathBuf;
     use tempfile::TempDir;
 
-    // ============================================================================
     // Helper Function Tests - convert_deep_context_dag_type
-    // ============================================================================
 
     #[test]
     fn test_convert_deep_context_dag_type_call_graph() {
@@ -2124,9 +2098,7 @@ mod coverage_tests {
         assert!(matches!(result, DagType::FullDependency));
     }
 
-    // ============================================================================
     // Helper Function Tests - convert_cache_strategy
-    // ============================================================================
 
     #[test]
     fn test_convert_cache_strategy_normal() {
@@ -2146,9 +2118,7 @@ mod coverage_tests {
         assert_eq!(result, "offline");
     }
 
-    // ============================================================================
     // Helper Function Tests - Entropy Report Formatting
-    // ============================================================================
 
     #[test]
     fn test_create_entropy_config_defaults() {
@@ -2229,9 +2199,7 @@ mod coverage_tests {
         assert_eq!(content, "test content");
     }
 
-    // ============================================================================
     // AnalyzeCommands Enum Variant Construction Tests
-    // ============================================================================
 
     #[test]
     fn test_complexity_command_construction() {
@@ -2775,9 +2743,7 @@ mod coverage_tests {
         }
     }
 
-    // ============================================================================
     // Route Category Tests - verify commands route to correct handlers
-    // ============================================================================
 
     #[test]
     fn test_core_analysis_commands_are_routed() {
@@ -2900,9 +2866,7 @@ mod coverage_tests {
         }
     }
 
-    // ============================================================================
     // Format Conversion Tests
-    // ============================================================================
 
     #[test]
     fn test_all_dag_types_convert() {
@@ -2944,9 +2908,7 @@ mod coverage_tests {
         }
     }
 
-    // ============================================================================
     // Entropy Helper Function Tests (covering lines 1396-1552)
-    // ============================================================================
 
     #[test]
     fn test_create_entropy_config_excludes_tests_when_disabled() {
@@ -3006,9 +2968,7 @@ mod coverage_tests {
         assert!(result.is_ok());
     }
 
-    // ============================================================================
     // Defects Analysis Severity Parsing Tests (covering lines 394-442)
-    // ============================================================================
 
     #[test]
     fn test_defects_severity_parsing_critical() {
@@ -3087,9 +3047,7 @@ mod coverage_tests {
         assert!(result.is_none());
     }
 
-    // ============================================================================
     // Defects Output Format Tests (covering lines 407-412)
-    // ============================================================================
 
     #[test]
     fn test_defects_output_format_text() {
@@ -3109,9 +3067,7 @@ mod coverage_tests {
         assert!(matches!(format, DefectsOutputFormat::Junit));
     }
 
-    // ============================================================================
     // Additional Command Construction Tests for Full Coverage
-    // ============================================================================
 
     #[test]
     fn test_comprehensive_command_with_all_flags() {
@@ -3338,9 +3294,7 @@ mod coverage_tests {
         }
     }
 
-    // ============================================================================
     // Semantic Analysis Tests (covering lines 1554-1696)
-    // ============================================================================
 
     #[test]
     fn test_cluster_method_variants() {
@@ -3410,9 +3364,7 @@ mod coverage_tests {
         }
     }
 
-    // ============================================================================
     // Coverage Improve Command Test (covering lines 238-261)
-    // ============================================================================
 
     #[test]
     fn test_coverage_improve_command_construction() {
@@ -3447,9 +3399,7 @@ mod coverage_tests {
         }
     }
 
-    // ============================================================================
     // Route Complexity Command Tests (deprecated path handling)
-    // ============================================================================
 
     #[test]
     fn test_complexity_command_deprecated_path_detection() {
@@ -3463,9 +3413,7 @@ mod coverage_tests {
         }
     }
 
-    // ============================================================================
     // SATD Config Construction Tests (covering lines 496-516)
-    // ============================================================================
 
     #[test]
     fn test_satd_config_construction() {
@@ -3500,9 +3448,7 @@ mod coverage_tests {
         assert_eq!(config.timeout, 120);
     }
 
-    // ============================================================================
     // TDG Config Construction Tests (covering lines 599-612)
-    // ============================================================================
 
     #[test]
     fn test_tdg_config_construction() {
@@ -3527,9 +3473,7 @@ mod coverage_tests {
         assert!(config.verbose);
     }
 
-    // ============================================================================
     // Duplicate Analysis Config Tests (covering lines 783-796)
-    // ============================================================================
 
     #[test]
     fn test_duplicate_analysis_config_construction() {
@@ -3558,9 +3502,7 @@ mod coverage_tests {
         assert_eq!(config.top_files, 25);
     }
 
-    // ============================================================================
     // Defect Prediction Config Tests (covering lines 819-836)
-    // ============================================================================
 
     #[test]
     fn test_defect_prediction_config_construction() {
@@ -3590,9 +3532,7 @@ mod coverage_tests {
         assert!(config.perf);
     }
 
-    // ============================================================================
     // Provability Config Tests (covering lines 855-868)
-    // ============================================================================
 
     #[test]
     fn test_provability_config_construction() {
@@ -3616,9 +3556,7 @@ mod coverage_tests {
         assert!(config.include_evidence);
     }
 
-    // ============================================================================
     // Incremental Coverage Config Tests (covering lines 1003-1020)
-    // ============================================================================
 
     #[test]
     fn test_incremental_coverage_config_construction() {

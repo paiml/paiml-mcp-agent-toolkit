@@ -2507,9 +2507,7 @@ mod coverage_tests {
     use std::fs;
     use tempfile::TempDir;
 
-    // ============================================================================
     // Test Fixture Helpers
-    // ============================================================================
 
     /// Create a temporary directory with basic PMAT structure
     fn create_temp_project() -> TempDir {
@@ -2578,9 +2576,7 @@ version = "0.1.0"
         temp
     }
 
-    // ============================================================================
     // ProjectConfig Tests
-    // ============================================================================
 
     #[test]
     fn test_project_config_default_has_current_version() {
@@ -2633,9 +2629,7 @@ auto_update = true
         assert_eq!(cloned.auto_update, section.auto_update);
     }
 
-    // ============================================================================
     // ComplianceReport Tests
-    // ============================================================================
 
     #[test]
     fn test_compliance_report_serialization() {
@@ -2676,9 +2670,7 @@ auto_update = true
         assert_eq!(report.recommendations.len(), 1);
     }
 
-    // ============================================================================
     // ComplianceCheck Tests
-    // ============================================================================
 
     #[test]
     fn test_compliance_check_clone() {
@@ -2706,9 +2698,7 @@ auto_update = true
         assert!(json.contains("Fail"));
     }
 
-    // ============================================================================
     // CheckStatus Tests
-    // ============================================================================
 
     #[test]
     fn test_check_status_all_variants() {
@@ -2738,9 +2728,7 @@ auto_update = true
         assert_eq!(copied, CheckStatus::Pass);
     }
 
-    // ============================================================================
     // Severity Tests
-    // ============================================================================
 
     #[test]
     fn test_severity_all_variants() {
@@ -2769,9 +2757,7 @@ auto_update = true
         assert!(json.contains("Critical"));
     }
 
-    // ============================================================================
     // BreakingChange Tests
-    // ============================================================================
 
     #[test]
     fn test_breaking_change_with_migration_guide() {
@@ -2806,9 +2792,7 @@ auto_update = true
         assert_eq!(cloned.migration_guide, change.migration_guide);
     }
 
-    // ============================================================================
     // calculate_versions_behind Tests
-    // ============================================================================
 
     #[test]
     fn test_calculate_versions_behind_older_minor() {
@@ -2862,9 +2846,7 @@ auto_update = true
         assert_eq!(behind, 0);
     }
 
-    // ============================================================================
     // check_version_currency Tests
-    // ============================================================================
 
     #[test]
     fn test_check_version_currency_current() {
@@ -2902,9 +2884,7 @@ auto_update = true
         }
     }
 
-    // ============================================================================
     // check_config_files Tests
-    // ============================================================================
 
     #[test]
     fn test_check_config_files_none_present() {
@@ -2930,9 +2910,7 @@ auto_update = true
         assert!(check.message.contains("All required"));
     }
 
-    // ============================================================================
     // check_hooks_installed Tests
-    // ============================================================================
 
     #[test]
     fn test_check_hooks_not_installed() {
@@ -2986,9 +2964,7 @@ auto_update = true
         assert_eq!(check.status, CheckStatus::Pass);
     }
 
-    // ============================================================================
     // check_quality_thresholds Tests
-    // ============================================================================
 
     #[test]
     fn test_check_quality_thresholds_missing() {
@@ -3006,9 +2982,7 @@ auto_update = true
         assert!(check.message.contains("configured"));
     }
 
-    // ============================================================================
     // check_deprecated_features Tests
-    // ============================================================================
 
     #[test]
     fn test_check_deprecated_features_none() {
@@ -3018,9 +2992,7 @@ auto_update = true
         assert!(check.message.contains("No deprecated"));
     }
 
-    // ============================================================================
     // check_compute_brick Tests
-    // ============================================================================
 
     #[test]
     fn test_check_compute_brick_not_applicable() {
@@ -3101,9 +3073,7 @@ enabled = true
         assert!(check.message.contains("GUI coverage"));
     }
 
-    // ============================================================================
     // check_cargo_lock Tests
-    // ============================================================================
 
     #[test]
     fn test_check_cargo_lock_missing() {
@@ -3121,9 +3091,7 @@ enabled = true
         assert!(check.message.contains("reproducible builds"));
     }
 
-    // ============================================================================
     // check_msrv Tests
-    // ============================================================================
 
     #[test]
     fn test_check_msrv_no_cargo_toml() {
@@ -3149,9 +3117,7 @@ enabled = true
         assert!(check.message.contains("rust-version field present"));
     }
 
-    // ============================================================================
     // check_ci_configured Tests
-    // ============================================================================
 
     #[test]
     fn test_check_ci_not_configured() {
@@ -3205,9 +3171,7 @@ enabled = true
         assert!(check.message.contains("Jenkins"));
     }
 
-    // ============================================================================
     // check_paiml_deps_workspace Tests
-    // ============================================================================
 
     #[test]
     fn test_check_paiml_deps_no_cargo_toml() {
@@ -3289,9 +3253,7 @@ aprender = "0.24"
         );
     }
 
-    // ============================================================================
     // get_breaking_changes_since Tests
-    // ============================================================================
 
     #[test]
     fn test_get_breaking_changes_since_returns_empty() {
@@ -3305,9 +3267,7 @@ aprender = "0.24"
         assert!(changes.is_empty());
     }
 
-    // ============================================================================
     // get_changelog_entries Tests
-    // ============================================================================
 
     #[test]
     fn test_get_changelog_entries_returns_entries() {
@@ -3330,9 +3290,7 @@ aprender = "0.24"
         assert_eq!(breaking_count, 0);
     }
 
-    // ============================================================================
     // load_or_create_project_config Tests
-    // ============================================================================
 
     #[test]
     fn test_load_or_create_config_creates_new() {
@@ -3363,9 +3321,7 @@ aprender = "0.24"
         assert!(result.is_err());
     }
 
-    // ============================================================================
     // update_last_check_timestamp Tests
-    // ============================================================================
 
     #[test]
     fn test_update_last_check_timestamp() {
@@ -3387,9 +3343,7 @@ aprender = "0.24"
         assert!(result.is_ok());
     }
 
-    // ============================================================================
     // migrate_project_version Tests
-    // ============================================================================
 
     #[test]
     fn test_migrate_project_version_dry_run() {
@@ -3423,9 +3377,7 @@ aprender = "0.24"
         assert!(!result.unwrap()); // No change needed
     }
 
-    // ============================================================================
     // migrate_gitignore Tests
-    // ============================================================================
 
     #[test]
     fn test_migrate_gitignore_no_file() {
@@ -3490,9 +3442,7 @@ aprender = "0.24"
         assert!(content.contains("# PMAT"));
     }
 
-    // ============================================================================
     // update_project_config Tests
-    // ============================================================================
 
     #[test]
     fn test_update_project_config_updates_to_current() {
@@ -3514,9 +3464,7 @@ aprender = "0.24"
         assert_eq!(config.pmat.version, "1.0.0"); // Unchanged
     }
 
-    // ============================================================================
     // print_compliance_text Tests
-    // ============================================================================
 
     #[test]
     fn test_print_compliance_text_compliant() {
@@ -3599,9 +3547,7 @@ aprender = "0.24"
         print_compliance_text(&report);
     }
 
-    // ============================================================================
     // print_compliance_markdown Tests
-    // ============================================================================
 
     #[test]
     fn test_print_compliance_markdown_compliant() {
@@ -3638,9 +3584,7 @@ aprender = "0.24"
         print_compliance_markdown(&report);
     }
 
-    // ============================================================================
     // Async Handler Tests (using tokio::test)
-    // ============================================================================
 
     #[tokio::test]
     async fn test_handle_init_new_project() {
@@ -3875,9 +3819,7 @@ aprender = "0.24"
         assert!(output_file.exists());
     }
 
-    // ============================================================================
     // handle_comply_command Tests
-    // ============================================================================
 
     #[tokio::test]
     async fn test_handle_comply_command_init() {
@@ -3956,9 +3898,7 @@ aprender = "0.24"
         assert!(result.is_ok());
     }
 
-    // ============================================================================
     // Edge Cases and Error Paths
-    // ============================================================================
 
     #[test]
     fn test_version_parsing_with_prerelease() {
@@ -4057,9 +3997,7 @@ aprender = "0.24"
         assert!(parts.len() >= 2, "Version should have at least major.minor");
     }
 
-    // ============================================================================
     // Integration-style Tests
-    // ============================================================================
 
     #[tokio::test]
     async fn test_full_compliance_workflow() {
@@ -4098,9 +4036,7 @@ aprender = "0.24"
         assert_eq!(check.status, CheckStatus::Pass);
     }
 
-    // ============================================================================
     // ComputeBrick Pattern Detection Tests (CB-IMPL-001-B)
-    // ============================================================================
 
     #[test]
     fn test_cb020_detects_unsafe_without_safety() {
@@ -4269,9 +4205,7 @@ fn use_portable_simd() {
         );
     }
 
-    // ============================================================================
     // CB-001 and CB-002 WGSL Detection Tests (CB-IMPL-001-D)
-    // ============================================================================
 
     #[test]
     fn test_cb001_detects_wgsl_without_bounds_check() {

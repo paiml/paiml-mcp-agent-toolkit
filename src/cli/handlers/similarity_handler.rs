@@ -651,9 +651,7 @@ mod tests {
     use std::path::PathBuf;
     use tempfile::TempDir;
 
-    // =========================================================================
     // Helper functions to create test data
-    // =========================================================================
 
     fn create_test_location(file: &str, start: usize, end: usize) -> Location {
         Location {
@@ -778,9 +776,7 @@ mod tests {
         }
     }
 
-    // =========================================================================
     // Tests for build_config
-    // =========================================================================
 
     #[test]
     #[ignore = "Agent-added test with incorrect assertion"]
@@ -831,9 +827,7 @@ mod tests {
         assert!(config.enable_entropy);
     }
 
-    // =========================================================================
     // Tests for is_source_file
-    // =========================================================================
 
     #[test]
     fn test_is_source_file_rust() {
@@ -888,9 +882,7 @@ mod tests {
         assert!(!is_source_file(std::path::Path::new("README")));
     }
 
-    // =========================================================================
     // Tests for should_include_file
-    // =========================================================================
 
     #[test]
     fn test_should_include_file_no_filters() {
@@ -945,9 +937,7 @@ mod tests {
         ));
     }
 
-    // =========================================================================
     // Tests for filter_top_files
-    // =========================================================================
 
     #[test]
     fn test_filter_top_files_zero() {
@@ -967,9 +957,7 @@ mod tests {
         );
     }
 
-    // =========================================================================
     // Tests for format_report
-    // =========================================================================
 
     #[test]
     fn test_format_report_json() {
@@ -1028,9 +1016,7 @@ mod tests {
         assert!(output.contains("pmat-similarity"));
     }
 
-    // =========================================================================
     // Tests for format_summary_report
-    // =========================================================================
 
     #[test]
     fn test_format_summary_report_empty() {
@@ -1052,9 +1038,7 @@ mod tests {
         assert!(output.contains("Top Refactoring Opportunities"));
     }
 
-    // =========================================================================
     // Tests for format_summary_metrics
-    // =========================================================================
 
     #[test]
     fn test_format_summary_metrics() {
@@ -1067,9 +1051,7 @@ mod tests {
         assert!(output.contains("42"));
     }
 
-    // =========================================================================
     // Tests for format_summary_clone_types
-    // =========================================================================
 
     #[test]
     fn test_format_summary_clone_types() {
@@ -1083,9 +1065,7 @@ mod tests {
         assert!(output.contains("Semantic Similarities: 1"));
     }
 
-    // =========================================================================
     // Tests for format_summary_refactoring_opportunities
-    // =========================================================================
 
     #[test]
     fn test_format_summary_refactoring_opportunities_empty() {
@@ -1124,9 +1104,7 @@ mod tests {
         assert!(!output.contains("Pattern5"));
     }
 
-    // =========================================================================
     // Tests for format_detailed_report
-    // =========================================================================
 
     #[test]
     fn test_format_detailed_report_empty() {
@@ -1150,9 +1128,7 @@ mod tests {
         assert!(output.contains("Refactoring Opportunities"));
     }
 
-    // =========================================================================
     // Tests for format_metrics_section
-    // =========================================================================
 
     #[test]
     fn test_format_metrics_section() {
@@ -1166,9 +1142,7 @@ mod tests {
         assert!(output.contains("100"));
     }
 
-    // =========================================================================
     // Tests for format_exact_duplicates_section
-    // =========================================================================
 
     #[test]
     fn test_format_exact_duplicates_section_empty() {
@@ -1195,9 +1169,7 @@ mod tests {
         assert!(output.contains("test_block"));
     }
 
-    // =========================================================================
     // Tests for format_single_duplicate_block
-    // =========================================================================
 
     #[test]
     fn test_format_single_duplicate_block() {
@@ -1219,9 +1191,7 @@ mod tests {
         assert!(output.contains("Preview:"));
     }
 
-    // =========================================================================
     // Tests for format_structural_similarities_section
-    // =========================================================================
 
     #[test]
     fn test_format_structural_similarities_section_empty() {
@@ -1274,9 +1244,7 @@ mod tests {
         assert!(!output.contains("sim10"));
     }
 
-    // =========================================================================
     // Tests for format_single_structural_block
-    // =========================================================================
 
     #[test]
     fn test_format_single_structural_block() {
@@ -1302,9 +1270,7 @@ mod tests {
         assert!(output.contains("y.rs:200-220"));
     }
 
-    // =========================================================================
     // Tests for format_entropy_analysis_section
-    // =========================================================================
 
     #[test]
     fn test_format_entropy_analysis_section_none() {
@@ -1346,9 +1312,7 @@ mod tests {
         assert!(!output.contains("Repetitive Patterns"));
     }
 
-    // =========================================================================
     // Tests for format_high_entropy_blocks
-    // =========================================================================
 
     #[test]
     fn test_format_high_entropy_blocks_empty() {
@@ -1401,9 +1365,7 @@ mod tests {
         assert!(!output.contains("file5.rs"));
     }
 
-    // =========================================================================
     // Tests for format_low_entropy_patterns
-    // =========================================================================
 
     #[test]
     fn test_format_low_entropy_patterns_empty() {
@@ -1437,9 +1399,7 @@ mod tests {
         assert!(output.contains("repetitive1.rs"));
     }
 
-    // =========================================================================
     // Tests for format_entropy_block_item
-    // =========================================================================
 
     #[test]
     fn test_format_entropy_block_item() {
@@ -1452,9 +1412,7 @@ mod tests {
         assert!(output.contains("Suggestion:"));
     }
 
-    // =========================================================================
     // Tests for format_refactoring_opportunities_section
-    // =========================================================================
 
     #[test]
     fn test_format_refactoring_opportunities_section_empty() {
@@ -1479,9 +1437,7 @@ mod tests {
         assert!(output.contains("High"));
     }
 
-    // =========================================================================
     // Tests for format_single_refactoring_hint
-    // =========================================================================
 
     #[test]
     fn test_format_single_refactoring_hint() {
@@ -1496,9 +1452,7 @@ mod tests {
         assert!(output.contains("test2.rs:5-15"));
     }
 
-    // =========================================================================
     // Tests for print_performance_metrics
-    // =========================================================================
 
     #[test]
     fn test_print_performance_metrics() {
@@ -1515,9 +1469,7 @@ mod tests {
         print_performance_metrics(&report, elapsed);
     }
 
-    // =========================================================================
     // Tests for format_csv_report
-    // =========================================================================
 
     #[test]
     fn test_format_csv_report_empty() {
@@ -1561,9 +1513,7 @@ mod tests {
         assert_eq!(output.lines().count(), 1);
     }
 
-    // =========================================================================
     // Tests for format_sarif_report
-    // =========================================================================
 
     #[test]
     fn test_format_sarif_report_empty() {
@@ -1598,9 +1548,7 @@ mod tests {
         assert!(output.contains("paiml-mcp-agent-toolkit"));
     }
 
-    // =========================================================================
     // Tests for print_summary
-    // =========================================================================
 
     #[test]
     fn test_print_summary() {
@@ -1622,9 +1570,7 @@ mod tests {
         print_summary(&report);
     }
 
-    // =========================================================================
     // Tests for collect_files (async)
-    // =========================================================================
 
     #[tokio::test]
     async fn test_collect_files_empty_directory() {
@@ -1718,9 +1664,7 @@ mod tests {
         assert!(files[0].0.to_string_lossy().ends_with(".rs"));
     }
 
-    // =========================================================================
     // Tests for handle_analyze_similarity (integration, async)
-    // =========================================================================
 
     #[tokio::test]
     async fn test_handle_analyze_similarity_empty_project() {
@@ -1872,9 +1816,7 @@ fn example_function() {
         }
     }
 
-    // =========================================================================
     // Edge case tests
-    // =========================================================================
 
     #[test]
     fn test_is_source_file_with_double_extension() {
@@ -2036,9 +1978,7 @@ fn example_function() {
         assert!(files[0].0.to_string_lossy().contains("deep.rs"));
     }
 
-    // =========================================================================
     // Additional coverage tests for edge cases
-    // =========================================================================
 
     #[test]
     fn test_build_config_threshold_boundary() {
@@ -2230,9 +2170,7 @@ mod coverage_tests {
     use std::path::PathBuf;
     use tempfile::TempDir;
 
-    // =========================================================================
     // Helper functions to create test data
-    // =========================================================================
 
     fn create_test_location(file: &str, start: usize, end: usize) -> Location {
         Location {
@@ -2357,9 +2295,7 @@ mod coverage_tests {
         }
     }
 
-    // =========================================================================
     // Tests for build_config
-    // =========================================================================
 
     #[test]
     #[ignore = "Agent-added test with incorrect assertion"]
@@ -2410,9 +2346,7 @@ mod coverage_tests {
         assert!(config.enable_entropy);
     }
 
-    // =========================================================================
     // Tests for is_source_file
-    // =========================================================================
 
     #[test]
     fn test_is_source_file_rust() {
@@ -2467,9 +2401,7 @@ mod coverage_tests {
         assert!(!is_source_file(std::path::Path::new("README")));
     }
 
-    // =========================================================================
     // Tests for should_include_file
-    // =========================================================================
 
     #[test]
     fn test_should_include_file_no_filters() {
@@ -2524,9 +2456,7 @@ mod coverage_tests {
         ));
     }
 
-    // =========================================================================
     // Tests for filter_top_files
-    // =========================================================================
 
     #[test]
     fn test_filter_top_files_zero() {
@@ -2546,9 +2476,7 @@ mod coverage_tests {
         );
     }
 
-    // =========================================================================
     // Tests for format_report
-    // =========================================================================
 
     #[test]
     fn test_format_report_json() {
@@ -2607,9 +2535,7 @@ mod coverage_tests {
         assert!(output.contains("pmat-similarity"));
     }
 
-    // =========================================================================
     // Tests for format_summary_report
-    // =========================================================================
 
     #[test]
     fn test_format_summary_report_empty() {
@@ -2631,9 +2557,7 @@ mod coverage_tests {
         assert!(output.contains("Top Refactoring Opportunities"));
     }
 
-    // =========================================================================
     // Tests for format_summary_metrics
-    // =========================================================================
 
     #[test]
     fn test_format_summary_metrics() {
@@ -2646,9 +2570,7 @@ mod coverage_tests {
         assert!(output.contains("42"));
     }
 
-    // =========================================================================
     // Tests for format_summary_clone_types
-    // =========================================================================
 
     #[test]
     fn test_format_summary_clone_types() {
@@ -2662,9 +2584,7 @@ mod coverage_tests {
         assert!(output.contains("Semantic Similarities: 1"));
     }
 
-    // =========================================================================
     // Tests for format_summary_refactoring_opportunities
-    // =========================================================================
 
     #[test]
     fn test_format_summary_refactoring_opportunities_empty() {
@@ -2703,9 +2623,7 @@ mod coverage_tests {
         assert!(!output.contains("Pattern5"));
     }
 
-    // =========================================================================
     // Tests for format_detailed_report
-    // =========================================================================
 
     #[test]
     fn test_format_detailed_report_empty() {
@@ -2729,9 +2647,7 @@ mod coverage_tests {
         assert!(output.contains("Refactoring Opportunities"));
     }
 
-    // =========================================================================
     // Tests for format_metrics_section
-    // =========================================================================
 
     #[test]
     fn test_format_metrics_section() {
@@ -2745,9 +2661,7 @@ mod coverage_tests {
         assert!(output.contains("100"));
     }
 
-    // =========================================================================
     // Tests for format_exact_duplicates_section
-    // =========================================================================
 
     #[test]
     fn test_format_exact_duplicates_section_empty() {
@@ -2774,9 +2688,7 @@ mod coverage_tests {
         assert!(output.contains("test_block"));
     }
 
-    // =========================================================================
     // Tests for format_single_duplicate_block
-    // =========================================================================
 
     #[test]
     fn test_format_single_duplicate_block() {
@@ -2798,9 +2710,7 @@ mod coverage_tests {
         assert!(output.contains("Preview:"));
     }
 
-    // =========================================================================
     // Tests for format_structural_similarities_section
-    // =========================================================================
 
     #[test]
     fn test_format_structural_similarities_section_empty() {
@@ -2853,9 +2763,7 @@ mod coverage_tests {
         assert!(!output.contains("sim10"));
     }
 
-    // =========================================================================
     // Tests for format_single_structural_block
-    // =========================================================================
 
     #[test]
     fn test_format_single_structural_block() {
@@ -2881,9 +2789,7 @@ mod coverage_tests {
         assert!(output.contains("y.rs:200-220"));
     }
 
-    // =========================================================================
     // Tests for format_entropy_analysis_section
-    // =========================================================================
 
     #[test]
     fn test_format_entropy_analysis_section_none() {
@@ -2925,9 +2831,7 @@ mod coverage_tests {
         assert!(!output.contains("Repetitive Patterns"));
     }
 
-    // =========================================================================
     // Tests for format_high_entropy_blocks
-    // =========================================================================
 
     #[test]
     fn test_format_high_entropy_blocks_empty() {
@@ -2980,9 +2884,7 @@ mod coverage_tests {
         assert!(!output.contains("file5.rs"));
     }
 
-    // =========================================================================
     // Tests for format_low_entropy_patterns
-    // =========================================================================
 
     #[test]
     fn test_format_low_entropy_patterns_empty() {
@@ -3016,9 +2918,7 @@ mod coverage_tests {
         assert!(output.contains("repetitive1.rs"));
     }
 
-    // =========================================================================
     // Tests for format_entropy_block_item
-    // =========================================================================
 
     #[test]
     fn test_format_entropy_block_item() {
@@ -3031,9 +2931,7 @@ mod coverage_tests {
         assert!(output.contains("Suggestion:"));
     }
 
-    // =========================================================================
     // Tests for format_refactoring_opportunities_section
-    // =========================================================================
 
     #[test]
     fn test_format_refactoring_opportunities_section_empty() {
@@ -3058,9 +2956,7 @@ mod coverage_tests {
         assert!(output.contains("High"));
     }
 
-    // =========================================================================
     // Tests for format_single_refactoring_hint
-    // =========================================================================
 
     #[test]
     fn test_format_single_refactoring_hint() {
@@ -3075,9 +2971,7 @@ mod coverage_tests {
         assert!(output.contains("test2.rs:5-15"));
     }
 
-    // =========================================================================
     // Tests for print_performance_metrics
-    // =========================================================================
 
     #[test]
     fn test_print_performance_metrics() {
@@ -3094,9 +2988,7 @@ mod coverage_tests {
         print_performance_metrics(&report, elapsed);
     }
 
-    // =========================================================================
     // Tests for format_csv_report
-    // =========================================================================
 
     #[test]
     fn test_format_csv_report_empty() {
@@ -3140,9 +3032,7 @@ mod coverage_tests {
         assert_eq!(output.lines().count(), 1);
     }
 
-    // =========================================================================
     // Tests for format_sarif_report
-    // =========================================================================
 
     #[test]
     fn test_format_sarif_report_empty() {
@@ -3177,9 +3067,7 @@ mod coverage_tests {
         assert!(output.contains("paiml-mcp-agent-toolkit"));
     }
 
-    // =========================================================================
     // Tests for print_summary
-    // =========================================================================
 
     #[test]
     fn test_print_summary() {
@@ -3201,9 +3089,7 @@ mod coverage_tests {
         print_summary(&report);
     }
 
-    // =========================================================================
     // Tests for collect_files (async)
-    // =========================================================================
 
     #[tokio::test]
     async fn test_collect_files_empty_directory() {
@@ -3297,9 +3183,7 @@ mod coverage_tests {
         assert!(files[0].0.to_string_lossy().ends_with(".rs"));
     }
 
-    // =========================================================================
     // Tests for handle_analyze_similarity (integration, async)
-    // =========================================================================
 
     #[tokio::test]
     async fn test_handle_analyze_similarity_empty_project() {
@@ -3451,9 +3335,7 @@ fn example_function() {
         }
     }
 
-    // =========================================================================
     // Edge case tests
-    // =========================================================================
 
     #[test]
     fn test_is_source_file_with_double_extension() {

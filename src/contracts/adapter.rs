@@ -388,9 +388,7 @@ impl BackwardCompatibility {
 mod tests {
     use super::*;
 
-    // ==========================================================================
     // BackwardCompatibility::map_json_params tests
-    // ==========================================================================
 
     mod map_json_params_tests {
         use super::*;
@@ -706,9 +704,7 @@ mod tests {
         }
     }
 
-    // ==========================================================================
     // BackwardCompatibility::map_json_params_for_complexity tests
-    // ==========================================================================
 
     mod map_json_params_for_complexity_tests {
         use super::*;
@@ -795,9 +791,7 @@ mod tests {
         }
     }
 
-    // ==========================================================================
     // ContractAdapter::deprecation_warnings tests
-    // ==========================================================================
 
     mod deprecation_warnings_tests {
         use super::*;
@@ -942,9 +936,7 @@ mod tests {
         }
     }
 
-    // ==========================================================================
     // ContractAdapter::from_cli tests
-    // ==========================================================================
 
     mod from_cli_tests {
         use super::*;
@@ -1579,9 +1571,7 @@ mod tests {
         }
     }
 
-    // ==========================================================================
     // normalize_format_string edge cases (tested via public interface)
-    // ==========================================================================
 
     mod format_normalization_edge_cases {
         use super::*;
@@ -1645,9 +1635,7 @@ mod tests {
         }
     }
 
-    // ==========================================================================
     // Property-based tests
-    // ==========================================================================
 
     mod property_tests {
         use proptest::prelude::*;
@@ -1715,9 +1703,7 @@ mod coverage_tests {
         tempfile::tempdir().unwrap()
     }
 
-    // ==========================================================================
     // ContractAdapter::deprecation_warnings tests
-    // ==========================================================================
 
     #[test]
     fn test_deprecation_warnings_with_project_path() {
@@ -1793,9 +1779,7 @@ mod coverage_tests {
         assert!(warnings.is_empty());
     }
 
-    // ==========================================================================
     // ContractAdapter::from_cli - Complexity command tests
-    // ==========================================================================
 
     #[test]
     fn test_from_cli_complexity_with_new_path() {
@@ -1897,9 +1881,7 @@ mod coverage_tests {
         assert!(result.is_err());
     }
 
-    // ==========================================================================
     // ContractAdapter::from_cli - SATD command tests
-    // ==========================================================================
 
     #[test]
     fn test_from_cli_satd_basic() {
@@ -1976,9 +1958,7 @@ mod coverage_tests {
         assert!(result.is_err());
     }
 
-    // ==========================================================================
     // ContractAdapter::from_cli - DeadCode command tests
-    // ==========================================================================
 
     #[test]
     fn test_from_cli_dead_code_basic() {
@@ -2072,9 +2052,7 @@ mod coverage_tests {
         assert!(result.is_err());
     }
 
-    // ==========================================================================
     // ContractAdapter::from_cli - TDG command tests
-    // ==========================================================================
 
     #[test]
     fn test_from_cli_tdg_basic() {
@@ -2133,9 +2111,7 @@ mod coverage_tests {
         assert!(result.is_err());
     }
 
-    // ==========================================================================
     // ContractAdapter::from_cli - LintHotspot command tests
-    // ==========================================================================
 
     #[test]
     fn test_from_cli_lint_hotspot_basic() {
@@ -2212,9 +2188,7 @@ mod coverage_tests {
         assert!(result.is_err());
     }
 
-    // ==========================================================================
     // ContractAdapter::from_cli - Unsupported command test
-    // ==========================================================================
 
     #[test]
     fn test_from_cli_unsupported_command() {
@@ -2234,9 +2208,7 @@ mod coverage_tests {
         assert!(err_msg.contains("not yet adapted"));
     }
 
-    // ==========================================================================
     // BackwardCompatibility::map_json_params tests
-    // ==========================================================================
 
     #[test]
     fn test_map_json_params_project_path_to_path() {
@@ -2482,9 +2454,7 @@ mod coverage_tests {
         assert_eq!(result["format"], 123);
     }
 
-    // ==========================================================================
     // Edge cases and boundary condition tests
-    // ==========================================================================
 
     #[test]
     fn test_complexity_with_zero_top_files() {
@@ -2673,9 +2643,7 @@ mod coverage_tests {
         assert!(result.is_ok());
     }
 
-    // ==========================================================================
     // Tests for internal mapping functions via public interface
-    // ==========================================================================
 
     #[test]
     fn test_complexity_mapping_converts_u16_to_u32() {
@@ -2754,9 +2722,7 @@ mod coverage_tests {
         assert!(result.is_ok());
     }
 
-    // ==========================================================================
     // Property-based tests for BackwardCompatibility
-    // ==========================================================================
 
     #[test]
     fn test_backward_compatibility_idempotent_on_new_params() {

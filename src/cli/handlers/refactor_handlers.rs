@@ -811,9 +811,7 @@ mod coverage_tests {
     use proptest::prelude::*;
     use tempfile::TempDir;
 
-    // ============================================================================
     // Test helpers and fixtures
-    // ============================================================================
 
     fn create_temp_project() -> TempDir {
         let dir = TempDir::new().unwrap();
@@ -868,9 +866,7 @@ mod coverage_tests {
         (dir, config_file)
     }
 
-    // ============================================================================
     // RefactorServeParams tests
-    // ============================================================================
 
     #[test]
     fn test_refactor_serve_params_creation() {
@@ -918,9 +914,7 @@ mod coverage_tests {
         assert!(params.max_runtime.is_none());
     }
 
-    // ============================================================================
     // extract_refactor_params tests
-    // ============================================================================
 
     #[test]
     fn test_extract_refactor_params_full() {
@@ -972,9 +966,7 @@ mod coverage_tests {
         assert!(!extracted.resume);
     }
 
-    // ============================================================================
     // log_refactor_server_startup tests
-    // ============================================================================
 
     #[test]
     fn test_log_refactor_server_startup_batch() {
@@ -1015,9 +1007,7 @@ mod coverage_tests {
         log_refactor_server_startup(&params);
     }
 
-    // ============================================================================
     // apply_command_line_overrides tests
-    // ============================================================================
 
     #[test]
     fn test_apply_command_line_overrides_all() {
@@ -1078,9 +1068,7 @@ mod coverage_tests {
         assert!(config.auto_commit_template.is_none());
     }
 
-    // ============================================================================
     // setup_checkpoint_directory tests
-    // ============================================================================
 
     #[tokio::test]
     async fn test_setup_checkpoint_directory_default() {
@@ -1157,9 +1145,7 @@ mod coverage_tests {
         assert_eq!(result.unwrap(), checkpoint_dir);
     }
 
-    // ============================================================================
     // setup_cache_and_ast_engine tests
-    // ============================================================================
 
     #[test]
     fn test_setup_cache_and_ast_engine_normal() {
@@ -1183,9 +1169,7 @@ mod coverage_tests {
         assert!(result.is_ok());
     }
 
-    // ============================================================================
     // create_engine_mode tests
-    // ============================================================================
 
     #[test]
     fn test_create_engine_mode_batch() {
@@ -1286,9 +1270,7 @@ mod coverage_tests {
         }
     }
 
-    // ============================================================================
     // validate_checkpoint_file tests
-    // ============================================================================
 
     #[test]
     fn test_validate_checkpoint_file_exists() {
@@ -1305,9 +1287,7 @@ mod coverage_tests {
         assert!(err_msg.contains("Checkpoint file not found"));
     }
 
-    // ============================================================================
     // read_checkpoint_data tests
-    // ============================================================================
 
     #[tokio::test]
     async fn test_read_checkpoint_data_success() {
@@ -1325,9 +1305,7 @@ mod coverage_tests {
         assert!(result.is_err());
     }
 
-    // ============================================================================
     // format_refactor_status tests
-    // ============================================================================
 
     #[test]
     fn test_format_as_json_valid() {
@@ -1413,9 +1391,7 @@ mod coverage_tests {
         assert!(result.is_ok());
     }
 
-    // ============================================================================
     // print_table_* tests
-    // ============================================================================
 
     #[test]
     fn test_print_table_header() {
@@ -1452,9 +1428,7 @@ mod coverage_tests {
         print_table_data(&state);
     }
 
-    // ============================================================================
     // print_refactor_summary tests
-    // ============================================================================
 
     #[test]
     fn test_print_refactor_summary_normal() {
@@ -1486,9 +1460,7 @@ mod coverage_tests {
         print_refactor_summary(&summary);
     }
 
-    // ============================================================================
     // handle_auto_commit tests
-    // ============================================================================
 
     #[tokio::test]
     async fn test_handle_auto_commit_no_template() {
@@ -1522,9 +1494,7 @@ mod coverage_tests {
         assert!(result.is_ok());
     }
 
-    // ============================================================================
     // handle_refactor_status tests
-    // ============================================================================
 
     #[tokio::test]
     async fn test_handle_refactor_status_json() {
@@ -1560,9 +1530,7 @@ mod coverage_tests {
         assert!(result.is_err());
     }
 
-    // ============================================================================
     // handle_refactor_resume tests
-    // ============================================================================
 
     #[tokio::test]
     async fn test_handle_refactor_resume_valid() {
@@ -1593,9 +1561,7 @@ mod coverage_tests {
         assert!(err_msg.contains("Checkpoint file not found"));
     }
 
-    // ============================================================================
     // load_refactor_config tests
-    // ============================================================================
 
     #[tokio::test]
     async fn test_load_refactor_config() {
@@ -1607,9 +1573,7 @@ mod coverage_tests {
         assert!(result.is_ok());
     }
 
-    // ============================================================================
     // load_refactor_config_json tests
-    // ============================================================================
 
     #[tokio::test]
     async fn test_load_refactor_config_json_full() {
@@ -1664,9 +1628,7 @@ mod coverage_tests {
         assert!(result.is_err());
     }
 
-    // ============================================================================
     // sort_targets_by_priority tests
-    // ============================================================================
 
     #[tokio::test]
     async fn test_sort_targets_by_priority() {
@@ -1695,9 +1657,7 @@ mod coverage_tests {
         assert!(result.unwrap().is_empty());
     }
 
-    // ============================================================================
     // discover_refactor_targets tests
-    // ============================================================================
 
     #[tokio::test]
     async fn test_discover_refactor_targets() {
@@ -1749,9 +1709,7 @@ mod coverage_tests {
         assert_eq!(targets.len(), 6); // md should not be included
     }
 
-    // ============================================================================
     // ExplainLevel conversion tests
-    // ============================================================================
 
     #[test]
     fn test_explain_level_from_brief() {
@@ -1780,9 +1738,7 @@ mod coverage_tests {
         ));
     }
 
-    // ============================================================================
     // load_base_configuration tests
-    // ============================================================================
 
     #[tokio::test]
     async fn test_load_base_configuration_with_file() {
@@ -1829,9 +1785,7 @@ mod coverage_tests {
         assert_eq!(config.target_complexity, 20); // default
     }
 
-    // ============================================================================
     // setup_refactor_configuration tests
-    // ============================================================================
 
     #[tokio::test]
     async fn test_setup_refactor_configuration_with_overrides() {
@@ -1865,9 +1819,7 @@ mod coverage_tests {
         );
     }
 
-    // ============================================================================
     // discover_and_prioritize_targets tests
-    // ============================================================================
 
     #[tokio::test]
     async fn test_discover_and_prioritize_targets_no_priority() {
@@ -1919,9 +1871,7 @@ mod coverage_tests {
         assert!(result.is_ok());
     }
 
-    // ============================================================================
     // Property-based tests
-    // ============================================================================
 
     proptest! {
         #[test]
@@ -2036,9 +1986,7 @@ mod coverage_tests {
         }
     }
 
-    // ============================================================================
     // Edge case tests
-    // ============================================================================
 
     #[test]
     fn test_engine_mode_batch_zero_parallel() {

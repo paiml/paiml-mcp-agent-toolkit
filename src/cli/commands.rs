@@ -5352,9 +5352,7 @@ pub struct MutateArgs {
     #[arg(long, default_value = "false")]
     pub failures_only: bool,
 
-    // ========================================================================
     // Sprint 70: cargo-mutants backend options
-    // ========================================================================
     /// Use cargo-mutants backend for Rust mutation testing (requires cargo-mutants v24.7.0+)
     ///
     /// Provides comprehensive Rust mutation testing using the industry-standard cargo-mutants tool.

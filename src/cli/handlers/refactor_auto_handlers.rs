@@ -2683,9 +2683,7 @@ mod coverage_tests {
     use std::path::PathBuf;
     use tempfile::TempDir;
 
-    // ============================================================================
     // RefactorPhase Tests
-    // ============================================================================
 
     #[test]
     fn test_refactor_phase_default() {
@@ -2729,9 +2727,7 @@ mod coverage_tests {
         }
     }
 
-    // ============================================================================
     // RefactorMode Tests
-    // ============================================================================
 
     #[test]
     fn test_refactor_mode_project_wide() {
@@ -2769,9 +2765,7 @@ mod coverage_tests {
         }
     }
 
-    // ============================================================================
     // RefactoringType Tests
-    // ============================================================================
 
     #[test]
     fn test_refactoring_type_variants() {
@@ -2793,9 +2787,7 @@ mod coverage_tests {
         assert!(matches!(cloned, RefactoringType::ComplexityReduction));
     }
 
-    // ============================================================================
     // RefactoringPriority Tests
-    // ============================================================================
 
     #[test]
     fn test_refactoring_priority_variants() {
@@ -2816,9 +2808,7 @@ mod coverage_tests {
         assert!(matches!(cloned, RefactoringPriority::Critical));
     }
 
-    // ============================================================================
     // RefactoringEffort Tests
-    // ============================================================================
 
     #[test]
     fn test_refactoring_effort_variants() {
@@ -2840,9 +2830,7 @@ mod coverage_tests {
         assert!(matches!(cloned, RefactoringEffort::Moderate));
     }
 
-    // ============================================================================
     // VerificationStatus Tests
-    // ============================================================================
 
     #[test]
     fn test_verification_status_pending() {
@@ -2866,9 +2854,7 @@ mod coverage_tests {
         }
     }
 
-    // ============================================================================
     // FixStrategy Tests
-    // ============================================================================
 
     #[test]
     fn test_fix_strategy_variants() {
@@ -2893,9 +2879,7 @@ mod coverage_tests {
         }
     }
 
-    // ============================================================================
     // parse_github_issue_url Tests
-    // ============================================================================
 
     #[test]
     fn test_parse_github_issue_url_valid_format() {
@@ -2941,9 +2925,7 @@ mod coverage_tests {
         assert!(result.is_err());
     }
 
-    // ============================================================================
     // parse_coverage_from_output Tests
-    // ============================================================================
 
     #[test]
     fn test_parse_coverage_from_output_percentage() {
@@ -2978,9 +2960,7 @@ mod coverage_tests {
         assert_eq!(result, Some(70.0));
     }
 
-    // ============================================================================
     // should_retry_refactoring Tests
-    // ============================================================================
 
     #[test]
     fn test_should_retry_on_timeout() {
@@ -3012,9 +2992,7 @@ mod coverage_tests {
         assert!(!should_retry_refactoring(&error));
     }
 
-    // ============================================================================
     // Markdown Helper Tests
-    // ============================================================================
 
     #[test]
     fn test_is_markdown_file_true() {
@@ -3075,9 +3053,7 @@ mod coverage_tests {
         assert_eq!(path, None);
     }
 
-    // ============================================================================
     // extract_target_files_from_issue Tests
-    // ============================================================================
 
     #[test]
     fn test_extract_target_files_with_rust_paths() {
@@ -3126,9 +3102,7 @@ mod coverage_tests {
         assert_eq!(files.len(), unique_files.len());
     }
 
-    // ============================================================================
     // GitHubIssueRef Tests
-    // ============================================================================
 
     #[test]
     fn test_github_issue_ref_creation() {
@@ -3158,9 +3132,7 @@ mod coverage_tests {
         assert_eq!(cloned.issue_number, original.issue_number);
     }
 
-    // ============================================================================
     // GitHubIssueContent Tests
-    // ============================================================================
 
     #[test]
     fn test_github_issue_content_creation() {
@@ -3190,9 +3162,7 @@ mod coverage_tests {
         assert_eq!(cloned.number, original.number);
     }
 
-    // ============================================================================
     // FunctionInfo Tests
-    // ============================================================================
 
     #[test]
     fn test_function_info_creation() {
@@ -3230,9 +3200,7 @@ mod coverage_tests {
         assert_eq!(cloned.is_test, original.is_test);
     }
 
-    // ============================================================================
     // AstMetadata Tests
-    // ============================================================================
 
     #[test]
     fn test_ast_metadata_creation() {
@@ -3268,9 +3236,7 @@ mod coverage_tests {
         assert_eq!(cloned.structure_hash, original.structure_hash);
     }
 
-    // ============================================================================
     // Async Helper Functions Tests
-    // ============================================================================
 
     #[tokio::test]
     async fn test_load_ignore_patterns_empty() {
@@ -3391,9 +3357,7 @@ mod coverage_tests {
         assert!(files[0].to_string_lossy().contains("good.rs"));
     }
 
-    // ============================================================================
     // RefactoringSummary Tests
-    // ============================================================================
 
     #[tokio::test]
     async fn test_create_refactoring_summary_empty() {
@@ -3499,9 +3463,7 @@ mod comprehensive_coverage_tests {
     use std::path::PathBuf;
     use tempfile::TempDir;
 
-    // ============================================================================
     // Setup Refactoring Context Tests
-    // ============================================================================
 
     #[tokio::test]
     async fn test_setup_refactoring_context_project_wide() {
@@ -3669,9 +3631,7 @@ mod comprehensive_coverage_tests {
         );
     }
 
-    // ============================================================================
     // Analyze Project Quality Tests
-    // ============================================================================
 
     #[tokio::test]
     async fn test_analyze_project_quality_empty_project() {
@@ -3748,9 +3708,7 @@ mod comprehensive_coverage_tests {
         assert_eq!(analysis.total_files_analyzed, 1);
     }
 
-    // ============================================================================
     // Generate Refactoring Requests Tests
-    // ============================================================================
 
     #[tokio::test]
     async fn test_generate_refactoring_requests_empty() {
@@ -3876,9 +3834,7 @@ mod comprehensive_coverage_tests {
         assert!(!requests.is_empty());
     }
 
-    // ============================================================================
     // Create Complexity Reduction Request Tests
-    // ============================================================================
 
     #[tokio::test]
     async fn test_create_complexity_reduction_request_critical() {
@@ -3971,9 +3927,7 @@ mod comprehensive_coverage_tests {
         assert!(matches!(request.estimated_effort, RefactoringEffort::Minor));
     }
 
-    // ============================================================================
     // Create Lint Fix Requests Tests
-    // ============================================================================
 
     #[tokio::test]
     async fn test_create_lint_fix_requests_error_severity() {
@@ -4075,9 +4029,7 @@ mod comprehensive_coverage_tests {
         assert!(matches!(requests[0].priority, RefactoringPriority::Medium));
     }
 
-    // ============================================================================
     // Create SATD Cleanup Requests Tests
-    // ============================================================================
 
     #[tokio::test]
     async fn test_create_satd_cleanup_requests_fixme() {
@@ -4175,9 +4127,7 @@ mod comprehensive_coverage_tests {
         assert!(matches!(requests[0].priority, RefactoringPriority::Medium));
     }
 
-    // ============================================================================
     // Create Coverage Improvement Requests Tests
-    // ============================================================================
 
     #[tokio::test]
     async fn test_create_coverage_improvement_requests() {
@@ -4231,9 +4181,7 @@ mod comprehensive_coverage_tests {
         }
     }
 
-    // ============================================================================
     // Calculate Quality Improvement Tests
-    // ============================================================================
 
     #[tokio::test]
     async fn test_calculate_quality_improvement_empty() {
@@ -4326,9 +4274,7 @@ mod comprehensive_coverage_tests {
         assert_eq!(improvement.coverage_increased, 5.0);
     }
 
-    // ============================================================================
     // Apply Refactoring Functions Tests
-    // ============================================================================
 
     #[tokio::test]
     async fn test_apply_complexity_reduction() {
@@ -4385,9 +4331,7 @@ mod comprehensive_coverage_tests {
         assert!(!changes.is_empty());
     }
 
-    // ============================================================================
     // Helper Function Tests
-    // ============================================================================
 
     #[tokio::test]
     async fn test_get_single_file_lint_violations() {
@@ -4434,9 +4378,7 @@ mod comprehensive_coverage_tests {
         assert!(json.is_object());
     }
 
-    // ============================================================================
     // Markdown Analysis Tests
-    // ============================================================================
 
     #[tokio::test]
     async fn test_handle_markdown_analysis() {
@@ -4501,9 +4443,7 @@ mod comprehensive_coverage_tests {
         print_markdown_summary(&request);
     }
 
-    // ============================================================================
     // Output Function Tests
-    // ============================================================================
 
     #[test]
     fn test_output_regular_file_results_json() {
@@ -4554,9 +4494,7 @@ mod comprehensive_coverage_tests {
         print_single_file_detailed(&request);
     }
 
-    // ============================================================================
     // Filter Successful Requests Tests
-    // ============================================================================
 
     #[test]
     fn test_filter_successful_requests_all_success() {
@@ -4655,9 +4593,7 @@ mod comprehensive_coverage_tests {
         assert_eq!(remaining[0].target_file, PathBuf::from("test2.rs"));
     }
 
-    // ============================================================================
     // Broken Links Tests
-    // ============================================================================
 
     #[test]
     fn test_has_broken_relative_links_no_links() {
@@ -4691,9 +4627,7 @@ mod comprehensive_coverage_tests {
         assert!(!result.unwrap());
     }
 
-    // ============================================================================
     // Handle Special Modes Tests
-    // ============================================================================
 
     #[tokio::test]
     async fn test_handle_special_modes_project_wide() {
@@ -4844,9 +4778,7 @@ mod comprehensive_coverage_tests {
         assert!(result.unwrap().is_none()); // BugReport non-.md returns None
     }
 
-    // ============================================================================
     // Analyze Project Functions Tests
-    // ============================================================================
 
     #[tokio::test]
     async fn test_analyze_project_lint_violations_empty() {
@@ -4883,9 +4815,7 @@ mod comprehensive_coverage_tests {
         assert_eq!(analysis.files_with_satd, 0);
     }
 
-    // ============================================================================
     // Validation Tests
-    // ============================================================================
 
     #[tokio::test]
     async fn test_get_final_validation_empty() {
@@ -4926,9 +4856,7 @@ mod comprehensive_coverage_tests {
         assert!(!validation.quality_improved);
     }
 
-    // ============================================================================
     // ViolationWithContext Tests
-    // ============================================================================
 
     #[test]
     fn test_violation_with_context_creation() {
@@ -4963,9 +4891,7 @@ mod comprehensive_coverage_tests {
         assert_eq!(cloned.line, original.line);
     }
 
-    // ============================================================================
     // FileRewritePlan Tests
-    // ============================================================================
 
     #[test]
     fn test_file_rewrite_plan_creation() {
@@ -5009,9 +4935,7 @@ mod comprehensive_coverage_tests {
         assert_eq!(cloned.violations.len(), original.violations.len());
     }
 
-    // ============================================================================
     // ComplexityViolation Tests
-    // ============================================================================
 
     #[test]
     fn test_complexity_violation_clone() {
@@ -5029,9 +4953,7 @@ mod comprehensive_coverage_tests {
         assert_eq!(cloned.complexity, original.complexity);
     }
 
-    // ============================================================================
     // SatdComment Tests
-    // ============================================================================
 
     #[test]
     fn test_satd_comment_clone() {
@@ -5048,9 +4970,7 @@ mod comprehensive_coverage_tests {
         assert_eq!(cloned.satd_type, original.satd_type);
     }
 
-    // ============================================================================
     // UncoveredLine Tests
-    // ============================================================================
 
     #[test]
     fn test_uncovered_line_clone() {
@@ -5066,9 +4986,7 @@ mod comprehensive_coverage_tests {
         assert_eq!(cloned.content, original.content);
     }
 
-    // ============================================================================
     // RefactoringRequest Tests
-    // ============================================================================
 
     #[test]
     fn test_refactoring_request_clone() {
@@ -5086,9 +5004,7 @@ mod comprehensive_coverage_tests {
         assert_eq!(cloned.description, original.description);
     }
 
-    // ============================================================================
     // Print Functions Tests (Ensure No Panics)
-    // ============================================================================
 
     #[test]
     fn test_print_refactoring_header() {
@@ -5114,9 +5030,7 @@ mod comprehensive_coverage_tests {
         print_refactoring_header(&config);
     }
 
-    // ============================================================================
     // RefactorState Serialization Tests
-    // ============================================================================
 
     #[test]
     fn test_refactor_state_serialization() {
@@ -5148,9 +5062,7 @@ mod comprehensive_coverage_tests {
         assert!(deserialized.is_ok());
     }
 
-    // ============================================================================
     // RefactorProgress Serialization Tests
-    // ============================================================================
 
     #[test]
     fn test_refactor_progress_serialization() {
@@ -5176,9 +5088,7 @@ mod comprehensive_coverage_tests {
         assert!(deserialized.is_ok());
     }
 
-    // ============================================================================
     // QualityMetrics Serialization Tests
-    // ============================================================================
 
     #[test]
     fn test_quality_metrics_serialization() {

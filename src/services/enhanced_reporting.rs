@@ -1018,9 +1018,7 @@ mod coverage_tests {
     use std::path::PathBuf;
     use std::time::Duration;
 
-    // ============================================================
     // Test Fixtures
-    // ============================================================
 
     /// Create a minimal AnalysisResults for testing
     fn create_minimal_analysis_results() -> AnalysisResults {
@@ -1170,9 +1168,7 @@ mod coverage_tests {
         }
     }
 
-    // ============================================================
     // EnhancedReportingService Tests
-    // ============================================================
 
     #[test]
     fn test_service_creation() {
@@ -1189,9 +1185,7 @@ mod coverage_tests {
         drop(service);
     }
 
-    // ============================================================
     // Health Score Calculation Tests
-    // ============================================================
 
     #[test]
     fn test_health_score_minimal_results() {
@@ -1355,9 +1349,7 @@ mod coverage_tests {
         );
     }
 
-    // ============================================================
     // Risk Assessment Tests
-    // ============================================================
 
     #[test]
     fn test_risk_assessment_low() {
@@ -1403,9 +1395,7 @@ mod coverage_tests {
         assert!(matches!(risk, RiskLevel::Critical | RiskLevel::High));
     }
 
-    // ============================================================
     // Key Findings Extraction Tests
-    // ============================================================
 
     #[test]
     fn test_extract_key_findings_empty() {
@@ -1493,9 +1483,7 @@ mod coverage_tests {
         assert!(findings.len() >= 2);
     }
 
-    // ============================================================
     // Section Building Tests
-    // ============================================================
 
     #[test]
     fn test_build_complexity_section() {
@@ -1624,9 +1612,7 @@ mod coverage_tests {
         assert_eq!(sections.len(), 5);
     }
 
-    // ============================================================
     // Recommendation Generation Tests
-    // ============================================================
 
     #[test]
     fn test_generate_recommendations_empty() {
@@ -1724,9 +1710,7 @@ mod coverage_tests {
         assert_eq!(recommendations.len(), 2);
     }
 
-    // ============================================================
     // Visualization Tests
-    // ============================================================
 
     #[test]
     fn test_create_complexity_distribution_chart() {
@@ -1793,9 +1777,7 @@ mod coverage_tests {
         assert!(visualizations.len() >= 3);
     }
 
-    // ============================================================
     // Report Generation Tests (Async)
-    // ============================================================
 
     #[tokio::test]
     async fn test_generate_report_minimal() {
@@ -1849,9 +1831,7 @@ mod coverage_tests {
         assert!(report.visualizations.is_empty());
     }
 
-    // ============================================================
     // Report Formatting Tests (Async)
-    // ============================================================
 
     #[tokio::test]
     async fn test_format_report_json() {
@@ -1921,9 +1901,7 @@ mod coverage_tests {
         assert!(dashboard.contains("Analysis Dashboard"));
     }
 
-    // ============================================================
     // Metadata Building Tests
-    // ============================================================
 
     #[test]
     fn test_build_metadata() {
@@ -1965,9 +1943,7 @@ mod coverage_tests {
         assert!(metadata.is_ok());
     }
 
-    // ============================================================
     // Executive Summary Tests
-    // ============================================================
 
     #[test]
     fn test_generate_executive_summary() {
@@ -1989,9 +1965,7 @@ mod coverage_tests {
         assert_eq!(count, 0);
     }
 
-    // ============================================================
     // ReportFormat Tests
-    // ============================================================
 
     #[test]
     fn test_report_format_equality() {
@@ -2017,9 +1991,7 @@ mod coverage_tests {
         assert_eq!(format, cloned);
     }
 
-    // ============================================================
     // Enum Debug/Serialize Tests
-    // ============================================================
 
     #[test]
     fn test_risk_level_debug() {
@@ -2091,9 +2063,7 @@ mod coverage_tests {
         assert_eq!(format!("{:?}", VisualizationType::Table), "Table");
     }
 
-    // ============================================================
     // Serialization Tests
-    // ============================================================
 
     #[test]
     fn test_complexity_analysis_serialize() {
@@ -2182,9 +2152,7 @@ mod coverage_tests {
         assert!(json.is_ok());
     }
 
-    // ============================================================
     // ReportConfig Tests
-    // ============================================================
 
     #[test]
     fn test_report_config_clone() {
@@ -2202,9 +2170,7 @@ mod coverage_tests {
         assert!(debug_str.contains("ReportConfig"));
     }
 
-    // ============================================================
     // Location Tests
-    // ============================================================
 
     #[test]
     fn test_location_serialize() {
@@ -2231,9 +2197,7 @@ mod coverage_tests {
         assert!(json.is_ok());
     }
 
-    // ============================================================
     // Finding Tests
-    // ============================================================
 
     #[test]
     fn test_finding_serialize() {
@@ -2253,9 +2217,7 @@ mod coverage_tests {
         assert!(json.is_ok());
     }
 
-    // ============================================================
     // Recommendation Tests
-    // ============================================================
 
     #[test]
     fn test_recommendation_serialize() {
@@ -2272,9 +2234,7 @@ mod coverage_tests {
         assert!(json.is_ok());
     }
 
-    // ============================================================
     // Visualization Tests
-    // ============================================================
 
     #[test]
     fn test_visualization_serialize() {
@@ -2292,9 +2252,7 @@ mod coverage_tests {
         assert!(json.is_ok());
     }
 
-    // ============================================================
     // MetricValue Tests
-    // ============================================================
 
     #[test]
     fn test_metric_value_serialize() {
@@ -2320,9 +2278,7 @@ mod coverage_tests {
         assert!(json.is_ok());
     }
 
-    // ============================================================
     // Edge Case Tests
-    // ============================================================
 
     #[test]
     fn test_health_score_with_zero_functions() {

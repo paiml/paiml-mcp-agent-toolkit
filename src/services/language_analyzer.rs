@@ -653,9 +653,7 @@ mod coverage_tests {
     use std::path::Path;
     use tempfile::NamedTempFile;
 
-    // ============================================================
     // Test Fixtures
-    // ============================================================
 
     /// Create a temporary file with the given content and extension
     fn create_temp_file(content: &str, extension: &str) -> NamedTempFile {
@@ -918,9 +916,7 @@ def function_three():
 "#
     }
 
-    // ============================================================
     // LanguageAnalyzer Creation Tests
-    // ============================================================
 
     #[test]
     fn test_language_analyzer_new() {
@@ -941,9 +937,7 @@ def function_three():
         assert!(analyzer.supported_languages().len() >= 50);
     }
 
-    // ============================================================
     // Analysis Support Tests
-    // ============================================================
 
     #[test]
     fn test_supports_analysis_complexity() {
@@ -1033,9 +1027,7 @@ def function_three():
         assert!(analyzer.supports_analysis(Language::Markdown, &AnalysisType::Metrics));
     }
 
-    // ============================================================
     // Comment Detection Tests
-    // ============================================================
 
     #[test]
     fn test_is_comment_line_c_style() {
@@ -1132,9 +1124,7 @@ def function_three():
         assert!(!analyzer.is_comment_line("# could be comment", Language::JSON));
     }
 
-    // ============================================================
     // Comment Style Tests
-    // ============================================================
 
     #[test]
     fn test_get_comment_style_c_style() {
@@ -1278,9 +1268,7 @@ def function_three():
         );
     }
 
-    // ============================================================
     // File Metadata Analysis Tests
-    // ============================================================
 
     #[test]
     fn test_analyze_file_metadata_rust() {
@@ -1370,9 +1358,7 @@ def function_three():
         assert_eq!(metadata.lines_blank, 0);
     }
 
-    // ============================================================
     // Complexity Analysis Tests
-    // ============================================================
 
     #[tokio::test]
     async fn test_analyze_complexity_rust() {
@@ -1427,9 +1413,7 @@ def function_three():
         assert_eq!(complexity, 1); // Base complexity
     }
 
-    // ============================================================
     // Complexity Keywords Tests
-    // ============================================================
 
     #[test]
     fn test_get_complexity_keywords_rust() {
@@ -1491,9 +1475,7 @@ def function_three():
         assert!(keywords.contains(&"while"));
     }
 
-    // ============================================================
     // Keyword Complexity Calculation Tests
-    // ============================================================
 
     #[test]
     fn test_calculate_keyword_complexity_empty() {
@@ -1528,9 +1510,7 @@ def function_three():
         assert_eq!(complexity, 1); // Base complexity only
     }
 
-    // ============================================================
     // SATD Analysis Tests
-    // ============================================================
 
     #[tokio::test]
     async fn test_analyze_satd_with_todos() {
@@ -1592,9 +1572,7 @@ def function_three():
         assert_eq!(items[1]["line"].as_u64().unwrap(), 4);
     }
 
-    // ============================================================
     // Dead Code Analysis Tests
-    // ============================================================
 
     #[tokio::test]
     async fn test_analyze_dead_code() {
@@ -1609,9 +1587,7 @@ def function_three():
         assert_eq!(result.data["dead_code_detected"].as_bool().unwrap(), false);
     }
 
-    // ============================================================
     // Security Analysis Tests
-    // ============================================================
 
     #[tokio::test]
     async fn test_analyze_security_javascript_eval() {
@@ -1673,9 +1649,7 @@ def function_three():
         assert_eq!(count, 0);
     }
 
-    // ============================================================
     // Security Patterns Tests
-    // ============================================================
 
     #[test]
     fn test_get_security_patterns_javascript() {
@@ -1726,9 +1700,7 @@ def function_three():
         assert!(patterns.contains(&"token"));
     }
 
-    // ============================================================
     // Style Analysis Tests
-    // ============================================================
 
     #[tokio::test]
     async fn test_analyze_style() {
@@ -1773,9 +1745,7 @@ def function_three():
         assert_eq!(long_lines, 0);
     }
 
-    // ============================================================
     // Documentation Analysis Tests
-    // ============================================================
 
     #[tokio::test]
     async fn test_analyze_documentation_good_ratio() {
@@ -1830,9 +1800,7 @@ def function_three():
         assert_eq!(result.data["assessment"].as_str().unwrap(), "good");
     }
 
-    // ============================================================
     // Dependencies Analysis Tests
-    // ============================================================
 
     #[tokio::test]
     async fn test_analyze_dependencies_rust() {
@@ -1886,9 +1854,7 @@ def function_three():
         assert_eq!(count, 0);
     }
 
-    // ============================================================
     // Import Patterns Tests
-    // ============================================================
 
     #[test]
     fn test_get_import_patterns_rust() {
@@ -1935,9 +1901,7 @@ def function_three():
         assert!(patterns.contains(&"require"));
     }
 
-    // ============================================================
     // Metrics Analysis Tests
-    // ============================================================
 
     #[tokio::test]
     async fn test_analyze_metrics_rust() {
@@ -2001,9 +1965,7 @@ def function_three():
         assert_eq!(functions, 0); // Can't detect functions for unknown language
     }
 
-    // ============================================================
     // Unsupported Analysis Tests
-    // ============================================================
 
     #[test]
     fn test_create_unsupported_analysis_result() {
@@ -2017,9 +1979,7 @@ def function_three():
         assert!(result.error.unwrap().contains("not supported"));
     }
 
-    // ============================================================
     // Perform Analyses Tests
-    // ============================================================
 
     #[tokio::test]
     async fn test_perform_analyses_multiple() {
@@ -2059,9 +2019,7 @@ def function_three():
         assert!(results[1].success); // Metrics supported
     }
 
-    // ============================================================
     // Analyze File Tests (Integration)
-    // ============================================================
 
     #[tokio::test]
     async fn test_analyze_file_rust() {
@@ -2108,9 +2066,7 @@ def function_three():
         assert!(result.is_err());
     }
 
-    // ============================================================
     // AnalysisOptions Tests
-    // ============================================================
 
     #[test]
     fn test_analysis_options_default() {
@@ -2132,9 +2088,7 @@ def function_three():
         assert_eq!(options.include_comments, cloned.include_comments);
     }
 
-    // ============================================================
     // LanguageAnalysisRequest Tests
-    // ============================================================
 
     #[test]
     fn test_language_analysis_request_debug() {
@@ -2163,9 +2117,7 @@ def function_three():
         assert_eq!(request.analysis_types.len(), cloned.analysis_types.len());
     }
 
-    // ============================================================
     // AnalysisType Tests
-    // ============================================================
 
     #[test]
     fn test_analysis_type_debug() {
@@ -2189,9 +2141,7 @@ def function_three():
         assert!(matches!(cloned, AnalysisType::Complexity));
     }
 
-    // ============================================================
     // OutputFormat Tests
-    // ============================================================
 
     #[test]
     fn test_output_format_debug() {
@@ -2201,9 +2151,7 @@ def function_three():
         assert_eq!(format!("{:?}", OutputFormat::Markdown), "Markdown");
     }
 
-    // ============================================================
     // LanguageAnalysisResult Tests
-    // ============================================================
 
     #[test]
     fn test_language_analysis_result_debug() {
@@ -2227,9 +2175,7 @@ def function_three():
         assert!(debug_str.contains("LanguageAnalysisResult"));
     }
 
-    // ============================================================
     // AnalysisResult Tests
-    // ============================================================
 
     #[test]
     fn test_analysis_result_clone() {
@@ -2258,9 +2204,7 @@ def function_three():
         assert!(result.error.is_some());
     }
 
-    // ============================================================
     // FileMetadata Tests
-    // ============================================================
 
     #[test]
     fn test_file_metadata_clone() {
@@ -2279,9 +2223,7 @@ def function_three():
         assert_eq!(metadata.confidence, cloned.confidence);
     }
 
-    // ============================================================
     // Serialization Tests
-    // ============================================================
 
     #[test]
     fn test_analysis_type_serialize() {

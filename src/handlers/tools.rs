@@ -3718,9 +3718,7 @@ async fn handle_quality_driven_development(
 mod active_unit_tests {
     use super::*;
 
-    // ========================================================================
     // Tests for is_template_tool()
-    // ========================================================================
 
     #[test]
     fn test_is_template_tool_generate_template() {
@@ -3762,9 +3760,7 @@ mod active_unit_tests {
         assert!(!is_template_tool(""));
     }
 
-    // ========================================================================
     // Tests for is_analysis_tool()
-    // ========================================================================
 
     #[test]
     fn test_is_analysis_tool_code_churn() {
@@ -3851,9 +3847,7 @@ mod active_unit_tests {
         assert!(!is_analysis_tool(""));
     }
 
-    // ========================================================================
     // Tests for tool mutual exclusivity
-    // ========================================================================
 
     #[test]
     fn test_template_and_analysis_tools_mutually_exclusive() {
@@ -3900,9 +3894,7 @@ mod active_unit_tests {
         }
     }
 
-    // ========================================================================
     // Tests for get_template_variant()
-    // ========================================================================
 
     #[test]
     fn test_get_template_variant_makefile_rust() {
@@ -3969,9 +3961,7 @@ mod active_unit_tests {
         assert_eq!(get_template_variant("makefile", ""), None);
     }
 
-    // ========================================================================
     // Tests for parse_tool_call_params()
-    // ========================================================================
 
     #[test]
     fn test_parse_tool_call_params_none() {
@@ -4003,9 +3993,7 @@ mod active_unit_tests {
         assert_eq!(params.name, "test_tool");
     }
 
-    // ========================================================================
     // Tests for parse_validate_template_args()
-    // ========================================================================
 
     #[test]
     fn test_parse_validate_template_args_valid() {
@@ -4035,9 +4023,7 @@ mod active_unit_tests {
         assert!(result.is_err());
     }
 
-    // ========================================================================
     // Tests for extract_churn_parameters()
-    // ========================================================================
 
     #[test]
     fn test_extract_churn_parameters_defaults() {
@@ -4125,9 +4111,7 @@ mod active_unit_tests {
         assert!(matches!(format, ChurnOutputFormat::Summary));
     }
 
-    // ========================================================================
     // Tests for parse_code_churn_args()
-    // ========================================================================
 
     #[test]
     fn test_parse_code_churn_args_valid() {
@@ -4168,9 +4152,7 @@ mod active_unit_tests {
         assert_eq!(parsed.period_days, Some(7));
     }
 
-    // ========================================================================
     // Tests for ValidationResult construction
-    // ========================================================================
 
     #[test]
     fn test_validation_result_empty() {
@@ -4202,9 +4184,7 @@ mod active_unit_tests {
         assert_eq!(result.validation_errors.len(), 1);
     }
 
-    // ========================================================================
     // Tests for find_missing_required_parameters()
-    // ========================================================================
 
     #[test]
     fn test_find_missing_required_no_params() {
@@ -4267,9 +4247,7 @@ mod active_unit_tests {
         assert!(missing.is_empty());
     }
 
-    // ========================================================================
     // Tests for validate_single_parameter()
-    // ========================================================================
 
     #[test]
     fn test_validate_single_parameter_no_pattern() {
@@ -4333,9 +4311,7 @@ mod active_unit_tests {
         assert!(result.is_none());
     }
 
-    // ========================================================================
     // Tests for validate_parameter_values()
-    // ========================================================================
 
     #[test]
     fn test_validate_parameter_values_empty() {
@@ -4409,9 +4385,7 @@ mod coverage_tests {
     use std::collections::HashMap;
     use std::path::PathBuf;
 
-    // ========================================================================
     // Tests for is_template_tool()
-    // ========================================================================
 
     #[test]
     fn test_is_template_tool_generate() {
@@ -4445,9 +4419,7 @@ mod coverage_tests {
         assert!(!is_template_tool(""));
     }
 
-    // ========================================================================
     // Tests for is_analysis_tool()
-    // ========================================================================
 
     #[test]
     fn test_is_analysis_tool_churn() {
@@ -4526,9 +4498,7 @@ mod coverage_tests {
         assert!(!is_analysis_tool(""));
     }
 
-    // ========================================================================
     // Tests for format_churn_summary()
-    // ========================================================================
 
     fn create_test_churn_analysis() -> CodeChurnAnalysis {
         CodeChurnAnalysis {
@@ -4618,9 +4588,7 @@ mod coverage_tests {
         assert!(!summary.contains("## Stable Files"));
     }
 
-    // ========================================================================
     // Tests for format_churn_as_markdown()
-    // ========================================================================
 
     #[test]
     fn test_format_churn_as_markdown_basic() {
@@ -4642,9 +4610,7 @@ mod coverage_tests {
         assert!(markdown.contains("Total commits: 50"));
     }
 
-    // ========================================================================
     // Tests for format_churn_as_csv()
-    // ========================================================================
 
     #[test]
     fn test_format_churn_as_csv_headers() {
@@ -4689,9 +4655,7 @@ mod coverage_tests {
         assert_eq!(lines.len(), 1); // Only header
     }
 
-    // ========================================================================
     // Tests for tool name categorization (both functions together)
-    // ========================================================================
 
     #[test]
     fn test_tools_are_mutually_exclusive() {
@@ -4739,9 +4703,7 @@ mod coverage_tests {
         }
     }
 
-    // ========================================================================
     // Tests for get_template_variant()
-    // ========================================================================
 
     #[test]
     fn test_get_template_variant_makefile_rust() {
@@ -4778,9 +4740,7 @@ mod coverage_tests {
         assert_eq!(get_template_variant("makefile", "java"), None);
     }
 
-    // ========================================================================
     // Tests for calculate_relevance()
-    // ========================================================================
 
     fn create_test_template_resource(name: &str, desc: &str) -> TemplateResource {
         TemplateResource {
@@ -4828,9 +4788,7 @@ mod coverage_tests {
         assert_eq!(score, 0.0, "No match should score 0");
     }
 
-    // ========================================================================
     // Tests for resolve_project_path() and related path functions
-    // ========================================================================
 
     #[test]
     fn test_resolve_project_path_with_explicit_path() {
@@ -4869,9 +4827,7 @@ mod coverage_tests {
         assert!(!path.as_os_str().is_empty());
     }
 
-    // ========================================================================
     // Tests for detect_toolchain()
-    // ========================================================================
 
     #[test]
     fn test_detect_toolchain_explicit_rust() {
@@ -4898,9 +4854,7 @@ mod coverage_tests {
         assert_eq!(toolchain, "rust");
     }
 
-    // ========================================================================
     // Tests for should_analyze_file()
-    // ========================================================================
 
     #[test]
     fn test_should_analyze_file_rust() {
@@ -4929,9 +4883,7 @@ mod coverage_tests {
         assert!(!should_analyze_file(Path::new("src/main.rs"), "unknown"));
     }
 
-    // ========================================================================
     // Tests for matches_include_filters() and matches_pattern()
-    // ========================================================================
 
     #[test]
     fn test_matches_include_filters_none() {
@@ -4982,9 +4934,7 @@ mod coverage_tests {
         assert!(!matches_pattern("src/lib.rs", "main"));
     }
 
-    // ========================================================================
     // Tests for build_complexity_thresholds()
-    // ========================================================================
 
     #[test]
     fn test_build_complexity_thresholds_defaults() {
@@ -5037,9 +4987,7 @@ mod coverage_tests {
         assert_eq!(thresholds.cognitive_warn, 22);
     }
 
-    // ========================================================================
     // Tests for parse_dag_type()
-    // ========================================================================
 
     #[test]
     fn test_parse_dag_type_call_graph() {
@@ -5077,9 +5025,7 @@ mod coverage_tests {
         assert!(matches!(dag_type, crate::cli::DagType::CallGraph));
     }
 
-    // ========================================================================
     // Tests for parse_deep_context_dag_type()
-    // ========================================================================
 
     #[test]
     fn test_parse_deep_context_dag_type_call_graph() {
@@ -5126,9 +5072,7 @@ mod coverage_tests {
         ));
     }
 
-    // ========================================================================
     // Tests for parse_cache_strategy()
-    // ========================================================================
 
     #[test]
     fn test_parse_cache_strategy_normal() {
@@ -5166,9 +5110,7 @@ mod coverage_tests {
         ));
     }
 
-    // ========================================================================
     // Tests for parse_analysis_type_string() and parse_analysis_types()
-    // ========================================================================
 
     #[test]
     fn test_parse_analysis_type_string_ast() {
@@ -5258,9 +5200,7 @@ mod coverage_tests {
         assert_eq!(types.len(), 3);
     }
 
-    // ========================================================================
     // Tests for calculate_* functions
-    // ========================================================================
 
     #[test]
     fn test_calculate_cyclomatic_complexity_simple() {
@@ -5391,9 +5331,7 @@ mod coverage_tests {
         assert!(relative.contains("main.rs"));
     }
 
-    // ========================================================================
     // Tests for calculate_percentage()
-    // ========================================================================
 
     #[test]
     fn test_calculate_percentage_normal() {
@@ -5411,9 +5349,7 @@ mod coverage_tests {
         assert!((calculate_percentage(100, 100) - 100.0).abs() < f64::EPSILON);
     }
 
-    // ========================================================================
     // Tests for default_* functions
-    // ========================================================================
 
     #[test]
     fn test_default_project_path() {
@@ -5445,9 +5381,7 @@ mod coverage_tests {
         assert_eq!(default_summary_format(), "summary");
     }
 
-    // ========================================================================
     // Tests for TDG formatting functions
-    // ========================================================================
 
     fn create_test_tdg_summary() -> TDGSummary {
         TDGSummary {
@@ -5506,9 +5440,7 @@ mod coverage_tests {
         assert!(output.contains("Normal"));
     }
 
-    // ========================================================================
     // Tests for dead code formatting functions
-    // ========================================================================
 
     fn create_test_dead_code_result() -> DeadCodeRankingResult {
         DeadCodeRankingResult {
@@ -5621,9 +5553,7 @@ mod coverage_tests {
         assert_eq!(pct, 0.0);
     }
 
-    // ========================================================================
     // Tests for validation functions
-    // ========================================================================
 
     #[test]
     fn test_find_missing_required_parameters_all_present() {
@@ -5740,9 +5670,7 @@ mod coverage_tests {
         assert!(errors[0].contains("Unknown parameter"));
     }
 
-    // ========================================================================
     // Tests for Makefile lint helper functions
-    // ========================================================================
 
     #[test]
     fn test_map_severity() {
@@ -5754,9 +5682,7 @@ mod coverage_tests {
         assert_eq!(map_severity(&Severity::Info), "info");
     }
 
-    // ========================================================================
     // Tests for SATD helper functions
-    // ========================================================================
 
     #[test]
     fn test_create_satd_detector_normal() {
@@ -5772,9 +5698,7 @@ mod coverage_tests {
         drop(detector);
     }
 
-    // ========================================================================
     // Tests for lint hotspot data extraction
-    // ========================================================================
 
     #[test]
     fn test_extract_lint_data_empty() {
@@ -5802,9 +5726,7 @@ mod coverage_tests {
         assert!((extracted.average_violations_per_file - 2.0).abs() < f64::EPSILON);
     }
 
-    // ========================================================================
     // Tests for format_lint_hotspot_output
-    // ========================================================================
 
     #[test]
     fn test_format_lint_hotspot_output_json() {
@@ -5869,9 +5791,7 @@ mod coverage_tests {
         assert!(output.get("formatted_output").is_some());
     }
 
-    // ========================================================================
     // Tests for parse_tool_call_params
-    // ========================================================================
 
     #[test]
     fn test_parse_tool_call_params_valid() {
@@ -5901,9 +5821,7 @@ mod coverage_tests {
         assert!(result.is_err());
     }
 
-    // ========================================================================
     // Tests for argument parsing functions
-    // ========================================================================
 
     #[test]
     fn test_parse_complexity_args_valid() {
@@ -5994,9 +5912,7 @@ mod coverage_tests {
         assert!(result.is_err());
     }
 
-    // ========================================================================
     // Tests for extract_churn_parameters
-    // ========================================================================
 
     #[test]
     fn test_extract_churn_parameters_defaults() {
@@ -6026,9 +5942,7 @@ mod coverage_tests {
         assert!(matches!(format, ChurnOutputFormat::Json));
     }
 
-    // ========================================================================
     // Tests for extract_tdg_project_path
-    // ========================================================================
 
     #[test]
     fn test_extract_tdg_project_path_some() {
@@ -6058,9 +5972,7 @@ mod coverage_tests {
         assert!(!path.as_os_str().is_empty());
     }
 
-    // ========================================================================
     // Tests for format_churn_output
-    // ========================================================================
 
     #[test]
     fn test_format_churn_output_json() {
@@ -6091,9 +6003,7 @@ mod coverage_tests {
         assert!(output.contains("# Code Churn Analysis"));
     }
 
-    // ========================================================================
     // Tests for build_churn_response
-    // ========================================================================
 
     #[test]
     fn test_build_churn_response() {

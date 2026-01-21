@@ -958,9 +958,7 @@ mod coverage_tests {
     use std::path::Path;
     use tempfile::TempDir;
 
-    // ==========================================================================
     // Helper functions to create mock data
-    // ==========================================================================
 
     fn create_mock_popper_score(total: f64, gateway_passed: bool) -> PopperScore {
         let falsifiability = FalsifiabilityScore {
@@ -1089,9 +1087,7 @@ mod coverage_tests {
         }
     }
 
-    // ==========================================================================
     // Tests for format_result
-    // ==========================================================================
 
     #[test]
     fn test_format_result_json() {
@@ -1153,9 +1149,7 @@ mod coverage_tests {
         assert_eq!(output, "85.0");
     }
 
-    // ==========================================================================
     // Tests for format_analysis
-    // ==========================================================================
 
     #[test]
     fn test_format_analysis_json() {
@@ -1194,9 +1188,7 @@ mod coverage_tests {
         assert!(output.contains("P0Critical"));
     }
 
-    // ==========================================================================
     // Tests for format_score_summary and format_score_breakdown
-    // ==========================================================================
 
     #[test]
     fn test_format_score_summary_json() {
@@ -1255,9 +1247,7 @@ mod coverage_tests {
         assert!(output.contains("Bounds Verification:"));
     }
 
-    // ==========================================================================
     // Tests for format_barrier_safety
-    // ==========================================================================
 
     #[test]
     fn test_format_barrier_safety_json() {
@@ -1298,9 +1288,7 @@ mod coverage_tests {
         assert!(output.contains("Thread may exit before barrier"));
     }
 
-    // ==========================================================================
     // Tests for format_terminal_output
-    // ==========================================================================
 
     #[test]
     fn test_format_terminal_output_high_score() {
@@ -1352,9 +1340,7 @@ mod coverage_tests {
         assert!(output.contains("FAILED"));
     }
 
-    // ==========================================================================
     // Tests for format_markdown_report
-    // ==========================================================================
 
     #[test]
     fn test_format_markdown_report_basic() {
@@ -1384,9 +1370,7 @@ mod coverage_tests {
         assert!(output.contains("PARITY-114"));
     }
 
-    // ==========================================================================
     // Tests for format_html_report
-    // ==========================================================================
 
     #[test]
     fn test_format_html_report_basic() {
@@ -1417,9 +1401,7 @@ mod coverage_tests {
         assert!(output.contains("class=\"fail\""));
     }
 
-    // ==========================================================================
     // Tests for format_sarif
-    // ==========================================================================
 
     #[test]
     fn test_format_sarif_structure() {
@@ -1451,9 +1433,7 @@ mod coverage_tests {
         assert!(results.iter().any(|r| r["level"] == "warning"));
     }
 
-    // ==========================================================================
     // Tests for write_output
-    // ==========================================================================
 
     #[test]
     fn test_write_output_to_file() {
@@ -1495,9 +1475,7 @@ mod coverage_tests {
         write_output("test output", &config).unwrap();
     }
 
-    // ==========================================================================
     // Tests for handle_validate_tiles
-    // ==========================================================================
 
     #[tokio::test]
     async fn test_handle_validate_tiles_valid_json() {
@@ -1536,9 +1514,7 @@ mod coverage_tests {
         assert!(result.is_ok());
     }
 
-    // ==========================================================================
     // Tests for handle_taxonomy
-    // ==========================================================================
 
     #[tokio::test]
     async fn test_handle_taxonomy_json() {
@@ -1564,9 +1540,7 @@ mod coverage_tests {
         assert!(result.is_ok());
     }
 
-    // ==========================================================================
     // Tests for handle_kaizen
-    // ==========================================================================
 
     #[tokio::test]
     async fn test_handle_kaizen_json() {
@@ -1604,9 +1578,7 @@ mod coverage_tests {
         assert!(result.is_ok());
     }
 
-    // ==========================================================================
     // Tests for handle_gate
-    // ==========================================================================
 
     #[tokio::test]
     async fn test_handle_gate_json() {
@@ -1628,9 +1600,7 @@ mod coverage_tests {
         let _ = result;
     }
 
-    // ==========================================================================
     // Tests for handle_barrier_check
-    // ==========================================================================
 
     #[tokio::test]
     async fn test_handle_barrier_check_empty_dir() {
@@ -1651,9 +1621,7 @@ mod coverage_tests {
         assert!(result.is_ok());
     }
 
-    // ==========================================================================
     // Tests for handle_report
-    // ==========================================================================
 
     #[tokio::test]
     async fn test_handle_report_html() {
@@ -1711,9 +1679,7 @@ mod coverage_tests {
         assert!(output_path.exists());
     }
 
-    // ==========================================================================
     // Tests for handle_score
-    // ==========================================================================
 
     #[tokio::test]
     async fn test_handle_score_summary() {
@@ -1742,9 +1708,7 @@ mod coverage_tests {
         assert!(result.is_ok());
     }
 
-    // ==========================================================================
     // Tests for handle_analyze
-    // ==========================================================================
 
     #[tokio::test]
     async fn test_handle_analyze_empty_dir() {
@@ -1764,9 +1728,7 @@ mod coverage_tests {
         assert!(result.is_ok());
     }
 
-    // ==========================================================================
     // Tests for handle_cuda_tdg_command (main handler)
-    // ==========================================================================
 
     #[tokio::test]
     async fn test_handle_cuda_tdg_command_default() {
@@ -1808,9 +1770,7 @@ mod coverage_tests {
         assert!(err.contains("Quality gate failed"));
     }
 
-    // ==========================================================================
     // Tests for handle_cuda_tdg_subcommand
-    // ==========================================================================
 
     #[tokio::test]
     async fn test_handle_cuda_tdg_subcommand_analyze() {
@@ -1912,9 +1872,7 @@ mod coverage_tests {
         assert!(result.is_ok());
     }
 
-    // ==========================================================================
     // Tests with actual file content
-    // ==========================================================================
 
     #[tokio::test]
     async fn test_analyze_cuda_file() {
@@ -2039,9 +1997,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {{
         assert!(result.is_ok());
     }
 
-    // ==========================================================================
     // Tests for KaizenMetrics output with ticket references
-    // ==========================================================================
 
     #[tokio::test]
     async fn test_kaizen_markdown_with_ticket_references() {
@@ -2067,9 +2023,7 @@ fn test_barrier_convergence() {{
         assert!(result.is_ok());
     }
 
-    // ==========================================================================
     // Edge case tests
-    // ==========================================================================
 
     #[test]
     fn test_popper_score_gateway_rule() {

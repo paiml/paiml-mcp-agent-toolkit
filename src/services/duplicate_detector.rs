@@ -159,10 +159,8 @@ impl MinHashSignature {
     }
 }
 
-// ============================================
 // TRUENO-RAG-4-MINHASH: LSH Index for O(1) Lookup
 // Locality-Sensitive Hashing for approximate nearest neighbor
-// ============================================
 
 /// Locality-Sensitive Hashing (LSH) index for MinHash signatures
 ///
@@ -2171,10 +2169,8 @@ mod tests {
         assert_eq!(shingles.len(), 3); // 5 tokens, k=3 -> 3 shingles
     }
 
-    // ============================================
     // TRUENO-RAG-4-MINHASH: LSH Index Tests
     // Tests for O(1) lookup via Locality-Sensitive Hashing
-    // ============================================
 
     /// Test LSH index creation
     #[test]

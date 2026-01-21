@@ -6,9 +6,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
-// ============================================================================
 // Local SimpleGraph implementation (replaces petgraph::Graph)
-// ============================================================================
 
 /// Node index for the simple graph
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -175,9 +173,7 @@ impl SimpleGraph {
     }
 }
 
-// ============================================================================
 // Public types and functions
-// ============================================================================
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NodeMetrics {
@@ -1008,9 +1004,7 @@ mod coverage_tests {
     use super::*;
     use crate::cli::{GraphMetricType, GraphMetricsOutputFormat};
 
-    // ========================================
     // NodeMetrics struct tests
-    // ========================================
 
     #[test]
     fn test_node_metrics_creation() {
@@ -1071,9 +1065,7 @@ mod coverage_tests {
         assert_eq!(deserialized.name, "serialize_test");
     }
 
-    // ========================================
     // GraphMetricsResult struct tests
-    // ========================================
 
     #[test]
     fn test_graph_metrics_result_creation() {
@@ -1118,9 +1110,7 @@ mod coverage_tests {
         assert!(json.contains("density"));
     }
 
-    // ========================================
     // Sprint 85 extracted function tests
-    // ========================================
 
     #[test]
     fn test_should_exclude_path_with_pattern() {
@@ -1180,9 +1170,7 @@ mod coverage_tests {
         assert!(!should_traverse_directory_sprint85("target"));
     }
 
-    // ========================================
     // is_source_file tests (extended)
-    // ========================================
 
     #[test]
     fn test_is_source_file_all_extensions() {
@@ -1202,9 +1190,7 @@ mod coverage_tests {
         assert!(!is_source_file(Path::new("noextension")));
     }
 
-    // ========================================
     // extract_dependencies tests
-    // ========================================
 
     #[test]
     fn test_extract_dependencies_rust() {
@@ -1266,9 +1252,7 @@ mod coverage_tests {
         assert!(deps.is_empty());
     }
 
-    // ========================================
     // calculate_metrics tests with mock graph
-    // ========================================
 
     fn create_simple_graph() -> SimpleGraph {
         let mut graph = SimpleGraph::new();
@@ -1528,9 +1512,7 @@ mod coverage_tests {
         assert_eq!(result.connected_components, 2);
     }
 
-    // ========================================
     // calculate_betweenness tests
-    // ========================================
 
     #[test]
     fn test_calculate_betweenness_linear_graph() {
@@ -1563,9 +1545,7 @@ mod coverage_tests {
         assert_eq!(betweenness, 0.0);
     }
 
-    // ========================================
     // calculate_closeness tests
-    // ========================================
 
     #[test]
     fn test_calculate_closeness_simple_graph() {
@@ -1595,9 +1575,7 @@ mod coverage_tests {
         assert!(closeness > 0.0);
     }
 
-    // ========================================
     // calculate_pagerank tests
-    // ========================================
 
     #[test]
     fn test_calculate_pagerank_simple() {
@@ -1654,9 +1632,7 @@ mod coverage_tests {
         assert_eq!(pageranks.len(), 3);
     }
 
-    // ========================================
     // is_on_shortest_path tests
-    // ========================================
 
     #[test]
     fn test_is_on_shortest_path_linear() {
@@ -1693,9 +1669,7 @@ mod coverage_tests {
         assert!(!on_path);
     }
 
-    // ========================================
     // filter_results tests
-    // ========================================
 
     fn create_mock_result() -> GraphMetricsResult {
         GraphMetricsResult {
@@ -1774,9 +1748,7 @@ mod coverage_tests {
         assert_eq!(filtered.nodes.len(), 3);
     }
 
-    // ========================================
     // GraphML export tests
-    // ========================================
 
     #[test]
     fn test_write_graphml_header() {
@@ -1899,9 +1871,7 @@ mod coverage_tests {
         assert!(result_export.is_ok());
     }
 
-    // ========================================
     // format_output tests
-    // ========================================
 
     #[test]
     fn test_format_output_json() {
@@ -1967,9 +1937,7 @@ mod coverage_tests {
         assert!(output.contains("| Node |"));
     }
 
-    // ========================================
     // format helper function tests
-    // ========================================
 
     #[test]
     fn test_format_gm_as_json() {
@@ -2012,9 +1980,7 @@ mod coverage_tests {
         assert!(md.contains("|--------|"));
     }
 
-    // ========================================
     // write helper function tests
-    // ========================================
 
     #[test]
     fn test_write_gm_human_header() {
@@ -2134,9 +2100,7 @@ mod coverage_tests {
         assert!(data_rows.len() <= 10);
     }
 
-    // ========================================
     // Edge case and error tests
-    // ========================================
 
     #[test]
     fn test_calculate_metrics_clustering_variant() {
@@ -2196,9 +2160,7 @@ mod coverage_tests {
         assert!(debug_str.contains("GraphMetricsResult"));
     }
 
-    // ========================================
     // Pagerank edge cases
-    // ========================================
 
     #[test]
     fn test_pagerank_early_convergence() {
@@ -2227,9 +2189,7 @@ mod coverage_tests {
         assert!(!pr.is_empty());
     }
 
-    // ========================================
     // Graph density edge cases
-    // ========================================
 
     #[test]
     fn test_density_single_node() {
@@ -2282,9 +2242,7 @@ mod coverage_tests {
         assert_eq!(result.max_degree, 4);
     }
 
-    // ========================================
     // SimpleGraph tests
-    // ========================================
 
     #[test]
     fn test_simple_graph_basic_operations() {

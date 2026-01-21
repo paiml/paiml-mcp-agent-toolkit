@@ -774,9 +774,7 @@ impl EntropyCalculator {
 mod tests {
     use super::*;
 
-    // ============================================================
     // SimilarityConfig Tests
-    // ============================================================
 
     #[test]
     fn test_similarity_config_default() {
@@ -817,9 +815,7 @@ mod tests {
         assert_eq!(config.min_tokens, cloned.min_tokens);
     }
 
-    // ============================================================
     // CloneType Tests
-    // ============================================================
 
     #[test]
     fn test_clone_type_equality() {
@@ -837,9 +833,7 @@ mod tests {
         assert_eq!(t1, t2);
     }
 
-    // ============================================================
     // SimilarityDetector Tests
-    // ============================================================
 
     #[test]
     fn test_similarity_detector_new() {
@@ -1095,9 +1089,7 @@ mod tests {
         assert!(entropy < 5.0);
     }
 
-    // ============================================================
     // Winnowing Tests
-    // ============================================================
 
     #[test]
     fn test_winnowing_new() {
@@ -1204,9 +1196,7 @@ mod tests {
         assert_eq!(matches.len(), fp.len());
     }
 
-    // ============================================================
     // TokenAnalyzer Tests (via SimilarityDetector)
-    // ============================================================
 
     #[test]
     fn test_token_analyzer_tokenize() {
@@ -1288,9 +1278,7 @@ mod tests {
         assert!(sim < 1.0);
     }
 
-    // ============================================================
     // EntropyCalculator Tests
-    // ============================================================
 
     #[test]
     fn test_entropy_calculator_new() {
@@ -1324,9 +1312,7 @@ mod tests {
         assert!((entropy - 0.0).abs() < f64::EPSILON);
     }
 
-    // ============================================================
     // Priority Tests
-    // ============================================================
 
     #[test]
     fn test_priority_clone() {
@@ -1342,9 +1328,7 @@ mod tests {
         let _low = Priority::Low;
     }
 
-    // ============================================================
     // Location Tests
-    // ============================================================
 
     #[test]
     fn test_location_clone() {
@@ -1373,9 +1357,7 @@ mod tests {
         assert!(loc.end_column.is_none());
     }
 
-    // ============================================================
     // SimilarBlock Tests
-    // ============================================================
 
     #[test]
     fn test_similar_block_clone() {
@@ -1399,9 +1381,7 @@ mod tests {
         assert_eq!(block.similarity, cloned.similarity);
     }
 
-    // ============================================================
     // EntropyReport Tests
-    // ============================================================
 
     #[test]
     fn test_entropy_report_clone() {
@@ -1416,9 +1396,7 @@ mod tests {
         assert_eq!(report.recommendations.len(), cloned.recommendations.len());
     }
 
-    // ============================================================
     // EntropyBlock Tests
-    // ============================================================
 
     #[test]
     fn test_entropy_block_clone() {
@@ -1439,9 +1417,7 @@ mod tests {
         assert_eq!(block.category, cloned.category);
     }
 
-    // ============================================================
     // RefactoringHint Tests
-    // ============================================================
 
     #[test]
     fn test_refactoring_hint_clone() {
@@ -1456,9 +1432,7 @@ mod tests {
         assert_eq!(hint.suggestion, cloned.suggestion);
     }
 
-    // ============================================================
     // Metrics Tests
-    // ============================================================
 
     #[test]
     fn test_metrics_clone() {
@@ -1473,9 +1447,7 @@ mod tests {
         assert_eq!(metrics.total_clones, cloned.total_clones);
     }
 
-    // ============================================================
     // ComprehensiveReport Tests
-    // ============================================================
 
     #[test]
     fn test_comprehensive_report_clone() {
@@ -1498,9 +1470,7 @@ mod tests {
         );
     }
 
-    // ============================================================
     // Internal Helper Method Tests (via SimilarityDetector)
-    // ============================================================
 
     #[test]
     fn test_normalize_whitespace() {
@@ -1743,9 +1713,7 @@ mod tests {
         assert!((pct - 50.0).abs() < f64::EPSILON);
     }
 
-    // ============================================================
     // Serialization Tests
-    // ============================================================
 
     #[test]
     fn test_similarity_config_serialization() {
@@ -1817,9 +1785,7 @@ mod tests {
         assert_eq!(metrics.total_clones, deserialized.total_clones);
     }
 
-    // ============================================================
     // Integration-style Tests
-    // ============================================================
 
     #[test]
     fn test_full_workflow_with_real_code() {
