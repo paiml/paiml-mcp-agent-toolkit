@@ -19,6 +19,7 @@ pub mod cargo_mutants_backend; // Sprint 70: cargo-mutants wrapper
 pub mod churn_formatter;
 pub mod cleanup_resources_handler; // Issue #86: System resource cleanup
 pub mod complexity_handlers;
+pub mod comply_cb_detect; // CB pattern detection extracted for file health (CB-040)
 pub mod comply_handlers; // GH-96: PMAT compliance and migration system
 pub mod comprehensive_analysis_handler;
 pub mod comprehensive_handler;
