@@ -1,0 +1,1855 @@
+//\! Tests for cross language dependencies
+//\! Extracted for file health compliance (CB-040)
+
+use super::*;
+
+mod tests {
+    use super::*;
+    use crate::ast::polyglot::unified_node::SourcePosition;
+    use std::path::PathBuf;
+
+    fn create_test_node(
+        id: &str,
+        kind: NodeKind,
+        name: &str,
+        fqn: &str,
+        language: Language,
+    ) -> UnifiedNode {
+        UnifiedNode {
+            id: id.to_string(),
+            kind,
+            name: name.to_string(),
+            fqn: fqn.to_string(),
+            language,
+            file_path: PathBuf::from("/test/path"),
+            position: SourcePosition::default(),
+            attributes: HashMap::new(),
+            children: Vec::new(),
+            parent: None,
+            references: Vec::new(),
+            type_info: None,
+            signature: None,
+            documentation: None,
+            original_item: None,
+            metadata: HashMap::new(),
+        }
+    }
+
+    fn create_test_node_with_references(
+        id: &str,
+        kind: NodeKind,
+        name: &str,
+        fqn: &str,
+        language: Language,
+        references: Vec<crate::ast::polyglot::unified_node::NodeReference>,
+    ) -> UnifiedNode {
+        UnifiedNode {
+            id: id.to_string(),
+            kind,
+            name: name.to_string(),
+            fqn: fqn.to_string(),
+            language,
+            file_path: PathBuf::from("/test/path"),
+            position: SourcePosition::default(),
+            attributes: HashMap::new(),
+            children: Vec::new(),
+            parent: None,
+            references,
+            type_info: None,
+            signature: None,
+            documentation: None,
+            original_item: None,
+            metadata: HashMap::new(),
+        }
+    }
+
+    #[test]
+    fn test_detect_dependencies() {
+        // Create Java class
+        let mut java_class = create_test_node(
+            "Java:class:User",
+            NodeKind::Class,
+            "User",
+            "com.example.User",
+            Language::Java,
+        );
+
+        // Create Kotlin class
+        let kotlin_class = create_test_node(
+            "Kotlin:class:KotlinUser",
+            NodeKind::Class,
+            "KotlinUser",
+            "com.example.KotlinUser",
+            Language::Kotlin,
+        );
+
+        // Add reference from Java to Kotlin
+        java_class.add_reference(
+            ReferenceKind::Inherits,
+            "com.example.KotlinUser".to_string(),
+            None,
+        );
+
+        // Detect dependencies
+        let mut dependencies = CrossLanguageDependencies::detect(&[java_class], &[kotlin_class]);
+
+        // Sort dependencies by source_id to make test deterministic
+        dependencies.sort_by(|a, b| {
+            a.source_id
+                .cmp(&b.source_id)
+                .then(a.target_id.cmp(&b.target_id))
+                .then(a.kind.cmp(&b.kind))
+        });
+
+        // Verify - exactly one dependency
+        assert_eq!(
+            dependencies.len(),
+            1,
+            "Expected exactly 1 dependency, found {}",
+            dependencies.len()
+        );
+        assert_eq!(dependencies[0].source_id, "Java:class:User");
+        assert_eq!(dependencies[0].target_id, "Kotlin:class:KotlinUser");
+        assert_eq!(dependencies[0].kind, ReferenceKind::Inherits);
+        assert_eq!(dependencies[0].source_language, Language::Java);
+        assert_eq!(dependencies[0].target_language, Language::Kotlin);
+    }
+
+    #[test]
+    fn test_name_resolvers() {
+        // Java-Kotlin resolver
+        let java_kotlin_resolver = JavaKotlinResolver;
+
+        let java_node = create_test_node(
+            "Java:class:User",
+            NodeKind::Class,
+            "User",
+            "com.example.User",
+            Language::Java,
+        );
+
+        let kotlin_node = create_test_node(
+            "Kotlin:class:User",
+            NodeKind::Class,
+            "User",
+            "com.example.User",
+            Language::Kotlin,
+        );
+
+        let reference = crate::ast::polyglot::unified_node::NodeReference {
+            kind: ReferenceKind::Inherits,
+            target_id: String::new(),
+            target_name: "com.example.User".to_string(),
+            target_language: Some(Language::Kotlin),
+        };
+
+        assert!(java_kotlin_resolver.can_resolve(
+            Language::Java,
+            Language::Kotlin,
+            &java_node,
+            &reference,
+            &kotlin_node,
+        ));
+    }
+
+    // EXTREME TDD TESTS - Cross-Language Dependency Coverage
+
+    // Test CrossLanguageDependencies::new() and basic initialization
+    #[test]
+    fn test_new_creates_empty_instance() {
+        let deps = CrossLanguageDependencies::new();
+        assert!(deps.get_dependencies().is_empty());
+    }
+
+    // Test add_nodes functionality
+    #[test]
+    fn test_add_nodes_basic() {
+        let mut deps = CrossLanguageDependencies::new();
+        let node1 = create_test_node(
+            "Java:class:User",
+            NodeKind::Class,
+            "User",
+            "com.example.User",
+            Language::Java,
+        );
+        let node2 = create_test_node(
+            "Kotlin:class:Service",
+            NodeKind::Class,
+            "Service",
+            "com.example.Service",
+            Language::Kotlin,
+        );
+
+        deps.add_nodes(vec![node1, node2]);
+        // Verify nodes were added by running detect_all
+        let result = deps.detect_all();
+        // No references = no dependencies
+        assert!(result.is_empty());
+    }
+
+    // Test add_name_resolver functionality
+    #[test]
+    fn test_add_name_resolver() {
+        let mut deps = CrossLanguageDependencies::new();
+        deps.add_name_resolver(Language::Java, Box::new(JavaKotlinResolver));
+        deps.add_name_resolver(Language::Kotlin, Box::new(JavaKotlinResolver));
+
+        // Create nodes with references that can be resolved
+        let mut java_node = create_test_node(
+            "Java:class:User",
+            NodeKind::Class,
+            "User",
+            "com.example.User",
+            Language::Java,
+        );
+        java_node.add_reference(
+            ReferenceKind::Uses,
+            "com.example.KotlinService".to_string(),
+            None,
+        );
+
+        let kotlin_node = create_test_node(
+            "Kotlin:class:KotlinService",
+            NodeKind::Class,
+            "KotlinService",
+            "com.example.KotlinService",
+            Language::Kotlin,
+        );
+
+        deps.add_nodes(vec![java_node, kotlin_node]);
+        let result = deps.detect_all();
+        assert!(!result.is_empty());
+    }
+
+    // Test filter_by_source_language
+    #[test]
+    fn test_filter_by_source_language() {
+        let mut java_class = create_test_node(
+            "Java:class:User",
+            NodeKind::Class,
+            "User",
+            "com.example.User",
+            Language::Java,
+        );
+        java_class.add_reference(ReferenceKind::Inherits, "KotlinBase".to_string(), None);
+
+        let kotlin_class = create_test_node(
+            "Kotlin:class:KotlinBase",
+            NodeKind::Class,
+            "KotlinBase",
+            "com.example.KotlinBase",
+            Language::Kotlin,
+        );
+
+        let mut deps = CrossLanguageDependencies::new();
+        deps.add_nodes(vec![java_class, kotlin_class]);
+        deps.detect_all();
+
+        let java_deps = deps.filter_by_source_language(Language::Java);
+        assert!(!java_deps.is_empty());
+        for dep in &java_deps {
+            assert_eq!(dep.source_language, Language::Java);
+        }
+
+        let python_deps = deps.filter_by_source_language(Language::Python);
+        assert!(python_deps.is_empty());
+    }
+
+    // Test filter_by_target_language
+    #[test]
+    fn test_filter_by_target_language() {
+        let mut java_class = create_test_node(
+            "Java:class:User",
+            NodeKind::Class,
+            "User",
+            "com.example.User",
+            Language::Java,
+        );
+        java_class.add_reference(
+            ReferenceKind::Implements,
+            "KotlinInterface".to_string(),
+            None,
+        );
+
+        let kotlin_interface = create_test_node(
+            "Kotlin:interface:KotlinInterface",
+            NodeKind::Interface,
+            "KotlinInterface",
+            "com.example.KotlinInterface",
+            Language::Kotlin,
+        );
+
+        let mut deps = CrossLanguageDependencies::new();
+        deps.add_nodes(vec![java_class, kotlin_interface]);
+        deps.detect_all();
+
+        let kotlin_deps = deps.filter_by_target_language(Language::Kotlin);
+        assert!(!kotlin_deps.is_empty());
+        for dep in &kotlin_deps {
+            assert_eq!(dep.target_language, Language::Kotlin);
+        }
+
+        let rust_deps = deps.filter_by_target_language(Language::Rust);
+        assert!(rust_deps.is_empty());
+    }
+
+    // Test filter_by_kind
+    #[test]
+    fn test_filter_by_kind() {
+        let mut java_class = create_test_node(
+            "Java:class:User",
+            NodeKind::Class,
+            "User",
+            "com.example.User",
+            Language::Java,
+        );
+        java_class.add_reference(ReferenceKind::Inherits, "KotlinBase".to_string(), None);
+        java_class.add_reference(
+            ReferenceKind::Implements,
+            "KotlinInterface".to_string(),
+            None,
+        );
+
+        let kotlin_base = create_test_node(
+            "Kotlin:class:KotlinBase",
+            NodeKind::Class,
+            "KotlinBase",
+            "com.example.KotlinBase",
+            Language::Kotlin,
+        );
+
+        let kotlin_interface = create_test_node(
+            "Kotlin:interface:KotlinInterface",
+            NodeKind::Interface,
+            "KotlinInterface",
+            "com.example.KotlinInterface",
+            Language::Kotlin,
+        );
+
+        let mut deps = CrossLanguageDependencies::new();
+        deps.add_nodes(vec![java_class, kotlin_base, kotlin_interface]);
+        deps.detect_all();
+
+        let inherits_deps = deps.filter_by_kind(ReferenceKind::Inherits);
+        let implements_deps = deps.filter_by_kind(ReferenceKind::Implements);
+        let calls_deps = deps.filter_by_kind(ReferenceKind::Calls);
+
+        // At least one inherits and one implements dependency
+        assert!(!inherits_deps.is_empty());
+        assert!(!implements_deps.is_empty());
+        assert!(calls_deps.is_empty());
+    }
+
+    // Test get_dependencies_between
+    #[test]
+    fn test_get_dependencies_between() {
+        let mut java_class = create_test_node(
+            "Java:class:User",
+            NodeKind::Class,
+            "User",
+            "com.example.User",
+            Language::Java,
+        );
+        java_class.add_reference(ReferenceKind::Inherits, "KotlinBase".to_string(), None);
+
+        let kotlin_base = create_test_node(
+            "Kotlin:class:KotlinBase",
+            NodeKind::Class,
+            "KotlinBase",
+            "com.example.KotlinBase",
+            Language::Kotlin,
+        );
+
+        let mut deps = CrossLanguageDependencies::new();
+        deps.add_nodes(vec![java_class, kotlin_base]);
+        deps.detect_all();
+
+        let java_to_kotlin = deps.get_dependencies_between(Language::Java, Language::Kotlin);
+        assert!(!java_to_kotlin.is_empty());
+
+        let kotlin_to_java = deps.get_dependencies_between(Language::Kotlin, Language::Java);
+        assert!(kotlin_to_java.is_empty());
+
+        let java_to_python = deps.get_dependencies_between(Language::Java, Language::Python);
+        assert!(java_to_python.is_empty());
+    }
+
+    // Test to_dot graph generation
+    #[test]
+    fn test_to_dot_generation() {
+        let mut java_class = create_test_node(
+            "Java:class:User",
+            NodeKind::Class,
+            "User",
+            "com.example.User",
+            Language::Java,
+        );
+        java_class.add_reference(ReferenceKind::Inherits, "KotlinBase".to_string(), None);
+
+        let kotlin_base = create_test_node(
+            "Kotlin:class:KotlinBase",
+            NodeKind::Class,
+            "KotlinBase",
+            "com.example.KotlinBase",
+            Language::Kotlin,
+        );
+
+        let mut deps = CrossLanguageDependencies::new();
+        deps.add_nodes(vec![java_class, kotlin_base]);
+        deps.detect_all();
+
+        let dot = deps.to_dot();
+
+        // Verify basic DOT structure
+        assert!(dot.starts_with("digraph CrossLanguageDependencies {"));
+        assert!(dot.ends_with("}\n"));
+        assert!(dot.contains("\"Java:class:User\""));
+        assert!(dot.contains("\"Kotlin:class:KotlinBase\""));
+        assert!(dot.contains("User (Java)"));
+        assert!(dot.contains("KotlinBase (Kotlin)"));
+        // Should have an edge for the inheritance
+        assert!(dot.contains("->"));
+        assert!(dot.contains("Inherits"));
+        assert!(dot.contains("bold")); // Inherits style
+    }
+
+    // Test to_dot with different node kinds
+    #[test]
+    fn test_to_dot_node_shapes() {
+        let class_node = create_test_node(
+            "Java:class:MyClass",
+            NodeKind::Class,
+            "MyClass",
+            "com.example.MyClass",
+            Language::Java,
+        );
+
+        let interface_node = create_test_node(
+            "Java:interface:MyInterface",
+            NodeKind::Interface,
+            "MyInterface",
+            "com.example.MyInterface",
+            Language::Java,
+        );
+
+        let trait_node = create_test_node(
+            "Rust:trait:MyTrait",
+            NodeKind::Trait,
+            "MyTrait",
+            "crate::MyTrait",
+            Language::Rust,
+        );
+
+        let method_node = create_test_node(
+            "Java:method:doSomething",
+            NodeKind::Method,
+            "doSomething",
+            "com.example.MyClass.doSomething",
+            Language::Java,
+        );
+
+        let function_node = create_test_node(
+            "Python:function:process",
+            NodeKind::Function,
+            "process",
+            "module.process",
+            Language::Python,
+        );
+
+        let field_node = create_test_node(
+            "Java:field:name",
+            NodeKind::Field,
+            "name",
+            "com.example.MyClass.name",
+            Language::Java,
+        );
+
+        let mut deps = CrossLanguageDependencies::new();
+        deps.add_nodes(vec![
+            class_node,
+            interface_node,
+            trait_node,
+            method_node,
+            function_node,
+            field_node,
+        ]);
+
+        let dot = deps.to_dot();
+
+        // Check shapes
+        assert!(dot.contains("shape=box")); // Class
+        assert!(dot.contains("shape=ellipse")); // Interface/Trait
+        assert!(dot.contains("shape=octagon")); // Method/Function
+        assert!(dot.contains("shape=plaintext")); // Field and others
+    }
+
+    // Test to_dot with implements relationship (dashed style)
+    #[test]
+    fn test_to_dot_implements_style() {
+        let mut java_class = create_test_node(
+            "Java:class:User",
+            NodeKind::Class,
+            "User",
+            "com.example.User",
+            Language::Java,
+        );
+        java_class.add_reference(
+            ReferenceKind::Implements,
+            "KotlinInterface".to_string(),
+            None,
+        );
+
+        let kotlin_interface = create_test_node(
+            "Kotlin:interface:KotlinInterface",
+            NodeKind::Interface,
+            "KotlinInterface",
+            "com.example.KotlinInterface",
+            Language::Kotlin,
+        );
+
+        let mut deps = CrossLanguageDependencies::new();
+        deps.add_nodes(vec![java_class, kotlin_interface]);
+        deps.detect_all();
+
+        let dot = deps.to_dot();
+        assert!(dot.contains("dashed")); // Implements style
+    }
+
+    // Test language_color for all languages
+    #[test]
+    fn test_language_colors() {
+        let deps = CrossLanguageDependencies::new();
+
+        // Test all specific language colors
+        assert_eq!(deps.language_color(Language::Java), "\"#b07219\"");
+        assert_eq!(deps.language_color(Language::Kotlin), "\"#A97BFF\"");
+        assert_eq!(deps.language_color(Language::Scala), "\"#c22d40\"");
+        assert_eq!(deps.language_color(Language::TypeScript), "\"#2b7489\"");
+        assert_eq!(deps.language_color(Language::JavaScript), "\"#f1e05a\"");
+        assert_eq!(deps.language_color(Language::Python), "\"#3572A5\"");
+        assert_eq!(deps.language_color(Language::Rust), "\"#dea584\"");
+        assert_eq!(deps.language_color(Language::Go), "\"#00ADD8\"");
+        assert_eq!(deps.language_color(Language::Cpp), "\"#f34b7d\"");
+        // Test fallback for other languages
+        assert_eq!(deps.language_color(Language::Ruby), "\"#bbbbbb\"");
+        assert_eq!(deps.language_color(Language::Swift), "\"#bbbbbb\"");
+        assert_eq!(deps.language_color(Language::Php), "\"#bbbbbb\"");
+        assert_eq!(deps.language_color(Language::CSharp), "\"#bbbbbb\"");
+        assert_eq!(deps.language_color(Language::Other(999)), "\"#bbbbbb\"");
+    }
+
+    // Test JavaScalaResolver
+    #[test]
+    fn test_java_scala_resolver_direct_name_match() {
+        let resolver = JavaScalaResolver;
+
+        let java_node = create_test_node(
+            "Java:class:User",
+            NodeKind::Class,
+            "User",
+            "com.example.User",
+            Language::Java,
+        );
+
+        let scala_node = create_test_node(
+            "Scala:class:User",
+            NodeKind::Class,
+            "User",
+            "com.example.User",
+            Language::Scala,
+        );
+
+        let reference = crate::ast::polyglot::unified_node::NodeReference {
+            kind: ReferenceKind::Inherits,
+            target_id: String::new(),
+            target_name: "User".to_string(),
+            target_language: Some(Language::Scala),
+        };
+
+        assert!(resolver.can_resolve(
+            Language::Java,
+            Language::Scala,
+            &java_node,
+            &reference,
+            &scala_node,
+        ));
+    }
+
+    #[test]
+    fn test_java_scala_resolver_fqn_match() {
+        let resolver = JavaScalaResolver;
+
+        let java_node = create_test_node(
+            "Java:class:User",
+            NodeKind::Class,
+            "User",
+            "com.example.User",
+            Language::Java,
+        );
+
+        let scala_node = create_test_node(
+            "Scala:class:ScalaUser",
+            NodeKind::Class,
+            "ScalaUser",
+            "com.example.ScalaUser",
+            Language::Scala,
+        );
+
+        let reference = crate::ast::polyglot::unified_node::NodeReference {
+            kind: ReferenceKind::Uses,
+            target_id: String::new(),
+            target_name: "com.example.ScalaUser".to_string(),
+            target_language: Some(Language::Scala),
+        };
+
+        assert!(resolver.can_resolve(
+            Language::Java,
+            Language::Scala,
+            &java_node,
+            &reference,
+            &scala_node,
+        ));
+    }
+
+    #[test]
+    fn test_java_scala_resolver_package_conversion() {
+        let resolver = JavaScalaResolver;
+
+        let java_node = create_test_node(
+            "Java:class:User",
+            NodeKind::Class,
+            "User",
+            "com.example.User",
+            Language::Java,
+        );
+
+        let scala_node = create_test_node(
+            "Scala:class:Service",
+            NodeKind::Class,
+            "Service",
+            "com.example.Service",
+            Language::Scala,
+        );
+
+        let reference = crate::ast::polyglot::unified_node::NodeReference {
+            kind: ReferenceKind::Uses,
+            target_id: String::new(),
+            target_name: "com.example.Service".to_string(),
+            target_language: Some(Language::Scala),
+        };
+
+        assert!(resolver.can_resolve(
+            Language::Java,
+            Language::Scala,
+            &java_node,
+            &reference,
+            &scala_node,
+        ));
+    }
+
+    #[test]
+    fn test_java_scala_resolver_wrong_languages() {
+        let resolver = JavaScalaResolver;
+
+        let java_node = create_test_node(
+            "Java:class:User",
+            NodeKind::Class,
+            "User",
+            "com.example.User",
+            Language::Java,
+        );
+
+        let kotlin_node = create_test_node(
+            "Kotlin:class:User",
+            NodeKind::Class,
+            "User",
+            "com.example.User",
+            Language::Kotlin,
+        );
+
+        let reference = crate::ast::polyglot::unified_node::NodeReference {
+            kind: ReferenceKind::Inherits,
+            target_id: String::new(),
+            target_name: "User".to_string(),
+            target_language: Some(Language::Kotlin),
+        };
+
+        // Should return false for non Java-Scala combination
+        assert!(!resolver.can_resolve(
+            Language::Java,
+            Language::Kotlin,
+            &java_node,
+            &reference,
+            &kotlin_node,
+        ));
+    }
+
+    #[test]
+    fn test_scala_to_java_resolver() {
+        let resolver = JavaScalaResolver;
+
+        let scala_node = create_test_node(
+            "Scala:class:ScalaUser",
+            NodeKind::Class,
+            "ScalaUser",
+            "com.example.ScalaUser",
+            Language::Scala,
+        );
+
+        let java_node = create_test_node(
+            "Java:class:JavaService",
+            NodeKind::Class,
+            "JavaService",
+            "com.example.JavaService",
+            Language::Java,
+        );
+
+        let reference = crate::ast::polyglot::unified_node::NodeReference {
+            kind: ReferenceKind::Uses,
+            target_id: String::new(),
+            target_name: "JavaService".to_string(),
+            target_language: Some(Language::Java),
+        };
+
+        // Scala to Java should also work
+        assert!(resolver.can_resolve(
+            Language::Scala,
+            Language::Java,
+            &scala_node,
+            &reference,
+            &java_node,
+        ));
+    }
+
+    // Test TypeScriptJavaResolver
+    #[test]
+    fn test_typescript_java_resolver_direct_name_match() {
+        let resolver = TypeScriptJavaResolver;
+
+        let ts_node = create_test_node(
+            "TypeScript:class:UserService",
+            NodeKind::Class,
+            "UserService",
+            "UserService",
+            Language::TypeScript,
+        );
+
+        let java_node = create_test_node(
+            "Java:class:UserService",
+            NodeKind::Class,
+            "UserService",
+            "com.example.UserService",
+            Language::Java,
+        );
+
+        let reference = crate::ast::polyglot::unified_node::NodeReference {
+            kind: ReferenceKind::Uses,
+            target_id: String::new(),
+            target_name: "UserService".to_string(),
+            target_language: Some(Language::Java),
+        };
+
+        assert!(resolver.can_resolve(
+            Language::TypeScript,
+            Language::Java,
+            &ts_node,
+            &reference,
+            &java_node,
+        ));
+    }
+
+    #[test]
+    fn test_typescript_java_resolver_fqn_ends_with_match() {
+        let resolver = TypeScriptJavaResolver;
+
+        let ts_node = create_test_node(
+            "TypeScript:class:UserService",
+            NodeKind::Class,
+            "UserService",
+            "UserService",
+            Language::TypeScript,
+        );
+
+        let java_node = create_test_node(
+            "Java:class:UserService",
+            NodeKind::Class,
+            "UserService",
+            "com.example.api.UserService",
+            Language::Java,
+        );
+
+        let reference = crate::ast::polyglot::unified_node::NodeReference {
+            kind: ReferenceKind::Uses,
+            target_id: String::new(),
+            target_name: "UserService".to_string(),
+            target_language: Some(Language::Java),
+        };
+
+        assert!(resolver.can_resolve(
+            Language::TypeScript,
+            Language::Java,
+            &ts_node,
+            &reference,
+            &java_node,
+        ));
+    }
+
+    #[test]
+    fn test_typescript_java_resolver_interface_prefix() {
+        let resolver = TypeScriptJavaResolver;
+
+        let ts_node = create_test_node(
+            "TypeScript:interface:IUser",
+            NodeKind::Interface,
+            "IUser",
+            "IUser",
+            Language::TypeScript,
+        );
+
+        let java_node = create_test_node(
+            "Java:class:User",
+            NodeKind::Class,
+            "User",
+            "com.example.User",
+            Language::Java,
+        );
+
+        let reference = crate::ast::polyglot::unified_node::NodeReference {
+            kind: ReferenceKind::Uses,
+            target_id: String::new(),
+            target_name: "IUser".to_string(),
+            target_language: Some(Language::Java),
+        };
+
+        // IUser -> User mapping
+        assert!(resolver.can_resolve(
+            Language::TypeScript,
+            Language::Java,
+            &ts_node,
+            &reference,
+            &java_node,
+        ));
+    }
+
+    #[test]
+    fn test_typescript_java_resolver_interface_prefix_fqn() {
+        let resolver = TypeScriptJavaResolver;
+
+        let ts_node = create_test_node(
+            "TypeScript:interface:IUserService",
+            NodeKind::Interface,
+            "IUserService",
+            "IUserService",
+            Language::TypeScript,
+        );
+
+        let java_node = create_test_node(
+            "Java:class:UserService",
+            NodeKind::Class,
+            "UserService",
+            "com.example.api.UserService",
+            Language::Java,
+        );
+
+        let reference = crate::ast::polyglot::unified_node::NodeReference {
+            kind: ReferenceKind::Uses,
+            target_id: String::new(),
+            target_name: "IUserService".to_string(),
+            target_language: Some(Language::Java),
+        };
+
+        // IUserService -> UserService FQN ends_with mapping
+        assert!(resolver.can_resolve(
+            Language::TypeScript,
+            Language::Java,
+            &ts_node,
+            &reference,
+            &java_node,
+        ));
+    }
+
+    #[test]
+    fn test_typescript_java_resolver_wrong_languages() {
+        let resolver = TypeScriptJavaResolver;
+
+        let ts_node = create_test_node(
+            "TypeScript:class:UserService",
+            NodeKind::Class,
+            "UserService",
+            "UserService",
+            Language::TypeScript,
+        );
+
+        let python_node = create_test_node(
+            "Python:class:UserService",
+            NodeKind::Class,
+            "UserService",
+            "user_service.UserService",
+            Language::Python,
+        );
+
+        let reference = crate::ast::polyglot::unified_node::NodeReference {
+            kind: ReferenceKind::Uses,
+            target_id: String::new(),
+            target_name: "UserService".to_string(),
+            target_language: Some(Language::Python),
+        };
+
+        // Should return false for non TypeScript-Java combination
+        assert!(!resolver.can_resolve(
+            Language::TypeScript,
+            Language::Python,
+            &ts_node,
+            &reference,
+            &python_node,
+        ));
+    }
+
+    #[test]
+    fn test_java_to_typescript_resolver() {
+        let resolver = TypeScriptJavaResolver;
+
+        let java_node = create_test_node(
+            "Java:class:JavaService",
+            NodeKind::Class,
+            "JavaService",
+            "com.example.JavaService",
+            Language::Java,
+        );
+
+        let ts_node = create_test_node(
+            "TypeScript:class:TypeScriptClient",
+            NodeKind::Class,
+            "TypeScriptClient",
+            "TypeScriptClient",
+            Language::TypeScript,
+        );
+
+        let reference = crate::ast::polyglot::unified_node::NodeReference {
+            kind: ReferenceKind::Uses,
+            target_id: String::new(),
+            target_name: "TypeScriptClient".to_string(),
+            target_language: Some(Language::TypeScript),
+        };
+
+        // Java to TypeScript should also work
+        assert!(resolver.can_resolve(
+            Language::Java,
+            Language::TypeScript,
+            &java_node,
+            &reference,
+            &ts_node,
+        ));
+    }
+
+    // Test JavaKotlinResolver with all edge cases
+    #[test]
+    fn test_java_kotlin_resolver_direct_name() {
+        let resolver = JavaKotlinResolver;
+
+        let java_node = create_test_node(
+            "Java:class:User",
+            NodeKind::Class,
+            "User",
+            "com.example.User",
+            Language::Java,
+        );
+
+        let kotlin_node = create_test_node(
+            "Kotlin:class:User",
+            NodeKind::Class,
+            "User",
+            "com.example.User",
+            Language::Kotlin,
+        );
+
+        let reference = crate::ast::polyglot::unified_node::NodeReference {
+            kind: ReferenceKind::Inherits,
+            target_id: String::new(),
+            target_name: "User".to_string(),
+            target_language: Some(Language::Kotlin),
+        };
+
+        assert!(resolver.can_resolve(
+            Language::Java,
+            Language::Kotlin,
+            &java_node,
+            &reference,
+            &kotlin_node,
+        ));
+    }
+
+    #[test]
+    fn test_java_kotlin_resolver_wrong_languages() {
+        let resolver = JavaKotlinResolver;
+
+        let java_node = create_test_node(
+            "Java:class:User",
+            NodeKind::Class,
+            "User",
+            "com.example.User",
+            Language::Java,
+        );
+
+        let python_node = create_test_node(
+            "Python:class:User",
+            NodeKind::Class,
+            "User",
+            "user.User",
+            Language::Python,
+        );
+
+        let reference = crate::ast::polyglot::unified_node::NodeReference {
+            kind: ReferenceKind::Inherits,
+            target_id: String::new(),
+            target_name: "User".to_string(),
+            target_language: Some(Language::Python),
+        };
+
+        // Should return false for non Java-Kotlin combination
+        assert!(!resolver.can_resolve(
+            Language::Java,
+            Language::Python,
+            &java_node,
+            &reference,
+            &python_node,
+        ));
+    }
+
+    #[test]
+    fn test_kotlin_to_java_resolver() {
+        let resolver = JavaKotlinResolver;
+
+        let kotlin_node = create_test_node(
+            "Kotlin:class:KotlinUser",
+            NodeKind::Class,
+            "KotlinUser",
+            "com.example.KotlinUser",
+            Language::Kotlin,
+        );
+
+        let java_node = create_test_node(
+            "Java:class:JavaService",
+            NodeKind::Class,
+            "JavaService",
+            "com.example.JavaService",
+            Language::Java,
+        );
+
+        let reference = crate::ast::polyglot::unified_node::NodeReference {
+            kind: ReferenceKind::Uses,
+            target_id: String::new(),
+            target_name: "JavaService".to_string(),
+            target_language: Some(Language::Java),
+        };
+
+        // Kotlin to Java should also work
+        assert!(resolver.can_resolve(
+            Language::Kotlin,
+            Language::Java,
+            &kotlin_node,
+            &reference,
+            &java_node,
+        ));
+    }
+
+    #[test]
+    fn test_java_kotlin_resolver_package_name_conversion() {
+        let resolver = JavaKotlinResolver;
+
+        let java_node = create_test_node(
+            "Java:class:User",
+            NodeKind::Class,
+            "User",
+            "com.example.User",
+            Language::Java,
+        );
+
+        let kotlin_node = create_test_node(
+            "Kotlin:class:Service",
+            NodeKind::Class,
+            "Service",
+            "com.example.Service",
+            Language::Kotlin,
+        );
+
+        let reference = crate::ast::polyglot::unified_node::NodeReference {
+            kind: ReferenceKind::Uses,
+            target_id: String::new(),
+            target_name: "com.example.Service".to_string(),
+            target_language: Some(Language::Kotlin),
+        };
+
+        assert!(resolver.can_resolve(
+            Language::Java,
+            Language::Kotlin,
+            &java_node,
+            &reference,
+            &kotlin_node,
+        ));
+    }
+
+    // Test direct ID match in is_reference_match
+    #[test]
+    fn test_is_reference_match_direct_id() {
+        let deps = CrossLanguageDependencies::new();
+
+        let source = create_test_node(
+            "Java:class:User",
+            NodeKind::Class,
+            "User",
+            "com.example.User",
+            Language::Java,
+        );
+
+        let target = create_test_node(
+            "Kotlin:class:KotlinUser",
+            NodeKind::Class,
+            "KotlinUser",
+            "com.example.KotlinUser",
+            Language::Kotlin,
+        );
+
+        let reference = crate::ast::polyglot::unified_node::NodeReference {
+            kind: ReferenceKind::Inherits,
+            target_id: "Kotlin:class:KotlinUser".to_string(),
+            target_name: "".to_string(),
+            target_language: Some(Language::Kotlin),
+        };
+
+        assert!(deps.is_reference_match(
+            &source,
+            &reference,
+            &target,
+            Language::Java,
+            Language::Kotlin
+        ));
+    }
+
+    // Test unresolved reference resolution
+    #[test]
+    fn test_resolve_references_by_name() {
+        let java_ref = crate::ast::polyglot::unified_node::NodeReference {
+            kind: ReferenceKind::Uses,
+            target_id: String::new(), // Empty ID = unresolved
+            target_name: "SharedComponent".to_string(),
+            target_language: None,
+        };
+
+        let java_node = create_test_node_with_references(
+            "Java:class:JavaClient",
+            NodeKind::Class,
+            "JavaClient",
+            "com.example.JavaClient",
+            Language::Java,
+            vec![java_ref],
+        );
+
+        // Create a TypeScript node with the same name
+        let ts_node = create_test_node(
+            "TypeScript:class:SharedComponent",
+            NodeKind::Class,
+            "SharedComponent",
+            "SharedComponent",
+            Language::TypeScript,
+        );
+
+        let mut deps = CrossLanguageDependencies::new();
+        deps.add_nodes(vec![java_node, ts_node]);
+        deps.detect_all();
+
+        let resolved_deps = deps.get_dependencies();
+        // Should have resolved the reference by name
+        assert!(!resolved_deps.is_empty());
+
+        // Find the specific dependency
+        let dep = resolved_deps.iter().find(|d| {
+            d.source_id == "Java:class:JavaClient"
+                && d.target_id == "TypeScript:class:SharedComponent"
+        });
+        assert!(dep.is_some());
+        // Name-based resolution should have reasonable confidence
+        // Value may vary based on detection order (0.8 for name-based, 1.0 for certain matches)
+        let confidence = dep.unwrap().confidence;
+        assert!(
+            confidence >= 0.8 && confidence <= 1.0,
+            "Confidence should be in valid range, got: {confidence}"
+        );
+    }
+
+    // Test resolve_references with FQN match
+    #[test]
+    fn test_resolve_references_by_fqn() {
+        let java_ref = crate::ast::polyglot::unified_node::NodeReference {
+            kind: ReferenceKind::Imports,
+            target_id: String::new(), // Empty ID = unresolved
+            target_name: "com.example.SharedModule".to_string(),
+            target_language: None,
+        };
+
+        let java_node = create_test_node_with_references(
+            "Java:class:JavaClient",
+            NodeKind::Class,
+            "JavaClient",
+            "com.example.JavaClient",
+            Language::Java,
+            vec![java_ref],
+        );
+
+        // Create a Kotlin node with the same FQN
+        let kotlin_node = create_test_node(
+            "Kotlin:module:SharedModule",
+            NodeKind::Module,
+            "SharedModule",
+            "com.example.SharedModule", // Same FQN
+            Language::Kotlin,
+        );
+
+        let mut deps = CrossLanguageDependencies::new();
+        deps.add_nodes(vec![java_node, kotlin_node]);
+        deps.detect_all();
+
+        let resolved_deps = deps.get_dependencies();
+        assert!(!resolved_deps.is_empty());
+    }
+
+    // Test deduplication of dependencies
+    #[test]
+    fn test_dependency_deduplication() {
+        // Create a node with multiple references to the same target
+        let ref1 = crate::ast::polyglot::unified_node::NodeReference {
+            kind: ReferenceKind::Uses,
+            target_id: String::new(),
+            target_name: "SharedService".to_string(),
+            target_language: None,
+        };
+
+        let ref2 = crate::ast::polyglot::unified_node::NodeReference {
+            kind: ReferenceKind::Uses,
+            target_id: String::new(),
+            target_name: "SharedService".to_string(), // Same target, same kind
+            target_language: None,
+        };
+
+        let java_node = create_test_node_with_references(
+            "Java:class:JavaClient",
+            NodeKind::Class,
+            "JavaClient",
+            "com.example.JavaClient",
+            Language::Java,
+            vec![ref1, ref2],
+        );
+
+        let kotlin_node = create_test_node(
+            "Kotlin:class:SharedService",
+            NodeKind::Class,
+            "SharedService",
+            "com.example.SharedService",
+            Language::Kotlin,
+        );
+
+        let mut deps = CrossLanguageDependencies::new();
+        deps.add_nodes(vec![java_node, kotlin_node]);
+        deps.detect_all();
+
+        // Count dependencies with same source_id, target_id, and kind
+        let uses_deps: Vec<_> = deps
+            .get_dependencies()
+            .iter()
+            .filter(|d| {
+                d.source_id == "Java:class:JavaClient"
+                    && d.target_id == "Kotlin:class:SharedService"
+                    && d.kind == ReferenceKind::Uses
+            })
+            .collect();
+
+        // Should be deduplicated to 1
+        assert_eq!(uses_deps.len(), 1);
+    }
+
+    // Test multiple languages interaction
+    #[test]
+    fn test_multiple_languages() {
+        let mut java_node = create_test_node(
+            "Java:class:JavaService",
+            NodeKind::Class,
+            "JavaService",
+            "com.example.JavaService",
+            Language::Java,
+        );
+        java_node.add_reference(ReferenceKind::Uses, "KotlinHelper".to_string(), None);
+        java_node.add_reference(ReferenceKind::Uses, "ScalaProcessor".to_string(), None);
+
+        let kotlin_node = create_test_node(
+            "Kotlin:class:KotlinHelper",
+            NodeKind::Class,
+            "KotlinHelper",
+            "com.example.KotlinHelper",
+            Language::Kotlin,
+        );
+
+        let scala_node = create_test_node(
+            "Scala:class:ScalaProcessor",
+            NodeKind::Class,
+            "ScalaProcessor",
+            "com.example.ScalaProcessor",
+            Language::Scala,
+        );
+
+        let mut deps = CrossLanguageDependencies::new();
+        deps.add_nodes(vec![java_node, kotlin_node, scala_node]);
+        deps.detect_all();
+
+        let java_to_kotlin = deps.get_dependencies_between(Language::Java, Language::Kotlin);
+        let java_to_scala = deps.get_dependencies_between(Language::Java, Language::Scala);
+
+        assert!(!java_to_kotlin.is_empty());
+        assert!(!java_to_scala.is_empty());
+    }
+
+    // Test empty nodes case
+    #[test]
+    fn test_empty_nodes() {
+        let deps = CrossLanguageDependencies::detect(&[], &[]);
+        assert!(deps.is_empty());
+    }
+
+    // Test same language nodes (no cross-language deps)
+    #[test]
+    fn test_same_language_no_cross_deps() {
+        let mut java1 = create_test_node(
+            "Java:class:User",
+            NodeKind::Class,
+            "User",
+            "com.example.User",
+            Language::Java,
+        );
+        java1.add_reference(ReferenceKind::Uses, "Service".to_string(), None);
+
+        let java2 = create_test_node(
+            "Java:class:Service",
+            NodeKind::Class,
+            "Service",
+            "com.example.Service",
+            Language::Java,
+        );
+
+        let deps = CrossLanguageDependencies::detect(&[java1], &[java2]);
+        // Same language references should not create cross-language dependencies
+        assert!(deps.is_empty());
+    }
+
+    // Test different ReferenceKind types in DOT output
+    #[test]
+    fn test_to_dot_different_reference_kinds() {
+        let mut java_class = create_test_node(
+            "Java:class:User",
+            NodeKind::Class,
+            "User",
+            "com.example.User",
+            Language::Java,
+        );
+        // Add various reference types
+        java_class.add_reference(ReferenceKind::Inherits, "KotlinBase".to_string(), None);
+        java_class.add_reference(
+            ReferenceKind::Implements,
+            "KotlinInterface".to_string(),
+            None,
+        );
+        java_class.add_reference(ReferenceKind::Calls, "KotlinFunction".to_string(), None);
+
+        let kotlin_base = create_test_node(
+            "Kotlin:class:KotlinBase",
+            NodeKind::Class,
+            "KotlinBase",
+            "com.example.KotlinBase",
+            Language::Kotlin,
+        );
+
+        let kotlin_interface = create_test_node(
+            "Kotlin:interface:KotlinInterface",
+            NodeKind::Interface,
+            "KotlinInterface",
+            "com.example.KotlinInterface",
+            Language::Kotlin,
+        );
+
+        let kotlin_function = create_test_node(
+            "Kotlin:function:KotlinFunction",
+            NodeKind::Function,
+            "KotlinFunction",
+            "com.example.KotlinFunction",
+            Language::Kotlin,
+        );
+
+        let mut deps = CrossLanguageDependencies::new();
+        deps.add_nodes(vec![
+            java_class,
+            kotlin_base,
+            kotlin_interface,
+            kotlin_function,
+        ]);
+        deps.detect_all();
+
+        let dot = deps.to_dot();
+
+        // Check that different styles are used
+        assert!(dot.contains("bold")); // Inherits
+        assert!(dot.contains("dashed")); // Implements
+        assert!(dot.contains("solid")); // Calls (and default)
+    }
+
+    // Test TypeScriptJavaResolver with short interface name
+    #[test]
+    fn test_typescript_interface_single_char_after_i() {
+        let resolver = TypeScriptJavaResolver;
+
+        let ts_node = create_test_node(
+            "TypeScript:interface:IA",
+            NodeKind::Interface,
+            "IA",
+            "IA",
+            Language::TypeScript,
+        );
+
+        let java_node = create_test_node(
+            "Java:class:A",
+            NodeKind::Class,
+            "A",
+            "com.example.A",
+            Language::Java,
+        );
+
+        let reference = crate::ast::polyglot::unified_node::NodeReference {
+            kind: ReferenceKind::Uses,
+            target_id: String::new(),
+            target_name: "IA".to_string(),
+            target_language: Some(Language::Java),
+        };
+
+        // IA -> A mapping should work
+        assert!(resolver.can_resolve(
+            Language::TypeScript,
+            Language::Java,
+            &ts_node,
+            &reference,
+            &java_node,
+        ));
+    }
+
+    // Test JavaKotlinResolver with mismatched package depths
+    #[test]
+    fn test_java_kotlin_resolver_different_package_depth() {
+        let resolver = JavaKotlinResolver;
+
+        let java_node = create_test_node(
+            "Java:class:User",
+            NodeKind::Class,
+            "User",
+            "com.example.User",
+            Language::Java,
+        );
+
+        let kotlin_node = create_test_node(
+            "Kotlin:class:Service",
+            NodeKind::Class,
+            "Service",
+            "com.example.api.Service",
+            Language::Kotlin,
+        );
+
+        let reference = crate::ast::polyglot::unified_node::NodeReference {
+            kind: ReferenceKind::Uses,
+            target_id: String::new(),
+            target_name: "com.example.Service".to_string(), // Different depth
+            target_language: Some(Language::Kotlin),
+        };
+
+        // Should not match due to different package depths
+        assert!(!resolver.can_resolve(
+            Language::Java,
+            Language::Kotlin,
+            &java_node,
+            &reference,
+            &kotlin_node,
+        ));
+    }
+
+    // Test with resolver that uses package parts comparison
+    #[test]
+    fn test_java_scala_resolver_package_parts_mismatch() {
+        let resolver = JavaScalaResolver;
+
+        let java_node = create_test_node(
+            "Java:class:User",
+            NodeKind::Class,
+            "User",
+            "com.example.User",
+            Language::Java,
+        );
+
+        let scala_node = create_test_node(
+            "Scala:class:DifferentService",
+            NodeKind::Class,
+            "DifferentService",
+            "com.example.DifferentService",
+            Language::Scala,
+        );
+
+        let reference = crate::ast::polyglot::unified_node::NodeReference {
+            kind: ReferenceKind::Uses,
+            target_id: String::new(),
+            target_name: "com.example.Service".to_string(), // Different last part
+            target_language: Some(Language::Scala),
+        };
+
+        // Should not match because class names differ
+        assert!(!resolver.can_resolve(
+            Language::Java,
+            Language::Scala,
+            &java_node,
+            &reference,
+            &scala_node,
+        ));
+    }
+
+    // Test TypeScriptJavaResolver no I prefix
+    #[test]
+    fn test_typescript_java_no_interface_prefix() {
+        let resolver = TypeScriptJavaResolver;
+
+        let ts_node = create_test_node(
+            "TypeScript:interface:UserInterface",
+            NodeKind::Interface,
+            "UserInterface",
+            "UserInterface",
+            Language::TypeScript,
+        );
+
+        let java_node = create_test_node(
+            "Java:class:User",
+            NodeKind::Class,
+            "User",
+            "com.example.User",
+            Language::Java,
+        );
+
+        let reference = crate::ast::polyglot::unified_node::NodeReference {
+            kind: ReferenceKind::Uses,
+            target_id: String::new(),
+            target_name: "UserInterface".to_string(),
+            target_language: Some(Language::Java),
+        };
+
+        // Should not match - no I prefix
+        assert!(!resolver.can_resolve(
+            Language::TypeScript,
+            Language::Java,
+            &ts_node,
+            &reference,
+            &java_node,
+        ));
+    }
+
+    // Test that CrossLanguageDependency struct fields are accessible
+    #[test]
+    fn test_cross_language_dependency_struct() {
+        let dep = CrossLanguageDependency {
+            source_id: "source".to_string(),
+            target_id: "target".to_string(),
+            source_language: Language::Java,
+            target_language: Language::Kotlin,
+            kind: ReferenceKind::Inherits,
+            confidence: 0.95,
+            metadata: {
+                let mut m = HashMap::new();
+                m.insert("key".to_string(), "value".to_string());
+                m
+            },
+        };
+
+        assert_eq!(dep.source_id, "source");
+        assert_eq!(dep.target_id, "target");
+        assert_eq!(dep.source_language, Language::Java);
+        assert_eq!(dep.target_language, Language::Kotlin);
+        assert_eq!(dep.kind, ReferenceKind::Inherits);
+        assert!((dep.confidence - 0.95).abs() < f64::EPSILON);
+        assert_eq!(dep.metadata.get("key"), Some(&"value".to_string()));
+    }
+
+    // Test Default trait implementation for CrossLanguageDependencies
+    #[test]
+    fn test_cross_language_dependencies_default() {
+        let deps = CrossLanguageDependencies::default();
+        assert!(deps.get_dependencies().is_empty());
+    }
+
+    // Test with name resolver integration
+    #[test]
+    fn test_detect_with_name_resolver_integration() {
+        let mut deps = CrossLanguageDependencies::new();
+
+        // Add Java->Kotlin resolver
+        deps.add_name_resolver(Language::Java, Box::new(JavaKotlinResolver));
+
+        // Create a Java node with reference
+        let mut java_node = create_test_node(
+            "Java:class:Client",
+            NodeKind::Class,
+            "Client",
+            "com.example.Client",
+            Language::Java,
+        );
+
+        // Reference using package pattern that the resolver handles
+        let ref1 = crate::ast::polyglot::unified_node::NodeReference {
+            kind: ReferenceKind::Uses,
+            target_id: String::new(),
+            target_name: "com.example.KotlinService".to_string(),
+            target_language: Some(Language::Kotlin),
+        };
+        java_node.references.push(ref1);
+
+        let kotlin_node = create_test_node(
+            "Kotlin:class:KotlinService",
+            NodeKind::Class,
+            "KotlinService",
+            "com.example.KotlinService",
+            Language::Kotlin,
+        );
+
+        deps.add_nodes(vec![java_node, kotlin_node]);
+        deps.detect_all();
+
+        let result = deps.get_dependencies();
+        assert!(!result.is_empty());
+    }
+
+    // Test with all ReferenceKind variants
+    #[test]
+    fn test_all_reference_kinds() {
+        let all_kinds = [
+            ReferenceKind::Inherits,
+            ReferenceKind::Implements,
+            ReferenceKind::Calls,
+            ReferenceKind::Uses,
+            ReferenceKind::Creates,
+            ReferenceKind::Imports,
+            ReferenceKind::Annotates,
+            ReferenceKind::DependsOn,
+        ];
+
+        for kind in all_kinds {
+            let mut java_node = create_test_node(
+                &format!("Java:class:Source{:?}", kind),
+                NodeKind::Class,
+                &format!("Source{:?}", kind),
+                &format!("com.example.Source{:?}", kind),
+                Language::Java,
+            );
+            java_node.add_reference(kind, format!("Target{:?}", kind), None);
+
+            let kotlin_node = create_test_node(
+                &format!("Kotlin:class:Target{:?}", kind),
+                NodeKind::Class,
+                &format!("Target{:?}", kind),
+                &format!("com.example.Target{:?}", kind),
+                Language::Kotlin,
+            );
+
+            let mut deps = CrossLanguageDependencies::new();
+            deps.add_nodes(vec![java_node, kotlin_node]);
+            deps.detect_all();
+
+            let filtered = deps.filter_by_kind(kind);
+            assert!(
+                !filtered.is_empty(),
+                "Expected at least one dependency of kind {:?}",
+                kind
+            );
+            assert_eq!(filtered[0].kind, kind);
+        }
+    }
+
+    // Test FQN map building in add_nodes
+    #[test]
+    fn test_fqn_map_building() {
+        let mut deps = CrossLanguageDependencies::new();
+
+        // Create two nodes with same FQN but different IDs (simulating overloads)
+        let node1 = create_test_node(
+            "Java:method:process1",
+            NodeKind::Method,
+            "process",
+            "com.example.Service.process",
+            Language::Java,
+        );
+
+        let node2 = create_test_node(
+            "Java:method:process2",
+            NodeKind::Method,
+            "process",
+            "com.example.Service.process",
+            Language::Java,
+        );
+
+        deps.add_nodes(vec![node1, node2]);
+
+        // Both should be added and detectable
+        let result = deps.detect_all();
+        // No cross-language deps expected (same language)
+        assert!(result.is_empty());
+    }
+
+    // Test nodes grouped by language correctly
+    #[test]
+    fn test_nodes_grouped_by_language() {
+        let mut deps = CrossLanguageDependencies::new();
+
+        let java_node = create_test_node(
+            "Java:class:JavaClass",
+            NodeKind::Class,
+            "JavaClass",
+            "com.example.JavaClass",
+            Language::Java,
+        );
+
+        let kotlin_node = create_test_node(
+            "Kotlin:class:KotlinClass",
+            NodeKind::Class,
+            "KotlinClass",
+            "com.example.KotlinClass",
+            Language::Kotlin,
+        );
+
+        let scala_node = create_test_node(
+            "Scala:class:ScalaClass",
+            NodeKind::Class,
+            "ScalaClass",
+            "com.example.ScalaClass",
+            Language::Scala,
+        );
+
+        let ts_node = create_test_node(
+            "TypeScript:class:TsClass",
+            NodeKind::Class,
+            "TsClass",
+            "TsClass",
+            Language::TypeScript,
+        );
+
+        deps.add_nodes(vec![java_node, kotlin_node, scala_node, ts_node]);
+        deps.detect_all();
+
+        // Verify we can filter by all languages
+        let java_deps = deps.filter_by_source_language(Language::Java);
+        let kotlin_deps = deps.filter_by_source_language(Language::Kotlin);
+        let scala_deps = deps.filter_by_source_language(Language::Scala);
+        let ts_deps = deps.filter_by_source_language(Language::TypeScript);
+
+        // No references added, so all should be empty
+        assert!(java_deps.is_empty());
+        assert!(kotlin_deps.is_empty());
+        assert!(scala_deps.is_empty());
+        assert!(ts_deps.is_empty());
+    }
+
+    // Test DOT graph with no nodes
+    #[test]
+    fn test_to_dot_empty() {
+        let deps = CrossLanguageDependencies::new();
+        let dot = deps.to_dot();
+
+        assert!(dot.starts_with("digraph CrossLanguageDependencies {"));
+        assert!(dot.ends_with("}\n"));
+        // No nodes or edges
+        assert!(!dot.contains("->"));
+    }
+
+    // Test Clone and Debug for CrossLanguageDependency
+    #[test]
+    fn test_cross_language_dependency_clone_debug() {
+        let dep = CrossLanguageDependency {
+            source_id: "source".to_string(),
+            target_id: "target".to_string(),
+            source_language: Language::Java,
+            target_language: Language::Kotlin,
+            kind: ReferenceKind::Inherits,
+            confidence: 1.0,
+            metadata: HashMap::new(),
+        };
+
+        let cloned = dep.clone();
+        assert_eq!(dep.source_id, cloned.source_id);
+        assert_eq!(dep.target_id, cloned.target_id);
+
+        // Test Debug
+        let debug_str = format!("{:?}", dep);
+        assert!(debug_str.contains("CrossLanguageDependency"));
+        assert!(debug_str.contains("source"));
+        assert!(debug_str.contains("target"));
+    }
+
+    // Test with deeply nested package names
+    #[test]
+    fn test_deeply_nested_packages() {
+        let resolver = JavaKotlinResolver;
+
+        let java_node = create_test_node(
+            "Java:class:User",
+            NodeKind::Class,
+            "User",
+            "com.example.api.v2.internal.User",
+            Language::Java,
+        );
+
+        let kotlin_node = create_test_node(
+            "Kotlin:class:Service",
+            NodeKind::Class,
+            "Service",
+            "com.example.api.v2.internal.Service",
+            Language::Kotlin,
+        );
+
+        let reference = crate::ast::polyglot::unified_node::NodeReference {
+            kind: ReferenceKind::Uses,
+            target_id: String::new(),
+            target_name: "com.example.api.v2.internal.Service".to_string(),
+            target_language: Some(Language::Kotlin),
+        };
+
+        assert!(resolver.can_resolve(
+            Language::Java,
+            Language::Kotlin,
+            &java_node,
+            &reference,
+            &kotlin_node,
+        ));
+    }
+
+    // Test serialization/deserialization of CrossLanguageDependency
+    #[test]
+    fn test_cross_language_dependency_serde() {
+        let dep = CrossLanguageDependency {
+            source_id: "source".to_string(),
+            target_id: "target".to_string(),
+            source_language: Language::Java,
+            target_language: Language::Kotlin,
+            kind: ReferenceKind::Inherits,
+            confidence: 0.9,
+            metadata: {
+                let mut m = HashMap::new();
+                m.insert("key".to_string(), "value".to_string());
+                m
+            },
+        };
+
+        let json = serde_json::to_string(&dep).unwrap();
+        let deserialized: CrossLanguageDependency = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(dep.source_id, deserialized.source_id);
+        assert_eq!(dep.target_id, deserialized.target_id);
+        assert_eq!(dep.kind, deserialized.kind);
+        assert!((dep.confidence - deserialized.confidence).abs() < f64::EPSILON);
+    }
+}
