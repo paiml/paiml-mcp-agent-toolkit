@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.213.14] - 2026-01-21
+
+### Fixed
+- **CB-021 SIMD False Positives**: Eliminated 26 false positive warnings
+  - Used `concat!()` macro to split pattern strings in detection code
+  - Prevents compliance checker from flagging its own pattern definitions
+  - Affected files: comply_handlers.rs, cuda_simd.rs, gpu_simd_scorer.rs
+- **CB-BUDGET False Positives**: Improved ComputeBrick detection precision
+  - Now only flags `impl ComputeBrick` trait implementations
+  - Ignores structs like `BrickStats` that have "Brick" in name but aren't compute bricks
+  - Test data uses concat!() to avoid self-matching during scans
+
 ## [2.213.13] - 2026-01-21
 
 ### Fixed
