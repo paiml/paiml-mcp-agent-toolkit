@@ -13,8 +13,7 @@ use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
-// Simple placeholder implementations that return success results
-// In a full implementation, these would call the actual CLI handlers with proper arguments
+// Tool function implementations for MCP protocol
 
 pub async fn analyze_complexity(
     paths: &[PathBuf],
@@ -1976,10 +1975,7 @@ pub async fn generate_defect_aware_prompt(
             }));
         }
     };
-
-    // Generate prompt
     let prompt = generator.generate_prompt(&task, &context);
-
     Ok(json!({
         "status": "completed",
         "message": "Defect-aware prompt generated successfully",
@@ -1996,7 +1992,6 @@ pub async fn generate_defect_aware_prompt(
         }
     }))
 }
-
 
 // Tests extracted to tool_functions_tests.rs for file health compliance (CB-040)
 #[cfg(test)]
