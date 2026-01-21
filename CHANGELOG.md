@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.213.13] - 2026-01-21
+
+### Fixed
+- **CB-020 Detection Improvement**: Fix false positives for multi-line SAFETY comments
+  - Now checks up to 10 lines back (was 3) to find SAFETY comments
+  - Supports `/ SAFETY:` doc comment style in addition to `// SAFETY:`
+  - Eliminates false positives where SAFETY comments span multiple lines
+
 ## [2.213.12] - 2026-01-21
 
 ### Added
