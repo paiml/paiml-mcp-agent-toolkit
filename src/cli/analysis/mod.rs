@@ -2,6 +2,19 @@
 //!
 //! This module contains the actual implementation of analysis commands,
 //! extracted from the main CLI module to reduce complexity.
+//!
+//! ## File Health Initiative (CB-040)
+//!
+//! The codebase has identified 60+ files over 2000 lines that need splitting.
+//! The pre-commit hook now enforces:
+//! - New files must be <500 lines
+//! - Existing files cannot grow (ratchet mechanism)
+//!
+//! Priority files for future refactoring:
+//! - analysis_utilities.rs (12,087 lines)
+//! - deep_context.rs (7,211 lines)
+//! - commands.rs (6,273 lines)
+//! - tools.rs (6,111 lines)
 
 pub mod defect_prediction;
 pub mod duplicates;

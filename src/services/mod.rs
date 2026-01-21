@@ -158,6 +158,7 @@ pub mod file_classifier;
 #[cfg(test)]
 mod file_classifier_property_tests;
 pub mod file_discovery;
+pub mod file_health; // File Health Score: max-lines enforcement and TLR analysis
 pub mod five_whys_analyzer;
 pub mod fixed_graph_builder;
 pub mod git_analysis;

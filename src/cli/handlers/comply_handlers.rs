@@ -11,6 +11,10 @@
 
 use crate::cli::commands::{ComplyCommands, ComplyOutputFormat};
 use crate::services::commit_classifier::CommitClassifier;
+use crate::services::file_health::{
+    FileHealthMetrics, FileHealthReport,
+    scan_directory, DEFAULT_EXCLUDE_PATTERNS, RUST_EXTENSIONS,
+};
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -170,6 +174,7 @@ async fn handle_check(
         check_ci_configured(project_path),
         check_paiml_deps_workspace(project_path),
         check_sovereign_stack_patterns(project_path),
+        check_file_health(project_path),  // CB-040: File Health Score (max-lines, TLR)
     ];
 
     // Calculate compliance
@@ -1793,6 +1798,209 @@ fn check_paiml_deps_workspace(project_path: &Path) -> ComplianceCheck {
             severity: Severity::Warning,
         }
     }
+}
+
+/// Check file health across the project (CB-040)
+/// Validates: max-lines (500), TLR (test-to-lines ratio), complexity, health score
+/// Based on: docs/specifications/max-lines.md
+fn check_file_health(project_path: &Path) -> ComplianceCheck {
+    // Skip if not a Rust project
+    let cargo_toml = project_path.join("Cargo.toml");
+    if !cargo_toml.exists() {
+        return ComplianceCheck {
+            name: "File Health".to_string(),
+            status: CheckStatus::Skip,
+            message: "No Cargo.toml found - not a Rust project".to_string(),
+            severity: Severity::Info,
+        };
+    }
+
+    // Scan for source files
+    let src_dir = project_path.join("src");
+    if !src_dir.exists() {
+        return ComplianceCheck {
+            name: "File Health".to_string(),
+            status: CheckStatus::Skip,
+            message: "No src/ directory found".to_string(),
+            severity: Severity::Info,
+        };
+    }
+
+    let files = scan_directory(&src_dir, RUST_EXTENSIONS, DEFAULT_EXCLUDE_PATTERNS);
+    if files.is_empty() {
+        return ComplianceCheck {
+            name: "File Health".to_string(),
+            status: CheckStatus::Pass,
+            message: "No Rust source files found".to_string(),
+            severity: Severity::Info,
+        };
+    }
+
+    // Analyze each file for health metrics
+    let mut metrics: Vec<FileHealthMetrics> = Vec::new();
+    let mut critical_count = 0;
+    let mut problem_count = 0;
+    let mut over_500_count = 0;
+
+    for file_path in &files {
+        // Count lines
+        let content = match std::fs::read_to_string(file_path) {
+            Ok(c) => c,
+            Err(_) => continue,
+        };
+        let lines = content.lines().count();
+
+        // Quick categorization without full analysis
+        if lines > 2000 {
+            critical_count += 1;
+        } else if lines > 1000 {
+            problem_count += 1;
+        }
+        if lines > 500 {
+            over_500_count += 1;
+        }
+
+        // Calculate full metrics (simplified - using defaults for test/complexity/churn)
+        // In production, these would be gathered from actual analysis
+        let test_lines = estimate_test_lines(&content);
+        let avg_complexity = estimate_avg_complexity(&content);
+
+        let file_metrics = FileHealthMetrics::calculate(
+            file_path.clone(),
+            lines,
+            test_lines,
+            avg_complexity,
+            0, // churn_30d - would need git integration
+        );
+        metrics.push(file_metrics);
+    }
+
+    // Build report
+    let report = FileHealthReport::from_files(project_path.to_path_buf(), metrics);
+
+    // Determine status based on findings
+    if critical_count > 0 {
+        ComplianceCheck {
+            name: "File Health".to_string(),
+            status: CheckStatus::Fail,
+            message: format!(
+                "CRITICAL: {} files >2000 lines, {} files >1000 lines, {} files >500 lines (avg health: {}%, grade: {})",
+                critical_count,
+                problem_count,
+                over_500_count,
+                report.average_health,
+                report.average_grade.as_str()
+            ),
+            severity: Severity::Critical,
+        }
+    } else if problem_count > 0 || over_500_count > 5 {
+        ComplianceCheck {
+            name: "File Health".to_string(),
+            status: CheckStatus::Warn,
+            message: format!(
+                "{} files >1000 lines, {} files >500 lines (avg health: {}%, grade: {})",
+                problem_count,
+                over_500_count,
+                report.average_health,
+                report.average_grade.as_str()
+            ),
+            severity: Severity::Warning,
+        }
+    } else {
+        ComplianceCheck {
+            name: "File Health".to_string(),
+            status: CheckStatus::Pass,
+            message: format!(
+                "{} files analyzed, avg health: {}%, grade: {} (all files <500 lines or within tolerance)",
+                report.total_files,
+                report.average_health,
+                report.average_grade.as_str()
+            ),
+            severity: Severity::Info,
+        }
+    }
+}
+
+/// Estimate test lines by counting lines in #[cfg(test)] modules and test functions
+fn estimate_test_lines(content: &str) -> usize {
+    let mut test_lines = 0;
+    let mut in_test_module = false;
+    let mut brace_depth = 0;
+
+    for line in content.lines() {
+        let trimmed = line.trim();
+
+        // Track test module entry
+        if trimmed.contains("#[cfg(test)]") {
+            in_test_module = true;
+        }
+
+        // Track braces for module scope
+        if in_test_module {
+            brace_depth += trimmed.matches('{').count();
+            brace_depth = brace_depth.saturating_sub(trimmed.matches('}').count());
+            test_lines += 1;
+
+            if brace_depth == 0 && test_lines > 1 {
+                in_test_module = false;
+            }
+        }
+
+        // Also count standalone test functions
+        if trimmed.contains("#[test]") || trimmed.contains("#[tokio::test]") {
+            test_lines += 10; // Approximate test function size
+        }
+    }
+
+    test_lines
+}
+
+/// Estimate average cyclomatic complexity by counting control flow statements
+fn estimate_avg_complexity(content: &str) -> f32 {
+    let mut total_complexity = 1; // Base complexity
+    let mut function_count = 0;
+
+    for line in content.lines() {
+        let trimmed = line.trim();
+
+        // Count function definitions
+        if trimmed.starts_with("fn ") || trimmed.starts_with("pub fn ") ||
+           trimmed.starts_with("async fn ") || trimmed.starts_with("pub async fn ") {
+            function_count += 1;
+        }
+
+        // Count control flow statements (add to complexity)
+        if trimmed.starts_with("if ") || trimmed.contains(" if ") {
+            total_complexity += 1;
+        }
+        if trimmed.starts_with("else if ") || trimmed.contains("} else if ") {
+            total_complexity += 1;
+        }
+        if trimmed.starts_with("match ") || trimmed.contains(" match ") {
+            total_complexity += 1;
+        }
+        if trimmed.starts_with("for ") || trimmed.contains(" for ") {
+            total_complexity += 1;
+        }
+        if trimmed.starts_with("while ") || trimmed.contains(" while ") {
+            total_complexity += 1;
+        }
+        if trimmed.starts_with("loop ") || trimmed.contains(" loop ") {
+            total_complexity += 1;
+        }
+        if trimmed.contains("&&") || trimmed.contains("||") {
+            total_complexity += 1;
+        }
+        if trimmed.contains("?") && !trimmed.contains("//") {
+            total_complexity += 1; // Error propagation
+        }
+    }
+
+    if function_count == 0 {
+        return total_complexity as f32;
+    }
+
+    total_complexity as f32 / function_count as f32
 }
 
 fn calculate_versions_behind(project_version: &str) -> u32 {

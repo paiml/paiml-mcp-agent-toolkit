@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.213.12] - 2026-01-21
+
+### Added
+- **File Health Enforcement System (CB-040)**: Prevents untestable large files
+  - **New Compliance Check**: `pmat comply check` now includes file health analysis
+    - Detects files exceeding 500 lines (new files) or 2000 lines (critical)
+    - Calculates Test-to-Lines Ratio (TLR) with scaling requirements
+    - Computes File Health Score (0-100) with letter grades (A+ to F)
+    - Reports priority files needing refactoring
+  - **Pre-commit Hook**: Enforces file size limits at commit time
+    - New files must be < 500 lines
+    - Existing files cannot grow (ratchet mechanism - Toyota Way Kaizen)
+    - Prevents regression on file sizes
+  - **File Health Metrics**:
+    - Size Score (30%): Based on file line count
+    - TLR Score (40%): Test coverage relative to file size
+    - Complexity Score (20%): Average cyclomatic complexity
+    - Stability Score (10%): Git churn in last 30 days
+  - **Size Classes**: Optimal (<200), Acceptable (201-500), Warning (501-1000), Critical (1001-2000), Emergency (2000+)
+  - **Toyota Way Principles**: Jidoka (built-in quality), Kaizen (continuous improvement), Muda (waste elimination)
+  - **Peer-Reviewed Foundation**: Based on Nagappan et al. (IEEE TSE 2006), Zimmermann et al. (ICSE 2008)
+  - **Specification**: `docs/specifications/max-lines.md` with 100-point Popperian falsification criteria
+  - **Files Added**: `src/services/file_health.rs`, pre-commit hook update
+  - **pmat-book**: Chapter 43 - File Health and Max-Lines (CB-040)
+
 ## [2.200.0] - 2025-11-21
 
 ### Added
