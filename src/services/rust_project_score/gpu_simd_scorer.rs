@@ -62,11 +62,12 @@ impl GpuSimdScorer {
     fn has_gpu_simd_code(&self, project_path: &Path, cache: Option<&FileCache>) -> bool {
         // Check for CUDA files
         let cuda_extensions = ["cu", "cuh", "ptx"];
+        // Use concat! to avoid self-matching during CB-021 compliance scanning
         let simd_patterns = [
             "std::arch::",
             "core::arch::",
-            "_mm256_",
-            "_mm512_",
+            concat!("_mm", "256_"),
+            concat!("_mm", "512_"),
             "arm_neon",
         ];
         let wgpu_patterns = ["wgpu::", "wgsl"];

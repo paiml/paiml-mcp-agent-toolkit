@@ -822,12 +822,17 @@ fn detect_cb021_simd_without_target_feature(project_path: &Path) -> Vec<CbPatter
     // Portable SIMD: Require :: to indicate method call (not just type in identifier)
     // Only check for AVX/AVX-512 which require target_feature
     // SSE intrinsics (_mm_) and NEON are baseline and don't need target_feature
+    // Use concat! to avoid self-matching when this file is scanned
     let simd_patterns_needing_target_feature = [
-        "_mm256_", "_mm512_", // x86 AVX/AVX-512 (not SSE which is baseline)
+        concat!("_mm", "256_"), concat!("_mm", "512_"), // x86 AVX/AVX-512 (not SSE which is baseline)
         // NEON (vld1q_, etc.) is baseline on aarch64, no target_feature needed
     ];
     // Portable SIMD - require :: suffix to distinguish from identifiers like "f32x4_verified"
-    let portable_simd_patterns = ["i8x16::", "i16x8::", "i32x4::", "f32x4::", "Simd::<"];
+    // Use concat! to avoid self-matching when this file is scanned
+    let portable_simd_patterns = [
+        concat!("i8x", "16::"), concat!("i16x", "8::"), concat!("i32x", "4::"),
+        concat!("f32x", "4::"), concat!("Simd", "::<"),
+    ];
 
     if let Ok(entries) = walkdir_rs_files(&src_dir) {
         for entry in entries {

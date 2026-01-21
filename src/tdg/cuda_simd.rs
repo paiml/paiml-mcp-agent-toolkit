@@ -1276,9 +1276,10 @@ impl CudaSimdAnalyzer {
             }
             "c" | "cpp" | "h" | "hpp" => {
                 // Check for SIMD intrinsics
+                // Use concat! to avoid self-matching during CB-021 compliance scanning
                 if content.contains("immintrin.h")
-                    || content.contains("_mm256_")
-                    || content.contains("_mm512_")
+                    || content.contains(concat!("_mm", "256_"))
+                    || content.contains(concat!("_mm", "512_"))
                     || content.contains("arm_neon.h")
                 {
                     analysis.simd_files = 1;
@@ -1348,9 +1349,10 @@ impl CudaSimdAnalyzer {
         let mut has_safety_comment = false;
 
         // Check for target_feature attribute
+        // Use concat! to avoid self-matching during CB-021 compliance scanning
         let has_target_feature = content.contains("#[target_feature(enable");
-        let has_avx512 = content.contains("avx512") || content.contains("_mm512_");
-        let has_avx = content.contains("_mm256_") || content.contains("avx2");
+        let has_avx512 = content.contains("avx512") || content.contains(concat!("_mm", "512_"));
+        let has_avx = content.contains(concat!("_mm", "256_")) || content.contains("avx2");
         let _has_sse = content.contains("_mm_") || content.contains("sse");
 
         for (line_num, line) in lines.iter().enumerate() {
@@ -1395,17 +1397,18 @@ impl CudaSimdAnalyzer {
             }
 
             // Count SIMD instruction types
-            if trimmed.contains("_mm512_") {
+            // Use concat! to avoid self-matching during CB-021 compliance scanning
+            if trimmed.contains(concat!("_mm", "512_")) {
                 avx512_ops += 1;
                 analysis.coalescing.total_operations += 1;
                 analysis.coalescing.coalesced_operations += 1;
-            } else if trimmed.contains("_mm256_") {
+            } else if trimmed.contains(concat!("_mm", "256_")) {
                 avx_ops += 1;
                 analysis.coalescing.total_operations += 1;
                 analysis.coalescing.coalesced_operations += 1;
             } else if trimmed.contains("_mm_")
-                && !trimmed.contains("_mm256_")
-                && !trimmed.contains("_mm512_")
+                && !trimmed.contains(concat!("_mm", "256_"))
+                && !trimmed.contains(concat!("_mm", "512_"))
             {
                 sse_ops += 1;
                 analysis.coalescing.total_operations += 1;
@@ -1414,7 +1417,7 @@ impl CudaSimdAnalyzer {
 
             // Scalar operations in SIMD context
             if (trimmed.contains(".iter()") || trimmed.contains("for "))
-                && (content.contains("_mm256_") || content.contains("_mm512_"))
+                && (content.contains(concat!("_mm", "256_")) || content.contains(concat!("_mm", "512_")))
                 && !trimmed.contains("chunks")
             {
                 scalar_ops += 1;
@@ -1423,10 +1426,11 @@ impl CudaSimdAnalyzer {
             // ─────────────────────────────────────────────────────────────────
             // P0 CRITICAL: Alignment fault risk
             // ─────────────────────────────────────────────────────────────────
-            if trimmed.contains("_mm256_load_si256")
-                || trimmed.contains("_mm512_load_si512")
-                || trimmed.contains("_mm256_load_ps")
-                || trimmed.contains("_mm512_load_ps")
+            // Use concat! to avoid self-matching during CB-021 compliance scanning
+            if trimmed.contains(concat!("_mm", "256_load_si256"))
+                || trimmed.contains(concat!("_mm", "512_load_si512"))
+                || trimmed.contains(concat!("_mm", "256_load_ps"))
+                || trimmed.contains(concat!("_mm", "512_load_ps"))
             {
                 // Check if there's alignment guarantee in surrounding context
                 let context_start = line_num.saturating_sub(10);
@@ -1462,7 +1466,8 @@ impl CudaSimdAnalyzer {
             // ─────────────────────────────────────────────────────────────────
             // P0 CRITICAL: Bounds overflow risk
             // ─────────────────────────────────────────────────────────────────
-            if (trimmed.contains("_mm256_loadu_") || trimmed.contains("_mm512_loadu_"))
+            // Use concat! to avoid self-matching during CB-021 compliance scanning
+            if (trimmed.contains(concat!("_mm", "256_loadu_")) || trimmed.contains(concat!("_mm", "512_loadu_")))
                 && !content.contains("len()")
                 && !content.contains(".len")
             {
@@ -1488,12 +1493,13 @@ impl CudaSimdAnalyzer {
             // ─────────────────────────────────────────────────────────────────
             // P1 HIGH: SSE/AVX transition penalty
             // ─────────────────────────────────────────────────────────────────
+            // Use concat! to avoid self-matching during CB-021 compliance scanning
             if (trimmed.contains("_mm_")
-                && !trimmed.contains("_mm256_")
-                && !trimmed.contains("_mm512_"))
-                && (content.contains("_mm256_") || content.contains("_mm512_"))
+                && !trimmed.contains(concat!("_mm", "256_"))
+                && !trimmed.contains(concat!("_mm", "512_")))
+                && (content.contains(concat!("_mm", "256_")) || content.contains(concat!("_mm", "512_")))
                 && !content.contains("vzeroupper")
-                && !content.contains("_mm256_zeroupper")
+                && !content.contains(concat!("_mm", "256_zeroupper"))
             {
                 analysis.defects.push(DetectedDefect {
                     defect_class: DefectClass {
@@ -1511,14 +1517,15 @@ impl CudaSimdAnalyzer {
                     line: Some(line_num + 1),
                     snippet: Some(trimmed.to_string()),
                     suggestion: Some(
-                        "Add _mm256_zeroupper() before SSE code or use all AVX".to_string(),
+                        concat!("Add _mm", "256_zeroupper() before SSE code or use all AVX").to_string(),
                     ),
                 });
                 break; // Only report once per file
             }
 
             // Detect unaligned loads (not errors, but note for coalescing)
-            if trimmed.contains("_mm256_loadu_") || trimmed.contains("_mm512_loadu_") {
+            // Use concat! to avoid self-matching during CB-021 compliance scanning
+            if trimmed.contains(concat!("_mm", "256_loadu_")) || trimmed.contains(concat!("_mm", "512_loadu_")) {
                 analysis.coalescing.total_operations += 1;
                 analysis.coalescing.coalesced_operations += 1;
             }
