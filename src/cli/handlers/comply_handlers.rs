@@ -780,12 +780,13 @@ fn detect_cb020_unsafe_without_safety(project_path: &Path) -> Vec<CbPatternViola
                     // Check for unsafe block without preceding SAFETY comment
                     if trimmed.starts_with("unsafe {") || trimmed.starts_with("unsafe{") {
                         // Look at previous non-empty lines for SAFETY comment
+                        // Check up to 10 lines back to handle multi-line safety comments
                         let has_safety = lines
                             .iter()
                             .take(line_num)
                             .rev()
-                            .take(3)
-                            .any(|l| l.contains("// SAFETY:") || l.contains("// SAFETY :"));
+                            .take(10)
+                            .any(|l| l.contains("// SAFETY:") || l.contains("// SAFETY :") || l.contains("/ SAFETY:"));
 
                         if !has_safety {
                             violations.push(CbPatternViolation {

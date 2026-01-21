@@ -249,3 +249,7 @@ pmat-*.tar.gz
 *-aarch64-apple-darwin.tar.gz
 /.pmat-metrics/
 .pmat/baseline.json
+
+# PMAT
+.pmat/backup/
+.pmat-qa/

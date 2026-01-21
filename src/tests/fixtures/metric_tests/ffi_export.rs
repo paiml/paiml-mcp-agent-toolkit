@@ -11,6 +11,7 @@ pub extern "C" fn process_data(ptr: *const u8, len: usize) -> i32 {
         return -1;
     }
     
+    // SAFETY: ptr is checked non-null above and len is validated; caller guarantees valid memory
     unsafe {
         let slice = std::slice::from_raw_parts(ptr, len);
         slice.iter().map(|&b| b as i32).sum()

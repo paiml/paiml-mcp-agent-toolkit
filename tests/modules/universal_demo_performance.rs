@@ -250,6 +250,7 @@ mod universal_demo_performance_tests {
 
         // Allocate and deallocate to get a rough idea
         let layout = Layout::from_size_align(1, 1).unwrap();
+        // SAFETY: Layout is valid (size=1, align=1); ptr is immediately deallocated with same layout
         unsafe {
             let ptr = System.alloc(layout);
             System.dealloc(ptr, layout);

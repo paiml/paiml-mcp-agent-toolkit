@@ -264,6 +264,7 @@ pub mod gpu {
         /// Get or initialize the global GPU device
         #[allow(static_mut_refs)]
         pub fn get_or_init() -> Result<&'static GpuDevice> {
+            // SAFETY: INIT.call_once ensures single initialization; GPU_DEVICE is only written once
             unsafe {
                 INIT.call_once(|| match Self::new() {
                     Ok(device) => GPU_DEVICE = Some(device),

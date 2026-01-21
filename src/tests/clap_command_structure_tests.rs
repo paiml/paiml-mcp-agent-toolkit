@@ -145,6 +145,7 @@ mod tests {
         let _guard = ENV_MUTEX.lock();
 
         // Test that RUST_LOG env var is properly mapped
+        // SAFETY: Test is single-threaded due to ENV_MUTEX lock; env var modification is safe
         unsafe {
             env::set_var("RUST_LOG", "debug");
         }
@@ -157,6 +158,7 @@ mod tests {
         assert_eq!(cli.trace_filter, Some("debug".to_string()));
 
         // Clean up
+        // SAFETY: Test is single-threaded due to ENV_MUTEX lock; env var modification is safe
         unsafe {
             env::remove_var("RUST_LOG");
         }
