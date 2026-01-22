@@ -232,3 +232,83 @@ pub fn provability_format_to_string(format: &crate::cli::ProvabilityOutputFormat
         crate::cli::ProvabilityOutputFormat::Markdown => "markdown".to_string(),
     }
 }
+
+/// Output for CLI adapter
+/// Extracted for file health compliance (CB-040)
+#[derive(Debug)]
+pub enum CliOutput {
+    Success { content: String, exit_code: i32 },
+    Error { message: String, exit_code: i32 },
+}
+
+impl CliOutput {
+    /// Write the output to stdout/stderr and exit with appropriate code
+    pub fn write_and_exit(self) -> ! {
+        match self {
+            CliOutput::Success { content, exit_code } => {
+                print!("{content}");
+                std::process::exit(exit_code);
+            }
+            CliOutput::Error { message, exit_code } => {
+                eprintln!("Error: {message}");
+                std::process::exit(exit_code);
+            }
+        }
+    }
+
+    /// Get the exit code without exiting
+    #[must_use]
+    pub fn exit_code(&self) -> i32 {
+        match self {
+            CliOutput::Success { exit_code, .. } => *exit_code,
+            CliOutput::Error { exit_code, .. } => *exit_code,
+        }
+    }
+
+    /// Get the content/message
+    #[must_use]
+    pub fn content(&self) -> &str {
+        match self {
+            CliOutput::Success { content, .. } => content,
+            CliOutput::Error { message, .. } => message,
+        }
+    }
+}
+
+/// Toyota Way Extract Method: Categories for analyze command dispatch
+/// Reduces complexity from 24 branches to 4 categories
+/// Extracted for file health compliance (CB-040)
+#[derive(Debug, Clone, Copy)]
+pub enum AnalyzeCommandCategory {
+    /// Core analysis commands (basic metrics): churn, complexity, dead code, SATD, TDG, lint hotspots
+    Basic,
+    /// Advanced analysis commands (comprehensive): deep context, comprehensive, defect prediction, duplicates, `BigO`
+    Advanced,
+    /// Graph and structural analysis: DAG, graph metrics, symbol table, name similarity
+    Structural,
+    /// Specialized analysis commands: makefile, provability, proof annotations, coverage, WebAssembly
+    Specialized,
+}
+
+/// Toyota Way Extract Method: Categories for general CLI command dispatch
+/// Reduces complexity from 23 branches to logical groups
+/// Extracted for file health compliance (CB-040)
+#[derive(Debug, Clone, Copy)]
+pub enum CommandCategory {
+    /// Generation and creation commands: generate, scaffold
+    Generation,
+    /// Analysis and assessment commands: analyze (delegated), quality-gate, report
+    Analysis,
+    /// Operations and maintenance commands: serve, cache, memory, telemetry
+    Operations,
+    /// Development workflow commands: refactor, test, roadmap, validate
+    Workflow,
+    /// System interaction commands: list, search, context, diagnose
+    System,
+    /// Configuration and setup commands: config, agent, tdg
+    Configuration,
+    /// Demo and examples: demo
+    Demo,
+    /// Runtime enforcement: enforce
+    Enforcement,
+}

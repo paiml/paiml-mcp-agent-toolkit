@@ -895,7 +895,7 @@ pub async fn run_dead_code_analysis(
     project_path: &Path,
     _profile: &QualityProfile,
 ) -> Result<Vec<QualityViolation>> {
-    use crate::cli::handlers::complexity_handlers::handle_analyze_dead_code;
+    use crate::cli::handlers::dead_code_handlers::handle_analyze_dead_code;
     use crate::cli::DeadCodeOutputFormat;
 
     let mut violations = Vec::new();

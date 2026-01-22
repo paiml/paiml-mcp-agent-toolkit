@@ -20,6 +20,7 @@ pub mod churn_formatter;
 pub mod cleanup_resources_handler; // Issue #86: System resource cleanup
 pub mod complexity_handlers;
 pub mod comply_cb_detect; // CB pattern detection extracted for file health (CB-040)
+pub mod dead_code_handlers; // Dead code analysis extracted for file health (CB-040)
 pub mod comply_handlers; // GH-96: PMAT compliance and migration system
 pub mod comprehensive_analysis_handler;
 pub mod comprehensive_handler;
@@ -118,9 +119,8 @@ pub use advanced_analysis_handlers::{
 pub use agent_handlers::handle_agent_command;
 pub use analysis_handlers::route_analyze_command;
 pub use cache::handle_cache_command;
-pub use complexity_handlers::{
-    handle_analyze_churn, handle_analyze_complexity, handle_analyze_dag, handle_analyze_dead_code,
-};
+pub use complexity_handlers::{handle_analyze_churn, handle_analyze_complexity, handle_analyze_dag};
+pub use dead_code_handlers::handle_analyze_dead_code;
 pub use config_command_handlers::handle_config_command;
 pub use configuration_handlers::handle_configuration;
 pub use debug_handlers::{handle_debug_compare, handle_debug_timeline}; // Sprint 77: TIMELINE-004

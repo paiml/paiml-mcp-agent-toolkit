@@ -6,7 +6,7 @@
 //! Run with: `cargo run --example analyze_dead_code`
 
 use anyhow::Result;
-use pmat::cli::handlers::complexity_handlers::handle_analyze_dead_code;
+use pmat::cli::handlers::handle_analyze_dead_code;
 use pmat::cli::DeadCodeOutputFormat;
 use std::path::PathBuf;
 

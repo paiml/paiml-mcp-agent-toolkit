@@ -1,0 +1,1910 @@
+//! Command Dispatcher - Reduces CLI complexity through handler pattern
+//!
+//! This module implements a dispatch table pattern to reduce cyclomatic complexity
+//! in the CLI module by delegating command execution to specialized handlers.
+
+use super::commands::{
+    EmbedCommands, QddCommands, RoadmapCommands, ScaffoldCommands, SearchMode, SemanticCommands,
+};
+use super::{AnalyzeCommands, Commands, DemoProtocol, OutputFormat, RefactorCommands};
+use crate::cli::handlers;
+use crate::cli::handlers::cache::CacheCommand;
+use crate::cli::handlers::memory::MemoryCommand;
+use crate::cli::semantic_commands::SemanticCli;
+use crate::services::configuration_service::ConfigurationService;
+use crate::stateless_server::StatelessTemplateServer;
+use std::path::PathBuf;
+use std::sync::Arc;
+
+/// Trait for command handlers to reduce complexity through delegation
+#[allow(dead_code)]
+#[allow(async_fn_in_trait)]
+pub trait CommandHandler: Send + Sync {
+    async fn execute(&self, server: Arc<StatelessTemplateServer>) -> anyhow::Result<()>;
+}
+
+/// Trait for analyze command handlers
+#[allow(dead_code)]
+#[allow(async_fn_in_trait)]
+pub trait AnalyzeCommandHandler: Send + Sync {
+    async fn execute(&self) -> anyhow::Result<()>;
+}
+
+/// Command dispatcher that reduces complexity by delegating to handlers
+pub struct CommandDispatcher;
+
+impl CommandDispatcher {
+    /// Execute a command using the handler pattern (reduces CC from dispatch match)
+    pub async fn execute_command(
+        command: Commands,
+        server: Arc<StatelessTemplateServer>,
+    ) -> anyhow::Result<()> {
+        Self::route_command(command, server).await
+    }
+
+    /// Route commands to appropriate handlers (reduces complexity)
+    async fn route_command(
+        command: Commands,
+        server: Arc<StatelessTemplateServer>,
+    ) -> anyhow::Result<()> {
+        match command {
+            Commands::Generate {
+                category,
+                template,
+                params,
+                output,
+                create_dirs,
+            } => {
+                handlers::handle_generate(server, category, template, params, output, create_dirs)
+                    .await
+            }
+            Commands::Scaffold { command } => Self::execute_scaffold_command(command, server).await,
+            Commands::List {
+                toolchain,
+                category,
+                format,
+            } => handlers::handle_list(server, toolchain, category, format).await,
+            Commands::Search {
+                query,
+                toolchain,
+                limit,
+            } => handlers::handle_search(server, query, toolchain, limit).await,
+            Commands::Validate { uri, params } => {
+                handlers::handle_validate(server, uri, params).await
+            }
+            Commands::Context {
+                toolchain,
+                project_path,
+                output,
+                format,
+                include_large_files,
+                skip_expensive_metrics,
+                language,
+                languages,
+            } => {
+                handlers::handle_context(
+                    toolchain,
+                    project_path,
+                    output,
+                    format,
+                    include_large_files,
+                    skip_expensive_metrics,
+                    language,
+                    languages,
+                )
+                .await
+            }
+            Commands::Analyze(analyze_cmd) => Self::execute_analyze_command(analyze_cmd).await,
+            Commands::Qdd(qdd_cmd) => Self::execute_qdd_command(qdd_cmd).await,
+            Commands::Embed(embed_cmd) => Self::execute_embed_command(embed_cmd).await,
+            Commands::Semantic(semantic_cmd) => Self::execute_semantic_command(semantic_cmd).await,
+            Commands::Demo {
+                path,
+                url,
+                repo,
+                format,
+                protocol,
+                show_api,
+                no_browser,
+                port,
+                cli,
+                target_nodes,
+                centrality_threshold,
+                merge_threshold,
+                debug,
+                debug_output,
+                skip_vendor,
+                no_skip_vendor,
+                max_line_length,
+            } => {
+                Self::execute_demo_command(
+                    path,
+                    url,
+                    repo,
+                    Some(format),
+                    protocol,
+                    show_api,
+                    no_browser,
+                    port.unwrap_or(8080),
+                    cli,
+                    Some(target_nodes),
+                    Some(centrality_threshold),
+                    Some(merge_threshold as f64),
+                    debug,
+                    debug_output,
+                    skip_vendor,
+                    no_skip_vendor,
+                    max_line_length,
+                    server,
+                )
+                .await
+            }
+            Commands::ValidateDocs(cmd) => {
+                let exit_code = cmd.execute().await?;
+                if exit_code != std::process::ExitCode::SUCCESS {
+                    std::process::exit(1);
+                }
+                Ok(())
+            }
+            Commands::ValidateReadme(cmd) => {
+                // Sprint 38: Hallucination detection (synchronous)
+                let exit_code = cmd.execute()?;
+                if exit_code != std::process::ExitCode::SUCCESS {
+                    std::process::exit(1);
+                }
+                Ok(())
+            }
+            Commands::RedTeam(cmd) => {
+                // Red Team Mode: Commit hallucination detection
+                let exit_code = cmd.execute()?;
+                if exit_code != std::process::ExitCode::SUCCESS {
+                    std::process::exit(1);
+                }
+                Ok(())
+            }
+            Commands::Org(_org_cmd) => {
+                #[cfg(feature = "org-intelligence")]
+                {
+                    handlers::handle_org_command(_org_cmd).await
+                }
+                #[cfg(not(feature = "org-intelligence"))]
+                {
+                    anyhow::bail!("Organizational intelligence feature is not enabled. Rebuild with --features org-intelligence")
+                }
+            }
+            Commands::Prompt(prompt_cmd) => handlers::handle_prompt_command(prompt_cmd).await,
+            Commands::QualityGate {
+                project_path,
+                file,
+                format,
+                fail_on_violation,
+                checks,
+                max_dead_code,
+                min_entropy,
+                max_complexity_p99,
+                include_provability,
+                output,
+                perf,
+            } => {
+                // Convert QualityGateOutputFormat to OutputFormat for the internal method
+                let output_format = match format {
+                    crate::cli::enums::QualityGateOutputFormat::Json => OutputFormat::Json,
+                    _ => OutputFormat::Table,
+                };
+
+                // Convert QualityCheckType vec to String vec
+                let check_strings: Vec<String> = checks
+                    .iter()
+                    .map(|c| format!("{c:?}").to_lowercase())
+                    .collect();
+
+                Self::execute_quality_gate_command(
+                    Some(project_path),
+                    file,
+                    output_format,
+                    fail_on_violation,
+                    check_strings,
+                    Some(max_dead_code),
+                    Some(min_entropy),
+                    Some(max_complexity_p99 as usize),
+                    include_provability,
+                    output,
+                    perf,
+                )
+                .await
+            }
+            Commands::Report {
+                project_path,
+                output_format,
+                include_visualizations,
+                include_executive_summary,
+                include_recommendations,
+                analyses,
+                confidence_threshold,
+                output,
+                perf,
+                text,
+                markdown,
+                csv,
+            } => {
+                // Convert ReportOutputFormat to OutputFormat for the internal method
+                let internal_format = match output_format {
+                    crate::cli::enums::ReportOutputFormat::Json => OutputFormat::Json,
+                    _ => OutputFormat::Table,
+                };
+
+                // Convert AnalysisType vec to String vec
+                let analysis_strings: Vec<String> = analyses
+                    .iter()
+                    .map(|a| format!("{a:?}").to_lowercase())
+                    .collect();
+
+                Self::execute_report_command(
+                    Some(project_path),
+                    internal_format,
+                    include_visualizations,
+                    include_executive_summary,
+                    include_recommendations,
+                    analysis_strings,
+                    Some(f64::from(confidence_threshold) / 100.0),
+                    output,
+                    perf,
+                    text,
+                    markdown,
+                    csv,
+                )
+                .await
+            }
+            Commands::RepoScore {
+                path,
+                format,
+                verbose,
+                failures_only,
+                output,
+                update_badge,
+                deep,
+            } => {
+                handlers::handle_repo_score(
+                    &path,
+                    format,
+                    verbose,
+                    failures_only,
+                    output.as_deref(),
+                    update_badge,
+                    deep,
+                )
+                .await
+            }
+            Commands::RustProjectScore {
+                path,
+                format,
+                verbose,
+                failures_only,
+                output,
+                full,
+            } => {
+                handlers::handle_rust_project_score(
+                    &path,
+                    &format,
+                    verbose,
+                    failures_only,
+                    output.as_deref(),
+                    full,
+                )
+                .await
+            }
+            Commands::BrickScore {
+                path,
+                input,
+                format,
+                verbose,
+                failures_only,
+                threshold,
+                output,
+                hardware,
+            } => {
+                handlers::handle_brick_score(
+                    &path,
+                    input.as_deref(),
+                    &format,
+                    verbose,
+                    failures_only,
+                    threshold,
+                    output.as_deref(),
+                    hardware.as_deref(),
+                )
+                .await
+            }
+            Commands::PopperScore {
+                path,
+                format,
+                verbose,
+                failures_only,
+                output,
+            } => {
+                handlers::handle_popper_score(
+                    &path,
+                    &format,
+                    verbose,
+                    failures_only,
+                    output.as_deref(),
+                )
+                .await
+            }
+            Commands::DemoScore {
+                path,
+                format,
+                verbose,
+                failures_only,
+                output,
+            } => {
+                handlers::handle_demo_score(
+                    &path,
+                    &format,
+                    verbose,
+                    failures_only,
+                    output.as_deref(),
+                )
+                .await
+            }
+            Commands::Serve {
+                port,
+                host,
+                cors,
+                transport,
+            } => handlers::handle_serve(host, port, cors, transport).await,
+            Commands::Diagnose(args) => super::diagnose::handle_diagnose(args).await,
+            Commands::Enforce(enforce_cmd) => handlers::route_enforce_command(enforce_cmd).await,
+            Commands::Refactor(refactor_cmd) => Self::execute_refactor_command(refactor_cmd).await,
+            Commands::Roadmap(roadmap_cmd) => Self::execute_roadmap_command(roadmap_cmd).await,
+            Commands::Test {
+                suite,
+                iterations,
+                memory,
+                throughput,
+                regression,
+                timeout,
+                output,
+                perf,
+            } => {
+                Self::execute_test_command(
+                    suite, iterations, memory, throughput, regression, timeout, output, perf,
+                )
+                .await
+            }
+            Commands::Memory { command } => Self::execute_memory_command(command).await,
+            Commands::Cache { command } => Self::execute_cache_command(command).await,
+            Commands::Telemetry {
+                system,
+                service,
+                reset,
+                test_event,
+            } => {
+                handlers::telemetry_handlers::handle_telemetry(system, service, reset, test_event)
+                    .await
+            }
+            Commands::Config {
+                show,
+                edit,
+                validate,
+                reset,
+                section,
+                set,
+                config_path,
+            } => {
+                Self::execute_config_command(
+                    show,
+                    edit,
+                    validate,
+                    reset,
+                    section,
+                    if set.is_empty() { None } else { Some(set) },
+                    config_path,
+                )
+                .await
+            }
+
+            Commands::ShowMetrics {
+                trend,
+                days,
+                metric,
+                format,
+                failures_only,
+            } => {
+                Self::execute_show_metrics_command(trend, days, metric, format, failures_only).await
+            }
+
+            Commands::PredictQuality {
+                metric,
+                threshold,
+                days,
+                format,
+                all,
+                failures_only,
+            } => {
+                handlers::predict_quality_handlers::handle_predict_quality(
+                    metric,
+                    threshold,
+                    days,
+                    format,
+                    all,
+                    failures_only,
+                )
+                .await
+            }
+
+            Commands::RecordMetric {
+                metric,
+                value,
+                timestamp,
+            } => Self::execute_record_metric_command(metric, value, timestamp).await,
+
+            Commands::Agent { command } => handlers::handle_agent_command(command).await,
+
+            Commands::Tdg {
+                path,
+                command,
+                format,
+                config,
+                quiet,
+                include_components,
+                min_grade,
+                output,
+                with_git_context,
+                explain,
+                threshold,
+                baseline,
+                ml: _, // GH-97: ML flag (not yet implemented in handler)
+                viz,
+                viz_theme,
+            } => {
+                let tdg_config = handlers::tdg_handlers::TdgCommandConfig {
+                    path,
+                    command,
+                    format,
+                    config,
+                    quiet,
+                    include_components,
+                    min_grade,
+                    output,
+                    with_git_context,
+                    explain,
+                    threshold,
+                    baseline,
+                    viz,
+                    viz_theme,
+                };
+                handlers::handle_tdg_command(tdg_config).await
+            }
+
+            Commands::QualityGates {
+                command,
+                config,
+                report,
+                json,
+                project_dir,
+            } => {
+                handlers::handle_quality_gates_command(command, config, report, json, project_dir)
+                    .await
+            }
+
+            Commands::Maintain { command } => {
+                use super::commands::MaintainCommands;
+                match command {
+                    MaintainCommands::Roadmap {
+                        roadmap,
+                        tickets_dir,
+                        validate,
+                        health,
+                        fix,
+                        generate_tickets,
+                        dry_run,
+                        format,
+                    } => {
+                        let config = handlers::roadmap_handler::RoadmapMaintenanceConfig::new(
+                            validate,
+                            health,
+                            fix,
+                            generate_tickets,
+                            dry_run,
+                        );
+                        handlers::handle_maintain_roadmap(roadmap, tickets_dir, config, format)
+                            .await
+                    }
+                    MaintainCommands::Health {
+                        project_dir,
+                        format,
+                        quick,
+                        all,
+                        check_build,
+                        check_tests,
+                        check_coverage,
+                        check_complexity,
+                        check_satd,
+                    } => {
+                        let config = handlers::health_handler::HealthCheckConfig::new(
+                            quick,
+                            all,
+                            check_build,
+                            check_tests,
+                            check_coverage,
+                            check_complexity,
+                            check_satd,
+                        );
+                        handlers::handle_maintain_health(project_dir, format, config).await
+                    }
+                    MaintainCommands::BugReport {
+                        title,
+                        dry_run,
+                        interactive,
+                        clear,
+                    } => {
+                        handlers::bug_report_handler::handle_bug_report(
+                            title.as_deref(),
+                            dry_run,
+                            interactive,
+                            clear,
+                        )
+                        .await
+                    }
+                    MaintainCommands::CleanupResources {
+                        project_dir,
+                        targets,
+                        execute,
+                        exclude,
+                        min_age_days,
+                        format,
+                    } => {
+                        handlers::cleanup_resources_handler::handle_cleanup_resources(
+                            &project_dir,
+                            &targets,
+                            execute,
+                            &exclude,
+                            min_age_days,
+                            format,
+                        )
+                        .await
+                    }
+                }
+            }
+
+            Commands::Hooks(hooks_cmd) => handlers::handle_hooks_command(&hooks_cmd).await,
+
+            #[cfg(feature = "mutation-testing")]
+            Commands::Mutate(args) => handlers::mutate::handle(args, server).await,
+
+            Commands::Debug { command } => {
+                // Sprint 74: Time-travel debugging commands
+                // TODO: Implement debug handlers in DEBUG-002 and DEBUG-003
+                use crate::cli::commands::DebugCommands;
+                match command {
+                    DebugCommands::Serve {
+                        port,
+                        host,
+                        record_dir,
+                    } => {
+                        anyhow::bail!("Debug serve command not yet implemented (DEBUG-002). Port: {}, Host: {}, Record Dir: {:?}", port, host, record_dir)
+                    }
+                    DebugCommands::Replay {
+                        recording,
+                        position,
+                        interactive,
+                    } => {
+                        anyhow::bail!("Debug replay command not yet implemented (DEBUG-003). Recording: {:?}, Position: {:?}, Interactive: {}", recording, position, interactive)
+                    }
+                }
+            }
+            Commands::Work { command } => {
+                // Issue #75: Unified GitHub/YAML workflow
+                Self::execute_work_command(&command).await
+            }
+            Commands::QaWork { command } => {
+                // GH-102: Toyota Way quality validation
+                handlers::qa_work_handler::handle_qa_work_command(command).await
+            }
+            Commands::Comply { command } => {
+                // GH-96: PMAT compliance and migration system
+                handlers::comply_handlers::handle_comply_command(command).await
+            }
+
+            Commands::ProjectDiag {
+                path,
+                format,
+                category,
+                failures_only,
+                output,
+                quiet,
+            } => {
+                // Project diagnostics (lltop Tab 8 equivalent)
+                let config = handlers::project_diag_handlers::ProjectDiagConfig {
+                    path,
+                    format,
+                    category,
+                    failures_only,
+                    output,
+                    quiet,
+                };
+                handlers::project_diag_handlers::handle_project_diag(config).await
+            }
+
+            Commands::TestDiscovery { command } => {
+                // GH-98: Systematic test discovery and fixing
+                handlers::test_discovery_handlers::handle_test_discovery_command(command).await
+            }
+
+            Commands::DebugFiveWhys {
+                issue,
+                depth,
+                format,
+                output,
+                path,
+                context,
+                auto_analyze,
+            } => {
+                // Five Whys root cause analysis (Toyota Way)
+                crate::cli::handlers::five_whys_handlers::handle_debug(
+                    &issue,
+                    depth,
+                    format,
+                    output.as_deref(),
+                    &path,
+                    context.as_deref(),
+                    auto_analyze,
+                )
+                .await
+            }
+
+            Commands::Oracle { command } => {
+                // PMAT Oracle - PDCA loop for automated quality improvement (Toyota Way)
+                crate::cli::handlers::oracle_handlers::handle_oracle_command(command).await
+            }
+
+            Commands::PerfectionScore {
+                path,
+                breakdown,
+                target,
+                format,
+                output,
+                fast,
+            } => {
+                // Unified 200-point Perfection Score (master-plan-pmat-work-system.md)
+                handlers::perfection_score_handlers::handle_perfection_score(
+                    &path,
+                    breakdown,
+                    target,
+                    format,
+                    output.as_deref(),
+                    fast,
+                )
+                .await
+            }
+
+            Commands::Spec { command } => {
+                // Specification management (master-plan-pmat-work-system.md)
+                Self::handle_spec_command(command).await
+            }
+
+            Commands::Localize {
+                passed_coverage,
+                failed_coverage,
+                passed_count,
+                failed_count,
+                formula,
+                top_n,
+                output,
+                format,
+            } => {
+                // Fault localization using Tarantula SBFL (GH-103)
+                crate::cli::handlers::localize_handlers::handle_localize(
+                    &passed_coverage,
+                    &failed_coverage,
+                    passed_count,
+                    failed_count,
+                    &formula,
+                    top_n,
+                    output.as_deref(),
+                    &format,
+                )
+                .await
+            }
+
+            Commands::CudaTdg {
+                path,
+                command,
+                format,
+                min_score,
+                fail_on_p0,
+                simd,
+                wgpu,
+                output,
+                quiet,
+            } => {
+                // CUDA-SIMD TDG: 100-point Popper falsification scoring
+                let config = handlers::CudaTdgCommandConfig {
+                    path,
+                    command,
+                    format,
+                    min_score,
+                    fail_on_p0,
+                    simd,
+                    wgpu,
+                    output,
+                    quiet,
+                };
+                handlers::handle_cuda_tdg_command(config).await
+            }
+
+            Commands::DepsAudit { path, format, all, pareto, sort_by } => {
+                // Dependency audit for Sovereign AI stack migration
+                handlers::deps_audit_handlers::handle_deps_audit(&path, &format, all, pareto, &sort_by)
+            }
+        }
+    }
+
+    /// Execute demo command with protocol conversion (reduces complexity)
+    #[allow(clippy::too_many_arguments)]
+    async fn execute_demo_command(
+        path: Option<PathBuf>,
+        url: Option<String>,
+        repo: Option<String>,
+        format: Option<OutputFormat>,
+        protocol: DemoProtocol,
+        show_api: bool,
+        no_browser: bool,
+        port: u16,
+        cli: bool,
+        target_nodes: Option<usize>,
+        centrality_threshold: Option<f64>,
+        merge_threshold: Option<f64>,
+        debug: bool,
+        debug_output: Option<PathBuf>,
+        skip_vendor: bool,
+        no_skip_vendor: bool,
+        max_line_length: Option<usize>,
+        server: Arc<StatelessTemplateServer>,
+    ) -> anyhow::Result<()> {
+        let demo_protocol = Self::convert_demo_protocol(protocol, cli);
+        let demo_args = Self::create_demo_args(
+            path,
+            url,
+            repo,
+            format,
+            demo_protocol,
+            show_api,
+            no_browser,
+            port,
+            cli,
+            target_nodes,
+            centrality_threshold,
+            merge_threshold,
+            debug,
+            debug_output,
+            skip_vendor,
+            no_skip_vendor,
+            max_line_length,
+        );
+
+        crate::demo::run_demo(demo_args, server).await
+    }
+
+    /// Convert CLI `DemoProtocol` to demo module Protocol
+    fn convert_demo_protocol(protocol: DemoProtocol, cli: bool) -> crate::demo::Protocol {
+        if cli {
+            crate::demo::Protocol::Cli
+        } else {
+            match protocol {
+                DemoProtocol::Cli => crate::demo::Protocol::Cli,
+                DemoProtocol::Http => crate::demo::Protocol::Http,
+                DemoProtocol::Mcp => crate::demo::Protocol::Mcp,
+                #[cfg(feature = "tui")]
+                DemoProtocol::Tui => crate::demo::Protocol::Tui,
+                DemoProtocol::All => crate::demo::Protocol::All,
+            }
+        }
+    }
+
+    /// Create demo arguments structure
+    #[allow(clippy::too_many_arguments)]
+    fn create_demo_args(
+        path: Option<PathBuf>,
+        url: Option<String>,
+        repo: Option<String>,
+        format: Option<OutputFormat>,
+        protocol: crate::demo::Protocol,
+        show_api: bool,
+        no_browser: bool,
+        port: u16,
+        cli: bool,
+        target_nodes: Option<usize>,
+        centrality_threshold: Option<f64>,
+        merge_threshold: Option<f64>,
+        debug: bool,
+        debug_output: Option<PathBuf>,
+        skip_vendor: bool,
+        no_skip_vendor: bool,
+        max_line_length: Option<usize>,
+    ) -> crate::demo::DemoArgs {
+        crate::demo::DemoArgs {
+            path,
+            url,
+            repo,
+            format: format.unwrap_or(OutputFormat::Table),
+            protocol,
+            show_api,
+            no_browser,
+            port: Some(port),
+            web: !cli,
+            target_nodes: target_nodes.unwrap_or(1000),
+            centrality_threshold: centrality_threshold.unwrap_or(0.5),
+            merge_threshold: merge_threshold.map_or(100, |t| t as usize),
+            debug,
+            debug_output,
+            skip_vendor: skip_vendor && !no_skip_vendor,
+            max_line_length,
+        }
+    }
+
+    /// Execute scaffold commands using handler pattern (reduces complexity)
+    async fn execute_scaffold_command(
+        command: ScaffoldCommands,
+        server: Arc<StatelessTemplateServer>,
+    ) -> anyhow::Result<()> {
+        match command {
+            ScaffoldCommands::Project {
+                toolchain,
+                templates,
+                params,
+                parallel,
+            } => handlers::handle_scaffold(server, toolchain, templates, params, parallel).await,
+            ScaffoldCommands::Agent {
+                name,
+                template,
+                features,
+                quality,
+                output,
+                force,
+                dry_run,
+                interactive,
+                deterministic_core,
+                probabilistic_wrapper,
+            } => {
+                Self::execute_scaffold_agent_command(
+                    name,
+                    template,
+                    features,
+                    quality,
+                    output,
+                    force,
+                    dry_run,
+                    interactive,
+                    deterministic_core.is_some(),
+                    probabilistic_wrapper.is_some(),
+                )
+                .await
+            }
+            ScaffoldCommands::Wasm {
+                name,
+                framework,
+                features,
+                quality,
+                output,
+                force,
+                dry_run,
+            } => {
+                // TICKET-PMAT-5031: WASM scaffolding
+                let params = handlers::ScaffoldWasmParams {
+                    name,
+                    framework,
+                    features,
+                    quality,
+                    output,
+                    force,
+                    dry_run,
+                };
+                handlers::handle_scaffold_wasm(params).await
+            }
+            ScaffoldCommands::ListTemplates => handlers::handle_list_agent_templates().await,
+            ScaffoldCommands::ValidateTemplate { path } => {
+                handlers::handle_validate_agent_template(path).await
+            }
+            ScaffoldCommands::ListSubagents { all } => {
+                handlers::subagent_handlers::list_subagents(all)
+            }
+            ScaffoldCommands::CreateSubagent { agent_name, output } => {
+                handlers::subagent_handlers::create_subagent(&agent_name, output)
+            }
+            ScaffoldCommands::CreateAllSubagents { output } => {
+                handlers::subagent_handlers::create_all_mvp_subagents(output)
+            }
+            ScaffoldCommands::ValidateSubagent { file_path } => {
+                handlers::subagent_handlers::validate_subagent(&file_path)
+            }
+            ScaffoldCommands::ShowToolMapping { agent } => {
+                handlers::subagent_handlers::show_tool_mapping(agent)
+            }
+            ScaffoldCommands::ExportToolMapping { output } => {
+                handlers::subagent_handlers::export_tool_mapping_json(&output)
+            }
+        }
+    }
+
+    /// Execute scaffold agent command (extracted for complexity reduction)
+    #[allow(clippy::too_many_arguments)]
+    async fn execute_scaffold_agent_command(
+        name: String,
+        template: String,
+        features: Vec<String>,
+        quality: String,
+        output: Option<PathBuf>,
+        force: bool,
+        dry_run: bool,
+        interactive: bool,
+        deterministic_core: bool,
+        probabilistic_wrapper: bool,
+    ) -> anyhow::Result<()> {
+        let params = handlers::generation_handlers::ScaffoldAgentParams {
+            name,
+            template,
+            features,
+            quality,
+            output,
+            force,
+            dry_run,
+            interactive,
+            deterministic_core: if deterministic_core {
+                Some("true".to_string())
+            } else {
+                None
+            },
+            probabilistic_wrapper: if probabilistic_wrapper {
+                Some("true".to_string())
+            } else {
+                None
+            },
+        };
+        handlers::handle_scaffold_agent(params).await
+    }
+
+    /// Execute analyze commands using handler pattern (reduces CC)
+    pub async fn execute_analyze_command(analyze_cmd: AnalyzeCommands) -> anyhow::Result<()> {
+        // Delegate to the modular analysis handlers
+        super::handlers::route_analyze_command(analyze_cmd).await
+    }
+
+    /// Execute QDD commands using handler pattern (reduces CC)
+    pub async fn execute_qdd_command(qdd_cmd: QddCommands) -> anyhow::Result<()> {
+        // Delegate to the QDD handlers
+        super::handlers::qdd_handlers::handle_qdd_command(qdd_cmd).await
+    }
+
+    /// Execute embed commands for semantic search (PMAT-SEARCH-011)
+    pub async fn execute_embed_command(embed_cmd: EmbedCommands) -> anyhow::Result<()> {
+        use crate::cli::commands::EmbedCommands;
+
+        // Load configuration with environment variable fallbacks
+        let config_service = ConfigurationService::new(None);
+        let semantic_config = config_service.get_semantic_config_with_env_fallback()?;
+
+        // Check if semantic search is enabled
+        if !semantic_config.enabled {
+            anyhow::bail!(
+                "Semantic search is not enabled.\n\
+                 To enable, set semantic.enabled = true in config file or provide OPENAI_API_KEY environment variable.\n\
+                 See: docs/sprints/SPRINT-32-IMPLEMENTATION-NOTES.md"
+            );
+        }
+
+        // Get API key
+        let api_key = semantic_config.openai_api_key.ok_or_else(|| {
+            anyhow::anyhow!(
+                "OpenAI API key not configured.\n\
+                 Set OPENAI_API_KEY environment variable or semantic.openai_api_key in config file."
+            )
+        })?;
+
+        // Get database path
+        let db_path = semantic_config.vector_db_path.unwrap_or_else(|| {
+            dirs::home_dir()
+                .map(|h| {
+                    h.join(".pmat")
+                        .join("embeddings.db")
+                        .to_string_lossy()
+                        .to_string()
+                })
+                .unwrap_or_else(|| "embeddings.db".to_string())
+        });
+
+        // Get workspace path
+        let workspace = semantic_config
+            .workspace_path
+            .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
+
+        // Initialize semantic CLI
+        let semantic_cli = SemanticCli::new(&db_path, &api_key, &workspace)
+            .await
+            .map_err(|e| anyhow::anyhow!(e))?;
+
+        match embed_cmd {
+            EmbedCommands::Sync {
+                path,
+                language,
+                format,
+            } => {
+                let result = semantic_cli
+                    .embed_sync(&path, language)
+                    .await
+                    .map_err(|e| anyhow::anyhow!(e))?;
+                match format {
+                    OutputFormat::Json => {
+                        println!(
+                            "{}",
+                            serde_json::json!({"status": "success", "message": result})
+                        );
+                    }
+                    _ => println!("{}", result),
+                }
+                Ok(())
+            }
+            EmbedCommands::Status { format } => {
+                let result = semantic_cli
+                    .embed_status()
+                    .await
+                    .map_err(|e| anyhow::anyhow!(e))?;
+                match format {
+                    OutputFormat::Json => {
+                        println!(
+                            "{}",
+                            serde_json::json!({"status": "success", "message": result})
+                        );
+                    }
+                    _ => println!("{}", result),
+                }
+                Ok(())
+            }
+            EmbedCommands::Clear { confirm } => {
+                let result = semantic_cli
+                    .embed_clear(confirm)
+                    .await
+                    .map_err(|e| anyhow::anyhow!(e))?;
+                println!("{}", result);
+                Ok(())
+            }
+        }
+    }
+
+    /// Execute semantic search commands (PMAT-SEARCH-011)
+    pub async fn execute_semantic_command(semantic_cmd: SemanticCommands) -> anyhow::Result<()> {
+        use crate::cli::commands::SemanticCommands;
+
+        // Load configuration with environment variable fallbacks
+        let config_service = ConfigurationService::new(None);
+        let semantic_config = config_service.get_semantic_config_with_env_fallback()?;
+
+        // Check if semantic search is enabled
+        if !semantic_config.enabled {
+            anyhow::bail!(
+                "Semantic search is not enabled.\n\
+                 To enable, set semantic.enabled = true in config file or provide OPENAI_API_KEY environment variable.\n\
+                 See: docs/sprints/SPRINT-32-IMPLEMENTATION-NOTES.md"
+            );
+        }
+
+        // Get API key
+        let api_key = semantic_config.openai_api_key.ok_or_else(|| {
+            anyhow::anyhow!(
+                "OpenAI API key not configured.\n\
+                 Set OPENAI_API_KEY environment variable or semantic.openai_api_key in config file."
+            )
+        })?;
+
+        // Get database path
+        let db_path = semantic_config.vector_db_path.unwrap_or_else(|| {
+            dirs::home_dir()
+                .map(|h| {
+                    h.join(".pmat")
+                        .join("embeddings.db")
+                        .to_string_lossy()
+                        .to_string()
+                })
+                .unwrap_or_else(|| "embeddings.db".to_string())
+        });
+
+        // Get workspace path
+        let workspace = semantic_config
+            .workspace_path
+            .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
+
+        // Initialize semantic CLI
+        let semantic_cli = SemanticCli::new(&db_path, &api_key, &workspace)
+            .await
+            .map_err(|e| anyhow::anyhow!(e))?;
+
+        match semantic_cmd {
+            SemanticCommands::Search {
+                query,
+                mode,
+                language,
+                limit,
+                format,
+            } => {
+                // Convert SearchMode to string
+                let mode_str = match mode {
+                    SearchMode::Keyword => "keyword",
+                    SearchMode::Vector => "vector",
+                    SearchMode::Hybrid => "hybrid",
+                };
+
+                let result = semantic_cli
+                    .semantic_search(&query, mode_str, limit, language)
+                    .await
+                    .map_err(|e| anyhow::anyhow!(e))?;
+                match format {
+                    OutputFormat::Json => {
+                        println!("{}", result); // Result is already JSON
+                    }
+                    _ => println!("{}", result),
+                }
+                Ok(())
+            }
+            SemanticCommands::Similar {
+                file_path,
+                limit,
+                format,
+            } => {
+                let result = semantic_cli
+                    .semantic_similar(&file_path, limit)
+                    .await
+                    .map_err(|e| anyhow::anyhow!(e))?;
+                match format {
+                    OutputFormat::Json => {
+                        println!("{}", result); // Result is already JSON
+                    }
+                    _ => println!("{}", result),
+                }
+                Ok(())
+            }
+        }
+    }
+
+    /// Execute refactor commands using handler pattern (reduces CC)
+    pub async fn execute_refactor_command(refactor_cmd: RefactorCommands) -> anyhow::Result<()> {
+        // Delegate to the refactor handlers
+        super::handlers::route_refactor_command(refactor_cmd).await
+    }
+
+    /// Execute roadmap commands using handler pattern (reduces CC)
+    pub async fn execute_roadmap_command(roadmap_cmd: RoadmapCommands) -> anyhow::Result<()> {
+        use crate::roadmap::{self, RoadmapConfig};
+        use std::path::PathBuf;
+
+        // Load configuration (with defaults)
+        let config = RoadmapConfig {
+            path: PathBuf::from("docs/execution/roadmap.md"),
+            quality_gates: roadmap::QualityGateConfig {
+                complexity_max: 20,
+                coverage_min: 80,
+                satd_tolerance: 0,
+                documentation_required: true,
+                lint_compliance: true,
+            },
+            enforce_quality_gates: true,
+            git: roadmap::GitConfig {
+                create_branches: false,  // DISABLED: per CLAUDE.md zero-branching policy
+                branch_pattern: "feature/{task_id}".to_string(),
+                commit_pattern: "{task_id}: {message}".to_string(),
+                require_quality_check: true,
+            },
+            enabled: true,
+            auto_generate_todos: true,
+            require_task_ids: true,
+            task_id_pattern: "PMAT-[0-9]{4}".to_string(),
+            tracking: roadmap::TrackingConfig {
+                velocity_tracking: true,
+                burndown_charts: true,
+                quality_metrics: true,
+                export_format: "json".to_string(),
+            },
+        };
+
+        // Create command struct and execute
+        let cmd = roadmap::commands::RoadmapCommand {
+            command: match roadmap_cmd {
+                RoadmapCommands::Init {
+                    version,
+                    title,
+                    duration_days,
+                    priority,
+                } => roadmap::commands::RoadmapSubcommand::Init {
+                    version,
+                    title,
+                    duration_days,
+                    priority,
+                },
+                RoadmapCommands::Todos {
+                    sprint,
+                    output,
+                    include_quality_gates,
+                } => roadmap::commands::RoadmapSubcommand::Todos {
+                    sprint,
+                    output,
+                    include_quality_gates,
+                },
+                RoadmapCommands::Start {
+                    task_id,
+                    create_branch,
+                } => roadmap::commands::RoadmapSubcommand::Start {
+                    task_id,
+                    create_branch,
+                },
+                RoadmapCommands::Complete {
+                    task_id,
+                    skip_quality_check,
+                } => roadmap::commands::RoadmapSubcommand::Complete {
+                    task_id,
+                    skip_quality_check,
+                },
+                RoadmapCommands::Status {
+                    sprint,
+                    task,
+                    format,
+                } => {
+                    let output_format = match format {
+                        super::OutputFormat::Json => crate::cli::OutputFormat::Json,
+                        _ => crate::cli::OutputFormat::Table,
+                    };
+                    roadmap::commands::RoadmapSubcommand::Status {
+                        sprint,
+                        task,
+                        format: output_format,
+                    }
+                }
+                RoadmapCommands::Validate { sprint, strict } => {
+                    roadmap::commands::RoadmapSubcommand::Validate { sprint, strict }
+                }
+                RoadmapCommands::QualityCheck { task_id } => {
+                    roadmap::commands::RoadmapSubcommand::QualityCheck { task_id }
+                }
+            },
+        };
+
+        roadmap::commands::execute(cmd, config).await
+    }
+
+    /// Execute test commands using handler pattern (reduces CC)
+    #[allow(clippy::too_many_arguments)]
+    pub async fn execute_test_command(
+        suite: super::commands::TestSuite,
+        iterations: usize,
+        memory: bool,
+        throughput: bool,
+        regression: bool,
+        timeout: u64,
+        output: Option<PathBuf>,
+        perf: bool,
+    ) -> anyhow::Result<()> {
+        let config = Self::create_test_config(&suite, iterations, memory, throughput, regression);
+        Self::print_test_startup_info(&suite, iterations, timeout);
+
+        let start = std::time::Instant::now();
+        let test_future = Self::execute_test_suite(&suite, config);
+
+        Self::execute_with_timeout_and_reporting(
+            test_future,
+            timeout,
+            start,
+            &suite,
+            iterations,
+            output,
+            perf,
+        )
+        .await
+    }
+
+    /// Execute memory management commands using handler pattern (reduces CC)
+    pub async fn execute_memory_command(memory_cmd: MemoryCommand) -> anyhow::Result<()> {
+        // Delegate to the memory handler
+        super::handlers::handle_memory_command(&memory_cmd).await
+    }
+
+    /// Execute cache management commands using handler pattern (reduces CC)
+    pub async fn execute_cache_command(cache_cmd: CacheCommand) -> anyhow::Result<()> {
+        // Delegate to the cache handler
+        super::handlers::handle_cache_command(&cache_cmd).await
+    }
+
+    /// Execute quality gate command (extracted for complexity reduction)
+    #[allow(clippy::too_many_arguments)]
+    async fn execute_quality_gate_command(
+        project_path: Option<PathBuf>,
+        file: Option<PathBuf>,
+        format: OutputFormat,
+        fail_on_violation: bool,
+        checks: Vec<String>,
+        max_dead_code: Option<f64>,
+        min_entropy: Option<f64>,
+        max_complexity_p99: Option<usize>,
+        include_provability: bool,
+        output: Option<PathBuf>,
+        perf: bool,
+    ) -> anyhow::Result<()> {
+        use crate::cli::enums::{QualityCheckType, QualityGateOutputFormat};
+
+        // Convert OutputFormat to QualityGateOutputFormat
+        let qg_format = match format {
+            OutputFormat::Json => QualityGateOutputFormat::Json,
+            OutputFormat::Table => QualityGateOutputFormat::Summary,
+            OutputFormat::Yaml => QualityGateOutputFormat::Summary,
+        };
+
+        // Convert check strings to QualityCheckType
+        let quality_checks: Vec<QualityCheckType> = checks
+            .iter()
+            .filter_map(|s| match s.as_str() {
+                "dead_code" | "dead-code" => Some(QualityCheckType::DeadCode),
+                "complexity" => Some(QualityCheckType::Complexity),
+                "coverage" => Some(QualityCheckType::Coverage),
+                "sections" => Some(QualityCheckType::Sections),
+                "provability" => Some(QualityCheckType::Provability),
+                "satd" => Some(QualityCheckType::Satd),
+                "entropy" => Some(QualityCheckType::Entropy),
+                "security" => Some(QualityCheckType::Security),
+                "duplicates" => Some(QualityCheckType::Duplicates),
+                "all" => Some(QualityCheckType::All),
+                _ => None,
+            })
+            .collect();
+
+        // Use defaults for optional parameters
+        let max_dead = max_dead_code.unwrap_or(0.1); // 10% default
+        let min_ent = min_entropy.unwrap_or(0.7); // 70% default
+        let max_comp = max_complexity_p99.unwrap_or(20) as u32;
+
+        handlers::demo_handlers::handle_quality_gate(
+            project_path.unwrap_or_else(|| PathBuf::from(".")),
+            file,
+            qg_format,
+            fail_on_violation,
+            quality_checks,
+            max_dead,
+            min_ent,
+            max_comp,
+            include_provability,
+            output,
+            perf,
+        )
+        .await
+    }
+
+    /// Execute report command (extracted for complexity reduction)
+    #[allow(clippy::too_many_arguments)]
+    async fn execute_report_command(
+        project_path: Option<PathBuf>,
+        output_format: OutputFormat,
+        include_visualizations: bool,
+        include_executive_summary: bool,
+        include_recommendations: bool,
+        analyses: Vec<String>,
+        confidence_threshold: Option<f64>,
+        output: Option<PathBuf>,
+        perf: bool,
+        text: bool,
+        markdown: bool,
+        csv: bool,
+    ) -> anyhow::Result<()> {
+        use crate::cli::enums::{AnalysisType, ReportOutputFormat};
+
+        // Convert OutputFormat to ReportOutputFormat
+        let report_format = match output_format {
+            OutputFormat::Json => ReportOutputFormat::Json,
+            OutputFormat::Table => ReportOutputFormat::Text,
+            OutputFormat::Yaml => ReportOutputFormat::Text,
+        };
+
+        // Convert analysis strings to AnalysisType
+        let analysis_types: Vec<AnalysisType> = analyses
+            .iter()
+            .filter_map(|s| match s.as_str() {
+                "complexity" => Some(AnalysisType::Complexity),
+                "dead_code" | "dead-code" => Some(AnalysisType::DeadCode),
+                "duplication" => Some(AnalysisType::Duplication),
+                "technical_debt" | "technical-debt" => Some(AnalysisType::TechnicalDebt),
+                "big_o" | "big-o" => Some(AnalysisType::BigO),
+                "all" => Some(AnalysisType::All),
+                _ => None,
+            })
+            .collect();
+
+        // Convert confidence threshold to u8 (percentage)
+        let confidence = (confidence_threshold.unwrap_or(0.8) * 100.0) as u8;
+
+        handlers::enhanced_reporting_handlers::handle_generate_report(
+            project_path.unwrap_or_else(|| PathBuf::from(".")),
+            report_format,
+            text,
+            markdown,
+            csv,
+            include_visualizations,
+            include_executive_summary,
+            include_recommendations,
+            analysis_types,
+            confidence,
+            output,
+            perf,
+        )
+        .await
+    }
+
+    /// Execute show-metrics command (Phase 3.1 O(1) Quality Gates)
+    async fn execute_show_metrics_command(
+        trend: bool,
+        days: usize,
+        metric: Option<String>,
+        format: OutputFormat,
+        failures_only: bool,
+    ) -> anyhow::Result<()> {
+        use crate::services::metric_trends::{MetricTrendStore, TrendDirection};
+
+        if !trend {
+            anyhow::bail!("Only --trend mode is currently supported");
+        }
+
+        let mut store = MetricTrendStore::new()?;
+
+        let metrics = if let Some(m) = metric {
+            vec![m]
+        } else {
+            store.metrics()?
+        };
+
+        // Load all metrics into graph first (for PageRank)
+        for metric_name in &metrics {
+            let _ = store.trend(metric_name, days); // This loads data and populates graph
+        }
+
+        // Update PageRank hotness scores (after data is loaded)
+        store.update_hotness()?;
+
+        match format {
+            OutputFormat::Json => {
+                let mut results = serde_json::Map::new();
+
+                // Add hot metrics ranking
+                let hot_metrics = store.hot_metrics();
+                let mut hot_map = serde_json::Map::new();
+                for (name, score) in hot_metrics {
+                    hot_map.insert(name, serde_json::json!(score));
+                }
+                results.insert(
+                    "hot_metrics".to_string(),
+                    serde_json::Value::Object(hot_map),
+                );
+
+                // Add trend analysis
+                for metric_name in metrics {
+                    if let Ok(trend_analysis) = store.trend(&metric_name, days) {
+                        if failures_only && trend_analysis.direction != TrendDirection::Regressing {
+                            continue;
+                        }
+                        results.insert(metric_name, serde_json::to_value(trend_analysis)?);
+                    }
+                }
+                println!("{}", serde_json::to_string_pretty(&results)?);
+            }
+            _ => {
+                // Table output (default)
+                println!(
+                    "\n\x1b[1;34m📊 Quality Metrics Trends ({} days)\x1b[0m\n",
+                    days
+                );
+
+                // Show hot metrics ranking (PageRank)
+                let hot_metrics = store.hot_metrics();
+                if !hot_metrics.is_empty() {
+                    println!("\x1b[1;33m🔥 Hot Metrics (PageRank)\x1b[0m");
+                    for (idx, (name, score)) in hot_metrics.iter().enumerate().take(5) {
+                        println!("  {}. {} (score: {:.4})", idx + 1, name, score);
+                    }
+                    println!();
+                }
+
+                // Sort metrics by hotness for display
+                let mut sorted_metrics: Vec<(String, f32)> = metrics
+                    .iter()
+                    .map(|m| {
+                        let score = hot_metrics
+                            .iter()
+                            .find(|(name, _)| name == m)
+                            .map(|(_, s)| *s)
+                            .unwrap_or(0.0);
+                        (m.clone(), score)
+                    })
+                    .collect();
+                sorted_metrics.sort_by(|a, b| b.1.partial_cmp(&a.1).expect("internal error"));
+
+                for (metric_name, _hotness) in sorted_metrics {
+                    if let Ok(trend_analysis) = store.trend(&metric_name, days) {
+                        if failures_only && trend_analysis.direction != TrendDirection::Regressing {
+                            continue;
+                        }
+
+                        let direction_symbol = match trend_analysis.direction {
+                            TrendDirection::Improving => "\x1b[32m↓ Improving\x1b[0m",
+                            TrendDirection::Stable => "\x1b[33m→ Stable\x1b[0m",
+                            TrendDirection::Regressing => "\x1b[31m↑ Regressing\x1b[0m",
+                        };
+
+                        println!("\x1b[1m{}\x1b[0m", metric_name);
+                        println!("  Direction: {}", direction_symbol);
+                        println!("  Mean: {:.2}", trend_analysis.mean);
+                        println!("  Std Dev: {:.2}", trend_analysis.std_dev);
+                        println!(
+                            "  Min/Max: {:.2} / {:.2}",
+                            trend_analysis.min, trend_analysis.max
+                        );
+                        println!("  Slope: {:.2}/day", trend_analysis.slope);
+                        println!("  Observations: {}", trend_analysis.count);
+
+                        // Add recommendations for regressing metrics
+                        if trend_analysis.direction == TrendDirection::Regressing {
+                            let recommendations = Self::generate_metric_recommendations(
+                                &metric_name,
+                                trend_analysis.slope,
+                            );
+                            if !recommendations.is_empty() {
+                                println!("  \x1b[1;33mRecommendations:\x1b[0m");
+                                for rec in recommendations {
+                                    println!("    • {}", rec);
+                                }
+                            }
+                        }
+
+                        println!();
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Execute record-metric command (Phase 3.4 O(1) Quality Gates - CI/CD)
+    async fn execute_record_metric_command(
+        metric: String,
+        value: f64,
+        timestamp: Option<i64>,
+    ) -> anyhow::Result<()> {
+        use crate::services::metric_trends::MetricTrendStore;
+
+        let mut store = MetricTrendStore::new()?;
+
+        // Use provided timestamp or current time
+        let ts = timestamp.unwrap_or_else(|| chrono::Utc::now().timestamp());
+
+        // Record the observation
+        store.record(&metric, value, ts)?;
+
+        println!("✅ Recorded {} = {:.2} at timestamp {}", metric, value, ts);
+
+        // Show quick stats
+        if let Ok(trend_analysis) = store.trend(&metric, 30) {
+            println!(
+                "   Last 30 days: mean={:.2}, slope={:.2}/day",
+                trend_analysis.mean, trend_analysis.slope
+            );
+        }
+
+        Ok(())
+    }
+
+    /// Generate metric-specific recommendations
+    fn generate_metric_recommendations(metric: &str, slope_per_day: f64) -> Vec<String> {
+        let mut recommendations = Vec::new();
+
+        let days_to_critical = match metric {
+            "lint" => {
+                let threshold = 30_000.0;
+                let current_estimate = 26_500.0; // Approximate
+                ((threshold - current_estimate) / slope_per_day).max(0.0)
+            }
+            "test-fast" => {
+                let threshold = 300_000.0;
+                let current_estimate = 107_000.0;
+                ((threshold - current_estimate) / slope_per_day).max(0.0)
+            }
+            "coverage" => {
+                let threshold = 600_000.0;
+                let current_estimate = 480_000.0;
+                ((threshold - current_estimate) / slope_per_day).max(0.0)
+            }
+            "build-release" => {
+                let threshold = 900_000.0;
+                let current_estimate = 717_000.0;
+                ((threshold - current_estimate) / slope_per_day).max(0.0)
+            }
+            _ => f64::MAX,
+        };
+
+        if days_to_critical < 30.0 {
+            recommendations.push(format!(
+                "⚠️  WARNING: Approaching threshold in ~{:.0} days",
+                days_to_critical
+            ));
+        }
+
+        match metric {
+            "lint" => {
+                recommendations.push("Remove unused dependencies (saves ~2-3s)".to_string());
+                recommendations.push("Enable incremental clippy analysis".to_string());
+                recommendations
+                    .push("Review enabled lints (disable pedantic if not needed)".to_string());
+            }
+            "test-fast" => {
+                recommendations.push("Add #[ignore] to slow integration tests".to_string());
+                recommendations.push("Use proptest with reduced cases for CI".to_string());
+                recommendations.push("Parallelize test execution with nextest".to_string());
+            }
+            "coverage" => {
+                recommendations.push("Exclude slow tests from coverage run".to_string());
+                recommendations.push("Use cargo-llvm-cov with --skip-functions flag".to_string());
+                recommendations
+                    .push("Consider sampling-based coverage for large projects".to_string());
+            }
+            "build-release" => {
+                recommendations.push(
+                    "Enable sccache with CARGO_INCREMENTAL=0 (required for cache hits)".to_string(),
+                );
+                recommendations.push(
+                    "Use per-project target dirs (avoid shared CARGO_TARGET_DIR lock contention)"
+                        .to_string(),
+                );
+                recommendations
+                    .push("Review feature flags (disable optional features)".to_string());
+                recommendations.push("Use mold/lld linker for faster linking".to_string());
+            }
+            _ => {}
+        }
+
+        recommendations
+    }
+
+    async fn execute_config_command(
+        show: bool,
+        edit: bool,
+        validate: bool,
+        reset: bool,
+        section: Option<String>,
+        set: Option<Vec<String>>,
+        config_path: Option<PathBuf>,
+    ) -> anyhow::Result<()> {
+        handlers::handle_configuration(
+            show,
+            edit,
+            validate,
+            reset,
+            section,
+            set.unwrap_or_default(),
+            config_path,
+        )
+        .await
+    }
+
+    /// Create test configuration from CLI parameters (Toyota Way Extract Method)
+    fn create_test_config(
+        suite: &super::commands::TestSuite,
+        iterations: usize,
+        memory: bool,
+        throughput: bool,
+        regression: bool,
+    ) -> crate::test_performance::PerformanceTestConfig {
+        use crate::cli::commands::TestSuite;
+
+        crate::test_performance::PerformanceTestConfig {
+            enable_regression_tests: regression
+                || matches!(suite, TestSuite::Regression | TestSuite::All),
+            enable_memory_tests: memory || matches!(suite, TestSuite::Memory | TestSuite::All),
+            enable_throughput_tests: throughput
+                || matches!(suite, TestSuite::Throughput | TestSuite::All),
+            test_iterations: iterations,
+        }
+    }
+
+    /// Print test startup information (Toyota Way Extract Method)
+    fn print_test_startup_info(
+        suite: &super::commands::TestSuite,
+        iterations: usize,
+        timeout: u64,
+    ) {
+        println!("Starting Performance Testing Suite (SPECIFICATION.md Section 30)");
+        println!("Suite: {suite:?}, Iterations: {iterations}, Timeout: {timeout}s");
+    }
+
+    /// Execute the specific test suite (Toyota Way Extract Method)
+    async fn execute_test_suite(
+        suite: &super::commands::TestSuite,
+        config: crate::test_performance::PerformanceTestConfig,
+    ) -> anyhow::Result<()> {
+        use crate::cli::commands::TestSuite;
+        use crate::test_performance::run_performance_test_suite;
+
+        match suite {
+            TestSuite::Performance | TestSuite::All => run_performance_test_suite(config).await,
+            TestSuite::Regression => Self::execute_regression_tests(config).await,
+            TestSuite::Memory => Self::execute_memory_tests(config).await,
+            TestSuite::Throughput => Self::execute_throughput_tests(config).await,
+            TestSuite::Property => Self::execute_property_tests().await,
+            TestSuite::Integration => Self::execute_integration_tests().await,
+        }
+    }
+
+    /// Execute regression tests (Toyota Way Extract Method)
+    async fn execute_regression_tests(
+        config: crate::test_performance::PerformanceTestConfig,
+    ) -> anyhow::Result<()> {
+        if config.enable_regression_tests {
+            println!("Running regression tests...");
+            crate::test_performance::test_performance_regression_detection().await?;
+            println!("Regression tests passed!");
+        }
+        Ok(())
+    }
+
+    /// Execute memory tests (Toyota Way Extract Method)
+    async fn execute_memory_tests(
+        config: crate::test_performance::PerformanceTestConfig,
+    ) -> anyhow::Result<()> {
+        if config.enable_memory_tests {
+            println!("Running memory tests...");
+            crate::test_performance::test_memory_usage_patterns().await?;
+            println!("Memory tests passed!");
+        }
+        Ok(())
+    }
+
+    /// Execute throughput tests (Toyota Way Extract Method)
+    async fn execute_throughput_tests(
+        config: crate::test_performance::PerformanceTestConfig,
+    ) -> anyhow::Result<()> {
+        if config.enable_throughput_tests {
+            println!("Running throughput tests...");
+            crate::test_performance::test_single_threaded_throughput().await?;
+            crate::test_performance::test_realistic_project_analysis().await?;
+            crate::test_performance::test_large_file_performance().await?;
+            println!("Throughput tests passed!");
+        }
+        Ok(())
+    }
+
+    /// Execute property tests (Toyota Way Extract Method)
+    async fn execute_property_tests() -> anyhow::Result<()> {
+        println!("🧪 Running property-based test suite...");
+        println!("This validates code properties with generated test cases");
+
+        // Run property tests via cargo
+        use std::process::Command;
+        let output = Command::new("cargo")
+            .arg("test")
+            .arg("--package")
+            .arg("pmat")
+            .arg("--lib")
+            .arg("--")
+            .arg("property")
+            .output()?;
+
+        if output.status.success() {
+            println!("✅ Property tests completed successfully");
+            Ok(())
+        } else {
+            anyhow::bail!("Property tests failed")
+        }
+    }
+
+    /// Execute integration tests (Toyota Way Extract Method)
+    async fn execute_integration_tests() -> anyhow::Result<()> {
+        println!("🔗 Running integration test suite...");
+        println!("This validates component interactions and system behavior");
+
+        // Check if integration test exists
+        use std::path::Path;
+        if !Path::new("tests/integration.rs").exists() {
+            println!("ℹ️ No separate integration test file found");
+            println!("✅ Integration tests are embedded in unit tests");
+            return Ok(());
+        }
+
+        // Run integration tests via cargo if they exist
+        use std::process::Command;
+        let output = Command::new("cargo")
+            .arg("test")
+            .arg("--package")
+            .arg("pmat")
+            .arg("--test")
+            .arg("integration")
+            .output()?;
+
+        if output.status.success() {
+            println!("✅ Integration tests completed successfully");
+            Ok(())
+        } else {
+            anyhow::bail!("Integration tests failed")
+        }
+    }
+
+    /// Execute test with timeout and generate reports (Toyota Way Extract Method)
+    #[allow(clippy::too_many_arguments)]
+    async fn execute_with_timeout_and_reporting(
+        test_future: impl std::future::Future<Output = anyhow::Result<()>>,
+        timeout: u64,
+        start: std::time::Instant,
+        suite: &super::commands::TestSuite,
+        iterations: usize,
+        output: Option<PathBuf>,
+        perf: bool,
+    ) -> anyhow::Result<()> {
+        let timeout_duration = std::time::Duration::from_secs(timeout);
+
+        if let Ok(result) = tokio::time::timeout(timeout_duration, test_future).await {
+            let elapsed = start.elapsed();
+            Self::print_performance_summary_if_requested(perf, elapsed, suite, iterations);
+            Self::write_test_results_if_requested(output, suite, elapsed, iterations, &result)?;
+            result
+        } else {
+            eprintln!("Test execution timed out after {timeout}s");
+            anyhow::bail!("Performance tests timed out");
+        }
+    }
+
+    /// Print performance summary if requested (Toyota Way Extract Method)
+    fn print_performance_summary_if_requested(
+        perf: bool,
+        elapsed: std::time::Duration,
+        suite: &super::commands::TestSuite,
+        iterations: usize,
+    ) {
+        if perf {
+            println!("\nPerformance Summary:");
+            println!("   Total execution time: {elapsed:?}");
+            println!("   Suite: {suite:?}");
+            println!("   Iterations: {iterations}");
+        }
+    }
+
+    /// Write test results to file if requested (Toyota Way Extract Method)
+    fn write_test_results_if_requested(
+        output: Option<PathBuf>,
+        suite: &super::commands::TestSuite,
+        elapsed: std::time::Duration,
+        iterations: usize,
+        result: &anyhow::Result<()>,
+    ) -> anyhow::Result<()> {
+        if let Some(output_path) = output {
+            let results = format!(
+                "Performance Test Results\n\
+                ======================\n\
+                Suite: {:?}\n\
+                Execution time: {:?}\n\
+                Iterations: {}\n\
+                Status: {}\n",
+                suite,
+                elapsed,
+                iterations,
+                if result.is_ok() { "PASSED" } else { "FAILED" }
+            );
+            std::fs::write(&output_path, results)?;
+            println!("Results written to: {}", output_path.display());
+        }
+        Ok(())
+    }
+}
+
+
+
+// Work and spec handlers extracted for file health compliance (CB-040)
+#[path = "command_dispatcher_work.rs"]
+mod command_dispatcher_work;
+
+
+// Tests extracted for file health compliance (CB-040)
+
+#[cfg(test)]
+#[path = "tests.rs"]
+mod tests;

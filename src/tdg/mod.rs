@@ -5,6 +5,7 @@ use std::path::PathBuf;
 pub mod adaptive;
 pub mod alerts;
 pub mod analyzer_ast;
+mod analyzer_ast_ruchy; // Ruchy helpers extracted for file health (CB-040)
 pub mod analyzer_simple;
 pub mod baseline;
 pub mod baseline_analyzer;

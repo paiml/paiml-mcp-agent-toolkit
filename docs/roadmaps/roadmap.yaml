@@ -1157,3 +1157,20 @@ roadmap:
   - cb-020
   - unsafe
   notes: null
+- id: PMAT-457
+  github_issue: null
+  item_type: task
+  title: 'CB-040: Split large files for A+ file health'
+  status: inprogress
+  priority: high
+  assigned_to: null
+  created: 2026-01-22T09:54:39Z
+  updated: 2026-01-22T09:54:45.471941492+00:00
+  spec: null
+  acceptance_criteria:
+  - Split 8 files >2000 lines to achieve A+ file health score
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null

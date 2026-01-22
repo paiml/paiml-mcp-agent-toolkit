@@ -19,7 +19,7 @@ use std::time::{Duration, Instant};
 /// - Default timeout should be reasonable (60 seconds)
 mod analysis_timeout_tests {
     use super::*;
-    use pmat::cli::handlers::complexity_handlers::*;
+    use pmat::cli::handlers::{complexity_handlers::*, handle_analyze_dead_code};
 
     const TEST_TIMEOUT_SECS: u64 = 2; // Short timeout for fast tests
     const REASONABLE_TIMEOUT_SECS: u64 = 60; // Default timeout

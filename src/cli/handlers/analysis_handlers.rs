@@ -370,7 +370,7 @@ async fn route_dead_code_analysis(cmd: AnalyzeCommands) -> Result<()> {
         max_depth,
     } = cmd
     {
-        super::complexity_handlers::handle_analyze_dead_code(
+        super::dead_code_handlers::handle_analyze_dead_code(
             path,
             format,
             top_files,

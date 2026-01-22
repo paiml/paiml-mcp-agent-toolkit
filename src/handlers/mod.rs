@@ -2,6 +2,7 @@ pub mod initialize;
 pub mod prompts;
 pub mod resources;
 pub mod tools;
+mod tools_advanced; // Advanced analysis handlers extracted for file health (CB-040)
 pub mod vectorized_tools;
 
 use crate::models::mcp::{McpRequest, McpResponse};
