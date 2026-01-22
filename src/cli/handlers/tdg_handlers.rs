@@ -75,8 +75,9 @@ pub async fn handle_tdg_command(config: TdgCommandConfig) -> Result<()> {
         };
 
         // Discover git repo root from the search path
-        let git_context = discover_git_workdir(search_path)
-            .and_then(|workdir| crate::models::git_context::GitContext::try_from_current_dir(&workdir));
+        let git_context = discover_git_workdir(search_path).and_then(|workdir| {
+            crate::models::git_context::GitContext::try_from_current_dir(&workdir)
+        });
 
         analyzer.set_git_context(git_context);
     }
@@ -1494,7 +1495,6 @@ async fn handle_viz_mode(_analyzer: &TdgAnalyzer, config: &TdgCommandConfig) -> 
 
     Ok(())
 }
-
 
 // Tests extracted to tdg_handlers_tests.rs for file health compliance (CB-040)
 #[cfg(test)]

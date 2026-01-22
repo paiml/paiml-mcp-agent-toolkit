@@ -368,10 +368,7 @@ mod tests {
 
         let result = GitHubClient::new("owner/repo");
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("GITHUB_TOKEN"));
+        assert!(result.unwrap_err().to_string().contains("GITHUB_TOKEN"));
 
         // Restore token if it existed
         if let Some(token) = saved {

@@ -536,7 +536,10 @@ mod tests {
 
     #[test]
     fn test_complexity_combine_logn() {
-        assert_eq!(Complexity::OLogN.combine(&Complexity::OLogN), Complexity::ON);
+        assert_eq!(
+            Complexity::OLogN.combine(&Complexity::OLogN),
+            Complexity::ON
+        );
     }
 
     #[test]
@@ -810,7 +813,9 @@ mod tests {
         let ast = syn::parse_file(code).unwrap();
         let executor = SymbolicExecutor::new();
         let patterns = executor.analyze_algorithm_patterns(&ast);
-        assert!(patterns.iter().any(|p| matches!(p, AlgorithmPattern::Sorting)));
+        assert!(patterns
+            .iter()
+            .any(|p| matches!(p, AlgorithmPattern::Sorting)));
     }
 
     #[test]

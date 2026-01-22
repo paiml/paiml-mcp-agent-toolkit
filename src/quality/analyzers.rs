@@ -224,8 +224,14 @@ mod coverage_tests {
         };
         let json = serde_json::to_string(&metrics).unwrap();
         let deserialized: QualityMetrics = serde_json::from_str(&json).unwrap();
-        assert_eq!(metrics.cyclomatic_complexity, deserialized.cyclomatic_complexity);
-        assert_eq!(metrics.cognitive_complexity, deserialized.cognitive_complexity);
+        assert_eq!(
+            metrics.cyclomatic_complexity,
+            deserialized.cyclomatic_complexity
+        );
+        assert_eq!(
+            metrics.cognitive_complexity,
+            deserialized.cognitive_complexity
+        );
         assert_eq!(metrics.efficiency, deserialized.efficiency);
     }
 

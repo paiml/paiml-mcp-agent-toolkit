@@ -1750,7 +1750,6 @@ impl Default for SimpleDeepContext {
     }
 }
 
-
 // Tests extracted to simple_deep_context_tests.rs for file health compliance (CB-040)
 #[cfg(test)]
 #[path = "simple_deep_context_tests.rs"]

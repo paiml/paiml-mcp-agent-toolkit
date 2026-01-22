@@ -560,10 +560,16 @@ mod tests {
     #[test]
     fn test_coverage_fallback_no_src() {
         let temp_dir = TempDir::new().unwrap();
-        fs::write(temp_dir.path().join("Cargo.toml"), "[package]\nname = \"test\"").unwrap();
+        fs::write(
+            temp_dir.path().join("Cargo.toml"),
+            "[package]\nname = \"test\"",
+        )
+        .unwrap();
 
         let scorer = TestingScorer::new();
-        let result = scorer.score_coverage_fallback(temp_dir.path(), None).unwrap();
+        let result = scorer
+            .score_coverage_fallback(temp_dir.path(), None)
+            .unwrap();
 
         // No src = 0 points
         assert_eq!(result, 0.0);
@@ -573,15 +579,17 @@ mod tests {
     fn test_coverage_fallback_no_tests() {
         let temp_dir = TempDir::new().unwrap();
         fs::create_dir_all(temp_dir.path().join("src")).unwrap();
-        fs::write(temp_dir.path().join("Cargo.toml"), "[package]\nname = \"test\"").unwrap();
         fs::write(
-            temp_dir.path().join("src/lib.rs"),
-            "fn no_tests_here() {}",
+            temp_dir.path().join("Cargo.toml"),
+            "[package]\nname = \"test\"",
         )
         .unwrap();
+        fs::write(temp_dir.path().join("src/lib.rs"), "fn no_tests_here() {}").unwrap();
 
         let scorer = TestingScorer::new();
-        let result = scorer.score_coverage_fallback(temp_dir.path(), None).unwrap();
+        let result = scorer
+            .score_coverage_fallback(temp_dir.path(), None)
+            .unwrap();
 
         // No tests = 0 points
         assert_eq!(result, 0.0);
@@ -591,7 +599,11 @@ mod tests {
     fn test_coverage_fallback_with_tests() {
         let temp_dir = TempDir::new().unwrap();
         fs::create_dir_all(temp_dir.path().join("src")).unwrap();
-        fs::write(temp_dir.path().join("Cargo.toml"), "[package]\nname = \"test\"").unwrap();
+        fs::write(
+            temp_dir.path().join("Cargo.toml"),
+            "[package]\nname = \"test\"",
+        )
+        .unwrap();
         fs::write(
             temp_dir.path().join("src/lib.rs"),
             r#"
@@ -607,7 +619,9 @@ mod tests {
         .unwrap();
 
         let scorer = TestingScorer::new();
-        let result = scorer.score_coverage_fallback(temp_dir.path(), None).unwrap();
+        let result = scorer
+            .score_coverage_fallback(temp_dir.path(), None)
+            .unwrap();
 
         // Has tests = moderate credit
         assert_eq!(result, 4.0);
@@ -625,7 +639,9 @@ mod tests {
         );
 
         let scorer = TestingScorer::new();
-        let result = scorer.score_coverage_fallback(temp_dir.path(), Some(&cache)).unwrap();
+        let result = scorer
+            .score_coverage_fallback(temp_dir.path(), Some(&cache))
+            .unwrap();
 
         // Has tests = moderate credit
         assert_eq!(result, 4.0);
@@ -634,7 +650,11 @@ mod tests {
     #[test]
     fn test_integration_tests_no_directory() {
         let temp_dir = TempDir::new().unwrap();
-        fs::write(temp_dir.path().join("Cargo.toml"), "[package]\nname = \"test\"").unwrap();
+        fs::write(
+            temp_dir.path().join("Cargo.toml"),
+            "[package]\nname = \"test\"",
+        )
+        .unwrap();
 
         let scorer = TestingScorer::new();
         let result = scorer.score_integration_tests(temp_dir.path()).unwrap();
@@ -647,7 +667,11 @@ mod tests {
     fn test_integration_tests_empty_directory() {
         let temp_dir = TempDir::new().unwrap();
         fs::create_dir_all(temp_dir.path().join("tests")).unwrap();
-        fs::write(temp_dir.path().join("Cargo.toml"), "[package]\nname = \"test\"").unwrap();
+        fs::write(
+            temp_dir.path().join("Cargo.toml"),
+            "[package]\nname = \"test\"",
+        )
+        .unwrap();
 
         let scorer = TestingScorer::new();
         let result = scorer.score_integration_tests(temp_dir.path()).unwrap();
@@ -660,7 +684,11 @@ mod tests {
     fn test_integration_tests_one_file() {
         let temp_dir = TempDir::new().unwrap();
         fs::create_dir_all(temp_dir.path().join("tests")).unwrap();
-        fs::write(temp_dir.path().join("Cargo.toml"), "[package]\nname = \"test\"").unwrap();
+        fs::write(
+            temp_dir.path().join("Cargo.toml"),
+            "[package]\nname = \"test\"",
+        )
+        .unwrap();
         fs::write(
             temp_dir.path().join("tests/integration.rs"),
             "#[test]\nfn test() {}",
@@ -678,10 +706,26 @@ mod tests {
     fn test_integration_tests_multiple_files() {
         let temp_dir = TempDir::new().unwrap();
         fs::create_dir_all(temp_dir.path().join("tests")).unwrap();
-        fs::write(temp_dir.path().join("Cargo.toml"), "[package]\nname = \"test\"").unwrap();
-        fs::write(temp_dir.path().join("tests/test1.rs"), "#[test]\nfn t1() {}").unwrap();
-        fs::write(temp_dir.path().join("tests/test2.rs"), "#[test]\nfn t2() {}").unwrap();
-        fs::write(temp_dir.path().join("tests/test3.rs"), "#[test]\nfn t3() {}").unwrap();
+        fs::write(
+            temp_dir.path().join("Cargo.toml"),
+            "[package]\nname = \"test\"",
+        )
+        .unwrap();
+        fs::write(
+            temp_dir.path().join("tests/test1.rs"),
+            "#[test]\nfn t1() {}",
+        )
+        .unwrap();
+        fs::write(
+            temp_dir.path().join("tests/test2.rs"),
+            "#[test]\nfn t2() {}",
+        )
+        .unwrap();
+        fs::write(
+            temp_dir.path().join("tests/test3.rs"),
+            "#[test]\nfn t3() {}",
+        )
+        .unwrap();
 
         let scorer = TestingScorer::new();
         let result = scorer.score_integration_tests(temp_dir.path()).unwrap();
@@ -693,7 +737,11 @@ mod tests {
     #[test]
     fn test_doc_tests_no_src() {
         let temp_dir = TempDir::new().unwrap();
-        fs::write(temp_dir.path().join("Cargo.toml"), "[package]\nname = \"test\"").unwrap();
+        fs::write(
+            temp_dir.path().join("Cargo.toml"),
+            "[package]\nname = \"test\"",
+        )
+        .unwrap();
 
         let scorer = TestingScorer::new();
         let result = scorer.score_doc_tests(temp_dir.path(), None).unwrap();
@@ -706,7 +754,11 @@ mod tests {
     fn test_doc_tests_no_examples() {
         let temp_dir = TempDir::new().unwrap();
         fs::create_dir_all(temp_dir.path().join("src")).unwrap();
-        fs::write(temp_dir.path().join("Cargo.toml"), "[package]\nname = \"test\"").unwrap();
+        fs::write(
+            temp_dir.path().join("Cargo.toml"),
+            "[package]\nname = \"test\"",
+        )
+        .unwrap();
         fs::write(
             temp_dir.path().join("src/lib.rs"),
             "/// Documentation without examples\npub fn foo() {}",
@@ -724,7 +776,11 @@ mod tests {
     fn test_doc_tests_with_examples() {
         let temp_dir = TempDir::new().unwrap();
         fs::create_dir_all(temp_dir.path().join("src")).unwrap();
-        fs::write(temp_dir.path().join("Cargo.toml"), "[package]\nname = \"test\"").unwrap();
+        fs::write(
+            temp_dir.path().join("Cargo.toml"),
+            "[package]\nname = \"test\"",
+        )
+        .unwrap();
         fs::write(
             temp_dir.path().join("src/lib.rs"),
             r#"
@@ -754,7 +810,11 @@ pub fn bar() {}
     fn test_doc_tests_many_examples() {
         let temp_dir = TempDir::new().unwrap();
         fs::create_dir_all(temp_dir.path().join("src")).unwrap();
-        fs::write(temp_dir.path().join("Cargo.toml"), "[package]\nname = \"test\"").unwrap();
+        fs::write(
+            temp_dir.path().join("Cargo.toml"),
+            "[package]\nname = \"test\"",
+        )
+        .unwrap();
         fs::write(
             temp_dir.path().join("src/lib.rs"),
             r#"
@@ -802,7 +862,9 @@ pub fn e() {}
         );
 
         let scorer = TestingScorer::new();
-        let result = scorer.score_doc_tests(temp_dir.path(), Some(&cache)).unwrap();
+        let result = scorer
+            .score_doc_tests(temp_dir.path(), Some(&cache))
+            .unwrap();
 
         // 3 doc tests = 2 points
         assert_eq!(result, 2.0);
@@ -829,7 +891,11 @@ pub fn e() {}
     fn test_score_fast_mode() {
         let temp_dir = TempDir::new().unwrap();
         fs::create_dir_all(temp_dir.path().join("src")).unwrap();
-        fs::write(temp_dir.path().join("Cargo.toml"), "[package]\nname = \"test\"").unwrap();
+        fs::write(
+            temp_dir.path().join("Cargo.toml"),
+            "[package]\nname = \"test\"",
+        )
+        .unwrap();
         fs::write(
             temp_dir.path().join("src/lib.rs"),
             "#[cfg(test)]\nmod tests { #[test] fn t() {} }",
@@ -837,7 +903,9 @@ pub fn e() {}
         .unwrap();
 
         let scorer = TestingScorer::new();
-        let result = scorer.score_with_mode(temp_dir.path(), ScoringMode::Fast).unwrap();
+        let result = scorer
+            .score_with_mode(temp_dir.path(), ScoringMode::Fast)
+            .unwrap();
 
         // Fast mode: coverage fallback(4) + integration(0) + doc_tests(0) + mutation(2.5) = 6.5
         assert!(result.earned >= 6.0);
@@ -848,7 +916,11 @@ pub fn e() {}
     fn test_score_with_cache() {
         let temp_dir = TempDir::new().unwrap();
         fs::create_dir_all(temp_dir.path().join("src")).unwrap();
-        fs::write(temp_dir.path().join("Cargo.toml"), "[package]\nname = \"test\"").unwrap();
+        fs::write(
+            temp_dir.path().join("Cargo.toml"),
+            "[package]\nname = \"test\"",
+        )
+        .unwrap();
 
         let mut cache = FileCache::new();
         cache.insert(
@@ -869,7 +941,11 @@ pub fn e() {}
     fn test_recommendations_no_tests() {
         let temp_dir = TempDir::new().unwrap();
         fs::create_dir_all(temp_dir.path().join("src")).unwrap();
-        fs::write(temp_dir.path().join("Cargo.toml"), "[package]\nname = \"test\"").unwrap();
+        fs::write(
+            temp_dir.path().join("Cargo.toml"),
+            "[package]\nname = \"test\"",
+        )
+        .unwrap();
         fs::write(temp_dir.path().join("src/lib.rs"), "fn foo() {}").unwrap();
 
         let scorer = TestingScorer::new();
@@ -887,7 +963,11 @@ pub fn e() {}
         let temp_dir = TempDir::new().unwrap();
         fs::create_dir_all(temp_dir.path().join("src")).unwrap();
         fs::create_dir_all(temp_dir.path().join("tests")).unwrap();
-        fs::write(temp_dir.path().join("Cargo.toml"), "[package]\nname = \"test\"").unwrap();
+        fs::write(
+            temp_dir.path().join("Cargo.toml"),
+            "[package]\nname = \"test\"",
+        )
+        .unwrap();
         fs::write(
             temp_dir.path().join("src/lib.rs"),
             "#[cfg(test)] mod tests { #[test] fn t() {} }",
@@ -906,11 +986,17 @@ pub fn e() {}
     fn test_scoring_mode_quick() {
         let temp_dir = TempDir::new().unwrap();
         fs::create_dir_all(temp_dir.path().join("src")).unwrap();
-        fs::write(temp_dir.path().join("Cargo.toml"), "[package]\nname = \"test\"").unwrap();
+        fs::write(
+            temp_dir.path().join("Cargo.toml"),
+            "[package]\nname = \"test\"",
+        )
+        .unwrap();
         fs::write(temp_dir.path().join("src/lib.rs"), "fn main() {}").unwrap();
 
         let scorer = TestingScorer::new();
-        let result = scorer.score_with_mode(temp_dir.path(), ScoringMode::Quick).unwrap();
+        let result = scorer
+            .score_with_mode(temp_dir.path(), ScoringMode::Quick)
+            .unwrap();
 
         // Quick mode should produce valid scores
         assert!(result.earned >= 0.0);
@@ -935,7 +1021,9 @@ pub fn e() {}
 
         let scorer = TestingScorer::new();
         let mut count = 0;
-        scorer.count_doc_tests(&temp_dir.path().join("src"), &mut count, None).unwrap();
+        scorer
+            .count_doc_tests(&temp_dir.path().join("src"), &mut count, None)
+            .unwrap();
 
         // Should find doc tests in both files
         assert_eq!(count, 2);
@@ -945,7 +1033,11 @@ pub fn e() {}
     fn test_module_doc_comments() {
         let temp_dir = TempDir::new().unwrap();
         fs::create_dir_all(temp_dir.path().join("src")).unwrap();
-        fs::write(temp_dir.path().join("Cargo.toml"), "[package]\nname = \"test\"").unwrap();
+        fs::write(
+            temp_dir.path().join("Cargo.toml"),
+            "[package]\nname = \"test\"",
+        )
+        .unwrap();
         fs::write(
             temp_dir.path().join("src/lib.rs"),
             r#"

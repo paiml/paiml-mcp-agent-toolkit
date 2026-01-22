@@ -154,16 +154,11 @@ pub fn detect_cb020_unsafe_without_safety(project_path: &Path) -> Vec<CbPatternV
                     if trimmed.starts_with("unsafe {") || trimmed.starts_with("unsafe{") {
                         // Look at previous non-empty lines for SAFETY comment
                         // Check up to 10 lines back to handle multi-line safety comments
-                        let has_safety = lines
-                            .iter()
-                            .take(line_num)
-                            .rev()
-                            .take(10)
-                            .any(|l| {
-                                l.contains("// SAFETY:")
-                                    || l.contains("// SAFETY :")
-                                    || l.contains("/ SAFETY:")
-                            });
+                        let has_safety = lines.iter().take(line_num).rev().take(10).any(|l| {
+                            l.contains("// SAFETY:")
+                                || l.contains("// SAFETY :")
+                                || l.contains("/ SAFETY:")
+                        });
 
                         if !has_safety {
                             violations.push(CbPatternViolation {
@@ -276,7 +271,10 @@ pub fn detect_cb021_simd_without_target_feature(project_path: &Path) -> Vec<CbPa
                                 pattern_id: "CB-021".to_string(),
                                 file: entry.display().to_string(),
                                 line: line_num + 1,
-                                description: format!("SIMD intrinsic {} without #[target_feature]", pattern),
+                                description: format!(
+                                    "SIMD intrinsic {} without #[target_feature]",
+                                    pattern
+                                ),
                                 severity: Severity::Warning,
                             });
                         }
@@ -326,15 +324,20 @@ pub fn detect_cb001_wgsl_no_bounds_check(project_path: &Path) -> Vec<CbPatternVi
                         // Check for array access without bounds check
                         if trimmed.contains('[') && trimmed.contains(']') {
                             // Simple heuristic: array access without preceding bounds check
-                            let preceding_lines: Vec<&str> = content.lines().take(line_num).collect();
-                            if !preceding_lines.iter().rev().take(5).any(|l| {
-                                l.contains("if") && (l.contains('<') || l.contains(">="))
-                            }) {
+                            let preceding_lines: Vec<&str> =
+                                content.lines().take(line_num).collect();
+                            if !preceding_lines
+                                .iter()
+                                .rev()
+                                .take(5)
+                                .any(|l| l.contains("if") && (l.contains('<') || l.contains(">=")))
+                            {
                                 violations.push(CbPatternViolation {
                                     pattern_id: "CB-001".to_string(),
                                     file: entry.display().to_string(),
                                     line: line_num + 1,
-                                    description: "WGSL array access without bounds check".to_string(),
+                                    description: "WGSL array access without bounds check"
+                                        .to_string(),
                                     severity: Severity::Warning,
                                 });
                             }
@@ -467,7 +470,9 @@ pub fn detect_profiler_anomalies(project_path: &Path) -> Vec<ProfilerAnomaly> {
 
     // Check standard profiler output locations
     let profiler_paths = [
-        project_path.join(".pmat-metrics").join("brick-profile.json"),
+        project_path
+            .join(".pmat-metrics")
+            .join("brick-profile.json"),
         project_path.join("target").join("brick-profile.json"),
         project_path.join("brick-profile.json"),
     ];
@@ -554,4 +559,3 @@ pub fn extract_brick_name(content: &str, target_line: &str) -> String {
     }
     "unknown".to_string()
 }
-

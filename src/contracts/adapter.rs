@@ -384,7 +384,6 @@ impl BackwardCompatibility {
     }
 }
 
-
 // Tests extracted to adapter_tests.rs for file health compliance (CB-040)
 #[cfg(test)]
 #[path = "adapter_tests.rs"]

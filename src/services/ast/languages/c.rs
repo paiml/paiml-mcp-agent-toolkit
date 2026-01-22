@@ -375,7 +375,7 @@ impl CAstVisitor {
 
         if !words.is_empty() {
             // Last word is usually the new type name
-            Some(words.last().unwrap().to_string())
+            Some(words.last().expect("checked is_empty").to_string())
         } else {
             None
         }

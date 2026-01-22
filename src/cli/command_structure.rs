@@ -1656,7 +1656,8 @@ mod edge_case_tests {
     #[test]
     fn test_registry_default_consistency() {
         // Creating multiple registries should work
-        let registries: Vec<CommandRegistry> = (0..10).map(|_| CommandRegistry::default()).collect();
+        let registries: Vec<CommandRegistry> =
+            (0..10).map(|_| CommandRegistry::default()).collect();
 
         assert_eq!(registries.len(), 10);
     }

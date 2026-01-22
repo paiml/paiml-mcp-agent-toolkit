@@ -420,10 +420,9 @@ async fn create_test_project() -> TempDir {
     temp_dir
 }
 
-fn create_test_dependency_graph() -> SimpleStableGraph<
-    pmat::services::unified_ast_engine::ModuleNode,
-    pmat::models::dag::EdgeType,
-> {
+fn create_test_dependency_graph(
+) -> SimpleStableGraph<pmat::services::unified_ast_engine::ModuleNode, pmat::models::dag::EdgeType>
+{
     use pmat::models::dag::EdgeType;
     use pmat::services::unified_ast_engine::{ModuleMetrics, ModuleNode};
     use std::path::PathBuf;
@@ -474,10 +473,9 @@ fn create_test_dependency_graph() -> SimpleStableGraph<
     graph
 }
 
-fn create_large_test_graph() -> SimpleStableGraph<
-    pmat::services::unified_ast_engine::ModuleNode,
-    pmat::models::dag::EdgeType,
-> {
+fn create_large_test_graph(
+) -> SimpleStableGraph<pmat::services::unified_ast_engine::ModuleNode, pmat::models::dag::EdgeType>
+{
     use pmat::models::dag::EdgeType;
     use pmat::services::unified_ast_engine::{ModuleMetrics, ModuleNode};
     use std::path::PathBuf;
@@ -517,10 +515,9 @@ fn create_large_test_graph() -> SimpleStableGraph<
     graph
 }
 
-fn create_single_node_graph() -> SimpleStableGraph<
-    pmat::services::unified_ast_engine::ModuleNode,
-    pmat::models::dag::EdgeType,
-> {
+fn create_single_node_graph(
+) -> SimpleStableGraph<pmat::services::unified_ast_engine::ModuleNode, pmat::models::dag::EdgeType>
+{
     use pmat::services::unified_ast_engine::{ModuleMetrics, ModuleNode};
     use std::path::PathBuf;
 
@@ -534,10 +531,9 @@ fn create_single_node_graph() -> SimpleStableGraph<
     graph
 }
 
-fn create_cyclic_graph() -> SimpleStableGraph<
-    pmat::services::unified_ast_engine::ModuleNode,
-    pmat::models::dag::EdgeType,
-> {
+fn create_cyclic_graph(
+) -> SimpleStableGraph<pmat::services::unified_ast_engine::ModuleNode, pmat::models::dag::EdgeType>
+{
     use pmat::models::dag::EdgeType;
     use pmat::services::unified_ast_engine::{ModuleMetrics, ModuleNode};
     use std::path::PathBuf;

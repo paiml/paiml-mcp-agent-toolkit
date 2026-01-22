@@ -224,7 +224,6 @@ mod tests {
     // test_engine_get_state() - needs rewrite for current engine
 }
 
-
 mod property_tests {
     use proptest::prelude::*;
 
@@ -242,7 +241,6 @@ mod property_tests {
         }
     }
 }
-
 
 mod coverage_tests {
     use super::*;
@@ -303,10 +301,12 @@ mod coverage_tests {
         let brief: ExplainLevel = serde_json::from_str("\"Brief\"").expect("deserialize Brief");
         assert!(matches!(brief, ExplainLevel::Brief));
 
-        let detailed: ExplainLevel = serde_json::from_str("\"Detailed\"").expect("deserialize Detailed");
+        let detailed: ExplainLevel =
+            serde_json::from_str("\"Detailed\"").expect("deserialize Detailed");
         assert!(matches!(detailed, ExplainLevel::Detailed));
 
-        let verbose: ExplainLevel = serde_json::from_str("\"Verbose\"").expect("deserialize Verbose");
+        let verbose: ExplainLevel =
+            serde_json::from_str("\"Verbose\"").expect("deserialize Verbose");
         assert!(matches!(verbose, ExplainLevel::Verbose));
     }
 
@@ -446,7 +446,7 @@ mod coverage_tests {
     fn create_test_engine(mode: EngineMode, targets: Vec<PathBuf>) -> UnifiedEngine {
         let ast_engine = Arc::new(UnifiedAstEngine::new());
         let cache = Arc::new(
-            UnifiedCacheManager::new(UnifiedCacheConfig::default()).expect("create cache")
+            UnifiedCacheManager::new(UnifiedCacheConfig::default()).expect("create cache"),
         );
         let config = RefactorConfig::default();
 
@@ -592,7 +592,10 @@ mod coverage_tests {
             let _ = sm.advance();
         }
 
-        let explanation = engine.explain_current_state().await.expect("get explanation");
+        let explanation = engine
+            .explain_current_state()
+            .await
+            .expect("get explanation");
         assert!(explanation.contains("analyzing"));
         assert!(explanation.contains("complexity"));
     }
@@ -613,7 +616,10 @@ mod coverage_tests {
             let _ = sm.advance(); // -> Plan
         }
 
-        let explanation = engine.explain_current_state().await.expect("get explanation");
+        let explanation = engine
+            .explain_current_state()
+            .await
+            .expect("get explanation");
         assert!(explanation.contains("Planning"));
         assert!(explanation.contains("violations"));
     }
@@ -635,7 +641,10 @@ mod coverage_tests {
             let _ = sm.advance(); // -> Refactor
         }
 
-        let explanation = engine.explain_current_state().await.expect("get explanation");
+        let explanation = engine
+            .explain_current_state()
+            .await
+            .expect("get explanation");
         assert!(explanation.contains("refactoring"));
     }
 
@@ -764,7 +773,9 @@ mod coverage_tests {
             RefactorConfig::default(),
         );
         let checkpoint_data = serde_json::to_string_pretty(&state_machine).expect("serialize");
-        tokio::fs::write(&checkpoint_path, checkpoint_data).await.expect("write checkpoint");
+        tokio::fs::write(&checkpoint_path, checkpoint_data)
+            .await
+            .expect("write checkpoint");
 
         // Create engine and load checkpoint
         let mode = EngineMode::Batch {
@@ -825,7 +836,9 @@ mod coverage_tests {
                 // FIXME: broken logic
             }
         "#;
-        tokio::fs::write(&rust_file, content).await.expect("write file");
+        tokio::fs::write(&rust_file, content)
+            .await
+            .expect("write file");
 
         let mode = EngineMode::Server {
             emit_buffer: Arc::new(RwLock::new(RingBuffer::new(10))),
@@ -833,7 +846,10 @@ mod coverage_tests {
         };
 
         let engine = create_test_engine(mode, vec![]);
-        let metrics = engine.analyze_incremental(&rust_file).await.expect("analyze");
+        let metrics = engine
+            .analyze_incremental(&rust_file)
+            .await
+            .expect("analyze");
 
         // Should have some complexity detected
         assert!(metrics.complexity[0] > 0);
@@ -852,7 +868,9 @@ mod coverage_tests {
                 // HACK: workaround
             }
         "#;
-        tokio::fs::write(&ts_file, content).await.expect("write file");
+        tokio::fs::write(&ts_file, content)
+            .await
+            .expect("write file");
 
         let mode = EngineMode::Server {
             emit_buffer: Arc::new(RwLock::new(RingBuffer::new(10))),
@@ -879,7 +897,9 @@ mod coverage_tests {
                 # FIXME: this is broken
                 pass
         "#;
-        tokio::fs::write(&py_file, content).await.expect("write file");
+        tokio::fs::write(&py_file, content)
+            .await
+            .expect("write file");
 
         let mode = EngineMode::Server {
             emit_buffer: Arc::new(RwLock::new(RingBuffer::new(10))),
@@ -899,7 +919,9 @@ mod coverage_tests {
         let tmp_dir = tempdir().expect("create temp dir");
         let other_file = tmp_dir.path().join("test.txt");
 
-        tokio::fs::write(&other_file, "plain text content").await.expect("write file");
+        tokio::fs::write(&other_file, "plain text content")
+            .await
+            .expect("write file");
 
         let mode = EngineMode::Server {
             emit_buffer: Arc::new(RwLock::new(RingBuffer::new(10))),
@@ -907,7 +929,10 @@ mod coverage_tests {
         };
 
         let engine = create_test_engine(mode, vec![]);
-        let metrics = engine.analyze_incremental(&other_file).await.expect("analyze");
+        let metrics = engine
+            .analyze_incremental(&other_file)
+            .await
+            .expect("analyze");
 
         // Other files get minimal default values
         assert_eq!(metrics.complexity[0], 3);
@@ -922,7 +947,9 @@ mod coverage_tests {
 
         // Create file larger than 50KB threshold
         let content = "fn f() {} // ".repeat(5000);
-        tokio::fs::write(&large_file, content).await.expect("write file");
+        tokio::fs::write(&large_file, content)
+            .await
+            .expect("write file");
 
         let mode = EngineMode::Server {
             emit_buffer: Arc::new(RwLock::new(RingBuffer::new(10))),
@@ -930,7 +957,10 @@ mod coverage_tests {
         };
 
         let engine = create_test_engine(mode, vec![]);
-        let metrics = engine.analyze_incremental(&large_file).await.expect("analyze");
+        let metrics = engine
+            .analyze_incremental(&large_file)
+            .await
+            .expect("analyze");
 
         // Large files get default "likely complex" values
         assert_eq!(metrics.complexity[0], 20);
@@ -945,7 +975,8 @@ mod coverage_tests {
         };
 
         let engine = create_test_engine(mode, vec![]);
-        let metrics = engine.analyze_incremental(Path::new("/nonexistent/file.rs"))
+        let metrics = engine
+            .analyze_incremental(Path::new("/nonexistent/file.rs"))
             .await
             .expect("analyze");
 
@@ -1048,7 +1079,10 @@ mod coverage_tests {
         assert_eq!(payload.tdg_score, 1.5);
         assert_eq!(payload.complexity, (15, 20));
         assert!(payload.refactor_available);
-        assert!(matches!(payload.refactor_type, RefactorType::ExtractFunction));
+        assert!(matches!(
+            payload.refactor_type,
+            RefactorType::ExtractFunction
+        ));
         assert!(payload.timestamp > 0);
     }
 
@@ -1080,12 +1114,12 @@ mod coverage_tests {
 
         // Create a checkpoint file first
         let checkpoint_path = tmp_dir.path().join("checkpoint.json");
-        let state_machine = RefactorStateMachine::new(
-            vec![PathBuf::from("test.rs")],
-            RefactorConfig::default(),
-        );
+        let state_machine =
+            RefactorStateMachine::new(vec![PathBuf::from("test.rs")], RefactorConfig::default());
         let checkpoint_data = serde_json::to_string(&state_machine).expect("serialize");
-        tokio::fs::write(&checkpoint_path, checkpoint_data).await.expect("write");
+        tokio::fs::write(&checkpoint_path, checkpoint_data)
+            .await
+            .expect("write");
 
         let mode = EngineMode::Batch {
             checkpoint_dir: tmp_dir.path().to_path_buf(),
@@ -1218,10 +1252,10 @@ mod coverage_tests {
             explain_level: ExplainLevel::Brief,
         };
 
-        let engine = create_test_engine(mode, vec![
-            PathBuf::from("file1.rs"),
-            PathBuf::from("file2.rs"),
-        ]);
+        let engine = create_test_engine(
+            mode,
+            vec![PathBuf::from("file1.rs"), PathBuf::from("file2.rs")],
+        );
 
         // Advance through states to increment target index
         {
@@ -1256,7 +1290,9 @@ mod coverage_tests {
                 return <div>Hello</div>;
             }
         "#;
-        tokio::fs::write(&jsx_file, content).await.expect("write file");
+        tokio::fs::write(&jsx_file, content)
+            .await
+            .expect("write file");
 
         let mode = EngineMode::Server {
             emit_buffer: Arc::new(RwLock::new(RingBuffer::new(10))),
@@ -1264,7 +1300,10 @@ mod coverage_tests {
         };
 
         let engine = create_test_engine(mode, vec![]);
-        let metrics = engine.analyze_incremental(&jsx_file).await.expect("analyze");
+        let metrics = engine
+            .analyze_incremental(&jsx_file)
+            .await
+            .expect("analyze");
 
         assert_eq!(metrics.complexity[0], 8);
         assert_eq!(metrics.satd, 1);
@@ -1283,7 +1322,9 @@ mod coverage_tests {
                 return <div>Hello</div>;
             }
         "#;
-        tokio::fs::write(&tsx_file, content).await.expect("write file");
+        tokio::fs::write(&tsx_file, content)
+            .await
+            .expect("write file");
 
         let mode = EngineMode::Server {
             emit_buffer: Arc::new(RwLock::new(RingBuffer::new(10))),
@@ -1291,7 +1332,10 @@ mod coverage_tests {
         };
 
         let engine = create_test_engine(mode, vec![]);
-        let metrics = engine.analyze_incremental(&tsx_file).await.expect("analyze");
+        let metrics = engine
+            .analyze_incremental(&tsx_file)
+            .await
+            .expect("analyze");
 
         assert_eq!(metrics.complexity[0], 8);
         assert_eq!(metrics.satd, 2);
@@ -1307,9 +1351,14 @@ mod coverage_tests {
         // Create a file with very high complexity
         let mut content = String::new();
         for i in 0..100 {
-            content.push_str(&format!("fn f{}() {{ if true {{}} match x {{}} for i in 0..10 {{}} }}\n", i));
+            content.push_str(&format!(
+                "fn f{}() {{ if true {{}} match x {{}} for i in 0..10 {{}} }}\n",
+                i
+            ));
         }
-        tokio::fs::write(&rust_file, content).await.expect("write file");
+        tokio::fs::write(&rust_file, content)
+            .await
+            .expect("write file");
 
         let mode = EngineMode::Server {
             emit_buffer: Arc::new(RwLock::new(RingBuffer::new(10))),
@@ -1317,7 +1366,10 @@ mod coverage_tests {
         };
 
         let engine = create_test_engine(mode, vec![]);
-        let metrics = engine.analyze_incremental(&rust_file).await.expect("analyze");
+        let metrics = engine
+            .analyze_incremental(&rust_file)
+            .await
+            .expect("analyze");
 
         // TDG should be capped at 3.0
         assert!(metrics.tdg <= 3.0);

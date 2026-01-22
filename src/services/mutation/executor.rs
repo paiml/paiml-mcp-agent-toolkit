@@ -169,7 +169,7 @@ impl MutantExecutor {
             // Spawn task for each mutant
             let task = tokio::spawn(async move {
                 // Acquire permit (blocks if all workers busy)
-                let _permit = sem.acquire().await.unwrap();
+                let _permit = sem.acquire().await.expect("semaphore not closed");
 
                 println!(
                     "  [{}/{}] Testing mutant {}...",

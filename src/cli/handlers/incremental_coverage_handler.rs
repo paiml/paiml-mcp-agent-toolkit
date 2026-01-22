@@ -326,7 +326,9 @@ fn format_sarif(result: &IncrementalCoverageResult) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::services::facades::incremental_coverage_facade::{ChangedFileCoverage, CoverageStatus};
+    use crate::services::facades::incremental_coverage_facade::{
+        ChangedFileCoverage, CoverageStatus,
+    };
 
     fn create_test_result() -> IncrementalCoverageResult {
         IncrementalCoverageResult {
@@ -458,7 +460,9 @@ mod tests {
         let result = create_test_result();
         let output = format_result(result, IncrementalCoverageOutputFormat::Detailed, 5);
         assert!(output.is_ok());
-        assert!(output.unwrap().contains("# Incremental Coverage Detailed Report"));
+        assert!(output
+            .unwrap()
+            .contains("# Incremental Coverage Detailed Report"));
     }
 
     #[test]

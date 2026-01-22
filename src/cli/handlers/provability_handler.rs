@@ -250,7 +250,10 @@ mod coverage_tests {
         }
     }
 
-    fn create_test_summary_with_properties(score: f64, props: Vec<VerifiedProperty>) -> ProofSummary {
+    fn create_test_summary_with_properties(
+        score: f64,
+        props: Vec<VerifiedProperty>,
+    ) -> ProofSummary {
         ProofSummary {
             provability_score: score,
             analysis_time_us: 200,
@@ -313,10 +316,7 @@ mod coverage_tests {
     #[test]
     fn test_prepare_filtered_summaries_boundary_score() {
         // Test exact 0.8 boundary (should be included since >= 0.8)
-        let summaries = vec![
-            create_test_summary(0.8),
-            create_test_summary(0.7999),
-        ];
+        let summaries = vec![create_test_summary(0.8), create_test_summary(0.7999)];
 
         let filtered = prepare_filtered_summaries(&summaries, true);
         assert_eq!(filtered.len(), 1);
@@ -435,9 +435,9 @@ mod coverage_tests {
             create_test_function_id("src/main.rs", "low_score", 30),
         ];
         let summaries = vec![
-            create_test_summary(0.9),  // High
-            create_test_summary(0.6),  // Medium
-            create_test_summary(0.3),  // Low
+            create_test_summary(0.9), // High
+            create_test_summary(0.6), // Medium
+            create_test_summary(0.3), // Low
         ];
 
         let result = format_provability_output(&function_ids, &summaries, &config);
@@ -901,9 +901,9 @@ mod coverage_tests {
             create_test_function_id("test.rs", "high_fn", 30),
         ];
         let summaries = vec![
-            create_test_summary(0.3),   // Low - warning level
-            create_test_summary(0.65),  // Medium - note level
-            create_test_summary(0.9),   // High - none level
+            create_test_summary(0.3),  // Low - warning level
+            create_test_summary(0.65), // Medium - note level
+            create_test_summary(0.9),  // High - none level
         ];
 
         let result = format_provability_output(&function_ids, &summaries, &config);

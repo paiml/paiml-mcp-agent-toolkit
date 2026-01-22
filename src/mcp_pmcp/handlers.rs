@@ -377,9 +377,7 @@ mod tests {
     #[test]
     fn test_serialize_state_plan() {
         let state_machine = RefactorStateMachine {
-            current: State::Plan {
-                violations: vec![],
-            },
+            current: State::Plan { violations: vec![] },
             targets: vec![],
             current_target_index: 0,
             config: RefactorConfig::default(),

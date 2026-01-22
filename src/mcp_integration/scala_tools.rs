@@ -568,7 +568,10 @@ mod tests {
         assert!(schema["properties"]["max_depth"].is_object());
         assert!(schema["properties"]["include_metrics"].is_object());
         assert!(schema["properties"]["include_ast"].is_object());
-        assert!(schema["required"].as_array().unwrap().contains(&json!("path")));
+        assert!(schema["required"]
+            .as_array()
+            .unwrap()
+            .contains(&json!("path")));
     }
 
     // ==================== ScalaMutationTool Tests ====================
@@ -612,8 +615,8 @@ mod tests {
 
     #[test]
     fn test_find_scala_files_with_scala() {
-        use tempfile::tempdir;
         use std::fs;
+        use tempfile::tempdir;
 
         let dir = tempdir().unwrap();
         let scala_file = dir.path().join("Test.scala");
@@ -627,8 +630,8 @@ mod tests {
 
     #[test]
     fn test_find_scala_files_with_sc_extension() {
-        use tempfile::tempdir;
         use std::fs;
+        use tempfile::tempdir;
 
         let dir = tempdir().unwrap();
         let sc_file = dir.path().join("Script.sc");
@@ -642,8 +645,8 @@ mod tests {
 
     #[test]
     fn test_find_scala_files_max_depth() {
-        use tempfile::tempdir;
         use std::fs;
+        use tempfile::tempdir;
 
         let dir = tempdir().unwrap();
         let subdir = dir.path().join("deep").join("nested");
@@ -654,7 +657,9 @@ mod tests {
 
         // With max_depth 1, shouldn't find nested file
         let files_shallow = find_scala_files(dir.path(), 1).unwrap();
-        assert!(files_shallow.is_empty() || !files_shallow.iter().any(|f| f.ends_with("Deep.scala")));
+        assert!(
+            files_shallow.is_empty() || !files_shallow.iter().any(|f| f.ends_with("Deep.scala"))
+        );
 
         // With max_depth 5, should find it
         let files_deep = find_scala_files(dir.path(), 5).unwrap();
@@ -663,8 +668,8 @@ mod tests {
 
     #[test]
     fn test_find_scala_files_ignores_other_extensions() {
-        use tempfile::tempdir;
         use std::fs;
+        use tempfile::tempdir;
 
         let dir = tempdir().unwrap();
         fs::write(dir.path().join("test.rs"), "fn main() {}").unwrap();
@@ -788,8 +793,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_scala_analysis_tool_wrong_extension() {
-        use tempfile::NamedTempFile;
         use std::io::Write;
+        use tempfile::NamedTempFile;
 
         let mut file = NamedTempFile::with_suffix(".rs").unwrap();
         writeln!(file, "fn main() {{}}").unwrap();
@@ -879,8 +884,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_analyze_scala_file_valid() {
-        use tempfile::NamedTempFile;
         use std::io::Write;
+        use tempfile::NamedTempFile;
 
         let mut file = NamedTempFile::with_suffix(".scala").unwrap();
         writeln!(
@@ -915,8 +920,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_analyze_scala_directory_with_file() {
-        use tempfile::tempdir;
         use std::fs;
+        use tempfile::tempdir;
 
         let dir = tempdir().unwrap();
         fs::write(
@@ -937,8 +942,8 @@ mod tests {
 
     #[test]
     fn test_find_scala_files_zero_depth() {
-        use tempfile::tempdir;
         use std::fs;
+        use tempfile::tempdir;
 
         let dir = tempdir().unwrap();
         let subdir = dir.path().join("sub");
@@ -953,8 +958,8 @@ mod tests {
 
     #[test]
     fn test_find_scala_files_multiple() {
-        use tempfile::tempdir;
         use std::fs;
+        use tempfile::tempdir;
 
         let dir = tempdir().unwrap();
         fs::write(dir.path().join("A.scala"), "object A {}").unwrap();

@@ -939,7 +939,6 @@ impl From<String> for EngineError {
     }
 }
 
-
 // Tests extracted to refactor_engine_tests.rs for file health compliance (CB-040)
 #[cfg(test)]
 #[path = "refactor_engine_tests.rs"]

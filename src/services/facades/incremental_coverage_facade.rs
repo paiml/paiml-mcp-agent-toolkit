@@ -649,9 +649,7 @@ mod tests {
             top_files: 10,
         };
 
-        let changed_files = vec![
-            (PathBuf::from("modified.rs"), "M".to_string()),
-        ];
+        let changed_files = vec![(PathBuf::from("modified.rs"), "M".to_string())];
 
         let result = facade
             .analyze_coverage_changes(temp_dir.path(), &changed_files, &request)
@@ -681,9 +679,7 @@ mod tests {
             top_files: 10,
         };
 
-        let changed_files = vec![
-            (PathBuf::from("new.rs"), "A".to_string()),
-        ];
+        let changed_files = vec![(PathBuf::from("new.rs"), "A".to_string())];
 
         let result = facade
             .analyze_coverage_changes(temp_dir.path(), &changed_files, &request)
@@ -713,9 +709,7 @@ mod tests {
             top_files: 10,
         };
 
-        let changed_files = vec![
-            (PathBuf::from("deleted.rs"), "D".to_string()),
-        ];
+        let changed_files = vec![(PathBuf::from("deleted.rs"), "D".to_string())];
 
         let result = facade
             .analyze_coverage_changes(temp_dir.path(), &changed_files, &request)
@@ -776,9 +770,7 @@ mod tests {
             top_files: 10,
         };
 
-        let changed_files = vec![
-            (PathBuf::from("modified.rs"), "M".to_string()),
-        ];
+        let changed_files = vec![(PathBuf::from("modified.rs"), "M".to_string())];
 
         let result = facade
             .analyze_coverage_changes(temp_dir.path(), &changed_files, &request)
@@ -878,7 +870,10 @@ mod tests {
             top_files: 10,
         };
 
-        let result = facade.analyze_project(request).await.expect("Failed to analyze project");
+        let result = facade
+            .analyze_project(request)
+            .await
+            .expect("Failed to analyze project");
 
         assert!(!result.summary.is_empty());
     }

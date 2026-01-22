@@ -921,10 +921,7 @@ mod tests {
 
     #[test]
     fn test_format_with_special_characters_in_filename() {
-        let predictions = vec![(
-            "src/my-file_v2.0.rs".to_string(),
-            create_high_risk_score(),
-        )];
+        let predictions = vec![("src/my-file_v2.0.rs".to_string(), create_high_risk_score())];
         let elapsed = Duration::from_millis(50);
 
         let result = format_defect_summary(&predictions, elapsed).unwrap();
@@ -1255,10 +1252,7 @@ mod property_tests {
     // Strategy for generating predictions
     fn predictions_strategy() -> impl Strategy<Value = Vec<(String, DefectScore)>> {
         prop::collection::vec(
-            (
-                "[a-z][a-z0-9_]{0,20}\\.rs",
-                defect_score_strategy(),
-            ),
+            ("[a-z][a-z0-9_]{0,20}\\.rs", defect_score_strategy()),
             0..20,
         )
     }

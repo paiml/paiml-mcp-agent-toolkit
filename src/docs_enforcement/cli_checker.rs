@@ -413,7 +413,9 @@ Options:
         validate_sections(help_text, &mut report);
 
         assert!(!report.has_usage_section);
-        assert!(report.issues.contains(&"Missing 'Usage:' section".to_string()));
+        assert!(report
+            .issues
+            .contains(&"Missing 'Usage:' section".to_string()));
     }
 
     #[test]
@@ -496,7 +498,8 @@ Options:
 
     #[test]
     fn test_extract_description_from_flag_line() {
-        let description = extract_description_from_flag_line("  -n, --name <NAME>   The name to use");
+        let description =
+            extract_description_from_flag_line("  -n, --name <NAME>   The name to use");
         assert_eq!(description, Some("The name to use".to_string()));
     }
 

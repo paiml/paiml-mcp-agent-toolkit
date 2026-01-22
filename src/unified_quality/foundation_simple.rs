@@ -139,7 +139,7 @@ impl QualityMonitor {
     
     /// Analyze incremental changes
     pub fn analyze_incremental(&self, change: FileChange) -> Result<Metrics> {
-        let mut parser = self.parser.lock().unwrap();
+        let mut parser = self.parser.lock().expect("parser mutex not poisoned");
         parser.parse_incremental(&change.path, &change.content)
     }
     

@@ -674,7 +674,10 @@ mod tests {
             total_clones: 5,
         };
         let cloned = metrics.clone();
-        assert_eq!(metrics.duplication_percentage, cloned.duplication_percentage);
+        assert_eq!(
+            metrics.duplication_percentage,
+            cloned.duplication_percentage
+        );
         assert_eq!(metrics.average_entropy, cloned.average_entropy);
         assert_eq!(metrics.total_clones, cloned.total_clones);
     }
@@ -696,10 +699,7 @@ mod tests {
             },
         };
         let cloned = report.clone();
-        assert_eq!(
-            report.metrics.total_clones,
-            cloned.metrics.total_clones
-        );
+        assert_eq!(report.metrics.total_clones, cloned.metrics.total_clones);
     }
 
     // Internal Helper Method Tests (via SimilarityDetector)
@@ -907,7 +907,10 @@ mod tests {
         assert!((pct - 0.0).abs() < f64::EPSILON);
 
         // Files with no duplicates
-        let files = vec![(PathBuf::from("test.rs"), "line1\nline2\nline3\n".to_string())];
+        let files = vec![(
+            PathBuf::from("test.rs"),
+            "line1\nline2\nline3\n".to_string(),
+        )];
         let pct = detector.calculate_duplication_percentage(&files, &[]);
         assert!((pct - 0.0).abs() < f64::EPSILON);
 
@@ -937,8 +940,14 @@ mod tests {
             content_preview: "preview".to_string(),
         }];
         let files = vec![
-            (PathBuf::from("file1.rs"), "a\nb\nc\nd\ne\nf\ng\nh\ni\nj\n".to_string()),
-            (PathBuf::from("file2.rs"), "a\nb\nc\nd\ne\nf\ng\nh\ni\nj\n".to_string()),
+            (
+                PathBuf::from("file1.rs"),
+                "a\nb\nc\nd\ne\nf\ng\nh\ni\nj\n".to_string(),
+            ),
+            (
+                PathBuf::from("file2.rs"),
+                "a\nb\nc\nd\ne\nf\ng\nh\ni\nj\n".to_string(),
+            ),
         ];
         let pct = detector.calculate_duplication_percentage(&files, &duplicates);
         // 5 lines duplicated * 2 locations = 10 lines, 20 total lines = 50%
@@ -1115,7 +1124,6 @@ fn calculate_sum(x: i32, y: i32) -> i32 {
         assert!(semantic.len() >= 0);
     }
 }
-
 
 mod property_tests {
     use proptest::prelude::*;

@@ -120,7 +120,9 @@ pub fn property_type_filter_to_string(filter: &crate::cli::PropertyTypeFilter) -
     }
 }
 
-pub fn verification_method_filter_to_string(method: &crate::cli::VerificationMethodFilter) -> String {
+pub fn verification_method_filter_to_string(
+    method: &crate::cli::VerificationMethodFilter,
+) -> String {
     match method {
         crate::cli::VerificationMethodFilter::All => "all".to_string(),
         crate::cli::VerificationMethodFilter::FormalProof => "formal-proof".to_string(),
@@ -133,7 +135,9 @@ pub fn verification_method_filter_to_string(method: &crate::cli::VerificationMet
     }
 }
 
-pub fn proof_annotation_format_to_string(format: &crate::cli::ProofAnnotationOutputFormat) -> String {
+pub fn proof_annotation_format_to_string(
+    format: &crate::cli::ProofAnnotationOutputFormat,
+) -> String {
     match format {
         crate::cli::ProofAnnotationOutputFormat::Summary => "summary".to_string(),
         crate::cli::ProofAnnotationOutputFormat::Full => "full".to_string(),

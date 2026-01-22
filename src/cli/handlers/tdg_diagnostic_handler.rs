@@ -17,7 +17,9 @@ fn open_browser(url: &str) -> std::io::Result<()> {
     }
     #[cfg(target_os = "windows")]
     {
-        std::process::Command::new("cmd").args(["/c", "start", url]).spawn()?;
+        std::process::Command::new("cmd")
+            .args(["/c", "start", url])
+            .spawn()?;
     }
     Ok(())
 }
@@ -201,7 +203,6 @@ fn show_human_backend_details(
         }
     }
 }
-
 
 /// Handle storage management commands
 async fn handle_storage_command(command: &StorageCommand, base_path: &PathBuf) -> Result<()> {

@@ -544,7 +544,11 @@ mod tests {
         let usage1 = get_memory_usage_mb();
         let usage2 = get_memory_usage_mb();
         // Values should be similar (within a reasonable range)
-        let diff = if usage1 > usage2 { usage1 - usage2 } else { usage2 - usage1 };
+        let diff = if usage1 > usage2 {
+            usage1 - usage2
+        } else {
+            usage2 - usage1
+        };
         assert!(diff < 100); // Within 100MB variance
     }
 
@@ -778,7 +782,11 @@ mod tests {
         let actual_lines = code.lines().count();
         // Each function adds ~7 lines, plus ~10 header lines
         // 50 - 10 = 40 functions * ~7 = ~280 lines + 10 header ≈ 290
-        assert!(actual_lines > 200, "Expected >200 lines, got {}", actual_lines);
+        assert!(
+            actual_lines > 200,
+            "Expected >200 lines, got {}",
+            actual_lines
+        );
     }
 
     #[test]
@@ -830,8 +838,14 @@ mod tests {
         // Per SPECIFICATION.md Section 1.4
         assert_eq!(targets.startup_cold_ms, 127, "Startup cold should be 127ms");
         assert_eq!(targets.startup_hot_ms, 4, "Startup hot should be 4ms");
-        assert_eq!(targets.loc_per_sec_st, 487_000, "ST throughput should be 487K");
-        assert_eq!(targets.loc_per_sec_mt, 3_921_000, "MT throughput should be 3.9M");
+        assert_eq!(
+            targets.loc_per_sec_st, 487_000,
+            "ST throughput should be 487K"
+        );
+        assert_eq!(
+            targets.loc_per_sec_mt, 3_921_000,
+            "MT throughput should be 3.9M"
+        );
         assert_eq!(targets.base_rss_mb, 47, "Base RSS should be 47MB");
         assert_eq!(targets.per_kloc_kb, 312, "Per KLOC should be 312KB");
     }

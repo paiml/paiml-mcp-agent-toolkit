@@ -832,14 +832,8 @@ mod coverage_tests {
         assert_eq!(NodeKind::Inherits.as_str(), "inherits");
         assert_eq!(NodeKind::Implements.as_str(), "implements");
         assert_eq!(NodeKind::Uses.as_str(), "uses");
-        assert_eq!(
-            NodeKind::LanguageSpecific(0).as_str(),
-            "languageSpecific"
-        );
-        assert_eq!(
-            NodeKind::LanguageSpecific(100).as_str(),
-            "languageSpecific"
-        );
+        assert_eq!(NodeKind::LanguageSpecific(0).as_str(), "languageSpecific");
+        assert_eq!(NodeKind::LanguageSpecific(100).as_str(), "languageSpecific");
         assert_eq!(NodeKind::Unknown.as_str(), "unknown");
     }
 
@@ -960,11 +954,7 @@ mod coverage_tests {
 
     #[test]
     fn test_language_serialize_deserialize() {
-        let languages = vec![
-            Language::Java,
-            Language::TypeScript,
-            Language::Other(42),
-        ];
+        let languages = vec![Language::Java, Language::TypeScript, Language::Other(42)];
 
         for lang in languages {
             let json = serde_json::to_string(&lang).unwrap();

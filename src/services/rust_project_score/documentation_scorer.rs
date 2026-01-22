@@ -458,7 +458,11 @@ mod tests {
     #[test]
     fn test_rustdoc_no_src_directory() {
         let temp_dir = TempDir::new().unwrap();
-        fs::write(temp_dir.path().join("Cargo.toml"), "[package]\nname = \"test\"").unwrap();
+        fs::write(
+            temp_dir.path().join("Cargo.toml"),
+            "[package]\nname = \"test\"",
+        )
+        .unwrap();
 
         let scorer = DocumentationScorer::new();
         let result = scorer.score_rustdoc(temp_dir.path(), None).unwrap();
@@ -471,7 +475,11 @@ mod tests {
     fn test_rustdoc_no_public_items() {
         let temp_dir = TempDir::new().unwrap();
         fs::create_dir_all(temp_dir.path().join("src")).unwrap();
-        fs::write(temp_dir.path().join("Cargo.toml"), "[package]\nname = \"test\"").unwrap();
+        fs::write(
+            temp_dir.path().join("Cargo.toml"),
+            "[package]\nname = \"test\"",
+        )
+        .unwrap();
         fs::write(
             temp_dir.path().join("src/lib.rs"),
             "fn private_function() {}",
@@ -489,7 +497,11 @@ mod tests {
     fn test_rustdoc_fully_documented() {
         let temp_dir = TempDir::new().unwrap();
         fs::create_dir_all(temp_dir.path().join("src")).unwrap();
-        fs::write(temp_dir.path().join("Cargo.toml"), "[package]\nname = \"test\"").unwrap();
+        fs::write(
+            temp_dir.path().join("Cargo.toml"),
+            "[package]\nname = \"test\"",
+        )
+        .unwrap();
         fs::write(
             temp_dir.path().join("src/lib.rs"),
             r#"
@@ -516,7 +528,11 @@ pub enum DocumentedEnum { A, B }
     fn test_rustdoc_partially_documented() {
         let temp_dir = TempDir::new().unwrap();
         fs::create_dir_all(temp_dir.path().join("src")).unwrap();
-        fs::write(temp_dir.path().join("Cargo.toml"), "[package]\nname = \"test\"").unwrap();
+        fs::write(
+            temp_dir.path().join("Cargo.toml"),
+            "[package]\nname = \"test\"",
+        )
+        .unwrap();
         fs::write(
             temp_dir.path().join("src/lib.rs"),
             r#"
@@ -538,7 +554,11 @@ pub fn undocumented_fn() {}
     #[test]
     fn test_readme_missing() {
         let temp_dir = TempDir::new().unwrap();
-        fs::write(temp_dir.path().join("Cargo.toml"), "[package]\nname = \"test\"").unwrap();
+        fs::write(
+            temp_dir.path().join("Cargo.toml"),
+            "[package]\nname = \"test\"",
+        )
+        .unwrap();
 
         let scorer = DocumentationScorer::new();
         let result = scorer.score_readme(temp_dir.path(), None).unwrap();
@@ -551,7 +571,11 @@ pub fn undocumented_fn() {}
     #[ignore = "Agent-added test with incorrect assertion"]
     fn test_readme_minimal() {
         let temp_dir = TempDir::new().unwrap();
-        fs::write(temp_dir.path().join("Cargo.toml"), "[package]\nname = \"test\"").unwrap();
+        fs::write(
+            temp_dir.path().join("Cargo.toml"),
+            "[package]\nname = \"test\"",
+        )
+        .unwrap();
         fs::write(temp_dir.path().join("README.md"), "# Project\n\nShort desc").unwrap();
 
         let scorer = DocumentationScorer::new();
@@ -564,7 +588,11 @@ pub fn undocumented_fn() {}
     #[test]
     fn test_readme_comprehensive() {
         let temp_dir = TempDir::new().unwrap();
-        fs::write(temp_dir.path().join("Cargo.toml"), "[package]\nname = \"test\"").unwrap();
+        fs::write(
+            temp_dir.path().join("Cargo.toml"),
+            "[package]\nname = \"test\"",
+        )
+        .unwrap();
         fs::write(
             temp_dir.path().join("README.md"),
             r#"# Project
@@ -607,7 +635,11 @@ MIT
     #[test]
     fn test_changelog_missing() {
         let temp_dir = TempDir::new().unwrap();
-        fs::write(temp_dir.path().join("Cargo.toml"), "[package]\nname = \"test\"").unwrap();
+        fs::write(
+            temp_dir.path().join("Cargo.toml"),
+            "[package]\nname = \"test\"",
+        )
+        .unwrap();
 
         let scorer = DocumentationScorer::new();
         let result = scorer.score_changelog(temp_dir.path(), None).unwrap();
@@ -619,7 +651,11 @@ MIT
     #[test]
     fn test_changelog_minimal() {
         let temp_dir = TempDir::new().unwrap();
-        fs::write(temp_dir.path().join("Cargo.toml"), "[package]\nname = \"test\"").unwrap();
+        fs::write(
+            temp_dir.path().join("Cargo.toml"),
+            "[package]\nname = \"test\"",
+        )
+        .unwrap();
         fs::write(
             temp_dir.path().join("CHANGELOG.md"),
             "# Changelog\n\nChanges go here",
@@ -636,7 +672,11 @@ MIT
     #[test]
     fn test_changelog_with_versions() {
         let temp_dir = TempDir::new().unwrap();
-        fs::write(temp_dir.path().join("Cargo.toml"), "[package]\nname = \"test\"").unwrap();
+        fs::write(
+            temp_dir.path().join("Cargo.toml"),
+            "[package]\nname = \"test\"",
+        )
+        .unwrap();
         fs::write(
             temp_dir.path().join("CHANGELOG.md"),
             r#"# Changelog
@@ -672,18 +712,22 @@ MIT
     fn test_score_full_project() {
         let temp_dir = TempDir::new().unwrap();
         fs::create_dir_all(temp_dir.path().join("src")).unwrap();
-        fs::write(temp_dir.path().join("Cargo.toml"), "[package]\nname = \"test\"").unwrap();
+        fs::write(
+            temp_dir.path().join("Cargo.toml"),
+            "[package]\nname = \"test\"",
+        )
+        .unwrap();
         fs::write(
             temp_dir.path().join("src/lib.rs"),
             "/// Documented\npub fn foo() {}",
         )
         .unwrap();
-        fs::write(temp_dir.path().join("README.md"), "# Project\n\nDescription with installation and usage").unwrap();
         fs::write(
-            temp_dir.path().join("CHANGELOG.md"),
-            "## [0.1.0]\nInitial",
+            temp_dir.path().join("README.md"),
+            "# Project\n\nDescription with installation and usage",
         )
         .unwrap();
+        fs::write(temp_dir.path().join("CHANGELOG.md"), "## [0.1.0]\nInitial").unwrap();
 
         let scorer = DocumentationScorer::new();
         let result = scorer.score(temp_dir.path()).unwrap();
@@ -697,7 +741,11 @@ MIT
     fn test_score_with_cache() {
         let temp_dir = TempDir::new().unwrap();
         fs::create_dir_all(temp_dir.path().join("src")).unwrap();
-        fs::write(temp_dir.path().join("Cargo.toml"), "[package]\nname = \"test\"").unwrap();
+        fs::write(
+            temp_dir.path().join("Cargo.toml"),
+            "[package]\nname = \"test\"",
+        )
+        .unwrap();
 
         // Create cache
         let mut cache = FileCache::new();
@@ -723,7 +771,11 @@ MIT
     fn test_recommendations_empty_project() {
         let temp_dir = TempDir::new().unwrap();
         fs::create_dir_all(temp_dir.path().join("src")).unwrap();
-        fs::write(temp_dir.path().join("Cargo.toml"), "[package]\nname = \"test\"").unwrap();
+        fs::write(
+            temp_dir.path().join("Cargo.toml"),
+            "[package]\nname = \"test\"",
+        )
+        .unwrap();
         fs::write(temp_dir.path().join("src/lib.rs"), "pub fn foo() {}").unwrap();
 
         let scorer = DocumentationScorer::new();
@@ -739,7 +791,11 @@ MIT
     fn test_recommendations_well_documented() {
         let temp_dir = TempDir::new().unwrap();
         fs::create_dir_all(temp_dir.path().join("src")).unwrap();
-        fs::write(temp_dir.path().join("Cargo.toml"), "[package]\nname = \"test\"").unwrap();
+        fs::write(
+            temp_dir.path().join("Cargo.toml"),
+            "[package]\nname = \"test\"",
+        )
+        .unwrap();
         fs::write(
             temp_dir.path().join("src/lib.rs"),
             "/// Doc\npub fn foo() {}\n/// Doc\npub fn bar() {}",
@@ -809,7 +865,11 @@ pub struct Foo;
     #[test]
     fn test_readme_with_cache() {
         let temp_dir = TempDir::new().unwrap();
-        fs::write(temp_dir.path().join("README.md"), "# P\n\n## Installation\n## Usage\n## Examples\n## License").unwrap();
+        fs::write(
+            temp_dir.path().join("README.md"),
+            "# P\n\n## Installation\n## Usage\n## Examples\n## License",
+        )
+        .unwrap();
 
         let mut cache = FileCache::new();
         cache.insert(
@@ -827,7 +887,11 @@ pub struct Foo;
     #[test]
     fn test_changelog_with_cache() {
         let temp_dir = TempDir::new().unwrap();
-        fs::write(temp_dir.path().join("CHANGELOG.md"), "## [0.1.0]\n## [0.2.0]").unwrap();
+        fs::write(
+            temp_dir.path().join("CHANGELOG.md"),
+            "## [0.1.0]\n## [0.2.0]",
+        )
+        .unwrap();
 
         let mut cache = FileCache::new();
         cache.insert(
@@ -836,7 +900,9 @@ pub struct Foo;
         );
 
         let scorer = DocumentationScorer::new();
-        let result = scorer.score_changelog(temp_dir.path(), Some(&cache)).unwrap();
+        let result = scorer
+            .score_changelog(temp_dir.path(), Some(&cache))
+            .unwrap();
 
         // Multiple versions = full points
         assert_eq!(result, 3.0);
@@ -846,7 +912,11 @@ pub struct Foo;
     #[ignore = "Agent-added test with incorrect assertion"]
     fn test_readme_section_detection() {
         let temp_dir = TempDir::new().unwrap();
-        fs::write(temp_dir.path().join("Cargo.toml"), "[package]\nname = \"test\"").unwrap();
+        fs::write(
+            temp_dir.path().join("Cargo.toml"),
+            "[package]\nname = \"test\"",
+        )
+        .unwrap();
 
         // Test with API section (different section name)
         fs::write(
@@ -866,11 +936,17 @@ pub struct Foo;
     fn test_score_with_mode_fast() {
         let temp_dir = TempDir::new().unwrap();
         fs::create_dir_all(temp_dir.path().join("src")).unwrap();
-        fs::write(temp_dir.path().join("Cargo.toml"), "[package]\nname = \"test\"").unwrap();
+        fs::write(
+            temp_dir.path().join("Cargo.toml"),
+            "[package]\nname = \"test\"",
+        )
+        .unwrap();
         fs::write(temp_dir.path().join("src/lib.rs"), "pub fn foo() {}").unwrap();
 
         let scorer = DocumentationScorer::new();
-        let result = scorer.score_with_mode(temp_dir.path(), ScoringMode::Fast).unwrap();
+        let result = scorer
+            .score_with_mode(temp_dir.path(), ScoringMode::Fast)
+            .unwrap();
 
         // Mode doesn't affect documentation scorer
         assert!(result.earned >= 0.0);
@@ -881,11 +957,17 @@ pub struct Foo;
     fn test_score_with_mode_full() {
         let temp_dir = TempDir::new().unwrap();
         fs::create_dir_all(temp_dir.path().join("src")).unwrap();
-        fs::write(temp_dir.path().join("Cargo.toml"), "[package]\nname = \"test\"").unwrap();
+        fs::write(
+            temp_dir.path().join("Cargo.toml"),
+            "[package]\nname = \"test\"",
+        )
+        .unwrap();
         fs::write(temp_dir.path().join("src/lib.rs"), "pub fn foo() {}").unwrap();
 
         let scorer = DocumentationScorer::new();
-        let result = scorer.score_with_mode(temp_dir.path(), ScoringMode::Full).unwrap();
+        let result = scorer
+            .score_with_mode(temp_dir.path(), ScoringMode::Full)
+            .unwrap();
 
         // Mode doesn't affect documentation scorer
         assert!(result.earned >= 0.0);

@@ -362,7 +362,10 @@ mod tests {
     fn test_enforcement_mode_variants() {
         assert!(matches!(EnforcementMode::Strict, EnforcementMode::Strict));
         assert!(matches!(EnforcementMode::Warning, EnforcementMode::Warning));
-        assert!(matches!(EnforcementMode::Disabled, EnforcementMode::Disabled));
+        assert!(matches!(
+            EnforcementMode::Disabled,
+            EnforcementMode::Disabled
+        ));
     }
 
     #[test]
@@ -434,7 +437,10 @@ fail_fast = true
         let config = TdgHooksConfig::default();
         let cloned = config.clone();
 
-        assert_eq!(cloned.quality_gates.max_score_drop, config.quality_gates.max_score_drop);
+        assert_eq!(
+            cloned.quality_gates.max_score_drop,
+            config.quality_gates.max_score_drop
+        );
     }
 
     #[test]

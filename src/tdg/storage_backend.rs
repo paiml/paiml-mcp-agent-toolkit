@@ -711,7 +711,9 @@ mod extended_tests {
         let backend = LibsqlBackend::new_temporary().unwrap();
 
         for i in 0..5 {
-            backend.put(format!("key{}", i).as_bytes(), b"value").unwrap();
+            backend
+                .put(format!("key{}", i).as_bytes(), b"value")
+                .unwrap();
         }
 
         backend.clear().unwrap();
@@ -783,7 +785,8 @@ mod extended_tests {
 
     #[test]
     fn test_storage_config_deserialization() {
-        let json = r#"{"backend_type":"InMemory","path":null,"cache_size_mb":64,"compression":true}"#;
+        let json =
+            r#"{"backend_type":"InMemory","path":null,"cache_size_mb":64,"compression":true}"#;
         let config: StorageConfig = serde_json::from_str(json).unwrap();
         assert_eq!(config.backend_type, StorageBackendType::InMemory);
         assert!(config.path.is_none());
@@ -931,7 +934,12 @@ mod extended_tests {
     fn test_in_memory_backend_iter_multiple() {
         let backend = InMemoryBackend::new();
         for i in 0..10 {
-            backend.put(format!("key{}", i).as_bytes(), format!("value{}", i).as_bytes()).unwrap();
+            backend
+                .put(
+                    format!("key{}", i).as_bytes(),
+                    format!("value{}", i).as_bytes(),
+                )
+                .unwrap();
         }
 
         let iter = backend.iter().unwrap();
@@ -951,7 +959,12 @@ mod extended_tests {
     fn test_libsql_backend_iter_multiple() {
         let backend = LibsqlBackend::new_temporary().unwrap();
         for i in 0..10 {
-            backend.put(format!("key{}", i).as_bytes(), format!("value{}", i).as_bytes()).unwrap();
+            backend
+                .put(
+                    format!("key{}", i).as_bytes(),
+                    format!("value{}", i).as_bytes(),
+                )
+                .unwrap();
         }
 
         let iter = backend.iter().unwrap();
@@ -1143,10 +1156,7 @@ mod extended_tests {
 
     #[test]
     fn test_storage_backend_type_all_variants() {
-        let variants = [
-            StorageBackendType::Libsql,
-            StorageBackendType::InMemory,
-        ];
+        let variants = [StorageBackendType::Libsql, StorageBackendType::InMemory];
 
         for variant in variants {
             let display = format!("{}", variant);
@@ -1184,7 +1194,9 @@ mod extended_tests {
 
         // Add entries
         for i in 0..5 {
-            backend.put(format!("key{}", i).as_bytes(), b"value").unwrap();
+            backend
+                .put(format!("key{}", i).as_bytes(), b"value")
+                .unwrap();
         }
 
         // Get iterator count

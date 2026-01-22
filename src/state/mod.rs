@@ -220,11 +220,7 @@ mod tests {
     #[test]
     fn test_example_state_last_event_id() {
         let mut state = ExampleState::default();
-        let mut event = StateEvent::new(
-            "p".to_string(),
-            "t".to_string(),
-            serde_json::json!({}),
-        );
+        let mut event = StateEvent::new("p".to_string(), "t".to_string(), serde_json::json!({}));
         event.id = 123;
 
         state.apply_event(&event);
@@ -236,11 +232,8 @@ mod tests {
         let mut state = ExampleState::default();
 
         for i in 0..5 {
-            let mut event = StateEvent::new(
-                format!("p{}", i),
-                "t".to_string(),
-                serde_json::json!({}),
-            );
+            let mut event =
+                StateEvent::new(format!("p{}", i), "t".to_string(), serde_json::json!({}));
             event.id = i;
             state.apply_event(&event);
         }
@@ -279,7 +272,9 @@ mod tests {
     #[test]
     fn test_example_state_clone() {
         let mut state = ExampleState::default();
-        state.data.insert("k".to_string(), serde_json::json!({"x": 1}));
+        state
+            .data
+            .insert("k".to_string(), serde_json::json!({"x": 1}));
         state.last_event_id = 50;
 
         let cloned = state.clone();

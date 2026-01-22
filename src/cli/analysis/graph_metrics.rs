@@ -106,9 +106,7 @@ impl SimpleGraph {
                 let neighbor = NodeIndex(neighbor_idx);
                 let new_dist = dist + 1;
 
-                let is_better = distances
-                    .get(&neighbor)
-                    .map_or(true, |&d| new_dist < d);
+                let is_better = distances.get(&neighbor).map_or(true, |&d| new_dist < d);
 
                 if is_better {
                     distances.insert(neighbor, new_dist);
@@ -942,7 +940,6 @@ fn write_gm_markdown_top_nodes(output: &mut String, result: &GraphMetricsResult)
 
     Ok(())
 }
-
 
 // Tests extracted to graph_metrics_tests.rs for file health compliance (CB-040)
 #[cfg(test)]

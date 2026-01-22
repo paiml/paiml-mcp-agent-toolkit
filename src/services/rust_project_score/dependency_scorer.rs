@@ -384,7 +384,9 @@ tokio = "1.0"
         .unwrap();
 
         let scorer = DependencyScorer::new();
-        let result = scorer.score_dependency_count(temp_dir.path(), None).unwrap();
+        let result = scorer
+            .score_dependency_count(temp_dir.path(), None)
+            .unwrap();
 
         // 2 dependencies = minimal, full points
         assert_eq!(result, 5.0);
@@ -400,7 +402,9 @@ tokio = "1.0"
         fs::write(temp_dir.path().join("Cargo.toml"), cargo_toml).unwrap();
 
         let scorer = DependencyScorer::new();
-        let result = scorer.score_dependency_count(temp_dir.path(), None).unwrap();
+        let result = scorer
+            .score_dependency_count(temp_dir.path(), None)
+            .unwrap();
 
         // 15 dependencies = moderate, good points
         assert_eq!(result, 4.0);
@@ -416,7 +420,9 @@ tokio = "1.0"
         fs::write(temp_dir.path().join("Cargo.toml"), cargo_toml).unwrap();
 
         let scorer = DependencyScorer::new();
-        let result = scorer.score_dependency_count(temp_dir.path(), None).unwrap();
+        let result = scorer
+            .score_dependency_count(temp_dir.path(), None)
+            .unwrap();
 
         // 25 dependencies = many, acceptable points
         assert_eq!(result, 2.0);
@@ -432,7 +438,9 @@ tokio = "1.0"
         fs::write(temp_dir.path().join("Cargo.toml"), cargo_toml).unwrap();
 
         let scorer = DependencyScorer::new();
-        let result = scorer.score_dependency_count(temp_dir.path(), None).unwrap();
+        let result = scorer
+            .score_dependency_count(temp_dir.path(), None)
+            .unwrap();
 
         // 35 dependencies = excessive, poor points
         assert_eq!(result, 0.0);
@@ -451,7 +459,9 @@ tokio = "1.0"
         );
 
         let scorer = DependencyScorer::new();
-        let result = scorer.score_dependency_count(temp_dir.path(), Some(&cache)).unwrap();
+        let result = scorer
+            .score_dependency_count(temp_dir.path(), Some(&cache))
+            .unwrap();
 
         // 1 dependency = minimal, full points
         assert_eq!(result, 5.0);
@@ -524,7 +534,8 @@ full = ["std", "async"]
     #[test]
     fn test_feature_flags_with_cache() {
         let temp_dir = TempDir::new().unwrap();
-        let cargo_content = "[package]\nname = \"test\"\n\n[features]\ndefault = []\nstd = []\nfull = []\n";
+        let cargo_content =
+            "[package]\nname = \"test\"\n\n[features]\ndefault = []\nstd = []\nfull = []\n";
         fs::write(temp_dir.path().join("Cargo.toml"), cargo_content).unwrap();
 
         let mut cache = FileCache::new();
@@ -534,7 +545,9 @@ full = ["std", "async"]
         );
 
         let scorer = DependencyScorer::new();
-        let result = scorer.score_feature_flags(temp_dir.path(), Some(&cache)).unwrap();
+        let result = scorer
+            .score_feature_flags(temp_dir.path(), Some(&cache))
+            .unwrap();
 
         // 3 features = full points
         assert_eq!(result, 4.0);
@@ -658,7 +671,9 @@ serde = { version = "1.0", features = ["derive"], default-features = false }
         );
 
         let scorer = DependencyScorer::new();
-        let result = scorer.score_tree_pruning(temp_dir.path(), Some(&cache)).unwrap();
+        let result = scorer
+            .score_tree_pruning(temp_dir.path(), Some(&cache))
+            .unwrap();
 
         assert_eq!(result, 1.5);
     }
@@ -735,7 +750,9 @@ default = []
         let recommendations = scorer.recommendations(temp_dir.path());
 
         // Should recommend reducing dependencies
-        assert!(recommendations.iter().any(|r| r.contains("Reduce dependency")));
+        assert!(recommendations
+            .iter()
+            .any(|r| r.contains("Reduce dependency")));
     }
 
     #[test]
@@ -767,7 +784,9 @@ default = []
         let recommendations = scorer.recommendations(temp_dir.path());
 
         // Should recommend pruning
-        assert!(recommendations.iter().any(|r| r.contains("optional") || r.contains("default features")));
+        assert!(recommendations
+            .iter()
+            .any(|r| r.contains("optional") || r.contains("default features")));
     }
 
     #[test]
@@ -780,7 +799,9 @@ default = []
         .unwrap();
 
         let scorer = DependencyScorer::new();
-        let result = scorer.score_with_mode(temp_dir.path(), ScoringMode::Fast).unwrap();
+        let result = scorer
+            .score_with_mode(temp_dir.path(), ScoringMode::Fast)
+            .unwrap();
 
         // Mode doesn't affect dependency scorer
         assert!(result.earned >= 0.0);
@@ -806,7 +827,9 @@ tokio = "1.0"
         .unwrap();
 
         let scorer = DependencyScorer::new();
-        let result = scorer.score_dependency_count(temp_dir.path(), None).unwrap();
+        let result = scorer
+            .score_dependency_count(temp_dir.path(), None)
+            .unwrap();
 
         // Should only count actual dependencies, not comments
         assert_eq!(result, 5.0);
@@ -831,7 +854,9 @@ tempfile = "3.0"
         .unwrap();
 
         let scorer = DependencyScorer::new();
-        let result = scorer.score_dependency_count(temp_dir.path(), None).unwrap();
+        let result = scorer
+            .score_dependency_count(temp_dir.path(), None)
+            .unwrap();
 
         // Should only count [dependencies], not [dev-dependencies]
         assert_eq!(result, 5.0);

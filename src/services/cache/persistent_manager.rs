@@ -174,7 +174,10 @@ mod tests {
         // Check that ast subdirectory was created
         let ast_dir = cache_dir.join("ast");
         assert!(ast_dir.exists(), "AST cache directory should exist");
-        assert!(ast_dir.is_dir(), "AST cache directory should be a directory");
+        assert!(
+            ast_dir.is_dir(),
+            "AST cache directory should be a directory"
+        );
     }
 
     #[test]
@@ -499,11 +502,7 @@ mod tests {
     #[test]
     fn test_persistent_manager_nested_cache_dir() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
-        let cache_dir = temp_dir
-            .path()
-            .join("deeply")
-            .join("nested")
-            .join("cache");
+        let cache_dir = temp_dir.path().join("deeply").join("nested").join("cache");
         let config = CacheConfig::default();
 
         let manager = PersistentCacheManager::new(config, cache_dir.clone());

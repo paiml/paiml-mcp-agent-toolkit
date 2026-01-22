@@ -659,7 +659,10 @@ mod coverage_tests {
         let base = &spec["components"]["schemas"]["BaseAnalysisContract"];
 
         assert_eq!(base["type"], "object");
-        assert!(base["required"].as_array().unwrap().contains(&json!("path")));
+        assert!(base["required"]
+            .as_array()
+            .unwrap()
+            .contains(&json!("path")));
 
         let props = &base["properties"];
         assert!(props["path"].is_object());
@@ -991,11 +994,9 @@ mod coverage_tests {
         // QualityGateContract uses allOf pattern
         let all_of = quality_gate.get("allOf");
         if let Some(all_of_arr) = all_of.and_then(|v| v.as_array()) {
-            let profile_schema = all_of_arr.iter().find(|v| {
-                v.get("properties")
-                    .and_then(|p| p.get("profile"))
-                    .is_some()
-            });
+            let profile_schema = all_of_arr
+                .iter()
+                .find(|v| v.get("properties").and_then(|p| p.get("profile")).is_some());
 
             if let Some(schema) = profile_schema {
                 let profile_enum = &schema["properties"]["profile"]["enum"];

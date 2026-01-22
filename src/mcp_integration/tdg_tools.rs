@@ -650,6 +650,8 @@ mod tests {
         let recommend_tool = GetQualityRecommendationsTool::new(registry);
         let recommend_desc = recommend_tool.metadata().description;
         assert!(recommend_desc.len() > 30);
-        assert!(recommend_desc.contains("recommendations") || recommend_desc.contains("actionable"));
+        assert!(
+            recommend_desc.contains("recommendations") || recommend_desc.contains("actionable")
+        );
     }
 }

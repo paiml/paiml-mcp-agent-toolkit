@@ -77,7 +77,6 @@ mod tests {
     }
 }
 
-
 mod property_tests {
     use proptest::prelude::*;
 
@@ -95,7 +94,6 @@ mod property_tests {
         }
     }
 }
-
 
 mod comprehensive_tests {
     use super::*;
@@ -166,8 +164,14 @@ mod comprehensive_tests {
         assert_eq!(AlertCondition::LessThan, AlertCondition::LessThan);
         assert_eq!(AlertCondition::Equal, AlertCondition::Equal);
         assert_eq!(AlertCondition::NotEqual, AlertCondition::NotEqual);
-        assert_eq!(AlertCondition::GreaterThanOrEqual, AlertCondition::GreaterThanOrEqual);
-        assert_eq!(AlertCondition::LessThanOrEqual, AlertCondition::LessThanOrEqual);
+        assert_eq!(
+            AlertCondition::GreaterThanOrEqual,
+            AlertCondition::GreaterThanOrEqual
+        );
+        assert_eq!(
+            AlertCondition::LessThanOrEqual,
+            AlertCondition::LessThanOrEqual
+        );
         assert_eq!(AlertCondition::RateOfChange, AlertCondition::RateOfChange);
         assert_eq!(AlertCondition::Anomaly, AlertCondition::Anomaly);
     }
@@ -349,7 +353,9 @@ mod comprehensive_tests {
     #[tokio::test]
     async fn test_silence_alert_nonexistent() {
         let manager = AlertManager::new(AlertManagerConfig::default());
-        let result = manager.silence_alert("nonexistent", Duration::from_secs(60)).await;
+        let result = manager
+            .silence_alert("nonexistent", Duration::from_secs(60))
+            .await;
         assert!(result.is_ok());
     }
 
@@ -851,7 +857,9 @@ mod comprehensive_tests {
         manager.add_rule(rule).await.unwrap();
 
         // Update a different metric - should not trigger
-        let result = manager.update_metric("memory_usage".to_string(), 90.0).await;
+        let result = manager
+            .update_metric("memory_usage".to_string(), 90.0)
+            .await;
         assert!(result.is_ok());
 
         let alerts = manager.get_active_alerts().await;
@@ -879,7 +887,9 @@ mod comprehensive_tests {
         };
         manager.add_rule(rule).await.unwrap();
 
-        let result = manager.update_metric("test_metric".to_string(), 100.0).await;
+        let result = manager
+            .update_metric("test_metric".to_string(), 100.0)
+            .await;
         assert!(result.is_ok());
 
         // Should not trigger because rule is disabled
@@ -912,7 +922,10 @@ mod comprehensive_tests {
         manager.add_rule(rule).await.unwrap();
 
         // Trigger the alert
-        manager.update_metric("test_metric".to_string(), 100.0).await.unwrap();
+        manager
+            .update_metric("test_metric".to_string(), 100.0)
+            .await
+            .unwrap();
 
         // Now remove the rule - should resolve associated alerts
         manager.remove_rule("to_remove").await.unwrap();
@@ -957,7 +970,9 @@ mod comprehensive_tests {
         assert!(rules.iter().all(|r| r.enabled));
 
         // All rules should have Dashboard notification
-        assert!(rules.iter().all(|r| r.notification_channels.contains(&NotificationChannel::Dashboard)));
+        assert!(rules.iter().all(|r| r
+            .notification_channels
+            .contains(&NotificationChannel::Dashboard)));
 
         // Check specific thresholds
         let cpu_rule = rules.iter().find(|r| r.id == "high_cpu").unwrap();
@@ -977,7 +992,10 @@ mod comprehensive_tests {
     fn test_alert_rule_with_metadata() {
         let mut metadata = HashMap::new();
         metadata.insert("owner".to_string(), "team-a".to_string());
-        metadata.insert("runbook".to_string(), "https://docs.example.com/runbook".to_string());
+        metadata.insert(
+            "runbook".to_string(),
+            "https://docs.example.com/runbook".to_string(),
+        );
 
         let rule = AlertRule {
             id: "meta_rule".to_string(),
@@ -1074,7 +1092,9 @@ mod comprehensive_tests {
 
         assert!(alert.resolved_at.is_some());
         assert_eq!(alert.state, AlertState::Resolved);
-        let duration = alert.resolved_at.unwrap()
+        let duration = alert
+            .resolved_at
+            .unwrap()
             .duration_since(alert.triggered_at)
             .unwrap();
         assert_eq!(duration.as_secs(), 60);
@@ -1155,7 +1175,10 @@ mod comprehensive_tests {
             false_positive_rate: 0.03,
         };
 
-        assert_eq!(stats.alerts_by_severity.get(&AlertSeverity::Warning), Some(&25));
+        assert_eq!(
+            stats.alerts_by_severity.get(&AlertSeverity::Warning),
+            Some(&25)
+        );
         assert_eq!(stats.alerts_by_severity.len(), 4);
     }
 
@@ -1507,10 +1530,7 @@ mod comprehensive_tests {
             resolved_at: None,
             metric_value: 95.123456,
             threshold_value: 90.0,
-            message: format!(
-                "Value {:.2} exceeds threshold {:.2}",
-                95.123456, 90.0
-            ),
+            message: format!("Value {:.2} exceeds threshold {:.2}", 95.123456, 90.0),
             context: HashMap::new(),
             notification_sent: false,
             acknowledgement: None,

@@ -441,11 +441,7 @@ mod extended_tests {
 
     #[test]
     fn test_calculate_cell_distance_match() {
-        let matrix = vec![
-            vec![0, 1, 2],
-            vec![1, 0, 1],
-            vec![2, 1, 0],
-        ];
+        let matrix = vec![vec![0, 1, 2], vec![1, 0, 1], vec![2, 1, 0]];
         // When chars match, substitution cost is 0
         let result = calculate_cell_distance(&matrix, 2, 2, true);
         assert_eq!(result, 0); // min(1+1, 1+1, 0+0) = 0
@@ -453,11 +449,7 @@ mod extended_tests {
 
     #[test]
     fn test_calculate_cell_distance_no_match() {
-        let matrix = vec![
-            vec![0, 1, 2],
-            vec![1, 1, 2],
-            vec![2, 2, 1],
-        ];
+        let matrix = vec![vec![0, 1, 2], vec![1, 1, 2], vec![2, 2, 1]];
         // When chars don't match, substitution cost is 1
         let result = calculate_cell_distance(&matrix, 2, 2, false);
         assert_eq!(result, 2); // min(2+1, 2+1, 1+1) = 2
@@ -496,9 +488,15 @@ mod extended_tests {
         let suggester = CommandSuggester::new();
 
         // Valid main commands should not get suggestions
-        for cmd in ["analyze", "generate", "scaffold", "context", "demo", "agent", "refactor", "enforce"] {
+        for cmd in [
+            "analyze", "generate", "scaffold", "context", "demo", "agent", "refactor", "enforce",
+        ] {
             let result = suggester.suggest_command(&[cmd.to_string()]);
-            assert!(result.is_none(), "Valid command '{}' should not get suggestion", cmd);
+            assert!(
+                result.is_none(),
+                "Valid command '{}' should not get suggestion",
+                cmd
+            );
         }
     }
 
@@ -538,9 +536,13 @@ mod extended_tests {
     #[test]
     fn test_command_suggester_analyze_subcommands_count() {
         let suggester = CommandSuggester::new();
-        assert!(suggester.analyze_subcommands.contains(&"complexity".to_string()));
+        assert!(suggester
+            .analyze_subcommands
+            .contains(&"complexity".to_string()));
         assert!(suggester.analyze_subcommands.contains(&"satd".to_string()));
-        assert!(suggester.analyze_subcommands.contains(&"dead-code".to_string()));
+        assert!(suggester
+            .analyze_subcommands
+            .contains(&"dead-code".to_string()));
         assert!(suggester.analyze_subcommands.contains(&"tdg".to_string()));
     }
 
@@ -679,12 +681,25 @@ mod comprehensive_coverage_tests {
     #[test]
     fn test_suggester_all_main_commands_valid() {
         let suggester = CommandSuggester::new();
-        let main_cmds = ["analyze", "generate", "scaffold", "context",
-                         "quality-gate", "demo", "agent", "refactor", "enforce"];
+        let main_cmds = [
+            "analyze",
+            "generate",
+            "scaffold",
+            "context",
+            "quality-gate",
+            "demo",
+            "agent",
+            "refactor",
+            "enforce",
+        ];
 
         for cmd in main_cmds {
             let result = suggester.suggest_command(&[cmd.to_string()]);
-            assert!(result.is_none(), "Valid command '{}' should NOT get suggestion", cmd);
+            assert!(
+                result.is_none(),
+                "Valid command '{}' should NOT get suggestion",
+                cmd
+            );
         }
     }
 
@@ -694,19 +709,33 @@ mod comprehensive_coverage_tests {
         // quality-gat (missing e)
         let result = suggester.suggest_command(&["quality-gat".to_string()]);
         if let Some(suggestion) = result {
-            assert!(suggestion.contains("quality-gate"), "Expected quality-gate suggestion");
+            assert!(
+                suggestion.contains("quality-gate"),
+                "Expected quality-gate suggestion"
+            );
         }
     }
 
     #[test]
     fn test_suggester_all_analyze_subcommands() {
         let suggester = CommandSuggester::new();
-        let subcommands = ["complexity", "satd", "dead-code", "tdg", "churn", "duplicates"];
+        let subcommands = [
+            "complexity",
+            "satd",
+            "dead-code",
+            "tdg",
+            "churn",
+            "duplicates",
+        ];
 
         for subcmd in subcommands {
             // When used alone, should suggest "analyze X"
             let result = suggester.suggest_command(&[subcmd.to_string()]);
-            assert!(result.is_some(), "Subcommand '{}' should suggest analyze prefix", subcmd);
+            assert!(
+                result.is_some(),
+                "Subcommand '{}' should suggest analyze prefix",
+                subcmd
+            );
             assert!(result.unwrap().contains(&format!("analyze {}", subcmd)));
         }
     }
@@ -780,11 +809,17 @@ mod comprehensive_coverage_tests {
         for (mistake, expected) in mistakes {
             let args: Vec<String> = mistake.split_whitespace().map(|s| s.to_string()).collect();
             let result = suggester.suggest_command(&args);
-            assert!(result.is_some(), "Mistake '{}' should have suggestion", mistake);
+            assert!(
+                result.is_some(),
+                "Mistake '{}' should have suggestion",
+                mistake
+            );
             assert!(
                 result.as_ref().unwrap().contains(expected),
                 "Mistake '{}' should suggest '{}', got: {:?}",
-                mistake, expected, result
+                mistake,
+                expected,
+                result
             );
         }
     }
@@ -838,9 +873,18 @@ mod comprehensive_coverage_tests {
         let new_suggester = CommandSuggester::new();
 
         // Both should have same commands
-        assert_eq!(default_suggester.main_commands.len(), new_suggester.main_commands.len());
-        assert_eq!(default_suggester.analyze_subcommands.len(), new_suggester.analyze_subcommands.len());
-        assert_eq!(default_suggester.common_mistakes.len(), new_suggester.common_mistakes.len());
+        assert_eq!(
+            default_suggester.main_commands.len(),
+            new_suggester.main_commands.len()
+        );
+        assert_eq!(
+            default_suggester.analyze_subcommands.len(),
+            new_suggester.analyze_subcommands.len()
+        );
+        assert_eq!(
+            default_suggester.common_mistakes.len(),
+            new_suggester.common_mistakes.len()
+        );
     }
 
     #[test]

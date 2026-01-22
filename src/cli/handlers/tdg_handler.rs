@@ -202,7 +202,7 @@ async fn analyze_multiple_files(
         }
     }
 
-    results.sort_unstable_by(|a, b| b.0.value.partial_cmp(&a.0.value).unwrap());
+    results.sort_unstable_by(|a, b| b.0.value.partial_cmp(&a.0.value).expect("score is not NaN"));
     if top_files > 0 && results.len() > top_files {
         results.truncate(top_files);
     }
@@ -297,7 +297,7 @@ fn create_summary_from_file_results(results: &[(TDGScore, PathBuf)]) -> TDGSumma
 
     // Calculate percentiles
     let mut sorted_values = tdg_values.clone();
-    sorted_values.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
+    sorted_values.sort_unstable_by(|a, b| a.partial_cmp(b).expect("value is not NaN"));
     
     let p95_tdg = percentile(&sorted_values, 0.95);
     let p99_tdg = percentile(&sorted_values, 0.99);
@@ -591,7 +591,7 @@ fn identify_primary_factor(components: &crate::models::tdg::TDGComponents) -> St
         (components.duplication * 0.10, "Code Duplication"),
     ];
     
-    factors.sort_unstable_by(|a, b| b.0.partial_cmp(&a.0).unwrap());
+    factors.sort_unstable_by(|a, b| b.0.partial_cmp(&a.0).expect("factor is not NaN"));
     factors[0].1.to_string()
 }
 

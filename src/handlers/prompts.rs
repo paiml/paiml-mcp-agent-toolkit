@@ -386,7 +386,10 @@ mod tests {
 
         assert_eq!(prompt.name, "scaffold-deno-project");
         assert!(prompt.description.contains("Deno"));
-        assert!(prompt.arguments.iter().any(|a| a.name == "permissions" && !a.required));
+        assert!(prompt
+            .arguments
+            .iter()
+            .any(|a| a.name == "permissions" && !a.required));
     }
 
     #[test]
@@ -410,7 +413,10 @@ mod tests {
 
         assert_eq!(prompt.name, "scaffold-python-project");
         assert!(prompt.description.contains("Python"));
-        assert!(prompt.arguments.iter().any(|a| a.name == "python_version" && !a.required));
+        assert!(prompt
+            .arguments
+            .iter()
+            .any(|a| a.name == "python_version" && !a.required));
     }
 
     // === Error response tests ===
@@ -428,13 +434,11 @@ mod tests {
         let prompt = Prompt {
             name: "test-prompt".to_string(),
             description: "Test".to_string(),
-            arguments: vec![
-                PromptArgument {
-                    name: "arg1".to_string(),
-                    description: Some("desc".to_string()),
-                    required: true,
-                },
-            ],
+            arguments: vec![PromptArgument {
+                name: "arg1".to_string(),
+                description: Some("desc".to_string()),
+                required: true,
+            }],
         };
 
         let json = serde_json::to_string(&prompt).unwrap();

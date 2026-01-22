@@ -362,7 +362,11 @@ mod tests {
     fn test_captured_error_creation_for_bug_report() {
         let error = CapturedError::new(
             "pmat work",
-            &["status".to_string(), "--format".to_string(), "json".to_string()],
+            &[
+                "status".to_string(),
+                "--format".to_string(),
+                "json".to_string(),
+            ],
             "Failed to connect to database",
         );
 
@@ -470,7 +474,10 @@ mod tests {
 
         if let Some(path) = &error.project_path {
             assert!(path.contains("~"), "Project path should contain ~");
-            assert!(!path.contains(&home), "Project path should not contain home");
+            assert!(
+                !path.contains(&home),
+                "Project path should not contain home"
+            );
         }
     }
 
@@ -490,11 +497,8 @@ mod tests {
     /// Test generate_issue_markdown with args
     #[test]
     fn test_generate_issue_markdown_with_args() {
-        let error = CapturedError::new(
-            "pmat",
-            &["work".to_string(), "status".to_string()],
-            "Error",
-        );
+        let error =
+            CapturedError::new("pmat", &["work".to_string(), "status".to_string()], "Error");
 
         let md = generate_issue_markdown(&error, Some("Test"));
 

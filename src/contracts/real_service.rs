@@ -97,9 +97,7 @@ mod property_tests {
 #[cfg(test)]
 mod coverage_tests {
     use super::*;
-    use crate::contracts::{
-        BaseAnalysisContract, OutputFormat, QualityProfile, SatdSeverity,
-    };
+    use crate::contracts::{BaseAnalysisContract, OutputFormat, QualityProfile, SatdSeverity};
     use std::path::PathBuf;
     use tempfile::TempDir;
 

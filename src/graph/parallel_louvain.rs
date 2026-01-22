@@ -129,9 +129,7 @@ impl ParallelLouvain {
         // Each batch computes best moves, then we apply them sequentially
         let best_moves: Vec<Option<(usize, usize)>> = (0..n)
             .into_par_iter()
-            .map(|node| {
-                self.find_best_move(node, communities[node], graph_data, &community_data)
-            })
+            .map(|node| self.find_best_move(node, communities[node], graph_data, &community_data))
             .collect();
 
         // Apply moves sequentially (to avoid race conditions)
@@ -219,10 +217,18 @@ impl ParallelLouvain {
         total_weight: f64,
     ) -> f64 {
         // Sum of weights to target community
-        let ki_in = graph_data.neighbor_weight_to_community(node, target_community, &community_data.node_to_community);
+        let ki_in = graph_data.neighbor_weight_to_community(
+            node,
+            target_community,
+            &community_data.node_to_community,
+        );
 
         // Total degree of target community
-        let sigma_tot = community_data.community_degrees.get(&target_community).copied().unwrap_or(0.0);
+        let sigma_tot = community_data
+            .community_degrees
+            .get(&target_community)
+            .copied()
+            .unwrap_or(0.0);
 
         // Modularity gain formula from Blondel et al.
         ki_in - self.resolution * (sigma_tot * node_degree) / (2.0 * total_weight)
@@ -390,7 +396,9 @@ impl CommunityData {
         // Calculate internal weights
         for (&(source, target), &weight) in &graph_data.edge_weights {
             if communities[source] == communities[target] {
-                *community_internal_weight.entry(communities[source]).or_insert(0.0) += weight;
+                *community_internal_weight
+                    .entry(communities[source])
+                    .or_insert(0.0) += weight;
             }
         }
 
@@ -638,7 +646,10 @@ mod tests {
 
         // Complete graph should ideally be one community
         let num_communities = ParallelLouvain::num_communities(&communities);
-        assert!(num_communities <= 2, "Complete graph should have few communities");
+        assert!(
+            num_communities <= 2,
+            "Complete graph should have few communities"
+        );
     }
 
     #[test]
@@ -677,7 +688,10 @@ mod tests {
         let num_high = ParallelLouvain::num_communities(&communities_high);
 
         // Higher resolution typically leads to more (smaller) communities
-        assert!(num_high >= num_low, "High resolution should not reduce communities");
+        assert!(
+            num_high >= num_low,
+            "High resolution should not reduce communities"
+        );
     }
 
     #[test]
@@ -711,7 +725,10 @@ mod tests {
         let modularity = louvain.calculate_modularity(&graph, &communities);
 
         // Single community modularity should be around 0
-        assert!(modularity.abs() < 0.1, "Single community modularity should be near 0");
+        assert!(
+            modularity.abs() < 0.1,
+            "Single community modularity should be near 0"
+        );
     }
 
     #[test]
@@ -744,8 +761,11 @@ mod tests {
         let modularity = louvain.calculate_modularity(&graph, &communities);
 
         // Modularity should be in range [-0.5, 1]
-        assert!(modularity >= -0.5 && modularity <= 1.0,
-            "Modularity {} should be in [-0.5, 1]", modularity);
+        assert!(
+            modularity >= -0.5 && modularity <= 1.0,
+            "Modularity {} should be in [-0.5, 1]",
+            modularity
+        );
     }
 
     // ============ Num Communities Tests ============
@@ -851,7 +871,10 @@ mod tests {
         let weight_to_other = data.neighbor_weight_to_community(2, 1, &communities);
 
         assert!(weight_to_same > 0.0, "Should have weight to own community");
-        assert!(weight_to_other > 0.0, "Should have weight to other community via bridge");
+        assert!(
+            weight_to_other > 0.0,
+            "Should have weight to other community via bridge"
+        );
     }
 
     // ============ CommunityData Tests ============
@@ -905,7 +928,9 @@ mod tests {
     #[ignore = "Agent-added test with incorrect assertion"]
     fn test_weighted_edges_affect_detection() {
         let mut graph = UndirectedGraph::new();
-        let nodes: Vec<_> = (0..4).map(|i| graph.add_node(create_test_node(&format!("n{}", i)))).collect();
+        let nodes: Vec<_> = (0..4)
+            .map(|i| graph.add_node(create_test_node(&format!("n{}", i))))
+            .collect();
 
         // Create two pairs with different weight relationships
         // Pair 0-1: strong connection (10.0)
@@ -971,8 +996,11 @@ mod tests {
 
         // Should detect approximately 10 communities
         let num_communities = ParallelLouvain::num_communities(&communities);
-        assert!(num_communities >= 5 && num_communities <= 15,
-            "Expected ~10 communities, got {}", num_communities);
+        assert!(
+            num_communities >= 5 && num_communities <= 15,
+            "Expected ~10 communities, got {}",
+            num_communities
+        );
     }
 
     // ============ Edge Cases ============

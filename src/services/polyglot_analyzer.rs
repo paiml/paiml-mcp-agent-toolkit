@@ -1119,7 +1119,6 @@ impl Default for PolyglotAnalyzer {
     }
 }
 
-
 // Tests extracted to polyglot_analyzer_tests.rs for file health compliance (CB-040)
 #[cfg(test)]
 #[path = "polyglot_analyzer_tests.rs"]

@@ -8,9 +8,8 @@ use crate::models::tdg::{TDGComponents, TDGScore, TDGSeverity};
 use crate::services::dead_code_analyzer::{DeadCodeItem, DeadCodeType, UnreachableBlock};
 use crate::services::duplicate_detector::{CloneGroup, CloneInstance, CloneType};
 use crate::services::satd_detector::DebtCategory;
-use std::path::PathBuf;
 use proptest::prelude::*;
-
+use std::path::PathBuf;
 
 mod property_tests {
     use proptest::prelude::*;
@@ -29,7 +28,6 @@ mod property_tests {
         }
     }
 }
-
 
 mod tests {
     use super::*;
@@ -242,12 +240,8 @@ mod tests {
             confidence: 0.85,
         };
 
-        let defect = analyzer.tdg_score_to_defect(
-            PathBuf::from("src/moderate.rs"),
-            score,
-            2,
-            &config,
-        );
+        let defect =
+            analyzer.tdg_score_to_defect(PathBuf::from("src/moderate.rs"), score, 2, &config);
 
         assert_eq!(defect.severity, Severity::High);
     }
@@ -273,7 +267,8 @@ mod tests {
             confidence: 0.7,
         };
 
-        let defect = analyzer.tdg_score_to_defect(PathBuf::from("src/normal.rs"), score, 3, &config);
+        let defect =
+            analyzer.tdg_score_to_defect(PathBuf::from("src/normal.rs"), score, 3, &config);
 
         assert_eq!(defect.severity, Severity::Medium);
     }
@@ -299,7 +294,8 @@ mod tests {
             confidence: 0.6,
         };
 
-        let defect = analyzer.tdg_score_to_defect(PathBuf::from("src/simple.rs"), score, 4, &config);
+        let defect =
+            analyzer.tdg_score_to_defect(PathBuf::from("src/simple.rs"), score, 4, &config);
 
         assert_eq!(defect.severity, Severity::Low);
     }
@@ -993,9 +989,7 @@ mod tests {
         assert!(defect.message.contains("O(2^n)"));
         assert!(defect.fix_suggestion.is_some());
         let suggestion = defect.fix_suggestion.unwrap();
-        assert!(
-            suggestion.contains("dynamic programming") || suggestion.contains("approximation")
-        );
+        assert!(suggestion.contains("dynamic programming") || suggestion.contains("approximation"));
     }
 
     #[test]

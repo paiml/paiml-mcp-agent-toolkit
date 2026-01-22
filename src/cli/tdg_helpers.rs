@@ -570,7 +570,12 @@ mod coverage_tests {
 
         #[test]
         fn test_format_table_contains_hotspot_data() {
-            let hotspots = vec![create_test_hotspot("src/test/complex.rs", 3.5, "complexity", 12.0)];
+            let hotspots = vec![create_test_hotspot(
+                "src/test/complex.rs",
+                3.5,
+                "complexity",
+                12.0,
+            )];
             let result = format_tdg_table(&hotspots, false).unwrap();
 
             assert!(result.contains("complex.rs"));
@@ -672,7 +677,12 @@ mod coverage_tests {
         #[test]
         fn test_format_markdown_with_hotspots() {
             let summary = create_test_summary();
-            let hotspots = vec![create_test_hotspot("src/complex.rs", 3.5, "complexity", 12.0)];
+            let hotspots = vec![create_test_hotspot(
+                "src/complex.rs",
+                3.5,
+                "complexity",
+                12.0,
+            )];
             let result = format_tdg_markdown(&summary, &hotspots, false).unwrap();
 
             assert!(result.contains("## Top Hotspots"));
@@ -789,7 +799,12 @@ mod coverage_tests {
 
         #[test]
         fn test_format_sarif_critical_hotspot() {
-            let hotspots = vec![create_test_hotspot("src/critical.rs", 3.5, "complexity", 15.0)];
+            let hotspots = vec![create_test_hotspot(
+                "src/critical.rs",
+                3.5,
+                "complexity",
+                15.0,
+            )];
             let project_path = PathBuf::from("/project");
             let result = format_tdg_sarif(&hotspots, &project_path).unwrap();
 
@@ -1101,7 +1116,12 @@ mod coverage_tests {
 
         #[test]
         fn test_hotspot_with_very_high_score() {
-            let hotspots = vec![create_test_hotspot("src/terrible.rs", 999.99, "everything", 1000.0)];
+            let hotspots = vec![create_test_hotspot(
+                "src/terrible.rs",
+                999.99,
+                "everything",
+                1000.0,
+            )];
             let result = format_tdg_sarif(&hotspots, &PathBuf::from("/")).unwrap();
 
             let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();

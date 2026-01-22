@@ -339,8 +339,12 @@ mod coverage_tests {
         let registry = Arc::new(AgentRegistry::new());
 
         let templates = vec![
-            AgentStateResource::new(Arc::clone(&registry)).template().uri_template,
-            MetricsResource::new(Arc::clone(&registry)).template().uri_template,
+            AgentStateResource::new(Arc::clone(&registry))
+                .template()
+                .uri_template,
+            MetricsResource::new(Arc::clone(&registry))
+                .template()
+                .uri_template,
             QualityReportResource::new().template().uri_template,
         ];
 
@@ -360,7 +364,9 @@ mod coverage_tests {
         let registry = Arc::new(AgentRegistry::new());
 
         let names = vec![
-            AgentStateResource::new(Arc::clone(&registry)).template().name,
+            AgentStateResource::new(Arc::clone(&registry))
+                .template()
+                .name,
             MetricsResource::new(Arc::clone(&registry)).template().name,
             QualityReportResource::new().template().name,
         ];
@@ -381,8 +387,12 @@ mod coverage_tests {
         let registry = Arc::new(AgentRegistry::new());
 
         let mime_types = vec![
-            AgentStateResource::new(Arc::clone(&registry)).template().mime_type,
-            MetricsResource::new(Arc::clone(&registry)).template().mime_type,
+            AgentStateResource::new(Arc::clone(&registry))
+                .template()
+                .mime_type,
+            MetricsResource::new(Arc::clone(&registry))
+                .template()
+                .mime_type,
             QualityReportResource::new().template().mime_type,
         ];
 

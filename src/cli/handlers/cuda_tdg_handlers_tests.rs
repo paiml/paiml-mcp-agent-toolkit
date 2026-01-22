@@ -25,7 +25,6 @@ mod tests {
     }
 }
 
-
 mod coverage_tests {
     use super::*;
     use crate::tdg::{
@@ -654,7 +653,8 @@ mod coverage_tests {
         let temp_dir = TempDir::new().unwrap();
         let config = create_config_with_format(CudaTdgOutputFormat::Terminal);
 
-        let result = handle_kaizen(&temp_dir.path().to_path_buf(), Some("2025-01-01"), &config).await;
+        let result =
+            handle_kaizen(&temp_dir.path().to_path_buf(), Some("2025-01-01"), &config).await;
         assert!(result.is_ok());
     }
 

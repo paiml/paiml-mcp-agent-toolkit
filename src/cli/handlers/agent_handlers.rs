@@ -545,7 +545,10 @@ mod tests {
 
         apply_config_overrides(&mut daemon_config, &start_config);
 
-        assert_eq!(daemon_config.daemon.health_check_interval, Duration::from_secs(120));
+        assert_eq!(
+            daemon_config.daemon.health_check_interval,
+            Duration::from_secs(120)
+        );
         assert_eq!(daemon_config.daemon.max_memory_mb, 2048);
         assert!(daemon_config.daemon.auto_restart);
     }
@@ -587,7 +590,10 @@ mod tests {
         };
 
         apply_optional_overrides(&mut daemon_config, &start_config);
-        assert_eq!(daemon_config.daemon.working_directory, PathBuf::from("/custom/working/dir"));
+        assert_eq!(
+            daemon_config.daemon.working_directory,
+            PathBuf::from("/custom/working/dir")
+        );
     }
 
     #[test]
@@ -606,7 +612,10 @@ mod tests {
         };
 
         apply_optional_overrides(&mut daemon_config, &start_config);
-        assert_eq!(daemon_config.daemon.pid_file, Some(PathBuf::from("/run/pmat.pid")));
+        assert_eq!(
+            daemon_config.daemon.pid_file,
+            Some(PathBuf::from("/run/pmat.pid"))
+        );
     }
 
     #[test]
@@ -625,7 +634,10 @@ mod tests {
         };
 
         apply_optional_overrides(&mut daemon_config, &start_config);
-        assert_eq!(daemon_config.daemon.log_file, Some(PathBuf::from("/var/log/pmat.log")));
+        assert_eq!(
+            daemon_config.daemon.log_file,
+            Some(PathBuf::from("/var/log/pmat.log"))
+        );
     }
 
     #[test]
@@ -644,9 +656,18 @@ mod tests {
         };
 
         apply_optional_overrides(&mut daemon_config, &start_config);
-        assert_eq!(daemon_config.daemon.working_directory, PathBuf::from("/work"));
-        assert_eq!(daemon_config.daemon.pid_file, Some(PathBuf::from("/run/pmat.pid")));
-        assert_eq!(daemon_config.daemon.log_file, Some(PathBuf::from("/var/log/pmat.log")));
+        assert_eq!(
+            daemon_config.daemon.working_directory,
+            PathBuf::from("/work")
+        );
+        assert_eq!(
+            daemon_config.daemon.pid_file,
+            Some(PathBuf::from("/run/pmat.pid"))
+        );
+        assert_eq!(
+            daemon_config.daemon.log_file,
+            Some(PathBuf::from("/var/log/pmat.log"))
+        );
     }
 
     // ============ load_or_default_config Tests ============
@@ -718,7 +739,8 @@ mod tests {
             "test-project".to_string(),
             None,
             crate::cli::QualityGateOutputFormat::Human,
-        ).await;
+        )
+        .await;
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains("not running"));
     }
@@ -742,11 +764,8 @@ mod tests {
         let temp_dir = tempdir().unwrap();
         let project_path = temp_dir.path().to_path_buf();
 
-        let result = handle_agent_monitor(
-            project_path,
-            Some("custom-project-id".to_string()),
-            None,
-        ).await;
+        let result =
+            handle_agent_monitor(project_path, Some("custom-project-id".to_string()), None).await;
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains("not running"));
     }
@@ -775,7 +794,9 @@ health_check_interval_secs = 30
         let temp_dir = tempdir().unwrap();
         let config_path = temp_dir.path().join("invalid.toml");
 
-        fs::write(&config_path, "this is not valid toml {{{{").await.unwrap();
+        fs::write(&config_path, "this is not valid toml {{{{")
+            .await
+            .unwrap();
 
         let result = load_daemon_config(&config_path).await;
         assert!(result.is_err());

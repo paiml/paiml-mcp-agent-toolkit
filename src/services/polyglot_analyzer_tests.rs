@@ -136,7 +136,6 @@ mod tests {
     }
 }
 
-
 mod property_tests {
     use proptest::prelude::*;
 
@@ -154,8 +153,6 @@ mod property_tests {
         }
     }
 }
-
-
 
 // Coverage tests extracted to polyglot_analyzer_coverage_tests.rs for file health compliance (CB-040)
 #[path = "polyglot_analyzer_coverage_tests.rs"]

@@ -770,7 +770,6 @@ impl EntropyCalculator {
     }
 }
 
-
 // Tests extracted to similarity_tests.rs for file health compliance (CB-040)
 #[cfg(test)]
 #[path = "similarity_tests.rs"]

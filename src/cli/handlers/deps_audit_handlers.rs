@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::Path;
-use trueno_graph::{CsrGraph, NodeId, pagerank};
+use trueno_graph::{pagerank, CsrGraph, NodeId};
 
 /// Dependency category
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -67,7 +67,7 @@ pub struct DepsAuditReport {
     pub recommendations: Vec<String>,
     // Graph analysis
     pub top_critical: Vec<(String, f32)>, // Top deps by PageRank
-    pub removal_candidates: Vec<String>,   // Orphans that are safe to remove
+    pub removal_candidates: Vec<String>,  // Orphans that are safe to remove
 }
 
 /// Known Sovereign AI stack packages
@@ -90,10 +90,22 @@ const SOVEREIGN_PACKAGES: &[&str] = &[
 fn get_replacements() -> HashMap<&'static str, (&'static str, &'static str)> {
     let mut map = HashMap::new();
     // (dependency, (replacement, reason))
-    map.insert("petgraph", ("trueno-graph", "Graph algorithms with O(1) lookups"));
-    map.insert("ratatui", ("presentar-terminal", "TUI with ComputeBrick profiling"));
-    map.insert("tui", ("presentar-terminal", "TUI with ComputeBrick profiling"));
-    map.insert("crossterm", ("presentar-terminal", "Included in presentar-terminal"));
+    map.insert(
+        "petgraph",
+        ("trueno-graph", "Graph algorithms with O(1) lookups"),
+    );
+    map.insert(
+        "ratatui",
+        ("presentar-terminal", "TUI with ComputeBrick profiling"),
+    );
+    map.insert(
+        "tui",
+        ("presentar-terminal", "TUI with ComputeBrick profiling"),
+    );
+    map.insert(
+        "crossterm",
+        ("presentar-terminal", "Included in presentar-terminal"),
+    );
     map.insert("ndarray", ("trueno", "SIMD-accelerated tensors"));
     map.insert("nalgebra", ("trueno", "SIMD-accelerated linear algebra"));
     map.insert("arrow", ("trueno", "Use trueno for columnar data"));
@@ -106,14 +118,29 @@ fn get_replacements() -> HashMap<&'static str, (&'static str, &'static str)> {
 fn get_heavy_deps() -> HashMap<&'static str, (&'static str, usize)> {
     let mut map = HashMap::new();
     // (dependency, (reason, estimated_kb))
-    map.insert("swc_ecma_parser", ("JS/TS parsing - consider tree-sitter only", 8000));
-    map.insert("swc_common", ("SWC common - heavy TypeScript support", 3000));
+    map.insert(
+        "swc_ecma_parser",
+        ("JS/TS parsing - consider tree-sitter only", 8000),
+    );
+    map.insert(
+        "swc_common",
+        ("SWC common - heavy TypeScript support", 3000),
+    );
     map.insert("swc_ecma_ast", ("SWC AST - heavy TypeScript support", 2000));
-    map.insert("swc_ecma_visit", ("SWC visitor - heavy TypeScript support", 1500));
-    map.insert("octocrab", ("GitHub API - consider lighter ureq-based", 5000));
+    map.insert(
+        "swc_ecma_visit",
+        ("SWC visitor - heavy TypeScript support", 1500),
+    );
+    map.insert(
+        "octocrab",
+        ("GitHub API - consider lighter ureq-based", 5000),
+    );
     map.insert("reqwest", ("HTTP client - consider ureq for sync", 4000));
     map.insert("rusqlite", ("SQLite - consider removing if unused", 2500));
-    map.insert("git2", ("libgit2 bindings - shell out to git instead", 6000));
+    map.insert(
+        "git2",
+        ("libgit2 bindings - shell out to git instead", 6000),
+    );
     map.insert("criterion", ("Benchmarking - dev only", 3000));
     map.insert("proptest", ("Property testing - dev only", 2000));
     map
@@ -185,7 +212,10 @@ fn analyze_dep(name: &str, version: &str, is_dev: bool) -> DepAnalysis {
 
     // Check if dev-only
     if is_dev || DEV_ONLY.contains(&name) {
-        let (reason, size) = heavy.get(name).map(|(r, s)| (*r, *s)).unwrap_or(("Development dependency", 500));
+        let (reason, size) = heavy
+            .get(name)
+            .map(|(r, s)| (*r, *s))
+            .unwrap_or(("Development dependency", 500));
         return DepAnalysis {
             category: DepCategory::DevOnly,
             reason: reason.to_string(),
@@ -234,12 +264,14 @@ fn analyze_dep(name: &str, version: &str, is_dev: bool) -> DepAnalysis {
 
 /// Parse Cargo.toml and extract dependencies
 #[allow(clippy::type_complexity)]
-fn parse_cargo_toml(path: &Path) -> Result<(Vec<(String, String, bool)>, Vec<(String, String, bool)>)> {
-    let content = fs::read_to_string(path)
-        .with_context(|| format!("Failed to read {}", path.display()))?;
+fn parse_cargo_toml(
+    path: &Path,
+) -> Result<(Vec<(String, String, bool)>, Vec<(String, String, bool)>)> {
+    let content =
+        fs::read_to_string(path).with_context(|| format!("Failed to read {}", path.display()))?;
 
-    let toml: toml::Value = toml::from_str(&content)
-        .with_context(|| "Failed to parse Cargo.toml")?;
+    let toml: toml::Value =
+        toml::from_str(&content).with_context(|| "Failed to parse Cargo.toml")?;
 
     let mut deps = Vec::new();
     let mut dev_deps = Vec::new();
@@ -249,7 +281,8 @@ fn parse_cargo_toml(path: &Path) -> Result<(Vec<(String, String, bool)>, Vec<(St
         for (name, value) in dependencies {
             let version = match value {
                 toml::Value::String(v) => v.clone(),
-                toml::Value::Table(t) => t.get("version")
+                toml::Value::Table(t) => t
+                    .get("version")
                     .and_then(|v| v.as_str())
                     .unwrap_or("*")
                     .to_string(),
@@ -264,7 +297,8 @@ fn parse_cargo_toml(path: &Path) -> Result<(Vec<(String, String, bool)>, Vec<(St
         for (name, value) in dependencies {
             let version = match value {
                 toml::Value::String(v) => v.clone(),
-                toml::Value::Table(t) => t.get("version")
+                toml::Value::Table(t) => t
+                    .get("version")
                     .and_then(|v| v.as_str())
                     .unwrap_or("*")
                     .to_string(),
@@ -290,8 +324,13 @@ fn parse_cargo_lock(path: &Path) -> Result<(Vec<String>, Vec<DepEdge>)> {
     // Try path, parent, grandparent (workspace root)
     let candidates = [
         path.join("Cargo.lock"),
-        path.parent().map(|p| p.join("Cargo.lock")).unwrap_or_default(),
-        path.parent().and_then(|p| p.parent()).map(|p| p.join("Cargo.lock")).unwrap_or_default(),
+        path.parent()
+            .map(|p| p.join("Cargo.lock"))
+            .unwrap_or_default(),
+        path.parent()
+            .and_then(|p| p.parent())
+            .map(|p| p.join("Cargo.lock"))
+            .unwrap_or_default(),
     ];
 
     let lock_path = candidates.iter().find(|p| p.exists());
@@ -302,8 +341,8 @@ fn parse_cargo_lock(path: &Path) -> Result<(Vec<String>, Vec<DepEdge>)> {
     let content = fs::read_to_string(lock_path)
         .with_context(|| format!("Failed to read {}", lock_path.display()))?;
 
-    let toml: toml::Value = toml::from_str(&content)
-        .with_context(|| "Failed to parse Cargo.lock")?;
+    let toml: toml::Value =
+        toml::from_str(&content).with_context(|| "Failed to parse Cargo.lock")?;
 
     let mut all_packages = Vec::new();
     let mut edges = Vec::new();
@@ -365,7 +404,9 @@ fn analyze_dependency_graph(
     let mut out_degrees: HashMap<String, usize> = HashMap::new();
 
     for edge in edges {
-        if let (Some(&from_id), Some(&to_id)) = (name_to_id.get(&edge.from), name_to_id.get(&edge.to)) {
+        if let (Some(&from_id), Some(&to_id)) =
+            (name_to_id.get(&edge.from), name_to_id.get(&edge.to))
+        {
             edge_list.push((from_id, to_id, 1.0)); // Default weight = 1.0
             *out_degrees.entry(edge.from.clone()).or_insert(0) += 1;
             *in_degrees.entry(edge.to.clone()).or_insert(0) += 1;
@@ -377,7 +418,8 @@ fn analyze_dependency_graph(
     let graph = CsrGraph::from_edge_list(&edge_list).unwrap_or_else(|_| CsrGraph::new());
 
     // Calculate PageRank
-    let pagerank_vec = pagerank(&graph, 20, 1e-6).unwrap_or_else(|_| vec![1.0 / num_nodes.max(1) as f32; num_nodes]);
+    let pagerank_vec = pagerank(&graph, 20, 1e-6)
+        .unwrap_or_else(|_| vec![1.0 / num_nodes.max(1) as f32; num_nodes]);
     let mut pagerank_scores: HashMap<String, f32> = HashMap::new();
     for (i, &score) in pagerank_vec.iter().enumerate() {
         if let Some(name) = id_to_name.get(&NodeId(i as u32)) {
@@ -523,8 +565,16 @@ fn estimate_effort(name: &str, category: DepCategory) -> ParetoEffort {
 
     // Medium effort: used in multiple places but replaceable
     let medium_effort = [
-        "git2", "octocrab", "reqwest", "swc_ecma_parser", "swc_common",
-        "swc_ecma_ast", "swc_ecma_visit", "rusqlite", "pest", "pest_derive",
+        "git2",
+        "octocrab",
+        "reqwest",
+        "swc_ecma_parser",
+        "swc_common",
+        "swc_ecma_ast",
+        "swc_ecma_visit",
+        "rusqlite",
+        "pest",
+        "pest_derive",
     ];
     if medium_effort.contains(&name) {
         return ParetoEffort::Medium;
@@ -550,7 +600,12 @@ fn run_pareto_analysis(deps: &[DepAnalysis], path: &Path) -> Vec<ParetoEntry> {
     // Only analyze removable, heavy, and replaceable deps
     let candidates: Vec<_> = deps
         .iter()
-        .filter(|d| matches!(d.category, DepCategory::Removable | DepCategory::Heavy | DepCategory::Replaceable))
+        .filter(|d| {
+            matches!(
+                d.category,
+                DepCategory::Removable | DepCategory::Heavy | DepCategory::Replaceable
+            )
+        })
         .collect();
 
     for dep in candidates {
@@ -571,7 +626,11 @@ fn run_pareto_analysis(deps: &[DepAnalysis], path: &Path) -> Vec<ParetoEntry> {
     }
 
     // Sort by ROI (highest first)
-    entries.sort_by(|a, b| b.roi.partial_cmp(&a.roi).unwrap_or(std::cmp::Ordering::Equal));
+    entries.sort_by(|a, b| {
+        b.roi
+            .partial_cmp(&a.roi)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
 
     entries
 }
@@ -630,13 +689,15 @@ fn print_pareto_report(entries: &[ParetoEntry]) {
             ""
         };
 
-        println!("│ {:<19} │ {:>9} │ {:>6} │ {:>6.1} │ {:<21} {:>5} │",
-                 &entry.name[..entry.name.len().min(19)],
-                 entry.transitive_deps,
-                 entry.effort.label(),
-                 entry.roi,
-                 &entry.reason[..entry.reason.len().min(21)],
-                 marker);
+        println!(
+            "│ {:<19} │ {:>9} │ {:>6} │ {:>6.1} │ {:<21} {:>5} │",
+            &entry.name[..entry.name.len().min(19)],
+            entry.transitive_deps,
+            entry.effort.label(),
+            entry.roi,
+            &entry.reason[..entry.reason.len().min(21)],
+            marker
+        );
     }
     println!("└─────────────────────┴───────────┴────────┴────────┴─────────────────────────────┘");
     println!();
@@ -650,14 +711,27 @@ fn print_pareto_report(entries: &[ParetoEntry]) {
     };
 
     println!("💡 Summary:");
-    println!("   Total transitive deps from candidates: {}", total_transitive);
-    println!("   Top 5 removals save: {} deps ({}% of total)", top_5_savings, top_5_pct);
+    println!(
+        "   Total transitive deps from candidates: {}",
+        total_transitive
+    );
+    println!(
+        "   Top 5 removals save: {} deps ({}% of total)",
+        top_5_savings, top_5_pct
+    );
     println!();
 
     // Actionable commands
     println!("🔧 Quick Wins (Low Effort, High ROI):");
-    for entry in entries.iter().filter(|e| matches!(e.effort, ParetoEffort::Low) && e.roi > 10.0).take(5) {
-        println!("   cargo rm {} # saves {} transitive deps", entry.name, entry.transitive_deps);
+    for entry in entries
+        .iter()
+        .filter(|e| matches!(e.effort, ParetoEffort::Low) && e.roi > 10.0)
+        .take(5)
+    {
+        println!(
+            "   cargo rm {} # saves {} transitive deps",
+            entry.name, entry.transitive_deps
+        );
     }
     println!();
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
@@ -729,36 +803,54 @@ pub fn handle_deps_audit(
 
     // Sort based on user preference
     let sort_mode = SortMode::from_str(sort_by);
-    all_deps.sort_by(|a, b| {
-        match sort_mode {
-            SortMode::Transitive => b.transitive_count.cmp(&a.transitive_count),
-            SortMode::Size => b.estimated_size_kb.cmp(&a.estimated_size_kb),
-            SortMode::PageRank => b.pagerank_score.partial_cmp(&a.pagerank_score).unwrap_or(std::cmp::Ordering::Equal),
-            SortMode::Name => a.name.cmp(&b.name),
-            SortMode::Category => {
-                let priority = |cat: DepCategory| match cat {
-                    DepCategory::Removable => 0,
-                    DepCategory::Heavy => 1,
-                    DepCategory::Replaceable => 2,
-                    DepCategory::DevOnly => 3,
-                    DepCategory::Core => 4,
-                    DepCategory::Sovereign => 5,
-                };
-                priority(a.category).cmp(&priority(b.category))
-            }
+    all_deps.sort_by(|a, b| match sort_mode {
+        SortMode::Transitive => b.transitive_count.cmp(&a.transitive_count),
+        SortMode::Size => b.estimated_size_kb.cmp(&a.estimated_size_kb),
+        SortMode::PageRank => b
+            .pagerank_score
+            .partial_cmp(&a.pagerank_score)
+            .unwrap_or(std::cmp::Ordering::Equal),
+        SortMode::Name => a.name.cmp(&b.name),
+        SortMode::Category => {
+            let priority = |cat: DepCategory| match cat {
+                DepCategory::Removable => 0,
+                DepCategory::Heavy => 1,
+                DepCategory::Replaceable => 2,
+                DepCategory::DevOnly => 3,
+                DepCategory::Core => 4,
+                DepCategory::Sovereign => 5,
+            };
+            priority(a.category).cmp(&priority(b.category))
         }
     });
 
     // Calculate stats
-    let sovereign_count = all_deps.iter().filter(|d| d.category == DepCategory::Sovereign).count();
-    let replaceable_count = all_deps.iter().filter(|d| d.category == DepCategory::Replaceable).count();
-    let removable_count = all_deps.iter().filter(|d| d.category == DepCategory::Removable).count();
-    let heavy_count = all_deps.iter().filter(|d| d.category == DepCategory::Heavy).count();
+    let sovereign_count = all_deps
+        .iter()
+        .filter(|d| d.category == DepCategory::Sovereign)
+        .count();
+    let replaceable_count = all_deps
+        .iter()
+        .filter(|d| d.category == DepCategory::Replaceable)
+        .count();
+    let removable_count = all_deps
+        .iter()
+        .filter(|d| d.category == DepCategory::Removable)
+        .count();
+    let heavy_count = all_deps
+        .iter()
+        .filter(|d| d.category == DepCategory::Heavy)
+        .count();
     let orphan_count = all_deps.iter().filter(|d| d.is_orphan).count();
     let bridge_count = all_deps.iter().filter(|d| d.is_bridge).count();
     let estimated_savings: usize = all_deps
         .iter()
-        .filter(|d| matches!(d.category, DepCategory::Removable | DepCategory::Heavy | DepCategory::Replaceable))
+        .filter(|d| {
+            matches!(
+                d.category,
+                DepCategory::Removable | DepCategory::Heavy | DepCategory::Replaceable
+            )
+        })
         .map(|d| d.estimated_size_kb)
         .sum();
 
@@ -774,7 +866,9 @@ pub fn handle_deps_audit(
     // Removal candidates: orphan deps that are removable or heavy
     let removal_candidates: Vec<String> = all_deps
         .iter()
-        .filter(|d| d.is_orphan && matches!(d.category, DepCategory::Removable | DepCategory::Heavy))
+        .filter(|d| {
+            d.is_orphan && matches!(d.category, DepCategory::Removable | DepCategory::Heavy)
+        })
         .map(|d| d.name.clone())
         .collect();
 
@@ -789,24 +883,27 @@ pub fn handle_deps_audit(
     }
 
     // SWC recommendation
-    let swc_deps: Vec<_> = all_deps.iter().filter(|d| d.name.starts_with("swc_")).collect();
+    let swc_deps: Vec<_> = all_deps
+        .iter()
+        .filter(|d| d.name.starts_with("swc_"))
+        .collect();
     if !swc_deps.is_empty() {
         recommendations.push(
-            "SWC dependencies add ~15MB. Consider using tree-sitter-typescript only.".to_string()
+            "SWC dependencies add ~15MB. Consider using tree-sitter-typescript only.".to_string(),
         );
     }
 
     // Git2 recommendation
     if all_deps.iter().any(|d| d.name == "git2") {
         recommendations.push(
-            "git2 (libgit2) adds ~6MB. Consider shelling out to `git` CLI instead.".to_string()
+            "git2 (libgit2) adds ~6MB. Consider shelling out to `git` CLI instead.".to_string(),
         );
     }
 
     // Octocrab recommendation
     if all_deps.iter().any(|d| d.name == "octocrab") {
         recommendations.push(
-            "octocrab adds ~5MB. Consider using ureq + serde_json for GitHub API.".to_string()
+            "octocrab adds ~5MB. Consider using ureq + serde_json for GitHub API.".to_string(),
         );
     }
 
@@ -815,7 +912,12 @@ pub fn handle_deps_audit(
         recommendations.push(format!(
             "Graph analysis: {} orphan deps are safe to remove: {}",
             removal_candidates.len(),
-            removal_candidates.iter().take(5).cloned().collect::<Vec<_>>().join(", ")
+            removal_candidates
+                .iter()
+                .take(5)
+                .cloned()
+                .collect::<Vec<_>>()
+                .join(", ")
         ));
     }
 
@@ -825,7 +927,10 @@ pub fn handle_deps_audit(
         .filter(|d| d.transitive_count > 50)
         .collect();
     if !high_transitive.is_empty() {
-        let names: Vec<_> = high_transitive.iter().map(|d| format!("{}({})", d.name, d.transitive_count)).collect();
+        let names: Vec<_> = high_transitive
+            .iter()
+            .map(|d| format!("{}({})", d.name, d.transitive_count))
+            .collect();
         recommendations.push(format!(
             "High transitive deps (each brings 50+ deps): {}",
             names.join(", ")
@@ -842,7 +947,9 @@ pub fn handle_deps_audit(
     let report = DepsAuditReport {
         total_deps: all_deps.len(),
         direct_deps: deps.len() + dev_deps.len(),
-        transitive_deps: all_packages.len().saturating_sub(deps.len() + dev_deps.len()),
+        transitive_deps: all_packages
+            .len()
+            .saturating_sub(deps.len() + dev_deps.len()),
         sovereign_deps: sovereign_count,
         replaceable_deps: replaceable_count,
         removable_deps: removable_count,
@@ -853,7 +960,8 @@ pub fn handle_deps_audit(
         dependencies: if show_all {
             all_deps
         } else {
-            all_deps.into_iter()
+            all_deps
+                .into_iter()
                 .filter(|d| !matches!(d.category, DepCategory::Core | DepCategory::Sovereign))
                 .collect()
         },
@@ -892,9 +1000,11 @@ fn print_text_report(report: &DepsAuditReport) {
     println!("  Heavy (bloat):         {} ⚠️", report.heavy_deps);
     println!("  Orphans (easy remove): {} 🎯", report.orphan_deps);
     println!("  Bridges (connectors):  {} 🌉", report.bridge_deps);
-    println!("  Est. Savings:          ~{}KB (~{}MB)",
-             report.estimated_savings_kb,
-             report.estimated_savings_kb / 1024);
+    println!(
+        "  Est. Savings:          ~{}KB (~{}MB)",
+        report.estimated_savings_kb,
+        report.estimated_savings_kb / 1024
+    );
     println!();
 
     // Top critical deps by PageRank
@@ -912,16 +1022,24 @@ fn print_text_report(report: &DepsAuditReport) {
     }
 
     // Group by category
-    let removable: Vec<_> = report.dependencies.iter()
+    let removable: Vec<_> = report
+        .dependencies
+        .iter()
         .filter(|d| d.category == DepCategory::Removable)
         .collect();
-    let heavy: Vec<_> = report.dependencies.iter()
+    let heavy: Vec<_> = report
+        .dependencies
+        .iter()
         .filter(|d| d.category == DepCategory::Heavy)
         .collect();
-    let replaceable: Vec<_> = report.dependencies.iter()
+    let replaceable: Vec<_> = report
+        .dependencies
+        .iter()
         .filter(|d| d.category == DepCategory::Replaceable)
         .collect();
-    let dev_only: Vec<_> = report.dependencies.iter()
+    let dev_only: Vec<_> = report
+        .dependencies
+        .iter()
         .filter(|d| d.category == DepCategory::DevOnly)
         .collect();
 
@@ -931,9 +1049,11 @@ fn print_text_report(report: &DepsAuditReport) {
         println!("  │ Dependency          │ Reason                                 │");
         println!("  ├─────────────────────┼────────────────────────────────────────┤");
         for dep in &removable {
-            println!("  │ {:<19} │ {:<38} │",
-                     &dep.name[..dep.name.len().min(19)],
-                     &dep.reason[..dep.reason.len().min(38)]);
+            println!(
+                "  │ {:<19} │ {:<38} │",
+                &dep.name[..dep.name.len().min(19)],
+                &dep.reason[..dep.reason.len().min(38)]
+            );
         }
         println!("  └─────────────────────┴────────────────────────────────────────┘");
         println!();
@@ -945,10 +1065,12 @@ fn print_text_report(report: &DepsAuditReport) {
         println!("  │ Dependency          │ Size KB  │ Reason                      │");
         println!("  ├─────────────────────┼──────────┼─────────────────────────────┤");
         for dep in &heavy {
-            println!("  │ {:<19} │ {:>8} │ {:<27} │",
-                     &dep.name[..dep.name.len().min(19)],
-                     dep.estimated_size_kb,
-                     &dep.reason[..dep.reason.len().min(27)]);
+            println!(
+                "  │ {:<19} │ {:>8} │ {:<27} │",
+                &dep.name[..dep.name.len().min(19)],
+                dep.estimated_size_kb,
+                &dep.reason[..dep.reason.len().min(27)]
+            );
         }
         println!("  └─────────────────────┴──────────┴─────────────────────────────┘");
         println!();
@@ -961,10 +1083,12 @@ fn print_text_report(report: &DepsAuditReport) {
         println!("  ├─────────────────────┼─────────────────────┼───────────────────┤");
         for dep in &replaceable {
             let replacement = dep.replacement.as_deref().unwrap_or("-");
-            println!("  │ {:<19} │ {:<19} │ {:<17} │",
-                     &dep.name[..dep.name.len().min(19)],
-                     &replacement[..replacement.len().min(19)],
-                     &dep.reason[..dep.reason.len().min(17)]);
+            println!(
+                "  │ {:<19} │ {:<19} │ {:<17} │",
+                &dep.name[..dep.name.len().min(19)],
+                &replacement[..replacement.len().min(19)],
+                &dep.reason[..dep.reason.len().min(17)]
+            );
         }
         println!("  └─────────────────────┴─────────────────────┴───────────────────┘");
         println!();

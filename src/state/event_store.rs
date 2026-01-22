@@ -632,7 +632,10 @@ mod tests {
         assert_eq!(usage, 0);
 
         let mut events_map: BTreeMap<EventId, StateEvent> = BTreeMap::new();
-        events_map.insert(1, StateEvent::new("p".to_string(), "e".to_string(), serde_json::json!({})));
+        events_map.insert(
+            1,
+            StateEvent::new("p".to_string(), "e".to_string(), serde_json::json!({})),
+        );
         let usage2 = estimate_memory_usage(&events_map);
         assert!(usage2 > 0);
     }
@@ -811,11 +814,7 @@ mod tests {
         let store = EventStore::new(config).await.expect("internal error");
 
         for i in 0..5 {
-            let event = StateEvent::new(
-                "p".to_string(),
-                format!("e{}", i),
-                serde_json::json!({}),
-            );
+            let event = StateEvent::new("p".to_string(), format!("e{}", i), serde_json::json!({}));
             store.append(event).await.expect("internal error");
         }
 
@@ -866,9 +865,30 @@ mod tests {
         let store = EventStore::new(config).await.expect("internal error");
 
         // Add events to different partitions
-        store.append(StateEvent::new("p1".to_string(), "e1".to_string(), serde_json::json!({}))).await.unwrap();
-        store.append(StateEvent::new("p1".to_string(), "e2".to_string(), serde_json::json!({}))).await.unwrap();
-        store.append(StateEvent::new("p2".to_string(), "e3".to_string(), serde_json::json!({}))).await.unwrap();
+        store
+            .append(StateEvent::new(
+                "p1".to_string(),
+                "e1".to_string(),
+                serde_json::json!({}),
+            ))
+            .await
+            .unwrap();
+        store
+            .append(StateEvent::new(
+                "p1".to_string(),
+                "e2".to_string(),
+                serde_json::json!({}),
+            ))
+            .await
+            .unwrap();
+        store
+            .append(StateEvent::new(
+                "p2".to_string(),
+                "e3".to_string(),
+                serde_json::json!({}),
+            ))
+            .await
+            .unwrap();
 
         let stats = store.get_statistics();
         assert_eq!(stats.total_events, 3);
@@ -906,11 +926,13 @@ mod tests {
         let persistence = InMemoryPersistence::new();
 
         let events: Vec<StateEvent> = (0..5)
-            .map(|i| StateEvent::new(
-                format!("partition_{}", i),
-                format!("type_{}", i),
-                serde_json::json!({"index": i}),
-            ))
+            .map(|i| {
+                StateEvent::new(
+                    format!("partition_{}", i),
+                    format!("type_{}", i),
+                    serde_json::json!({"index": i}),
+                )
+            })
             .collect();
 
         let result = persistence.append_batch(&events).await;
@@ -971,11 +993,7 @@ mod tests {
         let persistence = InMemoryPersistence::new();
 
         for i in 0..3 {
-            let event = StateEvent::new(
-                "p".to_string(),
-                format!("e{}", i),
-                serde_json::json!({}),
-            );
+            let event = StateEvent::new("p".to_string(), format!("e{}", i), serde_json::json!({}));
             persistence.append_event(&event).await.unwrap();
         }
 
@@ -998,7 +1016,9 @@ mod tests {
     async fn test_json_file_persistence_append_event() {
         let temp_dir = tempfile::TempDir::new().unwrap();
         let file_path = temp_dir.path().join("test_events.log");
-        let persistence = JsonFilePersistence::new(file_path.to_str().unwrap()).await.unwrap();
+        let persistence = JsonFilePersistence::new(file_path.to_str().unwrap())
+            .await
+            .unwrap();
 
         let event = StateEvent::new(
             "test_partition".to_string(),
@@ -1018,14 +1038,18 @@ mod tests {
     async fn test_json_file_persistence_append_batch() {
         let temp_dir = tempfile::TempDir::new().unwrap();
         let file_path = temp_dir.path().join("test_batch.log");
-        let persistence = JsonFilePersistence::new(file_path.to_str().unwrap()).await.unwrap();
+        let persistence = JsonFilePersistence::new(file_path.to_str().unwrap())
+            .await
+            .unwrap();
 
         let events: Vec<StateEvent> = (0..5)
-            .map(|i| StateEvent::new(
-                format!("partition_{}", i),
-                format!("type_{}", i),
-                serde_json::json!({"index": i}),
-            ))
+            .map(|i| {
+                StateEvent::new(
+                    format!("partition_{}", i),
+                    format!("type_{}", i),
+                    serde_json::json!({"index": i}),
+                )
+            })
             .collect();
 
         let result = persistence.append_batch(&events).await;
@@ -1040,7 +1064,9 @@ mod tests {
     async fn test_json_file_persistence_load_all() {
         let temp_dir = tempfile::TempDir::new().unwrap();
         let file_path = temp_dir.path().join("test_load.log");
-        let persistence = JsonFilePersistence::new(file_path.to_str().unwrap()).await.unwrap();
+        let persistence = JsonFilePersistence::new(file_path.to_str().unwrap())
+            .await
+            .unwrap();
 
         // Append multiple events
         for i in 0..3 {
@@ -1064,7 +1090,9 @@ mod tests {
     async fn test_json_file_persistence_load_empty_file() {
         let temp_dir = tempfile::TempDir::new().unwrap();
         let file_path = temp_dir.path().join("empty.log");
-        let persistence = JsonFilePersistence::new(file_path.to_str().unwrap()).await.unwrap();
+        let persistence = JsonFilePersistence::new(file_path.to_str().unwrap())
+            .await
+            .unwrap();
 
         let loaded = persistence.load_all().await.unwrap();
         assert!(loaded.is_empty());
@@ -1074,7 +1102,9 @@ mod tests {
     async fn test_json_file_persistence_compact() {
         let temp_dir = tempfile::TempDir::new().unwrap();
         let file_path = temp_dir.path().join("compact.log");
-        let persistence = JsonFilePersistence::new(file_path.to_str().unwrap()).await.unwrap();
+        let persistence = JsonFilePersistence::new(file_path.to_str().unwrap())
+            .await
+            .unwrap();
 
         // Add some events
         let mut events_map = BTreeMap::new();
@@ -1102,7 +1132,9 @@ mod tests {
     async fn test_json_file_serialize_deserialize_roundtrip() {
         let temp_dir = tempfile::TempDir::new().unwrap();
         let file_path = temp_dir.path().join("roundtrip.log");
-        let persistence = JsonFilePersistence::new(file_path.to_str().unwrap()).await.unwrap();
+        let persistence = JsonFilePersistence::new(file_path.to_str().unwrap())
+            .await
+            .unwrap();
 
         // Create event with complex JSON data (this failed with bincode!)
         let event = StateEvent::new(
@@ -1164,11 +1196,7 @@ mod tests {
         let store = EventStore::new_with_persistence(config, Some(persistence.clone()));
 
         let events: Vec<StateEvent> = (0..5)
-            .map(|i| StateEvent::new(
-                "p".to_string(),
-                format!("e{}", i),
-                serde_json::json!({}),
-            ))
+            .map(|i| StateEvent::new("p".to_string(), format!("e{}", i), serde_json::json!({})))
             .collect();
 
         let ids = store.append_batch(events).await.unwrap();
@@ -1307,11 +1335,7 @@ mod tests {
 
         // Add 5 events
         for i in 0..5 {
-            let event = StateEvent::new(
-                "p".to_string(),
-                format!("e{}", i),
-                serde_json::json!({}),
-            );
+            let event = StateEvent::new("p".to_string(), format!("e{}", i), serde_json::json!({}));
             store.append(event).await.unwrap();
         }
 
@@ -1391,11 +1415,7 @@ mod tests {
 
         // After adding events
         for _ in 0..5 {
-            let event = StateEvent::new(
-                "p".to_string(),
-                "e".to_string(),
-                serde_json::json!({}),
-            );
+            let event = StateEvent::new("p".to_string(), "e".to_string(), serde_json::json!({}));
             store.append(event).await.unwrap();
         }
 
@@ -1413,11 +1433,7 @@ mod tests {
 
         // Add more events than the limit
         for i in 0..10 {
-            let event = StateEvent::new(
-                "p".to_string(),
-                format!("e{}", i),
-                serde_json::json!({}),
-            );
+            let event = StateEvent::new("p".to_string(), format!("e{}", i), serde_json::json!({}));
             store.append(event).await.unwrap();
         }
 
@@ -1441,11 +1457,7 @@ mod tests {
 
         // Add batch that exceeds limit
         let events: Vec<StateEvent> = (0..5)
-            .map(|i| StateEvent::new(
-                "p".to_string(),
-                format!("e{}", i),
-                serde_json::json!({}),
-            ))
+            .map(|i| StateEvent::new("p".to_string(), format!("e{}", i), serde_json::json!({})))
             .collect();
 
         store.append_batch(events).await.unwrap();
@@ -1493,7 +1505,9 @@ mod tests {
     async fn test_json_file_persistence_serialize_event() {
         let temp_dir = tempfile::TempDir::new().unwrap();
         let file_path = temp_dir.path().join("serialize.log");
-        let _persistence = JsonFilePersistence::new(file_path.to_str().unwrap()).await.unwrap();
+        let _persistence = JsonFilePersistence::new(file_path.to_str().unwrap())
+            .await
+            .unwrap();
 
         let event = StateEvent::new(
             "test".to_string(),
@@ -1539,7 +1553,9 @@ mod tests {
         // Write a corrupt line directly to the file
         std::fs::write(&file_path, "corrupt line without tab\n").unwrap();
 
-        let persistence = JsonFilePersistence::new(file_path.to_str().unwrap()).await.unwrap();
+        let persistence = JsonFilePersistence::new(file_path.to_str().unwrap())
+            .await
+            .unwrap();
         let result = persistence.load_all().await;
 
         // Should return an error for corrupt lines
@@ -1557,7 +1573,9 @@ mod tests {
         // Write a line with invalid checksum
         std::fs::write(&file_path, "{\"event_type\":\"test\"}\t999999999\n").unwrap();
 
-        let persistence = JsonFilePersistence::new(file_path.to_str().unwrap()).await.unwrap();
+        let persistence = JsonFilePersistence::new(file_path.to_str().unwrap())
+            .await
+            .unwrap();
         let result = persistence.load_all().await;
 
         // Should return an error for checksum mismatch

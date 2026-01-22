@@ -1511,7 +1511,6 @@ pub async fn analyze_file_complexity_uncached(
         .with_context(|| format!("Failed to analyze file complexity: {}", path.display()))
 }
 
-
 // Tests extracted to complexity_tests.rs for file health compliance (CB-040)
 #[cfg(test)]
 #[path = "complexity_tests.rs"]

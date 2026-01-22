@@ -340,7 +340,6 @@ indicatif = "0.17"
     }
 }
 
-
 mod coverage_tests {
     use super::*;
     use std::fs;

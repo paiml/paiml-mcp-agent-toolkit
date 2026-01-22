@@ -376,7 +376,6 @@ pub async fn handle_analyze_symbol_table(
     .await
 }
 
-
 // Tests extracted to advanced_analysis_handlers_tests.rs for file health compliance (CB-040)
 #[cfg(test)]
 #[path = "advanced_analysis_handlers_tests.rs"]

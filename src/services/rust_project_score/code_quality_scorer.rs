@@ -513,10 +513,16 @@ mod tests {
     #[test]
     fn test_complexity_no_src_directory() {
         let temp_dir = TempDir::new().unwrap();
-        fs::write(temp_dir.path().join("Cargo.toml"), "[package]\nname = \"test\"").unwrap();
+        fs::write(
+            temp_dir.path().join("Cargo.toml"),
+            "[package]\nname = \"test\"",
+        )
+        .unwrap();
 
         let scorer = CodeQualityScorer::new();
-        let result = scorer.score_complexity_simple(temp_dir.path(), None).unwrap();
+        let result = scorer
+            .score_complexity_simple(temp_dir.path(), None)
+            .unwrap();
 
         // No code = no complexity issues = full points
         assert_eq!(result, 3.0);
@@ -526,7 +532,11 @@ mod tests {
     fn test_complexity_no_deep_nesting() {
         let temp_dir = TempDir::new().unwrap();
         fs::create_dir_all(temp_dir.path().join("src")).unwrap();
-        fs::write(temp_dir.path().join("Cargo.toml"), "[package]\nname = \"test\"").unwrap();
+        fs::write(
+            temp_dir.path().join("Cargo.toml"),
+            "[package]\nname = \"test\"",
+        )
+        .unwrap();
         fs::write(
             temp_dir.path().join("src/lib.rs"),
             "fn main() {\n    println!(\"hello\");\n}",
@@ -534,7 +544,9 @@ mod tests {
         .unwrap();
 
         let scorer = CodeQualityScorer::new();
-        let result = scorer.score_complexity_simple(temp_dir.path(), None).unwrap();
+        let result = scorer
+            .score_complexity_simple(temp_dir.path(), None)
+            .unwrap();
 
         // No deep nesting = full points
         assert_eq!(result, 3.0);
@@ -544,14 +556,23 @@ mod tests {
     fn test_complexity_with_moderate_nesting() {
         let temp_dir = TempDir::new().unwrap();
         fs::create_dir_all(temp_dir.path().join("src")).unwrap();
-        fs::write(temp_dir.path().join("Cargo.toml"), "[package]\nname = \"test\"").unwrap();
+        fs::write(
+            temp_dir.path().join("Cargo.toml"),
+            "[package]\nname = \"test\"",
+        )
+        .unwrap();
 
         // Create code with 3 deeply nested lines (indent > 32 chars)
-        let deep_code = format!("fn main() {{\n{}", "                                    nested();\n".repeat(3));
+        let deep_code = format!(
+            "fn main() {{\n{}",
+            "                                    nested();\n".repeat(3)
+        );
         fs::write(temp_dir.path().join("src/lib.rs"), deep_code).unwrap();
 
         let scorer = CodeQualityScorer::new();
-        let result = scorer.score_complexity_simple(temp_dir.path(), None).unwrap();
+        let result = scorer
+            .score_complexity_simple(temp_dir.path(), None)
+            .unwrap();
 
         // 1-5 deep nesting = 2.0 points
         assert_eq!(result, 2.0);
@@ -561,14 +582,23 @@ mod tests {
     fn test_complexity_with_excessive_nesting() {
         let temp_dir = TempDir::new().unwrap();
         fs::create_dir_all(temp_dir.path().join("src")).unwrap();
-        fs::write(temp_dir.path().join("Cargo.toml"), "[package]\nname = \"test\"").unwrap();
+        fs::write(
+            temp_dir.path().join("Cargo.toml"),
+            "[package]\nname = \"test\"",
+        )
+        .unwrap();
 
         // Create code with >20 deeply nested lines
-        let deep_code = format!("fn main() {{\n{}", "                                    nested();\n".repeat(25));
+        let deep_code = format!(
+            "fn main() {{\n{}",
+            "                                    nested();\n".repeat(25)
+        );
         fs::write(temp_dir.path().join("src/lib.rs"), deep_code).unwrap();
 
         let scorer = CodeQualityScorer::new();
-        let result = scorer.score_complexity_simple(temp_dir.path(), None).unwrap();
+        let result = scorer
+            .score_complexity_simple(temp_dir.path(), None)
+            .unwrap();
 
         // >20 deep nesting = 0.0 points
         assert_eq!(result, 0.0);
@@ -577,7 +607,11 @@ mod tests {
     #[test]
     fn test_unsafe_no_src_directory() {
         let temp_dir = TempDir::new().unwrap();
-        fs::write(temp_dir.path().join("Cargo.toml"), "[package]\nname = \"test\"").unwrap();
+        fs::write(
+            temp_dir.path().join("Cargo.toml"),
+            "[package]\nname = \"test\"",
+        )
+        .unwrap();
 
         let scorer = CodeQualityScorer::new();
         let result = scorer.score_unsafe(temp_dir.path(), None).unwrap();
@@ -590,7 +624,11 @@ mod tests {
     fn test_unsafe_no_unsafe_blocks() {
         let temp_dir = TempDir::new().unwrap();
         fs::create_dir_all(temp_dir.path().join("src")).unwrap();
-        fs::write(temp_dir.path().join("Cargo.toml"), "[package]\nname = \"test\"").unwrap();
+        fs::write(
+            temp_dir.path().join("Cargo.toml"),
+            "[package]\nname = \"test\"",
+        )
+        .unwrap();
         fs::write(
             temp_dir.path().join("src/lib.rs"),
             "fn safe_code() { println!(\"safe\"); }",
@@ -608,7 +646,11 @@ mod tests {
     fn test_unsafe_documented_blocks() {
         let temp_dir = TempDir::new().unwrap();
         fs::create_dir_all(temp_dir.path().join("src")).unwrap();
-        fs::write(temp_dir.path().join("Cargo.toml"), "[package]\nname = \"test\"").unwrap();
+        fs::write(
+            temp_dir.path().join("Cargo.toml"),
+            "[package]\nname = \"test\"",
+        )
+        .unwrap();
         fs::write(
             temp_dir.path().join("src/lib.rs"),
             r#"
@@ -631,7 +673,11 @@ unsafe {
     fn test_unsafe_undocumented_blocks() {
         let temp_dir = TempDir::new().unwrap();
         fs::create_dir_all(temp_dir.path().join("src")).unwrap();
-        fs::write(temp_dir.path().join("Cargo.toml"), "[package]\nname = \"test\"").unwrap();
+        fs::write(
+            temp_dir.path().join("Cargo.toml"),
+            "[package]\nname = \"test\"",
+        )
+        .unwrap();
         fs::write(
             temp_dir.path().join("src/lib.rs"),
             r#"
@@ -655,7 +701,11 @@ fn foo() {
     #[test]
     fn test_dead_code_no_src_directory() {
         let temp_dir = TempDir::new().unwrap();
-        fs::write(temp_dir.path().join("Cargo.toml"), "[package]\nname = \"test\"").unwrap();
+        fs::write(
+            temp_dir.path().join("Cargo.toml"),
+            "[package]\nname = \"test\"",
+        )
+        .unwrap();
 
         let scorer = CodeQualityScorer::new();
         let result = scorer.score_dead_code(temp_dir.path(), None).unwrap();
@@ -668,7 +718,11 @@ fn foo() {
     fn test_dead_code_no_allow_attributes() {
         let temp_dir = TempDir::new().unwrap();
         fs::create_dir_all(temp_dir.path().join("src")).unwrap();
-        fs::write(temp_dir.path().join("Cargo.toml"), "[package]\nname = \"test\"").unwrap();
+        fs::write(
+            temp_dir.path().join("Cargo.toml"),
+            "[package]\nname = \"test\"",
+        )
+        .unwrap();
         fs::write(
             temp_dir.path().join("src/lib.rs"),
             "fn used_function() { println!(\"used\"); }",
@@ -686,7 +740,11 @@ fn foo() {
     fn test_dead_code_few_allow_attributes() {
         let temp_dir = TempDir::new().unwrap();
         fs::create_dir_all(temp_dir.path().join("src")).unwrap();
-        fs::write(temp_dir.path().join("Cargo.toml"), "[package]\nname = \"test\"").unwrap();
+        fs::write(
+            temp_dir.path().join("Cargo.toml"),
+            "[package]\nname = \"test\"",
+        )
+        .unwrap();
         fs::write(
             temp_dir.path().join("src/lib.rs"),
             "#[allow(dead_code)]\nfn unused1() {}\n#[allow(dead_code)]\nfn unused2() {}",
@@ -704,7 +762,11 @@ fn foo() {
     fn test_dead_code_many_allow_attributes() {
         let temp_dir = TempDir::new().unwrap();
         fs::create_dir_all(temp_dir.path().join("src")).unwrap();
-        fs::write(temp_dir.path().join("Cargo.toml"), "[package]\nname = \"test\"").unwrap();
+        fs::write(
+            temp_dir.path().join("Cargo.toml"),
+            "[package]\nname = \"test\"",
+        )
+        .unwrap();
         fs::write(
             temp_dir.path().join("src/lib.rs"),
             "#[allow(dead_code)]\nfn unused1() {}\n#[allow(dead_code)]\nfn unused2() {}\n#[allow(dead_code)]\nfn unused3() {}\n#[allow(dead_code)]\nfn unused4() {}",
@@ -722,11 +784,17 @@ fn foo() {
     fn test_score_fast_mode() {
         let temp_dir = TempDir::new().unwrap();
         fs::create_dir_all(temp_dir.path().join("src")).unwrap();
-        fs::write(temp_dir.path().join("Cargo.toml"), "[package]\nname = \"test\"").unwrap();
+        fs::write(
+            temp_dir.path().join("Cargo.toml"),
+            "[package]\nname = \"test\"",
+        )
+        .unwrap();
         fs::write(temp_dir.path().join("src/lib.rs"), "fn main() {}").unwrap();
 
         let scorer = CodeQualityScorer::new();
-        let result = scorer.score_with_mode(temp_dir.path(), ScoringMode::Fast).unwrap();
+        let result = scorer
+            .score_with_mode(temp_dir.path(), ScoringMode::Fast)
+            .unwrap();
 
         // Fast mode: complexity(3) + unsafe(9) + mutation(4, skipped) + build(2, skipped) + dead_code(2) = 20
         assert!(result.earned >= 18.0);
@@ -737,7 +805,11 @@ fn foo() {
     fn test_score_with_cache() {
         let temp_dir = TempDir::new().unwrap();
         fs::create_dir_all(temp_dir.path().join("src")).unwrap();
-        fs::write(temp_dir.path().join("Cargo.toml"), "[package]\nname = \"test\"").unwrap();
+        fs::write(
+            temp_dir.path().join("Cargo.toml"),
+            "[package]\nname = \"test\"",
+        )
+        .unwrap();
         fs::write(temp_dir.path().join("src/lib.rs"), "fn main() {}").unwrap();
 
         // Create cache
@@ -760,23 +832,29 @@ fn foo() {
     fn test_recommendations_clean_code() {
         let temp_dir = TempDir::new().unwrap();
         fs::create_dir_all(temp_dir.path().join("src")).unwrap();
-        fs::write(temp_dir.path().join("Cargo.toml"), "[package]\nname = \"test\"").unwrap();
+        fs::write(
+            temp_dir.path().join("Cargo.toml"),
+            "[package]\nname = \"test\"",
+        )
+        .unwrap();
         fs::write(temp_dir.path().join("src/lib.rs"), "fn main() {}").unwrap();
 
         let scorer = CodeQualityScorer::new();
         let recommendations = scorer.recommendations(temp_dir.path());
 
         // Should always include mutation testing recommendation
-        assert!(recommendations
-            .iter()
-            .any(|r| r.contains("cargo-mutants")));
+        assert!(recommendations.iter().any(|r| r.contains("cargo-mutants")));
     }
 
     #[test]
     fn test_recommendations_with_issues() {
         let temp_dir = TempDir::new().unwrap();
         fs::create_dir_all(temp_dir.path().join("src")).unwrap();
-        fs::write(temp_dir.path().join("Cargo.toml"), "[package]\nname = \"test\"").unwrap();
+        fs::write(
+            temp_dir.path().join("Cargo.toml"),
+            "[package]\nname = \"test\"",
+        )
+        .unwrap();
 
         // Create code with undocumented unsafe and dead code
         fs::write(
@@ -814,7 +892,9 @@ fn foo() {
         );
 
         let scorer = CodeQualityScorer::new();
-        let result = scorer.score_complexity_simple(temp_dir.path(), Some(&cache)).unwrap();
+        let result = scorer
+            .score_complexity_simple(temp_dir.path(), Some(&cache))
+            .unwrap();
 
         // No deep nesting = full points
         assert_eq!(result, 3.0);
@@ -852,7 +932,9 @@ fn foo() {
         );
 
         let scorer = CodeQualityScorer::new();
-        let result = scorer.score_dead_code(temp_dir.path(), Some(&cache)).unwrap();
+        let result = scorer
+            .score_dead_code(temp_dir.path(), Some(&cache))
+            .unwrap();
 
         // No dead code = full points
         assert_eq!(result, 2.0);
@@ -862,11 +944,17 @@ fn foo() {
     fn test_scoring_mode_quick() {
         let temp_dir = TempDir::new().unwrap();
         fs::create_dir_all(temp_dir.path().join("src")).unwrap();
-        fs::write(temp_dir.path().join("Cargo.toml"), "[package]\nname = \"test\"").unwrap();
+        fs::write(
+            temp_dir.path().join("Cargo.toml"),
+            "[package]\nname = \"test\"",
+        )
+        .unwrap();
         fs::write(temp_dir.path().join("src/lib.rs"), "fn main() {}").unwrap();
 
         let scorer = CodeQualityScorer::new();
-        let result = scorer.score_with_mode(temp_dir.path(), ScoringMode::Quick).unwrap();
+        let result = scorer
+            .score_with_mode(temp_dir.path(), ScoringMode::Quick)
+            .unwrap();
 
         // Quick mode should still produce valid scores
         assert!(result.earned >= 0.0);
@@ -878,7 +966,11 @@ fn foo() {
     fn test_unsafe_partial_documentation() {
         let temp_dir = TempDir::new().unwrap();
         fs::create_dir_all(temp_dir.path().join("src")).unwrap();
-        fs::write(temp_dir.path().join("Cargo.toml"), "[package]\nname = \"test\"").unwrap();
+        fs::write(
+            temp_dir.path().join("Cargo.toml"),
+            "[package]\nname = \"test\"",
+        )
+        .unwrap();
 
         // Create code with 1 documented and 1 undocumented unsafe block
         fs::write(

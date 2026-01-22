@@ -243,15 +243,15 @@ impl GitHubIssuesService {
         let mut headers = reqwest::header::HeaderMap::new();
         headers.insert(
             reqwest::header::AUTHORIZATION,
-            format!("Bearer {}", config.token).parse().unwrap(),
+            format!("Bearer {}", config.token).parse().expect("valid authorization header"),
         );
         headers.insert(
             reqwest::header::USER_AGENT,
-            "pmat-github-integration/1.0".parse().unwrap(),
+            "pmat-github-integration/1.0".parse().expect("valid user-agent header"),
         );
         headers.insert(
             reqwest::header::ACCEPT,
-            "application/vnd.github.v3+json".parse().unwrap(),
+            "application/vnd.github.v3+json".parse().expect("valid accept header"),
         );
 
         let client = Client::builder()
@@ -497,7 +497,7 @@ impl GitHubIssuesService {
             {
                 let now = std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap()
+                    .expect("system time after UNIX epoch")
                     .as_secs();
                 let retry_after = retry_after.saturating_sub(now);
                 

@@ -263,11 +263,7 @@ mod tests {
 
     #[test]
     fn test_service_message_clone() {
-        let msg = ServiceMessage::new(
-            "src".to_string(),
-            "dst".to_string(),
-            42,
-        );
+        let msg = ServiceMessage::new("src".to_string(), "dst".to_string(), 42);
         let cloned = msg.clone();
         assert_eq!(cloned.source, "src");
         assert_eq!(cloned.destination, "dst");
@@ -276,11 +272,7 @@ mod tests {
 
     #[test]
     fn test_service_message_debug() {
-        let msg = ServiceMessage::new(
-            "a".to_string(),
-            "b".to_string(),
-            "test",
-        );
+        let msg = ServiceMessage::new("a".to_string(), "b".to_string(), "test");
         let debug = format!("{:?}", msg);
         assert!(debug.contains("ServiceMessage"));
     }
@@ -307,22 +299,14 @@ mod tests {
 
     #[test]
     fn test_service_message_correlation_id() {
-        let msg = ServiceMessage::new(
-            "src".to_string(),
-            "dst".to_string(),
-            "hello",
-        );
+        let msg = ServiceMessage::new("src".to_string(), "dst".to_string(), "hello");
         assert!(msg.correlation_id.is_none());
         assert!(msg.reply_to.is_none());
     }
 
     #[test]
     fn test_service_message_reply_correlation() {
-        let original = ServiceMessage::new(
-            "a".to_string(),
-            "b".to_string(),
-            "request",
-        );
+        let original = ServiceMessage::new("a".to_string(), "b".to_string(), "request");
         let reply = original.reply("response");
 
         assert_eq!(reply.correlation_id.as_ref().unwrap(), &original.id);
@@ -361,7 +345,9 @@ mod tests {
     #[tokio::test]
     async fn test_pub_sub_publish_to_empty_topic() {
         let pubsub: PubSubService<String> = PubSubService::new();
-        let result = pubsub.publish("empty_topic".to_string(), "msg".to_string()).await;
+        let result = pubsub
+            .publish("empty_topic".to_string(), "msg".to_string())
+            .await;
         assert!(result.is_ok());
     }
 

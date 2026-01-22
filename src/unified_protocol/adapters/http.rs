@@ -1012,10 +1012,7 @@ mod extended_tests {
 
     #[test]
     fn test_http_output_debug() {
-        let response = Response::builder()
-            .status(200)
-            .body(Body::empty())
-            .unwrap();
+        let response = Response::builder().status(200).body(Body::empty()).unwrap();
         let output = HttpOutput::Response(response);
         let debug = format!("{:?}", output);
         assert!(debug.contains("Response"));
@@ -1159,7 +1156,10 @@ mod extended_tests {
 
         #[async_trait]
         impl HttpServiceHandler for DummyService {
-            async fn handle(&self, _request: UnifiedRequest) -> Result<UnifiedResponse, ProtocolError> {
+            async fn handle(
+                &self,
+                _request: UnifiedRequest,
+            ) -> Result<UnifiedResponse, ProtocolError> {
                 Ok(UnifiedResponse::ok())
             }
             fn clone_boxed(&self) -> Box<dyn HttpServiceHandler> {
@@ -1169,7 +1169,10 @@ mod extended_tests {
 
         let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 0);
         let server = HttpServer::new(addr, Box::new(DummyService));
-        assert_eq!(server.adapter.bind_addr.ip(), IpAddr::V4(Ipv4Addr::LOCALHOST));
+        assert_eq!(
+            server.adapter.bind_addr.ip(),
+            IpAddr::V4(Ipv4Addr::LOCALHOST)
+        );
     }
 
     #[tokio::test]
@@ -1178,7 +1181,10 @@ mod extended_tests {
 
         #[async_trait]
         impl HttpServiceHandler for DummyService {
-            async fn handle(&self, _request: UnifiedRequest) -> Result<UnifiedResponse, ProtocolError> {
+            async fn handle(
+                &self,
+                _request: UnifiedRequest,
+            ) -> Result<UnifiedResponse, ProtocolError> {
                 Ok(UnifiedResponse::ok())
             }
             fn clone_boxed(&self) -> Box<dyn HttpServiceHandler> {

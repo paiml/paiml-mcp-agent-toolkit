@@ -465,7 +465,10 @@ mod tests {
         assert!(schema["properties"]["max_depth"].is_object());
         assert!(schema["properties"]["include_metrics"].is_object());
         assert!(schema["properties"]["include_ast"].is_object());
-        assert!(schema["required"].as_array().unwrap().contains(&json!("path")));
+        assert!(schema["required"]
+            .as_array()
+            .unwrap()
+            .contains(&json!("path")));
     }
 
     // ==================== JavaMutationTool Tests ====================
@@ -509,8 +512,8 @@ mod tests {
 
     #[test]
     fn test_find_java_files_with_java() {
-        use tempfile::tempdir;
         use std::fs;
+        use tempfile::tempdir;
 
         let dir = tempdir().unwrap();
         let java_file = dir.path().join("Test.java");
@@ -524,8 +527,8 @@ mod tests {
 
     #[test]
     fn test_find_java_files_max_depth() {
-        use tempfile::tempdir;
         use std::fs;
+        use tempfile::tempdir;
 
         let dir = tempdir().unwrap();
         let subdir = dir.path().join("deep").join("nested");
@@ -536,7 +539,9 @@ mod tests {
 
         // With max_depth 1, shouldn't find nested file
         let files_shallow = find_java_files(dir.path(), 1).unwrap();
-        assert!(files_shallow.is_empty() || !files_shallow.iter().any(|f| f.ends_with("Deep.java")));
+        assert!(
+            files_shallow.is_empty() || !files_shallow.iter().any(|f| f.ends_with("Deep.java"))
+        );
 
         // With max_depth 5, should find it
         let files_deep = find_java_files(dir.path(), 5).unwrap();
@@ -545,8 +550,8 @@ mod tests {
 
     #[test]
     fn test_find_java_files_ignores_other_extensions() {
-        use tempfile::tempdir;
         use std::fs;
+        use tempfile::tempdir;
 
         let dir = tempdir().unwrap();
         fs::write(dir.path().join("test.rs"), "fn main() {}").unwrap();
@@ -559,8 +564,8 @@ mod tests {
 
     #[test]
     fn test_find_java_files_zero_depth() {
-        use tempfile::tempdir;
         use std::fs;
+        use tempfile::tempdir;
 
         let dir = tempdir().unwrap();
         let subdir = dir.path().join("sub");
@@ -575,8 +580,8 @@ mod tests {
 
     #[test]
     fn test_find_java_files_multiple() {
-        use tempfile::tempdir;
         use std::fs;
+        use tempfile::tempdir;
 
         let dir = tempdir().unwrap();
         fs::write(dir.path().join("A.java"), "class A {}").unwrap();
@@ -619,8 +624,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_java_analysis_tool_wrong_extension() {
-        use tempfile::NamedTempFile;
         use std::io::Write;
+        use tempfile::NamedTempFile;
 
         let mut file = NamedTempFile::with_suffix(".rs").unwrap();
         writeln!(file, "fn main() {{}}").unwrap();
@@ -703,7 +708,10 @@ mod tests {
         let value = result.unwrap();
         assert_eq!(value["test_command"], "mvn clean test");
         assert_eq!(value["timeout"], 60);
-        assert_eq!(value["mutation_operators"], json!(["arithmetic", "conditional"]));
+        assert_eq!(
+            value["mutation_operators"],
+            json!(["arithmetic", "conditional"])
+        );
     }
 
     #[tokio::test]
@@ -730,8 +738,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_analyze_java_file_valid() {
-        use tempfile::NamedTempFile;
         use std::io::Write;
+        use tempfile::NamedTempFile;
 
         let mut file = NamedTempFile::with_suffix(".java").unwrap();
         writeln!(
@@ -768,8 +776,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_analyze_java_directory_with_file() {
-        use tempfile::tempdir;
         use std::fs;
+        use tempfile::tempdir;
 
         let dir = tempdir().unwrap();
         fs::write(
@@ -788,8 +796,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_analyze_java_file_with_metrics() {
-        use tempfile::NamedTempFile;
         use std::io::Write;
+        use tempfile::NamedTempFile;
 
         let mut file = NamedTempFile::with_suffix(".java").unwrap();
         writeln!(
@@ -820,8 +828,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_analyze_java_file_without_metrics() {
-        use tempfile::NamedTempFile;
         use std::io::Write;
+        use tempfile::NamedTempFile;
 
         let mut file = NamedTempFile::with_suffix(".java").unwrap();
         writeln!(file, "public class Test {{}}").unwrap();
@@ -838,8 +846,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_analyze_java_directory_with_nested_files() {
-        use tempfile::tempdir;
         use std::fs;
+        use tempfile::tempdir;
 
         let dir = tempdir().unwrap();
         let subdir = dir.path().join("src").join("main").join("java");

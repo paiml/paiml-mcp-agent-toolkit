@@ -571,7 +571,10 @@ mod tests {
 
         let functions = strategy.extract_functions(&dag);
         // Should find constructor + add + subtract = 3 methods
-        assert!(functions.len() >= 3, "Should find at least 3 methods (constructor, add, subtract)");
+        assert!(
+            functions.len() >= 3,
+            "Should find at least 3 methods (constructor, add, subtract)"
+        );
     }
 
     #[tokio::test]
@@ -591,7 +594,9 @@ mod tests {
         assert!(!types.is_empty(), "Should find interface");
 
         // Check for interface class kind
-        let has_interface = types.iter().any(|t| matches!(t.kind, AstKind::Class(ClassKind::Interface)));
+        let has_interface = types
+            .iter()
+            .any(|t| matches!(t.kind, AstKind::Class(ClassKind::Interface)));
         assert!(has_interface, "Should have interface type");
     }
 
@@ -610,7 +615,9 @@ mod tests {
         assert!(types.len() >= 2, "Should find at least 2 type aliases");
 
         // Check for type alias kind
-        let has_alias = types.iter().any(|t| matches!(t.kind, AstKind::Type(TypeKind::Alias)));
+        let has_alias = types
+            .iter()
+            .any(|t| matches!(t.kind, AstKind::Type(TypeKind::Alias)));
         assert!(has_alias, "Should have type alias");
     }
 
@@ -671,7 +678,10 @@ mod tests {
         let dag = strategy.parse_file(&path, content).await.unwrap();
 
         let functions = strategy.extract_functions(&dag);
-        assert!(functions.len() >= 2, "Should find at least 2 arrow functions");
+        assert!(
+            functions.len() >= 2,
+            "Should find at least 2 arrow functions"
+        );
     }
 
     #[tokio::test]
@@ -734,7 +744,10 @@ mod tests {
 
         let functions = strategy.extract_functions(&dag);
         // Should find object method, function expression, and arrow function
-        assert!(functions.len() >= 3, "Should find at least 3 functions in object");
+        assert!(
+            functions.len() >= 3,
+            "Should find at least 3 functions in object"
+        );
     }
 
     #[tokio::test]
@@ -768,7 +781,10 @@ mod tests {
         // Base complexity is 1, and we found 2 function declarations
         // The current implementation doesn't traverse into function bodies
         assert!(cyclomatic >= 1, "Should have base cyclomatic complexity");
-        assert!(cognitive >= 0, "Cognitive complexity should be non-negative");
+        assert!(
+            cognitive >= 0,
+            "Cognitive complexity should be non-negative"
+        );
     }
 
     #[tokio::test]
@@ -822,7 +838,10 @@ mod tests {
         let dag = strategy.parse_file(&path, content).await.unwrap();
 
         let functions = strategy.extract_functions(&dag);
-        assert!(!functions.is_empty(), "Should find React component function");
+        assert!(
+            !functions.is_empty(),
+            "Should find React component function"
+        );
 
         let types = strategy.extract_types(&dag);
         assert!(!types.is_empty(), "Should find Props interface");
@@ -1028,7 +1047,10 @@ mod tests {
         let (cyclomatic, cognitive) = strategy.calculate_complexity(&dag);
         // Base complexity is 1, current implementation doesn't traverse function bodies
         assert!(cyclomatic >= 1, "Should have base cyclomatic complexity");
-        assert!(cognitive >= 0, "Cognitive complexity should be non-negative");
+        assert!(
+            cognitive >= 0,
+            "Cognitive complexity should be non-negative"
+        );
     }
 
     // ==================== Error Handling Tests ====================
@@ -1090,7 +1112,10 @@ mod tests {
         let dag = strategy.parse_file(&path, content).await.unwrap();
 
         let functions = strategy.extract_functions(&dag);
-        assert!(functions.is_empty(), "Comments only should have no functions");
+        assert!(
+            functions.is_empty(),
+            "Comments only should have no functions"
+        );
     }
 
     // ==================== Edge Case Tests ====================
@@ -1161,7 +1186,10 @@ mod tests {
         let dag = strategy.parse_file(&path, content).await.unwrap();
 
         let functions = strategy.extract_functions(&dag);
-        assert!(functions.len() >= 3, "Should find static and instance methods");
+        assert!(
+            functions.len() >= 3,
+            "Should find static and instance methods"
+        );
     }
 
     #[tokio::test]
@@ -1198,7 +1226,10 @@ mod tests {
         assert!(functions.len() >= 4, "Should find all function expressions");
 
         // Check for async flags
-        let async_count = functions.iter().filter(|f| f.flags.has(NodeFlags::ASYNC)).count();
+        let async_count = functions
+            .iter()
+            .filter(|f| f.flags.has(NodeFlags::ASYNC))
+            .count();
         assert!(async_count >= 2, "Should find at least 2 async functions");
     }
 

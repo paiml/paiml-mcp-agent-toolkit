@@ -590,7 +590,11 @@ mod tests {
         let result = resolve_scaffold_templates("rust", vec![]);
         assert_eq!(
             result,
-            vec!["makefile".to_string(), "readme".to_string(), "gitignore".to_string()]
+            vec![
+                "makefile".to_string(),
+                "readme".to_string(),
+                "gitignore".to_string()
+            ]
         );
     }
 
@@ -599,7 +603,11 @@ mod tests {
         let result = resolve_scaffold_templates("deno", vec![]);
         assert_eq!(
             result,
-            vec!["makefile".to_string(), "readme".to_string(), "gitignore".to_string()]
+            vec![
+                "makefile".to_string(),
+                "readme".to_string(),
+                "gitignore".to_string()
+            ]
         );
     }
 
@@ -608,7 +616,11 @@ mod tests {
         let result = resolve_scaffold_templates("python-uv", vec![]);
         assert_eq!(
             result,
-            vec!["makefile".to_string(), "readme".to_string(), "gitignore".to_string()]
+            vec![
+                "makefile".to_string(),
+                "readme".to_string(),
+                "gitignore".to_string()
+            ]
         );
     }
 
@@ -892,8 +904,8 @@ mod tests {
 
     #[test]
     fn test_add_probabilistic_wrapper_spec() {
-        use crate::scaffold::agent::AgentContextBuilder;
         use crate::scaffold::agent::hybrid::{FallbackStrategy, ModelType};
+        use crate::scaffold::agent::AgentContextBuilder;
         let builder = AgentContextBuilder::new("test", "mcp-server");
         let result = add_probabilistic_wrapper_spec(builder);
         assert!(result.is_ok());
@@ -959,7 +971,8 @@ mod tests {
 
     #[test]
     fn test_build_agent_context_invalid_name_fails() {
-        let result = build_agent_context("agent-with-dash", "mcp-server", &[], "strict", None, None);
+        let result =
+            build_agent_context("agent-with-dash", "mcp-server", &[], "strict", None, None);
         assert!(result.is_err());
     }
 
@@ -1140,7 +1153,11 @@ mod tests {
         let params = ScaffoldWasmParams {
             name: "featured_wasm".to_string(),
             framework: "wasm-labs".to_string(),
-            features: vec!["logging".to_string(), "metrics".to_string(), "tracing".to_string()],
+            features: vec![
+                "logging".to_string(),
+                "metrics".to_string(),
+                "tracing".to_string(),
+            ],
             quality: "extreme".to_string(),
             output: None,
             force: false,

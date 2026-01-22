@@ -325,13 +325,7 @@ mod tests {
             4.5,
             ComplexitySeverity::Critical,
         ));
-        explained.add_function(create_function(
-            "low",
-            40,
-            3,
-            0.5,
-            ComplexitySeverity::Low,
-        ));
+        explained.add_function(create_function("low", 40, 3, 0.5, ComplexitySeverity::Low));
 
         let recommendations = generate_recommendations(&explained);
 

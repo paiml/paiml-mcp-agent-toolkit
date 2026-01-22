@@ -1157,7 +1157,6 @@ pub fn detect_repository(hint: Option<PathBuf>) -> Result<PathBuf> {
     read_repository_path_from_user()
 }
 
-
 // Tests extracted to runner_tests.rs for file health compliance (CB-040)
 #[cfg(test)]
 #[path = "runner_tests.rs"]

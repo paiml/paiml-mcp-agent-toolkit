@@ -61,7 +61,7 @@ impl CorrelationEngine {
         let dwarf_functions: HashMap<String, &DwarfDebugEntry> = dwarf_entries
             .iter()
             .filter(|e| e.tag.contains("subprogram") && e.name.is_some())
-            .map(|e| (e.name.as_ref().unwrap().clone(), e))
+            .map(|e| (e.name.as_ref().expect("filtered for is_some").clone(), e))
             .collect();
 
         // Build source map by file
@@ -145,7 +145,7 @@ impl CorrelationEngine {
         mappings.retain(|m| m.confidence >= self.confidence_threshold);
 
         // Sort by confidence (highest first)
-        mappings.sort_by(|a, b| b.confidence.partial_cmp(&a.confidence).unwrap());
+        mappings.sort_by(|a, b| b.confidence.partial_cmp(&a.confidence).expect("confidence is not NaN"));
 
         Ok(mappings)
     }
@@ -184,7 +184,7 @@ impl CorrelationEngine {
         let dwarf_functions: HashMap<String, &DwarfDebugEntry> = dwarf_entries
             .iter()
             .filter(|e| e.tag.contains("subprogram") && e.name.is_some())
-            .map(|e| (e.name.as_ref().unwrap().clone(), e))
+            .map(|e| (e.name.as_ref().expect("filtered for is_some").clone(), e))
             .collect();
 
         // Build source map by file and name
@@ -263,7 +263,7 @@ impl CorrelationEngine {
         mappings.retain(|m| m.confidence >= self.confidence_threshold);
 
         // Sort by confidence (highest first)
-        mappings.sort_by(|a, b| b.confidence.partial_cmp(&a.confidence).unwrap());
+        mappings.sort_by(|a, b| b.confidence.partial_cmp(&a.confidence).expect("confidence is not NaN"));
 
         Ok(mappings)
     }

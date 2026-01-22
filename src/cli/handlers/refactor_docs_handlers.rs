@@ -862,7 +862,6 @@ fn format_json(result: &RefactorDocsResult) -> Result<String> {
     serde_json::to_string_pretty(result).context("Failed to serialize to JSON")
 }
 
-
 // Tests extracted to refactor_docs_handlers_tests.rs for file health compliance (CB-040)
 #[cfg(test)]
 #[path = "refactor_docs_handlers_tests.rs"]

@@ -632,7 +632,6 @@ impl LanguageMapper for RubyMapper {
     }
 }
 
-
 // Tests extracted to language_mapper_tests.rs for file health compliance (CB-040)
 #[cfg(test)]
 #[path = "language_mapper_tests.rs"]

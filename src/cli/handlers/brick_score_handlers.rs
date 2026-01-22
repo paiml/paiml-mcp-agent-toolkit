@@ -63,9 +63,8 @@ pub async fn handle_brick_score(
         }
 
         // Use first found file
-        load_profiler_json(&files[0]).with_context(|| {
-            format!("Failed to load profiler JSON from {}", files[0].display())
-        })?
+        load_profiler_json(&files[0])
+            .with_context(|| format!("Failed to load profiler JSON from {}", files[0].display()))?
     };
 
     // Load default budgets, scaled for hardware if available

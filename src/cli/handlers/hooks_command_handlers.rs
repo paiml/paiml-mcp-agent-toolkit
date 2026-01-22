@@ -893,7 +893,10 @@ async fn handle_run(
                 if verbose {
                     println!("🎯 O(1) Cache HIT - Skipping full analysis");
                     println!("   Cached result: {:?}", result);
-                    println!("   Cached at: {}", cached_at.format("%Y-%m-%d %H:%M:%S UTC"));
+                    println!(
+                        "   Cached at: {}",
+                        cached_at.format("%Y-%m-%d %H:%M:%S UTC")
+                    );
                     println!("   Check time: {:.2}ms", elapsed.as_secs_f64() * 1000.0);
                 }
 
@@ -1059,7 +1062,10 @@ async fn handle_cache_status(manager: &HooksCacheManager, format: &OutputFormat)
                 CacheCheckResult::Hit { result, cached_at } => {
                     println!("🎯 Cache Status: HIT");
                     println!("   Result: {:?}", result);
-                    println!("   Cached at: {}", cached_at.format("%Y-%m-%d %H:%M:%S UTC"));
+                    println!(
+                        "   Cached at: {}",
+                        cached_at.format("%Y-%m-%d %H:%M:%S UTC")
+                    );
                     println!();
                     println!("   ✅ O(1) skip available - no full analysis needed");
                 }
@@ -1083,14 +1089,8 @@ async fn handle_cache_status(manager: &HooksCacheManager, format: &OutputFormat)
             println!("📈 Metrics:");
             println!("   Total runs: {}", metrics.total_runs);
             println!("   Hit rate: {:.1}%", hit_rate * 100.0);
-            println!(
-                "   Avg hit time: {:.1}ms",
-                metrics.avg_cache_hit_time_ms
-            );
-            println!(
-                "   Avg miss time: {:.1}ms",
-                metrics.avg_cache_miss_time_ms
-            );
+            println!("   Avg hit time: {:.1}ms", metrics.avg_cache_hit_time_ms);
+            println!("   Avg miss time: {:.1}ms", metrics.avg_cache_miss_time_ms);
             println!("   Cache size: {} bytes", metrics.cache_size_bytes);
         }
     }
@@ -1158,10 +1158,7 @@ async fn handle_cache_metrics(manager: &HooksCacheManager, format: &OutputFormat
                 "   Avg cache hit: {:.2}ms (target: <5ms)",
                 metrics.avg_cache_hit_time_ms
             );
-            println!(
-                "   Avg cache miss: {:.2}ms",
-                metrics.avg_cache_miss_time_ms
-            );
+            println!("   Avg cache miss: {:.2}ms", metrics.avg_cache_miss_time_ms);
             if let Some(last_rebuild) = metrics.last_full_rebuild {
                 println!(
                     "   Last full rebuild: {}",
@@ -1321,7 +1318,6 @@ fn install_tdg_post_commit_hook(hooks_dir: &Path, config: &TdgHooksConfig) -> Re
 
     Ok(())
 }
-
 
 // Tests extracted to hooks_command_handlers_tests.rs for file health compliance (CB-040)
 #[cfg(test)]

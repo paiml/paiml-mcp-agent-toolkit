@@ -314,11 +314,11 @@ impl NamingStyle {
                 name.chars().all(|c| c.is_lowercase() || c == '_' || c.is_numeric())
             }
             NamingStyle::CamelCase => {
-                !name.is_empty() && name.chars().next().unwrap().is_lowercase()
+                !name.is_empty() && name.chars().next().expect("checked is_empty").is_lowercase()
                     && !name.contains('_') && !name.contains('-')
             }
             NamingStyle::PascalCase => {
-                !name.is_empty() && name.chars().next().unwrap().is_uppercase()
+                !name.is_empty() && name.chars().next().expect("checked is_empty").is_uppercase()
                     && !name.contains('_') && !name.contains('-')
             }
             NamingStyle::ScreamingSnakeCase => {

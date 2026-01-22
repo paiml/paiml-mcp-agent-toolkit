@@ -2,12 +2,11 @@
 //! Extracted to separate file for file health compliance (CB-040)
 
 use super::*;
-use std::path::PathBuf;
 use proptest::prelude::*;
 use std::collections::HashMap;
+use std::path::PathBuf;
 
 use super::*;
-use std::path::PathBuf;
 
 #[test]
 fn test_pattern_type_equality() {
@@ -253,7 +252,6 @@ fn test_empty_content_no_patterns() {
         "Empty content should produce no patterns"
     );
 }
-}
 
 // Property tests
 use proptest::prelude::*;
@@ -271,12 +269,9 @@ proptest! {
         prop_assert!(_x < 1001);
     }
 }
-}
-
 
 // Coverage tests
 use super::*;
-use std::path::PathBuf;
 
 // PatternType tests
 #[test]
@@ -654,7 +649,10 @@ fn test_extract_ruchy_pipeline_patterns() {
         simple_matches.len() >= 5,
         "Expected >= 5 pipe-greater-than, got {}: {:?}",
         simple_matches.len(),
-        simple_matches.iter().map(|m| m.as_str()).collect::<Vec<_>>()
+        simple_matches
+            .iter()
+            .map(|m| m.as_str())
+            .collect::<Vec<_>>()
     );
 
     // The function's regex: \s*\|\>\s*\w+\(

@@ -587,7 +587,10 @@ function App() {}
         let distribution = calc.calculate_distribution(&scores);
         assert_eq!(distribution.total_files, 1);
         // Value 2.3 should be in bucket [2.0, 2.5)
-        let bucket = distribution.buckets.iter().find(|b| b.min == 2.0 && b.max == 2.5);
+        let bucket = distribution
+            .buckets
+            .iter()
+            .find(|b| b.min == 2.0 && b.max == 2.5);
         assert!(bucket.is_some());
         assert_eq!(bucket.unwrap().count, 1);
         assert_eq!(bucket.unwrap().percentage, 100.0);

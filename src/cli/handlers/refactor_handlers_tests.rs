@@ -3,8 +3,8 @@
 
 use super::*;
 use proptest::prelude::*;
-use tempfile::TempDir;
 use std::sync::Arc;
+use tempfile::TempDir;
 
 mod property_tests {
     use proptest::prelude::*;
@@ -23,7 +23,6 @@ mod property_tests {
         }
     }
 }
-
 
 mod coverage_tests {
     use super::*;
@@ -61,8 +60,11 @@ mod coverage_tests {
                 "parallel_workers": 4
             }
         });
-        std::fs::write(&checkpoint_file, serde_json::to_string_pretty(&checkpoint_data).unwrap())
-            .unwrap();
+        std::fs::write(
+            &checkpoint_file,
+            serde_json::to_string_pretty(&checkpoint_data).unwrap(),
+        )
+        .unwrap();
         (dir, checkpoint_file)
     }
 
@@ -81,7 +83,11 @@ mod coverage_tests {
             "priority_expression": "complexity * defect_probability",
             "auto_commit_template": "refactor: fix {files} files"
         });
-        std::fs::write(&config_file, serde_json::to_string_pretty(&config_data).unwrap()).unwrap();
+        std::fs::write(
+            &config_file,
+            serde_json::to_string_pretty(&config_data).unwrap(),
+        )
+        .unwrap();
         (dir, config_file)
     }
 
@@ -588,7 +594,8 @@ mod coverage_tests {
     fn test_format_refactor_status_json() {
         let checkpoint_data = r#"{"status": "ok"}"#;
         let checkpoint = PathBuf::from("/tmp/test.json");
-        let result = format_refactor_status(checkpoint_data, RefactorOutputFormat::Json, &checkpoint);
+        let result =
+            format_refactor_status(checkpoint_data, RefactorOutputFormat::Json, &checkpoint);
         assert!(result.is_ok());
     }
 
@@ -1014,9 +1021,9 @@ mod coverage_tests {
             mode: RefactorMode::Batch,
             config: Some(config_path),
             project: PathBuf::from("."),
-            parallel: 32, // Override
-            memory_limit: 4096, // Override
-            batch_size: 100, // Override
+            parallel: 32,                                // Override
+            memory_limit: 4096,                          // Override
+            batch_size: 100,                             // Override
             priority: Some("high_priority".to_string()), // Override
             checkpoint_dir: None,
             resume: false,
@@ -1031,7 +1038,10 @@ mod coverage_tests {
         assert_eq!(config.parallel_workers, 32);
         assert_eq!(config.memory_limit_mb, 4096);
         assert_eq!(config.batch_size, 100);
-        assert_eq!(config.priority_expression, Some("high_priority".to_string()));
+        assert_eq!(
+            config.priority_expression,
+            Some("high_priority".to_string())
+        );
         assert_eq!(
             config.auto_commit_template,
             Some("custom template".to_string())

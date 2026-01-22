@@ -1,0 +1,30 @@
+use anyhow::Result;
+use blake3;
+use std::fs;
+use std::path::{Path, PathBuf};
+use std::time::{Duration, SystemTime};
+
+use crate::entropy::EntropyAnalyzer;
+use crate::services::defect_detector::{RustDefectDetector, Severity as DefectSeverity};
+use crate::tdg::{
+    config::TdgConfig, AdaptiveThresholdFactory, AdaptiveThresholdManager, AnalysisMetadata,
+    ComponentScores, FileIdentity, FullTdgRecord, Grade, Language, MetricCategory,
+    OperationPriority, PenaltyTracker, PlatformResourceController, ProjectScore,
+    ResourceControllerFactory, SchedulerFactory, SemanticSignature, SimpleFairScheduler, TdgScore,
+    TieredStorageFactory, TieredStore,
+};
+
+/// AST-based TDG analyzer - proper implementation per specification
+pub struct TdgAnalyzerAst {
+    config: TdgConfig,
+    storage: Option<TieredStore>,
+    scheduler: Option<SimpleFairScheduler>,
+    adaptive_manager: Option<AdaptiveThresholdManager>,
+    resource_controller: Option<PlatformResourceController>,
+    /// Sprint 65: Optional git context for commit correlation
+    git_context: Option<crate::models::git_context::GitContext>,
+}
+
+include!("analyzer_impl1.rs");
+include!("analyzer_impl2.rs");
+include!("visitors.rs");

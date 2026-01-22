@@ -229,7 +229,8 @@ fn test_contract_error_messages() {
     };
 
     // Use a path that is guaranteed not to exist
-    let nonexistent_path = PathBuf::from("/___this_path_definitely_does_not_exist_pmat_test_12345___");
+    let nonexistent_path =
+        PathBuf::from("/___this_path_definitely_does_not_exist_pmat_test_12345___");
     contract.base.path = nonexistent_path.clone();
     match contract.validate() {
         Err(ContractError::PathNotFound(path)) => {

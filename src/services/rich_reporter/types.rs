@@ -384,7 +384,12 @@ mod tests {
 
     #[test]
     fn test_severity_serialization() {
-        for severity in [Severity::Low, Severity::Medium, Severity::High, Severity::Critical] {
+        for severity in [
+            Severity::Low,
+            Severity::Medium,
+            Severity::High,
+            Severity::Critical,
+        ] {
             let json = serde_json::to_string(&severity).unwrap();
             let parsed: Severity = serde_json::from_str(&json).unwrap();
             assert_eq!(severity, parsed);
@@ -426,7 +431,11 @@ mod tests {
 
     #[test]
     fn test_trend_direction_serialization() {
-        for direction in [TrendDirection::Improving, TrendDirection::Stable, TrendDirection::Degrading] {
+        for direction in [
+            TrendDirection::Improving,
+            TrendDirection::Stable,
+            TrendDirection::Degrading,
+        ] {
             let json = serde_json::to_string(&direction).unwrap();
             let parsed: TrendDirection = serde_json::from_str(&json).unwrap();
             assert_eq!(direction, parsed);
@@ -717,7 +726,11 @@ mod tests {
 
     #[test]
     fn test_output_format_serialization() {
-        for format in [OutputFormat::Text, OutputFormat::Json, OutputFormat::Markdown] {
+        for format in [
+            OutputFormat::Text,
+            OutputFormat::Json,
+            OutputFormat::Markdown,
+        ] {
             let json = serde_json::to_string(&format).unwrap();
             let parsed: OutputFormat = serde_json::from_str(&json).unwrap();
             assert_eq!(format, parsed);
@@ -805,7 +818,9 @@ mod tests {
     fn test_rich_report_calculate_andon_status_red() {
         let mut report = RichReport::new("Test", "proj");
         report.findings.push(create_test_finding(Severity::Low));
-        report.findings.push(create_test_finding(Severity::Critical));
+        report
+            .findings
+            .push(create_test_finding(Severity::Critical));
 
         report.calculate_andon_status();
         assert_eq!(report.andon_status, AndonStatus::Red);
@@ -817,7 +832,9 @@ mod tests {
         report.findings.push(create_test_finding(Severity::Low));
         report.findings.push(create_test_finding(Severity::Low));
         report.findings.push(create_test_finding(Severity::High));
-        report.findings.push(create_test_finding(Severity::Critical));
+        report
+            .findings
+            .push(create_test_finding(Severity::Critical));
 
         let counts = report.findings_by_severity();
 
@@ -891,7 +908,9 @@ mod tests {
         });
 
         // Add summary
-        report.summary.insert("total_findings".to_string(), "1".to_string());
+        report
+            .summary
+            .insert("total_findings".to_string(), "1".to_string());
 
         // Add recommendations
         report.recommendations.push("Fix type error".to_string());

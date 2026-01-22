@@ -167,10 +167,14 @@ mod tests {
             complexity: 3.0,
             ast_hash: 2,
         });
-        graph.add_edge(n1, n2, EdgeData::Import {
-            weight: 1.0,
-            visibility: Visibility::Public,
-        });
+        graph.add_edge(
+            n1,
+            n2,
+            EdgeData::Import {
+                weight: 1.0,
+                visibility: Visibility::Public,
+            },
+        );
 
         let scores = computer.compute(&graph);
         // With edges, should have scores for nodes in connected component
@@ -224,14 +228,22 @@ mod tests {
         });
 
         // Chain: a -> b -> c
-        graph.add_edge(n1, n2, EdgeData::Import {
-            weight: 1.0,
-            visibility: Visibility::Public,
-        });
-        graph.add_edge(n2, n3, EdgeData::Import {
-            weight: 1.0,
-            visibility: Visibility::Public,
-        });
+        graph.add_edge(
+            n1,
+            n2,
+            EdgeData::Import {
+                weight: 1.0,
+                visibility: Visibility::Public,
+            },
+        );
+        graph.add_edge(
+            n2,
+            n3,
+            EdgeData::Import {
+                weight: 1.0,
+                visibility: Visibility::Public,
+            },
+        );
 
         let scores = computer.compute(&graph);
         assert!(!scores.is_empty());
@@ -259,14 +271,22 @@ mod tests {
         });
 
         // Cycle: a <-> b
-        graph.add_edge(n1, n2, EdgeData::Import {
-            weight: 1.0,
-            visibility: Visibility::Public,
-        });
-        graph.add_edge(n2, n1, EdgeData::Import {
-            weight: 1.0,
-            visibility: Visibility::Public,
-        });
+        graph.add_edge(
+            n1,
+            n2,
+            EdgeData::Import {
+                weight: 1.0,
+                visibility: Visibility::Public,
+            },
+        );
+        graph.add_edge(
+            n2,
+            n1,
+            EdgeData::Import {
+                weight: 1.0,
+                visibility: Visibility::Public,
+            },
+        );
 
         let scores = computer.compute(&graph);
         assert!(!scores.is_empty());
@@ -299,10 +319,14 @@ mod tests {
             complexity: 2.0,
             ast_hash: 2,
         });
-        graph.add_edge(n1, n2, EdgeData::Import {
-            weight: 1.0,
-            visibility: Visibility::Public,
-        });
+        graph.add_edge(
+            n1,
+            n2,
+            EdgeData::Import {
+                weight: 1.0,
+                visibility: Visibility::Public,
+            },
+        );
 
         // Convert to GraphMatrices using From trait
         let matrices: GraphMatrices = GraphMatrices::from(&graph);
@@ -363,18 +387,30 @@ mod tests {
         });
 
         // Hub receives links from all spokes
-        graph.add_edge(n2, n1, EdgeData::Import {
-            weight: 1.0,
-            visibility: Visibility::Public,
-        });
-        graph.add_edge(n3, n1, EdgeData::Import {
-            weight: 1.0,
-            visibility: Visibility::Public,
-        });
-        graph.add_edge(n4, n1, EdgeData::Import {
-            weight: 1.0,
-            visibility: Visibility::Public,
-        });
+        graph.add_edge(
+            n2,
+            n1,
+            EdgeData::Import {
+                weight: 1.0,
+                visibility: Visibility::Public,
+            },
+        );
+        graph.add_edge(
+            n3,
+            n1,
+            EdgeData::Import {
+                weight: 1.0,
+                visibility: Visibility::Public,
+            },
+        );
+        graph.add_edge(
+            n4,
+            n1,
+            EdgeData::Import {
+                weight: 1.0,
+                visibility: Visibility::Public,
+            },
+        );
 
         let scores = computer.compute(&graph);
         assert!(!scores.is_empty());

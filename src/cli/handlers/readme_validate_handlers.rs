@@ -860,7 +860,11 @@ Supported languages:
 
         // README with no PMAT claims
         let mut readme_file = NamedTempFile::new().unwrap();
-        writeln!(readme_file, "This is a simple README without any PMAT claims.").unwrap();
+        writeln!(
+            readme_file,
+            "This is a simple README without any PMAT claims."
+        )
+        .unwrap();
         writeln!(readme_file, "It just contains some text.").unwrap();
 
         let cmd = ValidateReadmeCmd {
@@ -1044,11 +1048,7 @@ Supported languages:
         let results = vec![(
             PathBuf::from("test.md"),
             vec![
-                create_test_validation_result(
-                    "PMAT can analyze",
-                    ValidationStatus::Verified,
-                    0.95,
-                ),
+                create_test_validation_result("PMAT can analyze", ValidationStatus::Verified, 0.95),
                 create_test_validation_result(
                     "PMAT can compile",
                     ValidationStatus::Contradiction,

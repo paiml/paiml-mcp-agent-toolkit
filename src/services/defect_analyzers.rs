@@ -792,7 +792,6 @@ impl DefectAnalyzer for ArchitectureDefectAnalyzer {
     }
 }
 
-
 // Tests extracted to defect_analyzers_tests.rs for file health compliance (CB-040)
 #[cfg(test)]
 #[path = "defect_analyzers_tests.rs"]

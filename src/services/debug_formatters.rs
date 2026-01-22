@@ -257,9 +257,17 @@ mod tests {
         }
 
         analysis.root_cause = Some("Deep nested root cause".to_string());
-        analysis.recommendations.push(Recommendation::high("High priority fix".to_string(), None));
-        analysis.recommendations.push(Recommendation::medium("Medium priority refactor".to_string(), None));
-        analysis.recommendations.push(Recommendation::low("Low priority cleanup".to_string(), None));
+        analysis
+            .recommendations
+            .push(Recommendation::high("High priority fix".to_string(), None));
+        analysis.recommendations.push(Recommendation::medium(
+            "Medium priority refactor".to_string(),
+            None,
+        ));
+        analysis.recommendations.push(Recommendation::low(
+            "Low priority cleanup".to_string(),
+            None,
+        ));
 
         analysis.evidence_summary.complexity_violations = 5;
         analysis.evidence_summary.satd_markers = 10;
@@ -391,7 +399,10 @@ mod tests {
         let parsed: DebugAnalysis = serde_json::from_str(&output).unwrap();
         assert_eq!(parsed.issue, "Test issue");
         assert_eq!(parsed.whys.len(), 1);
-        assert_eq!(parsed.root_cause, Some("Root cause description".to_string()));
+        assert_eq!(
+            parsed.root_cause,
+            Some("Root cause description".to_string())
+        );
     }
 
     #[test]

@@ -166,7 +166,8 @@ impl GitContext {
         let commit_message = Self::git_cmd(repo_path, &["log", "-1", "--format=%s", sha])?;
 
         // Get tags at this commit
-        let tags_output = Self::git_cmd(repo_path, &["tag", "--points-at", sha]).unwrap_or_default();
+        let tags_output =
+            Self::git_cmd(repo_path, &["tag", "--points-at", sha]).unwrap_or_default();
         let tags: Vec<String> = tags_output
             .lines()
             .filter(|s| !s.is_empty())
@@ -185,7 +186,8 @@ impl GitContext {
         let remote_url = Self::git_cmd(repo_path, &["remote", "get-url", "origin"]).ok();
 
         // Check working directory status
-        let status_output = Self::git_cmd(repo_path, &["status", "--porcelain"]).unwrap_or_default();
+        let status_output =
+            Self::git_cmd(repo_path, &["status", "--porcelain"]).unwrap_or_default();
         let uncommitted_files = status_output.lines().filter(|s| !s.is_empty()).count();
         let is_clean = uncommitted_files == 0;
 
@@ -249,9 +251,8 @@ impl GitContext {
         let repo = Repository::open(repo_path)
             .map_err(|e| GitContextError::NotGitRepo(format!("{}: {}", repo_path.display(), e)))?;
 
-        let oid = Oid::from_str(sha).map_err(|e| {
-            GitContextError::InvalidCommitSha(format!("Invalid SHA '{sha}': {e}"))
-        })?;
+        let oid = Oid::from_str(sha)
+            .map_err(|e| GitContextError::InvalidCommitSha(format!("Invalid SHA '{sha}': {e}")))?;
 
         let commit = repo.find_commit(oid).map_err(|e| {
             GitContextError::InvalidCommitSha(format!("Commit '{sha}' not found: {e}"))

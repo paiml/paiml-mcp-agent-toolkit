@@ -1141,7 +1141,9 @@ metadata: {}
             })
             .collect();
 
-        let workflow = FluentWorkflow::define("many_parallel").parallel(steps).build();
+        let workflow = FluentWorkflow::define("many_parallel")
+            .parallel(steps)
+            .build();
 
         match &workflow.steps[0].step_type {
             StepType::Parallel { steps } => {

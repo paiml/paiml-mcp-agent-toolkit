@@ -475,16 +475,24 @@ mod property_tests {
     /// Strategy for generating valid TDGSummary values
     fn tdg_summary_strategy() -> impl Strategy<Value = TDGSummary> {
         (
-            1usize..1000,        // total_files (at least 1 to avoid div by zero in percentages)
-            0usize..100,         // critical_files
-            0usize..100,         // warning_files
-            0.0f64..100.0,       // average_tdg
-            0.0f64..100.0,       // p95_tdg
-            0.0f64..100.0,       // p99_tdg
-            0.0f64..10000.0,     // estimated_debt_hours
+            1usize..1000,    // total_files (at least 1 to avoid div by zero in percentages)
+            0usize..100,     // critical_files
+            0usize..100,     // warning_files
+            0.0f64..100.0,   // average_tdg
+            0.0f64..100.0,   // p95_tdg
+            0.0f64..100.0,   // p99_tdg
+            0.0f64..10000.0, // estimated_debt_hours
         )
             .prop_map(
-                |(total_files, critical_files, warning_files, average_tdg, p95_tdg, p99_tdg, estimated_debt_hours)| {
+                |(
+                    total_files,
+                    critical_files,
+                    warning_files,
+                    average_tdg,
+                    p95_tdg,
+                    p99_tdg,
+                    estimated_debt_hours,
+                )| {
                     TDGSummary {
                         total_files,
                         critical_files: critical_files.min(total_files),
@@ -502,22 +510,27 @@ mod property_tests {
     /// Strategy for generating valid TDGHotspot values
     fn tdg_hotspot_strategy() -> impl Strategy<Value = TDGHotspot> {
         (
-            "[a-z/]{1,50}",       // path
-            0.0f64..100.0,        // tdg_score
-            "[A-Za-z ]{1,30}",    // primary_factor
-            0.0f64..1000.0,       // estimated_hours
+            "[a-z/]{1,50}",    // path
+            0.0f64..100.0,     // tdg_score
+            "[A-Za-z ]{1,30}", // primary_factor
+            0.0f64..1000.0,    // estimated_hours
         )
-            .prop_map(|(path, tdg_score, primary_factor, estimated_hours)| TDGHotspot {
-                path,
-                tdg_score,
-                primary_factor,
-                estimated_hours,
-            })
+            .prop_map(
+                |(path, tdg_score, primary_factor, estimated_hours)| TDGHotspot {
+                    path,
+                    tdg_score,
+                    primary_factor,
+                    estimated_hours,
+                },
+            )
     }
 
     /// Strategy for TDGSummary with hotspots
     fn tdg_summary_with_hotspots_strategy() -> impl Strategy<Value = TDGSummary> {
-        (tdg_summary_strategy(), proptest::collection::vec(tdg_hotspot_strategy(), 0..10))
+        (
+            tdg_summary_strategy(),
+            proptest::collection::vec(tdg_hotspot_strategy(), 0..10),
+        )
             .prop_map(|(mut summary, hotspots)| {
                 summary.hotspots = hotspots;
                 summary

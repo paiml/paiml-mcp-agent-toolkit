@@ -86,13 +86,8 @@ impl CommandDispatcher {
                 count,
                 path,
             } => {
-                work_handlers::handle_work_list(
-                    status.clone(),
-                    *priority,
-                    *count,
-                    path.clone(),
-                )
-                .await
+                work_handlers::handle_work_list(status.clone(), *priority, *count, path.clone())
+                    .await
             }
             WorkCommands::Edit {
                 id,
@@ -181,8 +176,7 @@ impl CommandDispatcher {
                 dry_run,
                 direction,
             } => {
-                spec_handlers::handle_spec_sync(&spec_path, &roadmap_path, dry_run, direction)
-                    .await
+                spec_handlers::handle_spec_sync(&spec_path, &roadmap_path, dry_run, direction).await
             }
             SpecCommands::Drift {
                 spec_path,

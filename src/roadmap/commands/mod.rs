@@ -611,7 +611,6 @@ fn handle_start(task_id: String, create_branch: bool) -> Result<()> {
     Ok(())
 }
 
-
 #[cfg(test)]
 #[path = "tests.rs"]
 mod tests;

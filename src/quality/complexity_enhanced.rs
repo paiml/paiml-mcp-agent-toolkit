@@ -77,7 +77,13 @@ impl<N, E> SimpleDiGraph<N, E> {
         sccs
     }
 
-    fn dfs_finish(&self, adj: &[Vec<usize>], node: usize, visited: &mut [bool], finish: &mut Vec<usize>) {
+    fn dfs_finish(
+        &self,
+        adj: &[Vec<usize>],
+        node: usize,
+        visited: &mut [bool],
+        finish: &mut Vec<usize>,
+    ) {
         visited[node] = true;
         for &next in &adj[node] {
             if !visited[next] {
@@ -87,7 +93,13 @@ impl<N, E> SimpleDiGraph<N, E> {
         finish.push(node);
     }
 
-    fn dfs_collect(&self, adj: &[Vec<usize>], node: usize, visited: &mut [bool], scc: &mut Vec<usize>) {
+    fn dfs_collect(
+        &self,
+        adj: &[Vec<usize>],
+        node: usize,
+        visited: &mut [bool],
+        scc: &mut Vec<usize>,
+    ) {
         visited[node] = true;
         scc.push(node);
         for &next in &adj[node] {

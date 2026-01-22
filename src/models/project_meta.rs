@@ -225,13 +225,11 @@ mod tests {
     fn test_compressed_makefile_with_data() {
         let compressed = CompressedMakefile {
             variables: vec!["CC=gcc".to_string(), "CFLAGS=-Wall".to_string()],
-            targets: vec![
-                MakeTarget {
-                    name: "all".to_string(),
-                    deps: vec!["build".to_string()],
-                    recipe_summary: "Build all".to_string(),
-                },
-            ],
+            targets: vec![MakeTarget {
+                name: "all".to_string(),
+                deps: vec!["build".to_string()],
+                recipe_summary: "Build all".to_string(),
+            }],
             detected_toolchain: Some("rust".to_string()),
             key_dependencies: vec!["serde".to_string(), "tokio".to_string()],
         };
@@ -250,13 +248,11 @@ mod tests {
     fn test_build_info_from_makefile_with_all() {
         let compressed = CompressedMakefile {
             variables: vec![],
-            targets: vec![
-                MakeTarget {
-                    name: "all".to_string(),
-                    deps: vec!["build".to_string()],
-                    recipe_summary: "cargo build --release".to_string(),
-                },
-            ],
+            targets: vec![MakeTarget {
+                name: "all".to_string(),
+                deps: vec!["build".to_string()],
+                recipe_summary: "cargo build --release".to_string(),
+            }],
             detected_toolchain: Some("rust".to_string()),
             key_dependencies: vec!["serde".to_string()],
         };
@@ -266,7 +262,10 @@ mod tests {
         assert_eq!(build_info.toolchain, "rust");
         assert_eq!(build_info.targets, vec!["all"]);
         assert_eq!(build_info.dependencies, vec!["serde"]);
-        assert_eq!(build_info.primary_command, Some("cargo build --release".to_string()));
+        assert_eq!(
+            build_info.primary_command,
+            Some("cargo build --release".to_string())
+        );
     }
 
     #[test]
@@ -384,48 +383,48 @@ mod tests {
     #[test]
     fn test_compressed_readme_extracts_architecture() {
         let readme = CompressedReadme {
-            sections: vec![
-                CompressedSection {
-                    title: "Architecture Overview".to_string(),
-                    content: "Uses microservices".to_string(),
-                },
-            ],
+            sections: vec![CompressedSection {
+                title: "Architecture Overview".to_string(),
+                content: "Uses microservices".to_string(),
+            }],
             project_description: None,
             key_features: vec![],
         };
 
         let summary = readme.to_summary();
 
-        assert_eq!(summary.architecture_summary, Some("Uses microservices".to_string()));
+        assert_eq!(
+            summary.architecture_summary,
+            Some("Uses microservices".to_string())
+        );
     }
 
     #[test]
     fn test_compressed_readme_extracts_api() {
         let readme = CompressedReadme {
-            sections: vec![
-                CompressedSection {
-                    title: "API Reference".to_string(),
-                    content: "GET /users returns list".to_string(),
-                },
-            ],
+            sections: vec![CompressedSection {
+                title: "API Reference".to_string(),
+                content: "GET /users returns list".to_string(),
+            }],
             project_description: None,
             key_features: vec![],
         };
 
         let summary = readme.to_summary();
 
-        assert_eq!(summary.api_summary, Some("GET /users returns list".to_string()));
+        assert_eq!(
+            summary.api_summary,
+            Some("GET /users returns list".to_string())
+        );
     }
 
     #[test]
     fn test_compressed_readme_extracts_interface() {
         let readme = CompressedReadme {
-            sections: vec![
-                CompressedSection {
-                    title: "User Interface".to_string(),
-                    content: "React-based UI".to_string(),
-                },
-            ],
+            sections: vec![CompressedSection {
+                title: "User Interface".to_string(),
+                content: "React-based UI".to_string(),
+            }],
             project_description: None,
             key_features: vec![],
         };
@@ -459,7 +458,10 @@ mod tests {
         let summary = readme.to_summary();
 
         assert_eq!(summary.compressed_description, "Full project");
-        assert_eq!(summary.architecture_summary, Some("MVC pattern".to_string()));
+        assert_eq!(
+            summary.architecture_summary,
+            Some("MVC pattern".to_string())
+        );
         assert_eq!(summary.api_summary, Some("RESTful API".to_string()));
     }
 
@@ -483,7 +485,10 @@ mod tests {
         let summary = readme.to_summary();
 
         // First match wins
-        assert_eq!(summary.architecture_summary, Some("First architecture".to_string()));
+        assert_eq!(
+            summary.architecture_summary,
+            Some("First architecture".to_string())
+        );
     }
 
     // ========================================================================
@@ -502,9 +507,15 @@ mod tests {
         let json = serde_json::to_string(&overview).unwrap();
         let deserialized: ProjectOverview = serde_json::from_str(&json).unwrap();
 
-        assert_eq!(deserialized.compressed_description, overview.compressed_description);
+        assert_eq!(
+            deserialized.compressed_description,
+            overview.compressed_description
+        );
         assert_eq!(deserialized.key_features, overview.key_features);
-        assert_eq!(deserialized.architecture_summary, overview.architecture_summary);
+        assert_eq!(
+            deserialized.architecture_summary,
+            overview.architecture_summary
+        );
         assert_eq!(deserialized.api_summary, overview.api_summary);
     }
 }

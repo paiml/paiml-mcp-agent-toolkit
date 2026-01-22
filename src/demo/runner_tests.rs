@@ -13,7 +13,6 @@ mod tests {
     }
 }
 
-
 mod property_tests {
     use proptest::prelude::*;
 
@@ -31,7 +30,6 @@ mod property_tests {
         }
     }
 }
-
 
 mod coverage_tests {
     use super::*;
@@ -1451,7 +1449,9 @@ edition = "2021"
         assert_eq!(request.method, "tools/call");
         let params = request.params.unwrap();
         assert_eq!(params["name"], "complex_analysis");
-        assert!(params["arguments"]["options"]["max_depth"].as_i64().is_some());
+        assert!(params["arguments"]["options"]["max_depth"]
+            .as_i64()
+            .is_some());
     }
 
     // === render_step_highlights Edge Cases ===

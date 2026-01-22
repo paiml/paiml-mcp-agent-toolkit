@@ -803,9 +803,7 @@ mod extended_tests {
     async fn test_mcp_adapter_encode_already_jsonrpc() {
         let adapter = McpAdapter::new();
         let jsonrpc_response = JsonRpcResponse::success(json!({"data": "test"}), Some(json!(1)));
-        let response = UnifiedResponse::ok()
-            .with_json(&jsonrpc_response)
-            .unwrap();
+        let response = UnifiedResponse::ok().with_json(&jsonrpc_response).unwrap();
 
         let encoded = adapter.encode(response).await.unwrap();
         let parsed: JsonRpcResponse = serde_json::from_str(&encoded).unwrap();

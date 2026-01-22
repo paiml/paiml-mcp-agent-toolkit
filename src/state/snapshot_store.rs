@@ -821,7 +821,9 @@ mod tests {
 
         // Create an orphaned file
         let orphan_path = format!("{}/{}.snapshot", path, Uuid::new_v4());
-        tokio::fs::write(&orphan_path, b"orphan data").await.unwrap();
+        tokio::fs::write(&orphan_path, b"orphan data")
+            .await
+            .unwrap();
 
         // Create a valid snapshot
         let state = ExampleState::default();
@@ -876,8 +878,12 @@ mod tests {
             .unwrap();
 
         let mut state = ExampleState::default();
-        state.data.insert("key1".to_string(), serde_json::json!({"value": 42}));
-        state.data.insert("key2".to_string(), serde_json::json!("string value"));
+        state
+            .data
+            .insert("key1".to_string(), serde_json::json!({"value": 42}));
+        state
+            .data
+            .insert("key2".to_string(), serde_json::json!("string value"));
         state.last_event_id = 999;
         state.event_count = 50;
 

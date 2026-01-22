@@ -574,7 +574,10 @@ mod tests {
 
     #[test]
     fn test_analysis_error_io_display() {
-        let error = AnalysisError::Io(std::io::Error::new(std::io::ErrorKind::NotFound, "File not found"));
+        let error = AnalysisError::Io(std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            "File not found",
+        ));
         assert!(error.to_string().contains("Failed to read file"));
     }
 

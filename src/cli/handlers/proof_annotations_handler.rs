@@ -354,8 +354,14 @@ mod coverage_tests {
         let annotator = setup_proof_annotator(false);
         let project_path = Path::new("/test/project");
 
-        let result =
-            format_proof_annotations(ProofAnnotationOutputFormat::Json, &annotations, elapsed, &annotator, project_path, true);
+        let result = format_proof_annotations(
+            ProofAnnotationOutputFormat::Json,
+            &annotations,
+            elapsed,
+            &annotator,
+            project_path,
+            true,
+        );
 
         assert!(result.is_ok());
         let content = result.unwrap();
@@ -372,8 +378,14 @@ mod coverage_tests {
         let annotator = setup_proof_annotator(false);
         let project_path = Path::new("/test/project");
 
-        let result =
-            format_proof_annotations(ProofAnnotationOutputFormat::Summary, &annotations, elapsed, &annotator, project_path, false);
+        let result = format_proof_annotations(
+            ProofAnnotationOutputFormat::Summary,
+            &annotations,
+            elapsed,
+            &annotator,
+            project_path,
+            false,
+        );
 
         assert!(result.is_ok());
         let content = result.unwrap();
@@ -388,8 +400,14 @@ mod coverage_tests {
         let annotator = setup_proof_annotator(false);
         let project_path = Path::new("/test/project");
 
-        let result =
-            format_proof_annotations(ProofAnnotationOutputFormat::Full, &annotations, elapsed, &annotator, project_path, true);
+        let result = format_proof_annotations(
+            ProofAnnotationOutputFormat::Full,
+            &annotations,
+            elapsed,
+            &annotator,
+            project_path,
+            true,
+        );
 
         assert!(result.is_ok());
         let content = result.unwrap();
@@ -405,8 +423,14 @@ mod coverage_tests {
         let annotator = setup_proof_annotator(false);
         let project_path = Path::new("/test/project");
 
-        let result =
-            format_proof_annotations(ProofAnnotationOutputFormat::Full, &annotations, elapsed, &annotator, project_path, false);
+        let result = format_proof_annotations(
+            ProofAnnotationOutputFormat::Full,
+            &annotations,
+            elapsed,
+            &annotator,
+            project_path,
+            false,
+        );
 
         assert!(result.is_ok());
         let content = result.unwrap();
@@ -421,8 +445,14 @@ mod coverage_tests {
         let annotator = setup_proof_annotator(false);
         let project_path = Path::new("/test/project");
 
-        let result =
-            format_proof_annotations(ProofAnnotationOutputFormat::Markdown, &annotations, elapsed, &annotator, project_path, true);
+        let result = format_proof_annotations(
+            ProofAnnotationOutputFormat::Markdown,
+            &annotations,
+            elapsed,
+            &annotator,
+            project_path,
+            true,
+        );
 
         assert!(result.is_ok());
         let content = result.unwrap();
@@ -438,8 +468,14 @@ mod coverage_tests {
         let annotator = setup_proof_annotator(false);
         let project_path = Path::new("/test/project");
 
-        let result =
-            format_proof_annotations(ProofAnnotationOutputFormat::Markdown, &annotations, elapsed, &annotator, project_path, false);
+        let result = format_proof_annotations(
+            ProofAnnotationOutputFormat::Markdown,
+            &annotations,
+            elapsed,
+            &annotator,
+            project_path,
+            false,
+        );
 
         assert!(result.is_ok());
         let content = result.unwrap();
@@ -456,8 +492,14 @@ mod coverage_tests {
         let annotator = setup_proof_annotator(false);
         let project_path = Path::new("/test/project");
 
-        let result =
-            format_proof_annotations(ProofAnnotationOutputFormat::Sarif, &annotations, elapsed, &annotator, project_path, true);
+        let result = format_proof_annotations(
+            ProofAnnotationOutputFormat::Sarif,
+            &annotations,
+            elapsed,
+            &annotator,
+            project_path,
+            true,
+        );
 
         assert!(result.is_ok());
         let content = result.unwrap();
@@ -476,24 +518,54 @@ mod coverage_tests {
         let project_path = Path::new("/test/project");
 
         // Test all formats with empty annotations
-        let json_result =
-            format_proof_annotations(ProofAnnotationOutputFormat::Json, &annotations, elapsed, &annotator, project_path, true);
+        let json_result = format_proof_annotations(
+            ProofAnnotationOutputFormat::Json,
+            &annotations,
+            elapsed,
+            &annotator,
+            project_path,
+            true,
+        );
         assert!(json_result.is_ok());
 
-        let summary_result =
-            format_proof_annotations(ProofAnnotationOutputFormat::Summary, &annotations, elapsed, &annotator, project_path, true);
+        let summary_result = format_proof_annotations(
+            ProofAnnotationOutputFormat::Summary,
+            &annotations,
+            elapsed,
+            &annotator,
+            project_path,
+            true,
+        );
         assert!(summary_result.is_ok());
 
-        let full_result =
-            format_proof_annotations(ProofAnnotationOutputFormat::Full, &annotations, elapsed, &annotator, project_path, true);
+        let full_result = format_proof_annotations(
+            ProofAnnotationOutputFormat::Full,
+            &annotations,
+            elapsed,
+            &annotator,
+            project_path,
+            true,
+        );
         assert!(full_result.is_ok());
 
-        let markdown_result =
-            format_proof_annotations(ProofAnnotationOutputFormat::Markdown, &annotations, elapsed, &annotator, project_path, true);
+        let markdown_result = format_proof_annotations(
+            ProofAnnotationOutputFormat::Markdown,
+            &annotations,
+            elapsed,
+            &annotator,
+            project_path,
+            true,
+        );
         assert!(markdown_result.is_ok());
 
-        let sarif_result =
-            format_proof_annotations(ProofAnnotationOutputFormat::Sarif, &annotations, elapsed, &annotator, project_path, true);
+        let sarif_result = format_proof_annotations(
+            ProofAnnotationOutputFormat::Sarif,
+            &annotations,
+            elapsed,
+            &annotator,
+            project_path,
+            true,
+        );
         assert!(sarif_result.is_ok());
     }
 
@@ -551,7 +623,11 @@ mod coverage_tests {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let project_path = temp_dir.path().to_path_buf();
 
-        std::fs::write(project_path.join("main.rs"), "fn main() { println!(\"test\"); }").expect("Failed to write file");
+        std::fs::write(
+            project_path.join("main.rs"),
+            "fn main() { println!(\"test\"); }",
+        )
+        .expect("Failed to write file");
 
         let result = handle_analyze_proof_annotations(
             project_path,
@@ -574,7 +650,8 @@ mod coverage_tests {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let project_path = temp_dir.path().to_path_buf();
 
-        std::fs::write(project_path.join("lib.rs"), "pub fn exported() {}").expect("Failed to write file");
+        std::fs::write(project_path.join("lib.rs"), "pub fn exported() {}")
+            .expect("Failed to write file");
 
         let result = handle_analyze_proof_annotations(
             project_path,
@@ -597,7 +674,8 @@ mod coverage_tests {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let project_path = temp_dir.path().to_path_buf();
 
-        std::fs::write(project_path.join("lib.rs"), "unsafe fn danger() {}").expect("Failed to write file");
+        std::fs::write(project_path.join("lib.rs"), "unsafe fn danger() {}")
+            .expect("Failed to write file");
 
         let result = handle_analyze_proof_annotations(
             project_path,
@@ -887,8 +965,14 @@ mod coverage_tests {
         let annotator = setup_proof_annotator(false);
         let project_path = Path::new("/test");
 
-        let result =
-            format_proof_annotations(ProofAnnotationOutputFormat::Sarif, &annotations, elapsed, &annotator, project_path, true);
+        let result = format_proof_annotations(
+            ProofAnnotationOutputFormat::Sarif,
+            &annotations,
+            elapsed,
+            &annotator,
+            project_path,
+            true,
+        );
 
         assert!(result.is_ok());
         let content = result.unwrap();
@@ -906,27 +990,30 @@ mod coverage_tests {
 
     #[test]
     fn test_format_with_functional_correctness_property() {
-        let annotations = vec![(
-            create_test_location("test.rs", 1, 10),
-            {
-                let mut ann = create_test_annotation(
-                    ConfidenceLevel::High,
-                    PropertyType::FunctionalCorrectness("spec_123".to_string()),
-                    VerificationMethod::FormalProof {
-                        prover: "lean".to_string(),
-                    },
-                );
-                ann.specification_id = Some("spec_123".to_string());
-                ann
-            },
-        )];
+        let annotations = vec![(create_test_location("test.rs", 1, 10), {
+            let mut ann = create_test_annotation(
+                ConfidenceLevel::High,
+                PropertyType::FunctionalCorrectness("spec_123".to_string()),
+                VerificationMethod::FormalProof {
+                    prover: "lean".to_string(),
+                },
+            );
+            ann.specification_id = Some("spec_123".to_string());
+            ann
+        })];
 
         let elapsed = Duration::from_millis(100);
         let annotator = setup_proof_annotator(false);
         let project_path = Path::new("/test");
 
-        let result =
-            format_proof_annotations(ProofAnnotationOutputFormat::Full, &annotations, elapsed, &annotator, project_path, true);
+        let result = format_proof_annotations(
+            ProofAnnotationOutputFormat::Full,
+            &annotations,
+            elapsed,
+            &annotator,
+            project_path,
+            true,
+        );
 
         assert!(result.is_ok());
         let content = result.unwrap();
@@ -955,8 +1042,14 @@ mod coverage_tests {
         let annotator = setup_proof_annotator(false);
         let project_path = Path::new("/test");
 
-        let result =
-            format_proof_annotations(ProofAnnotationOutputFormat::Json, &annotations, elapsed, &annotator, project_path, true);
+        let result = format_proof_annotations(
+            ProofAnnotationOutputFormat::Json,
+            &annotations,
+            elapsed,
+            &annotator,
+            project_path,
+            true,
+        );
 
         assert!(result.is_ok());
         let content = result.unwrap();
@@ -980,8 +1073,14 @@ mod coverage_tests {
         let annotator = setup_proof_annotator(false);
         let project_path = Path::new("/test");
 
-        let result =
-            format_proof_annotations(ProofAnnotationOutputFormat::Full, &annotations, elapsed, &annotator, project_path, true);
+        let result = format_proof_annotations(
+            ProofAnnotationOutputFormat::Full,
+            &annotations,
+            elapsed,
+            &annotator,
+            project_path,
+            true,
+        );
 
         assert!(result.is_ok());
         let content = result.unwrap();
@@ -992,30 +1091,33 @@ mod coverage_tests {
 
     #[test]
     fn test_format_with_assumptions() {
-        let annotations = vec![(
-            create_test_location("test.rs", 1, 10),
-            {
-                let mut ann = create_test_annotation(
-                    ConfidenceLevel::Medium,
-                    PropertyType::MemorySafety,
-                    VerificationMethod::StaticAnalysis {
-                        tool: "test".to_string(),
-                    },
-                );
-                ann.assumptions = vec![
-                    "No integer overflow".to_string(),
-                    "Valid input data".to_string(),
-                ];
-                ann
-            },
-        )];
+        let annotations = vec![(create_test_location("test.rs", 1, 10), {
+            let mut ann = create_test_annotation(
+                ConfidenceLevel::Medium,
+                PropertyType::MemorySafety,
+                VerificationMethod::StaticAnalysis {
+                    tool: "test".to_string(),
+                },
+            );
+            ann.assumptions = vec![
+                "No integer overflow".to_string(),
+                "Valid input data".to_string(),
+            ];
+            ann
+        })];
 
         let elapsed = Duration::from_millis(100);
         let annotator = setup_proof_annotator(false);
         let project_path = Path::new("/test");
 
-        let result =
-            format_proof_annotations(ProofAnnotationOutputFormat::Full, &annotations, elapsed, &annotator, project_path, true);
+        let result = format_proof_annotations(
+            ProofAnnotationOutputFormat::Full,
+            &annotations,
+            elapsed,
+            &annotator,
+            project_path,
+            true,
+        );
 
         assert!(result.is_ok());
         let content = result.unwrap();
@@ -1061,8 +1163,14 @@ mod coverage_tests {
         let annotator = setup_proof_annotator(false);
         let project_path = Path::new("/test");
 
-        let result =
-            format_proof_annotations(ProofAnnotationOutputFormat::Full, &annotations, elapsed, &annotator, project_path, true);
+        let result = format_proof_annotations(
+            ProofAnnotationOutputFormat::Full,
+            &annotations,
+            elapsed,
+            &annotator,
+            project_path,
+            true,
+        );
 
         assert!(result.is_ok());
         let content = result.unwrap();

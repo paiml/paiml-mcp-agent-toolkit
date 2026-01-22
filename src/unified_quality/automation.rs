@@ -155,7 +155,7 @@ impl Default for AutomatorConfig {
             enabled: false,
             require_review: true,
             safe_only: true,
-            create_branches: false,  // DISABLED: per CLAUDE.md zero-branching policy
+            create_branches: false, // DISABLED: per CLAUDE.md zero-branching policy
             auto_commit: false,
             max_batch_size: 10,
         }
@@ -811,7 +811,10 @@ mod tests {
         let mut manager = RollbackManager::new();
         let result = manager.rollback_last();
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("No rollback points"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("No rollback points"));
     }
 
     #[test]
@@ -1218,9 +1221,7 @@ mod tests {
             name: "Test Transform".to_string(),
             handles: vec![ViolationType::DeadCode],
             success_rate: 1.0,
-            transform: |_| {
-                Err(anyhow!("Not implemented"))
-            },
+            transform: |_| Err(anyhow!("Not implemented")),
         };
         let debug_str = format!("{:?}", transform);
         assert!(debug_str.contains("SafeTransform"));
@@ -1234,9 +1235,7 @@ mod tests {
             name: "Clone Test".to_string(),
             handles: vec![ViolationType::UnusedImport, ViolationType::DeadCode],
             success_rate: 0.95,
-            transform: |_| {
-                Err(anyhow!("Not implemented"))
-            },
+            transform: |_| Err(anyhow!("Not implemented")),
         };
         let cloned = transform.clone();
         assert_eq!(cloned.id, transform.id);
@@ -1255,9 +1254,7 @@ mod tests {
                 ViolationType::Formatting,
             ],
             success_rate: 1.0,
-            transform: |_| {
-                Err(anyhow!("Not implemented"))
-            },
+            transform: |_| Err(anyhow!("Not implemented")),
         };
         assert_eq!(transform.handles.len(), 3);
     }

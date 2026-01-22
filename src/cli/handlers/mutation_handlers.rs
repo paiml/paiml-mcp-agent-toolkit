@@ -345,9 +345,7 @@ mod tests {
 
     #[test]
     fn test_mutation_test_config_new_defaults() {
-        let config = MutationTestConfig::new(
-            None, false, false, 4, true, None, false, None, 100,
-        );
+        let config = MutationTestConfig::new(None, false, false, 4, true, None, false, None, 100);
 
         assert!(config.operators.is_none());
         assert!(!config.ml_predict);
@@ -364,7 +362,15 @@ mod tests {
     fn test_mutation_test_config_new_with_operators() {
         let operators = vec!["AOR".to_string(), "ROR".to_string()];
         let config = MutationTestConfig::new(
-            Some(operators.clone()), false, false, 4, true, None, false, None, 100,
+            Some(operators.clone()),
+            false,
+            false,
+            4,
+            true,
+            None,
+            false,
+            None,
+            100,
         );
 
         assert_eq!(config.operators, Some(operators));
@@ -372,18 +378,14 @@ mod tests {
 
     #[test]
     fn test_mutation_test_config_new_with_ml_predict() {
-        let config = MutationTestConfig::new(
-            None, true, false, 4, true, None, false, None, 100,
-        );
+        let config = MutationTestConfig::new(None, true, false, 4, true, None, false, None, 100);
 
         assert!(config.ml_predict);
     }
 
     #[test]
     fn test_mutation_test_config_new_distributed() {
-        let config = MutationTestConfig::new(
-            None, false, true, 8, true, None, false, None, 100,
-        );
+        let config = MutationTestConfig::new(None, false, true, 8, true, None, false, None, 100);
 
         assert!(config.distributed);
         assert_eq!(config.workers, 8);
@@ -391,9 +393,8 @@ mod tests {
 
     #[test]
     fn test_mutation_test_config_new_with_min_score() {
-        let config = MutationTestConfig::new(
-            None, false, false, 4, true, Some(0.8), false, None, 100,
-        );
+        let config =
+            MutationTestConfig::new(None, false, false, 4, true, Some(0.8), false, None, 100);
 
         assert_eq!(config.min_score, Some(0.8));
     }
@@ -401,7 +402,15 @@ mod tests {
     #[test]
     fn test_mutation_test_config_new_ci_learning() {
         let config = MutationTestConfig::new(
-            None, false, false, 4, true, None, true, Some("github".to_string()), 50,
+            None,
+            false,
+            false,
+            4,
+            true,
+            None,
+            true,
+            Some("github".to_string()),
+            50,
         );
 
         assert!(config.ci_learning);
@@ -411,9 +420,7 @@ mod tests {
 
     #[test]
     fn test_mutation_test_config_debug() {
-        let config = MutationTestConfig::new(
-            None, false, false, 4, true, None, false, None, 100,
-        );
+        let config = MutationTestConfig::new(None, false, false, 4, true, None, false, None, 100);
         let debug = format!("{:?}", config);
         assert!(debug.contains("MutationTestConfig"));
     }
@@ -421,8 +428,15 @@ mod tests {
     #[test]
     fn test_mutation_test_config_clone() {
         let config = MutationTestConfig::new(
-            Some(vec!["AOR".to_string()]), true, true, 8, false, Some(0.9), true,
-            Some("gitlab".to_string()), 200,
+            Some(vec!["AOR".to_string()]),
+            true,
+            true,
+            8,
+            false,
+            Some(0.9),
+            true,
+            Some("gitlab".to_string()),
+            200,
         );
         let cloned = config.clone();
 
@@ -436,8 +450,8 @@ mod tests {
 
     #[test]
     fn test_validate_path_exists() {
-        use tempfile::tempdir;
         use std::fs;
+        use tempfile::tempdir;
 
         let dir = tempdir().unwrap();
         let file = dir.path().join("test.rs");
@@ -556,7 +570,10 @@ mod tests {
         assert!(report["summary"].as_str().unwrap().contains("75.00%"));
         assert!(report["summary"].as_str().unwrap().contains("15/20"));
         assert!(report["breakdown"].as_str().unwrap().contains("Killed: 15"));
-        assert!(report["breakdown"].as_str().unwrap().contains("Survived: 5"));
+        assert!(report["breakdown"]
+            .as_str()
+            .unwrap()
+            .contains("Survived: 5"));
     }
 
     #[test]
@@ -607,8 +624,14 @@ mod tests {
 
         let report = format_summary_report(&score);
 
-        assert!(report["breakdown"].as_str().unwrap().contains("Compile Errors: 1"));
-        assert!(report["breakdown"].as_str().unwrap().contains("Timeouts: 1"));
+        assert!(report["breakdown"]
+            .as_str()
+            .unwrap()
+            .contains("Compile Errors: 1"));
+        assert!(report["breakdown"]
+            .as_str()
+            .unwrap()
+            .contains("Timeouts: 1"));
     }
 
     // ==================== format_json_report Tests ====================
@@ -745,7 +768,11 @@ mod tests {
     fn test_full_config_workflow() {
         // Create a complete configuration
         let config = MutationTestConfig::new(
-            Some(vec!["AOR".to_string(), "ROR".to_string(), "COR".to_string()]),
+            Some(vec![
+                "AOR".to_string(),
+                "ROR".to_string(),
+                "COR".to_string(),
+            ]),
             true,
             true,
             16,

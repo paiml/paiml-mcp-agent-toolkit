@@ -138,13 +138,17 @@ mod tests {
 
     #[test]
     fn test_template_type_agent() {
-        let template = TemplateType::Agent { based_on: AgentFramework::Pforge };
+        let template = TemplateType::Agent {
+            based_on: AgentFramework::Pforge,
+        };
         assert!(matches!(template, TemplateType::Agent { .. }));
     }
 
     #[test]
     fn test_template_type_wasm() {
-        let template = TemplateType::Wasm { based_on: WasmFramework::WasmLabs };
+        let template = TemplateType::Wasm {
+            based_on: WasmFramework::WasmLabs,
+        };
         assert!(matches!(template, TemplateType::Wasm { .. }));
     }
 
@@ -156,7 +160,9 @@ mod tests {
 
     #[test]
     fn test_template_type_custom() {
-        let template = TemplateType::Custom { path: std::path::PathBuf::from("/test/path") };
+        let template = TemplateType::Custom {
+            path: std::path::PathBuf::from("/test/path"),
+        };
         assert!(matches!(template, TemplateType::Custom { .. }));
     }
 
@@ -302,7 +308,9 @@ mod tests {
     fn test_scaffold_config_agent_template() {
         let config = ScaffoldConfig {
             project_name: "agent-project".to_string(),
-            template_type: TemplateType::Agent { based_on: AgentFramework::Pforge },
+            template_type: TemplateType::Agent {
+                based_on: AgentFramework::Pforge,
+            },
             features: vec![Feature::Tracing],
             quality_gates: QualityGateConfig::extreme_tdd(),
         };
@@ -315,7 +323,9 @@ mod tests {
     fn test_scaffold_config_wasm_template() {
         let config = ScaffoldConfig {
             project_name: "wasm-project".to_string(),
-            template_type: TemplateType::Wasm { based_on: WasmFramework::PureWasm },
+            template_type: TemplateType::Wasm {
+                based_on: WasmFramework::PureWasm,
+            },
             features: vec![],
             quality_gates: QualityGateConfig::default(),
         };

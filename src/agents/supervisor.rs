@@ -406,7 +406,9 @@ fn main() {
         assert_eq!(thresholds.max_complexity, deserialized.max_complexity);
         assert_eq!(thresholds.max_functions, deserialized.max_functions);
         assert_eq!(thresholds.max_lines, deserialized.max_lines);
-        assert!((thresholds.min_test_coverage - deserialized.min_test_coverage).abs() < f64::EPSILON);
+        assert!(
+            (thresholds.min_test_coverage - deserialized.min_test_coverage).abs() < f64::EPSILON
+        );
     }
 
     #[test]

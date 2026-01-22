@@ -320,42 +320,66 @@ mod tests {
 
     #[test]
     fn test_language_from_extension_cc() {
-        assert_eq!(Language::from_extension(Path::new("main.cc")), Language::Cpp);
+        assert_eq!(
+            Language::from_extension(Path::new("main.cc")),
+            Language::Cpp
+        );
     }
 
     #[test]
     fn test_language_from_extension_cxx() {
-        assert_eq!(Language::from_extension(Path::new("main.cxx")), Language::Cpp);
+        assert_eq!(
+            Language::from_extension(Path::new("main.cxx")),
+            Language::Cpp
+        );
     }
 
     #[test]
     fn test_language_from_extension_hpp() {
-        assert_eq!(Language::from_extension(Path::new("header.hpp")), Language::Cpp);
+        assert_eq!(
+            Language::from_extension(Path::new("header.hpp")),
+            Language::Cpp
+        );
     }
 
     #[test]
     fn test_language_from_extension_ruby() {
-        assert_eq!(Language::from_extension(Path::new("script.rb")), Language::Ruby);
+        assert_eq!(
+            Language::from_extension(Path::new("script.rb")),
+            Language::Ruby
+        );
     }
 
     #[test]
     fn test_language_from_extension_swift() {
-        assert_eq!(Language::from_extension(Path::new("app.swift")), Language::Swift);
+        assert_eq!(
+            Language::from_extension(Path::new("app.swift")),
+            Language::Swift
+        );
     }
 
     #[test]
     fn test_language_from_extension_kotlin() {
-        assert_eq!(Language::from_extension(Path::new("Main.kt")), Language::Kotlin);
+        assert_eq!(
+            Language::from_extension(Path::new("Main.kt")),
+            Language::Kotlin
+        );
     }
 
     #[test]
     fn test_language_from_extension_kotlin_script() {
-        assert_eq!(Language::from_extension(Path::new("build.kts")), Language::Kotlin);
+        assert_eq!(
+            Language::from_extension(Path::new("build.kts")),
+            Language::Kotlin
+        );
     }
 
     #[test]
     fn test_language_from_extension_no_extension() {
-        assert_eq!(Language::from_extension(Path::new("Makefile")), Language::Unknown);
+        assert_eq!(
+            Language::from_extension(Path::new("Makefile")),
+            Language::Unknown
+        );
     }
 
     #[test]

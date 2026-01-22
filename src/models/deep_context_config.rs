@@ -428,7 +428,10 @@ mod tests {
         config.complexity_thresholds.cognitive_error = 30;
         let result = config.validate();
         assert!(result.is_err());
-        assert!(result.unwrap_err().iter().any(|e| e.contains("Cognitive warning threshold")));
+        assert!(result
+            .unwrap_err()
+            .iter()
+            .any(|e| e.contains("Cognitive warning threshold")));
     }
 
     #[test]

@@ -237,8 +237,14 @@ coupling_penalty_curve = "Quadratic"
     fn test_threshold_config_clone() {
         let config = ThresholdConfig::default();
         let cloned = config.clone();
-        assert_eq!(cloned.max_cyclomatic_complexity, config.max_cyclomatic_complexity);
-        assert_eq!(cloned.max_cognitive_complexity, config.max_cognitive_complexity);
+        assert_eq!(
+            cloned.max_cyclomatic_complexity,
+            config.max_cyclomatic_complexity
+        );
+        assert_eq!(
+            cloned.max_cognitive_complexity,
+            config.max_cognitive_complexity
+        );
     }
 
     #[test]
@@ -254,16 +260,28 @@ coupling_penalty_curve = "Quadratic"
     #[test]
     fn test_penalty_config_default() {
         let config = PenaltyConfig::default();
-        assert!(matches!(config.complexity_penalty_base, PenaltyCurve::Logarithmic));
-        assert!(matches!(config.duplication_penalty_curve, PenaltyCurve::Linear));
-        assert!(matches!(config.coupling_penalty_curve, PenaltyCurve::Quadratic));
+        assert!(matches!(
+            config.complexity_penalty_base,
+            PenaltyCurve::Logarithmic
+        ));
+        assert!(matches!(
+            config.duplication_penalty_curve,
+            PenaltyCurve::Linear
+        ));
+        assert!(matches!(
+            config.coupling_penalty_curve,
+            PenaltyCurve::Quadratic
+        ));
     }
 
     #[test]
     fn test_penalty_config_clone() {
         let config = PenaltyConfig::default();
         let cloned = config.clone();
-        assert!(matches!(cloned.complexity_penalty_base, PenaltyCurve::Logarithmic));
+        assert!(matches!(
+            cloned.complexity_penalty_base,
+            PenaltyCurve::Logarithmic
+        ));
     }
 
     #[test]
@@ -393,7 +411,10 @@ coupling_penalty_curve = "Quadratic"
         let config = TdgConfig::default();
         assert_eq!(config.weights.structural_complexity, 25.0);
         assert_eq!(config.thresholds.max_cyclomatic_complexity, 30);
-        assert!(matches!(config.penalties.complexity_penalty_base, PenaltyCurve::Logarithmic));
+        assert!(matches!(
+            config.penalties.complexity_penalty_base,
+            PenaltyCurve::Logarithmic
+        ));
         assert!(config.language_overrides.is_empty());
     }
 
@@ -401,7 +422,10 @@ coupling_penalty_curve = "Quadratic"
     fn test_tdg_config_clone() {
         let config = TdgConfig::default();
         let cloned = config.clone();
-        assert_eq!(cloned.weights.structural_complexity, config.weights.structural_complexity);
+        assert_eq!(
+            cloned.weights.structural_complexity,
+            config.weights.structural_complexity
+        );
     }
 
     #[test]
@@ -419,12 +443,15 @@ coupling_penalty_curve = "Quadratic"
         let mut config = TdgConfig::default();
         config.weights.structural_complexity = 42.0;
         config.thresholds.max_cyclomatic_complexity = 50;
-        config.language_overrides.insert("python".to_string(), LanguageOverride {
-            max_cognitive_complexity: Some(35),
-            min_doc_coverage: Some(0.6),
-            enforce_error_check: Some(true),
-            max_function_length: Some(200),
-        });
+        config.language_overrides.insert(
+            "python".to_string(),
+            LanguageOverride {
+                max_cognitive_complexity: Some(35),
+                min_doc_coverage: Some(0.6),
+                enforce_error_check: Some(true),
+                max_function_length: Some(200),
+            },
+        );
 
         // Save
         config.save(&config_path)?;

@@ -514,7 +514,10 @@ mod coverage_tests {
 
         // Try to deserialize as complex struct - should fail due to insufficient data
         let result: Result<ComplexType, _> = msg.deserialize_payload();
-        assert!(result.is_err(), "Expected deserialization to fail for incompatible type");
+        assert!(
+            result.is_err(),
+            "Expected deserialization to fail for incompatible type"
+        );
     }
 
     // MessageRouter tests
@@ -653,14 +656,8 @@ mod coverage_tests {
         }
         impl Handler<AgentMessage> for TestActor {
             type Result = Result<crate::agents::AgentResponse, crate::agents::AgentError>;
-            fn handle(
-                &mut self,
-                _msg: AgentMessage,
-                _ctx: &mut Context<Self>,
-            ) -> Self::Result {
-                Ok(crate::agents::AgentResponse::Success(
-                    serde_json::json!({}),
-                ))
+            fn handle(&mut self, _msg: AgentMessage, _ctx: &mut Context<Self>) -> Self::Result {
+                Ok(crate::agents::AgentResponse::Success(serde_json::json!({})))
             }
         }
 

@@ -749,10 +749,7 @@ const other = () => {"#;
                 high_complexity_count: 5,
                 avg_complexity: 6.2,
             },
-            recommendations: vec![
-                "Consider refactoring".to_string(),
-                "Add tests".to_string(),
-            ],
+            recommendations: vec!["Consider refactoring".to_string(), "Add tests".to_string()],
             file_complexity_details: vec![
                 FileComplexityDetail {
                     file_path: PathBuf::from("complex.rs"),
@@ -781,7 +778,10 @@ const other = () => {"#;
         // Check that files are sorted by complexity score (descending)
         let complex_pos = markdown.find("complex.rs").unwrap_or(usize::MAX);
         let medium_pos = markdown.find("medium.rs").unwrap_or(usize::MAX);
-        assert!(complex_pos < medium_pos, "Higher complexity file should appear first");
+        assert!(
+            complex_pos < medium_pos,
+            "Higher complexity file should appear first"
+        );
     }
 
     #[test]
@@ -1059,7 +1059,6 @@ fn complex(x: i32) -> i32 {
         assert_eq!(complexity, 1);
     }
 }
-
 
 mod property_tests {
     use proptest::prelude::*;

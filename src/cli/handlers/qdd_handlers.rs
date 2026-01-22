@@ -551,7 +551,13 @@ mod coverage_tests {
         }];
         let output_type = "i32".to_string();
 
-        let spec = build_create_spec(code_type, name.clone(), purpose.clone(), inputs.clone(), output_type.clone());
+        let spec = build_create_spec(
+            code_type,
+            name.clone(),
+            purpose.clone(),
+            inputs.clone(),
+            output_type.clone(),
+        );
 
         assert!(matches!(spec.code_type, CodeType::Function));
         assert_eq!(spec.name, name);
@@ -559,7 +565,10 @@ mod coverage_tests {
         assert_eq!(spec.inputs.len(), 1);
         assert_eq!(spec.outputs.name, "result");
         assert_eq!(spec.outputs.param_type, output_type);
-        assert_eq!(spec.outputs.description, Some("Function output".to_string()));
+        assert_eq!(
+            spec.outputs.description,
+            Some("Function output".to_string())
+        );
     }
 
     #[test]
@@ -685,7 +694,10 @@ mod coverage_tests {
 
         assert_eq!(spec.file_path, file);
         assert!(spec.function_name.is_none());
-        assert_eq!(spec.target_metrics.max_complexity, profile.thresholds.max_complexity);
+        assert_eq!(
+            spec.target_metrics.max_complexity,
+            profile.thresholds.max_complexity
+        );
     }
 
     #[test]
@@ -1274,7 +1286,10 @@ mod coverage_tests {
         .await;
 
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("File does not exist"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("File does not exist"));
     }
 
     #[tokio::test]
@@ -1546,7 +1561,10 @@ mod coverage_tests {
         let profile = QualityProfile::standard();
 
         let spec = create_refactor_spec(&file, None, &profile);
-        assert_eq!(spec.file_path.to_string_lossy(), "/very/deep/nested/path/to/some/file.rs");
+        assert_eq!(
+            spec.file_path.to_string_lossy(),
+            "/very/deep/nested/path/to/some/file.rs"
+        );
     }
 
     #[tokio::test]
@@ -1555,15 +1573,14 @@ mod coverage_tests {
         let path = temp_dir.path().to_path_buf();
 
         // Test all profile types
-        for profile in [QddQualityProfile::Extreme, QddQualityProfile::Standard, QddQualityProfile::Relaxed] {
-            let result = handle_qdd_validate(
-                path.clone(),
-                profile,
-                QddOutputFormat::Summary,
-                None,
-                false,
-            )
-            .await;
+        for profile in [
+            QddQualityProfile::Extreme,
+            QddQualityProfile::Standard,
+            QddQualityProfile::Relaxed,
+        ] {
+            let result =
+                handle_qdd_validate(path.clone(), profile, QddOutputFormat::Summary, None, false)
+                    .await;
             assert!(result.is_ok(), "Failed for profile {:?}", profile);
         }
     }

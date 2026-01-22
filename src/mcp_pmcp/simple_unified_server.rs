@@ -142,7 +142,11 @@ mod active_tests {
     fn test_server_size() {
         let size = std::mem::size_of::<SimpleUnifiedServer>();
         // Arc<Mutex<T>> is typically 8 bytes on 64-bit systems
-        assert!(size <= 16, "Server struct is larger than expected: {} bytes", size);
+        assert!(
+            size <= 16,
+            "Server struct is larger than expected: {} bytes",
+            size
+        );
     }
 
     #[test]
@@ -377,7 +381,11 @@ mod coverage_tests {
         // Server should have minimal overhead (just an Arc<Mutex<StateManager>>)
         let size = std::mem::size_of::<SimpleUnifiedServer>();
         // Arc<Mutex<T>> is typically 8 bytes on 64-bit systems
-        assert!(size <= 16, "Server struct is larger than expected: {} bytes", size);
+        assert!(
+            size <= 16,
+            "Server struct is larger than expected: {} bytes",
+            size
+        );
     }
 
     // === Error Handling Tests ===

@@ -963,7 +963,6 @@ impl Default for PerformanceStatistics {
     }
 }
 
-
 // Tests extracted to performance_tests.rs for file health compliance (CB-040)
 #[cfg(test)]
 #[path = "performance_tests.rs"]

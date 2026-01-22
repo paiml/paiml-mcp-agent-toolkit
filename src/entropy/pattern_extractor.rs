@@ -1054,7 +1054,6 @@ struct ProjectContext {
     files: HashMap<PathBuf, String>,
 }
 
-
 // Tests extracted to pattern_extractor_tests.rs for file health compliance (CB-040)
 #[cfg(test)]
 #[path = "pattern_extractor_tests.rs"]

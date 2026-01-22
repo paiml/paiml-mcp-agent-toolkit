@@ -643,7 +643,11 @@ mod tests {
         // Embed first document
         let embedding = embedder.embed(documents[0]).unwrap();
 
-        assert_eq!(embedding.len(), 50, "Should produce embeddings of specified dimension");
+        assert_eq!(
+            embedding.len(),
+            50,
+            "Should produce embeddings of specified dimension"
+        );
         assert!(
             embedding.iter().any(|&x| x != 0.0),
             "Embedding should have non-zero values"
@@ -688,8 +692,8 @@ mod tests {
 
         let documents = vec![
             "fn main() { println!(\"hello\"); }",
-            "fn main() { println!(\"world\"); }",  // Similar to first
-            "class Animal { def speak(self): pass }",  // Different
+            "fn main() { println!(\"world\"); }", // Similar to first
+            "class Animal { def speak(self): pass }", // Different
         ];
 
         let mut embedder = TfIdfEmbedder::new(100);
@@ -726,7 +730,9 @@ mod tests {
         let mut embedder = TfIdfEmbedder::new(50);
         embedder.fit(&documents.iter().map(|s| *s).collect::<Vec<_>>());
 
-        let batch_embeddings = embedder.embed_batch(&documents.iter().map(|s| *s).collect::<Vec<_>>()).unwrap();
+        let batch_embeddings = embedder
+            .embed_batch(&documents.iter().map(|s| *s).collect::<Vec<_>>())
+            .unwrap();
 
         assert_eq!(batch_embeddings.len(), 3);
         for emb in &batch_embeddings {
@@ -766,11 +772,7 @@ mod tests {
     fn test_trueno_rag_tfidf_sparsity() {
         use trueno_rag::embed::{Embedder, TfIdfEmbedder};
 
-        let documents = vec![
-            "fn main() {}",
-            "def test(): pass",
-            "function x() {}",
-        ];
+        let documents = vec!["fn main() {}", "def test(): pass", "function x() {}"];
 
         let mut embedder = TfIdfEmbedder::new(100);
         embedder.fit(&documents.iter().map(|s| *s).collect::<Vec<_>>());

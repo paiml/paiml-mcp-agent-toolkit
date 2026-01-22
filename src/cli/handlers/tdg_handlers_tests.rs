@@ -134,15 +134,31 @@ mod unit_tests {
         #[test]
         fn test_format_grade_all_grades_return_non_empty() {
             let grades = [
-                Grade::APLus, Grade::A, Grade::AMinus,
-                Grade::BPlus, Grade::B, Grade::BMinus,
-                Grade::CPlus, Grade::C, Grade::CMinus,
-                Grade::D, Grade::F,
+                Grade::APLus,
+                Grade::A,
+                Grade::AMinus,
+                Grade::BPlus,
+                Grade::B,
+                Grade::BMinus,
+                Grade::CPlus,
+                Grade::C,
+                Grade::CMinus,
+                Grade::D,
+                Grade::F,
             ];
             for grade in grades {
                 let formatted = format_grade(grade);
-                assert!(!formatted.is_empty(), "Grade {:?} formatted to empty string", grade);
-                assert!(formatted.len() <= 2, "Grade {:?} formatted to {} (too long)", grade, formatted);
+                assert!(
+                    !formatted.is_empty(),
+                    "Grade {:?} formatted to empty string",
+                    grade
+                );
+                assert!(
+                    formatted.len() <= 2,
+                    "Grade {:?} formatted to {} (too long)",
+                    grade,
+                    formatted
+                );
             }
         }
     }
@@ -243,10 +259,17 @@ mod unit_tests {
         #[test]
         fn test_parse_format_roundtrip() {
             let grades = [
-                Grade::APLus, Grade::A, Grade::AMinus,
-                Grade::BPlus, Grade::B, Grade::BMinus,
-                Grade::CPlus, Grade::C, Grade::CMinus,
-                Grade::D, Grade::F,
+                Grade::APLus,
+                Grade::A,
+                Grade::AMinus,
+                Grade::BPlus,
+                Grade::B,
+                Grade::BMinus,
+                Grade::CPlus,
+                Grade::C,
+                Grade::CMinus,
+                Grade::D,
+                Grade::F,
             ];
             for grade in grades {
                 let formatted = format_grade(grade);
@@ -367,9 +390,8 @@ mod unit_tests {
         #[test]
         fn test_all_supported_extensions() {
             let extensions = [
-                "rs", "py", "js", "ts", "tsx", "jsx", "java",
-                "c", "cpp", "h", "hpp", "go", "rb", "php",
-                "swift", "kt", "kts",
+                "rs", "py", "js", "ts", "tsx", "jsx", "java", "c", "cpp", "h", "hpp", "go", "rb",
+                "php", "swift", "kt", "kts",
             ];
             for ext in extensions {
                 let path = format!("file.{}", ext);
@@ -518,12 +540,12 @@ mod unit_tests {
         #[ignore = "Agent-added test with incorrect assertion"]
         fn test_all_grade_comparisons() {
             let test_cases = [
-                (Grade::APLus, Grade::A, true),    // A+ >= A
-                (Grade::A, Grade::AMinus, true),   // A >= A-
-                (Grade::B, Grade::B, true),        // B >= B
-                (Grade::C, Grade::B, false),       // C < B
-                (Grade::F, Grade::D, false),       // F < D
-                (Grade::D, Grade::F, true),        // D >= F
+                (Grade::APLus, Grade::A, true),  // A+ >= A
+                (Grade::A, Grade::AMinus, true), // A >= A-
+                (Grade::B, Grade::B, true),      // B >= B
+                (Grade::C, Grade::B, false),     // C < B
+                (Grade::F, Grade::D, false),     // F < D
+                (Grade::D, Grade::F, true),      // D >= F
             ];
 
             for (actual, minimum, should_pass) in test_cases {
@@ -675,10 +697,12 @@ mod unit_tests {
             let mut score = make_test_score(88.0, Grade::BPlus);
             score.file_path = Some(PathBuf::from("src/handlers/tdg.rs"));
 
-            let result = format_tdg_score(score.clone(), None, TdgOutputFormat::Table, false).unwrap();
+            let result =
+                format_tdg_score(score.clone(), None, TdgOutputFormat::Table, false).unwrap();
             assert!(result.contains("src/handlers/tdg.rs"));
 
-            let result = format_tdg_score(score.clone(), None, TdgOutputFormat::Markdown, false).unwrap();
+            let result =
+                format_tdg_score(score.clone(), None, TdgOutputFormat::Markdown, false).unwrap();
             assert!(result.contains("**File**: `src/handlers/tdg.rs`"));
 
             let result = format_tdg_score(score, None, TdgOutputFormat::Json, false).unwrap();
@@ -704,12 +728,19 @@ mod unit_tests {
                 uncommitted_files: 0,
             };
 
-            let result = format_tdg_score(score.clone(), Some(&git_context), TdgOutputFormat::Table, false).unwrap();
+            let result = format_tdg_score(
+                score.clone(),
+                Some(&git_context),
+                TdgOutputFormat::Table,
+                false,
+            )
+            .unwrap();
             assert!(result.contains("Git Context"));
             assert!(result.contains("abc123d"));
             assert!(result.contains("main"));
 
-            let result = format_tdg_score(score, Some(&git_context), TdgOutputFormat::Json, false).unwrap();
+            let result =
+                format_tdg_score(score, Some(&git_context), TdgOutputFormat::Json, false).unwrap();
             let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
             assert_eq!(parsed["git_context"]["branch"], "main");
             assert_eq!(parsed["git_context"]["is_clean"], true);
@@ -996,18 +1027,16 @@ duplication_ratio = 0.1
             let result = GateResult {
                 passed: false,
                 gate_name: "MinimumGradeGate".to_string(),
-                violations: vec![
-                    Violation {
-                        path: PathBuf::from("bad_file.rs"),
-                        violation_type: ViolationType::BelowMinimum,
-                        severity: Severity::Error,
-                        message: "Grade C is below minimum B".to_string(),
-                        old_score: None,
-                        new_score: 72.0,
-                        old_grade: None,
-                        new_grade: Grade::C,
-                    },
-                ],
+                violations: vec![Violation {
+                    path: PathBuf::from("bad_file.rs"),
+                    violation_type: ViolationType::BelowMinimum,
+                    severity: Severity::Error,
+                    message: "Grade C is below minimum B".to_string(),
+                    old_score: None,
+                    new_score: 72.0,
+                    old_grade: None,
+                    new_grade: Grade::C,
+                }],
                 message: "1 violation found".to_string(),
             };
 

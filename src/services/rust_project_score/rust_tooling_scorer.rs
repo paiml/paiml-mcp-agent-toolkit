@@ -1068,7 +1068,6 @@ impl Scorer for RustToolingScorer {
 unsafe impl Send for RustToolingScorer {}
 unsafe impl Sync for RustToolingScorer {}
 
-
 // Tests extracted to rust_tooling_scorer_tests.rs for file health compliance (CB-040)
 #[cfg(test)]
 #[path = "rust_tooling_scorer_tests.rs"]

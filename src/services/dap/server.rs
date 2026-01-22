@@ -835,7 +835,6 @@ impl Default for DapServer {
     }
 }
 
-
 // Tests extracted to server_tests.rs for file health compliance (CB-040)
 #[cfg(test)]
 #[path = "server_tests.rs"]

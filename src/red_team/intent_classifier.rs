@@ -390,26 +390,54 @@ mod tests {
     #[test]
     fn test_hallucination_keywords_present() {
         let classifier = IntentClassifier::new();
-        assert!(classifier.hallucination_keywords.contains(&"fix".to_string()));
-        assert!(classifier.hallucination_keywords.contains(&"bug".to_string()));
-        assert!(classifier.hallucination_keywords.contains(&"broken".to_string()));
-        assert!(classifier.hallucination_keywords.contains(&"error".to_string()));
-        assert!(classifier.hallucination_keywords.contains(&"regress".to_string()));
-        assert!(classifier.hallucination_keywords.contains(&"fail".to_string()));
-        assert!(classifier.hallucination_keywords.contains(&"incorrect".to_string()));
-        assert!(classifier.hallucination_keywords.contains(&"wrong".to_string()));
+        assert!(classifier
+            .hallucination_keywords
+            .contains(&"fix".to_string()));
+        assert!(classifier
+            .hallucination_keywords
+            .contains(&"bug".to_string()));
+        assert!(classifier
+            .hallucination_keywords
+            .contains(&"broken".to_string()));
+        assert!(classifier
+            .hallucination_keywords
+            .contains(&"error".to_string()));
+        assert!(classifier
+            .hallucination_keywords
+            .contains(&"regress".to_string()));
+        assert!(classifier
+            .hallucination_keywords
+            .contains(&"fail".to_string()));
+        assert!(classifier
+            .hallucination_keywords
+            .contains(&"incorrect".to_string()));
+        assert!(classifier
+            .hallucination_keywords
+            .contains(&"wrong".to_string()));
     }
 
     #[test]
     fn test_iteration_keywords_present() {
         let classifier = IntentClassifier::new();
-        assert!(classifier.iteration_keywords.contains(&"refactor".to_string()));
-        assert!(classifier.iteration_keywords.contains(&"improve".to_string()));
-        assert!(classifier.iteration_keywords.contains(&"enhance".to_string()));
-        assert!(classifier.iteration_keywords.contains(&"optimize".to_string()));
-        assert!(classifier.iteration_keywords.contains(&"cleanup".to_string()));
+        assert!(classifier
+            .iteration_keywords
+            .contains(&"refactor".to_string()));
+        assert!(classifier
+            .iteration_keywords
+            .contains(&"improve".to_string()));
+        assert!(classifier
+            .iteration_keywords
+            .contains(&"enhance".to_string()));
+        assert!(classifier
+            .iteration_keywords
+            .contains(&"optimize".to_string()));
+        assert!(classifier
+            .iteration_keywords
+            .contains(&"cleanup".to_string()));
         assert!(classifier.iteration_keywords.contains(&"add".to_string()));
-        assert!(classifier.iteration_keywords.contains(&"extend".to_string()));
+        assert!(classifier
+            .iteration_keywords
+            .contains(&"extend".to_string()));
     }
 
     // ===== analyze_commit_message tests =====
@@ -475,7 +503,9 @@ mod tests {
         let result = classifier.analyze_issue_linkage(&original, &followup);
         assert_eq!(result.vote, CommitIntent::HallucinationFix);
         assert!((result.confidence - 0.9).abs() < f64::EPSILON);
-        assert!(result.evidence.contains("Issue #42 created after original commit"));
+        assert!(result
+            .evidence
+            .contains("Issue #42 created after original commit"));
     }
 
     #[test]
@@ -489,7 +519,9 @@ mod tests {
         let result = classifier.analyze_issue_linkage(&original, &followup);
         assert_eq!(result.vote, CommitIntent::PlannedIteration);
         assert!((result.confidence - 0.8).abs() < f64::EPSILON);
-        assert!(result.evidence.contains("Issue #123 existed before original commit"));
+        assert!(result
+            .evidence
+            .contains("Issue #123 existed before original commit"));
     }
 
     #[test]
@@ -589,7 +621,12 @@ mod tests {
     fn test_code_churn_exactly_at_threshold() {
         let classifier = IntentClassifier::new();
         // threshold is 0.8, so 80% overlap should still be HallucinationFix
-        let original = make_commit_info("original", 1000, vec!["a.rs", "b.rs", "c.rs", "d.rs"], "main");
+        let original = make_commit_info(
+            "original",
+            1000,
+            vec!["a.rs", "b.rs", "c.rs", "d.rs"],
+            "main",
+        );
         let followup = make_commit_info(
             "followup",
             2000,
@@ -859,7 +896,9 @@ mod tests {
         ];
 
         let result = classifier.aggregate_signals(signals);
-        assert!(result.reasoning.contains("commit_message: 3 hallucination keywords"));
+        assert!(result
+            .reasoning
+            .contains("commit_message: 3 hallucination keywords"));
         assert!(result.reasoning.contains("code_churn: 90% overlap"));
         assert!(result.reasoning.contains("; "));
     }
@@ -960,10 +999,19 @@ mod tests {
 
     #[test]
     fn test_commit_intent_equality() {
-        assert_eq!(CommitIntent::HallucinationFix, CommitIntent::HallucinationFix);
-        assert_eq!(CommitIntent::PlannedIteration, CommitIntent::PlannedIteration);
+        assert_eq!(
+            CommitIntent::HallucinationFix,
+            CommitIntent::HallucinationFix
+        );
+        assert_eq!(
+            CommitIntent::PlannedIteration,
+            CommitIntent::PlannedIteration
+        );
         assert_eq!(CommitIntent::Uncertain, CommitIntent::Uncertain);
-        assert_ne!(CommitIntent::HallucinationFix, CommitIntent::PlannedIteration);
+        assert_ne!(
+            CommitIntent::HallucinationFix,
+            CommitIntent::PlannedIteration
+        );
     }
 
     #[test]

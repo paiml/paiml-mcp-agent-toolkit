@@ -1522,7 +1522,6 @@ fn find_workspace_root(start_path: &Path) -> Result<Option<PathBuf>> {
     Ok(None)
 }
 
-
 // Tests extracted to lint_hotspot_handlers_tests.rs for file health compliance (CB-040)
 #[cfg(test)]
 #[path = "lint_hotspot_handlers_tests.rs"]

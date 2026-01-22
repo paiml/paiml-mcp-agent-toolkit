@@ -51,8 +51,8 @@
 // Service architecture (SPECIFICATION.md Section 2)
 pub mod analysis_service;
 pub mod analyzer; // Toyota Way: Unified analyzer framework
-pub mod commit_classifier; // Sovereign Stack: ML-based commit classification
 pub mod ast; // Toyota Way: Unified AST module (consolidates 25+ AST files)
+pub mod commit_classifier; // Sovereign Stack: ML-based commit classification
 #[cfg(feature = "dap")]
 pub mod dap; // Sprint 71: Debug Adapter Protocol server (optional - 13 transitive deps)
 pub mod detection; // Toyota Way: Unified detection framework (consolidates detection services)
@@ -121,7 +121,7 @@ pub mod configuration_service;
 pub mod context;
 pub mod context_graph; // O(1) Context Graph: trueno-graph integration for fast symbol lookups
 pub mod coupling_analyzer;
-pub mod coverage_improvement_service;
+pub mod coverage_improvement;
 pub mod dag_builder;
 pub mod dead_code_analyzer;
 #[cfg(test)]
@@ -136,6 +136,7 @@ pub mod defect_analyzers;
 pub mod defect_detector; // Known Defects detection (Sprint: Known Defects v2.1)
 pub mod defect_report_service;
 // pub mod deep_context_orchestrator; // TRACKED: Fix AST node compatibility
+pub mod brick_score; // ComputeBrick Profiling Score (PMAT-446) - trueno/realizar ecosystem
 pub mod debug_formatters;
 pub mod defect_probability;
 pub mod deterministic_mermaid_engine;
@@ -175,12 +176,11 @@ pub mod makefile_compressor;
 pub mod makefile_linter;
 pub mod mermaid_generator;
 pub mod ml_seed; // ML Reproducibility: Seed management for deterministic operations
+pub mod normalized_score; // PMAT-454: Universal 0-100 score normalization
 pub mod parallel_git;
 pub mod parsed_file_cache;
 pub mod pdmt_quality_integration;
 pub mod pdmt_service;
-pub mod brick_score; // ComputeBrick Profiling Score (PMAT-446) - trueno/realizar ecosystem
-pub mod normalized_score; // PMAT-454: Universal 0-100 score normalization
 pub mod popper_score; // Popper Falsifiability Score v1.1 (Popperian science standards)
 pub mod progress;
 pub mod project_analyzer;

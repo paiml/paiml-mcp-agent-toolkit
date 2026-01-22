@@ -807,7 +807,8 @@ mod tests {
                     source_metric: MetricCategory::Documentation,
                     amount: 3.0,
                     applied_to: HashSet::new(),
-                    issue: "This is a very long penalty description that should be truncated".to_string(),
+                    issue: "This is a very long penalty description that should be truncated"
+                        .to_string(),
                 },
             ],
             ..TdgScore::default()
@@ -863,14 +864,12 @@ mod tests {
         let score = TdgScore {
             total: 65.0,
             grade: Grade::CPlus,
-            penalties_applied: vec![
-                PenaltyAttribution {
-                    source_metric: MetricCategory::Documentation,
-                    amount: 10.0,
-                    applied_to: HashSet::new(),
-                    issue: "Missing docs".to_string(),
-                },
-            ],
+            penalties_applied: vec![PenaltyAttribution {
+                source_metric: MetricCategory::Documentation,
+                amount: 10.0,
+                applied_to: HashSet::new(),
+                issue: "Missing docs".to_string(),
+            }],
             ..TdgScore::default()
         };
 
@@ -936,12 +935,27 @@ mod tests {
 
     #[test]
     fn test_format_metric_name() {
-        assert_eq!(format_metric_name(&MetricCategory::StructuralComplexity), "Structural Complexity");
-        assert_eq!(format_metric_name(&MetricCategory::SemanticComplexity), "Semantic Complexity");
-        assert_eq!(format_metric_name(&MetricCategory::Duplication), "Code Duplication");
+        assert_eq!(
+            format_metric_name(&MetricCategory::StructuralComplexity),
+            "Structural Complexity"
+        );
+        assert_eq!(
+            format_metric_name(&MetricCategory::SemanticComplexity),
+            "Semantic Complexity"
+        );
+        assert_eq!(
+            format_metric_name(&MetricCategory::Duplication),
+            "Code Duplication"
+        );
         assert_eq!(format_metric_name(&MetricCategory::Coupling), "Coupling");
-        assert_eq!(format_metric_name(&MetricCategory::Documentation), "Documentation");
-        assert_eq!(format_metric_name(&MetricCategory::Consistency), "Consistency");
+        assert_eq!(
+            format_metric_name(&MetricCategory::Documentation),
+            "Documentation"
+        );
+        assert_eq!(
+            format_metric_name(&MetricCategory::Consistency),
+            "Consistency"
+        );
     }
 
     #[test]
@@ -957,7 +971,9 @@ mod tests {
             ..TdgScore::default()
         };
         let mut comparison = Comparison::new(source1, source2);
-        comparison.improvements.push("Reduced complexity".to_string());
+        comparison
+            .improvements
+            .push("Reduced complexity".to_string());
 
         let output = format_comparison(&comparison);
         assert!(output.contains("TDG Comparison"));
@@ -978,7 +994,9 @@ mod tests {
             ..TdgScore::default()
         };
         let mut comparison = Comparison::new(source1, source2);
-        comparison.regressions.push("Increased complexity".to_string());
+        comparison
+            .regressions
+            .push("Increased complexity".to_string());
 
         let output = format_comparison(&comparison);
         assert!(output.contains("Regressions"));

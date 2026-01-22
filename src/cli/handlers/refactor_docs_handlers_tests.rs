@@ -659,10 +659,7 @@ mod tests {
         merge_summary(&mut main, &dir);
 
         assert_eq!(main.files_by_category.get("Temporary Script"), Some(&5));
-        assert_eq!(
-            main.size_by_category.get("Temporary Script"),
-            Some(&5000)
-        );
+        assert_eq!(main.size_by_category.get("Temporary Script"), Some(&5000));
         assert_eq!(main.oldest_file_days, 30);
         assert_eq!(main.newest_file_days, 2);
     }
@@ -688,10 +685,7 @@ mod tests {
         merge_summary(&mut main, &dir);
 
         assert_eq!(main.files_by_category.get("Temporary Script"), Some(&5));
-        assert_eq!(
-            main.size_by_category.get("Temporary Script"),
-            Some(&5000)
-        );
+        assert_eq!(main.size_by_category.get("Temporary Script"), Some(&5000));
         assert_eq!(main.oldest_file_days, 40);
         assert_eq!(main.newest_file_days, 1);
     }
@@ -986,7 +980,9 @@ mod tests {
         let result = RefactorDocsResult {
             cruft_files: vec![],
             summary: CleanupSummary::default(),
-            preserved_files: (0..25).map(|i| PathBuf::from(format!("/tmp/keep{i}.txt"))).collect(),
+            preserved_files: (0..25)
+                .map(|i| PathBuf::from(format!("/tmp/keep{i}.txt")))
+                .collect(),
             errors: vec![],
         };
 
@@ -1182,7 +1178,10 @@ mod tests {
         let patterns = vec![("fix-*.sh".to_string(), FileCategory::TemporaryScript)];
 
         let result = scan_for_cruft(
-            &[temp_dir1.path().to_path_buf(), temp_dir2.path().to_path_buf()],
+            &[
+                temp_dir1.path().to_path_buf(),
+                temp_dir2.path().to_path_buf(),
+            ],
             &patterns,
             &[],
             0,
@@ -1283,9 +1282,7 @@ mod tests {
         create_backup(&files, backup_dir.path()).await.unwrap();
 
         // Verify backup directory was created
-        let backup_entries: Vec<_> = std::fs::read_dir(backup_dir.path())
-            .unwrap()
-            .collect();
+        let backup_entries: Vec<_> = std::fs::read_dir(backup_dir.path()).unwrap().collect();
         assert!(!backup_entries.is_empty());
     }
 
@@ -1342,13 +1339,9 @@ mod tests {
         };
 
         // Dry run should skip removal
-        let removal_result = handle_file_removal_processing(
-            &result,
-            true,
-            false,
-            RefactorDocsOutputFormat::Summary,
-        )
-        .await;
+        let removal_result =
+            handle_file_removal_processing(&result, true, false, RefactorDocsOutputFormat::Summary)
+                .await;
         assert!(removal_result.is_ok());
     }
 
@@ -1483,9 +1476,7 @@ mod tests {
         let mut summary = CleanupSummary::default();
         summary.total_files_scanned = 100;
         summary.cruft_files_found = 5;
-        summary
-            .files_by_category
-            .insert("Test".to_string(), 3);
+        summary.files_by_category.insert("Test".to_string(), 3);
 
         let json = serde_json::to_string(&summary).unwrap();
         let deserialized: CleanupSummary = serde_json::from_str(&json).unwrap();
@@ -1495,7 +1486,6 @@ mod tests {
         assert_eq!(deserialized.files_by_category.get("Test"), Some(&3));
     }
 }
-
 
 mod property_tests {
     use proptest::prelude::*;

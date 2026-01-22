@@ -459,8 +459,12 @@ mod tests {
             function_name: name.to_string(),
             file_path: PathBuf::from(file),
             line_number: line,
-            time_complexity: ComplexityBound::new(time_class, 1, crate::models::complexity_bound::InputVariable::N)
-                .with_confidence(confidence),
+            time_complexity: ComplexityBound::new(
+                time_class,
+                1,
+                crate::models::complexity_bound::InputVariable::N,
+            )
+            .with_confidence(confidence),
             space_complexity: ComplexityBound::constant(),
             confidence,
             notes: vec![],
@@ -504,10 +508,34 @@ mod tests {
             analyzed_functions: 50,
             complexity_distribution: create_test_distribution(),
             high_complexity_functions: vec![
-                create_test_function_complexity("bubble_sort", "src/sort.rs", 42, BigOClass::Quadratic, 85),
-                create_test_function_complexity("matrix_mult", "src/math.rs", 100, BigOClass::Cubic, 90),
-                create_test_function_complexity("fib_exp", "src/algo.rs", 15, BigOClass::Exponential, 95),
-                create_test_function_complexity("permute", "src/algo.rs", 50, BigOClass::Factorial, 80),
+                create_test_function_complexity(
+                    "bubble_sort",
+                    "src/sort.rs",
+                    42,
+                    BigOClass::Quadratic,
+                    85,
+                ),
+                create_test_function_complexity(
+                    "matrix_mult",
+                    "src/math.rs",
+                    100,
+                    BigOClass::Cubic,
+                    90,
+                ),
+                create_test_function_complexity(
+                    "fib_exp",
+                    "src/algo.rs",
+                    15,
+                    BigOClass::Exponential,
+                    95,
+                ),
+                create_test_function_complexity(
+                    "permute",
+                    "src/algo.rs",
+                    50,
+                    BigOClass::Factorial,
+                    80,
+                ),
             ],
             pattern_matches: vec![
                 PatternMatch {
@@ -650,13 +678,7 @@ mod tests {
 
     #[test]
     fn test_build_analysis_config_empty_patterns() {
-        let config = build_analysis_config(
-            PathBuf::from("."),
-            vec![],
-            vec![],
-            50,
-            false,
-        );
+        let config = build_analysis_config(PathBuf::from("."), vec![], vec![], 50, false);
 
         assert!(config.include_patterns.is_empty());
         assert!(config.exclude_patterns.is_empty());
@@ -728,9 +750,13 @@ mod tests {
 
     #[test]
     fn test_calculate_file_complexity_scores_single_file() {
-        let functions = vec![
-            create_test_function_complexity("fn1", "src/lib.rs", 10, BigOClass::Quadratic, 80),
-        ];
+        let functions = vec![create_test_function_complexity(
+            "fn1",
+            "src/lib.rs",
+            10,
+            BigOClass::Quadratic,
+            80,
+        )];
         let grouped = group_functions_by_file(&functions);
         let scores = calculate_file_complexity_scores(&grouped);
 
@@ -752,8 +778,8 @@ mod tests {
         assert_eq!(scores.len(), 3);
         // Should be sorted descending by score
         assert_eq!(scores[0].0, PathBuf::from("src/high.rs")); // Exponential = 7.0
-        assert_eq!(scores[1].0, PathBuf::from("src/mid.rs"));  // Quadratic = 5.0
-        assert_eq!(scores[2].0, PathBuf::from("src/low.rs"));  // Linear = 3.0
+        assert_eq!(scores[1].0, PathBuf::from("src/mid.rs")); // Quadratic = 5.0
+        assert_eq!(scores[2].0, PathBuf::from("src/low.rs")); // Linear = 3.0
     }
 
     #[test]
@@ -783,10 +809,7 @@ mod tests {
 
     #[test]
     fn test_get_top_file_paths_fewer_than_requested() {
-        let scores = vec![
-            (PathBuf::from("a.rs"), 10.0),
-            (PathBuf::from("b.rs"), 5.0),
-        ];
+        let scores = vec![(PathBuf::from("a.rs"), 10.0), (PathBuf::from("b.rs"), 5.0)];
         let top = get_top_file_paths(scores, 10);
         assert_eq!(top.len(), 2);
         assert!(top.contains(&PathBuf::from("a.rs")));
@@ -809,9 +832,7 @@ mod tests {
 
     #[test]
     fn test_get_top_file_paths_zero_requested() {
-        let scores = vec![
-            (PathBuf::from("a.rs"), 10.0),
-        ];
+        let scores = vec![(PathBuf::from("a.rs"), 10.0)];
         let top = get_top_file_paths(scores, 0);
         assert!(top.is_empty());
     }
@@ -890,7 +911,10 @@ mod tests {
 
         // Only high.rs should remain (highest total score: 7+6 = 13)
         assert_eq!(report.high_complexity_functions.len(), 2);
-        assert!(report.high_complexity_functions.iter().all(|f| f.file_path == PathBuf::from("high.rs")));
+        assert!(report
+            .high_complexity_functions
+            .iter()
+            .all(|f| f.file_path == PathBuf::from("high.rs")));
     }
 
     #[test]
@@ -949,7 +973,10 @@ mod tests {
         apply_report_filters(&mut report, false, 1, false);
 
         assert_eq!(report.high_complexity_functions.len(), 1);
-        assert_eq!(report.high_complexity_functions[0].file_path, PathBuf::from("high.rs"));
+        assert_eq!(
+            report.high_complexity_functions[0].file_path,
+            PathBuf::from("high.rs")
+        );
     }
 
     #[test]
@@ -1042,7 +1069,9 @@ mod tests {
 
         assert!(output.contains("Top Files by Complexity:"));
         // Should show file names
-        assert!(output.contains("sort.rs") || output.contains("math.rs") || output.contains("algo.rs"));
+        assert!(
+            output.contains("sort.rs") || output.contains("math.rs") || output.contains("algo.rs")
+        );
     }
 
     #[test]
@@ -1318,9 +1347,9 @@ mod tests {
     #[test]
     fn test_complexity_score_accumulation() {
         let functions = vec![
-            create_test_function_complexity("fn1", "file.rs", 10, BigOClass::Constant, 80),   // 1.0
+            create_test_function_complexity("fn1", "file.rs", 10, BigOClass::Constant, 80), // 1.0
             create_test_function_complexity("fn2", "file.rs", 20, BigOClass::Logarithmic, 80), // 2.0
-            create_test_function_complexity("fn3", "file.rs", 30, BigOClass::Linear, 80),      // 3.0
+            create_test_function_complexity("fn3", "file.rs", 30, BigOClass::Linear, 80), // 3.0
         ];
         let grouped = group_functions_by_file(&functions);
         let scores = calculate_file_complexity_scores(&grouped);

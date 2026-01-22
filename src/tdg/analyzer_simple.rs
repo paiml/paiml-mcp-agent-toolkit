@@ -550,12 +550,7 @@ import "fmt"
     #[test]
     fn test_cyclomatic_complexity_with_logical_operators() {
         let analyzer = TdgAnalyzer::new().unwrap();
-        let lines: Vec<&str> = vec![
-            "if x > 0 && y < 10 {",
-            "    if a || b || c {",
-            "    }",
-            "}",
-        ];
+        let lines: Vec<&str> = vec!["if x > 0 && y < 10 {", "    if a || b || c {", "    }", "}"];
         let complexity = analyzer.estimate_cyclomatic_complexity(&lines);
         assert!(complexity > 1);
     }
@@ -650,7 +645,9 @@ let b = another_call();
 
     #[test]
     fn test_analyze_coupling_high_imports() {
-        let source = (0..30).map(|i| format!("use module_{i};\n")).collect::<String>();
+        let source = (0..30)
+            .map(|i| format!("use module_{i};\n"))
+            .collect::<String>();
         let analyzer = TdgAnalyzer::new().unwrap();
         let mut tracker = PenaltyTracker::new();
         let score = analyzer.analyze_coupling(&source, &mut tracker);
@@ -768,7 +765,9 @@ def func():
 
     #[test]
     fn test_structural_complexity_high() {
-        let source = (0..50).map(|i| format!("if x > {} {{\n}}\n", i)).collect::<String>();
+        let source = (0..50)
+            .map(|i| format!("if x > {} {{\n}}\n", i))
+            .collect::<String>();
         let analyzer = TdgAnalyzer::new().unwrap();
         let mut tracker = PenaltyTracker::new();
         let score = analyzer.analyze_structural_complexity(&source, &mut tracker);

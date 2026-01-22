@@ -595,7 +595,6 @@ impl LanguageAnalyzer {
     }
 }
 
-
 // Tests extracted to language_analyzer_tests.rs for file health compliance (CB-040)
 #[cfg(test)]
 #[path = "language_analyzer_tests.rs"]

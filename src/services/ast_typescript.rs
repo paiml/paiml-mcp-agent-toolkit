@@ -417,9 +417,7 @@ mod async_coverage_tests {
     #[tokio::test]
     async fn test_analyze_typescript_file_with_complexity_cached_with_cache_manager() {
         let mut temp_file = NamedTempFile::with_suffix(".ts").unwrap();
-        temp_file
-            .write_all(b"const x = 1;")
-            .unwrap();
+        temp_file.write_all(b"const x = 1;").unwrap();
         temp_file.flush().unwrap();
 
         // Pass None for cache manager (caching to be implemented)
@@ -483,9 +481,7 @@ mod async_coverage_tests {
     #[tokio::test]
     async fn test_analyze_typescript_file_with_complexity_and_classifier() {
         let mut temp_file = NamedTempFile::with_suffix(".ts").unwrap();
-        temp_file
-            .write_all(b"type ID = string | number;")
-            .unwrap();
+        temp_file.write_all(b"type ID = string | number;").unwrap();
         temp_file.flush().unwrap();
 
         let result =
@@ -567,9 +563,7 @@ mod async_coverage_tests {
     async fn test_analyze_typescript_file_with_syntax_errors() {
         let mut temp_file = NamedTempFile::with_suffix(".ts").unwrap();
         // Invalid TypeScript syntax
-        temp_file
-            .write_all(b"function broken( { return }")
-            .unwrap();
+        temp_file.write_all(b"function broken( { return }").unwrap();
         temp_file.flush().unwrap();
 
         // Should still return a result (may be empty or with errors)

@@ -974,12 +974,22 @@ mod tests {
     fn test_demo_args_no_skip_vendor_override() {
         // When no_skip_vendor=true, skip_vendor should be false regardless of skip_vendor flag
         let args = CommandDispatcher::create_demo_args(
-            None, None, None, None,
+            None,
+            None,
+            None,
+            None,
             crate::demo::Protocol::Cli,
-            false, true, 8080, true,
-            None, None, None, false, None,
-            true,  // skip_vendor
-            true,  // no_skip_vendor (takes precedence)
+            false,
+            true,
+            8080,
+            true,
+            None,
+            None,
+            None,
+            false,
+            None,
+            true, // skip_vendor
+            true, // no_skip_vendor (takes precedence)
             None,
         );
         assert!(!args.skip_vendor);
@@ -1009,21 +1019,24 @@ mod tests {
     #[test]
     fn test_create_config_performance_suite() {
         use crate::cli::commands::TestSuite;
-        let config = CommandDispatcher::create_test_config(&TestSuite::Performance, 5, false, false, false);
+        let config =
+            CommandDispatcher::create_test_config(&TestSuite::Performance, 5, false, false, false);
         assert_eq!(config.test_iterations, 5);
     }
 
     #[test]
     fn test_create_config_property_suite() {
         use crate::cli::commands::TestSuite;
-        let config = CommandDispatcher::create_test_config(&TestSuite::Property, 10, false, false, false);
+        let config =
+            CommandDispatcher::create_test_config(&TestSuite::Property, 10, false, false, false);
         assert_eq!(config.test_iterations, 10);
     }
 
     #[test]
     fn test_create_config_integration_suite() {
         use crate::cli::commands::TestSuite;
-        let config = CommandDispatcher::create_test_config(&TestSuite::Integration, 1, false, false, false);
+        let config =
+            CommandDispatcher::create_test_config(&TestSuite::Integration, 1, false, false, false);
         assert_eq!(config.test_iterations, 1);
     }
 
@@ -1108,10 +1121,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_config_validate() {
-        let result = CommandDispatcher::execute_config_command(
-            false, false, true, false, None, None, None,
-        )
-        .await;
+        let result =
+            CommandDispatcher::execute_config_command(false, false, true, false, None, None, None)
+                .await;
         assert!(result.is_ok() || result.is_err());
     }
 
@@ -1214,8 +1226,8 @@ mod tests {
             false,
             true,
             false,
-            true,  // deterministic_core
-            true,  // probabilistic_wrapper
+            true, // deterministic_core
+            true, // probabilistic_wrapper
         )
         .await;
         assert!(result.is_ok() || result.is_err());
@@ -1240,7 +1252,10 @@ mod tests {
         let server = create_test_server();
         let command = Commands::Validate {
             uri: "template://test".to_string(),
-            params: vec![("key".to_string(), serde_json::Value::String("value".to_string()))],
+            params: vec![(
+                "key".to_string(),
+                serde_json::Value::String("value".to_string()),
+            )],
         };
         let result = CommandDispatcher::execute_command(command, server).await;
         assert!(result.is_ok() || result.is_err());
@@ -1298,7 +1313,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_qdd_create_routing() {
-        use crate::cli::commands::{QddCommands, QddCodeType, QddQualityProfile};
+        use crate::cli::commands::{QddCodeType, QddCommands, QddQualityProfile};
 
         let qdd_cmd = QddCommands::Create {
             code_type: QddCodeType::Function,
@@ -1463,7 +1478,11 @@ mod tests {
             false,
             false,
             false,
-            vec!["dead-code".to_string(), "technical-debt".to_string(), "big-o".to_string()],
+            vec![
+                "dead-code".to_string(),
+                "technical-debt".to_string(),
+                "big-o".to_string(),
+            ],
             None,
             None,
             false,
@@ -1484,7 +1503,8 @@ mod tests {
         use tempfile::NamedTempFile;
 
         let temp_file = NamedTempFile::new().expect("internal error");
-        std::fs::write(temp_file.path(), "# Test Spec\n\n## Overview\nTest content").expect("internal error");
+        std::fs::write(temp_file.path(), "# Test Spec\n\n## Overview\nTest content")
+            .expect("internal error");
 
         let command = SpecCommands::Score {
             spec: temp_file.path().to_path_buf(),
@@ -1590,7 +1610,11 @@ mod tests {
 
         let temp_dir = TempDir::new().expect("internal error");
 
-        for direction in [SyncDirection::Full, SyncDirection::YamlToGithub, SyncDirection::GithubToYaml] {
+        for direction in [
+            SyncDirection::Full,
+            SyncDirection::YamlToGithub,
+            SyncDirection::GithubToYaml,
+        ] {
             let command = WorkCommands::Sync {
                 direction,
                 path: Some(temp_dir.path().to_path_buf()),

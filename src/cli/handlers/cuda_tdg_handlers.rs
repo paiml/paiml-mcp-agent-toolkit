@@ -922,7 +922,6 @@ fn write_output(output: &str, config: &CudaTdgCommandConfig) -> Result<()> {
     Ok(())
 }
 
-
 // Tests extracted to cuda_tdg_handlers_tests.rs for file health compliance (CB-040)
 #[cfg(test)]
 #[path = "cuda_tdg_handlers_tests.rs"]

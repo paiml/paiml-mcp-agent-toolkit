@@ -366,8 +366,7 @@ mod tests {
     #[test]
     fn test_unified_request_with_body() {
         let body = Body::from("test body");
-        let req = UnifiedRequest::new(Method::POST, "/api".to_string())
-            .with_body(body);
+        let req = UnifiedRequest::new(Method::POST, "/api".to_string()).with_body(body);
         assert_eq!(req.method, Method::POST);
         assert_eq!(req.path, "/api");
     }
@@ -375,8 +374,7 @@ mod tests {
     #[test]
     fn test_unified_request_invalid_header() {
         // Invalid header should not crash, just skip
-        let req = UnifiedRequest::new(Method::GET, "/test".to_string())
-            .with_header("", ""); // Invalid
+        let req = UnifiedRequest::new(Method::GET, "/test".to_string()).with_header("", ""); // Invalid
         assert!(!req.headers.contains_key(""));
     }
 
@@ -394,16 +392,14 @@ mod tests {
 
     #[test]
     fn test_unified_response_with_body() {
-        let response = UnifiedResponse::ok()
-            .with_body(Body::from("raw body"));
+        let response = UnifiedResponse::ok().with_body(Body::from("raw body"));
         assert_eq!(response.status, StatusCode::OK);
     }
 
     #[test]
     fn test_unified_response_invalid_header() {
         // Invalid header should not crash
-        let response = UnifiedResponse::ok()
-            .with_header("", "");
+        let response = UnifiedResponse::ok().with_header("", "");
         assert!(!response.headers.contains_key(""));
     }
 

@@ -606,7 +606,9 @@ mod tests {
         assert!(settings.auto_restart);
         assert_eq!(settings.shutdown_timeout, Duration::from_secs(10));
         // working_directory should be current dir or "."
-        assert!(settings.working_directory.exists() || settings.working_directory == PathBuf::from("."));
+        assert!(
+            settings.working_directory.exists() || settings.working_directory == PathBuf::from(".")
+        );
     }
 
     #[test]
@@ -623,7 +625,10 @@ mod tests {
 
         assert_eq!(settings.pid_file, Some(PathBuf::from("/var/run/pmat.pid")));
         assert_eq!(settings.log_file, Some(PathBuf::from("/var/log/pmat.log")));
-        assert_eq!(settings.working_directory, PathBuf::from("/home/user/project"));
+        assert_eq!(
+            settings.working_directory,
+            PathBuf::from("/home/user/project")
+        );
         assert_eq!(settings.health_check_interval, Duration::from_secs(60));
         assert_eq!(settings.max_memory_mb, 1024);
         assert!(!settings.auto_restart);
@@ -736,7 +741,8 @@ mod tests {
 
         for status in statuses {
             let json = serde_json::to_string(&status).expect("should serialize");
-            let deserialized: DaemonStatus = serde_json::from_str(&json).expect("should deserialize");
+            let deserialized: DaemonStatus =
+                serde_json::from_str(&json).expect("should deserialize");
             assert_eq!(status, deserialized);
         }
     }
@@ -884,7 +890,8 @@ mod tests {
         };
 
         let json = serde_json::to_string(&result).expect("should serialize");
-        let deserialized: QualityGateResult = serde_json::from_str(&json).expect("should deserialize");
+        let deserialized: QualityGateResult =
+            serde_json::from_str(&json).expect("should deserialize");
 
         assert_eq!(deserialized.violations, Some(5));
         assert!(!deserialized.passed);
@@ -927,8 +934,12 @@ mod tests {
     fn test_daemon_command_serialization() {
         let commands = vec![
             DaemonCommand::GetStatus,
-            DaemonCommand::StartMonitoring { project_path: "/path/to/project".to_string() },
-            DaemonCommand::StopMonitoring { project_id: "proj-123".to_string() },
+            DaemonCommand::StartMonitoring {
+                project_path: "/path/to/project".to_string(),
+            },
+            DaemonCommand::StopMonitoring {
+                project_id: "proj-123".to_string(),
+            },
             DaemonCommand::ReloadConfig,
             DaemonCommand::HealthCheck,
             DaemonCommand::Shutdown,
@@ -936,7 +947,8 @@ mod tests {
 
         for cmd in commands {
             let json = serde_json::to_string(&cmd).expect("should serialize command");
-            let _deserialized: DaemonCommand = serde_json::from_str(&json).expect("should deserialize command");
+            let _deserialized: DaemonCommand =
+                serde_json::from_str(&json).expect("should deserialize command");
         }
     }
 
@@ -954,7 +966,8 @@ mod tests {
     fn test_daemon_config_serialization() {
         let config = DaemonConfig::default();
         let json = serde_json::to_string(&config).expect("should serialize config");
-        let deserialized: DaemonConfig = serde_json::from_str(&json).expect("should deserialize config");
+        let deserialized: DaemonConfig =
+            serde_json::from_str(&json).expect("should deserialize config");
 
         assert_eq!(deserialized.agent.name, "pmat-agent");
         assert_eq!(deserialized.daemon.max_memory_mb, 500);
@@ -964,7 +977,8 @@ mod tests {
     fn test_daemon_settings_serialization() {
         let settings = DaemonSettings::default();
         let json = serde_json::to_string(&settings).expect("should serialize settings");
-        let deserialized: DaemonSettings = serde_json::from_str(&json).expect("should deserialize settings");
+        let deserialized: DaemonSettings =
+            serde_json::from_str(&json).expect("should deserialize settings");
 
         assert_eq!(deserialized.max_memory_mb, 500);
         assert!(deserialized.auto_restart);
@@ -1147,7 +1161,10 @@ mod tests {
 
         let updated_state = state.read().await;
         assert_eq!(updated_state.events_processed, 31);
-        assert_eq!(updated_state.last_error, Some("Failed to analyze file: permission denied".to_string()));
+        assert_eq!(
+            updated_state.last_error,
+            Some("Failed to analyze file: permission denied".to_string())
+        );
     }
 
     #[tokio::test]

@@ -633,8 +633,7 @@ mod tests {
         };
 
         let json = serde_json::to_string(&node).expect("serialization failed");
-        let deserialized: NodeData =
-            serde_json::from_str(&json).expect("deserialization failed");
+        let deserialized: NodeData = serde_json::from_str(&json).expect("deserialization failed");
 
         assert_eq!(node.path, deserialized.path);
         assert_eq!(node.module, deserialized.module);

@@ -312,7 +312,10 @@ mod tests {
         };
 
         let output = handler.output_result(result, &cmd);
-        assert!(output.is_ok(), "output_result should succeed with string value");
+        assert!(
+            output.is_ok(),
+            "output_result should succeed with string value"
+        );
     }
 
     #[test]
@@ -343,7 +346,10 @@ mod tests {
         };
 
         let output = handler.output_result(result, &cmd);
-        assert!(output.is_ok(), "output_result should succeed with JSON object");
+        assert!(
+            output.is_ok(),
+            "output_result should succeed with JSON object"
+        );
     }
 
     #[test]
@@ -370,7 +376,10 @@ mod tests {
         };
 
         let output = handler.output_result(result, &cmd);
-        assert!(output.is_ok(), "output_result should succeed with output file");
+        assert!(
+            output.is_ok(),
+            "output_result should succeed with output file"
+        );
         assert!(output_path.exists(), "Output file should be created");
 
         let content = std::fs::read_to_string(&output_path).expect("Should read file");
@@ -396,7 +405,10 @@ mod tests {
         };
 
         let output = handler.output_result(result, &cmd);
-        assert!(output.is_ok(), "output_result should succeed with null value");
+        assert!(
+            output.is_ok(),
+            "output_result should succeed with null value"
+        );
     }
 
     #[test]
@@ -423,7 +435,10 @@ mod tests {
         };
 
         let output = handler.output_result(result, &cmd);
-        assert!(output.is_ok(), "output_result should succeed with array value");
+        assert!(
+            output.is_ok(),
+            "output_result should succeed with array value"
+        );
     }
 
     #[test]
@@ -444,7 +459,10 @@ mod tests {
         };
 
         let output = handler.output_result(result, &cmd);
-        assert!(output.is_ok(), "output_result should succeed with Churn command");
+        assert!(
+            output.is_ok(),
+            "output_result should succeed with Churn command"
+        );
     }
 
     // ==========================================================================
@@ -1060,7 +1078,8 @@ mod tests {
     #[test]
     fn test_output_result_with_special_characters_in_string() {
         let handler = ContractCliHandler::new().expect("Handler creation should succeed");
-        let result = serde_json::Value::String("Test with\nnewlines\tand\ttabs \"quotes\"".to_string());
+        let result =
+            serde_json::Value::String("Test with\nnewlines\tand\ttabs \"quotes\"".to_string());
         let temp_dir = create_test_dir();
 
         let cmd = AnalyzeCommands::Complexity {

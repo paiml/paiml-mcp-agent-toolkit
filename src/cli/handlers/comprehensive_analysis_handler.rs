@@ -498,9 +498,13 @@ fn format_as_sarif(result: &ComprehensiveAnalysisResult) -> Result<String> {
 mod tests {
     use super::*;
     use crate::services::facades::analysis_orchestrator::AnalysisSummary;
-    use crate::services::facades::complexity_facade::{ComplexityAnalysisResult, ComplexityViolation};
-    use crate::services::facades::dead_code_facade::{DeadCodeAnalysisResult, DeadCodeItem, DeadCodeType};
-    use crate::services::facades::satd_facade::{SatdAnalysisResult, SatdViolation, SatdSeverity};
+    use crate::services::facades::complexity_facade::{
+        ComplexityAnalysisResult, ComplexityViolation,
+    };
+    use crate::services::facades::dead_code_facade::{
+        DeadCodeAnalysisResult, DeadCodeItem, DeadCodeType,
+    };
+    use crate::services::facades::satd_facade::{SatdAnalysisResult, SatdSeverity, SatdViolation};
 
     // Helper function to create a basic analysis result
     fn create_basic_result() -> ComprehensiveAnalysisResult {
@@ -546,29 +550,25 @@ mod tests {
             }),
             dead_code: Some(DeadCodeAnalysisResult {
                 total_files: 3,
-                dead_items: vec![
-                    DeadCodeItem {
-                        file_path: "src/unused.rs".to_string(),
-                        item_name: "unused_function".to_string(),
-                        item_type: DeadCodeType::Function,
-                        line_number: 10,
-                        reason: "Never called".to_string(),
-                    },
-                ],
+                dead_items: vec![DeadCodeItem {
+                    file_path: "src/unused.rs".to_string(),
+                    item_name: "unused_function".to_string(),
+                    item_type: DeadCodeType::Function,
+                    line_number: 10,
+                    reason: "Never called".to_string(),
+                }],
                 dead_percentage: 5.0,
                 summary: "Found 1 dead code item".to_string(),
             }),
             satd: Some(SatdAnalysisResult {
                 total_files: 2,
-                violations: vec![
-                    SatdViolation {
-                        file_path: "src/todo.rs".to_string(),
-                        line_number: 25,
-                        violation_type: "TODO".to_string(),
-                        message: "Fix this later".to_string(),
-                        severity: SatdSeverity::Medium,
-                    },
-                ],
+                violations: vec![SatdViolation {
+                    file_path: "src/todo.rs".to_string(),
+                    line_number: 25,
+                    violation_type: "TODO".to_string(),
+                    message: "Fix this later".to_string(),
+                    severity: SatdSeverity::Medium,
+                }],
                 summary: "Found 1 SATD violation".to_string(),
             }),
             summary: AnalysisSummary {
@@ -952,15 +952,13 @@ mod tests {
     fn test_format_complexity_section() {
         let complexity = ComplexityAnalysisResult {
             total_files: 25,
-            violations: vec![
-                ComplexityViolation {
-                    file_path: "src/main.rs".to_string(),
-                    function_name: "complex_fn".to_string(),
-                    line_number: 10,
-                    complexity: 30,
-                    complexity_type: "cyclomatic".to_string(),
-                },
-            ],
+            violations: vec![ComplexityViolation {
+                file_path: "src/main.rs".to_string(),
+                function_name: "complex_fn".to_string(),
+                line_number: 10,
+                complexity: 30,
+                complexity_type: "cyclomatic".to_string(),
+            }],
             average_complexity: 12.5,
             max_complexity: 30,
             summary: "Test summary".to_string(),
@@ -999,15 +997,13 @@ mod tests {
     fn test_format_dead_code_section() {
         let dead_code = DeadCodeAnalysisResult {
             total_files: 15,
-            dead_items: vec![
-                DeadCodeItem {
-                    file_path: "src/old.rs".to_string(),
-                    item_name: "old_function".to_string(),
-                    item_type: DeadCodeType::Function,
-                    line_number: 50,
-                    reason: "Never referenced".to_string(),
-                },
-            ],
+            dead_items: vec![DeadCodeItem {
+                file_path: "src/old.rs".to_string(),
+                item_name: "old_function".to_string(),
+                item_type: DeadCodeType::Function,
+                line_number: 50,
+                reason: "Never referenced".to_string(),
+            }],
             dead_percentage: 3.5,
             summary: "Found dead code".to_string(),
         };
@@ -1042,15 +1038,13 @@ mod tests {
     fn test_format_satd_section() {
         let satd = SatdAnalysisResult {
             total_files: 8,
-            violations: vec![
-                SatdViolation {
-                    file_path: "src/hack.rs".to_string(),
-                    line_number: 15,
-                    violation_type: "HACK".to_string(),
-                    message: "Temporary workaround".to_string(),
-                    severity: SatdSeverity::High,
-                },
-            ],
+            violations: vec![SatdViolation {
+                file_path: "src/hack.rs".to_string(),
+                line_number: 15,
+                violation_type: "HACK".to_string(),
+                message: "Temporary workaround".to_string(),
+                severity: SatdSeverity::High,
+            }],
             summary: "Found SATD".to_string(),
         };
 
@@ -1316,23 +1310,43 @@ mod tests {
         // Test that all format variants work correctly
 
         // Json
-        let json = format_result(create_basic_result(), ComprehensiveOutputFormat::Json, false);
+        let json = format_result(
+            create_basic_result(),
+            ComprehensiveOutputFormat::Json,
+            false,
+        );
         assert!(json.is_ok());
 
         // Markdown
-        let md = format_result(create_basic_result(), ComprehensiveOutputFormat::Markdown, true);
+        let md = format_result(
+            create_basic_result(),
+            ComprehensiveOutputFormat::Markdown,
+            true,
+        );
         assert!(md.is_ok());
 
         // Sarif
-        let sarif = format_result(create_basic_result(), ComprehensiveOutputFormat::Sarif, false);
+        let sarif = format_result(
+            create_basic_result(),
+            ComprehensiveOutputFormat::Sarif,
+            false,
+        );
         assert!(sarif.is_ok());
 
         // Summary
-        let summary = format_result(create_basic_result(), ComprehensiveOutputFormat::Summary, false);
+        let summary = format_result(
+            create_basic_result(),
+            ComprehensiveOutputFormat::Summary,
+            false,
+        );
         assert!(summary.is_ok());
 
         // Detailed
-        let detailed = format_result(create_basic_result(), ComprehensiveOutputFormat::Detailed, true);
+        let detailed = format_result(
+            create_basic_result(),
+            ComprehensiveOutputFormat::Detailed,
+            true,
+        );
         assert!(detailed.is_ok());
     }
 }

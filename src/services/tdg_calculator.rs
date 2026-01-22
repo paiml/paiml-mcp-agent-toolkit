@@ -998,7 +998,6 @@ impl Default for TDGComponents {
     }
 }
 
-
 // Tests extracted to tdg_calculator_tests.rs for file health compliance (CB-040)
 #[cfg(test)]
 #[path = "tdg_calculator_tests.rs"]

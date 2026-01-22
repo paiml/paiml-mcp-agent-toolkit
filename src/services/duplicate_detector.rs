@@ -273,11 +273,7 @@ impl LshIndex {
     /// # Returns
     /// Vector of (fragment_id, similarity) pairs above threshold
     #[must_use]
-    pub fn find_similar(
-        &self,
-        query: &MinHashSignature,
-        threshold: f64,
-    ) -> Vec<(FragmentId, f64)> {
+    pub fn find_similar(&self, query: &MinHashSignature, threshold: f64) -> Vec<(FragmentId, f64)> {
         let candidates = self.query(query);
 
         candidates
@@ -1480,7 +1476,6 @@ impl Default for DuplicateDetectionEngine {
         Self::new(DuplicateDetectionConfig::default())
     }
 }
-
 
 // Tests extracted to duplicate_detector_tests.rs for file health compliance (CB-040)
 #[cfg(test)]

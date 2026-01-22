@@ -71,7 +71,7 @@ impl DeepWasmService {
         // Enhanced bytecode analysis (Issue #65)
         let (bytecode_analysis, disassembled_functions, suspicious_patterns) =
             if self.enable_deep_analysis && request.wasm_path.is_some() {
-                let wasm_bytes = fs::read(request.wasm_path.as_ref().unwrap())
+                let wasm_bytes = fs::read(request.wasm_path.as_ref().expect("checked is_some"))
                     .map_err(crate::services::deep_wasm::DeepWasmError::Io)?;
 
                 // Perform detailed bytecode analysis

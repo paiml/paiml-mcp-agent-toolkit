@@ -585,7 +585,6 @@ impl NameResolver for TypeScriptJavaResolver {
     }
 }
 
-
 // Tests extracted to cross_language_dependencies_tests.rs for file health compliance (CB-040)
 #[cfg(test)]
 #[path = "cross_language_dependencies_tests.rs"]

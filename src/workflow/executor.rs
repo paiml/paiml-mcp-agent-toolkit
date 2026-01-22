@@ -678,7 +678,6 @@ impl DefaultWorkflowExecutor {
     }
 }
 
-
 // Tests extracted to executor_tests.rs for file health compliance (CB-040)
 #[cfg(test)]
 #[path = "executor_tests.rs"]

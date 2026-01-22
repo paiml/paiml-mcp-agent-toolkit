@@ -994,7 +994,10 @@ mod tests {
     #[test]
     fn test_cache_warming_config_patterns() {
         let config = AdvancedCacheConfig::default();
-        assert!(config.warming_config.warm_patterns.contains(&"**/*.rs".to_string()));
+        assert!(config
+            .warming_config
+            .warm_patterns
+            .contains(&"**/*.rs".to_string()));
     }
 
     // === PerformanceConfig tests ===
@@ -1011,7 +1014,10 @@ mod tests {
     #[test]
     fn test_performance_config_cleanup_interval() {
         let config = AdvancedCacheConfig::default();
-        assert_eq!(config.performance_config.cleanup_interval, Duration::from_secs(60));
+        assert_eq!(
+            config.performance_config.cleanup_interval,
+            Duration::from_secs(60)
+        );
     }
 
     // === TierStats tests ===
@@ -1467,9 +1473,18 @@ mod tests {
     #[test]
     fn test_cache_config_tier_limits() {
         let config = AdvancedCacheConfig::default();
-        assert_eq!(*config.tier_memory_limits.get(&CacheTier::L1).unwrap(), 64 * 1024 * 1024);
-        assert_eq!(*config.tier_memory_limits.get(&CacheTier::L2).unwrap(), 256 * 1024 * 1024);
-        assert_eq!(*config.tier_memory_limits.get(&CacheTier::L3).unwrap(), 1024 * 1024 * 1024);
+        assert_eq!(
+            *config.tier_memory_limits.get(&CacheTier::L1).unwrap(),
+            64 * 1024 * 1024
+        );
+        assert_eq!(
+            *config.tier_memory_limits.get(&CacheTier::L2).unwrap(),
+            256 * 1024 * 1024
+        );
+        assert_eq!(
+            *config.tier_memory_limits.get(&CacheTier::L3).unwrap(),
+            1024 * 1024 * 1024
+        );
     }
 
     #[test]

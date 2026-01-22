@@ -96,10 +96,9 @@ impl CommitClassifier {
             "the", "a", "an", "and", "or", "but", "in", "on", "at", "to", "for", "of", "with",
             "is", "are", "was", "were", "be", "been", "being", "have", "has", "had", "do", "does",
             "did", "will", "would", "could", "should", "may", "might", "must", "shall", "can",
-            "need", "dare", "ought", "used", "this", "that", "these", "those", "it", "its",
-            "from", "by", "as", "not", "all", "each", "every", "both", "few", "more", "most",
-            "other", "some", "such", "no", "nor", "only", "own", "same", "so", "than", "too",
-            "very",
+            "need", "dare", "ought", "used", "this", "that", "these", "those", "it", "its", "from",
+            "by", "as", "not", "all", "each", "every", "both", "few", "more", "most", "other",
+            "some", "such", "no", "nor", "only", "own", "same", "so", "than", "too", "very",
         ]
         .into_iter()
         .collect();
@@ -138,7 +137,12 @@ impl CommitClassifier {
             .iter()
             .max_by(|a, b| a.1.partial_cmp(b.1).unwrap_or(std::cmp::Ordering::Equal))
             .map(|(c, s)| (c.clone(), *s))
-            .unwrap_or_else(|| (self.classes.first().cloned().unwrap_or_default(), f64::NEG_INFINITY));
+            .unwrap_or_else(|| {
+                (
+                    self.classes.first().cloned().unwrap_or_default(),
+                    f64::NEG_INFINITY,
+                )
+            });
 
         // Convert to probabilities for confidence
         let max_score = scores.values().cloned().fold(f64::NEG_INFINITY, f64::max);

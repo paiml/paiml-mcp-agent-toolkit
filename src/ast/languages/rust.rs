@@ -616,6 +616,9 @@ mod coverage_tests {
         // Functions inside impl blocks require visit_impl_item_fn handler
         // Current implementation only captures top-level functions (ItemFn)
         // Types should include: Config (struct), Configurable (trait), State (enum), plus impl blocks
-        assert!(types.len() >= 3, "Should find struct, trait, enum, and impl blocks");
+        assert!(
+            types.len() >= 3,
+            "Should find struct, trait, enum, and impl blocks"
+        );
     }
 }

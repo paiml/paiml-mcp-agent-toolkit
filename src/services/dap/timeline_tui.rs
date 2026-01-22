@@ -785,9 +785,18 @@ mod tests {
         event_loop.queue_event(TerminalEvent::Key(KeyCode::Char('b')));
         event_loop.queue_event(TerminalEvent::Resize(100, 50));
 
-        assert_eq!(event_loop.next_queued_event(), Some(TerminalEvent::Key(KeyCode::Char('a'))));
-        assert_eq!(event_loop.next_queued_event(), Some(TerminalEvent::Key(KeyCode::Char('b'))));
-        assert_eq!(event_loop.next_queued_event(), Some(TerminalEvent::Resize(100, 50)));
+        assert_eq!(
+            event_loop.next_queued_event(),
+            Some(TerminalEvent::Key(KeyCode::Char('a')))
+        );
+        assert_eq!(
+            event_loop.next_queued_event(),
+            Some(TerminalEvent::Key(KeyCode::Char('b')))
+        );
+        assert_eq!(
+            event_loop.next_queued_event(),
+            Some(TerminalEvent::Resize(100, 50))
+        );
         assert_eq!(event_loop.next_queued_event(), None);
     }
 
@@ -1039,7 +1048,9 @@ mod tests {
 
     #[test]
     fn test_variable_inspector_page_down() {
-        let vars: Vec<_> = (0..30).map(|i| (format!("var{}", i), format!("{}", i))).collect();
+        let vars: Vec<_> = (0..30)
+            .map(|i| (format!("var{}", i), format!("{}", i)))
+            .collect();
         let mut view = VariableInspectorView::from_variables(vars);
         view.set_viewport_height(10);
 
@@ -1049,7 +1060,9 @@ mod tests {
 
     #[test]
     fn test_variable_inspector_page_up() {
-        let vars: Vec<_> = (0..30).map(|i| (format!("var{}", i), format!("{}", i))).collect();
+        let vars: Vec<_> = (0..30)
+            .map(|i| (format!("var{}", i), format!("{}", i)))
+            .collect();
         let mut view = VariableInspectorView::from_variables(vars);
         view.set_viewport_height(10);
         view.set_scroll_offset(20);
@@ -1060,7 +1073,9 @@ mod tests {
 
     #[test]
     fn test_variable_inspector_visible_range() {
-        let vars: Vec<_> = (0..30).map(|i| (format!("var{}", i), format!("{}", i))).collect();
+        let vars: Vec<_> = (0..30)
+            .map(|i| (format!("var{}", i), format!("{}", i)))
+            .collect();
         let mut view = VariableInspectorView::from_variables(vars);
         view.set_viewport_height(10);
 
@@ -1071,9 +1086,7 @@ mod tests {
 
     #[test]
     fn test_variable_inspector_get_variable() {
-        let vars = vec![
-            ("name".to_string(), "value".to_string()),
-        ];
+        let vars = vec![("name".to_string(), "value".to_string())];
         let view = VariableInspectorView::from_variables(vars);
 
         let var = view.get_variable(0);
@@ -1091,9 +1104,7 @@ mod tests {
 
     #[test]
     fn test_variable_inspector_format_line() {
-        let vars = vec![
-            ("x".to_string(), "42".to_string()),
-        ];
+        let vars = vec![("x".to_string(), "42".to_string())];
         let view = VariableInspectorView::from_variables(vars);
 
         let line = view.format_line(0);
@@ -1167,9 +1178,7 @@ mod tests {
 
     #[test]
     fn test_stack_frame_navigator_select_next_at_end() {
-        let frames = vec![
-            ("a".to_string(), "a.rs".to_string(), 1),
-        ];
+        let frames = vec![("a".to_string(), "a.rs".to_string(), 1)];
         let mut nav = StackFrameNavigator::from_frames(frames);
         nav.select_next();
         nav.select_next(); // Should stay at last
@@ -1198,9 +1207,7 @@ mod tests {
 
     #[test]
     fn test_stack_frame_navigator_get_frame() {
-        let frames = vec![
-            ("main".to_string(), "main.rs".to_string(), 42),
-        ];
+        let frames = vec![("main".to_string(), "main.rs".to_string(), 42)];
         let nav = StackFrameNavigator::from_frames(frames);
 
         let frame = nav.get_frame(0);
@@ -1228,9 +1235,7 @@ mod tests {
 
     #[test]
     fn test_stack_frame_navigator_format_frame_line() {
-        let frames = vec![
-            ("process".to_string(), "mod.rs".to_string(), 100),
-        ];
+        let frames = vec![("process".to_string(), "mod.rs".to_string(), 100)];
         let nav = StackFrameNavigator::from_frames(frames);
 
         let line = nav.format_frame_line(0);
@@ -1291,7 +1296,10 @@ mod tests {
         assert_eq!(TuiAction::ScrollDown.description(), "Scroll down");
         assert_eq!(TuiAction::ScrollUp.description(), "Scroll up");
         assert_eq!(TuiAction::SelectNextFrame.description(), "Next stack frame");
-        assert_eq!(TuiAction::SelectPreviousFrame.description(), "Previous stack frame");
+        assert_eq!(
+            TuiAction::SelectPreviousFrame.description(),
+            "Previous stack frame"
+        );
     }
 
     #[test]
@@ -1320,12 +1328,27 @@ mod tests {
     fn test_keyboard_handler_default_bindings() {
         let handler = KeyboardHandler::new();
 
-        assert_eq!(handler.get_action(KeyCode::Right), Some(TuiAction::NextFrame));
-        assert_eq!(handler.get_action(KeyCode::Left), Some(TuiAction::PreviousFrame));
-        assert_eq!(handler.get_action(KeyCode::Char(' ')), Some(TuiAction::TogglePlayback));
-        assert_eq!(handler.get_action(KeyCode::Home), Some(TuiAction::JumpToStart));
+        assert_eq!(
+            handler.get_action(KeyCode::Right),
+            Some(TuiAction::NextFrame)
+        );
+        assert_eq!(
+            handler.get_action(KeyCode::Left),
+            Some(TuiAction::PreviousFrame)
+        );
+        assert_eq!(
+            handler.get_action(KeyCode::Char(' ')),
+            Some(TuiAction::TogglePlayback)
+        );
+        assert_eq!(
+            handler.get_action(KeyCode::Home),
+            Some(TuiAction::JumpToStart)
+        );
         assert_eq!(handler.get_action(KeyCode::End), Some(TuiAction::JumpToEnd));
-        assert_eq!(handler.get_action(KeyCode::Char('q')), Some(TuiAction::Quit));
+        assert_eq!(
+            handler.get_action(KeyCode::Char('q')),
+            Some(TuiAction::Quit)
+        );
     }
 
     #[test]
@@ -1333,7 +1356,10 @@ mod tests {
         let mut handler = KeyboardHandler::new();
         handler.bind_key(KeyCode::Char('n'), TuiAction::NextFrame);
 
-        assert_eq!(handler.get_action(KeyCode::Char('n')), Some(TuiAction::NextFrame));
+        assert_eq!(
+            handler.get_action(KeyCode::Char('n')),
+            Some(TuiAction::NextFrame)
+        );
     }
 
     #[test]
@@ -1403,7 +1429,13 @@ mod tests {
         handler.bind_key(KeyCode::Char('j'), TuiAction::ScrollDown);
         handler.bind_key(KeyCode::Char('k'), TuiAction::ScrollUp);
 
-        assert_eq!(handler.get_action(KeyCode::Char('j')), Some(TuiAction::ScrollDown));
-        assert_eq!(handler.get_action(KeyCode::Char('k')), Some(TuiAction::ScrollUp));
+        assert_eq!(
+            handler.get_action(KeyCode::Char('j')),
+            Some(TuiAction::ScrollDown)
+        );
+        assert_eq!(
+            handler.get_action(KeyCode::Char('k')),
+            Some(TuiAction::ScrollUp)
+        );
     }
 }

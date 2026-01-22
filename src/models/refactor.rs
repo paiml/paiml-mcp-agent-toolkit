@@ -616,7 +616,9 @@ mod tests {
     #[test]
     fn test_state_scan() {
         let targets = vec![PathBuf::from("file1.rs"), PathBuf::from("file2.rs")];
-        let state = State::Scan { targets: targets.clone() };
+        let state = State::Scan {
+            targets: targets.clone(),
+        };
 
         if let State::Scan { targets: t } = state {
             assert_eq!(t.len(), 2);
@@ -745,8 +747,16 @@ mod tests {
     fn test_refactor_op_extract_function() {
         let op = RefactorOp::ExtractFunction {
             name: "helper".to_string(),
-            start: BytePos { byte: 0, line: 1, column: 1 },
-            end: BytePos { byte: 100, line: 10, column: 1 },
+            start: BytePos {
+                byte: 0,
+                line: 1,
+                column: 1,
+            },
+            end: BytePos {
+                byte: 100,
+                line: 10,
+                column: 1,
+            },
             params: vec!["x".to_string(), "y".to_string()],
         };
 
@@ -956,8 +966,12 @@ mod tests {
     fn test_satd_fix_variants() {
         let fixes = vec![
             SatdFix::Remove,
-            SatdFix::Replace { with: "fixed".to_string() },
-            SatdFix::Implement { solution: "impl".to_string() },
+            SatdFix::Replace {
+                with: "fixed".to_string(),
+            },
+            SatdFix::Implement {
+                solution: "impl".to_string(),
+            },
         ];
 
         for fix in fixes {

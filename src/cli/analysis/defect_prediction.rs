@@ -538,7 +538,11 @@ mod coverage_tests {
     use std::time::Duration;
 
     // Helper function to create mock DefectScore
-    fn create_mock_defect_score(probability: f32, confidence: f32, risk_level: RiskLevel) -> DefectScore {
+    fn create_mock_defect_score(
+        probability: f32,
+        confidence: f32,
+        risk_level: RiskLevel,
+    ) -> DefectScore {
         DefectScore {
             probability,
             confidence,
@@ -580,15 +584,7 @@ mod coverage_tests {
 
     #[test]
     fn test_create_defect_prediction_config_default_values() {
-        let config = create_defect_prediction_config(
-            0.5,
-            10,
-            false,
-            false,
-            true,
-            None,
-            None,
-        );
+        let config = create_defect_prediction_config(0.5, 10, false, false, true, None, None);
 
         assert_eq!(config.confidence_threshold, 0.5);
         assert_eq!(config.min_lines, 10);
@@ -672,7 +668,7 @@ mod coverage_tests {
         // 0.7 is NOT > 0.7, so it's medium
         assert_eq!(stats.high_risk, 0);
         assert_eq!(stats.medium_risk, 1); // 0.7 is in (0.3, 0.7]
-        assert_eq!(stats.low_risk, 1);   // 0.3 is <= 0.3
+        assert_eq!(stats.low_risk, 1); // 0.3 is <= 0.3
     }
 
     // ==================== Test get_risk_icon ====================
@@ -932,7 +928,7 @@ mod coverage_tests {
 
         assert!(result.contains("Defect Prediction Summary"));
         assert!(result.contains("0 files")); // Risk distribution shows 0
-        // Should NOT contain "Top Risk Files" section when empty
+                                             // Should NOT contain "Top Risk Files" section when empty
     }
 
     // ==================== Test write_summary_header ====================
@@ -1246,24 +1242,39 @@ mod coverage_tests {
         let results = parsed["runs"][0]["results"].as_array().unwrap();
 
         // High risk should be "error"
-        let high_risk = results.iter().find(|r|
-            r["locations"][0]["physicalLocation"]["artifactLocation"]["uri"]
-                .as_str().unwrap().contains("high_risk")
-        ).unwrap();
+        let high_risk = results
+            .iter()
+            .find(|r| {
+                r["locations"][0]["physicalLocation"]["artifactLocation"]["uri"]
+                    .as_str()
+                    .unwrap()
+                    .contains("high_risk")
+            })
+            .unwrap();
         assert_eq!(high_risk["level"], "error");
 
         // Medium risk should be "warning"
-        let medium_risk = results.iter().find(|r|
-            r["locations"][0]["physicalLocation"]["artifactLocation"]["uri"]
-                .as_str().unwrap().contains("medium_risk")
-        ).unwrap();
+        let medium_risk = results
+            .iter()
+            .find(|r| {
+                r["locations"][0]["physicalLocation"]["artifactLocation"]["uri"]
+                    .as_str()
+                    .unwrap()
+                    .contains("medium_risk")
+            })
+            .unwrap();
         assert_eq!(medium_risk["level"], "warning");
 
         // Low risk should be "note"
-        let low_risk = results.iter().find(|r|
-            r["locations"][0]["physicalLocation"]["artifactLocation"]["uri"]
-                .as_str().unwrap().contains("low_risk")
-        ).unwrap();
+        let low_risk = results
+            .iter()
+            .find(|r| {
+                r["locations"][0]["physicalLocation"]["artifactLocation"]["uri"]
+                    .as_str()
+                    .unwrap()
+                    .contains("low_risk")
+            })
+            .unwrap();
         assert_eq!(low_risk["level"], "note");
     }
 
@@ -1276,7 +1287,10 @@ mod coverage_tests {
         let result = format_defect_csv(&predictions).unwrap();
 
         let lines: Vec<&str> = result.lines().collect();
-        assert_eq!(lines[0], "file,probability,confidence,risk_level,top_factor,top_factor_weight");
+        assert_eq!(
+            lines[0],
+            "file,probability,confidence,risk_level,top_factor,top_factor_weight"
+        );
     }
 
     #[test]
@@ -1325,9 +1339,7 @@ mod coverage_tests {
 
     #[test]
     fn test_format_defect_summary_single_file() {
-        let predictions = vec![
-            ("only_file.rs".to_string(), create_high_risk_score()),
-        ];
+        let predictions = vec![("only_file.rs".to_string(), create_high_risk_score())];
         let elapsed = Duration::from_millis(50);
 
         let result = format_defect_summary(&predictions, elapsed).unwrap();
@@ -1338,9 +1350,7 @@ mod coverage_tests {
 
     #[test]
     fn test_format_with_special_characters_in_filename() {
-        let predictions = vec![
-            ("src/my-file_v2.0.rs".to_string(), create_high_risk_score()),
-        ];
+        let predictions = vec![("src/my-file_v2.0.rs".to_string(), create_high_risk_score())];
         let elapsed = Duration::from_millis(50);
 
         let result = format_defect_summary(&predictions, elapsed).unwrap();
@@ -1352,9 +1362,10 @@ mod coverage_tests {
 
     #[test]
     fn test_format_with_unicode_filename() {
-        let predictions = vec![
-            ("src/archivo_espa\u{00f1}ol.rs".to_string(), create_medium_risk_score()),
-        ];
+        let predictions = vec![(
+            "src/archivo_espa\u{00f1}ol.rs".to_string(),
+            create_medium_risk_score(),
+        )];
         let elapsed = Duration::from_millis(50);
 
         let result = format_defect_json(&predictions, elapsed).unwrap();

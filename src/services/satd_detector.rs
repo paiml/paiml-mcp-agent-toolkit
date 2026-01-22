@@ -1581,7 +1581,6 @@ impl SATDDetector {
     }
 }
 
-
 // Tests extracted to satd_detector_tests.rs for file health compliance (CB-040)
 #[cfg(test)]
 #[path = "satd_detector_tests.rs"]

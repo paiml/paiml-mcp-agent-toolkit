@@ -579,7 +579,7 @@ impl ConfigurationService {
                 velocity_tracking: true,
                 burndown_charts: true,
                 git: GitConfig {
-                    create_branches: false,  // DISABLED: per CLAUDE.md zero-branching policy
+                    create_branches: false, // DISABLED: per CLAUDE.md zero-branching policy
                     branch_pattern: "feature/{task_id}".to_string(),
                     commit_pattern: "{task_id}: {message}".to_string(),
                     require_quality_check: true,

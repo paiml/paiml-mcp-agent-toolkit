@@ -38,7 +38,6 @@ pub struct EvidenceGatherer {
     confidence_threshold: f64,
 }
 
-
 include!("evidence_impl.rs");
 
 impl Default for EvidenceGatherer {
@@ -86,9 +85,7 @@ pub struct RepositoryContext {
     repo_path: PathBuf, // Original path passed to from_path
 }
 
-
 include!("repository_impl.rs");
-
 
 #[cfg(test)]
 mod tests {

@@ -104,7 +104,10 @@ mod tests {
         let thresholds = PerformanceThresholds::default();
         let json = serde_json::to_string(&thresholds).unwrap();
         let deserialized: PerformanceThresholds = serde_json::from_str(&json).unwrap();
-        assert_eq!(deserialized.max_analysis_time_ms, thresholds.max_analysis_time_ms);
+        assert_eq!(
+            deserialized.max_analysis_time_ms,
+            thresholds.max_analysis_time_ms
+        );
     }
 
     // ============ OptimizationConfig Tests ============
@@ -113,7 +116,10 @@ mod tests {
     fn test_optimization_config_creation() {
         let config = OptimizationConfig {
             auto_optimize: true,
-            strategies: vec![OptimizationStrategy::CacheOptimization, OptimizationStrategy::ParallelProcessing],
+            strategies: vec![
+                OptimizationStrategy::CacheOptimization,
+                OptimizationStrategy::ParallelProcessing,
+            ],
             min_improvement_percent: 10.0,
             experimental: true,
         };
@@ -139,8 +145,14 @@ mod tests {
     #[test]
     fn test_retention_config_default() {
         let config = RetentionConfig::default();
-        assert_eq!(config.detailed_retention, Duration::from_secs(7 * 24 * 60 * 60));
-        assert_eq!(config.summary_retention, Duration::from_secs(90 * 24 * 60 * 60));
+        assert_eq!(
+            config.detailed_retention,
+            Duration::from_secs(7 * 24 * 60 * 60)
+        );
+        assert_eq!(
+            config.summary_retention,
+            Duration::from_secs(90 * 24 * 60 * 60)
+        );
         assert!(config.auto_cleanup);
     }
 
@@ -856,7 +868,7 @@ mod tests {
         baseline.insert("metric2".to_string(), 200.0);
 
         let mut optimized = HashMap::new();
-        optimized.insert("metric1".to_string(), 80.0);  // 20% improvement
+        optimized.insert("metric1".to_string(), 80.0); // 20% improvement
         optimized.insert("metric2".to_string(), 160.0); // 20% improvement
 
         let improvement = monitor.calculate_improvement(&baseline, &optimized);
@@ -1144,7 +1156,10 @@ mod tests {
     fn test_performance_statistics_clone() {
         let stats = PerformanceStatistics::default();
         let cloned = stats.clone();
-        assert_eq!(cloned.analysis.avg_analysis_time_ms, stats.analysis.avg_analysis_time_ms);
+        assert_eq!(
+            cloned.analysis.avg_analysis_time_ms,
+            stats.analysis.avg_analysis_time_ms
+        );
     }
 
     #[test]
@@ -1203,7 +1218,6 @@ mod tests {
         let _ = format!("{:?}", severe);
         let _ = format!("{:?}", critical);
     }
-
 
     // Part 2 tests extracted to performance_tests_part2.rs for file health compliance (CB-040)
 }

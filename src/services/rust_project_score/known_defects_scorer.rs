@@ -140,8 +140,12 @@ impl KnownDefectsScorer {
         let code_only = Self::strip_comments(content);
 
         // Production file - check for #[cfg(test)] module
-        // Find the #[cfg(test)] marker (the ONLY reliable test module indicator)
-        let test_module_start = code_only.find("#[cfg(test)]");
+        // Find any test-related cfg marker: #[cfg(test)], #[cfg(all(test, ...))]
+        let test_cfg_regex = Regex::new(r"#\[cfg\((test|all\(test)").ok();
+        let test_module_start = test_cfg_regex
+            .as_ref()
+            .and_then(|re| re.find(&code_only))
+            .map(|m| m.start());
 
         match test_module_start {
             Some(start_pos) => {
@@ -260,13 +264,23 @@ impl KnownDefectsScorer {
             return true;
         }
 
-        // Check 2: Filename patterns
+        // Check 2: Filename patterns (expanded for common test file naming conventions)
         if let Some(filename) = path.file_name() {
             let filename_str = filename.to_string_lossy();
+            let filename_lower = filename_str.to_lowercase();
             if filename_str.ends_with("_test.rs")
                 || filename_str.ends_with("_tests.rs")
                 || filename_str == "tests.rs"
+                || filename_lower.contains("_tests_")        // e.g., *_tests_part1.rs
+                || filename_lower.contains("coverage_tests") // e.g., *_coverage_tests*.rs
+                || filename_lower.contains("property_tests") // e.g., *_property_tests.rs
+                || filename_lower.contains("_coverage_")     // e.g., *_coverage_part*.rs
+                || filename_lower.starts_with("test_")       // e.g., test_*.rs
             {
+                return true;
+            }
+            // Handle split test files: part1.rs, part2.rs, etc.
+            if filename_lower.starts_with("part") && filename_lower.ends_with(".rs") {
                 return true;
             }
         }

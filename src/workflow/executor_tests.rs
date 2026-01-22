@@ -308,7 +308,6 @@ async fn test_parallel_step_execution() {
         }
     }
 }
-}
 // Coverage tests
 use crate::agents::{AgentClass, AgentSpec};
 
@@ -324,7 +323,9 @@ async fn setup_executor_with_agent() -> (DefaultWorkflowExecutor, Arc<AgentRegis
         config: serde_json::json!({}),
     };
     registry.spawn_agent(spec).await.unwrap();
-    registry.register_agent_with_name("test_agent", agent_id).await;
+    registry
+        .register_agent_with_name("test_agent", agent_id)
+        .await;
 
     let executor = DefaultWorkflowExecutor::new(registry.clone());
     (executor, registry)
@@ -382,7 +383,12 @@ async fn test_execute_action_agent_not_found() {
     let context = WorkflowContext::new(Uuid::new_v4(), registry);
 
     let result = executor
-        .execute_action("nonexistent_agent", "operation", &serde_json::json!({}), &context)
+        .execute_action(
+            "nonexistent_agent",
+            "operation",
+            &serde_json::json!({}),
+            &context,
+        )
         .await;
 
     assert!(result.is_err());
@@ -400,7 +406,12 @@ async fn test_execute_action_with_registered_agent() {
     let context = WorkflowContext::new(Uuid::new_v4(), registry);
 
     let result = executor
-        .execute_action("test_agent", "test_operation", &serde_json::json!({"key": "value"}), &context)
+        .execute_action(
+            "test_agent",
+            "test_operation",
+            &serde_json::json!({"key": "value"}),
+            &context,
+        )
         .await;
 
     assert!(result.is_ok());
@@ -431,9 +442,7 @@ async fn test_execute_parallel_with_non_running_state() {
     let context = WorkflowContext::new(Uuid::new_v4(), registry);
     context.set_state(WorkflowState::Paused); // Not Running state
 
-    let steps = vec![
-        StepBuilder::action("step1", "Step 1", "test_agent", "op").build(),
-    ];
+    let steps = vec![StepBuilder::action("step1", "Step 1", "test_agent", "op").build()];
 
     let result = executor.execute_parallel(&steps, &context).await;
     // When state is not Running, errors are collected but don't fail
@@ -500,7 +509,7 @@ async fn test_execute_conditional_true_branch() {
 
     let if_true = StepBuilder::action("true_step", "True Step", "test_agent", "true_op").build();
     let if_false = Some(Box::new(
-        StepBuilder::action("false_step", "False Step", "test_agent", "false_op").build()
+        StepBuilder::action("false_step", "False Step", "test_agent", "false_op").build(),
     ));
 
     // This condition should evaluate to true (default)
@@ -560,9 +569,7 @@ async fn test_execute_loop_false_condition() {
     let step = StepBuilder::action("loop_step", "Loop Step", "test_agent", "op").build();
 
     // x > y is false, so loop should not execute
-    let result = executor
-        .execute_loop("x > y", &step, None, &context)
-        .await;
+    let result = executor.execute_loop("x > y", &step, None, &context).await;
 
     assert!(result.is_ok());
     let output = result.unwrap();
@@ -579,7 +586,9 @@ async fn test_execute_with_retry_success_first_attempt() {
     let step = StepBuilder::action("retry_step", "Retry Step", "test_agent", "op").build();
     let retry = RetryPolicy {
         max_attempts: 3,
-        backoff: BackoffStrategy::Fixed { delay: Duration::from_millis(10) },
+        backoff: BackoffStrategy::Fixed {
+            delay: Duration::from_millis(10),
+        },
         retry_on: vec![],
     };
 
@@ -597,7 +606,9 @@ async fn test_execute_with_retry_exhausts_attempts() {
     let step = StepBuilder::action("retry_step", "Retry Step", "nonexistent", "op").build();
     let retry = RetryPolicy {
         max_attempts: 2,
-        backoff: BackoffStrategy::Fixed { delay: Duration::from_millis(1) },
+        backoff: BackoffStrategy::Fixed {
+            delay: Duration::from_millis(1),
+        },
         retry_on: vec![],
     };
 
@@ -657,7 +668,9 @@ async fn test_execute_step_internal_wait_step() {
     let step = WorkflowStep {
         id: "wait_step".to_string(),
         name: "Wait Step".to_string(),
-        step_type: StepType::Wait { duration: Duration::from_millis(10) },
+        step_type: StepType::Wait {
+            duration: Duration::from_millis(10),
+        },
         condition: None,
         retry: None,
         timeout: None,
@@ -739,7 +752,9 @@ async fn test_execute_step_internal_with_error_handler_goto() {
     let context = WorkflowContext::new(Uuid::new_v4(), registry);
 
     let step = StepBuilder::action("error_step", "Error Step", "nonexistent", "op")
-        .on_error(ErrorHandler::Goto { step_id: "recovery_step".to_string() })
+        .on_error(ErrorHandler::Goto {
+            step_id: "recovery_step".to_string(),
+        })
         .build();
 
     let result = executor.execute_step_internal(&step, &context).await;
@@ -756,7 +771,9 @@ async fn test_execute_step_internal_with_error_handler_compensate() {
     let context = WorkflowContext::new(Uuid::new_v4(), registry);
 
     let step = StepBuilder::action("error_step", "Error Step", "nonexistent", "op")
-        .on_error(ErrorHandler::Compensate { steps: vec!["comp1".to_string(), "comp2".to_string()] })
+        .on_error(ErrorHandler::Compensate {
+            steps: vec!["comp1".to_string(), "comp2".to_string()],
+        })
         .build();
 
     let result = executor.execute_step_internal(&step, &context).await;
@@ -771,12 +788,13 @@ async fn test_execute_step_internal_with_error_handler_execute() {
     let (executor, registry) = setup_executor_with_agent().await;
     let context = WorkflowContext::new(Uuid::new_v4(), registry);
 
-    let fallback_step = Box::new(
-        StepBuilder::action("fallback", "Fallback", "test_agent", "fallback_op").build()
-    );
+    let fallback_step =
+        Box::new(StepBuilder::action("fallback", "Fallback", "test_agent", "fallback_op").build());
 
     let step = StepBuilder::action("error_step", "Error Step", "nonexistent", "op")
-        .on_error(ErrorHandler::Execute { step: fallback_step })
+        .on_error(ErrorHandler::Execute {
+            step: fallback_step,
+        })
         .build();
 
     let result = executor.execute_step_internal(&step, &context).await;
@@ -793,11 +811,22 @@ fn test_calculate_backoff_fixed() {
     let registry = Arc::new(AgentRegistry::new());
     let executor = DefaultWorkflowExecutor::new(registry);
 
-    let strategy = BackoffStrategy::Fixed { delay: Duration::from_secs(5) };
+    let strategy = BackoffStrategy::Fixed {
+        delay: Duration::from_secs(5),
+    };
 
-    assert_eq!(executor.calculate_backoff(&strategy, 1), Duration::from_secs(5));
-    assert_eq!(executor.calculate_backoff(&strategy, 5), Duration::from_secs(5));
-    assert_eq!(executor.calculate_backoff(&strategy, 100), Duration::from_secs(5));
+    assert_eq!(
+        executor.calculate_backoff(&strategy, 1),
+        Duration::from_secs(5)
+    );
+    assert_eq!(
+        executor.calculate_backoff(&strategy, 5),
+        Duration::from_secs(5)
+    );
+    assert_eq!(
+        executor.calculate_backoff(&strategy, 100),
+        Duration::from_secs(5)
+    );
 }
 
 #[test]
@@ -811,13 +840,31 @@ fn test_calculate_backoff_exponential() {
         max: Duration::from_secs(16),
     };
 
-    assert_eq!(executor.calculate_backoff(&strategy, 1), Duration::from_secs(1));
-    assert_eq!(executor.calculate_backoff(&strategy, 2), Duration::from_secs(2));
-    assert_eq!(executor.calculate_backoff(&strategy, 3), Duration::from_secs(4));
-    assert_eq!(executor.calculate_backoff(&strategy, 4), Duration::from_secs(8));
+    assert_eq!(
+        executor.calculate_backoff(&strategy, 1),
+        Duration::from_secs(1)
+    );
+    assert_eq!(
+        executor.calculate_backoff(&strategy, 2),
+        Duration::from_secs(2)
+    );
+    assert_eq!(
+        executor.calculate_backoff(&strategy, 3),
+        Duration::from_secs(4)
+    );
+    assert_eq!(
+        executor.calculate_backoff(&strategy, 4),
+        Duration::from_secs(8)
+    );
     // Should cap at max
-    assert_eq!(executor.calculate_backoff(&strategy, 5), Duration::from_secs(16));
-    assert_eq!(executor.calculate_backoff(&strategy, 10), Duration::from_secs(16));
+    assert_eq!(
+        executor.calculate_backoff(&strategy, 5),
+        Duration::from_secs(16)
+    );
+    assert_eq!(
+        executor.calculate_backoff(&strategy, 10),
+        Duration::from_secs(16)
+    );
 }
 
 #[test]
@@ -830,10 +877,22 @@ fn test_calculate_backoff_linear() {
         increment: Duration::from_secs(2),
     };
 
-    assert_eq!(executor.calculate_backoff(&strategy, 1), Duration::from_secs(1));
-    assert_eq!(executor.calculate_backoff(&strategy, 2), Duration::from_secs(3));
-    assert_eq!(executor.calculate_backoff(&strategy, 3), Duration::from_secs(5));
-    assert_eq!(executor.calculate_backoff(&strategy, 4), Duration::from_secs(7));
+    assert_eq!(
+        executor.calculate_backoff(&strategy, 1),
+        Duration::from_secs(1)
+    );
+    assert_eq!(
+        executor.calculate_backoff(&strategy, 2),
+        Duration::from_secs(3)
+    );
+    assert_eq!(
+        executor.calculate_backoff(&strategy, 3),
+        Duration::from_secs(5)
+    );
+    assert_eq!(
+        executor.calculate_backoff(&strategy, 4),
+        Duration::from_secs(7)
+    );
 }
 
 // ===== evaluate_condition tests =====
@@ -874,7 +933,9 @@ async fn test_evaluate_condition_equals_true() {
     context.set_variable("status".to_string(), serde_json::json!("success"));
     context.set_variable("expected".to_string(), serde_json::json!("success"));
 
-    let result = executor.evaluate_condition("status == expected", &context).await;
+    let result = executor
+        .evaluate_condition("status == expected", &context)
+        .await;
 
     assert!(result.is_ok());
     assert!(result.unwrap());
@@ -888,7 +949,9 @@ async fn test_evaluate_condition_equals_false() {
     context.set_variable("status".to_string(), serde_json::json!("error"));
     context.set_variable("expected".to_string(), serde_json::json!("success"));
 
-    let result = executor.evaluate_condition("status == expected", &context).await;
+    let result = executor
+        .evaluate_condition("status == expected", &context)
+        .await;
 
     assert!(result.is_ok());
     assert!(!result.unwrap());
@@ -901,7 +964,9 @@ async fn test_evaluate_condition_default_true() {
     let context = WorkflowContext::new(Uuid::new_v4(), registry);
 
     // Unknown expression defaults to true
-    let result = executor.evaluate_condition("some_unknown_expr", &context).await;
+    let result = executor
+        .evaluate_condition("some_unknown_expr", &context)
+        .await;
 
     assert!(result.is_ok());
     assert!(result.unwrap());
@@ -946,15 +1011,18 @@ fn test_resolve_variable_step_result_status() {
     let context = WorkflowContext::new(Uuid::new_v4(), registry);
 
     // Add a step result
-    context.set_step_result("step1".to_string(), StepResult {
-        step_id: "step1".to_string(),
-        status: StepStatus::Completed,
-        output: Some(serde_json::json!({"result": "ok"})),
-        error: None,
-        started_at: Instant::now(),
-        completed_at: Some(Instant::now()),
-        attempts: 1,
-    });
+    context.set_step_result(
+        "step1".to_string(),
+        StepResult {
+            step_id: "step1".to_string(),
+            status: StepStatus::Completed,
+            output: Some(serde_json::json!({"result": "ok"})),
+            error: None,
+            started_at: Instant::now(),
+            completed_at: Some(Instant::now()),
+            attempts: 1,
+        },
+    );
 
     let result = executor.resolve_variable("steps.step1.status", &context);
 
@@ -970,15 +1038,18 @@ fn test_resolve_variable_step_result_output() {
     let context = WorkflowContext::new(Uuid::new_v4(), registry);
 
     // Add a step result
-    context.set_step_result("step1".to_string(), StepResult {
-        step_id: "step1".to_string(),
-        status: StepStatus::Completed,
-        output: Some(serde_json::json!({"result": "ok", "count": 5})),
-        error: None,
-        started_at: Instant::now(),
-        completed_at: Some(Instant::now()),
-        attempts: 1,
-    });
+    context.set_step_result(
+        "step1".to_string(),
+        StepResult {
+            step_id: "step1".to_string(),
+            status: StepStatus::Completed,
+            output: Some(serde_json::json!({"result": "ok", "count": 5})),
+            error: None,
+            started_at: Instant::now(),
+            completed_at: Some(Instant::now()),
+            attempts: 1,
+        },
+    );
 
     let result = executor.resolve_variable("steps.step1.output.result", &context);
 
@@ -1022,7 +1093,10 @@ async fn test_resume_not_paused() {
     let executor = DefaultWorkflowExecutor::new(registry);
 
     let execution_id = Uuid::new_v4();
-    executor.execution_states.write().insert(execution_id, ExecutionState::default());
+    executor
+        .execution_states
+        .write()
+        .insert(execution_id, ExecutionState::default());
 
     let result = executor.resume(execution_id).await;
 
@@ -1055,12 +1129,21 @@ async fn test_cancel_success() {
     let executor = DefaultWorkflowExecutor::new(registry);
 
     let execution_id = Uuid::new_v4();
-    executor.execution_states.write().insert(execution_id, ExecutionState::default());
+    executor
+        .execution_states
+        .write()
+        .insert(execution_id, ExecutionState::default());
 
     let result = executor.cancel(execution_id).await;
 
     assert!(result.is_ok());
-    let state = executor.execution_states.read().get(&execution_id).unwrap().control.clone();
+    let state = executor
+        .execution_states
+        .read()
+        .get(&execution_id)
+        .unwrap()
+        .control
+        .clone();
     assert_eq!(state, ExecutionControl::Cancelled);
 }
 
@@ -1126,7 +1209,10 @@ fn test_check_execution_control_running() {
     let executor = DefaultWorkflowExecutor::new(registry);
 
     let execution_id = Uuid::new_v4();
-    executor.execution_states.write().insert(execution_id, ExecutionState::default());
+    executor
+        .execution_states
+        .write()
+        .insert(execution_id, ExecutionState::default());
 
     let control = executor.check_execution_control(execution_id).unwrap();
     assert_eq!(control, ExecutionControl::Running);
@@ -1149,7 +1235,10 @@ fn test_save_checkpoint() {
     let executor = DefaultWorkflowExecutor::new(registry);
 
     let execution_id = Uuid::new_v4();
-    executor.execution_states.write().insert(execution_id, ExecutionState::default());
+    executor
+        .execution_states
+        .write()
+        .insert(execution_id, ExecutionState::default());
 
     let execution_order = vec![
         vec!["step1".to_string()],
@@ -1161,7 +1250,12 @@ fn test_save_checkpoint() {
 
     assert!(result.is_ok());
 
-    let state = executor.execution_states.read().get(&execution_id).unwrap().clone();
+    let state = executor
+        .execution_states
+        .read()
+        .get(&execution_id)
+        .unwrap()
+        .clone();
     assert!(state.checkpoint.is_some());
     let checkpoint = state.checkpoint.unwrap();
     assert_eq!(checkpoint._current_level, 1);
@@ -1192,7 +1286,9 @@ async fn test_execute_workflow_with_timeout() {
         .add_step(WorkflowStep {
             id: "slow_step".to_string(),
             name: "Slow Step".to_string(),
-            step_type: StepType::Wait { duration: Duration::from_millis(100) },
+            step_type: StepType::Wait {
+                duration: Duration::from_millis(100),
+            },
             condition: None,
             retry: None,
             timeout: None,

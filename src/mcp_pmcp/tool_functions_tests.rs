@@ -21,7 +21,6 @@ mod property_tests {
     }
 }
 
-
 mod coverage_tests {
     use super::*;
     use proptest::prelude::*;

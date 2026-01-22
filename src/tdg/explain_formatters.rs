@@ -137,7 +137,12 @@ mod tests {
     }
 
     // Helper to create a test function complexity
-    fn create_test_function(name: &str, line: usize, cyclomatic: u32, cognitive: u32) -> FunctionComplexity {
+    fn create_test_function(
+        name: &str,
+        line: usize,
+        cyclomatic: u32,
+        cognitive: u32,
+    ) -> FunctionComplexity {
         FunctionComplexity {
             name: name.to_string(),
             line_number: line,

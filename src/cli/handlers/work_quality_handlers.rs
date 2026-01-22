@@ -341,7 +341,10 @@ pub async fn run_popper_falsification(project_path: &PathBuf) -> Result<Falsific
             } else {
                 result.binary_size_ok = false;
                 issues.push(format!("Binary size {:.1}MB exceeds 50MB limit", size_mb));
-                println!("      ❌ Hypothesis falsified: {:.1}MB > 50MB limit", size_mb);
+                println!(
+                    "      ❌ Hypothesis falsified: {:.1}MB > 50MB limit",
+                    size_mb
+                );
             }
         }
     } else {

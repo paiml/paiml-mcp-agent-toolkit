@@ -338,10 +338,7 @@ mod tests {
         let table = SymbolTable::new();
 
         for i in 0..10 {
-            let qname = QualifiedName::new(
-                vec!["module".to_string()],
-                format!("func{}", i),
-            );
+            let qname = QualifiedName::new(vec!["module".to_string()], format!("func{}", i));
             let location = Location::new(PathBuf::from("src/lib.rs"), i * 10, (i + 1) * 10);
             table.insert(qname, location);
         }

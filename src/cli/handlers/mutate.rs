@@ -552,7 +552,9 @@ async fn handle_cargo_mutants_backend(args: MutateArgs) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::services::mutation::types::{Mutant, MutantStatus, MutationOperator, SourceLocation};
+    use crate::services::mutation::types::{
+        Mutant, MutantStatus, MutationOperator, SourceLocation,
+    };
     use tempfile::TempDir;
 
     fn create_temp_rust_file() -> (TempDir, std::path::PathBuf) {
@@ -700,7 +702,10 @@ fn add(a: i32, b: i32) -> i32 {
     #[test]
     fn test_mutation_score_from_results_killed() {
         let (temp, file_path) = create_temp_rust_file();
-        let results = vec![create_test_mutation_result(&file_path, MutantStatus::Killed)];
+        let results = vec![create_test_mutation_result(
+            &file_path,
+            MutantStatus::Killed,
+        )];
 
         let score = MutationScore::from_results(&results);
         assert_eq!(score.total, 1);

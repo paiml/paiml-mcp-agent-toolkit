@@ -166,7 +166,9 @@ mod coverage_tests {
     fn test_orchestrator_config_reexport() {
         let config = OrchestratorConfig::default();
         // Just verify it can be created and has expected field
-        assert!(config.evaluation_interval.as_secs() > 0 || config.evaluation_interval.as_millis() > 0);
+        assert!(
+            config.evaluation_interval.as_secs() > 0 || config.evaluation_interval.as_millis() > 0
+        );
     }
 
     #[test]
@@ -233,7 +235,8 @@ mod coverage_tests {
     #[test]
     fn test_content_cache_reexport() {
         // Verify ContentCache type is re-exported
-        let _cache_type: std::any::TypeId = std::any::TypeId::of::<ContentCache<AstCacheStrategy>>();
+        let _cache_type: std::any::TypeId =
+            std::any::TypeId::of::<ContentCache<AstCacheStrategy>>();
     }
 
     // =========================================================================

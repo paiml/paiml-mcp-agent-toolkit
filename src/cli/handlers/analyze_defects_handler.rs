@@ -174,14 +174,8 @@ fn print_text_report(report: &DefectReport) {
         report.summary.files_with_defects
     );
     println!("  Total Defects: {}", report.summary.total_defects);
-    println!(
-        "  Critical: {}",
-        report.summary.by_severity.critical
-    );
-    println!(
-        "  High: {}",
-        report.summary.by_severity.high
-    );
+    println!("  Critical: {}", report.summary.by_severity.critical);
+    println!("  High: {}", report.summary.by_severity.high);
     println!("  Medium: {}", report.summary.by_severity.medium);
     println!("  Low: {}", report.summary.by_severity.low);
 
@@ -203,20 +197,14 @@ fn print_text_report(report: &DefectReport) {
         .collect();
 
     if !critical_defects.is_empty() {
-        println!(
-            "\n🔴 CRITICAL Defects ({})",
-            critical_defects.len()
-        );
+        println!("\n🔴 CRITICAL Defects ({})", critical_defects.len());
         for defect in critical_defects {
             print_defect_pattern(defect);
         }
     }
 
     if !high_defects.is_empty() {
-        println!(
-            "\n🟠 HIGH Defects ({})",
-            high_defects.len()
-        );
+        println!("\n🟠 HIGH Defects ({})", high_defects.len());
         for defect in high_defects {
             print_defect_pattern(defect);
         }
@@ -580,7 +568,9 @@ mod coverage_tests {
 
         let files = collect_rust_files(temp_dir.path()).expect("Should succeed");
         // Hidden files should not be included
-        assert!(files.iter().all(|f| !f.to_string_lossy().contains(".hidden")));
+        assert!(files
+            .iter()
+            .all(|f| !f.to_string_lossy().contains(".hidden")));
     }
 
     #[test]
@@ -599,7 +589,9 @@ mod coverage_tests {
 
         let files = collect_rust_files(temp_dir.path()).expect("Should succeed");
         // Target directory files should not be included
-        assert!(files.iter().all(|f| !f.to_string_lossy().contains("/target/")));
+        assert!(files
+            .iter()
+            .all(|f| !f.to_string_lossy().contains("/target/")));
     }
 
     #[test]
@@ -617,7 +609,9 @@ mod coverage_tests {
 
         let files = collect_rust_files(temp_dir.path()).expect("Should succeed");
         // All returned files should be .rs files
-        assert!(files.iter().all(|f| f.extension().is_some_and(|ext| ext == "rs")));
+        assert!(files
+            .iter()
+            .all(|f| f.extension().is_some_and(|ext| ext == "rs")));
     }
 
     // =========================================================================
@@ -1156,11 +1150,8 @@ fn main() {
         std::fs::create_dir_all(&src_dir).expect("create dir");
 
         // Create two files, only scan one
-        std::fs::write(
-            src_dir.join("clean.rs"),
-            "fn clean() { let x = Some(42); }",
-        )
-        .expect("write");
+        std::fs::write(src_dir.join("clean.rs"), "fn clean() { let x = Some(42); }")
+            .expect("write");
         std::fs::write(
             src_dir.join("dirty.rs"),
             "fn dirty() { let x = Some(42).unwrap(); }",
@@ -1495,11 +1486,7 @@ fn main() {
         std::fs::create_dir_all(&src_dir).expect("create dir");
 
         // Create multiple files with defects
-        std::fs::write(
-            src_dir.join("file1.rs"),
-            "fn f1() { Some(1).unwrap(); }",
-        )
-        .expect("write");
+        std::fs::write(src_dir.join("file1.rs"), "fn f1() { Some(1).unwrap(); }").expect("write");
         std::fs::write(
             src_dir.join("file2.rs"),
             "fn f2() { Some(2).unwrap(); Some(3).unwrap(); }",

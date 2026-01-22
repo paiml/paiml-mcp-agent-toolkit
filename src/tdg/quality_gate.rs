@@ -840,9 +840,7 @@ mod tests {
 
         let gate = NewFileGate::new(config);
         let baseline = TdgBaseline::new(None);
-        let current = create_test_baseline(vec![
-            (PathBuf::from("src/new_bad.rs"), 50.0, Grade::D),
-        ]);
+        let current = create_test_baseline(vec![(PathBuf::from("src/new_bad.rs"), 50.0, Grade::D)]);
 
         let result = gate.check(&baseline, &current).unwrap();
         assert!(result.passed); // Should pass because enforcement is disabled
@@ -851,12 +849,10 @@ mod tests {
 
     #[test]
     fn test_new_file_gate_no_new_files() {
-        let baseline = create_test_baseline(vec![
-            (PathBuf::from("src/existing.rs"), 90.0, Grade::A),
-        ]);
-        let current = create_test_baseline(vec![
-            (PathBuf::from("src/existing.rs"), 90.0, Grade::A),
-        ]);
+        let baseline =
+            create_test_baseline(vec![(PathBuf::from("src/existing.rs"), 90.0, Grade::A)]);
+        let current =
+            create_test_baseline(vec![(PathBuf::from("src/existing.rs"), 90.0, Grade::A)]);
 
         let gate = NewFileGate::with_defaults();
         let result = gate.check(&baseline, &current).unwrap();
@@ -1079,12 +1075,10 @@ mod tests {
     #[test]
     fn test_regression_gate_critical_severity() {
         // Test that large score drops (>15) with grade drops get Critical severity
-        let baseline = create_test_baseline(vec![
-            (PathBuf::from("src/critical.rs"), 95.0, Grade::APLus),
-        ]);
-        let current = create_test_baseline(vec![
-            (PathBuf::from("src/critical.rs"), 60.0, Grade::D),
-        ]);
+        let baseline =
+            create_test_baseline(vec![(PathBuf::from("src/critical.rs"), 95.0, Grade::APLus)]);
+        let current =
+            create_test_baseline(vec![(PathBuf::from("src/critical.rs"), 60.0, Grade::D)]);
 
         let gate = RegressionGate::with_defaults();
         let result = gate.check(&baseline, &current).unwrap();
@@ -1100,9 +1094,7 @@ mod tests {
     #[test]
     fn test_regression_gate_error_severity_no_grade_drop() {
         // Test score drop > 10 without grade drop
-        let baseline = create_test_baseline(vec![
-            (PathBuf::from("src/test.rs"), 90.0, Grade::A),
-        ]);
+        let baseline = create_test_baseline(vec![(PathBuf::from("src/test.rs"), 90.0, Grade::A)]);
         let current = create_test_baseline(vec![
             (PathBuf::from("src/test.rs"), 75.0, Grade::A), // Same grade, big score drop
         ]);
@@ -1121,9 +1113,7 @@ mod tests {
     #[test]
     fn test_regression_gate_warning_severity() {
         // Test score drop between 5-10 without grade drop
-        let baseline = create_test_baseline(vec![
-            (PathBuf::from("src/test.rs"), 90.0, Grade::A),
-        ]);
+        let baseline = create_test_baseline(vec![(PathBuf::from("src/test.rs"), 90.0, Grade::A)]);
         let current = create_test_baseline(vec![
             (PathBuf::from("src/test.rs"), 82.0, Grade::A), // Same grade, small-medium drop
         ]);
@@ -1217,12 +1207,9 @@ mod tests {
         config.allow_grade_drop = true;
         config.max_score_drop = 20.0; // Allow larger drops
 
-        let baseline = create_test_baseline(vec![
-            (PathBuf::from("src/main.rs"), 91.0, Grade::A),
-        ]);
-        let current = create_test_baseline(vec![
-            (PathBuf::from("src/main.rs"), 85.0, Grade::BPlus),
-        ]);
+        let baseline = create_test_baseline(vec![(PathBuf::from("src/main.rs"), 91.0, Grade::A)]);
+        let current =
+            create_test_baseline(vec![(PathBuf::from("src/main.rs"), 85.0, Grade::BPlus)]);
 
         let gate = RegressionGate::new(config);
         let result = gate.check(&baseline, &current).unwrap();
@@ -1262,7 +1249,12 @@ mod tests {
 
     #[test]
     fn test_severity_full_ordering() {
-        let severities = [Severity::Info, Severity::Warning, Severity::Error, Severity::Critical];
+        let severities = [
+            Severity::Info,
+            Severity::Warning,
+            Severity::Error,
+            Severity::Critical,
+        ];
         for i in 0..severities.len() - 1 {
             assert!(severities[i] < severities[i + 1]);
         }
@@ -1310,9 +1302,8 @@ mod tests {
         let mut config = GateConfig::default();
         config.max_score_drop = 5.0;
 
-        let baseline = create_test_baseline(vec![
-            (PathBuf::from("src/main.rs"), 80.0, Grade::BMinus),
-        ]);
+        let baseline =
+            create_test_baseline(vec![(PathBuf::from("src/main.rs"), 80.0, Grade::BMinus)]);
         let current = create_test_baseline(vec![
             (PathBuf::from("src/main.rs"), 75.0, Grade::C), // Exactly 5.0 drop
         ]);
@@ -1328,9 +1319,8 @@ mod tests {
         let mut config = GateConfig::default();
         config.max_score_drop = 5.0;
 
-        let baseline = create_test_baseline(vec![
-            (PathBuf::from("src/main.rs"), 80.0, Grade::BMinus),
-        ]);
+        let baseline =
+            create_test_baseline(vec![(PathBuf::from("src/main.rs"), 80.0, Grade::BMinus)]);
         let current = create_test_baseline(vec![
             (PathBuf::from("src/main.rs"), 74.9, Grade::C), // 5.1 drop - over threshold
         ]);
@@ -1377,9 +1367,7 @@ mod tests {
             };
 
             let baseline = create_test_baseline(vec![]);
-            let current = create_test_baseline(vec![
-                (PathBuf::from("test.rs"), score, grade),
-            ]);
+            let current = create_test_baseline(vec![(PathBuf::from("test.rs"), score, grade)]);
 
             let result = gate.check(&baseline, &current).unwrap();
             if should_pass {
@@ -1459,9 +1447,9 @@ mod tests {
             (PathBuf::from("c.rs"), 80.0, Grade::BMinus),
         ]);
         let current = create_test_baseline(vec![
-            (PathBuf::from("a.rs"), 89.0, Grade::A),       // Minor drop
-            (PathBuf::from("b.rs"), 86.0, Grade::B),       // Improved
-            (PathBuf::from("c.rs"), 82.0, Grade::BMinus),  // Improved
+            (PathBuf::from("a.rs"), 89.0, Grade::A),      // Minor drop
+            (PathBuf::from("b.rs"), 86.0, Grade::B),      // Improved
+            (PathBuf::from("c.rs"), 82.0, Grade::BMinus), // Improved
         ]);
 
         let gate = RegressionGate::new(config);
@@ -1510,9 +1498,7 @@ mod tests {
     fn test_new_file_gate_multiple_new_files() {
         let config = GateConfig::default();
 
-        let baseline = create_test_baseline(vec![
-            (PathBuf::from("existing.rs"), 90.0, Grade::A),
-        ]);
+        let baseline = create_test_baseline(vec![(PathBuf::from("existing.rs"), 90.0, Grade::A)]);
         let current = create_test_baseline(vec![
             (PathBuf::from("existing.rs"), 90.0, Grade::A),
             (PathBuf::from("new1.rs"), 85.0, Grade::B),
@@ -1542,5 +1528,4 @@ mod tests {
         let new_file = NewFileGate::with_defaults();
         assert_eq!(new_file.name(), "NewFileGate");
     }
-
 }

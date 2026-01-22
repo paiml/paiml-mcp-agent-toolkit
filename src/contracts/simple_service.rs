@@ -480,7 +480,6 @@ struct RefactorOperation {
     confidence: f64,
 }
 
-
 // Tests extracted to simple_service_tests.rs for file health compliance (CB-040)
 #[cfg(test)]
 #[path = "simple_service_tests.rs"]

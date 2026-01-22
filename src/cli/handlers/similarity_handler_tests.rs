@@ -21,7 +21,6 @@ mod property_tests {
     }
 }
 
-
 mod tests {
     use super::*;
     use crate::cli::{DuplicateOutputFormat, DuplicateType};
@@ -280,11 +279,7 @@ mod tests {
     #[test]
     fn test_should_include_file_with_include_pattern_no_match() {
         let path = std::path::Path::new("/project/tests/test.rs");
-        assert!(!should_include_file(
-            path,
-            &Some("src".to_string()),
-            &None
-        ));
+        assert!(!should_include_file(path, &Some("src".to_string()), &None));
     }
 
     #[test]
@@ -1532,13 +1527,9 @@ fn example_function() {
         let report = create_populated_report();
         let json = format_report(&report, DuplicateOutputFormat::Json).unwrap();
         let parsed: ComprehensiveReport = serde_json::from_str(&json).unwrap();
-        assert_eq!(
-            parsed.metrics.total_clones,
-            report.metrics.total_clones
-        );
+        assert_eq!(parsed.metrics.total_clones, report.metrics.total_clones);
     }
 }
-
 
 /// NOTE: Temporarily disabled due to struct definition mismatches
 #[cfg(all(test, feature = "broken-tests"))]

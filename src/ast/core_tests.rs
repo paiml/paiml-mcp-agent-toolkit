@@ -59,7 +59,6 @@ mod tests {
     }
 }
 
-
 mod property_tests {
     use proptest::prelude::*;
 

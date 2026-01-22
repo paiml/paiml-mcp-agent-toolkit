@@ -221,9 +221,9 @@ impl Default for ServiceRegistryBuilder {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::complexity_adapter::*;
     use super::refactor_adapter::*;
+    use super::*;
     use std::path::PathBuf;
 
     #[tokio::test]
@@ -481,14 +481,12 @@ mod tests {
     fn test_refactor_output_with_changes() {
         let output = RefactorOutput {
             success: true,
-            changes: vec![
-                Change {
-                    file: "test.rs".to_string(),
-                    line: 10,
-                    before: "old code".to_string(),
-                    after: "new code".to_string(),
-                },
-            ],
+            changes: vec![Change {
+                file: "test.rs".to_string(),
+                line: 10,
+                before: "old code".to_string(),
+                after: "new code".to_string(),
+            }],
             message: "Changed".to_string(),
         };
         assert_eq!(output.changes.len(), 1);

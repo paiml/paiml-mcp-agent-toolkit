@@ -47,16 +47,16 @@ mod coverage_tests {
             0x01, 0x00, 0x00, 0x00, // version
             // Type section
             0x01, 0x05, // section id 1, size 5
-            0x01,       // 1 type
+            0x01, // 1 type
             0x60, 0x00, 0x01, 0x7f, // func type: () -> i32
             // Function section
             0x03, 0x02, // section id 3, size 2
             0x01, 0x00, // 1 function, type 0
             // Code section
             0x0a, 0x09, // section id 10, size 9
-            0x01,       // 1 function body
-            0x07,       // body size 7
-            0x00,       // 0 locals
+            0x01, // 1 function body
+            0x07, // body size 7
+            0x00, // 0 locals
             0x41, 0x01, // i32.const 1
             0x41, 0x02, // i32.const 2
             0x6a, // i32.add
@@ -520,7 +520,10 @@ mod coverage_tests {
         let verification = mock_verification_unsafe();
         let result = check_verification_failure(Some(&verification));
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Verification failed"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Verification failed"));
     }
 
     // ==================== check_security_failures Tests ====================
@@ -1171,10 +1174,7 @@ mod coverage_tests {
         let output = result.unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
 
-        assert!(parsed["$schema"]
-            .as_str()
-            .unwrap()
-            .contains("sarif-schema"));
+        assert!(parsed["$schema"].as_str().unwrap().contains("sarif-schema"));
         assert_eq!(parsed["version"].as_str().unwrap(), "2.1.0");
     }
 
@@ -1389,12 +1389,12 @@ mod coverage_tests {
         let result = handle_analyze_wasm(
             file.path().to_path_buf(),
             WasmOutputFormat::Json,
-            true,  // verify
-            true,  // security
-            true,  // profile
-            None,  // baseline
+            true, // verify
+            true, // security
+            true, // profile
+            None, // baseline
             Some(output_file.path().to_path_buf()),
-            true,  // verbose
+            true, // verbose
         )
         .await;
 

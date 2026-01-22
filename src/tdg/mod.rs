@@ -786,7 +786,9 @@ mod tests {
             issue: "High complexity".to_string(),
         };
         assert_eq!(penalty.amount, 5.0);
-        assert!(penalty.applied_to.contains(&MetricCategory::StructuralComplexity));
+        assert!(penalty
+            .applied_to
+            .contains(&MetricCategory::StructuralComplexity));
     }
 
     #[test]
@@ -845,7 +847,10 @@ mod tests {
         assert_eq!(project.total_files, 1);
         assert_eq!(project.average_score, 85.0);
         assert_eq!(project.average_grade, Grade::AMinus);
-        assert_eq!(*project.language_distribution.get(&Language::Rust).unwrap(), 1);
+        assert_eq!(
+            *project.language_distribution.get(&Language::Rust).unwrap(),
+            1
+        );
     }
 
     #[test]
@@ -871,8 +876,17 @@ mod tests {
         assert_eq!(project.total_files, 3);
         assert_eq!(project.average_score, 80.0);
         assert_eq!(project.average_grade, Grade::BPlus);
-        assert_eq!(*project.language_distribution.get(&Language::Rust).unwrap(), 2);
-        assert_eq!(*project.language_distribution.get(&Language::Python).unwrap(), 1);
+        assert_eq!(
+            *project.language_distribution.get(&Language::Rust).unwrap(),
+            2
+        );
+        assert_eq!(
+            *project
+                .language_distribution
+                .get(&Language::Python)
+                .unwrap(),
+            1
+        );
     }
 
     #[test]
@@ -1008,7 +1022,10 @@ mod tests {
             ..TdgScore::default()
         };
         let comparison = Comparison::new(source1, source2);
-        assert!(comparison.improvements.iter().any(|s| s.contains("duplication")));
+        assert!(comparison
+            .improvements
+            .iter()
+            .any(|s| s.contains("duplication")));
     }
 
     #[test]

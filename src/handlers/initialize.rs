@@ -618,7 +618,11 @@ mod tests {
     use std::sync::Arc;
 
     async fn create_test_server() -> Arc<TemplateServer> {
-        Arc::new(TemplateServer::new().await.expect("Failed to create test server"))
+        Arc::new(
+            TemplateServer::new()
+                .await
+                .expect("Failed to create test server"),
+        )
     }
 
     fn create_test_request(id: serde_json::Value, params: Option<serde_json::Value>) -> McpRequest {
@@ -683,7 +687,10 @@ mod tests {
 
         assert_eq!(server_info.get("name").unwrap(), "pmat");
         assert!(server_info.get("version").is_some());
-        assert_eq!(server_info.get("vendor").unwrap(), "Pragmatic AI Labs (paiml.com)");
+        assert_eq!(
+            server_info.get("vendor").unwrap(),
+            "Pragmatic AI Labs (paiml.com)"
+        );
         assert_eq!(server_info.get("author").unwrap(), "Pragmatic AI Labs");
     }
 
@@ -859,7 +866,9 @@ mod tests {
         let tools = result.get("tools").unwrap().as_array().unwrap();
 
         let has_generate_template = tools.iter().any(|t| {
-            t.get("name").map(|n| n == "generate_template").unwrap_or(false)
+            t.get("name")
+                .map(|n| n == "generate_template")
+                .unwrap_or(false)
         });
         assert!(has_generate_template);
     }
@@ -880,7 +889,9 @@ mod tests {
         let tools = result.get("tools").unwrap().as_array().unwrap();
 
         let has_scaffold_project = tools.iter().any(|t| {
-            t.get("name").map(|n| n == "scaffold_project").unwrap_or(false)
+            t.get("name")
+                .map(|n| n == "scaffold_project")
+                .unwrap_or(false)
         });
         assert!(has_scaffold_project);
     }
@@ -901,7 +912,9 @@ mod tests {
         let tools = result.get("tools").unwrap().as_array().unwrap();
 
         let has_analyze_complexity = tools.iter().any(|t| {
-            t.get("name").map(|n| n == "analyze_complexity").unwrap_or(false)
+            t.get("name")
+                .map(|n| n == "analyze_complexity")
+                .unwrap_or(false)
         });
         assert!(has_analyze_complexity);
     }
@@ -922,7 +935,9 @@ mod tests {
         let tools = result.get("tools").unwrap().as_array().unwrap();
 
         let has_analyze_churn = tools.iter().any(|t| {
-            t.get("name").map(|n| n == "analyze_code_churn").unwrap_or(false)
+            t.get("name")
+                .map(|n| n == "analyze_code_churn")
+                .unwrap_or(false)
         });
         assert!(has_analyze_churn);
     }
@@ -943,7 +958,9 @@ mod tests {
         let tools = result.get("tools").unwrap().as_array().unwrap();
 
         let has_analyze_dead_code = tools.iter().any(|t| {
-            t.get("name").map(|n| n == "analyze_dead_code").unwrap_or(false)
+            t.get("name")
+                .map(|n| n == "analyze_dead_code")
+                .unwrap_or(false)
         });
         assert!(has_analyze_dead_code);
     }
@@ -963,9 +980,9 @@ mod tests {
         let result = response.result.unwrap();
         let tools = result.get("tools").unwrap().as_array().unwrap();
 
-        let has_analyze_satd = tools.iter().any(|t| {
-            t.get("name").map(|n| n == "analyze_satd").unwrap_or(false)
-        });
+        let has_analyze_satd = tools
+            .iter()
+            .any(|t| t.get("name").map(|n| n == "analyze_satd").unwrap_or(false));
         assert!(has_analyze_satd);
     }
 
@@ -986,7 +1003,11 @@ mod tests {
 
         // All tools should have descriptions
         for tool in tools {
-            assert!(tool.get("description").is_some(), "Tool {} missing description", tool.get("name").unwrap_or(&serde_json::Value::Null));
+            assert!(
+                tool.get("description").is_some(),
+                "Tool {} missing description",
+                tool.get("name").unwrap_or(&serde_json::Value::Null)
+            );
         }
     }
 
@@ -1007,7 +1028,11 @@ mod tests {
 
         // All tools should have inputSchema
         for tool in tools {
-            assert!(tool.get("inputSchema").is_some(), "Tool {} missing inputSchema", tool.get("name").unwrap_or(&serde_json::Value::Null));
+            assert!(
+                tool.get("inputSchema").is_some(),
+                "Tool {} missing inputSchema",
+                tool.get("name").unwrap_or(&serde_json::Value::Null)
+            );
         }
     }
 
@@ -1036,9 +1061,9 @@ mod tests {
         ];
 
         for tool_name in &vectorized_tools {
-            let has_tool = tools.iter().any(|t| {
-                t.get("name").map(|n| n == *tool_name).unwrap_or(false)
-            });
+            let has_tool = tools
+                .iter()
+                .any(|t| t.get("name").map(|n| n == *tool_name).unwrap_or(false));
             assert!(has_tool, "Missing vectorized tool: {}", tool_name);
         }
     }

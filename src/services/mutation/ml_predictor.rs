@@ -782,7 +782,7 @@ fn count_unique_variables(source: &str) -> u32 {
         let cleaned = token.trim_matches(|c: char| !c.is_alphanumeric() && c != '_');
 
         if !cleaned.is_empty() {
-            let first_char = cleaned.chars().next().unwrap();
+            let first_char = cleaned.chars().next().expect("checked is_empty");
             if first_char.is_lowercase() || first_char == '_' {
                 // Skip keywords
                 if !is_rust_keyword(cleaned) {
@@ -840,7 +840,7 @@ fn is_rust_keyword(word: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::services::mutation::{SourceLocation, MutantStatus};
+    use crate::services::mutation::{MutantStatus, SourceLocation};
 
     // ==================== Helper Functions Tests ====================
 
@@ -1027,8 +1027,10 @@ mod tests {
 
     #[test]
     fn test_mutant_features_with_arithmetic() {
-        let mutant =
-            create_test_mutant("let z = x + y;", MutationOperatorType::ArithmeticReplacement);
+        let mutant = create_test_mutant(
+            "let z = x + y;",
+            MutationOperatorType::ArithmeticReplacement,
+        );
         let features = MutantFeatures::from_mutant(&mutant);
 
         assert!(features.has_arithmetic);
@@ -1045,8 +1047,10 @@ mod tests {
 
     #[test]
     fn test_mutant_features_with_logical_ops() {
-        let mutant =
-            create_test_mutant("if a && b || !c { }", MutationOperatorType::ConditionalReplacement);
+        let mutant = create_test_mutant(
+            "if a && b || !c { }",
+            MutationOperatorType::ConditionalReplacement,
+        );
         let features = MutantFeatures::from_mutant(&mutant);
 
         assert!(features.has_logical_ops);
@@ -1409,13 +1413,11 @@ mod tests {
         .iter()
         .enumerate()
         .flat_map(|(i, op)| {
-            (0..5).map(move |j| {
-                TrainingData {
-                    mutant: create_test_mutant(&format!("code_{}{}", i, j), op.clone()),
-                    was_killed: j % 2 == 0,
-                    test_failures: vec![],
-                    execution_time_ms: 100,
-                }
+            (0..5).map(move |j| TrainingData {
+                mutant: create_test_mutant(&format!("code_{}{}", i, j), op.clone()),
+                was_killed: j % 2 == 0,
+                test_failures: vec![],
+                execution_time_ms: 100,
             })
         })
         .collect();
@@ -1480,7 +1482,8 @@ mod tests {
             }
         "#;
 
-        let mutant = create_test_mutant(complex_source, MutationOperatorType::ArithmeticReplacement);
+        let mutant =
+            create_test_mutant(complex_source, MutationOperatorType::ArithmeticReplacement);
         let features = MutantFeatures::from_mutant(&mutant);
 
         assert!(features.has_loops);
@@ -1500,10 +1503,8 @@ mod tests {
             "for i in 0..10 { }",
             MutationOperatorType::ArithmeticReplacement,
         );
-        let mutant_without_loops = create_test_mutant(
-            "let x = 1;",
-            MutationOperatorType::ArithmeticReplacement,
-        );
+        let mutant_without_loops =
+            create_test_mutant("let x = 1;", MutationOperatorType::ArithmeticReplacement);
 
         let features_with = MutantFeatures::from_mutant(&mutant_with_loops);
         let features_without = MutantFeatures::from_mutant(&mutant_without_loops);

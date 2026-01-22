@@ -458,8 +458,14 @@ mod tests {
         };
         let json = serde_json::to_string(&metrics).unwrap();
         let deserialized: QualityMetrics = serde_json::from_str(&json).unwrap();
-        assert_eq!(metrics.cyclomatic_complexity, deserialized.cyclomatic_complexity);
-        assert_eq!(metrics.cognitive_complexity, deserialized.cognitive_complexity);
+        assert_eq!(
+            metrics.cyclomatic_complexity,
+            deserialized.cyclomatic_complexity
+        );
+        assert_eq!(
+            metrics.cognitive_complexity,
+            deserialized.cognitive_complexity
+        );
         assert_eq!(metrics.efficiency, deserialized.efficiency);
     }
 
@@ -714,7 +720,9 @@ mod tests {
         let result = runner.validate_module(file.path());
         assert!(result.is_err());
         match result.unwrap_err() {
-            QualityViolation::SatdDetected { count, patterns, .. } => {
+            QualityViolation::SatdDetected {
+                count, patterns, ..
+            } => {
                 assert!(count >= 2);
                 assert!(!patterns.is_empty());
             }
@@ -769,7 +777,11 @@ mod tests {
         let result = runner.validate_module(file.path());
         assert!(result.is_err());
         match result.unwrap_err() {
-            QualityViolation::InefficientAlgorithm { complexity, required, .. } => {
+            QualityViolation::InefficientAlgorithm {
+                complexity,
+                required,
+                ..
+            } => {
                 assert!(complexity.contains("n^"));
                 assert_eq!(required, "O(n)");
             }

@@ -360,7 +360,7 @@ impl Disassembler {
             blocks.push(BasicBlock {
                 id: current_block_id,
                 start_offset: current_block_start,
-                end_offset: instructions.last().unwrap().offset,
+                end_offset: instructions.last().expect("checked is_empty").offset,
                 block_type,
                 successors: vec![],
             });

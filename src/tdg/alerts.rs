@@ -594,7 +594,6 @@ pub fn default_tdg_alert_rules() -> Vec<AlertRule> {
     ]
 }
 
-
 // Tests extracted to alerts_tests.rs for file health compliance (CB-040)
 #[cfg(test)]
 #[path = "alerts_tests.rs"]

@@ -3,7 +3,7 @@
 //! CLI handler for the `pmat coverage improve` command.
 //! Autonomously improves test coverage using PMAT tools and Extreme TDD.
 
-use crate::services::coverage_improvement_service::{
+use crate::services::coverage_improvement::{
     CoverageImprovementConfig, CoverageImprovementReport, CoverageImprovementService,
 };
 use anyhow::Result;
@@ -200,7 +200,7 @@ fn print_summary(report: &CoverageImprovementReport) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::services::coverage_improvement_service::IterationReport;
+    use crate::services::coverage_improvement::IterationReport;
 
     #[test]
     fn test_format_text() {

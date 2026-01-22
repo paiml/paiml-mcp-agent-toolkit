@@ -12,7 +12,9 @@
 //! - GitHub Issue #129: quality-gate sub-command doesn't report violations
 //! - Fix: Updated format_qg_as_markdown and format_qg_as_summary to include violations
 
-use pmat::cli::analysis_utilities::{format_quality_gate_output, QualityGateResults, QualityViolation};
+use pmat::cli::analysis_utilities::{
+    format_quality_gate_output, QualityGateResults, QualityViolation,
+};
 use pmat::cli::QualityGateOutputFormat;
 
 fn main() {
@@ -76,20 +78,23 @@ fn main() {
 
     // Demo: Summary format (now shows violations)
     println!("--- Summary Format (default) ---\n");
-    let summary = format_quality_gate_output(&results, &violations, QualityGateOutputFormat::Summary)
-        .expect("formatting should work");
+    let summary =
+        format_quality_gate_output(&results, &violations, QualityGateOutputFormat::Summary)
+            .expect("formatting should work");
     println!("{}", summary);
 
     // Demo: Markdown format (now shows violations table)
     println!("\n--- Markdown Format ---\n");
-    let markdown = format_quality_gate_output(&results, &violations, QualityGateOutputFormat::Markdown)
-        .expect("formatting should work");
+    let markdown =
+        format_quality_gate_output(&results, &violations, QualityGateOutputFormat::Markdown)
+            .expect("formatting should work");
     println!("{}", markdown);
 
     // Demo: Detailed format (full violation list)
     println!("\n--- Detailed Format ---\n");
-    let detailed = format_quality_gate_output(&results, &violations, QualityGateOutputFormat::Detailed)
-        .expect("formatting should work");
+    let detailed =
+        format_quality_gate_output(&results, &violations, QualityGateOutputFormat::Detailed)
+            .expect("formatting should work");
     println!("{}", detailed);
 
     println!("\n=== End of Demo ===");

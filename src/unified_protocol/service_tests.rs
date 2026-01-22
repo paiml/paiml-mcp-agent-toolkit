@@ -367,7 +367,6 @@ mod tests {
     }
 }
 
-
 mod property_tests {
     use proptest::prelude::*;
 
@@ -715,7 +714,13 @@ mod coverage_tests {
             serde_json::to_value(Protocol::Mcp).unwrap(),
         );
 
-        service.record_request_metrics_by_data("POST", "/mcp/call_tool", &extensions, &response, 75);
+        service.record_request_metrics_by_data(
+            "POST",
+            "/mcp/call_tool",
+            &extensions,
+            &response,
+            75,
+        );
 
         let requests = service.state.metrics.requests_total.lock();
         assert!(requests.get(&Protocol::Mcp).is_some());
@@ -832,8 +837,7 @@ mod coverage_tests {
     #[tokio::test]
     async fn test_process_request_not_found() {
         let service = UnifiedService::new();
-        let request =
-            UnifiedRequest::new(axum::http::Method::GET, "/nonexistent/path".to_string());
+        let request = UnifiedRequest::new(axum::http::Method::GET, "/nonexistent/path".to_string());
 
         let response = service.process_request(request).await;
         assert!(response.is_ok());

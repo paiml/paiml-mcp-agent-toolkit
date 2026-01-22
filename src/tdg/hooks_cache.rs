@@ -309,7 +309,11 @@ impl HooksCacheManager {
     }
 
     /// Update cache after successful gate run
-    pub fn update(&self, result: CacheResult, gates: HashMap<String, GateCacheEntry>) -> Result<()> {
+    pub fn update(
+        &self,
+        result: CacheResult,
+        gates: HashMap<String, GateCacheEntry>,
+    ) -> Result<()> {
         let cache = TreeHashCache {
             tree_hash: self.get_tree_hash()?,
             result,
@@ -337,7 +341,10 @@ impl HooksCacheManager {
 
     /// Clear specific gate cache
     pub fn clear_gate(&self, gate_name: &str) -> Result<()> {
-        let gate_path = self.cache_dir.join("gates").join(format!("{}.json", gate_name));
+        let gate_path = self
+            .cache_dir
+            .join("gates")
+            .join(format!("{}.json", gate_name));
         if gate_path.exists() {
             fs::remove_file(gate_path)?;
         }
@@ -409,7 +416,10 @@ impl HooksCacheManager {
 
     /// Check if a specific gate can be skipped (Level 1 cache)
     pub fn check_gate(&self, gate_name: &str, files: &[PathBuf]) -> Result<Option<GateCacheEntry>> {
-        let gate_path = self.cache_dir.join("gates").join(format!("{}.json", gate_name));
+        let gate_path = self
+            .cache_dir
+            .join("gates")
+            .join(format!("{}.json", gate_name));
 
         if !gate_path.exists() {
             return Ok(None);
@@ -428,7 +438,14 @@ impl HooksCacheManager {
     }
 
     /// Update a specific gate's cache
-    pub fn update_gate(&self, gate_name: &str, files: &[PathBuf], result: CacheResult, duration_ms: u64, warnings: Vec<String>) -> Result<()> {
+    pub fn update_gate(
+        &self,
+        gate_name: &str,
+        files: &[PathBuf],
+        result: CacheResult,
+        duration_ms: u64,
+        warnings: Vec<String>,
+    ) -> Result<()> {
         let entry = GateCacheEntry {
             files_hash: self.hash_files(files)?,
             result,
@@ -437,7 +454,10 @@ impl HooksCacheManager {
             warnings,
         };
 
-        let gate_path = self.cache_dir.join("gates").join(format!("{}.json", gate_name));
+        let gate_path = self
+            .cache_dir
+            .join("gates")
+            .join(format!("{}.json", gate_name));
         let content = serde_json::to_string_pretty(&entry)?;
         fs::write(gate_path, content)?;
 
@@ -464,7 +484,11 @@ impl HooksCacheManager {
     // =========================================================================
 
     /// Run gates in parallel using rayon
-    pub fn run_gates_parallel<F>(&self, gates: Vec<GateDefinition>, runner: F) -> Result<ParallelGateResults>
+    pub fn run_gates_parallel<F>(
+        &self,
+        gates: Vec<GateDefinition>,
+        runner: F,
+    ) -> Result<ParallelGateResults>
     where
         F: Fn(&GateDefinition) -> Result<GateRunResult> + Sync + Send,
     {
@@ -473,20 +497,18 @@ impl HooksCacheManager {
         let errors = Arc::new(Mutex::new(Vec::new()));
 
         // Run gates in parallel
-        gates.par_iter().for_each(|gate| {
-            match runner(gate) {
-                Ok(result) => {
-                    results
-                        .lock()
-                        .expect("mutex not poisoned")
-                        .push((gate.name.clone(), result));
-                }
-                Err(e) => {
-                    errors
-                        .lock()
-                        .expect("mutex not poisoned")
-                        .push((gate.name.clone(), e.to_string()));
-                }
+        gates.par_iter().for_each(|gate| match runner(gate) {
+            Ok(result) => {
+                results
+                    .lock()
+                    .expect("mutex not poisoned")
+                    .push((gate.name.clone(), result));
+            }
+            Err(e) => {
+                errors
+                    .lock()
+                    .expect("mutex not poisoned")
+                    .push((gate.name.clone(), e.to_string()));
             }
         });
 
@@ -519,7 +541,11 @@ impl HooksCacheManager {
     }
 
     /// Run gates with smart scheduling (cached gates skip, uncached run in parallel)
-    pub fn run_gates_smart<F>(&self, gates: Vec<GateDefinition>, runner: F) -> Result<SmartGateResults>
+    pub fn run_gates_smart<F>(
+        &self,
+        gates: Vec<GateDefinition>,
+        runner: F,
+    ) -> Result<SmartGateResults>
     where
         F: Fn(&GateDefinition) -> Result<GateRunResult> + Sync + Send,
     {
@@ -560,7 +586,13 @@ impl HooksCacheManager {
         // Update cache for newly run gates
         for (name, result) in &parallel_results.results {
             if let Some(gate) = check_result.uncached.iter().find(|g| &g.name == name) {
-                let _ = self.update_gate(name, &gate.files, result.result, result.duration_ms, result.warnings.clone());
+                let _ = self.update_gate(
+                    name,
+                    &gate.files,
+                    result.result,
+                    result.duration_ms,
+                    result.warnings.clone(),
+                );
             }
         }
 
@@ -570,9 +602,15 @@ impl HooksCacheManager {
         // Calculate overall result
         let overall = if !parallel_results.errors.is_empty() {
             CacheResult::Fail
-        } else if cached_results.iter().any(|(_, r)| r.result == CacheResult::Fail) {
+        } else if cached_results
+            .iter()
+            .any(|(_, r)| r.result == CacheResult::Fail)
+        {
             CacheResult::Fail
-        } else if cached_results.iter().any(|(_, r)| r.result == CacheResult::Warn) {
+        } else if cached_results
+            .iter()
+            .any(|(_, r)| r.result == CacheResult::Warn)
+        {
             CacheResult::Warn
         } else {
             CacheResult::Pass
@@ -629,7 +667,10 @@ impl HooksCacheManager {
             .context("Failed to get git tree hash")?;
 
         if !output.status.success() {
-            anyhow::bail!("git rev-parse failed: {}", String::from_utf8_lossy(&output.stderr));
+            anyhow::bail!(
+                "git rev-parse failed: {}",
+                String::from_utf8_lossy(&output.stderr)
+            );
         }
 
         Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
@@ -690,7 +731,11 @@ impl std::fmt::Display for CacheMissReason {
             }
             CacheMissReason::ConfigHashChanged => write!(f, "Config file changed"),
             CacheMissReason::CacheStale { age_hours } => {
-                write!(f, "Cache stale ({}h old, max {}h)", age_hours, MAX_CACHE_AGE_HOURS)
+                write!(
+                    f,
+                    "Cache stale ({}h old, max {}h)",
+                    age_hours, MAX_CACHE_AGE_HOURS
+                )
             }
             CacheMissReason::VersionChanged { old, new } => {
                 write!(f, "PMAT version changed: {} → {}", old, new)
@@ -714,7 +759,10 @@ mod tests {
             .current_dir(temp.path())
             .output()?;
         if !init_out.status.success() {
-            anyhow::bail!("git init failed: {}", String::from_utf8_lossy(&init_out.stderr));
+            anyhow::bail!(
+                "git init failed: {}",
+                String::from_utf8_lossy(&init_out.stderr)
+            );
         }
 
         // Configure git user (required for commit)
@@ -734,7 +782,10 @@ mod tests {
             .current_dir(temp.path())
             .output()?;
         if !add_out.status.success() {
-            anyhow::bail!("git add failed: {}", String::from_utf8_lossy(&add_out.stderr));
+            anyhow::bail!(
+                "git add failed: {}",
+                String::from_utf8_lossy(&add_out.stderr)
+            );
         }
 
         let commit_out = Command::new("git")
@@ -742,7 +793,10 @@ mod tests {
             .current_dir(temp.path())
             .output()?;
         if !commit_out.status.success() {
-            anyhow::bail!("git commit failed: {}", String::from_utf8_lossy(&commit_out.stderr));
+            anyhow::bail!(
+                "git commit failed: {}",
+                String::from_utf8_lossy(&commit_out.stderr)
+            );
         }
 
         Ok(temp)
@@ -770,7 +824,9 @@ mod tests {
         let result = manager.check().unwrap();
 
         match result {
-            CacheCheckResult::Miss { reason: CacheMissReason::NoCacheFile } => {}
+            CacheCheckResult::Miss {
+                reason: CacheMissReason::NoCacheFile,
+            } => {}
             _ => panic!("Expected NoCacheFile miss"),
         }
     }
@@ -809,7 +865,10 @@ mod tests {
 
         // Cache dir should be recreated empty
         assert!(temp.path().join(".pmat/hooks-cache").exists());
-        assert!(!temp.path().join(".pmat/hooks-cache/tree-hash.json").exists());
+        assert!(!temp
+            .path()
+            .join(".pmat/hooks-cache/tree-hash.json")
+            .exists());
     }
 
     #[test]
@@ -819,8 +878,8 @@ mod tests {
         manager.init().unwrap();
 
         // Record some runs
-        manager.record_run(true, 5).unwrap();   // hit
-        manager.record_run(true, 7).unwrap();   // hit
+        manager.record_run(true, 5).unwrap(); // hit
+        manager.record_run(true, 7).unwrap(); // hit
         manager.record_run(false, 1000).unwrap(); // miss
 
         let metrics = manager.get_metrics().unwrap();
@@ -894,7 +953,9 @@ mod tests {
         let files = vec![test_file.clone()];
 
         // Update gate cache
-        manager.update_gate("complexity", &files, CacheResult::Pass, 100, vec![]).unwrap();
+        manager
+            .update_gate("complexity", &files, CacheResult::Pass, 100, vec![])
+            .unwrap();
 
         // Check should hit
         let result = manager.check_gate("complexity", &files).unwrap();
@@ -917,7 +978,9 @@ mod tests {
         let files = vec![test_file.clone()];
 
         // Update gate cache
-        manager.update_gate("complexity", &files, CacheResult::Pass, 100, vec![]).unwrap();
+        manager
+            .update_gate("complexity", &files, CacheResult::Pass, 100, vec![])
+            .unwrap();
 
         // Modify file
         fs::write(&test_file, "fn main() { println!(\"hello\"); }").unwrap();
@@ -940,7 +1003,15 @@ mod tests {
         fs::write(&file2, "fn two() {}").unwrap();
 
         // Cache only complexity gate
-        manager.update_gate("complexity", &[file1.clone()], CacheResult::Pass, 50, vec![]).unwrap();
+        manager
+            .update_gate(
+                "complexity",
+                &[file1.clone()],
+                CacheResult::Pass,
+                50,
+                vec![],
+            )
+            .unwrap();
 
         // Check gates - complexity should be cached, satd should not
         let gates = vec![
@@ -1032,7 +1103,9 @@ mod tests {
         fs::write(&file2, "fn two() {}").unwrap();
 
         // Pre-cache gate1
-        manager.update_gate("gate1", &[file1.clone()], CacheResult::Pass, 50, vec![]).unwrap();
+        manager
+            .update_gate("gate1", &[file1.clone()], CacheResult::Pass, 50, vec![])
+            .unwrap();
 
         let gates = vec![
             GateDefinition::new("gate1", vec![file1]),
@@ -1051,8 +1124,8 @@ mod tests {
         let results = manager.run_gates_smart(gates, runner).unwrap();
 
         assert_eq!(results.overall, CacheResult::Pass);
-        assert_eq!(results.gates_cached, 1);  // gate1 from cache
-        assert_eq!(results.gates_run, 1);     // gate2 had to run
+        assert_eq!(results.gates_cached, 1); // gate1 from cache
+        assert_eq!(results.gates_run, 1); // gate2 had to run
         assert_eq!(results.results.len(), 2);
 
         // Verify gate1 came from cache
@@ -1077,7 +1150,9 @@ mod tests {
 
         let result = manager.check().unwrap();
         match result {
-            CacheCheckResult::Miss { reason: CacheMissReason::CacheCorrupted(_) } => {}
+            CacheCheckResult::Miss {
+                reason: CacheMissReason::CacheCorrupted(_),
+            } => {}
             _ => panic!("Expected CacheCorrupted miss"),
         }
     }
@@ -1092,7 +1167,11 @@ mod tests {
         manager.update(CacheResult::Pass, HashMap::new()).unwrap();
 
         // Modify file and commit to change tree hash
-        fs::write(temp.path().join("test.rs"), "fn main() { println!(\"changed\"); }").unwrap();
+        fs::write(
+            temp.path().join("test.rs"),
+            "fn main() { println!(\"changed\"); }",
+        )
+        .unwrap();
         let _ = Command::new("git")
             .args(["add", "."])
             .current_dir(temp.path())
@@ -1107,7 +1186,9 @@ mod tests {
         // Check should miss due to tree hash change
         let result = manager.check().unwrap();
         match result {
-            CacheCheckResult::Miss { reason: CacheMissReason::TreeHashChanged { .. } } => {}
+            CacheCheckResult::Miss {
+                reason: CacheMissReason::TreeHashChanged { .. },
+            } => {}
             _ => panic!("Expected TreeHashChanged miss, got {:?}", result),
         }
     }
@@ -1134,7 +1215,9 @@ mod tests {
         // Check should miss due to staleness
         let result = manager.check().unwrap();
         match result {
-            CacheCheckResult::Miss { reason: CacheMissReason::CacheStale { age_hours } } => {
+            CacheCheckResult::Miss {
+                reason: CacheMissReason::CacheStale { age_hours },
+            } => {
                 assert!(age_hours >= 48);
             }
             _ => panic!("Expected CacheStale miss, got {:?}", result),
@@ -1163,7 +1246,9 @@ mod tests {
         // Check should miss due to version change
         let result = manager.check().unwrap();
         match result {
-            CacheCheckResult::Miss { reason: CacheMissReason::VersionChanged { old, new } } => {
+            CacheCheckResult::Miss {
+                reason: CacheMissReason::VersionChanged { old, new },
+            } => {
                 assert_eq!(old, "0.0.1-fake");
                 assert_eq!(new, env!("CARGO_PKG_VERSION"));
             }
@@ -1193,7 +1278,9 @@ mod tests {
         // Check should miss due to config change
         let result = manager.check().unwrap();
         match result {
-            CacheCheckResult::Miss { reason: CacheMissReason::ConfigHashChanged } => {}
+            CacheCheckResult::Miss {
+                reason: CacheMissReason::ConfigHashChanged,
+            } => {}
             _ => panic!("Expected ConfigHashChanged miss, got {:?}", result),
         }
     }
@@ -1209,7 +1296,15 @@ mod tests {
         fs::write(&test_file, "fn main() {}").unwrap();
 
         // Cache a gate
-        manager.update_gate("complexity", &[test_file.clone()], CacheResult::Pass, 100, vec![]).unwrap();
+        manager
+            .update_gate(
+                "complexity",
+                &[test_file.clone()],
+                CacheResult::Pass,
+                100,
+                vec![],
+            )
+            .unwrap();
 
         // Verify gate is cached
         let gate_path = temp.path().join(".pmat/hooks-cache/gates/complexity.json");
@@ -1239,11 +1334,11 @@ mod tests {
         assert_eq!(format!("{}", no_cache), "No cache file exists");
 
         let tree_changed = CacheMissReason::TreeHashChanged {
-            old: "abc12345678".to_string(),  // Need 8+ chars for truncation
+            old: "abc12345678".to_string(), // Need 8+ chars for truncation
             new: "def45678901".to_string(),
         };
         let tree_str = format!("{}", tree_changed);
-        assert!(tree_str.contains("abc12345"));  // First 8 chars
+        assert!(tree_str.contains("abc12345")); // First 8 chars
         assert!(tree_str.contains("def45678"));
 
         let config_changed = CacheMissReason::ConfigHashChanged;
@@ -1427,7 +1522,9 @@ mod tests {
         fs::write(&file1, "fn one() {}").unwrap();
 
         // Pre-cache gate1
-        manager.update_gate("gate1", &[file1.clone()], CacheResult::Pass, 50, vec![]).unwrap();
+        manager
+            .update_gate("gate1", &[file1.clone()], CacheResult::Pass, 50, vec![])
+            .unwrap();
 
         let gates = vec![GateDefinition::new("gate1", vec![file1])];
 
@@ -1452,7 +1549,15 @@ mod tests {
         fs::write(&test_file, "fn main() {}").unwrap();
 
         let warnings = vec!["Warning 1".to_string(), "Warning 2".to_string()];
-        manager.update_gate("complexity", &[test_file.clone()], CacheResult::Warn, 100, warnings.clone()).unwrap();
+        manager
+            .update_gate(
+                "complexity",
+                &[test_file.clone()],
+                CacheResult::Warn,
+                100,
+                warnings.clone(),
+            )
+            .unwrap();
 
         let result = manager.check_gate("complexity", &[test_file]).unwrap();
         assert!(result.is_some());

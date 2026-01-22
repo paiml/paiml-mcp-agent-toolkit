@@ -817,11 +817,17 @@ mod tests {
         state.last_event_id = 100;
         state.event_count = 50;
 
-        let snapshot_id = manager.save_snapshot(&state, None).await.expect("internal error");
+        let snapshot_id = manager
+            .save_snapshot(&state, None)
+            .await
+            .expect("internal error");
 
         // Verify snapshot was saved by recovering
         let initial = ExampleState::default();
-        let restored = manager.recover_state(initial, None).await.expect("internal error");
+        let restored = manager
+            .recover_state(initial, None)
+            .await
+            .expect("internal error");
 
         // Should have loaded from snapshot
         assert!(restored.events_to_replay == 0 || snapshot_id != Uuid::nil());
@@ -884,7 +890,10 @@ mod tests {
                 .await
                 .expect("internal error");
 
-        let cleaned = manager.cleanup_old_snapshots().await.expect("internal error");
+        let cleaned = manager
+            .cleanup_old_snapshots()
+            .await
+            .expect("internal error");
         assert_eq!(cleaned, 0); // No orphans to clean
     }
 

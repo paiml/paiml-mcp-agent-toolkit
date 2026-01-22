@@ -203,20 +203,20 @@ mod coverage_tests {
             0x01, 0x00, 0x00, 0x00, // version
             // Type section
             0x01, 0x05, // section id 1, size 5
-            0x01,       // 1 type
+            0x01, // 1 type
             0x60, 0x00, 0x01, 0x7f, // func type: () -> i32
             // Function section
             0x03, 0x02, // section id 3, size 2
             0x01, 0x00, // 1 function, type 0
             // Code section
             0x0a, 0x09, // section id 10, size 9
-            0x01,       // 1 function body
-            0x07,       // body size 7
-            0x00,       // 0 locals
+            0x01, // 1 function body
+            0x07, // body size 7
+            0x00, // 0 locals
             0x41, 0x01, // i32.const 1
             0x41, 0x02, // i32.const 2
-            0x6a,       // i32.add
-            0x0b,       // end
+            0x6a, // i32.add
+            0x0b, // end
         ]
     }
 
@@ -227,7 +227,7 @@ mod coverage_tests {
             0x01, 0x00, 0x00, 0x00, // version
             // Memory section
             0x05, 0x04, // section id 5, size 4
-            0x01,       // 1 memory
+            0x01, // 1 memory
             0x01, 0x02, 0x10, // min 2 pages, max 16 pages
         ]
     }
@@ -239,28 +239,28 @@ mod coverage_tests {
             0x01, 0x00, 0x00, 0x00, // version
             // Type section
             0x01, 0x05, // section id 1, size 5
-            0x01,       // 1 type
+            0x01, // 1 type
             0x60, 0x00, 0x01, 0x7f, // func type: () -> i32
             // Function section
             0x03, 0x02, // section id 3, size 2
             0x01, 0x00, // 1 function, type 0
             // Memory section
             0x05, 0x03, // section id 5, size 3
-            0x01,       // 1 memory
+            0x01, // 1 memory
             0x00, 0x01, // min 1 page, no max
             // Code section with mixed instructions
             0x0a, 0x11, // section id 10, size 17
-            0x01,       // 1 function body
-            0x0f,       // body size 15
-            0x00,       // 0 locals
+            0x01, // 1 function body
+            0x0f, // body size 15
+            0x00, // 0 locals
             0x02, 0x7f, // block returning i32
             0x41, 0x00, // i32.const 0
             0x28, 0x02, 0x00, // i32.load
             0x41, 0x01, // i32.const 1
-            0x6a,       // i32.add
+            0x6a, // i32.add
             0x0c, 0x00, // br 0
-            0x0b,       // end block
-            0x0b,       // end function
+            0x0b, // end block
+            0x0b, // end function
         ]
     }
 
@@ -450,8 +450,14 @@ mod coverage_tests {
         };
 
         let cloned = report.clone();
-        assert_eq!(report.instruction_mix.total_instructions, cloned.instruction_mix.total_instructions);
-        assert_eq!(report.memory_usage.initial_pages, cloned.memory_usage.initial_pages);
+        assert_eq!(
+            report.instruction_mix.total_instructions,
+            cloned.instruction_mix.total_instructions
+        );
+        assert_eq!(
+            report.memory_usage.initial_pages,
+            cloned.memory_usage.initial_pages
+        );
     }
 
     #[test]
@@ -464,32 +470,34 @@ mod coverage_tests {
                 arithmetic: 20,
                 calls: 5,
             },
-            hot_functions: vec![
-                HotFunction {
-                    name: "func_0".to_string(),
-                    samples: 100,
-                    percentage: 75.5,
-                },
-            ],
+            hot_functions: vec![HotFunction {
+                name: "func_0".to_string(),
+                samples: 100,
+                percentage: 75.5,
+            }],
             memory_usage: MemoryProfile {
                 initial_pages: 4,
                 max_pages: Some(64),
-                growth_events: vec![
-                    GrowthEvent {
-                        timestamp: 1000,
-                        pages_before: 4,
-                        pages_after: 8,
-                    },
-                ],
+                growth_events: vec![GrowthEvent {
+                    timestamp: 1000,
+                    pages_before: 4,
+                    pages_after: 8,
+                }],
             },
         };
 
         let serialized = serde_json::to_string(&report).unwrap();
         let deserialized: ProfilingReport = serde_json::from_str(&serialized).unwrap();
 
-        assert_eq!(report.instruction_mix.total_instructions, deserialized.instruction_mix.total_instructions);
+        assert_eq!(
+            report.instruction_mix.total_instructions,
+            deserialized.instruction_mix.total_instructions
+        );
         assert_eq!(report.hot_functions.len(), deserialized.hot_functions.len());
-        assert_eq!(report.memory_usage.growth_events.len(), deserialized.memory_usage.growth_events.len());
+        assert_eq!(
+            report.memory_usage.growth_events.len(),
+            deserialized.memory_usage.growth_events.len()
+        );
     }
 
     #[test]
@@ -585,7 +593,10 @@ mod coverage_tests {
         };
 
         assert_eq!(mix.total_instructions, 0);
-        assert_eq!(mix.control_flow + mix.memory_ops + mix.arithmetic + mix.calls, 0);
+        assert_eq!(
+            mix.control_flow + mix.memory_ops + mix.arithmetic + mix.calls,
+            0
+        );
     }
 
     #[test]
@@ -705,13 +716,11 @@ mod coverage_tests {
         let profile = MemoryProfile {
             initial_pages: 2,
             max_pages: Some(32),
-            growth_events: vec![
-                GrowthEvent {
-                    timestamp: 100,
-                    pages_before: 2,
-                    pages_after: 4,
-                },
-            ],
+            growth_events: vec![GrowthEvent {
+                timestamp: 100,
+                pages_before: 2,
+                pages_after: 4,
+            }],
         };
 
         let cloned = profile.clone();
@@ -744,7 +753,10 @@ mod coverage_tests {
 
         assert_eq!(profile.initial_pages, deserialized.initial_pages);
         assert_eq!(profile.max_pages, deserialized.max_pages);
-        assert_eq!(profile.growth_events.len(), deserialized.growth_events.len());
+        assert_eq!(
+            profile.growth_events.len(),
+            deserialized.growth_events.len()
+        );
     }
 
     #[test]
@@ -753,10 +765,26 @@ mod coverage_tests {
             initial_pages: 1,
             max_pages: Some(256),
             growth_events: vec![
-                GrowthEvent { timestamp: 100, pages_before: 1, pages_after: 2 },
-                GrowthEvent { timestamp: 200, pages_before: 2, pages_after: 4 },
-                GrowthEvent { timestamp: 300, pages_before: 4, pages_after: 8 },
-                GrowthEvent { timestamp: 400, pages_before: 8, pages_after: 16 },
+                GrowthEvent {
+                    timestamp: 100,
+                    pages_before: 1,
+                    pages_after: 2,
+                },
+                GrowthEvent {
+                    timestamp: 200,
+                    pages_before: 2,
+                    pages_after: 4,
+                },
+                GrowthEvent {
+                    timestamp: 300,
+                    pages_before: 4,
+                    pages_after: 8,
+                },
+                GrowthEvent {
+                    timestamp: 400,
+                    pages_before: 8,
+                    pages_after: 16,
+                },
             ],
         };
 

@@ -609,7 +609,7 @@ mod tests {
             overall: "warning".to_string(),
             issues: vec!["High analysis times detected".to_string()],
             recommendations: vec![
-                "Consider increasing cache size or optimizing queries".to_string(),
+                "Consider increasing cache size or optimizing queries".to_string()
             ],
             uptime_seconds: 7200,
         };
@@ -1023,10 +1023,7 @@ mod tests {
             cloned.performance_stats.active_operations,
             original.performance_stats.active_operations
         );
-        assert_eq!(
-            cloned.health_status.overall,
-            original.health_status.overall
-        );
+        assert_eq!(cloned.health_status.overall, original.health_status.overall);
     }
 
     // ==================== JSON Roundtrip Tests ====================
@@ -1070,10 +1067,7 @@ mod tests {
     fn test_health_status_json_roundtrip() {
         let original = HealthStatus {
             overall: "warning".to_string(),
-            issues: vec![
-                "Issue 1".to_string(),
-                "Issue 2".to_string(),
-            ],
+            issues: vec!["Issue 1".to_string(), "Issue 2".to_string()],
             recommendations: vec![
                 "Recommendation A".to_string(),
                 "Recommendation B".to_string(),
@@ -1492,12 +1486,7 @@ mod integration_tests {
         let app = create_dashboard_router(state);
 
         let response = app
-            .oneshot(
-                Request::builder()
-                    .uri("/")
-                    .body(Body::empty())
-                    .unwrap(),
-            )
+            .oneshot(Request::builder().uri("/").body(Body::empty()).unwrap())
             .await
             .unwrap();
 

@@ -143,10 +143,7 @@ impl TursoVectorDB {
 
         // Insert into vector store
         {
-            let mut store = self
-                .store
-                .write()
-                .map_err(|e| format!("Lock error: {e}"))?;
+            let mut store = self.store.write().map_err(|e| format!("Lock error: {e}"))?;
             store
                 .insert(chunk)
                 .map_err(|e| format!("Insert failed: {e}"))?;
@@ -354,10 +351,7 @@ impl TursoVectorDB {
 
         // Remove from vector store and metadata
         {
-            let mut store = self
-                .store
-                .write()
-                .map_err(|e| format!("Lock error: {e}"))?;
+            let mut store = self.store.write().map_err(|e| format!("Lock error: {e}"))?;
             let mut metadata = self
                 .metadata
                 .write()
@@ -914,9 +908,13 @@ mod tests {
         assert!(
             (scalar - simd).abs() < 0.0001,
             "SIMD should match scalar for identical vectors: scalar={}, simd={}",
-            scalar, simd
+            scalar,
+            simd
         );
-        assert!((simd - 1.0).abs() < 0.0001, "Identical vectors should have similarity 1.0");
+        assert!(
+            (simd - 1.0).abs() < 0.0001,
+            "Identical vectors should have similarity 1.0"
+        );
     }
 
     /// Test that SIMD cosine similarity matches scalar for orthogonal vectors
@@ -932,7 +930,10 @@ mod tests {
             (scalar - simd).abs() < 0.0001,
             "SIMD should match scalar for orthogonal vectors"
         );
-        assert!(simd.abs() < 0.0001, "Orthogonal vectors should have similarity 0.0");
+        assert!(
+            simd.abs() < 0.0001,
+            "Orthogonal vectors should have similarity 0.0"
+        );
     }
 
     /// Test that SIMD cosine similarity handles large vectors (OpenAI embedding dimension)
@@ -948,7 +949,8 @@ mod tests {
         assert!(
             (scalar - simd).abs() < 0.001,
             "SIMD should match scalar for large vectors: scalar={}, simd={}",
-            scalar, simd
+            scalar,
+            simd
         );
     }
 
@@ -966,7 +968,9 @@ mod tests {
             assert!(
                 (scalar - simd).abs() < 0.001,
                 "SIMD should match scalar for size {}: scalar={}, simd={}",
-                size, scalar, simd
+                size,
+                scalar,
+                simd
             );
         }
     }
@@ -978,7 +982,10 @@ mod tests {
         let v2: Vec<f32> = vec![];
 
         let simd = TursoVectorDB::cosine_similarity_simd(&v1, &v2);
-        assert!(simd == 0.0 || simd.is_nan(), "Empty vectors should return 0 or NaN");
+        assert!(
+            simd == 0.0 || simd.is_nan(),
+            "Empty vectors should return 0 or NaN"
+        );
     }
 
     /// Test SIMD handles zero vectors
@@ -1004,7 +1011,10 @@ mod tests {
             (scalar - simd).abs() < 0.0001,
             "SIMD should match scalar for opposite vectors"
         );
-        assert!((simd + 1.0).abs() < 0.0001, "Opposite vectors should have similarity -1.0");
+        assert!(
+            (simd + 1.0).abs() < 0.0001,
+            "Opposite vectors should have similarity -1.0"
+        );
     }
 
     /// Property test: SIMD and scalar should always produce equivalent results
@@ -1028,7 +1038,11 @@ mod tests {
             assert!(
                 (scalar - simd).abs() < 0.001,
                 "Seed {}, size {}: scalar={}, simd={}, diff={}",
-                seed, size, scalar, simd, (scalar - simd).abs()
+                seed,
+                size,
+                scalar,
+                simd,
+                (scalar - simd).abs()
             );
         }
     }

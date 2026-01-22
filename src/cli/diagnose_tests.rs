@@ -84,7 +84,9 @@ fn test_environment_snapshot_capture() {
 
     // OS should match the current platform
     assert!(!snapshot.os.is_empty());
-    assert!(["linux", "macos", "windows"].iter().any(|os| snapshot.os.contains(os)));
+    assert!(["linux", "macos", "windows"]
+        .iter()
+        .any(|os| snapshot.os.contains(os)));
 
     // Architecture should be set
     assert!(!snapshot.arch.is_empty());
@@ -1018,10 +1020,7 @@ fn test_classify_error_case_sensitivity() {
     let diagnostic = SelfDiagnostic::new();
 
     // Error patterns are case sensitive
-    assert_eq!(
-        diagnostic.classify_error("PERMISSION DENIED"),
-        "unknown"
-    );
+    assert_eq!(diagnostic.classify_error("PERMISSION DENIED"), "unknown");
     assert_eq!(
         diagnostic.classify_error("Permission denied"),
         "permission_denied"

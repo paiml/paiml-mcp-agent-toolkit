@@ -353,7 +353,8 @@ impl FileHealthBaseline {
 
     pub fn load(path: &Path) -> std::io::Result<Self> {
         let content = fs::read_to_string(path)?;
-        serde_json::from_str(&content).map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))
+        serde_json::from_str(&content)
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))
     }
 
     /// Check if a file violates the ratchet (grew larger)
@@ -388,7 +389,12 @@ pub struct RatchetViolation {
 }
 
 /// Analyze a single file for health metrics
-pub fn analyze_file(path: &Path, test_lines: usize, avg_complexity: f32, churn_30d: usize) -> Option<FileHealthMetrics> {
+pub fn analyze_file(
+    path: &Path,
+    test_lines: usize,
+    avg_complexity: f32,
+    churn_30d: usize,
+) -> Option<FileHealthMetrics> {
     let content = fs::read_to_string(path).ok()?;
     let lines = content.lines().count();
 
@@ -408,11 +414,7 @@ pub fn count_lines(path: &Path) -> Option<usize> {
 }
 
 /// Scan a directory for source files and analyze health
-pub fn scan_directory(
-    root: &Path,
-    extensions: &[&str],
-    exclude_patterns: &[&str],
-) -> Vec<PathBuf> {
+pub fn scan_directory(root: &Path, extensions: &[&str], exclude_patterns: &[&str]) -> Vec<PathBuf> {
     let mut files = Vec::new();
 
     fn visit_dir(
@@ -515,10 +517,10 @@ mod tests {
         // 100 lines, 50 test lines, low complexity, stable
         let metrics = FileHealthMetrics::calculate(
             PathBuf::from("test.rs"),
-            100,  // lines
-            50,   // test_lines (TLR = 0.5, required = 0.3)
-            3.0,  // avg_complexity
-            1,    // churn_30d
+            100, // lines
+            50,  // test_lines (TLR = 0.5, required = 0.3)
+            3.0, // avg_complexity
+            1,   // churn_30d
         );
 
         assert_eq!(metrics.size_class, FileSizeClass::Ideal);
@@ -549,10 +551,10 @@ mod tests {
         // 400 lines, 200 test lines, medium complexity
         let metrics = FileHealthMetrics::calculate(
             PathBuf::from("service.rs"),
-            400,  // lines (acceptable)
-            200,  // test_lines (TLR = 0.5, required = 0.7)
-            8.0,  // avg_complexity
-            3,    // churn_30d
+            400, // lines (acceptable)
+            200, // test_lines (TLR = 0.5, required = 0.7)
+            8.0, // avg_complexity
+            3,   // churn_30d
         );
 
         assert_eq!(metrics.size_class, FileSizeClass::Acceptable);

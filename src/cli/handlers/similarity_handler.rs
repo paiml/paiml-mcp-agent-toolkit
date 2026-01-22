@@ -621,7 +621,6 @@ fn print_summary(report: &ComprehensiveReport) {
     }
 }
 
-
 // Tests extracted to similarity_handler_tests.rs for file health compliance (CB-040)
 #[cfg(test)]
 #[path = "similarity_handler_tests.rs"]

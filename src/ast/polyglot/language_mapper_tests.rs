@@ -248,7 +248,9 @@ mod coverage_tests {
     #[tokio::test]
     async fn test_base_language_mapper_map_source_returns_error() {
         let mapper = BaseLanguageMapper::new(Language::Rust);
-        let result = mapper.map_source("fn main() {}", Path::new("test.rs")).await;
+        let result = mapper
+            .map_source("fn main() {}", Path::new("test.rs"))
+            .await;
 
         assert!(result.is_err());
         let err = result.unwrap_err();
@@ -443,7 +445,11 @@ mod coverage_tests {
     #[test]
     fn test_java_mapper_process_java_specific_interface() {
         let mapper = JavaMapper::new();
-        let mut nodes = vec![UnifiedNode::new(NodeKind::Class, "TestInterface", Language::Java)];
+        let mut nodes = vec![UnifiedNode::new(
+            NodeKind::Class,
+            "TestInterface",
+            Language::Java,
+        )];
 
         // Add interface modifier
         nodes[0]
@@ -458,7 +464,11 @@ mod coverage_tests {
     #[test]
     fn test_java_mapper_process_java_specific_record() {
         let mapper = JavaMapper::new();
-        let mut nodes = vec![UnifiedNode::new(NodeKind::Class, "TestRecord", Language::Java)];
+        let mut nodes = vec![UnifiedNode::new(
+            NodeKind::Class,
+            "TestRecord",
+            Language::Java,
+        )];
 
         // Add record modifier
         nodes[0]
@@ -556,7 +566,11 @@ mod coverage_tests {
     #[test]
     fn test_kotlin_mapper_process_kotlin_specific_data_class() {
         let mapper = KotlinMapper::new();
-        let mut nodes = vec![UnifiedNode::new(NodeKind::Class, "UserData", Language::Kotlin)];
+        let mut nodes = vec![UnifiedNode::new(
+            NodeKind::Class,
+            "UserData",
+            Language::Kotlin,
+        )];
 
         // Add data modifier
         nodes[0]
@@ -566,13 +580,20 @@ mod coverage_tests {
         mapper.process_kotlin_specific(&mut nodes);
 
         assert_eq!(nodes[0].kind, NodeKind::Record);
-        assert_eq!(nodes[0].metadata.get("kotlin:isData"), Some(&"true".to_string()));
+        assert_eq!(
+            nodes[0].metadata.get("kotlin:isData"),
+            Some(&"true".to_string())
+        );
     }
 
     #[test]
     fn test_kotlin_mapper_process_kotlin_specific_sealed_class() {
         let mapper = KotlinMapper::new();
-        let mut nodes = vec![UnifiedNode::new(NodeKind::Class, "Result", Language::Kotlin)];
+        let mut nodes = vec![UnifiedNode::new(
+            NodeKind::Class,
+            "Result",
+            Language::Kotlin,
+        )];
 
         // Add sealed modifier
         nodes[0]
@@ -582,13 +603,20 @@ mod coverage_tests {
         mapper.process_kotlin_specific(&mut nodes);
 
         assert_eq!(nodes[0].kind, NodeKind::Class); // Sealed doesn't change kind
-        assert_eq!(nodes[0].metadata.get("kotlin:isSealed"), Some(&"true".to_string()));
+        assert_eq!(
+            nodes[0].metadata.get("kotlin:isSealed"),
+            Some(&"true".to_string())
+        );
     }
 
     #[test]
     fn test_kotlin_mapper_process_kotlin_specific_data_and_sealed() {
         let mapper = KotlinMapper::new();
-        let mut nodes = vec![UnifiedNode::new(NodeKind::Class, "SealedData", Language::Kotlin)];
+        let mut nodes = vec![UnifiedNode::new(
+            NodeKind::Class,
+            "SealedData",
+            Language::Kotlin,
+        )];
 
         // Add both modifiers
         nodes[0]
@@ -702,12 +730,19 @@ mod coverage_tests {
     #[test]
     fn test_scala_mapper_process_scala_specific_object() {
         let mapper = ScalaMapper::new();
-        let mut nodes = vec![UnifiedNode::new(NodeKind::Module, "AppObject", Language::Scala)];
+        let mut nodes = vec![UnifiedNode::new(
+            NodeKind::Module,
+            "AppObject",
+            Language::Scala,
+        )];
 
         mapper.process_scala_specific(&mut nodes);
 
         assert_eq!(nodes[0].kind, NodeKind::Module);
-        assert_eq!(nodes[0].metadata.get("scala:isObject"), Some(&"true".to_string()));
+        assert_eq!(
+            nodes[0].metadata.get("scala:isObject"),
+            Some(&"true".to_string())
+        );
     }
 
     #[test]
@@ -802,17 +837,28 @@ mod coverage_tests {
     #[test]
     fn test_typescript_mapper_process_typescript_specific_interface() {
         let mapper = TypeScriptMapper::new();
-        let mut nodes = vec![UnifiedNode::new(NodeKind::Interface, "UserProps", Language::TypeScript)];
+        let mut nodes = vec![UnifiedNode::new(
+            NodeKind::Interface,
+            "UserProps",
+            Language::TypeScript,
+        )];
 
         mapper.process_typescript_specific(&mut nodes);
 
-        assert_eq!(nodes[0].metadata.get("typescript:isInterface"), Some(&"true".to_string()));
+        assert_eq!(
+            nodes[0].metadata.get("typescript:isInterface"),
+            Some(&"true".to_string())
+        );
     }
 
     #[test]
     fn test_typescript_mapper_process_typescript_specific_abstract_class() {
         let mapper = TypeScriptMapper::new();
-        let mut nodes = vec![UnifiedNode::new(NodeKind::Class, "BaseService", Language::TypeScript)];
+        let mut nodes = vec![UnifiedNode::new(
+            NodeKind::Class,
+            "BaseService",
+            Language::TypeScript,
+        )];
 
         // Add abstract modifier
         nodes[0]
@@ -822,13 +868,20 @@ mod coverage_tests {
         mapper.process_typescript_specific(&mut nodes);
 
         assert_eq!(nodes[0].kind, NodeKind::Class);
-        assert_eq!(nodes[0].metadata.get("typescript:isAbstract"), Some(&"true".to_string()));
+        assert_eq!(
+            nodes[0].metadata.get("typescript:isAbstract"),
+            Some(&"true".to_string())
+        );
     }
 
     #[test]
     fn test_typescript_mapper_process_typescript_specific_regular_class() {
         let mapper = TypeScriptMapper::new();
-        let mut nodes = vec![UnifiedNode::new(NodeKind::Class, "UserService", Language::TypeScript)];
+        let mut nodes = vec![UnifiedNode::new(
+            NodeKind::Class,
+            "UserService",
+            Language::TypeScript,
+        )];
 
         mapper.process_typescript_specific(&mut nodes);
 
@@ -914,17 +967,28 @@ mod coverage_tests {
     #[test]
     fn test_javascript_mapper_process_javascript_specific_class() {
         let mapper = JavaScriptMapper::new();
-        let mut nodes = vec![UnifiedNode::new(NodeKind::Class, "MyComponent", Language::JavaScript)];
+        let mut nodes = vec![UnifiedNode::new(
+            NodeKind::Class,
+            "MyComponent",
+            Language::JavaScript,
+        )];
 
         mapper.process_javascript_specific(&mut nodes);
 
-        assert_eq!(nodes[0].metadata.get("javascript:isClass"), Some(&"true".to_string()));
+        assert_eq!(
+            nodes[0].metadata.get("javascript:isClass"),
+            Some(&"true".to_string())
+        );
     }
 
     #[test]
     fn test_javascript_mapper_process_javascript_specific_arrow_function() {
         let mapper = JavaScriptMapper::new();
-        let mut nodes = vec![UnifiedNode::new(NodeKind::Function, "handleClick", Language::JavaScript)];
+        let mut nodes = vec![UnifiedNode::new(
+            NodeKind::Function,
+            "handleClick",
+            Language::JavaScript,
+        )];
 
         // Add arrow modifier
         nodes[0]
@@ -939,7 +1003,11 @@ mod coverage_tests {
     #[test]
     fn test_javascript_mapper_process_javascript_specific_regular_function() {
         let mapper = JavaScriptMapper::new();
-        let mut nodes = vec![UnifiedNode::new(NodeKind::Function, "processData", Language::JavaScript)];
+        let mut nodes = vec![UnifiedNode::new(
+            NodeKind::Function,
+            "processData",
+            Language::JavaScript,
+        )];
 
         mapper.process_javascript_specific(&mut nodes);
 

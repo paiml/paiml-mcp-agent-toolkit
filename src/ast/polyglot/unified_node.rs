@@ -540,7 +540,11 @@ mod coverage_tests {
             name: "MyStruct".to_string(),
             visibility: "pub".to_string(),
             fields_count: 5,
-            derives: vec!["Debug".to_string(), "Clone".to_string(), "Serialize".to_string()],
+            derives: vec![
+                "Debug".to_string(),
+                "Clone".to_string(),
+                "Serialize".to_string(),
+            ],
             line: 1,
         };
         let path = Path::new("/src/models.rs");
@@ -824,9 +828,12 @@ mod coverage_tests {
     #[test]
     fn test_has_modifier() {
         let mut node = UnifiedNode::new(NodeKind::Function, "test", Language::Java);
-        node.attributes.insert("modifier:abstract".to_string(), "true".to_string());
-        node.attributes.insert("modifier:static".to_string(), "true".to_string());
-        node.attributes.insert("modifier:final".to_string(), "true".to_string());
+        node.attributes
+            .insert("modifier:abstract".to_string(), "true".to_string());
+        node.attributes
+            .insert("modifier:static".to_string(), "true".to_string());
+        node.attributes
+            .insert("modifier:final".to_string(), "true".to_string());
 
         assert!(node.has_modifier("abstract"));
         assert!(node.has_modifier("static"));
@@ -839,7 +846,8 @@ mod coverage_tests {
         let mut node = UnifiedNode::new(NodeKind::Class, "AbstractClass", Language::Java);
         assert!(!node.is_abstract());
 
-        node.attributes.insert("modifier:abstract".to_string(), "true".to_string());
+        node.attributes
+            .insert("modifier:abstract".to_string(), "true".to_string());
         assert!(node.is_abstract());
     }
 
@@ -848,7 +856,8 @@ mod coverage_tests {
         let mut node = UnifiedNode::new(NodeKind::Method, "staticMethod", Language::Java);
         assert!(!node.is_static());
 
-        node.attributes.insert("modifier:static".to_string(), "true".to_string());
+        node.attributes
+            .insert("modifier:static".to_string(), "true".to_string());
         assert!(node.is_static());
     }
 
@@ -857,7 +866,8 @@ mod coverage_tests {
         let mut node = UnifiedNode::new(NodeKind::Class, "FinalClass", Language::Java);
         assert!(!node.is_final());
 
-        node.attributes.insert("modifier:final".to_string(), "true".to_string());
+        node.attributes
+            .insert("modifier:final".to_string(), "true".to_string());
         assert!(node.is_final());
     }
 
@@ -870,7 +880,8 @@ mod coverage_tests {
     #[test]
     fn test_access_some() {
         let mut node = UnifiedNode::new(NodeKind::Function, "test", Language::Rust);
-        node.attributes.insert("access".to_string(), "private".to_string());
+        node.attributes
+            .insert("access".to_string(), "private".to_string());
         assert_eq!(node.access(), Some("private"));
     }
 
@@ -931,8 +942,14 @@ mod coverage_tests {
         assert_eq!(node.references.len(), 8);
 
         // Test get_references_by_kind
-        assert_eq!(node.get_references_by_kind(ReferenceKind::Inherits).len(), 1);
-        assert_eq!(node.get_references_by_kind(ReferenceKind::Implements).len(), 1);
+        assert_eq!(
+            node.get_references_by_kind(ReferenceKind::Inherits).len(),
+            1
+        );
+        assert_eq!(
+            node.get_references_by_kind(ReferenceKind::Implements).len(),
+            1
+        );
         assert_eq!(node.get_references_by_kind(ReferenceKind::Calls).len(), 1);
     }
 
@@ -950,7 +967,9 @@ mod coverage_tests {
     #[test]
     fn test_get_references_by_kind_empty() {
         let node = UnifiedNode::new(NodeKind::Class, "Test", Language::Java);
-        assert!(node.get_references_by_kind(ReferenceKind::Inherits).is_empty());
+        assert!(node
+            .get_references_by_kind(ReferenceKind::Inherits)
+            .is_empty());
     }
 
     #[test]
@@ -1037,8 +1056,14 @@ mod coverage_tests {
         node.add_metadata("docstring", "Test function");
 
         assert_eq!(node.metadata.len(), 2);
-        assert_eq!(node.metadata.get("decorator"), Some(&"@pytest.fixture".to_string()));
-        assert_eq!(node.metadata.get("docstring"), Some(&"Test function".to_string()));
+        assert_eq!(
+            node.metadata.get("decorator"),
+            Some(&"@pytest.fixture".to_string())
+        );
+        assert_eq!(
+            node.metadata.get("docstring"),
+            Some(&"Test function".to_string())
+        );
     }
 
     #[test]

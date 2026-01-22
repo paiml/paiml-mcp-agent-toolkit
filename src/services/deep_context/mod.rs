@@ -714,7 +714,6 @@ struct DeepContextBuildParams<'a> {
     analysis_duration: std::time::Duration,
 }
 
-
 // DeepContextAnalyzer formatting methods - extracted for file health (CB-040)
 include!("analyzer_formatting.rs");
 

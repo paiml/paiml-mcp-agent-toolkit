@@ -1288,9 +1288,7 @@ mod tests {
         assert_eq!(HealthStatus::Healthy, HealthStatus::Healthy);
         assert_ne!(
             HealthStatus::Healthy,
-            HealthStatus::Degraded {
-                reasons: vec![]
-            }
+            HealthStatus::Degraded { reasons: vec![] }
         );
         assert_ne!(
             HealthStatus::Degraded {
@@ -1417,7 +1415,10 @@ mod tests {
     #[tokio::test]
     async fn test_collect_diagnostics_no_components() {
         let tool = DiagnosticTool::new();
-        let diag = tool.collect_diagnostics(None, None, None, None).await.unwrap();
+        let diag = tool
+            .collect_diagnostics(None, None, None, None)
+            .await
+            .unwrap();
         assert_eq!(diag.storage.backend_type, "none");
         assert_eq!(diag.scheduler.active_operations, 0);
         assert_eq!(diag.adaptive.performance_trend, "Unknown");
@@ -1460,10 +1461,7 @@ mod tests {
     #[test]
     fn test_multiple_critical_reasons() {
         let status = HealthStatus::Critical {
-            reasons: vec![
-                "Memory critical".to_string(),
-                "High error rate".to_string(),
-            ],
+            reasons: vec!["Memory critical".to_string(), "High error rate".to_string()],
         };
         let display = format!("{}", status);
         assert!(display.contains("Memory critical"));

@@ -774,7 +774,9 @@ mod tests {
 
         // Create signatures with varying similarity
         let base: Vec<u64> = (0..100).collect();
-        let sig_base = MinHashSignature { values: base.clone() };
+        let sig_base = MinHashSignature {
+            values: base.clone(),
+        };
 
         // 90% similar (90 matching hashes)
         let mut similar_90 = base.clone();
@@ -889,7 +891,12 @@ mod tests {
     fn test_lsh_empty_query() {
         let mut index = LshIndex::new(10, 10);
 
-        index.insert(1, MinHashSignature { values: vec![1, 2, 3, 4, 5] });
+        index.insert(
+            1,
+            MinHashSignature {
+                values: vec![1, 2, 3, 4, 5],
+            },
+        );
 
         // Query with empty signature
         let empty_sig = MinHashSignature { values: vec![] };
@@ -917,7 +924,6 @@ mod tests {
         assert!(missing.is_none());
     }
 }
-
 
 mod property_tests {
     use proptest::prelude::*;

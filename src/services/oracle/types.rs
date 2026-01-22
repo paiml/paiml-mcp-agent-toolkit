@@ -423,7 +423,9 @@ mod tests {
 
     #[test]
     fn test_defect_category_from_rustc_error_ownership_borrow() {
-        for code in ["E0382", "E0502", "E0503", "E0505", "E0499", "E0597", "E0716", "E0515"] {
+        for code in [
+            "E0382", "E0502", "E0503", "E0505", "E0499", "E0597", "E0716", "E0515",
+        ] {
             assert_eq!(
                 DefectCategory::from_rustc_error(code),
                 Some(DefectCategory::OwnershipBorrow),
@@ -670,8 +672,11 @@ mod tests {
 
     #[test]
     fn test_defect_report_new() {
-        let report =
-            DefectReport::new(DefectCategory::TypeErrors, Severity::High, create_test_location());
+        let report = DefectReport::new(
+            DefectCategory::TypeErrors,
+            Severity::High,
+            create_test_location(),
+        );
 
         assert_eq!(report.category, DefectCategory::TypeErrors);
         assert_eq!(report.severity, Severity::High);
@@ -683,8 +688,11 @@ mod tests {
 
     #[test]
     fn test_defect_report_add_signal() {
-        let mut report =
-            DefectReport::new(DefectCategory::TypeErrors, Severity::High, create_test_location());
+        let mut report = DefectReport::new(
+            DefectCategory::TypeErrors,
+            Severity::High,
+            create_test_location(),
+        );
 
         let signal = SignalEvidence {
             source: SignalSource::Rustc,
@@ -702,8 +710,11 @@ mod tests {
 
     #[test]
     fn test_defect_report_confidence_calculation() {
-        let mut report =
-            DefectReport::new(DefectCategory::TypeErrors, Severity::High, create_test_location());
+        let mut report = DefectReport::new(
+            DefectCategory::TypeErrors,
+            Severity::High,
+            create_test_location(),
+        );
 
         // TypeErrors has 0.95 base confidence
         // With weight 1.0, confidence should be 0.95
@@ -719,8 +730,11 @@ mod tests {
 
     #[test]
     fn test_defect_report_confidence_with_low_weight() {
-        let mut report =
-            DefectReport::new(DefectCategory::TypeErrors, Severity::High, create_test_location());
+        let mut report = DefectReport::new(
+            DefectCategory::TypeErrors,
+            Severity::High,
+            create_test_location(),
+        );
 
         report.add_signal(SignalEvidence {
             source: SignalSource::Rustc,
@@ -735,8 +749,11 @@ mod tests {
 
     #[test]
     fn test_defect_report_update_decision_auto_apply() {
-        let mut report =
-            DefectReport::new(DefectCategory::TypeErrors, Severity::High, create_test_location());
+        let mut report = DefectReport::new(
+            DefectCategory::TypeErrors,
+            Severity::High,
+            create_test_location(),
+        );
 
         report.add_signal(SignalEvidence {
             source: SignalSource::Rustc,
@@ -752,8 +769,11 @@ mod tests {
 
     #[test]
     fn test_defect_report_update_decision_human_review() {
-        let mut report =
-            DefectReport::new(DefectCategory::TypeErrors, Severity::High, create_test_location());
+        let mut report = DefectReport::new(
+            DefectCategory::TypeErrors,
+            Severity::High,
+            create_test_location(),
+        );
 
         report.add_signal(SignalEvidence {
             source: SignalSource::Rustc,
@@ -769,8 +789,11 @@ mod tests {
 
     #[test]
     fn test_defect_report_update_decision_skip() {
-        let mut report =
-            DefectReport::new(DefectCategory::TypeErrors, Severity::High, create_test_location());
+        let mut report = DefectReport::new(
+            DefectCategory::TypeErrors,
+            Severity::High,
+            create_test_location(),
+        );
 
         report.add_signal(SignalEvidence {
             source: SignalSource::Rustc,

@@ -37,7 +37,6 @@ mod tests {
     }
 }
 
-
 mod property_tests {
     use proptest::prelude::*;
 
@@ -185,10 +184,7 @@ mod coverage_tests {
 
     #[test]
     fn test_should_exclude_path_without_pattern() {
-        assert!(!should_exclude_path_sprint85(
-            "/any/path/here",
-            &None
-        ));
+        assert!(!should_exclude_path_sprint85("/any/path/here", &None));
     }
 
     #[test]
@@ -1182,15 +1178,8 @@ mod coverage_tests {
     #[test]
     fn test_calculate_metrics_all_variant() {
         let graph = create_simple_graph();
-        let result = calculate_metrics(
-            &graph,
-            vec![GraphMetricType::All],
-            vec![],
-            0.85,
-            100,
-            1e-6,
-        )
-        .unwrap();
+        let result =
+            calculate_metrics(&graph, vec![GraphMetricType::All], vec![], 0.85, 100, 1e-6).unwrap();
 
         assert_eq!(result.total_nodes, 3);
     }

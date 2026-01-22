@@ -166,7 +166,6 @@ fn parse_quality_profile(value: &Value) -> QualityProfile {
         .unwrap_or_default()
 }
 
-
 // Tests extracted to mcp_mapping_tests.rs for file health compliance (CB-040)
 #[cfg(test)]
 #[path = "mcp_mapping_tests.rs"]

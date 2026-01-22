@@ -512,18 +512,42 @@ mod tests {
 
     #[test]
     fn test_passes_type_filter_functions() {
-        assert!(passes_type_filter("function", &Some(SymbolTypeFilter::Functions)));
-        assert!(!passes_type_filter("struct", &Some(SymbolTypeFilter::Functions)));
-        assert!(!passes_type_filter("enum", &Some(SymbolTypeFilter::Functions)));
-        assert!(!passes_type_filter("module", &Some(SymbolTypeFilter::Functions)));
-        assert!(!passes_type_filter("class", &Some(SymbolTypeFilter::Functions)));
+        assert!(passes_type_filter(
+            "function",
+            &Some(SymbolTypeFilter::Functions)
+        ));
+        assert!(!passes_type_filter(
+            "struct",
+            &Some(SymbolTypeFilter::Functions)
+        ));
+        assert!(!passes_type_filter(
+            "enum",
+            &Some(SymbolTypeFilter::Functions)
+        ));
+        assert!(!passes_type_filter(
+            "module",
+            &Some(SymbolTypeFilter::Functions)
+        ));
+        assert!(!passes_type_filter(
+            "class",
+            &Some(SymbolTypeFilter::Functions)
+        ));
     }
 
     #[test]
     fn test_passes_type_filter_classes() {
-        assert!(passes_type_filter("class", &Some(SymbolTypeFilter::Classes)));
-        assert!(!passes_type_filter("function", &Some(SymbolTypeFilter::Classes)));
-        assert!(!passes_type_filter("struct", &Some(SymbolTypeFilter::Classes)));
+        assert!(passes_type_filter(
+            "class",
+            &Some(SymbolTypeFilter::Classes)
+        ));
+        assert!(!passes_type_filter(
+            "function",
+            &Some(SymbolTypeFilter::Classes)
+        ));
+        assert!(!passes_type_filter(
+            "struct",
+            &Some(SymbolTypeFilter::Classes)
+        ));
     }
 
     #[test]
@@ -531,23 +555,47 @@ mod tests {
         assert!(passes_type_filter("struct", &Some(SymbolTypeFilter::Types)));
         assert!(passes_type_filter("enum", &Some(SymbolTypeFilter::Types)));
         assert!(passes_type_filter("trait", &Some(SymbolTypeFilter::Types)));
-        assert!(!passes_type_filter("function", &Some(SymbolTypeFilter::Types)));
-        assert!(!passes_type_filter("module", &Some(SymbolTypeFilter::Types)));
+        assert!(!passes_type_filter(
+            "function",
+            &Some(SymbolTypeFilter::Types)
+        ));
+        assert!(!passes_type_filter(
+            "module",
+            &Some(SymbolTypeFilter::Types)
+        ));
     }
 
     #[test]
     fn test_passes_type_filter_modules() {
-        assert!(passes_type_filter("module", &Some(SymbolTypeFilter::Modules)));
-        assert!(!passes_type_filter("function", &Some(SymbolTypeFilter::Modules)));
-        assert!(!passes_type_filter("struct", &Some(SymbolTypeFilter::Modules)));
+        assert!(passes_type_filter(
+            "module",
+            &Some(SymbolTypeFilter::Modules)
+        ));
+        assert!(!passes_type_filter(
+            "function",
+            &Some(SymbolTypeFilter::Modules)
+        ));
+        assert!(!passes_type_filter(
+            "struct",
+            &Some(SymbolTypeFilter::Modules)
+        ));
     }
 
     #[test]
     fn test_passes_type_filter_variables_always_false() {
         // Variables filter is not implemented yet, always returns false
-        assert!(!passes_type_filter("variable", &Some(SymbolTypeFilter::Variables)));
-        assert!(!passes_type_filter("const", &Some(SymbolTypeFilter::Variables)));
-        assert!(!passes_type_filter("function", &Some(SymbolTypeFilter::Variables)));
+        assert!(!passes_type_filter(
+            "variable",
+            &Some(SymbolTypeFilter::Variables)
+        ));
+        assert!(!passes_type_filter(
+            "const",
+            &Some(SymbolTypeFilter::Variables)
+        ));
+        assert!(!passes_type_filter(
+            "function",
+            &Some(SymbolTypeFilter::Variables)
+        ));
     }
 
     #[test]
@@ -572,22 +620,43 @@ mod tests {
 
     #[test]
     fn test_passes_query_filter_exact_match() {
-        assert!(passes_query_filter("my_function", &Some("my_function".to_string())));
+        assert!(passes_query_filter(
+            "my_function",
+            &Some("my_function".to_string())
+        ));
     }
 
     #[test]
     fn test_passes_query_filter_partial_match() {
-        assert!(passes_query_filter("my_function", &Some("function".to_string())));
+        assert!(passes_query_filter(
+            "my_function",
+            &Some("function".to_string())
+        ));
         assert!(passes_query_filter("my_function", &Some("my".to_string())));
-        assert!(passes_query_filter("hello_world", &Some("hello".to_string())));
+        assert!(passes_query_filter(
+            "hello_world",
+            &Some("hello".to_string())
+        ));
     }
 
     #[test]
     fn test_passes_query_filter_case_insensitive() {
-        assert!(passes_query_filter("MyFunction", &Some("myfunction".to_string())));
-        assert!(passes_query_filter("myfunction", &Some("MYFUNCTION".to_string())));
-        assert!(passes_query_filter("HelloWorld", &Some("helloworld".to_string())));
-        assert!(passes_query_filter("UPPERCASE", &Some("uppercase".to_string())));
+        assert!(passes_query_filter(
+            "MyFunction",
+            &Some("myfunction".to_string())
+        ));
+        assert!(passes_query_filter(
+            "myfunction",
+            &Some("MYFUNCTION".to_string())
+        ));
+        assert!(passes_query_filter(
+            "HelloWorld",
+            &Some("helloworld".to_string())
+        ));
+        assert!(passes_query_filter(
+            "UPPERCASE",
+            &Some("uppercase".to_string())
+        ));
     }
 
     #[test]
@@ -845,10 +914,7 @@ mod tests {
         }
     }
 
-    fn create_file_context(
-        path: &str,
-        items: Vec<AstItem>,
-    ) -> EnhancedFileContext {
+    fn create_file_context(path: &str, items: Vec<AstItem>) -> EnhancedFileContext {
         use crate::services::context::FileContext;
 
         EnhancedFileContext {
@@ -936,20 +1002,14 @@ mod tests {
         let deep_context = create_mock_deep_context(vec![file_context]);
 
         // Filter for functions only
-        let symbols = extract_symbols_from_context(
-            &deep_context,
-            &Some(SymbolTypeFilter::Functions),
-            &None,
-        );
+        let symbols =
+            extract_symbols_from_context(&deep_context, &Some(SymbolTypeFilter::Functions), &None);
         assert_eq!(symbols.len(), 1);
         assert_eq!(symbols[0].name, "main");
 
         // Filter for types only
-        let symbols = extract_symbols_from_context(
-            &deep_context,
-            &Some(SymbolTypeFilter::Types),
-            &None,
-        );
+        let symbols =
+            extract_symbols_from_context(&deep_context, &Some(SymbolTypeFilter::Types), &None);
         assert_eq!(symbols.len(), 2);
         assert!(symbols.iter().any(|s| s.name == "Config"));
         assert!(symbols.iter().any(|s| s.name == "Status"));
@@ -982,34 +1042,26 @@ mod tests {
         let deep_context = create_mock_deep_context(vec![file_context]);
 
         // Filter for functions containing "handle"
-        let symbols = extract_symbols_from_context(
-            &deep_context,
-            &None,
-            &Some("handle".to_string()),
-        );
+        let symbols =
+            extract_symbols_from_context(&deep_context, &None, &Some("handle".to_string()));
         assert_eq!(symbols.len(), 1);
         assert_eq!(symbols[0].name, "handle_error");
 
         // Case insensitive search
-        let symbols = extract_symbols_from_context(
-            &deep_context,
-            &None,
-            &Some("PROCESS".to_string()),
-        );
+        let symbols =
+            extract_symbols_from_context(&deep_context, &None, &Some("PROCESS".to_string()));
         assert_eq!(symbols.len(), 1);
         assert_eq!(symbols[0].name, "process_data");
     }
 
     #[test]
     fn test_extract_symbols_from_context_multiple_files() {
-        let file1_items = vec![
-            AstItem::Function {
-                name: "main".to_string(),
-                visibility: "pub".to_string(),
-                is_async: false,
-                line: 1,
-            },
-        ];
+        let file1_items = vec![AstItem::Function {
+            name: "main".to_string(),
+            visibility: "pub".to_string(),
+            is_async: false,
+            line: 1,
+        }];
 
         let file2_items = vec![
             AstItem::Struct {
@@ -1236,7 +1288,10 @@ mod tests {
         assert_eq!(lines.len(), 3);
         assert_eq!(lines[0], "name,kind,file,line,visibility,is_async");
         assert_eq!(lines[1], "main,function,src/main.rs,1,pub,false");
-        assert_eq!(lines[2], "async_handler,function,src/handlers.rs,10,pub(crate),true");
+        assert_eq!(
+            lines[2],
+            "async_handler,function,src/handlers.rs,10,pub(crate),true"
+        );
     }
 
     // ============================================================
@@ -1293,8 +1348,14 @@ mod tests {
 
     #[test]
     fn test_special_characters_in_query() {
-        assert!(passes_query_filter("fn_with_underscore", &Some("_with_".to_string())));
-        assert!(passes_query_filter("CamelCase123", &Some("123".to_string())));
+        assert!(passes_query_filter(
+            "fn_with_underscore",
+            &Some("_with_".to_string())
+        ));
+        assert!(passes_query_filter(
+            "CamelCase123",
+            &Some("123".to_string())
+        ));
     }
 
     #[test]
@@ -1313,7 +1374,10 @@ mod tests {
         assert_eq!(name, "calculer_somme");
 
         // Query with unicode
-        assert!(passes_query_filter("calculer_somme", &Some("somme".to_string())));
+        assert!(passes_query_filter(
+            "calculer_somme",
+            &Some("somme".to_string())
+        ));
     }
 }
 

@@ -92,7 +92,6 @@ pmat analyze complexity"#;
     }
 }
 
-
 mod property_tests {
     use proptest::prelude::*;
 
@@ -110,7 +109,6 @@ mod property_tests {
         }
     }
 }
-
 
 mod coverage_tests {
     use super::*;
@@ -346,7 +344,11 @@ mod coverage_tests {
         let config_path = temp_dir.path().join("pmat.toml");
 
         fs::create_dir_all(&hooks_dir).unwrap();
-        fs::write(hooks_dir.join("pre-commit"), "#!/bin/bash\necho 'custom hook'").unwrap();
+        fs::write(
+            hooks_dir.join("pre-commit"),
+            "#!/bin/bash\necho 'custom hook'",
+        )
+        .unwrap();
         fs::write(&config_path, "[quality]\nmax_complexity = 10\nmax_cognitive_complexity = 15\nmin_coverage = 80.0\nallow_satd = false\nrequire_docs = true\nlint_compliance = true\nfail_on_violation = true").unwrap();
 
         let cmd = HooksCommand::new(hooks_dir.clone(), config_path);
@@ -364,7 +366,11 @@ mod coverage_tests {
         let config_path = temp_dir.path().join("pmat.toml");
 
         fs::create_dir_all(&hooks_dir).unwrap();
-        fs::write(hooks_dir.join("pre-commit"), "#!/bin/bash\necho 'custom hook'").unwrap();
+        fs::write(
+            hooks_dir.join("pre-commit"),
+            "#!/bin/bash\necho 'custom hook'",
+        )
+        .unwrap();
         fs::write(&config_path, "[quality]\nmax_complexity = 10\nmax_cognitive_complexity = 15\nmin_coverage = 80.0\nallow_satd = false\nrequire_docs = true\nlint_compliance = true\nfail_on_violation = true").unwrap();
 
         let cmd = HooksCommand::new(hooks_dir.clone(), config_path);
@@ -381,7 +387,11 @@ mod coverage_tests {
         let config_path = temp_dir.path().join("pmat.toml");
 
         fs::create_dir_all(&hooks_dir).unwrap();
-        fs::write(hooks_dir.join("pre-commit"), "#!/bin/bash\n# auto-managed by PMAT\n# DO NOT EDIT").unwrap();
+        fs::write(
+            hooks_dir.join("pre-commit"),
+            "#!/bin/bash\n# auto-managed by PMAT\n# DO NOT EDIT",
+        )
+        .unwrap();
         fs::write(&config_path, "[quality]\nmax_complexity = 10\nmax_cognitive_complexity = 15\nmin_coverage = 80.0\nallow_satd = false\nrequire_docs = true\nlint_compliance = true\nfail_on_violation = true").unwrap();
 
         let cmd = HooksCommand::new(hooks_dir.clone(), config_path);
@@ -399,8 +409,16 @@ mod coverage_tests {
         let config_path = temp_dir.path().join("pmat.toml");
 
         fs::create_dir_all(&hooks_dir).unwrap();
-        fs::write(hooks_dir.join("pre-commit"), "#!/bin/bash\n# auto-managed by PMAT\n# DO NOT EDIT").unwrap();
-        fs::write(hooks_dir.join("pre-commit.pmat-backup"), "#!/bin/bash\nold backup").unwrap();
+        fs::write(
+            hooks_dir.join("pre-commit"),
+            "#!/bin/bash\n# auto-managed by PMAT\n# DO NOT EDIT",
+        )
+        .unwrap();
+        fs::write(
+            hooks_dir.join("pre-commit.pmat-backup"),
+            "#!/bin/bash\nold backup",
+        )
+        .unwrap();
         fs::write(&config_path, "[quality]\nmax_complexity = 10\nmax_cognitive_complexity = 15\nmin_coverage = 80.0\nallow_satd = false\nrequire_docs = true\nlint_compliance = true\nfail_on_violation = true").unwrap();
 
         let cmd = HooksCommand::new(hooks_dir.clone(), config_path);
@@ -435,7 +453,11 @@ mod coverage_tests {
         let config_path = temp_dir.path().join("pmat.toml");
 
         fs::create_dir_all(&hooks_dir).unwrap();
-        fs::write(hooks_dir.join("pre-commit"), "#!/bin/bash\necho 'custom hook'").unwrap();
+        fs::write(
+            hooks_dir.join("pre-commit"),
+            "#!/bin/bash\necho 'custom hook'",
+        )
+        .unwrap();
 
         let cmd = HooksCommand::new(hooks_dir.clone(), config_path);
         let result = cmd.uninstall(false).await.unwrap();
@@ -452,7 +474,11 @@ mod coverage_tests {
         let config_path = temp_dir.path().join("pmat.toml");
 
         fs::create_dir_all(&hooks_dir).unwrap();
-        fs::write(hooks_dir.join("pre-commit"), "#!/bin/bash\n# auto-managed by PMAT\n# DO NOT EDIT").unwrap();
+        fs::write(
+            hooks_dir.join("pre-commit"),
+            "#!/bin/bash\n# auto-managed by PMAT\n# DO NOT EDIT",
+        )
+        .unwrap();
 
         let cmd = HooksCommand::new(hooks_dir.clone(), config_path);
         let result = cmd.uninstall(false).await.unwrap();
@@ -469,8 +495,16 @@ mod coverage_tests {
         let config_path = temp_dir.path().join("pmat.toml");
 
         fs::create_dir_all(&hooks_dir).unwrap();
-        fs::write(hooks_dir.join("pre-commit"), "#!/bin/bash\n# auto-managed by PMAT\n# DO NOT EDIT").unwrap();
-        fs::write(hooks_dir.join("pre-commit.pmat-backup"), "#!/bin/bash\noriginal hook").unwrap();
+        fs::write(
+            hooks_dir.join("pre-commit"),
+            "#!/bin/bash\n# auto-managed by PMAT\n# DO NOT EDIT",
+        )
+        .unwrap();
+        fs::write(
+            hooks_dir.join("pre-commit.pmat-backup"),
+            "#!/bin/bash\noriginal hook",
+        )
+        .unwrap();
 
         let cmd = HooksCommand::new(hooks_dir.clone(), config_path);
         let result = cmd.uninstall(true).await.unwrap();
@@ -510,7 +544,11 @@ mod coverage_tests {
         let config_path = temp_dir.path().join("pmat.toml");
 
         fs::create_dir_all(&hooks_dir).unwrap();
-        fs::write(hooks_dir.join("pre-commit"), "#!/bin/bash\n# auto-managed by PMAT\n# DO NOT EDIT\necho test").unwrap();
+        fs::write(
+            hooks_dir.join("pre-commit"),
+            "#!/bin/bash\n# auto-managed by PMAT\n# DO NOT EDIT\necho test",
+        )
+        .unwrap();
 
         let cmd = HooksCommand::new(hooks_dir.clone(), config_path);
         let status = cmd.status().await.unwrap();
@@ -529,7 +567,11 @@ mod coverage_tests {
         let config_path = temp_dir.path().join("pmat.toml");
 
         fs::create_dir_all(&hooks_dir).unwrap();
-        fs::write(hooks_dir.join("pre-commit"), "#!/bin/bash\necho 'custom hook'").unwrap();
+        fs::write(
+            hooks_dir.join("pre-commit"),
+            "#!/bin/bash\necho 'custom hook'",
+        )
+        .unwrap();
 
         let cmd = HooksCommand::new(hooks_dir.clone(), config_path);
         let status = cmd.status().await.unwrap();
@@ -686,11 +728,17 @@ mod coverage_tests {
 
         fs::create_dir_all(&hooks_dir).unwrap();
         // Create a simple hook that exits 0
-        fs::write(hooks_dir.join("pre-commit"), "#!/bin/bash\necho '✅ passed'\nexit 0").unwrap();
+        fs::write(
+            hooks_dir.join("pre-commit"),
+            "#!/bin/bash\necho '✅ passed'\nexit 0",
+        )
+        .unwrap();
         #[cfg(unix)]
         {
             use std::os::unix::fs::PermissionsExt;
-            let mut perms = fs::metadata(hooks_dir.join("pre-commit")).unwrap().permissions();
+            let mut perms = fs::metadata(hooks_dir.join("pre-commit"))
+                .unwrap()
+                .permissions();
             perms.set_mode(0o755);
             fs::set_permissions(hooks_dir.join("pre-commit"), perms).unwrap();
         }
@@ -710,11 +758,17 @@ mod coverage_tests {
         let config_path = temp_dir.path().join("pmat.toml");
 
         fs::create_dir_all(&hooks_dir).unwrap();
-        fs::write(hooks_dir.join("pre-commit"), "#!/bin/bash\necho 'running all'\nexit 0").unwrap();
+        fs::write(
+            hooks_dir.join("pre-commit"),
+            "#!/bin/bash\necho 'running all'\nexit 0",
+        )
+        .unwrap();
         #[cfg(unix)]
         {
             use std::os::unix::fs::PermissionsExt;
-            let mut perms = fs::metadata(hooks_dir.join("pre-commit")).unwrap().permissions();
+            let mut perms = fs::metadata(hooks_dir.join("pre-commit"))
+                .unwrap()
+                .permissions();
             perms.set_mode(0o755);
             fs::set_permissions(hooks_dir.join("pre-commit"), perms).unwrap();
         }
@@ -761,7 +815,11 @@ mod coverage_tests {
         let config_path = temp_dir.path().join("pmat.toml");
 
         fs::create_dir_all(&hooks_dir).unwrap();
-        fs::write(hooks_dir.join("pre-commit"), "#!/bin/bash\n# auto-managed by PMAT\n# DO NOT EDIT").unwrap();
+        fs::write(
+            hooks_dir.join("pre-commit"),
+            "#!/bin/bash\n# auto-managed by PMAT\n# DO NOT EDIT",
+        )
+        .unwrap();
 
         let cmd = HooksCommand::new(hooks_dir.clone(), config_path);
         let result = cmd.is_pmat_managed(&hooks_dir.join("pre-commit")).unwrap();
@@ -777,7 +835,11 @@ mod coverage_tests {
 
         fs::create_dir_all(&hooks_dir).unwrap();
         // Only has one of the two required markers
-        fs::write(hooks_dir.join("pre-commit"), "#!/bin/bash\n# auto-managed by PMAT\necho test").unwrap();
+        fs::write(
+            hooks_dir.join("pre-commit"),
+            "#!/bin/bash\n# auto-managed by PMAT\necho test",
+        )
+        .unwrap();
 
         let cmd = HooksCommand::new(hooks_dir.clone(), config_path);
         let result = cmd.is_pmat_managed(&hooks_dir.join("pre-commit")).unwrap();
@@ -841,7 +903,10 @@ mod coverage_tests {
 
         let content = "max_complexity = 20\nmax_cognitive_complexity = 25";
         assert_eq!(cmd.extract_current_value(content, "max_complexity"), "20");
-        assert_eq!(cmd.extract_current_value(content, "max_cognitive_complexity"), "25");
+        assert_eq!(
+            cmd.extract_current_value(content, "max_cognitive_complexity"),
+            "25"
+        );
         assert_eq!(cmd.extract_current_value(content, "nonexistent"), "10"); // default
     }
 
@@ -870,7 +935,10 @@ mod coverage_tests {
 
         let result = install_tdg_hooks(temp_dir.path()).await;
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Not a git repository"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Not a git repository"));
     }
 
     #[tokio::test]
@@ -1101,7 +1169,11 @@ mod coverage_tests {
         let config_path = temp_dir.path().join("pmat.toml");
 
         // Create Cargo.toml
-        fs::write(temp_dir.path().join("Cargo.toml"), "[package]\nname = \"test\"").unwrap();
+        fs::write(
+            temp_dir.path().join("Cargo.toml"),
+            "[package]\nname = \"test\"",
+        )
+        .unwrap();
 
         let original_dir = std::env::current_dir().unwrap();
         std::env::set_current_dir(temp_dir.path()).unwrap();
@@ -1141,7 +1213,11 @@ mod coverage_tests {
         let config_path = temp_dir.path().join("pmat.toml");
 
         // Create pyproject.toml
-        fs::write(temp_dir.path().join("pyproject.toml"), "[project]\nname = \"test\"").unwrap();
+        fs::write(
+            temp_dir.path().join("pyproject.toml"),
+            "[project]\nname = \"test\"",
+        )
+        .unwrap();
 
         let original_dir = std::env::current_dir().unwrap();
         std::env::set_current_dir(temp_dir.path()).unwrap();
@@ -1161,7 +1237,11 @@ mod coverage_tests {
         let config_path = temp_dir.path().join("pmat.toml");
 
         // Create setup.py
-        fs::write(temp_dir.path().join("setup.py"), "from setuptools import setup").unwrap();
+        fs::write(
+            temp_dir.path().join("setup.py"),
+            "from setuptools import setup",
+        )
+        .unwrap();
 
         let original_dir = std::env::current_dir().unwrap();
         std::env::set_current_dir(temp_dir.path()).unwrap();
@@ -1204,7 +1284,11 @@ mod coverage_tests {
 
         fs::create_dir_all(&hooks_dir).unwrap();
         // Already a PMAT hook
-        fs::write(hooks_dir.join("pre-commit"), "#!/bin/bash\n# auto-managed by PMAT\n# DO NOT EDIT\nold content").unwrap();
+        fs::write(
+            hooks_dir.join("pre-commit"),
+            "#!/bin/bash\n# auto-managed by PMAT\n# DO NOT EDIT\nold content",
+        )
+        .unwrap();
         fs::write(&config_path, "[quality]\nmax_complexity = 10\nmax_cognitive_complexity = 15\nmin_coverage = 80.0\nallow_satd = false\nrequire_docs = true\nlint_compliance = true\nfail_on_violation = true").unwrap();
 
         let cmd = HooksCommand::new(hooks_dir.clone(), config_path);

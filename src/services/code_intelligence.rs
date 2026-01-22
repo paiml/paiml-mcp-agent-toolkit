@@ -968,8 +968,14 @@ mod tests {
 
     #[test]
     fn test_analysis_type_equality() {
-        assert_eq!(AnalysisType::DuplicateDetection, AnalysisType::DuplicateDetection);
-        assert_ne!(AnalysisType::DuplicateDetection, AnalysisType::DeadCodeAnalysis);
+        assert_eq!(
+            AnalysisType::DuplicateDetection,
+            AnalysisType::DuplicateDetection
+        );
+        assert_ne!(
+            AnalysisType::DuplicateDetection,
+            AnalysisType::DeadCodeAnalysis
+        );
     }
 
     #[test]
@@ -1178,9 +1184,7 @@ mod tests {
         let report = DependencyGraphReport {
             nodes: 3,
             edges: 3,
-            circular_dependencies: vec![
-                vec!["A".to_string(), "B".to_string(), "C".to_string()],
-            ],
+            circular_dependencies: vec![vec!["A".to_string(), "B".to_string(), "C".to_string()]],
             mermaid_diagram: "".to_string(),
         };
 

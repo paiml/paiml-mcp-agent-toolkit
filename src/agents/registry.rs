@@ -114,9 +114,9 @@ impl AgentRegistry {
 
 #[cfg(test)]
 mod tests {
+    use super::super::AgentClass;
     use super::*;
     use uuid::Uuid;
-    use super::super::AgentClass;
 
     fn create_test_spec() -> (AgentId, AgentSpec) {
         let id = Uuid::new_v4();
@@ -155,7 +155,9 @@ mod tests {
         let registry = AgentRegistry::new();
         let agent_id = Uuid::new_v4();
 
-        registry.register_agent_with_name("test_agent", agent_id).await;
+        registry
+            .register_agent_with_name("test_agent", agent_id)
+            .await;
 
         let found = registry.get_agent("test_agent").await;
         assert!(found.is_some());
@@ -175,7 +177,9 @@ mod tests {
         let registry = AgentRegistry::new();
         let agent_id = Uuid::new_v4();
 
-        registry.register_agent_with_capability("analyze", agent_id).await;
+        registry
+            .register_agent_with_capability("analyze", agent_id)
+            .await;
 
         let found = registry.find_agent_for_capability("analyze").await;
         assert!(found.is_some());
@@ -215,7 +219,9 @@ mod tests {
         let registry = AgentRegistry::new();
         let agent_id = Uuid::new_v4();
 
-        registry.register_agent_with_name("to_remove", agent_id).await;
+        registry
+            .register_agent_with_name("to_remove", agent_id)
+            .await;
         assert!(registry.get_agent("to_remove").await.is_some());
 
         registry.remove_agent("to_remove").await;
@@ -235,7 +241,9 @@ mod tests {
     async fn test_mark_agent_unhealthy() {
         let registry = AgentRegistry::new();
 
-        registry.mark_agent_unhealthy("unhealthy_agent", "connection failed").await;
+        registry
+            .mark_agent_unhealthy("unhealthy_agent", "connection failed")
+            .await;
 
         assert!(!registry.is_agent_healthy("unhealthy_agent").await);
     }
@@ -260,8 +268,12 @@ mod tests {
     async fn test_list_agents_with_entries() {
         let registry = AgentRegistry::new();
 
-        registry.register_agent_with_name("agent1", Uuid::new_v4()).await;
-        registry.register_agent_with_name("agent2", Uuid::new_v4()).await;
+        registry
+            .register_agent_with_name("agent1", Uuid::new_v4())
+            .await;
+        registry
+            .register_agent_with_name("agent2", Uuid::new_v4())
+            .await;
 
         let agents = registry.list_agents().await;
         assert_eq!(agents.len(), 2);

@@ -1411,7 +1411,11 @@ mod tests {
         fs::write(temp_dir.path().join("AGENTS.md"), "# Correct").unwrap();
         fs::write(temp_dir.path().join("AGENTS.txt"), "Ignored").unwrap();
         fs::write(temp_dir.path().join("AGENTS.md.bak"), "Ignored").unwrap();
-        fs::write(temp_dir.path().join("agents.md"), "Ignored - case sensitive").unwrap();
+        fs::write(
+            temp_dir.path().join("agents.md"),
+            "Ignored - case sensitive",
+        )
+        .unwrap();
 
         let discovery = AgentsMdDiscovery::new();
         let files = discovery.discover_all(temp_dir.path());

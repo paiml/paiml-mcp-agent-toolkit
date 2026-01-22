@@ -538,7 +538,11 @@ mod coverage_tests {
 
             match &system_msg.content {
                 PromptContent::Text(text) => {
-                    assert!(text.contains(pattern), "Should contain pattern: {}", pattern);
+                    assert!(
+                        text.contains(pattern),
+                        "Should contain pattern: {}",
+                        pattern
+                    );
                 }
                 _ => panic!("Expected Text content"),
             }
@@ -568,11 +572,7 @@ mod coverage_tests {
 
         assert_eq!(metadata.name, "quality_assessment");
         assert!(metadata.description.is_some());
-        assert!(metadata
-            .description
-            .as_ref()
-            .unwrap()
-            .contains("quality"));
+        assert!(metadata.description.as_ref().unwrap().contains("quality"));
 
         // No arguments for this prompt
         assert!(metadata.arguments.is_none());
@@ -636,11 +636,7 @@ mod coverage_tests {
             .as_ref()
             .unwrap()
             .contains("repository health"));
-        assert!(metadata
-            .description
-            .as_ref()
-            .unwrap()
-            .contains("0-110"));
+        assert!(metadata.description.as_ref().unwrap().contains("0-110"));
 
         // Check arguments
         let args = metadata.arguments.as_ref().unwrap();
@@ -848,7 +844,11 @@ mod coverage_tests {
         unique_names.sort();
         unique_names.dedup();
 
-        assert_eq!(names.len(), unique_names.len(), "All prompt names should be unique");
+        assert_eq!(
+            names.len(),
+            unique_names.len(),
+            "All prompt names should be unique"
+        );
     }
 
     #[tokio::test]

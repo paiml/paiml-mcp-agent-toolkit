@@ -569,11 +569,7 @@ fn calculate_sum(a: i32, b: i32) -> i32 {
         let mut engine = Bm25SearchEngine::new();
 
         // Document with term appearing multiple times should score higher
-        engine.index_file(
-            "a.rs",
-            "fn test_foo() { foo(); foo(); foo(); }",
-            "rust",
-        );
+        engine.index_file("a.rs", "fn test_foo() { foo(); foo(); foo(); }", "rust");
         engine.index_file("b.rs", "fn bar() { foo(); }", "rust");
 
         let results = engine.search("foo", 10);
@@ -612,7 +608,10 @@ fn calculate_sum(a: i32, b: i32) -> i32 {
         assert!(!rare_results.is_empty());
 
         // Rare term should have higher score due to higher IDF
-        let common_max_score = common_results.iter().map(|(_, s)| *s).fold(0.0f32, f32::max);
+        let common_max_score = common_results
+            .iter()
+            .map(|(_, s)| *s)
+            .fold(0.0f32, f32::max);
         let rare_max_score = rare_results.iter().map(|(_, s)| *s).fold(0.0f32, f32::max);
 
         assert!(
@@ -660,7 +659,11 @@ fn calculate_sum(a: i32, b: i32) -> i32 {
         let mut engine = Bm25SearchEngine::new();
 
         for i in 0..20 {
-            engine.index_file(&format!("file{}.rs", i), &format!("fn test{i}() {{}}", i = i), "rust");
+            engine.index_file(
+                &format!("file{}.rs", i),
+                &format!("fn test{i}() {{}}", i = i),
+                "rust",
+            );
         }
 
         let results = engine.search("fn", 5);

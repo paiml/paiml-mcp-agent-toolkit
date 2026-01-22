@@ -129,18 +129,18 @@ fn demonstrate_cache_results() {
     // Simulate cache check results
     let scenarios = vec![
         ("Cache HIT", "Pass", "Code unchanged since last check"),
-        ("Cache HIT", "Fail", "Previous check failed, code still unchanged"),
+        (
+            "Cache HIT",
+            "Fail",
+            "Previous check failed, code still unchanged",
+        ),
         ("Cache MISS", "NoCacheFile", "First run or cache cleared"),
         (
             "Cache MISS",
             "TreeHashChanged",
             "Code changed, need re-analysis",
         ),
-        (
-            "Cache MISS",
-            "ConfigHashChanged",
-            "Quality config changed",
-        ),
+        ("Cache MISS", "ConfigHashChanged", "Quality config changed"),
         ("Cache MISS", "VersionChanged", "PMAT version upgraded"),
         ("Cache MISS", "CacheStale", "Cache older than 7 days"),
     ];

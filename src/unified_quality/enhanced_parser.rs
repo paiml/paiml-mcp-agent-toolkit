@@ -866,11 +866,7 @@ mod coverage_tests {
         let code = "fn test() {\n    // TODO: implement\n}";
         let result = parser.parse_incremental(&test_path("todo"), code);
 
-        assert!(
-            result.is_ok(),
-            "Parse failed: {:?}",
-            result.as_ref().err()
-        );
+        assert!(result.is_ok(), "Parse failed: {:?}", result.as_ref().err());
         let metrics = result.unwrap();
         assert_eq!(metrics.satd_count, 1);
     }

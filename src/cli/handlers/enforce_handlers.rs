@@ -1247,7 +1247,6 @@ pub fn handle_complete_enforcement_state() -> Result<EnforcementResult> {
     handle_complete_state()
 }
 
-
 // Tests extracted to enforce_handlers_tests.rs for file health compliance (CB-040)
 #[cfg(test)]
 #[path = "enforce_handlers_tests.rs"]

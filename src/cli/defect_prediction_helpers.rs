@@ -789,20 +789,26 @@ fn main() {}
             exclude: None,
         };
         let predictions = vec![
-            ("file1.rs".to_string(), DefectScore {
-                probability: 0.5,
-                confidence: 0.9,
-                risk_level: RiskLevel::Medium,
-                contributing_factors: vec![],
-                recommendations: vec![],
-            }),
-            ("file2.rs".to_string(), DefectScore {
-                probability: 0.5,
-                confidence: 0.3,
-                risk_level: RiskLevel::Medium,
-                contributing_factors: vec![],
-                recommendations: vec![],
-            }),
+            (
+                "file1.rs".to_string(),
+                DefectScore {
+                    probability: 0.5,
+                    confidence: 0.9,
+                    risk_level: RiskLevel::Medium,
+                    contributing_factors: vec![],
+                    recommendations: vec![],
+                },
+            ),
+            (
+                "file2.rs".to_string(),
+                DefectScore {
+                    probability: 0.5,
+                    confidence: 0.3,
+                    risk_level: RiskLevel::Medium,
+                    contributing_factors: vec![],
+                    recommendations: vec![],
+                },
+            ),
         ];
         let filtered = filter_predictions(predictions, &config);
         assert_eq!(filtered.len(), 1);
@@ -821,20 +827,26 @@ fn main() {}
             exclude: None,
         };
         let predictions = vec![
-            ("file1.rs".to_string(), DefectScore {
-                probability: 0.8,
-                confidence: 0.9,
-                risk_level: RiskLevel::High,
-                contributing_factors: vec![],
-                recommendations: vec![],
-            }),
-            ("file2.rs".to_string(), DefectScore {
-                probability: 0.4,
-                confidence: 0.9,
-                risk_level: RiskLevel::Medium,
-                contributing_factors: vec![],
-                recommendations: vec![],
-            }),
+            (
+                "file1.rs".to_string(),
+                DefectScore {
+                    probability: 0.8,
+                    confidence: 0.9,
+                    risk_level: RiskLevel::High,
+                    contributing_factors: vec![],
+                    recommendations: vec![],
+                },
+            ),
+            (
+                "file2.rs".to_string(),
+                DefectScore {
+                    probability: 0.4,
+                    confidence: 0.9,
+                    risk_level: RiskLevel::Medium,
+                    contributing_factors: vec![],
+                    recommendations: vec![],
+                },
+            ),
         ];
         let filtered = filter_predictions(predictions, &config);
         assert_eq!(filtered.len(), 1);
@@ -853,27 +865,36 @@ fn main() {}
             exclude: None,
         };
         let predictions = vec![
-            ("file1.rs".to_string(), DefectScore {
-                probability: 0.3,
-                confidence: 0.9,
-                risk_level: RiskLevel::Low,
-                contributing_factors: vec![],
-                recommendations: vec![],
-            }),
-            ("file2.rs".to_string(), DefectScore {
-                probability: 0.9,
-                confidence: 0.9,
-                risk_level: RiskLevel::High,
-                contributing_factors: vec![],
-                recommendations: vec![],
-            }),
-            ("file3.rs".to_string(), DefectScore {
-                probability: 0.6,
-                confidence: 0.9,
-                risk_level: RiskLevel::Medium,
-                contributing_factors: vec![],
-                recommendations: vec![],
-            }),
+            (
+                "file1.rs".to_string(),
+                DefectScore {
+                    probability: 0.3,
+                    confidence: 0.9,
+                    risk_level: RiskLevel::Low,
+                    contributing_factors: vec![],
+                    recommendations: vec![],
+                },
+            ),
+            (
+                "file2.rs".to_string(),
+                DefectScore {
+                    probability: 0.9,
+                    confidence: 0.9,
+                    risk_level: RiskLevel::High,
+                    contributing_factors: vec![],
+                    recommendations: vec![],
+                },
+            ),
+            (
+                "file3.rs".to_string(),
+                DefectScore {
+                    probability: 0.6,
+                    confidence: 0.9,
+                    risk_level: RiskLevel::Medium,
+                    contributing_factors: vec![],
+                    recommendations: vec![],
+                },
+            ),
         ];
         let filtered = filter_predictions(predictions, &config);
         assert_eq!(filtered.len(), 3);
@@ -896,27 +917,36 @@ fn main() {}
     #[test]
     fn test_calculate_risk_distribution_all_levels() {
         let predictions = vec![
-            ("high.rs".to_string(), DefectScore {
-                probability: 0.8,
-                confidence: 0.9,
-                risk_level: RiskLevel::High,
-                contributing_factors: vec![],
-                recommendations: vec![],
-            }),
-            ("medium.rs".to_string(), DefectScore {
-                probability: 0.5,
-                confidence: 0.9,
-                risk_level: RiskLevel::Medium,
-                contributing_factors: vec![],
-                recommendations: vec![],
-            }),
-            ("low.rs".to_string(), DefectScore {
-                probability: 0.2,
-                confidence: 0.9,
-                risk_level: RiskLevel::Low,
-                contributing_factors: vec![],
-                recommendations: vec![],
-            }),
+            (
+                "high.rs".to_string(),
+                DefectScore {
+                    probability: 0.8,
+                    confidence: 0.9,
+                    risk_level: RiskLevel::High,
+                    contributing_factors: vec![],
+                    recommendations: vec![],
+                },
+            ),
+            (
+                "medium.rs".to_string(),
+                DefectScore {
+                    probability: 0.5,
+                    confidence: 0.9,
+                    risk_level: RiskLevel::Medium,
+                    contributing_factors: vec![],
+                    recommendations: vec![],
+                },
+            ),
+            (
+                "low.rs".to_string(),
+                DefectScore {
+                    probability: 0.2,
+                    confidence: 0.9,
+                    risk_level: RiskLevel::Low,
+                    contributing_factors: vec![],
+                    recommendations: vec![],
+                },
+            ),
         ];
         let dist = calculate_risk_distribution(&predictions);
         assert_eq!(dist.high_risk_count, 1);
@@ -947,15 +977,16 @@ fn main() {}
 
     #[test]
     fn test_format_summary_output_with_predictions() {
-        let predictions = vec![
-            ("file.rs".to_string(), DefectScore {
+        let predictions = vec![(
+            "file.rs".to_string(),
+            DefectScore {
                 probability: 0.8,
                 confidence: 0.9,
                 risk_level: RiskLevel::High,
                 contributing_factors: vec![("complexity".to_string(), 0.5)],
                 recommendations: vec![],
-            }),
-        ];
+            },
+        )];
         let dist = RiskDistribution {
             high_risk_count: 1,
             medium_risk_count: 0,

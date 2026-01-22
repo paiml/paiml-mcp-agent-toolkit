@@ -1121,7 +1121,6 @@ lto = "thin"
     }
 }
 
-
 // Coverage tests extracted to rust_tooling_scorer_coverage_tests.rs for file health compliance (CB-040)
 #[path = "rust_tooling_scorer_coverage_tests.rs"]
 mod coverage_tests;

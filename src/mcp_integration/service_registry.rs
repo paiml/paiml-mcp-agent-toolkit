@@ -333,9 +333,7 @@ mod tests {
             healthy: true,
         };
 
-        let result = service
-            .invoke("operation", serde_json::json!({}))
-            .await;
+        let result = service.invoke("operation", serde_json::json!({})).await;
 
         assert!(result.is_ok());
         let value = result.unwrap();

@@ -3,9 +3,7 @@
 //! This module contains all complexity-related command implementations
 //! extracted from the main CLI module to reduce cognitive complexity.
 
-use crate::cli::{
-    ComplexityOutputFormat, DagType, SatdOutputFormat, SatdSeverity,
-};
+use crate::cli::{ComplexityOutputFormat, DagType, SatdOutputFormat, SatdSeverity};
 use anyhow::{Context, Result};
 use notify::{Config, Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use std::path::{Path, PathBuf};
@@ -643,7 +641,6 @@ fn has_complexity_violations(
         })
     })
 }
-
 
 /// Write top files with SATD section
 fn write_top_files_with_satd_section(

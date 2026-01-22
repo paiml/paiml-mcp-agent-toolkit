@@ -562,8 +562,7 @@ mod tests {
     #[test]
     fn test_storage_management_missing_action() {
         let json = serde_json::json!({});
-        let result: std::result::Result<TdgStorageManagementArgs, _> =
-            serde_json::from_value(json);
+        let result: std::result::Result<TdgStorageManagementArgs, _> = serde_json::from_value(json);
         assert!(result.is_err());
     }
 

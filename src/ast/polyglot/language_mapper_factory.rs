@@ -556,9 +556,7 @@ def greet(name):
         let large_source = (0..1000)
             .map(|i| format!("def func_{}(): pass\n", i))
             .collect::<String>();
-        let result = mapper
-            .map_source(&large_source, Path::new("test.py"))
-            .await;
+        let result = mapper.map_source(&large_source, Path::new("test.py")).await;
         assert!(result.is_ok());
         assert!(result.unwrap().is_empty());
     }

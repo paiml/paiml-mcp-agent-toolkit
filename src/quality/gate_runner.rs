@@ -206,10 +206,8 @@ mod coverage_tests {
             min_test_coverage: 80.0,
             max_duplication: 0.1,
         };
-        let analyzers: Vec<Box<dyn std::any::Any + Send>> = vec![
-            Box::new(42i32),
-            Box::new("test".to_string()),
-        ];
+        let analyzers: Vec<Box<dyn std::any::Any + Send>> =
+            vec![Box::new(42i32), Box::new("test".to_string())];
         let runner = QualityGateRunner::new(analyzers, thresholds);
         let _ = runner;
     }

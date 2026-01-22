@@ -376,7 +376,10 @@ mod coverage_tests {
         assert_eq!(with_metadata.metadata.encoding, "utf-8");
         assert!(!with_metadata.metadata.compressed);
         assert_eq!(with_metadata.metadata.ttl_ms, Some(3000));
-        assert_eq!(with_metadata.metadata.trace_id, Some("trace-001".to_string()));
+        assert_eq!(
+            with_metadata.metadata.trace_id,
+            Some("trace-001".to_string())
+        );
     }
 
     #[test]
@@ -418,7 +421,12 @@ mod coverage_tests {
 
     #[test]
     fn test_binary_protocol_encode_with_all_priorities() {
-        for priority in [Priority::Critical, Priority::High, Priority::Normal, Priority::Low] {
+        for priority in [
+            Priority::Critical,
+            Priority::High,
+            Priority::Normal,
+            Priority::Low,
+        ] {
             let msg = AgentMessage::new(Uuid::new_v4(), Uuid::new_v4(), "test")
                 .unwrap()
                 .with_priority(priority);
@@ -571,7 +579,8 @@ mod coverage_tests {
         // Add messages until batch is full
         let mut added = 0;
         for _ in 0..100 {
-            let msg = AgentMessage::new(Uuid::new_v4(), Uuid::new_v4(), "test data payload").unwrap();
+            let msg =
+                AgentMessage::new(Uuid::new_v4(), Uuid::new_v4(), "test data payload").unwrap();
             match batch.add(msg) {
                 Ok(()) => added += 1,
                 Err(BatchError::BatchFull) => break,
@@ -614,7 +623,8 @@ mod coverage_tests {
         let mut batch = MessageBatch::new(10000);
 
         for i in 0..5 {
-            let msg = AgentMessage::new(Uuid::new_v4(), Uuid::new_v4(), format!("msg {}", i)).unwrap();
+            let msg =
+                AgentMessage::new(Uuid::new_v4(), Uuid::new_v4(), format!("msg {}", i)).unwrap();
             batch.add(msg).unwrap();
             assert_eq!(batch.len(), i + 1);
         }
@@ -660,7 +670,8 @@ mod coverage_tests {
 
         // Add some messages
         for i in 0..3 {
-            let msg = AgentMessage::new(Uuid::new_v4(), Uuid::new_v4(), format!("msg {}", i)).unwrap();
+            let msg =
+                AgentMessage::new(Uuid::new_v4(), Uuid::new_v4(), format!("msg {}", i)).unwrap();
             batch.add(msg).unwrap();
         }
 
@@ -828,7 +839,8 @@ mod coverage_tests {
 
         // First round
         for i in 0..3 {
-            let msg = AgentMessage::new(Uuid::new_v4(), Uuid::new_v4(), format!("msg {}", i)).unwrap();
+            let msg =
+                AgentMessage::new(Uuid::new_v4(), Uuid::new_v4(), format!("msg {}", i)).unwrap();
             batch.add(msg).unwrap();
         }
 
@@ -837,7 +849,8 @@ mod coverage_tests {
 
         // Second round - should work
         for i in 0..2 {
-            let msg = AgentMessage::new(Uuid::new_v4(), Uuid::new_v4(), format!("new msg {}", i)).unwrap();
+            let msg = AgentMessage::new(Uuid::new_v4(), Uuid::new_v4(), format!("new msg {}", i))
+                .unwrap();
             batch.add(msg).unwrap();
         }
 

@@ -324,7 +324,6 @@ fn generate_graph_section(
     content
 }
 
-
 // Tests extracted to utility_handlers_tests.rs for file health compliance (CB-040)
 #[cfg(test)]
 #[path = "utility_handlers_tests.rs"]

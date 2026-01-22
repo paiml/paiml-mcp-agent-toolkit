@@ -50,12 +50,13 @@ mod coverage_tests {
 
     #[test]
     fn test_chunk_code_empty_input_all_languages() {
-        for lang in [
-            Language::Rust,
-            Language::TypeScript,
-        ] {
+        for lang in [Language::Rust, Language::TypeScript] {
             let result = chunk_code("", lang).unwrap();
-            assert!(result.is_empty(), "Empty input for {:?} should return empty vec", lang);
+            assert!(
+                result.is_empty(),
+                "Empty input for {:?} should return empty vec",
+                lang
+            );
         }
     }
 
@@ -204,7 +205,10 @@ impl Foo {
 }
 "#;
         let chunks = chunk_code(source, Language::Rust).unwrap();
-        let functions: Vec<_> = chunks.iter().filter(|c| c.chunk_type == ChunkType::Function).collect();
+        let functions: Vec<_> = chunks
+            .iter()
+            .filter(|c| c.chunk_type == ChunkType::Function)
+            .collect();
         assert_eq!(functions.len(), 2);
     }
 
@@ -394,7 +398,9 @@ export function exportedFunc(): void {
         let source = "def test(): pass";
         let result = chunk_code(source, Language::Python);
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("python-ast feature is disabled"));
+        assert!(result
+            .unwrap_err()
+            .contains("python-ast feature is disabled"));
     }
 
     // C Language Tests (feature-gated)
@@ -524,7 +530,8 @@ export function exportedFunc(): void {
     #[cfg(feature = "go-ast")]
     #[test]
     fn test_go_interface_type() {
-        let source = "package main\n\ntype Reader interface {\n    Read(p []byte) (n int, err error)\n}\n";
+        let source =
+            "package main\n\ntype Reader interface {\n    Read(p []byte) (n int, err error)\n}\n";
         let chunks = chunk_code(source, Language::Go).unwrap();
         assert_eq!(chunks.len(), 1);
         assert_eq!(chunks[0].chunk_type, ChunkType::Class);
@@ -717,10 +724,14 @@ mod geometry {
 
         assert!(chunks.len() >= 3);
 
-        let impl_chunk = chunks.iter().find(|c| c.chunk_type == ChunkType::Class && c.chunk_name == "Point");
+        let impl_chunk = chunks
+            .iter()
+            .find(|c| c.chunk_type == ChunkType::Class && c.chunk_name == "Point");
         assert!(impl_chunk.is_some());
 
-        let module_chunk = chunks.iter().find(|c| c.chunk_type == ChunkType::Module && c.chunk_name == "geometry");
+        let module_chunk = chunks
+            .iter()
+            .find(|c| c.chunk_type == ChunkType::Module && c.chunk_name == "geometry");
         assert!(module_chunk.is_some());
     }
 
@@ -879,7 +890,10 @@ const complexFunc = (
         let source = "mod outer {\n    mod inner {\n        fn nested_func() {}\n    }\n}\n";
         let chunks = chunk_code(source, Language::Rust).unwrap();
 
-        let modules: Vec<_> = chunks.iter().filter(|c| c.chunk_type == ChunkType::Module).collect();
+        let modules: Vec<_> = chunks
+            .iter()
+            .filter(|c| c.chunk_type == ChunkType::Module)
+            .collect();
         assert!(modules.len() >= 1);
     }
 
@@ -888,7 +902,10 @@ const complexFunc = (
         let source = "class Outer {\n    inner = class {\n        method() {}\n    };\n}\n";
         let chunks = chunk_code(source, Language::TypeScript).unwrap();
 
-        let classes: Vec<_> = chunks.iter().filter(|c| c.chunk_type == ChunkType::Class).collect();
+        let classes: Vec<_> = chunks
+            .iter()
+            .filter(|c| c.chunk_type == ChunkType::Class)
+            .collect();
         assert!(classes.len() >= 1);
     }
 
@@ -935,7 +952,9 @@ impl Greeter for Person {
 "#;
         let chunks = chunk_code(source, Language::Rust).unwrap();
 
-        let impl_chunk = chunks.iter().find(|c| c.chunk_type == ChunkType::Class && c.chunk_name == "Person");
+        let impl_chunk = chunks
+            .iter()
+            .find(|c| c.chunk_type == ChunkType::Class && c.chunk_name == "Person");
         assert!(impl_chunk.is_some());
     }
 
@@ -1035,7 +1054,10 @@ impl Greeter for Person {
         let source = "const x = 42;";
         let chunks = chunk_code(source, Language::TypeScript).unwrap();
         // Should not extract regular variable as function
-        let func_chunks: Vec<_> = chunks.iter().filter(|c| c.chunk_type == ChunkType::Function).collect();
+        let func_chunks: Vec<_> = chunks
+            .iter()
+            .filter(|c| c.chunk_type == ChunkType::Function)
+            .collect();
         assert!(func_chunks.is_empty());
     }
 
@@ -1090,7 +1112,10 @@ mod a {
 }
 "#;
         let chunks = chunk_code(source, Language::Rust).unwrap();
-        let functions: Vec<_> = chunks.iter().filter(|c| c.chunk_type == ChunkType::Function).collect();
+        let functions: Vec<_> = chunks
+            .iter()
+            .filter(|c| c.chunk_type == ChunkType::Function)
+            .collect();
         assert_eq!(functions.len(), 1);
         assert_eq!(functions[0].chunk_name, "deep");
     }
@@ -1107,7 +1132,10 @@ function outer() {
 }
 "#;
         let chunks = chunk_code(source, Language::TypeScript).unwrap();
-        let functions: Vec<_> = chunks.iter().filter(|c| c.chunk_type == ChunkType::Function).collect();
+        let functions: Vec<_> = chunks
+            .iter()
+            .filter(|c| c.chunk_type == ChunkType::Function)
+            .collect();
         assert!(functions.len() >= 1);
     }
 
@@ -1183,7 +1211,8 @@ const myArrow = () => {};
             // The current chunk should start with text from the end of the previous chunk
             let overlap_region = &prev_end[prev_end.len().saturating_sub(10)..];
             assert!(
-                curr_start.starts_with(overlap_region) || prev_end.ends_with(&curr_start[..10.min(curr_start.len())]),
+                curr_start.starts_with(overlap_region)
+                    || prev_end.ends_with(&curr_start[..10.min(curr_start.len())]),
                 "Chunks should have overlap: prev_end='{}...', curr_start='{}...'",
                 &prev_end[prev_end.len().saturating_sub(20)..],
                 &curr_start[..20.min(curr_start.len())]
@@ -1196,7 +1225,8 @@ const myArrow = () => {};
     #[test]
     fn test_chunk_text_preserves_word_boundaries() {
         // Use larger chunk size where word boundaries are achievable
-        let text = "The quick brown fox jumps over the lazy dog. It runs repeatedly until exhausted.";
+        let text =
+            "The quick brown fox jumps over the lazy dog. It runs repeatedly until exhausted.";
         let chunks = chunk_text_recursive(text, 40, 10);
 
         // Verify chunks are produced
@@ -1280,7 +1310,9 @@ const myArrow = () => {};
         // but the chunks should cover the full content
         let combined: String = chunks.join("");
         assert!(
-            combined.contains("target") || combined.contains("keyword") || combined.contains("Middle"),
+            combined.contains("target")
+                || combined.contains("keyword")
+                || combined.contains("Middle"),
             "Chunks should collectively contain the original content"
         );
     }
@@ -1314,8 +1346,8 @@ const myArrow = () => {};
             if !trimmed.is_empty() && !trimmed.ends_with('.') {
                 // If not ending with period, should be last chunk or overlap continuation
                 assert!(
-                    chunks.iter().position(|c| c == chunk) == Some(chunks.len() - 1) ||
-                    trimmed.len() < 45,
+                    chunks.iter().position(|c| c == chunk) == Some(chunks.len() - 1)
+                        || trimmed.len() < 45,
                     "Mid-sentence split should be avoided when possible: '{}'",
                     trimmed
                 );
@@ -1375,7 +1407,8 @@ fn another_function() {
 
         assert!(!final_chunks.is_empty());
         // The complex function should be split into multiple parts
-        let complex_parts: Vec<_> = final_chunks.iter()
+        let complex_parts: Vec<_> = final_chunks
+            .iter()
             .filter(|c| c.chunk_name.starts_with("complex_function"))
             .collect();
         assert!(
@@ -1387,11 +1420,13 @@ fn another_function() {
     /// Test that trueno-rag Chunker trait can be used
     #[test]
     fn test_trueno_rag_chunker_integration() {
-        use trueno_rag::chunk::{RecursiveChunker, Chunker};
+        use trueno_rag::chunk::{Chunker, RecursiveChunker};
         use trueno_rag::Document;
 
         let chunker = RecursiveChunker::new(50, 10);
-        let doc = Document::new("First paragraph content.\n\nSecond paragraph content.\n\nThird paragraph content.");
+        let doc = Document::new(
+            "First paragraph content.\n\nSecond paragraph content.\n\nThird paragraph content.",
+        );
 
         let result = chunker.chunk(&doc);
         assert!(result.is_ok(), "trueno-rag RecursiveChunker should work");

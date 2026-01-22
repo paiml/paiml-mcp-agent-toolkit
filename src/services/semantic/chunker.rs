@@ -739,7 +739,10 @@ pub fn chunk_text_with_overlap(text: &str, chunk_size: usize, overlap: usize) ->
     let doc = Document::new(text);
 
     match chunker.chunk(&doc) {
-        Ok(chunks) => chunks.into_iter().map(|c: trueno_rag::Chunk| c.content).collect(),
+        Ok(chunks) => chunks
+            .into_iter()
+            .map(|c: trueno_rag::Chunk| c.content)
+            .collect(),
         Err(_) => {
             // Fallback to simple fixed-size chunking
             chunk_text_fixed(text, chunk_size, overlap)
@@ -772,19 +775,21 @@ pub fn chunk_text_recursive(text: &str, chunk_size: usize, overlap: usize) -> Ve
     use trueno_rag::chunk::{Chunker, RecursiveChunker};
     use trueno_rag::Document;
 
-    let chunker = RecursiveChunker::new(chunk_size, overlap)
-        .with_separators(vec![
-            "\n\n".to_string(),  // Paragraph boundary
-            "\n".to_string(),    // Line boundary
-            ". ".to_string(),    // Sentence boundary
-            ", ".to_string(),    // Clause boundary
-            " ".to_string(),     // Word boundary
-        ]);
+    let chunker = RecursiveChunker::new(chunk_size, overlap).with_separators(vec![
+        "\n\n".to_string(), // Paragraph boundary
+        "\n".to_string(),   // Line boundary
+        ". ".to_string(),   // Sentence boundary
+        ", ".to_string(),   // Clause boundary
+        " ".to_string(),    // Word boundary
+    ]);
 
     let doc = Document::new(text);
 
     match chunker.chunk(&doc) {
-        Ok(chunks) => chunks.into_iter().map(|c: trueno_rag::Chunk| c.content).collect(),
+        Ok(chunks) => chunks
+            .into_iter()
+            .map(|c: trueno_rag::Chunk| c.content)
+            .collect(),
         Err(_) => {
             // Fallback to overlap chunking
             chunk_text_with_overlap(text, chunk_size, overlap)
@@ -829,7 +834,6 @@ fn compute_checksum(content: &str) -> String {
     hasher.update(content.as_bytes());
     format!("{:x}", hasher.finalize())
 }
-
 
 // Tests extracted to chunker_tests.rs for file health compliance (CB-040)
 #[cfg(test)]

@@ -1695,7 +1695,6 @@ async fn route_semantic_analysis(cmd: AnalyzeCommands) -> Result<()> {
     }
 }
 
-
 // Tests extracted to analysis_handlers_tests.rs for file health compliance (CB-040)
 #[cfg(test)]
 #[path = "analysis_handlers_tests.rs"]

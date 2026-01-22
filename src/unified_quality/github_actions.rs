@@ -694,7 +694,10 @@ mod tests {
     fn test_quality_thresholds_clone() {
         let thresholds = QualityThresholds::default();
         let cloned = thresholds.clone();
-        assert_eq!(cloned.max_complexity_increase, thresholds.max_complexity_increase);
+        assert_eq!(
+            cloned.max_complexity_increase,
+            thresholds.max_complexity_increase
+        );
     }
 
     #[test]

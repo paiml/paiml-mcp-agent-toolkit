@@ -267,12 +267,7 @@ mod coverage_tests {
     #[test]
     fn test_status_subcommand_parsing_with_sprint() {
         let cmd = RoadmapCommand::try_parse_from([
-            "roadmap",
-            "status",
-            "--sprint",
-            "v1.0.0",
-            "--format",
-            "json",
+            "roadmap", "status", "--sprint", "v1.0.0", "--format", "json",
         ]);
 
         assert!(cmd.is_ok());
@@ -323,11 +318,7 @@ mod coverage_tests {
     #[test]
     fn test_validate_subcommand_parsing() {
         let cmd = RoadmapCommand::try_parse_from([
-            "roadmap",
-            "validate",
-            "--sprint",
-            "v1.0.0",
-            "--strict",
+            "roadmap", "validate", "--sprint", "v1.0.0", "--strict",
         ]);
 
         assert!(cmd.is_ok());

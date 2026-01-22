@@ -118,7 +118,7 @@ fn filter_and_sort_hotspots(
         .collect();
     
     // Sort by TDG score descending
-    filtered_hotspots.sort_by(|a, b| b.tdg_score.partial_cmp(&a.tdg_score).unwrap());
+    filtered_hotspots.sort_by(|a, b| b.tdg_score.partial_cmp(&a.tdg_score).expect("tdg_score is not NaN"));
     filtered_hotspots
 }
 

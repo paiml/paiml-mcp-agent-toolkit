@@ -634,10 +634,7 @@ mod tests {
         let result = engine.kmeans(&vectors, 5, 100);
 
         assert!(result.is_err());
-        assert_eq!(
-            result.unwrap_err(),
-            "Cannot have more clusters than points"
-        );
+        assert_eq!(result.unwrap_err(), "Cannot have more clusters than points");
     }
 
     #[tokio::test]
@@ -739,10 +736,7 @@ mod tests {
         let result = engine.kmeans_with_seed(&vectors, 3, 100, 42);
 
         assert!(result.is_err());
-        assert_eq!(
-            result.unwrap_err(),
-            "Cannot have more clusters than points"
-        );
+        assert_eq!(result.unwrap_err(), "Cannot have more clusters than points");
     }
 
     #[tokio::test]
@@ -972,11 +966,7 @@ mod tests {
         let engine = create_test_engine().await;
 
         // With large epsilon, all points should be in one cluster
-        let vectors = vec![
-            vec![0.0, 0.0],
-            vec![5.0, 0.0],
-            vec![10.0, 0.0],
-        ];
+        let vectors = vec![vec![0.0, 0.0], vec![5.0, 0.0], vec![10.0, 0.0]];
 
         let labels = engine.dbscan(&vectors, 100.0, 2).unwrap();
 
@@ -1068,11 +1058,7 @@ mod tests {
     async fn test_silhouette_score_single_cluster() {
         let engine = create_test_engine().await;
 
-        let vectors = vec![
-            vec![0.0, 0.0],
-            vec![1.0, 0.0],
-            vec![2.0, 0.0],
-        ];
+        let vectors = vec![vec![0.0, 0.0], vec![1.0, 0.0], vec![2.0, 0.0]];
         let labels = vec![0, 0, 0];
 
         let score = engine.compute_silhouette_score(&vectors, &labels);
@@ -1131,10 +1117,7 @@ mod tests {
         let engine = create_test_engine().await;
 
         let result = engine
-            .cluster(
-                ClusteringMethod::KMeans { k: 3 },
-                ClusterFilters::default(),
-            )
+            .cluster(ClusteringMethod::KMeans { k: 3 }, ClusterFilters::default())
             .await
             .unwrap();
 
@@ -1327,7 +1310,12 @@ mod tests {
     async fn test_cluster_distance_single_linkage() {
         let engine = create_test_engine().await;
 
-        let vectors = vec![vec![0.0, 0.0], vec![1.0, 0.0], vec![10.0, 0.0], vec![11.0, 0.0]];
+        let vectors = vec![
+            vec![0.0, 0.0],
+            vec![1.0, 0.0],
+            vec![10.0, 0.0],
+            vec![11.0, 0.0],
+        ];
 
         // Build distance map
         let mut distances = HashMap::new();
@@ -1352,7 +1340,12 @@ mod tests {
     async fn test_cluster_distance_complete_linkage() {
         let engine = create_test_engine().await;
 
-        let vectors = vec![vec![0.0, 0.0], vec![1.0, 0.0], vec![10.0, 0.0], vec![11.0, 0.0]];
+        let vectors = vec![
+            vec![0.0, 0.0],
+            vec![1.0, 0.0],
+            vec![10.0, 0.0],
+            vec![11.0, 0.0],
+        ];
 
         let mut distances = HashMap::new();
         for i in 0..4 {
@@ -1365,8 +1358,13 @@ mod tests {
         let cluster1 = vec![0, 1];
         let cluster2 = vec![2, 3];
 
-        let dist =
-            engine.cluster_distance(&cluster1, &cluster2, &distances, &vectors, Linkage::Complete);
+        let dist = engine.cluster_distance(
+            &cluster1,
+            &cluster2,
+            &distances,
+            &vectors,
+            Linkage::Complete,
+        );
 
         // Complete linkage: max distance = distance from 0 to 11 = 11
         assert!((dist - 11.0).abs() < 1e-6);
@@ -1376,7 +1374,12 @@ mod tests {
     async fn test_cluster_distance_average_linkage() {
         let engine = create_test_engine().await;
 
-        let vectors = vec![vec![0.0, 0.0], vec![1.0, 0.0], vec![10.0, 0.0], vec![11.0, 0.0]];
+        let vectors = vec![
+            vec![0.0, 0.0],
+            vec![1.0, 0.0],
+            vec![10.0, 0.0],
+            vec![11.0, 0.0],
+        ];
 
         let mut distances = HashMap::new();
         for i in 0..4 {

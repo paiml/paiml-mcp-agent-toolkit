@@ -95,7 +95,10 @@ impl std::fmt::Debug for DemoState {
         f.debug_struct("DemoState")
             .field("repository", &self.repository)
             .field("analysis_results", &"<AnalysisResults>")
-            .field("mermaid_cache", &format!("<{} entries>", self.mermaid_cache.len()))
+            .field(
+                "mermaid_cache",
+                &format!("<{} entries>", self.mermaid_cache.len()),
+            )
             .field("system_diagram", &self.system_diagram.is_some())
             .finish()
     }

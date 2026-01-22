@@ -1037,7 +1037,7 @@ mod tests {
         detector.train(&training_data).unwrap();
 
         let mutants = vec![
-            create_test_mutant("a + 0", "a"), // equivalent
+            create_test_mutant("a + 0", "a"),     // equivalent
             create_test_mutant("a + b", "a - b"), // not equivalent
         ];
         let sources = vec![("a.rs", "a + 0"), ("b.rs", "a + b")];

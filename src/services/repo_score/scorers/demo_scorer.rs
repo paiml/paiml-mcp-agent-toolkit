@@ -1000,7 +1000,6 @@ impl Default for DemoScorer {
     }
 }
 
-
 // Tests extracted to demo_scorer_tests.rs for file health compliance (CB-040)
 #[cfg(test)]
 #[path = "demo_scorer_tests.rs"]

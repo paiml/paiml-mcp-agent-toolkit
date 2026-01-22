@@ -389,7 +389,10 @@ mod coverage_tests {
     fn test_validate_response_serialize() {
         let resp = ValidateResponse {
             valid: false,
-            errors: vec!["Missing semicolon".to_string(), "Unused variable".to_string()],
+            errors: vec![
+                "Missing semicolon".to_string(),
+                "Unused variable".to_string(),
+            ],
         };
 
         let json = serde_json::to_string(&resp).unwrap();

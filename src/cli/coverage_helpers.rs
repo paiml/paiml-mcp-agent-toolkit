@@ -441,7 +441,8 @@ mod tests {
 
     #[test]
     fn test_setup_coverage_analyzer_with_custom_path() {
-        let result = setup_coverage_analyzer(Some(PathBuf::from("/tmp/test_coverage_cache")), false);
+        let result =
+            setup_coverage_analyzer(Some(PathBuf::from("/tmp/test_coverage_cache")), false);
         assert!(result.is_ok());
     }
 

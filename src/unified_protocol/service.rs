@@ -1356,7 +1356,6 @@ pub struct LintHotspot {
     pub severity_distribution: std::collections::HashMap<String, usize>,
 }
 
-
 // Tests extracted to service_tests.rs for file health compliance (CB-040)
 #[cfg(test)]
 #[path = "service_tests.rs"]

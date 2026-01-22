@@ -918,7 +918,6 @@ impl Default for EnhancedReportingService {
     }
 }
 
-
 // Tests extracted to enhanced_reporting_tests.rs for file health compliance (CB-040)
 #[cfg(test)]
 #[path = "enhanced_reporting_tests.rs"]

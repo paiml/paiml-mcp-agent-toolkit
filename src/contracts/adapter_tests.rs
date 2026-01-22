@@ -559,8 +559,8 @@ mod tests {
     mod from_cli_tests {
         use super::*;
         use crate::cli::{
-            ComplexityOutputFormat, DeadCodeOutputFormat, LintHotspotOutputFormat, SatdOutputFormat,
-            TdgOutputFormat,
+            ComplexityOutputFormat, DeadCodeOutputFormat, LintHotspotOutputFormat,
+            SatdOutputFormat, TdgOutputFormat,
         };
         use crate::models::churn::ChurnOutputFormat;
         use tempfile::TempDir;
@@ -1304,7 +1304,6 @@ mod tests {
         }
     }
 }
-
 
 /// NOTE: Temporarily disabled due to private type access issues
 #[cfg(all(test, feature = "broken-tests"))]

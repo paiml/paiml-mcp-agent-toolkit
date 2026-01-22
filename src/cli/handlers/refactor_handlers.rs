@@ -786,7 +786,6 @@ impl From<ExplainLevel> for crate::services::refactor_engine::ExplainLevel {
     }
 }
 
-
 // Tests extracted to refactor_handlers_tests.rs for file health compliance (CB-040)
 #[cfg(test)]
 #[path = "refactor_handlers_tests.rs"]

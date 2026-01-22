@@ -47,7 +47,7 @@ impl SimdWidth {
         match self {
             SimdWidth::Scalar => 1.0,
             SimdWidth::Neon128 | SimdWidth::Sse2 | SimdWidth::WasmSimd128 => 4.0,
-            SimdWidth::Avx2 => 10.0,  // 8-12x measured
+            SimdWidth::Avx2 => 10.0,   // 8-12x measured
             SimdWidth::Avx512 => 12.0, // 8-13x measured
         }
     }
@@ -721,7 +721,11 @@ pub fn score_brick_profiler(
             passed: profiler_output.bricks.iter().all(|b| b.count > 0),
             points: correctness_earned,
             max_points: 20.0,
-            actual: profiler_output.bricks.iter().filter(|b| b.count > 0).count() as f64,
+            actual: profiler_output
+                .bricks
+                .iter()
+                .filter(|b| b.count > 0)
+                .count() as f64,
             threshold: profiler_output.bricks.len() as f64,
             unit: "bricks".to_string(),
             recommendation: None,
@@ -786,9 +790,10 @@ pub fn score_brick_profiler(
             version: "1.0.0".to_string(),
             project_path: project_path.display().to_string(),
             model: profiler_output.model.clone(),
-            hardware: profiler_output.hardware.clone().or_else(|| {
-                hardware.map(|hw| format!("{} ({})", hw.cpu.model, hw.hostname))
-            }),
+            hardware: profiler_output
+                .hardware
+                .clone()
+                .or_else(|| hardware.map(|hw| format!("{} ({})", hw.cpu.model, hw.hostname))),
             total_bricks: profiler_output.bricks.len(),
             total_samples: profiler_output.bricks.iter().map(|b| b.count).sum(),
             simd: simd_str,

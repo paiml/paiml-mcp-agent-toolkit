@@ -481,11 +481,26 @@ mod coverage_tests {
 
     fn create_test_predictions() -> Vec<(String, DefectScore)> {
         vec![
-            ("src/high_risk.rs".to_string(), create_mock_defect_score(0.85, 0.9)),
-            ("src/medium_risk.rs".to_string(), create_mock_defect_score(0.55, 0.8)),
-            ("src/low_risk.rs".to_string(), create_mock_defect_score(0.25, 0.95)),
-            ("src/another_high.rs".to_string(), create_mock_defect_score(0.75, 0.85)),
-            ("src/very_low.rs".to_string(), create_mock_defect_score(0.15, 0.7)),
+            (
+                "src/high_risk.rs".to_string(),
+                create_mock_defect_score(0.85, 0.9),
+            ),
+            (
+                "src/medium_risk.rs".to_string(),
+                create_mock_defect_score(0.55, 0.8),
+            ),
+            (
+                "src/low_risk.rs".to_string(),
+                create_mock_defect_score(0.25, 0.95),
+            ),
+            (
+                "src/another_high.rs".to_string(),
+                create_mock_defect_score(0.75, 0.85),
+            ),
+            (
+                "src/very_low.rs".to_string(),
+                create_mock_defect_score(0.15, 0.7),
+            ),
         ]
     }
 
@@ -532,9 +547,10 @@ mod coverage_tests {
 
         #[test]
         fn test_format_defect_json_contains_file_data() {
-            let predictions = vec![
-                ("test_file.rs".to_string(), create_mock_defect_score(0.75, 0.9)),
-            ];
+            let predictions = vec![(
+                "test_file.rs".to_string(),
+                create_mock_defect_score(0.75, 0.9),
+            )];
             let result = format_defect_json(&predictions).expect("Should format predictions");
 
             assert!(result.contains("\"file\": \"test_file.rs\""));
@@ -582,9 +598,10 @@ mod coverage_tests {
 
         #[test]
         fn test_format_defect_summary_shows_probability_percentages() {
-            let predictions = vec![
-                ("high_risk.rs".to_string(), create_mock_defect_score(0.85, 0.9)),
-            ];
+            let predictions = vec![(
+                "high_risk.rs".to_string(),
+                create_mock_defect_score(0.85, 0.9),
+            )];
             let result = format_defect_summary(&predictions).expect("Should format summary");
 
             // Should show probability as percentage
@@ -599,7 +616,8 @@ mod coverage_tests {
         #[test]
         fn test_format_defect_markdown_empty() {
             let predictions: Vec<(String, DefectScore)> = vec![];
-            let result = format_defect_markdown(&predictions, false).expect("Should format empty markdown");
+            let result =
+                format_defect_markdown(&predictions, false).expect("Should format empty markdown");
 
             assert!(result.contains("# Defect Prediction Report"));
             assert!(result.contains("## Summary"));
@@ -609,7 +627,8 @@ mod coverage_tests {
         #[test]
         fn test_format_defect_markdown_with_recommendations() {
             let predictions = create_test_predictions();
-            let result = format_defect_markdown(&predictions, true).expect("Should format markdown with recommendations");
+            let result = format_defect_markdown(&predictions, true)
+                .expect("Should format markdown with recommendations");
 
             assert!(result.contains("# Defect Prediction Report"));
             assert!(result.contains("#### Recommendations:"));
@@ -618,7 +637,8 @@ mod coverage_tests {
         #[test]
         fn test_format_defect_markdown_without_recommendations() {
             let predictions = create_test_predictions();
-            let result = format_defect_markdown(&predictions, false).expect("Should format markdown without recommendations");
+            let result = format_defect_markdown(&predictions, false)
+                .expect("Should format markdown without recommendations");
 
             assert!(result.contains("# Defect Prediction Report"));
             // Should not contain recommendations section when disabled
@@ -628,7 +648,8 @@ mod coverage_tests {
         #[test]
         fn test_format_defect_markdown_risk_table() {
             let predictions = create_test_predictions();
-            let result = format_defect_markdown(&predictions, false).expect("Should format markdown");
+            let result =
+                format_defect_markdown(&predictions, false).expect("Should format markdown");
 
             assert!(result.contains("### Risk Distribution"));
             assert!(result.contains("| Risk Level | Count | Percentage |"));
@@ -640,7 +661,8 @@ mod coverage_tests {
         #[test]
         fn test_format_defect_markdown_detailed_predictions() {
             let predictions = create_test_predictions();
-            let result = format_defect_markdown(&predictions, false).expect("Should format markdown");
+            let result =
+                format_defect_markdown(&predictions, false).expect("Should format markdown");
 
             assert!(result.contains("## Detailed Predictions"));
             assert!(result.contains("**Probability**:"));
@@ -658,7 +680,8 @@ mod coverage_tests {
         fn test_format_defect_sarif_empty() {
             let predictions: Vec<(String, DefectScore)> = vec![];
             let project_path = Path::new("/test/project");
-            let result = format_defect_sarif(&predictions, project_path).expect("Should format empty SARIF");
+            let result =
+                format_defect_sarif(&predictions, project_path).expect("Should format empty SARIF");
 
             assert!(result.contains("\"version\": \"2.1.0\""));
             assert!(result.contains("sarif-schema-2.1.0.json"));
@@ -670,7 +693,8 @@ mod coverage_tests {
         fn test_format_defect_sarif_with_predictions() {
             let predictions = create_test_predictions();
             let project_path = Path::new("/test/project");
-            let result = format_defect_sarif(&predictions, project_path).expect("Should format SARIF");
+            let result =
+                format_defect_sarif(&predictions, project_path).expect("Should format SARIF");
 
             assert!(result.contains("\"version\": \"2.1.0\""));
             assert!(result.contains("src/high_risk.rs"));
@@ -679,11 +703,13 @@ mod coverage_tests {
 
         #[test]
         fn test_format_defect_sarif_high_risk_level() {
-            let predictions = vec![
-                ("high_risk.rs".to_string(), create_mock_defect_score(0.85, 0.9)),
-            ];
+            let predictions = vec![(
+                "high_risk.rs".to_string(),
+                create_mock_defect_score(0.85, 0.9),
+            )];
             let project_path = Path::new("/test/project");
-            let result = format_defect_sarif(&predictions, project_path).expect("Should format SARIF");
+            let result =
+                format_defect_sarif(&predictions, project_path).expect("Should format SARIF");
 
             assert!(result.contains("\"ruleId\": \"high-defect-probability\""));
             assert!(result.contains("\"level\": \"error\""));
@@ -691,11 +717,13 @@ mod coverage_tests {
 
         #[test]
         fn test_format_defect_sarif_medium_risk_level() {
-            let predictions = vec![
-                ("medium_risk.rs".to_string(), create_mock_defect_score(0.55, 0.8)),
-            ];
+            let predictions = vec![(
+                "medium_risk.rs".to_string(),
+                create_mock_defect_score(0.55, 0.8),
+            )];
             let project_path = Path::new("/test/project");
-            let result = format_defect_sarif(&predictions, project_path).expect("Should format SARIF");
+            let result =
+                format_defect_sarif(&predictions, project_path).expect("Should format SARIF");
 
             assert!(result.contains("\"ruleId\": \"medium-defect-probability\""));
             assert!(result.contains("\"level\": \"warning\""));
@@ -703,11 +731,13 @@ mod coverage_tests {
 
         #[test]
         fn test_format_defect_sarif_low_risk_level() {
-            let predictions = vec![
-                ("low_risk.rs".to_string(), create_mock_defect_score(0.25, 0.9)),
-            ];
+            let predictions = vec![(
+                "low_risk.rs".to_string(),
+                create_mock_defect_score(0.25, 0.9),
+            )];
             let project_path = Path::new("/test/project");
-            let result = format_defect_sarif(&predictions, project_path).expect("Should format SARIF");
+            let result =
+                format_defect_sarif(&predictions, project_path).expect("Should format SARIF");
 
             assert!(result.contains("\"ruleId\": \"low-defect-probability\""));
             assert!(result.contains("\"level\": \"note\""));
@@ -717,7 +747,8 @@ mod coverage_tests {
         fn test_format_defect_sarif_contains_rules() {
             let predictions = create_test_predictions();
             let project_path = Path::new("/test/project");
-            let result = format_defect_sarif(&predictions, project_path).expect("Should format SARIF");
+            let result =
+                format_defect_sarif(&predictions, project_path).expect("Should format SARIF");
 
             assert!(result.contains("\"id\": \"high-defect-probability\""));
             assert!(result.contains("\"id\": \"medium-defect-probability\""));
@@ -727,11 +758,13 @@ mod coverage_tests {
 
         #[test]
         fn test_format_defect_sarif_location_format() {
-            let predictions = vec![
-                ("src/test.rs".to_string(), create_mock_defect_score(0.75, 0.9)),
-            ];
+            let predictions = vec![(
+                "src/test.rs".to_string(),
+                create_mock_defect_score(0.75, 0.9),
+            )];
             let project_path = Path::new("/test/project");
-            let result = format_defect_sarif(&predictions, project_path).expect("Should format SARIF");
+            let result =
+                format_defect_sarif(&predictions, project_path).expect("Should format SARIF");
 
             assert!(result.contains("\"locations\""));
             assert!(result.contains("\"physicalLocation\""));
@@ -758,7 +791,8 @@ mod coverage_tests {
         fn test_write_risk_distribution_table() {
             let predictions = create_test_predictions();
             let mut output = String::new();
-            write_risk_distribution_table(&mut output, &predictions).expect("Should write risk table");
+            write_risk_distribution_table(&mut output, &predictions)
+                .expect("Should write risk table");
 
             assert!(output.contains("### Risk Distribution"));
             assert!(output.contains("| Risk Level | Count | Percentage |"));
@@ -769,9 +803,9 @@ mod coverage_tests {
             let predictions = create_test_predictions();
             let (high, medium, low) = calculate_risk_counts(&predictions);
 
-            assert_eq!(high, 2);   // 0.85 and 0.75
+            assert_eq!(high, 2); // 0.85 and 0.75
             assert_eq!(medium, 1); // 0.55
-            assert_eq!(low, 2);    // 0.25 and 0.15
+            assert_eq!(low, 2); // 0.25 and 0.15
         }
 
         #[test]
@@ -819,7 +853,8 @@ mod coverage_tests {
         fn test_write_detailed_predictions() {
             let predictions = create_test_predictions();
             let mut output = String::new();
-            write_detailed_predictions(&mut output, &predictions, false).expect("Should write detailed predictions");
+            write_detailed_predictions(&mut output, &predictions, false)
+                .expect("Should write detailed predictions");
 
             assert!(output.contains("## Detailed Predictions"));
             // Should contain file headers
@@ -835,7 +870,8 @@ mod coverage_tests {
             }
 
             let mut output = String::new();
-            write_detailed_predictions(&mut output, &predictions, false).expect("Should write limited predictions");
+            write_detailed_predictions(&mut output, &predictions, false)
+                .expect("Should write limited predictions");
 
             // Should only contain up to 20 files
             assert!(output.contains("file_0.rs"));
@@ -848,7 +884,8 @@ mod coverage_tests {
         fn test_write_single_prediction() {
             let score = create_mock_defect_score(0.75, 0.9);
             let mut output = String::new();
-            write_single_prediction(&mut output, "test.rs", &score, false).expect("Should write prediction");
+            write_single_prediction(&mut output, "test.rs", &score, false)
+                .expect("Should write prediction");
 
             assert!(output.contains("### test.rs"));
             assert!(output.contains("**Probability**:"));
@@ -860,7 +897,8 @@ mod coverage_tests {
         fn test_write_single_prediction_with_recommendations() {
             let score = create_mock_defect_score(0.85, 0.9);
             let mut output = String::new();
-            write_single_prediction(&mut output, "test.rs", &score, true).expect("Should write prediction");
+            write_single_prediction(&mut output, "test.rs", &score, true)
+                .expect("Should write prediction");
 
             assert!(output.contains("#### Recommendations:"));
             assert!(output.contains("High priority for code review"));
@@ -885,7 +923,8 @@ mod coverage_tests {
         #[test]
         fn test_write_recommendations_high_risk() {
             let mut output = String::new();
-            write_recommendations(&mut output, 0.85).expect("Should write high risk recommendations");
+            write_recommendations(&mut output, 0.85)
+                .expect("Should write high risk recommendations");
 
             assert!(output.contains("#### Recommendations:"));
             assert!(output.contains("High priority for code review"));
@@ -896,7 +935,8 @@ mod coverage_tests {
         #[test]
         fn test_write_recommendations_medium_risk() {
             let mut output = String::new();
-            write_recommendations(&mut output, 0.55).expect("Should write medium risk recommendations");
+            write_recommendations(&mut output, 0.55)
+                .expect("Should write medium risk recommendations");
 
             assert!(output.contains("#### Recommendations:"));
             assert!(output.contains("Schedule for regular review"));
@@ -907,7 +947,8 @@ mod coverage_tests {
         #[test]
         fn test_write_recommendations_low_risk() {
             let mut output = String::new();
-            write_recommendations(&mut output, 0.25).expect("Should write low risk recommendations");
+            write_recommendations(&mut output, 0.25)
+                .expect("Should write low risk recommendations");
 
             assert!(output.contains("#### Recommendations:"));
             assert!(output.contains("Monitor during regular maintenance"));
@@ -999,9 +1040,7 @@ mod coverage_tests {
 
         #[test]
         fn test_format_json_single_prediction() {
-            let predictions = vec![
-                ("single.rs".to_string(), create_mock_defect_score(0.5, 0.8)),
-            ];
+            let predictions = vec![("single.rs".to_string(), create_mock_defect_score(0.5, 0.8))];
             let result = format_defect_json(&predictions).expect("Should format single prediction");
 
             assert!(result.contains("\"total_files\": 1"));
@@ -1010,10 +1049,9 @@ mod coverage_tests {
 
         #[test]
         fn test_format_summary_single_prediction() {
-            let predictions = vec![
-                ("single.rs".to_string(), create_mock_defect_score(0.5, 0.8)),
-            ];
-            let result = format_defect_summary(&predictions).expect("Should format single prediction");
+            let predictions = vec![("single.rs".to_string(), create_mock_defect_score(0.5, 0.8))];
+            let result =
+                format_defect_summary(&predictions).expect("Should format single prediction");
 
             assert!(result.contains("**Total files analyzed**: 1"));
         }
@@ -1022,21 +1060,30 @@ mod coverage_tests {
         fn test_format_markdown_boundary_probabilities() {
             // Test with probabilities exactly at boundaries
             let predictions = vec![
-                ("exact_70.rs".to_string(), create_mock_defect_score(0.70, 0.9)),
-                ("exact_40.rs".to_string(), create_mock_defect_score(0.40, 0.9)),
+                (
+                    "exact_70.rs".to_string(),
+                    create_mock_defect_score(0.70, 0.9),
+                ),
+                (
+                    "exact_40.rs".to_string(),
+                    create_mock_defect_score(0.40, 0.9),
+                ),
             ];
-            let result = format_defect_markdown(&predictions, false).expect("Should format markdown");
+            let result =
+                format_defect_markdown(&predictions, false).expect("Should format markdown");
 
             assert!(result.contains("# Defect Prediction Report"));
         }
 
         #[test]
         fn test_format_sarif_special_characters_in_filename() {
-            let predictions = vec![
-                ("src/path with spaces/file.rs".to_string(), create_mock_defect_score(0.75, 0.9)),
-            ];
+            let predictions = vec![(
+                "src/path with spaces/file.rs".to_string(),
+                create_mock_defect_score(0.75, 0.9),
+            )];
             let project_path = Path::new("/test");
-            let result = format_defect_sarif(&predictions, project_path).expect("Should handle special chars");
+            let result = format_defect_sarif(&predictions, project_path)
+                .expect("Should handle special chars");
 
             assert!(result.contains("path with spaces"));
         }
@@ -1069,7 +1116,8 @@ mod coverage_tests {
             score.contributing_factors = vec![];
             let predictions = vec![("empty_factors.rs".to_string(), score)];
 
-            let result = format_defect_markdown(&predictions, false).expect("Should handle empty factors");
+            let result =
+                format_defect_markdown(&predictions, false).expect("Should handle empty factors");
             assert!(result.contains("# Defect Prediction Report"));
         }
 
@@ -1078,12 +1126,19 @@ mod coverage_tests {
             // Test boundary values: 0.7 should be "warning", >0.7 should be "error"
             let predictions = vec![
                 ("at_70.rs".to_string(), create_mock_defect_score(0.70, 0.9)),
-                ("above_70.rs".to_string(), create_mock_defect_score(0.71, 0.9)),
+                (
+                    "above_70.rs".to_string(),
+                    create_mock_defect_score(0.71, 0.9),
+                ),
                 ("at_40.rs".to_string(), create_mock_defect_score(0.40, 0.9)),
-                ("above_40.rs".to_string(), create_mock_defect_score(0.41, 0.9)),
+                (
+                    "above_40.rs".to_string(),
+                    create_mock_defect_score(0.41, 0.9),
+                ),
             ];
             let project_path = Path::new("/test");
-            let result = format_defect_sarif(&predictions, project_path).expect("Should handle boundaries");
+            let result =
+                format_defect_sarif(&predictions, project_path).expect("Should handle boundaries");
 
             // The function should have processed all predictions
             assert!(result.contains("at_70.rs"));
@@ -1118,7 +1173,8 @@ mod coverage_tests {
             let json_str = format_defect_json(&predictions).expect("Should format JSON");
 
             // Should be parseable as JSON
-            let parsed: serde_json::Value = serde_json::from_str(&json_str).expect("Should be valid JSON");
+            let parsed: serde_json::Value =
+                serde_json::from_str(&json_str).expect("Should be valid JSON");
 
             assert!(parsed.get("defect_predictions").is_some());
             assert!(parsed.get("summary").is_some());
@@ -1128,10 +1184,12 @@ mod coverage_tests {
         fn test_sarif_output_is_valid_json() {
             let predictions = create_test_predictions();
             let project_path = Path::new("/test");
-            let sarif_str = format_defect_sarif(&predictions, project_path).expect("Should format SARIF");
+            let sarif_str =
+                format_defect_sarif(&predictions, project_path).expect("Should format SARIF");
 
             // Should be parseable as JSON
-            let parsed: serde_json::Value = serde_json::from_str(&sarif_str).expect("Should be valid JSON");
+            let parsed: serde_json::Value =
+                serde_json::from_str(&sarif_str).expect("Should be valid JSON");
 
             assert_eq!(parsed["version"], "2.1.0");
             assert!(parsed.get("runs").is_some());
@@ -1140,12 +1198,17 @@ mod coverage_tests {
         #[test]
         fn test_markdown_sections_order() {
             let predictions = create_test_predictions();
-            let markdown = format_defect_markdown(&predictions, true).expect("Should format markdown");
+            let markdown =
+                format_defect_markdown(&predictions, true).expect("Should format markdown");
 
             // Verify sections appear in correct order
             let summary_pos = markdown.find("## Summary").expect("Should have summary");
-            let risk_dist_pos = markdown.find("### Risk Distribution").expect("Should have risk distribution");
-            let detailed_pos = markdown.find("## Detailed Predictions").expect("Should have detailed predictions");
+            let risk_dist_pos = markdown
+                .find("### Risk Distribution")
+                .expect("Should have risk distribution");
+            let detailed_pos = markdown
+                .find("## Detailed Predictions")
+                .expect("Should have detailed predictions");
 
             assert!(summary_pos < risk_dist_pos);
             assert!(risk_dist_pos < detailed_pos);
@@ -1281,9 +1344,11 @@ mod coverage_tests {
 
         #[tokio::test]
         async fn test_analyze_defect_probability_single_file() {
-            let files = vec![
-                (PathBuf::from("test.rs"), "fn main() {\n    println!(\"Hello\");\n}".to_string(), 3),
-            ];
+            let files = vec![(
+                PathBuf::from("test.rs"),
+                "fn main() {\n    println!(\"Hello\");\n}".to_string(),
+                3,
+            )];
             let config = DefectPredictionConfig {
                 confidence_threshold: 0.5,
                 min_lines: 1,
@@ -1350,8 +1415,16 @@ mod coverage_tests {
         async fn test_analyze_defect_probability_sorted_by_probability() {
             let files = vec![
                 (PathBuf::from("a.rs"), "fn a() {}".to_string(), 1),
-                (PathBuf::from("b.rs"), "fn b() { if true { for i in 0..10 { match x { _ => {} } } } }".to_string(), 1),
-                (PathBuf::from("c.rs"), "fn c() { if true {} }".to_string(), 1),
+                (
+                    PathBuf::from("b.rs"),
+                    "fn b() { if true { for i in 0..10 { match x { _ => {} } } } }".to_string(),
+                    1,
+                ),
+                (
+                    PathBuf::from("c.rs"),
+                    "fn c() { if true {} }".to_string(),
+                    1,
+                ),
             ];
             let config = DefectPredictionConfig {
                 confidence_threshold: 0.0,
@@ -1398,9 +1471,7 @@ mod coverage_tests {
                 }
             "#;
 
-            let files = vec![
-                (PathBuf::from("complex.rs"), complex_code.to_string(), 20),
-            ];
+            let files = vec![(PathBuf::from("complex.rs"), complex_code.to_string(), 20)];
             let config = DefectPredictionConfig {
                 confidence_threshold: 0.0,
                 min_lines: 1,
@@ -1423,8 +1494,8 @@ mod coverage_tests {
     // Tests for discover_files_for_defect_analysis
     mod discover_files_tests {
         use super::*;
-        use tempfile::TempDir;
         use std::fs;
+        use tempfile::TempDir;
 
         #[tokio::test]
         async fn test_discover_files_empty_directory() {
@@ -1468,7 +1539,9 @@ mod coverage_tests {
             assert!(result.is_ok());
             let files = result.unwrap();
             // Should find the .rs file
-            let has_rs_file = files.iter().any(|(path, _, _)| path.extension().map_or(false, |e| e == "rs"));
+            let has_rs_file = files
+                .iter()
+                .any(|(path, _, _)| path.extension().map_or(false, |e| e == "rs"));
             assert!(has_rs_file);
         }
 

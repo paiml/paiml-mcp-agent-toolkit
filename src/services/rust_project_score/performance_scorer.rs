@@ -328,7 +328,9 @@ harness = true
         );
 
         let scorer = PerformanceScorer::new();
-        let result = scorer.score_benchmarks(temp_dir.path(), Some(&cache)).unwrap();
+        let result = scorer
+            .score_benchmarks(temp_dir.path(), Some(&cache))
+            .unwrap();
 
         assert_eq!(result, 5.0);
     }
@@ -336,7 +338,11 @@ harness = true
     #[test]
     fn test_benchmark_ci_no_workflows() {
         let temp_dir = TempDir::new().unwrap();
-        fs::write(temp_dir.path().join("Cargo.toml"), "[package]\nname = \"test\"\n").unwrap();
+        fs::write(
+            temp_dir.path().join("Cargo.toml"),
+            "[package]\nname = \"test\"\n",
+        )
+        .unwrap();
 
         let scorer = PerformanceScorer::new();
         let result = scorer.score_benchmark_ci(temp_dir.path()).unwrap();
@@ -348,7 +354,11 @@ harness = true
     #[test]
     fn test_benchmark_ci_no_bench_workflow() {
         let temp_dir = TempDir::new().unwrap();
-        fs::write(temp_dir.path().join("Cargo.toml"), "[package]\nname = \"test\"\n").unwrap();
+        fs::write(
+            temp_dir.path().join("Cargo.toml"),
+            "[package]\nname = \"test\"\n",
+        )
+        .unwrap();
         fs::create_dir_all(temp_dir.path().join(".github/workflows")).unwrap();
         fs::write(
             temp_dir.path().join(".github/workflows/ci.yml"),
@@ -366,7 +376,11 @@ harness = true
     #[test]
     fn test_benchmark_ci_with_cargo_bench() {
         let temp_dir = TempDir::new().unwrap();
-        fs::write(temp_dir.path().join("Cargo.toml"), "[package]\nname = \"test\"\n").unwrap();
+        fs::write(
+            temp_dir.path().join("Cargo.toml"),
+            "[package]\nname = \"test\"\n",
+        )
+        .unwrap();
         fs::create_dir_all(temp_dir.path().join(".github/workflows")).unwrap();
         fs::write(
             temp_dir.path().join(".github/workflows/benchmark.yml"),
@@ -384,7 +398,11 @@ harness = true
     #[test]
     fn test_benchmark_ci_with_benchmark_keyword() {
         let temp_dir = TempDir::new().unwrap();
-        fs::write(temp_dir.path().join("Cargo.toml"), "[package]\nname = \"test\"\n").unwrap();
+        fs::write(
+            temp_dir.path().join("Cargo.toml"),
+            "[package]\nname = \"test\"\n",
+        )
+        .unwrap();
         fs::create_dir_all(temp_dir.path().join(".github/workflows")).unwrap();
         fs::write(
             temp_dir.path().join(".github/workflows/perf.yml"),
@@ -402,7 +420,11 @@ harness = true
     #[test]
     fn test_benchmark_ci_yaml_extension() {
         let temp_dir = TempDir::new().unwrap();
-        fs::write(temp_dir.path().join("Cargo.toml"), "[package]\nname = \"test\"\n").unwrap();
+        fs::write(
+            temp_dir.path().join("Cargo.toml"),
+            "[package]\nname = \"test\"\n",
+        )
+        .unwrap();
         fs::create_dir_all(temp_dir.path().join(".github/workflows")).unwrap();
         fs::write(
             temp_dir.path().join(".github/workflows/bench.yaml"),
@@ -481,7 +503,8 @@ harness = false
     #[test]
     fn test_custom_harness_with_cache() {
         let temp_dir = TempDir::new().unwrap();
-        let cargo_content = "[package]\nname = \"test\"\n\n[[bench]]\nname = \"b\"\nharness = false\n";
+        let cargo_content =
+            "[package]\nname = \"test\"\n\n[[bench]]\nname = \"b\"\nharness = false\n";
         fs::write(temp_dir.path().join("Cargo.toml"), cargo_content).unwrap();
 
         let mut cache = FileCache::new();
@@ -491,7 +514,9 @@ harness = false
         );
 
         let scorer = PerformanceScorer::new();
-        let result = scorer.score_custom_harness(temp_dir.path(), Some(&cache)).unwrap();
+        let result = scorer
+            .score_custom_harness(temp_dir.path(), Some(&cache))
+            .unwrap();
 
         assert_eq!(result, 2.0);
     }
@@ -615,7 +640,9 @@ harness = false
         .unwrap();
 
         let scorer = PerformanceScorer::new();
-        let result = scorer.score_with_mode(temp_dir.path(), ScoringMode::Fast).unwrap();
+        let result = scorer
+            .score_with_mode(temp_dir.path(), ScoringMode::Fast)
+            .unwrap();
 
         // Mode doesn't affect performance scorer
         assert_eq!(result.earned, 5.0);
@@ -632,7 +659,9 @@ harness = false
         .unwrap();
 
         let scorer = PerformanceScorer::new();
-        let result = scorer.score_with_mode(temp_dir.path(), ScoringMode::Full).unwrap();
+        let result = scorer
+            .score_with_mode(temp_dir.path(), ScoringMode::Full)
+            .unwrap();
 
         // Mode doesn't affect performance scorer
         assert_eq!(result.earned, 5.0);
@@ -642,7 +671,11 @@ harness = false
     #[test]
     fn test_benchmark_ci_bench_baseline() {
         let temp_dir = TempDir::new().unwrap();
-        fs::write(temp_dir.path().join("Cargo.toml"), "[package]\nname = \"test\"\n").unwrap();
+        fs::write(
+            temp_dir.path().join("Cargo.toml"),
+            "[package]\nname = \"test\"\n",
+        )
+        .unwrap();
         fs::create_dir_all(temp_dir.path().join(".github/workflows")).unwrap();
         fs::write(
             temp_dir.path().join(".github/workflows/perf.yml"),

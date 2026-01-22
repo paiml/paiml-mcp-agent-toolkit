@@ -300,7 +300,11 @@ mod tests {
     #[test]
     fn test_dead_code_config_roundtrip() {
         let config = DeadCodeConfig {
-            base: ProjectConfig { include_tests: true, max_depth: None, parallel: false },
+            base: ProjectConfig {
+                include_tests: true,
+                max_depth: None,
+                parallel: false,
+            },
             include_unreachable: true,
             min_dead_lines: 15,
             confidence_threshold: 0.8,
@@ -376,7 +380,8 @@ mod tests {
 
     #[test]
     fn test_factory_create_with_default_capacity() {
-        let analyzer = DeadCodeAnalyzerFactory::create_with_capacity(DeadCodeAnalyzer::DEFAULT_CAPACITY);
+        let analyzer =
+            DeadCodeAnalyzerFactory::create_with_capacity(DeadCodeAnalyzer::DEFAULT_CAPACITY);
         assert_eq!(AnalyzerInfo::name(&analyzer), "dead_code");
     }
 
@@ -393,7 +398,11 @@ mod tests {
 
     #[test]
     fn test_dead_code_config_with_project_config() {
-        let project_config = ProjectConfig { include_tests: true, max_depth: None, parallel: false };
+        let project_config = ProjectConfig {
+            include_tests: true,
+            max_depth: None,
+            parallel: false,
+        };
         let config = DeadCodeConfig {
             base: project_config,
             include_unreachable: true,

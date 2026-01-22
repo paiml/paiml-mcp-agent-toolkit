@@ -502,7 +502,10 @@ mod tests {
         };
         let result = config.validate();
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("iterations must be > 0"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("iterations must be > 0"));
     }
 
     #[test]
@@ -513,7 +516,10 @@ mod tests {
         };
         let result = config.validate();
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("iteration_timeout must be > 0"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("iteration_timeout must be > 0"));
     }
 
     #[test]

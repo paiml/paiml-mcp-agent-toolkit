@@ -990,7 +990,9 @@ mod comprehensive_coverage_tests {
         tree.push('\n');
         tree.push_str(&TreeRenderer::continuation(&TreeRenderer::branch("child1")));
         tree.push('\n');
-        tree.push_str(&TreeRenderer::continuation(&TreeRenderer::last_branch("child2")));
+        tree.push_str(&TreeRenderer::continuation(&TreeRenderer::last_branch(
+            "child2",
+        )));
         tree.push('\n');
         tree.push_str(&TreeRenderer::last_branch("parent2"));
 

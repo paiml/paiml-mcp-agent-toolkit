@@ -1060,7 +1060,6 @@ impl ClaudeCodeAgentMcpServer {
     }
 }
 
-
 // Tests extracted to mcp_server_tests.rs for file health compliance (CB-040)
 #[cfg(test)]
 #[path = "mcp_server_tests.rs"]

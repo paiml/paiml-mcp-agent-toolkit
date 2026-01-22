@@ -368,7 +368,8 @@ mod tests {
     /// Create a test PopperScore with gateway passed
     fn create_test_score_passed() -> PopperScore {
         let mut categories = PopperCategoryScores::default();
-        categories.falsifiability = PopperCategoryScore::new("Falsifiability & Testability", 20.0, 25.0);
+        categories.falsifiability =
+            PopperCategoryScore::new("Falsifiability & Testability", 20.0, 25.0);
         categories.falsifiability.add_sub_score(PopperSubScore::new(
             "A1",
             "Test Coverage",
@@ -383,10 +384,12 @@ mod tests {
             15.0,
             "Testable claims",
         ));
-        categories.reproducibility = PopperCategoryScore::new("Reproducibility Infrastructure", 18.0, 25.0);
+        categories.reproducibility =
+            PopperCategoryScore::new("Reproducibility Infrastructure", 18.0, 25.0);
         categories.transparency = PopperCategoryScore::new("Transparency & Openness", 15.0, 20.0);
         categories.statistical_rigor = PopperCategoryScore::new("Statistical Rigor", 10.0, 15.0);
-        categories.historical_integrity = PopperCategoryScore::new("Historical Integrity", 7.0, 10.0);
+        categories.historical_integrity =
+            PopperCategoryScore::new("Historical Integrity", 7.0, 10.0);
         // ML stays N/A
 
         let mut recommendations = vec![
@@ -440,11 +443,14 @@ mod tests {
     /// Create a test PopperScore with gateway failed
     fn create_test_score_failed() -> PopperScore {
         let mut categories = PopperCategoryScores::default();
-        categories.falsifiability = PopperCategoryScore::new("Falsifiability & Testability", 10.0, 25.0);
-        categories.reproducibility = PopperCategoryScore::new("Reproducibility Infrastructure", 5.0, 25.0);
+        categories.falsifiability =
+            PopperCategoryScore::new("Falsifiability & Testability", 10.0, 25.0);
+        categories.reproducibility =
+            PopperCategoryScore::new("Reproducibility Infrastructure", 5.0, 25.0);
         categories.transparency = PopperCategoryScore::new("Transparency & Openness", 5.0, 20.0);
         categories.statistical_rigor = PopperCategoryScore::new("Statistical Rigor", 3.0, 15.0);
-        categories.historical_integrity = PopperCategoryScore::new("Historical Integrity", 2.0, 10.0);
+        categories.historical_integrity =
+            PopperCategoryScore::new("Historical Integrity", 2.0, 10.0);
 
         PopperScore {
             raw_score: 0.0,

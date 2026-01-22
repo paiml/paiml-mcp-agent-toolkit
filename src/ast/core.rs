@@ -1371,7 +1371,6 @@ pub struct LanguageParsers {
     // TRACKED: Add actual parser implementations
 }
 
-
 // Tests extracted to core_tests.rs for file health compliance (CB-040)
 #[cfg(test)]
 #[path = "core_tests.rs"]

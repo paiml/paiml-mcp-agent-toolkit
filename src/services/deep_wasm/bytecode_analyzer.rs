@@ -413,7 +413,7 @@ impl BytecodeAnalyzer {
                 continue;
             }
 
-            let func_type = func_type.unwrap();
+            let func_type = func_type.expect("checked is_none with continue");
 
             let signature = FunctionSignature {
                 params: func_type.params().iter().map(valtype_to_string).collect(),

@@ -379,7 +379,8 @@ mod tests {
     #[test]
     fn test_artifact_tree_with_items() {
         let mut tree = ArtifactTree::default();
-        tree.dogfooding.insert("key1".to_string(), "value1".to_string());
+        tree.dogfooding
+            .insert("key1".to_string(), "value1".to_string());
         tree.templates.push(Template::default());
         assert_eq!(tree.dogfooding.len(), 1);
         assert_eq!(tree.templates.len(), 1);
@@ -411,8 +412,12 @@ mod tests {
     #[test]
     fn test_mermaid_artifacts_with_items() {
         let mut artifacts = MermaidArtifacts::default();
-        artifacts.ast_generated.insert("module.rs".to_string(), "graph TD".to_string());
-        artifacts.non_code.insert("readme.md".to_string(), "flowchart".to_string());
+        artifacts
+            .ast_generated
+            .insert("module.rs".to_string(), "graph TD".to_string());
+        artifacts
+            .non_code
+            .insert("readme.md".to_string(), "flowchart".to_string());
         assert_eq!(artifacts.ast_generated.len(), 1);
         assert_eq!(artifacts.non_code.len(), 1);
     }

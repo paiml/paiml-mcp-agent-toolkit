@@ -64,7 +64,9 @@ fn open_browser(url: &str) -> std::io::Result<()> {
     }
     #[cfg(target_os = "windows")]
     {
-        std::process::Command::new("cmd").args(["/c", "start", url]).spawn()?;
+        std::process::Command::new("cmd")
+            .args(["/c", "start", url])
+            .spawn()?;
     }
     Ok(())
 }
@@ -1354,7 +1356,8 @@ mod tests {
     #[test]
     fn test_demo_config_clone() {
         // Create a mock StatelessTemplateServer
-        let server = std::sync::Arc::new(crate::stateless_server::StatelessTemplateServer::new().unwrap());
+        let server =
+            std::sync::Arc::new(crate::stateless_server::StatelessTemplateServer::new().unwrap());
 
         let config = DemoConfig {
             repo_path: PathBuf::from("/test/repo"),
@@ -1412,7 +1415,8 @@ mod tests {
 
     #[test]
     fn test_create_analyzer_registers_protocols() {
-        let server = std::sync::Arc::new(crate::stateless_server::StatelessTemplateServer::new().unwrap());
+        let server =
+            std::sync::Arc::new(crate::stateless_server::StatelessTemplateServer::new().unwrap());
 
         let config = DemoConfig {
             repo_path: PathBuf::from("/test"),

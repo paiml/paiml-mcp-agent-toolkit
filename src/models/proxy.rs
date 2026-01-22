@@ -163,7 +163,11 @@ mod tests {
 
     #[test]
     fn test_proxy_operation_roundtrip() {
-        for op in [ProxyOperation::Write, ProxyOperation::Edit, ProxyOperation::Append] {
+        for op in [
+            ProxyOperation::Write,
+            ProxyOperation::Edit,
+            ProxyOperation::Append,
+        ] {
             let json = serde_json::to_string(&op).unwrap();
             let deserialized: ProxyOperation = serde_json::from_str(&json).unwrap();
             assert_eq!(format!("{:?}", op), format!("{:?}", deserialized));
@@ -359,7 +363,11 @@ mod tests {
 
     #[test]
     fn test_proxy_status_roundtrip() {
-        for status in [ProxyStatus::Accepted, ProxyStatus::Rejected, ProxyStatus::Modified] {
+        for status in [
+            ProxyStatus::Accepted,
+            ProxyStatus::Rejected,
+            ProxyStatus::Modified,
+        ] {
             let json = serde_json::to_string(&status).unwrap();
             let deserialized: ProxyStatus = serde_json::from_str(&json).unwrap();
             assert_eq!(format!("{:?}", status), format!("{:?}", deserialized));
@@ -424,7 +432,10 @@ mod tests {
             suggestion: Some("Extract helper functions".to_string()),
         };
 
-        assert!(matches!(violation.violation_type, ViolationType::Complexity));
+        assert!(matches!(
+            violation.violation_type,
+            ViolationType::Complexity
+        ));
         assert!(matches!(violation.severity, ViolationSeverity::Error));
         assert_eq!(violation.location, "src/main.rs:42");
         assert!(violation.message.contains("complexity"));
@@ -530,15 +541,13 @@ mod tests {
                 lint_violations: 3,
                 coverage_percentage: Some(60.0),
             },
-            violations: vec![
-                QualityViolation {
-                    violation_type: ViolationType::Complexity,
-                    severity: ViolationSeverity::Error,
-                    location: "test.rs:10".to_string(),
-                    message: "High complexity".to_string(),
-                    suggestion: None,
-                },
-            ],
+            violations: vec![QualityViolation {
+                violation_type: ViolationType::Complexity,
+                severity: ViolationSeverity::Error,
+                location: "test.rs:10".to_string(),
+                message: "High complexity".to_string(),
+                suggestion: None,
+            }],
         };
 
         assert!(!report.passed);
@@ -612,15 +621,13 @@ mod tests {
                     lint_violations: 5,
                     coverage_percentage: Some(30.0),
                 },
-                violations: vec![
-                    QualityViolation {
-                        violation_type: ViolationType::Complexity,
-                        severity: ViolationSeverity::Error,
-                        location: "main.rs:1".to_string(),
-                        message: "Exceeds limits".to_string(),
-                        suggestion: Some("Refactor".to_string()),
-                    },
-                ],
+                violations: vec![QualityViolation {
+                    violation_type: ViolationType::Complexity,
+                    severity: ViolationSeverity::Error,
+                    location: "main.rs:1".to_string(),
+                    message: "Exceeds limits".to_string(),
+                    suggestion: Some("Refactor".to_string()),
+                }],
             },
             final_content: String::new(),
             refactoring_applied: false,

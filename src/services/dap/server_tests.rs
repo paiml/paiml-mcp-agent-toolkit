@@ -29,7 +29,6 @@ mod tests {
     }
 }
 
-
 mod coverage_tests {
     use super::*;
     use serde_json::json;

@@ -1236,7 +1236,10 @@ mod tests {
 
         let report = executor.apply_quality_gates(&output).unwrap();
         assert!(!report.passed);
-        assert!(report.violations.iter().any(|v| v.violation_type == ViolationType::Timeout));
+        assert!(report
+            .violations
+            .iter()
+            .any(|v| v.violation_type == ViolationType::Timeout));
     }
 
     #[test]
@@ -1253,7 +1256,10 @@ mod tests {
 
         let report = executor.apply_quality_gates(&output).unwrap();
         assert!(!report.passed);
-        assert!(report.violations.iter().any(|v| v.message.contains("failed:")));
+        assert!(report
+            .violations
+            .iter()
+            .any(|v| v.message.contains("failed:")));
     }
 
     #[test]

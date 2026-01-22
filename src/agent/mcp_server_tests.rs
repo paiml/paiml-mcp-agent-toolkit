@@ -41,7 +41,6 @@ mod tests {
     }
 }
 
-
 mod property_tests {
     use proptest::prelude::*;
 
@@ -59,7 +58,6 @@ mod property_tests {
         }
     }
 }
-
 
 mod coverage_tests {
     use super::*;
@@ -779,7 +777,12 @@ mod coverage_tests {
         let _ = server.handle_start_monitoring(&start_params).await.unwrap();
 
         // Get the project name from path
-        let project_name = temp_dir.path().file_name().unwrap().to_string_lossy().to_string();
+        let project_name = temp_dir
+            .path()
+            .file_name()
+            .unwrap()
+            .to_string_lossy()
+            .to_string();
 
         let params = json!({
             "name": "get_monitoring_status",
@@ -867,7 +870,10 @@ mod coverage_tests {
             }
         });
 
-        let result = server.handle_mcp_request(&request.to_string()).await.unwrap();
+        let result = server
+            .handle_mcp_request(&request.to_string())
+            .await
+            .unwrap();
         assert!(result.is_some());
         let response = result.unwrap();
         assert_eq!(response["jsonrpc"], "2.0");
@@ -921,7 +927,9 @@ mod coverage_tests {
             started_at: std::time::SystemTime::now(),
         };
 
-        server.monitored_projects.insert("test_with_analysis".to_string(), project);
+        server
+            .monitored_projects
+            .insert("test_with_analysis".to_string(), project);
 
         let params = json!({
             "project_id": "test_with_analysis"
@@ -948,7 +956,9 @@ mod coverage_tests {
             started_at: std::time::SystemTime::now(),
         };
 
-        server.monitored_projects.insert("test_no_analysis".to_string(), project);
+        server
+            .monitored_projects
+            .insert("test_no_analysis".to_string(), project);
 
         let params = json!({
             "project_id": "test_no_analysis"
@@ -1012,14 +1022,12 @@ mod coverage_tests {
 
         let output = QualityGateOutput {
             passed: true,
-            results: vec![
-                crate::services::quality_gate_service::QualityCheckResult {
-                    check: "complexity".to_string(),
-                    passed: true,
-                    message: "All good".to_string(),
-                    violations: vec![],
-                },
-            ],
+            results: vec![crate::services::quality_gate_service::QualityCheckResult {
+                check: "complexity".to_string(),
+                passed: true,
+                message: "All good".to_string(),
+                violations: vec![],
+            }],
             summary: crate::services::quality_gate_service::QualitySummary {
                 total_checks: 1,
                 passed_checks: 1,
@@ -1100,7 +1108,10 @@ mod coverage_tests {
         };
 
         match command {
-            QualityMonitorCommand::GetStatus { project_id, response_tx: _ } => {
+            QualityMonitorCommand::GetStatus {
+                project_id,
+                response_tx: _,
+            } => {
                 assert_eq!(project_id, "test_project");
             }
             _ => panic!("Wrong command type"),
@@ -1187,7 +1198,10 @@ mod coverage_tests {
             // params is missing - should default to null
         });
 
-        let result = server.handle_mcp_request(&request.to_string()).await.unwrap();
+        let result = server
+            .handle_mcp_request(&request.to_string())
+            .await
+            .unwrap();
         assert!(result.is_some());
         let response = result.unwrap();
         assert_eq!(response["result"]["status"], "healthy");
@@ -1220,7 +1234,12 @@ mod coverage_tests {
 
         let temp_dir = TempDir::new().unwrap();
         let path_str = temp_dir.path().to_string_lossy().to_string();
-        let project_name = temp_dir.path().file_name().unwrap().to_string_lossy().to_string();
+        let project_name = temp_dir
+            .path()
+            .file_name()
+            .unwrap()
+            .to_string_lossy()
+            .to_string();
 
         // Start monitoring
         let start_params = json!({

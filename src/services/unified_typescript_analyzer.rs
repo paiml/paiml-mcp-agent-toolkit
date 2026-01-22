@@ -374,8 +374,11 @@ mod tests {
     #[tokio::test]
     async fn test_analyze_arrow_function() {
         let temp_file = NamedTempFile::with_suffix(".ts").expect("internal error");
-        std::fs::write(temp_file.path(), "const add = (a: number, b: number) => a + b;")
-            .expect("internal error");
+        std::fs::write(
+            temp_file.path(),
+            "const add = (a: number, b: number) => a + b;",
+        )
+        .expect("internal error");
 
         let analyzer = UnifiedTypeScriptAnalyzer::new(temp_file.path().to_path_buf());
         let result = analyzer.analyze().await;
@@ -465,8 +468,11 @@ mod tests {
     #[tokio::test]
     async fn test_analyze_only_comments() {
         let temp_file = NamedTempFile::with_suffix(".ts").expect("internal error");
-        std::fs::write(temp_file.path(), "// This is a comment\n/* Another comment */")
-            .expect("internal error");
+        std::fs::write(
+            temp_file.path(),
+            "// This is a comment\n/* Another comment */",
+        )
+        .expect("internal error");
 
         let analyzer = UnifiedTypeScriptAnalyzer::new(temp_file.path().to_path_buf());
         let result = analyzer.analyze().await;
@@ -548,7 +554,8 @@ mod tests {
     #[test]
     fn test_estimate_complexity_switch() {
         let analyzer = UnifiedTypeScriptAnalyzer::new(PathBuf::from("test.ts"));
-        let complexity = analyzer.estimate_complexity("switch (x) { case 1: break; case 2: break; }");
+        let complexity =
+            analyzer.estimate_complexity("switch (x) { case 1: break; case 2: break; }");
         assert!(complexity > 2); // switch + 2 cases
     }
 

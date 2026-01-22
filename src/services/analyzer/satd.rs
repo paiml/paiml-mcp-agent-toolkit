@@ -380,14 +380,17 @@ mod tests {
     async fn test_analyze_with_config() {
         let temp_dir = TempDir::new().unwrap();
         let test_file = temp_dir.path().join("test.rs");
-        fs::write(&test_file, "fn main() {}")
-            .unwrap();
+        fs::write(&test_file, "fn main() {}").unwrap();
 
         let analyzer = SATDAnalyzer::new();
         let input = ProjectInput {
             project_path: temp_dir.path().to_path_buf(),
         };
-        let config = ProjectConfig { include_tests: true, max_depth: None, parallel: false };
+        let config = ProjectConfig {
+            include_tests: true,
+            max_depth: None,
+            parallel: false,
+        };
 
         let result = analyzer.analyze(input, config).await;
         assert!(result.is_ok());
@@ -409,11 +412,7 @@ mod tests {
         )
         .unwrap();
 
-        fs::write(
-            temp_dir.path().join("file3.rs"),
-            "fn clean_code() {}",
-        )
-        .unwrap();
+        fs::write(temp_dir.path().join("file3.rs"), "fn clean_code() {}").unwrap();
 
         let analyzer = SATDAnalyzer::new();
         let result = analyzer.analyze_project(temp_dir.path()).await.unwrap();
@@ -446,11 +445,7 @@ mod tests {
     #[tokio::test]
     async fn test_project_analyzer_trait() {
         let temp_dir = TempDir::new().unwrap();
-        fs::write(
-            temp_dir.path().join("test.rs"),
-            "fn main() {}",
-        )
-        .unwrap();
+        fs::write(temp_dir.path().join("test.rs"), "fn main() {}").unwrap();
 
         let analyzer = SATDAnalyzer::new();
         let result = ProjectAnalyzer::analyze_project(&analyzer, temp_dir.path()).await;

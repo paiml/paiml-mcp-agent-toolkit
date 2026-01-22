@@ -557,7 +557,9 @@ mod tests {
         let claims = extractor.extract("fixed all broken documentation links");
 
         assert!(!claims.is_empty());
-        let claim = claims.iter().find(|c| c.category == ClaimCategory::Documentation);
+        let claim = claims
+            .iter()
+            .find(|c| c.category == ClaimCategory::Documentation);
         assert!(claim.is_some());
     }
 
@@ -579,7 +581,9 @@ mod tests {
         let claims = extractor.extract("coverage achieved at 85%");
 
         assert!(!claims.is_empty());
-        let claim = claims.iter().find(|c| c.category == ClaimCategory::Coverage);
+        let claim = claims
+            .iter()
+            .find(|c| c.category == ClaimCategory::Coverage);
         assert!(claim.is_some());
         assert_eq!(claim.unwrap().numeric_value, Some(85.0));
     }
@@ -621,7 +625,9 @@ mod tests {
         let extractor = ClaimExtractor::new();
         let claims = extractor.extract("complete migration to async");
 
-        let migration_claim = claims.iter().find(|c| c.category == ClaimCategory::Migration);
+        let migration_claim = claims
+            .iter()
+            .find(|c| c.category == ClaimCategory::Migration);
         assert!(migration_claim.is_some());
     }
 
@@ -664,7 +670,9 @@ mod tests {
         let extractor = ClaimExtractor::new();
         let claims = extractor.extract("50% faster parsing");
 
-        let perf_claim = claims.iter().find(|c| c.category == ClaimCategory::Performance);
+        let perf_claim = claims
+            .iter()
+            .find(|c| c.category == ClaimCategory::Performance);
         assert!(perf_claim.is_some());
         assert_eq!(perf_claim.unwrap().numeric_value, Some(50.0));
     }
@@ -686,7 +694,9 @@ mod tests {
         let extractor = ClaimExtractor::new();
         let claims = extractor.extract("zero vulnerabilities detected");
 
-        let sec_claim = claims.iter().find(|c| c.category == ClaimCategory::Security);
+        let sec_claim = claims
+            .iter()
+            .find(|c| c.category == ClaimCategory::Security);
         assert!(sec_claim.is_some());
         assert!(sec_claim.unwrap().is_absolute);
     }
@@ -711,7 +721,11 @@ mod tests {
         assert!(!claims.is_empty());
         let claim = &claims[0];
         assert!(claim.has_scope_qualifier);
-        assert!(claim.scope.as_ref().map(|s| s.contains("MVP")).unwrap_or(false));
+        assert!(claim
+            .scope
+            .as_ref()
+            .map(|s| s.contains("MVP"))
+            .unwrap_or(false));
     }
 
     #[test]

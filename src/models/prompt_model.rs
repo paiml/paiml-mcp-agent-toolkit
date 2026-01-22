@@ -541,7 +541,10 @@ zero_tolerance:
         prompt.prompt = "Test ${VAR} with special".to_string();
 
         let mut vars = HashMap::new();
-        vars.insert("VAR".to_string(), "value with $pecial & <chars>".to_string());
+        vars.insert(
+            "VAR".to_string(),
+            "value with $pecial & <chars>".to_string(),
+        );
 
         let rendered = prompt.render(&vars);
         assert!(rendered.contains("value with $pecial & <chars>"));

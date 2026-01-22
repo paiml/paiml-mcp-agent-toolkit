@@ -681,7 +681,10 @@ mod extended_coverage_tests {
     fn test_adaptive_config_clone() {
         let config = AdaptiveConfig::default();
         let cloned = config.clone();
-        assert_eq!(cloned.target_analysis_time_ms, config.target_analysis_time_ms);
+        assert_eq!(
+            cloned.target_analysis_time_ms,
+            config.target_analysis_time_ms
+        );
         assert_eq!(cloned.min_cache_hit_ratio, config.min_cache_hit_ratio);
     }
 
@@ -690,7 +693,10 @@ mod extended_coverage_tests {
         let config = AdaptiveConfig::default();
         let json = serde_json::to_string(&config).unwrap();
         let deserialized: AdaptiveConfig = serde_json::from_str(&json).unwrap();
-        assert_eq!(deserialized.target_analysis_time_ms, config.target_analysis_time_ms);
+        assert_eq!(
+            deserialized.target_analysis_time_ms,
+            config.target_analysis_time_ms
+        );
     }
 
     // =============================================================================
@@ -738,8 +744,12 @@ mod extended_coverage_tests {
                 cache_factor: 0.8,
                 permit_factor: 0.9,
             },
-            ThresholdAdjustment::MoreCompression { compression_level: 8 },
-            ThresholdAdjustment::LessCompression { compression_level: 2 },
+            ThresholdAdjustment::MoreCompression {
+                compression_level: 8,
+            },
+            ThresholdAdjustment::LessCompression {
+                compression_level: 2,
+            },
             ThresholdAdjustment::Maintain,
         ];
 
@@ -1038,7 +1048,10 @@ mod extended_coverage_tests {
         }
 
         let stats = manager.get_performance_stats().await;
-        assert!(matches!(stats.performance_trend, PerformanceTrend::Degrading));
+        assert!(matches!(
+            stats.performance_trend,
+            PerformanceTrend::Degrading
+        ));
     }
 
     #[tokio::test]

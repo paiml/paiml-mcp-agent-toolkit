@@ -434,7 +434,10 @@ mod tests {
     #[test]
     fn test_defect_category_display() {
         assert_eq!(format!("{}", DefectCategory::Complexity), "Complexity");
-        assert_eq!(format!("{}", DefectCategory::TechnicalDebt), "Technical Debt");
+        assert_eq!(
+            format!("{}", DefectCategory::TechnicalDebt),
+            "Technical Debt"
+        );
         assert_eq!(format!("{}", DefectCategory::DeadCode), "Dead Code");
         assert_eq!(format!("{}", DefectCategory::Duplication), "Duplication");
         assert_eq!(format!("{}", DefectCategory::Performance), "Performance");
@@ -628,13 +631,34 @@ mod tests {
         assert!(config.use_severity);
         assert!(config.use_count);
         assert_eq!(config.category_weights.len(), 7);
-        assert_eq!(config.category_weights.get(&DefectCategory::Complexity), Some(&1.5));
-        assert_eq!(config.category_weights.get(&DefectCategory::Performance), Some(&2.0));
-        assert_eq!(config.category_weights.get(&DefectCategory::Architecture), Some(&1.8));
-        assert_eq!(config.category_weights.get(&DefectCategory::TechnicalDebt), Some(&1.2));
-        assert_eq!(config.category_weights.get(&DefectCategory::DeadCode), Some(&1.0));
-        assert_eq!(config.category_weights.get(&DefectCategory::Duplication), Some(&1.3));
-        assert_eq!(config.category_weights.get(&DefectCategory::TestCoverage), Some(&0.8));
+        assert_eq!(
+            config.category_weights.get(&DefectCategory::Complexity),
+            Some(&1.5)
+        );
+        assert_eq!(
+            config.category_weights.get(&DefectCategory::Performance),
+            Some(&2.0)
+        );
+        assert_eq!(
+            config.category_weights.get(&DefectCategory::Architecture),
+            Some(&1.8)
+        );
+        assert_eq!(
+            config.category_weights.get(&DefectCategory::TechnicalDebt),
+            Some(&1.2)
+        );
+        assert_eq!(
+            config.category_weights.get(&DefectCategory::DeadCode),
+            Some(&1.0)
+        );
+        assert_eq!(
+            config.category_weights.get(&DefectCategory::Duplication),
+            Some(&1.3)
+        );
+        assert_eq!(
+            config.category_weights.get(&DefectCategory::TestCoverage),
+            Some(&0.8)
+        );
     }
 
     #[test]
@@ -651,7 +675,10 @@ mod tests {
         assert!(!config.use_severity);
         assert!(config.use_count);
         assert_eq!(config.category_weights.len(), 1);
-        assert_eq!(config.category_weights.get(&DefectCategory::Complexity), Some(&3.0));
+        assert_eq!(
+            config.category_weights.get(&DefectCategory::Complexity),
+            Some(&3.0)
+        );
     }
 
     // === RankedFile Tests ===
@@ -714,9 +741,19 @@ mod tests {
     #[test]
     fn test_defect_report_multiple_files() {
         let mut file_index = BTreeMap::new();
-        file_index.insert(PathBuf::from("a.rs"), vec!["A-001".to_string(), "A-002".to_string()]);
+        file_index.insert(
+            PathBuf::from("a.rs"),
+            vec!["A-001".to_string(), "A-002".to_string()],
+        );
         file_index.insert(PathBuf::from("b.rs"), vec!["B-001".to_string()]);
-        file_index.insert(PathBuf::from("c.rs"), vec!["C-001".to_string(), "C-002".to_string(), "C-003".to_string()]);
+        file_index.insert(
+            PathBuf::from("c.rs"),
+            vec![
+                "C-001".to_string(),
+                "C-002".to_string(),
+                "C-003".to_string(),
+            ],
+        );
 
         assert_eq!(file_index.len(), 3);
         assert_eq!(file_index.get(&PathBuf::from("a.rs")).unwrap().len(), 2);
@@ -763,7 +800,10 @@ mod tests {
 
         assert_eq!(deserialized.metadata.tool, report.metadata.tool);
         assert_eq!(deserialized.defects.len(), report.defects.len());
-        assert_eq!(deserialized.summary.total_defects, report.summary.total_defects);
+        assert_eq!(
+            deserialized.summary.total_defects,
+            report.summary.total_defects
+        );
     }
 
     #[test]
