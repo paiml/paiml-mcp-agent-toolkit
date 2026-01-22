@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.213.15] - 2026-01-22
+
+### Fixed
+- **Production unwrap() Calls**: Replaced 24 unwrap() with expect() for better error messages
+  - Affected files: github_issues.rs, correlation_engine.rs, tdg_handler.rs, language.rs,
+    foundation_simple.rs, ml_predictor.rs, executor.rs, deep_wasm/*.rs, c.rs, cpp.rs
+  - Prevents uninformative panic messages in production code
+
+### Improved
+- **Known Defects Scorer**: Better test file detection accuracy
+  - Now detects `#[cfg(all(test, ...))]` patterns (not just `#[cfg(test)]`)
+  - Expanded filename patterns: `*_tests_*`, `coverage_tests`, `property_tests`, `part*.rs`
+  - Reduces false positive count from 1361 → 219 unwrap() calls in production code
+  - Score improved: A- (86.4%) → A+ (95.8%)
+
+### Security
+- **lru 0.14 → 0.16**: Fix RUSTSEC-2026-0002 (IterMut Stacked Borrows violation)
+
+### Changed
+- **CB-040 File Splitting**: Major refactoring for file health compliance
+  - Split 50+ large files into smaller, more testable modules
+  - Uses `include!()` macro pattern for implementation files
+  - Maintains backward compatibility with existing APIs
+
 ## [2.213.14] - 2026-01-21
 
 ### Fixed
