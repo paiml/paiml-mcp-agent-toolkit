@@ -12,6 +12,8 @@ pub mod config;
 #[allow(clippy::all)]
 pub mod cuda_simd;
 pub mod cuda_simd_defects; // Defect taxonomy extracted for file health (CB-040)
+pub mod cuda_simd_results; // Result types extracted for file health (CB-040)
+pub mod cuda_simd_scores; // Score types extracted for file health (CB-040)
 pub mod diagnostics;
 pub mod explain;
 pub mod explain_formatters;
