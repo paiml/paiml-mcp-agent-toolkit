@@ -1,4 +1,5 @@
 pub mod cli;
+pub mod cli_helpers; // Format helpers extracted for file health (CB-040)
 pub mod http;
 pub mod mcp;
 
