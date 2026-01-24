@@ -628,4 +628,166 @@ mod tests {
         assert!(!HealthGrade::E.is_passing());
         assert!(!HealthGrade::F.is_passing());
     }
+
+    #[test]
+    fn test_file_size_class_as_str() {
+        assert_eq!(FileSizeClass::Ideal.as_str(), "ideal");
+        assert_eq!(FileSizeClass::Acceptable.as_str(), "acceptable");
+        assert_eq!(FileSizeClass::Warning.as_str(), "warning");
+        assert_eq!(FileSizeClass::Problem.as_str(), "problem");
+        assert_eq!(FileSizeClass::Critical.as_str(), "critical");
+    }
+
+    #[test]
+    fn test_health_grade_as_str() {
+        assert_eq!(HealthGrade::A.as_str(), "A");
+        assert_eq!(HealthGrade::B.as_str(), "B");
+        assert_eq!(HealthGrade::C.as_str(), "C");
+        assert_eq!(HealthGrade::D.as_str(), "D");
+        assert_eq!(HealthGrade::E.as_str(), "E");
+        assert_eq!(HealthGrade::F.as_str(), "F");
+    }
+
+    #[test]
+    fn test_empty_report() {
+        let report = FileHealthReport::from_files(PathBuf::from("."), vec![]);
+        assert_eq!(report.total_files, 0);
+        assert_eq!(report.total_lines, 0);
+        assert_eq!(report.average_health, 100);
+        assert!(report.is_compliant);
+    }
+
+    #[test]
+    fn test_report_with_problem_files() {
+        // A file that lands in problem range (50-69):
+        // - 600 lines (warning range) = 15 pts
+        // - 400 test lines, TLR=0.67, required=1.0, ratio=0.67, score ≈ 27 pts
+        // - complexity 8.0 = 15 pts
+        // - churn 4 = 7 pts
+        // Total = 15+27+15+7 = 64 (problem range)
+        let files = vec![
+            FileHealthMetrics::calculate(PathBuf::from("medium.rs"), 600, 400, 8.0, 4),
+        ];
+
+        let report = FileHealthReport::from_files(PathBuf::from("."), files);
+        // Should have problem files but still be compliant (no critical)
+        assert!(report.is_compliant);
+        assert!(!report.problem_files.is_empty() || !report.warning_files.is_empty());
+    }
+
+    #[test]
+    fn test_baseline_add_file() {
+        let mut baseline = FileHealthBaseline::new();
+        let metrics = FileHealthMetrics::calculate(PathBuf::from("test.rs"), 200, 100, 5.0, 1);
+
+        baseline.add_file(&metrics);
+
+        assert!(baseline.files.contains_key("test.rs"));
+        let entry = baseline.files.get("test.rs").unwrap();
+        assert_eq!(entry.lines, 200);
+        assert_eq!(entry.test_lines, 100);
+    }
+
+    #[test]
+    fn test_baseline_default() {
+        let baseline = FileHealthBaseline::default();
+        assert!(baseline.files.is_empty());
+        assert_eq!(baseline.version, "1.0");
+    }
+
+    #[test]
+    fn test_baseline_save_and_load() {
+        let mut baseline = FileHealthBaseline::new();
+        let metrics = FileHealthMetrics::calculate(PathBuf::from("src/lib.rs"), 150, 75, 4.0, 2);
+        baseline.add_file(&metrics);
+
+        // Save to temp file
+        let temp_dir = std::env::temp_dir();
+        let temp_path = temp_dir.join("test_baseline.json");
+
+        baseline.save(&temp_path).expect("Failed to save");
+
+        // Load it back
+        let loaded = FileHealthBaseline::load(&temp_path).expect("Failed to load");
+
+        assert_eq!(loaded.version, baseline.version);
+        assert!(loaded.files.contains_key("src/lib.rs"));
+
+        // Cleanup
+        let _ = std::fs::remove_file(&temp_path);
+    }
+
+    #[test]
+    fn test_analyze_file_function() {
+        // Create a temp file
+        let temp_dir = std::env::temp_dir();
+        let temp_path = temp_dir.join("test_analyze.rs");
+        std::fs::write(&temp_path, "fn main() {\n    println!(\"Hello\");\n}\n").unwrap();
+
+        let metrics = analyze_file(&temp_path, 10, 3.0, 1);
+        assert!(metrics.is_some());
+
+        let m = metrics.unwrap();
+        assert_eq!(m.lines, 3); // 3 lines (trailing newline doesn't count as line)
+        assert_eq!(m.test_lines, 10);
+
+        // Cleanup
+        let _ = std::fs::remove_file(&temp_path);
+    }
+
+    #[test]
+    fn test_analyze_file_nonexistent() {
+        let result = analyze_file(Path::new("/nonexistent/file.rs"), 0, 0.0, 0);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_count_lines_function() {
+        let temp_dir = std::env::temp_dir();
+        let temp_path = temp_dir.join("test_count.rs");
+        std::fs::write(&temp_path, "line1\nline2\nline3\n").unwrap();
+
+        let count = count_lines(&temp_path);
+        assert_eq!(count, Some(3));
+
+        let _ = std::fs::remove_file(&temp_path);
+    }
+
+    #[test]
+    fn test_count_lines_nonexistent() {
+        let count = count_lines(Path::new("/nonexistent/file.rs"));
+        assert!(count.is_none());
+    }
+
+    #[test]
+    fn test_scan_directory() {
+        // Use the current directory with known patterns
+        let files = scan_directory(
+            Path::new("."),
+            &["rs"],
+            DEFAULT_EXCLUDE_PATTERNS,
+        );
+
+        // Should find some Rust files
+        assert!(!files.is_empty() || std::env::current_dir().unwrap().to_string_lossy().contains("target"));
+    }
+
+    #[test]
+    fn test_health_zero_lines_tlr() {
+        // Edge case: zero lines should give TLR of 1.0
+        let metrics = FileHealthMetrics::calculate(PathBuf::from("empty.rs"), 0, 0, 0.0, 0);
+        assert_eq!(metrics.tlr, 1.0);
+    }
+
+    #[test]
+    fn test_report_with_low_tlr_files() {
+        let files = vec![
+            // Low TLR file
+            FileHealthMetrics::calculate(PathBuf::from("untested.rs"), 500, 50, 10.0, 3),
+        ];
+
+        let report = FileHealthReport::from_files(PathBuf::from("."), files);
+        // Should have TLR recommendation
+        assert!(report.recommendations.iter().any(|r| r.contains("TLR")));
+    }
 }
