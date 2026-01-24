@@ -1491,14 +1491,32 @@ fn format_violation_type_group(
     output.push('\n');
 }
 
-/// Format a single violation with severity icon and location
+/// Format a single violation with severity icon, file path, and location
 fn format_single_violation(output: &mut String, violation: &QualityViolation) {
     let severity_icon = get_severity_icon(&violation.severity);
 
+    // Format file path - use short relative path if possible
+    let file_display = if violation.file.is_empty() {
+        String::new()
+    } else {
+        // Extract just the filename or short path for display
+        let path = std::path::Path::new(&violation.file);
+        let short_path = path
+            .file_name()
+            .map(|f| f.to_string_lossy().to_string())
+            .unwrap_or_else(|| violation.file.clone());
+        format!(" {}", short_path)
+    };
+
     if let Some(line) = violation.line {
         output.push_str(&format!(
-            "- {} Line {}: {}\n",
-            severity_icon, line, violation.message
+            "- {}{}:{}: {}\n",
+            severity_icon, file_display, line, violation.message
+        ));
+    } else if !violation.file.is_empty() {
+        output.push_str(&format!(
+            "- {}{}: {}\n",
+            severity_icon, file_display, violation.message
         ));
     } else {
         output.push_str(&format!("- {} {}\n", severity_icon, violation.message));

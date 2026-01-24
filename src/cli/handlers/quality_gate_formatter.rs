@@ -140,14 +140,31 @@ fn add_violations_section(output: &mut String, violations: &[QualityViolation]) 
     }
 }
 
-/// Toyota Way: Extract Method - Add single violation entry (complexity ≤3)
+/// Toyota Way: Extract Method - Add single violation entry with file location (complexity ≤5)
 fn add_violation_entry(output: &mut String, violation: &QualityViolation) {
     let severity_icon = get_severity_icon(&violation.severity);
 
+    // Format file path - use short relative path for readability
+    let file_display = if violation.file.is_empty() {
+        String::new()
+    } else {
+        let path = std::path::Path::new(&violation.file);
+        let short_path = path
+            .file_name()
+            .map(|f| f.to_string_lossy().to_string())
+            .unwrap_or_else(|| violation.file.clone());
+        format!(" {}", short_path)
+    };
+
     if let Some(line) = violation.line {
         output.push_str(&format!(
-            "- {} Line {}: {}\n",
-            severity_icon, line, violation.message
+            "- {}{}:{}: {}\n",
+            severity_icon, file_display, line, violation.message
+        ));
+    } else if !violation.file.is_empty() {
+        output.push_str(&format!(
+            "- {}{}: {}\n",
+            severity_icon, file_display, violation.message
         ));
     } else {
         output.push_str(&format!("- {} {}\n", severity_icon, violation.message));
@@ -734,5 +751,75 @@ mod property_tests {
             // Module consistency verification
             prop_assert!(_x < 1001);
         }
+    }
+}
+
+#[cfg(test)]
+mod violation_display_tests {
+    use super::*;
+    use crate::cli::analysis_utilities::QualityViolation;
+
+    #[test]
+    fn test_violation_with_file_and_line_displays_correctly() {
+        let violation = QualityViolation {
+            check_type: "complexity".to_string(),
+            severity: "error".to_string(),
+            file: "/path/to/src/services/complex_module.rs".to_string(),
+            line: Some(42),
+            message: "Function too complex".to_string(),
+        };
+
+        let mut output = String::new();
+        add_violation_entry(&mut output, &violation);
+
+        // Should include filename (not full path for readability)
+        assert!(output.contains("complex_module.rs"), "Output should contain filename: {}", output);
+        // Should include line number
+        assert!(output.contains(":42:"), "Output should contain line number: {}", output);
+        // Should include message
+        assert!(output.contains("Function too complex"), "Output should contain message: {}", output);
+    }
+
+    #[test]
+    fn test_violation_with_file_no_line_displays_correctly() {
+        let violation = QualityViolation {
+            check_type: "security".to_string(),
+            severity: "warning".to_string(),
+            file: "/path/to/src/config.rs".to_string(),
+            line: None,
+            message: "Potential security issue".to_string(),
+        };
+
+        let mut output = String::new();
+        add_violation_entry(&mut output, &violation);
+
+        // Should include filename
+        assert!(output.contains("config.rs"), "Output should contain filename: {}", output);
+        // Should NOT include colon-number pattern for line
+        assert!(!output.contains(":None"), "Output should not contain :None: {}", output);
+    }
+
+    #[test]
+    fn test_violation_without_file_displays_message() {
+        let violation = QualityViolation {
+            check_type: "general".to_string(),
+            severity: "info".to_string(),
+            file: String::new(),
+            line: None,
+            message: "General information".to_string(),
+        };
+
+        let mut output = String::new();
+        add_violation_entry(&mut output, &violation);
+
+        // Should just have message
+        assert!(output.contains("General information"), "Output should contain message: {}", output);
+    }
+
+    #[test]
+    fn test_severity_icons_correct() {
+        assert_eq!(get_severity_icon("error"), "🔴");
+        assert_eq!(get_severity_icon("warning"), "🟡");
+        assert_eq!(get_severity_icon("info"), "🟢");
     }
 }
