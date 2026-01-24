@@ -632,8 +632,9 @@ pub async fn handle_work_status(
             let progress = item.completion_percentage();
 
             // Truncate long IDs for display (show first 30 chars + "...")
-            let display_id = if item.id.len() > 30 {
-                format!("{}...", &item.id[..30])
+            // Use chars() to avoid Unicode boundary panics (issue #128)
+            let display_id = if item.id.chars().count() > 30 {
+                format!("{}...", item.id.chars().take(30).collect::<String>())
             } else {
                 item.id.clone()
             };
