@@ -90,7 +90,7 @@ pub struct RoadmapItem {
     pub acceptance_criteria: Vec<String>,
 
     /// Phases (for multi-phase work)
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_phases")]
     pub phases: Vec<Phase>,
 
     /// Subtasks (for epic items)
@@ -277,6 +277,65 @@ fn levenshtein_distance(a: &str, b: &str) -> usize {
     }
 
     matrix[a_len][b_len]
+}
+
+/// Custom deserializer for phases that provides helpful error messages (issue #130)
+fn deserialize_phases<'de, D>(deserializer: D) -> Result<Vec<Phase>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    use serde::de::{self, SeqAccess, Visitor};
+    use std::fmt;
+
+    struct PhasesVisitor;
+
+    impl<'de> Visitor<'de> for PhasesVisitor {
+        type Value = Vec<Phase>;
+
+        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+            formatter.write_str("a sequence of Phase structs")
+        }
+
+        fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+        where
+            A: SeqAccess<'de>,
+        {
+            let mut phases = Vec::new();
+            let mut index = 0;
+
+            while let Some(value) = seq.next_element::<serde_yaml::Value>()? {
+                match value {
+                    serde_yaml::Value::String(s) => {
+                        return Err(de::Error::custom(format!(
+                            "phases[{}]: invalid type. \
+                            Phases must be structs with 'name' and 'status' fields.\n\n\
+                            Example:\n  \
+                            phases:\n    \
+                            - name: \"{}\"\n      \
+                            status: planned\n\n\
+                            Found string: \"{}\"",
+                            index, s, s
+                        )));
+                    }
+                    serde_yaml::Value::Mapping(_) => {
+                        let phase: Phase = serde_yaml::from_value(value).map_err(de::Error::custom)?;
+                        phases.push(phase);
+                    }
+                    _ => {
+                        return Err(de::Error::custom(format!(
+                            "phases[{}]: expected a Phase struct, found {:?}",
+                            index, value
+                        )));
+                    }
+                }
+                index += 1;
+            }
+
+            Ok(phases)
+        }
+    }
+
+    deserializer.deserialize_seq(PhasesVisitor)
 }
 
 /// Priority enumeration
