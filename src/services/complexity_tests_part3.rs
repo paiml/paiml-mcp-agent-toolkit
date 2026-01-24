@@ -357,7 +357,7 @@
 
         let output = format_complexity_summary(&report);
 
-        assert!(output.contains("`<file>` - cyclomatic complexity: 30"));
+        assert!(output.contains("`<file>` test.rs:1 - cyclomatic complexity: 30"));
     }
 
     #[test]

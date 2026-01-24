@@ -108,91 +108,89 @@ async fn main() -> anyhow::Result<()> {
 
 fn create_test_files(project_path: &std::path::Path) -> anyhow::Result<()> {
     use std::fs;
-    use std::io::Write;
 
-    // Create src directory
     let src_dir = project_path.join("src");
     fs::create_dir_all(&src_dir)?;
 
     // Simple function (complexity: 1)
-    let mut file = fs::File::create(src_dir.join("simple.rs"))?;
-    writeln!(file, "/// A very simple function")?;
-    writeln!(file, "pub fn add(a: i32, b: i32) -> i32 {{")?;
-    writeln!(file, "    a + b")?;
-    writeln!(file, "}}")?;
+    fs::write(src_dir.join("simple.rs"), SIMPLE_RS)?;
 
     // Moderate complexity function (complexity: ~8)
-    let mut file = fs::File::create(src_dir.join("moderate.rs"))?;
-    writeln!(file, "/// Function with moderate complexity")?;
-    writeln!(file, "pub fn process_data(items: &[i32]) -> String {{")?;
-    writeln!(file, "    let mut result = String::new();")?;
-    writeln!(file, "    for item in items {{")?;
-    writeln!(file, "        if *item > 10 {{")?;
-    writeln!(file, "            result.push_str(\"high\");")?;
-    writeln!(file, "        }} else if *item > 5 {{")?;
-    writeln!(file, "            result.push_str(\"medium\");")?;
-    writeln!(file, "        }} else {{")?;
-    writeln!(file, "            result.push_str(\"low\");")?;
-    writeln!(file, "        }}")?;
-    writeln!(file, "        match item % 3 {{")?;
-    writeln!(file, "            0 => result.push_str(\"-multiple\"),")?;
-    writeln!(file, "            1 => result.push_str(\"-plus-one\"),")?;
-    writeln!(file, "            _ => result.push_str(\"-other\"),")?;
-    writeln!(file, "        }}")?;
-    writeln!(file, "    }}")?;
-    writeln!(file, "    result")?;
-    writeln!(file, "}}")?;
+    fs::write(src_dir.join("moderate.rs"), MODERATE_RS)?;
 
     // High complexity function (complexity: ~15)
-    let mut file = fs::File::create(src_dir.join("complex.rs"))?;
-    writeln!(file, "/// Function with high complexity")?;
-    writeln!(
-        file,
-        "pub fn complex_logic(data: &[u8]) -> Result<String, String> {{"
-    )?;
-    writeln!(file, "    let mut output = String::new();")?;
-    writeln!(file, "    for (i, &byte) in data.iter().enumerate() {{")?;
-    writeln!(file, "        if byte == 0 {{")?;
-    writeln!(
-        file,
-        "            return Err(\"Invalid byte\".to_string());"
-    )?;
-    writeln!(file, "        }}")?;
-    writeln!(file, "        match byte {{")?;
-    writeln!(file, "            1..=10 => {{")?;
-    writeln!(file, "                if i % 2 == 0 {{")?;
-    writeln!(file, "                    output.push('A');")?;
-    writeln!(file, "                }} else {{")?;
-    writeln!(file, "                    output.push('B');")?;
-    writeln!(file, "                }}")?;
-    writeln!(file, "            }}")?;
-    writeln!(file, "            11..=20 => {{")?;
-    writeln!(file, "                if i % 3 == 0 {{")?;
-    writeln!(file, "                    output.push('C');")?;
-    writeln!(file, "                }} else if i % 3 == 1 {{")?;
-    writeln!(file, "                    output.push('D');")?;
-    writeln!(file, "                }} else {{")?;
-    writeln!(file, "                    output.push('E');")?;
-    writeln!(file, "                }}")?;
-    writeln!(file, "            }}")?;
-    writeln!(file, "            21..=30 => {{")?;
-    writeln!(file, "                for j in 0..3 {{")?;
-    writeln!(file, "                    if j == i % 3 {{")?;
-    writeln!(file, "                        output.push('F');")?;
-    writeln!(file, "                    }}")?;
-    writeln!(file, "                }}")?;
-    writeln!(file, "            }}")?;
-    writeln!(file, "            _ => {{")?;
-    writeln!(file, "                if byte > 100 {{")?;
-    writeln!(file, "                    output.push('X');")?;
-    writeln!(file, "                }} else {{")?;
-    writeln!(file, "                    output.push('Y');")?;
-    writeln!(file, "                }}")?;
-    writeln!(file, "            }}")?;
-    writeln!(file, "        }}")?;
-    writeln!(file, "    }}")?;
-    writeln!(file, "    Ok(output)")?;
-    writeln!(file, "}}")?;
+    fs::write(src_dir.join("complex.rs"), COMPLEX_RS)?;
 
     Ok(())
 }
+
+const SIMPLE_RS: &str = r#"/// A very simple function
+pub fn add(a: i32, b: i32) -> i32 {
+    a + b
+}
+"#;
+
+const MODERATE_RS: &str = r#"/// Function with moderate complexity
+pub fn process_data(items: &[i32]) -> String {
+    let mut result = String::new();
+    for item in items {
+        if *item > 10 {
+            result.push_str("high");
+        } else if *item > 5 {
+            result.push_str("medium");
+        } else {
+            result.push_str("low");
+        }
+        match item % 3 {
+            0 => result.push_str("-multiple"),
+            1 => result.push_str("-plus-one"),
+            _ => result.push_str("-other"),
+        }
+    }
+    result
+}
+"#;
+
+const COMPLEX_RS: &str = r#"/// Function with high complexity
+pub fn complex_logic(data: &[u8]) -> Result<String, String> {
+    let mut output = String::new();
+    for (i, &byte) in data.iter().enumerate() {
+        if byte == 0 {
+            return Err("Invalid byte".to_string());
+        }
+        match byte {
+            1..=10 => {
+                if i % 2 == 0 {
+                    output.push('A');
+                } else {
+                    output.push('B');
+                }
+            }
+            11..=20 => {
+                if i % 3 == 0 {
+                    output.push('C');
+                } else if i % 3 == 1 {
+                    output.push('D');
+                } else {
+                    output.push('E');
+                }
+            }
+            21..=30 => {
+                for j in 0..3 {
+                    if j == i % 3 {
+                        output.push('F');
+                    }
+                }
+            }
+            _ => {
+                if byte > 100 {
+                    output.push('X');
+                } else {
+                    output.push('Y');
+                }
+            }
+        }
+    }
+    Ok(output)
+}
+"#;

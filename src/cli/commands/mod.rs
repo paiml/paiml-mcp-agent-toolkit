@@ -35,26 +35,32 @@ use std::path::PathBuf;
 #[derive(Parser)]
 #[command(
     name = "pmat",
-    about = "Professional project quantitative scaffolding and analysis toolkit",
+    about = "PMAT - Professional Multi-language Analysis Toolkit for code quality, complexity, and technical debt",
     version,
     long_about = None,
     after_help = "EXAMPLES:
 # Analyze code complexity
 pmat analyze complexity --project-path .
 
-# Find technical debt
+# Calculate Technical Debt Grade (TDG)
+pmat tdg .
+
+# Find technical debt markers (TODO, FIXME, HACK)
 pmat analyze satd --path .
 
 # Find dead code
 pmat analyze dead-code --path .
 
-# Generate project context
-pmat context
+# Generate AI-ready project context
+pmat context --format llm-optimized
 
 # Run quality gates
-pmat quality-gate --strict
+pmat quality-gate
 
-# Start agent daemon
+# Calculate repository health score
+pmat repo-score
+
+# Start background agent daemon
 pmat agent start"
 )]
 #[cfg_attr(test, derive(Debug))]
@@ -99,7 +105,7 @@ pub enum Mode {
     Mcp,
 }
 
-/// Color output mode (TICKET-PMAT-6006)
+/// Color output mode
 #[derive(Clone, Debug, clap::ValueEnum, PartialEq, Default)]
 pub enum ColorMode {
     /// Auto-detect based on TTY and environment
@@ -308,7 +314,7 @@ pub enum Commands {
     #[command(visible_aliases = &["docs", "doc"])]
     ValidateDocs(crate::cli::handlers::ValidateDocsCmd),
 
-    /// Validate README/documentation for hallucinations (Sprint 38)
+    /// Validate README/documentation for factual accuracy and hallucinations
     #[command(visible_aliases = &["readme", "hallucination"])]
     ValidateReadme(crate::cli::handlers::ValidateReadmeCmd),
 
@@ -582,7 +588,7 @@ pub enum Commands {
         #[arg(short = 'o', long)]
         output: Option<PathBuf>,
 
-        /// Hardware capability TOML file (PMAT-448)
+        /// Hardware capability TOML file
         /// If not specified, uses ~/.pmat/hardware.toml if it exists.
         /// Use `trueno --detect-hardware` to generate one.
         #[arg(long)]
@@ -852,23 +858,23 @@ pub enum Commands {
         #[arg(short, long)]
         output: Option<PathBuf>,
 
-        /// Include git context (commit SHA, branch, author) - Sprint 65
+        /// Include git context (commit SHA, branch, author)
         #[arg(long)]
         with_git_context: bool,
 
-        /// Enable detailed explanation mode with function-level breakdown (Issue #78)
+        /// Enable detailed explanation mode with function-level breakdown
         #[arg(long)]
         explain: bool,
 
-        /// Complexity threshold for filtering functions in --explain mode (Issue #78)
+        /// Complexity threshold for filtering functions in --explain mode
         #[arg(long, default_value = "10")]
         threshold: u32,
 
-        /// Baseline git ref (commit/branch/tag) for progress tracking in --explain mode (Issue #78)
+        /// Baseline git ref (commit/branch/tag) for progress tracking in --explain mode
         #[arg(long)]
         baseline: Option<String>,
 
-        /// Use ML-based scoring (GH-97: aprender LinearRegression)
+        /// Use ML-based scoring (aprender LinearRegression)
         ///
         /// When enabled, TDG scores are calculated using trained ML models
         /// instead of heuristic weighted sums. This provides more accurate,
@@ -889,7 +895,7 @@ pub enum Commands {
         viz_theme: String,
     },
 
-    /// Run quality gates on the current project (TICKET-PMAT-5023, TICKET-PMAT-5024)
+    /// Run configurable quality gates on the current project
     #[command(name = "quality-gates", visible_aliases = &["gates", "qg"])]
     QualityGates {
         /// Quality gates subcommand
@@ -913,7 +919,7 @@ pub enum Commands {
         project_dir: PathBuf,
     },
 
-    /// Project maintenance commands (TICKET-PMAT-5032, TICKET-PMAT-5033)
+    /// Project maintenance commands (cleanup, validation, reports)
     #[command(visible_aliases = &["maint", "m"])]
     Maintain {
         /// Maintain subcommand
@@ -921,37 +927,37 @@ pub enum Commands {
         command: MaintainCommands,
     },
 
-    /// Pre-commit hook management (TICKET-PMAT-5034)
+    /// Pre-commit hook management and installation
     #[command(subcommand, visible_aliases = &["hook", "h"])]
     Hooks(HooksCommands),
 
-    /// Manage semantic search embeddings (PMAT-SEARCH-011)
+    /// Manage semantic search embeddings for code search
     #[command(subcommand, visible_aliases = &["emb"])]
     Embed(EmbedCommands),
 
-    /// Semantic code search (PMAT-SEARCH-011)
+    /// Semantic code search using embeddings
     #[command(subcommand, visible_aliases = &["sem", "find-code"])]
     Semantic(SemanticCommands),
 
-    /// Run mutation testing on specified files (Sprint 61)
+    /// Run mutation testing on specified files
     #[cfg(feature = "mutation-testing")]
     Mutate(MutateArgs),
 
-    /// Time-travel debugging commands (Sprint 74)
+    /// Time-travel debugging commands for execution traces
     #[command(visible_aliases = &["dbg"])]
     Debug {
         #[command(subcommand)]
         command: DebugCommands,
     },
 
-    /// Unified GitHub/YAML workflow commands (Issue #75)
+    /// Unified GitHub/YAML workflow management
     #[command(visible_aliases = &["w"])]
     Work {
         #[command(subcommand)]
         command: WorkCommands,
     },
 
-    /// QA validation after work completion - Toyota Way quality gates (GH-102)
+    /// QA validation after work completion with Toyota Way quality gates
     #[command(name = "qa-work", visible_aliases = &["qa", "quality"])]
     QaWork {
         #[command(subcommand)]
@@ -1027,14 +1033,14 @@ pub enum Commands {
         fast: bool,
     },
 
-    /// Specification management and validation (master-plan-pmat-work-system.md)
+    /// Specification management and validation
     #[command(name = "spec", visible_aliases = &["specification"])]
     Spec {
         #[command(subcommand)]
         command: SpecCommands,
     },
 
-    /// PMAT compliance and migration system (GH-96)
+    /// PMAT compliance checking and migration system
     #[command(visible_aliases = &["compliance"])]
     Comply {
         #[command(subcommand)]
@@ -1042,7 +1048,6 @@ pub enum Commands {
     },
 
     /// Rust project diagnostics (20 checks across 5 categories)
-    /// Matches lltop Tab 8 diagnostics for any Rust project
     #[command(name = "project-diag", visible_aliases = &["pdiag", "proj-diag"])]
     ProjectDiag {
         /// Project path to analyze
@@ -1070,14 +1075,14 @@ pub enum Commands {
         quiet: bool,
     },
 
-    /// Systematic test discovery and fixing (GH-98)
+    /// Systematic test discovery and fixing
     #[command(name = "test-discovery", visible_aliases = &["test-fix", "fix-tests"])]
     TestDiscovery {
         #[command(subcommand)]
         command: TestDiscoveryCommands,
     },
 
-    /// Fault localization using Tarantula SBFL algorithm (GH-103)
+    /// Fault localization using Spectrum-Based Fault Localization (SBFL)
     /// Identify suspicious code locations based on test coverage data
     #[command(name = "localize", visible_aliases = &["fault", "fl"])]
     Localize {

@@ -1309,7 +1309,7 @@ fn format_explain_output(
 
             // Header
             output.push_str("╭───────────────────────────────────────────────────────────────╮\n");
-            output.push_str("│  TDG Explain Report (Issue #78)                               │\n");
+            output.push_str("│  TDG Explain Report                                           │\n");
             output.push_str("├───────────────────────────────────────────────────────────────┤\n");
 
             // Overall score

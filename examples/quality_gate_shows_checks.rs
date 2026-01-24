@@ -87,30 +87,29 @@ async fn main() -> anyhow::Result<()> {
 
 fn create_test_files(project_path: &std::path::Path) -> anyhow::Result<()> {
     use std::fs;
-    use std::io::Write;
 
-    // Create src directory
     let src_dir = project_path.join("src");
     fs::create_dir_all(&src_dir)?;
 
-    // Create a file with various issues to detect
-    let mut file = fs::File::create(src_dir.join("main.rs"))?;
-    writeln!(file, "// Refactoring demonstration")?;
-    writeln!(file, "fn main() {{")?;
-    writeln!(file, "    let password = \"hardcoded123\";")?;
-    writeln!(file, "    println!(\"Hello\");")?;
-    writeln!(file, "}}")?;
-    writeln!(file)?;
-    writeln!(file, "#[allow(dead_code)]")?;
-    writeln!(file, "fn unused_function() {{")?;
-    writeln!(file, "    // This function is never called")?;
-    writeln!(file, "}}")?;
-
-    // Create a README
-    let mut readme = fs::File::create(project_path.join("README.md"))?;
-    writeln!(readme, "# Test Project")?;
-    writeln!(readme)?;
-    writeln!(readme, "A simple test project for quality gate.")?;
+    fs::write(src_dir.join("main.rs"), MAIN_RS)?;
+    fs::write(project_path.join("README.md"), README_MD)?;
 
     Ok(())
 }
+
+const MAIN_RS: &str = r#"// Refactoring demonstration
+fn main() {
+    let password = "hardcoded123";
+    println!("Hello");
+}
+
+#[allow(dead_code)]
+fn unused_function() {
+    // This function is never called
+}
+"#;
+
+const README_MD: &str = r#"# Test Project
+
+A simple test project for quality gate.
+"#;

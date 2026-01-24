@@ -1,5 +1,5 @@
 // Work commands - extracted for file health (CB-040)
-/// Work subcommands for unified GitHub/YAML workflow (Issue #75)
+/// Work subcommands for unified GitHub/YAML workflow
 /// CRUD: Create (add), Read (list/status), Update (edit/start/complete), Delete (delete)
 #[derive(Debug, Clone, Subcommand)]
 pub enum WorkCommands {
@@ -289,7 +289,7 @@ impl WorkPriority {
     }
 }
 
-/// QA Work subcommands for Toyota Way quality validation (GH-102)
+/// QA Work subcommands for Toyota Way quality validation
 #[derive(Debug, Clone, Subcommand)]
 pub enum QaWorkCommands {
     /// Generate QA checklist for a task
@@ -452,7 +452,7 @@ pub enum QaOutputFormat {
     Markdown,
 }
 
-/// Test discovery subcommands for systematic test fixing (GH-98)
+/// Test discovery subcommands for systematic test fixing
 #[derive(Debug, Clone, Subcommand)]
 pub enum TestDiscoveryCommands {
     /// Discover all test failures in workspace

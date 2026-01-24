@@ -108,7 +108,7 @@ pub enum AnalyzeCommands {
         #[arg(long, default_value = "60")]
         timeout: u64,
 
-        /// Use ML-based scoring (GH-97: aprender LinearRegression)
+        /// Use ML-based scoring (aprender LinearRegression)
         ///
         /// When enabled, complexity scores are calculated using trained ML models
         /// instead of heuristic formulas. This provides more accurate, data-driven
@@ -404,7 +404,7 @@ pub enum AnalyzeCommands {
         #[arg(long)]
         verbose: bool,
 
-        /// Use ML-based scoring (GH-97: aprender LinearRegression)
+        /// Use ML-based scoring (aprender LinearRegression)
         ///
         /// When enabled, TDG scores are calculated using trained ML models
         /// instead of heuristic weighted sums. This provides more accurate,
@@ -1399,7 +1399,7 @@ pub enum AnalyzeCommands {
         output: Option<PathBuf>,
     },
 
-    /// Cluster code by semantic similarity (PMAT-SEARCH-011)
+    /// Cluster code by semantic similarity
     Cluster {
         /// Clustering method
         #[arg(long, value_enum)]
@@ -1418,7 +1418,7 @@ pub enum AnalyzeCommands {
         format: OutputFormat,
     },
 
-    /// Extract semantic topics from codebase (PMAT-SEARCH-011)
+    /// Extract semantic topics from codebase
     Topics {
         /// Number of topics to extract
         #[arg(long)]

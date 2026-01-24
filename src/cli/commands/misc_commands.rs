@@ -178,7 +178,7 @@ pub enum OracleOutputFormat {
     Markdown,
 }
 
-/// Comply subcommands for PMAT compliance checking and migration (GH-96)
+/// Comply subcommands for PMAT compliance checking and migration
 #[derive(Debug, Clone, Subcommand)]
 pub enum ComplyCommands {
     /// Check project compliance with current PMAT version
@@ -314,7 +314,7 @@ pub enum ComplyCommands {
     },
 }
 
-/// Comply output formats (GH-96)
+/// Comply output formats
 #[derive(Debug, Clone, clap::ValueEnum, PartialEq)]
 pub enum ComplyOutputFormat {
     /// Human-readable text format
@@ -501,7 +501,7 @@ pub enum AnnotateOutputFormat {
     Markdown,
 }
 
-/// Debug subcommands (Sprint 74 - TRACE-001 through TRACE-003)
+/// Debug subcommands for time-travel debugging
 #[derive(Debug, Clone, Subcommand)]
 pub enum DebugCommands {
     /// Start DAP (Debug Adapter Protocol) server for time-travel debugging
@@ -536,7 +536,7 @@ pub enum DebugCommands {
     },
 }
 
-/// Quality gates subcommands (TICKET-PMAT-5024)
+/// Quality gates subcommands
 #[derive(Subcommand)]
 #[cfg_attr(test, derive(Debug))]
 pub enum QualityGatesCommand {
@@ -558,7 +558,7 @@ pub enum QualityGatesCommand {
     },
 }
 
-/// Maintain subcommands (TICKET-PMAT-5032, TICKET-PMAT-5033)
+/// Maintain subcommands for project maintenance tasks
 #[derive(Subcommand)]
 #[cfg_attr(test, derive(Debug))]
 pub enum MaintainCommands {
@@ -584,7 +584,7 @@ pub enum MaintainCommands {
         #[arg(long)]
         fix: bool,
 
-        /// Auto-generate missing ticket files from roadmap entries that don't have corresponding files (TICKET-PMAT-6012)
+        /// Auto-generate missing ticket files from roadmap entries
         #[arg(long)]
         generate_tickets: bool,
 
@@ -597,7 +597,7 @@ pub enum MaintainCommands {
         format: OutputFormat,
     },
 
-    /// Validate project health (TICKET-PMAT-5033, TICKET-PMAT-6001)
+    /// Validate project health (build, tests, coverage, complexity)
     Health {
         /// Project directory
         #[arg(long, default_value = ".")]
@@ -636,7 +636,7 @@ pub enum MaintainCommands {
         check_satd: bool,
     },
 
-    /// Create bug report from captured error (GH-81)
+    /// Create bug report from captured error
     #[command(visible_aliases = &["bug", "report"])]
     BugReport {
         /// Custom issue title
@@ -656,7 +656,7 @@ pub enum MaintainCommands {
         clear: bool,
     },
 
-    /// Clean up development artifacts and caches (GH-86)
+    /// Clean up development artifacts and caches
     #[command(visible_aliases = &["clean", "cleanup", "purge"])]
     CleanupResources {
         /// Project directory to scan
@@ -749,7 +749,7 @@ pub enum TdgCommand {
         source2: PathBuf,
     },
 
-    /// View TDG history at specific commits (Sprint 65 Phase 3)
+    /// View TDG history at specific commits
     History {
         /// Specific commit SHA or tag to query
         #[arg(long)]
@@ -772,7 +772,7 @@ pub enum TdgCommand {
         format: TdgOutputFormat,
     },
 
-    /// Manage TDG baselines for quality regression detection (Sprint 66 Phase 1)
+    /// Manage TDG baselines for quality regression detection
     Baseline {
         #[command(subcommand)]
         command: BaselineCommand,
@@ -815,7 +815,7 @@ pub enum TdgCommand {
         command: StorageCommand,
     },
 
-    /// Start TDG web dashboard server (Sprint 31)
+    /// Start TDG web dashboard server
     Dashboard {
         /// Port to bind the dashboard server
         #[arg(short, long, default_value = "8080")]
@@ -838,7 +838,7 @@ pub enum TdgCommand {
     #[command(subcommand)]
     Config(ConfigCommands),
 
-    /// Check for quality regressions against baseline (Sprint 66 Phase 2)
+    /// Check for quality regressions against baseline
     CheckRegression {
         /// Path to baseline file
         #[arg(short, long)]
@@ -865,7 +865,7 @@ pub enum TdgCommand {
         allow_grade_drop: bool,
     },
 
-    /// Check files meet minimum quality thresholds (Sprint 66 Phase 2)
+    /// Check files meet minimum quality thresholds
     CheckQuality {
         /// Path to analyze
         #[arg(short, long, default_value = ".")]
@@ -893,7 +893,7 @@ pub enum TdgCommand {
     },
 }
 
-/// Baseline management subcommands (Sprint 66 Phase 1)
+/// Baseline management subcommands
 #[derive(Subcommand, Clone)]
 #[cfg_attr(test, derive(Debug))]
 pub enum BaselineCommand {

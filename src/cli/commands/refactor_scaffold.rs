@@ -931,7 +931,7 @@ pub enum ScaffoldCommands {
         probabilistic_wrapper: Option<String>,
     },
 
-    /// Scaffold a WebAssembly project (TICKET-PMAT-5031)
+    /// Scaffold a WebAssembly project
     Wasm {
         /// Project name
         #[arg(short, long)]

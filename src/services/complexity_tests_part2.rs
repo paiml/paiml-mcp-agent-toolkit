@@ -263,8 +263,7 @@
         assert!(output.contains("**Errors**: 1"));
         assert!(output.contains("**Warnings**: 1"));
         assert!(output.contains("## Top Complexity Hotspots"));
-        assert!(output.contains("`complex_function` - cyclomatic complexity: 25"));
-        assert!(output.contains("📁 test.rs:42"));
+        assert!(output.contains("`complex_function` test.rs:42 - cyclomatic complexity: 25"));
     }
 
     #[test]

@@ -1,6 +1,6 @@
 // Semantic search commands - extracted for file health (CB-040)
 
-/// Embed subcommands for semantic search (PMAT-SEARCH-011)
+/// Embed subcommands for semantic search
 #[derive(Subcommand)]
 #[cfg_attr(test, derive(Debug))]
 #[command(after_help = "EXAMPLES:
@@ -49,7 +49,7 @@ pub enum EmbedCommands {
     },
 }
 
-/// Semantic search subcommands (PMAT-SEARCH-011)
+/// Semantic search subcommands
 #[derive(Subcommand)]
 #[cfg_attr(test, derive(Debug))]
 pub enum SemanticCommands {
@@ -90,7 +90,7 @@ pub enum SemanticCommands {
     },
 }
 
-/// Search mode for semantic search (PMAT-SEARCH-011)
+/// Search mode for semantic search
 #[derive(Clone, Debug, clap::ValueEnum, PartialEq)]
 pub enum SearchMode {
     /// Keyword-only search (ripgrep)
@@ -101,7 +101,7 @@ pub enum SearchMode {
     Hybrid,
 }
 
-/// Clustering method (PMAT-SEARCH-011)
+/// Clustering method for semantic analysis
 #[derive(Clone, Debug, clap::ValueEnum, PartialEq)]
 pub enum ClusterMethod {
     /// K-means clustering
@@ -112,7 +112,7 @@ pub enum ClusterMethod {
     Dbscan,
 }
 
-/// Mutation testing arguments (Sprint 61 + Sprint 70)
+/// Mutation testing arguments
 #[cfg(feature = "mutation-testing")]
 #[derive(Args, Debug, Clone)]
 #[cfg_attr(test, derive(PartialEq))]

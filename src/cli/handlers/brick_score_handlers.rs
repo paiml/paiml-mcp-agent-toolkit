@@ -211,7 +211,7 @@ fn format_text(score: &BrickScore, verbose: bool, failures_only: bool) -> String
 
         // PMAT-449: Roofline analysis section
         if score.brick_reports.iter().any(|b| b.bottleneck.is_some()) {
-            output.push_str("📈  Roofline Analysis (PMAT-449)\n");
+            output.push_str("📈  Roofline Analysis\n");
             output.push_str("  ┌───────────────────┬────────┬────────────┐\n");
             output.push_str("  │ Brick             │ AI     │ Bottleneck │\n");
             output.push_str("  ├───────────────────┼────────┼────────────┤\n");

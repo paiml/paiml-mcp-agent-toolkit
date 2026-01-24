@@ -45,7 +45,7 @@ pub enum HooksCommands {
         #[arg(long, default_value = "true")]
         backup: bool,
 
-        /// Enable TDG quality enforcement hooks (Sprint 66 Phase 3)
+        /// Enable TDG quality enforcement hooks
         #[arg(long)]
         tdg_enforcement: bool,
     },
@@ -64,7 +64,7 @@ pub enum HooksCommands {
         #[arg(long, default_value = "true")]
         backup: bool,
 
-        /// Enable TDG quality enforcement hooks (Sprint 66 Phase 3)
+        /// Enable TDG quality enforcement hooks
         #[arg(long)]
         tdg_enforcement: bool,
     },
@@ -104,14 +104,14 @@ pub enum HooksCommands {
         cache: bool,
     },
 
-    /// O(1) cache management for hooks (PMAT-453)
+    /// O(1) cache management for hooks
     Cache {
         #[command(subcommand)]
         action: HooksCacheAction,
     },
 }
 
-/// Cache actions for O(1) hooks (PMAT-453)
+/// Cache actions for O(1) hooks
 #[derive(Subcommand, Clone)]
 #[cfg_attr(test, derive(Debug))]
 pub enum HooksCacheAction {
