@@ -498,11 +498,13 @@ pub async fn handle_spec(
             SpecValidationStatus::Skipped => "\x1b[90m- SKIPPED\x1b[0m",
         };
 
+        // Use chars() to avoid Unicode boundary panics (issue #120)
+        let truncated: String = claim.text.chars().take(60).collect();
         println!(
             "  {} [{}] {} - {}",
             status_str,
             claim.id,
-            &claim.text[..std::cmp::min(60, claim.text.len())],
+            truncated,
             cat_name
         );
 
