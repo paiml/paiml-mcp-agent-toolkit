@@ -164,6 +164,11 @@ impl RustDefectDetector {
         let mut instances = Vec::new();
 
         for (line_num, line) in content.lines().enumerate() {
+            let trimmed = line.trim();
+            // Skip doc comments - they contain examples, not production code
+            if trimmed.starts_with("///") || trimmed.starts_with("//!") {
+                continue;
+            }
             for mat in self.unwrap_regex.find_iter(line) {
                 instances.push(DefectInstance {
                     file: file_path.to_string_lossy().to_string(),
@@ -210,6 +215,29 @@ mod tests {
         assert_eq!(defects[0].id, "RUST-UNWRAP-001");
         assert_eq!(defects[0].severity, Severity::Critical);
         assert_eq!(defects[0].instances.len(), 1);
+    }
+
+    #[test]
+    fn test_excludes_doc_comments() {
+        let detector = RustDefectDetector::new();
+        let code = r#"
+            /// # Examples
+            ///
+            /// ```
+            /// let result = something.unwrap();
+            /// ```
+            pub fn something() -> Option<i32> {
+                Some(42)
+            }
+
+            //! Module doc with example
+            //! let x = foo.unwrap();
+        "#;
+
+        let path = PathBuf::from("src/lib.rs");
+        let defects = detector.detect(code, &path);
+
+        assert_eq!(defects.len(), 0, "Doc comments should be excluded (issue #131)");
     }
 
     #[test]
