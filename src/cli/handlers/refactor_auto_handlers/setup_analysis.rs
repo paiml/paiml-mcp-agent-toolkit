@@ -53,6 +53,7 @@ pub struct RefactorAutoConfig {
 
 /// Quality profile configuration for refactor auto
 #[derive(Debug, Clone)]
+#[allow(dead_code)] // Reserved for quality gate enforcement
 struct QualityProfile {
     pub coverage_min: f64,
     pub complexity_max: u16,
@@ -74,6 +75,7 @@ impl Default for QualityProfile {
 
 // JSON response structs for lint-hotspot and compilation error analysis
 #[derive(serde::Deserialize)]
+#[allow(dead_code)] // Used for JSON deserialization
 struct LintHotspotJsonResponse {
     hotspot: LintHotspotJson,
     all_violations: Vec<ViolationDetailJson>,
@@ -81,14 +83,15 @@ struct LintHotspotJsonResponse {
 }
 
 #[derive(serde::Deserialize)]
+#[allow(dead_code)] // Used for JSON deserialization
 struct LintHotspotJson {
     file: PathBuf,
     defect_density: f64,
-    #[allow(dead_code)]
     total_violations: usize,
 }
 
 #[derive(Debug, serde::Deserialize)]
+#[allow(dead_code)] // Used for JSON deserialization
 struct ViolationDetailJson {
     file: PathBuf,
     line: u32,
@@ -138,6 +141,7 @@ enum RefactorMode {
 
 /// Pattern configuration for file discovery and filtering
 #[derive(Debug, Clone)]
+#[allow(dead_code)] // Reserved for pattern-based file discovery
 struct PatternConfig {
     root_path: PathBuf,
     ignore_file: Option<String>,
@@ -150,6 +154,7 @@ struct PatternConfig {
 
 /// Output configuration for different formats
 #[derive(Debug, Clone)]
+#[allow(dead_code)] // Reserved for output configuration
 struct OutputConfig {
     format: RefactorAutoOutputFormat,
     dry_run: bool,
@@ -498,6 +503,7 @@ struct GitHubIssueRef {
 
 /// GitHub issue content structure
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 struct GitHubIssueContent {
     title: String,
     body: String,
@@ -720,6 +726,7 @@ fn parse_coverage_from_output(output: &[u8]) -> Option<f64> {
 
 /// Project quality analysis results
 #[derive(Debug)]
+#[allow(dead_code)] // Reserved for quality analysis
 struct ProjectQualityAnalysis {
     lint_violations: Vec<ViolationDetailJson>,
     complexity_analysis: ComplexityAnalysis,
@@ -731,6 +738,7 @@ struct ProjectQualityAnalysis {
 
 /// Complexity analysis results
 #[derive(Debug)]
+#[allow(dead_code)] // Reserved for complexity analysis
 struct ComplexityAnalysis {
     high_complexity_violations: Vec<ComplexityViolation>,
     high_complexity_count: usize,
@@ -740,6 +748,7 @@ struct ComplexityAnalysis {
 
 /// SATD analysis results
 #[derive(Debug)]
+#[allow(dead_code)] // Reserved for SATD analysis
 struct SatdAnalysis {
     satd_comments: Vec<SatdComment>,
     total_satd_count: usize,
@@ -748,6 +757,7 @@ struct SatdAnalysis {
 
 /// Coverage analysis results
 #[derive(Debug)]
+#[allow(dead_code)] // Reserved for coverage analysis
 struct CoverageAnalysis {
     overall_coverage_percent: f64,
     files_with_low_coverage: Vec<PathBuf>,
@@ -756,6 +766,7 @@ struct CoverageAnalysis {
 
 /// Individual complexity violation
 #[derive(Debug, Clone)]
+#[allow(dead_code)] // Reserved for complexity violations
 struct ComplexityViolation {
     file: PathBuf,
     function_name: String,
@@ -766,6 +777,7 @@ struct ComplexityViolation {
 
 /// Individual SATD comment
 #[derive(Debug, Clone)]
+#[allow(dead_code)] // Reserved for SATD analysis output
 struct SatdComment {
     file: PathBuf,
     line_number: u32,
@@ -775,6 +787,7 @@ struct SatdComment {
 
 /// Uncovered code line
 #[derive(Debug, Clone)]
+#[allow(dead_code)] // Reserved for coverage analysis output
 struct UncoveredLine {
     file: PathBuf,
     line_number: u32,
@@ -783,6 +796,7 @@ struct UncoveredLine {
 
 /// Individual refactoring request
 #[derive(Debug, Clone)]
+#[allow(dead_code)] // Reserved for refactoring request generation
 struct RefactoringRequest {
     request_type: RefactoringType,
     target_file: PathBuf,
@@ -794,6 +808,7 @@ struct RefactoringRequest {
 
 /// Types of refactoring requests
 #[derive(Debug, Clone)]
+#[allow(dead_code)] // Used by RefactoringRequest
 enum RefactoringType {
     ComplexityReduction,
     LintFix,
@@ -804,6 +819,7 @@ enum RefactoringType {
 
 /// Refactoring priority levels
 #[derive(Debug, Clone)]
+#[allow(dead_code)] // Used by RefactoringRequest
 enum RefactoringPriority {
     Critical,
     High,
@@ -813,6 +829,7 @@ enum RefactoringPriority {
 
 /// Refactoring effort estimation
 #[derive(Debug, Clone)]
+#[allow(dead_code)] // Used by RefactoringRequest
 enum RefactoringEffort {
     Trivial,   // < 30 minutes
     Minor,     // 30 minutes - 2 hours

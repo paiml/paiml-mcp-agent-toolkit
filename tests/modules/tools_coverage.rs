@@ -2,7 +2,7 @@
 //! Target: Increase coverage from 18% to 80%+
 
 use pmat::handlers::tools::*;
-use pmat::models::mcp::{McpRequest, McpResponse, ToolCallParams};
+use pmat::models::mcp::McpRequest;
 use pmat::stateless_server::StatelessTemplateServer;
 use serde_json::json;
 use std::sync::Arc;

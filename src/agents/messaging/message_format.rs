@@ -456,7 +456,7 @@ mod coverage_tests {
     fn test_binary_protocol_decode_unsupported_version() {
         // Create valid-looking message but with wrong version
         let msg = AgentMessage::new(Uuid::new_v4(), Uuid::new_v4(), "test").unwrap();
-        let mut encoded = BinaryProtocol::encode(&msg).unwrap();
+        let encoded = BinaryProtocol::encode(&msg).unwrap();
 
         // Modify the encoded bytes to have wrong version
         let mut bytes = encoded.to_vec();

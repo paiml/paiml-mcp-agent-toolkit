@@ -266,14 +266,14 @@ dependencies = [
  "rmp-serde",
  "serde",
  "serde_json",
- "trueno",
+ "trueno 0.11.0",
 ]
 
 [[package]]
 name = "aprender"
-version = "0.24.0"
+version = "0.24.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d1140494fee114ac8ae686c8d4e0d859b421c8e082e7a8c4a3f67d0e3f9e2754"
+checksum = "cbdcccadf867c37e6538dd179da518f4a9e55eb9efabcaec01323c3a12239e34"
 dependencies = [
  "bincode",
  "dirs 6.0.0",
@@ -289,7 +289,7 @@ dependencies = [
  "rmp-serde",
  "serde",
  "serde_json",
- "trueno",
+ "trueno 0.13.0",
 ]
 
 [[package]]
@@ -2496,7 +2496,7 @@ dependencies = [
  "thiserror 2.0.17",
  "tokio",
  "toml 0.8.23",
- "trueno",
+ "trueno 0.11.0",
  "trueno-rag",
  "trueno-viz",
  "uuid",
@@ -3544,6 +3544,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cc627f471c528ff0c4a49e1d5e60450c8f6461dd6d10ba9dcd3a61d3dff7728d"
 dependencies = [
  "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "hostname"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "617aaa3557aef3810a6369d0a99fac8a080891b68bd9f9812a1eeda0c0730cbd"
+dependencies = [
+ "cfg-if",
+ "libc",
+ "windows-link 0.2.1",
 ]
 
 [[package]]
@@ -5693,7 +5704,7 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-subscriber",
- "trueno",
+ "trueno 0.11.0",
  "trueno-db",
  "trueno-graph",
  "trueno-rag",
@@ -6024,12 +6035,12 @@ dependencies = [
 
 [[package]]
 name = "pmat"
-version = "2.213.16"
+version = "2.213.17"
 dependencies = [
  "actix",
  "actix-rt",
  "anyhow",
- "aprender 0.24.0",
+ "aprender 0.24.1",
  "arrow 53.4.1",
  "assert_cmd",
  "async-raft",
@@ -6137,7 +6148,7 @@ dependencies = [
  "tree-sitter-python",
  "tree-sitter-rust",
  "tree-sitter-typescript",
- "trueno",
+ "trueno 0.14.0",
  "trueno-db",
  "trueno-graph",
  "trueno-rag",
@@ -6363,7 +6374,7 @@ dependencies = [
  "jugar-probar",
  "serde",
  "serde_json",
- "trueno",
+ "trueno 0.11.0",
 ]
 
 [[package]]
@@ -7195,7 +7206,7 @@ checksum = "b72fd8633eb5e0519b9803d0d13529e192c6488a200ab9420b361db4e5a5fcb7"
 dependencies = [
  "alimentar",
  "anyhow",
- "aprender 0.24.0",
+ "aprender 0.24.1",
  "axum",
  "chrono",
  "clap",
@@ -7242,7 +7253,7 @@ dependencies = [
  "tower 0.4.13",
  "tower-http 0.5.2",
  "tracing",
- "trueno",
+ "trueno 0.11.0",
  "trueno-viz",
  "uuid",
  "walkdir",
@@ -9056,19 +9067,51 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4a0756605a19a0b79f5dca9b61fba7e428c497abe9ebeac2ef91b39d90b6da91"
 dependencies = [
  "anyhow",
+ "num_cpus",
+ "thiserror 2.0.17",
+]
+
+[[package]]
+name = "trueno"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5ba5457f1f184520c46e6b315d540baa4cf2a2ae3d047e13001a4a23a12c6ab8"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "hostname",
+ "num_cpus",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.17",
+ "toml 0.8.23",
+]
+
+[[package]]
+name = "trueno"
+version = "0.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f3c9d1ede5124b7f57a8fe25cec3e92cf518f1ab5156c05d6aa321eb7df0f0b4"
+dependencies = [
+ "anyhow",
  "bytemuck",
+ "chrono",
  "futures-intrusive",
+ "hostname",
  "num_cpus",
  "pollster 0.4.0",
+ "serde",
+ "serde_json",
  "thiserror 2.0.17",
+ "toml 0.8.23",
  "wgpu 27.0.1",
 ]
 
 [[package]]
 name = "trueno-db"
-version = "0.3.10"
+version = "0.3.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6d1de0bf5374f7182a12c738306c9db5a29586dd503e9a011a668d51931a5197"
+checksum = "eac277fdd3ea8f1069100c8520cd00a67e45f96206091e406163cc84ba1daf11"
 dependencies = [
  "anyhow",
  "arrow 54.2.1",
@@ -9089,7 +9132,7 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-subscriber",
- "trueno",
+ "trueno 0.13.0",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
@@ -9098,47 +9141,47 @@ dependencies = [
 
 [[package]]
 name = "trueno-graph"
-version = "0.1.10"
+version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e07e274af11d46f8e671603b99949c8b7081351aac5f64e143c74282d8b1875c"
+checksum = "8452d1f48b34efe708bb67d57957059477999007709ddaf82ce1f78a7f8bbacf"
 dependencies = [
  "anyhow",
- "aprender 0.24.0",
+ "aprender 0.24.1",
  "arrow 54.2.1",
  "parquet",
  "thiserror 2.0.17",
  "tokio",
- "trueno",
+ "trueno 0.13.0",
  "trueno-db",
 ]
 
 [[package]]
 name = "trueno-rag"
-version = "0.1.8"
+version = "0.1.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "933df81789ab330d5caf12f8d59dfb512ae9e5db7665a35ef9ff34722cf3730d"
+checksum = "bdbd4b8b5202a6902d7181d5017094f886876e6ddf4f4e6caee6febf59871ba2"
 dependencies = [
  "async-trait",
  "serde",
  "serde_json",
  "thiserror 2.0.17",
  "tokio",
- "trueno",
+ "trueno 0.13.0",
  "trueno-db",
  "uuid",
 ]
 
 [[package]]
 name = "trueno-viz"
-version = "0.1.17"
+version = "0.1.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f29b6256e9da1b78f75ec6ee44d17da9776326068c3416289b57864090eabe13"
+checksum = "d2cd289f7b15c454eba71083d18e4193f9e3488e384030751d091fec56acc5a7"
 dependencies = [
  "base64 0.22.1",
  "libc",
  "png 0.17.16",
  "thiserror 2.0.17",
- "trueno",
+ "trueno 0.13.0",
  "trueno-graph",
 ]
 

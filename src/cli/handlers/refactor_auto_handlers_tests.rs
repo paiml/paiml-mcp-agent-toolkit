@@ -1,5 +1,5 @@
-//\! Tests for refactor auto handlers
-//\! Extracted for file health compliance (CB-040)
+// Tests for refactor auto handlers
+// Extracted for file health compliance (CB-040)
 
 use super::*;
 

@@ -16,6 +16,10 @@ use std::path::{Path, PathBuf};
 // Quality handlers extracted to work_quality_handlers.rs for file health compliance (CB-040)
 pub use super::work_quality_handlers::{run_popper_falsification, run_quality_gates, FalsificationResult};
 
+// Work Contract and Falsification (PMAT Work Contract specification)
+use super::work_contract::{FileManifest, WorkContract};
+use super::work_falsification::{capture_baseline, run_falsification_tests};
+
 /// Handle work init command
 pub async fn handle_work_init(
     github_repo: Option<String>,
@@ -208,6 +212,60 @@ pub async fn handle_work_start(
     service.save(&roadmap)?;
 
     println!("✅ Updated roadmap: {}", roadmap_path.display());
+
+    // === WORK CONTRACT: Capture immutable baseline ===
+    println!();
+    println!("📋 Creating Work Contract (Popperian Falsification)...");
+
+    // Get current git commit as baseline
+    let baseline_commit = std::process::Command::new("git")
+        .args(["rev-parse", "HEAD"])
+        .current_dir(&project_path)
+        .output()
+        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+        .unwrap_or_else(|_| "unknown".to_string());
+
+    // Create work contract
+    let mut contract = WorkContract::new(item.id.clone(), baseline_commit.clone());
+
+    // Capture baseline metrics
+    match capture_baseline(&project_path).await {
+        Ok((tdg, coverage, rust_score)) => {
+            contract.baseline_tdg = tdg;
+            contract.baseline_coverage = coverage;
+            contract.baseline_rust_score = rust_score;
+        }
+        Err(e) => {
+            println!("   ⚠️  Could not capture baseline metrics: {}", e);
+        }
+    }
+
+    // Build file manifest for anti-gaming detection
+    println!("   📂 Building file manifest...");
+    match FileManifest::build(&project_path) {
+        Ok(manifest) => {
+            let file_count = manifest.files.len();
+            let protected_count = manifest.coverage_required.len();
+            contract.baseline_file_manifest = manifest;
+            println!(
+                "      ✅ {} files tracked, {} protected from exclusion",
+                file_count, protected_count
+            );
+        }
+        Err(e) => {
+            println!("   ⚠️  Could not build file manifest: {}", e);
+        }
+    }
+
+    // Save contract
+    match contract.save(&project_path) {
+        Ok(contract_path) => {
+            println!("   ✅ Contract saved: {}", contract_path.display());
+        }
+        Err(e) => {
+            println!("   ⚠️  Could not save contract: {}", e);
+        }
+    }
 
     // Create specification if requested
     if with_spec {
@@ -425,14 +483,34 @@ async fn capture_rust_project_score(project_path: &PathBuf) -> Result<f64> {
 }
 
 /// Handle work complete command
+///
+/// Popperian Falsification Protocol:
+/// - Quality gates can be skipped (--skip-quality)
+/// - Falsification ALWAYS runs (cannot be skipped)
+/// - Overrides require accountability (--override-claims + --ticket)
 pub async fn handle_work_complete(
     id: String,
     skip_quality: bool,
+    override_claims: Option<Vec<String>>,
+    ticket: Option<String>,
     path: Option<PathBuf>,
 ) -> Result<()> {
     let project_path = path.unwrap_or_else(|| PathBuf::from("."));
     let roadmap_path = project_path.join("docs/roadmaps/roadmap.yaml");
     let service = RoadmapService::new(&roadmap_path);
+
+    // === POPPERIAN ACCOUNTABILITY: Validate override has ticket ===
+    if override_claims.is_some() && ticket.is_none() {
+        anyhow::bail!(
+            "Error: --ticket is mandatory for overrides.\n\n\
+             Popperian Principle: Every override must be accountable.\n\
+             Create a debt ticket first:\n\
+             1. pmat comply upgrade --target popperian\n\
+             2. Or manually create .pmat-tickets/DEBT-XXX.yaml\n\n\
+             Then retry with: pmat work complete {} --override-claims <claims> --ticket <TICKET-ID>",
+            id
+        );
+    }
 
     println!("✅ Completing work on: {}", id);
     println!();
@@ -464,25 +542,149 @@ pub async fn handle_work_complete(
                 println!();
             }
         }
+    } else {
+        println!("⚠️  Quality gates SKIPPED (--skip-quality)");
+        println!();
+    }
 
-        // Run Karl Popper falsification validation
-        match run_popper_falsification(&project_path).await {
-            Ok(falsification) => {
-                if !falsification.passed {
-                    println!("⚠️  Falsification issues detected:");
-                    println!("   {}", falsification.summary);
-                    println!();
-                    println!("   This is a warning - work will still be marked complete.");
-                    println!("   Consider addressing these issues for higher confidence.");
-                    println!();
+    // === WORK CONTRACT: Run Popperian Falsification (ALWAYS RUNS - CANNOT BE SKIPPED) ===
+    if WorkContract::exists(&project_path, &item.id) {
+        println!("📜 Loading Work Contract...");
+
+        match WorkContract::load(&project_path, &item.id) {
+            Ok(contract) => {
+                println!(
+                    "   Baseline: {} (TDG: {:.1}, Coverage: {:.1}%)",
+                    &contract.baseline_commit[..8.min(contract.baseline_commit.len())],
+                    contract.baseline_tdg,
+                    contract.baseline_coverage
+                );
+
+                // Run ALL falsification tests
+                match run_falsification_tests(&project_path, &contract).await {
+                    Ok(report) => {
+                        println!();
+
+                        // Check for overrides with valid ticket
+                        let overrides = override_claims.as_ref();
+                        let ticket_id = ticket.as_ref();
+
+                        if report.has_blocking_failures() {
+                            let failures = report.blocking_failures();
+
+                            // Check if all failures are overridden
+                            let mut unoverrideable_failures = Vec::new();
+                            for failure in &failures {
+                                let claim_name = claim_to_override_name(&failure.hypothesis);
+                                if let Some(overrides) = overrides {
+                                    if !overrides.iter().any(|o| o.to_lowercase() == claim_name.to_lowercase()) {
+                                        unoverrideable_failures.push(failure);
+                                    }
+                                } else {
+                                    unoverrideable_failures.push(failure);
+                                }
+                            }
+
+                            if unoverrideable_failures.is_empty() && ticket_id.is_some() {
+                                // All failures are overridden with a valid ticket
+                                println!(
+                                    "⚠️  FALSIFICATION RESULT: OVERRIDDEN ({} claim(s) overridden with ticket {})",
+                                    failures.len(),
+                                    ticket_id.unwrap()
+                                );
+                                println!();
+                                println!("Overridden claims:");
+                                for failure in &failures {
+                                    println!(
+                                        "  - [{}] {}: {} (OVERRIDDEN)",
+                                        failure.index, failure.hypothesis, failure.result.explanation
+                                    );
+                                }
+                                println!();
+                                println!("⚠️  WARNING: Technical debt incurred. Track with ticket: {}", ticket_id.unwrap());
+                                println!();
+                            } else {
+                                println!(
+                                    "❌ FALSIFICATION RESULT: BLOCKED ({} failure(s), {} warning(s))",
+                                    report.failed, report.warnings
+                                );
+                                println!();
+                                println!("Failures (must fix):");
+                                for failure in &unoverrideable_failures {
+                                    println!(
+                                        "  - [{}] {}: {}",
+                                        failure.index, failure.hypothesis, failure.result.explanation
+                                    );
+                                }
+
+                                if !report.warning_failures().is_empty() {
+                                    println!();
+                                    println!("Warnings (should fix):");
+                                    for warning in report.warning_failures() {
+                                        println!(
+                                            "  - [{}] {}: {}",
+                                            warning.index, warning.hypothesis, warning.result.explanation
+                                        );
+                                    }
+                                }
+
+                                println!();
+                                println!("Fix issues and retry: pmat work complete {}", id);
+                                println!();
+                                println!("Or override with accountability (Popperian Protocol):");
+                                println!("  1. Create debt ticket: pmat comply upgrade --target popperian");
+                                println!("  2. pmat work complete {} --override-claims coverage,complexity --ticket DEBT-XXX", id);
+
+                                anyhow::bail!(
+                                    "Work blocked: {} falsification(s) found. Fix issues or use --override-claims with --ticket.",
+                                    unoverrideable_failures.len()
+                                );
+                            }
+                        } else {
+                            println!(
+                                "✅ FALSIFICATION RESULT: PASSED ({}/{} claims validated)",
+                                report.passed, report.total_claims
+                            );
+
+                            if !report.warning_failures().is_empty() {
+                                println!();
+                                println!("Warnings (non-blocking):");
+                                for warning in report.warning_failures() {
+                                    println!(
+                                        "  - [{}] {}: {}",
+                                        warning.index, warning.hypothesis, warning.result.explanation
+                                    );
+                                }
+                            }
+                            println!();
+                        }
+                    }
+                    Err(e) => {
+                        println!("⚠️  Falsification error: {}", e);
+                        println!("   Continuing with legacy validation...");
+                        println!();
+
+                        // Fall back to legacy validation
+                        run_legacy_falsification(&project_path).await?;
+                    }
                 }
             }
             Err(e) => {
-                println!("⚠️  Falsification validation error: {}", e);
-                println!("   Continuing with completion...");
+                println!("⚠️  Could not load contract: {}", e);
+                println!("   Falling back to legacy validation...");
                 println!();
+
+                // Fall back to legacy validation
+                run_legacy_falsification(&project_path).await?;
             }
         }
+    } else {
+        println!("ℹ️  No work contract found (legacy mode)");
+        println!("   Run 'pmat work start {}' to create a contract for future work", id);
+        println!();
+
+        // Fall back to legacy validation
+        run_legacy_falsification(&project_path).await?;
     }
 
     // Mark as completed
@@ -1035,5 +1237,71 @@ pub struct Example {{
     );
 
     fs::write(spec_path, template)?;
+    Ok(())
+}
+
+/// Convert hypothesis text to CLI-friendly override name
+///
+/// Maps the verbose hypothesis strings from FalsifiableClaim to short,
+/// CLI-friendly names that users can specify with --override-claims.
+fn claim_to_override_name(hypothesis: &str) -> String {
+    let hypothesis_lower = hypothesis.to_lowercase();
+
+    // Map hypothesis patterns to CLI names
+    if hypothesis_lower.contains("manifest") || hypothesis_lower.contains("files deleted") {
+        "manifest".to_string()
+    } else if hypothesis_lower.contains("meta-falsification") || hypothesis_lower.contains("falsification system") {
+        "meta-falsification".to_string()
+    } else if hypothesis_lower.contains("coverage gaming") || hypothesis_lower.contains("cfg(not(coverage))") {
+        "coverage-gaming".to_string()
+    } else if hypothesis_lower.contains("differential coverage") || hypothesis_lower.contains("new code") {
+        "differential-coverage".to_string()
+    } else if hypothesis_lower.contains("absolute coverage") || hypothesis_lower.contains("coverage does not decrease") {
+        "coverage".to_string()
+    } else if hypothesis_lower.contains("tdg") || hypothesis_lower.contains("test-driven grade") {
+        "tdg".to_string()
+    } else if hypothesis_lower.contains("complexity") || hypothesis_lower.contains("cyclomatic") {
+        "complexity".to_string()
+    } else if hypothesis_lower.contains("supply chain") || hypothesis_lower.contains("dependencies") {
+        "supply-chain".to_string()
+    } else if hypothesis_lower.contains("file size") || hypothesis_lower.contains("500 lines") {
+        "file-size".to_string()
+    } else if hypothesis_lower.contains("spec") || hypothesis_lower.contains("specification") {
+        "spec-quality".to_string()
+    } else if hypothesis_lower.contains("github") || hypothesis_lower.contains("sync") || hypothesis_lower.contains("changes pushed") || hypothesis_lower.contains("uncommitted") {
+        "github-sync".to_string()
+    } else if hypothesis_lower.contains("examples") || hypothesis_lower.contains("compile") {
+        "examples".to_string()
+    } else if hypothesis_lower.contains("book") || hypothesis_lower.contains("pmat-book") {
+        "book".to_string()
+    } else {
+        // Unknown claim - use a sanitized version of the hypothesis
+        hypothesis_lower
+            .chars()
+            .filter(|c| c.is_alphanumeric() || *c == '-' || *c == '_')
+            .take(30)
+            .collect()
+    }
+}
+
+/// Run legacy falsification validation (warnings only, for backward compatibility)
+async fn run_legacy_falsification(project_path: &PathBuf) -> Result<()> {
+    match run_popper_falsification(project_path).await {
+        Ok(falsification) => {
+            if !falsification.passed {
+                println!("⚠️  Falsification issues detected:");
+                println!("   {}", falsification.summary);
+                println!();
+                println!("   This is a warning - work will still be marked complete.");
+                println!("   Consider addressing these issues for higher confidence.");
+                println!();
+            }
+        }
+        Err(e) => {
+            println!("⚠️  Falsification validation error: {}", e);
+            println!("   Continuing with completion...");
+            println!();
+        }
+    }
     Ok(())
 }

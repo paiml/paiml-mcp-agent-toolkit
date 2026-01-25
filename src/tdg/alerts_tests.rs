@@ -1,5 +1,5 @@
-//\! Tests for TDG alerts
-//\! Extracted to separate file for file health compliance (CB-040)
+// Tests for TDG alerts
+// Extracted to separate file for file health compliance (CB-040)
 
 use super::*;
 

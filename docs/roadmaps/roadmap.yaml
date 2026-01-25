@@ -1174,3 +1174,23 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: PMAT-458
+  github_issue: null
+  item_type: task
+  title: 'PMAT Work Contract: Popperian Falsification-Based Quality Enforcement'
+  status: completed
+  priority: critical
+  assigned_to: null
+  created: 2026-01-25T13:30:15Z
+  updated: 2026-01-25T13:44:21.433061787+00:00
+  spec: null
+  acceptance_criteria:
+  - Implement work contract system with immutable baseline, 9 falsifiable claims, anti-gaming detection
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - quality
+  - falsification
+  - contract
+  notes: null

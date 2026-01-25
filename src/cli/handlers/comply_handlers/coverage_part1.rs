@@ -5,8 +5,6 @@ use super::super::*;
 use std::fs;
 use tempfile::TempDir;
 
-    use tempfile::TempDir;
-
     // Test Fixture Helpers
 
     /// Create a temporary directory with basic PMAT structure

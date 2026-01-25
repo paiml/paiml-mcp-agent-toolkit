@@ -1,5 +1,5 @@
-//\! Tests for CLI adapter
-//\! Extracted for file health compliance (CB-040)
+// Tests for CLI adapter
+// Extracted for file health compliance (CB-040)
 
 use super::*;
 

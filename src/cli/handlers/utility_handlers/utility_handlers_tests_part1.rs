@@ -1,6 +1,7 @@
 //! Utility handlers tests - Part 1: Basic and property tests
 //! Extracted for file health compliance (CB-040)
 
+#[allow(unused_imports)]
 use super::*;
 
 mod tests {

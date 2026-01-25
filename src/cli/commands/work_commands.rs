@@ -159,9 +159,19 @@ pub enum WorkCommands {
         /// Issue number or ticket ID
         id: String,
 
-        /// Skip quality gates (not recommended)
+        /// Skip quality gates (not recommended, falsification still runs)
         #[arg(long)]
         skip_quality: bool,
+
+        /// Override specific falsification claims (requires --ticket)
+        /// Use claim names like: coverage, complexity, file-size, github-sync
+        #[arg(long, value_delimiter = ',')]
+        override_claims: Option<Vec<String>>,
+
+        /// Ticket ID for override accountability (MANDATORY with --override-claims)
+        /// Must reference a valid debt ticket (e.g., DEBT-COV-20240115)
+        #[arg(long)]
+        ticket: Option<String>,
 
         /// Project path (default: current directory)
         #[arg(short, long)]

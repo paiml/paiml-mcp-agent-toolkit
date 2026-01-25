@@ -1,5 +1,5 @@
-//\! Tests for graph metrics analysis
-//\! Extracted for file health compliance (CB-040)
+// Tests for graph metrics analysis
+// Extracted for file health compliance (CB-040)
 
 use super::*;
 

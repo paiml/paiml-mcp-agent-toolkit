@@ -1695,7 +1695,7 @@ async fn route_semantic_analysis(cmd: AnalyzeCommands) -> Result<()> {
     }
 }
 
-// Tests extracted to analysis_handlers_tests.rs for file health compliance (CB-040)
+// Tests re-unified via Operation Logical Atomism
 #[cfg(test)]
 #[path = "analysis_handlers_tests.rs"]
 mod tests;

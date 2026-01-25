@@ -1,5 +1,5 @@
-//\! Tests for similarity handler
-//\! Extracted for file health compliance (CB-040)
+// Tests for similarity handler
+// Extracted for file health compliance (CB-040)
 
 use super::*;
 

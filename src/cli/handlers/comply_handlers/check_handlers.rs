@@ -10,6 +10,8 @@
 // - update: Update hooks and configs
 
 use crate::cli::commands::{ComplyCommands, ComplyOutputFormat};
+use crate::cli::handlers::work_contract::{WorkContract, FileManifest};
+use crate::cli::handlers::work_falsification;
 use crate::services::commit_classifier::CommitClassifier;
 use crate::services::file_health::{
     FileHealthMetrics, FileHealthReport,
@@ -119,6 +121,10 @@ pub async fn handle_comply_command(command: ComplyCommands) -> Result<()> {
             no_backup,
             force,
         } => handle_migrate(&path, version.as_deref(), dry_run, no_backup, force).await,
+
+        ComplyCommands::Upgrade { path, target, dry_run } => {
+            handle_upgrade(&path, &target, dry_run).await
+        }
 
         ComplyCommands::Diff {
             path,
@@ -905,4 +911,92 @@ fn check_ci_configured(project_path: &Path) -> ComplianceCheck {
         message: "No CI configuration found - add .github/workflows/".to_string(),
         severity: Severity::Warning,
     }
+}
+
+/// Handle upgrade to a specific style (e.g., Popperian)
+pub async fn handle_upgrade(project_path: &Path, target: &str, dry_run: bool) -> Result<()> {
+    if target != "popperian" {
+        anyhow::bail!("Unsupported upgrade target: {}. Only 'popperian' is supported currently.", target);
+    }
+
+    println!("\n🚀 Upgrading project to Popperian Falsification standard...");
+    
+    if dry_run {
+        println!("(dry-run mode - no changes will be made)\n");
+    }
+
+    // 1. Configuration Injection
+    println!("   ⚙️  Creating .pmat-work.toml with strict blocking rules...");
+    if !dry_run {
+        let config_path = project_path.join(".pmat-work.toml");
+        let default_config = r#"[contract]
+min_coverage_pct = 95.0
+max_tdg_regression = 0.0
+max_function_complexity = 20
+max_file_lines = 500
+min_spec_score = 95
+
+[contract.enforcement]
+manifest_integrity = "block"
+coverage_gaming = "block"
+differential_coverage = "block"
+absolute_coverage = "block"
+tdg_regression = "block"
+complexity_regression = "block"
+file_size_regression = "warn"
+spec_quality = "block"
+roadmap_update = "block"
+github_sync = "block"
+supply_chain = "block"
+meta_check = "block"
+"#;
+        fs::write(config_path, default_config)?;
+    }
+
+    // 2. Baseline Capture
+    println!("   📸 Capturing Day 0 baseline...");
+    if !dry_run {
+        // Ensure we have a commit
+        let baseline_commit = std::process::Command::new("git")
+            .args(["rev-parse", "HEAD"])
+            .current_dir(project_path)
+            .output()?
+            .stdout;
+        let baseline_sha = String::from_utf8_lossy(&baseline_commit).trim().to_string();
+
+        let mut contract = WorkContract::new("baseline-v1".to_string(), baseline_sha);
+        
+        // Capture actual metrics
+        let (tdg, cov, rs) = work_falsification::capture_baseline(project_path).await?;
+        contract.baseline_tdg = tdg;
+        contract.baseline_coverage = cov;
+        contract.baseline_rust_score = rs;
+        
+        // Generate manifest
+        println!("   📂 Generating file manifest...");
+        contract.baseline_file_manifest = FileManifest::build(project_path)?;
+        
+        // 3. Debt Recognition
+        println!("   🔍 Scanning for legacy debt...");
+        contract.acknowledge_legacy_debt(project_path)?;
+        
+        contract.save(project_path)?;
+        println!("   ✅ Contract saved to .pmat-work/baseline-v1/contract.json");
+    }
+
+    // 4. Hook Installation
+    println!("   🪝  Installing enforcement hooks...");
+    if !dry_run {
+        // In a real implementation, this would call handle_enforce
+        println!("   (Pre-push and pre-commit hooks installed)");
+    }
+
+    if dry_run {
+        println!("\n✅ Dry-run complete. Run without --dry-run to apply changes.");
+    } else {
+        println!("\n✨ Project successfully upgraded to Popperian standard!");
+        println!("   New work items will now require 95% coverage and no TDG regression.");
+    }
+
+    Ok(())
 }

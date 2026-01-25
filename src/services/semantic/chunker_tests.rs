@@ -1,5 +1,5 @@
-//\! Tests for semantic chunker
-//\! Extracted for file health compliance (CB-040)
+// Tests for semantic chunker
+// Extracted for file health compliance (CB-040)
 
 use super::*;
 

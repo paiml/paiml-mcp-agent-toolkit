@@ -6,7 +6,8 @@
 //! - SIMD should be 2-8x faster than scalar for large vectors
 //! - Speedup increases with vector size due to better cache utilization
 
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
+use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
+use std::hint::black_box;
 
 /// Scalar implementation of cosine similarity
 fn cosine_similarity_scalar(v1: &[f64], v2: &[f64]) -> f64 {

@@ -14,6 +14,7 @@ use std::path::{Path, PathBuf};
 
 /// Represents a Claude Code Skill with YAML frontmatter
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 struct ClaudeSkill {
     name: String,
     description: String,

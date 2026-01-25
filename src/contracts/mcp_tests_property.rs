@@ -16,5 +16,4 @@ mod property_tests {
     }
 }
 
-/// NOTE: Temporarily disabled due to private type access issues
-#[cfg(all(test, feature = "broken-tests"))]
+// NOTE: Additional tests temporarily disabled due to private type access issues

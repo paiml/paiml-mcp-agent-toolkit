@@ -842,6 +842,7 @@ fn create_unified_node(
 }
 
 /// Extension trait for UnifiedNode in test context
+#[allow(dead_code)]
 trait UnifiedNodeExt {
     /// Add a reference to another node (helper method for tests)
     fn add_reference(

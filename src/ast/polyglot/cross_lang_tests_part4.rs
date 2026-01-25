@@ -510,4 +510,3 @@
         assert_eq!(dep.kind, deserialized.kind);
         assert!((dep.confidence - deserialized.confidence).abs() < f64::EPSILON);
     }
-}

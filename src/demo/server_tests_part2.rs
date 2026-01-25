@@ -1,6 +1,7 @@
 //! Server tests part 2 - Demo feature tests (serve_* handlers)
 //! Extracted for file health compliance (CB-040)
 
+#[allow(unused_imports)]
 use super::*;
 
 // =============================================================================

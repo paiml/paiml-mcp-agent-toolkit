@@ -1,5 +1,5 @@
-//\! Tests for refactor handlers
-//\! Extracted to separate file for file health compliance (CB-040)
+// Tests for refactor handlers
+// Extracted to separate file for file health compliance (CB-040)
 
 use super::*;
 use proptest::prelude::*;

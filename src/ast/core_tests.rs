@@ -1,5 +1,5 @@
-//\! Tests for AST core
-//\! Extracted for file health compliance (CB-040)
+// Tests for AST core
+// Extracted for file health compliance (CB-040)
 
 use super::*;
 

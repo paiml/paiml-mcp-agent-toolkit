@@ -1,7 +1,9 @@
 //! Simple service tests - Part 4
 //! Output format coverage, edge case, and property-based tests
 
+#[allow(unused_imports)]
 use super::simple_service_tests_part1::{create_temp_dir, create_temp_file};
+#[allow(unused_imports)]
 use super::*;
 use std::path::PathBuf;
 

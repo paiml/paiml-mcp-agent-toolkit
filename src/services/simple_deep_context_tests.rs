@@ -1,5 +1,5 @@
-//\! Tests for simple deep context
-//\! Extracted for file health compliance (CB-040)
+// Tests for simple deep context
+// Extracted for file health compliance (CB-040)
 
 use super::*;
 

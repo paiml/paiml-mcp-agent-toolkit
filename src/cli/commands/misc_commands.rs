@@ -224,6 +224,21 @@ pub enum ComplyCommands {
         force: bool,
     },
 
+    /// Upgrade project to a specific quality enforcement style (e.g., Popperian)
+    Upgrade {
+        /// Project path (defaults to current directory)
+        #[arg(short = 'p', long = "path", default_value = ".")]
+        path: PathBuf,
+
+        /// Target style (e.g., "popperian")
+        #[arg(short = 't', long = "target", default_value = "popperian")]
+        target: String,
+
+        /// Dry run (show what would be upgraded)
+        #[arg(long)]
+        dry_run: bool,
+    },
+
     /// Show changelog since project's PMAT version
     Diff {
         /// Project path (defaults to current directory)

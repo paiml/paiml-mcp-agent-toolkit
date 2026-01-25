@@ -884,6 +884,8 @@ mod coverage_tests {
         let command = WorkCommands::Complete {
             id: "123".to_string(),
             skip_quality: true,
+            override_claims: None,
+            ticket: None,
             path: Some(temp_dir.path().to_path_buf()),
         };
 

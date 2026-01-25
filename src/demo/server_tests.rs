@@ -19,4 +19,5 @@ mod server_tests_part3;
 mod server_tests_part4;
 
 // Re-export test helpers for use across parts
+#[allow(unused_imports)]
 pub use server_tests_part1::{create_test_dag, create_test_demo_content, create_test_hotspots};

@@ -1,12 +1,8 @@
-//\! Tests for cross language dependencies
-//\! Extracted for file health compliance (CB-040)
+// Tests for cross language dependencies
+// Extracted for file health compliance (CB-040)
 
-use super::*;
-
-mod tests {
-    use super::*;
-    use crate::ast::polyglot::unified_node::SourcePosition;
-    use std::path::PathBuf;
+use crate::ast::polyglot::unified_node::SourcePosition;
+use std::path::PathBuf;
 
     fn create_test_node(
         id: &str,

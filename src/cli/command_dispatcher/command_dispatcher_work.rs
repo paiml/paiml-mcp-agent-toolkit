@@ -43,8 +43,19 @@ impl CommandDispatcher {
             WorkCommands::Complete {
                 id,
                 skip_quality,
+                override_claims,
+                ticket,
                 path,
-            } => work_handlers::handle_work_complete(id.clone(), *skip_quality, path.clone()).await,
+            } => {
+                work_handlers::handle_work_complete(
+                    id.clone(),
+                    *skip_quality,
+                    override_claims.clone(),
+                    ticket.clone(),
+                    path.clone(),
+                )
+                .await
+            }
             WorkCommands::Status { id, path, active } => {
                 work_handlers::handle_work_status(id.clone(), path.clone(), *active).await
             }

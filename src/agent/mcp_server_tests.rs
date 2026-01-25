@@ -1,5 +1,5 @@
-//\! Tests for MCP server
-//\! Extracted for file health compliance (CB-040)
+// Tests for MCP server
+// Extracted for file health compliance (CB-040)
 
 use super::*;
 

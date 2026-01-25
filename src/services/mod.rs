@@ -261,6 +261,7 @@ pub mod github_client; // Issue #75: GitHub API integration (optional - 255 tran
 pub mod hook_manager; // Issue #75 Phase 6: Git hooks for workflow
 pub mod roadmap_service;
 pub mod telemetry_service; // Issue #75 Phase 7: CHANGELOG automation
+pub mod gaming_detector; // PMAT Work Contract: Anti-gaming detection for coverage metrics
 
 #[cfg(test)]
 mod tests {

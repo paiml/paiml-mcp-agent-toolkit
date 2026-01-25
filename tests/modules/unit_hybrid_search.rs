@@ -167,7 +167,8 @@ async fn test_vector_only_mode_selection() {
 
     // Should not error, just return results based on vector similarity
     let results = engine.search(&query).await.unwrap();
-    // Results length depends on indexed content (Vec::len() always >= 0)
+    // Results length depends on indexed content
+    let _ = results; // Consume the result to avoid unused warning
 }
 
 #[ignore]
@@ -188,7 +189,7 @@ async fn test_vector_search_semantic_matching() {
 
     let results = engine.search(&query).await.unwrap();
     // May or may not find semantic match depending on embedding quality
-    assert!(results.len() >= 0);
+    let _ = results; // Results may or may not be empty
 }
 
 // ============================================================================
@@ -620,7 +621,7 @@ async fn test_special_characters_in_query() {
 
     // Should not crash
     let results = engine.search(&query).await.unwrap();
-    assert!(results.len() >= 0);
+    let _ = results; // Results may be empty or contain matches
 }
 
 #[ignore]

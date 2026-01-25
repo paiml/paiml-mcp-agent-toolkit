@@ -475,4 +475,3 @@ trueno = "0.1"
         assert_eq!(files.len(), 2);
         assert!(files.iter().all(|f| f.extension().unwrap() == "rs"));
     }
-}

@@ -325,6 +325,7 @@ static TRAIT_BLOCK_PATTERN: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"trait\s+\w+[^{]*\{").unwrap());
 
 /// Pattern to detect if line is inside a string literal
+#[allow(dead_code)] // Reserved for future string literal detection
 static STRING_LITERAL_PATTERN: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r#"^\s*(?:let\s+\w+\s*=\s*)?"[^"]*$|^\s*r#*""#).unwrap());
 

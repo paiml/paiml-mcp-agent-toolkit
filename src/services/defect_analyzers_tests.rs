@@ -1,5 +1,5 @@
-//\! Tests for defect analyzers
-//\! Extracted to separate file for file health compliance (CB-040)
+// Tests for defect analyzers
+// Extracted to separate file for file health compliance (CB-040)
 
 use super::*;
 use crate::models::complexity_bound::{BigOClass, ComplexityBound, InputVariable};

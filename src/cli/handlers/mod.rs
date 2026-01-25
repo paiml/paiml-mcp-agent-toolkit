@@ -108,6 +108,8 @@ pub mod utility_handlers;
 pub mod utility_serve_handlers; // Server handlers extracted for file health (CB-040)
 pub mod wasm_handler;
 pub mod wasm_handlers; // Phase 4: Organizational Intelligence Integration
+pub mod work_contract; // PMAT Work Contract: Popperian falsification-based quality enforcement
+pub mod work_falsification; // PMAT Work Contract: Falsification executor
 pub mod work_handlers; // Issue #75: Unified GitHub/YAML workflow // GH-102: Toyota Way QA validation
 pub mod work_quality_handlers; // Quality gates and falsification extracted for file health (CB-040)
 

@@ -1,6 +1,7 @@
 //! Utility handlers tests - Part 4: Comprehensive coverage tests
 //! Extracted for file health compliance (CB-040)
 
+#[allow(unused_imports)]
 use super::*;
 
 /// NOTE: Temporarily disabled due to struct definition mismatches
