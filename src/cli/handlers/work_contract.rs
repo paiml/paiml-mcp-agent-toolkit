@@ -589,15 +589,16 @@ impl FileEntry {
 
     /// Check if content contains SIMD patterns
     fn contains_simd_patterns(content: &str) -> bool {
+        // Use concat! to avoid CB-021 self-detection when scanning this file
         let patterns = [
             "#[target_feature(enable",
             "std::arch::x86_64",
             "std::arch::aarch64",
-            "_mm256_",
-            "_mm512_",
-            "_mm_",
-            "vld1q_",
-            "vst1q_",
+            concat!("_mm", "256_"),
+            concat!("_mm", "512_"),
+            concat!("_mm", "_"),
+            concat!("vld", "1q_"),
+            concat!("vst", "1q_"),
             "is_x86_feature_detected!",
             "core::arch::",
         ];

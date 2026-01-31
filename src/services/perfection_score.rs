@@ -552,20 +552,17 @@ mod tests {
 
     #[test]
     fn test_overall_grade_thresholds() {
-        // Standard academic grading scale (F-A) for 200-point scale
-        assert_eq!(PerfectionScoreResult::calculate_overall_grade(198.0), "A+"); // 194-200
-        assert_eq!(PerfectionScoreResult::calculate_overall_grade(190.0), "A"); // 186-193
-        assert_eq!(PerfectionScoreResult::calculate_overall_grade(182.0), "A-"); // 180-185
-        assert_eq!(PerfectionScoreResult::calculate_overall_grade(176.0), "B+"); // 174-179
-        assert_eq!(PerfectionScoreResult::calculate_overall_grade(170.0), "B"); // 166-173
-        assert_eq!(PerfectionScoreResult::calculate_overall_grade(162.0), "B-"); // 160-165
-        assert_eq!(PerfectionScoreResult::calculate_overall_grade(156.0), "C+"); // 154-159
-        assert_eq!(PerfectionScoreResult::calculate_overall_grade(150.0), "C"); // 146-153
-        assert_eq!(PerfectionScoreResult::calculate_overall_grade(142.0), "C-"); // 140-145
-        assert_eq!(PerfectionScoreResult::calculate_overall_grade(136.0), "D+"); // 134-139
-        assert_eq!(PerfectionScoreResult::calculate_overall_grade(130.0), "D"); // 126-133
-        assert_eq!(PerfectionScoreResult::calculate_overall_grade(122.0), "D-"); // 120-125
-        assert_eq!(PerfectionScoreResult::calculate_overall_grade(100.0), "F"); // 0-119
+        // Normalized percentage grading (score/200 * 100)
+        // 190/200 = 95% → A+, 180/200 = 90% → A, etc.
+        assert_eq!(PerfectionScoreResult::calculate_overall_grade(198.0), "A+"); // 99%
+        assert_eq!(PerfectionScoreResult::calculate_overall_grade(190.0), "A+"); // 95%
+        assert_eq!(PerfectionScoreResult::calculate_overall_grade(184.0), "A");  // 92%
+        assert_eq!(PerfectionScoreResult::calculate_overall_grade(174.0), "A-"); // 87%
+        assert_eq!(PerfectionScoreResult::calculate_overall_grade(164.0), "B+"); // 82%
+        assert_eq!(PerfectionScoreResult::calculate_overall_grade(150.0), "B");  // 75%
+        assert_eq!(PerfectionScoreResult::calculate_overall_grade(130.0), "C");  // 65%
+        assert_eq!(PerfectionScoreResult::calculate_overall_grade(110.0), "D");  // 55%
+        assert_eq!(PerfectionScoreResult::calculate_overall_grade(80.0), "F");   // 40%
     }
 
     #[test]
@@ -584,7 +581,7 @@ mod tests {
 
         // Total: 32 + 21 + 22.5 + 16.25 + 22.5 + 12 + 10.5 + 12.75 = 149.5
         assert!((result.total_score - 149.5).abs() < 0.01);
-        assert_eq!(result.grade, "C"); // 149.5 is in C range (146-153)
+        assert_eq!(result.grade, "B"); // 149.5/200 = 74.75% → B range (70-79%)
     }
 
     #[tokio::test]
@@ -954,20 +951,23 @@ edition = "2021"
 
     #[test]
     fn test_overall_grade_boundary_a_plus() {
-        assert_eq!(PerfectionScoreResult::calculate_overall_grade(194.0), "A+");
+        // 95%+ = A+: 190/200=95%, 200/200=100%
+        assert_eq!(PerfectionScoreResult::calculate_overall_grade(190.0), "A+");
         assert_eq!(PerfectionScoreResult::calculate_overall_grade(200.0), "A+");
     }
 
     #[test]
     fn test_overall_grade_boundary_a() {
-        assert_eq!(PerfectionScoreResult::calculate_overall_grade(186.0), "A");
-        assert_eq!(PerfectionScoreResult::calculate_overall_grade(193.0), "A");
+        // 90-94% = A: 180/200=90%, 188/200=94%
+        assert_eq!(PerfectionScoreResult::calculate_overall_grade(180.0), "A");
+        assert_eq!(PerfectionScoreResult::calculate_overall_grade(188.0), "A");
     }
 
     #[test]
     fn test_overall_grade_boundary_f() {
+        // <50% = F: 0/200=0%, 98/200=49%
         assert_eq!(PerfectionScoreResult::calculate_overall_grade(0.0), "F");
-        assert_eq!(PerfectionScoreResult::calculate_overall_grade(119.0), "F");
+        assert_eq!(PerfectionScoreResult::calculate_overall_grade(98.0), "F");
     }
 
     #[test]

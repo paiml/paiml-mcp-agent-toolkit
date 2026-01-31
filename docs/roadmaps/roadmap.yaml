@@ -1194,3 +1194,57 @@ roadmap:
   - falsification
   - contract
   notes: null
+- id: PMAT-459
+  github_issue: null
+  item_type: task
+  title: 'COMPLY-V2.1: Implement OIP Tarantula Patterns (CB-120 through CB-124)'
+  status: inprogress
+  priority: high
+  assigned_to: null
+  created: 2026-01-31T12:30:42Z
+  updated: 2026-01-31T12:30:46.577718219+00:00
+  spec: null
+  acceptance_criteria:
+  - 'Implement 5 new compliance checks from OIP Tarantula analysis: CB-120 NaN-unsafe comparison, CB-121 lock poisoning, CB-122 serde safety, CB-123 ignored tests, CB-124 coverage threshold. Spec: docs/specifications/improve-pmat-comply.md v2.1.0'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - comply
+  - quality
+  - oip
+  - tarantula
+  notes: null
+- id: 'CB-125,126,127: Coverage gaming and slow test detection'
+  github_issue: null
+  item_type: task
+  title: 'New task: CB-125,126,127: Coverage gaming and slow test detection'
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2026-01-31T18:57:52.121535547+00:00
+  updated: 2026-01-31T18:57:52.121535547+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-460
+  github_issue: null
+  item_type: task
+  title: make coverage MVP
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2026-01-31T22:51:00Z
+  updated: 2026-01-31T22:51:04.498742487+00:00
+  spec: null
+  acceptance_criteria:
+  - Get 'make coverage' working reliably with 95% coverage, no slow tests, maintain A+ comply rating
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null

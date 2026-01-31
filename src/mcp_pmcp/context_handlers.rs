@@ -368,14 +368,19 @@ mod coverage_tests {
     #[tokio::test]
     async fn test_git_status_tool_with_current_dir() {
         let tool = GitStatusTool::new();
-        // Use parent of cargo manifest dir which is the git repo root
-        let manifest_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
-        let git_root = manifest_dir.parent().unwrap_or(manifest_dir);
+        // CARGO_MANIFEST_DIR is the git repo root
+        let git_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+
+        // Skip if not a git repo
+        if !git_root.join(".git").exists() {
+            eprintln!("Skipping: .git not found at {:?}", git_root);
+            return;
+        }
+
         let args = json!({
             "path": git_root.to_str().unwrap()
         });
         let result = tool.handle(args, test_extra()).await;
-        // Parent of CARGO_MANIFEST_DIR should be a git repo
         assert!(
             result.is_ok(),
             "Expected Ok, got Err: {:?}",

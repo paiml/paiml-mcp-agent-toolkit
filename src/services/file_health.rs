@@ -761,15 +761,16 @@ mod tests {
 
     #[test]
     fn test_scan_directory() {
-        // Use the current directory with known patterns
+        // Use CARGO_MANIFEST_DIR for deterministic path
+        let project_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
         let files = scan_directory(
-            Path::new("."),
+            project_dir,
             &["rs"],
             DEFAULT_EXCLUDE_PATTERNS,
         );
 
-        // Should find some Rust files
-        assert!(!files.is_empty() || std::env::current_dir().unwrap().to_string_lossy().contains("target"));
+        // Should find some Rust files in the project
+        assert!(!files.is_empty(), "Should find Rust files in project directory");
     }
 
     #[test]

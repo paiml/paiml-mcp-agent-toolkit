@@ -81,6 +81,9 @@ pub enum DeadCodeKind {
     Module,
     Trait,
     TypeAlias,
+    /// Layer 1: Code explicitly marked with #[allow(dead_code)]
+    /// This is an admission that the code is unused
+    Suppressed,
     Other(String),
 }
 
@@ -231,6 +234,12 @@ impl CargoDeadCodeAnalyzer {
     }
 
     /// Perform accurate dead code analysis using cargo with O(1) caching
+    ///
+    /// Uses a four-layer detection strategy:
+    /// 1. SUPPRESSION_SCAN: Detect #[allow(dead_code)] attributes (explicit admissions)
+    /// 2. COMPILER_LINT: Run cargo check with -W dead_code
+    /// 3. REFERENCE_GRAPH: (future) Build call graph for unreachable code
+    /// 4. HEURISTICS: (future) Pattern-based detection
     pub async fn analyze(&self) -> Result<AccurateDeadCodeReport> {
         use tokio::time::{timeout, Duration};
 
@@ -241,9 +250,15 @@ impl CargoDeadCodeAnalyzer {
 
         // Cache miss - run full analysis
         let analysis_future = async {
+            // Layer 1: Scan for suppression attributes (fast, catches explicit admissions)
+            let mut all_dead_items = self.scan_for_suppression_attributes()?;
+
+            // Layer 2: Run cargo check for compiler-detected dead code
             let cargo_output = self.run_cargo_check()?;
-            let dead_items = self.parse_cargo_warnings(&cargo_output)?;
-            let files_with_dead_code = self.group_by_file(dead_items);
+            let compiler_dead_items = self.parse_cargo_warnings(&cargo_output)?;
+            all_dead_items.extend(compiler_dead_items);
+
+            let files_with_dead_code = self.group_by_file(all_dead_items);
             let report = self.calculate_metrics(files_with_dead_code).await?;
 
             // Save to cache for next time
@@ -256,6 +271,107 @@ impl CargoDeadCodeAnalyzer {
         timeout(Duration::from_secs(90), analysis_future)
             .await
             .map_err(|_| anyhow::anyhow!("Dead code analysis timed out after 90 seconds"))?
+    }
+
+    /// Layer 1: Scan for #[allow(dead_code)] attributes
+    ///
+    /// These attributes are explicit admissions that code is unused.
+    /// Detecting them is fast (~10ms for large projects) and catches
+    /// code that developers knowingly left as dead.
+    fn scan_for_suppression_attributes(&self) -> Result<Vec<(PathBuf, DeadItem)>> {
+        use regex::Regex;
+        use std::fs;
+
+        let mut suppressed_items = Vec::new();
+
+        // Patterns for dead_code suppression
+        // Matches: #[allow(dead_code)], #[allow(unused)], #![allow(dead_code)]
+        let suppression_re = Regex::new(
+            r#"#!?\[allow\((dead_code|unused)\)\]"#
+        ).expect("Invalid regex");
+
+        // Pattern to extract the item name on the following line
+        let item_re = Regex::new(
+            r#"^\s*(?:pub\s+)?(?:async\s+)?(?:const\s+)?(?:static\s+)?(?:unsafe\s+)?(fn|struct|enum|type|trait|mod|const|static)\s+(\w+)"#
+        ).expect("Invalid regex");
+
+        // Walk through all Rust files
+        for entry in walkdir::WalkDir::new(&self.project_path)
+            .max_depth(self.max_depth)
+            .into_iter()
+            .filter_map(std::result::Result::ok)
+        {
+            let path = entry.path();
+
+            // Skip target directory and non-Rust files
+            if path.starts_with(self.project_path.join("target")) {
+                continue;
+            }
+
+            if path.extension().and_then(|s| s.to_str()) != Some("rs") {
+                continue;
+            }
+
+            // Read file content
+            let content = match fs::read_to_string(path) {
+                Ok(c) => c,
+                Err(_) => continue,
+            };
+
+            let lines: Vec<&str> = content.lines().collect();
+
+            // Scan for suppression attributes
+            for (i, line) in lines.iter().enumerate() {
+                if suppression_re.is_match(line) {
+                    // Try to find the item on the next non-attribute line
+                    let mut item_line = i + 1;
+                    while item_line < lines.len() {
+                        let next_line = lines[item_line];
+                        // Skip additional attributes and empty lines
+                        if next_line.trim().starts_with("#[")
+                            || next_line.trim().starts_with("#![")
+                            || next_line.trim().is_empty()
+                        {
+                            item_line += 1;
+                            continue;
+                        }
+
+                        // Try to extract the item
+                        if let Some(caps) = item_re.captures(next_line) {
+                            let kind_str = caps.get(1).map(|m| m.as_str()).unwrap_or("unknown");
+                            let name = caps.get(2).map(|m| m.as_str()).unwrap_or("unknown");
+
+                            let relative_path = path
+                                .strip_prefix(&self.project_path)
+                                .unwrap_or(path)
+                                .to_path_buf();
+
+                            suppressed_items.push((
+                                relative_path,
+                                DeadItem {
+                                    name: name.to_string(),
+                                    kind: DeadCodeKind::Suppressed,
+                                    line: item_line + 1, // 1-indexed
+                                    column: 1,
+                                    message: format!(
+                                        "{} `{}` has #[allow(dead_code)] suppression (explicit dead code admission)",
+                                        kind_str, name
+                                    ),
+                                },
+                            ));
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+
+        tracing::debug!(
+            "Layer 1 (suppression scan): found {} items with #[allow(dead_code)]",
+            suppressed_items.len()
+        );
+
+        Ok(suppressed_items)
     }
 
     /// Run cargo check and capture JSON output with timeout
@@ -493,6 +609,7 @@ impl CargoDeadCodeAnalyzer {
                     DeadCodeKind::Module => "module",
                     DeadCodeKind::Trait => "trait",
                     DeadCodeKind::TypeAlias => "type_alias",
+                    DeadCodeKind::Suppressed => "suppressed",
                     DeadCodeKind::Other(s) => s,
                 };
 
@@ -563,6 +680,108 @@ mod tests {
             .unwrap();
         assert_eq!(name, "data");
         assert_eq!(kind, DeadCodeKind::Field);
+    }
+}
+
+#[cfg(test)]
+mod suppression_tests {
+    use super::*;
+    use std::fs;
+    use tempfile::TempDir;
+
+    #[test]
+    fn test_suppression_scan_detects_allow_dead_code() {
+        let temp_dir = TempDir::new().unwrap();
+        let src_dir = temp_dir.path().join("src");
+        fs::create_dir_all(&src_dir).unwrap();
+
+        // Create a Rust file with #[allow(dead_code)] attributes
+        let rust_code = r#"
+#[allow(dead_code)]
+fn unused_function() {
+    println!("never called");
+}
+
+#[allow(dead_code)]
+struct UnusedStruct {
+    field: i32,
+}
+
+#[allow(unused)]
+const UNUSED_CONST: i32 = 42;
+
+// This one should NOT be detected (no suppression)
+fn used_function() {
+    println!("called");
+}
+"#;
+
+        fs::write(src_dir.join("lib.rs"), rust_code).unwrap();
+
+        let analyzer = CargoDeadCodeAnalyzer::new(temp_dir.path()).without_cache();
+        let items = analyzer.scan_for_suppression_attributes().unwrap();
+
+        // Should detect 3 suppressed items
+        assert_eq!(items.len(), 3, "Expected 3 suppressed items, found {}", items.len());
+
+        // Verify the items are marked as Suppressed
+        for (_, item) in &items {
+            assert_eq!(item.kind, DeadCodeKind::Suppressed);
+        }
+
+        // Check specific names
+        let names: Vec<&str> = items.iter().map(|(_, i)| i.name.as_str()).collect();
+        assert!(names.contains(&"unused_function"), "Should detect unused_function");
+        assert!(names.contains(&"UnusedStruct"), "Should detect UnusedStruct");
+        assert!(names.contains(&"UNUSED_CONST"), "Should detect UNUSED_CONST");
+    }
+
+    #[test]
+    fn test_suppression_scan_handles_nested_attributes() {
+        let temp_dir = TempDir::new().unwrap();
+        let src_dir = temp_dir.path().join("src");
+        fs::create_dir_all(&src_dir).unwrap();
+
+        // Test with multiple stacked attributes
+        let rust_code = r#"
+#[derive(Debug)]
+#[allow(dead_code)]
+#[derive(Clone)]
+struct StackedAttributes {
+    value: i32,
+}
+"#;
+
+        fs::write(src_dir.join("lib.rs"), rust_code).unwrap();
+
+        let analyzer = CargoDeadCodeAnalyzer::new(temp_dir.path()).without_cache();
+        let items = analyzer.scan_for_suppression_attributes().unwrap();
+
+        assert_eq!(items.len(), 1);
+        assert_eq!(items[0].1.name, "StackedAttributes");
+    }
+
+    #[test]
+    fn test_suppression_scan_module_level() {
+        let temp_dir = TempDir::new().unwrap();
+        let src_dir = temp_dir.path().join("src");
+        fs::create_dir_all(&src_dir).unwrap();
+
+        // Module-level suppression (inner attribute)
+        let rust_code = r#"
+#![allow(dead_code)]
+
+fn function_in_suppressed_module() {}
+"#;
+
+        fs::write(src_dir.join("lib.rs"), rust_code).unwrap();
+
+        let analyzer = CargoDeadCodeAnalyzer::new(temp_dir.path()).without_cache();
+        let items = analyzer.scan_for_suppression_attributes().unwrap();
+
+        // Inner attribute should also trigger detection
+        assert_eq!(items.len(), 1);
+        assert_eq!(items[0].1.name, "function_in_suppressed_module");
     }
 }
 

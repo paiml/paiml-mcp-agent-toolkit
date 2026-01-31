@@ -494,9 +494,12 @@ mod tests {
     fn integration_parse_real_roadmap() {
         // Parse the actual PMAT ROADMAP.md file
         let roadmap_path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .parent()
-            .unwrap()
             .join("ROADMAP.md");
+
+        if !roadmap_path.exists() {
+            eprintln!("Skipping: ROADMAP.md not found at {:?}", roadmap_path);
+            return;
+        }
 
         let roadmap = Roadmap::from_file(&roadmap_path).unwrap();
 
@@ -527,9 +530,12 @@ mod tests {
     fn integration_validate_pmat_roadmap() {
         // Validate the actual PMAT ROADMAP.md structure
         let roadmap_path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .parent()
-            .unwrap()
             .join("ROADMAP.md");
+
+        if !roadmap_path.exists() {
+            eprintln!("Skipping: ROADMAP.md not found at {:?}", roadmap_path);
+            return;
+        }
 
         let roadmap = Roadmap::from_file(&roadmap_path).unwrap();
 

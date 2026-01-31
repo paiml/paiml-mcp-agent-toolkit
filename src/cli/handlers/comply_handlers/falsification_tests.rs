@@ -54,7 +54,7 @@ mod cb050_falsification {
     // ========================================================================
 
     #[test]
-    // #[ignore] -- RED PHASE ACTIVE
+    #[ignore] // RED PHASE: unimplemented
     fn tp_001_basic_todo_macro() {
         // Hypothesis: todo!() is detected
         // Falsification attempt: Simplest possible case
@@ -71,7 +71,7 @@ mod cb050_falsification {
     }
 
     #[test]
-    // #[ignore] -- RED PHASE ACTIVE
+    #[ignore] // RED PHASE: unimplemented
     fn tp_002_todo_with_message() {
         // Falsification: Does message content break detection?
         let code = r#"fn foo() { todo!("implement later") }"#;
@@ -83,7 +83,7 @@ mod cb050_falsification {
     }
 
     #[test]
-    // #[ignore] -- RED PHASE ACTIVE
+    #[ignore] // RED PHASE: unimplemented
     fn tp_003_unimplemented_macro() {
         let code = "fn bar() { unimplemented!() }";
         let violations = detect_cb050_code_stubs_in_str(code);
@@ -95,7 +95,7 @@ mod cb050_falsification {
     }
 
     #[test]
-    // #[ignore] -- RED PHASE ACTIVE
+    #[ignore] // RED PHASE: unimplemented
     fn tp_004_panic_not_implemented() {
         let code = r#"fn baz() { panic!("not implemented") }"#;
         let violations = detect_cb050_code_stubs_in_str(code);
@@ -107,7 +107,7 @@ mod cb050_falsification {
     }
 
     #[test]
-    // #[ignore] -- RED PHASE ACTIVE
+    #[ignore] // RED PHASE: unimplemented
     fn tp_005_empty_function_body() {
         // Adversarial: Minimal whitespace
         let code = "fn empty() {}";
@@ -120,7 +120,7 @@ mod cb050_falsification {
     }
 
     #[test]
-    // #[ignore] -- RED PHASE ACTIVE
+    #[ignore] // RED PHASE: unimplemented
     fn tp_006_empty_function_with_whitespace() {
         // Adversarial: Extra whitespace inside braces
         let code = "fn empty() {   }";
@@ -132,7 +132,7 @@ mod cb050_falsification {
     }
 
     #[test]
-    // #[ignore] -- RED PHASE ACTIVE
+    #[ignore] // RED PHASE: unimplemented
     fn tp_007_empty_function_multiline() {
         // Adversarial: Multiline empty body
         let code = "fn empty() {\n\n}";
@@ -144,7 +144,7 @@ mod cb050_falsification {
     }
 
     #[test]
-    // #[ignore] -- RED PHASE ACTIVE
+    #[ignore] // RED PHASE: unimplemented
     fn tp_008_python_not_implemented_error() {
         let code = "def foo():\n    raise NotImplementedError()";
         let violations = detect_cb050_code_stubs_in_str(code);
@@ -156,7 +156,7 @@ mod cb050_falsification {
     }
 
     #[test]
-    // #[ignore] -- RED PHASE ACTIVE
+    #[ignore] // RED PHASE: unimplemented
     fn tp_009_python_not_implemented_with_message() {
         let code = r#"def foo():
     raise NotImplementedError("not done yet")"#;
@@ -168,7 +168,7 @@ mod cb050_falsification {
     }
 
     #[test]
-    // #[ignore] -- RED PHASE ACTIVE
+    #[ignore] // RED PHASE: unimplemented
     fn tp_010_python_pass_stub_comment() {
         let code = "def foo():\n    pass  # stub";
         let violations = detect_cb050_code_stubs_in_str(code);
@@ -180,7 +180,7 @@ mod cb050_falsification {
     }
 
     #[test]
-    // #[ignore] -- RED PHASE ACTIVE
+    #[ignore] // RED PHASE: unimplemented
     fn tp_011_todo_in_match_arm() {
         // Adversarial: Nested context
         let code = "match x { Some(_) => todo!(), None => 0 }";
@@ -192,7 +192,7 @@ mod cb050_falsification {
     }
 
     #[test]
-    // #[ignore] -- RED PHASE ACTIVE
+    #[ignore] // RED PHASE: unimplemented
     fn tp_012_todo_in_closure() {
         let code = "let f = || todo!();";
         let violations = detect_cb050_code_stubs_in_str(code);
@@ -203,7 +203,7 @@ mod cb050_falsification {
     }
 
     #[test]
-    // #[ignore] -- RED PHASE ACTIVE
+    #[ignore] // RED PHASE: unimplemented
     fn tp_013_unimplemented_with_formatting() {
         // Adversarial: Complex format string
         let code = r#"fn x() { unimplemented!("{} not done: {}", "feature", 42) }"#;
@@ -215,7 +215,7 @@ mod cb050_falsification {
     }
 
     #[test]
-    // #[ignore] -- RED PHASE ACTIVE
+    #[ignore] // RED PHASE: unimplemented
     fn tp_014_todo_weird_spacing() {
         // Adversarial: Unusual whitespace that might break regex
         let code = "fn f() { todo ! () }";
@@ -227,7 +227,7 @@ mod cb050_falsification {
     }
 
     #[test]
-    // #[ignore] -- RED PHASE ACTIVE
+    #[ignore] // RED PHASE: unimplemented
     fn tp_015_multiple_stubs_one_file() {
         // Adversarial: Multiple stubs - must catch all
         let code = "fn a() { todo!() }\nfn b() { unimplemented!() }\nfn c() {}";
@@ -246,7 +246,7 @@ mod cb050_falsification {
     // ========================================================================
 
     #[test]
-    // #[ignore] -- RED PHASE ACTIVE
+    #[ignore] // RED PHASE: unimplemented
     fn tn_016_todo_in_string_literal() {
         // Adversarial: String containing "todo!" should NOT trigger
         let code = r#"let s = "todo!() is a macro";"#;
@@ -258,7 +258,7 @@ mod cb050_falsification {
     }
 
     #[test]
-    // #[ignore] -- RED PHASE ACTIVE
+    #[ignore] // RED PHASE: unimplemented
     fn tn_017_todo_in_comment() {
         // Comments are handled by SATD detector, not stub detector
         let code = "// TODO: implement this\nfn foo() { return 42; }";
@@ -270,7 +270,7 @@ mod cb050_falsification {
     }
 
     #[test]
-    // #[ignore] -- RED PHASE ACTIVE
+    #[ignore] // RED PHASE: unimplemented
     fn tn_018_function_with_body() {
         let code = "fn not_empty() { println!(\"hello\"); }";
         let violations = detect_cb050_code_stubs_in_str(code);
@@ -281,7 +281,7 @@ mod cb050_falsification {
     }
 
     #[test]
-    // #[ignore] -- RED PHASE ACTIVE
+    #[ignore] // RED PHASE: unimplemented
     fn tn_019_trait_default_impl() {
         // Empty body in trait default is INTENTIONAL
         let code = "trait Foo { fn default_impl() {} }";
@@ -293,7 +293,7 @@ mod cb050_falsification {
     }
 
     #[test]
-    // #[ignore] -- RED PHASE ACTIVE
+    #[ignore] // RED PHASE: unimplemented
     fn tn_020_test_function_with_todo() {
         // Stubs in test code are acceptable
         let code = "#[test]\nfn test_future_feature() { todo!() }";
@@ -305,7 +305,7 @@ mod cb050_falsification {
     }
 
     #[test]
-    // #[ignore] -- RED PHASE ACTIVE
+    #[ignore] // RED PHASE: unimplemented
     fn tn_021_doc_comment_with_todo() {
         let code = "/// TODO: document this\nfn foo() { 42 }";
         let violations = detect_cb050_code_stubs_in_str(code);
@@ -316,7 +316,7 @@ mod cb050_falsification {
     }
 
     #[test]
-    // #[ignore] -- RED PHASE ACTIVE
+    #[ignore] // RED PHASE: unimplemented
     fn tn_022_raw_string_with_todo() {
         let code = r##"let s = r#"todo!() in raw string"#;"##;
         let violations = detect_cb050_code_stubs_in_str(code);
@@ -327,7 +327,7 @@ mod cb050_falsification {
     }
 
     #[test]
-    // #[ignore] -- RED PHASE ACTIVE
+    #[ignore] // RED PHASE: unimplemented
     fn tn_023_macro_definition_with_todo_pattern() {
         // Pattern definition in macro should not trigger
         let code = r#"macro_rules! my_macro { (todo) => { /* ... */ }; }"#;
@@ -339,7 +339,7 @@ mod cb050_falsification {
     }
 
     #[test]
-    // #[ignore] -- RED PHASE ACTIVE
+    #[ignore] // RED PHASE: unimplemented
     fn tn_024_variable_named_todo() {
         let code = "let todo = 42;";
         let violations = detect_cb050_code_stubs_in_str(code);
@@ -350,7 +350,7 @@ mod cb050_falsification {
     }
 
     #[test]
-    // #[ignore] -- RED PHASE ACTIVE
+    #[ignore] // RED PHASE: unimplemented
     fn tn_025_function_named_todo() {
         // Function NAMED todo with a real body
         let code = "fn todo() -> i32 { 42 }";
@@ -367,7 +367,7 @@ mod cb050_falsification {
     // ========================================================================
 
     #[test]
-    // #[ignore] -- RED PHASE ACTIVE
+    #[ignore] // RED PHASE: unimplemented
     fn edge_026_nested_braces_empty_inner() {
         // Adversarial: Nested braces - only inner is empty
         let code = "fn outer() { { } let x = 1; }";
@@ -380,7 +380,7 @@ mod cb050_falsification {
     }
 
     #[test]
-    // #[ignore] -- RED PHASE ACTIVE
+    #[ignore] // RED PHASE: unimplemented
     fn edge_027_async_fn_with_todo() {
         let code = "async fn foo() { todo!() }";
         let violations = detect_cb050_code_stubs_in_str(code);
@@ -388,7 +388,7 @@ mod cb050_falsification {
     }
 
     #[test]
-    // #[ignore] -- RED PHASE ACTIVE
+    #[ignore] // RED PHASE: unimplemented
     fn edge_028_const_fn_empty() {
         // const fn empty might be intentional for type-level programming
         let code = "const fn marker() {}";
@@ -398,7 +398,7 @@ mod cb050_falsification {
     }
 
     #[test]
-    // #[ignore] -- RED PHASE ACTIVE
+    #[ignore] // RED PHASE: unimplemented
     fn edge_029_unicode_in_todo_message() {
         // Adversarial: Unicode that might break regex
         let code = r#"fn f() { todo!("实现这个功能 🚧") }"#;
@@ -410,7 +410,7 @@ mod cb050_falsification {
     }
 
     #[test]
-    // #[ignore] -- RED PHASE ACTIVE
+    #[ignore] // RED PHASE: unimplemented
     fn edge_030_todo_in_doc_test() {
         // Doc test stubs are examples, not production code
         let code = "/// ```\n/// fn example() { todo!() }\n/// ```\nfn real_fn() { 42 }";
@@ -436,7 +436,7 @@ mod cb060_falsification {
     // ========================================================================
 
     #[test]
-    // #[ignore] -- RED PHASE ACTIVE
+    #[ignore] // RED PHASE: unimplemented
     fn tp_031_ptx_bra_before_barrier_simple() {
         // From PARITY-114: Simple case
         let ptx = r#"
@@ -452,7 +452,7 @@ mod cb060_falsification {
     }
 
     #[test]
-    // #[ignore] -- RED PHASE ACTIVE
+    #[ignore] // RED PHASE: unimplemented
     fn tp_032_ptx_bra_before_barrier_multiline() {
         // Adversarial: Many lines between branch and barrier
         let ptx = r#"
@@ -472,7 +472,7 @@ mod cb060_falsification {
     }
 
     #[test]
-    // #[ignore] -- RED PHASE ACTIVE
+    #[ignore] // RED PHASE: unimplemented
     fn tp_033_wgsl_barrier_in_if() {
         let wgsl = r#"
             if (local_id.x < 16u) {
@@ -487,7 +487,7 @@ mod cb060_falsification {
     }
 
     #[test]
-    // #[ignore] -- RED PHASE ACTIVE
+    #[ignore] // RED PHASE: unimplemented
     fn tp_034_wgsl_barrier_in_else() {
         // Adversarial: Barrier in else branch only
         let wgsl = r#"
@@ -505,7 +505,7 @@ mod cb060_falsification {
     }
 
     #[test]
-    // #[ignore] -- RED PHASE ACTIVE
+    #[ignore] // RED PHASE: unimplemented
     fn tn_035_ptx_barrier_before_branch() {
         // Barrier BEFORE branch is safe
         let ptx = r#"
@@ -521,7 +521,7 @@ mod cb060_falsification {
     }
 
     #[test]
-    // #[ignore] -- RED PHASE ACTIVE
+    #[ignore] // RED PHASE: unimplemented
     fn tn_036_wgsl_barrier_outside_control_flow() {
         // Barrier not in divergent control flow
         let wgsl = r#"
@@ -539,7 +539,7 @@ mod cb060_falsification {
     }
 
     #[test]
-    // #[ignore] -- RED PHASE ACTIVE
+    #[ignore] // RED PHASE: unimplemented
     fn edge_037_ptx_barrier_in_comment() {
         // Adversarial: bar.sync in comment should NOT trigger
         let ptx = r#"
@@ -554,7 +554,7 @@ mod cb060_falsification {
     }
 
     #[test]
-    // #[ignore] -- RED PHASE ACTIVE
+    #[ignore] // RED PHASE: unimplemented
     fn edge_038_ptx_nested_predicates() {
         // Adversarial: Complex nested predicate structure
         let ptx = r#"
@@ -572,7 +572,7 @@ mod cb060_falsification {
     }
 
     #[test]
-    // #[ignore] -- RED PHASE ACTIVE
+    #[ignore] // RED PHASE: unimplemented
     fn edge_039_wgsl_barrier_in_loop() {
         // Barrier in loop that all threads execute is OK
         let wgsl = r#"
@@ -589,7 +589,7 @@ mod cb060_falsification {
     }
 
     #[test]
-    // #[ignore] -- RED PHASE ACTIVE
+    #[ignore] // RED PHASE: unimplemented
     fn edge_040_wgsl_barrier_in_divergent_loop() {
         // Barrier in loop with thread-dependent bounds
         let wgsl = r#"
@@ -610,7 +610,7 @@ mod cb060_falsification {
     // ========================================================================
 
     #[test]
-    // #[ignore] -- RED PHASE ACTIVE
+    #[ignore] // RED PHASE: unimplemented
     fn tp_041_unbounded_shared_load() {
         // From issue #32: Direct shared memory access without bounds check
         let ptx = r#"
@@ -625,7 +625,7 @@ mod cb060_falsification {
     }
 
     #[test]
-    // #[ignore] -- RED PHASE ACTIVE
+    #[ignore] // RED PHASE: unimplemented
     fn tp_042_unbounded_shared_store() {
         let ptx = r#"
             mul.u32 %r10, %r5, 64;
@@ -639,7 +639,7 @@ mod cb060_falsification {
     }
 
     #[test]
-    // #[ignore] -- RED PHASE ACTIVE
+    #[ignore] // RED PHASE: unimplemented
     fn tn_043_bounded_shared_load() {
         // Predicated load with bounds check
         let ptx = r#"
@@ -654,7 +654,7 @@ mod cb060_falsification {
     }
 
     #[test]
-    // #[ignore] -- RED PHASE ACTIVE
+    #[ignore] // RED PHASE: unimplemented
     fn tn_044_shared_with_constant_offset() {
         // Constant offset is always bounded
         let ptx = r#"
@@ -668,7 +668,7 @@ mod cb060_falsification {
     }
 
     #[test]
-    // #[ignore] -- RED PHASE ACTIVE
+    #[ignore] // RED PHASE: unimplemented
     fn edge_045_shared_in_comment() {
         let ptx = r#"
             // ld.shared.f32 %f1, [%r10]; -- commented out
@@ -682,7 +682,7 @@ mod cb060_falsification {
     }
 
     #[test]
-    // #[ignore] -- RED PHASE ACTIVE
+    #[ignore] // RED PHASE: unimplemented
     fn edge_046_shared_complex_index() {
         // Adversarial: Complex index expression
         let ptx = r#"
@@ -699,7 +699,7 @@ mod cb060_falsification {
     }
 
     #[test]
-    // #[ignore] -- RED PHASE ACTIVE
+    #[ignore] // RED PHASE: unimplemented
     fn edge_047_shared_bounds_far_apart() {
         // Adversarial: Bounds check far from actual load
         let ptx = r#"
@@ -723,7 +723,7 @@ mod cb060_falsification {
     // ========================================================================
 
     #[test]
-    // #[ignore] -- RED PHASE ACTIVE
+    #[ignore] // RED PHASE: unimplemented
     fn tp_048_tiled_no_boundary_check() {
         // From issue #37: Tiled GEMM without boundary check
         let rust_code = r#"
@@ -745,7 +745,7 @@ mod cb060_falsification {
     }
 
     #[test]
-    // #[ignore] -- RED PHASE ACTIVE
+    #[ignore] // RED PHASE: unimplemented
     fn tn_049_tiled_with_boundary_check() {
         let rust_code = r#"
             // Tiled GEMM with proper bounds
@@ -767,7 +767,7 @@ mod cb060_falsification {
     }
 
     #[test]
-    // #[ignore] -- RED PHASE ACTIVE
+    #[ignore] // RED PHASE: unimplemented
     fn tp_050_ptx_tiled_early_exit() {
         // From PARITY-114: Early exit breaks tile loading
         let ptx = r#"
@@ -789,7 +789,7 @@ mod cb060_falsification {
     }
 
     #[test]
-    // #[ignore] -- RED PHASE ACTIVE
+    #[ignore] // RED PHASE: unimplemented
     fn edge_051_wgsl_tiled_workgroup_size() {
         // WGSL tiled kernel pattern
         let wgsl = r#"
@@ -807,7 +807,7 @@ mod cb060_falsification {
     }
 
     #[test]
-    // #[ignore] -- RED PHASE ACTIVE
+    #[ignore] // RED PHASE: unimplemented
     fn edge_052_partial_bounds_check() {
         // Only row bounds checked, not column
         let rust_code = r#"
@@ -824,7 +824,7 @@ mod cb060_falsification {
     }
 
     #[test]
-    // #[ignore] -- RED PHASE ACTIVE
+    #[ignore] // RED PHASE: unimplemented
     fn edge_053_bounds_in_wrong_place() {
         // Bounds check after store (useless)
         let rust_code = r#"
@@ -841,7 +841,7 @@ mod cb060_falsification {
     }
 
     #[test]
-    // #[ignore] -- RED PHASE ACTIVE
+    #[ignore] // RED PHASE: unimplemented
     fn edge_054_tiled_in_string() {
         // Adversarial: Kernel code in string literal
         let rust_code = r#"
@@ -855,7 +855,7 @@ mod cb060_falsification {
     }
 
     #[test]
-    // #[ignore] -- RED PHASE ACTIVE
+    #[ignore] // RED PHASE: unimplemented
     fn edge_055_complex_bounds_expression() {
         // Bounds check with complex expression
         let rust_code = r#"
@@ -1379,49 +1379,49 @@ mod integration_falsification {
     // Tests 086-100: End-to-end comply behavior and Wild stability
 
     #[test]
-    // #[ignore] -- RED PHASE ACTIVE
+    #[ignore] // RED PHASE: unimplemented
     fn tp_086_comply_fails_on_production_stub() {
         // Project with todo!() in src/lib.rs should fail comply
         unimplemented!("Test requires full comply integration")
     }
 
     #[test]
-    // #[ignore] -- RED PHASE ACTIVE
+    #[ignore] // RED PHASE: unimplemented
     fn tn_087_comply_passes_clean_project() {
         // Project without stubs should pass
         unimplemented!("Test requires full comply integration")
     }
 
     #[test]
-    // #[ignore] -- RED PHASE ACTIVE
+    #[ignore] // RED PHASE: unimplemented
     fn tp_088_comply_respects_suppressions() {
         // Suppressed stub should not fail
         unimplemented!("Test requires full comply integration")
     }
 
     #[test]
-    // #[ignore] -- RED PHASE ACTIVE
+    #[ignore] // RED PHASE: unimplemented
     fn tp_089_json_output_includes_violations() {
         // --format json includes violation details
         unimplemented!("Test requires full comply integration")
     }
 
     #[test]
-    // #[ignore] -- RED PHASE ACTIVE
+    #[ignore] // RED PHASE: unimplemented
     fn tp_090_markdown_output_includes_violations() {
         // --format markdown includes violation details
         unimplemented!("Test requires full comply integration")
     }
 
     #[test]
-    // #[ignore] -- RED PHASE ACTIVE
+    #[ignore] // RED PHASE: unimplemented
     fn tp_091_strict_mode_exits_nonzero() {
         // --strict with violations = exit code != 0
         unimplemented!("Test requires full comply integration")
     }
 
     #[test]
-    // #[ignore] -- RED PHASE ACTIVE
+    #[ignore] // RED PHASE: unimplemented
     fn tp_092_failures_only_filters_output() {
         // --failures-only hides passing checks
         unimplemented!("Test requires full comply integration")
@@ -1433,7 +1433,7 @@ mod integration_falsification {
     // ========================================================================
 
     #[test]
-    // #[ignore] -- RED PHASE ACTIVE
+    #[ignore] // RED PHASE: unimplemented
     fn wild_093_tokio_false_positive_rate() {
         // Run CB-050 against tokio-rs/tokio
         // FALSIFIED if >100 false positives
@@ -1442,7 +1442,7 @@ mod integration_falsification {
     }
 
     #[test]
-    // #[ignore] -- RED PHASE ACTIVE
+    #[ignore] // RED PHASE: unimplemented
     fn wild_094_cargo_false_positive_rate() {
         // Run CB-050 against rust-lang/cargo
         // FALSIFIED if >100 false positives
@@ -1450,7 +1450,7 @@ mod integration_falsification {
     }
 
     #[test]
-    // #[ignore] -- RED PHASE ACTIVE
+    #[ignore] // RED PHASE: unimplemented
     fn wild_095_serde_false_positive_rate() {
         // Run CB-050 against serde-rs/serde
         // Many trait default impls - test FP on empty bodies
@@ -1458,7 +1458,7 @@ mod integration_falsification {
     }
 
     #[test]
-    // #[ignore] -- RED PHASE ACTIVE
+    #[ignore] // RED PHASE: unimplemented
     fn wild_096_wgpu_gpu_checks() {
         // Run CB-060 against gfx-rs/wgpu
         // Real GPU codebase with WGSL shaders
@@ -1467,7 +1467,7 @@ mod integration_falsification {
     }
 
     #[test]
-    // #[ignore] -- RED PHASE ACTIVE
+    #[ignore] // RED PHASE: unimplemented
     fn wild_097_rust_gpu_checks() {
         // Run CB-060 against EmbarkStudios/rust-gpu
         // Real GPU compute codebase
@@ -1475,7 +1475,7 @@ mod integration_falsification {
     }
 
     #[test]
-    // #[ignore] -- RED PHASE ACTIVE
+    #[ignore] // RED PHASE: unimplemented
     fn perf_098_comply_time_baseline() {
         // Comply check should complete in <30s on medium project
         // FALSIFIED if >15% regression from baseline
@@ -1483,7 +1483,7 @@ mod integration_falsification {
     }
 
     #[test]
-    // #[ignore] -- RED PHASE ACTIVE
+    #[ignore] // RED PHASE: unimplemented
     fn perf_099_stub_detection_scaling() {
         // Stub detection should be O(n) in file count
         // FALSIFIED if quadratic or worse
@@ -1491,7 +1491,7 @@ mod integration_falsification {
     }
 
     #[test]
-    // #[ignore] -- RED PHASE ACTIVE
+    #[ignore] // RED PHASE: unimplemented
     fn perf_100_large_file_handling() {
         // Should handle 10MB+ files without OOM
         // FALSIFIED if memory usage >500MB

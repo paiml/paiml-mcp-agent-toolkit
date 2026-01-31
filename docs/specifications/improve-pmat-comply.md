@@ -39,8 +39,9 @@ Analysis of 50+ recent GitHub issues across the paiml organization using the org
 
 ### Dead Code & TDG Integration Findings (v2.3 - NEW)
 17. **Dead Code Undetected**: `pmat analyze dead-code` reports 0% dead code but rustc `#[warn(dead_code)]` and manual inspection reveal significant unreachable code. Dead code inflates coverage denominators and hides technical debt. **Not part of TDG scoring.**
+18. **Public API Blindspot**: `rustc`'s `dead_code` lint treats all `pub` items as "live" (reachable) because they *might* be used by external crates, even in a binary or private workspace crate where they are definitely unused. This leaves a massive blindspot for "zombie public code".
 
-This specification defines **19 improvements** with peer-reviewed justification, work tickets, and a **210-point Popperian falsification suite**.
+This specification defines **20 improvements** with peer-reviewed justification, work tickets, and a **210-point Popperian falsification suite**.
 
 ---
 
@@ -1777,27 +1778,31 @@ $ pmat analyze dead-code --path . --format json | jq '.summary'
   "dead_percentage": 0
 }
 
-# But rustc knows about dead code:
-$ RUSTFLAGS="-Wdead_code" cargo check --lib 2>&1 | grep -c "warning.*dead"
-# [Expected: many warnings]
+# But there are 353 #[allow(dead_code)] attributes suppressing warnings!
+$ grep -r "#\[allow(dead_code)\]" src/ | wc -l
+353
+
+# rustc won't report these because they're explicitly suppressed
+# This is the PRIMARY source of hidden dead code
 ```
 
 **Root Cause Analysis (Five Whys)**:
-1. Why is dead code reporting 0%? → DeadCodeAnalyzer not connected to rustc
-2. Why not connected? → Uses custom AST reference graph instead of compiler
-3. Why custom graph? → Designed for cross-language support
-4. Why cross-language? → Over-engineering; Rust is 95% of codebase
-5. Why not use rustc directly? → Not specified; gap in requirements
+1. Why is dead code reporting 0%? → rustc warnings suppressed by `#[allow(dead_code)]`
+2. Why are there 353 suppression attributes? → Developers add them to silence warnings
+3. Why do developers silence warnings? → Easier than removing dead code
+4. Why not remove dead code? → No visibility/enforcement mechanism
+5. Why no enforcement? → Dead code not part of TDG/comply until now
 
-**Proposed Solution: Three-Layer Detection**:
+**Proposed Solution: Four-Layer Detection**:
 
 ```rust
 /// CB-128: Dead Code Detection with Setup/Teardown Validation
 ///
-/// Three detection layers with decreasing accuracy/increasing coverage:
-/// 1. COMPILER_LINT: Use rustc/clippy dead_code warnings (100% accurate for Rust)
-/// 2. REFERENCE_GRAPH: Cross-file reference analysis via AST (90% accurate)
-/// 3. HEURISTIC: Pattern-based detection (70% accurate, catches edge cases)
+/// Four detection layers with decreasing accuracy/increasing coverage:
+/// 1. SUPPRESSION_SCAN: Detect #[allow(dead_code)] attributes (100% accurate, finds hidden debt)
+/// 2. COMPILER_LINT: Use rustc/clippy dead_code warnings (100% accurate for unsuppressed Rust)
+/// 3. REFERENCE_GRAPH: Cross-file reference analysis via AST (90% accurate)
+/// 4. HEURISTIC: Pattern-based detection (70% accurate, catches edge cases)
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DeadCodeDetectionMethod {
@@ -1821,7 +1826,7 @@ pub struct TDGComponentsV2 {
 
 /// CB-128 detection with setup/teardown calibration
 pub fn detect_cb128_dead_code(project_path: &Path) -> Vec<CbViolation> {
-    // Layer 1: Parse rustc JSON diagnostics
+    // Layer 1: Parse rustc JSON diagnostics (private dead code)
     let compiler_dead = detect_via_compiler(project_path);
 
     // Layer 2: Reference graph (existing analyzer)
@@ -1830,10 +1835,19 @@ pub fn detect_cb128_dead_code(project_path: &Path) -> Vec<CbViolation> {
     // Layer 3: Heuristic patterns
     let heuristic_dead = detect_via_heuristics(project_path);
 
+    // Layer 4: Workspace-Aware Public Item Analysis (Finding 18)
+    // Detects 'pub' items that are unused within the entire workspace context
+    let public_dead = detect_via_workspace_analysis(project_path);
+
     // Merge with confidence scoring
-    merge_dead_code_results(compiler_dead, graph_dead, heuristic_dead)
+    merge_dead_code_results(compiler_dead, graph_dead, heuristic_dead, public_dead)
 }
 ```
+
+**Workspace-Aware Strategy (Finding 18)**:
+1.  **Scope**: For workspace crates (e.g., `server`, `client`), treat `pub` items as "internal public" unless marked `#[no_mangle]` or exported via `lib.rs`.
+2.  **Analysis**: Build a workspace-wide call graph. If a `pub` function in crate A is not called by A, B, or C, it is "Zombie Public Code".
+3.  **Heuristic**: If a `pub` item has 0 references in the entire codebase (grep check), flag as Warning (potential dead code).
 
 **Setup/Teardown Calibration Method**:
 ```rust
@@ -4094,6 +4108,496 @@ mod cb124_falsification {
     fn tn_175_coverage_off_in_dev() {
         // If coverage is disabled or not checked, warn?
         // Or if checked > 80, pass.
+    }
+}
+
+### 5.18 CB-125 Coverage Exclusion Gaming Tests (10 tests)
+
+```rust
+#[cfg(test)]
+mod cb125_falsification {
+    use super::*;
+
+    #[test]
+    fn tp_176_excessive_exclusion_patterns() {
+        let makefile = "COVERAGE_EXCLUDE := --ignore-filename-regex='(a|b|c|d|e|f|g|h|i|j|k|l)'";
+        let violations = detect_cb125_coverage_exclusion_gaming_in_str(makefile);
+        assert!(!violations.is_empty(), "Failed to detect >10 exclusion patterns");
+    }
+
+    #[test]
+    fn tp_177_critical_path_exclusion() {
+        let config = r#"
+            [coverage]
+            exclude = ["src/lib.rs", "src/main.rs"]
+        "#;
+        let violations = detect_cb125_coverage_exclusion_gaming_in_str(config);
+        assert!(!violations.is_empty(), "Failed to detect exclusion of entry points");
+    }
+
+    #[test]
+    fn tn_178_standard_exclusions() {
+        let makefile = "COVERAGE_EXCLUDE := --ignore-filename-regex='(/tests/|/examples/)'";
+        let violations = detect_cb125_coverage_exclusion_gaming_in_str(makefile);
+        assert!(violations.is_empty(), "False positive: standard test/example exclusions");
+    }
+
+    #[test]
+    fn tp_179_tarpaulin_exclude_list() {
+        let toml = r#"
+            [tarpaulin]
+            exclude-files = ["src/a.rs", "src/b.rs", "src/c.rs", "src/d.rs", "src/e.rs", "src/f.rs", "src/g.rs", "src/h.rs", "src/i.rs", "src/j.rs", "src/k.rs"]
+        "#;
+        let violations = detect_cb125_coverage_exclusion_gaming_in_str(toml);
+        assert!(!violations.is_empty(), "Failed to detect excessive tarpaulin exclusions");
+    }
+
+    #[test]
+    fn tp_180_broad_regex_exclusion() {
+        let makefile = "COVERAGE_EXCLUDE := --ignore-filename-regex='src/.*'";
+        let violations = detect_cb125_coverage_exclusion_gaming_in_str(makefile);
+        assert!(!violations.is_empty(), "Failed to detect broad src/ exclusion");
+    }
+
+    #[test]
+    fn tn_181_generated_code_exclusion() {
+        let makefile = "COVERAGE_EXCLUDE := --ignore-filename-regex='(target/|generated/)'";
+        let violations = detect_cb125_coverage_exclusion_gaming_in_str(makefile);
+        assert!(violations.is_empty(), "False positive: generated code exclusion is valid");
+    }
+
+    #[test]
+    fn tp_182_codecov_ignore() {
+        let yaml = r#"
+            ignore:
+              - "src/core"
+              - "src/security"
+        "#;
+        let violations = detect_cb125_coverage_exclusion_gaming_in_str(yaml);
+        assert!(!violations.is_empty(), "Failed to detect codecov ignore patterns");
+    }
+
+    #[test]
+    fn tn_183_documented_exclusion() {
+        let makefile = "# Exclude FFI bindings (untestable)\nCOVERAGE_EXCLUDE := src/ffi.rs";
+        let violations = detect_cb125_coverage_exclusion_gaming_in_str(makefile);
+        // If comment analysis implemented, this passes. Otherwise might fail.
+        // Assuming strict for now, but design allows documentation overrides.
+    }
+
+    #[test]
+    fn tp_184_cargo_toml_exclude() {
+        let toml = r#"
+            [package]
+            exclude = ["src/tests/*", "src/benchmarks/*"]
+        "#;
+        // Package exclude is for packaging, not coverage. Should NOT flag.
+        let violations = detect_cb125_coverage_exclusion_gaming_in_str(toml);
+        assert!(violations.is_empty(), "False positive: package exclude");
+    }
+
+    #[test]
+    fn tp_185_mod_cfg_test_exclusion() {
+        // Checking for #[cfg(not(test))] on logic modules?
+        // Out of scope for regex check, but advanced static analysis could catch it.
+    }
+}
+
+### 5.19 CB-126 Slow Test Detection Tests (5 tests)
+
+```rust
+#[cfg(test)]
+mod cb126_falsification {
+    use super::*;
+
+    #[test]
+    fn tp_186_slow_test_log() {
+        let log = "test tests::slow_test ... ok (6.54s)";
+        let violations = detect_cb126_slow_tests_in_str(log);
+        assert!(!violations.is_empty(), "Failed to detect test > 5s");
+    }
+
+    #[test]
+    fn tp_187_critical_slow_test() {
+        let log = "test tests::very_slow ... ok (65.00s)";
+        let violations = detect_cb126_slow_tests_in_str(log);
+        assert!(violations[0].severity == Severity::Error, "Failed to flag >60s as Error");
+    }
+
+    #[test]
+    fn tn_188_fast_test() {
+        let log = "test tests::fast ... ok (0.01s)";
+        let violations = detect_cb126_slow_tests_in_str(log);
+        assert!(violations.is_empty(), "False positive: fast test");
+    }
+
+    #[test]
+    fn tp_189_unbounded_proptest() {
+        let config = r#"proptest::ProptestConfig::default()"#;
+        // Should suggest setting cases
+        let violations = detect_cb126_slow_tests_in_str(config);
+        assert!(!violations.is_empty(), "Failed to detect unbounded proptest config");
+    }
+
+    #[test]
+    fn tn_190_bounded_proptest() {
+        let config = "ProptestConfig { cases: 100, ..Default::default() }";
+        let violations = detect_cb126_slow_tests_in_str(config);
+        assert!(violations.is_empty(), "False positive: bounded proptest");
+    }
+}
+```
+
+### 5.20 CB-127 Slow Coverage Detection Tests (5 tests)
+
+```rust
+#[cfg(test)]
+mod cb127_falsification {
+    use super::*;
+
+    #[test]
+    fn tp_191_nextest_llvm_cov() {
+        let makefile = "cargo llvm-cov nextest";
+        let violations = detect_cb127_slow_coverage_in_str(makefile);
+        assert!(!violations.is_empty(), "Failed to detect nextest+llvm-cov anti-pattern");
+    }
+
+    #[test]
+    fn tp_192_missing_lib_flag() {
+        let makefile = "cargo llvm-cov test --workspace";
+        // Should recommend --lib for fast feedback
+        let violations = detect_cb127_slow_coverage_in_str(makefile);
+        assert!(!violations.is_empty(), "Failed to detect missing --lib flag");
+    }
+
+    #[test]
+    fn tn_193_optimized_coverage() {
+        let makefile = "cargo llvm-cov test --lib";
+        let violations = detect_cb127_slow_coverage_in_str(makefile);
+        assert!(violations.is_empty(), "False positive: optimized coverage command");
+    }
+
+    #[test]
+    fn tp_194_missing_proptest_limits() {
+        let makefile = "cargo llvm-cov test";
+        // Should check for env vars
+        let violations = detect_cb127_slow_coverage_in_str(makefile);
+        assert!(!violations.is_empty(), "Failed to detect missing PROPTEST_CASES env");
+    }
+
+    #[test]
+    fn tn_195_full_coverage_target() {
+        let makefile = "coverage-full: cargo llvm-cov nextest";
+        // If target name implies slow/full, might be exempt or Info level
+        let violations = detect_cb127_slow_coverage_in_str(makefile);
+        assert!(violations[0].severity != Severity::Error, "Full coverage should not be Error");
+    }
+}
+```
+
+### 5.18 CB-125 Coverage Exclusion Gaming Tests (10 tests)
+
+```rust
+#[cfg(test)]
+mod cb125_falsification {
+    use super::*;
+
+    #[test]
+    fn tp_176_excessive_exclusion_patterns() {
+        let makefile = "COVERAGE_EXCLUDE := --ignore-filename-regex='(a|b|c|d|e|f|g|h|i|j|k|l)'";
+        let violations = detect_cb125_coverage_exclusion_gaming_in_str(makefile);
+        assert!(!violations.is_empty(), "Failed to detect >10 exclusion patterns");
+    }
+
+    #[test]
+    fn tp_177_critical_path_exclusion() {
+        let config = r#"
+            [coverage]
+            exclude = ["src/lib.rs", "src/main.rs"]
+        "#;
+        let violations = detect_cb125_coverage_exclusion_gaming_in_str(config);
+        assert!(!violations.is_empty(), "Failed to detect exclusion of entry points");
+    }
+
+    #[test]
+    fn tn_178_standard_exclusions() {
+        let makefile = "COVERAGE_EXCLUDE := --ignore-filename-regex='(/tests/|/examples/)'";
+        let violations = detect_cb125_coverage_exclusion_gaming_in_str(makefile);
+        assert!(violations.is_empty(), "False positive: standard test/example exclusions");
+    }
+
+    #[test]
+    fn tp_179_tarpaulin_exclude_list() {
+        let toml = r#"
+            [tarpaulin]
+            exclude-files = ["src/a.rs", "src/b.rs", "src/c.rs", "src/d.rs", "src/e.rs", "src/f.rs", "src/g.rs", "src/h.rs", "src/i.rs", "src/j.rs", "src/k.rs"]
+        "#;
+        let violations = detect_cb125_coverage_exclusion_gaming_in_str(toml);
+        assert!(!violations.is_empty(), "Failed to detect excessive tarpaulin exclusions");
+    }
+
+    #[test]
+    fn tp_180_broad_regex_exclusion() {
+        let makefile = "COVERAGE_EXCLUDE := --ignore-filename-regex='src/.*'";
+        let violations = detect_cb125_coverage_exclusion_gaming_in_str(makefile);
+        assert!(!violations.is_empty(), "Failed to detect broad src/ exclusion");
+    }
+
+    #[test]
+    fn tn_181_generated_code_exclusion() {
+        let makefile = "COVERAGE_EXCLUDE := --ignore-filename-regex='(target/|generated/)'";
+        let violations = detect_cb125_coverage_exclusion_gaming_in_str(makefile);
+        assert!(violations.is_empty(), "False positive: generated code exclusion is valid");
+    }
+
+    #[test]
+    fn tp_182_codecov_ignore() {
+        let yaml = r#"
+            ignore:
+              - "src/core"
+              - "src/security"
+        "#;
+        let violations = detect_cb125_coverage_exclusion_gaming_in_str(yaml);
+        assert!(!violations.is_empty(), "Failed to detect codecov ignore patterns");
+    }
+
+    #[test]
+    fn tn_183_documented_exclusion() {
+        let makefile = "# Exclude FFI bindings (untestable)\nCOVERAGE_EXCLUDE := src/ffi.rs";
+        let violations = detect_cb125_coverage_exclusion_gaming_in_str(makefile);
+        // If comment analysis implemented, this passes. Otherwise might fail.
+        // Assuming strict for now, but design allows documentation overrides.
+    }
+
+    #[test]
+    fn tp_184_cargo_toml_exclude() {
+        let toml = r#"
+            [package]
+            exclude = ["src/tests/*", "src/benchmarks/*"]
+        "#;
+        // Package exclude is for packaging, not coverage. Should NOT flag.
+        let violations = detect_cb125_coverage_exclusion_gaming_in_str(toml);
+        assert!(violations.is_empty(), "False positive: package exclude");
+    }
+
+    #[test]
+    fn tp_185_mod_cfg_test_exclusion() {
+        // Checking for #[cfg(not(test))] on logic modules?
+        // Out of scope for regex check, but advanced static analysis could catch it.
+    }
+}
+
+### 5.19 CB-126 Slow Test Detection Tests (5 tests)
+
+```rust
+#[cfg(test)]
+mod cb126_falsification {
+    use super::*;
+
+    #[test]
+    fn tp_186_slow_test_log() {
+        let log = "test tests::slow_test ... ok (6.54s)";
+        let violations = detect_cb126_slow_tests_in_str(log);
+        assert!(!violations.is_empty(), "Failed to detect test > 5s");
+    }
+
+    #[test]
+    fn tp_187_critical_slow_test() {
+        let log = "test tests::very_slow ... ok (65.00s)";
+        let violations = detect_cb126_slow_tests_in_str(log);
+        assert!(violations[0].severity == Severity::Error, "Failed to flag >60s as Error");
+    }
+
+    #[test]
+    fn tn_188_fast_test() {
+        let log = "test tests::fast ... ok (0.01s)";
+        let violations = detect_cb126_slow_tests_in_str(log);
+        assert!(violations.is_empty(), "False positive: fast test");
+    }
+
+    #[test]
+    fn tp_189_unbounded_proptest() {
+        let config = r#"proptest::ProptestConfig::default()"#;
+        // Should suggest setting cases
+        let violations = detect_cb126_slow_tests_in_str(config);
+        assert!(!violations.is_empty(), "Failed to detect unbounded proptest config");
+    }
+
+    #[test]
+    fn tn_190_bounded_proptest() {
+        let config = "ProptestConfig { cases: 100, ..Default::default() }";
+        let violations = detect_cb126_slow_tests_in_str(config);
+        assert!(violations.is_empty(), "False positive: bounded proptest");
+    }
+}
+```
+
+### 5.20 CB-127 Slow Coverage Detection Tests (5 tests)
+
+```rust
+#[cfg(test)]
+mod cb127_falsification {
+    use super::*;
+
+    #[test]
+    fn tp_191_nextest_llvm_cov() {
+        let makefile = "cargo llvm-cov nextest";
+        let violations = detect_cb127_slow_coverage_in_str(makefile);
+        assert!(!violations.is_empty(), "Failed to detect nextest+llvm-cov anti-pattern");
+    }
+
+    #[test]
+    fn tp_192_missing_lib_flag() {
+        let makefile = "cargo llvm-cov test --workspace";
+        // Should recommend --lib for fast feedback
+        let violations = detect_cb127_slow_coverage_in_str(makefile);
+        assert!(!violations.is_empty(), "Failed to detect missing --lib flag");
+    }
+
+    #[test]
+    fn tn_193_optimized_coverage() {
+        let makefile = "cargo llvm-cov test --lib";
+        let violations = detect_cb127_slow_coverage_in_str(makefile);
+        assert!(violations.is_empty(), "False positive: optimized coverage command");
+    }
+
+    #[test]
+    fn tp_194_missing_proptest_limits() {
+        let makefile = "cargo llvm-cov test";
+        // Should check for env vars
+        let violations = detect_cb127_slow_coverage_in_str(makefile);
+        assert!(!violations.is_empty(), "Failed to detect missing PROPTEST_CASES env");
+    }
+
+    #[test]
+    fn tn_195_full_coverage_target() {
+        let makefile = "coverage-full: cargo llvm-cov nextest";
+        // If target name implies slow/full, might be exempt or Info level
+        let violations = detect_cb127_slow_coverage_in_str(makefile);
+        assert!(violations[0].severity != Severity::Error, "Full coverage should not be Error");
+    }
+}
+```
+
+### 5.21 CB-128 Dead Code Detection Tests (15 tests)
+
+```rust
+#[cfg(test)]
+mod cb128_falsification {
+    use super::*;
+
+    #[test]
+    fn tp_196_dead_private_function() {
+        let code = "fn unused() {} fn main() {}";
+        let violations = detect_cb128_dead_code_in_str(code);
+        assert!(!violations.is_empty(), "Failed to detect dead private function");
+    }
+
+    #[test]
+    fn tn_197_public_function_exported() {
+        // Public function in library root should be considered used (exported)
+        let code = "pub fn api() {}";
+        let violations = detect_cb128_dead_code_in_str_as_lib(code);
+        assert!(violations.is_empty(), "False positive: public exported function");
+    }
+
+    #[test]
+    fn tp_211_workspace_unused_pub() {
+        // Finding 18: Public function in workspace crate NOT used by any other crate
+        // This simulates a full workspace scan where 'api' has 0 references
+        let code = "pub fn api() {}";
+        let violations = detect_cb128_dead_code_in_workspace_context(code, /* references */ 0);
+        assert!(!violations.is_empty(), "Failed to detect zombie public code (unused in workspace)");
+    }
+
+    #[test]
+    fn tn_198_used_private_function() {
+        let code = "fn used() {} fn main() { used(); }";
+        let violations = detect_cb128_dead_code_in_str(code);
+        assert!(violations.is_empty(), "False positive: used private function");
+    }
+
+    #[test]
+    fn tp_199_dead_struct_field() {
+        let code = "struct S { used: i32, dead: i32 } fn main() { let s = S { used: 1, dead: 0 }; println!("{}", s.used); }";
+        let violations = detect_cb128_dead_code_in_str(code);
+        assert!(!violations.is_empty(), "Failed to detect dead struct field");
+    }
+
+    #[test]
+    fn tn_200_prefix_underscore() {
+        let code = "fn _unused() {}";
+        let violations = detect_cb128_dead_code_in_str(code);
+        assert!(violations.is_empty(), "False positive: underscore prefix");
+    }
+
+    #[test]
+    fn tp_201_dead_code_allow_override() {
+        let code = "#[allow(dead_code)] fn unused() {}";
+        // We want to find these for cleanup, even if allowed
+        let violations = detect_cb128_dead_code_in_str(code);
+        assert!(!violations.is_empty(), "Failed to report allowed dead code");
+    }
+
+    #[test]
+    fn tp_202_dead_test_helper() {
+        let code = "#[cfg(test)] mod tests { fn helper() {} }";
+        let violations = detect_cb128_dead_code_in_str(code);
+        assert!(!violations.is_empty(), "Failed to detect dead test helper");
+    }
+
+    #[test]
+    fn tp_203_dead_import() {
+        let code = "use std::collections::HashMap; fn main() {}";
+        let violations = detect_cb128_dead_code_in_str(code);
+        assert!(!violations.is_empty(), "Failed to detect unused import");
+    }
+
+    #[test]
+    fn tn_204_trait_impl() {
+        let code = "struct S; impl Display for S { ... }";
+        let violations = detect_cb128_dead_code_in_str(code);
+        assert!(violations.is_empty(), "False positive: trait impl");
+    }
+
+    #[test]
+    fn tp_205_dead_const() {
+        let code = "const UNUSED: i32 = 42;";
+        let violations = detect_cb128_dead_code_in_str(code);
+        assert!(!violations.is_empty(), "Failed to detect dead const");
+    }
+
+    // TDG Integration Tests
+    #[test]
+    fn tp_206_tdg_score_increases_with_dead_code() {
+        let clean_score = calculate_tdg(0.0); // 0% dead
+        let dirty_score = calculate_tdg(0.20); // 20% dead
+        assert!(dirty_score > clean_score, "TDG score did not increase with dead code");
+    }
+
+    #[test]
+    fn tp_207_tdg_weight_calibration() {
+        let components = TDGComponentsV2 { dead_code: 5.0, ..Default::default() };
+        let score = calculate_weighted_tdg_v2(&components);
+        assert!(score >= 1.0, "Dead code weight insufficient");
+    }
+
+    // Dogfood Tests
+    #[test]
+    fn tp_208_dogfood_detection() {
+        // Run on self, expect >0 dead code
+    }
+
+    #[test]
+    fn tp_209_dogfood_coverage_delta() {
+        // Measure coverage delta
+    }
+
+    #[test]
+    fn tp_210_compiler_json_parsing() {
+        let json = r#"{ "message": { "code": { "code": "dead_code" }, "spans": [...] } }"#;
+        let violations = parse_rustc_json(json);
+        assert!(!violations.is_empty(), "Failed to parse rustc JSON");
     }
 }
 ```
