@@ -253,3 +253,4 @@ pmat-*.tar.gz
 # PMAT
 .pmat/backup/
 .pmat-qa/
+.pmat/dead-code-cache.json

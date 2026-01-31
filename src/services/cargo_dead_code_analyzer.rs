@@ -786,6 +786,48 @@ fn function_in_suppressed_module() {}
 }
 
 #[cfg(test)]
+mod integration_tests {
+    use super::*;
+
+    /// Test that suppression scan works on the actual pmat codebase.
+    /// This is an important dogfooding test per CB-128 spec.
+    #[test]
+    fn test_suppression_scan_on_pmat_codebase() {
+        // Get the actual project path (not target directory)
+        let project_path = std::env::current_dir().expect("Failed to get current dir");
+
+        // Skip if we're not in the pmat project directory
+        if !project_path.join("Cargo.toml").exists() {
+            eprintln!("Skipping pmat integration test - not in project root");
+            return;
+        }
+
+        let analyzer = CargoDeadCodeAnalyzer::new(&project_path).without_cache();
+        let items = analyzer.scan_for_suppression_attributes().unwrap();
+
+        // The pmat codebase has many #[allow(dead_code)] attributes
+        // Note: Not all #[allow(dead_code)] have items on the next line (some are on fields)
+        // Based on grep count, ~200+ are on actual items (fn/struct/enum/etc.)
+        assert!(
+            items.len() >= 200,
+            "Expected at least 200 suppressed items in pmat codebase, found {}. \
+             This suggests the suppression scan may not be working correctly.",
+            items.len()
+        );
+
+        // Verify items are marked as Suppressed
+        for (_, item) in &items {
+            assert_eq!(item.kind, DeadCodeKind::Suppressed);
+        }
+
+        eprintln!(
+            "✅ Layer 1 (suppression scan) detected {} items with #[allow(dead_code)]",
+            items.len()
+        );
+    }
+}
+
+#[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;
 

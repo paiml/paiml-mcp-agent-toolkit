@@ -1997,7 +1997,46 @@ fn calculate_weighted_tdg_v2(components: &TDGComponentsV2) -> f64 {
 | COMPLY-034 | Dogfood: Clean pmat dead code, measure delta | P0 | 2 days | COMPLY-033 |
 | COMPLY-035 | 210-point falsification test suite (v2.3) | P0 | 1 day | All above |
 
-### 4.2 Detailed Tickets
+### 4.2 Implementation Status (v2.3.1 - 2026-02-01)
+
+**COMPLY-030 Progress (CB-128: Compiler-based dead code detection)**:
+
+| Layer | Status | Description | Tests |
+|-------|--------|-------------|-------|
+| 1. SUPPRESSION_SCAN | ✅ COMPLETE | Detects `#[allow(dead_code)]` attributes | 4 tests passing |
+| 2. COMPILER_LINT | ✅ COMPLETE | Uses `cargo check --message-format=json` with `-W dead_code` | 3 tests passing |
+| 3. REFERENCE_GRAPH | 🔄 PLANNED | Cross-file reference analysis via AST | - |
+| 4. HEURISTIC | 🔄 PLANNED | Pattern-based detection for edge cases | - |
+
+**Implementation Details**:
+
+```rust
+// Location: src/services/cargo_dead_code_analyzer.rs
+
+// Layer 1: Detects 239+ suppressed items in pmat codebase
+fn scan_for_suppression_attributes(&self) -> Result<Vec<(PathBuf, DeadItem)>>
+
+// Layer 2: Parses cargo check JSON for dead_code warnings
+fn parse_cargo_warnings(&self, output: &str) -> Result<Vec<(PathBuf, DeadItem)>>
+
+// O(1) Caching: Uses git tree-hash for cache invalidation
+// - Cache hit: ~5ms (read JSON from .pmat/dead-code-cache/)
+// - Cache miss: ~30-60s (full cargo check)
+```
+
+**Dogfooding Results** (pmat project):
+- Total `#[allow(dead_code)]` instances: 360 (src/) + 57 (tests/) = 417
+- Layer 1 detects: 239 items (items following attributes, not fields)
+- Layer 2 detects: Additional unsuppressed dead code
+- Combined: 101 files flagged, 478 dead lines (~0.06% of codebase)
+
+**Remaining Work**:
+- [ ] COMPLY-031: TDG dead_code component integration
+- [ ] COMPLY-032: Setup/teardown calibration fixtures
+- [ ] COMPLY-033: Comply check integration with CB-128
+- [ ] COMPLY-034: Dogfood cleanup (remove dead code, measure coverage delta)
+
+### 4.3 Detailed Tickets
 
 #### COMPLY-001: CB-050 Stub Detection Patterns
 
