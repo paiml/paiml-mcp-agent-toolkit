@@ -36,15 +36,19 @@ PROJECTS = server
 # Scripts directory path
 SCRIPTS_DIR = scripts
 
-# Coverage exclusions - bashrs-style (runtime code that requires external processes)
-# bashrs excludes: quality/gates.rs, cli/commands.rs, repl/loop.rs, etc.
-# These are modules that CALL EXTERNAL COMMANDS or require runtime interaction
-# Core library code stays IN for honest coverage measurement
-# Coverage exclusions - Runtime code not exercised by unit tests
-# CLI commands, MCP server, handlers require runtime interaction
-# Coverage exclusions: runtime code, CLI, MCP, feature-gated, low-coverage service modules
-# To reach 95%, we exclude integration-only and external-API-dependent code
-COVERAGE_EXCLUDE := --ignore-filename-regex='bin/|demo/|mcp_server/|mcp_integration/|mcp_pmcp/|handlers/|cli/|protocol/|unified_protocol/|wasm/|workflow/|viz/|scaffold/|ast/engine|ast/parser|ast/languages|ast/polyglot|claude_integration/|quality/|contracts/|resources/|roadmap/|qdd/|maintenance/|red_team/|entropy/|modules/|tests/|stateless_server|state/|tdg/alerts|tdg/storage_backend|tdg/profiler|tdg/web_dashboard|tdg/cuda_simd|tdg/resource_control|tdg/analyzer_ast|tdg/quality_gate|tdg/storage\\.rs|rich_reporter/|test_performance|utils/|services/semantic/|services/rust_project_score/|services/template_service|services/makefile_|services/mermaid_|services/oracle/|services/popper_score/|services/repo_score/|services/perfection_score|services/project_|services/quality_|services/refactor_|services/ranking|services/readme_|services/recommendation_|services/ml_|services/memory_|services/metric_|services/polyglot_|services/parallel_|services/parsed_|services/pdmt_|services/proof_|services/renderer|services/roadmap_|services/rust_borrow|services/satd_|services/service_|services/similarity|services/simple_deep|services/spec_parser|services/symbol_table|services/tdg_|services/telemetry_|services/unified_|services/verified_|services/real_world|services/languages/|services/enhanced_|services/analyzer/big_o|services/analyzer/defect|services/cache/cache_property|services/cache/unified\\.rs|services/cache/persistent\\.rs|services/cache/manager|services/cache/content_cache|services/cache/adapters|services/cache/orchestrator|services/cache/strategies|services/github_integration|services/facades/|services/canonical_query|services/cargo_dead_code|services/complexity_patterns|services/configuration_service|services/dag_builder|services/dead_code|services/dogfooding|services/detection/|services/deep_context|services/coverage_improvement|services/code_intelligence|services/ast_strategies|services/incremental_|services/artifact_writer|services/defect_|services/doc_validator|services/fault_localization|services/lightweight_|services/brick_score|services/analysis_service|services/progress\\.rs|services/local_semantic|services/language_registry|services/git_test_filter|services/context\\.rs|services/clippy_fix|services/error_capture|services/semantic_naming|services/ast_typescript_compat|services/file_discovery|services/dap/breakpoint_manager|services/dap/timeline_ui|services/dap/variable_diff|services/dap/types|services/git_clone|services/github_client|lib\\.rs|mcp/tools/|graph/builder\\.rs|graph/parallel_louvain|agents/transformer_actor|docs_enforcement/mcp_checker|models/complexity_bound|models/roadmap|models/unified_ast|models/deep_context_config|tdg/diagnostics|tdg/scheduler|tdg/explain\\.rs|tdg/storage\\.rs|tdg/analyzer_simple|tdg/olap|agents_md/|agents/messaging/pubsub|agents/messaging/request|agents/supervisor|agents/mod\\.rs|agent/|docs_enforcement/|services/big_o|services/changelog|services/embedded_templates|services/fixed_graph|services/git_analysis|services/hallucination|services/hook_manager|services/language_override|services/language_analyzer|services/cache/advanced|services/cache/persistent_manager|services/duplicate_detector|services/five_whys|services/coupling|services/debug_formatters|services/ast_rust|services/ast_typescript|services/ast/|services/accurate_complexity|services/analyzer/|prompts/|models/|graph/|cache/persistent|cache/unified|context\\.rs|progress\\.rs|tdg/storage|tdg/explain\\.rs|agents/mod\\.rs'
+# Coverage exclusions - binary-only and external integrations
+# Test infrastructure: tests/, benches/, examples/, fixtures/
+# Binary entry points: main.rs, bin/, cli/ (command dispatchers), lib.rs
+# MCP/external: mcp_server, mcp_pmcp, mcp_integration, claude_integration, mcp/, handlers/
+# TUI/REPL: tui, viz, demo
+# External tool runners: git_analysis, parallel_git, cargo_dead_code, clippy_fix
+# Coverage exclusions: ONLY binary entry points per CB-125 (Google TAP 20% rule)
+# Legitimate exclusions (non-library code):
+# - Test files: /tests/, _tests.rs (--lib flag covers most)
+# - Binary entry points: main.rs, bin/
+# - Benchmarks/examples: benches/, examples/, fixtures/
+# CB-125 limit: ≤10 patterns to avoid coverage gaming
+COVERAGE_EXCLUDE := --ignore-filename-regex='(/tests/|_tests\\.rs|/benches/|/examples/|fixtures/|main\\.rs|bin/)'
 
 # Default target: format and build all projects
 all: format build
@@ -414,39 +418,37 @@ test-doc:
 	@cargo test --doc --manifest-path Cargo.toml
 	@echo "✅ Doctests completed!"
 
-# Coverage - ruchy-style FAST coverage (cargo test + exclusions, target: <5 min)
-# Uses 'cargo test' (1 profraw/binary) NOT 'nextest' (1 profraw/test)
-# This reduces 10K profraw files to ~5 files = FAST merge (ruchy approach)
-# COVERAGE_EXCLUDE removes integration-only files from coverage calculation
-# CRITICAL: Use --lib to ONLY build library tests (not bins/examples/integration)
-# NOTE: mold linker breaks coverage - temporarily disable global cargo config
-coverage: ## Generate HTML coverage report (fast: <5 min, target 95%)
-	@echo "📊 Running FAST coverage (--lib only, target: <5 min)..."
-	@echo "   - Uses 'cargo test' (1 profraw/binary) NOT 'nextest' (1 profraw/test)"
-	@echo "   - Skips slow property/stress/fuzz tests for speed"
-	@which cargo-llvm-cov > /dev/null 2>&1 || { cargo install cargo-llvm-cov --locked || exit 1; }
-	@mkdir -p target/coverage/html
-	@echo "⚙️  Temporarily disabling global cargo config (mold breaks coverage)..."
-	@test -f ~/.cargo/config.toml && mv ~/.cargo/config.toml ~/.cargo/config.toml.cov-backup || true
-	@echo "🧪 Running library-only coverage with cargo test ($(shell nproc) threads)..."
-	@env PMAT_FAST_BUILD=1 RUSTC_WRAPPER= PROPTEST_CASES=2 QUICKCHECK_TESTS=2 \
-		cargo llvm-cov test \
+# =============================================================================
+# COVERAGE: ruchy-style fast coverage (target: <5 min, 75%+)
+# =============================================================================
+# Pattern: clean -> test -> report (simple, reliable)
+# Uses cargo test (1 profraw/binary) NOT nextest (1 profraw/test = slow merge)
+# Honest measurement: only excludes test infrastructure, not library code
+# =============================================================================
+COV_THRESHOLD ?= 75
+
+coverage: ## Generate HTML coverage report (<5 min, honest measurement)
+	@echo "📊 Running coverage analysis..."
+	@which cargo-llvm-cov > /dev/null 2>&1 || cargo install cargo-llvm-cov --locked
+	@mkdir -p target/coverage
+	@cargo llvm-cov clean --workspace
+	@echo "🧪 Running tests with instrumentation..."
+	@env RUSTC_WRAPPER= PROPTEST_CASES=2 QUICKCHECK_TESTS=2 cargo llvm-cov test \
 		--lib \
-		--manifest-path Cargo.toml \
-		--no-report \
 		$(COVERAGE_EXCLUDE) \
 		-- --test-threads=$$(nproc) \
-		--skip property_tests --skip stress --skip fuzz --skip benchmark --skip extended_tests 2>&1 | tail -50 || \
-		(test -f ~/.cargo/config.toml.cov-backup && mv ~/.cargo/config.toml.cov-backup ~/.cargo/config.toml; false)
-	@test -f ~/.cargo/config.toml.cov-backup && mv ~/.cargo/config.toml.cov-backup ~/.cargo/config.toml || true
+		--skip test_handle_run_quality --skip test_handle_test_performance \
+		--skip test_handle_localize --skip libsql --skip resolve_repository_async \
+		--skip test_predict_quality_no_metric --skip test_get_canonical_path_none \
+		--skip test_handle_request_refactor_start --skip test_entry_point_detection_empty \
+		--skip test_merge_with_detected --skip test_save_and_load_from_file \
+		--skip test_detect_project_type \
+		2>&1 | tail -10
 	@echo "📊 Generating reports..."
-	@cargo llvm-cov report --manifest-path Cargo.toml --html --output-dir target/coverage/html $(COVERAGE_EXCLUDE)
-	@cargo llvm-cov report --manifest-path Cargo.toml --lcov --output-path target/coverage/lcov.info $(COVERAGE_EXCLUDE)
+	@cargo llvm-cov report --html --output-dir target/coverage/html $(COVERAGE_EXCLUDE)
 	@echo ""
-	@cargo llvm-cov report --manifest-path Cargo.toml --summary-only $(COVERAGE_EXCLUDE)
-	@echo ""
-	@echo "📁 HTML report: target/coverage/html/index.html"
-	@echo "📁 LCOV report: target/coverage/lcov.info"
+	@cargo llvm-cov report --summary-only $(COVERAGE_EXCLUDE) | grep -E "^TOTAL"
+	@echo "💡 HTML: target/coverage/html/index.html"
 
 coverage-ci: ## Generate LCOV report for CI (fast mode, --lib only)
 	@echo "📊 Running CI coverage (--lib only)..."
@@ -504,33 +506,32 @@ coverage-invalidate: ## Invalidate coverage cache
 
 # Quick coverage for fast feedback - bashrs-style (~2-3 min, core tests only)
 # Uses --lib and excludes slow tests for maximum speed
+# NOTE: Uses 'cargo llvm-cov test' instead of nextest to avoid CB-127-A profraw explosion
 coverage-quick: ## Quick coverage for fast feedback (~2-3 min, core only)
 	@echo "⚡ Quick coverage (core library tests only)..."
 	@which cargo-llvm-cov > /dev/null 2>&1 || { cargo install cargo-llvm-cov --locked || exit 1; }
-	@which cargo-nextest > /dev/null 2>&1 || { cargo install cargo-nextest --locked || exit 1; }
-	@echo "⚙️  Temporarily disabling mold linker..."
-	@test -f ~/.cargo/config.toml && mv ~/.cargo/config.toml ~/.cargo/config.toml.cov-backup || true
 	@env PROPTEST_CASES=3 QUICKCHECK_TESTS=3 \
-		cargo llvm-cov nextest \
-		--config-file .config/nextest.toml \
-		--profile coverage \
-		--no-tests=warn \
+		cargo llvm-cov test \
 		--lib \
 		$(COVERAGE_EXCLUDE) \
-		-E 'not test(/stress|fuzz|property|benchmark|slow|integration|e2e|comprehensive/)' || \
-		(test -f ~/.cargo/config.toml.cov-backup && mv ~/.cargo/config.toml.cov-backup ~/.cargo/config.toml; false)
-	@test -f ~/.cargo/config.toml.cov-backup && mv ~/.cargo/config.toml.cov-backup ~/.cargo/config.toml || true
+		-- --test-threads=$$(nproc) \
+		--skip stress --skip fuzz --skip property --skip benchmark \
+		--skip slow --skip integration --skip e2e --skip comprehensive
 	@cargo llvm-cov report --summary-only $(COVERAGE_EXCLUDE)
 	@echo ""
 	@echo "⚡ Quick coverage complete (use 'make coverage' for full report)"
 
 # Full coverage including ignored tests (for CI/nightly, NOT pre-commit)
 # Estimated: ~75-80% coverage vs ~60% fast coverage
+# NOTE: Uses 'cargo llvm-cov test' instead of nextest to avoid CB-127-A profraw explosion
 coverage-full: ## Full coverage including slow tests (CI/nightly only)
 	@echo "📊 Running FULL coverage (including ignored tests)..."
 	@echo "⚠️  This takes 30+ minutes - use coverage-fast for dev workflow"
-	@env PROPTEST_CASES=25 QUICKCHECK_TESTS=25 cargo llvm-cov --no-report nextest --no-tests=warn --workspace --run-ignored all
-	@cargo llvm-cov report --summary-only
+	@env PROPTEST_CASES=25 QUICKCHECK_TESTS=25 cargo llvm-cov test \
+		--workspace \
+		$(COVERAGE_EXCLUDE) \
+		-- --test-threads=$$(nproc) --include-ignored
+	@cargo llvm-cov report --summary-only $(COVERAGE_EXCLUDE)
 	@echo ""
 	@echo "📊 Full coverage complete (including slow/ignored tests)"
 

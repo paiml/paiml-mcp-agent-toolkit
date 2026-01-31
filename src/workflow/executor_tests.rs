@@ -2,12 +2,11 @@
 //! Extracted to separate file for file health compliance (CB-040)
 
 use super::*;
-use crate::agents::{AgentClass, AgentRegistry, AgentSpec};
+use crate::agents::registry::AgentRegistry;
+use crate::agents::{AgentClass, AgentSpec};
 use std::collections::HashMap;
 use std::sync::Arc;
 use uuid::Uuid;
-
-use super::*;
 
 #[actix_rt::test]
 async fn test_executor_creation() {
@@ -308,10 +307,8 @@ async fn test_parallel_step_execution() {
         }
     }
 }
-// Coverage tests
-use crate::agents::{AgentClass, AgentSpec};
 
-// Helper to create an executor with registered agents
+// Coverage tests - Helper to create an executor with registered agents
 async fn setup_executor_with_agent() -> (DefaultWorkflowExecutor, Arc<AgentRegistry>) {
     let registry = Arc::new(AgentRegistry::new());
 

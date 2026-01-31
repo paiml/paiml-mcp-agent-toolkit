@@ -482,6 +482,121 @@ async fn capture_rust_project_score(project_path: &PathBuf) -> Result<f64> {
     Ok(0.0)
 }
 
+// Falsification report types from work_falsification module
+use super::work_falsification::{ClaimResult, FalsificationReport};
+
+/// Helper to process falsification report (CB-040 complexity refactor)
+/// Returns Ok(()) if work can proceed, Err if blocked
+fn process_falsification_report(
+    report: &FalsificationReport,
+    override_claims: Option<&Vec<String>>,
+    ticket: Option<&String>,
+    id: &str,
+) -> Result<()> {
+    if !report.has_blocking_failures() {
+        println!(
+            "✅ FALSIFICATION RESULT: PASSED ({}/{} claims validated)",
+            report.passed, report.total_claims
+        );
+        print_warning_failures(report);
+        println!();
+        return Ok(());
+    }
+
+    let failures = report.blocking_failures();
+    let unoverrideable = filter_unoverriden_failures(&failures, override_claims);
+
+    if unoverrideable.is_empty() && ticket.is_some() {
+        print_overridden_result(&failures, ticket.unwrap());
+        return Ok(());
+    }
+
+    print_blocked_result(report, &unoverrideable, id);
+    anyhow::bail!(
+        "Work blocked: {} falsification(s) found. Fix issues or use --override-claims with --ticket.",
+        unoverrideable.len()
+    )
+}
+
+/// Filter failures not covered by overrides
+fn filter_unoverriden_failures<'a>(
+    failures: &[&'a ClaimResult],
+    override_claims: Option<&Vec<String>>,
+) -> Vec<&'a ClaimResult> {
+    failures
+        .iter()
+        .filter(|failure| {
+            let claim_name = claim_to_override_name(&failure.hypothesis);
+            if let Some(overrides) = override_claims {
+                !overrides.iter().any(|o| o.to_lowercase() == claim_name.to_lowercase())
+            } else {
+                true
+            }
+        })
+        .copied()
+        .collect()
+}
+
+/// Print warning failures (non-blocking)
+fn print_warning_failures(report: &FalsificationReport) {
+    let warnings = report.warning_failures();
+    if !warnings.is_empty() {
+        println!();
+        println!("Warnings (non-blocking):");
+        for warning in warnings {
+            println!(
+                "  - [{}] {}: {}",
+                warning.index, warning.hypothesis, warning.result.explanation
+            );
+        }
+    }
+}
+
+/// Print result when all failures are overridden
+fn print_overridden_result(failures: &[&ClaimResult], ticket_id: &str) {
+    println!(
+        "⚠️  FALSIFICATION RESULT: OVERRIDDEN ({} claim(s) overridden with ticket {})",
+        failures.len(),
+        ticket_id
+    );
+    println!();
+    println!("Overridden claims:");
+    for failure in failures {
+        println!(
+            "  - [{}] {}: {} (OVERRIDDEN)",
+            failure.index, failure.hypothesis, failure.result.explanation
+        );
+    }
+    println!();
+    println!("⚠️  WARNING: Technical debt incurred. Track with ticket: {}", ticket_id);
+    println!();
+}
+
+/// Print result when work is blocked
+fn print_blocked_result(report: &FalsificationReport, unoverrideable: &[&ClaimResult], id: &str) {
+    println!(
+        "❌ FALSIFICATION RESULT: BLOCKED ({} failure(s), {} warning(s))",
+        report.failed, report.warnings
+    );
+    println!();
+    println!("Failures (must fix):");
+    for failure in unoverrideable {
+        println!(
+            "  - [{}] {}: {}",
+            failure.index, failure.hypothesis, failure.result.explanation
+        );
+    }
+
+    print_warning_failures(report);
+
+    println!();
+    println!("Fix issues and retry: pmat work complete {}", id);
+    println!();
+    println!("Or override with accountability (Popperian Protocol):");
+    println!("  1. Create debt ticket: pmat comply upgrade --target popperian");
+    println!("  2. pmat work complete {} --override-claims coverage,complexity --ticket DEBT-XXX", id);
+}
+
 /// Handle work complete command
 ///
 /// Popperian Falsification Protocol:
@@ -563,101 +678,13 @@ pub async fn handle_work_complete(
                 // Run ALL falsification tests
                 match run_falsification_tests(&project_path, &contract).await {
                     Ok(report) => {
-                        println!();
-
-                        // Check for overrides with valid ticket
-                        let overrides = override_claims.as_ref();
-                        let ticket_id = ticket.as_ref();
-
-                        if report.has_blocking_failures() {
-                            let failures = report.blocking_failures();
-
-                            // Check if all failures are overridden
-                            let mut unoverrideable_failures = Vec::new();
-                            for failure in &failures {
-                                let claim_name = claim_to_override_name(&failure.hypothesis);
-                                if let Some(overrides) = overrides {
-                                    if !overrides.iter().any(|o| o.to_lowercase() == claim_name.to_lowercase()) {
-                                        unoverrideable_failures.push(failure);
-                                    }
-                                } else {
-                                    unoverrideable_failures.push(failure);
-                                }
-                            }
-
-                            if unoverrideable_failures.is_empty() && ticket_id.is_some() {
-                                // All failures are overridden with a valid ticket
-                                println!(
-                                    "⚠️  FALSIFICATION RESULT: OVERRIDDEN ({} claim(s) overridden with ticket {})",
-                                    failures.len(),
-                                    ticket_id.unwrap()
-                                );
-                                println!();
-                                println!("Overridden claims:");
-                                for failure in &failures {
-                                    println!(
-                                        "  - [{}] {}: {} (OVERRIDDEN)",
-                                        failure.index, failure.hypothesis, failure.result.explanation
-                                    );
-                                }
-                                println!();
-                                println!("⚠️  WARNING: Technical debt incurred. Track with ticket: {}", ticket_id.unwrap());
-                                println!();
-                            } else {
-                                println!(
-                                    "❌ FALSIFICATION RESULT: BLOCKED ({} failure(s), {} warning(s))",
-                                    report.failed, report.warnings
-                                );
-                                println!();
-                                println!("Failures (must fix):");
-                                for failure in &unoverrideable_failures {
-                                    println!(
-                                        "  - [{}] {}: {}",
-                                        failure.index, failure.hypothesis, failure.result.explanation
-                                    );
-                                }
-
-                                if !report.warning_failures().is_empty() {
-                                    println!();
-                                    println!("Warnings (should fix):");
-                                    for warning in report.warning_failures() {
-                                        println!(
-                                            "  - [{}] {}: {}",
-                                            warning.index, warning.hypothesis, warning.result.explanation
-                                        );
-                                    }
-                                }
-
-                                println!();
-                                println!("Fix issues and retry: pmat work complete {}", id);
-                                println!();
-                                println!("Or override with accountability (Popperian Protocol):");
-                                println!("  1. Create debt ticket: pmat comply upgrade --target popperian");
-                                println!("  2. pmat work complete {} --override-claims coverage,complexity --ticket DEBT-XXX", id);
-
-                                anyhow::bail!(
-                                    "Work blocked: {} falsification(s) found. Fix issues or use --override-claims with --ticket.",
-                                    unoverrideable_failures.len()
-                                );
-                            }
-                        } else {
-                            println!(
-                                "✅ FALSIFICATION RESULT: PASSED ({}/{} claims validated)",
-                                report.passed, report.total_claims
-                            );
-
-                            if !report.warning_failures().is_empty() {
-                                println!();
-                                println!("Warnings (non-blocking):");
-                                for warning in report.warning_failures() {
-                                    println!(
-                                        "  - [{}] {}: {}",
-                                        warning.index, warning.hypothesis, warning.result.explanation
-                                    );
-                                }
-                            }
-                            println!();
-                        }
+                        // Use helper function (CB-040 complexity refactor)
+                        process_falsification_report(
+                            &report,
+                            override_claims.as_ref(),
+                            ticket.as_ref(),
+                            &id,
+                        )?;
                     }
                     Err(e) => {
                         println!("⚠️  Falsification error: {}", e);
@@ -1244,44 +1271,39 @@ pub struct Example {{
 ///
 /// Maps the verbose hypothesis strings from FalsifiableClaim to short,
 /// CLI-friendly names that users can specify with --override-claims.
+/// Hypothesis pattern to CLI override name mapping (CB-040 complexity refactor)
+const CLAIM_PATTERNS: &[(&[&str], &str)] = &[
+    (&["manifest", "files deleted"], "manifest"),
+    (&["meta-falsification", "falsification system"], "meta-falsification"),
+    (&["coverage gaming", "cfg(not(coverage))"], "coverage-gaming"),
+    (&["differential coverage", "new code"], "differential-coverage"),
+    (&["absolute coverage", "coverage does not decrease"], "coverage"),
+    (&["tdg", "test-driven grade"], "tdg"),
+    (&["complexity", "cyclomatic"], "complexity"),
+    (&["supply chain", "dependencies"], "supply-chain"),
+    (&["file size", "500 lines"], "file-size"),
+    (&["spec", "specification"], "spec-quality"),
+    (&["github", "sync", "changes pushed", "uncommitted"], "github-sync"),
+    (&["examples", "compile"], "examples"),
+    (&["book", "pmat-book"], "book"),
+];
+
 fn claim_to_override_name(hypothesis: &str) -> String {
     let hypothesis_lower = hypothesis.to_lowercase();
 
-    // Map hypothesis patterns to CLI names
-    if hypothesis_lower.contains("manifest") || hypothesis_lower.contains("files deleted") {
-        "manifest".to_string()
-    } else if hypothesis_lower.contains("meta-falsification") || hypothesis_lower.contains("falsification system") {
-        "meta-falsification".to_string()
-    } else if hypothesis_lower.contains("coverage gaming") || hypothesis_lower.contains("cfg(not(coverage))") {
-        "coverage-gaming".to_string()
-    } else if hypothesis_lower.contains("differential coverage") || hypothesis_lower.contains("new code") {
-        "differential-coverage".to_string()
-    } else if hypothesis_lower.contains("absolute coverage") || hypothesis_lower.contains("coverage does not decrease") {
-        "coverage".to_string()
-    } else if hypothesis_lower.contains("tdg") || hypothesis_lower.contains("test-driven grade") {
-        "tdg".to_string()
-    } else if hypothesis_lower.contains("complexity") || hypothesis_lower.contains("cyclomatic") {
-        "complexity".to_string()
-    } else if hypothesis_lower.contains("supply chain") || hypothesis_lower.contains("dependencies") {
-        "supply-chain".to_string()
-    } else if hypothesis_lower.contains("file size") || hypothesis_lower.contains("500 lines") {
-        "file-size".to_string()
-    } else if hypothesis_lower.contains("spec") || hypothesis_lower.contains("specification") {
-        "spec-quality".to_string()
-    } else if hypothesis_lower.contains("github") || hypothesis_lower.contains("sync") || hypothesis_lower.contains("changes pushed") || hypothesis_lower.contains("uncommitted") {
-        "github-sync".to_string()
-    } else if hypothesis_lower.contains("examples") || hypothesis_lower.contains("compile") {
-        "examples".to_string()
-    } else if hypothesis_lower.contains("book") || hypothesis_lower.contains("pmat-book") {
-        "book".to_string()
-    } else {
-        // Unknown claim - use a sanitized version of the hypothesis
-        hypothesis_lower
-            .chars()
-            .filter(|c| c.is_alphanumeric() || *c == '-' || *c == '_')
-            .take(30)
-            .collect()
+    // Pattern-based lookup (reduces cyclomatic complexity vs if-else chain)
+    for (patterns, name) in CLAIM_PATTERNS {
+        if patterns.iter().any(|p| hypothesis_lower.contains(p)) {
+            return name.to_string();
+        }
     }
+
+    // Unknown claim - use a sanitized version of the hypothesis
+    hypothesis_lower
+        .chars()
+        .filter(|c| c.is_alphanumeric() || *c == '-' || *c == '_')
+        .take(30)
+        .collect()
 }
 
 /// Run legacy falsification validation (warnings only, for backward compatibility)

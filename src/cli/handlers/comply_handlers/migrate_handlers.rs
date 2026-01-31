@@ -1,40 +1,52 @@
 
-/// Check Sovereign AI Stack compliance patterns
+/// Check Sovereign AI Stack compliance patterns (CB-040 complexity refactor)
 /// Validates: Five-Whys in fixes, falsification tests, APR models, ticket refs
 fn check_sovereign_stack_patterns(project_path: &Path) -> ComplianceCheck {
-    use std::process::Command;
-
     // Check if this is a Sovereign Stack project
     let cargo_toml = project_path.join("Cargo.toml");
     if !cargo_toml.exists() {
-        return ComplianceCheck {
-            name: "Sovereign Stack Patterns".to_string(),
-            status: CheckStatus::Skip,
-            message: "No Cargo.toml found".to_string(),
-            severity: Severity::Info,
-        };
+        return skip_check("Sovereign Stack Patterns", "No Cargo.toml found");
     }
 
     let content = fs::read_to_string(&cargo_toml).unwrap_or_default();
-    let is_sovereign = content.contains("trueno")
-        || content.contains("aprender")
-        || content.contains("realizar")
-        || content.contains("batuta")
-        || content.contains("renacer");
-
-    if !is_sovereign {
-        return ComplianceCheck {
-            name: "Sovereign Stack Patterns".to_string(),
-            status: CheckStatus::Skip,
-            message: "Not a Sovereign Stack project".to_string(),
-            severity: Severity::Info,
-        };
+    if !is_sovereign_stack_project(&content) {
+        return skip_check("Sovereign Stack Patterns", "Not a Sovereign Stack project");
     }
 
     let mut issues: Vec<String> = Vec::new();
     let mut good_patterns: Vec<String> = Vec::new();
 
-    // Check 1: Recent fix commits should have Five-Whys or root cause
+    // Run individual checks
+    check_five_whys_patterns(project_path, &mut issues, &mut good_patterns);
+    check_falsification_tests(project_path, &mut good_patterns);
+    check_apr_models(project_path, &mut good_patterns);
+    check_ticket_refs(project_path, &mut issues, &mut good_patterns);
+    check_ml_commit_classification(project_path, &mut good_patterns);
+
+    // Build result
+    build_sovereign_result(&issues, &good_patterns)
+}
+
+/// Helper: Create skip check result
+fn skip_check(name: &str, message: &str) -> ComplianceCheck {
+    ComplianceCheck {
+        name: name.to_string(),
+        status: CheckStatus::Skip,
+        message: message.to_string(),
+        severity: Severity::Info,
+    }
+}
+
+/// Helper: Check if Cargo.toml contains sovereign stack dependencies
+fn is_sovereign_stack_project(content: &str) -> bool {
+    const SOVEREIGN_DEPS: &[&str] = &["trueno", "aprender", "realizar", "batuta", "renacer"];
+    SOVEREIGN_DEPS.iter().any(|dep| content.contains(dep))
+}
+
+/// Helper: Check Five-Whys patterns in git commits
+fn check_five_whys_patterns(project_path: &Path, issues: &mut Vec<String>, good_patterns: &mut Vec<String>) {
+    use std::process::Command;
+
     let git_log = Command::new("git")
         .args(["log", "--oneline", "-20", "--grep=fix"])
         .current_dir(project_path)
@@ -45,7 +57,6 @@ fn check_sovereign_stack_patterns(project_path: &Path) -> ComplianceCheck {
         let fix_commits: Vec<&str> = log.lines().collect();
 
         if !fix_commits.is_empty() {
-            // Check if any recent fix has Five-Whys
             let has_five_whys = Command::new("git")
                 .args(["log", "-20", "--grep=Five-Whys\\|ROOT CAUSE\\|Why 1:"])
                 .current_dir(project_path)
@@ -60,44 +71,54 @@ fn check_sovereign_stack_patterns(project_path: &Path) -> ComplianceCheck {
             }
         }
     }
+}
 
-    // Check 2: Falsification tests (F001-F100 pattern)
+/// Helper: Check for falsification tests
+fn check_falsification_tests(project_path: &Path, good_patterns: &mut Vec<String>) {
     let tests_dir = project_path.join("tests");
-    if tests_dir.exists() {
-        let has_falsification = walkdir::WalkDir::new(&tests_dir)
-            .max_depth(3)
-            .into_iter()
-            .filter_map(|e| e.ok())
-            .any(|e| {
-                e.path()
-                    .to_string_lossy()
-                    .contains("falsification")
-                    || fs::read_to_string(e.path())
-                        .map(|s| s.contains("F001") || s.contains("F0") && s.contains("TEST"))
-                        .unwrap_or(false)
-            });
-
-        if has_falsification {
-            good_patterns.push("Falsification test suite".to_string());
-        }
+    if !tests_dir.exists() {
+        return;
     }
 
-    // Check 3: APR model files validation
+    let has_falsification = walkdir::WalkDir::new(&tests_dir)
+        .max_depth(3)
+        .into_iter()
+        .filter_map(|e| e.ok())
+        .any(|e| {
+            e.path().to_string_lossy().contains("falsification")
+                || fs::read_to_string(e.path())
+                    .map(|s| s.contains("F001") || (s.contains("F0") && s.contains("TEST")))
+                    .unwrap_or(false)
+        });
+
+    if has_falsification {
+        good_patterns.push("Falsification test suite".to_string());
+    }
+}
+
+/// Helper: Check for APR model files
+fn check_apr_models(project_path: &Path, good_patterns: &mut Vec<String>) {
     let models_dir = project_path.join("models");
-    if models_dir.exists() {
-        let apr_files: Vec<_> = walkdir::WalkDir::new(&models_dir)
-            .max_depth(2)
-            .into_iter()
-            .filter_map(|e| e.ok())
-            .filter(|e| e.path().extension().map(|x| x == "apr").unwrap_or(false))
-            .collect();
-
-        if !apr_files.is_empty() {
-            good_patterns.push(format!("{} APR model(s)", apr_files.len()));
-        }
+    if !models_dir.exists() {
+        return;
     }
 
-    // Check 4: PAR/PMAT ticket references in commits
+    let apr_count = walkdir::WalkDir::new(&models_dir)
+        .max_depth(2)
+        .into_iter()
+        .filter_map(|e| e.ok())
+        .filter(|e| e.path().extension().map(|x| x == "apr").unwrap_or(false))
+        .count();
+
+    if apr_count > 0 {
+        good_patterns.push(format!("{} APR model(s)", apr_count));
+    }
+}
+
+/// Helper: Check ticket references in commits
+fn check_ticket_refs(project_path: &Path, issues: &mut Vec<String>, good_patterns: &mut Vec<String>) {
+    use std::process::Command;
+
     let ticket_refs = Command::new("git")
         .args(["log", "-50", "--oneline"])
         .current_dir(project_path)
@@ -105,12 +126,7 @@ fn check_sovereign_stack_patterns(project_path: &Path) -> ComplianceCheck {
         .map(|o| {
             let log = String::from_utf8_lossy(&o.stdout);
             log.lines()
-                .filter(|l| {
-                    l.contains("PAR-")
-                        || l.contains("PMAT-")
-                        || l.contains("Refs ")
-                        || l.contains("GH-")
-                })
+                .filter(|l| l.contains("PAR-") || l.contains("PMAT-") || l.contains("Refs ") || l.contains("GH-"))
                 .count()
         })
         .unwrap_or(0);
@@ -120,50 +136,55 @@ fn check_sovereign_stack_patterns(project_path: &Path) -> ComplianceCheck {
     } else if ticket_refs < 5 {
         issues.push("Few ticket references in recent commits".to_string());
     }
+}
 
-    // Check 5: ML-based commit classification (if model available)
-    if let Ok(classifier) = CommitClassifier::load_sovereign_stack() {
-        // Get recent commit messages for classification
-        let git_log_full = Command::new("git")
-            .args(["log", "-10", "--format=%B---COMMIT_SEP---"])
-            .current_dir(project_path)
-            .output();
+/// Helper: Check ML-based commit classification
+fn check_ml_commit_classification(project_path: &Path, good_patterns: &mut Vec<String>) {
+    use std::process::Command;
 
-        if let Ok(output) = git_log_full {
-            let log = String::from_utf8_lossy(&output.stdout);
-            let commits: Vec<&str> = log
-                .split("---COMMIT_SEP---")
-                .filter(|s| !s.trim().is_empty())
-                .collect();
+    let classifier = match CommitClassifier::load_sovereign_stack() {
+        Ok(c) => c,
+        Err(_) => return,
+    };
 
-            if !commits.is_empty() {
-                let mut class_counts: std::collections::HashMap<String, usize> =
-                    std::collections::HashMap::new();
-                let mut high_confidence = 0;
+    let git_log_full = Command::new("git")
+        .args(["log", "-10", "--format=%B---COMMIT_SEP---"])
+        .current_dir(project_path)
+        .output();
 
-                for commit in &commits {
-                    let result = classifier.classify(commit);
-                    *class_counts.entry(result.class).or_insert(0) += 1;
-                    if result.confidence > 0.6 {
-                        high_confidence += 1;
-                    }
-                }
+    if let Ok(output) = git_log_full {
+        let log = String::from_utf8_lossy(&output.stdout);
+        let commits: Vec<&str> = log.split("---COMMIT_SEP---").filter(|s| !s.trim().is_empty()).collect();
 
-                // Find dominant pattern
-                if let Some((dominant_class, count)) = class_counts.iter().max_by_key(|(_, c)| *c) {
-                    if *count >= commits.len() / 2 {
-                        good_patterns.push(format!("ML: {} dominant ({}/{})", dominant_class, count, commits.len()));
-                    }
-                }
+        if commits.is_empty() {
+            return;
+        }
 
-                if high_confidence > commits.len() / 2 {
-                    good_patterns.push(format!("ML: {}% high-confidence classifications", high_confidence * 100 / commits.len()));
-                }
+        let mut class_counts: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
+        let mut high_confidence = 0;
+
+        for commit in &commits {
+            let result = classifier.classify(commit);
+            *class_counts.entry(result.class).or_insert(0) += 1;
+            if result.confidence > 0.6 {
+                high_confidence += 1;
             }
         }
-    }
 
-    // Build result
+        if let Some((dominant_class, count)) = class_counts.iter().max_by_key(|(_, c)| *c) {
+            if *count >= commits.len() / 2 {
+                good_patterns.push(format!("ML: {} dominant ({}/{})", dominant_class, count, commits.len()));
+            }
+        }
+
+        if high_confidence > commits.len() / 2 {
+            good_patterns.push(format!("ML: {}% high-confidence classifications", high_confidence * 100 / commits.len()));
+        }
+    }
+}
+
+/// Helper: Build final result from issues and good patterns
+fn build_sovereign_result(issues: &[String], good_patterns: &[String]) -> ComplianceCheck {
     if issues.is_empty() && !good_patterns.is_empty() {
         ComplianceCheck {
             name: "Sovereign Stack Patterns".to_string(),

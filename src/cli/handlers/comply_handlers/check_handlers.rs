@@ -24,6 +24,13 @@ use super::comply_cb_detect::{
     detect_bricks_without_assertions, detect_cb001_wgsl_no_bounds_check,
     detect_cb002_wgsl_barrier_divergence, detect_cb020_unsafe_without_safety,
     detect_cb021_simd_without_target_feature, detect_profiler_anomalies,
+    // OIP Tarantula patterns (CB-120 through CB-124) - improve-pmat-comply.md v2.1.0
+    detect_cb120_nan_unsafe_comparison, detect_cb121_lock_poisoning,
+    detect_cb122_serde_safety, detect_cb123_undocumented_ignore,
+    detect_cb124_coverage_threshold,
+    // Coverage Quality & Test Performance (CB-125 through CB-127) - improve-pmat-comply.md v2.2.0
+    detect_cb125_coverage_exclusion_gaming, detect_cb126_slow_tests,
+    detect_cb127_slow_coverage,
 };
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -181,6 +188,10 @@ async fn handle_check(
         check_quality_thresholds(project_path),
         check_deprecated_features(project_path),
         check_compute_brick(project_path),
+        // OIP Tarantula patterns (CB-120 through CB-124) - improve-pmat-comply.md v2.1.0
+        check_oip_tarantula_patterns(project_path),
+        // Coverage Quality & Test Performance (CB-125 through CB-127) - improve-pmat-comply.md v2.2.0
+        check_coverage_quality_patterns(project_path),
         // Build performance checks (lltop Tab 8 integration)
         check_cargo_lock(project_path),
         check_msrv(project_path),
@@ -808,6 +819,200 @@ fn check_compute_brick(project_path: &Path) -> ComplianceCheck {
             name: "ComputeBrick Compliance".to_string(),
             status: CheckStatus::Pass,
             message: "ComputeBrick patterns validated - no violations detected".to_string(),
+            severity: Severity::Info,
+        }
+    }
+}
+
+/// OIP Tarantula Pattern Detection (CB-120 through CB-124)
+/// Implements improve-pmat-comply.md v2.1.0 specification
+/// Validates:
+/// - CB-120: NaN-unsafe comparison (partial_cmp().unwrap())
+/// - CB-121: Lock poisoning vulnerabilities (mutex.lock().unwrap())
+/// - CB-122: Serde deserialization safety (from_str().unwrap())
+/// - CB-123: Undocumented #[ignore] tests
+/// - CB-124: Low coverage thresholds (<80%)
+fn check_oip_tarantula_patterns(project_path: &Path) -> ComplianceCheck {
+    let mut all_issues: Vec<String> = Vec::new();
+    let mut critical_count = 0;
+    let mut warning_count = 0;
+
+    // CB-120: NaN-unsafe comparisons
+    let cb120_violations = detect_cb120_nan_unsafe_comparison(project_path);
+    for v in &cb120_violations {
+        all_issues.push(format!(
+            "{}: {} ({}:{})",
+            v.pattern_id, v.description, v.file, v.line
+        ));
+        // CB-120 is Error severity - counts toward critical
+        critical_count += 1;
+    }
+
+    // CB-121: Lock poisoning vulnerabilities
+    let cb121_violations = detect_cb121_lock_poisoning(project_path);
+    for v in &cb121_violations {
+        all_issues.push(format!(
+            "{}: {} ({}:{})",
+            v.pattern_id, v.description, v.file, v.line
+        ));
+        // CB-121 is Warning severity
+        warning_count += 1;
+    }
+
+    // CB-122: Serde deserialization safety
+    let cb122_violations = detect_cb122_serde_safety(project_path);
+    for v in &cb122_violations {
+        all_issues.push(format!(
+            "{}: {} ({}:{})",
+            v.pattern_id, v.description, v.file, v.line
+        ));
+        // CB-122 is Error severity - counts toward critical
+        critical_count += 1;
+    }
+
+    // CB-123: Undocumented #[ignore] tests
+    let cb123_violations = detect_cb123_undocumented_ignore(project_path);
+    for v in &cb123_violations {
+        all_issues.push(format!(
+            "{}: {} ({}:{})",
+            v.pattern_id, v.description, v.file, v.line
+        ));
+        // CB-123 is Warning severity
+        warning_count += 1;
+    }
+
+    // CB-124: Low coverage thresholds
+    let cb124_violations = detect_cb124_coverage_threshold(project_path);
+    for v in &cb124_violations {
+        all_issues.push(format!(
+            "{}: {} ({}:{})",
+            v.pattern_id, v.description, v.file, v.line
+        ));
+        match v.severity {
+            super::comply_cb_detect::Severity::Error => critical_count += 1,
+            _ => warning_count += 1,
+        }
+    }
+
+    // Determine overall status
+    // NOTE: OIP Tarantula checks are advisory (non-blocking) for now
+    // Per improve-pmat-comply.md v2.1.0, these patterns are being tracked
+    // as technical debt and will be addressed incrementally.
+    if critical_count > 0 || warning_count > 0 {
+        ComplianceCheck {
+            name: "OIP Tarantula Patterns (CB-120 to CB-124)".to_string(),
+            status: CheckStatus::Warn,  // Advisory: doesn't block compliance
+            message: format!(
+                "[Advisory] {} issues, {} warnings: {}",
+                critical_count,
+                warning_count,
+                all_issues.first().unwrap_or(&"unknown".to_string())
+            ),
+            severity: Severity::Warning,  // Non-blocking
+        }
+    } else {
+        ComplianceCheck {
+            name: "OIP Tarantula Patterns (CB-120 to CB-124)".to_string(),
+            status: CheckStatus::Pass,
+            message: "No OIP Tarantula pattern violations detected".to_string(),
+            severity: Severity::Info,
+        }
+    }
+}
+
+/// Check Coverage Quality & Test Performance patterns (CB-125 through CB-127)
+/// Per improve-pmat-comply.md v2.2.0
+fn check_coverage_quality_patterns(project_path: &Path) -> ComplianceCheck {
+    let mut all_issues: Vec<String> = Vec::new();
+    let mut critical_count = 0;
+    let mut error_count = 0;
+    let mut warning_count = 0;
+
+    // CB-125: Coverage exclusion gaming
+    let cb125_violations = detect_cb125_coverage_exclusion_gaming(project_path);
+    for v in &cb125_violations {
+        all_issues.push(format!(
+            "{}: {} ({}:{})",
+            v.pattern_id, v.description, v.file, v.line
+        ));
+        match v.severity {
+            super::comply_cb_detect::Severity::Critical => critical_count += 1,
+            super::comply_cb_detect::Severity::Error => error_count += 1,
+            _ => warning_count += 1,
+        }
+    }
+
+    // CB-126: Slow tests
+    let cb126_violations = detect_cb126_slow_tests(project_path);
+    for v in &cb126_violations {
+        all_issues.push(format!(
+            "{}: {} ({}:{})",
+            v.pattern_id, v.description, v.file, v.line
+        ));
+        match v.severity {
+            super::comply_cb_detect::Severity::Critical => critical_count += 1,
+            super::comply_cb_detect::Severity::Error => error_count += 1,
+            _ => warning_count += 1,
+        }
+    }
+
+    // CB-127: Slow coverage configuration
+    let cb127_violations = detect_cb127_slow_coverage(project_path);
+    for v in &cb127_violations {
+        all_issues.push(format!(
+            "{}: {} ({}:{})",
+            v.pattern_id, v.description, v.file, v.line
+        ));
+        match v.severity {
+            super::comply_cb_detect::Severity::Critical => critical_count += 1,
+            super::comply_cb_detect::Severity::Error => error_count += 1,
+            _ => warning_count += 1,
+        }
+    }
+
+    // v2.2 patterns are BLOCKING (unlike v2.1 advisory patterns)
+    // Per [GAME-001], [SLOW-001], [PERF-001]: These directly impact development velocity
+    if critical_count > 0 {
+        ComplianceCheck {
+            name: "Coverage Quality Patterns (CB-125 to CB-127)".to_string(),
+            status: CheckStatus::Fail,
+            message: format!(
+                "{} critical, {} errors, {} warnings: {}",
+                critical_count,
+                error_count,
+                warning_count,
+                all_issues.first().unwrap_or(&"unknown".to_string())
+            ),
+            severity: Severity::Critical,
+        }
+    } else if error_count > 0 {
+        ComplianceCheck {
+            name: "Coverage Quality Patterns (CB-125 to CB-127)".to_string(),
+            status: CheckStatus::Fail,
+            message: format!(
+                "{} errors, {} warnings: {}",
+                error_count,
+                warning_count,
+                all_issues.first().unwrap_or(&"unknown".to_string())
+            ),
+            severity: Severity::Error,
+        }
+    } else if warning_count > 0 {
+        ComplianceCheck {
+            name: "Coverage Quality Patterns (CB-125 to CB-127)".to_string(),
+            status: CheckStatus::Warn,
+            message: format!(
+                "{} warnings: {}",
+                warning_count,
+                all_issues.first().unwrap_or(&"unknown".to_string())
+            ),
+            severity: Severity::Warning,
+        }
+    } else {
+        ComplianceCheck {
+            name: "Coverage Quality Patterns (CB-125 to CB-127)".to_string(),
+            status: CheckStatus::Pass,
+            message: "No coverage quality issues detected".to_string(),
             severity: Severity::Info,
         }
     }

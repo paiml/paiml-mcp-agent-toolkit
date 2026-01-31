@@ -559,3 +559,1002 @@ pub fn extract_brick_name(content: &str, target_line: &str) -> String {
     }
     "unknown".to_string()
 }
+
+// =============================================================================
+// OIP Tarantula Pattern Detection (CB-120 through CB-124)
+// Spec: docs/specifications/improve-pmat-comply.md v2.1.0
+// =============================================================================
+
+/// CB-120: Detect NaN-unsafe floating-point comparisons
+/// Pattern: `partial_cmp(...).unwrap()` or `.expect(...)` which panic on NaN
+/// Safe alternatives: `total_cmp()`, `unwrap_or()`, `unwrap_or_else()`
+/// Source: OIP Tarantula analysis - 10 instances in ml.rs, imbalance.rs, classifier.rs
+pub fn detect_cb120_nan_unsafe_comparison(project_path: &Path) -> Vec<CbPatternViolation> {
+    let mut violations = Vec::new();
+
+    let src_dir = project_path.join("src");
+    if !src_dir.exists() {
+        return violations;
+    }
+
+    if let Ok(entries) = walkdir_rs_files(&src_dir) {
+        for entry in entries {
+            if let Ok(content) = fs::read_to_string(&entry) {
+                let lines: Vec<&str> = content.lines().collect();
+                let test_lines = compute_test_code_lines(&lines);
+
+                for (line_num, line) in lines.iter().enumerate() {
+                    // Skip test code - NaN panics in tests are acceptable
+                    if test_lines.contains(&line_num) {
+                        continue;
+                    }
+
+                    let trimmed = line.trim();
+
+                    // Check for partial_cmp().unwrap() pattern
+                    if trimmed.contains("partial_cmp") && trimmed.contains(".unwrap()") {
+                        // Make sure it's not a safe variant
+                        if !trimmed.contains("unwrap_or") && !trimmed.contains("unwrap_or_else") {
+                            violations.push(CbPatternViolation {
+                                pattern_id: "CB-120".to_string(),
+                                file: entry.display().to_string(),
+                                line: line_num + 1,
+                                description: "NaN-unsafe: partial_cmp().unwrap() panics on NaN. Use total_cmp() or unwrap_or()".to_string(),
+                                severity: Severity::Error,
+                            });
+                        }
+                    }
+
+                    // Check for partial_cmp().expect() pattern
+                    if trimmed.contains("partial_cmp") && trimmed.contains(".expect(") {
+                        violations.push(CbPatternViolation {
+                            pattern_id: "CB-120".to_string(),
+                            file: entry.display().to_string(),
+                            line: line_num + 1,
+                            description: "NaN-unsafe: partial_cmp().expect() panics on NaN. Use total_cmp() or unwrap_or()".to_string(),
+                            severity: Severity::Error,
+                        });
+                    }
+                }
+            }
+        }
+    }
+
+    violations
+}
+
+/// CB-121: Detect lock poisoning vulnerabilities
+/// Pattern: `mutex.lock().unwrap()` or `rwlock.read/write().unwrap()`
+/// Safe alternatives: `unwrap_or_else(|e| e.into_inner())`, `parking_lot`
+/// Source: OIP Tarantula analysis - 10 instances in git.rs
+pub fn detect_cb121_lock_poisoning(project_path: &Path) -> Vec<CbPatternViolation> {
+    let mut violations = Vec::new();
+
+    let src_dir = project_path.join("src");
+    if !src_dir.exists() {
+        return violations;
+    }
+
+    if let Ok(entries) = walkdir_rs_files(&src_dir) {
+        for entry in entries {
+            if let Ok(content) = fs::read_to_string(&entry) {
+                let lines: Vec<&str> = content.lines().collect();
+                let test_lines = compute_test_code_lines(&lines);
+
+                for (line_num, line) in lines.iter().enumerate() {
+                    // Skip test code
+                    if test_lines.contains(&line_num) {
+                        continue;
+                    }
+
+                    let trimmed = line.trim();
+
+                    // Check for mutex.lock().unwrap() pattern
+                    if trimmed.contains(".lock()") && trimmed.contains(".unwrap()") {
+                        // Skip safe patterns
+                        if trimmed.contains("unwrap_or_else") || trimmed.contains("into_inner") {
+                            continue;
+                        }
+                        violations.push(CbPatternViolation {
+                            pattern_id: "CB-121".to_string(),
+                            file: entry.display().to_string(),
+                            line: line_num + 1,
+                            description: "Lock poisoning: .lock().unwrap() panics if another thread panicked. Use unwrap_or_else(|e| e.into_inner()) or parking_lot".to_string(),
+                            severity: Severity::Warning,
+                        });
+                    }
+
+                    // Check for rwlock.read().unwrap() pattern
+                    if trimmed.contains(".read()") && trimmed.contains(".unwrap()") {
+                        // Avoid false positives on file reads - check for lock context
+                        if trimmed.contains("RwLock") || content.contains("std::sync::RwLock") || content.contains("use std::sync::RwLock") {
+                            if !trimmed.contains("unwrap_or_else") && !trimmed.contains("into_inner") {
+                                violations.push(CbPatternViolation {
+                                    pattern_id: "CB-121".to_string(),
+                                    file: entry.display().to_string(),
+                                    line: line_num + 1,
+                                    description: "Lock poisoning: .read().unwrap() panics if another thread panicked. Use unwrap_or_else(|e| e.into_inner())".to_string(),
+                                    severity: Severity::Warning,
+                                });
+                            }
+                        }
+                    }
+
+                    // Check for rwlock.write().unwrap() pattern
+                    if trimmed.contains(".write()") && trimmed.contains(".unwrap()") {
+                        // Avoid false positives on file writes - check for lock context
+                        if trimmed.contains("RwLock") || content.contains("std::sync::RwLock") || content.contains("use std::sync::RwLock") {
+                            if !trimmed.contains("unwrap_or_else") && !trimmed.contains("into_inner") {
+                                violations.push(CbPatternViolation {
+                                    pattern_id: "CB-121".to_string(),
+                                    file: entry.display().to_string(),
+                                    line: line_num + 1,
+                                    description: "Lock poisoning: .write().unwrap() panics if another thread panicked. Use unwrap_or_else(|e| e.into_inner())".to_string(),
+                                    severity: Severity::Warning,
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    violations
+}
+
+/// CB-122: Detect serde deserialization safety issues
+/// Pattern: `serde_json::from_str().unwrap()` or `.expect()`
+/// Safe alternatives: `?` operator, `match`, `unwrap_or_default()`
+/// Source: OIP Tarantula analysis - 15+ instances in tarantula.rs, github.rs, citl.rs
+pub fn detect_cb122_serde_safety(project_path: &Path) -> Vec<CbPatternViolation> {
+    let mut violations = Vec::new();
+
+    let src_dir = project_path.join("src");
+    if !src_dir.exists() {
+        return violations;
+    }
+
+    // Serde-related parsing functions to check
+    let serde_patterns = [
+        "serde_json::from_str",
+        "serde_json::from_slice",
+        "serde_json::from_reader",
+        "serde_yaml::from_str",
+        "serde_yaml::from_slice",
+        "serde_yaml::from_reader",
+        "toml::from_str",
+        "toml::de::from_str",
+        "ron::from_str",
+    ];
+
+    if let Ok(entries) = walkdir_rs_files(&src_dir) {
+        for entry in entries {
+            if let Ok(content) = fs::read_to_string(&entry) {
+                let lines: Vec<&str> = content.lines().collect();
+                let test_lines = compute_test_code_lines(&lines);
+
+                for (line_num, line) in lines.iter().enumerate() {
+                    // Skip test code - panicking on bad input in tests is fine
+                    if test_lines.contains(&line_num) {
+                        continue;
+                    }
+
+                    let trimmed = line.trim();
+
+                    for pattern in &serde_patterns {
+                        if trimmed.contains(pattern) {
+                            // Check for unsafe unwrap patterns
+                            if trimmed.contains(".unwrap()") && !trimmed.contains("unwrap_or") {
+                                violations.push(CbPatternViolation {
+                                    pattern_id: "CB-122".to_string(),
+                                    file: entry.display().to_string(),
+                                    line: line_num + 1,
+                                    description: format!(
+                                        "Serde unsafe: {}().unwrap() panics on malformed input. Use ? operator or proper error handling",
+                                        pattern
+                                    ),
+                                    severity: Severity::Error,
+                                });
+                            }
+
+                            // Check for expect patterns
+                            if trimmed.contains(".expect(") {
+                                violations.push(CbPatternViolation {
+                                    pattern_id: "CB-122".to_string(),
+                                    file: entry.display().to_string(),
+                                    line: line_num + 1,
+                                    description: format!(
+                                        "Serde unsafe: {}().expect() panics on malformed input. Use ? operator or proper error handling",
+                                        pattern
+                                    ),
+                                    severity: Severity::Error,
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    violations
+}
+
+/// CB-123: Detect undocumented #[ignore] tests
+/// Pattern: `#[ignore]` without a reason comment or attribute value
+/// Valid: `#[ignore = "reason"]`, `#[ignore] // reason`, `/// reason \n #[ignore]`
+/// Source: OIP Tarantula analysis - 6 undocumented #[ignore] tests
+pub fn detect_cb123_undocumented_ignore(project_path: &Path) -> Vec<CbPatternViolation> {
+    let mut violations = Vec::new();
+
+    let src_dir = project_path.join("src");
+    let tests_dir = project_path.join("tests");
+
+    for dir in [src_dir, tests_dir] {
+        if !dir.exists() {
+            continue;
+        }
+
+        if let Ok(entries) = walkdir_rs_files(&dir) {
+            for entry in entries {
+                if let Ok(content) = fs::read_to_string(&entry) {
+                    let lines: Vec<&str> = content.lines().collect();
+
+                    for (line_num, line) in lines.iter().enumerate() {
+                        let trimmed = line.trim();
+
+                        // Check for #[ignore] attribute
+                        if trimmed.starts_with("#[ignore]") {
+                            // Check if it has inline reason: #[ignore = "reason"]
+                            let has_inline_reason = trimmed.contains('=') && trimmed.contains('"');
+
+                            // Check if same line has comment: #[ignore] // reason
+                            let has_line_comment = trimmed.contains("//");
+
+                            // Check preceding line for doc comment: /// reason
+                            let has_doc_comment = line_num > 0
+                                && lines[line_num - 1].trim().starts_with("///");
+
+                            // Check preceding line for regular comment
+                            let has_preceding_comment = line_num > 0
+                                && lines[line_num - 1].trim().starts_with("//");
+
+                            if !has_inline_reason && !has_line_comment && !has_doc_comment && !has_preceding_comment {
+                                violations.push(CbPatternViolation {
+                                    pattern_id: "CB-123".to_string(),
+                                    file: entry.display().to_string(),
+                                    line: line_num + 1,
+                                    description: "Undocumented #[ignore]: Add reason with #[ignore = \"reason\"] or // reason comment".to_string(),
+                                    severity: Severity::Warning,
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    violations
+}
+
+/// CB-124: Detect low coverage thresholds in CI/config
+/// Threshold: <80% is Error, <95% is Warning for sovereign stack
+/// Source: OIP Tarantula analysis - 58% threshold (below 80% minimum)
+pub fn detect_cb124_coverage_threshold(project_path: &Path) -> Vec<CbPatternViolation> {
+    let mut violations = Vec::new();
+
+    // Coverage configuration files to check
+    let config_files = [
+        project_path.join(".cargo").join("config.toml"),
+        project_path.join("tarpaulin.toml"),
+        project_path.join(".tarpaulin.toml"),
+        project_path.join("codecov.yml"),
+        project_path.join(".codecov.yml"),
+        project_path.join("Makefile"),
+        project_path.join(".github").join("workflows").join("ci.yml"),
+        project_path.join(".github").join("workflows").join("test.yml"),
+        project_path.join(".github").join("workflows").join("coverage.yml"),
+    ];
+
+    for config_path in &config_files {
+        if !config_path.exists() {
+            continue;
+        }
+
+        if let Ok(content) = fs::read_to_string(config_path) {
+            for (line_num, line) in content.lines().enumerate() {
+                let line_lower = line.to_lowercase();
+
+                // Patterns for coverage thresholds
+                let threshold_patterns = [
+                    ("fail_under", '='),
+                    ("coverage_threshold", '='),
+                    ("min_coverage", '='),
+                    ("threshold", ':'),
+                    ("COVERAGE <", ' '),
+                ];
+
+                for (pattern, sep) in &threshold_patterns {
+                    if line_lower.contains(&pattern.to_lowercase()) {
+                        // Extract the numeric value
+                        if let Some(value) = extract_coverage_threshold(line, *sep) {
+                            if value < 80.0 {
+                                violations.push(CbPatternViolation {
+                                    pattern_id: "CB-124".to_string(),
+                                    file: config_path.display().to_string(),
+                                    line: line_num + 1,
+                                    description: format!(
+                                        "Low coverage threshold: {:.1}% is below 80% minimum. Increase coverage requirements",
+                                        value
+                                    ),
+                                    severity: Severity::Error,
+                                });
+                            } else if value < 95.0 {
+                                violations.push(CbPatternViolation {
+                                    pattern_id: "CB-124".to_string(),
+                                    file: config_path.display().to_string(),
+                                    line: line_num + 1,
+                                    description: format!(
+                                        "Coverage threshold {:.1}% below sovereign stack standard (95%). Consider increasing",
+                                        value
+                                    ),
+                                    severity: Severity::Warning,
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    violations
+}
+
+/// Helper to extract coverage threshold value from a line
+fn extract_coverage_threshold(line: &str, separator: char) -> Option<f64> {
+    // Try to find a number after the separator
+    let parts: Vec<&str> = line.split(separator).collect();
+    if parts.len() >= 2 {
+        // Extract numeric value from the second part
+        let value_part = parts[1].trim();
+        // Handle formats like "60.0", "60", "60%", "\"60\""
+        let cleaned = value_part
+            .trim_matches(|c: char| !c.is_ascii_digit() && c != '.')
+            .trim_start_matches('"')
+            .trim_end_matches('"')
+            .trim_end_matches('%');
+
+        return cleaned.parse::<f64>().ok();
+    }
+    None
+}
+
+// =============================================================================
+// CB-125, CB-126, CB-127: Coverage Quality & Test Performance (v2.2)
+// Per improve-pmat-comply.md v2.2.0 specification
+// =============================================================================
+
+/// CB-125: Detect coverage exclusion gaming
+/// Per [GAME-001] Popper: Unfalsifiable claims are unscientific
+/// Per [GAME-002] Google TAP: >20% exclusion indicates gaming
+/// Thresholds:
+/// - >10 exclusion patterns = Warning (complexity suggests gaming)
+/// - >20% LOC excluded = Error (significant coverage blind spot)
+/// - >50% LOC excluded = Critical (coverage metric meaningless)
+pub fn detect_cb125_coverage_exclusion_gaming(project_path: &Path) -> Vec<CbPatternViolation> {
+    let mut violations = Vec::new();
+
+    // Check Makefile for --ignore-filename-regex patterns
+    let makefile_path = project_path.join("Makefile");
+    if makefile_path.exists() {
+        if let Ok(content) = fs::read_to_string(&makefile_path) {
+            let mut exclusion_count = 0;
+            let mut exclusion_line = 0;
+
+            for (line_num, line) in content.lines().enumerate() {
+                // Count exclusion patterns
+                if line.contains("--ignore-filename-regex")
+                    || line.contains("COVERAGE_EXCLUDE")
+                    || line.contains("--exclude")
+                {
+                    exclusion_line = line_num + 1;
+
+                    // Count pipe-separated patterns in regex
+                    if let Some(start) = line.find("'") {
+                        if let Some(end) = line.rfind("'") {
+                            if start < end {
+                                let pattern = &line[start + 1..end];
+                                exclusion_count += pattern.matches('|').count() + 1;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Severity based on pattern count (per [GAME-002] Google TAP)
+            if exclusion_count > 50 {
+                violations.push(CbPatternViolation {
+                    pattern_id: "CB-125-C".to_string(),
+                    file: makefile_path.display().to_string(),
+                    line: exclusion_line,
+                    description: format!(
+                        "CRITICAL: {} coverage exclusion patterns detected. Coverage metric is meaningless. \
+                        Per [GAME-001] Popper: unfalsifiable coverage claims are unscientific. \
+                        Reduce to ≤10 patterns (binary entry points only)",
+                        exclusion_count
+                    ),
+                    severity: Severity::Critical,
+                });
+            } else if exclusion_count > 20 {
+                violations.push(CbPatternViolation {
+                    pattern_id: "CB-125-B".to_string(),
+                    file: makefile_path.display().to_string(),
+                    line: exclusion_line,
+                    description: format!(
+                        "{} coverage exclusion patterns exceed 20% budget per [GAME-002] Google TAP. \
+                        Significant coverage blind spot. Reduce exclusions or document technical debt",
+                        exclusion_count
+                    ),
+                    severity: Severity::Error,
+                });
+            } else if exclusion_count > 10 {
+                violations.push(CbPatternViolation {
+                    pattern_id: "CB-125-A".to_string(),
+                    file: makefile_path.display().to_string(),
+                    line: exclusion_line,
+                    description: format!(
+                        "{} coverage exclusion patterns suggests complexity. \
+                        Consider reducing to ≤10 patterns (binary entry points only)",
+                        exclusion_count
+                    ),
+                    severity: Severity::Warning,
+                });
+            }
+        }
+    }
+
+    violations
+}
+
+/// Check sleep duration and return violation if threshold exceeded
+fn check_sleep_violation(duration: f64, file: &str, line: usize) -> Option<CbPatternViolation> {
+    let (pattern_id, desc, severity) = if duration > 300.0 {
+        ("CB-126-C", "Test sleep exceeds 300s critical threshold", Severity::Critical)
+    } else if duration > 60.0 {
+        ("CB-126-B", "Test sleep exceeds 60s Tier 2 threshold", Severity::Error)
+    } else if duration > 5.0 {
+        ("CB-126-A", "Test sleep exceeds 5s Tier 1 threshold", Severity::Warning)
+    } else {
+        return None;
+    };
+    Some(CbPatternViolation {
+        pattern_id: pattern_id.to_string(),
+        file: file.to_string(),
+        line,
+        description: desc.to_string(),
+        severity,
+    })
+}
+
+/// CB-126: Detect slow tests that violate tiered TDD feedback requirements
+pub fn detect_cb126_slow_tests(project_path: &Path) -> Vec<CbPatternViolation> {
+    let mut violations = Vec::new();
+    violations.extend(check_makefile_test_targets(project_path));
+    violations.extend(check_sleep_durations(project_path));
+    violations
+}
+
+fn check_makefile_test_targets(project_path: &Path) -> Vec<CbPatternViolation> {
+    let mut violations = Vec::new();
+    let makefile_path = project_path.join("Makefile");
+    let content = match fs::read_to_string(&makefile_path) {
+        Ok(c) => c,
+        Err(_) => return violations,
+    };
+
+    let mut in_test_target = false;
+    let mut test_target_line = 0;
+    let mut has_proptest_cases = false;
+    let file_path = makefile_path.display().to_string();
+
+    for (line_num, line) in content.lines().enumerate() {
+        if line.starts_with("test") && line.contains(':') {
+            in_test_target = true;
+            test_target_line = line_num + 1;
+            has_proptest_cases = false;
+        }
+
+        if in_test_target {
+            if line.contains("PROPTEST_CASES") || line.contains("QUICKCHECK_TESTS") {
+                has_proptest_cases = true;
+            }
+            if is_end_of_makefile_target_generic(line, "test") {
+                if !has_proptest_cases && test_target_line > 0 {
+                    violations.push(CbPatternViolation {
+                        pattern_id: "CB-126-D".to_string(),
+                        file: file_path.clone(),
+                        line: test_target_line,
+                        description: "Test target missing PROPTEST_CASES/QUICKCHECK_TESTS".to_string(),
+                        severity: Severity::Warning,
+                    });
+                }
+                in_test_target = false;
+            }
+        }
+    }
+    violations
+}
+
+fn is_end_of_makefile_target_generic(line: &str, target_prefix: &str) -> bool {
+    line.is_empty()
+        || (line.chars().next().map(|c| !c.is_whitespace()).unwrap_or(false)
+            && !line.starts_with('\t')
+            && !line.starts_with(target_prefix))
+}
+
+fn check_sleep_durations(project_path: &Path) -> Vec<CbPatternViolation> {
+    let mut violations = Vec::new();
+    let src_dir = project_path.join("src");
+
+    let entries = match walkdir_rs_files(&src_dir) {
+        Ok(e) => e,
+        Err(_) => return violations,
+    };
+
+    for entry in entries {
+        let content = match fs::read_to_string(&entry) {
+            Ok(c) => c,
+            Err(_) => continue,
+        };
+        let file_path = entry.display().to_string();
+
+        for (i, line) in content.lines().enumerate() {
+            if line.contains("thread::sleep") && line.contains("Duration::from_secs") {
+                if let Some(duration) = extract_sleep_duration(line) {
+                    if let Some(v) = check_sleep_violation(duration, &file_path, i + 1) {
+                        violations.push(v);
+                    }
+                }
+            }
+        }
+    }
+    violations
+}
+
+/// Helper to extract sleep duration from a line like `thread::sleep(Duration::from_secs(10))`
+fn extract_sleep_duration(line: &str) -> Option<f64> {
+    if let Some(start) = line.find("from_secs(") {
+        let after = &line[start + 10..];
+        if let Some(end) = after.find(')') {
+            let num_str = &after[..end];
+            return num_str.trim().parse::<f64>().ok();
+        }
+    }
+    if let Some(start) = line.find("from_millis(") {
+        let after = &line[start + 12..];
+        if let Some(end) = after.find(')') {
+            let num_str = &after[..end];
+            if let Ok(millis) = num_str.trim().parse::<f64>() {
+                return Some(millis / 1000.0);
+            }
+        }
+    }
+    None
+}
+
+/// State for tracking coverage target parsing
+#[derive(Default)]
+struct CoverageTargetState {
+    active: bool,
+    line: usize,
+    has_nextest: bool,
+    has_llvm_cov: bool,
+    has_proptest_cases: bool,
+    has_lib_flag: bool,
+}
+
+impl CoverageTargetState {
+    fn reset(&mut self, line: usize) {
+        self.active = true;
+        self.line = line;
+        self.has_nextest = false;
+        self.has_llvm_cov = false;
+        self.has_proptest_cases = false;
+        self.has_lib_flag = false;
+    }
+
+    fn update_from_line(&mut self, line: &str) {
+        let trimmed = line.trim();
+        // Skip comments and echo statements
+        if trimmed.starts_with('#') || trimmed.starts_with("@#") {
+            return;
+        }
+        let is_echo = trimmed.starts_with("@echo") || trimmed.starts_with("echo");
+        if !is_echo && line.contains("nextest") {
+            self.has_nextest = true;
+        }
+        if line.contains("llvm-cov") || line.contains("cargo-llvm-cov") {
+            self.has_llvm_cov = true;
+        }
+        if line.contains("PROPTEST_CASES") || line.contains("QUICKCHECK_TESTS") {
+            self.has_proptest_cases = true;
+        }
+        if line.contains("--lib") {
+            self.has_lib_flag = true;
+        }
+    }
+
+    fn collect_violations(&self, file_path: &str) -> Vec<CbPatternViolation> {
+        let mut violations = Vec::new();
+        if self.has_nextest && self.has_llvm_cov {
+            violations.push(CbPatternViolation {
+                pattern_id: "CB-127-A".to_string(),
+                file: file_path.to_string(),
+                line: self.line,
+                description: "CRITICAL: nextest + llvm-cov causes profraw explosion. \
+                    Use 'cargo llvm-cov test' instead".to_string(),
+                severity: Severity::Error,
+            });
+        }
+        if !self.has_proptest_cases && self.line > 0 {
+            violations.push(CbPatternViolation {
+                pattern_id: "CB-127-B".to_string(),
+                file: file_path.to_string(),
+                line: self.line,
+                description: "Coverage target missing PROPTEST_CASES/QUICKCHECK_TESTS".to_string(),
+                severity: Severity::Warning,
+            });
+        }
+        if !self.has_lib_flag && self.has_llvm_cov && self.line > 0 {
+            violations.push(CbPatternViolation {
+                pattern_id: "CB-127-C".to_string(),
+                file: file_path.to_string(),
+                line: self.line,
+                description: "Coverage target missing --lib flag".to_string(),
+                severity: Severity::Warning,
+            });
+        }
+        violations
+    }
+}
+
+fn is_end_of_makefile_target(line: &str) -> bool {
+    line.is_empty()
+        || (line.chars().next().map(|c| !c.is_whitespace()).unwrap_or(false)
+            && !line.starts_with('\t')
+            && !line.starts_with("coverage"))
+}
+
+/// CB-127: Detect slow coverage configurations
+/// Per [PERF-001] certeza: coverage budget <2min for Tier 2
+pub fn detect_cb127_slow_coverage(project_path: &Path) -> Vec<CbPatternViolation> {
+    let mut violations = Vec::new();
+    let makefile_path = project_path.join("Makefile");
+
+    let content = match fs::read_to_string(&makefile_path) {
+        Ok(c) => c,
+        Err(_) => return violations,
+    };
+
+    let mut state = CoverageTargetState::default();
+    let file_path = makefile_path.display().to_string();
+
+    for (line_num, line) in content.lines().enumerate() {
+        // Detect coverage target start
+        if (line.starts_with("coverage") || line.starts_with("coverage-")) && line.contains(':') {
+            state.reset(line_num + 1);
+            continue;
+        }
+
+        if state.active {
+            if is_end_of_makefile_target(line) {
+                violations.extend(state.collect_violations(&file_path));
+                state.active = false;
+            } else {
+                state.update_from_line(line);
+            }
+        }
+    }
+
+    violations
+}
+
+// =============================================================================
+// Tests for OIP Tarantula Pattern Detection
+// =============================================================================
+
+#[cfg(test)]
+mod oip_tarantula_tests {
+    use super::*;
+    use std::fs;
+    use tempfile::TempDir;
+
+    // CB-120 Tests: NaN-unsafe comparison detection
+
+    #[test]
+    fn test_cb120_detects_partial_cmp_unwrap() {
+        let temp = TempDir::new().unwrap();
+        let src = temp.path().join("src");
+        fs::create_dir_all(&src).unwrap();
+        fs::write(
+            src.join("ml.rs"),
+            r#"
+fn sort_floats(vec: &mut Vec<f64>) {
+    vec.sort_by(|a, b| a.partial_cmp(b).unwrap());
+}
+"#,
+        )
+        .unwrap();
+
+        let violations = detect_cb120_nan_unsafe_comparison(temp.path());
+        assert_eq!(violations.len(), 1);
+        assert_eq!(violations[0].pattern_id, "CB-120");
+        assert!(violations[0].description.contains("partial_cmp"));
+    }
+
+    #[test]
+    fn test_cb120_skips_unwrap_or() {
+        let temp = TempDir::new().unwrap();
+        let src = temp.path().join("src");
+        fs::create_dir_all(&src).unwrap();
+        fs::write(
+            src.join("safe.rs"),
+            r#"
+fn sort_floats(vec: &mut Vec<f64>) {
+    vec.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+}
+"#,
+        )
+        .unwrap();
+
+        let violations = detect_cb120_nan_unsafe_comparison(temp.path());
+        assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn test_cb120_skips_test_code() {
+        let temp = TempDir::new().unwrap();
+        let src = temp.path().join("src");
+        fs::create_dir_all(&src).unwrap();
+        fs::write(
+            src.join("lib.rs"),
+            r#"
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_sort() {
+        let mut v = vec![1.0, 2.0];
+        v.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    }
+}
+"#,
+        )
+        .unwrap();
+
+        let violations = detect_cb120_nan_unsafe_comparison(temp.path());
+        assert!(violations.is_empty());
+    }
+
+    // CB-121 Tests: Lock poisoning detection
+
+    #[test]
+    fn test_cb121_detects_mutex_lock_unwrap() {
+        let temp = TempDir::new().unwrap();
+        let src = temp.path().join("src");
+        fs::create_dir_all(&src).unwrap();
+        fs::write(
+            src.join("sync.rs"),
+            r#"
+use std::sync::Mutex;
+fn get_data(m: &Mutex<i32>) -> i32 {
+    *m.lock().unwrap()
+}
+"#,
+        )
+        .unwrap();
+
+        let violations = detect_cb121_lock_poisoning(temp.path());
+        assert_eq!(violations.len(), 1);
+        assert_eq!(violations[0].pattern_id, "CB-121");
+    }
+
+    #[test]
+    fn test_cb121_skips_into_inner() {
+        let temp = TempDir::new().unwrap();
+        let src = temp.path().join("src");
+        fs::create_dir_all(&src).unwrap();
+        fs::write(
+            src.join("safe.rs"),
+            r#"
+use std::sync::Mutex;
+fn get_data(m: &Mutex<i32>) -> i32 {
+    *m.lock().unwrap_or_else(|e| e.into_inner())
+}
+"#,
+        )
+        .unwrap();
+
+        let violations = detect_cb121_lock_poisoning(temp.path());
+        assert!(violations.is_empty());
+    }
+
+    // CB-122 Tests: Serde deserialization safety
+
+    #[test]
+    fn test_cb122_detects_serde_json_unwrap() {
+        let temp = TempDir::new().unwrap();
+        let src = temp.path().join("src");
+        fs::create_dir_all(&src).unwrap();
+        fs::write(
+            src.join("parser.rs"),
+            r#"
+fn parse_config(s: &str) -> Config {
+    serde_json::from_str(s).unwrap()
+}
+"#,
+        )
+        .unwrap();
+
+        let violations = detect_cb122_serde_safety(temp.path());
+        assert_eq!(violations.len(), 1);
+        assert_eq!(violations[0].pattern_id, "CB-122");
+    }
+
+    #[test]
+    fn test_cb122_detects_toml_expect() {
+        let temp = TempDir::new().unwrap();
+        let src = temp.path().join("src");
+        fs::create_dir_all(&src).unwrap();
+        fs::write(
+            src.join("config.rs"),
+            r#"
+fn load(s: &str) -> Settings {
+    toml::from_str(s).expect("invalid toml")
+}
+"#,
+        )
+        .unwrap();
+
+        let violations = detect_cb122_serde_safety(temp.path());
+        assert_eq!(violations.len(), 1);
+    }
+
+    #[test]
+    fn test_cb122_skips_test_code() {
+        let temp = TempDir::new().unwrap();
+        let src = temp.path().join("src");
+        fs::create_dir_all(&src).unwrap();
+        fs::write(
+            src.join("lib.rs"),
+            r#"
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_parse() {
+        let v: Value = serde_json::from_str("{}").unwrap();
+    }
+}
+"#,
+        )
+        .unwrap();
+
+        let violations = detect_cb122_serde_safety(temp.path());
+        assert!(violations.is_empty());
+    }
+
+    // CB-123 Tests: Undocumented #[ignore]
+
+    #[test]
+    fn test_cb123_detects_bare_ignore() {
+        let temp = TempDir::new().unwrap();
+        let src = temp.path().join("src");
+        fs::create_dir_all(&src).unwrap();
+        fs::write(
+            src.join("tests.rs"),
+            r#"
+#[ignore]
+#[test]
+fn slow_test() {}
+"#,
+        )
+        .unwrap();
+
+        let violations = detect_cb123_undocumented_ignore(temp.path());
+        assert_eq!(violations.len(), 1);
+        assert_eq!(violations[0].pattern_id, "CB-123");
+    }
+
+    #[test]
+    fn test_cb123_skips_ignore_with_reason() {
+        let temp = TempDir::new().unwrap();
+        let src = temp.path().join("src");
+        fs::create_dir_all(&src).unwrap();
+        fs::write(
+            src.join("tests.rs"),
+            r#"
+#[ignore = "requires GPU"]
+#[test]
+fn gpu_test() {}
+"#,
+        )
+        .unwrap();
+
+        let violations = detect_cb123_undocumented_ignore(temp.path());
+        assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn test_cb123_skips_ignore_with_comment() {
+        let temp = TempDir::new().unwrap();
+        let src = temp.path().join("src");
+        fs::create_dir_all(&src).unwrap();
+        fs::write(
+            src.join("tests.rs"),
+            r#"
+#[ignore] // flaky on CI
+#[test]
+fn flaky_test() {}
+"#,
+        )
+        .unwrap();
+
+        let violations = detect_cb123_undocumented_ignore(temp.path());
+        assert!(violations.is_empty());
+    }
+
+    // CB-124 Tests: Coverage threshold enforcement
+
+    #[test]
+    fn test_cb124_detects_low_threshold() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("tarpaulin.toml"),
+            r#"
+[report]
+fail_under = 58.0
+"#,
+        )
+        .unwrap();
+
+        let violations = detect_cb124_coverage_threshold(temp.path());
+        assert_eq!(violations.len(), 1);
+        assert_eq!(violations[0].pattern_id, "CB-124");
+        assert_eq!(violations[0].severity, Severity::Error);
+    }
+
+    #[test]
+    fn test_cb124_warns_below_95() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("tarpaulin.toml"),
+            r#"
+[report]
+fail_under = 85.0
+"#,
+        )
+        .unwrap();
+
+        let violations = detect_cb124_coverage_threshold(temp.path());
+        assert_eq!(violations.len(), 1);
+        assert_eq!(violations[0].severity, Severity::Warning);
+    }
+
+    #[test]
+    fn test_cb124_passes_high_threshold() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("tarpaulin.toml"),
+            r#"
+[report]
+fail_under = 95.0
+"#,
+        )
+        .unwrap();
+
+        let violations = detect_cb124_coverage_threshold(temp.path());
+        assert!(violations.is_empty());
+    }
+}

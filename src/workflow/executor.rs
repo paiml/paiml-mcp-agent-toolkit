@@ -679,7 +679,7 @@ impl DefaultWorkflowExecutor {
 }
 
 // Tests extracted to executor_tests.rs for file health compliance (CB-040)
-// TEMPORARILY DISABLED: File splitting broke syntax (duplicate imports, missing AgentRegistry)
-#[cfg(all(test, feature = "broken-tests"))]
+// Fixed duplicate imports in Sprint 45
+#[cfg(test)]
 #[path = "executor_tests.rs"]
 mod tests;
