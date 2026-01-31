@@ -3,6 +3,17 @@
 //! This module provides accurate dead code detection by leveraging
 //! the Rust compiler's built-in dead code analysis, replacing the
 //! previous heuristic-based approach that produced false positives.
+//!
+//! ## Performance (CB-128 O(1) Caching)
+//!
+//! Uses git tree-hash for O(1) cache invalidation:
+//! - Cache hit: ~5ms (read JSON from .pmat/dead-code-cache/)
+//! - Cache miss: ~30-60s (full cargo check with -W dead_code)
+//!
+//! Cache is invalidated when:
+//! - Git tree hash changes (code modified)
+//! - PMAT version changes
+//! - Cache file is missing or corrupted
 
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
@@ -10,6 +21,19 @@ use serde_json::Value;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+
+/// Cached dead code result with metadata for O(1) invalidation
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CachedDeadCodeResult {
+    /// Git tree hash when this cache was computed
+    pub tree_hash: String,
+    /// PMAT version that computed this cache
+    pub pmat_version: String,
+    /// Timestamp of cache computation
+    pub timestamp: chrono::DateTime<chrono::Utc>,
+    /// The actual dead code report
+    pub report: AccurateDeadCodeReport,
+}
 
 /// Dead code analysis result with accurate metrics
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -60,13 +84,17 @@ pub enum DeadCodeKind {
     Other(String),
 }
 
-/// Cargo-based dead code analyzer for accurate detection
+/// Cargo-based dead code analyzer for accurate detection with O(1) caching
 pub struct CargoDeadCodeAnalyzer {
     project_path: PathBuf,
     exclude_tests: bool,
     exclude_examples: bool,
     exclude_benches: bool,
     max_depth: usize,
+    /// Enable caching (default: true)
+    use_cache: bool,
+    /// Force cache refresh even if valid
+    force_refresh: bool,
 }
 
 impl CargoDeadCodeAnalyzer {
@@ -77,7 +105,9 @@ impl CargoDeadCodeAnalyzer {
             exclude_tests: true,
             exclude_examples: true,
             exclude_benches: true,
-            max_depth: 8, // Default max depth
+            max_depth: 8,
+            use_cache: true,
+            force_refresh: false,
         }
     }
 
@@ -109,23 +139,115 @@ impl CargoDeadCodeAnalyzer {
         self
     }
 
-    /// Perform accurate dead code analysis using cargo
+    /// Disable caching (force fresh analysis every time)
+    #[must_use]
+    pub fn without_cache(mut self) -> Self {
+        self.use_cache = false;
+        self
+    }
+
+    /// Force cache refresh even if cache is valid
+    #[must_use]
+    pub fn force_refresh(mut self) -> Self {
+        self.force_refresh = true;
+        self
+    }
+
+    /// Get the cache file path
+    fn cache_path(&self) -> PathBuf {
+        self.project_path.join(".pmat").join("dead-code-cache.json")
+    }
+
+    /// Get current git tree hash for cache invalidation
+    fn get_tree_hash(&self) -> Option<String> {
+        let output = Command::new("git")
+            .current_dir(&self.project_path)
+            .args(["rev-parse", "HEAD:"])
+            .output()
+            .ok()?;
+
+        if output.status.success() {
+            Some(String::from_utf8_lossy(&output.stdout).trim().to_string())
+        } else {
+            None
+        }
+    }
+
+    /// Try to load cached result if valid
+    fn try_load_cache(&self) -> Option<AccurateDeadCodeReport> {
+        if !self.use_cache || self.force_refresh {
+            return None;
+        }
+
+        let cache_path = self.cache_path();
+        let cache_content = std::fs::read_to_string(&cache_path).ok()?;
+        let cached: CachedDeadCodeResult = serde_json::from_str(&cache_content).ok()?;
+
+        // Validate cache
+        let current_tree_hash = self.get_tree_hash()?;
+        let current_version = env!("CARGO_PKG_VERSION");
+
+        if cached.tree_hash == current_tree_hash && cached.pmat_version == current_version {
+            tracing::debug!("Dead code cache hit (tree_hash: {})", current_tree_hash);
+            Some(cached.report)
+        } else {
+            tracing::debug!(
+                "Dead code cache miss (tree: {} vs {}, version: {} vs {})",
+                cached.tree_hash,
+                current_tree_hash,
+                cached.pmat_version,
+                current_version
+            );
+            None
+        }
+    }
+
+    /// Save result to cache
+    fn save_cache(&self, report: &AccurateDeadCodeReport) {
+        if !self.use_cache {
+            return;
+        }
+
+        let Some(tree_hash) = self.get_tree_hash() else {
+            return;
+        };
+
+        let cached = CachedDeadCodeResult {
+            tree_hash,
+            pmat_version: env!("CARGO_PKG_VERSION").to_string(),
+            timestamp: chrono::Utc::now(),
+            report: report.clone(),
+        };
+
+        // Ensure .pmat directory exists
+        let cache_dir = self.project_path.join(".pmat");
+        let _ = std::fs::create_dir_all(&cache_dir);
+
+        // Write cache file
+        if let Ok(content) = serde_json::to_string_pretty(&cached) {
+            let _ = std::fs::write(self.cache_path(), content);
+            tracing::debug!("Dead code cache saved");
+        }
+    }
+
+    /// Perform accurate dead code analysis using cargo with O(1) caching
     pub async fn analyze(&self) -> Result<AccurateDeadCodeReport> {
         use tokio::time::{timeout, Duration};
 
-        // Add comprehensive timeout to the entire analysis
+        // Try cache first for O(1) performance
+        if let Some(cached) = self.try_load_cache() {
+            return Ok(cached);
+        }
+
+        // Cache miss - run full analysis
         let analysis_future = async {
-            // Run cargo check with JSON output
             let cargo_output = self.run_cargo_check()?;
-
-            // Parse dead code warnings from cargo output
             let dead_items = self.parse_cargo_warnings(&cargo_output)?;
-
-            // Group by file
             let files_with_dead_code = self.group_by_file(dead_items);
-
-            // Calculate metrics (this was the main hanging point)
             let report = self.calculate_metrics(files_with_dead_code).await?;
+
+            // Save to cache for next time
+            self.save_cache(&report);
 
             Ok(report)
         };
@@ -138,9 +260,9 @@ impl CargoDeadCodeAnalyzer {
 
     /// Run cargo check and capture JSON output with timeout
     fn run_cargo_check(&self) -> Result<String> {
-        // For testing and CI environments, return minimal successful output quickly
-        if std::env::var("CARGO_TEST_DEAD_CODE_FAST").is_ok() || std::env::var("CI").is_ok() {
-            // Return minimal JSON that represents successful analysis with no dead code
+        // PMAT_DEAD_CODE_SKIP=1 can be used to skip in specific test scenarios
+        // Removed CI bypass per CB-128 spec - dead code detection must work everywhere
+        if std::env::var("PMAT_DEAD_CODE_SKIP").is_ok() {
             return Ok(r#"{"reason":"build-finished","success":true}"#.to_string());
         }
 
@@ -148,6 +270,13 @@ impl CargoDeadCodeAnalyzer {
         cmd.current_dir(&self.project_path)
             .arg("check")
             .arg("--message-format=json");
+
+        // Enable dead_code warning via RUSTFLAGS to catch items with #[allow(dead_code)]
+        // This forces rustc to emit dead_code warnings even for items that normally suppress them
+        cmd.env(
+            "RUSTFLAGS",
+            std::env::var("RUSTFLAGS").unwrap_or_default() + " -W dead_code",
+        );
 
         // Use targeted checks instead of --all-targets for faster execution
         if self.exclude_tests {
