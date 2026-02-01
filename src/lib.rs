@@ -109,6 +109,8 @@
 
 pub mod agent; // Claude Code Agent Mode implementation
 pub mod agents; // Agent system with Actix actors
+// Feature-gated: Experimental module (0% coverage, not production-ready)
+#[cfg(feature = "agents-md")]
 pub mod agents_md; // AGENTS.md integration for AI agent guidance
 pub mod ast; // Unified AST module for all language parsing
 // Feature-gated: Not ready for production use (0% coverage, no external usage)
@@ -123,6 +125,8 @@ pub mod graph; // Graph-theoretic analysis for dependency networks
 pub mod handlers;
 pub mod maintenance; // Roadmap and ticket maintenance system (Sprint 17)
 pub mod mcp; // MCP tools and handlers (Sprint 30: Semantic search tools)
+// Feature-gated: Experimental module (0% coverage, not production-ready)
+#[cfg(feature = "mcp-integration")]
 pub mod mcp_integration; // MCP protocol integration
 pub mod mcp_pmcp; // Now always available with pmcp 1.0
 pub mod mcp_server;
@@ -144,6 +148,8 @@ pub mod test_performance;
 pub mod workflow; // Workflow orchestration engine // Performance testing per SPECIFICATION.md Section 30
                   // #[cfg(test)]
                   // pub mod testing;
+// Feature-gated: Experimental module (0% coverage, not production-ready)
+#[cfg(feature = "unified-protocol")]
 pub mod unified_protocol;
 pub mod unified_quality; // Unified Quality Enforcement System
 pub mod utils;
@@ -609,12 +615,14 @@ mod tests {
     #[path = "../tests/demo_comprehensive_tests.rs"]
     mod demo_comprehensive_tests;
 
+    #[cfg(feature = "unified-protocol")]
     #[path = "../tests/http_adapter_tests.rs"]
     mod http_adapter_tests;
 
     #[path = "../tests/cache_comprehensive_tests.rs"]
     mod cache_comprehensive_tests;
 
+    #[cfg(feature = "unified-protocol")]
     #[path = "../tests/unified_protocol_tests.rs"]
     mod unified_protocol_tests;
 

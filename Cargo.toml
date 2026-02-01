@@ -19,6 +19,7 @@ autotests = false
 [[bin]]
 name = "pmat-agent"
 path = "src/bin/pmat-agent.rs"
+required-features = ["mcp-integration"]
 
 [dependencies]
 # Organizational Intelligence Plugin - Phase 4 integration
@@ -360,6 +361,11 @@ broken-tests = []
 cli-integration = []
 # Claude Agent SDK integration (not ready for production - 0% test coverage)
 claude-integration = []
+# Experimental modules (not production-ready, 0% test coverage)
+# These are feature-gated to exclude from default coverage measurement
+agents-md = []  # AGENTS.md integration for AI agent guidance
+mcp-integration = []  # MCP protocol integration experiments
+unified-protocol = []  # Unified protocol layer experiments
 rust-ast = ["quote", "proc-macro2", "tree-sitter", "tree-sitter-rust"]
 typescript-ast = ["rust-ast", "swc_ecma_parser", "swc_common", "swc_ecma_ast", "swc_ecma_visit", "tree-sitter", "tree-sitter-typescript", "tree-sitter-javascript", "polyglot-typescript"]
 python-ast = ["rust-ast", "tree-sitter", "tree-sitter-python"]

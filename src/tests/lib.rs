@@ -35,7 +35,8 @@ mod test_include_patterns;
 // Include basic CLI tests for coverage
 mod cli_basic_tests;
 
-// Include protocol service tests for coverage
+// Include protocol service tests for coverage (requires unified-protocol feature)
+#[cfg(feature = "unified-protocol")]
 mod protocol_service_tests;
 
 // TRACKED: Fix diagnostic command tests
