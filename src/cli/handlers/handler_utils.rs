@@ -161,6 +161,68 @@ pub fn calculate_percentage(numerator: usize, denominator: usize) -> f64 {
     }
 }
 
+/// Check if content has heavy cfg/target_feature attributes (SIMD/arch-specific code)
+///
+/// Files with many cfg attributes are often SIMD or architecture-specific code
+/// that only compiles on certain platforms, leading to false positives in dead code analysis.
+#[must_use]
+pub fn is_heavily_cfg_gated(content: &str) -> bool {
+    let cfg_count = content.matches("#[cfg(target").count()
+        + content.matches("#[target_feature").count()
+        + content.matches("#[cfg(feature").count();
+    cfg_count > 3
+}
+
+/// Check if a path should be excluded from production code analysis
+///
+/// Excludes test files, falsification modules, SIMD-heavy directories
+#[must_use]
+pub fn is_excluded_from_analysis(path_str: &str) -> bool {
+    path_str.ends_with("_tests.rs")
+        || path_str.contains("/tests/")
+        || path_str.contains("/falsification/")
+        || path_str.contains("_falsification")
+        || path_str.contains("/quantize/")
+        || path_str.contains("/simd/")
+        || path_str.contains("/benches/")
+        || path_str.contains("/examples/")
+}
+
+/// Check if a line looks like a test module marker
+#[must_use]
+pub fn is_test_module_marker(line: &str) -> bool {
+    let trimmed = line.trim();
+    trimmed == "#[cfg(test)]" || trimmed.starts_with("#[cfg(test)]")
+}
+
+/// Check if a line is a dead code annotation
+#[must_use]
+pub fn is_dead_code_annotation(line: &str) -> bool {
+    let trimmed = line.trim();
+    trimmed.starts_with("#[allow(dead_code)]") || trimmed.starts_with("#[allow(unused")
+}
+
+/// Check if a line is a code item declaration (fn, struct, enum, etc.)
+#[must_use]
+pub fn is_code_item_declaration(line: &str) -> bool {
+    let trimmed = line.trim();
+    trimmed.starts_with("pub fn ")
+        || trimmed.starts_with("fn ")
+        || trimmed.starts_with("pub struct ")
+        || trimmed.starts_with("struct ")
+        || trimmed.starts_with("pub enum ")
+        || trimmed.starts_with("enum ")
+        || trimmed.starts_with("pub const ")
+        || trimmed.starts_with("const ")
+        || trimmed.starts_with("pub static ")
+        || trimmed.starts_with("static ")
+        || trimmed.starts_with("pub type ")
+        || trimmed.starts_with("type ")
+        || trimmed.starts_with("pub trait ")
+        || trimmed.starts_with("trait ")
+        || trimmed.starts_with("impl ")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -403,5 +465,124 @@ mod tests {
     #[test]
     fn test_calculate_percentage_full() {
         assert!((calculate_percentage(100, 100) - 100.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_is_heavily_cfg_gated_true() {
+        let content = r#"
+            #[cfg(target_arch = "x86_64")]
+            fn foo() {}
+            #[cfg(target_feature = "avx2")]
+            fn bar() {}
+            #[cfg(feature = "simd")]
+            fn baz() {}
+            #[target_feature(enable = "sse2")]
+            fn qux() {}
+        "#;
+        assert!(is_heavily_cfg_gated(content));
+    }
+
+    #[test]
+    fn test_is_heavily_cfg_gated_false() {
+        let content = r#"
+            fn normal_function() {}
+            #[cfg(test)]
+            mod tests {}
+        "#;
+        assert!(!is_heavily_cfg_gated(content));
+    }
+
+    #[test]
+    fn test_is_excluded_from_analysis_tests() {
+        assert!(is_excluded_from_analysis("src/foo_tests.rs"));
+        assert!(is_excluded_from_analysis("src/tests/mod.rs"));
+        assert!(is_excluded_from_analysis("/path/to/tests/foo.rs"));
+    }
+
+    #[test]
+    fn test_is_excluded_from_analysis_falsification() {
+        assert!(is_excluded_from_analysis("src/falsification/mod.rs"));
+        assert!(is_excluded_from_analysis("src/foo_falsification.rs"));
+    }
+
+    #[test]
+    fn test_is_excluded_from_analysis_simd() {
+        assert!(is_excluded_from_analysis("src/quantize/mod.rs"));
+        assert!(is_excluded_from_analysis("src/simd/avx.rs"));
+    }
+
+    #[test]
+    fn test_is_excluded_from_analysis_production() {
+        assert!(!is_excluded_from_analysis("src/lib.rs"));
+        assert!(!is_excluded_from_analysis("src/main.rs"));
+        assert!(!is_excluded_from_analysis("src/services/foo.rs"));
+    }
+
+    #[test]
+    fn test_is_test_module_marker_true() {
+        assert!(is_test_module_marker("#[cfg(test)]"));
+        assert!(is_test_module_marker("  #[cfg(test)]"));
+        assert!(is_test_module_marker("#[cfg(test)] // comment"));
+    }
+
+    #[test]
+    fn test_is_test_module_marker_false() {
+        assert!(!is_test_module_marker("fn test() {}"));
+        assert!(!is_test_module_marker("#[test]"));
+        assert!(!is_test_module_marker("#[cfg(feature = \"test\")]"));
+    }
+
+    #[test]
+    fn test_is_dead_code_annotation_true() {
+        assert!(is_dead_code_annotation("#[allow(dead_code)]"));
+        assert!(is_dead_code_annotation("  #[allow(dead_code)]"));
+        assert!(is_dead_code_annotation("#[allow(unused)]"));
+        assert!(is_dead_code_annotation("#[allow(unused_imports)]"));
+    }
+
+    #[test]
+    fn test_is_dead_code_annotation_false() {
+        assert!(!is_dead_code_annotation("fn dead_code() {}"));
+        assert!(!is_dead_code_annotation("// #[allow(dead_code)]"));
+        assert!(!is_dead_code_annotation("#[derive(Debug)]"));
+    }
+
+    #[test]
+    fn test_is_code_item_declaration_functions() {
+        assert!(is_code_item_declaration("fn foo() {}"));
+        assert!(is_code_item_declaration("pub fn bar() {}"));
+        assert!(is_code_item_declaration("  fn baz() {}"));
+    }
+
+    #[test]
+    fn test_is_code_item_declaration_types() {
+        assert!(is_code_item_declaration("struct Foo {}"));
+        assert!(is_code_item_declaration("pub struct Bar {}"));
+        assert!(is_code_item_declaration("enum Baz {}"));
+        assert!(is_code_item_declaration("pub enum Qux {}"));
+        assert!(is_code_item_declaration("type Alias = i32;"));
+        assert!(is_code_item_declaration("pub type PublicAlias = i32;"));
+    }
+
+    #[test]
+    fn test_is_code_item_declaration_traits_impls() {
+        assert!(is_code_item_declaration("trait Foo {}"));
+        assert!(is_code_item_declaration("pub trait Bar {}"));
+        assert!(is_code_item_declaration("impl Foo for Bar {}"));
+    }
+
+    #[test]
+    fn test_is_code_item_declaration_consts() {
+        assert!(is_code_item_declaration("const FOO: i32 = 1;"));
+        assert!(is_code_item_declaration("pub const BAR: i32 = 2;"));
+        assert!(is_code_item_declaration("static BAZ: i32 = 3;"));
+        assert!(is_code_item_declaration("pub static QUX: i32 = 4;"));
+    }
+
+    #[test]
+    fn test_is_code_item_declaration_false() {
+        assert!(!is_code_item_declaration("let x = 1;"));
+        assert!(!is_code_item_declaration("// fn comment"));
+        assert!(!is_code_item_declaration("use crate::foo;"));
     }
 }
