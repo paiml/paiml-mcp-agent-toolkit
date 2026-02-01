@@ -210,23 +210,21 @@ pub async fn check_dead_code(
     project_path: &Path,
     max_percentage: f64,
 ) -> Result<Vec<QualityViolation>> {
-    use crate::models::dead_code::DeadCodeAnalysisConfig;
-    use crate::services::dead_code_analyzer::DeadCodeAnalyzer;
+    use crate::services::cargo_dead_code_analyzer::CargoDeadCodeAnalyzer;
 
     let mut violations = Vec::new();
 
-    // Create analyzer and run analysis
-    let mut analyzer = DeadCodeAnalyzer::new(DeadCodeAnalyzer::DEFAULT_CAPACITY);
-    let config = DeadCodeAnalysisConfig {
-        include_tests: false,
-        include_unreachable: true,
-        min_dead_lines: 0,
+    // Use the same CargoDeadCodeAnalyzer that `pmat analyze dead-code` uses
+    // to ensure consistent results (fixes #141).
+    // Falls back gracefully if cargo analysis is unavailable (non-Rust projects,
+    // missing Cargo.toml, etc.)
+    let analyzer = CargoDeadCodeAnalyzer::new(project_path);
+    let report = match analyzer.analyze().await {
+        Ok(r) => r,
+        Err(_) => return Ok(violations), // No cargo project → no dead code violations
     };
 
-    let result = analyzer.analyze_with_ranking(project_path, config).await?;
-
-    // Check if dead code percentage exceeds threshold
-    let dead_percentage = f64::from(result.summary.dead_percentage);
+    let dead_percentage = report.dead_code_percentage;
 
     if dead_percentage > max_percentage {
         violations.push(QualityViolation {
@@ -241,16 +239,17 @@ pub async fn check_dead_code(
     }
 
     // Add a warning for each file with significant dead code
-    for file in result.ranked_files.iter().take(5) {
-        if file.dead_percentage > 20.0 {
+    for file in report.files_with_dead_code.iter().take(5) {
+        if file.file_dead_percentage > 20.0 {
             violations.push(QualityViolation {
                 check_type: "dead_code".to_string(),
                 severity: "warning".to_string(),
-                file: file.path.clone(),
+                file: file.file_path.display().to_string(),
                 line: None,
                 message: format!(
-                    "File has {:.1}% dead code ({} dead lines)",
-                    file.dead_percentage, file.dead_lines
+                    "File has {:.1}% dead code ({} dead items)",
+                    file.file_dead_percentage,
+                    file.dead_items.len()
                 ),
             });
         }

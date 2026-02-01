@@ -48,11 +48,16 @@ impl AccurateComplexityAnalyzer {
         let content = tokio::fs::read_to_string(path).await?;
         let ast = syn::parse_file(&content)?;
 
+        // Build a lookup of function name -> line number from source text
+        let line_map = build_function_line_map(&content);
+
         let mut functions = Vec::new();
 
         for item in ast.items {
             if let Item::Fn(func) = item {
-                let metrics = self.analyze_function(&func);
+                let name = func.sig.ident.to_string();
+                let line_start = line_map.get(&name).copied().unwrap_or(0);
+                let metrics = self.analyze_function(&func, line_start);
                 functions.push(metrics);
             }
         }
@@ -93,7 +98,7 @@ impl AccurateComplexityAnalyzer {
     }
 
     /// Analyze a single function
-    fn analyze_function(&self, func: &ItemFn) -> FunctionMetrics {
+    fn analyze_function(&self, func: &ItemFn, line_start: u32) -> FunctionMetrics {
         let name = func.sig.ident.to_string();
         let suppressed = self.respect_annotations && self.has_suppress_annotation(&func.attrs);
 
@@ -105,6 +110,7 @@ impl AccurateComplexityAnalyzer {
             cyclomatic_complexity: visitor.cyclomatic,
             cognitive_complexity: visitor.cognitive,
             suppressed,
+            line_start,
         }
     }
 
@@ -324,6 +330,41 @@ impl<'ast> Visit<'ast> for ComplexityVisitor {
     }
 }
 
+/// Build a map of function name -> 1-based line number from source text.
+///
+/// For duplicate function names (e.g. in different impl blocks), stores the
+/// first occurrence so the analyzer can match them in order of appearance.
+fn build_function_line_map(content: &str) -> std::collections::HashMap<String, u32> {
+    let mut map = std::collections::HashMap::new();
+    for (line_idx, line) in content.lines().enumerate() {
+        if let Some(name) = extract_fn_name(line.trim()) {
+            let line_number = (line_idx + 1) as u32;
+            map.entry(name).or_insert(line_number);
+        }
+    }
+    map
+}
+
+/// Extract a function name from a trimmed source line, if it contains a function definition.
+/// Returns None for comments and non-function lines.
+fn extract_fn_name(trimmed: &str) -> Option<String> {
+    let fn_pos = trimmed.find("fn ")?;
+    let before = &trimmed[..fn_pos];
+    if before.contains("//") || before.contains("/*") {
+        return None;
+    }
+    let after = &trimmed[fn_pos + 3..];
+    let name_end = after
+        .find(|c: char| c == '(' || c == '<' || c.is_whitespace())
+        .unwrap_or(after.len());
+    let name = after[..name_end].trim();
+    if !name.is_empty() && name.chars().all(|c| c.is_alphanumeric() || c == '_') {
+        Some(name.to_string())
+    } else {
+        None
+    }
+}
+
 /// Result of analyzing a single file
 #[derive(Debug, Clone)]
 pub struct FileComplexityResult {
@@ -338,6 +379,8 @@ pub struct FunctionMetrics {
     pub cyclomatic_complexity: u32,
     pub cognitive_complexity: u32,
     pub suppressed: bool,
+    /// 1-based line number where the function starts in the source file
+    pub line_start: u32,
 }
 
 /// Result of analyzing a project
@@ -382,6 +425,68 @@ mod tests {
         assert_eq!(result.functions.len(), 2);
         assert_eq!(result.functions[0].cyclomatic_complexity, 1);
         assert_eq!(result.functions[1].cyclomatic_complexity, 2);
+    }
+
+    #[tokio::test]
+    async fn test_line_numbers_are_accurate() {
+        let temp_dir = TempDir::new().unwrap();
+        let test_file = temp_dir.path().join("test.rs");
+
+        // Write file with known line positions
+        fs::write(
+            &test_file,
+            "fn first() -> i32 {\n    42\n}\n\nfn second() -> i32 {\n    99\n}\n",
+        )
+        .unwrap();
+        // first() is at line 1, second() is at line 5
+
+        let analyzer = AccurateComplexityAnalyzer::new();
+        let result = analyzer.analyze_file(&test_file).await.unwrap();
+
+        assert_eq!(result.functions.len(), 2);
+        assert_eq!(result.functions[0].name, "first");
+        assert_eq!(result.functions[0].line_start, 1);
+        assert_eq!(result.functions[1].name, "second");
+        assert_eq!(result.functions[1].line_start, 5);
+    }
+
+    #[tokio::test]
+    async fn test_line_numbers_with_attributes() {
+        let temp_dir = TempDir::new().unwrap();
+        let test_file = temp_dir.path().join("test.rs");
+
+        fs::write(
+            &test_file,
+            "#[inline]\npub fn decorated() -> i32 {\n    42\n}\n\n/// doc comment\npub async fn async_fn() {}\n",
+        )
+        .unwrap();
+        // decorated() fn keyword is at line 2, async_fn() fn keyword is at line 7
+
+        let analyzer = AccurateComplexityAnalyzer::new();
+        let result = analyzer.analyze_file(&test_file).await.unwrap();
+
+        assert_eq!(result.functions.len(), 2);
+        assert_eq!(result.functions[0].name, "decorated");
+        assert_eq!(result.functions[0].line_start, 2);
+        assert_eq!(result.functions[1].name, "async_fn");
+        assert_eq!(result.functions[1].line_start, 7);
+    }
+
+    #[test]
+    fn test_build_function_line_map() {
+        let content = "fn foo() {}\n\npub fn bar() {}\n\nasync fn baz() {}\n";
+        let map = build_function_line_map(content);
+        assert_eq!(map.get("foo"), Some(&1));
+        assert_eq!(map.get("bar"), Some(&3));
+        assert_eq!(map.get("baz"), Some(&5));
+    }
+
+    #[test]
+    fn test_build_function_line_map_skips_comments() {
+        let content = "// fn not_a_function() {}\nfn real() {}\n";
+        let map = build_function_line_map(content);
+        assert_eq!(map.get("real"), Some(&2));
+        assert!(map.get("not_a_function").is_none());
     }
 }
 

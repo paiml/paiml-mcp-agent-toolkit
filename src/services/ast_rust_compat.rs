@@ -44,15 +44,24 @@ pub async fn analyze_rust_file_with_complexity_and_classifier(
         total_cyclomatic += func.cyclomatic_complexity;
         total_cognitive += func.cognitive_complexity;
 
+        // Use real line numbers from the accurate analyzer
+        let line_start = func.line_start;
+        // Estimate line_end based on next function or a reasonable default
+        let line_end = if i + 1 < accurate_result.functions.len() {
+            accurate_result.functions[i + 1].line_start.saturating_sub(1)
+        } else {
+            line_start + 50 // Estimate for last function
+        };
+
         function_metrics.push(FunctionComplexity {
             name: func.name.clone(),
-            line_start: (i * 50) as u32, // Approximate line numbers
-            line_end: ((i + 1) * 50) as u32,
+            line_start,
+            line_end,
             metrics: ComplexityMetrics {
                 cyclomatic: func.cyclomatic_complexity as u16,
                 cognitive: func.cognitive_complexity as u16,
-                nesting_max: ((func.cognitive_complexity / 3).min(255)) as u8, // Approximate nesting
-                lines: 50,                                                     // Approximate
+                nesting_max: ((func.cognitive_complexity / 3).min(255)) as u8,
+                lines: (line_end.saturating_sub(line_start).max(1)) as u16,
                 halstead: None,
             },
         });
@@ -79,7 +88,10 @@ pub async fn analyze_rust_file_with_complexity_and_classifier(
             cyclomatic: avg_cyclomatic as u16,
             cognitive: avg_cognitive as u16,
             nesting_max: max_nesting.min(255) as u8,
-            lines: (function_metrics.len() as u16).saturating_mul(50), // Approximate
+            lines: function_metrics
+                .last()
+                .map(|f| f.line_end as u16)
+                .unwrap_or(0),
             halstead: None,
         },
         functions: function_metrics,

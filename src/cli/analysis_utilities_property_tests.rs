@@ -168,10 +168,22 @@ mod integration_tests {
 
     #[tokio::test]
     async fn test_dead_code_with_test_project() {
-        // Create a test project with known dead code
+        // Create a test project with known dead code (requires Cargo.toml for
+        // the CargoDeadCodeAnalyzer used by check_dead_code)
         let temp_dir = TempDir::new().unwrap();
         let src_dir = temp_dir.path().join("src");
         fs::create_dir_all(&src_dir).unwrap();
+
+        // Create Cargo.toml so cargo check can run
+        fs::write(
+            temp_dir.path().join("Cargo.toml"),
+            r#"[package]
+name = "test-dead-code"
+version = "0.1.0"
+edition = "2021"
+"#,
+        )
+        .unwrap();
 
         // Create a file with dead code
         fs::write(
@@ -186,7 +198,7 @@ fn unused_function() {
 }
 
 fn another_unused() {
-    let x = 42;
+    let _x = 42;
     println!("Also unused");
 }
 "#,
