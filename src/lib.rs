@@ -717,6 +717,10 @@ mod tests {
     // Popperian falsification audit retest
     #[path = "../tests/audit_provability_retest.rs"]
     mod audit_provability_retest;
+
+    // CLI structure coverage boost (Option 2)
+    #[path = "../tests/cli_coverage_boost.rs"]
+    mod cli_coverage_boost;
 }
 
 #[cfg(test)]

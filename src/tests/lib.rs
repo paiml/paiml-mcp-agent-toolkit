@@ -35,6 +35,21 @@ mod test_include_patterns;
 // Include basic CLI tests for coverage
 mod cli_basic_tests;
 
+// Coverage boost tests - CLI enums
+mod cli_coverage_boost;
+
+// Coverage boost tests - services batch 1 (DeepContextAnalyzer)
+mod coverage_boost_services1;
+
+// Coverage boost tests - services batch 2 (language_analyzer)
+mod coverage_boost_services2;
+
+// Coverage boost tests - services batch 3 (defect_analyzers, enhanced_reporting)
+mod coverage_boost_services3;
+
+// Coverage boost tests - services batch 4 (satd_detector)
+mod coverage_boost_services4;
+
 // Include protocol service tests for coverage (requires unified-protocol feature)
 #[cfg(feature = "unified-protocol")]
 mod protocol_service_tests;

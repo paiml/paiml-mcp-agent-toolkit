@@ -1505,6 +1505,10 @@ fn scan_dead_code_indicators(src_dir: &Path) -> (usize, usize, usize, usize) {
         let Ok(content) = fs::read_to_string(path) else {
             continue;
         };
+        // Fix #137: Skip files with heavy cfg/SIMD usage (cfg-gated code appears dead on wrong arch)
+        if is_heavily_cfg_gated(&content) {
+            continue;
+        }
         let lines: Vec<&str> = content.lines().collect();
         let file_result = analyze_file_dead_code(&lines);
         total_items += file_result.0;
@@ -1516,7 +1520,17 @@ fn scan_dead_code_indicators(src_dir: &Path) -> (usize, usize, usize, usize) {
     (total_items, dead_items, total_lines, estimated_dead_lines)
 }
 
-/// Collect production .rs files (skip test files).
+/// Check if a file is heavily cfg-gated (SIMD, arch-specific code).
+/// These files have code that only compiles on certain architectures, causing false dead code reports.
+fn is_heavily_cfg_gated(content: &str) -> bool {
+    let cfg_count = content.matches("#[cfg(target").count()
+        + content.matches("#[target_feature").count()
+        + content.matches("#[cfg(feature").count();
+    // If more than 3 cfg attributes, likely SIMD/arch-specific code
+    cfg_count > 3
+}
+
+/// Collect production .rs files (skip test files, falsification modules, SIMD code).
 fn collect_production_rs_files(src_dir: &Path) -> Vec<std::path::PathBuf> {
     walkdir::WalkDir::new(src_dir)
         .max_depth(10)
@@ -1524,10 +1538,17 @@ fn collect_production_rs_files(src_dir: &Path) -> Vec<std::path::PathBuf> {
         .filter_map(|e| e.ok())
         .filter(|e| {
             let p = e.path();
+            let path_str = p.to_string_lossy();
             p.is_file()
                 && p.extension().map_or(false, |ext| ext == "rs")
-                && !p.to_string_lossy().ends_with("_tests.rs")
-                && !p.to_string_lossy().contains("/tests/")
+                && !path_str.ends_with("_tests.rs")
+                && !path_str.contains("/tests/")
+                // Fix #135: Exclude falsification test modules (used for property testing)
+                && !path_str.contains("/falsification/")
+                && !path_str.contains("_falsification")
+                // Fix #137: Exclude SIMD-heavy directories (cfg-gated code)
+                && !path_str.contains("/quantize/")
+                && !path_str.contains("/simd/")
         })
         .map(|e| e.path().to_path_buf())
         .collect()

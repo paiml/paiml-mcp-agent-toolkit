@@ -1206,6 +1206,16 @@ impl SATDDetector {
                 || comment_text.starts_with("load ")
                 || comment_text.starts_with("create ")
                 || comment_text.starts_with("process ")
+                || comment_text.starts_with("detect ")
+                || comment_text.starts_with("scan ")
+                || comment_text.starts_with("parse ")
+                || comment_text.starts_with("analyze ")
+                || comment_text.starts_with("extract ")
+                || comment_text.starts_with("find ")
+                || comment_text.starts_with("search ")
+                || comment_text.starts_with("identify ")
+                || comment_text.starts_with("validate ")
+                || comment_text.starts_with("verify ")
                 || comment_text.contains("relative links")
                 || comment_text.contains("special modes")
                 || comment_text.contains("documentation issues")
@@ -1225,6 +1235,10 @@ impl SATDDetector {
                 || self.is_fixed_bug_description(&comment_text)
                 // Bug estimation/metrics functionality
                 || (comment_text.contains("bug") && comment_text.contains("estimate"))
+                // Comments about detection/markers (describing functionality, not debt)
+                || (comment_text.contains("marker") && !comment_text.contains("add"))
+                || (comment_text.contains("detection") && !comment_text.contains("need"))
+                || (comment_text.contains("pattern") && comment_text.contains("match"))
         } else {
             false
         }
