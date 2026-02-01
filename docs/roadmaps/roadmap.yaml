@@ -1248,3 +1248,42 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: PMAT-461
+  github_issue: null
+  item_type: task
+  title: 'WORK-COMPLY-8.10: Implement pmat work compliance convergence'
+  status: completed
+  priority: high
+  assigned_to: null
+  created: 2026-02-01T13:16:44Z
+  updated: 2026-02-01T13:26:33Z
+  spec: null
+  acceptance_criteria:
+  - 'Implement section 8.10 from docs/specifications/improve-pmat-comply.md: coverage 95%, SATD zero-tolerance, dead code zero-tolerance, lint gate'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - comply
+  - coverage
+  - satd
+  - dead-code
+  notes: null
+- id: PMAT-462
+  github_issue: null
+  item_type: task
+  title: 'DOGFOOD: Fix repo compliance issues for v2.6 gates'
+  status: inprogress
+  priority: critical
+  assigned_to: null
+  created: 2026-02-01T13:29:03Z
+  updated: 2026-02-01T13:29:09.222748822+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - dogfood
+  - compliance
+  notes: null
