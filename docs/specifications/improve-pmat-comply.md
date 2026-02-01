@@ -81,6 +81,8 @@ This specification defines **25 improvements** with peer-reviewed justification,
    - 8.6: Falsification Tests (T-176 through T-180)
    - 8.7: Dependencies
    - 8.8: Rollout Plan
+   - 8.9: Integration with rust-project-score (SCORE-001 through SCORE-004)
+   - 8.8: Rollout Plan
 
 ---
 
@@ -5277,6 +5279,155 @@ deps = true             # CB-204: Dependency recommendations
 | Phase 1 | CB-202 (Explain) + CB-200 (Suggestions) | Week 1 |
 | Phase 2 | CB-204 (Deps) | Week 2 |
 | Phase 3 | CB-201 (Smart Init) + CB-203 (Patterns) | Week 3-4 |
+| Phase 4 | SCORE-001 to SCORE-004 (rust-project-score) | Week 5-6 |
+
+### 8.9 Integration with rust-project-score
+
+The batuta RAG oracle should also enhance `pmat rust-project-score` to provide contextual scoring and recommendations.
+
+#### 8.9.1 Score Explanation Mode
+
+**Command:** `pmat rust-project-score --explain`
+
+When a score component is below target, query oracle for:
+1. Why this metric matters (with real incidents)
+2. How top-scoring sovereign stack projects achieve high scores
+3. Specific actionable steps to improve
+
+**Example Output:**
+```
+📊 Rust Project Score: 78/106
+
+Category Breakdown:
+  Rust Tooling (21/25):
+    ⚠ Clippy: 18/20 (-2 for 3 correctness warnings)
+      💡 Oracle: "trueno achieved 20/20 by adding #![deny(clippy::correctness)]
+         to lib.rs - catches subtle bugs like lossy float casts"
+
+  Code Quality (19/26):
+    ⚠ Mutation Testing: 5/8 (62% mutation score, target 80%)
+      💡 Oracle: "aprender reaches 85% by focusing mutants on numeric code.
+         See: aprender/tests/mutation_targets.rs for priority patterns"
+
+    ⚠ Unsafe Code: 6/9 (3 undocumented unsafe blocks)
+      💡 Oracle: "Document with // SAFETY: comment per trueno convention.
+         Example: trueno/src/simd/avx.rs:42"
+
+  Dependencies (8/12):
+    ⚠ Non-Sovereign: -4 (using petgraph, ndarray)
+      💡 Oracle: "Consider trueno-graph (3x faster PageRank) and
+         aprender::tensor (zero-copy SIMD interop)"
+```
+
+#### 8.9.2 Sovereign Stack Bonus Scoring
+
+Add bonus points for using sovereign stack components:
+
+| Dependency | Replaces | Bonus | Rationale |
+|------------|----------|-------|-----------|
+| aprender | linfa, smartcore | +2 | Pure Rust, TDG 94/100, zero deps |
+| trueno | ndarray | +2 | SIMD-first, GPU support |
+| trueno-graph | petgraph | +1 | CSR native, PageRank optimized |
+| trueno-rag | qdrant, milvus | +1 | Pure Rust, no external services |
+| trueno-db | polars (partial) | +1 | Columnar storage, analytics |
+| renacer | ad-hoc testing | +1 | Golden tracing, deterministic |
+| presentar-core | ratatui | +1 | Jidoka verification, zero-alloc |
+
+**Maximum Sovereign Bonus:** +10 points (extends 106 → 116 total)
+
+**Implementation:**
+```rust
+fn score_dependency_sovereignty(cargo_toml: &CargoToml) -> SovereigntyScore {
+    let sovereign_map = batuta_oracle_query("sovereign stack dependency mapping")?;
+
+    let mut bonus = 0;
+    let mut suggestions = vec![];
+
+    for dep in &cargo_toml.dependencies {
+        if sovereign_map.is_sovereign(&dep.name) {
+            bonus += sovereign_map.bonus_for(&dep.name);
+        } else if let Some(alt) = sovereign_map.alternative_for(&dep.name) {
+            suggestions.push(SovereignSuggestion {
+                current: dep.name.clone(),
+                sovereign: alt.name,
+                bonus: alt.bonus,
+                migration_guide: alt.docs_url,
+            });
+        }
+    }
+
+    SovereigntyScore { bonus, suggestions }
+}
+```
+
+#### 8.9.3 Project Type Calibration
+
+Query oracle to calibrate scoring thresholds based on project type:
+
+| Project Type | Coverage | Mutation | Complexity | Unsafe Docs | Example |
+|--------------|----------|----------|------------|-------------|---------|
+| ML Library | 90% | 80% | 15 | Required | aprender |
+| SIMD/GPU Lib | 85% | 75% | 15 | Required | trueno |
+| CLI Tool | 80% | 60% | 20 | Optional | batuta |
+| Web Service | 85% | 70% | 20 | Optional | - |
+| Systems Lib | 85% | 75% | 12 | Required | trueno-db |
+
+**Auto-detection:**
+```rust
+fn detect_and_calibrate(project_path: &Path) -> ScoringThresholds {
+    let project_type = detect_project_type(project_path);
+    // Check for: #![no_std], SIMD intrinsics, async runtime, ML deps, etc.
+
+    let calibration = batuta_oracle_query(&format!(
+        "rust-project-score calibration {} sovereign stack",
+        project_type
+    ))?;
+
+    ScoringThresholds::from_oracle(calibration)
+}
+```
+
+#### 8.9.4 Comparative Scoring Dashboard
+
+Show how project compares to sovereign stack projects:
+
+```
+📊 Comparative Analysis (via batuta oracle)
+
+Your Score: 78/106 (74%)
+
+Sovereign Stack Leaderboard:
+  #1 aprender     94/106 (89%) ████████████████████░░░░
+  #2 trueno       91/106 (86%) ███████████████████░░░░░
+  #3 realizar     87/106 (82%) ██████████████████░░░░░░
+  #4 batuta       85/106 (80%) █████████████████░░░░░░░
+  #5 renacer      82/106 (77%) ████████████████░░░░░░░░
+  → YOUR PROJECT  78/106 (74%) ███████████████░░░░░░░░░
+
+Gap Analysis (to match aprender +16 pts):
+  +8 pts  Mutation testing: Add cargo-mutants, target 80%
+  +4 pts  Sovereign deps: petgraph→trueno-graph, ndarray→aprender
+  +3 pts  Unsafe docs: 3 blocks need // SAFETY: comments
+  +1 pt   Clippy: Fix 3 correctness warnings
+```
+
+#### 8.9.5 Work Tickets
+
+| Ticket | Feature | Priority | Effort |
+|--------|---------|----------|--------|
+| SCORE-001 | Score explanation mode (`--explain`) | P0 | Medium |
+| SCORE-002 | Sovereign stack bonus (+10 pts) | P1 | Low |
+| SCORE-003 | Project type calibration | P2 | Medium |
+| SCORE-004 | Comparative scoring dashboard | P1 | Medium |
+
+#### 8.9.6 Falsification Tests
+
+| Test ID | Description | Pass Criteria |
+|---------|-------------|---------------|
+| T-181 | Score explanations actionable | >90% suggestions improve score when applied |
+| T-182 | Sovereign bonus accuracy | 100% match manual dependency classification |
+| T-183 | Calibration reduces noise | <10% "threshold unfair for my project" feedback |
+| T-184 | Comparative data freshness | Scores updated within 7 days of stack releases |
 
 ---
 
