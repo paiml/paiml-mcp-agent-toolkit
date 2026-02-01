@@ -266,6 +266,8 @@ async fn handle_check(
         filter_check_by_config(check_golden_trace_drift(project_path), "cb-302", comply_config),
         // CB-303: EDD Compliance (COMPLY-043) - improve-pmat-comply.md v2.8
         filter_check_by_config(check_edd_compliance(project_path), "cb-303", comply_config),
+        // CB-304: Dead Code Percentage (COMPLY-044) - enforce dead_code_threshold
+        filter_check_by_config(check_dead_code_percentage(project_path), "cb-304", comply_config),
     ];
 
     // Calculate compliance
@@ -1422,6 +1424,215 @@ fn check_edd_compliance(project_path: &Path) -> ComplianceCheck {
             severity: Severity::Info,
         }
     }
+}
+
+/// CB-304: Dead Code Percentage (COMPLY-044)
+/// Enforces the dead_code_threshold from DeepContextConfig.
+/// Scans source files for dead code indicators (#[allow(dead_code)], unused items)
+/// and flags when the estimated dead code percentage exceeds the threshold (default 15%).
+fn check_dead_code_percentage(project_path: &Path) -> ComplianceCheck {
+    let config = crate::models::deep_context_config::DeepContextConfig::default();
+    let threshold_pct = config.dead_code_threshold * 100.0; // 15.0%
+
+    let src_dir = project_path.join("src");
+    if !src_dir.exists() {
+        return ComplianceCheck {
+            name: "CB-304: Dead Code Percentage".to_string(),
+            status: CheckStatus::Skip,
+            message: "No src/ directory found".to_string(),
+            severity: Severity::Info,
+        };
+    }
+
+    let (total_items, dead_items, total_lines, dead_lines) = scan_dead_code_indicators(&src_dir);
+
+    if total_items == 0 {
+        return ComplianceCheck {
+            name: "CB-304: Dead Code Percentage".to_string(),
+            status: CheckStatus::Pass,
+            message: "No code items found to analyze".to_string(),
+            severity: Severity::Info,
+        };
+    }
+
+    // Use line-based percentage if available, otherwise item-based
+    let dead_pct = if total_lines > 0 && dead_lines > 0 {
+        (dead_lines as f64 / total_lines as f64) * 100.0
+    } else {
+        (dead_items as f64 / total_items as f64) * 100.0
+    };
+
+    let message = format!(
+        "Dead code: {:.1}% ({} dead items/{} total, ~{} dead lines/{} total) [threshold: {:.0}%]",
+        dead_pct, dead_items, total_items, dead_lines, total_lines, threshold_pct,
+    );
+
+    if dead_pct <= threshold_pct {
+        ComplianceCheck {
+            name: "CB-304: Dead Code Percentage".to_string(),
+            status: CheckStatus::Pass,
+            message,
+            severity: Severity::Info,
+        }
+    } else if dead_pct <= threshold_pct * 2.0 {
+        ComplianceCheck {
+            name: "CB-304: Dead Code Percentage".to_string(),
+            status: CheckStatus::Warn,
+            message: format!("{message} - exceeds threshold"),
+            severity: Severity::Warning,
+        }
+    } else {
+        ComplianceCheck {
+            name: "CB-304: Dead Code Percentage".to_string(),
+            status: CheckStatus::Fail,
+            message: format!("{message} - significantly exceeds threshold"),
+            severity: Severity::Error,
+        }
+    }
+}
+
+/// Scan source files for dead code indicators.
+/// Returns (total_items, dead_items, total_lines, estimated_dead_lines).
+fn scan_dead_code_indicators(src_dir: &Path) -> (usize, usize, usize, usize) {
+    let mut total_items = 0usize;
+    let mut dead_items = 0usize;
+    let mut total_lines = 0usize;
+    let mut estimated_dead_lines = 0usize;
+
+    let source_files = collect_production_rs_files(src_dir);
+
+    for path in &source_files {
+        let Ok(content) = fs::read_to_string(path) else {
+            continue;
+        };
+        let lines: Vec<&str> = content.lines().collect();
+        let file_result = analyze_file_dead_code(&lines);
+        total_items += file_result.0;
+        dead_items += file_result.1;
+        total_lines += file_result.2;
+        estimated_dead_lines += file_result.3;
+    }
+
+    (total_items, dead_items, total_lines, estimated_dead_lines)
+}
+
+/// Collect production .rs files (skip test files).
+fn collect_production_rs_files(src_dir: &Path) -> Vec<std::path::PathBuf> {
+    walkdir::WalkDir::new(src_dir)
+        .max_depth(10)
+        .into_iter()
+        .filter_map(|e| e.ok())
+        .filter(|e| {
+            let p = e.path();
+            p.is_file()
+                && p.extension().map_or(false, |ext| ext == "rs")
+                && !p.to_string_lossy().ends_with("_tests.rs")
+                && !p.to_string_lossy().contains("/tests/")
+        })
+        .map(|e| e.path().to_path_buf())
+        .collect()
+}
+
+/// Analyze a single file for dead code indicators.
+/// Returns (total_items, dead_items, prod_lines, estimated_dead_lines).
+fn analyze_file_dead_code(lines: &[&str]) -> (usize, usize, usize, usize) {
+    let prod_lines: Vec<&str> = filter_production_lines(lines);
+    let (total_items, dead_items, allow_dead_count) = count_dead_items(&prod_lines);
+    let estimated_dead_lines = allow_dead_count * 10 + count_commented_code_lines(lines);
+    (total_items, dead_items, prod_lines.len(), estimated_dead_lines)
+}
+
+/// Filter out test module lines, returning only production lines.
+fn filter_production_lines<'a>(lines: &[&'a str]) -> Vec<&'a str> {
+    let mut result = Vec::new();
+    let mut in_test_module = false;
+    for line in lines {
+        let trimmed = line.trim();
+        if trimmed == "#[cfg(test)]" {
+            in_test_module = true;
+            continue;
+        }
+        if !in_test_module {
+            result.push(*line);
+        }
+    }
+    result
+}
+
+/// Count total items and dead items from production lines.
+/// Returns (total_items, dead_items, annotation_count).
+fn count_dead_items(lines: &[&str]) -> (usize, usize, usize) {
+    let mut total = 0usize;
+    let mut dead = 0usize;
+    let mut annotations = 0usize;
+    let mut next_is_dead = false;
+
+    for line in lines {
+        let trimmed = line.trim();
+        if is_dead_code_annotation(trimmed) {
+            next_is_dead = true;
+            annotations += 1;
+        } else if is_code_item_declaration(trimmed) {
+            total += 1;
+            if next_is_dead {
+                dead += 1;
+            }
+            next_is_dead = false;
+        } else if !trimmed.is_empty() && !trimmed.starts_with("//") && !trimmed.starts_with('#') {
+            next_is_dead = false;
+        }
+    }
+    (total, dead, annotations)
+}
+
+/// Check if a line is a dead code annotation.
+fn is_dead_code_annotation(trimmed: &str) -> bool {
+    trimmed.starts_with("#[allow(dead_code)]") || trimmed.starts_with("#[allow(unused")
+}
+
+/// Check if a line declares a code item (fn, struct, enum, trait, const, static).
+fn is_code_item_declaration(trimmed: &str) -> bool {
+    const ITEM_PREFIXES: &[&str] = &[
+        "pub fn ", "pub async fn ", "fn ", "async fn ",
+        "pub struct ", "struct ", "pub enum ", "enum ",
+        "pub trait ", "pub(crate) fn ", "pub(crate) struct ",
+        "pub const ", "pub static ",
+    ];
+    ITEM_PREFIXES.iter().any(|p| trimmed.starts_with(p))
+}
+
+/// Count lines in large blocks of commented-out code (3+ consecutive lines).
+fn count_commented_code_lines(lines: &[&str]) -> usize {
+    let mut dead_lines = 0usize;
+    let mut run = 0usize;
+
+    for line in lines {
+        if is_commented_out_code(line.trim()) {
+            run += 1;
+        } else {
+            dead_lines += flush_comment_run(run);
+            run = 0;
+        }
+    }
+    dead_lines + flush_comment_run(run)
+}
+
+/// Flush a run of consecutive code comments (count if >= 3).
+fn flush_comment_run(run: usize) -> usize {
+    if run >= 3 { run } else { 0 }
+}
+
+/// Check if a comment line looks like commented-out code.
+fn is_commented_out_code(trimmed: &str) -> bool {
+    let body = if let Some(b) = trimmed.strip_prefix("// ") {
+        b
+    } else if let Some(b) = trimmed.strip_prefix("//\t") {
+        b
+    } else {
+        return false;
+    };
+    const CODE_MARKERS: &[&str] = &["fn ", "let ", "if ", "return ", ";", "{", "}"];
+    CODE_MARKERS.iter().any(|m| body.contains(m))
 }
 
 // Three-layer CLI (review/audit) extracted for file health (CB-040)

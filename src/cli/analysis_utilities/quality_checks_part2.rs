@@ -377,31 +377,121 @@ async fn check_provability(
 /// # }
 /// ```
 pub async fn calculate_provability_score(project_path: &Path) -> Result<f64> {
-    use crate::services::lightweight_provability_analyzer::{
-        FunctionId, LightweightProvabilityAnalyzer,
-    };
+    use crate::services::lightweight_provability_analyzer::LightweightProvabilityAnalyzer;
 
-    // Use the real provability analyzer
     let analyzer = LightweightProvabilityAnalyzer::new();
 
-    // For quality gate purposes, we'll analyze a sample of functions
-    // This is a simplified check - the full analysis is available via 'pmat analyze provability'
-    let sample_functions = vec![FunctionId {
-        file_path: project_path.to_string_lossy().to_string(),
-        function_name: "main".to_string(),
-        line_number: 1,
-    }];
+    // Scan real source files to build a representative sample of functions
+    let sample_functions = collect_project_functions(project_path, 50);
+
+    if sample_functions.is_empty() {
+        return Ok(0.85); // Default if no functions found
+    }
 
     let summaries = analyzer.analyze_incrementally(&sample_functions).await;
 
     if summaries.is_empty() {
-        // Default score if no functions analyzed
         Ok(0.85)
     } else {
-        // Calculate average provability score
         let total_score: f64 = summaries.iter().map(|s| s.provability_score).sum();
         Ok(total_score / summaries.len() as f64)
     }
+}
+
+/// Scan project source files and extract up to `max_count` function declarations
+/// with their file paths and line numbers for provability analysis.
+fn collect_project_functions(
+    project_path: &Path,
+    max_count: usize,
+) -> Vec<crate::services::lightweight_provability_analyzer::FunctionId> {
+    let src_dir = project_path.join("src");
+    let scan_root = if src_dir.exists() { &src_dir } else { project_path };
+
+    let mut functions = Vec::new();
+    let source_files = collect_source_files(scan_root);
+
+    for path in &source_files {
+        if functions.len() >= max_count {
+            break;
+        }
+        let Ok(content) = std::fs::read_to_string(path) else {
+            continue;
+        };
+        extract_functions_from_source(&content, path, max_count, &mut functions);
+    }
+
+    functions
+}
+
+/// Collect .rs source files excluding test files.
+fn collect_source_files(root: &Path) -> Vec<std::path::PathBuf> {
+    walkdir::WalkDir::new(root)
+        .max_depth(10)
+        .into_iter()
+        .filter_map(|e| e.ok())
+        .filter(|e| {
+            let p = e.path();
+            p.is_file()
+                && p.extension().map_or(false, |ext| ext == "rs")
+                && !p.to_string_lossy().contains("_tests.rs")
+                && !p.to_string_lossy().contains("/tests/")
+        })
+        .map(|e| e.path().to_path_buf())
+        .collect()
+}
+
+/// Extract function declarations from a single source file.
+fn extract_functions_from_source(
+    content: &str,
+    path: &Path,
+    max_count: usize,
+    functions: &mut Vec<crate::services::lightweight_provability_analyzer::FunctionId>,
+) {
+    use crate::services::lightweight_provability_analyzer::FunctionId;
+
+    let mut in_test_block = false;
+    for (line_idx, line) in content.lines().enumerate() {
+        if functions.len() >= max_count {
+            break;
+        }
+
+        let trimmed = line.trim();
+        if trimmed == "#[cfg(test)]" {
+            in_test_block = true;
+            continue;
+        }
+        if in_test_block {
+            continue;
+        }
+
+        if let Some(fn_name) = parse_fn_declaration(trimmed) {
+            functions.push(FunctionId {
+                file_path: path.to_string_lossy().to_string(),
+                function_name: fn_name,
+                line_number: line_idx + 1,
+            });
+        }
+    }
+}
+
+/// Parse a function declaration line and return the function name if it matches.
+fn parse_fn_declaration(trimmed: &str) -> Option<String> {
+    let prefixes = [
+        "pub fn ", "pub async fn ", "fn ", "async fn ",
+        "pub(crate) fn ", "pub(crate) async fn ",
+    ];
+    if !prefixes.iter().any(|p| trimmed.starts_with(p)) {
+        return None;
+    }
+    let name_part = trimmed
+        .replace("pub(crate) ", "")
+        .replace("pub ", "")
+        .replace("async ", "");
+    name_part
+        .strip_prefix("fn ")
+        .and_then(|s| s.split('(').next())
+        .and_then(|s| s.split('<').next())
+        .map(|s| s.to_string())
 }
 
 /// Format quality gate output for CI/CD integration
