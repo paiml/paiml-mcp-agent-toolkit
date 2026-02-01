@@ -600,12 +600,11 @@ fn test_spec_quality(
             // Parse score from output (format: "Score: XX/100")
             if let Some(score_line) = stdout.lines().find(|l| l.contains("Score:")) {
                 if let Some(score_str) = score_line.split('/').next() {
-                    if let Some(score) = score_str
+                    if let Ok(score) = score_str
                         .chars()
                         .filter(|c| c.is_ascii_digit())
                         .collect::<String>()
                         .parse::<u32>()
-                        .ok()
                     {
                         if score >= min_score {
                             return Ok(FalsificationResult::passed(format!(
@@ -1139,11 +1138,13 @@ fn detect_new_satd_since_baseline(
     let mut current_file: Option<PathBuf> = None;
 
     for line in diff.lines() {
-        if line.starts_with("+++ b/") {
-            current_file = Some(PathBuf::from(&line[6..]));
-        } else if line.starts_with('+') && !line.starts_with("+++") {
+        if let Some(file_path) = line.strip_prefix("+++ b/") {
+            current_file = Some(PathBuf::from(file_path));
+        } else if let Some(line_content) = line.strip_prefix('+') {
+            if line.starts_with("+++") {
+                continue;
+            }
             // This is an added line
-            let line_content = &line[1..];
             for pattern in &satd_patterns {
                 if line_content.contains(pattern) {
                     if let Some(ref file) = current_file {

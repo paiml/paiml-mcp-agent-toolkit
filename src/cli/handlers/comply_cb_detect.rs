@@ -667,8 +667,8 @@ pub fn detect_cb121_lock_poisoning(project_path: &Path) -> Vec<CbPatternViolatio
                     // Check for rwlock.read().unwrap() pattern
                     if trimmed.contains(".read()") && trimmed.contains(".unwrap()") {
                         // Avoid false positives on file reads - check for lock context
-                        if trimmed.contains("RwLock") || content.contains("std::sync::RwLock") || content.contains("use std::sync::RwLock") {
-                            if !trimmed.contains("unwrap_or_else") && !trimmed.contains("into_inner") {
+                        if (trimmed.contains("RwLock") || content.contains("std::sync::RwLock") || content.contains("use std::sync::RwLock"))
+                            && !trimmed.contains("unwrap_or_else") && !trimmed.contains("into_inner") {
                                 violations.push(CbPatternViolation {
                                     pattern_id: "CB-121".to_string(),
                                     file: entry.display().to_string(),
@@ -677,14 +677,13 @@ pub fn detect_cb121_lock_poisoning(project_path: &Path) -> Vec<CbPatternViolatio
                                     severity: Severity::Warning,
                                 });
                             }
-                        }
                     }
 
                     // Check for rwlock.write().unwrap() pattern
                     if trimmed.contains(".write()") && trimmed.contains(".unwrap()") {
                         // Avoid false positives on file writes - check for lock context
-                        if trimmed.contains("RwLock") || content.contains("std::sync::RwLock") || content.contains("use std::sync::RwLock") {
-                            if !trimmed.contains("unwrap_or_else") && !trimmed.contains("into_inner") {
+                        if (trimmed.contains("RwLock") || content.contains("std::sync::RwLock") || content.contains("use std::sync::RwLock"))
+                            && !trimmed.contains("unwrap_or_else") && !trimmed.contains("into_inner") {
                                 violations.push(CbPatternViolation {
                                     pattern_id: "CB-121".to_string(),
                                     file: entry.display().to_string(),
@@ -693,7 +692,6 @@ pub fn detect_cb121_lock_poisoning(project_path: &Path) -> Vec<CbPatternViolatio
                                     severity: Severity::Warning,
                                 });
                             }
-                        }
                     }
                 }
             }

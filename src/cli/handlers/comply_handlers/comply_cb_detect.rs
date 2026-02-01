@@ -6,6 +6,9 @@
 // - False positives falsify our precision hypothesis
 // - False negatives falsify our detection hypothesis
 
+// Allow unwrap on Regex::new() for compile-time constant patterns that cannot fail
+#![allow(clippy::unwrap_used)]
+
 use regex::Regex;
 use std::collections::HashMap;
 use std::sync::LazyLock;

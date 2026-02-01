@@ -454,7 +454,6 @@ impl DefectTaxonomy {
     }
 
     /// Get all patterns
-    #[must_use]
     pub fn all(&self) -> impl Iterator<Item = &DefectClass> {
         self.patterns.values()
     }

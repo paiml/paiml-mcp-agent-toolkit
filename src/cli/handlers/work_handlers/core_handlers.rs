@@ -506,9 +506,11 @@ fn process_falsification_report(
     let failures = report.blocking_failures();
     let unoverrideable = filter_unoverriden_failures(&failures, override_claims);
 
-    if unoverrideable.is_empty() && ticket.is_some() {
-        print_overridden_result(&failures, ticket.unwrap());
-        return Ok(());
+    if unoverrideable.is_empty() {
+        if let Some(t) = ticket {
+            print_overridden_result(&failures, t);
+            return Ok(());
+        }
     }
 
     print_blocked_result(report, &unoverrideable, id);

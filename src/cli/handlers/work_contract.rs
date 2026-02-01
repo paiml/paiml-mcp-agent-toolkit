@@ -540,7 +540,7 @@ impl FileManifest {
     pub fn verify_integrity(&self, project_path: &Path) -> Vec<PathBuf> {
         let mut missing = Vec::new();
 
-        for (rel_path, _entry) in &self.files {
+        for rel_path in self.files.keys() {
             let full_path = project_path.join(rel_path);
             if !full_path.exists() {
                 missing.push(rel_path.clone());

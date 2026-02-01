@@ -110,13 +110,15 @@ impl GamingDetectionResult {
 
 /// Detect coverage gaming patterns in a project
 pub fn detect_coverage_gaming(project_path: &Path) -> Result<GamingDetectionResult> {
-    let mut result = GamingDetectionResult::default();
-    result.patterns_checked = vec![
-        "cfg(not(coverage))".to_string(),
-        "cfg(not(tarpaulin))".to_string(),
-        "cfg(not(llvm_cov))".to_string(),
-        "coverage exclusion comments".to_string(),
-    ];
+    let mut result = GamingDetectionResult {
+        patterns_checked: vec![
+            "cfg(not(coverage))".to_string(),
+            "cfg(not(tarpaulin))".to_string(),
+            "cfg(not(llvm_cov))".to_string(),
+            "coverage exclusion comments".to_string(),
+        ],
+        ..Default::default()
+    };
 
     // Walk through source files
     for entry in walkdir::WalkDir::new(project_path)
