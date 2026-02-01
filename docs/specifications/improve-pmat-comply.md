@@ -82,7 +82,7 @@ This specification defines **25 improvements** with peer-reviewed justification,
    - 8.7: Dependencies
    - 8.8: Rollout Plan
    - 8.9: Integration with rust-project-score (SCORE-001 through SCORE-004)
-   - 8.8: Rollout Plan
+   - 8.10: pmat work Integration - Compliance Convergence (WORK-001 through WORK-005)
 
 ---
 
@@ -4945,6 +4945,11 @@ fn suggest_fix_from_oracle(violation: &ComplianceViolation) -> Option<Vec<Oracle
 }
 ```
 
+**Quality Guardrails (Ref: [RAG-002]):**
+1. **Citation Requirement:** Every suggestion MUST include a valid file path (`source_file`) existing in the current stack index. Suggestions without citations are discarded (Hallucination Filter).
+2. **Confidence Threshold:** Only display results with retrieval score > 0.75.
+3. **Negative Constraint:** Explicitly filter out "I suggest checking online" or "As an AI..." boilerplate.
+
 **Example Output:**
 ```
 ⚠ CB-120: NaN-unsafe partial_cmp().unwrap() at src/scorer.rs:42
@@ -5258,13 +5263,15 @@ deps = true             # CB-204: Dependency recommendations
 
 ### 8.6 Falsification Tests (T-176 to T-180)
 
-| Test ID | Description | Pass Criteria |
-|---------|-------------|---------------|
-| T-176 | Oracle suggestions are relevant | >80% of suggestions applicable to violation |
-| T-177 | Smart init matches stack conventions | Generated config within 10% of manual tuning |
-| T-178 | Explanations cite real incidents | 100% of explanations reference actual issues |
-| T-179 | Pattern detection accuracy | >90% match with manual stack audit |
-| T-180 | Sovereign alternatives are better | 100% have measurable improvement (perf/safety) |
+These tests follow the **Popperian Falsification Principle**: we do not prove the Oracle works; we try to prove it fails (hallucinates, retrieves garbage, or misguides). If it survives these adversarial attacks, it is deemed robust.
+
+| Test ID | Target | Falsification Protocol (Adversarial Attack) | Failure Mode (Refutation) | Pass Criteria |
+|---------|--------|---------------------------------------------|---------------------------|---------------|
+| **T-176** | CB-200: Fix Suggestions | **Attack:** Inject a nonsense violation code (e.g., `CB-999: QuantumFluxOverflow`) with a standard error message. | **Failure:** Oracle confidently suggests a fix (>0.5 confidence) or invents a non-existent documentation link. | Oracle returns "Unknown Violation" or low confidence (<0.2) with generic fallback. |
+| **T-177** | CB-201: Smart Init | **Attack:** Run on an empty directory or a file with mixed languages (Rust + Python + JS) and contradictory config files. | **Failure:** Oracle generates a config that contradicts itself (e.g., `python_version` in a Rust project) or crashes. | Oracle identifies "Mixed/Unknown Project" and asks for manual clarification. |
+| **T-178** | CB-202: Explain Mode | **Attack:** Request explanation for a real error but disconnect the network/vector DB (force cache miss). | **Failure:** Oracle returns a "best guess" that is factually wrong (hallucination) instead of an error or cached generic. | Oracle explicitly states "Offline - Explanation Unavailable" or returns verified static fallback. |
+| **T-179** | CB-203: Patterns | **Attack:** Create a file matching *exactly* 50% of the "Library" pattern and 50% of the "Binary" pattern. | **Failure:** Oracle flips randomly between enforcing "thiserror" and "anyhow" on subsequent runs (nondeterminism). | Oracle consistently classifies as "Hybrid" or flags ambiguity requiring human override. |
+| **T-180** | CB-204: Deps | **Attack:** Mock a "newer" version of `aprender` (v99.0.0) in the oracle index that contains breaking changes. | **Failure:** Oracle blindly recommends upgrading to v99.0.0 without checking compatibility constraints. | Oracle respects semantic versioning constraints and warns about "Unstable/Future" versions. |
 
 ### 8.7 Dependencies
 
@@ -5429,6 +5436,267 @@ Gap Analysis (to match aprender +16 pts):
 | T-183 | Calibration reduces noise | <10% "threshold unfair for my project" feedback |
 | T-184 | Comparative data freshness | Scores updated within 7 days of stack releases |
 
+### 8.10 pmat work Integration - Compliance Convergence
+
+**Principle:** All development work should funnel through `pmat comply` as the quality gate. The `pmat work` system enforces this by making compliance a mandatory checkpoint at every stage of the development workflow.
+
+#### 8.10.1 Workflow Integration Points
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    pmat work Lifecycle                           │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  ┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐  │
+│  │  START   │───▶│   DEV    │───▶│  REVIEW  │───▶│   DONE   │  │
+│  └────┬─────┘    └────┬─────┘    └────┬─────┘    └────┬─────┘  │
+│       │               │               │               │         │
+│       ▼               ▼               ▼               ▼         │
+│  ┌─────────┐    ┌─────────┐    ┌─────────┐    ┌─────────┐      │
+│  │ comply  │    │ comply  │    │ comply  │    │ comply  │      │
+│  │ check   │    │ watch   │    │ check   │    │ check   │      │
+│  │ (warn)  │    │ (live)  │    │ (block) │    │ (block) │      │
+│  └─────────┘    └─────────┘    └─────────┘    └─────────┘      │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+#### 8.10.2 Work Start - Baseline Capture
+
+When starting work, capture compliance baseline:
+
+```bash
+$ pmat work start W-123 "Add feature X"
+
+📋 Starting work item W-123: Add feature X
+
+🔍 Capturing compliance baseline...
+  ✓ pmat comply check: COMPLIANT (baseline captured)
+  ✓ rust-project-score: 78/106 (baseline captured)
+  ✓ Coverage: 85.2% (baseline captured)
+  ✓ TDG: B+ (baseline captured)
+
+⚠️  Pre-existing issues (won't block completion):
+  - CB-120: 3 NaN-unsafe comparisons (pre-existing)
+  - CB-125: 12 coverage exclusions (pre-existing)
+
+📝 Work contract created: .pmat-work/W-123.toml
+   Completion requires: No NEW violations introduced
+```
+
+**Implementation:**
+```rust
+// In pmat work start
+async fn start_work(work_id: &str, description: &str) -> Result<WorkContract> {
+    // Capture baseline compliance state
+    let baseline = ComplianceBaseline {
+        comply_violations: run_comply_check()?,
+        project_score: run_rust_project_score()?,
+        coverage: get_current_coverage()?,
+        tdg_grade: get_tdg_grade()?,
+        timestamp: Utc::now(),
+    };
+
+    // Create work contract
+    let contract = WorkContract {
+        work_id: work_id.into(),
+        description: description.into(),
+        baseline,
+        completion_criteria: CompletionCriteria::default(),
+    };
+
+    contract.save(&format!(".pmat-work/{}.toml", work_id))?;
+    Ok(contract)
+}
+```
+
+#### 8.10.3 Work In Progress - Live Compliance Watch
+
+During development, optionally run continuous compliance:
+
+```bash
+$ pmat work watch
+
+👁️  Watching for compliance changes (W-123: Add feature X)
+
+[12:34:56] File changed: src/scorer.rs
+  ⚠️  NEW: CB-120 at src/scorer.rs:42 (partial_cmp().unwrap())
+  💡 Fix: Use total_cmp() or unwrap_or(Ordering::Equal)
+
+[12:35:12] File changed: src/scorer.rs
+  ✓ FIXED: CB-120 at src/scorer.rs:42
+
+[12:36:01] File changed: src/lib.rs
+  ✓ No new violations
+
+Press Ctrl+C to stop watching
+```
+
+#### 8.10.4 Work Review - Compliance Delta Check
+
+Before marking work as ready for review:
+
+```bash
+$ pmat work review W-123
+
+📋 Compliance Review for W-123: Add feature X
+
+Baseline vs Current:
+  ┌─────────────────────┬──────────┬─────────┬────────┐
+  │ Metric              │ Baseline │ Current │ Delta  │
+  ├─────────────────────┼──────────┼─────────┼────────┤
+  │ Comply Violations   │ 15       │ 14      │ -1 ✓   │
+  │ Project Score       │ 78/106   │ 80/106  │ +2 ✓   │
+  │ Coverage            │ 85.2%    │ 86.1%   │ +0.9 ✓ │
+  │ TDG Grade           │ B+       │ B+      │ = ✓    │
+  └─────────────────────┴──────────┴─────────┴────────┘
+
+New Code Analysis:
+  ✓ 142 lines added, 0 new violations
+  ✓ All new functions have tests
+  ✓ No new unsafe blocks
+
+🟢 READY FOR REVIEW - All compliance gates pass
+```
+
+#### 8.10.5 Work Done - Compliance Gate Enforcement
+
+Completing work REQUIRES compliance to pass:
+
+```bash
+$ pmat work done W-123
+
+📋 Completing work item W-123: Add feature X
+
+🔍 Running final compliance checks...
+
+❌ BLOCKED - Cannot complete work:
+
+  NEW violations introduced (not in baseline):
+    1. CB-121: Lock poisoning at src/cache.rs:89
+       → mutex.lock().unwrap() should use .lock().expect("msg")
+
+    2. CB-127: Slow test detected
+       → test_large_dataset takes 45s (threshold: 30s)
+
+  Coverage regression:
+    → src/new_module.rs has 0% coverage (23 lines)
+
+Fix these issues or use --force (requires justification):
+  $ pmat work done W-123 --force --reason "Approved by @lead: tech debt ticket created"
+```
+
+**Blocking Rules:**
+```toml
+# .pmat-gates.toml
+[work.completion]
+# Block completion if ANY of these are true:
+block_on_new_violations = true      # New CB-xxx violations
+block_on_coverage_regression = true # Coverage dropped
+block_on_score_regression = true    # rust-project-score dropped
+block_on_tdg_regression = true      # TDG grade dropped
+
+# Require these minimums for new code:
+new_code_coverage_min = 80          # New code must have 80%+ coverage
+new_code_complexity_max = 15        # New functions max complexity
+
+# Allow force-completion with justification
+allow_force = true
+force_requires_reason = true
+force_logged_to = ".pmat-work/overrides.log"
+```
+
+#### 8.10.6 Work Metrics Dashboard
+
+Track compliance trends across work items:
+
+```bash
+$ pmat work metrics
+
+📊 Work Compliance Metrics (last 30 days)
+
+Work Items: 47 completed, 3 in progress
+
+Compliance Trend:
+  Week 1: ████████████████████ 92% pass rate
+  Week 2: █████████████████████ 94% pass rate
+  Week 3: ███████████████████████ 98% pass rate
+  Week 4: ████████████████████████ 100% pass rate
+
+Top Violation Categories:
+  1. CB-120 (NaN-unsafe): 12 occurrences → 2 (↓83%)
+  2. CB-125 (Coverage gaming): 8 → 8 (no change)
+  3. CB-070 (Unwrap): 15 → 5 (↓67%)
+
+Score Improvement:
+  Start of month: 72/106
+  Current:        84/106 (+12 pts)
+
+Force-Completions: 2 (with documented reasons)
+```
+
+#### 8.10.7 Oracle Integration for Work Items
+
+Query batuta oracle for work-specific guidance:
+
+```bash
+$ pmat work start W-124 "Implement SIMD matrix multiply"
+
+📋 Starting work item W-124
+
+🔮 Oracle recommendations for this work type:
+
+  Based on "SIMD matrix multiply" and sovereign stack patterns:
+
+  1. Reference implementation: trueno/src/gemm/avx512.rs
+     → Shows proper unsafe documentation pattern
+
+  2. Required checks for SIMD work:
+     → CB-050: All unsafe blocks documented
+     → CB-060: GPU barrier patterns (if applicable)
+     → Benchmark required: criterion comparison vs baseline
+
+  3. Testing pattern from trueno:
+     → Property tests for numeric accuracy
+     → Golden traces for deterministic validation
+
+  4. Sovereign deps to use:
+     → trueno::simd for intrinsics wrappers
+     → aprender::tensor for output validation
+```
+
+#### 8.10.8 Work Tickets
+
+| Ticket | Feature | Priority | Effort |
+|--------|---------|----------|--------|
+| WORK-001 | Baseline capture on work start | P0 | Low |
+| WORK-002 | Compliance gate on work done | P0 | Medium |
+| WORK-003 | Live compliance watch mode | P1 | Medium |
+| WORK-004 | Work metrics dashboard | P2 | Medium |
+| WORK-005 | Oracle integration for work guidance | P1 | Low |
+
+#### 8.10.9 Falsification Tests
+
+| Test ID | Description | Pass Criteria |
+|---------|-------------|---------------|
+| T-185 | Baseline capture accuracy | 100% match with standalone comply check |
+| T-186 | Completion blocking works | 100% of new violations block completion |
+| T-187 | Force-completion logged | All overrides recorded with reason |
+| T-188 | Metrics accuracy | Dashboard matches manual audit |
+| T-189 | Oracle suggestions relevant | >80% suggestions applicable to work type |
+
+#### 8.10.10 Toyota Way Alignment
+
+This integration embodies Toyota Production System principles:
+
+| Principle | Implementation |
+|-----------|----------------|
+| **Jidoka** (自働化) | Automatic stop on quality issues - work cannot complete with violations |
+| **Andon** (行灯) | Live watch mode surfaces problems immediately |
+| **Genchi Genbutsu** (現地現物) | Baseline capture ensures decisions based on actual data |
+| **Kaizen** (改善) | Metrics dashboard tracks continuous improvement |
+| **Heijunka** (平準化) | Consistent quality gates level the quality across all work |
+
 ---
 
 ## Appendix A: References
@@ -5481,6 +5749,13 @@ Gap Analysis (to match aprender +16 pts):
 ### A.10 Philosophy of Science (NEW)
 [POPPER-001] Popper, K. R. (1934/2002). Routledge Classics. ISBN: 978-0415278447
 [POPPER-002] Popper, K. R. (1963). Routledge. ISBN: 978-0415285940
+
+### A.11 Retrieval-Augmented Generation (RAG) & LLM Quality (NEW)
+[RAG-001] Lewis, P., et al. (2020). "Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks". NeurIPS. arXiv:2005.11401
+[RAG-002] Ji, Z., et al. (2023). "Survey of Hallucination in Natural Language Generation". ACM Computing Surveys 55(12). DOI: 10.1145/3571730
+[RAG-003] Chen, M., et al. (2021). "Codex: Evaluating Large Language Models Trained on Code". arXiv:2107.03374
+[RAG-004] Manning, C., et al. (2008). "Introduction to Information Retrieval". Cambridge University Press. ISBN: 978-0521865715
+[RAG-005] Gao, Y., et al. (2023). "Retrieval-Augmented Generation for Large Language Models: A Survey". arXiv:2312.10997
 
 ---
 
