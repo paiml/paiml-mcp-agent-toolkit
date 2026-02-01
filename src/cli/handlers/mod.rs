@@ -45,6 +45,7 @@ pub mod five_whys_handlers; // Five Whys root cause analysis (Toyota Way)
 pub mod generation_handlers;
 #[cfg(test)]
 pub mod graph_context_integration_tests;
+pub mod handler_utils; // Unit-testable pure functions extracted from handlers
 pub mod health_handler;
 pub mod hooks_command_handlers;
 pub mod incremental_coverage_handler;
