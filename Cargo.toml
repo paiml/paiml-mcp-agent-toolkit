@@ -606,6 +606,26 @@ name = "viz_demo"
 path = "examples/viz_demo.rs"
 required-features = ["viz"]
 
+[[example]]
+name = "quality_gate_github"
+path = "examples/quality_gate_github.rs"
+required-features = ["demo"]
+
+[[example]]
+name = "analyze_github_repo"
+path = "examples/analyze_github_repo.rs"
+required-features = ["demo"]
+
+[[example]]
+name = "compare_repos"
+path = "examples/compare_repos.rs"
+required-features = ["demo"]
+
+[[example]]
+name = "claude_integration_example"
+path = "examples/claude_integration_example.rs"
+required-features = ["claude-integration"]
+
 # Profile configuration moved to workspace root
 
 [package.metadata.docs.rs]
