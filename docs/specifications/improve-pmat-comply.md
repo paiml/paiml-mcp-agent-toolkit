@@ -2051,12 +2051,15 @@ pub struct TDGComponents {
 - Layer 2 detects: Additional unsuppressed dead code
 - Combined: 101 files flagged, 478 dead lines (~0.06% of codebase)
 
-**Coverage Impact Analysis** (2026-02-01, updated 2026-02-01 session 3):
+**Coverage Impact Analysis** (2026-02-01, updated 2026-02-01 session 4):
 - Initial coverage: 75.84% (374,810 total, 284,249 covered)
 - After session 2: 75.70% (356,211 total, 269,640 covered)
-- Current coverage: 75.63% (351,376 total, 265,763 covered)
-- Target coverage: 95% (requires ~68,544 additional covered lines)
-- Actions taken:
+- After session 3: 75.63% (351,376 total, 265,763 covered)
+- Current coverage: 75.23% (344,958 total, 259,523 covered)
+- Target coverage: 95% (requires ~68,188 additional covered lines)
+- Total lines removed via feature-gating: ~29,852 lines (0% coverage experimental code)
+
+**Actions taken**:
   1. Feature-gated `claude_integration` module (2,646 lines, 0% coverage, unused)
   2. Fixed C/C++ `extract_type_name` for enum class and template support
   3. Fixed byte_pos_to_line test expectations
@@ -2067,27 +2070,29 @@ pub struct TDGComponents {
   8. Feature-gated `unified_protocol` module (~5,600 lines, 0% coverage, test-only usage)
   9. Feature-gated `pmat-agent` binary (requires mcp-integration feature)
   10. Feature-gated protocol_service_tests, http_adapter_tests, unified_protocol_tests
-  11. **NEW**: Feature-gated `agent` module (7,274 lines, 0% coverage, agent-daemon feature)
-  12. **NEW**: Feature-gated `agent_handlers` CLI handler
+  11. Feature-gated `agent` module (7,274 lines, 0% coverage, agent-daemon feature)
+  12. Feature-gated `agent_handlers` CLI handler
+  13. Feature-gated `demo` module (~13,400 lines, 0% coverage, demo feature)
+  14. Feature-gated demo_handlers, demo_commands, demo_comprehensive_tests
 
 **Strategy for 95% Coverage**:
 1. Feature-gate unused/experimental modules to reduce coverage denominator
 2. Add integration tests for remaining uncovered production code
 3. Remove dead code identified by CB-128 to further reduce denominator
 
-**Key uncovered modules identified** (700+ files at 0% coverage):
+**Key uncovered modules identified** (600+ files at 0% coverage):
 | Module | Lines | Coverage | Action |
 |--------|-------|----------|--------|
 | services/* | 226 files | 0% | Many are test-only, need analysis |
 | cli/* | 158 files | 0% | CLI handlers need integration tests |
 | cli/analysis_utilities/* | 12,089 | 0-90% | Need integration tests |
 | cli/command_dispatcher/* | 1,900 | 0-7% | CLI dispatch untested |
-| demo/* | ~13,400 | 0% | Has feature flag, not gated at lib.rs |
 | claude_integration/* | 2,646 | 0% | ✅ Feature-gated |
 | agents_md/* | ~6,000 | 0% | ✅ Feature-gated |
 | mcp_integration/* | ~4,000 | 0% | ✅ Feature-gated |
 | unified_protocol/* | ~5,600 | 0% | ✅ Feature-gated |
 | agent/* | ~7,274 | 0% | ✅ Feature-gated (agent-daemon)
+| demo/* | ~13,400 | 0% | ✅ Feature-gated (demo)
 
 **Remaining Work**:
 - [x] COMPLY-030: Compiler-based dead code detection
