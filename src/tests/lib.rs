@@ -56,6 +56,9 @@ mod coverage_boost_complexity;
 // Coverage boost tests - enhanced_reporting module
 mod coverage_boost_enhanced_reporting;
 
+// Coverage boost tests - defect_analyzers module
+mod coverage_boost_defect_analyzers;
+
 // Include protocol service tests for coverage (requires unified-protocol feature)
 #[cfg(feature = "unified-protocol")]
 mod protocol_service_tests;
