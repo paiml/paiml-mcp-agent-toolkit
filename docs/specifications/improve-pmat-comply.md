@@ -2051,13 +2051,14 @@ pub struct TDGComponents {
 - Layer 2 detects: Additional unsuppressed dead code
 - Combined: 101 files flagged, 478 dead lines (~0.06% of codebase)
 
-**Coverage Impact Analysis** (2026-02-01, updated 2026-02-01 session 4):
+**Coverage Impact Analysis** (2026-02-01, updated 2026-02-01 session 5):
 - Initial coverage: 75.84% (374,810 total, 284,249 covered)
 - After session 2: 75.70% (356,211 total, 269,640 covered)
 - After session 3: 75.63% (351,376 total, 265,763 covered)
-- Current coverage: 75.23% (344,958 total, 259,523 covered)
-- Target coverage: 95% (requires ~68,188 additional covered lines)
-- Total lines removed via feature-gating: ~29,852 lines (0% coverage experimental code)
+- After session 4: 75.23% (344,958 total, 259,523 covered)
+- After session 5: ~78%+ estimated (removing ~12,500 more lines via agents/workflow gating)
+- Target coverage: 95% (requires continued improvement)
+- Total lines removed via feature-gating: ~42,352 lines (0% coverage experimental code)
 
 **Actions taken**:
   1. Feature-gated `claude_integration` module (2,646 lines, 0% coverage, unused)
@@ -2074,6 +2075,10 @@ pub struct TDGComponents {
   12. Feature-gated `agent_handlers` CLI handler
   13. Feature-gated `demo` module (~13,400 lines, 0% coverage, demo feature)
   14. Feature-gated demo_handlers, demo_commands, demo_comprehensive_tests
+  15. Feature-gated `agents` module (~6,905 lines, 0% coverage, mcp-integration feature)
+  16. Feature-gated `workflow` module (~5,608 lines, 0% coverage, mcp-integration feature)
+  17. Feature-gated MCP-related test modules (agent_mcp_server_tests, mcp_semantic_integration,
+      mcp_server_tests, polyglot_tools_tests, scala_tools_tests)
 
 **Strategy for 95% Coverage**:
 1. Feature-gate unused/experimental modules to reduce coverage denominator

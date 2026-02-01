@@ -137,12 +137,16 @@ pub mod mcp_integration; // MCP protocol integration
 pub mod mcp_pmcp; // Now always available with pmcp 1.0
 pub mod mcp_server;
 pub mod models;
+// Feature-gated: Only used by agents and mcp_integration modules (~921 lines)
+#[cfg(feature = "mcp-integration")]
 pub mod modules; // Modular monolith architecture
 pub mod prompts; // AI prompt generation from organizational intelligence (Phase 4)
 pub mod protocol; // Unified protocol design per SPECIFICATION.md Section 3
 pub mod qdd; // Quality-Driven Development tool
 pub mod quality; // Quality gates and enforcement (Sprint 18: Gate executor)
 pub mod red_team; // Automated hallucination detection (EXTREME TDD - Sprint 47)
+// Feature-gated: Only used by mcp_integration module (~2,572 lines, 0% coverage)
+#[cfg(feature = "mcp-integration")]
 pub mod resources; // Resource control and limits
 pub mod roadmap; // Roadmap-driven development with quality gates
 pub mod scaffold;
