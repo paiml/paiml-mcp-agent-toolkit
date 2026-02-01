@@ -1,6 +1,6 @@
 # Specification: Improve pmat comply - Comprehensive Quality Detection
 
-**Version:** 2.4.0
+**Version:** 2.5.0
 **Status:** Draft - Pending Review
 **Created:** 2026-01-24
 **Updated:** 2026-02-01
@@ -5570,6 +5570,10 @@ $ pmat work done W-123
 
 🔍 Running final compliance checks...
 
+  ✓ Running make lint... PASSED
+  ✓ Checking pmat comply...
+  ✓ Measuring coverage...
+
 ❌ BLOCKED - Cannot complete work:
 
   NEW violations introduced (not in baseline):
@@ -5579,10 +5583,21 @@ $ pmat work done W-123
     2. CB-127: Slow test detected
        → test_large_dataset takes 45s (threshold: 30s)
 
-  Coverage regression:
-    → src/new_module.rs has 0% coverage (23 lines)
+  Coverage violations:
+    Overall: 92.3% (target: 95%) ❌
+    Per-file below 95%:
+      → src/new_module.rs: 0% coverage (23 lines) ❌
+      → src/handler.rs: 87.2% coverage (needs +12 lines tested) ❌
+      → src/parser.rs: 91.4% coverage (needs +8 lines tested) ❌
 
-Fix these issues or use --force (requires justification):
+  Lint status: PASSED ✓
+
+To complete, you need:
+  1. Add tests to increase overall coverage to 95%
+  2. Ensure ALL files have 95%+ coverage
+  3. Fix CB-121 and CB-127 violations
+
+Or use --force (requires justification):
   $ pmat work done W-123 --force --reason "Approved by @lead: tech debt ticket created"
 ```
 
@@ -5595,15 +5610,38 @@ block_on_new_violations = true      # New CB-xxx violations
 block_on_coverage_regression = true # Coverage dropped
 block_on_score_regression = true    # rust-project-score dropped
 block_on_tdg_regression = true      # TDG grade dropped
+block_on_lint_failure = true        # make lint must pass
+
+# Coverage enforcement (Kaizen standard)
+[work.coverage]
+# Overall project coverage target
+overall_min = 95                    # Project must maintain 95%+ coverage
+per_file_min = 95                   # Each file must have 95%+ coverage
+# Files below threshold block completion
+block_on_file_below_threshold = true
+# Exception list for generated/vendored files
+exclude_patterns = [
+    "src/generated/**",
+    "src/vendor/**",
+    "tests/fixtures/**",
+]
 
 # Require these minimums for new code:
-new_code_coverage_min = 80          # New code must have 80%+ coverage
-new_code_complexity_max = 15        # New functions max complexity
+[work.new_code]
+coverage_min = 95                   # New code must have 95%+ coverage
+complexity_max = 15                 # New functions max complexity
+
+# Lint enforcement
+[work.lint]
+command = "make lint"               # Command to run
+must_pass = true                    # Block if lint fails
+timeout_seconds = 300               # Max 5 minutes
 
 # Allow force-completion with justification
-allow_force = true
-force_requires_reason = true
-force_logged_to = ".pmat-work/overrides.log"
+[work.force]
+allow = true
+requires_reason = true
+logged_to = ".pmat-work/overrides.log"
 ```
 
 #### 8.10.6 Work Metrics Dashboard
@@ -5674,6 +5712,11 @@ $ pmat work start W-124 "Implement SIMD matrix multiply"
 | WORK-003 | Live compliance watch mode | P1 | Medium |
 | WORK-004 | Work metrics dashboard | P2 | Medium |
 | WORK-005 | Oracle integration for work guidance | P1 | Low |
+| WORK-006 | 95% overall coverage enforcement | P0 | Medium |
+| WORK-007 | 95% per-file coverage enforcement | P0 | Medium |
+| WORK-008 | Lint gate integration (`make lint`) | P0 | Low |
+| WORK-009 | Coverage exclusion patterns | P1 | Low |
+| WORK-010 | Per-file coverage detail report | P1 | Medium |
 
 #### 8.10.9 Falsification Tests
 
@@ -5684,6 +5727,12 @@ $ pmat work start W-124 "Implement SIMD matrix multiply"
 | T-187 | Force-completion logged | All overrides recorded with reason |
 | T-188 | Metrics accuracy | Dashboard matches manual audit |
 | T-189 | Oracle suggestions relevant | >80% suggestions applicable to work type |
+| T-190 | Overall coverage gate enforced | Blocks if project < 95% coverage |
+| T-191 | Per-file coverage gate enforced | Blocks if any file < 95% coverage |
+| T-192 | Coverage report lists all violating files | Shows each file below threshold |
+| T-193 | Lint gate enforced | Blocks if `make lint` fails |
+| T-194 | Coverage exclusions respected | Patterns in exclude_patterns skipped |
+| T-195 | New code coverage tracked separately | New files require 95%+ coverage |
 
 #### 8.10.10 Toyota Way Alignment
 
@@ -5825,14 +5874,19 @@ This integration embodies Toyota Production System principles:
 
 ---
 
-**Document Status**: Draft v2.0 - Awaiting Review
+**Document Status**: Draft v2.5 - Awaiting Review
 
 **Version History**:
 - v1.0.0 (2026-01-24): Initial specification (CB-050, CB-060)
 - v2.0.0 (2026-01-31): Extended with sovereign stack findings (CB-070 through CB-110)
+- v2.1.0 (2026-01-31): OIP Tarantula analysis (CB-120 through CB-124)
+- v2.2.0 (2026-01-31): Coverage quality & test performance (CB-125 through CB-127)
+- v2.3.0 (2026-02-01): Dead code & TDG integration (CB-128)
+- v2.4.0 (2026-02-01): Batuta RAG Oracle integration (CB-200 through CB-204), rust-project-score, pmat work
+- v2.5.0 (2026-02-01): Coverage enforcement for pmat work (95% overall, 95% per-file, lint gate)
 
 **Next Steps**:
 1. Review by project lead
-2. Approval of work tickets (19 total)
-3. Sprint planning for Phase 1-5
+2. Approval of work tickets (35+ total)
+3. Sprint planning for Phase 1-7
 4. Validate against sovereign stack repos (trueno, aprender, realizar, batuta)
