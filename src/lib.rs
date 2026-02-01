@@ -110,6 +110,8 @@
 // Feature-gated: Experimental module (0% coverage, CLI-only usage via agent_handlers)
 #[cfg(feature = "agent-daemon")]
 pub mod agent; // Claude Code Agent Mode implementation
+// Feature-gated: Actor system only used by mcp_integration (0% coverage, ~6,905 lines)
+#[cfg(feature = "mcp-integration")]
 pub mod agents; // Agent system with Actix actors
 // Feature-gated: Experimental module (0% coverage, not production-ready)
 #[cfg(feature = "agents-md")]
@@ -149,7 +151,9 @@ pub mod state; // State management with event sourcing
 pub mod stateless_server;
 pub mod tdg; // Technical Debt Grading system
 pub mod test_performance;
-pub mod workflow; // Workflow orchestration engine // Performance testing per SPECIFICATION.md Section 30
+// Feature-gated: Workflow orchestration only used by mcp_integration (0% coverage, ~5,608 lines)
+#[cfg(feature = "mcp-integration")]
+pub mod workflow; // Workflow orchestration engine
                   // #[cfg(test)]
                   // pub mod testing;
 // Feature-gated: Experimental module (0% coverage, not production-ready)

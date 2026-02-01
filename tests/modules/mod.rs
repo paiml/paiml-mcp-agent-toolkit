@@ -3,6 +3,7 @@
 //! by compiling all tests into a single binary instead of 192 separate ones.
 
 mod agent_integration_tests;
+#[cfg(feature = "mcp-integration")]
 mod agent_mcp_server_tests;
 mod analysis_timeout_test;
 mod analysis_utilities_tests;
@@ -108,8 +109,10 @@ mod kotlin_ast_test;
 mod kotlin_support_test;
 mod mcp_docs_enforcement;
 mod mcp_documentation_sync;
+#[cfg(feature = "mcp-integration")]
 mod mcp_semantic_integration;
 mod mcp_server_integration;
+#[cfg(feature = "mcp-integration")]
 mod mcp_server_tests;
 #[cfg(feature = "cli-integration")]
 mod mcp_tool_composition;
@@ -128,6 +131,7 @@ mod parse_sprint_section_refactor_test;
 mod pdmt_integration_test;
 mod performance_scorer_tests;
 mod polyglot_integration;
+#[cfg(feature = "mcp-integration")]
 mod polyglot_tools_tests;
 mod predict_quality_integration_test;
 mod progress_reporting_tests;
@@ -164,6 +168,7 @@ mod rust_project_score_orchestrator_tests;
 mod rust_project_score_tests;
 mod rust_tooling_scorer_tests;
 mod satd_detector_tests;
+#[cfg(feature = "mcp-integration")]
 mod scala_tools_tests;
 mod services_integration;
 mod slow_integration;
