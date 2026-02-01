@@ -1,6 +1,6 @@
 # Specification: Improve pmat comply - Comprehensive Quality Detection
 
-**Version:** 2.6.0
+**Version:** 2.7.0
 **Status:** Draft - Pending Review
 **Created:** 2026-01-24
 **Updated:** 2026-02-01
@@ -5461,10 +5461,45 @@ comply  comply comply  comply
 | **Lint** | `make lint` passes | BLOCK on lint failure |
 | **Violations** | No new CB-xxx | BLOCK on new violations |
 
-#### 8.10.2 Configuration (`.pmat-gates.toml`)
+#### 8.10.2 O(1) Completion (CRITICAL)
+
+**Problem:** Running `cargo build --examples`, `cargo deny check`, `make lint`, `make coverage` during `pmat work complete` takes 5-15 minutes, defeating the purpose of fast feedback.
+
+**Solution:** All checks read from **cached metrics** populated by pre-commit hooks or CI. Completion is O(1) - just JSON reads.
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  pmat work complete (O(1) - <100ms)                            │
+│                                                                 │
+│  Reads cached metrics from:                                     │
+│  ├── .pmat-metrics/lint-status.json      (last make lint)      │
+│  ├── .pmat-metrics/coverage.json         (last make coverage)  │
+│  ├── .pmat-metrics/satd-count.json       (last pmat analyze)   │
+│  ├── .pmat-metrics/dead-code.json        (last pmat analyze)   │
+│  ├── .pmat-metrics/examples-status.json  (last cargo build)    │
+│  └── .pmat-metrics/deny-status.json      (last cargo deny)     │
+│                                                                 │
+│  Cache populated by:                                            │
+│  ├── Pre-commit hook (fast checks)                              │
+│  ├── make lint/coverage/test (writes cache)                     │
+│  └── CI pipeline (full validation)                              │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Staleness Policy:**
+- Cache older than 1 hour: WARNING (proceed with caution)
+- Cache older than 24 hours: BLOCK (must run `make lint` first)
+- No cache: BLOCK (must run checks first)
+
+#### 8.10.3 Configuration (`.pmat-gates.toml`)
 
 ```toml
 [work.completion]
+# O(1) mode: read from cache only (default: true)
+use_cached_metrics = true
+cache_staleness_warn_hours = 1
+cache_staleness_block_hours = 24
+
 # Block completion if ANY of these are true:
 block_on_new_violations = true      # New CB-xxx violations
 block_on_coverage_regression = true # Coverage dropped
@@ -5511,18 +5546,18 @@ requires_reason = true
 logged_to = ".pmat-work/overrides.log"
 ```
 
-#### 8.10.3 Example Enforcement
+#### 8.10.4 Example Enforcement (O(1))
 
 ```bash
 $ pmat work done W-123
 
 📋 Completing work item W-123: Add feature X
 
-🔍 Running final compliance checks...
+🔍 Reading cached metrics... (O(1) - 47ms)
 
-  ✓ Running make lint... PASSED
-  ✓ Checking pmat comply...
-  ✓ Measuring coverage...
+  ✓ lint-status.json: PASSED (cached 12 min ago)
+  ✓ coverage.json: 92.3% (cached 12 min ago)
+  ✓ satd-count.json: 77 markers (cached 12 min ago)
   ✓ Detecting SATD...
   ✓ Detecting dead code...
 
@@ -5801,6 +5836,7 @@ Found 2 dead code items:
 - v2.4.0 (2026-02-01): Batuta RAG Oracle integration (CB-200 through CB-204), rust-project-score, pmat work
 - v2.5.0 (2026-02-01): Coverage enforcement for pmat work (95% overall, 95% per-file, lint gate)
 - v2.6.0 (2026-02-01): SATD and dead code zero-tolerance enforcement for pmat work
+- v2.7.0 (2026-02-01): O(1) completion - read cached metrics instead of running commands
 
 **Next Steps**:
 1. Review by project lead
