@@ -1999,7 +1999,7 @@ fn calculate_weighted_tdg_v2(components: &TDGComponentsV2) -> f64 {
 
 ### 4.2 Implementation Status (v2.3.1 - 2026-02-01)
 
-**COMPLY-030 Progress (CB-128: Compiler-based dead code detection)**:
+**COMPLY-030 Progress (CB-128: Compiler-based dead code detection)** - ✅ COMPLETE:
 
 | Layer | Status | Description | Tests |
 |-------|--------|-------------|-------|
@@ -2007,6 +2007,17 @@ fn calculate_weighted_tdg_v2(components: &TDGComponentsV2) -> f64 {
 | 2. COMPILER_LINT | ✅ COMPLETE | Uses `cargo check --message-format=json` with `-W dead_code` | 3 tests passing |
 | 3. REFERENCE_GRAPH | 🔄 PLANNED | Cross-file reference analysis via AST | - |
 | 4. HEURISTIC | 🔄 PLANNED | Pattern-based detection for edge cases | - |
+
+**COMPLY-031 Progress (CB-128: TDG dead_code component)** - ✅ COMPLETE:
+
+| Component | Weight | Description |
+|-----------|--------|-------------|
+| complexity | 25% | Cyclomatic + cognitive complexity (was 30%) |
+| churn | 20% | Git commit frequency (was 35%) |
+| coupling | 15% | Import/dependency count |
+| domain_risk | 10% | Domain-specific risk factors |
+| duplication | 10% | Code similarity/clones |
+| dead_code | 20% | **NEW**: Unreachable/unused code percentage |
 
 **Implementation Details**:
 
@@ -2022,6 +2033,16 @@ fn parse_cargo_warnings(&self, output: &str) -> Result<Vec<(PathBuf, DeadItem)>>
 // O(1) Caching: Uses git tree-hash for cache invalidation
 // - Cache hit: ~5ms (read JSON from .pmat/dead-code-cache/)
 // - Cache miss: ~30-60s (full cargo check)
+
+// Location: src/models/tdg.rs
+pub struct TDGComponents {
+    pub complexity: f64,
+    pub churn: f64,
+    pub coupling: f64,
+    pub domain_risk: f64,
+    pub duplication: f64,
+    pub dead_code: f64,  // CB-128: 6th TDG dimension
+}
 ```
 
 **Dogfooding Results** (pmat project):
@@ -2031,7 +2052,8 @@ fn parse_cargo_warnings(&self, output: &str) -> Result<Vec<(PathBuf, DeadItem)>>
 - Combined: 101 files flagged, 478 dead lines (~0.06% of codebase)
 
 **Remaining Work**:
-- [ ] COMPLY-031: TDG dead_code component integration
+- [x] COMPLY-030: Compiler-based dead code detection
+- [x] COMPLY-031: TDG dead_code component integration
 - [ ] COMPLY-032: Setup/teardown calibration fixtures
 - [ ] COMPLY-033: Comply check integration with CB-128
 - [ ] COMPLY-034: Dogfood cleanup (remove dead code, measure coverage delta)
