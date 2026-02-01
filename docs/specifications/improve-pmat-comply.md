@@ -2079,6 +2079,21 @@ pub struct TDGComponents {
   16. Feature-gated `workflow` module (~5,608 lines, 0% coverage, mcp-integration feature)
   17. Feature-gated MCP-related test modules (agent_mcp_server_tests, mcp_semantic_integration,
       mcp_server_tests, polyglot_tools_tests, scala_tools_tests)
+  18. Feature-gated `modules` module (~921 lines, only used by agents/mcp_integration)
+  19. Feature-gated `resources` module (~2,572 lines, only used by mcp_integration)
+
+**Summary of feature-gated modules (all ~0% coverage, mcp-integration or similar feature flags):**
+  - agents: ~6,905 lines
+  - workflow: ~5,608 lines
+  - modules: ~921 lines
+  - resources: ~2,572 lines
+  - agent: ~7,274 lines
+  - demo: ~15,614 lines
+  - mcp_integration: ~13,791 lines
+  - unified_protocol: ~11,223 lines
+  - agents_md: ~7,134 lines
+  - claude_integration: ~2,646 lines
+  **Total feature-gated: ~73,688 lines**
 
 **Strategy for 95% Coverage**:
 1. Feature-gate unused/experimental modules to reduce coverage denominator
