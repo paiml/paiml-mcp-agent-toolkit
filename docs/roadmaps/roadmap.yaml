@@ -1311,7 +1311,7 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'COMPLY-040: Implement CB-300 Muda Waste Score'
-  status: inprogress
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-02-01T15:14:14.906952123+00:00
@@ -1329,4 +1329,23 @@ roadmap:
   - comply
   - muda
   - quality
+  notes: null
+- id: PMAT-465
+  github_issue: null
+  item_type: task
+  title: 'COMPLY-041: Implement CB-301 Reproducibility Check'
+  status: completed
+  priority: medium
+  assigned_to: null
+  created: 2026-02-01T15:23:02.168510460+00:00
+  updated: 2026-02-01T15:23:30+00:00
+  spec: docs/specifications/improve-pmat-comply.md
+  acceptance_criteria:
+  - Detect reproducibility level Bronze/Silver/Gold
+  - Check Cargo.lock, Dockerfile, make reproduce, seeded RNG
+  - Integrates with pmat comply check as CB-301
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
   notes: null

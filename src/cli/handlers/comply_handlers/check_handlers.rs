@@ -248,6 +248,10 @@ async fn handle_check(
         filter_check_by_config(check_file_health(project_path), "cb-040", comply_config),
         // CB-300: Muda Waste Score (COMPLY-040) - improve-pmat-comply.md v2.8
         filter_check_by_config(check_muda_waste_score(project_path), "cb-300", comply_config),
+        // CB-301: Reproducibility Level (COMPLY-041) - improve-pmat-comply.md v2.8
+        filter_check_by_config(check_reproducibility_level(project_path), "cb-301", comply_config),
+        // CB-302: Golden Trace Drift (COMPLY-042) - improve-pmat-comply.md v2.8
+        filter_check_by_config(check_golden_trace_drift(project_path), "cb-302", comply_config),
     ];
 
     // Calculate compliance
@@ -1283,5 +1287,68 @@ fn check_muda_waste_score(project_path: &Path) -> ComplianceCheck {
         status,
         message,
         severity,
+    }
+}
+
+/// CB-301: Reproducibility Level Check (COMPLY-041)
+/// Classifies project reproducibility as None/Bronze/Silver/Gold per NeurIPS/ICLR standards.
+fn check_reproducibility_level(project_path: &Path) -> ComplianceCheck {
+    use crate::cli::handlers::comply_handlers::reproducibility_handlers;
+
+    let report = reproducibility_handlers::check_reproducibility(project_path);
+
+    let detail_summary: String = report.details.iter().take(3).cloned().collect::<Vec<_>>().join("; ");
+    let message = format!(
+        "Reproducibility: {} - {}",
+        report.level, detail_summary,
+    );
+
+    let (status, severity) = match report.level {
+        reproducibility_handlers::ReproducibilityLevel::Gold => {
+            (CheckStatus::Pass, Severity::Info)
+        }
+        reproducibility_handlers::ReproducibilityLevel::Silver => {
+            (CheckStatus::Pass, Severity::Info)
+        }
+        reproducibility_handlers::ReproducibilityLevel::Bronze => {
+            (CheckStatus::Warn, Severity::Warning)
+        }
+        reproducibility_handlers::ReproducibilityLevel::None => {
+            (CheckStatus::Fail, Severity::Error)
+        }
+    };
+
+    ComplianceCheck {
+        name: "CB-301: Reproducibility Level".to_string(),
+        status,
+        message,
+        severity,
+    }
+}
+
+/// CB-302: Golden Trace Drift Detection (COMPLY-042)
+/// Validates that renacer golden traces are still passing.
+fn check_golden_trace_drift(project_path: &Path) -> ComplianceCheck {
+    use crate::cli::handlers::comply_handlers::reproducibility_handlers;
+
+    match reproducibility_handlers::check_golden_trace_drift(project_path) {
+        None => ComplianceCheck {
+            name: "CB-302: Golden Trace Drift".to_string(),
+            status: CheckStatus::Skip,
+            message: "No renacer.toml configured - golden tracing not enabled".to_string(),
+            severity: Severity::Info,
+        },
+        Some(true) => ComplianceCheck {
+            name: "CB-302: Golden Trace Drift".to_string(),
+            status: CheckStatus::Pass,
+            message: "Golden traces valid - no drift detected".to_string(),
+            severity: Severity::Info,
+        },
+        Some(false) => ComplianceCheck {
+            name: "CB-302: Golden Trace Drift".to_string(),
+            status: CheckStatus::Fail,
+            message: "Golden trace drift detected - run 'renacer validate' to investigate".to_string(),
+            severity: Severity::Error,
+        },
     }
 }

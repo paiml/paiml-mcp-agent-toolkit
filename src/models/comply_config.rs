@@ -353,6 +353,22 @@ fn default_checks() -> HashMap<String, CheckConfig> {
         options: HashMap::new(),
     });
 
+    // CB-301: Reproducibility Level (COMPLY-041)
+    checks.insert("cb-301".to_string(), CheckConfig {
+        enabled: true,
+        severity: CheckSeverity::Warning,
+        threshold: None, // Level-based (None/Bronze/Silver/Gold)
+        options: HashMap::new(),
+    });
+
+    // CB-302: Golden Trace Drift (COMPLY-042)
+    checks.insert("cb-302".to_string(), CheckConfig {
+        enabled: true,
+        severity: CheckSeverity::Error,
+        threshold: None, // Pass/fail based on renacer trace validation
+        options: HashMap::new(),
+    });
+
     checks
 }
 
