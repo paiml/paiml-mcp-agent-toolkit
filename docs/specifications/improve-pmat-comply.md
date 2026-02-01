@@ -1,6 +1,6 @@
 # Specification: Improve pmat comply - Comprehensive Quality Detection
 
-**Version:** 2.5.0
+**Version:** 2.6.0
 **Status:** Draft - Pending Review
 **Created:** 2026-01-24
 **Updated:** 2026-02-01
@@ -5438,198 +5438,65 @@ Gap Analysis (to match aprender +16 pts):
 
 ### 8.10 pmat work Integration - Compliance Convergence
 
-**Principle:** All development work should funnel through `pmat comply` as the quality gate. The `pmat work` system enforces this by making compliance a mandatory checkpoint at every stage of the development workflow.
+**Core Principle:** All development work funnels through `pmat comply` as the mandatory quality gate. Work CANNOT complete unless ALL quality gates pass.
 
-#### 8.10.1 Workflow Integration Points
-
+**Workflow:**
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                    pmat work Lifecycle                           │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  ┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐  │
-│  │  START   │───▶│   DEV    │───▶│  REVIEW  │───▶│   DONE   │  │
-│  └────┬─────┘    └────┬─────┘    └────┬─────┘    └────┬─────┘  │
-│       │               │               │               │         │
-│       ▼               ▼               ▼               ▼         │
-│  ┌─────────┐    ┌─────────┐    ┌─────────┐    ┌─────────┐      │
-│  │ comply  │    │ comply  │    │ comply  │    │ comply  │      │
-│  │ check   │    │ watch   │    │ check   │    │ check   │      │
-│  │ (warn)  │    │ (live)  │    │ (block) │    │ (block) │      │
-│  └─────────┘    └─────────┘    └─────────┘    └─────────┘      │
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
+START → DEV → REVIEW → DONE
+  ↓       ↓      ↓       ↓
+comply  comply comply  comply
+(warn)  (watch) (check) (BLOCK)
 ```
 
-#### 8.10.2 Work Start - Baseline Capture
+#### 8.10.1 Convergence Targets (Zero Tolerance)
 
-When starting work, capture compliance baseline:
+`pmat work done` automatically converges to these targets:
 
-```bash
-$ pmat work start W-123 "Add feature X"
+| Gate | Target | Enforcement |
+|------|--------|-------------|
+| **Coverage** | 95% overall | BLOCK if below |
+| **Per-file Coverage** | 95% each file | BLOCK if any file below |
+| **SATD** | Zero new | BLOCK if new TODO/FIXME/HACK added |
+| **Dead Code** | Zero new | BLOCK if new unreachable code |
+| **Lint** | `make lint` passes | BLOCK on lint failure |
+| **Violations** | No new CB-xxx | BLOCK on new violations |
 
-📋 Starting work item W-123: Add feature X
+#### 8.10.2 Configuration (`.pmat-gates.toml`)
 
-🔍 Capturing compliance baseline...
-  ✓ pmat comply check: COMPLIANT (baseline captured)
-  ✓ rust-project-score: 78/106 (baseline captured)
-  ✓ Coverage: 85.2% (baseline captured)
-  ✓ TDG: B+ (baseline captured)
-
-⚠️  Pre-existing issues (won't block completion):
-  - CB-120: 3 NaN-unsafe comparisons (pre-existing)
-  - CB-125: 12 coverage exclusions (pre-existing)
-
-📝 Work contract created: .pmat-work/W-123.toml
-   Completion requires: No NEW violations introduced
-```
-
-**Implementation:**
-```rust
-// In pmat work start
-async fn start_work(work_id: &str, description: &str) -> Result<WorkContract> {
-    // Capture baseline compliance state
-    let baseline = ComplianceBaseline {
-        comply_violations: run_comply_check()?,
-        project_score: run_rust_project_score()?,
-        coverage: get_current_coverage()?,
-        tdg_grade: get_tdg_grade()?,
-        timestamp: Utc::now(),
-    };
-
-    // Create work contract
-    let contract = WorkContract {
-        work_id: work_id.into(),
-        description: description.into(),
-        baseline,
-        completion_criteria: CompletionCriteria::default(),
-    };
-
-    contract.save(&format!(".pmat-work/{}.toml", work_id))?;
-    Ok(contract)
-}
-```
-
-#### 8.10.3 Work In Progress - Live Compliance Watch
-
-During development, optionally run continuous compliance:
-
-```bash
-$ pmat work watch
-
-👁️  Watching for compliance changes (W-123: Add feature X)
-
-[12:34:56] File changed: src/scorer.rs
-  ⚠️  NEW: CB-120 at src/scorer.rs:42 (partial_cmp().unwrap())
-  💡 Fix: Use total_cmp() or unwrap_or(Ordering::Equal)
-
-[12:35:12] File changed: src/scorer.rs
-  ✓ FIXED: CB-120 at src/scorer.rs:42
-
-[12:36:01] File changed: src/lib.rs
-  ✓ No new violations
-
-Press Ctrl+C to stop watching
-```
-
-#### 8.10.4 Work Review - Compliance Delta Check
-
-Before marking work as ready for review:
-
-```bash
-$ pmat work review W-123
-
-📋 Compliance Review for W-123: Add feature X
-
-Baseline vs Current:
-  ┌─────────────────────┬──────────┬─────────┬────────┐
-  │ Metric              │ Baseline │ Current │ Delta  │
-  ├─────────────────────┼──────────┼─────────┼────────┤
-  │ Comply Violations   │ 15       │ 14      │ -1 ✓   │
-  │ Project Score       │ 78/106   │ 80/106  │ +2 ✓   │
-  │ Coverage            │ 85.2%    │ 86.1%   │ +0.9 ✓ │
-  │ TDG Grade           │ B+       │ B+      │ = ✓    │
-  └─────────────────────┴──────────┴─────────┴────────┘
-
-New Code Analysis:
-  ✓ 142 lines added, 0 new violations
-  ✓ All new functions have tests
-  ✓ No new unsafe blocks
-
-🟢 READY FOR REVIEW - All compliance gates pass
-```
-
-#### 8.10.5 Work Done - Compliance Gate Enforcement
-
-Completing work REQUIRES compliance to pass:
-
-```bash
-$ pmat work done W-123
-
-📋 Completing work item W-123: Add feature X
-
-🔍 Running final compliance checks...
-
-  ✓ Running make lint... PASSED
-  ✓ Checking pmat comply...
-  ✓ Measuring coverage...
-
-❌ BLOCKED - Cannot complete work:
-
-  NEW violations introduced (not in baseline):
-    1. CB-121: Lock poisoning at src/cache.rs:89
-       → mutex.lock().unwrap() should use .lock().expect("msg")
-
-    2. CB-127: Slow test detected
-       → test_large_dataset takes 45s (threshold: 30s)
-
-  Coverage violations:
-    Overall: 92.3% (target: 95%) ❌
-    Per-file below 95%:
-      → src/new_module.rs: 0% coverage (23 lines) ❌
-      → src/handler.rs: 87.2% coverage (needs +12 lines tested) ❌
-      → src/parser.rs: 91.4% coverage (needs +8 lines tested) ❌
-
-  Lint status: PASSED ✓
-
-To complete, you need:
-  1. Add tests to increase overall coverage to 95%
-  2. Ensure ALL files have 95%+ coverage
-  3. Fix CB-121 and CB-127 violations
-
-Or use --force (requires justification):
-  $ pmat work done W-123 --force --reason "Approved by @lead: tech debt ticket created"
-```
-
-**Blocking Rules:**
 ```toml
-# .pmat-gates.toml
 [work.completion]
 # Block completion if ANY of these are true:
 block_on_new_violations = true      # New CB-xxx violations
 block_on_coverage_regression = true # Coverage dropped
 block_on_score_regression = true    # rust-project-score dropped
-block_on_tdg_regression = true      # TDG grade dropped
 block_on_lint_failure = true        # make lint must pass
+block_on_new_satd = true            # No new TODO/FIXME/HACK
+block_on_new_dead_code = true       # No new unreachable code
 
 # Coverage enforcement (Kaizen standard)
 [work.coverage]
-# Overall project coverage target
 overall_min = 95                    # Project must maintain 95%+ coverage
 per_file_min = 95                   # Each file must have 95%+ coverage
-# Files below threshold block completion
 block_on_file_below_threshold = true
-# Exception list for generated/vendored files
 exclude_patterns = [
     "src/generated/**",
     "src/vendor/**",
     "tests/fixtures/**",
 ]
 
-# Require these minimums for new code:
-[work.new_code]
-coverage_min = 95                   # New code must have 95%+ coverage
-complexity_max = 15                 # New functions max complexity
+# SATD enforcement (Zero Technical Debt)
+[work.satd]
+block_on_new = true                 # Block if new SATD markers added
+allowed_markers = []                # No markers allowed by default
+max_existing = 0                    # Target: eliminate all SATD
+track_reduction = true              # Reward SATD removal
+
+# Dead code enforcement (Muda elimination)
+[work.dead_code]
+block_on_new = true                 # Block if new dead code introduced
+max_existing_functions = 0          # Target: zero dead functions
+max_existing_modules = 0            # Target: zero dead modules
+track_reduction = true              # Reward dead code removal
 
 # Lint enforcement
 [work.lint]
@@ -5644,66 +5511,112 @@ requires_reason = true
 logged_to = ".pmat-work/overrides.log"
 ```
 
-#### 8.10.6 Work Metrics Dashboard
-
-Track compliance trends across work items:
+#### 8.10.3 Example Enforcement
 
 ```bash
-$ pmat work metrics
+$ pmat work done W-123
 
-📊 Work Compliance Metrics (last 30 days)
+📋 Completing work item W-123: Add feature X
 
-Work Items: 47 completed, 3 in progress
+🔍 Running final compliance checks...
 
-Compliance Trend:
-  Week 1: ████████████████████ 92% pass rate
-  Week 2: █████████████████████ 94% pass rate
-  Week 3: ███████████████████████ 98% pass rate
-  Week 4: ████████████████████████ 100% pass rate
+  ✓ Running make lint... PASSED
+  ✓ Checking pmat comply...
+  ✓ Measuring coverage...
+  ✓ Detecting SATD...
+  ✓ Detecting dead code...
 
-Top Violation Categories:
-  1. CB-120 (NaN-unsafe): 12 occurrences → 2 (↓83%)
-  2. CB-125 (Coverage gaming): 8 → 8 (no change)
-  3. CB-070 (Unwrap): 15 → 5 (↓67%)
+❌ BLOCKED - Cannot complete work:
 
-Score Improvement:
-  Start of month: 72/106
-  Current:        84/106 (+12 pts)
+  Coverage violations:
+    Overall: 92.3% (target: 95%) ❌
+    Per-file below 95%:
+      → src/new_module.rs: 0% coverage (23 lines) ❌
+      → src/handler.rs: 87.2% coverage (needs +12 lines tested) ❌
 
-Force-Completions: 2 (with documented reasons)
+  SATD violations (NEW markers introduced):
+    → src/cache.rs:45: TODO: implement proper cache invalidation ❌
+    → src/parser.rs:123: FIXME: handle edge case ❌
+
+  Dead code violations (NEW unreachable code):
+    → src/utils.rs: fn unused_helper() never called ❌
+    → src/old_api.rs: entire module unreachable ❌
+
+  NEW violations introduced (not in baseline):
+    1. CB-121: Lock poisoning at src/cache.rs:89
+    2. CB-127: Slow test detected (45s > 30s threshold)
+
+  Lint status: PASSED ✓
+
+To complete, you need:
+  1. Add tests to increase overall coverage to 95%
+  2. Ensure ALL files have 95%+ coverage
+  3. Remove or resolve SATD markers (TODO/FIXME/HACK)
+  4. Remove dead code or mark as #[allow(dead_code)] with reason
+  5. Fix CB-121 and CB-127 violations
+
+Or use --force (requires justification):
+  $ pmat work done W-123 --force --reason "Approved by @lead: tech debt ticket created"
 ```
 
-#### 8.10.7 Oracle Integration for Work Items
+#### 8.10.4 SATD Auto-Resolution
 
-Query batuta oracle for work-specific guidance:
+When SATD is detected, `pmat work` suggests resolution:
 
 ```bash
-$ pmat work start W-124 "Implement SIMD matrix multiply"
+$ pmat work satd-resolve W-123
 
-📋 Starting work item W-124
+📋 SATD Resolution for W-123
 
-🔮 Oracle recommendations for this work type:
+Found 2 SATD markers:
 
-  Based on "SIMD matrix multiply" and sovereign stack patterns:
+1. src/cache.rs:45: TODO: implement proper cache invalidation
+   🔮 Oracle suggestion: "trueno uses LRU with TTL for cache invalidation.
+      See: trueno/src/cache/lru.rs:78 for pattern"
 
-  1. Reference implementation: trueno/src/gemm/avx512.rs
-     → Shows proper unsafe documentation pattern
+   Options:
+   a) Implement now (recommended)
+   b) Create ticket and remove TODO → link to ticket in code
+   c) Mark as won't-fix with reason
 
-  2. Required checks for SIMD work:
-     → CB-050: All unsafe blocks documented
-     → CB-060: GPU barrier patterns (if applicable)
-     → Benchmark required: criterion comparison vs baseline
+2. src/parser.rs:123: FIXME: handle edge case
+   🔮 Oracle suggestion: "aprender handles edge cases with Result<T, E>.
+      Wrap in proper error handling per CB-070"
 
-  3. Testing pattern from trueno:
-     → Property tests for numeric accuracy
-     → Golden traces for deterministic validation
-
-  4. Sovereign deps to use:
-     → trueno::simd for intrinsics wrappers
-     → aprender::tensor for output validation
+   Options:
+   a) Implement fix now (recommended)
+   b) Create ticket and remove FIXME → link to ticket
 ```
 
-#### 8.10.8 Work Tickets
+#### 8.10.5 Dead Code Auto-Resolution
+
+When dead code is detected, `pmat work` suggests resolution:
+
+```bash
+$ pmat work dead-resolve W-123
+
+📋 Dead Code Resolution for W-123
+
+Found 2 dead code items:
+
+1. src/utils.rs: fn unused_helper() (23 lines)
+   Analysis: Called 0 times, no pub export
+
+   Options:
+   a) Delete function (recommended - Muda elimination)
+   b) Add test that exercises it (if needed)
+   c) Mark #[allow(dead_code)] with reason
+
+2. src/old_api.rs: entire module unreachable (156 lines)
+   Analysis: No imports from other modules
+
+   Options:
+   a) Delete module (recommended - Muda elimination)
+   b) Add pub export if needed externally
+   c) Feature-gate for optional use
+```
+
+#### 8.10.6 Work Tickets
 
 | Ticket | Feature | Priority | Effort |
 |--------|---------|----------|--------|
@@ -5715,10 +5628,12 @@ $ pmat work start W-124 "Implement SIMD matrix multiply"
 | WORK-006 | 95% overall coverage enforcement | P0 | Medium |
 | WORK-007 | 95% per-file coverage enforcement | P0 | Medium |
 | WORK-008 | Lint gate integration (`make lint`) | P0 | Low |
-| WORK-009 | Coverage exclusion patterns | P1 | Low |
-| WORK-010 | Per-file coverage detail report | P1 | Medium |
+| WORK-009 | SATD zero-tolerance enforcement | P0 | Medium |
+| WORK-010 | Dead code zero-tolerance enforcement | P0 | Medium |
+| WORK-011 | SATD auto-resolution with oracle | P1 | Medium |
+| WORK-012 | Dead code auto-resolution | P1 | Medium |
 
-#### 8.10.9 Falsification Tests
+#### 8.10.7 Falsification Tests
 
 | Test ID | Description | Pass Criteria |
 |---------|-------------|---------------|
@@ -5731,20 +5646,21 @@ $ pmat work start W-124 "Implement SIMD matrix multiply"
 | T-191 | Per-file coverage gate enforced | Blocks if any file < 95% coverage |
 | T-192 | Coverage report lists all violating files | Shows each file below threshold |
 | T-193 | Lint gate enforced | Blocks if `make lint` fails |
-| T-194 | Coverage exclusions respected | Patterns in exclude_patterns skipped |
-| T-195 | New code coverage tracked separately | New files require 95%+ coverage |
+| T-194 | SATD gate enforced | Blocks if new TODO/FIXME/HACK added |
+| T-195 | Dead code gate enforced | Blocks if new unreachable code |
+| T-196 | SATD auto-resolution works | Oracle provides relevant fix patterns |
+| T-197 | Dead code auto-resolution works | Correct delete/keep recommendations |
 
-#### 8.10.10 Toyota Way Alignment
-
-This integration embodies Toyota Production System principles:
+#### 8.10.8 Toyota Way Alignment
 
 | Principle | Implementation |
 |-----------|----------------|
-| **Jidoka** (自働化) | Automatic stop on quality issues - work cannot complete with violations |
+| **Jidoka** (自働化) | Auto-stop on quality issues - work cannot complete with violations |
 | **Andon** (行灯) | Live watch mode surfaces problems immediately |
 | **Genchi Genbutsu** (現地現物) | Baseline capture ensures decisions based on actual data |
 | **Kaizen** (改善) | Metrics dashboard tracks continuous improvement |
-| **Heijunka** (平準化) | Consistent quality gates level the quality across all work |
+| **Muda** (無駄) | Dead code elimination removes waste |
+| **Heijunka** (平準化) | Consistent quality gates level quality across all work |
 
 ---
 
@@ -5874,7 +5790,7 @@ This integration embodies Toyota Production System principles:
 
 ---
 
-**Document Status**: Draft v2.5 - Awaiting Review
+**Document Status**: Draft v2.6 - Awaiting Review
 
 **Version History**:
 - v1.0.0 (2026-01-24): Initial specification (CB-050, CB-060)
@@ -5884,6 +5800,7 @@ This integration embodies Toyota Production System principles:
 - v2.3.0 (2026-02-01): Dead code & TDG integration (CB-128)
 - v2.4.0 (2026-02-01): Batuta RAG Oracle integration (CB-200 through CB-204), rust-project-score, pmat work
 - v2.5.0 (2026-02-01): Coverage enforcement for pmat work (95% overall, 95% per-file, lint gate)
+- v2.6.0 (2026-02-01): SATD and dead code zero-tolerance enforcement for pmat work
 
 **Next Steps**:
 1. Review by project lead
