@@ -5,6 +5,9 @@ include!("migrate_handlers.rs");
 // CB-050/CB-060 detection logic
 pub mod comply_cb_detect;
 
+// CB-300: Muda Waste Score (COMPLY-040)
+pub mod muda_handlers;
+
 #[cfg(test)]
 #[path = "comply_handlers_tests.rs"]
 mod tests;

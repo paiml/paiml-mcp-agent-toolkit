@@ -1307,3 +1307,26 @@ roadmap:
   - config
   - yaml
   notes: null
+- id: PMAT-464
+  github_issue: null
+  item_type: task
+  title: 'COMPLY-040: Implement CB-300 Muda Waste Score'
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2026-02-01T15:14:14.906952123+00:00
+  updated: 2026-02-01T15:15:00+00:00
+  spec: docs/specifications/improve-pmat-comply.md
+  acceptance_criteria:
+  - Aggregate waste score from dead code, slow tests, SATD, complexity, and dependency metrics
+  - Score range 0-100 (lower is better)
+  - Integrates with pmat comply check as CB-300
+  - Configurable via .pmat.yaml
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - comply
+  - muda
+  - quality
+  notes: null

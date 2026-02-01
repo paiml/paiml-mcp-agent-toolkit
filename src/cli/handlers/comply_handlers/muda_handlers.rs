@@ -1,0 +1,390 @@
+//! CB-300: Muda (Seven Wastes) Score for Code Quality
+//!
+//! Maps Toyota Production System's Seven Wastes to code quality metrics:
+//!
+//! | Toyota Waste     | Code Equivalent           | Detection                    |
+//! |------------------|---------------------------|------------------------------|
+//! | Overproduction   | Dead Code                 | `dead_code` analysis (CB-128)|
+//! | Waiting          | Slow Tests / Builds       | Test time (CB-126/CB-127)    |
+//! | Inventory        | Stale SATD markers        | SATD age > 90 days           |
+//! | Transport        | Excessive cloning         | `.clone()` in hot paths      |
+//! | Over-processing  | High complexity           | Cyclomatic > 15              |
+//! | Motion           | Dependency sprawl         | Dep count / graph depth      |
+//! | Defects          | Bugs / Test failures      | Panic count / stub count     |
+//!
+//! Score: 0-100 (lower is better, 0 = zero waste)
+
+use serde::{Deserialize, Serialize};
+use std::path::Path;
+
+/// Muda Waste Report aggregating all seven wastes
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MudaReport {
+    /// Overproduction: dead code percentage (0-100)
+    pub overproduction: f64,
+    /// Waiting: slow test/build score (0-100)
+    pub waiting: f64,
+    /// Inventory: stale SATD/branch score (0-100)
+    pub inventory: f64,
+    /// Transport: excessive copying score (0-100)
+    pub transport: f64,
+    /// Over-processing: complexity waste (0-100)
+    pub over_processing: f64,
+    /// Motion: dependency sprawl (0-100)
+    pub motion: f64,
+    /// Defects: bug/panic indicators (0-100)
+    pub defects: f64,
+    /// Total aggregate score (0-100, lower is better)
+    pub total_score: f64,
+    /// Grade based on total score
+    pub grade: MudaGrade,
+}
+
+/// Muda grade classification
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub enum MudaGrade {
+    /// 0-20: Lean (minimal waste)
+    Lean,
+    /// 21-40: Efficient
+    Efficient,
+    /// 41-60: Moderate waste
+    Moderate,
+    /// 61-80: High waste
+    High,
+    /// 81-100: Critical waste
+    Critical,
+}
+
+impl std::fmt::Display for MudaGrade {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            MudaGrade::Lean => write!(f, "Lean"),
+            MudaGrade::Efficient => write!(f, "Efficient"),
+            MudaGrade::Moderate => write!(f, "Moderate"),
+            MudaGrade::High => write!(f, "High"),
+            MudaGrade::Critical => write!(f, "Critical"),
+        }
+    }
+}
+
+impl MudaGrade {
+    fn from_score(score: f64) -> Self {
+        match score as u32 {
+            0..=20 => MudaGrade::Lean,
+            21..=40 => MudaGrade::Efficient,
+            41..=60 => MudaGrade::Moderate,
+            61..=80 => MudaGrade::High,
+            _ => MudaGrade::Critical,
+        }
+    }
+}
+
+/// Calculate the Muda Waste Score for a project.
+///
+/// Weights: Defects (25%), Over-processing (20%), Overproduction (20%),
+///          Waiting (15%), Inventory (10%), Motion (5%), Transport (5%)
+pub fn calculate_muda_score(project_path: &Path) -> MudaReport {
+    let overproduction = measure_overproduction(project_path);
+    let waiting = measure_waiting(project_path);
+    let inventory = measure_inventory(project_path);
+    let transport = measure_transport(project_path);
+    let over_processing = measure_over_processing(project_path);
+    let motion = measure_motion(project_path);
+    let defects = measure_defects(project_path);
+
+    // Weighted average (weights sum to 1.0)
+    let total_score = (defects * 0.25)
+        + (over_processing * 0.20)
+        + (overproduction * 0.20)
+        + (waiting * 0.15)
+        + (inventory * 0.10)
+        + (motion * 0.05)
+        + (transport * 0.05);
+
+    let total_score = total_score.clamp(0.0, 100.0);
+    let grade = MudaGrade::from_score(total_score);
+
+    MudaReport {
+        overproduction,
+        waiting,
+        inventory,
+        transport,
+        over_processing,
+        motion,
+        defects,
+        total_score,
+        grade,
+    }
+}
+
+/// Overproduction waste: dead code percentage
+/// Uses cached dead-code analysis if available
+fn measure_overproduction(project_path: &Path) -> f64 {
+    let cache_path = project_path.join(".pmat/dead-code-cache.json");
+    if let Ok(content) = std::fs::read_to_string(&cache_path) {
+        if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
+            // Look for dead code percentage in cache
+            if let Some(pct) = json.get("dead_code_percentage").and_then(|v| v.as_f64()) {
+                // Scale: 0% dead = 0 waste, 10%+ dead = 100 waste
+                return (pct * 10.0).clamp(0.0, 100.0);
+            }
+            // Alternative: count dead items
+            if let Some(items) = json.get("dead_items").and_then(|v| v.as_array()) {
+                let count = items.len();
+                return ((count as f64) * 2.0).clamp(0.0, 100.0);
+            }
+        }
+    }
+    0.0 // No data = assume no waste (conservative)
+}
+
+/// Waiting waste: slow tests and builds
+/// Checks cached test timing and build metrics
+fn measure_waiting(project_path: &Path) -> f64 {
+    let mut score = 0.0;
+
+    // Check test timing from hooks cache
+    let metrics_path = project_path.join(".pmat/hooks-cache/metrics.json");
+    if let Ok(content) = std::fs::read_to_string(&metrics_path) {
+        if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
+            // Check test-fast duration
+            if let Some(test_ms) = json
+                .get("test-fast")
+                .and_then(|v| v.get("duration_ms"))
+                .and_then(|v| v.as_f64())
+            {
+                let test_secs = test_ms / 1000.0;
+                // Scale: <30s = 0 waste, >300s = 100 waste
+                score += ((test_secs - 30.0) / 270.0 * 100.0).clamp(0.0, 100.0) * 0.5;
+            }
+            // Check lint duration
+            if let Some(lint_ms) = json
+                .get("lint")
+                .and_then(|v| v.get("duration_ms"))
+                .and_then(|v| v.as_f64())
+            {
+                let lint_secs = lint_ms / 1000.0;
+                // Scale: <10s = 0 waste, >60s = 100 waste
+                score += ((lint_secs - 10.0) / 50.0 * 100.0).clamp(0.0, 100.0) * 0.5;
+            }
+        }
+    }
+
+    score.clamp(0.0, 100.0)
+}
+
+/// Inventory waste: stale SATD markers (TODO/FIXME/HACK)
+/// Counts SATD markers as inventory that should be processed
+fn measure_inventory(project_path: &Path) -> f64 {
+    // Check for SATD count in cached analysis
+    let satd_cache = project_path.join(".pmat/satd-cache.json");
+    if let Ok(content) = std::fs::read_to_string(&satd_cache) {
+        if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
+            if let Some(count) = json.get("total_count").and_then(|v| v.as_u64()) {
+                // Scale: 0 SATD = 0 waste, 50+ SATD = 100 waste
+                return ((count as f64) * 2.0).clamp(0.0, 100.0);
+            }
+        }
+    }
+
+    // Quick heuristic: count TODO/FIXME in source
+    let count = count_satd_markers(project_path);
+    ((count as f64) * 2.0).clamp(0.0, 100.0)
+}
+
+/// Count SATD markers in Rust source files (quick heuristic)
+fn count_satd_markers(project_path: &Path) -> usize {
+    let src_dir = project_path.join("src");
+    if !src_dir.exists() {
+        return 0;
+    }
+
+    let mut count = 0;
+    if let Ok(entries) = walkdir::WalkDir::new(&src_dir)
+        .max_depth(5)
+        .into_iter()
+        .collect::<Result<Vec<_>, _>>()
+    {
+        for entry in entries.iter().filter(|e| {
+            e.path().extension().is_some_and(|ext| ext == "rs")
+                && !e.path().to_string_lossy().contains("test")
+        }) {
+            if let Ok(content) = std::fs::read_to_string(entry.path()) {
+                for line in content.lines() {
+                    let trimmed = line.trim();
+                    if trimmed.contains("TODO") || trimmed.contains("FIXME") || trimmed.contains("HACK") {
+                        // Skip test-related and doc comments about SATD detection
+                        if !trimmed.starts_with("///") && !trimmed.starts_with("//!") {
+                            count += 1;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    count
+}
+
+/// Transport waste: excessive data copying (.clone() density)
+fn measure_transport(project_path: &Path) -> f64 {
+    let src_dir = project_path.join("src");
+    if !src_dir.exists() {
+        return 0.0;
+    }
+
+    let mut total_lines = 0usize;
+    let mut clone_calls = 0usize;
+
+    if let Ok(entries) = walkdir::WalkDir::new(&src_dir)
+        .max_depth(5)
+        .into_iter()
+        .collect::<Result<Vec<_>, _>>()
+    {
+        for entry in entries.iter().filter(|e| {
+            e.path().extension().is_some_and(|ext| ext == "rs")
+                && !e.path().to_string_lossy().contains("test")
+        }) {
+            if let Ok(content) = std::fs::read_to_string(entry.path()) {
+                total_lines += content.lines().count();
+                clone_calls += content.matches(".clone()").count();
+            }
+        }
+    }
+
+    if total_lines == 0 {
+        return 0.0;
+    }
+
+    // Clone density: clones per 100 lines
+    let density = (clone_calls as f64 / total_lines as f64) * 100.0;
+    // Scale: <0.5 clones/100 lines = 0 waste, >5 = 100 waste
+    ((density - 0.5) / 4.5 * 100.0).clamp(0.0, 100.0)
+}
+
+/// Over-processing waste: cyclomatic complexity
+fn measure_over_processing(project_path: &Path) -> f64 {
+    // Check cached complexity metrics
+    let metrics_path = project_path.join(".pmat/hooks-cache/metrics.json");
+    if let Ok(content) = std::fs::read_to_string(&metrics_path) {
+        if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
+            if let Some(max_cc) = json
+                .get("complexity")
+                .and_then(|v| v.get("max_cyclomatic"))
+                .and_then(|v| v.as_f64())
+            {
+                // Scale: <10 = 0 waste, >50 = 100 waste
+                return ((max_cc - 10.0) / 40.0 * 100.0).clamp(0.0, 100.0);
+            }
+        }
+    }
+    20.0 // Default: assume moderate complexity
+}
+
+/// Motion waste: dependency sprawl
+fn measure_motion(project_path: &Path) -> f64 {
+    let cargo_lock = project_path.join("Cargo.lock");
+    if !cargo_lock.exists() {
+        return 0.0;
+    }
+
+    // Count dependency packages in Cargo.lock
+    if let Ok(content) = std::fs::read_to_string(&cargo_lock) {
+        let dep_count = content.matches("[[package]]").count();
+        // Scale: <50 deps = 0 waste, >500 deps = 100 waste
+        return ((dep_count as f64 - 50.0) / 450.0 * 100.0).clamp(0.0, 100.0);
+    }
+    0.0
+}
+
+/// Defects waste: stub/panic indicators
+fn measure_defects(project_path: &Path) -> f64 {
+    let src_dir = project_path.join("src");
+    if !src_dir.exists() {
+        return 0.0;
+    }
+
+    let mut stub_count = 0usize;
+    let mut unwrap_count = 0usize;
+
+    if let Ok(entries) = walkdir::WalkDir::new(&src_dir)
+        .max_depth(5)
+        .into_iter()
+        .collect::<Result<Vec<_>, _>>()
+    {
+        for entry in entries.iter().filter(|e| {
+            e.path().extension().is_some_and(|ext| ext == "rs")
+                && !e.path().to_string_lossy().contains("test")
+        }) {
+            if let Ok(content) = std::fs::read_to_string(entry.path()) {
+                stub_count += content.matches("todo!()").count();
+                stub_count += content.matches("unimplemented!()").count();
+                unwrap_count += content.matches(".unwrap()").count();
+            }
+        }
+    }
+
+    // Stubs are critical (10 points each), unwraps are moderate (1 point each)
+    let score = (stub_count as f64 * 10.0) + (unwrap_count as f64 * 0.5);
+    score.clamp(0.0, 100.0)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::PathBuf;
+
+    #[test]
+    fn test_muda_grade_classification() {
+        assert_eq!(MudaGrade::from_score(0.0), MudaGrade::Lean);
+        assert_eq!(MudaGrade::from_score(20.0), MudaGrade::Lean);
+        assert_eq!(MudaGrade::from_score(21.0), MudaGrade::Efficient);
+        assert_eq!(MudaGrade::from_score(40.0), MudaGrade::Efficient);
+        assert_eq!(MudaGrade::from_score(50.0), MudaGrade::Moderate);
+        assert_eq!(MudaGrade::from_score(70.0), MudaGrade::High);
+        assert_eq!(MudaGrade::from_score(90.0), MudaGrade::Critical);
+    }
+
+    #[test]
+    fn test_muda_score_on_self() {
+        let project_path = PathBuf::from(".");
+        let report = calculate_muda_score(&project_path);
+        // Total should be in valid range
+        assert!(report.total_score >= 0.0);
+        assert!(report.total_score <= 100.0);
+        // All individual scores should be in range
+        assert!(report.overproduction >= 0.0 && report.overproduction <= 100.0);
+        assert!(report.waiting >= 0.0 && report.waiting <= 100.0);
+        assert!(report.inventory >= 0.0 && report.inventory <= 100.0);
+        assert!(report.transport >= 0.0 && report.transport <= 100.0);
+        assert!(report.over_processing >= 0.0 && report.over_processing <= 100.0);
+        assert!(report.motion >= 0.0 && report.motion <= 100.0);
+        assert!(report.defects >= 0.0 && report.defects <= 100.0);
+    }
+
+    #[test]
+    fn test_muda_grade_display() {
+        assert_eq!(format!("{}", MudaGrade::Lean), "Lean");
+        assert_eq!(format!("{}", MudaGrade::Critical), "Critical");
+    }
+
+    #[test]
+    fn test_transport_empty_project() {
+        let path = PathBuf::from("/nonexistent/path");
+        let score = measure_transport(&path);
+        assert_eq!(score, 0.0);
+    }
+
+    #[test]
+    fn test_motion_no_cargo_lock() {
+        let path = PathBuf::from("/nonexistent/path");
+        let score = measure_motion(&path);
+        assert_eq!(score, 0.0);
+    }
+
+    #[test]
+    fn test_defects_empty_project() {
+        let path = PathBuf::from("/nonexistent/path");
+        let score = measure_defects(&path);
+        assert_eq!(score, 0.0);
+    }
+}

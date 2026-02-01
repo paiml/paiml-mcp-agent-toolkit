@@ -345,6 +345,14 @@ fn default_checks() -> HashMap<String, CheckConfig> {
         options: HashMap::new(),
     });
 
+    // CB-300: Muda Waste Score (COMPLY-040)
+    checks.insert("cb-300".to_string(), CheckConfig {
+        enabled: true,
+        severity: CheckSeverity::Warning,
+        threshold: Some(60.0), // Max acceptable waste score
+        options: HashMap::new(),
+    });
+
     checks
 }
 

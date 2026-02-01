@@ -246,6 +246,8 @@ async fn handle_check(
         check_paiml_deps_workspace(project_path),
         check_sovereign_stack_patterns(project_path),
         filter_check_by_config(check_file_health(project_path), "cb-040", comply_config),
+        // CB-300: Muda Waste Score (COMPLY-040) - improve-pmat-comply.md v2.8
+        filter_check_by_config(check_muda_waste_score(project_path), "cb-300", comply_config),
     ];
 
     // Calculate compliance
@@ -1246,4 +1248,40 @@ meta_check = "block"
     }
 
     Ok(())
+}
+
+/// CB-300: Muda Waste Score (COMPLY-040)
+/// Aggregates Seven Wastes into a single quality health metric.
+fn check_muda_waste_score(project_path: &Path) -> ComplianceCheck {
+    use crate::cli::handlers::comply_handlers::muda_handlers;
+
+    let report = muda_handlers::calculate_muda_score(project_path);
+
+    let message = format!(
+        "Muda Score: {:.1}/100 ({}) - Over:{:.0} Wait:{:.0} Inv:{:.0} Proc:{:.0} Def:{:.0}",
+        report.total_score,
+        report.grade,
+        report.overproduction,
+        report.waiting,
+        report.inventory,
+        report.over_processing,
+        report.defects,
+    );
+
+    let (status, severity) = match report.grade {
+        muda_handlers::MudaGrade::Lean | muda_handlers::MudaGrade::Efficient => {
+            (CheckStatus::Pass, Severity::Info)
+        }
+        muda_handlers::MudaGrade::Moderate => (CheckStatus::Warn, Severity::Warning),
+        muda_handlers::MudaGrade::High | muda_handlers::MudaGrade::Critical => {
+            (CheckStatus::Fail, Severity::Error)
+        }
+    };
+
+    ComplianceCheck {
+        name: "CB-300: Muda Waste Score".to_string(),
+        status,
+        message,
+        severity,
+    }
 }
