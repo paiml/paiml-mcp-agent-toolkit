@@ -1,12 +1,65 @@
-//! TDG Web Dashboard - Unit Tests
-
+// Web dashboard tests extracted from web_dashboard.rs for file health (CB-040).
+// This file is include!()'d into web_dashboard.rs scope.
 #[cfg(test)]
 mod tests {
-    use super::super::web_dashboard_types::{
-        AnalysisQuery, HealthStatus, PerformanceMetrics, StorageMetrics, StorageOperation,
-        SystemMetrics,
-    };
-    use std::time::{Duration, SystemTime};
+    use super::*;
+    use tokio::time::{sleep, Duration};
+
+    #[tokio::test]
+    #[ignore] // SQLite database lock issues in concurrent tests
+    async fn test_dashboard_state_creation() {
+        let result = DashboardState::new().await;
+        assert!(result.is_ok());
+
+        let state = result.unwrap();
+        let metrics = state.metrics_cache.read().await;
+        assert_eq!(metrics.health_status.overall, "healthy");
+    }
+
+    #[tokio::test]
+    #[ignore] // SQLite database lock issues in concurrent tests
+    async fn test_metrics_update() {
+        let state = DashboardState::new().await.unwrap();
+        let result = state.update_metrics().await;
+        assert!(result.is_ok());
+
+        let metrics = state.metrics_cache.read().await;
+        assert!(metrics.timestamp > SystemTime::UNIX_EPOCH);
+    }
+
+    #[test]
+    #[ignore] // SQLite database lock issues in concurrent tests
+    fn test_router_creation() {
+        tokio::runtime::Runtime::new().unwrap().block_on(async {
+            let state = DashboardState::new().await.unwrap();
+            let _router = create_dashboard_router(state);
+            // If we get here without panicking, router creation succeeded
+        });
+    }
+
+    #[tokio::test]
+    #[ignore] // SQLite database lock issues in concurrent tests
+    async fn test_background_metrics_updates() {
+        let state = DashboardState::new().await.unwrap();
+
+        // Get initial timestamp
+        let initial_time = {
+            let metrics = state.metrics_cache.read().await;
+            metrics.timestamp
+        };
+
+        // Update metrics
+        sleep(Duration::from_millis(10)).await;
+        state.update_metrics().await.unwrap();
+
+        // Verify timestamp was updated
+        let updated_time = {
+            let metrics = state.metrics_cache.read().await;
+            metrics.timestamp
+        };
+
+        assert!(updated_time > initial_time);
+    }
 
     // ==================== Data Structure Tests ====================
 
@@ -101,7 +154,7 @@ mod tests {
             overall: "warning".to_string(),
             issues: vec!["High analysis times detected".to_string()],
             recommendations: vec![
-                "Consider increasing cache size or optimizing queries".to_string(),
+                "Consider increasing cache size or optimizing queries".to_string()
             ],
             uptime_seconds: 7200,
         };
@@ -278,8 +331,9 @@ mod tests {
 
     #[test]
     fn test_health_determination_healthy() {
-        let avg_analysis_time_ms = 500.0;
-        let cache_hit_ratio = 0.85;
+        // Simulate the health determination logic from update_metrics
+        let avg_analysis_time_ms = 500.0; // Below 1000ms threshold
+        let cache_hit_ratio = 0.85; // Above 0.7 threshold
 
         let mut issues = Vec::new();
         let mut recommendations = Vec::new();
@@ -310,8 +364,8 @@ mod tests {
 
     #[test]
     fn test_health_determination_warning_high_analysis_time() {
-        let avg_analysis_time_ms = 1500.0;
-        let cache_hit_ratio = 0.85;
+        let avg_analysis_time_ms = 1500.0; // Above 1000ms threshold
+        let cache_hit_ratio = 0.85; // Above 0.7 threshold
 
         let mut issues = Vec::new();
 
@@ -337,8 +391,8 @@ mod tests {
 
     #[test]
     fn test_health_determination_warning_low_cache_hit() {
-        let avg_analysis_time_ms = 500.0;
-        let cache_hit_ratio = 0.5;
+        let avg_analysis_time_ms = 500.0; // Below 1000ms threshold
+        let cache_hit_ratio = 0.5; // Below 0.7 threshold
 
         let mut issues = Vec::new();
 
@@ -364,8 +418,8 @@ mod tests {
 
     #[test]
     fn test_health_determination_warning_both_issues() {
-        let avg_analysis_time_ms = 1500.0;
-        let cache_hit_ratio = 0.5;
+        let avg_analysis_time_ms = 1500.0; // Above 1000ms threshold
+        let cache_hit_ratio = 0.5; // Below 0.7 threshold
 
         let mut issues = Vec::new();
 
@@ -391,6 +445,7 @@ mod tests {
 
     #[test]
     fn test_health_determination_critical_many_issues() {
+        // Simulate more than 2 issues (would need additional logic in real code)
         let issues = vec![
             "High analysis times detected".to_string(),
             "Low cache hit ratio".to_string(),
@@ -471,7 +526,7 @@ mod tests {
             overall: "healthy".to_string(),
             issues: Vec::new(),
             recommendations: Vec::new(),
-            uptime_seconds: 365 * 24 * 3600,
+            uptime_seconds: 365 * 24 * 3600, // One year in seconds
         };
 
         assert_eq!(status.uptime_seconds, 31536000);
@@ -513,10 +568,7 @@ mod tests {
             cloned.performance_stats.active_operations,
             original.performance_stats.active_operations
         );
-        assert_eq!(
-            cloned.health_status.overall,
-            original.health_status.overall
-        );
+        assert_eq!(cloned.health_status.overall, original.health_status.overall);
     }
 
     // ==================== JSON Roundtrip Tests ====================
@@ -680,6 +732,7 @@ mod tests {
 
     #[test]
     fn test_analysis_time_at_boundary() {
+        // Exactly at 1000ms threshold
         let avg_analysis_time_ms = 1000.0;
 
         let mut issues = Vec::new();
@@ -687,11 +740,13 @@ mod tests {
             issues.push("High analysis times detected".to_string());
         }
 
+        // At exactly 1000.0, should NOT trigger (> not >=)
         assert!(issues.is_empty());
     }
 
     #[test]
     fn test_analysis_time_just_above_boundary() {
+        // Just above 1000ms threshold
         let avg_analysis_time_ms = 1000.001;
 
         let mut issues = Vec::new();
@@ -704,6 +759,7 @@ mod tests {
 
     #[test]
     fn test_cache_hit_ratio_at_boundary() {
+        // Exactly at 0.7 threshold
         let cache_hit_ratio = 0.7;
 
         let mut issues = Vec::new();
@@ -711,11 +767,13 @@ mod tests {
             issues.push("Low cache hit ratio".to_string());
         }
 
+        // At exactly 0.7, should NOT trigger (< not <=)
         assert!(issues.is_empty());
     }
 
     #[test]
     fn test_cache_hit_ratio_just_below_boundary() {
+        // Just below 0.7 threshold
         let cache_hit_ratio = 0.699;
 
         let mut issues = Vec::new();
@@ -724,5 +782,512 @@ mod tests {
         }
 
         assert_eq!(issues.len(), 1);
+    }
+
+    // ==================== DashboardState Cloning Tests ====================
+
+    #[test]
+    fn test_dashboard_state_clone_trait() {
+        // Verify DashboardState implements Clone (compile-time check)
+        fn assert_clone<T: Clone>() {}
+        assert_clone::<DashboardState>();
+    }
+}
+
+#[cfg(test)]
+mod property_tests {
+    use super::*;
+    use proptest::prelude::*;
+
+    proptest! {
+        #[test]
+        fn basic_property_stability(_input in ".*") {
+            // Basic property test for coverage
+            prop_assert!(true);
+        }
+
+        #[test]
+        fn module_consistency_check(_x in 0u32..1000) {
+            // Module consistency verification
+            prop_assert!(_x < 1001);
+        }
+
+        #[test]
+        fn storage_metrics_serialization_roundtrip(
+            total_entries in 0u64..1_000_000u64,
+            cache_hit_ratio in 0.0f64..1.0f64,
+            compression_ratio in 0.0f64..1.0f64,
+            storage_size_mb in 0.0f64..10000.0f64,
+        ) {
+            let metrics = StorageMetrics {
+                total_entries,
+                cache_hit_ratio,
+                compression_ratio,
+                backend_type: "test".to_string(),
+                storage_size_mb,
+            };
+
+            let json = serde_json::to_string(&metrics).unwrap();
+            let roundtrip: StorageMetrics = serde_json::from_str(&json).unwrap();
+
+            prop_assert_eq!(roundtrip.total_entries, total_entries);
+            prop_assert!((roundtrip.cache_hit_ratio - cache_hit_ratio).abs() < 0.0001);
+        }
+
+        #[test]
+        fn performance_metrics_serialization_roundtrip(
+            avg_analysis_time_ms in 0.0f64..10000.0f64,
+            active_operations in 0u32..1000u32,
+            queue_depth in 0u32..1000u32,
+            cpu_usage_percent in 0.0f64..100.0f64,
+            memory_usage_mb in 0.0f64..16384.0f64,
+        ) {
+            let metrics = PerformanceMetrics {
+                avg_analysis_time_ms,
+                active_operations,
+                queue_depth,
+                cpu_usage_percent,
+                memory_usage_mb,
+            };
+
+            let json = serde_json::to_string(&metrics).unwrap();
+            let roundtrip: PerformanceMetrics = serde_json::from_str(&json).unwrap();
+
+            prop_assert_eq!(roundtrip.active_operations, active_operations);
+            prop_assert_eq!(roundtrip.queue_depth, queue_depth);
+        }
+
+        #[test]
+        fn health_status_issue_count_determines_severity(issue_count in 0usize..10usize) {
+            let issues: Vec<String> = (0..issue_count).map(|i| format!("Issue {}", i)).collect();
+            let recommendations = issues.clone();
+
+            let overall = if issues.is_empty() {
+                "healthy".to_string()
+            } else if issues.len() <= 2 {
+                "warning".to_string()
+            } else {
+                "critical".to_string()
+            };
+
+            let status = HealthStatus {
+                overall: overall.clone(),
+                issues: issues.clone(),
+                recommendations,
+                uptime_seconds: 0,
+            };
+
+            match issue_count {
+                0 => prop_assert_eq!(status.overall, "healthy"),
+                1 | 2 => prop_assert_eq!(status.overall, "warning"),
+                _ => prop_assert_eq!(status.overall, "critical"),
+            }
+        }
+
+        #[test]
+        fn uptime_always_serializable(uptime_secs in 0u64..u64::MAX) {
+            let status = HealthStatus {
+                overall: "healthy".to_string(),
+                issues: Vec::new(),
+                recommendations: Vec::new(),
+                uptime_seconds: uptime_secs,
+            };
+
+            let json = serde_json::to_string(&status);
+            prop_assert!(json.is_ok());
+
+            let roundtrip: HealthStatus = serde_json::from_str(&json.unwrap()).unwrap();
+            prop_assert_eq!(roundtrip.uptime_seconds, uptime_secs);
+        }
+
+        #[test]
+        fn analysis_query_path_preserved(path in "[a-zA-Z0-9/_.-]+") {
+            let query = AnalysisQuery {
+                path: path.clone(),
+                backend: None,
+                priority: None,
+            };
+
+            // Serialize via JSON to simulate HTTP query parsing behavior
+            let json = serde_json::to_string(&query).unwrap();
+            let roundtrip: AnalysisQuery = serde_json::from_str(&json).unwrap();
+
+            prop_assert_eq!(roundtrip.path, path);
+        }
+
+        #[test]
+        fn storage_operation_action_preserved(action in "flush|cleanup|stats|unknown") {
+            let operation = StorageOperation {
+                action: action.clone(),
+                options: None,
+            };
+
+            let json = serde_json::to_string(&operation).unwrap();
+            let roundtrip: StorageOperation = serde_json::from_str(&json).unwrap();
+
+            prop_assert_eq!(roundtrip.action, action);
+        }
+
+        #[test]
+        fn metrics_cloning_preserves_values(
+            total_entries in 0u64..1_000_000u64,
+            cache_hit_ratio in 0.0f64..1.0f64,
+        ) {
+            let original = StorageMetrics {
+                total_entries,
+                cache_hit_ratio,
+                compression_ratio: 0.5,
+                backend_type: "test".to_string(),
+                storage_size_mb: 64.0,
+            };
+
+            let cloned = original.clone();
+
+            prop_assert_eq!(cloned.total_entries, original.total_entries);
+            prop_assert!((cloned.cache_hit_ratio - original.cache_hit_ratio).abs() < f64::EPSILON);
+        }
+
+        #[test]
+        fn system_metrics_timestamp_always_valid(secs_since_epoch in 0u64..u64::MAX / 2) {
+            // Use a valid timestamp range
+            let timestamp = SystemTime::UNIX_EPOCH + Duration::from_secs(secs_since_epoch);
+
+            let metrics = SystemMetrics {
+                timestamp,
+                storage_stats: StorageMetrics {
+                    total_entries: 0,
+                    cache_hit_ratio: 0.0,
+                    compression_ratio: 0.0,
+                    backend_type: String::new(),
+                    storage_size_mb: 0.0,
+                },
+                performance_stats: PerformanceMetrics {
+                    avg_analysis_time_ms: 0.0,
+                    active_operations: 0,
+                    queue_depth: 0,
+                    cpu_usage_percent: 0.0,
+                    memory_usage_mb: 0.0,
+                },
+                health_status: HealthStatus {
+                    overall: "healthy".to_string(),
+                    issues: Vec::new(),
+                    recommendations: Vec::new(),
+                    uptime_seconds: 0,
+                },
+            };
+
+            prop_assert!(metrics.timestamp >= SystemTime::UNIX_EPOCH);
+        }
+    }
+}
+
+#[cfg(test)]
+mod integration_tests {
+    use super::*;
+    use axum::body::Body;
+    use axum::http::{Request, StatusCode as AxumStatusCode};
+    use tower::ServiceExt;
+
+    /// Helper to create a minimal DashboardState for testing without real storage
+    async fn create_test_state() -> DashboardState {
+        // Use in-memory storage to avoid database conflicts
+        let storage = Arc::new(TieredStorageFactory::create_in_memory());
+        let analyzer = Arc::new(TdgAnalyzer::new().unwrap());
+
+        let initial_metrics = SystemMetrics {
+            timestamp: SystemTime::now(),
+            storage_stats: StorageMetrics {
+                total_entries: 0,
+                cache_hit_ratio: 0.0,
+                compression_ratio: 0.0,
+                backend_type: "in-memory".to_string(),
+                storage_size_mb: 0.0,
+            },
+            performance_stats: PerformanceMetrics {
+                avg_analysis_time_ms: 0.0,
+                active_operations: 0,
+                queue_depth: 0,
+                cpu_usage_percent: 0.0,
+                memory_usage_mb: 0.0,
+            },
+            health_status: HealthStatus {
+                overall: "healthy".to_string(),
+                issues: Vec::new(),
+                recommendations: Vec::new(),
+                uptime_seconds: 0,
+            },
+        };
+
+        DashboardState {
+            storage,
+            analyzer,
+            metrics_cache: Arc::new(RwLock::new(initial_metrics)),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_dashboard_index_route() {
+        let state = create_test_state().await;
+        let app = create_dashboard_router(state);
+
+        let response = app
+            .oneshot(Request::builder().uri("/").body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), AxumStatusCode::OK);
+    }
+
+    #[tokio::test]
+    async fn test_dashboard_route() {
+        let state = create_test_state().await;
+        let app = create_dashboard_router(state);
+
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .uri("/dashboard")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), AxumStatusCode::OK);
+    }
+
+    #[tokio::test]
+    async fn test_health_endpoint() {
+        let state = create_test_state().await;
+        let app = create_dashboard_router(state);
+
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .uri("/api/health")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), AxumStatusCode::OK);
+    }
+
+    #[tokio::test]
+    async fn test_storage_stats_endpoint() {
+        let state = create_test_state().await;
+        let app = create_dashboard_router(state);
+
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .uri("/api/storage/stats")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), AxumStatusCode::OK);
+    }
+
+    #[tokio::test]
+    async fn test_events_endpoint() {
+        let state = create_test_state().await;
+        let app = create_dashboard_router(state);
+
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .uri("/api/events")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), AxumStatusCode::OK);
+    }
+
+    #[tokio::test]
+    async fn test_diagnostics_endpoint() {
+        let state = create_test_state().await;
+        let app = create_dashboard_router(state);
+
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .uri("/api/diagnostics")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), AxumStatusCode::OK);
+    }
+
+    #[tokio::test]
+    async fn test_analysis_missing_path() {
+        let state = create_test_state().await;
+        let app = create_dashboard_router(state);
+
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .uri("/api/analysis?path=/nonexistent/path/that/does/not/exist")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        // Should return NOT_FOUND for non-existent path
+        assert_eq!(response.status(), AxumStatusCode::NOT_FOUND);
+    }
+
+    #[tokio::test]
+    async fn test_storage_operation_flush() {
+        let state = create_test_state().await;
+        let app = create_dashboard_router(state);
+
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/storage/operation")
+                    .header("content-type", "application/json")
+                    .body(Body::from(r#"{"action": "flush"}"#))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), AxumStatusCode::OK);
+    }
+
+    #[tokio::test]
+    async fn test_storage_operation_cleanup() {
+        let state = create_test_state().await;
+        let app = create_dashboard_router(state);
+
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/storage/operation")
+                    .header("content-type", "application/json")
+                    .body(Body::from(r#"{"action": "cleanup"}"#))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), AxumStatusCode::OK);
+    }
+
+    #[tokio::test]
+    async fn test_storage_operation_stats() {
+        let state = create_test_state().await;
+        let app = create_dashboard_router(state);
+
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/storage/operation")
+                    .header("content-type", "application/json")
+                    .body(Body::from(r#"{"action": "stats"}"#))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), AxumStatusCode::OK);
+    }
+
+    #[tokio::test]
+    async fn test_storage_operation_unknown() {
+        let state = create_test_state().await;
+        let app = create_dashboard_router(state);
+
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/storage/operation")
+                    .header("content-type", "application/json")
+                    .body(Body::from(r#"{"action": "unknown_operation"}"#))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), AxumStatusCode::BAD_REQUEST);
+    }
+
+    #[tokio::test]
+    async fn test_metrics_cache_update() {
+        let state = create_test_state().await;
+
+        // Initial state
+        {
+            let metrics = state.metrics_cache.read().await;
+            assert_eq!(metrics.health_status.overall, "healthy");
+        }
+
+        // Simulate a metrics update by modifying the cache directly
+        {
+            let mut metrics = state.metrics_cache.write().await;
+            metrics.health_status.overall = "warning".to_string();
+            metrics.health_status.issues.push("Test issue".to_string());
+        }
+
+        // Verify update persisted
+        {
+            let metrics = state.metrics_cache.read().await;
+            assert_eq!(metrics.health_status.overall, "warning");
+            assert_eq!(metrics.health_status.issues.len(), 1);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_concurrent_metrics_access() {
+        let state = create_test_state().await;
+        let state_clone = state.clone();
+
+        // Spawn concurrent read operations
+        let handle1 = tokio::spawn(async move {
+            for _ in 0..10 {
+                let _metrics = state.metrics_cache.read().await;
+                tokio::time::sleep(Duration::from_micros(100)).await;
+            }
+        });
+
+        let handle2 = tokio::spawn(async move {
+            for i in 0..10 {
+                let mut metrics = state_clone.metrics_cache.write().await;
+                metrics.performance_stats.active_operations = i;
+                tokio::time::sleep(Duration::from_micros(100)).await;
+            }
+        });
+
+        // Both should complete without deadlock
+        let (r1, r2) = tokio::join!(handle1, handle2);
+        assert!(r1.is_ok());
+        assert!(r2.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_state_storage_access() {
+        let state = create_test_state().await;
+
+        // Get statistics from storage
+        let stats = state.storage.get_statistics();
+
+        // In-memory storage should report minimal statistics
+        assert_eq!(stats.hot_entries, 0);
+        assert_eq!(stats.warm_entries, 0);
     }
 }
