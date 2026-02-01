@@ -7,156 +7,177 @@ use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
-/// Run quality gates (tests, clippy, etc.)
-///
-/// Returns Ok(true) if all gates pass, Ok(false) if any fail, or Err on execution failure.
-pub async fn run_quality_gates(project_path: &PathBuf) -> Result<bool> {
+/// Run git-aware tests for changed modules.
+/// Returns true if tests passed or were skipped.
+fn run_changed_module_tests(project_path: &PathBuf) -> Result<bool> {
     use std::process::Command;
 
-    let mut all_passed = true;
-
-    // 1. Run cargo test (git-aware: only test changed modules)
     println!("   🧪 Running tests...");
-
-    // Extract test modules from changed files
     let modules =
         crate::services::git_test_filter::extract_test_modules_from_changed_files(project_path)?;
 
-    let test_status = if modules.is_empty() {
-        // No Rust files changed - skip tests
+    if modules.is_empty() {
         println!("      ℹ️  No Rust files changed, skipping tests");
-        std::process::ExitStatus::default()
+        return Ok(true);
+    }
+
+    let module_list = modules.join(", ");
+    let display = if module_list.len() > 60 {
+        format!("{}...", &module_list[..60])
     } else {
-        // Run tests for changed modules only
-        let module_list = modules.join(", ");
-        println!(
-            "      📋 Testing changed modules: {}",
-            if module_list.len() > 60 {
-                format!("{}...", &module_list[..60])
-            } else {
-                module_list
-            }
-        );
-
-        let test_cmd = crate::services::git_test_filter::build_test_command(&modules)
-            .unwrap_or_else(|| {
-                vec![
-                    "test".to_string(),
-                    "--lib".to_string(),
-                    "--quiet".to_string(),
-                ]
-            });
-
-        Command::new("cargo")
-            .args(&test_cmd)
-            .arg("--quiet")
-            .current_dir(project_path)
-            .status()
-            .context("Failed to run cargo test")?
+        module_list
     };
+    println!("      📋 Testing changed modules: {}", display);
 
-    if test_status.success() {
+    let test_cmd = crate::services::git_test_filter::build_test_command(&modules)
+        .unwrap_or_else(|| vec!["test".into(), "--lib".into(), "--quiet".into()]);
+
+    let status = Command::new("cargo")
+        .args(&test_cmd)
+        .arg("--quiet")
+        .current_dir(project_path)
+        .status()
+        .context("Failed to run cargo test")?;
+
+    if status.success() {
         println!("      ✅ Tests passed");
+        Ok(true)
     } else {
         println!("      ❌ Tests failed");
-        all_passed = false;
+        Ok(false)
+    }
+}
+
+/// Run Rust-specific checks: examples compilation and project score.
+/// Returns true if all checks passed.
+fn run_rust_project_checks(project_path: &PathBuf) -> Result<bool> {
+    use std::process::Command;
+
+    if !project_path.join("Cargo.toml").exists() {
+        return Ok(true);
     }
 
-    // 2. Rust project-specific checks (if Cargo.toml exists)
-    if project_path.join("Cargo.toml").exists() {
-        println!("   🦀 Rust project detected...");
+    println!("   🦀 Rust project detected...");
+    let mut passed = true;
 
-        // Check if examples directory exists
-        let examples_dir = project_path.join("examples");
-        if examples_dir.exists() && examples_dir.is_dir() {
-            println!("      📦 Checking examples...");
-            let examples_status = Command::new("cargo")
-                .args(["test", "--examples", "--no-run"])
-                .current_dir(project_path)
-                .status()
-                .context("Failed to run cargo test --examples")?;
-
-            if examples_status.success() {
-                println!("      ✅ Examples compile");
-            } else {
-                println!("      ❌ Examples failed to compile");
-                all_passed = false;
-            }
-        } else {
-            println!("      ℹ️  No examples directory found, skipping example checks");
-        }
-
-        // Capture rust-project-score (O(1) from cache)
-        println!("      📊 Capturing rust-project-score...");
-        match Command::new("pmat")
-            .args(["rust-project-score", "--format", "json"])
-            .current_dir(project_path)
-            .output()
-        {
-            Ok(output) if output.status.success() => {
-                // Parse score and display
-                if let Ok(score_json) = std::str::from_utf8(&output.stdout) {
-                    if let Ok(json) = serde_json::from_str::<serde_json::Value>(score_json) {
-                        if let Some(score) = json.get("total_earned").and_then(|v| v.as_f64()) {
-                            println!("      ✅ Rust Project Score: {:.1}/134", score);
-                        }
-                    }
-                }
-            }
-            Ok(_) => {
-                println!("      ⚠️  Failed to capture rust-project-score (continuing)");
-            }
-            Err(_) => {
-                println!("      ⚠️  pmat rust-project-score not available (continuing)");
-            }
-        }
-    }
-
-    // 3. Renacer golden tracing validation (if renacer.toml exists)
-    if project_path.join("renacer.toml").exists() {
-        println!("   🎯 Golden traces detected...");
-
-        match Command::new("renacer")
-            .args(["validate", "--all"])
+    // Check examples
+    let examples_dir = project_path.join("examples");
+    if examples_dir.exists() && examples_dir.is_dir() {
+        println!("      📦 Checking examples...");
+        let status = Command::new("cargo")
+            .args(["test", "--examples", "--no-run"])
             .current_dir(project_path)
             .status()
-        {
-            Ok(status) if status.success() => {
-                println!("      ✅ Golden traces match");
-            }
-            Ok(_) => {
-                println!("      ❌ Golden traces diverged");
-                all_passed = false;
-            }
-            Err(_) => {
-                println!("      ⚠️  renacer not installed (skipping golden trace validation)");
-                println!("         Install: cargo install renacer");
-            }
+            .context("Failed to run cargo test --examples")?;
+
+        if status.success() {
+            println!("      ✅ Examples compile");
+        } else {
+            println!("      ❌ Examples failed to compile");
+            passed = false;
         }
     }
 
-    // 4. Run cargo clippy
+    // Capture rust-project-score
+    println!("      📊 Capturing rust-project-score...");
+    if let Ok(output) = Command::new("pmat")
+        .args(["rust-project-score", "--format", "json"])
+        .current_dir(project_path)
+        .output()
+    {
+        if output.status.success() {
+            if let Ok(json) = serde_json::from_slice::<serde_json::Value>(&output.stdout) {
+                if let Some(score) = json.get("total_earned").and_then(|v| v.as_f64()) {
+                    println!("      ✅ Rust Project Score: {:.1}/134", score);
+                }
+            }
+        } else {
+            println!("      ⚠️  Failed to capture rust-project-score (continuing)");
+        }
+    }
+
+    Ok(passed)
+}
+
+/// Validate golden traces via renacer if baseline exists.
+/// Returns true if validation passed or was skipped.
+fn run_golden_trace_validation(project_path: &PathBuf) -> Result<bool> {
+    use std::process::Command;
+
+    if !project_path.join("renacer.toml").exists() {
+        return Ok(true);
+    }
+
+    let baseline_dir = project_path.join("golden_traces").join("baseline");
+    if !baseline_dir.exists() {
+        println!("   🎯 Golden traces config found, no baseline yet (run: renacer validate --generate golden_traces/baseline -- ./target/release/pmat --help)");
+        return Ok(true);
+    }
+
+    println!("   🎯 Golden traces detected...");
+    match Command::new("renacer")
+        .args([
+            "validate",
+            "--baseline",
+            baseline_dir.to_str().unwrap_or("golden_traces/baseline"),
+            "--ignore-timing",
+            "--",
+            "./target/release/pmat",
+            "--help",
+        ])
+        .current_dir(project_path)
+        .status()
+    {
+        Ok(status) if status.success() => {
+            println!("      ✅ Golden traces match");
+            Ok(true)
+        }
+        Ok(status) if status.code() == Some(2) => {
+            println!("      ℹ️  No golden baseline yet");
+            Ok(true)
+        }
+        Ok(_) => {
+            println!("      ❌ Golden traces diverged");
+            Ok(false)
+        }
+        Err(_) => {
+            println!("      ⚠️  renacer not installed (skipping golden trace validation)");
+            Ok(true)
+        }
+    }
+}
+
+/// Run cargo clippy. Returns true if no warnings.
+fn run_clippy_check(project_path: &PathBuf) -> Result<bool> {
+    use std::process::Command;
+
     println!("   📎 Running clippy...");
-    let clippy_status = Command::new("cargo")
-        .arg("clippy")
-        .arg("--lib")
-        .arg("--quiet")
-        .arg("--")
-        .arg("-D")
-        .arg("warnings")
+    let status = Command::new("cargo")
+        .args(["clippy", "--lib", "--quiet", "--", "-D", "warnings"])
         .current_dir(project_path)
         .status()
         .context("Failed to run cargo clippy")?;
 
-    if clippy_status.success() {
+    if status.success() {
         println!("      ✅ No clippy warnings");
+        Ok(true)
     } else {
         println!("      ❌ Clippy warnings found");
-        all_passed = false;
+        Ok(false)
     }
+}
+
+/// Run quality gates (tests, clippy, etc.)
+///
+/// Returns Ok(true) if all gates pass, Ok(false) if any fail, or Err on execution failure.
+pub async fn run_quality_gates(project_path: &PathBuf) -> Result<bool> {
+    let tests_ok = run_changed_module_tests(project_path)?;
+    let rust_ok = run_rust_project_checks(project_path)?;
+    let traces_ok = run_golden_trace_validation(project_path)?;
+    let clippy_ok = run_clippy_check(project_path)?;
 
     println!();
-    Ok(all_passed)
+    Ok(tests_ok && rust_ok && traces_ok && clippy_ok)
 }
 
 /// Karl Popper Falsification Result
@@ -196,194 +217,131 @@ impl Default for FalsificationResult {
     }
 }
 
-/// Run Karl Popper Falsification Validation
-///
-/// This implements the scientific method for validating work:
-/// 1. Hypothesis: Work should not introduce regressions
-/// 2. Falsification: Run tests to attempt to falsify the hypothesis
-/// 3. Measurement: Measure coverage to verify improvements
-/// 4. Result: Pass only if falsification attempts fail (work is valid)
-///
-/// Based on: docs/specifications/80-20-to-95.md
-pub async fn run_popper_falsification(project_path: &PathBuf) -> Result<FalsificationResult> {
+/// Check test regression hypothesis. Returns (passed, validated_count).
+fn falsify_test_regression(project_path: &PathBuf, step: usize, total: usize) -> Result<(bool, Vec<String>)> {
     use std::process::Command;
 
-    let mut result = FalsificationResult::default();
-    let mut issues: Vec<String> = Vec::new();
-    let total_hypotheses = 3;
-    let mut validated = 0;
-
-    println!();
-    println!(
-        "🔬 Karl Popper Falsification Validation (0/{} complete)",
-        total_hypotheses
-    );
-    println!("   (Scientific method: attempting to falsify your work)");
-    println!();
-
-    // 1. Hypothesis: Tests should pass (falsify: look for regressions)
-    println!(
-        "   📊 [1/{}] Hypothesis: No regressions introduced",
-        total_hypotheses
-    );
+    println!("   📊 [{}/{}] Hypothesis: No regressions introduced", step, total);
     println!("      Falsification: Running tests...");
 
-    let test_status = Command::new("cargo")
+    let status = Command::new("cargo")
         .args(["test", "--lib", "--quiet"])
         .current_dir(project_path)
         .status()
         .context("Failed to run cargo test")?;
 
-    if test_status.success() {
-        result.tests_passed = true;
-        validated += 1;
-        println!(
-            "      ✅ Hypothesis holds ({}/{} validated)",
-            validated, total_hypotheses
-        );
+    if status.success() {
+        println!("      ✅ Hypothesis holds ({}/{} validated)", step, total);
+        Ok((true, vec![]))
     } else {
-        result.tests_passed = false;
-        issues.push("Tests failed - regressions detected".to_string());
         println!("      ❌ Hypothesis falsified: Tests fail");
+        Ok((false, vec!["Tests failed - regressions detected".into()]))
     }
+}
 
-    // 2. Hypothesis: Coverage should be maintained or improved
+/// Check coverage maintenance hypothesis from cached metrics.
+fn falsify_coverage_regression(project_path: &PathBuf, result: &mut FalsificationResult, step: usize, total: usize) -> (bool, Vec<String>) {
     println!();
-    println!(
-        "   📊 [2/{}] Hypothesis: Coverage maintained or improved",
-        total_hypotheses
-    );
+    println!("   📊 [{}/{}] Hypothesis: Coverage maintained or improved", step, total);
     println!("      Falsification: Checking coverage trends...");
 
-    // Try to read coverage from cached metrics
-    let metrics_dir = project_path.join(".pmat-metrics/trends");
-    if metrics_dir.exists() {
-        if let Ok(content) = std::fs::read_to_string(metrics_dir.join("test-coverage.json")) {
-            if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
-                if let Some(entries) = json.as_array() {
-                    if entries.len() >= 2 {
-                        // Compare last two entries
-                        let current = entries
-                            .last()
-                            .and_then(|e| e.get("value"))
-                            .and_then(|v| v.as_f64())
-                            .unwrap_or(0.0) as f32;
-                        let previous = entries
-                            .get(entries.len() - 2)
-                            .and_then(|e| e.get("value"))
-                            .and_then(|v| v.as_f64())
-                            .unwrap_or(0.0) as f32;
+    let trend_file = project_path.join(".pmat-metrics/trends/test-coverage.json");
+    let coverage = parse_coverage_trend(&trend_file);
 
-                        result.coverage_before = Some(previous);
-                        result.coverage_after = Some(current);
-
-                        if current >= previous {
-                            result.coverage_maintained = true;
-                            validated += 1;
-                            let delta = current - previous;
-                            if delta > 0.0 {
-                                println!(
-                                    "      ✅ Hypothesis holds: Coverage +{:.2}% ({}/{} validated)",
-                                    delta, validated, total_hypotheses
-                                );
-                            } else {
-                                println!(
-                                    "      ✅ Hypothesis holds: Coverage at {:.2}% ({}/{} validated)",
-                                    current, validated, total_hypotheses
-                                );
-                            }
-                        } else {
-                            let delta = previous - current;
-                            issues.push(format!("Coverage dropped by {:.2}%", delta));
-                            println!("      ❌ Hypothesis falsified: Coverage -{:.2}%", delta);
-                        }
-                    } else if !entries.is_empty() {
-                        result.coverage_maintained = true;
-                        validated += 1;
-                        println!(
-                            "      ⚠️  Insufficient history ({}/{} validated)",
-                            validated, total_hypotheses
-                        );
-                    }
-                }
+    match coverage {
+        Some((previous, current)) => {
+            result.coverage_before = Some(previous);
+            result.coverage_after = Some(current);
+            if current >= previous {
+                result.coverage_maintained = true;
+                let delta = current - previous;
+                let msg = if delta > 0.0 { format!("+{:.2}%", delta) } else { format!("at {:.2}%", current) };
+                println!("      ✅ Hypothesis holds: Coverage {} ({}/{} validated)", msg, step, total);
+                (true, vec![])
+            } else {
+                let delta = previous - current;
+                println!("      ❌ Hypothesis falsified: Coverage -{:.2}%", delta);
+                (false, vec![format!("Coverage dropped by {:.2}%", delta)])
             }
         }
+        None => {
+            result.coverage_maintained = true;
+            println!("      ⚠️  No coverage history ({}/{} validated)", step, total);
+            (true, vec![])
+        }
     }
+}
 
-    if result.coverage_before.is_none() {
-        result.coverage_maintained = true; // Assume OK if no data
-        validated += 1;
-        println!(
-            "      ⚠️  No coverage history ({}/{} validated)",
-            validated, total_hypotheses
-        );
-        println!("         Run 'make coverage' to establish baseline");
-    }
+/// Parse coverage trend from JSON file. Returns (previous, current) if available.
+fn parse_coverage_trend(path: &std::path::Path) -> Option<(f32, f32)> {
+    let content = std::fs::read_to_string(path).ok()?;
+    let json: serde_json::Value = serde_json::from_str(&content).ok()?;
+    let entries = json.as_array()?;
+    if entries.len() < 2 { return None; }
 
-    // 3. Binary size check (optional, only if release build exists)
+    let current = entries.last()?.get("value")?.as_f64()? as f32;
+    let previous = entries.get(entries.len() - 2)?.get("value")?.as_f64()? as f32;
+    Some((previous, current))
+}
+
+/// Check binary size hypothesis.
+fn falsify_binary_bloat(project_path: &PathBuf, step: usize, total: usize) -> (bool, Vec<String>) {
     println!();
-    println!(
-        "   📊 [3/{}] Hypothesis: No dependency bloat",
-        total_hypotheses
-    );
-    result.binary_size_ok = true; // Default to OK
+    println!("   📊 [{}/{}] Hypothesis: No dependency bloat", step, total);
 
     let release_binary = project_path.join("target/release/pmat");
-    if release_binary.exists() {
-        if let Ok(metadata) = std::fs::metadata(&release_binary) {
-            let size_mb = metadata.len() as f64 / (1024.0 * 1024.0);
-            if size_mb <= 50.0 {
-                validated += 1;
-                println!(
-                    "      ✅ Hypothesis holds: {:.1}MB < 50MB ({}/{} validated)",
-                    size_mb, validated, total_hypotheses
-                );
-            } else {
-                result.binary_size_ok = false;
-                issues.push(format!("Binary size {:.1}MB exceeds 50MB limit", size_mb));
-                println!(
-                    "      ❌ Hypothesis falsified: {:.1}MB > 50MB limit",
-                    size_mb
-                );
-            }
-        }
-    } else {
-        validated += 1;
-        println!(
-            "      ⚠️  No release binary ({}/{} validated)",
-            validated, total_hypotheses
-        );
+    if !release_binary.exists() {
+        println!("      ⚠️  No release binary ({}/{} validated)", step, total);
+        return (true, vec![]);
     }
 
-    // Determine overall result
-    result.passed = result.tests_passed && result.coverage_maintained && result.binary_size_ok;
+    if let Ok(metadata) = std::fs::metadata(&release_binary) {
+        let size_mb = metadata.len() as f64 / (1024.0 * 1024.0);
+        if size_mb <= 50.0 {
+            println!("      ✅ Hypothesis holds: {:.1}MB < 50MB ({}/{} validated)", size_mb, step, total);
+            (true, vec![])
+        } else {
+            println!("      ❌ Hypothesis falsified: {:.1}MB > 50MB limit", size_mb);
+            (false, vec![format!("Binary size {:.1}MB exceeds 50MB limit", size_mb)])
+        }
+    } else {
+        (true, vec![])
+    }
+}
+
+/// Run Karl Popper Falsification Validation
+///
+/// Scientific method: attempt to falsify work claims.
+/// Pass only if all falsification attempts fail (work is valid).
+pub async fn run_popper_falsification(project_path: &PathBuf) -> Result<FalsificationResult> {
+    let mut result = FalsificationResult::default();
+    let total = 3;
+
+    println!();
+    println!("🔬 Karl Popper Falsification Validation (0/{} complete)", total);
+    println!("   (Scientific method: attempting to falsify your work)");
+    println!();
+
+    let (tests_ok, test_issues) = falsify_test_regression(project_path, 1, total)?;
+    result.tests_passed = tests_ok;
+
+    let (cov_ok, cov_issues) = falsify_coverage_regression(project_path, &mut result, 2, total);
+
+    let (size_ok, size_issues) = falsify_binary_bloat(project_path, 3, total);
+    result.binary_size_ok = size_ok;
+
+    result.passed = tests_ok && cov_ok && size_ok;
+    let validated = [tests_ok, cov_ok, size_ok].iter().filter(|v| **v).count();
+    let all_issues: Vec<String> = [test_issues, cov_issues, size_issues].concat();
 
     println!();
     if result.passed {
-        result.summary = format!(
-            "{}/{} hypotheses validated - work is valid",
-            validated, total_hypotheses
-        );
-        println!(
-            "   🎉 FALSIFICATION RESULT: PASSED ({}/{})",
-            validated, total_hypotheses
-        );
-        println!("      All hypotheses held under scrutiny");
+        result.summary = format!("{}/{} hypotheses validated - work is valid", validated, total);
+        println!("   🎉 FALSIFICATION RESULT: PASSED ({}/{})", validated, total);
     } else {
-        let failed = total_hypotheses - validated;
-        result.summary = format!(
-            "{}/{} validated, {} falsified: {}",
-            validated,
-            total_hypotheses,
-            failed,
-            issues.join(", ")
-        );
-        println!(
-            "   ⚠️  FALSIFICATION RESULT: FAILED ({}/{} validated)",
-            validated, total_hypotheses
-        );
-        println!("      Issues found:");
-        for issue in &issues {
+        result.summary = format!("{}/{} validated, {} falsified: {}", validated, total, total - validated, all_issues.join(", "));
+        println!("   ⚠️  FALSIFICATION RESULT: FAILED ({}/{} validated)", validated, total);
+        for issue in &all_issues {
             println!("      - {}", issue);
         }
     }

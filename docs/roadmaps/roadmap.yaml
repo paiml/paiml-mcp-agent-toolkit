@@ -1273,11 +1273,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'DOGFOOD: Fix repo compliance issues for v2.6 gates'
-  status: inprogress
+  status: completed
   priority: critical
   assigned_to: null
   created: 2026-02-01T13:29:03Z
-  updated: 2026-02-01T13:29:09.222748822+00:00
+  updated: 2026-02-01T14:04:58Z
   spec: null
   acceptance_criteria: []
   phases: []
@@ -1286,4 +1286,24 @@ roadmap:
   labels:
   - dogfood
   - compliance
+  notes: null
+- id: PMAT-463
+  github_issue: null
+  item_type: task
+  title: 'COMPLY-044: Implement YAML-first configuration (.pmat.yaml)'
+  status: completed
+  priority: high
+  assigned_to: null
+  created: 2026-02-01T14:31:52Z
+  updated: 2026-02-01T14:51:00+00:00
+  spec: null
+  acceptance_criteria:
+  - Add declarative YAML configuration for pmat comply checks. Every quality check should be configurable via .pmat.yaml without code changes. Includes check enable/disable, severity overrides, and threshold configuration.
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - comply
+  - config
+  - yaml
   notes: null

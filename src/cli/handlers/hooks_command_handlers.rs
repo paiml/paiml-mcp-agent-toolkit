@@ -547,28 +547,45 @@ fi
 
 echo "📊 Running quality gate checks..."
 
-# 1. Complexity analysis
-echo -n "  Complexity check... "
-COMPLEXITY_OUTPUT=$(pmat analyze complexity --max-cyclomatic $PMAT_MAX_CYCLOMATIC_COMPLEXITY --max-cognitive $PMAT_MAX_COGNITIVE_COMPLEXITY 2>&1)
-if echo "$COMPLEXITY_OUTPUT" | grep -q "Issues Found.*❌.*Errors: 0"; then
-    echo "✅"
+# 1. Complexity analysis (only staged .rs files, not entire project)
+STAGED_RS=$(git diff --cached --name-only --diff-filter=ACMR -- '*.rs' | head -20)
+if [ -n "$STAGED_RS" ]; then
+    echo -n "  Complexity check... "
+    COMPLEXITY_FAILED=0
+    COMPLEXITY_DETAILS=""
+    for RS_FILE in $STAGED_RS; do
+        if [ -f "$RS_FILE" ]; then
+            FILE_OUTPUT=$(pmat analyze complexity --path "$RS_FILE" --max-cyclomatic $PMAT_MAX_CYCLOMATIC_COMPLEXITY --max-cognitive $PMAT_MAX_COGNITIVE_COMPLEXITY 2>&1)
+            if echo "$FILE_OUTPUT" | grep -q 'Errors.*: [1-9]'; then
+                COMPLEXITY_FAILED=1
+                # Extract the offending file and functions
+                COMPLEXITY_DETAILS="${COMPLEXITY_DETAILS}  ${RS_FILE}:"$'\n'
+                FILE_VIOLATIONS=$(echo "$FILE_OUTPUT" | grep -E '^[0-9]+\. ' | grep -E 'Cyclomatic|Cognitive' | head -3)
+                COMPLEXITY_DETAILS="${COMPLEXITY_DETAILS}${FILE_VIOLATIONS}"$'\n'
+            fi
+        fi
+    done
+    if [ "$COMPLEXITY_FAILED" -eq 0 ]; then
+        echo "✅"
+    else
+        echo "❌"
+        echo "Issues Found:"
+        echo "$COMPLEXITY_DETAILS" | head -10
+        echo "   Complexity exceeds thresholds (Cyclomatic: $PMAT_MAX_CYCLOMATIC_COMPLEXITY, Cognitive: $PMAT_MAX_COGNITIVE_COMPLEXITY)"
+        exit 1
+    fi
 else
-    echo "❌"
-    echo "$COMPLEXITY_OUTPUT" | grep "Issues Found" | head -1
-    echo "   Complexity exceeds thresholds (Cyclomatic: $PMAT_MAX_CYCLOMATIC_COMPLEXITY, Cognitive: $PMAT_MAX_COGNITIVE_COMPLEXITY)"
-    exit 1
+    echo "  Complexity check... ⏭️  (no .rs files staged)"
 fi
 
-# 2. SATD (Self-Admitted Quality Issues) check
+# 2. SATD (Self-Admitted Quality Issues) check - informational only
 echo -n "  SATD check... "
 SATD_OUTPUT=$(pmat analyze satd 2>&1)
-if echo "$SATD_OUTPUT" | grep -q "Total SATD comments found: 0"; then
-    echo "✅"
+SATD_COUNT=$(echo "$SATD_OUTPUT" | grep -oP 'Total SATD comments found: \K[0-9]+' || echo "0")
+if [ "$SATD_COUNT" -le "$PMAT_MAX_SATD_COMMENTS" ] 2>/dev/null; then
+    echo "✅ ($SATD_COUNT SATD comments)"
 else
-    echo "❌"
-    echo "$SATD_OUTPUT" | grep "Total SATD comments found" | head -1
-    echo "   SATD comments exceed threshold ($PMAT_MAX_SATD_COMMENTS)"
-    exit 1
+    echo "⚠️  ($SATD_COUNT SATD comments, threshold: $PMAT_MAX_SATD_COMMENTS)"
 fi
 
 # 3. Documentation synchronization

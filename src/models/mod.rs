@@ -47,6 +47,7 @@
 
 pub mod churn;
 pub mod complexity_bound;
+pub mod comply_config;
 pub mod dag;
 #[cfg(test)]
 pub mod dag_property_tests;

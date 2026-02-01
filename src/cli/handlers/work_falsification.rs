@@ -914,12 +914,17 @@ async fn test_supply_chain_integrity(project_path: &Path) -> Result<Falsificatio
             ));
         }
 
-        let passed = cache.value.get("passed").and_then(|v| v.as_bool()).unwrap_or(true);
-        let stale_note = if cache.is_stale_warn {
-            format!(" (cached {} min ago)", cache.age_minutes)
-        } else {
-            format!(" (cached {} min ago)", cache.age_minutes)
+        // SECURITY: Require 'passed' field to exist - reject malformed cache (Popperian Audit v2.1 fix)
+        let passed = match cache.value.get("passed").and_then(|v| v.as_bool()) {
+            Some(p) => p,
+            None => {
+                return Ok(FalsificationResult::failed(
+                    "Invalid deny cache (missing 'passed' field). Re-run 'cargo deny check'.".to_string(),
+                    EvidenceType::BooleanCheck(false),
+                ));
+            }
         };
+        let stale_note = format!(" (cached {} min ago)", cache.age_minutes);
 
         if passed {
             return Ok(FalsificationResult::passed(format!("No vulnerabilities{}", stale_note)));
@@ -932,9 +937,10 @@ async fn test_supply_chain_integrity(project_path: &Path) -> Result<Falsificatio
         }
     }
 
-    // No cache - pass with warning (supply chain check is optional without cache)
-    Ok(FalsificationResult::passed(
-        "No deny cache (run 'cargo deny check' to populate)".to_string(),
+    // No cache - FAIL (Popperian Audit v1.2 fix: empty cache bypass)
+    Ok(FalsificationResult::failed(
+        "No deny cache. Run 'cargo deny check' first (O(1) requirement)".to_string(),
+        EvidenceType::BooleanCheck(false),
     ))
 }
 
@@ -951,13 +957,18 @@ async fn test_examples_compile(project_path: &Path) -> Result<FalsificationResul
             ));
         }
 
-        let passed = cache.value.get("passed").and_then(|v| v.as_bool()).unwrap_or(false);
-        let count = cache.value.get("count").and_then(|v| v.as_u64()).unwrap_or(0);
-        let stale_note = if cache.is_stale_warn {
-            format!(" (cached {} min ago)", cache.age_minutes)
-        } else {
-            format!(" (cached {} min ago)", cache.age_minutes)
+        // SECURITY: Require 'passed' field to exist - reject malformed cache (Popperian Audit v2.1 fix)
+        let passed = match cache.value.get("passed").and_then(|v| v.as_bool()) {
+            Some(p) => p,
+            None => {
+                return Ok(FalsificationResult::failed(
+                    "Invalid examples cache (missing 'passed' field). Re-run 'cargo build --examples'.".to_string(),
+                    EvidenceType::BooleanCheck(false),
+                ));
+            }
         };
+        let count = cache.value.get("count").and_then(|v| v.as_u64()).unwrap_or(0);
+        let stale_note = format!(" (cached {} min ago)", cache.age_minutes);
 
         if passed {
             return Ok(FalsificationResult::passed(format!("{} examples OK{}", count, stale_note)));
@@ -1364,7 +1375,16 @@ async fn test_lint_pass(project_path: &Path) -> Result<FalsificationResult> {
             ));
         }
 
-        let passed = cache.value.get("passed").and_then(|v| v.as_bool()).unwrap_or(false);
+        // SECURITY: Require 'passed' field to exist - reject malformed cache (Popperian Audit v2.1 fix)
+        let passed = match cache.value.get("passed").and_then(|v| v.as_bool()) {
+            Some(p) => p,
+            None => {
+                return Ok(FalsificationResult::failed(
+                    "Invalid lint cache (missing 'passed' field). Re-run 'make lint'.".to_string(),
+                    EvidenceType::BooleanCheck(false),
+                ));
+            }
+        };
         let stale_note = if cache.is_stale_warn {
             format!(" (cached {} min ago, consider re-running)", cache.age_minutes)
         } else {

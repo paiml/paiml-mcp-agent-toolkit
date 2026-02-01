@@ -1,0 +1,104 @@
+# PMAT Comply Configuration (v2.8)
+# Copy this to .pmat.yaml and customize as needed.
+# Spec: docs/specifications/improve-pmat-comply.md (COMPLY-044)
+
+comply:
+  # Individual check configurations
+  checks:
+    # CB-050: Stub detection (todo!(), unimplemented!())
+    cb-050:
+      enabled: true
+      severity: critical  # Runtime panics are critical
+
+    # CB-060: GPU kernel quality (ComputeBrick projects)
+    cb-060:
+      enabled: true
+      severity: error
+
+    # CB-070: Critical .unwrap() detection
+    cb-070:
+      enabled: true
+      severity: warning
+
+    # CB-120: NaN-unsafe comparisons
+    cb-120:
+      enabled: true
+      severity: warning
+
+    # CB-121: Lock poisoning vulnerabilities
+    cb-121:
+      enabled: true
+      severity: warning
+
+    # CB-122: Serde deserialization panics
+    cb-122:
+      enabled: true
+      severity: warning
+
+    # CB-123: Undocumented #[ignore] tests
+    cb-123:
+      enabled: true
+      severity: info
+
+    # CB-124: Coverage threshold
+    cb-124:
+      enabled: true
+      severity: error
+      threshold: 80.0
+
+    # CB-125: Coverage exclusion gaming
+    cb-125:
+      enabled: true
+      severity: warning
+      threshold: 20.0  # Max exclusion percentage
+
+    # CB-126: Slow tests
+    cb-126:
+      enabled: true
+      severity: warning
+      threshold: 5.0  # seconds
+
+    # CB-127: Slow coverage
+    cb-127:
+      enabled: true
+      severity: warning
+      threshold: 10.0  # minutes
+
+    # CB-128: Dead code detection
+    cb-128:
+      enabled: true
+      severity: warning
+      threshold: 1.0  # Max dead code percentage
+
+  # Global thresholds
+  thresholds:
+    coverage: 95.0           # Minimum coverage %
+    per_file_coverage: 95.0  # Minimum per-file coverage %
+    complexity: 20           # Max cyclomatic complexity
+    dead_code_pct: 1.0       # Max dead code %
+    max_file_lines: 500      # Max lines per file
+    max_function_lines: 50   # Max lines per function
+    slow_test_seconds: 5.0   # Slow test threshold
+    slow_coverage_minutes: 10.0  # Slow coverage threshold
+
+  # Behavior options
+  fail_fast: false  # Stop on first error or collect all
+
+  # Output options
+  output:
+    failures_only: false  # Show only failures
+    colors: true          # Use colors in output
+    verbose: false        # Show verbose details
+
+# Quality gate configuration
+quality:
+  tdg_enabled: true
+  min_tdg_score: 70.0
+  satd_enabled: true
+  block_on_new_satd: false
+
+# Work contract configuration
+work:
+  cache_warn_hours: 1    # Warn if cache older than this
+  cache_block_hours: 24  # Block if cache older than this
+  skip_quality_gates: false

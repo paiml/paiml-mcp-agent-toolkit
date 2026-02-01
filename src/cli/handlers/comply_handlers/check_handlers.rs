@@ -12,6 +12,7 @@
 use crate::cli::commands::{ComplyCommands, ComplyOutputFormat};
 use crate::cli::handlers::work_contract::{WorkContract, FileManifest};
 use crate::cli::handlers::work_falsification;
+use crate::models::comply_config::{PmatYamlConfig, ComplyConfig, CheckSeverity as ConfigSeverity};
 use crate::services::commit_classifier::CommitClassifier;
 use crate::services::file_health::{
     FileHealthMetrics, FileHealthReport,
@@ -104,6 +105,42 @@ pub enum Severity {
     Critical,
 }
 
+impl From<ConfigSeverity> for Severity {
+    fn from(config: ConfigSeverity) -> Self {
+        match config {
+            ConfigSeverity::Info => Severity::Info,
+            ConfigSeverity::Warning => Severity::Warning,
+            ConfigSeverity::Error => Severity::Error,
+            ConfigSeverity::Critical => Severity::Critical,
+        }
+    }
+}
+
+/// Filter a check result based on YAML configuration
+///
+/// Returns Skip status if the check is disabled in .pmat.yaml
+fn filter_check_by_config(
+    check: ComplianceCheck,
+    check_id: &str,
+    config: &ComplyConfig,
+) -> ComplianceCheck {
+    if !config.is_check_enabled(check_id) {
+        return ComplianceCheck {
+            name: check.name,
+            status: CheckStatus::Skip,
+            message: format!("{} (disabled in .pmat.yaml)", check_id),
+            severity: Severity::Info,
+        };
+    }
+
+    // Apply severity override from config
+    let configured_severity = config.get_severity(check_id);
+    ComplianceCheck {
+        severity: configured_severity.into(),
+        ..check
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BreakingChange {
     pub version: String,
@@ -174,31 +211,41 @@ async fn handle_check(
 ) -> Result<()> {
     println!("Checking PMAT compliance for {}", project_path.display());
 
+    // Load YAML configuration (COMPLY-044: YAML-first configuration)
+    let yaml_config = PmatYamlConfig::load(project_path).unwrap_or_default();
+    let comply_config = &yaml_config.comply;
+
+    // Show config source if verbose
+    let config_path = project_path.join(".pmat.yaml");
+    if config_path.exists() {
+        println!("  Using configuration from .pmat.yaml");
+    }
+
     // Load or create project config
     let config = load_or_create_project_config(project_path)?;
     let project_version = &config.pmat.version;
 
-    // Run compliance checks
+    // Run compliance checks (filtered by .pmat.yaml configuration - COMPLY-044)
     let checks = vec![
         check_version_currency(project_version),
         check_config_files(project_path),
         check_hooks_installed(project_path),
-        check_hooks_o1_capable(project_path),    // CB-030: O(1) hooks capability
-        check_hooks_cache_health(project_path),   // CB-031: Cache health
+        filter_check_by_config(check_hooks_o1_capable(project_path), "cb-030", comply_config),
+        filter_check_by_config(check_hooks_cache_health(project_path), "cb-031", comply_config),
         check_quality_thresholds(project_path),
         check_deprecated_features(project_path),
-        check_compute_brick(project_path),
+        filter_check_by_config(check_compute_brick(project_path), "cb-060", comply_config),
         // OIP Tarantula patterns (CB-120 through CB-124) - improve-pmat-comply.md v2.1.0
-        check_oip_tarantula_patterns(project_path),
+        filter_check_by_config(check_oip_tarantula_patterns(project_path), "cb-120", comply_config),
         // Coverage Quality & Test Performance (CB-125 through CB-127) - improve-pmat-comply.md v2.2.0
-        check_coverage_quality_patterns(project_path),
+        filter_check_by_config(check_coverage_quality_patterns(project_path), "cb-125", comply_config),
         // Build performance checks (lltop Tab 8 integration)
         check_cargo_lock(project_path),
         check_msrv(project_path),
         check_ci_configured(project_path),
         check_paiml_deps_workspace(project_path),
         check_sovereign_stack_patterns(project_path),
-        check_file_health(project_path),  // CB-040: File Health Score (max-lines, TLR)
+        filter_check_by_config(check_file_health(project_path), "cb-040", comply_config),
     ];
 
     // Calculate compliance
@@ -685,81 +732,39 @@ fn check_deprecated_features(_project_path: &Path) -> ComplianceCheck {
     }
 }
 
-/// Validates:
-/// - CB-001 to CB-022: Static analysis pattern detection
-/// - CB-020: unsafe blocks without SAFETY comments
-/// - CB-021: SIMD intrinsics without #[target_feature]
-/// - CB-BUDGET: Bricks without assertion/validation
-/// - BrickProfiler anomalies: CV > 15%, efficiency < 25%
-/// - Probar GUI coverage >= 80%
-fn check_compute_brick(project_path: &Path) -> ComplianceCheck {
-    // Check if this is a ComputeBrick project (has probar dependency or brick/ directory)
-    let cargo_toml = project_path.join("Cargo.toml");
-    let brick_dir = project_path.join("src").join("brick");
-    let has_probar = cargo_toml.exists()
-        && fs::read_to_string(&cargo_toml)
-            .map(|s| s.contains("probar") || s.contains("jugar-probar"))
-            .unwrap_or(false);
-    let has_brick_dir = brick_dir.exists();
-
-    // Also check for trueno/realizar dependencies (ComputeBrick ecosystem)
-    let has_cb_ecosystem = cargo_toml.exists()
-        && fs::read_to_string(&cargo_toml)
-            .map(|s| s.contains("trueno") || s.contains("realizar") || s.contains("Brick"))
-            .unwrap_or(false);
-
-    if !has_probar && !has_brick_dir && !has_cb_ecosystem {
-        return ComplianceCheck {
-            name: "ComputeBrick Compliance".to_string(),
-            status: CheckStatus::Skip,
-            message: "Not a ComputeBrick project (no probar/trueno/realizar dep or brick/ dir)"
-                .to_string(),
-            severity: Severity::Info,
-        };
-    }
-
-    // Collect all violations
+/// Collect static analysis violations for ComputeBrick patterns.
+/// Returns (issues, critical_count, warning_count).
+fn collect_cb_violations(project_path: &Path, has_probar: bool, has_brick_dir: bool) -> (Vec<String>, usize, usize) {
     let mut all_issues: Vec<String> = Vec::new();
     let mut critical_count = 0;
     let mut warning_count = 0;
 
-    // Run static analysis for CB patterns
-    let cb020_violations = detect_cb020_unsafe_without_safety(project_path);
-    for v in &cb020_violations {
+    // Warning-level violations: CB-020, CB-021, CB-BUDGET
+    for v in &detect_cb020_unsafe_without_safety(project_path) {
+        all_issues.push(format!("{}: {} ({}:{})", v.pattern_id, v.description, v.file, v.line));
+        warning_count += 1;
+    }
+    for v in &detect_cb021_simd_without_target_feature(project_path) {
+        all_issues.push(format!("{}: {} ({}:{})", v.pattern_id, v.description, v.file, v.line));
+        warning_count += 1;
+    }
+    for v in &detect_bricks_without_assertions(project_path) {
         all_issues.push(format!("{}: {} ({}:{})", v.pattern_id, v.description, v.file, v.line));
         warning_count += 1;
     }
 
-    let cb021_violations = detect_cb021_simd_without_target_feature(project_path);
-    for v in &cb021_violations {
+    // Critical-level violations: CB-001, CB-002 (WGSL per PROBAR-SPEC-009-P8 §4)
+    for v in &detect_cb001_wgsl_no_bounds_check(project_path) {
         all_issues.push(format!("{}: {} ({}:{})", v.pattern_id, v.description, v.file, v.line));
-        warning_count += 1;
+        critical_count += 1;
     }
-
-    // WGSL-specific checks (CB-001 and CB-002 per PROBAR-SPEC-009-P8 §4)
-    let cb001_violations = detect_cb001_wgsl_no_bounds_check(project_path);
-    for v in &cb001_violations {
+    for v in &detect_cb002_wgsl_barrier_divergence(project_path) {
         all_issues.push(format!("{}: {} ({}:{})", v.pattern_id, v.description, v.file, v.line));
-        // CB-001 is P0 Critical - counts as critical
         critical_count += 1;
     }
 
-    let cb002_violations = detect_cb002_wgsl_barrier_divergence(project_path);
-    for v in &cb002_violations {
-        all_issues.push(format!("{}: {} ({}:{})", v.pattern_id, v.description, v.file, v.line));
-        // CB-002 is P0 Critical - counts as critical
-        critical_count += 1;
-    }
-
-    let budget_violations = detect_bricks_without_assertions(project_path);
-    for v in &budget_violations {
-        all_issues.push(format!("{}: {} ({}:{})", v.pattern_id, v.description, v.file, v.line));
-        warning_count += 1;
-    }
-
-    // Check BrickProfiler output for anomalies
-    let profiler_anomalies = detect_profiler_anomalies(project_path);
-    for a in &profiler_anomalies {
+    // BrickProfiler anomalies
+    for a in &detect_profiler_anomalies(project_path) {
         all_issues.push(format!(
             "PROFILER-{}: {} has {}={:.1}% (threshold: {:.1}%)",
             a.anomaly_type, a.brick_name, a.anomaly_type.to_lowercase(), a.value, a.threshold
@@ -771,26 +776,28 @@ fn check_compute_brick(project_path: &Path) -> ComplianceCheck {
         }
     }
 
-    // Check for .pmat-gates.toml compute-brick section
+    // Config and coverage checks
     let gates_path = project_path.join(".pmat-gates.toml");
     let has_cb_config = gates_path.exists()
         && fs::read_to_string(&gates_path)
             .map(|s| s.contains("[compute-brick]"))
             .unwrap_or(false);
-
     if !has_cb_config && (has_probar || has_brick_dir) {
         all_issues.push("Missing [compute-brick] section in .pmat-gates.toml".to_string());
         warning_count += 1;
     }
 
-    // Check for probar test coverage file
     let coverage_file = project_path.join(".pmat-metrics").join("gui-coverage.json");
     if has_probar && !coverage_file.exists() {
         all_issues.push("No GUI coverage report - run probador to generate".to_string());
         warning_count += 1;
     }
 
-    // Determine overall status and message
+    (all_issues, critical_count, warning_count)
+}
+
+/// Build a ComplianceCheck result from collected violations.
+fn build_cb_result(all_issues: Vec<String>, critical_count: usize, warning_count: usize) -> ComplianceCheck {
     if critical_count > 0 {
         ComplianceCheck {
             name: "ComputeBrick Compliance".to_string(),
@@ -822,6 +829,41 @@ fn check_compute_brick(project_path: &Path) -> ComplianceCheck {
             severity: Severity::Info,
         }
     }
+}
+
+/// Validates:
+/// - CB-001 to CB-022: Static analysis pattern detection
+/// - CB-020: unsafe blocks without SAFETY comments
+/// - CB-021: SIMD intrinsics without #[target_feature]
+/// - CB-BUDGET: Bricks without assertion/validation
+/// - BrickProfiler anomalies: CV > 15%, efficiency < 25%
+/// - Probar GUI coverage >= 80%
+fn check_compute_brick(project_path: &Path) -> ComplianceCheck {
+    let cargo_toml = project_path.join("Cargo.toml");
+    let brick_dir = project_path.join("src").join("brick");
+    let has_probar = cargo_toml.exists()
+        && fs::read_to_string(&cargo_toml)
+            .map(|s| s.contains("probar") || s.contains("jugar-probar"))
+            .unwrap_or(false);
+    let has_brick_dir = brick_dir.exists();
+    let has_cb_ecosystem = cargo_toml.exists()
+        && fs::read_to_string(&cargo_toml)
+            .map(|s| s.contains("trueno") || s.contains("realizar") || s.contains("Brick"))
+            .unwrap_or(false);
+
+    if !has_probar && !has_brick_dir && !has_cb_ecosystem {
+        return ComplianceCheck {
+            name: "ComputeBrick Compliance".to_string(),
+            status: CheckStatus::Skip,
+            message: "Not a ComputeBrick project (no probar/trueno/realizar dep or brick/ dir)"
+                .to_string(),
+            severity: Severity::Info,
+        };
+    }
+
+    let (all_issues, critical_count, warning_count) =
+        collect_cb_violations(project_path, has_probar, has_brick_dir);
+    build_cb_result(all_issues, critical_count, warning_count)
 }
 
 /// OIP Tarantula Pattern Detection (CB-120 through CB-124)

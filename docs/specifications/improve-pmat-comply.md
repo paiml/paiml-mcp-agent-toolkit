@@ -83,6 +83,17 @@ This specification defines **25 improvements** with peer-reviewed justification,
    - 8.8: Rollout Plan
    - 8.9: Integration with rust-project-score (SCORE-001 through SCORE-004)
    - 8.10: pmat work Integration - Compliance Convergence (WORK-001 through WORK-005)
+9. [Enhanced Theoretical Framework](#9-enhanced-theoretical-framework-v28---batuta-oracle-integration) (v2.8 - NEW)
+   - 9.1: Three-Layer Operational Architecture (Jidoka, Genchi Genbutsu, Governance)
+   - 9.2: Seven Wastes (Muda) in Code Quality
+   - 9.3: Reproducibility Standards (Bronze, Silver, Gold)
+   - 9.4: Golden Trace Validation (Renacer Integration)
+   - 9.5: Equation-Driven Development (EDD) Validation
+   - 9.6: Enhanced Checklist Format (Claim, Null Hypothesis, Evidence)
+   - 9.7: Architectural Invariants (YAML-First, Zero FP Policy)
+   - 9.8: Work Tickets (COMPLY-040 through COMPLY-045)
+   - 9.9: Falsification Tests (T-200 through T-204)
+   - 9.10: References (Batuta Oracle Sources)
 
 ---
 
@@ -5465,31 +5476,49 @@ comply  comply comply  comply
 
 **Problem:** Running `cargo build --examples`, `cargo deny check`, `make lint`, `make coverage` during `pmat work complete` takes 5-15 minutes, defeating the purpose of fast feedback.
 
-**Solution:** All checks read from **cached metrics** populated by pre-commit hooks or CI. Completion is O(1) - just JSON reads.
+**Solution:** All checks read from **cached metrics** populated by pre-commit hooks or CI. Completion is O(1) - just JSON reads. Performance improved from 5-15 minutes to **~2.2 seconds**.
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│  pmat work complete (O(1) - <100ms)                            │
+│  pmat work complete (O(1) - <100ms for I/O)                    │
 │                                                                 │
 │  Reads cached metrics from:                                     │
-│  ├── .pmat-metrics/lint-status.json      (last make lint)      │
-│  ├── .pmat-metrics/coverage.json         (last make coverage)  │
-│  ├── .pmat-metrics/satd-count.json       (last pmat analyze)   │
-│  ├── .pmat-metrics/dead-code.json        (last pmat analyze)   │
-│  ├── .pmat-metrics/examples-status.json  (last cargo build)    │
-│  └── .pmat-metrics/deny-status.json      (last cargo deny)     │
+│  ├── .pmat-metrics/lint-status.json      (test_lint_pass)      │
+│  ├── .pmat-metrics/coverage.json         (test_coverage)       │
+│  ├── .pmat-metrics/satd-count.json       (test_satd)           │
+│  ├── .pmat-metrics/dead-code.json        (test_dead_code)      │
+│  ├── .pmat-metrics/examples-status.json  (test_examples_compile)│
+│  └── .pmat-metrics/deny-status.json      (test_supply_chain)   │
 │                                                                 │
 │  Cache populated by:                                            │
-│  ├── Pre-commit hook (fast checks)                              │
-│  ├── make lint/coverage/test (writes cache)                     │
-│  └── CI pipeline (full validation)                              │
+│  ├── make lint                           → lint-status.json    │
+│  ├── make coverage                       → coverage.json       │
+│  ├── cargo build --examples              → examples-status.json│
+│  └── cargo deny check                    → deny-status.json    │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
 **Staleness Policy:**
-- Cache older than 1 hour: WARNING (proceed with caution)
-- Cache older than 24 hours: BLOCK (must run `make lint` first)
-- No cache: BLOCK (must run checks first)
+- **Cache > 1 hour**: WARNING (proceed with caution)
+- **Cache > 24 hours**: BLOCK (must run `make lint` or relevant command first)
+- **No cache**: BLOCK (must run checks first)
+
+**Remaining slow operations (Future Optimization):**
+- **File size check**: Currently walks 606+ files (O(N)). Should move to cached file manifest.
+- **Gaming detector**: Scans files for exclusion patterns (O(N)). Should move to cached analysis result.
+
+**Popperian Cache Audit Findings (v2.7.0):**
+
+| Vector | Status | Fix Applied |
+|--------|--------|-------------|
+| **1.1 Time-Travel** | ✅ SURVIVED | N/A (Already robust) |
+| **1.2 Empty Cache** | ✅ FIXED | Changed default from PASS to FAIL on missing cache |
+| **2.1 Malformed JSON** | ✅ FIXED | Removed `unwrap_or(true)`, enforce "passed" field existence |
+| **3.1 Big Data** | ✅ SURVIVED | Streaming parse handles large files efficiently |
+
+**Risk Assessment:**
+- **Race Conditions:** Low risk (local environment).
+- **Integrity:** Mitigated by strict field validation (must have `passed: true`).
 
 #### 8.10.3 Configuration (`.pmat-gates.toml`)
 
@@ -5699,6 +5728,115 @@ Found 2 dead code items:
 
 ---
 
+## 9. Enhanced Theoretical Framework (v2.8 - NEW)
+
+**Status:** Proposed
+**Added:** 2026-02-01 (v2.8)
+**Source:** Batuta Oracle & Sovereign AI Assurance Protocol
+
+### 9.1 Three-Layer Operational Architecture
+
+To align with the **Sovereign AI Assurance Protocol**, compliance is structured into three operational layers:
+
+1.  **Layer 1 (Jidoka): Automated Quality Gates**
+    *   **Tool:** `pmat comply check` (and `pmat work`)
+    *   **Function:** Instant, blocking, automated checks.
+    *   **Scope:** CB-050 through CB-128.
+    *   **Principle:** Stop the line immediately on defect detection.
+
+2.  **Layer 2 (Genchi Genbutsu): Evidence-Based Review**
+    *   **Tool:** `pmat comply --review`
+    *   **Function:** Human-in-the-loop verification of complex patterns.
+    *   **Scope:** Architecture diagrams, design decisions, trade-off analysis.
+    *   **Principle:** Go and see; verify facts personally.
+
+3.  **Layer 3 (Governance): Audit Artifacts**
+    *   **Tool:** `pmat comply --audit`
+    *   **Function:** Immutable record generation for external validation.
+    *   **Scope:** Release artifacts, SBOMs, falsification reports.
+    *   **Principle:** Transparency and accountability.
+
+### 9.2 Seven Wastes (Muda) in Code Quality
+
+We map the Toyota Production System's "Seven Wastes" directly to code quality metrics to create the **Muda Waste Score (CB-300)**.
+
+| Toyota Waste | Code Quality Equivalent | Detection Metric |
+| :--- | :--- | :--- |
+| **Overproduction** | Dead Code / Unused Features | `dead_code` analysis (CB-128) |
+| **Waiting** | Slow Tests / Long Builds | Test execution time (CB-126, CB-127) |
+| **Inventory** | Stale Branches / Old SATD | SATD age > 90 days (CB-050) |
+| **Transport** | Excessive Data Copying | `.clone()` in hot loops (via `clippy`) |
+| **Over-processing** | Complexity / Over-engineering | Cyclomatic Complexity > 15 |
+| **Motion** | Context Switching / Sprawl | Dependency count / Graph depth |
+| **Defects** | Bugs / Test Failures | Test failure rate / Panic counts |
+
+**Implementation:** `pmat comply check --muda` calculates a "Waste Score" (lower is better).
+
+### 9.3 Reproducibility Standards
+
+Adopting NeurIPS/ICLR standards for ML/AI reproducibility.
+
+**CB-301: Reproducibility Level Check**
+*   **Bronze:** Code compiles + Dependencies pinned (`Cargo.lock`).
+*   **Silver:** Deterministic seed control + Training data versioned (DVC/Git LFS).
+*   **Gold:** Full pipeline containerized (Docker) + "Golden Trace" verification.
+
+### 9.4 Golden Trace Validation
+
+Integration with `renacer` for transpilers and distributed systems.
+
+**CB-302: Golden Trace Drift**
+*   **Concept:** Compare execution traces against a blessed "Golden Trace" to detect behavioral regression even if output looks correct.
+*   **Source:** Batuta Oracle recipe `quality-golden-trace`.
+*   **Check:** `renacer verify --trace golden.json` must pass.
+
+### 9.5 Equation-Driven Development (EDD)
+
+For simulation projects (using `simular` or `trueno-sim`).
+
+**CB-303: EDD Compliance**
+*   **Requirement:** Every core simulation function must reference a LaTeX equation in doc comments.
+*   **Source:** Batuta Oracle recipe `quality-edd`.
+*   **Check:** Regex scan for `$$ ... $$` or markdown math in public API docs.
+
+### 9.6 Enhanced Checklist Format
+
+All future checks must define:
+1.  **Claim:** What property is being enforced?
+2.  **Null Hypothesis:** "The system is compliant."
+3.  **Falsification Test:** Specific attack to prove non-compliance.
+4.  **Rejection Criteria:** Exact condition to fail the check.
+5.  **TPS Principle:** Alignment (e.g., Jidoka, Poka-Yoke).
+6.  **Evidence Required:** Log/Artifact proof.
+
+### 9.7 Architectural Invariants
+
+*   **YAML-First:** `.pmat.yaml` is the source of truth. (Migration from TOML pending for v3.0, currently TOML dominant).
+*   **Zero False Positive Policy:** Any check with >5% false positive rate must be disabled or moved to "Warning" until fixed. 24-hour SLA to fix false positives.
+
+### 9.8 New Work Tickets
+
+| ID | Title | Priority | Effort |
+| :--- | :--- | :--- | :--- |
+| **COMPLY-040** | CB-300 Muda Waste Score | P2 | Medium |
+| **COMPLY-041** | CB-301 Reproducibility Check | P2 | Medium |
+| **COMPLY-042** | CB-302 Golden Trace Integration | P1 | High |
+| **COMPLY-043** | CB-303 EDD Compliance | P3 | Low |
+| **COMPLY-044** | YAML-first configuration | P1 | Medium |
+| **COMPLY-045** | Three-layer CLI (`--review`, `--audit`) | P1 | High |
+
+### 9.9 Falsification Tests (T-200 to T-204)
+
+| Test ID | Target | Adversarial Protocol | Pass Criteria |
+| :--- | :--- | :--- | :--- |
+| **T-200** | CB-300 Muda | **Attack:** create a project with 1000 lines of dead code and 10s sleep in tests. | **Pass:** Muda Score > 80 (High Waste). |
+| **T-201** | CB-301 Repro | **Attack:** delete `Cargo.lock` and running container. | **Pass:** Downgrade to "None" or "Bronze" status. |
+| **T-202** | CB-302 Trace | **Attack:** alter random seed in `renacer` config but keep logic same. | **Pass:** Trace mismatch detected (butterfly effect). |
+| **T-203** | CB-303 EDD | **Attack:** write a physics function with text description but no LaTeX. | **Pass:** Violation "Missing Mathematical Model". |
+| **T-204** | Layer 3 Audit | **Attack:** run `--audit` on dirty git state. | **Pass:** Refuse to generate audit artifact (audit requires cleanliness). |
+
+---
+
 ## Appendix A: References
 
 ### A.1 Self-Admitted Technical Debt (SATD)
@@ -5825,7 +5963,291 @@ Found 2 dead code items:
 
 ---
 
-**Document Status**: Draft v2.6 - Awaiting Review
+## 9. Enhanced Theoretical Framework (v2.8 - Batuta Oracle Integration)
+
+*Insights from `batuta oracle --rag` and the Sovereign AI Assurance Protocol (popperian-falsification-checklist v2.2)*
+
+### 9.1 Three-Layer Operational Architecture
+
+Following the Sovereign AI Assurance Protocol, `pmat comply` should operate across three layers:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    PMAT COMPLY ARCHITECTURE                      │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  Layer 1: Jidoka — Automated Quality Gate (IMPLEMENTED)          │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │ pmat comply --check all                                  │    │
+│  │ → CB-050 (Stubs), CB-060 (GPU), CB-070 (Unwrap)          │    │
+│  │ → CB-120-127 (OIP Tarantula), CB-128 (Dead Code)         │    │
+│  │ → FAIL if critical violations                            │    │
+│  └─────────────────────────────────────────────────────────┘    │
+│                           ↓                                      │
+│  Layer 2: Genchi Genbutsu — Evidence-Based Review (PROPOSED)     │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │ pmat comply --review                                     │    │
+│  │ → Reproducibility validation (can reviewer run tests?)   │    │
+│  │ → Hypothesis-Driven Development check (PR has claim?)    │    │
+│  │ → Golden trace comparison (transpilers/distributed)      │    │
+│  └─────────────────────────────────────────────────────────┘    │
+│                           ↓                                      │
+│  Layer 3: Governance — Artifacts of Quality (PROPOSED)           │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │ pmat comply --audit                                      │    │
+│  │ → Model Cards match code behavior                        │    │
+│  │ → Sovereign audit trail (who reviewed, what tests ran)   │    │
+│  │ → Compliance documentation completeness                  │    │
+│  └─────────────────────────────────────────────────────────┘    │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**TPS Principle Mapping**:
+
+| Layer | TPS Principle | Application |
+|-------|---------------|-------------|
+| 1 | **Jidoka** | Automatic stop on quality violation |
+| 2 | **Genchi Genbutsu** | Reviewer must "go and see" evidence |
+| 3 | **Kaizen** | Every defect signals process failure |
+
+### 9.2 Seven Wastes (Muda) in Code Quality
+
+Adapted from Toyota Production System for `pmat comply` detection:
+
+| Waste Type | Code Quality Manifestation | Detection (CB-XXX) |
+|------------|---------------------------|-------------------|
+| **Overproduction** | Dead code, unused features | CB-128 |
+| **Waiting** | Slow tests blocking CI | CB-126, CB-127 |
+| **Transport** | Excessive data copying in hot paths | (Future: perf lint) |
+| **Overprocessing** | Overcomplicated algorithms where simple suffices | Complexity checks |
+| **Inventory** | Stale SATD markers accumulating | CB-050 |
+| **Motion** | Developer context switching from flaky tests | CB-090 |
+| **Defects** | Bugs requiring rework | All CB checks |
+
+**Proposed Check (CB-300): Muda Waste Score**
+
+```rust
+/// CB-300: Aggregate waste score for project health
+pub fn calculate_muda_score(project_path: &Path) -> MudaReport {
+    MudaReport {
+        overproduction: dead_code_percentage(project_path),    // CB-128
+        waiting: slow_test_count(project_path),                // CB-126
+        inventory: satd_count(project_path),                   // CB-050
+        defects: violation_count(project_path),                // All CB
+        total_muda_score: 0.0..100.0,  // Lower is better
+    }
+}
+```
+
+### 9.3 Reproducibility Standards
+
+Derived from NeurIPS/ICLR standards and Sovereign AI Assurance Protocol:
+
+| Level | Requirements | pmat comply Check |
+|-------|--------------|-------------------|
+| **Bronze** | Code available | Always met (source repo) |
+| **Silver** | Code + data + environment documented | Dockerfile exists, deps pinned |
+| **Gold** | Third-party reproduction with single command | `make reproduce` works |
+
+**Proposed Check (CB-301): Reproducibility Level**
+
+```rust
+/// CB-301: Verify reproducibility level
+pub fn check_reproducibility(project_path: &Path) -> ReproducibilityLevel {
+    let has_dockerfile = project_path.join("Dockerfile").exists();
+    let has_lockfile = project_path.join("Cargo.lock").exists()
+        || project_path.join("package-lock.json").exists();
+    let has_make_reproduce = check_makefile_target(project_path, "reproduce");
+    let has_random_seeds = check_for_seeded_rng(project_path);
+
+    match (has_dockerfile, has_lockfile, has_make_reproduce, has_random_seeds) {
+        (true, true, true, true) => ReproducibilityLevel::Gold,
+        (true, true, _, _) | (_, true, true, _) => ReproducibilityLevel::Silver,
+        _ => ReproducibilityLevel::Bronze,
+    }
+}
+```
+
+### 9.4 Golden Trace Validation (Renacer Integration)
+
+For transpilers and distributed systems, integrate with `renacer` golden tracing:
+
+```bash
+# Query oracle for golden trace recipe
+$ batuta oracle --recipe quality-golden-trace
+
+# Integration with pmat comply
+$ pmat comply --golden-trace renacer.toml
+```
+
+**Proposed Check (CB-302): Golden Trace Drift**
+
+```rust
+/// CB-302: Detect golden trace divergence
+pub fn check_golden_trace_drift(project_path: &Path) -> Vec<CbViolation> {
+    // Check if renacer.toml exists
+    let config = project_path.join("renacer.toml");
+    if !config.exists() {
+        return vec![]; // Not a transpiler/distributed project
+    }
+
+    // Run renacer validate and capture output
+    let output = Command::new("renacer")
+        .args(["validate", "--all"])
+        .current_dir(project_path)
+        .output();
+
+    match output {
+        Ok(o) if o.status.success() => vec![],
+        Ok(o) => vec![CbViolation {
+            id: "CB-302".into(),
+            message: format!("Golden trace divergence: {}", String::from_utf8_lossy(&o.stderr)),
+            severity: Severity::Critical,
+        }],
+        Err(e) => vec![CbViolation {
+            id: "CB-302".into(),
+            message: format!("Failed to run renacer: {}", e),
+            severity: Severity::Warning,
+        }],
+    }
+}
+```
+
+### 9.5 Equation-Driven Development (EDD) Validation
+
+For simulation projects, verify governing equations have proofs:
+
+```bash
+# Query oracle for EDD recipe
+$ batuta oracle --recipe quality-edd
+```
+
+**Proposed Check (CB-303): EDD Compliance**
+
+```rust
+/// CB-303: Verify simulation code has equation documentation
+pub fn check_edd_compliance(project_path: &Path) -> Vec<CbViolation> {
+    // Only applies to simular-based projects
+    let cargo_toml = project_path.join("Cargo.toml");
+    if !file_contains(&cargo_toml, "simular") {
+        return vec![]; // Not a simulation project
+    }
+
+    let mut violations = vec![];
+
+    // Check for Equation Model Cards
+    let has_emc = project_path.join("docs").join("equations").exists()
+        || glob_exists(project_path, "**/*.emc.md");
+
+    if !has_emc {
+        violations.push(CbViolation {
+            id: "CB-303-A".into(),
+            message: "Simulation project missing Equation Model Cards (docs/equations/)".into(),
+            severity: Severity::Warning,
+        });
+    }
+
+    // Check for verify_invariants() implementation
+    let has_invariant_check = grep_exists(project_path, "fn verify_invariants");
+    if !has_invariant_check {
+        violations.push(CbViolation {
+            id: "CB-303-B".into(),
+            message: "Simulation missing verify_invariants() method".into(),
+            severity: Severity::Warning,
+        });
+    }
+
+    violations
+}
+```
+
+### 9.6 Enhanced Checklist Format
+
+Following the Sovereign AI Assurance Protocol, each check should have:
+
+| Field | Description |
+|-------|-------------|
+| **Claim** | What the code asserts (e.g., "No runtime panics from stubs") |
+| **Falsification Test** | Command to attempt disproof |
+| **Null Hypothesis (H₀)** | Assumed true until disproven |
+| **Rejection Criteria** | Conditions that falsify the claim |
+| **TPS Principle** | Toyota Way mapping |
+| **Evidence Required** | Data for evaluation |
+
+**Example: CB-050 in Enhanced Format**
+
+| Field | Value |
+|-------|-------|
+| **Claim** | Code contains no runtime-panic stub macros |
+| **Falsification Test** | `pmat comply --check cb-050` |
+| **Null Hypothesis** | `todo!()` and `unimplemented!()` exist in production paths |
+| **Rejection Criteria** | Any match of stub patterns outside test/doc contexts |
+| **TPS Principle** | Jidoka — automatic stop on panic potential |
+| **Evidence Required** | ☑ Pattern match locations ☑ Context analysis (test/doc/prod) |
+
+### 9.7 Architectural Invariants
+
+From the Sovereign AI Assurance Protocol, two non-negotiable requirements:
+
+**1. Declarative Configuration (YAML-First)**
+
+Every quality check should be configurable via YAML without code changes:
+
+```yaml
+# .pmat.yaml - Declarative quality gate configuration
+comply:
+  checks:
+    cb-050: { enabled: true, severity: critical }
+    cb-060: { enabled: true, severity: high }
+    cb-128: { enabled: true, threshold: 5.0 }
+  thresholds:
+    coverage: 95.0
+    complexity: 20
+    dead_code_pct: 1.0
+```
+
+**2. Zero False Positive Policy**
+
+Following Toyota's "Stop the Line" principle, any false positive must be:
+1. Reported immediately (GitHub issue)
+2. Fixed within 24 hours (patch release)
+3. Added to the false positive regression suite
+
+### 9.8 Work Tickets for v2.8
+
+| ID | Title | Priority | Effort |
+|----|-------|----------|--------|
+| COMPLY-040 | Implement CB-300 Muda Waste Score | P2 | 3d |
+| COMPLY-041 | Implement CB-301 Reproducibility Check | P2 | 2d |
+| COMPLY-042 | Implement CB-302 Golden Trace Integration | P1 | 3d |
+| COMPLY-043 | Implement CB-303 EDD Compliance | P3 | 2d |
+| COMPLY-044 | Add YAML-first configuration (.pmat.yaml) | P1 | 2d |
+| COMPLY-045 | Implement three-layer architecture CLI (--review, --audit) | P1 | 4d |
+
+### 9.9 Falsification Tests for v2.8
+
+| ID | Test | Claim | Method |
+|----|------|-------|--------|
+| T-200 | Muda score detects dead code | CB-300 includes CB-128 | Inject dead function, verify score increases |
+| T-201 | Gold reproducibility requires make reproduce | CB-301 Bronze without target | Remove Makefile, verify Bronze level |
+| T-202 | Golden trace detects divergence | CB-302 catches regression | Modify transpiler output, verify failure |
+| T-203 | EDD check requires invariants | CB-303 flags missing | Create simular project without verify_invariants |
+| T-204 | YAML config overrides defaults | CB-* respects .pmat.yaml | Set cb-050 disabled, verify no detection |
+
+### 9.10 References (Batuta Oracle Sources)
+
+**[ORACLE-001]** `batuta oracle --rag "Popperian falsification"` - Retrieved 2026-02-01
+**[ORACLE-002]** `batuta oracle --recipe quality-edd` - Equation-Driven Development
+**[ORACLE-003]** `batuta oracle --recipe quality-golden-trace` - Golden Trace Validation
+**[ORACLE-004]** `batuta oracle --capabilities pmat` - PMAT capability registry
+**[SPEC-001]** `batuta/docs/specifications/popperian-falsification-checklist.md` v2.2
+**[SPEC-002]** `batuta/docs/specifications/oracle-mode-spec.md` v1.0
+**[SPEC-003]** `batuta/docs/specifications/testing-quality-ecosystem-spec.md` v1.0
+
+---
+
+**Document Status**: Draft v2.8 - Awaiting Review
 
 **Version History**:
 - v1.0.0 (2026-01-24): Initial specification (CB-050, CB-060)
@@ -5837,9 +6259,11 @@ Found 2 dead code items:
 - v2.5.0 (2026-02-01): Coverage enforcement for pmat work (95% overall, 95% per-file, lint gate)
 - v2.6.0 (2026-02-01): SATD and dead code zero-tolerance enforcement for pmat work
 - v2.7.0 (2026-02-01): O(1) completion - read cached metrics instead of running commands
+- v2.8.0 (2026-02-01): Batuta Oracle insights - Three-Layer Architecture, Muda Waste, Reproducibility, Golden Trace, EDD
 
 **Next Steps**:
 1. Review by project lead
-2. Approval of work tickets (35+ total)
-3. Sprint planning for Phase 1-7
+2. Approval of work tickets (40+ total)
+3. Sprint planning for Phase 1-8
 4. Validate against sovereign stack repos (trueno, aprender, realizar, batuta)
+5. Run `batuta oracle --rag-index` to index pmat docs for oracle integration
