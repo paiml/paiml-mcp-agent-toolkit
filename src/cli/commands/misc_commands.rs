@@ -327,6 +327,38 @@ pub enum ComplyCommands {
         #[arg(short = 'o', long = "output")]
         output: Option<PathBuf>,
     },
+
+    /// Layer 2 (Genchi Genbutsu): Evidence-based review checklist (COMPLY-045)
+    /// Generates a reviewer checklist with reproducibility, hypothesis, and trace evidence.
+    Review {
+        /// Project path (defaults to current directory)
+        #[arg(short = 'p', long = "path", default_value = ".")]
+        path: PathBuf,
+
+        /// Output format
+        #[arg(short = 'f', long = "format", value_enum, default_value = "markdown")]
+        format: ComplyOutputFormat,
+
+        /// Write output to file
+        #[arg(short = 'o', long = "output")]
+        output: Option<PathBuf>,
+    },
+
+    /// Layer 3 (Governance): Generate audit artifact with sovereign trail (COMPLY-045)
+    /// Requires clean git state. Produces signed compliance evidence.
+    Audit {
+        /// Project path (defaults to current directory)
+        #[arg(short = 'p', long = "path", default_value = ".")]
+        path: PathBuf,
+
+        /// Output format
+        #[arg(short = 'f', long = "format", value_enum, default_value = "json")]
+        format: ComplyOutputFormat,
+
+        /// Write output to file
+        #[arg(short = 'o', long = "output")]
+        output: Option<PathBuf>,
+    },
 }
 
 /// Comply output formats

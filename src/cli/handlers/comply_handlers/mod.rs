@@ -11,6 +11,9 @@ pub mod muda_handlers;
 // CB-301/CB-302: Reproducibility & Golden Trace (COMPLY-041/042)
 pub mod reproducibility_handlers;
 
+// CB-303: Equation-Driven Development (COMPLY-043)
+pub mod edd_handlers;
+
 #[cfg(test)]
 #[path = "comply_handlers_tests.rs"]
 mod tests;

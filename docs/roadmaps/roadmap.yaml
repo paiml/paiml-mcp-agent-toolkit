@@ -1349,3 +1349,43 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: PMAT-466
+  github_issue: null
+  item_type: task
+  title: 'COMPLY-043: Implement CB-303 EDD Compliance'
+  status: completed
+  priority: low
+  assigned_to: null
+  created: 2026-02-01T16:00:00+00:00
+  updated: 2026-02-01T16:00:00+00:00
+  spec: docs/specifications/improve-pmat-comply.md
+  acceptance_criteria:
+  - Detect simulation projects (simular/trueno-sim deps)
+  - Scan pub fn for LaTeX math notation in doc comments
+  - Report EDD compliance percentage
+  - Integrates with pmat comply check as CB-303
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-467
+  github_issue: null
+  item_type: task
+  title: 'COMPLY-045: Implement three-layer CLI (review, audit)'
+  status: completed
+  priority: high
+  assigned_to: null
+  created: 2026-02-01T16:00:00+00:00
+  updated: 2026-02-01T16:00:00+00:00
+  spec: docs/specifications/improve-pmat-comply.md
+  acceptance_criteria:
+  - Layer 2 (review) generates evidence-based reviewer checklist
+  - Layer 3 (audit) generates governance artifact with sovereign trail
+  - Audit requires clean git state
+  - Both support text, json, markdown output formats
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null

@@ -369,6 +369,14 @@ fn default_checks() -> HashMap<String, CheckConfig> {
         options: HashMap::new(),
     });
 
+    // CB-303: EDD Compliance (COMPLY-043)
+    checks.insert("cb-303".to_string(), CheckConfig {
+        enabled: true,
+        severity: CheckSeverity::Warning,
+        threshold: Some(80.0), // Minimum EDD compliance percentage
+        options: HashMap::new(),
+    });
+
     checks
 }
 
