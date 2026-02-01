@@ -24,7 +24,7 @@ pub struct TDGScore {
     pub confidence: f64,
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Default)]
 pub struct TDGComponents {
     /// Complexity contribution (cognitive + cyclomatic)
     pub complexity: f64,
@@ -40,6 +40,11 @@ pub struct TDGComponents {
 
     /// Code duplication factor
     pub duplication: f64,
+
+    /// Dead code percentage (CB-128: 6th TDG dimension)
+    /// 0.0 = no dead code, 5.0 = severe dead code burden
+    #[serde(default)]
+    pub dead_code: f64,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
@@ -81,10 +86,10 @@ impl TDGSeverity {
 /// Configuration for TDG calculation
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TDGConfig {
-    /// Weight for complexity component (default: 0.30)
+    /// Weight for complexity component (default: 0.25, was 0.30 pre-CB-128)
     pub complexity_weight: f64,
 
-    /// Weight for churn component (default: 0.35)
+    /// Weight for churn component (default: 0.20, was 0.35 pre-CB-128)
     pub churn_weight: f64,
 
     /// Weight for coupling component (default: 0.15)
@@ -96,6 +101,11 @@ pub struct TDGConfig {
     /// Weight for duplication component (default: 0.10)
     pub duplication_weight: f64,
 
+    /// Weight for dead code component (default: 0.20, CB-128 6th dimension)
+    /// High weight because dead code is pure waste
+    #[serde(default = "default_dead_code_weight")]
+    pub dead_code_weight: f64,
+
     /// Threshold for critical severity (default: 2.5)
     pub critical_threshold: f64,
 
@@ -103,14 +113,21 @@ pub struct TDGConfig {
     pub warning_threshold: f64,
 }
 
+fn default_dead_code_weight() -> f64 {
+    0.20
+}
+
 impl Default for TDGConfig {
     fn default() -> Self {
         Self {
-            complexity_weight: 0.30,
-            churn_weight: 0.35,
+            // CB-128: Rebalanced weights to add dead_code component
+            // Total still sums to 1.0
+            complexity_weight: 0.25,  // Was 0.30
+            churn_weight: 0.20,       // Was 0.35
             coupling_weight: 0.15,
             domain_risk_weight: 0.10,
             duplication_weight: 0.10,
+            dead_code_weight: 0.20,   // NEW: CB-128 6th dimension
             critical_threshold: 2.5,
             warning_threshold: 1.5,
         }
@@ -253,6 +270,7 @@ mod property_tests {
             coupling in 0.0..5.0,
             domain_risk in 0.0..5.0,
             duplication in 0.0..5.0,
+            dead_code in 0.0..5.0,
             percentile in 0.0..100.0,
             confidence in 0.0..1.0
         ) -> TDGScore {
@@ -264,6 +282,7 @@ mod property_tests {
                     coupling,
                     domain_risk,
                     duplication,
+                    dead_code,
                 },
                 severity: if value > 2.5 { TDGSeverity::Critical }
                          else if value > 1.5 { TDGSeverity::Warning }
@@ -287,6 +306,7 @@ mod property_tests {
             prop_assert!((score.components.coupling - deserialized.components.coupling).abs() < EPSILON);
             prop_assert!((score.components.domain_risk - deserialized.components.domain_risk).abs() < EPSILON);
             prop_assert!((score.components.duplication - deserialized.components.duplication).abs() < EPSILON);
+            prop_assert!((score.components.dead_code - deserialized.components.dead_code).abs() < EPSILON);
             prop_assert_eq!(score.severity, deserialized.severity);
             prop_assert!((score.percentile - deserialized.percentile).abs() < EPSILON);
             prop_assert!((score.confidence - deserialized.confidence).abs() < EPSILON);
@@ -318,6 +338,7 @@ mod property_tests {
             prop_assert!(score.components.coupling >= 0.0);
             prop_assert!(score.components.domain_risk >= 0.0);
             prop_assert!(score.components.duplication >= 0.0);
+            prop_assert!(score.components.dead_code >= 0.0);
         }
 
 
@@ -357,7 +378,8 @@ mod tests {
             + config.churn_weight
             + config.coupling_weight
             + config.domain_risk_weight
-            + config.duplication_weight;
+            + config.duplication_weight
+            + config.dead_code_weight;  // CB-128: 6th dimension
 
         // Weights should sum to 1.0
         assert!((total_weight - 1.0).abs() < f64::EPSILON);
@@ -395,6 +417,7 @@ mod new_tests {
             coupling: 0.3,
             domain_risk: 0.2,
             duplication: 0.4,
+            dead_code: 0.1,  // CB-128: 6th dimension
         };
 
         let score = TDGScore {
@@ -407,6 +430,7 @@ mod new_tests {
 
         assert_eq!(score.value, 3.2);
         assert_eq!(score.components.complexity, 1.5);
+        assert_eq!(score.components.dead_code, 0.1);
         assert_eq!(score.severity, TDGSeverity::Warning);
         assert_eq!(score.percentile, 75.0);
         assert_eq!(score.confidence, 0.9);
@@ -431,6 +455,7 @@ mod new_tests {
             coupling: 3.0,
             domain_risk: 4.0,
             duplication: 5.0,
+            dead_code: 0.5,
         };
 
         let comp2 = TDGComponents {
@@ -439,6 +464,7 @@ mod new_tests {
             coupling: 3.0,
             domain_risk: 4.0,
             duplication: 5.0,
+            dead_code: 0.5,
         };
 
         assert_eq!(comp1, comp2);
@@ -492,6 +518,7 @@ mod new_tests {
                     coupling: 0.4,
                     domain_risk: 0.3,
                     duplication: 0.5,
+                    dead_code: 0.0,
                 },
                 severity: TDGSeverity::Warning,
                 percentile: 75.0,
@@ -565,17 +592,19 @@ mod new_tests {
     #[test]
     fn test_tdg_config() {
         let config = TDGConfig {
-            complexity_weight: 0.30,
-            churn_weight: 0.35,
+            complexity_weight: 0.25,
+            churn_weight: 0.20,
             coupling_weight: 0.15,
             domain_risk_weight: 0.10,
             duplication_weight: 0.10,
+            dead_code_weight: 0.20,  // CB-128: 6th dimension
             critical_threshold: 2.5,
             warning_threshold: 1.5,
         };
 
-        assert_eq!(config.complexity_weight, 0.30);
-        assert_eq!(config.churn_weight, 0.35);
+        assert_eq!(config.complexity_weight, 0.25);
+        assert_eq!(config.churn_weight, 0.20);
+        assert_eq!(config.dead_code_weight, 0.20);
         assert_eq!(config.critical_threshold, 2.5);
         assert_eq!(config.warning_threshold, 1.5);
     }
@@ -635,6 +664,7 @@ mod new_tests {
                 coupling: 3.3,
                 domain_risk: 4.4,
                 duplication: 5.5,
+                dead_code: 0.6,
             },
             severity: TDGSeverity::Critical,
             percentile: 90.0,

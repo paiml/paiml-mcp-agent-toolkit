@@ -862,6 +862,7 @@ impl DeepContextAnalyzer {
                         coupling: 0.5,
                         domain_risk: 0.5,
                         duplication: 0.5,
+                        dead_code: 0.0,  // CB-128: 6th TDG dimension
                     },
                     severity: TDGSeverity::Normal,
                     percentile: 50.0,

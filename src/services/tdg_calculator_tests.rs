@@ -175,6 +175,7 @@ mod tests {
             coupling: 3.0,
             domain_risk: 1.0,
             duplication: 0.5,
+            dead_code: 0.0,
         };
         assert_eq!(components.complexity, 2.5);
         assert_eq!(components.churn, 1.5);
@@ -202,6 +203,7 @@ mod tests {
             coupling: 5.0,
             domain_risk: 5.0,
             duplication: 5.0,
+            dead_code: 0.0,
         };
         let result_no_prov = calc.calculate_weighted_tdg(&components, 0.0);
         let result_with_prov = calc.calculate_weighted_tdg(&components, 1.0);
@@ -218,6 +220,7 @@ mod tests {
             coupling: 10.0,
             domain_risk: 10.0,
             duplication: 10.0,
+            dead_code: 0.0,
         };
         let result = calc.calculate_weighted_tdg(&components, 0.0);
         assert!(result <= 5.0, "TDG should be clamped to 5.0");
@@ -234,6 +237,7 @@ mod tests {
             coupling: 1.0,
             domain_risk: 0.5,
             duplication: 0.3,
+            dead_code: 0.0,
         };
         let confidence = calc.calculate_confidence(&components);
         assert_eq!(confidence, 1.0, "Full data should have 100% confidence");
@@ -248,6 +252,7 @@ mod tests {
             coupling: 1.0,
             domain_risk: 0.5,
             duplication: 0.3,
+            dead_code: 0.0,
         };
         let confidence = calc.calculate_confidence(&components);
         assert!(confidence < 1.0, "Missing churn should reduce confidence");
@@ -263,6 +268,7 @@ mod tests {
             coupling: 0.0,
             domain_risk: 0.0,
             duplication: 0.0,
+            dead_code: 0.0,
         };
         let confidence = calc.calculate_confidence(&components);
         // 0.8 * 0.9 * 0.95 = 0.684
@@ -357,6 +363,7 @@ mod tests {
             coupling: 1.0,
             domain_risk: 1.0,
             duplication: 1.0,
+            dead_code: 0.0,
         };
         let factor = calc.identify_primary_factor(&components);
         assert_eq!(factor, "High Complexity");
@@ -371,6 +378,7 @@ mod tests {
             coupling: 1.0,
             domain_risk: 1.0,
             duplication: 1.0,
+            dead_code: 0.0,
         };
         let factor = calc.identify_primary_factor(&components);
         assert_eq!(factor, "Frequent Changes");
@@ -385,6 +393,7 @@ mod tests {
             coupling: 5.0,
             domain_risk: 1.0,
             duplication: 1.0,
+            dead_code: 0.0,
         };
         let factor = calc.identify_primary_factor(&components);
         assert_eq!(factor, "High Coupling");
@@ -399,6 +408,7 @@ mod tests {
             coupling: 1.0,
             domain_risk: 5.0,
             duplication: 1.0,
+            dead_code: 0.0,
         };
         let factor = calc.identify_primary_factor(&components);
         assert_eq!(factor, "Domain Risk");
@@ -413,6 +423,7 @@ mod tests {
             coupling: 1.0,
             domain_risk: 1.0,
             duplication: 5.0,
+            dead_code: 0.0,
         };
         let factor = calc.identify_primary_factor(&components);
         assert_eq!(factor, "Code Duplication");
@@ -468,6 +479,7 @@ mod tests {
                 coupling: 1.0,
                 domain_risk: 0.5,
                 duplication: 0.2,
+            dead_code: 0.0,
             },
             severity: TDGSeverity::Normal,
             percentile: 50.0,
@@ -495,6 +507,7 @@ mod tests {
                 coupling: 3.5,
                 domain_risk: 2.0,
                 duplication: 1.5,
+            dead_code: 0.0,
             },
             severity: TDGSeverity::Critical,
             percentile: 95.0,

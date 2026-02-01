@@ -161,12 +161,15 @@ impl TDGCalculator {
         let domain_risk = self.calculate_domain_risk(path).await?;
 
         // Calculate weighted TDG value
+        // CB-128: dead_code component added but set to 0.0 for now
+        // Full integration requires calling CargoDeadCodeAnalyzer
         let components = TDGComponents {
             complexity,
             churn,
             coupling,
             domain_risk,
             duplication,
+            dead_code: 0.0,  // TODO(CB-128): Integrate with CargoDeadCodeAnalyzer
         };
 
         let value = self.calculate_weighted_tdg(&components, provability);
@@ -986,17 +989,8 @@ impl Clone for TDGCalculator {
     }
 }
 
-impl Default for TDGComponents {
-    fn default() -> Self {
-        Self {
-            complexity: 0.0,
-            churn: 0.0,
-            coupling: 0.0,
-            domain_risk: 0.0,
-            duplication: 0.0,
-        }
-    }
-}
+// Default implementation moved to models/tdg.rs via #[derive(Default)]
+// CB-128: TDGComponents now has 6 fields including dead_code
 
 // Tests extracted to tdg_calculator_tests.rs for file health compliance (CB-040)
 #[cfg(test)]
