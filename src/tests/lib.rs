@@ -71,6 +71,9 @@ mod coverage_boost_onboarding;
 // Coverage boost tests - unified_quality/performance module
 mod coverage_boost_performance;
 
+// Coverage boost tests - services/perfection_score module
+mod coverage_boost_perfection_score;
+
 // Include protocol service tests for coverage (requires unified-protocol feature)
 #[cfg(feature = "unified-protocol")]
 mod protocol_service_tests;
