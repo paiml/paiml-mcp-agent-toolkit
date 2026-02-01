@@ -59,7 +59,7 @@ proptest = "1.6"
 # Migration to aprender complete (Sprint 45)
 # Graph algorithms enhanced (Sprint 46) - added 8 new centrality & structural stats
 # See: docs/specifications/aprender-ml-integration.md
-aprender = "0.24.1"  # PAIML next-gen ML (TDG 94.1/100, zero deps, SafeTensors support, text vectorization, LDA topic modeling)
+aprender = "0.25.1"  # PAIML next-gen ML (TDG 94.1/100, zero deps, SafeTensors support, text vectorization, LDA topic modeling)
 
 # High-Performance Compute (SIMD/GPU)
 trueno = { version = "0.14.0", optional = true }

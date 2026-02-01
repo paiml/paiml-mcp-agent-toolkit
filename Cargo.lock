@@ -293,6 +293,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "aprender"
+version = "0.25.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f3c85734a8105872bdc276d1271b93eadf2954e5d9016d92e7c8421292f0a5f6"
+dependencies = [
+ "bincode",
+ "getrandom 0.2.17",
+ "memmap2",
+ "minijinja",
+ "rand 0.8.5",
+ "rand_chacha 0.3.1",
+ "rayon",
+ "rmp-serde",
+ "serde",
+ "serde_json",
+ "trueno 0.14.4",
+]
+
+[[package]]
 name = "ar_archive_writer"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6040,7 +6059,7 @@ dependencies = [
  "actix",
  "actix-rt",
  "anyhow",
- "aprender 0.24.1",
+ "aprender 0.25.1",
  "arrow 53.4.1",
  "assert_cmd",
  "async-raft",
@@ -6148,7 +6167,7 @@ dependencies = [
  "tree-sitter-python",
  "tree-sitter-rust",
  "tree-sitter-typescript",
- "trueno 0.14.0",
+ "trueno 0.14.4",
  "trueno-db",
  "trueno-graph",
  "trueno-rag",
@@ -9089,9 +9108,9 @@ dependencies = [
 
 [[package]]
 name = "trueno"
-version = "0.14.0"
+version = "0.14.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f3c9d1ede5124b7f57a8fe25cec3e92cf518f1ab5156c05d6aa321eb7df0f0b4"
+checksum = "35d2c230ebde5da651c4dc89c32bfe0d277f4e36750a5849d2e69af50b646211"
 dependencies = [
  "anyhow",
  "bytemuck",
