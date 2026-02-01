@@ -1,6 +1,12 @@
 ///! Popperian falsification audit retest - Vector 1.1 (Clone Army) and Vector 1.2 (Empty Shell)
 use crate::services::lightweight_provability_analyzer::{FunctionId, LightweightProvabilityAnalyzer};
 
+/// Get project root path for reliable test file resolution
+fn project_file(relative: &str) -> String {
+    let manifest = env!("CARGO_MANIFEST_DIR");
+    format!("{manifest}/{relative}")
+}
+
 /// Vector 1.1: Clone Army - verify 5 real project functions produce spread > 0.01
 #[tokio::test]
 async fn audit_retest_v1_1_clone_army_spread() {
@@ -10,31 +16,31 @@ async fn audit_retest_v1_1_clone_army_spread() {
     let functions = vec![
         // Pure fn: compute_confidence (no I/O, no unsafe, no unwrap)
         FunctionId {
-            file_path: "src/services/lightweight_provability_analyzer.rs".to_string(),
+            file_path: project_file("src/services/lightweight_provability_analyzer.rs"),
             function_name: "compute_confidence".to_string(),
-            line_number: 499,
+            line_number: 503,
         },
         // I/O fn: read_function_source (reads files)
         FunctionId {
-            file_path: "src/services/lightweight_provability_analyzer.rs".to_string(),
+            file_path: project_file("src/services/lightweight_provability_analyzer.rs"),
             function_name: "read_function_source".to_string(),
             line_number: 391,
         },
         // Async fn: start_dashboard_server (async, network I/O)
         FunctionId {
-            file_path: "src/tdg/web_dashboard.rs".to_string(),
+            file_path: project_file("src/tdg/web_dashboard.rs"),
             function_name: "start_dashboard_server".to_string(),
             line_number: 429,
         },
         // Fn with .expect(): normalize_identifiers (uses regex .expect())
         FunctionId {
-            file_path: "src/services/similarity.rs".to_string(),
+            file_path: project_file("src/services/similarity.rs"),
             function_name: "normalize_identifiers".to_string(),
             line_number: 360,
         },
         // Constructor: new() on LightweightProvabilityAnalyzer
         FunctionId {
-            file_path: "src/services/lightweight_provability_analyzer.rs".to_string(),
+            file_path: project_file("src/services/lightweight_provability_analyzer.rs"),
             function_name: "new".to_string(),
             line_number: 288,
         },

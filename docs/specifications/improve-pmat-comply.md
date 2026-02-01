@@ -2001,6 +2001,94 @@ pub fn detect_cb130_pii(project_path: &Path) -> Vec<CbViolation> {
 | CB-130-D (Email) | Warning | Privacy risk, potential spam target |
 | CB-130-E (IP) | Warning | Disclosure of internal infrastructure |
 
+### 3.21 CB-304: Dead Code Percentage Hardening (v2.8.3)
+
+**Problem**: CB-304 was bypassed by two adversarial vectors discovered via Popperian falsification audit:
+
+1. **Block Comment Blindness**: Code inside `/* ... */` block comments was invisible to the dead line counter, which only detected `//` line comments.
+2. **Macro Rules Inflation**: `macro_rules!` blocks containing `fn` declarations inflated the total item count denominator, diluting the dead code percentage toward 0%.
+
+**Fix 1 — Block Comment Detection**:
+
+```rust
+/// Count lines inside `/* ... */` block comments that look like code.
+fn count_block_comment_code_lines(lines: &[&str]) -> usize {
+    // Track in_block state, accumulate lines with code markers
+    // Only count blocks >= 2 lines (skip license headers, doc comments)
+    // Code markers: "fn ", "let ", "if ", "return ", ";", "struct ", "impl ", "pub "
+}
+```
+
+**Fix 2 — Macro Rules Exclusion**:
+
+```rust
+/// Track brace depth inside macro_rules! blocks.
+/// Returns Some(depth) while inside a macro, None when outside.
+fn update_macro_depth(trimmed: &str, current: Option<i32>) -> Option<i32>
+
+/// count_dead_items now calls update_macro_depth per line,
+/// skipping all content inside macro_rules! bodies.
+```
+
+**Rationale**: `macro_rules!` defines template code that only exists when invoked. An uninvoked macro's inner `fn` declarations never compile into the binary, so counting them inflates the denominator without corresponding dead items.
+
+### 3.22 Provability Empty Source Guard (v2.8.3)
+
+**Problem**: The lightweight provability analyzer scored empty or trivially empty functions as 1.0 (perfect provability). This is unsound — absence of hazards (no unsafe, no unwrap, no I/O) does not imply provability when there is nothing to prove.
+
+**Attack Vectors**:
+- **Empty Shell**: 50 empty `fn f() {}` functions each scored 1.0
+- **Nonexistent File**: FunctionIds pointing to missing files scored 1.0 (empty string → no hazards detected)
+
+**Fix**: Guard at top of `analyze_source_patterns`:
+
+```rust
+// Guard: empty/trivial source or empty function body → insufficient evidence
+let body = source.split('{').nth(1).unwrap_or("");
+let has_statements = body.contains(';') || body.contains("let ")
+    || body.contains("return ") || body.contains("if ")
+    || body.contains("match ") || body.contains("for ");
+if source.trim().is_empty() || source.trim().len() < 5 || !has_statements {
+    return PropertyDomain {
+        nullability: NullabilityLattice::MaybeNull,
+        bounds: IntervalLattice { lower: None, upper: None },
+        aliasing: AliasLattice::MayAlias,
+        purity: PurityLattice::Top,
+    };
+}
+```
+
+This produces a confidence score of 0.20 (low) for empty functions, correctly reflecting insufficient evidence.
+
+### 3.23 Muda Waste Score Weight Specification (v2.8.3)
+
+**Problem**: Inventory (SATD) weight was 10%, allowing crates with 500+ stale TODO/FIXME/HACK markers to score 14/100 ("Lean") — falsely passing quality gates.
+
+**Updated Weight Distribution**:
+
+| Waste Type | Weight | Rationale |
+|------------|--------|-----------|
+| **Defects** | 25% | Bugs requiring rework — highest direct cost |
+| **Inventory** | 20% | Stale SATD accumulation — primary signal of unmaintained code |
+| **Over-processing** | 15% | Overcomplicated algorithms |
+| **Overproduction** | 15% | Dead code, unused features |
+| **Waiting** | 15% | Slow tests blocking CI |
+| **Motion** | 5% | Developer context switching |
+| **Transport** | 5% | Excessive data copying |
+
+**Formula**:
+```rust
+let total_score = (defects * 0.25)
+    + (inventory * 0.20)
+    + (over_processing * 0.15)
+    + (overproduction * 0.15)
+    + (waiting * 0.15)
+    + (motion * 0.05)
+    + (transport * 0.05);
+```
+
+**Evidence**: With 500 TODOs, Inventory scores 100/100 → contributes 20 points. Previous 10% weight contributed only 10 points, masking the waste.
+
 ---
 
 ## 4. Work Tickets
@@ -4797,6 +4885,33 @@ mod cb128_falsification {
 }
 ```
 
+### 5.22 Popperian Adversarial Audit — CB-304/Provability/Muda (v2.8.3)
+
+Five adversarial attack vectors were executed against the comply checks to discover bypass conditions:
+
+| Vector | Attack | Target | Result | Fix |
+|--------|--------|--------|--------|-----|
+| **1.1** Clone Army | 5 identical-profile functions | Provability | **SURVIVED** (spread=0.4750) | N/A |
+| **1.2** Empty Shell | 50 empty `fn f() {}` | Provability | **REFUTED → FIXED** | Empty source guard (§3.22) |
+| **2.1** Comment Camo | 40 fns inside `/* */` | CB-304 | **REFUTED → FIXED** | Block comment detection (§3.21) |
+| **2.2** Macro Mask | 20 fns inside `macro_rules!` | CB-304 | **REFUTED → FIXED** | Macro brace-depth exclusion (§3.21) |
+| **3.1** Perfect Garbage | 500 stale TODOs | CB-300 Muda | **REFUTED → FIXED** | Inventory weight 10%→20% (§3.23) |
+
+**Retest Results** (commit `56e67560`):
+
+```
+V1.1 Clone Army:   spread=0.4750 > 0.01                   PASS
+V1.2 Empty Shell:  avg=0.2000 < 0.5                        PASS (was 1.0)
+V2.1 Comment Camo: CB-304 dead=78.4% > 15%                 FAIL (correctly detected)
+V2.2 Macro Mask:   4 total items (not 24), dead=0.0%       PASS (macro fns excluded)
+V3.1 Garbage:      Muda=23.0/100 "Efficient"               PASS (was 14.0 "Lean")
+```
+
+**Falsification Tests Added** (`src/tests/audit_provability_retest.rs`):
+- `audit_retest_v1_1_clone_army_spread` — 5 real functions, spread > 0.01
+- `audit_retest_v1_2_empty_shell_low_score` — 50 empty functions, avg < 0.5
+- `audit_retest_v1_2_nonexistent_file` — 10 phantom FunctionIds, avg < 0.5
+
 ---
 
 ## 6. Implementation Plan
@@ -6068,20 +6183,28 @@ Adapted from Toyota Production System for `pmat comply` detection:
 | **Motion** | Developer context switching from flaky tests | CB-090 |
 | **Defects** | Bugs requiring rework | All CB checks |
 
-**Proposed Check (CB-300): Muda Waste Score**
+**Implemented Check (CB-300): Muda Waste Score**
 
 ```rust
 /// CB-300: Aggregate waste score for project health
+/// Weights: Defects 25%, Inventory 20%, Over-processing 15%,
+///          Overproduction 15%, Waiting 15%, Motion 5%, Transport 5%
 pub fn calculate_muda_score(project_path: &Path) -> MudaReport {
-    MudaReport {
-        overproduction: dead_code_percentage(project_path),    // CB-304
-        waiting: slow_test_count(project_path),                // CB-126
-        inventory: satd_count(project_path),                   // CB-050
-        defects: violation_count(project_path),                // All CB
-        total_muda_score: 0.0..100.0,  // Lower is better
-    }
+    let total_score = (defects * 0.25)
+        + (inventory * 0.20)         // SATD markers (elevated v2.8.3)
+        + (over_processing * 0.15)   // Complexity
+        + (overproduction * 0.15)    // Dead code (CB-304)
+        + (waiting * 0.15)           // Slow tests (CB-126)
+        + (motion * 0.05)            // Flaky tests
+        + (transport * 0.05);        // Clone density
+    // ...
 }
 ```
+
+**Weight Rationale** (v2.8.3 — Popperian audit correction):
+- Inventory elevated 10%→20%: 500 stale TODOs scored "Lean" at 10% weight, masking waste
+- Over-processing/Overproduction reduced 20%→15% each to balance the total to 100%
+- See §3.23 for full weight specification and evidence
 
 ### 9.3 Reproducibility Standards
 
@@ -6293,7 +6416,7 @@ Following Toyota's "Stop the Line" principle, any false positive must be:
 
 ---
 
-**Document Status**: Draft v2.9 - Awaiting Review
+**Document Status**: Draft v2.9.1 - Release Ready
 
 **Version History**:
 - v1.0.0 (2026-01-24): Initial specification (CB-050, CB-060)
@@ -6308,6 +6431,7 @@ Following Toyota's "Stop the Line" principle, any false positive must be:
 - v2.8.0 (2026-02-01): Batuta Oracle insights - Three-Layer Architecture, Muda Waste, Reproducibility, Golden Trace, EDD
 - v2.8.1 (2026-02-01): Fix violation output truncation - show ALL violations per check, not just first
 - v2.8.2 (2026-02-01): Defect fixes - Uniform provability score (avg 0.65) and CB-304 Dead Code Percentage enforcement
+- v2.8.3 (2026-02-01): Popperian adversarial audit — 4 bypass fixes (§3.21-3.23, §5.22)
 - v2.9.0 (2026-02-01): PII & Secret Detection (CB-130) added to comply checks
 
 **Next Steps**:
