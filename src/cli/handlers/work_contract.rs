@@ -187,6 +187,35 @@ impl WorkContract {
                 result: None,
                 override_info: None,
             },
+            // v2.6 comply spec additions
+            FalsifiableClaim {
+                hypothesis: "No new SATD markers (TODO/FIXME/HACK)".to_string(),
+                falsification_method: FalsificationMethod::SatdDetection,
+                evidence_required: EvidenceType::FileList(vec![]),
+                result: None,
+                override_info: None,
+            },
+            FalsifiableClaim {
+                hypothesis: "No new dead code introduced".to_string(),
+                falsification_method: FalsificationMethod::DeadCodeDetection,
+                evidence_required: EvidenceType::FileList(vec![]),
+                result: None,
+                override_info: None,
+            },
+            FalsifiableClaim {
+                hypothesis: "All files have >= 95% coverage".to_string(),
+                falsification_method: FalsificationMethod::PerFileCoverage,
+                evidence_required: EvidenceType::FileList(vec![]),
+                result: None,
+                override_info: None,
+            },
+            FalsifiableClaim {
+                hypothesis: "make lint passes".to_string(),
+                falsification_method: FalsificationMethod::LintPass,
+                evidence_required: EvidenceType::BooleanCheck(false),
+                result: None,
+                override_info: None,
+            },
         ]
     }
 
@@ -374,6 +403,9 @@ pub struct ContractThresholds {
     /// Minimum total coverage (absolute, not relative)
     pub min_coverage_pct: f64,
 
+    /// Minimum per-file coverage (v2.6 comply spec)
+    pub min_per_file_coverage_pct: f64,
+
     /// Maximum allowed TDG regression (0 = no regression)
     pub max_tdg_regression: f64,
 
@@ -394,12 +426,22 @@ pub struct ContractThresholds {
 
     /// Require roadmap update
     pub require_roadmap_update: bool,
+
+    /// Block on new SATD markers (v2.6 comply spec)
+    pub block_on_new_satd: bool,
+
+    /// Block on new dead code (v2.6 comply spec)
+    pub block_on_new_dead_code: bool,
+
+    /// Require lint to pass (v2.6 comply spec)
+    pub require_lint_pass: bool,
 }
 
 impl Default for ContractThresholds {
     fn default() -> Self {
         Self {
             min_coverage_pct: 95.0,
+            min_per_file_coverage_pct: 95.0,
             max_tdg_regression: 0.0,
             max_function_complexity: 20,
             max_file_lines: 500,
@@ -407,6 +449,9 @@ impl Default for ContractThresholds {
             require_github_sync: true,
             require_spec_update: true,
             require_roadmap_update: true,
+            block_on_new_satd: true,
+            block_on_new_dead_code: true,
+            require_lint_pass: true,
         }
     }
 }
@@ -727,6 +772,18 @@ pub enum FalsificationMethod {
 
     /// Try to find pmat-book validation failures (New in v1.2)
     BookValidation,
+
+    /// Try to find new SATD markers (TODO/FIXME/HACK) (New in v2.6 - comply spec)
+    SatdDetection,
+
+    /// Try to find new dead code (unreachable functions/modules) (New in v2.6 - comply spec)
+    DeadCodeDetection,
+
+    /// Try to find files below 95% coverage threshold (New in v2.6 - comply spec)
+    PerFileCoverage,
+
+    /// Try to find lint failures (make lint) (New in v2.6 - comply spec)
+    LintPass,
 }
 
 /// Evidence types for falsification
@@ -792,17 +849,22 @@ mod tests {
     fn test_contract_thresholds_default() {
         let thresholds = ContractThresholds::default();
         assert_eq!(thresholds.min_coverage_pct, 95.0);
+        assert_eq!(thresholds.min_per_file_coverage_pct, 95.0);
         assert_eq!(thresholds.max_tdg_regression, 0.0);
         assert_eq!(thresholds.max_function_complexity, 20);
         assert_eq!(thresholds.max_file_lines, 500);
         assert_eq!(thresholds.min_spec_score, 95);
         assert!(thresholds.require_github_sync);
+        // v2.6 comply spec additions
+        assert!(thresholds.block_on_new_satd);
+        assert!(thresholds.block_on_new_dead_code);
+        assert!(thresholds.require_lint_pass);
     }
 
     #[test]
     fn test_work_contract_default_claims() {
         let contract = WorkContract::new("test-item".to_string(), "abc123".to_string());
-        assert_eq!(contract.claims.len(), 13); // 13 Popperian falsification claims
+        assert_eq!(contract.claims.len(), 17); // 17 Popperian falsification claims (v2.6)
 
         // Verify all claim types are present
         let methods: Vec<_> = contract

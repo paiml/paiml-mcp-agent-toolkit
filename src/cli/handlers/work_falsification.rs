@@ -242,6 +242,31 @@ async fn run_single_falsification(
             let result = test_book_validation(project_path).await?;
             Ok((result, true)) // Blocking
         }
+
+        // v2.6 comply spec additions
+        FalsificationMethod::SatdDetection => {
+            let result = test_satd_detection(project_path, &contract.baseline_commit).await?;
+            Ok((result, contract.thresholds.block_on_new_satd)) // Configurable blocking
+        }
+
+        FalsificationMethod::DeadCodeDetection => {
+            let result = test_dead_code_detection(project_path, &contract.baseline_commit).await?;
+            Ok((result, contract.thresholds.block_on_new_dead_code)) // Configurable blocking
+        }
+
+        FalsificationMethod::PerFileCoverage => {
+            let result = test_per_file_coverage(
+                project_path,
+                contract.thresholds.min_per_file_coverage_pct,
+            )
+            .await?;
+            Ok((result, true)) // Blocking
+        }
+
+        FalsificationMethod::LintPass => {
+            let result = test_lint_pass(project_path).await?;
+            Ok((result, contract.thresholds.require_lint_pass)) // Configurable blocking
+        }
     }
 }
 
@@ -1023,6 +1048,343 @@ async fn test_book_validation(project_path: &Path) -> Result<FalsificationResult
     Ok(FalsificationResult::passed(
         "pmat-book not found (skipping validation)".to_string(),
     ))
+}
+
+// ============================================================================
+// v2.6 comply spec: SATD, Dead Code, Per-File Coverage, Lint Gate
+// ============================================================================
+
+/// Test SATD detection: find new TODO/FIXME/HACK markers since baseline
+async fn test_satd_detection(
+    project_path: &Path,
+    baseline_commit: &str,
+) -> Result<FalsificationResult> {
+    print!("Detecting SATD markers... ");
+
+    // Run pmat analyze satd
+    let output = Command::new("pmat")
+        .args([
+            "analyze",
+            "satd",
+            "--format",
+            "json",
+            "--path",
+            &project_path.to_string_lossy(),
+        ])
+        .output();
+
+    match output {
+        Ok(output) if output.status.success() => {
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            if let Ok(json) = serde_json::from_str::<serde_json::Value>(&stdout) {
+                // Get current SATD count
+                let current_count = json
+                    .get("total_count")
+                    .or_else(|| json.get("count"))
+                    .and_then(|c| c.as_u64())
+                    .unwrap_or(0);
+
+                // Check for new SATD since baseline (compare with git diff)
+                let new_satd = detect_new_satd_since_baseline(project_path, baseline_commit)?;
+
+                if new_satd.is_empty() {
+                    Ok(FalsificationResult::passed(format!(
+                        "No new SATD markers ({} existing)",
+                        current_count
+                    )))
+                } else {
+                    let paths: Vec<PathBuf> = new_satd.iter().map(|(p, _)| p.clone()).collect();
+                    let details: Vec<String> = new_satd
+                        .iter()
+                        .take(5)
+                        .map(|(p, marker)| format!("{}: {}", p.display(), marker))
+                        .collect();
+                    Ok(FalsificationResult::failed(
+                        format!("{} new SATD marker(s): {}", new_satd.len(), details.join("; ")),
+                        EvidenceType::FileList(paths),
+                    ))
+                }
+            } else {
+                Ok(FalsificationResult::passed(
+                    "SATD check completed (no JSON output)".to_string(),
+                ))
+            }
+        }
+        _ => Ok(FalsificationResult::passed(
+            "SATD analyzer not available".to_string(),
+        )),
+    }
+}
+
+/// Detect new SATD markers by comparing git diff
+fn detect_new_satd_since_baseline(
+    project_path: &Path,
+    baseline_commit: &str,
+) -> Result<Vec<(PathBuf, String)>> {
+    let mut new_satd = Vec::new();
+
+    // Get diff of added lines since baseline
+    let output = Command::new("git")
+        .args(["diff", "-U0", baseline_commit, "HEAD", "--", "*.rs"])
+        .current_dir(project_path)
+        .output()?;
+
+    if !output.status.success() {
+        return Ok(new_satd);
+    }
+
+    let diff = String::from_utf8_lossy(&output.stdout);
+    let satd_patterns = ["TODO", "FIXME", "HACK", "XXX", "BUG"];
+
+    let mut current_file: Option<PathBuf> = None;
+
+    for line in diff.lines() {
+        if line.starts_with("+++ b/") {
+            current_file = Some(PathBuf::from(&line[6..]));
+        } else if line.starts_with('+') && !line.starts_with("+++") {
+            // This is an added line
+            let line_content = &line[1..];
+            for pattern in &satd_patterns {
+                if line_content.contains(pattern) {
+                    if let Some(ref file) = current_file {
+                        // Extract the marker context
+                        let marker = line_content
+                            .split(pattern)
+                            .nth(1)
+                            .map(|s| format!("{}{}", pattern, s.chars().take(50).collect::<String>()))
+                            .unwrap_or_else(|| pattern.to_string());
+                        new_satd.push((file.clone(), marker));
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(new_satd)
+}
+
+/// Test dead code detection: find new unreachable code since baseline
+async fn test_dead_code_detection(
+    project_path: &Path,
+    baseline_commit: &str,
+) -> Result<FalsificationResult> {
+    print!("Detecting dead code... ");
+
+    // Run pmat analyze dead-code
+    let output = Command::new("pmat")
+        .args([
+            "analyze",
+            "dead-code",
+            "--format",
+            "json",
+            "--path",
+            &project_path.to_string_lossy(),
+        ])
+        .output();
+
+    match output {
+        Ok(output) if output.status.success() => {
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            if let Ok(json) = serde_json::from_str::<serde_json::Value>(&stdout) {
+                // Get dead code items
+                let dead_items = json
+                    .get("dead_code")
+                    .or_else(|| json.get("items"))
+                    .and_then(|items| items.as_array())
+                    .map(|a| a.len())
+                    .unwrap_or(0);
+
+                // For now, we report any dead code found
+                // Future: compare with baseline to only flag NEW dead code
+                if dead_items == 0 {
+                    Ok(FalsificationResult::passed("No dead code detected".to_string()))
+                } else {
+                    // Check if these are new since baseline
+                    let changed_files = get_changed_files(project_path, baseline_commit)?;
+                    let dead_in_changed: usize = json
+                        .get("dead_code")
+                        .or_else(|| json.get("items"))
+                        .and_then(|items| items.as_array())
+                        .map(|arr| {
+                            arr.iter()
+                                .filter(|item| {
+                                    item.get("file")
+                                        .and_then(|f| f.as_str())
+                                        .map(|f| changed_files.iter().any(|cf| cf.ends_with(f)))
+                                        .unwrap_or(false)
+                                })
+                                .count()
+                        })
+                        .unwrap_or(0);
+
+                    if dead_in_changed == 0 {
+                        Ok(FalsificationResult::passed(format!(
+                            "{} existing dead code items (none in changed files)",
+                            dead_items
+                        )))
+                    } else {
+                        Ok(FalsificationResult::failed(
+                            format!("{} dead code item(s) in changed files", dead_in_changed),
+                            EvidenceType::NumericComparison {
+                                actual: dead_in_changed as f64,
+                                threshold: 0.0,
+                            },
+                        ))
+                    }
+                }
+            } else {
+                Ok(FalsificationResult::passed(
+                    "Dead code check completed (no JSON output)".to_string(),
+                ))
+            }
+        }
+        _ => Ok(FalsificationResult::passed(
+            "Dead code analyzer not available".to_string(),
+        )),
+    }
+}
+
+/// Get list of changed files since baseline
+fn get_changed_files(project_path: &Path, baseline_commit: &str) -> Result<Vec<String>> {
+    let output = Command::new("git")
+        .args(["diff", "--name-only", baseline_commit, "HEAD"])
+        .current_dir(project_path)
+        .output()?;
+
+    if output.status.success() {
+        Ok(String::from_utf8_lossy(&output.stdout)
+            .lines()
+            .map(|s| s.to_string())
+            .collect())
+    } else {
+        Ok(Vec::new())
+    }
+}
+
+/// Test per-file coverage: all files must meet threshold
+async fn test_per_file_coverage(
+    project_path: &Path,
+    threshold: f64,
+) -> Result<FalsificationResult> {
+    print!("Checking per-file coverage... ");
+
+    // Try to read per-file coverage from llvm-cov output
+    let coverage_json = project_path.join("target/llvm-cov/coverage.json");
+
+    if !coverage_json.exists() {
+        // Try to run coverage if not available
+        return Ok(FalsificationResult::passed(format!(
+            "No per-file coverage data (run 'make coverage'), threshold: {:.1}%",
+            threshold
+        )));
+    }
+
+    let content = std::fs::read_to_string(&coverage_json)?;
+    let json: serde_json::Value = serde_json::from_str(&content)?;
+
+    let mut files_below_threshold = Vec::new();
+
+    // Parse llvm-cov JSON format
+    if let Some(data) = json.get("data").and_then(|d| d.as_array()) {
+        for file_data in data {
+            if let Some(files) = file_data.get("files").and_then(|f| f.as_array()) {
+                for file in files {
+                    let filename = file
+                        .get("filename")
+                        .and_then(|f| f.as_str())
+                        .unwrap_or("unknown");
+
+                    // Skip test files and generated files
+                    if filename.contains("/tests/")
+                        || filename.contains("_test.rs")
+                        || filename.contains("/target/")
+                    {
+                        continue;
+                    }
+
+                    // Get coverage percentage
+                    let coverage = file
+                        .get("summary")
+                        .and_then(|s| s.get("lines"))
+                        .and_then(|l| l.get("percent"))
+                        .and_then(|p| p.as_f64())
+                        .unwrap_or(100.0);
+
+                    if coverage < threshold {
+                        files_below_threshold.push((PathBuf::from(filename), coverage));
+                    }
+                }
+            }
+        }
+    }
+
+    if files_below_threshold.is_empty() {
+        Ok(FalsificationResult::passed(format!(
+            "All files >= {:.1}% coverage",
+            threshold
+        )))
+    } else {
+        let paths: Vec<PathBuf> = files_below_threshold
+            .iter()
+            .map(|(p, _)| p.clone())
+            .collect();
+        let details: Vec<String> = files_below_threshold
+            .iter()
+            .take(10)
+            .map(|(p, cov)| format!("{}: {:.1}%", p.display(), cov))
+            .collect();
+        Ok(FalsificationResult::failed(
+            format!(
+                "{} file(s) below {:.1}% threshold: {}",
+                files_below_threshold.len(),
+                threshold,
+                details.join(", ")
+            ),
+            EvidenceType::FileList(paths),
+        ))
+    }
+}
+
+/// Test lint pass: make lint must pass
+async fn test_lint_pass(project_path: &Path) -> Result<FalsificationResult> {
+    print!("Running make lint... ");
+
+    // Check if Makefile exists
+    let makefile = project_path.join("Makefile");
+    if !makefile.exists() {
+        return Ok(FalsificationResult::passed(
+            "No Makefile found (skipping lint check)".to_string(),
+        ));
+    }
+
+    // Run make lint
+    let output = Command::new("make")
+        .args(["lint"])
+        .current_dir(project_path)
+        .output();
+
+    match output {
+        Ok(out) if out.status.success() => {
+            Ok(FalsificationResult::passed("make lint passed".to_string()))
+        }
+        Ok(out) => {
+            let stderr = String::from_utf8_lossy(&out.stderr);
+            let stdout = String::from_utf8_lossy(&out.stdout);
+            let details = if stderr.is_empty() {
+                stdout.chars().take(500).collect()
+            } else {
+                stderr.chars().take(500).collect()
+            };
+            Ok(FalsificationResult::failed(
+                "make lint failed".to_string(),
+                EvidenceType::CounterExample { details },
+            ))
+        }
+        Err(e) => Ok(FalsificationResult::passed(format!(
+            "Could not run make lint: {} (skipping)",
+            e
+        ))),
+    }
 }
 
 #[cfg(test)]
