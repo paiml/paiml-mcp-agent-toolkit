@@ -794,7 +794,8 @@ mod integration_tests {
     #[test]
     fn test_suppression_scan_on_pmat_codebase() {
         // Get the actual project path (not target directory)
-        let project_path = std::env::current_dir().expect("Failed to get current dir");
+        // Use CARGO_MANIFEST_DIR which is set during compilation
+        let project_path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
 
         // Skip if we're not in the pmat project directory
         if !project_path.join("Cargo.toml").exists() {
