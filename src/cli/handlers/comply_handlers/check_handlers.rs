@@ -823,10 +823,10 @@ fn build_cb_result(all_issues: Vec<String>, critical_count: usize, warning_count
             name: "ComputeBrick Compliance".to_string(),
             status: CheckStatus::Fail,
             message: format!(
-                "{} critical, {} warnings: {}",
+                "{} critical, {} warnings:\n{}",
                 critical_count,
                 warning_count,
-                all_issues.first().unwrap_or(&"unknown".to_string())
+                format_violation_list(&all_issues),
             ),
             severity: Severity::Critical,
         }
@@ -835,9 +835,9 @@ fn build_cb_result(all_issues: Vec<String>, critical_count: usize, warning_count
             name: "ComputeBrick Compliance".to_string(),
             status: CheckStatus::Warn,
             message: format!(
-                "{} warnings detected: {}",
+                "{} warnings detected:\n{}",
                 warning_count,
-                all_issues.join("; ").chars().take(200).collect::<String>()
+                format_violation_list(&all_issues),
             ),
             severity: Severity::Warning,
         }
@@ -849,6 +849,14 @@ fn build_cb_result(all_issues: Vec<String>, critical_count: usize, warning_count
             severity: Severity::Info,
         }
     }
+}
+
+/// Format a list of violations for display (indented, one per line).
+fn format_violation_list(issues: &[String]) -> String {
+    issues.iter()
+        .map(|i| format!("    - {}", i))
+        .collect::<Vec<_>>()
+        .join("\n")
 }
 
 /// Validates:
@@ -965,10 +973,10 @@ fn check_oip_tarantula_patterns(project_path: &Path) -> ComplianceCheck {
             name: "OIP Tarantula Patterns (CB-120 to CB-124)".to_string(),
             status: CheckStatus::Warn,  // Advisory: doesn't block compliance
             message: format!(
-                "[Advisory] {} issues, {} warnings: {}",
+                "[Advisory] {} issues, {} warnings:\n{}",
                 critical_count,
                 warning_count,
-                all_issues.first().unwrap_or(&"unknown".to_string())
+                format_violation_list(&all_issues),
             ),
             severity: Severity::Warning,  // Non-blocking
         }
@@ -1039,11 +1047,11 @@ fn check_coverage_quality_patterns(project_path: &Path) -> ComplianceCheck {
             name: "Coverage Quality Patterns (CB-125 to CB-127)".to_string(),
             status: CheckStatus::Fail,
             message: format!(
-                "{} critical, {} errors, {} warnings: {}",
+                "{} critical, {} errors, {} warnings:\n{}",
                 critical_count,
                 error_count,
                 warning_count,
-                all_issues.first().unwrap_or(&"unknown".to_string())
+                format_violation_list(&all_issues),
             ),
             severity: Severity::Critical,
         }
@@ -1052,10 +1060,10 @@ fn check_coverage_quality_patterns(project_path: &Path) -> ComplianceCheck {
             name: "Coverage Quality Patterns (CB-125 to CB-127)".to_string(),
             status: CheckStatus::Fail,
             message: format!(
-                "{} errors, {} warnings: {}",
+                "{} errors, {} warnings:\n{}",
                 error_count,
                 warning_count,
-                all_issues.first().unwrap_or(&"unknown".to_string())
+                format_violation_list(&all_issues),
             ),
             severity: Severity::Error,
         }
@@ -1064,9 +1072,9 @@ fn check_coverage_quality_patterns(project_path: &Path) -> ComplianceCheck {
             name: "Coverage Quality Patterns (CB-125 to CB-127)".to_string(),
             status: CheckStatus::Warn,
             message: format!(
-                "{} warnings: {}",
+                "{} warnings:\n{}",
                 warning_count,
-                all_issues.first().unwrap_or(&"unknown".to_string())
+                format_violation_list(&all_issues),
             ),
             severity: Severity::Warning,
         }

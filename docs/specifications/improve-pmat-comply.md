@@ -6260,6 +6260,7 @@ Following Toyota's "Stop the Line" principle, any false positive must be:
 - v2.6.0 (2026-02-01): SATD and dead code zero-tolerance enforcement for pmat work
 - v2.7.0 (2026-02-01): O(1) completion - read cached metrics instead of running commands
 - v2.8.0 (2026-02-01): Batuta Oracle insights - Three-Layer Architecture, Muda Waste, Reproducibility, Golden Trace, EDD
+- v2.8.1 (2026-02-01): Fix violation output truncation - show ALL violations per check, not just first
 
 **Next Steps**:
 1. Review by project lead
