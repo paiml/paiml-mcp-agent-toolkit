@@ -44,11 +44,11 @@ SCRIPTS_DIR = scripts
 # External tool runners: git_analysis, parallel_git, cargo_dead_code, clippy_fix
 # Coverage exclusions: ONLY binary entry points per CB-125 (Google TAP 20% rule)
 # Legitimate exclusions (non-library code):
-# - Test files: /tests/, _tests.rs (--lib flag covers most)
+# - Test files: /tests/, _tests.rs, _test.rs (--lib flag covers most)
 # - Binary entry points: main.rs, bin/
 # - Benchmarks/examples: benches/, examples/, fixtures/
 # CB-125 limit: ≤10 patterns to avoid coverage gaming
-COVERAGE_EXCLUDE := --ignore-filename-regex='(/tests/|_tests\\.rs|/benches/|/examples/|fixtures/|main\\.rs|bin/)'
+COVERAGE_EXCLUDE := --ignore-filename-regex='(/tests/|_tests\\.rs|_test\\.rs|/benches/|/examples/|fixtures/|main\\.rs|bin/)'
 
 # Default target: format and build all projects
 all: format build

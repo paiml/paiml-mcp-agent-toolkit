@@ -323,8 +323,10 @@ mod c_tests {
     #[test]
     fn test_c_byte_pos_to_line_third_line() {
         let content_lines = vec!["first line", "second line", "third line"];
-        // First line is 10 + 1, second line is 11 + 1 = 22
-        let line = CAstStrategy::byte_pos_to_line(22, &content_lines);
+        // Line 1 = bytes 0-10 (10 chars + newline = 11 bytes)
+        // Line 2 = bytes 11-22 (11 chars + newline = 12 bytes)
+        // Line 3 starts at byte 23
+        let line = CAstStrategy::byte_pos_to_line(23, &content_lines);
         assert_eq!(line, 3);
     }
 

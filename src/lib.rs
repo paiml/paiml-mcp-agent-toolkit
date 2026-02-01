@@ -111,6 +111,8 @@ pub mod agent; // Claude Code Agent Mode implementation
 pub mod agents; // Agent system with Actix actors
 pub mod agents_md; // AGENTS.md integration for AI agent guidance
 pub mod ast; // Unified AST module for all language parsing
+// Feature-gated: Not ready for production use (0% coverage, no external usage)
+#[cfg(feature = "claude-integration")]
 pub mod claude_integration; // Claude Agent SDK integration with EXTREME TDD
 pub mod cli;
 pub mod contracts; // Uniform contracts across ALL interfaces (CLI, MCP, HTTP)

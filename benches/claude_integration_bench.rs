@@ -1,5 +1,8 @@
 // Performance benchmarks for Claude integration
 // Uses Criterion for statistical analysis
+// Feature-gated: only compiled when claude-integration feature is enabled
+
+#![cfg(feature = "claude-integration")]
 
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use pmat::claude_integration::{AnalysisResult, TwoTierCache};

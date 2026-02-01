@@ -525,13 +525,22 @@ impl CppAstStrategy {
 
     /// Extract type name from source text (struct, class, enum, etc.)
     fn extract_type_name(source_text: &str) -> Option<String> {
-        // Look for patterns like "class name", "struct name", "enum name"
+        // Look for patterns like "class name", "struct name", "enum class name"
         let words: Vec<&str> = source_text.split_whitespace().collect();
         if words.len() >= 2 {
-            // Usually the name follows the keyword (class/struct/enum/typedef)
+            // Handle "enum class Name" (C++11 scoped enum) - name follows "class"
+            if words.len() >= 3 && words[0] == "enum" && words[1] == "class" {
+                let raw_name = words[2].trim_end_matches('{');
+                // Handle templates: "Vector<T>" -> "Vector"
+                let name = raw_name.split('<').next().unwrap_or(raw_name);
+                return Some(name.to_string());
+            }
+            // Handle standard patterns: class/struct/enum/union/typedef Name
             for i in 0..words.len() - 1 {
                 if matches!(words[i], "class" | "struct" | "enum" | "union" | "typedef") {
-                    let name = words[i + 1].trim_end_matches('{').trim_end_matches('<');
+                    let raw_name = words[i + 1].trim_end_matches('{');
+                    // Handle templates: "Vector<T>" -> "Vector"
+                    let name = raw_name.split('<').next().unwrap_or(raw_name);
                     return Some(name.to_string());
                 }
             }

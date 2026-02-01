@@ -130,23 +130,6 @@ impl LanguageStrategy for PythonStrategy {
         ))
     }
 
-    // Below is legacy code (not currently used)
-    #[cfg(feature = "python-ast")]
-    async fn _parse_file_legacy(&self, _path: &Path, content: &str) -> Result<AstDag> {
-        // Use tree-sitter-python (modern approach)
-        let tree = self.parse_with_tree_sitter(content)?;
-        Ok(self.convert_tree_to_dag(&tree, content))
-
-        // Legacy rustpython-parser approach (commented out for now)
-        // #[cfg(all(feature = "python-ast", not(feature = "python-treesitter")))]
-        // {
-        //     let filename = path.display().to_string();
-        //     let module = ast::ModModule::parse(content, &filename)
-        //         .map_err(|e| anyhow::anyhow!("Python parse error: {e}"))?;
-        //     Ok(self.convert_to_dag(&module))
-        // }
-    }
-
     fn extract_imports(&self, ast: &AstDag) -> Vec<String> {
         let mut imports = Vec::new();
         for i in 0..ast.nodes.len() {

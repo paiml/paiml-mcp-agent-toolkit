@@ -2051,12 +2051,30 @@ pub struct TDGComponents {
 - Layer 2 detects: Additional unsuppressed dead code
 - Combined: 101 files flagged, 478 dead lines (~0.06% of codebase)
 
+**Coverage Impact Analysis** (2026-02-01):
+- Current coverage: 75.84% (374,810 total, 284,249 covered)
+- Target coverage: 95% (requires 71,320 additional covered lines)
+- Actions taken:
+  1. Feature-gated `claude_integration` module (2,646 lines, 0% coverage, unused)
+  2. Fixed C/C++ `extract_type_name` for enum class and template support
+  3. Fixed byte_pos_to_line test expectations
+  4. Added `_test.rs` to coverage exclusion patterns
+  5. Removed dead legacy Python parser code
+
+**Key uncovered modules identified**:
+| Module | Lines | Coverage | Action |
+|--------|-------|----------|--------|
+| cli/analysis_utilities/* | 12,089 | 0-90% | Need integration tests |
+| cli/command_dispatcher/* | 1,900 | 0-7% | CLI dispatch untested |
+| claude_integration/* | 2,646 | 0% | Feature-gated |
+
 **Remaining Work**:
 - [x] COMPLY-030: Compiler-based dead code detection
 - [x] COMPLY-031: TDG dead_code component integration
 - [ ] COMPLY-032: Setup/teardown calibration fixtures
 - [ ] COMPLY-033: Comply check integration with CB-128
 - [ ] COMPLY-034: Dogfood cleanup (remove dead code, measure coverage delta)
+- [ ] Coverage push to 95%: Add integration tests for CLI handlers
 
 ### 4.3 Detailed Tickets
 
