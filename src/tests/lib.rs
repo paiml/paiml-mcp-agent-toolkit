@@ -62,6 +62,9 @@ mod coverage_boost_defect_analyzers;
 // Coverage boost tests - unified_ast_types module
 mod coverage_boost_unified_ast;
 
+// Coverage boost tests - error module
+mod coverage_boost_error;
+
 // Include protocol service tests for coverage (requires unified-protocol feature)
 #[cfg(feature = "unified-protocol")]
 mod protocol_service_tests;
