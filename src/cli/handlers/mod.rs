@@ -4,6 +4,7 @@
 //! and grouping related functionality together.
 
 pub mod advanced_analysis_handlers;
+#[cfg(feature = "agent-daemon")]
 pub mod agent_handlers;
 pub mod analysis;
 pub mod analysis_handlers;
@@ -118,6 +119,7 @@ pub use advanced_analysis_handlers::{
     handle_analyze_comprehensive, handle_analyze_deep_context, handle_analyze_graph_metrics,
     handle_analyze_makefile, handle_analyze_symbol_table, handle_analyze_tdg,
 };
+#[cfg(feature = "agent-daemon")]
 pub use agent_handlers::handle_agent_command;
 pub use analysis_handlers::route_analyze_command;
 pub use brick_score_handlers::handle_brick_score; // PMAT-446: ComputeBrick profiling score

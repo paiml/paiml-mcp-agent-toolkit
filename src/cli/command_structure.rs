@@ -496,7 +496,12 @@ impl CommandExecutor {
                 .await
             }
 
+            #[cfg(feature = "agent-daemon")]
             Commands::Agent { command } => super::handlers::handle_agent_command(command).await,
+            #[cfg(not(feature = "agent-daemon"))]
+            Commands::Agent { .. } => {
+                anyhow::bail!("Agent daemon feature not enabled. Build with --features agent-daemon")
+            }
 
             Commands::Tdg {
                 path,

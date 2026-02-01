@@ -107,6 +107,8 @@
 //! // Server is ready to handle template requests
 //! ```
 
+// Feature-gated: Experimental module (0% coverage, CLI-only usage via agent_handlers)
+#[cfg(feature = "agent-daemon")]
 pub mod agent; // Claude Code Agent Mode implementation
 pub mod agents; // Agent system with Actix actors
 // Feature-gated: Experimental module (0% coverage, not production-ready)
