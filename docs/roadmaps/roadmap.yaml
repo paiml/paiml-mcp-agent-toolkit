@@ -926,11 +926,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: Unified Quality Annotation for Tickets
-  status: planned
+  status: inprogress
   priority: high
   assigned_to: null
   created: 2026-01-13T16:06:51Z
-  updated: 2026-01-13T16:06:51Z
+  updated: 2026-02-01T15:42:48.988282233+00:00
   spec: null
   acceptance_criteria:
   - 'Add pmat work annotate command: auto-links spec score, TDG, churn, coverage, and Tarantula fault data to tickets. Shows unified quality view per ticket.'

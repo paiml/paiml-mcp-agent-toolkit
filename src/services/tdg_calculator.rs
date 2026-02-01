@@ -135,6 +135,13 @@ impl TDGCalculator {
         }
     }
 
+    /// Set the project root for git-based analysis (churn, etc.)
+    #[must_use]
+    pub fn with_project_root(mut self, root: PathBuf) -> Self {
+        self.project_root = root;
+        self
+    }
+
     /// Calculate TDG score for a single file
     pub async fn calculate_file(&self, path: &Path) -> Result<TDGScore> {
         // Check cache first

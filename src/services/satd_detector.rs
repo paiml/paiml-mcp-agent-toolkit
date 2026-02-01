@@ -960,7 +960,7 @@ impl SATDDetector {
     }
 
     fn is_common_build_directory(&self, name: &str) -> bool {
-        ["target", "node_modules", "dist", "build", "__pycache__"].contains(&name)
+        ["target", "node_modules", "dist", "build", "__pycache__", "book"].contains(&name)
     }
 
     fn process_file(&self, path: &Path, files: &mut Vec<PathBuf>) {
@@ -1072,6 +1072,7 @@ impl SATDDetector {
         path_str.contains("/target/")
             || path_str.contains("/vendor/")
             || path_str.contains("/node_modules/")
+            || path_str.contains("/book/")
             || path_str.contains(".generated")
     }
 

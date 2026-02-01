@@ -393,6 +393,29 @@ pub struct DeadCodeAnalyzer {
     entry_points: Arc<RwLock<HashSet<NodeKey>>>,
 }
 
+/// Check if a function at the given line is behind a `#[cfg(...)]` attribute.
+/// Scans up to 5 lines above the function declaration for cfg attributes
+/// (e.g., `#[cfg(target_arch = "x86_64")]`, `#[cfg(feature = "simd")]`).
+fn is_cfg_gated(file_path: &str, fn_line: u32) -> bool {
+    let content = match std::fs::read_to_string(file_path) {
+        Ok(c) => c,
+        Err(_) => return false,
+    };
+    let lines: Vec<&str> = content.lines().collect();
+    let fn_idx = fn_line.saturating_sub(1) as usize;
+    // Look at up to 5 lines above the function for #[cfg(...)]
+    let start = fn_idx.saturating_sub(5);
+    for i in start..fn_idx {
+        if let Some(line) = lines.get(i) {
+            let trimmed = line.trim();
+            if trimmed.starts_with("#[cfg(") || trimmed.starts_with("#[cfg_attr(") {
+                return true;
+            }
+        }
+    }
+    false
+}
+
 impl DeadCodeAnalyzer {
     /// Default capacity for small to medium projects
     pub const DEFAULT_CAPACITY: usize = 100_000;
@@ -867,6 +890,11 @@ impl DeadCodeAnalyzer {
 
         for (qualified_name, (file_path, line)) in &all_functions {
             if !reachable.contains(qualified_name) {
+                // Skip functions behind #[cfg(...)] — these are conditionally compiled
+                // (e.g., SIMD intrinsics behind #[cfg(target_arch)]), not dead code.
+                if is_cfg_gated(file_path, *line) {
+                    continue;
+                }
                 let function_name = qualified_name
                     .split("::")
                     .last()

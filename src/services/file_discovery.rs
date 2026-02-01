@@ -334,7 +334,7 @@ impl ProjectFileDiscovery {
             let comp_str = component.as_os_str().to_string_lossy();
             match comp_str.as_ref() {
                 "target" | "build" | "dist" | "out" | ".next" | "__pycache__" | ".gradle"
-                | "node_modules" | ".cargo" | ".rustup" => return true,
+                | "node_modules" | ".cargo" | ".rustup" | "book" => return true,
                 _ => {}
             }
         }

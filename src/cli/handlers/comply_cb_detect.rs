@@ -1152,6 +1152,8 @@ struct CoverageTargetState {
     has_llvm_cov: bool,
     has_proptest_cases: bool,
     has_lib_flag: bool,
+    /// Whether this target actually runs cargo tests (vs. report/clean/alias/deno)
+    runs_cargo_tests: bool,
 }
 
 impl CoverageTargetState {
@@ -1162,6 +1164,7 @@ impl CoverageTargetState {
         self.has_llvm_cov = false;
         self.has_proptest_cases = false;
         self.has_lib_flag = false;
+        self.runs_cargo_tests = false;
     }
 
     fn update_from_line(&mut self, line: &str) {
@@ -1173,9 +1176,15 @@ impl CoverageTargetState {
         let is_echo = trimmed.starts_with("@echo") || trimmed.starts_with("echo");
         if !is_echo && line.contains("nextest") {
             self.has_nextest = true;
+            self.runs_cargo_tests = true;
         }
         if line.contains("llvm-cov") || line.contains("cargo-llvm-cov") {
             self.has_llvm_cov = true;
+        }
+        // Detect actual test execution: `cargo test` or `cargo llvm-cov test`
+        // Exclude report-only commands like `cargo llvm-cov report`
+        if !is_echo && (line.contains("cargo test") || line.contains("cargo llvm-cov test")) {
+            self.runs_cargo_tests = true;
         }
         if line.contains("PROPTEST_CASES") || line.contains("QUICKCHECK_TESTS") {
             self.has_proptest_cases = true;
@@ -1187,6 +1196,13 @@ impl CoverageTargetState {
 
     fn collect_violations(&self, file_path: &str) -> Vec<CbPatternViolation> {
         let mut violations = Vec::new();
+
+        // Only flag targets that actually run cargo tests.
+        // Skip: alias/delegate targets, report-only, clean, open, invalidate, deno targets.
+        if !self.runs_cargo_tests {
+            return violations;
+        }
+
         if self.has_nextest && self.has_llvm_cov {
             violations.push(CbPatternViolation {
                 pattern_id: "CB-127-A".to_string(),
@@ -1197,7 +1213,7 @@ impl CoverageTargetState {
                 severity: Severity::Error,
             });
         }
-        if !self.has_proptest_cases && self.line > 0 {
+        if !self.has_proptest_cases {
             violations.push(CbPatternViolation {
                 pattern_id: "CB-127-B".to_string(),
                 file: file_path.to_string(),
@@ -1206,7 +1222,7 @@ impl CoverageTargetState {
                 severity: Severity::Warning,
             });
         }
-        if !self.has_lib_flag && self.has_llvm_cov && self.line > 0 {
+        if !self.has_lib_flag && self.has_llvm_cov {
             violations.push(CbPatternViolation {
                 pattern_id: "CB-127-C".to_string(),
                 file: file_path.to_string(),

@@ -566,6 +566,7 @@ pub async fn handle_work_annotate(
         spec_score: None,
         files: vec![],
         avg_tdg: None,
+        file_tdg_scores: vec![],
         total_churn: None,
         churn_hotspots: vec![],
         coverage_percent: None,
@@ -587,11 +588,37 @@ pub async fn handle_work_annotate(
     let related_files = find_related_files(&item, &project_path);
     annotations.files = related_files.clone();
 
-    // Calculate TDG for related files (simplified - just count)
+    // Calculate real TDG scores for related files
     if !related_files.is_empty() {
-        // For now, show file count as proxy for complexity
-        annotations.avg_tdg = Some(related_files.len() as f64 * 1.5); // Placeholder
+        let calculator = crate::services::tdg_calculator::TDGCalculator::new()
+            .with_project_root(project_path.clone());
+
+        let mut tdg_scores = Vec::new();
+        let mut tdg_sum = 0.0;
+        for file in &related_files {
+            let full_path = project_path.join(file);
+            match calculator.calculate_file(&full_path).await {
+                Ok(score) => {
+                    tdg_sum += score.value;
+                    tdg_scores.push(FileTdgScore {
+                        file: file.to_string_lossy().to_string(),
+                        score: score.value,
+                        severity: format!("{:?}", score.severity),
+                    });
+                }
+                Err(_) => {
+                    // File might not be parseable; skip silently
+                }
+            }
+        }
+        if !tdg_scores.is_empty() {
+            annotations.avg_tdg = Some(tdg_sum / tdg_scores.len() as f64);
+        }
+        annotations.file_tdg_scores = tdg_scores;
     }
+
+    // Detect project coverage from LCOV report
+    annotations.coverage_percent = detect_coverage_percent(&project_path);
 
     // Churn analysis if requested
     if with_churn && !related_files.is_empty() {
@@ -621,10 +648,18 @@ struct TicketAnnotations {
     spec_score: Option<f64>,
     files: Vec<PathBuf>,
     avg_tdg: Option<f64>,
+    file_tdg_scores: Vec<FileTdgScore>,
     total_churn: Option<usize>,
     churn_hotspots: Vec<String>,
     coverage_percent: Option<f64>,
     repeated_fixes: Vec<RepeatedFix>,
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+struct FileTdgScore {
+    file: String,
+    score: f64,
+    severity: String,
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
@@ -693,7 +728,10 @@ fn find_related_files(
         }
     }
 
-    files.into_iter().take(10).collect() // Limit to 10 files
+    // Deduplicate and limit to 10 files
+    files.sort();
+    files.dedup();
+    files.into_iter().take(10).collect()
 }
 
 fn analyze_churn_simple(project_path: &Path, files: &[PathBuf], days: u32) -> ChurnResult {
@@ -761,6 +799,49 @@ fn analyze_churn_simple(project_path: &Path, files: &[PathBuf], days: u32) -> Ch
     }
 }
 
+/// Convert TDG score (0-5) to human-readable severity label.
+fn tdg_severity_label(score: f64) -> &'static str {
+    if score <= 1.0 {
+        "Excellent"
+    } else if score <= 2.0 {
+        "Good"
+    } else if score <= 3.0 {
+        "Moderate"
+    } else {
+        "Critical"
+    }
+}
+
+/// Detect project coverage from LCOV report at standard locations.
+fn detect_coverage_percent(project_path: &Path) -> Option<f64> {
+    let candidates = [
+        project_path.join("target/coverage/lcov.info"),
+        project_path.join("target/llvm-cov/lcov.info"),
+        project_path.join("coverage/lcov.info"),
+        project_path.join("lcov.info"),
+    ];
+
+    let lcov_path = candidates.iter().find(|p| p.exists())?;
+    let content = std::fs::read_to_string(lcov_path).ok()?;
+
+    let mut lines_found: usize = 0;
+    let mut lines_hit: usize = 0;
+
+    for line in content.lines() {
+        if let Some(num) = line.strip_prefix("LF:") {
+            lines_found += num.parse::<usize>().unwrap_or(0);
+        } else if let Some(num) = line.strip_prefix("LH:") {
+            lines_hit += num.parse::<usize>().unwrap_or(0);
+        }
+    }
+
+    if lines_found > 0 {
+        Some((lines_hit as f64 / lines_found as f64) * 100.0)
+    } else {
+        None
+    }
+}
+
 fn print_annotations_text(ann: &TicketAnnotations) {
     println!("📊 Quality Annotations for {}\n", ann.ticket_id);
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
@@ -794,9 +875,16 @@ fn print_annotations_text(ann: &TicketAnnotations) {
     println!();
 
     // TDG section
-    println!("📈 TDG (Test-Driven Grade)");
+    println!("📈 TDG (Technical Debt Gradient)");
     if let Some(tdg) = ann.avg_tdg {
-        println!("   Avg Score: {:.1}/10", tdg);
+        let severity = tdg_severity_label(tdg);
+        println!("   Avg Score: {:.2}/5.0 ({})", tdg, severity);
+        if !ann.file_tdg_scores.is_empty() {
+            println!("   Per-file:");
+            for ft in &ann.file_tdg_scores {
+                println!("     {:.2} [{}] {}", ft.score, ft.severity, ft.file);
+            }
+        }
     } else {
         println!("   Not calculated (no files)");
     }
@@ -863,9 +951,13 @@ fn print_annotations_markdown(ann: &TicketAnnotations) {
     println!("| Metric | Value | Status |");
     println!("|--------|-------|--------|");
     println!("| Files | {} | - |", ann.files.len());
-    println!("| TDG | {} | {} |",
-        ann.avg_tdg.map(|t| format!("{:.1}", t)).unwrap_or_else(|| "N/A".to_string()),
-        if ann.avg_tdg.map(|t| t >= 7.0).unwrap_or(false) { "✅" } else { "⚠️" }
+    println!("| TDG (avg) | {} | {} |",
+        ann.avg_tdg.map(|t| format!("{:.2}/5.0", t)).unwrap_or_else(|| "N/A".to_string()),
+        ann.avg_tdg.map(|t| if t <= 2.0 { "✅" } else { "⚠️" }).unwrap_or("⚠️")
+    );
+    println!("| Coverage | {} | {} |",
+        ann.coverage_percent.map(|c| format!("{:.1}%", c)).unwrap_or_else(|| "N/A".to_string()),
+        ann.coverage_percent.map(|c| if c >= 95.0 { "✅" } else { "❌" }).unwrap_or("⚠️")
     );
     println!("| Churn | {} | {} |",
         ann.total_churn.map(|c| c.to_string()).unwrap_or_else(|| "N/A".to_string()),
@@ -875,6 +967,16 @@ fn print_annotations_markdown(ann: &TicketAnnotations) {
         ann.repeated_fixes.len(),
         if ann.repeated_fixes.is_empty() { "✅" } else { "🔴" }
     );
+
+    // Per-file TDG breakdown
+    if !ann.file_tdg_scores.is_empty() {
+        println!("\n## TDG Per-File Breakdown");
+        println!("| File | Score | Severity |");
+        println!("|------|-------|----------|");
+        for ft in &ann.file_tdg_scores {
+            println!("| {} | {:.2} | {} |", ft.file, ft.score, ft.severity);
+        }
+    }
 }
 
 /// Generate the next available ID for a new ticket
