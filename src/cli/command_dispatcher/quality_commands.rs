@@ -56,7 +56,7 @@ impl CommandDispatcher {
         let min_ent = min_entropy.unwrap_or(0.7); // 70% default
         let max_comp = max_complexity_p99.unwrap_or(20) as u32;
 
-        handlers::demo_handlers::handle_quality_gate(
+        crate::cli::analysis_utilities::handle_quality_gate(
             project_path.unwrap_or_else(|| PathBuf::from(".")),
             file,
             qg_format,

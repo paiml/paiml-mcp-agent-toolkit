@@ -33,6 +33,7 @@ pub mod debug_handlers; // Sprint 74: Time-travel debugging CLI handlers
 #[cfg(feature = "deep-wasm")]
 pub mod deep_wasm_handlers;
 pub mod defect_prediction_handler;
+#[cfg(feature = "demo")]
 pub mod demo_handlers;
 pub mod demo_score_handlers; // GH-109/112: Demo Quality scoring (Category G)
 pub mod deps_audit_handlers; // Dependency audit for Sovereign AI stack migration
@@ -132,6 +133,7 @@ pub use configuration_handlers::handle_configuration;
 pub use dead_code_handlers::handle_analyze_dead_code;
 pub use debug_handlers::{handle_debug_compare, handle_debug_timeline}; // Sprint 77: TIMELINE-004
 pub use defect_prediction_handler::handle_analyze_defect_prediction;
+#[cfg(feature = "demo")]
 pub use demo_handlers::{handle_demo, handle_quality_gate};
 pub use demo_score_handlers::handle_demo_score; // GH-109/112: Demo Quality scoring
 pub use doc_validate_handlers::ValidateDocsCmd;

@@ -947,6 +947,7 @@ impl Default for DemoCommandGroup {
     }
 }
 
+#[cfg(feature = "demo")]
 impl DemoCommandGroup {
     /// Handle demo command with comprehensive parameter support
     #[allow(clippy::too_many_arguments)]
@@ -1024,6 +1025,53 @@ impl DemoCommandGroup {
             perf,
         )
         .await
+    }
+}
+
+#[cfg(not(feature = "demo"))]
+impl DemoCommandGroup {
+    /// Handle demo command - feature not enabled
+    #[allow(clippy::too_many_arguments)]
+    pub async fn handle_demo(
+        &self,
+        _server: Arc<StatelessTemplateServer>,
+        _path: Option<std::path::PathBuf>,
+        _url: Option<String>,
+        _repo: Option<String>,
+        _format: crate::cli::OutputFormat,
+        _protocol: crate::cli::DemoProtocol,
+        _show_api: bool,
+        _no_browser: bool,
+        _port: Option<u16>,
+        _cli: bool,
+        _target_nodes: usize,
+        _centrality_threshold: f64,
+        _merge_threshold: usize,
+        _debug: bool,
+        _debug_output: Option<std::path::PathBuf>,
+        _skip_vendor: bool,
+        _max_line_length: Option<usize>,
+    ) -> Result<()> {
+        anyhow::bail!("Demo feature not enabled. Build with --features demo")
+    }
+
+    /// Handle quality gate command - feature not enabled
+    #[allow(clippy::too_many_arguments)]
+    pub async fn handle_quality_gate(
+        &self,
+        _project_path: std::path::PathBuf,
+        _file: Option<std::path::PathBuf>,
+        _format: crate::cli::QualityGateOutputFormat,
+        _fail_on_violation: bool,
+        _checks: Vec<crate::cli::QualityCheckType>,
+        _max_dead_code: f64,
+        _min_entropy: f64,
+        _max_complexity_p99: u32,
+        _include_provability: bool,
+        _output: Option<std::path::PathBuf>,
+        _perf: bool,
+    ) -> Result<()> {
+        anyhow::bail!("Demo feature not enabled. Build with --features demo")
     }
 }
 

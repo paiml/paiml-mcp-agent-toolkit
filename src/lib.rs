@@ -120,6 +120,8 @@ pub mod ast; // Unified AST module for all language parsing
 pub mod claude_integration; // Claude Agent SDK integration with EXTREME TDD
 pub mod cli;
 pub mod contracts; // Uniform contracts across ALL interfaces (CLI, MCP, HTTP)
+// Feature-gated: Demo/showcase functionality (opt-in, ~13,400 lines)
+#[cfg(feature = "demo")]
 pub mod demo;
 pub mod docs_enforcement; // Documentation quality enforcement (TICKET-PMAT-7001)
 pub mod entropy; // Actionable entropy analysis
@@ -614,6 +616,7 @@ mod tests {
     #[path = "../tests/deep_context_simplified_tests.rs"]
     mod deep_context_simplified_tests;
 
+    #[cfg(feature = "demo")]
     #[path = "../tests/demo_comprehensive_tests.rs"]
     mod demo_comprehensive_tests;
 

@@ -13,6 +13,7 @@ use std::sync::Arc;
 
 // Extracted modules for CB-040 file health compliance
 mod config_commands;
+#[cfg(feature = "demo")]
 mod demo_commands;
 mod metrics_commands;
 mod quality_commands;
@@ -107,6 +108,7 @@ impl CommandDispatcher {
             Commands::Qdd(qdd_cmd) => Self::execute_qdd_command(qdd_cmd).await,
             Commands::Embed(embed_cmd) => Self::execute_embed_command(embed_cmd).await,
             Commands::Semantic(semantic_cmd) => Self::execute_semantic_command(semantic_cmd).await,
+            #[cfg(feature = "demo")]
             Commands::Demo {
                 path,
                 url,
@@ -147,6 +149,10 @@ impl CommandDispatcher {
                     server,
                 )
                 .await
+            }
+            #[cfg(not(feature = "demo"))]
+            Commands::Demo { .. } => {
+                anyhow::bail!("Demo feature not enabled. Build with --features demo")
             }
             Commands::ValidateDocs(cmd) => {
                 let exit_code = cmd.execute().await?;
