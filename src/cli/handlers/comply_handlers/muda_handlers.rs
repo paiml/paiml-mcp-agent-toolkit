@@ -81,8 +81,11 @@ impl MudaGrade {
 
 /// Calculate the Muda Waste Score for a project.
 ///
-/// Weights: Defects (25%), Over-processing (20%), Overproduction (20%),
-///          Waiting (15%), Inventory (10%), Motion (5%), Transport (5%)
+/// Weights: Defects (25%), Inventory (20%), Over-processing (15%),
+///          Overproduction (15%), Waiting (15%), Motion (5%), Transport (5%)
+///
+/// Inventory (SATD) elevated to 20% — stale TODO/FIXME/HACK accumulation
+/// is a primary signal of unmaintained code and must not be masked.
 pub fn calculate_muda_score(project_path: &Path) -> MudaReport {
     let overproduction = measure_overproduction(project_path);
     let waiting = measure_waiting(project_path);
@@ -93,11 +96,12 @@ pub fn calculate_muda_score(project_path: &Path) -> MudaReport {
     let defects = measure_defects(project_path);
 
     // Weighted average (weights sum to 1.0)
+    // Inventory elevated: stale SATD is a primary waste signal
     let total_score = (defects * 0.25)
-        + (over_processing * 0.20)
-        + (overproduction * 0.20)
+        + (inventory * 0.20)
+        + (over_processing * 0.15)
+        + (overproduction * 0.15)
         + (waiting * 0.15)
-        + (inventory * 0.10)
         + (motion * 0.05)
         + (transport * 0.05);
 
@@ -199,30 +203,40 @@ fn count_satd_markers(project_path: &Path) -> usize {
         return 0;
     }
 
-    let mut count = 0;
-    if let Ok(entries) = walkdir::WalkDir::new(&src_dir)
+    collect_rs_source_files(&src_dir)
+        .iter()
+        .filter_map(|p| std::fs::read_to_string(p).ok())
+        .map(|content| count_satd_in_content(&content))
+        .sum()
+}
+
+/// Collect .rs files under a directory, excluding test files.
+fn collect_rs_source_files(src_dir: &Path) -> Vec<std::path::PathBuf> {
+    walkdir::WalkDir::new(src_dir)
         .max_depth(5)
         .into_iter()
-        .collect::<Result<Vec<_>, _>>()
-    {
-        for entry in entries.iter().filter(|e| {
+        .filter_map(|e| e.ok())
+        .filter(|e| {
             e.path().extension().is_some_and(|ext| ext == "rs")
                 && !e.path().to_string_lossy().contains("test")
-        }) {
-            if let Ok(content) = std::fs::read_to_string(entry.path()) {
-                for line in content.lines() {
-                    let trimmed = line.trim();
-                    if trimmed.contains("TODO") || trimmed.contains("FIXME") || trimmed.contains("HACK") {
-                        // Skip test-related and doc comments about SATD detection
-                        if !trimmed.starts_with("///") && !trimmed.starts_with("//!") {
-                            count += 1;
-                        }
-                    }
-                }
-            }
-        }
-    }
-    count
+        })
+        .map(|e| e.path().to_path_buf())
+        .collect()
+}
+
+/// Count SATD markers (TODO/FIXME/HACK) in file content.
+fn count_satd_in_content(content: &str) -> usize {
+    content
+        .lines()
+        .map(|l| l.trim())
+        .filter(|t| is_satd_marker(t))
+        .count()
+}
+
+/// Check if a line contains a SATD marker (not in doc comments).
+fn is_satd_marker(trimmed: &str) -> bool {
+    let has_marker = trimmed.contains("TODO") || trimmed.contains("FIXME") || trimmed.contains("HACK");
+    has_marker && !trimmed.starts_with("///") && !trimmed.starts_with("//!")
 }
 
 /// Transport waste: excessive data copying (.clone() density)

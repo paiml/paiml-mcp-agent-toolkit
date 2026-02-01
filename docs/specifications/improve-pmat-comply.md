@@ -603,6 +603,17 @@ if (( $(echo "$COVERAGE < 58.0" | bc -l) )); then
 - **Principle**: Dead code is *muda* (waste) - consumes resources without adding value
 - **Relevance**: Toyota Way foundation for dead code as TDG component
 
+### 2.17 PII & Secret Detection (NEW - v2.9)
+
+**Problem**: Hardcoded secrets and PII (Personal Identifiable Information) in source code are a major security risk. `pmat comply` currently lacks a dedicated check for this.
+
+**Proposed Check**: `CB-130` to detect potential PII and secrets using regex patterns and Shannon entropy analysis.
+
+**Justification**:
+- **Security**: Prevent accidental leakage of API keys, passwords, and tokens.
+- **Privacy**: Ensure compliance with GDPR/CCPA by preventing hardcoded PII (emails, IPs, phones).
+- **Best Practice**: Secrets should be in environment variables or vaults, not code.
+
 ---
 
 ## 3. Proposed Solutions
@@ -1957,6 +1968,38 @@ fn calculate_weighted_tdg_v2(components: &TDGComponentsV2) -> f64 {
 2. **Phase 2**: TDG integration - add dead_code as 6th component with 0.20 weight
 3. **Phase 3**: Comply integration - CB-128 check with threshold-based severity
 4. **Phase 4**: Dogfood - run on pmat, clean up detected dead code, measure coverage delta
+
+### 3.20 CB-130: PII Detection [P0 CRITICAL] (NEW - v2.9)
+
+**Justification**: Hardcoded secrets are a top security vulnerability (OWASP Top 10). PII leakage violates privacy regulations.
+
+**Detection Strategy**:
+1.  **Regex Scanning**: Known patterns for API keys (AWS, Stripe, OpenAI), emails, IP addresses, phone numbers.
+2.  **Entropy Analysis**: High-entropy strings often indicate random tokens/keys.
+3.  **Context Analysis**: Look for variable names like `password`, `secret`, `token`, `key`.
+
+**Proposed Patterns**:
+```rust
+pub fn detect_cb130_pii(project_path: &Path) -> Vec<CbViolation> {
+    let patterns = [
+        // Secrets
+        (r"AKIA[0-9A-Z]{16}", "CB-130-A", "AWS Access Key ID"),
+        (r"sk_live_[0-9a-zA-Z]{24}", "CB-130-B", "Stripe Secret Key"),
+        (r"sk-[a-zA-Z0-9]{48}", "CB-130-C", "OpenAI API Key"),
+        // PII
+        (r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b", "CB-130-D", "Email Address"),
+        (r"\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b", "CB-130-E", "IPv4 Address"), // Simple check, careful with false positives
+    ];
+    // ... implementation details ...
+}
+```
+
+**Severity Mapping**:
+| Pattern | Severity | Rationale |
+|---------|----------|-----------|
+| CB-130-A/B/C (Cloud Keys) | Critical | Immediate security risk |
+| CB-130-D (Email) | Warning | Privacy risk, potential spam target |
+| CB-130-E (IP) | Warning | Disclosure of internal infrastructure |
 
 ---
 
@@ -6017,7 +6060,7 @@ Adapted from Toyota Production System for `pmat comply` detection:
 
 | Waste Type | Code Quality Manifestation | Detection (CB-XXX) |
 |------------|---------------------------|-------------------|
-| **Overproduction** | Dead code, unused features | CB-128 |
+| **Overproduction** | Dead code, unused features | CB-128, CB-304 |
 | **Waiting** | Slow tests blocking CI | CB-126, CB-127 |
 | **Transport** | Excessive data copying in hot paths | (Future: perf lint) |
 | **Overprocessing** | Overcomplicated algorithms where simple suffices | Complexity checks |
@@ -6031,7 +6074,7 @@ Adapted from Toyota Production System for `pmat comply` detection:
 /// CB-300: Aggregate waste score for project health
 pub fn calculate_muda_score(project_path: &Path) -> MudaReport {
     MudaReport {
-        overproduction: dead_code_percentage(project_path),    // CB-128
+        overproduction: dead_code_percentage(project_path),    // CB-304
         waiting: slow_test_count(project_path),                // CB-126
         inventory: satd_count(project_path),                   // CB-050
         defects: violation_count(project_path),                // All CB
@@ -6224,6 +6267,8 @@ Following Toyota's "Stop the Line" principle, any false positive must be:
 | COMPLY-043 | Implement CB-303 EDD Compliance | P3 | 2d |
 | COMPLY-044 | Add YAML-first configuration (.pmat.yaml) | P1 | 2d |
 | COMPLY-045 | Implement three-layer architecture CLI (--review, --audit) | P1 | 4d |
+| **COMPLY-046** | **CB-130: PII Detection (Cloud Keys)** | **P0** | **2d** |
+| **COMPLY-047** | **CB-130: PII Detection (Email/IP/Phone)** | **P1** | **2d** |
 
 ### 9.9 Falsification Tests for v2.8
 
@@ -6234,6 +6279,7 @@ Following Toyota's "Stop the Line" principle, any false positive must be:
 | T-202 | Golden trace detects divergence | CB-302 catches regression | Modify transpiler output, verify failure |
 | T-203 | EDD check requires invariants | CB-303 flags missing | Create simular project without verify_invariants |
 | T-204 | YAML config overrides defaults | CB-* respects .pmat.yaml | Set cb-050 disabled, verify no detection |
+| **T-205** | **PII detection finds keys** | **CB-130 finds AWS/Stripe keys** | **Inject fake AKIA key, verify Critical violation** |
 
 ### 9.10 References (Batuta Oracle Sources)
 
@@ -6247,7 +6293,7 @@ Following Toyota's "Stop the Line" principle, any false positive must be:
 
 ---
 
-**Document Status**: Draft v2.8 - Awaiting Review
+**Document Status**: Draft v2.9 - Awaiting Review
 
 **Version History**:
 - v1.0.0 (2026-01-24): Initial specification (CB-050, CB-060)
@@ -6261,6 +6307,8 @@ Following Toyota's "Stop the Line" principle, any false positive must be:
 - v2.7.0 (2026-02-01): O(1) completion - read cached metrics instead of running commands
 - v2.8.0 (2026-02-01): Batuta Oracle insights - Three-Layer Architecture, Muda Waste, Reproducibility, Golden Trace, EDD
 - v2.8.1 (2026-02-01): Fix violation output truncation - show ALL violations per check, not just first
+- v2.8.2 (2026-02-01): Defect fixes - Uniform provability score (avg 0.65) and CB-304 Dead Code Percentage enforcement
+- v2.9.0 (2026-02-01): PII & Secret Detection (CB-130) added to comply checks
 
 **Next Steps**:
 1. Review by project lead

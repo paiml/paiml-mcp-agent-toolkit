@@ -713,6 +713,10 @@ mod tests {
     #[cfg(feature = "shell-ast")]
     #[path = "../tests/unified_bash_analyzer_tests.rs"]
     mod unified_bash_analyzer_tests;
+
+    // Popperian falsification audit retest
+    #[path = "../tests/audit_provability_retest.rs"]
+    mod audit_provability_retest;
 }
 
 #[cfg(test)]

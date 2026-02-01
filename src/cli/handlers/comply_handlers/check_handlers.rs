@@ -1538,7 +1538,9 @@ fn collect_production_rs_files(src_dir: &Path) -> Vec<std::path::PathBuf> {
 fn analyze_file_dead_code(lines: &[&str]) -> (usize, usize, usize, usize) {
     let prod_lines: Vec<&str> = filter_production_lines(lines);
     let (total_items, dead_items, allow_dead_count) = count_dead_items(&prod_lines);
-    let estimated_dead_lines = allow_dead_count * 10 + count_commented_code_lines(lines);
+    let block_comment_lines = count_block_comment_code_lines(lines);
+    let line_comment_lines = count_commented_code_lines(lines);
+    let estimated_dead_lines = allow_dead_count * 10 + line_comment_lines + block_comment_lines;
     (total_items, dead_items, prod_lines.len(), estimated_dead_lines)
 }
 
@@ -1561,28 +1563,68 @@ fn filter_production_lines<'a>(lines: &[&'a str]) -> Vec<&'a str> {
 
 /// Count total items and dead items from production lines.
 /// Returns (total_items, dead_items, annotation_count).
+/// Excludes fn declarations inside macro_rules! blocks (they inflate the denominator).
 fn count_dead_items(lines: &[&str]) -> (usize, usize, usize) {
     let mut total = 0usize;
     let mut dead = 0usize;
     let mut annotations = 0usize;
     let mut next_is_dead = false;
+    let mut macro_depth: Option<i32> = None;
 
     for line in lines {
         let trimmed = line.trim();
-        if is_dead_code_annotation(trimmed) {
-            next_is_dead = true;
-            annotations += 1;
-        } else if is_code_item_declaration(trimmed) {
-            total += 1;
-            if next_is_dead {
-                dead += 1;
-            }
-            next_is_dead = false;
-        } else if !trimmed.is_empty() && !trimmed.starts_with("//") && !trimmed.starts_with('#') {
-            next_is_dead = false;
+        macro_depth = update_macro_depth(trimmed, macro_depth);
+        if macro_depth.is_some() {
+            continue;
         }
+        classify_item_line(trimmed, &mut total, &mut dead, &mut annotations, &mut next_is_dead);
     }
     (total, dead, annotations)
+}
+
+/// Classify a single line for item counting.
+fn classify_item_line(
+    trimmed: &str,
+    total: &mut usize,
+    dead: &mut usize,
+    annotations: &mut usize,
+    next_is_dead: &mut bool,
+) {
+    if is_dead_code_annotation(trimmed) {
+        *next_is_dead = true;
+        *annotations += 1;
+    } else if is_code_item_declaration(trimmed) {
+        *total += 1;
+        if *next_is_dead {
+            *dead += 1;
+        }
+        *next_is_dead = false;
+    } else if !trimmed.is_empty() && !trimmed.starts_with("//") && !trimmed.starts_with('#') {
+        *next_is_dead = false;
+    }
+}
+
+/// Track brace depth inside macro_rules! blocks.
+/// Returns Some(depth) while inside a macro, None when outside.
+fn update_macro_depth(trimmed: &str, current: Option<i32>) -> Option<i32> {
+    let mut depth = if trimmed.starts_with("macro_rules!") {
+        Some(current.unwrap_or(0))
+    } else {
+        current
+    };
+    if let Some(ref mut d) = depth {
+        for ch in trimmed.chars() {
+            match ch {
+                '{' => *d += 1,
+                '}' => *d -= 1,
+                _ => {}
+            }
+        }
+        if *d <= 0 && trimmed.contains('}') {
+            return None;
+        }
+    }
+    depth
 }
 
 /// Check if a line is a dead code annotation.
@@ -1601,7 +1643,50 @@ fn is_code_item_declaration(trimmed: &str) -> bool {
     ITEM_PREFIXES.iter().any(|p| trimmed.starts_with(p))
 }
 
-/// Count lines in large blocks of commented-out code (3+ consecutive lines).
+/// Count lines inside `/* ... */` block comments that look like code.
+fn count_block_comment_code_lines(lines: &[&str]) -> usize {
+    let mut dead_lines = 0usize;
+    let mut in_block = false;
+    let mut block_lines = 0usize;
+
+    for line in lines {
+        let trimmed = line.trim();
+        if !in_block {
+            if let Some(rest) = trimmed.strip_prefix("/*") {
+                in_block = true;
+                block_lines = 0;
+                // Check if block ends on the same line
+                if rest.contains("*/") {
+                    // Single-line block comment — only count if it has code
+                    if has_code_markers(rest) {
+                        dead_lines += 1;
+                    }
+                    in_block = false;
+                }
+            }
+        } else if trimmed.contains("*/") {
+            // End of block comment
+            in_block = false;
+            if block_lines >= 2 {
+                dead_lines += block_lines;
+            }
+        } else {
+            // Inside block comment — count lines with code patterns
+            if has_code_markers(trimmed) {
+                block_lines += 1;
+            }
+        }
+    }
+    dead_lines
+}
+
+/// Check if text contains code-like markers.
+fn has_code_markers(text: &str) -> bool {
+    const MARKERS: &[&str] = &["fn ", "let ", "if ", "return ", ";", "struct ", "impl ", "pub "];
+    MARKERS.iter().any(|m| text.contains(m))
+}
+
+/// Count lines in large blocks of `//` commented-out code (3+ consecutive lines).
 fn count_commented_code_lines(lines: &[&str]) -> usize {
     let mut dead_lines = 0usize;
     let mut run = 0usize;

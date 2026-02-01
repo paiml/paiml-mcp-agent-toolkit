@@ -414,6 +414,20 @@ impl LightweightProvabilityAnalyzer {
 
     /// Analyze concrete source patterns to produce differentiated property domains.
     fn analyze_source_patterns(source: &str, func_id: &FunctionId) -> PropertyDomain {
+        // Guard: empty/trivial source or empty function body → insufficient evidence
+        let body = source.split('{').nth(1).unwrap_or("");
+        let has_statements = body.contains(';') || body.contains("let ")
+            || body.contains("return ") || body.contains("if ")
+            || body.contains("match ") || body.contains("for ");
+        if source.trim().is_empty() || source.trim().len() < 5 || !has_statements {
+            return PropertyDomain {
+                nullability: NullabilityLattice::MaybeNull,
+                bounds: IntervalLattice { lower: None, upper: None },
+                aliasing: AliasLattice::MayAlias,
+                purity: PurityLattice::Top,
+            };
+        }
+
         let has_unsafe = source.contains("unsafe ");
         let has_unwrap = source.contains(".unwrap()") || source.contains(".expect(");
         let has_mut_ref = source.contains("&mut ");
