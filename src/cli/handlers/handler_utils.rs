@@ -97,6 +97,70 @@ pub fn score_to_severity(score: f64) -> &'static str {
     }
 }
 
+/// Get top N items from a slice, or all items if limit is 0
+#[must_use]
+pub fn get_top_n<T: Clone>(items: &[T], limit: usize) -> Vec<T> {
+    if limit == 0 {
+        items.to_vec()
+    } else {
+        items.iter().take(limit).cloned().collect()
+    }
+}
+
+/// Write content to file or stdout based on output path
+///
+/// # Errors
+///
+/// Returns error if file write fails
+pub fn output_to_file_or_stdout(
+    output: Option<&std::path::Path>,
+    content: &str,
+) -> std::io::Result<()> {
+    if let Some(path) = output {
+        std::fs::write(path, content)
+    } else {
+        println!("{content}");
+        Ok(())
+    }
+}
+
+/// Format a count with appropriate pluralization
+#[must_use]
+pub fn pluralize(count: usize, singular: &str, plural: &str) -> String {
+    if count == 1 {
+        format!("{count} {singular}")
+    } else {
+        format!("{count} {plural}")
+    }
+}
+
+/// Format a duration in a human-readable way
+#[must_use]
+pub fn format_duration(duration: std::time::Duration) -> String {
+    let secs = duration.as_secs();
+    let millis = duration.subsec_millis();
+
+    if secs >= 60 {
+        let mins = secs / 60;
+        let remaining_secs = secs % 60;
+        format!("{}m {}s", mins, remaining_secs)
+    } else if secs > 0 {
+        format!("{}.{}s", secs, millis / 100)
+    } else {
+        format!("{}ms", millis)
+    }
+}
+
+/// Calculate percentage with bounds (0-100)
+#[must_use]
+pub fn calculate_percentage(numerator: usize, denominator: usize) -> f64 {
+    if denominator == 0 {
+        0.0
+    } else {
+        ((numerator as f64 / denominator as f64) * 100.0).clamp(0.0, 100.0)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -256,5 +320,88 @@ mod tests {
         assert_eq!(score_to_severity(0.3), "low");
         assert_eq!(score_to_severity(0.0), "low");
         assert_eq!(score_to_severity(0.39), "low");
+    }
+
+    #[test]
+    fn test_get_top_n_with_limit() {
+        let items = vec![1, 2, 3, 4, 5];
+        assert_eq!(get_top_n(&items, 3), vec![1, 2, 3]);
+    }
+
+    #[test]
+    fn test_get_top_n_no_limit() {
+        let items = vec![1, 2, 3, 4, 5];
+        assert_eq!(get_top_n(&items, 0), vec![1, 2, 3, 4, 5]);
+    }
+
+    #[test]
+    fn test_get_top_n_limit_exceeds() {
+        let items = vec![1, 2, 3];
+        assert_eq!(get_top_n(&items, 10), vec![1, 2, 3]);
+    }
+
+    #[test]
+    fn test_get_top_n_empty() {
+        let items: Vec<i32> = vec![];
+        assert!(get_top_n(&items, 5).is_empty());
+    }
+
+    #[test]
+    fn test_pluralize_singular() {
+        assert_eq!(pluralize(1, "file", "files"), "1 file");
+        assert_eq!(pluralize(1, "item", "items"), "1 item");
+    }
+
+    #[test]
+    fn test_pluralize_plural() {
+        assert_eq!(pluralize(0, "file", "files"), "0 files");
+        assert_eq!(pluralize(2, "file", "files"), "2 files");
+        assert_eq!(pluralize(100, "item", "items"), "100 items");
+    }
+
+    #[test]
+    fn test_format_duration_milliseconds() {
+        let d = std::time::Duration::from_millis(500);
+        assert_eq!(format_duration(d), "500ms");
+    }
+
+    #[test]
+    fn test_format_duration_seconds() {
+        let d = std::time::Duration::from_secs(5);
+        assert_eq!(format_duration(d), "5.0s");
+    }
+
+    #[test]
+    fn test_format_duration_seconds_with_millis() {
+        let d = std::time::Duration::from_millis(5500);
+        assert_eq!(format_duration(d), "5.5s");
+    }
+
+    #[test]
+    fn test_format_duration_minutes() {
+        let d = std::time::Duration::from_secs(125);
+        assert_eq!(format_duration(d), "2m 5s");
+    }
+
+    #[test]
+    fn test_calculate_percentage_normal() {
+        assert!((calculate_percentage(50, 100) - 50.0).abs() < 0.001);
+        assert!((calculate_percentage(25, 100) - 25.0).abs() < 0.001);
+        assert!((calculate_percentage(1, 4) - 25.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_calculate_percentage_zero_denominator() {
+        assert!((calculate_percentage(10, 0) - 0.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_calculate_percentage_zero_numerator() {
+        assert!((calculate_percentage(0, 100) - 0.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_calculate_percentage_full() {
+        assert!((calculate_percentage(100, 100) - 100.0).abs() < 0.001);
     }
 }
