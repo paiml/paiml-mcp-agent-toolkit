@@ -50,6 +50,9 @@ mod coverage_boost_services3;
 // Coverage boost tests - services batch 4 (satd_detector)
 mod coverage_boost_services4;
 
+// Coverage boost tests - complexity module
+mod coverage_boost_complexity;
+
 // Include protocol service tests for coverage (requires unified-protocol feature)
 #[cfg(feature = "unified-protocol")]
 mod protocol_service_tests;
