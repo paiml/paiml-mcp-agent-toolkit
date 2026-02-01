@@ -1,6 +1,6 @@
 # Specification: Improve pmat comply - Comprehensive Quality Detection
 
-**Version:** 2.3.0
+**Version:** 2.4.0
 **Status:** Draft - Pending Review
 **Created:** 2026-01-24
 **Updated:** 2026-02-01
@@ -37,11 +37,16 @@ Analysis of 50+ recent GitHub issues across the paiml organization using the org
 15. **Slow Test Detection**: Individual tests taking >60s destroy developer flow ([SLOW-001] Luo et al. 2014)
 16. **Slow Coverage**: Coverage runs >10min discourage measurement, causing coverage regression ([PERF-001] certeza spec)
 
-### Dead Code & TDG Integration Findings (v2.3 - NEW)
+### Dead Code & TDG Integration Findings (v2.3)
 17. **Dead Code Undetected**: `pmat analyze dead-code` reports 0% dead code but rustc `#[warn(dead_code)]` and manual inspection reveal significant unreachable code. Dead code inflates coverage denominators and hides technical debt. **Not part of TDG scoring.**
 18. **Public API Blindspot**: `rustc`'s `dead_code` lint treats all `pub` items as "live" (reachable) because they *might* be used by external crates, even in a binary or private workspace crate where they are definitely unused. This leaves a massive blindspot for "zombie public code".
 
-This specification defines **20 improvements** with peer-reviewed justification, work tickets, and a **210-point Popperian falsification suite**.
+### Batuta RAG Oracle Integration (v2.4 - NEW)
+19. **No Contextual Fix Suggestions**: When violations are detected, developers must search documentation manually for the correct fix pattern. The batuta RAG oracle indexes the entire sovereign stack documentation but isn't leveraged.
+20. **Missing Cross-Project Pattern Enforcement**: Different projects in the stack drift into inconsistent patterns (error handling, logging, testing conventions) without automated detection.
+21. **No Smart Project Initialization**: New projects manually configure quality gates without guidance on appropriate thresholds for their project type.
+
+This specification defines **25 improvements** with peer-reviewed justification, work tickets, and a **215-point Popperian falsification suite**.
 
 ---
 
@@ -67,6 +72,15 @@ This specification defines **20 improvements** with peer-reviewed justification,
 5. [210-Point Popperian Falsification Suite](#5-210-point-popperian-falsification-suite)
 6. [Implementation Plan](#6-implementation-plan)
 7. [Success Criteria](#7-success-criteria)
+8. [Batuta RAG Oracle Integration](#8-batuta-rag-oracle-integration-v24---new) (v2.4 - NEW)
+   - 8.1: Overview
+   - 8.2: Proposed Features (CB-200 through CB-204)
+   - 8.3: Implementation Architecture
+   - 8.4: Configuration
+   - 8.5: Work Tickets (COMPLY-026 through COMPLY-030)
+   - 8.6: Falsification Tests (T-176 through T-180)
+   - 8.7: Dependencies
+   - 8.8: Rollout Plan
 
 ---
 
@@ -4878,6 +4892,391 @@ If any of the following conditions are met during Phase 1-4, the implementation 
 7.  **NaN Safety False Positives**: If CB-120 flags >10% of safe float comparisons (e.g., `total_cmp`), the regex pattern is falsified.
 8.  **Lock Poisoning Noise**: If CB-121 flags `parking_lot` mutexes (which don't poison) or properly handled results, the check logic is falsified.
 9.  **Serde Valid Usage**: If CB-122 flags >20% of `serde_json::from_str` calls where the schema is guaranteed internal (e.g., config files bundled with binary), the "always unsafe" hypothesis is rejected.
+
+---
+
+## 8. Batuta RAG Oracle Integration (v2.4 - NEW)
+
+**Status:** Proposed
+**Added:** 2026-02-01
+**Rationale:** Leverage the batuta RAG oracle's indexed sovereign stack documentation to provide contextual suggestions, enforce cross-project patterns, and improve developer experience when violations are detected.
+
+### 8.1 Overview
+
+The batuta CLI provides a RAG (Retrieval-Augmented Generation) oracle that indexes documentation from the entire sovereign AI stack:
+- CLAUDE.md files from all stack components
+- Specification documents (docs/specifications/*.md)
+- mdBook documentation (book/src/**/*.md)
+- Ground truth corpora (Python, MLOps patterns)
+
+Integration with `pmat comply` enables:
+1. Contextual fix suggestions when violations are detected
+2. Smart project initialization based on project type
+3. Explanation of why each check matters with real examples
+4. Cross-project pattern enforcement for stack consistency
+5. Drift-aware dependency recommendations
+
+### 8.2 Proposed Features
+
+#### 8.2.1 CB-200: Contextual Fix Suggestions
+
+**Problem:** When `pmat comply check` detects a violation, developers must search documentation manually for the correct fix pattern.
+
+**Solution:** Query the batuta oracle for contextual fixes based on the violation code and message.
+
+**Implementation:**
+```rust
+// In comply check handler (src/cli/handlers/comply_handlers/check_handlers.rs)
+fn suggest_fix_from_oracle(violation: &ComplianceViolation) -> Option<Vec<OracleSuggestion>> {
+    let query = format!(
+        "How to fix {} in Rust: {}",
+        violation.code, violation.message
+    );
+
+    // Query batuta oracle (shell out or library integration)
+    let result = std::process::Command::new("batuta")
+        .args(["oracle", "--rag", &query, "--format", "json"])
+        .output()
+        .ok()?;
+
+    serde_json::from_slice(&result.stdout).ok()
+}
+```
+
+**Example Output:**
+```
+⚠ CB-120: NaN-unsafe partial_cmp().unwrap() at src/scorer.rs:42
+  💡 Suggested fixes (from sovereign stack docs):
+     1. Use total_cmp() for f32/f64 comparisons
+        — aprender/CLAUDE.md#numeric-safety
+     2. Wrap in .unwrap_or(Ordering::Equal) for NaN safety
+        — trueno/docs/specifications/float-handling.md
+     3. Use OrderedFloat<f64> wrapper type
+        — realizar/src/tensor/ord.rs (example)
+```
+
+**Work Ticket:** COMPLY-026
+**Falsification Test:** T-176: Verify oracle suggestions are relevant (>80% precision)
+
+---
+
+#### 8.2.2 CB-201: Smart Project Initialization
+
+**Problem:** New projects must manually configure `.pmat-gates.toml` quality thresholds without guidance on what's appropriate for their project type.
+
+**Solution:** Query oracle to bootstrap quality gates based on detected project characteristics.
+
+**Implementation:**
+```rust
+// In pmat comply init --smart
+fn smart_init_gates(project_path: &Path) -> Result<PmatGatesConfig> {
+    let project_type = detect_project_type(project_path)?;
+    // e.g., "ml-library", "cli-tool", "web-service", "systems-library"
+
+    let query = format!(
+        "Recommended pmat quality gates for {} Rust project thresholds coverage complexity",
+        project_type
+    );
+
+    let recommendations = batuta_oracle_query(&query)?;
+
+    // Parse oracle response into gate configuration
+    generate_gates_from_recommendations(project_type, recommendations)
+}
+```
+
+**Example:**
+```bash
+$ pmat comply init --smart
+
+🔍 Detected project type: ML library (aprender-like)
+📚 Querying batuta oracle for recommended gates...
+
+Recommended .pmat-gates.toml:
+
+[quality]
+min_coverage_pct = 90.0          # ML libs need high coverage (aprender: 94%)
+max_complexity = 15              # Lower threshold for numeric code
+max_unsafe_blocks = 5            # Strict unsafe limits
+
+[checks]
+nan_safety = "error"             # CB-120: Critical for ML
+float_comparison = "error"       # CB-201: No direct f64 == f64
+mutation_score = 80              # High mutation coverage
+
+[dependencies]
+prefer_sovereign = true          # Prefer aprender/trueno over external
+
+Apply these settings? [Y/n]
+```
+
+**Work Ticket:** COMPLY-027
+**Falsification Test:** T-177: Verify generated configs match stack conventions
+
+---
+
+#### 8.2.3 CB-202: Explain Mode with Stack Context
+
+**Problem:** Developers see violation codes (CB-xxx) but don't understand why the check exists or its real-world impact.
+
+**Solution:** Add `--explain` flag that queries oracle for rationale and real examples from the stack.
+
+**Implementation:**
+```rust
+// In pmat comply check --explain
+fn explain_violation(violation: &ComplianceViolation) -> Result<Explanation> {
+    let query = format!(
+        "Why is {} important? Real examples of bugs caused by {} in Rust projects",
+        violation.code, violation.pattern
+    );
+
+    let context = batuta_oracle_query(&query)?;
+
+    Ok(Explanation {
+        code: violation.code.clone(),
+        rationale: context.top_result().content,
+        source: context.top_result().document_id,
+        real_example: extract_example(&context),
+    })
+}
+```
+
+**Example Output:**
+```bash
+$ pmat comply check --explain
+
+⚠ CB-125: Coverage exclusion gaming detected (15 patterns hiding 23% LOC)
+
+  📚 Why this matters:
+     "Coverage exclusion patterns that hide >20% of LOC indicate technical
+     debt hiding rather than legitimate test exclusions. In trueno v0.12,
+     40% exclusions masked a critical memory leak in the SIMD path that
+     wasn't caught until production. The fix required 3 weeks of debugging."
+     — batuta-ground-truth-mlops-corpus/coverage-antipatterns.md#L42
+
+  🔗 Related incidents:
+     - trueno#69: Memory leak hidden by coverage exclusions
+     - aprender#191: Quantization bug in excluded code path
+```
+
+**Work Ticket:** COMPLY-028
+**Falsification Test:** T-178: Verify explanations cite real stack incidents
+
+---
+
+#### 8.2.4 CB-203: Cross-Project Pattern Enforcement
+
+**Problem:** Different projects in the sovereign stack may drift into inconsistent patterns (error handling, logging, testing conventions).
+
+**Solution:** Query oracle for patterns used across the stack and enforce consistency.
+
+**Implementation:**
+```rust
+// In pmat comply check (new check category)
+fn check_stack_pattern_consistency(project_path: &Path) -> Vec<ComplianceViolation> {
+    let mut violations = vec![];
+
+    // Query oracle for stack-wide conventions
+    let conventions = batuta_oracle_query(
+        "error handling patterns sovereign stack thiserror anyhow convention"
+    )?;
+
+    // Check: Libraries should use thiserror, binaries can use anyhow
+    if is_library(project_path) && uses_anyhow_in_lib(project_path) {
+        if conventions.consensus.contains("thiserror for libraries") {
+            violations.push(ComplianceViolation {
+                code: "CB-203".into(),
+                severity: Severity::Warning,
+                message: "Stack convention: use thiserror for library error types, not anyhow".into(),
+                suggestion: Some("See aprender/src/error.rs for example".into()),
+            });
+        }
+    }
+
+    // Check: Logging convention (tracing vs log)
+    // Check: Test organization (#[cfg(test)] vs tests/)
+    // Check: Documentation style (rustdoc conventions)
+
+    violations
+}
+```
+
+**Enforced Patterns:**
+| Pattern | Library Convention | Binary Convention | Source |
+|---------|-------------------|-------------------|--------|
+| Error handling | `thiserror` | `anyhow` | aprender, trueno |
+| Logging | `tracing` | `tracing` | all stack |
+| Async runtime | `tokio` | `tokio` | all stack |
+| Serialization | `serde` + explicit formats | `serde_json` | all stack |
+| Testing | `#[cfg(test)]` in-file | `tests/` directory | all stack |
+
+**Work Ticket:** COMPLY-029
+**Falsification Test:** T-179: Verify pattern detection matches manual audit
+
+---
+
+#### 8.2.5 CB-204: Drift-Aware Dependency Recommendations
+
+**Problem:** Projects may use outdated or non-sovereign dependencies when better alternatives exist in the stack.
+
+**Solution:** Integrate oracle's stack knowledge to recommend dependency updates and sovereign alternatives.
+
+**Implementation:**
+```rust
+// In pmat comply check --deps
+fn check_dependencies_with_oracle(project_path: &Path) -> DependencyReport {
+    let cargo_toml = read_cargo_toml(project_path)?;
+    let mut report = DependencyReport::default();
+
+    // Check for sovereign alternatives
+    for dep in &cargo_toml.dependencies {
+        let query = format!(
+            "sovereign stack alternative to {} crate Rust",
+            dep.name
+        );
+
+        if let Some(alternative) = batuta_oracle_query(&query)?.sovereign_alternative {
+            report.suggestions.push(DependencySuggestion {
+                current: dep.clone(),
+                suggested: alternative.name,
+                reason: alternative.rationale,
+                perf_improvement: alternative.benchmark_delta,
+            });
+        }
+    }
+
+    // Check for version drift against stack
+    let stack_versions = batuta_oracle_query("current sovereign stack versions")?;
+    for dep in SOVEREIGN_DEPS {
+        if let Some(current) = cargo_toml.get_version(dep) {
+            if let Some(latest) = stack_versions.get(dep) {
+                if current < latest {
+                    report.drift.push(VersionDrift {
+                        package: dep.into(),
+                        current: current.clone(),
+                        latest: latest.clone(),
+                        changelog_note: get_changelog_note(dep, current, latest),
+                    });
+                }
+            }
+        }
+    }
+
+    report
+}
+```
+
+**Example Output:**
+```bash
+$ pmat comply check --deps
+
+📦 Dependency Analysis (via batuta oracle)
+
+Sovereign Stack Versions:
+  ✓ aprender 0.25.1 — current
+  ⚠ trueno 0.14.4 available (you: 0.14.0)
+    → "0.14.4 fixes SIMD alignment panic on ARM64 (issue #77)"
+  ✓ trueno-graph 0.1.14 — current
+
+Sovereign Alternatives Available:
+  ⚠ petgraph 0.6.0 → Consider trueno-graph 0.1.14
+    → 3.2x faster PageRank, native CSR format
+    → Migration guide: trueno-graph/docs/migration-from-petgraph.md
+
+  ⚠ ndarray 0.15 → Consider aprender::tensor
+    → Zero-copy interop with trueno SIMD
+    → Used by: realizar, whisper-apr
+
+Pattern-Based Suggestions:
+  💡 You have timing-based tests (Instant::now assertions)
+     → Consider renacer for golden trace testing
+     → Eliminates flaky CI (trueno had 7 timing fixes)
+```
+
+**Work Ticket:** COMPLY-030
+**Falsification Test:** T-180: Verify sovereign alternatives are faster/better
+
+---
+
+### 8.3 Implementation Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     pmat comply check                        │
+├─────────────────────────────────────────────────────────────┤
+│  Existing Checks (CB-001 to CB-127)                         │
+│    ↓                                                         │
+│  Violation Detected                                          │
+│    ↓                                                         │
+│  ┌─────────────────────────────────────────────────────┐    │
+│  │  Batuta Oracle Integration Layer                     │    │
+│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐ │    │
+│  │  │ Query Cache │  │ Rate Limit  │  │ Fallback    │ │    │
+│  │  │ (LRU 1000)  │  │ (10 req/s)  │  │ (offline)   │ │    │
+│  │  └─────────────┘  └─────────────┘  └─────────────┘ │    │
+│  │         ↓                                           │    │
+│  │  batuta oracle --rag "query" --format json          │    │
+│  └─────────────────────────────────────────────────────┘    │
+│    ↓                                                         │
+│  Enhanced Output with Suggestions                            │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 8.4 Configuration
+
+Add to `.pmat-gates.toml`:
+```toml
+[oracle]
+# Enable batuta oracle integration
+enabled = true
+
+# Cache oracle responses (seconds)
+cache_ttl = 3600
+
+# Fail gracefully if oracle unavailable
+require_oracle = false
+
+# Features to enable
+suggestions = true      # CB-200: Fix suggestions
+smart_init = true       # CB-201: Smart initialization
+explain = true          # CB-202: Explain mode
+patterns = true         # CB-203: Cross-project patterns
+deps = true             # CB-204: Dependency recommendations
+```
+
+### 8.5 Work Tickets Summary
+
+| Ticket | Feature | Priority | Effort |
+|--------|---------|----------|--------|
+| COMPLY-026 | CB-200: Contextual Fix Suggestions | P0 | Medium |
+| COMPLY-027 | CB-201: Smart Project Init | P2 | Medium |
+| COMPLY-028 | CB-202: Explain Mode | P0 | Low |
+| COMPLY-029 | CB-203: Cross-Project Patterns | P2 | High |
+| COMPLY-030 | CB-204: Drift-Aware Deps | P1 | Low |
+
+### 8.6 Falsification Tests (T-176 to T-180)
+
+| Test ID | Description | Pass Criteria |
+|---------|-------------|---------------|
+| T-176 | Oracle suggestions are relevant | >80% of suggestions applicable to violation |
+| T-177 | Smart init matches stack conventions | Generated config within 10% of manual tuning |
+| T-178 | Explanations cite real incidents | 100% of explanations reference actual issues |
+| T-179 | Pattern detection accuracy | >90% match with manual stack audit |
+| T-180 | Sovereign alternatives are better | 100% have measurable improvement (perf/safety) |
+
+### 8.7 Dependencies
+
+- `batuta >= 0.6.2` with RAG oracle support
+- RAG index built: `batuta oracle --rag-index`
+- Network access for initial index build (cached locally after)
+
+### 8.8 Rollout Plan
+
+| Phase | Milestone | Timeline |
+|-------|-----------|----------|
+| Phase 1 | CB-202 (Explain) + CB-200 (Suggestions) | Week 1 |
+| Phase 2 | CB-204 (Deps) | Week 2 |
+| Phase 3 | CB-201 (Smart Init) + CB-203 (Patterns) | Week 3-4 |
 
 ---
 
