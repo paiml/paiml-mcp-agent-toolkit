@@ -1,0 +1,2917 @@
+{
+  "results": {
+    "passed": false,
+    "total_violations": 414,
+    "complexity_violations": 212,
+    "dead_code_violations": 6,
+    "satd_violations": 77,
+    "entropy_violations": 115,
+    "security_violations": 0,
+    "duplicate_violations": 0,
+    "coverage_violations": 0,
+    "section_violations": 3,
+    "provability_violations": 1,
+    "provability_score": 0.425,
+    "violations": []
+  },
+  "violations": [
+    {
+      "check_type": "complexity",
+      "severity": "warning",
+      "file": "./benches/critical_path.rs",
+      "line": 100,
+      "message": "benchmark_dag_generation: cognitive-complexity - Cognitive complexity of 21 exceeds recommended complexity of 20 (complexity: 21, threshold: 20)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "warning",
+      "file": "./build.rs",
+      "line": 750,
+      "message": "compress_templates: cognitive-complexity - Cognitive complexity of 23 exceeds recommended complexity of 20 (complexity: 23, threshold: 20)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./examples/check_code_quality.rs",
+      "line": 0,
+      "message": "main: cognitive-complexity - Cognitive complexity of 27 exceeds maximum allowed complexity of 25 (complexity: 27, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./examples/check_github_repo.rs",
+      "line": 50,
+      "message": "main: cognitive-complexity - Cognitive complexity of 39 exceeds maximum allowed complexity of 25 (complexity: 39, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./examples/complexity_demo.rs",
+      "line": 300,
+      "message": "order_processing_pipeline: cognitive-complexity - Cognitive complexity of 84 exceeds maximum allowed complexity of 25 (complexity: 84, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./examples/complexity_demo.rs",
+      "line": 350,
+      "message": "user_authentication: cyclomatic-complexity - Cyclomatic complexity of 39 exceeds maximum allowed complexity of 30 (complexity: 39, threshold: 30)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./examples/complexity_demo.rs",
+      "line": 350,
+      "message": "user_authentication: cognitive-complexity - Cognitive complexity of 81 exceeds maximum allowed complexity of 25 (complexity: 81, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./examples/cpp_mutation_workflow.rs",
+      "line": 0,
+      "message": "main: cognitive-complexity - Cognitive complexity of 31 exceeds maximum allowed complexity of 25 (complexity: 31, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./examples/go_mutation_workflow.rs",
+      "line": 0,
+      "message": "main: cognitive-complexity - Cognitive complexity of 27 exceeds maximum allowed complexity of 25 (complexity: 27, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./examples/issue_053_batch2_context_churn.rs",
+      "line": 0,
+      "message": "main: cognitive-complexity - Cognitive complexity of 42 exceeds maximum allowed complexity of 25 (complexity: 42, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./examples/issue_053_batch3_quality_gates.rs",
+      "line": 0,
+      "message": "main: cognitive-complexity - Cognitive complexity of 39 exceeds maximum allowed complexity of 25 (complexity: 39, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./examples/issue_053_batch4_quality_tracking.rs",
+      "line": 0,
+      "message": "main: cyclomatic-complexity - Cyclomatic complexity of 33 exceeds maximum allowed complexity of 30 (complexity: 33, threshold: 30)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./examples/issue_053_batch4_quality_tracking.rs",
+      "line": 0,
+      "message": "main: cognitive-complexity - Cognitive complexity of 68 exceeds maximum allowed complexity of 25 (complexity: 68, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./examples/issue_053_batch5_advanced_analysis.rs",
+      "line": 0,
+      "message": "main: cognitive-complexity - Cognitive complexity of 34 exceeds maximum allowed complexity of 25 (complexity: 34, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./examples/python_mutation_workflow.rs",
+      "line": 0,
+      "message": "main: cognitive-complexity - Cognitive complexity of 27 exceeds maximum allowed complexity of 25 (complexity: 27, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./examples/quality_gate_custom.rs",
+      "line": 0,
+      "message": "main: cognitive-complexity - Cognitive complexity of 33 exceeds maximum allowed complexity of 25 (complexity: 33, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "warning",
+      "file": "./examples/quality_gate_perf.rs",
+      "line": 50,
+      "message": "create_test_project: cyclomatic-complexity - Cyclomatic complexity of 28 exceeds recommended complexity of 25 (complexity: 28, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./examples/quality_gate_perf.rs",
+      "line": 50,
+      "message": "create_test_project: cognitive-complexity - Cognitive complexity of 60 exceeds maximum allowed complexity of 25 (complexity: 60, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./examples/rust_mutation_workflow.rs",
+      "line": 0,
+      "message": "main: cognitive-complexity - Cognitive complexity of 30 exceeds maximum allowed complexity of 25 (complexity: 30, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./examples/similarity_demo.rs",
+      "line": 0,
+      "message": "main: cognitive-complexity - Cognitive complexity of 26 exceeds maximum allowed complexity of 25 (complexity: 26, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "warning",
+      "file": "./examples/typescript_mutation_workflow.rs",
+      "line": 0,
+      "message": "main: cognitive-complexity - Cognitive complexity of 24 exceeds recommended complexity of 20 (complexity: 24, threshold: 20)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./examples/typescript_mutation_workflow_parallel.rs",
+      "line": 0,
+      "message": "main: cognitive-complexity - Cognitive complexity of 26 exceeds maximum allowed complexity of 25 (complexity: 26, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./examples/typescript_mutation_workflow_parallel.rs",
+      "line": 150,
+      "message": "copy_dir_recursive: cognitive-complexity - Cognitive complexity of 30 exceeds maximum allowed complexity of 25 (complexity: 30, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "warning",
+      "file": "./examples/viz_demo.rs",
+      "line": 150,
+      "message": "demo_realistic_graph: cognitive-complexity - Cognitive complexity of 21 exceeds recommended complexity of 20 (complexity: 21, threshold: 20)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./scripts/complexity_reducer.py",
+      "line": 42,
+      "message": "find_complex_functions: cognitive-complexity - Cognitive complexity of 33 exceeds maximum allowed complexity of 25 (complexity: 33, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./scripts/complexity_reducer.py",
+      "line": 82,
+      "message": "parse_complexity_data: cognitive-complexity - Cognitive complexity of 33 exceeds maximum allowed complexity of 25 (complexity: 33, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "warning",
+      "file": "./scripts/complexity_reducer.py",
+      "line": 143,
+      "message": "generate_suggestions: cognitive-complexity - Cognitive complexity of 25 exceeds recommended complexity of 20 (complexity: 25, threshold: 20)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./scripts/configure-swap.ts",
+      "line": 313,
+      "message": "interactiveMenu: cognitive-complexity - Cognitive complexity of 46 exceeds maximum allowed complexity of 25 (complexity: 46, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./scripts/create-release.test.ts",
+      "line": 38,
+      "message": "anonymous_fn: cognitive-complexity - Cognitive complexity of 37 exceeds maximum allowed complexity of 25 (complexity: 37, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./scripts/deep-context.ts",
+      "line": 302,
+      "message": "parseRustFile: cyclomatic-complexity - Cyclomatic complexity of 114 exceeds maximum allowed complexity of 30 (complexity: 114, threshold: 30)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./scripts/deep-context.ts",
+      "line": 302,
+      "message": "parseRustFile: cognitive-complexity - Cognitive complexity of 198 exceeds maximum allowed complexity of 25 (complexity: 198, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./scripts/deep-context.ts",
+      "line": 459,
+      "message": "visitTypeScriptNode: cognitive-complexity - Cognitive complexity of 46 exceeds maximum allowed complexity of 25 (complexity: 46, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./scripts/final_cleanup_property_tests.py",
+      "line": 11,
+      "message": "fix_property_test_syntax: cognitive-complexity - Cognitive complexity of 36 exceeds maximum allowed complexity of 25 (complexity: 36, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./scripts/fix_daemon_braces.py",
+      "line": 10,
+      "message": "fix_daemon_braces: cognitive-complexity - Cognitive complexity of 41 exceeds maximum allowed complexity of 25 (complexity: 41, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./scripts/fix_proptest_backslashes.py",
+      "line": 41,
+      "message": "main: cognitive-complexity - Cognitive complexity of 38 exceeds maximum allowed complexity of 25 (complexity: 38, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./scripts/fix_remaining_variable_refs.py",
+      "line": 46,
+      "message": "main: cognitive-complexity - Cognitive complexity of 41 exceeds maximum allowed complexity of 25 (complexity: 41, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./scripts/install.test.ts",
+      "line": 16,
+      "message": "detectPlatform: cognitive-complexity - Cognitive complexity of 44 exceeds maximum allowed complexity of 25 (complexity: 44, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./scripts/install.test.ts",
+      "line": 150,
+      "message": "anonymous_fn: cognitive-complexity - Cognitive complexity of 64 exceeds maximum allowed complexity of 25 (complexity: 64, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./scripts/install.test.ts",
+      "line": 171,
+      "message": "anonymous_fn: cognitive-complexity - Cognitive complexity of 56 exceeds maximum allowed complexity of 25 (complexity: 56, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./scripts/install.test.ts",
+      "line": 176,
+      "message": "detectPlatformWithInputs: cognitive-complexity - Cognitive complexity of 53 exceeds maximum allowed complexity of 25 (complexity: 53, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./scripts/install.ts",
+      "line": 41,
+      "message": "detectPlatform: cognitive-complexity - Cognitive complexity of 44 exceeds maximum allowed complexity of 25 (complexity: 44, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./scripts/lib/create-release-utils.test.ts",
+      "line": 23,
+      "message": "anonymous_fn: cyclomatic-complexity - Cyclomatic complexity of 31 exceeds maximum allowed complexity of 30 (complexity: 31, threshold: 30)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./scripts/lib/create-release-utils.test.ts",
+      "line": 23,
+      "message": "anonymous_fn: cognitive-complexity - Cognitive complexity of 73 exceeds maximum allowed complexity of 25 (complexity: 73, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "warning",
+      "file": "./scripts/lib/install-utils.test.ts",
+      "line": 13,
+      "message": "anonymous_fn: cyclomatic-complexity - Cyclomatic complexity of 29 exceeds recommended complexity of 25 (complexity: 29, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./scripts/lib/install-utils.test.ts",
+      "line": 13,
+      "message": "anonymous_fn: cognitive-complexity - Cognitive complexity of 58 exceeds maximum allowed complexity of 25 (complexity: 58, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "warning",
+      "file": "./scripts/mcp-install.ts",
+      "line": 202,
+      "message": "checkInstallationStatus: cognitive-complexity - Cognitive complexity of 22 exceeds recommended complexity of 20 (complexity: 22, threshold: 20)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./scripts/mcp-install.ts",
+      "line": 278,
+      "message": "uninstallMcpServer: cognitive-complexity - Cognitive complexity of 28 exceeds maximum allowed complexity of 25 (complexity: 28, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./scripts/quality_dashboard.py",
+      "line": 261,
+      "message": "generate_terminal_dashboard: cognitive-complexity - Cognitive complexity of 33 exceeds maximum allowed complexity of 25 (complexity: 33, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./scripts/quality_dashboard.py",
+      "line": 273,
+      "message": "get_color: cognitive-complexity - Cognitive complexity of 27 exceeds maximum allowed complexity of 25 (complexity: 27, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./scripts/quality_dashboard.py",
+      "line": 531,
+      "message": "get_grade: cognitive-complexity - Cognitive complexity of 45 exceeds maximum allowed complexity of 25 (complexity: 45, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./scripts/quality_dashboard.py",
+      "line": 585,
+      "message": "get_metric_class: cognitive-complexity - Cognitive complexity of 29 exceeds maximum allowed complexity of 25 (complexity: 29, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "warning",
+      "file": "./scripts/test-curl-install.ts",
+      "line": 11,
+      "message": "test: cognitive-complexity - Cognitive complexity of 24 exceeds recommended complexity of 20 (complexity: 24, threshold: 20)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./scripts/test-workflow-dag.ts",
+      "line": 122,
+      "message": "WorkflowSimulator::String: cyclomatic-complexity - Cyclomatic complexity of 49 exceeds maximum allowed complexity of 30 (complexity: 49, threshold: 30)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./scripts/test-workflow-dag.ts",
+      "line": 122,
+      "message": "WorkflowSimulator::String: cognitive-complexity - Cognitive complexity of 85 exceeds maximum allowed complexity of 25 (complexity: 85, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "warning",
+      "file": "./scripts/test-workflow-dag.ts",
+      "line": 254,
+      "message": "WorkflowSimulator::this.warnings.push: cognitive-complexity - Cognitive complexity of 21 exceeds recommended complexity of 20 (complexity: 21, threshold: 20)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "warning",
+      "file": "./scripts/update-rust-docs.ts",
+      "line": 128,
+      "message": "RustDocsUpdater::Date: cyclomatic-complexity - Cyclomatic complexity of 27 exceeds recommended complexity of 25 (complexity: 27, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./scripts/update-rust-docs.ts",
+      "line": 128,
+      "message": "RustDocsUpdater::Date: cognitive-complexity - Cognitive complexity of 38 exceeds maximum allowed complexity of 25 (complexity: 38, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "warning",
+      "file": "./scripts/upgrade_property_tests.py",
+      "line": 99,
+      "message": "identify_module_type: cognitive-complexity - Cognitive complexity of 24 exceeds recommended complexity of 20 (complexity: 24, threshold: 20)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./scripts/validate-docs.py",
+      "line": 67,
+      "message": "_check_document_headers: cognitive-complexity - Cognitive complexity of 27 exceeds maximum allowed complexity of 25 (complexity: 27, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./scripts/validate-docs.py",
+      "line": 102,
+      "message": "_check_todo_staleness: cognitive-complexity - Cognitive complexity of 27 exceeds maximum allowed complexity of 25 (complexity: 27, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "warning",
+      "file": "./scripts/validate-docs.py",
+      "line": 135,
+      "message": "_check_internal_links: cognitive-complexity - Cognitive complexity of 23 exceeds recommended complexity of 20 (complexity: 23, threshold: 20)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "warning",
+      "file": "./scripts/validate-github-actions-status.ts",
+      "line": 107,
+      "message": "validateGitHubActionsStatus: cognitive-complexity - Cognitive complexity of 23 exceeds recommended complexity of 20 (complexity: 23, threshold: 20)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "warning",
+      "file": "./src/cli/analysis/graph_metrics.rs",
+      "line": 700,
+      "message": "calculate_pagerank: cognitive-complexity - Cognitive complexity of 25 exceeds recommended complexity of 20 (complexity: 25, threshold: 20)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "warning",
+      "file": "./src/cli/analysis_utilities/quality_checks_part3.rs",
+      "line": 600,
+      "message": "write_qg_violations_summary: cognitive-complexity - Cognitive complexity of 22 exceeds recommended complexity of 20 (complexity: 22, threshold: 20)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "warning",
+      "file": "./src/cli/analysis_utilities/string_utils.rs",
+      "line": 300,
+      "message": "calculate_soundex: cognitive-complexity - Cognitive complexity of 21 exceeds recommended complexity of 20 (complexity: 21, threshold: 20)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/analysis_handlers.rs",
+      "line": 2300,
+      "message": "route_semantic_analysis: cognitive-complexity - Cognitive complexity of 37 exceeds maximum allowed complexity of 25 (complexity: 37, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/brick_score_handlers.rs",
+      "line": 50,
+      "message": "format_text: cognitive-complexity - Cognitive complexity of 54 exceeds maximum allowed complexity of 25 (complexity: 54, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/brick_score_handlers.rs",
+      "line": 150,
+      "message": "format_markdown: cognitive-complexity - Cognitive complexity of 28 exceeds maximum allowed complexity of 25 (complexity: 28, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "warning",
+      "file": "./src/cli/handlers/bug_report_handler.rs",
+      "line": 0,
+      "message": "handle_bug_report: cognitive-complexity - Cognitive complexity of 24 exceeds recommended complexity of 20 (complexity: 24, threshold: 20)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/cleanup_resources_handler.rs",
+      "line": 0,
+      "message": "handle_cleanup_resources: cognitive-complexity - Cognitive complexity of 26 exceeds maximum allowed complexity of 25 (complexity: 26, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/cleanup_resources_handler.rs",
+      "line": 200,
+      "message": "scan_log_targets: cognitive-complexity - Cognitive complexity of 37 exceeds maximum allowed complexity of 25 (complexity: 37, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/cleanup_resources_handler.rs",
+      "line": 300,
+      "message": "execute_cleanup: cognitive-complexity - Cognitive complexity of 31 exceeds maximum allowed complexity of 25 (complexity: 31, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/comply_cb_detect.rs",
+      "line": 0,
+      "message": "compute_test_code_lines: cognitive-complexity - Cognitive complexity of 109 exceeds maximum allowed complexity of 25 (complexity: 109, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/comply_cb_detect.rs",
+      "line": 50,
+      "message": "detect_cb020_unsafe_without_safety: cognitive-complexity - Cognitive complexity of 52 exceeds maximum allowed complexity of 25 (complexity: 52, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/comply_cb_detect.rs",
+      "line": 150,
+      "message": "detect_cb021_simd_without_target_feature: cognitive-complexity - Cognitive complexity of 140 exceeds maximum allowed complexity of 25 (complexity: 140, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/comply_cb_detect.rs",
+      "line": 200,
+      "message": "detect_cb001_wgsl_no_bounds_check: cognitive-complexity - Cognitive complexity of 53 exceeds maximum allowed complexity of 25 (complexity: 53, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/comply_cb_detect.rs",
+      "line": 300,
+      "message": "detect_cb002_wgsl_barrier_divergence: cognitive-complexity - Cognitive complexity of 63 exceeds maximum allowed complexity of 25 (complexity: 63, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/comply_cb_detect.rs",
+      "line": 350,
+      "message": "detect_bricks_without_assertions: cognitive-complexity - Cognitive complexity of 42 exceeds maximum allowed complexity of 25 (complexity: 42, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/comply_cb_detect.rs",
+      "line": 400,
+      "message": "detect_profiler_anomalies: cognitive-complexity - Cognitive complexity of 60 exceeds maximum allowed complexity of 25 (complexity: 60, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "warning",
+      "file": "./src/cli/handlers/comply_cb_detect.rs",
+      "line": 500,
+      "message": "extract_brick_name: cognitive-complexity - Cognitive complexity of 25 exceeds recommended complexity of 20 (complexity: 25, threshold: 20)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/comply_cb_detect.rs",
+      "line": 550,
+      "message": "detect_cb120_nan_unsafe_comparison: cognitive-complexity - Cognitive complexity of 56 exceeds maximum allowed complexity of 25 (complexity: 56, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/comply_cb_detect.rs",
+      "line": 600,
+      "message": "detect_cb121_lock_poisoning: cognitive-complexity - Cognitive complexity of 133 exceeds maximum allowed complexity of 25 (complexity: 133, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/comply_cb_detect.rs",
+      "line": 650,
+      "message": "detect_cb122_serde_safety: cognitive-complexity - Cognitive complexity of 56 exceeds maximum allowed complexity of 25 (complexity: 56, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/comply_cb_detect.rs",
+      "line": 700,
+      "message": "detect_cb123_undocumented_ignore: cognitive-complexity - Cognitive complexity of 75 exceeds maximum allowed complexity of 25 (complexity: 75, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/comply_cb_detect.rs",
+      "line": 750,
+      "message": "detect_cb124_coverage_threshold: cognitive-complexity - Cognitive complexity of 40 exceeds maximum allowed complexity of 25 (complexity: 40, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/comply_cb_detect.rs",
+      "line": 850,
+      "message": "detect_cb125_coverage_exclusion_gaming: cognitive-complexity - Cognitive complexity of 45 exceeds maximum allowed complexity of 25 (complexity: 45, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/comply_cb_detect.rs",
+      "line": 1000,
+      "message": "check_makefile_test_targets: cognitive-complexity - Cognitive complexity of 27 exceeds maximum allowed complexity of 25 (complexity: 27, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/comply_cb_detect.rs",
+      "line": 1100,
+      "message": "check_sleep_durations: cognitive-complexity - Cognitive complexity of 26 exceeds maximum allowed complexity of 25 (complexity: 26, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/comply_handlers/check_handlers.rs",
+      "line": 750,
+      "message": "check_compute_brick: cognitive-complexity - Cognitive complexity of 26 exceeds maximum allowed complexity of 25 (complexity: 26, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/comply_handlers/comply_cb_detect.rs",
+      "line": 200,
+      "message": "detect_cb050_code_stubs_in_str_with_path: cognitive-complexity - Cognitive complexity of 29 exceeds maximum allowed complexity of 25 (complexity: 29, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/comply_handlers/comply_cb_detect.rs",
+      "line": 300,
+      "message": "compute_skip_mask: cognitive-complexity - Cognitive complexity of 27 exceeds maximum allowed complexity of 25 (complexity: 27, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "warning",
+      "file": "./src/cli/handlers/comply_handlers/comply_cb_detect.rs",
+      "line": 500,
+      "message": "detect_ptx_barrier_divergence_in_str: cognitive-complexity - Cognitive complexity of 22 exceeds recommended complexity of 20 (complexity: 22, threshold: 20)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/comply_handlers/comply_cb_detect.rs",
+      "line": 550,
+      "message": "detect_wgsl_barrier_divergence_in_str: cognitive-complexity - Cognitive complexity of 32 exceeds maximum allowed complexity of 25 (complexity: 32, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/comply_handlers/comply_cb_detect.rs",
+      "line": 600,
+      "message": "detect_shared_memory_unbounded_in_str: cognitive-complexity - Cognitive complexity of 39 exceeds maximum allowed complexity of 25 (complexity: 39, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "warning",
+      "file": "./src/cli/handlers/comply_handlers/comply_cb_detect.rs",
+      "line": 650,
+      "message": "detect_tiled_kernel_no_bounds_in_str: cyclomatic-complexity - Cyclomatic complexity of 30 exceeds recommended complexity of 25 (complexity: 30, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/comply_handlers/comply_cb_detect.rs",
+      "line": 650,
+      "message": "detect_tiled_kernel_no_bounds_in_str: cognitive-complexity - Cognitive complexity of 78 exceeds maximum allowed complexity of 25 (complexity: 78, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "warning",
+      "file": "./src/cli/handlers/comply_handlers/migrate_handlers.rs",
+      "line": 350,
+      "message": "check_ml_commit_classification: cognitive-complexity - Cognitive complexity of 21 exceeds recommended complexity of 20 (complexity: 21, threshold: 20)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/comply_handlers/migrate_handlers.rs",
+      "line": 450,
+      "message": "check_paiml_deps_workspace: cognitive-complexity - Cognitive complexity of 35 exceeds maximum allowed complexity of 25 (complexity: 35, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "warning",
+      "file": "./src/cli/handlers/comply_handlers/migrate_handlers.rs",
+      "line": 500,
+      "message": "check_file_health: cognitive-complexity - Cognitive complexity of 24 exceeds recommended complexity of 20 (complexity: 24, threshold: 20)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/comply_handlers/migrate_handlers.rs",
+      "line": 600,
+      "message": "estimate_avg_complexity: cognitive-complexity - Cognitive complexity of 44 exceeds maximum allowed complexity of 25 (complexity: 44, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/comply_handlers/migrate_handlers.rs",
+      "line": 1050,
+      "message": "handle_enforce: cognitive-complexity - Cognitive complexity of 44 exceeds maximum allowed complexity of 25 (complexity: 44, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/comprehensive_handler.rs",
+      "line": 450,
+      "message": "find_project_root: cognitive-complexity - Cognitive complexity of 27 exceeds maximum allowed complexity of 25 (complexity: 27, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/cuda_tdg_handlers.rs",
+      "line": 450,
+      "message": "handle_taxonomy: cognitive-complexity - Cognitive complexity of 34 exceeds maximum allowed complexity of 25 (complexity: 34, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/demo_score_handlers.rs",
+      "line": 50,
+      "message": "format_text: cognitive-complexity - Cognitive complexity of 33 exceeds maximum allowed complexity of 25 (complexity: 33, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/demo_score_handlers.rs",
+      "line": 150,
+      "message": "format_markdown: cognitive-complexity - Cognitive complexity of 34 exceeds maximum allowed complexity of 25 (complexity: 34, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "warning",
+      "file": "./src/cli/handlers/deps_audit_handlers.rs",
+      "line": 250,
+      "message": "parse_cargo_lock: cognitive-complexity - Cognitive complexity of 23 exceeds recommended complexity of 20 (complexity: 23, threshold: 20)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "warning",
+      "file": "./src/cli/handlers/health_handler.rs",
+      "line": 400,
+      "message": "parse_coverage_percentage: cognitive-complexity - Cognitive complexity of 21 exceeds recommended complexity of 20 (complexity: 21, threshold: 20)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/hooks_command_handlers.rs",
+      "line": 450,
+      "message": "handle_run: cognitive-complexity - Cognitive complexity of 47 exceeds maximum allowed complexity of 25 (complexity: 47, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/mutate.rs",
+      "line": 350,
+      "message": "output_text: cognitive-complexity - Cognitive complexity of 26 exceeds maximum allowed complexity of 25 (complexity: 26, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "warning",
+      "file": "./src/cli/handlers/new_tdg_handler.rs",
+      "line": 0,
+      "message": "check_for_critical_defects: cognitive-complexity - Cognitive complexity of 23 exceeds recommended complexity of 20 (complexity: 23, threshold: 20)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/popper_score_handlers.rs",
+      "line": 50,
+      "message": "format_text: cognitive-complexity - Cognitive complexity of 39 exceeds maximum allowed complexity of 25 (complexity: 39, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/popper_score_handlers.rs",
+      "line": 150,
+      "message": "format_markdown: cognitive-complexity - Cognitive complexity of 35 exceeds maximum allowed complexity of 25 (complexity: 35, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/predict_quality_handlers.rs",
+      "line": 0,
+      "message": "handle_predict_quality: cognitive-complexity - Cognitive complexity of 31 exceeds maximum allowed complexity of 25 (complexity: 31, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "warning",
+      "file": "./src/cli/handlers/project_diag_handlers.rs",
+      "line": 300,
+      "message": "check_dependency_count: cognitive-complexity - Cognitive complexity of 22 exceeds recommended complexity of 20 (complexity: 22, threshold: 20)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/project_diag_handlers.rs",
+      "line": 1250,
+      "message": "has_test_annotations: cognitive-complexity - Cognitive complexity of 42 exceeds maximum allowed complexity of 25 (complexity: 42, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "warning",
+      "file": "./src/cli/handlers/prompt_handlers.rs",
+      "line": 100,
+      "message": "show_prompt: cognitive-complexity - Cognitive complexity of 21 exceeds recommended complexity of 20 (complexity: 21, threshold: 20)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "warning",
+      "file": "./src/cli/handlers/qa_work_handler/impl_epic.rs",
+      "line": 0,
+      "message": "handle_epic_summary: cognitive-complexity - Cognitive complexity of 25 exceeds recommended complexity of 20 (complexity: 25, threshold: 20)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/qa_work_handler/impl_print.rs",
+      "line": 150,
+      "message": "handle_summary: cognitive-complexity - Cognitive complexity of 29 exceeds maximum allowed complexity of 25 (complexity: 29, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "warning",
+      "file": "./src/cli/handlers/qa_work_handler/impl_spec.rs",
+      "line": 50,
+      "message": "handle_spec: cyclomatic-complexity - Cyclomatic complexity of 28 exceeds recommended complexity of 25 (complexity: 28, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/qa_work_handler/impl_spec.rs",
+      "line": 50,
+      "message": "handle_spec: cognitive-complexity - Cognitive complexity of 57 exceeds maximum allowed complexity of 25 (complexity: 57, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/qa_work_handler/impl_spec.rs",
+      "line": 100,
+      "message": "resolve_spec_path: cognitive-complexity - Cognitive complexity of 43 exceeds maximum allowed complexity of 25 (complexity: 43, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/qa_work_handler/spec.rs",
+      "line": 0,
+      "message": "handle_summary: cognitive-complexity - Cognitive complexity of 29 exceeds maximum allowed complexity of 25 (complexity: 29, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "warning",
+      "file": "./src/cli/handlers/qa_work_handler/spec.rs",
+      "line": 50,
+      "message": "handle_epic_summary: cognitive-complexity - Cognitive complexity of 25 exceeds recommended complexity of 20 (complexity: 25, threshold: 20)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "warning",
+      "file": "./src/cli/handlers/qa_work_handler/spec.rs",
+      "line": 300,
+      "message": "handle_spec: cyclomatic-complexity - Cyclomatic complexity of 28 exceeds recommended complexity of 25 (complexity: 28, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/qa_work_handler/spec.rs",
+      "line": 300,
+      "message": "handle_spec: cognitive-complexity - Cognitive complexity of 57 exceeds maximum allowed complexity of 25 (complexity: 57, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/qa_work_handler/spec.rs",
+      "line": 350,
+      "message": "resolve_spec_path: cognitive-complexity - Cognitive complexity of 43 exceeds maximum allowed complexity of 25 (complexity: 43, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/spec_handlers/mod.rs",
+      "line": 150,
+      "message": "handle_spec_list: cognitive-complexity - Cognitive complexity of 43 exceeds maximum allowed complexity of 25 (complexity: 43, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "warning",
+      "file": "./src/cli/handlers/spec_handlers/mod.rs",
+      "line": 400,
+      "message": "handle_spec_sync: cyclomatic-complexity - Cyclomatic complexity of 27 exceeds recommended complexity of 25 (complexity: 27, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/spec_handlers/mod.rs",
+      "line": 400,
+      "message": "handle_spec_sync: cognitive-complexity - Cognitive complexity of 91 exceeds maximum allowed complexity of 25 (complexity: 91, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/spec_handlers/mod.rs",
+      "line": 450,
+      "message": "handle_spec_drift: cognitive-complexity - Cognitive complexity of 48 exceeds maximum allowed complexity of 25 (complexity: 48, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/tdg_handlers.rs",
+      "line": 50,
+      "message": "handle_tdg_command: cognitive-complexity - Cognitive complexity of 29 exceeds maximum allowed complexity of 25 (complexity: 29, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/tdg_handlers.rs",
+      "line": 250,
+      "message": "handle_history_command: cognitive-complexity - Cognitive complexity of 29 exceeds maximum allowed complexity of 25 (complexity: 29, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/tdg_handlers.rs",
+      "line": 450,
+      "message": "create_baseline: cognitive-complexity - Cognitive complexity of 32 exceeds maximum allowed complexity of 25 (complexity: 32, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/tdg_handlers.rs",
+      "line": 600,
+      "message": "list_baselines: cognitive-complexity - Cognitive complexity of 30 exceeds maximum allowed complexity of 25 (complexity: 30, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/tdg_handlers.rs",
+      "line": 1150,
+      "message": "handle_check_quality: cognitive-complexity - Cognitive complexity of 29 exceeds maximum allowed complexity of 25 (complexity: 29, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "warning",
+      "file": "./src/cli/handlers/tdg_handlers.rs",
+      "line": 1350,
+      "message": "format_explain_output: cognitive-complexity - Cognitive complexity of 22 exceeds recommended complexity of 20 (complexity: 22, threshold: 20)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "warning",
+      "file": "./src/cli/handlers/tdg_handlers.rs",
+      "line": 1450,
+      "message": "handle_viz_mode: cognitive-complexity - Cognitive complexity of 22 exceeds recommended complexity of 20 (complexity: 22, threshold: 20)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "warning",
+      "file": "./src/cli/handlers/test_discovery_handlers.rs",
+      "line": 450,
+      "message": "handle_mark: cognitive-complexity - Cognitive complexity of 21 exceeds recommended complexity of 20 (complexity: 21, threshold: 20)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/test_discovery_handlers.rs",
+      "line": 500,
+      "message": "mark_tests_in_file: cognitive-complexity - Cognitive complexity of 40 exceeds maximum allowed complexity of 25 (complexity: 40, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/utility_handlers/context_generation.rs",
+      "line": 50,
+      "message": "add_simple_file_section: cognitive-complexity - Cognitive complexity of 34 exceeds maximum allowed complexity of 25 (complexity: 34, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/work_falsification.rs",
+      "line": 50,
+      "message": "run_single_falsification: cognitive-complexity - Cognitive complexity of 37 exceeds maximum allowed complexity of 25 (complexity: 37, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "warning",
+      "file": "./src/cli/handlers/work_falsification.rs",
+      "line": 250,
+      "message": "test_absolute_coverage: cognitive-complexity - Cognitive complexity of 25 exceeds recommended complexity of 20 (complexity: 25, threshold: 20)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "warning",
+      "file": "./src/cli/handlers/work_falsification.rs",
+      "line": 350,
+      "message": "test_complexity_regression: cognitive-complexity - Cognitive complexity of 21 exceeds recommended complexity of 20 (complexity: 21, threshold: 20)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/work_falsification.rs",
+      "line": 450,
+      "message": "test_spec_quality: cognitive-complexity - Cognitive complexity of 34 exceeds maximum allowed complexity of 25 (complexity: 34, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/work_falsification.rs",
+      "line": 950,
+      "message": "test_book_validation: cognitive-complexity - Cognitive complexity of 43 exceeds maximum allowed complexity of 25 (complexity: 43, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/work_falsification.rs",
+      "line": 1050,
+      "message": "detect_new_satd_since_baseline: cognitive-complexity - Cognitive complexity of 28 exceeds maximum allowed complexity of 25 (complexity: 28, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/work_falsification.rs",
+      "line": 1200,
+      "message": "test_per_file_coverage: cognitive-complexity - Cognitive complexity of 42 exceeds maximum allowed complexity of 25 (complexity: 42, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/work_handlers/core_handlers.rs",
+      "line": 50,
+      "message": "handle_work_start: cognitive-complexity - Cognitive complexity of 42 exceeds maximum allowed complexity of 25 (complexity: 42, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/work_handlers/core_handlers.rs",
+      "line": 600,
+      "message": "handle_work_complete: cognitive-complexity - Cognitive complexity of 40 exceeds maximum allowed complexity of 25 (complexity: 40, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "warning",
+      "file": "./src/cli/handlers/work_handlers/core_handlers.rs",
+      "line": 650,
+      "message": "handle_work_status: cognitive-complexity - Cognitive complexity of 24 exceeds recommended complexity of 20 (complexity: 24, threshold: 20)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/work_handlers/ticket_handlers.rs",
+      "line": 0,
+      "message": "handle_work_validate: cognitive-complexity - Cognitive complexity of 45 exceeds maximum allowed complexity of 25 (complexity: 45, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/work_handlers/ticket_handlers.rs",
+      "line": 50,
+      "message": "handle_work_migrate: cognitive-complexity - Cognitive complexity of 31 exceeds maximum allowed complexity of 25 (complexity: 31, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "warning",
+      "file": "./src/cli/handlers/work_handlers/ticket_handlers.rs",
+      "line": 200,
+      "message": "handle_work_list: cognitive-complexity - Cognitive complexity of 23 exceeds recommended complexity of 20 (complexity: 23, threshold: 20)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/work_handlers/ticket_handlers.rs",
+      "line": 450,
+      "message": "find_related_files: cognitive-complexity - Cognitive complexity of 36 exceeds maximum allowed complexity of 25 (complexity: 36, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "warning",
+      "file": "./src/cli/handlers/work_handlers/ticket_handlers.rs",
+      "line": 550,
+      "message": "print_annotations_text: cognitive-complexity - Cognitive complexity of 22 exceeds recommended complexity of 20 (complexity: 22, threshold: 20)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/work_quality_handlers.rs",
+      "line": 0,
+      "message": "run_quality_gates: cognitive-complexity - Cognitive complexity of 39 exceeds maximum allowed complexity of 25 (complexity: 39, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/work_quality_handlers.rs",
+      "line": 50,
+      "message": "run_popper_falsification: cognitive-complexity - Cognitive complexity of 47 exceeds maximum allowed complexity of 25 (complexity: 47, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "warning",
+      "file": "./src/cli/stubs_tdg_enhanced.rs",
+      "line": 300,
+      "message": "generate_output_content: cognitive-complexity - Cognitive complexity of 21 exceeds recommended complexity of 20 (complexity: 21, threshold: 20)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "warning",
+      "file": "./src/cli/symbol_table_helpers.rs",
+      "line": 150,
+      "message": "extract_symbols_from_context: cognitive-complexity - Cognitive complexity of 24 exceeds recommended complexity of 20 (complexity: 24, threshold: 20)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "warning",
+      "file": "./src/demo/runner.rs",
+      "line": 400,
+      "message": "find_git_root: cognitive-complexity - Cognitive complexity of 21 exceeds recommended complexity of 20 (complexity: 21, threshold: 20)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/mcp_integration/java_tools.rs",
+      "line": 50,
+      "message": "analyze_java_directory: cognitive-complexity - Cognitive complexity of 49 exceeds maximum allowed complexity of 25 (complexity: 49, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "warning",
+      "file": "./src/mcp_integration/scala_tools.rs",
+      "line": 0,
+      "message": "analyze_scala_file: cognitive-complexity - Cognitive complexity of 22 exceeds recommended complexity of 20 (complexity: 22, threshold: 20)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/mcp_integration/scala_tools.rs",
+      "line": 50,
+      "message": "analyze_scala_directory: cognitive-complexity - Cognitive complexity of 64 exceeds maximum allowed complexity of 25 (complexity: 64, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/mcp_pmcp/tool_functions/analysis_tools.rs",
+      "line": 0,
+      "message": "analyze_complexity: cognitive-complexity - Cognitive complexity of 29 exceeds maximum allowed complexity of 25 (complexity: 29, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/mcp_pmcp/tool_functions/analysis_tools.rs",
+      "line": 50,
+      "message": "analyze_satd: cognitive-complexity - Cognitive complexity of 27 exceeds maximum allowed complexity of 25 (complexity: 27, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/mcp_pmcp/tool_functions/context_tools.rs",
+      "line": 150,
+      "message": "context_summary: cognitive-complexity - Cognitive complexity of 67 exceeds maximum allowed complexity of 25 (complexity: 67, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "warning",
+      "file": "./src/services/analyzer/complexity.rs",
+      "line": 0,
+      "message": "find_source_files: cognitive-complexity - Cognitive complexity of 22 exceeds recommended complexity of 20 (complexity: 22, threshold: 20)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/services/brick_score.rs",
+      "line": 150,
+      "message": "estimate_arithmetic_intensity: cognitive-complexity - Cognitive complexity of 27 exceeds maximum allowed complexity of 25 (complexity: 27, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/services/brick_score.rs",
+      "line": 250,
+      "message": "score_brick_profiler: cognitive-complexity - Cognitive complexity of 37 exceeds maximum allowed complexity of 25 (complexity: 37, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "warning",
+      "file": "./src/services/canonical_query.rs",
+      "line": 150,
+      "message": "generate_styled_architecture_diagram: cognitive-complexity - Cognitive complexity of 21 exceeds recommended complexity of 20 (complexity: 21, threshold: 20)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/services/changelog_manager.rs",
+      "line": 100,
+      "message": "insert_entry: cognitive-complexity - Cognitive complexity of 33 exceeds maximum allowed complexity of 25 (complexity: 33, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/services/dead_code_multi_language.rs",
+      "line": 100,
+      "message": "analyze_c_files: cognitive-complexity - Cognitive complexity of 79 exceeds maximum allowed complexity of 25 (complexity: 79, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/services/dead_code_multi_language.rs",
+      "line": 200,
+      "message": "analyze_python_files: cognitive-complexity - Cognitive complexity of 43 exceeds maximum allowed complexity of 25 (complexity: 43, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/services/dead_code_multi_language.rs",
+      "line": 400,
+      "message": "analyze_rust_files: cognitive-complexity - Cognitive complexity of 43 exceeds maximum allowed complexity of 25 (complexity: 43, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "warning",
+      "file": "./src/services/deep_context/analysis_functions.rs",
+      "line": 3750,
+      "message": "analyze_provability: cognitive-complexity - Cognitive complexity of 24 exceeds recommended complexity of 20 (complexity: 24, threshold: 20)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/services/enhanced_language_detection.rs",
+      "line": 50,
+      "message": "detect_all_languages: cognitive-complexity - Cognitive complexity of 33 exceeds maximum allowed complexity of 25 (complexity: 33, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "warning",
+      "file": "./src/services/file_health.rs",
+      "line": 100,
+      "message": "scan_directory: cognitive-complexity - Cognitive complexity of 25 exceeds recommended complexity of 20 (complexity: 25, threshold: 20)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/services/gaming_detector.rs",
+      "line": 150,
+      "message": "check_codecov_changes: cognitive-complexity - Cognitive complexity of 27 exceeds maximum allowed complexity of 25 (complexity: 27, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "warning",
+      "file": "./src/services/lang_analyzer_tests_part1.rs",
+      "line": 106,
+      "message": "sample_python_code: cognitive-complexity - Cognitive complexity of 23 exceeds recommended complexity of 20 (complexity: 23, threshold: 20)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/services/lang_analyzer_tests_part1.rs",
+      "line": 189,
+      "message": "sample_java_code: cognitive-complexity - Cognitive complexity of 26 exceeds maximum allowed complexity of 25 (complexity: 26, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/services/memory_property_tests.rs",
+      "line": 200,
+      "message": "test_pool_efficiency: cognitive-complexity - Cognitive complexity of 27 exceeds maximum allowed complexity of 25 (complexity: 27, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "warning",
+      "file": "./src/services/mutation/typescript_adapter.rs",
+      "line": 150,
+      "message": "detect_test_command: cognitive-complexity - Cognitive complexity of 23 exceeds recommended complexity of 20 (complexity: 23, threshold: 20)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "warning",
+      "file": "./src/services/rust_wasm_analyzer.rs",
+      "line": 0,
+      "message": "analyze_wasm_constructs: cognitive-complexity - Cognitive complexity of 21 exceeds recommended complexity of 20 (complexity: 21, threshold: 20)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "warning",
+      "file": "./src/services/rust_wasm_analyzer.rs",
+      "line": 300,
+      "message": "analyze_type: cognitive-complexity - Cognitive complexity of 24 exceeds recommended complexity of 20 (complexity: 24, threshold: 20)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/services/semantic/chunker.rs",
+      "line": 150,
+      "message": "find_doc_comment_start: cognitive-complexity - Cognitive complexity of 52 exceeds maximum allowed complexity of 25 (complexity: 52, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "warning",
+      "file": "./src/services/semantic/chunker.rs",
+      "line": 500,
+      "message": "extract_ts_arrow_function: cognitive-complexity - Cognitive complexity of 21 exceeds recommended complexity of 20 (complexity: 21, threshold: 20)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/services/semantic/chunker.rs",
+      "line": 1200,
+      "message": "extract_cpp_items: cognitive-complexity - Cognitive complexity of 35 exceeds maximum allowed complexity of 25 (complexity: 35, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/services/semantic/chunker.rs",
+      "line": 1400,
+      "message": "extract_go_items: cognitive-complexity - Cognitive complexity of 26 exceeds maximum allowed complexity of 25 (complexity: 26, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "warning",
+      "file": "./src/test_performance.rs",
+      "line": 300,
+      "message": "get_memory_usage_mb: cognitive-complexity - Cognitive complexity of 21 exceeds recommended complexity of 20 (complexity: 21, threshold: 20)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "warning",
+      "file": "./src/tests/extreme_tdd_deep_context_quality_fixes.rs",
+      "line": 450,
+      "message": "extract_file_section: cognitive-complexity - Cognitive complexity of 25 exceeds recommended complexity of 20 (complexity: 25, threshold: 20)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/tests/fixtures/metric_tests/complex.rs",
+      "line": 100,
+      "message": "deeply_nested_conditionals: cognitive-complexity - Cognitive complexity of 41 exceeds maximum allowed complexity of 25 (complexity: 41, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./tests/e2e/installation.test.ts",
+      "line": 71,
+      "message": "anonymous_fn: cognitive-complexity - Cognitive complexity of 28 exceeds maximum allowed complexity of 25 (complexity: 28, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./tests/http_acceptance/test_api_endpoints.rs",
+      "line": 50,
+      "message": "test_core_api_v1_endpoints: cyclomatic-complexity - Cyclomatic complexity of 34 exceeds maximum allowed complexity of 30 (complexity: 34, threshold: 30)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./tests/http_acceptance/test_api_endpoints.rs",
+      "line": 50,
+      "message": "test_core_api_v1_endpoints: cognitive-complexity - Cognitive complexity of 33 exceeds maximum allowed complexity of 25 (complexity: 33, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "warning",
+      "file": "./tests/http_acceptance/test_api_endpoints.rs",
+      "line": 100,
+      "message": "test_enhanced_api_v1_endpoints: cognitive-complexity - Cognitive complexity of 21 exceeds recommended complexity of 20 (complexity: 21, threshold: 20)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "warning",
+      "file": "./tests/http_acceptance/test_performance.rs",
+      "line": 0,
+      "message": "test_single_request_performance: cognitive-complexity - Cognitive complexity of 21 exceeds recommended complexity of 20 (complexity: 21, threshold: 20)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "warning",
+      "file": "./tests/http_acceptance/test_performance.rs",
+      "line": 300,
+      "message": "test_error_rate_under_stress: cognitive-complexity - Cognitive complexity of 21 exceeds recommended complexity of 20 (complexity: 21, threshold: 20)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./tests/mcp_acceptance/test_mcp_protocol.rs",
+      "line": 50,
+      "message": "test_capability_negotiation: cognitive-complexity - Cognitive complexity of 28 exceeds maximum allowed complexity of 25 (complexity: 28, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./tests/mcp_acceptance/test_mcp_protocol.rs",
+      "line": 500,
+      "message": "test_resource_prompt_compliance: cognitive-complexity - Cognitive complexity of 26 exceeds maximum allowed complexity of 25 (complexity: 26, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./tests/modules/claude_skills_validation_tests.rs",
+      "line": 0,
+      "message": "parse_skill_file: cognitive-complexity - Cognitive complexity of 95 exceeds maximum allowed complexity of 25 (complexity: 95, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./tests/modules/cli_documentation_sync.rs",
+      "line": 0,
+      "message": "parse_documented_cli_commands: cognitive-complexity - Cognitive complexity of 37 exceeds maximum allowed complexity of 25 (complexity: 37, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./tests/modules/cli_documentation_sync.rs",
+      "line": 350,
+      "message": "test_documentation_examples_are_valid: cognitive-complexity - Cognitive complexity of 46 exceeds maximum allowed complexity of 25 (complexity: 46, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "warning",
+      "file": "./tests/modules/demo_e2e_integration.rs",
+      "line": 300,
+      "message": "test_analysis_pipeline_integrity: cognitive-complexity - Cognitive complexity of 24 exceeds recommended complexity of 20 (complexity: 24, threshold: 20)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "warning",
+      "file": "./tests/modules/mcp_documentation_sync.rs",
+      "line": 0,
+      "message": "parse_documented_mcp_tools: cognitive-complexity - Cognitive complexity of 23 exceeds recommended complexity of 20 (complexity: 23, threshold: 20)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "warning",
+      "file": "./tests/modules/mcp_documentation_sync.rs",
+      "line": 100,
+      "message": "send_mcp_request: cognitive-complexity - Cognitive complexity of 25 exceeds recommended complexity of 20 (complexity: 25, threshold: 20)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./tests/modules/mcp_documentation_sync.rs",
+      "line": 200,
+      "message": "test_mcp_tool_schemas_match_documentation: cognitive-complexity - Cognitive complexity of 28 exceeds maximum allowed complexity of 25 (complexity: 28, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "warning",
+      "file": "./tests/modules/mermaid_artifact_tests.rs",
+      "line": 500,
+      "message": "test_maintain_mermaid_readme: cognitive-complexity - Cognitive complexity of 22 exceeds recommended complexity of 20 (complexity: 22, threshold: 20)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "warning",
+      "file": "./tests/modules/parse_sprint_section_refactor_test.rs",
+      "line": 300,
+      "message": "parse_mock_tasks: cognitive-complexity - Cognitive complexity of 24 exceeds recommended complexity of 20 (complexity: 24, threshold: 20)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "warning",
+      "file": "./tests/modules/parse_sprint_section_refactor_test.rs",
+      "line": 350,
+      "message": "parse_mock_definition_of_done: cognitive-complexity - Cognitive complexity of 22 exceeds recommended complexity of 20 (complexity: 22, threshold: 20)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./tests/modules/roadmap_yaml_validator.rs",
+      "line": 50,
+      "message": "validate_roadmap_with_raw_yaml: cognitive-complexity - Cognitive complexity of 35 exceeds maximum allowed complexity of 25 (complexity: 35, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "warning",
+      "file": "./tests/modules/sprint85_entropy_reduction_test.rs",
+      "line": 400,
+      "message": "collect_files_recursive_new: cognitive-complexity - Cognitive complexity of 21 exceeds recommended complexity of 20 (complexity: 21, threshold: 20)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "warning",
+      "file": "./tests/performance/specification_validation.rs",
+      "line": 400,
+      "message": "get_memory_usage_mb: cognitive-complexity - Cognitive complexity of 21 exceeds recommended complexity of 20 (complexity: 21, threshold: 20)"
+    },
+    {
+      "check_type": "dead_code",
+      "severity": "error",
+      "file": ".",
+      "line": null,
+      "message": "Dead code percentage 32.4% exceeds maximum allowed 15.0%"
+    },
+    {
+      "check_type": "dead_code",
+      "severity": "warning",
+      "file": "./src/mcp_pmcp/tool_functions/tdg_tools.rs",
+      "line": null,
+      "message": "File has 95.7% dead code (220 dead lines)"
+    },
+    {
+      "check_type": "dead_code",
+      "severity": "warning",
+      "file": "./src/demo/mod.rs",
+      "line": null,
+      "message": "File has 57.4% dead code (310 dead lines)"
+    },
+    {
+      "check_type": "dead_code",
+      "severity": "warning",
+      "file": "./src/mcp_integration/ast_item_helpers.rs",
+      "line": null,
+      "message": "File has 86.7% dead code (130 dead lines)"
+    },
+    {
+      "check_type": "dead_code",
+      "severity": "warning",
+      "file": "./src/scaffold/agent/templates.rs",
+      "line": null,
+      "message": "File has 62.5% dead code (250 dead lines)"
+    },
+    {
+      "check_type": "dead_code",
+      "severity": "warning",
+      "file": "./src/mcp_pmcp/tool_functions/analysis_tools.rs",
+      "line": null,
+      "message": "File has 100.0% dead code (60 dead lines)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "info",
+      "file": "./src/mcp_pmcp/tool_functions/analysis_tools.rs",
+      "line": 101,
+      "message": "Requirement: TODO: implement include_resolved parameter to filter resolved debt (DONE, RESOLVED comments) (at column 5)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "info",
+      "file": "./src/mcp_pmcp/tool_functions/quality_tools.rs",
+      "line": 269,
+      "message": "Design: Default to temp location (at column 9)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "info",
+      "file": "./src/quality/gate.rs",
+      "line": 114,
+      "message": "Requirement: TODO: Fix analyzer trait implementations (at column 17)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "info",
+      "file": "./src/qdd/refactor.rs",
+      "line": 189,
+      "message": "Requirement: Replace TODO with actual implementation (at column 9)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "info",
+      "file": "./src/docs_enforcement/mcp_checker.rs",
+      "line": 210,
+      "message": "Requirement: TODO: Implement actual loading from MCP server (at column 5)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "info",
+      "file": "./src/graph/storage.rs",
+      "line": 128,
+      "message": "Requirement: TODO: Integrate with trueno-db SQL query when API is stable (at column 9)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "info",
+      "file": "./src/graph/storage.rs",
+      "line": 164,
+      "message": "Requirement: TODO: Integrate with aprender::graph::PageRank when API is available (at column 9)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "info",
+      "file": "./src/graph/storage.rs",
+      "line": 188,
+      "message": "Requirement: TODO: Integrate with trueno-db SQL query (at column 9)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "info",
+      "file": "./src/graph/pagerank.rs",
+      "line": 66,
+      "message": "Design: Build temporary DependencyGraph from GraphMatrices (at column 9)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "warning",
+      "file": "./src/cli/commands/mod.rs",
+      "line": 45,
+      "message": "Design: Calculate Technical Debt Grade (TDG) (at column 1)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "warning",
+      "file": "./src/cli/commands/mod.rs",
+      "line": 48,
+      "message": "Design: Find technical debt markers (TODO, FIXME, HACK) (at column 1)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "info",
+      "file": "./src/cli/unified_help.rs",
+      "line": 469,
+      "message": "Requirement: TODO: Use query to highlight matching terms (at column 9)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "info",
+      "file": "./src/cli/handlers/utility_handlers/mod.rs",
+      "line": 129,
+      "message": "Requirement: TODO: Full multi-language support in future sprint (at column 5)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "info",
+      "file": "./src/cli/handlers/hooks_command_handlers.rs",
+      "line": 420,
+      "message": "Requirement: TODO: Use proper TOML parsing for production (at column 9)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "warning",
+      "file": "./src/cli/handlers/comply_handlers/comply_cb_detect.rs",
+      "line": 91,
+      "message": "Design: Default: Comment manifestation (// TODO, /* FIXME */, # HACK) (at column 5)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "info",
+      "file": "./src/cli/handlers/comply_handlers/comply_cb_detect.rs",
+      "line": 285,
+      "message": "Requirement: CB-050-A: todo!() macro - handles spacing variations (at column 9)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "error",
+      "file": "./src/cli/handlers/comply_handlers/comply_cb_detect.rs",
+      "line": 309,
+      "message": "Defect: CB-050-F: Python pass with stub/todo/fixme comment (at column 9)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "warning",
+      "file": "./src/cli/handlers/comply_handlers/check_handlers.rs",
+      "line": 900,
+      "message": "Design: as technical debt and will be addressed incrementally. (at column 5)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "info",
+      "file": "./src/cli/handlers/comply_handlers/check_handlers.rs",
+      "line": 945,
+      "message": "Performance: CB-126: Slow tests (at column 5)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "info",
+      "file": "./src/cli/handlers/comply_handlers/check_handlers.rs",
+      "line": 959,
+      "message": "Performance: CB-127: Slow coverage configuration (at column 5)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "info",
+      "file": "./src/cli/handlers/comply_handlers/check_handlers.rs",
+      "line": 974,
+      "message": "Performance: Per [GAME-001], [SLOW-001], [PERF-001]: These directly impact development velocity (at column 5)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "info",
+      "file": "./src/cli/handlers/enforce_coverage_part1.rs",
+      "line": 19,
+      "message": "Requirement: TODO: Refactor this function (at column 1)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "info",
+      "file": "./src/cli/handlers/enforce_coverage_part1.rs",
+      "line": 71,
+      "message": "Requirement: TODO: Add documentation (at column 1)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "error",
+      "file": "./src/cli/handlers/enforce_coverage_part1.rs",
+      "line": 76,
+      "message": "Defect: FIXME: This function is too complex (at column 1)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "warning",
+      "file": "./src/cli/handlers/enforce_coverage_part1.rs",
+      "line": 95,
+      "message": "Design: HACK: Temporary workaround (at column 1)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "info",
+      "file": "./src/cli/handlers/tdg_handlers.rs",
+      "line": 552,
+      "message": "Design: Clean up temp file (at column 5)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "info",
+      "file": "./src/cli/handlers/qa_work_handler/impl_epic.rs",
+      "line": 180,
+      "message": "Design: Create temporary empty directory (at column 1)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "info",
+      "file": "./src/cli/handlers/work_falsification.rs",
+      "line": 349,
+      "message": "Requirement: TODO: Integrate with actual coverage data (at column 5)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "info",
+      "file": "./src/cli/handlers/analysis_handlers.rs",
+      "line": 669,
+      "message": "Requirement: TODO: Implement regression check by comparing with stored baseline (at column 13)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "warning",
+      "file": "./src/cli/handlers/spec_handlers/mod.rs",
+      "line": 474,
+      "message": "Design: Regex to extract ticket from spec frontmatter: **Ticket**: XXX or Ticket: XXX (at column 5)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "info",
+      "file": "./src/state/mod.rs",
+      "line": 3,
+      "message": "Requirement: TODO: Fix async_raft v0.6 API compatibility (at column 1)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "info",
+      "file": "./src/state/recovery.rs",
+      "line": 287,
+      "message": "Performance: Recovery too slow, snapshot more frequently (at column 13)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "info",
+      "file": "./src/tdg/function_analyzer.rs",
+      "line": 133,
+      "message": "Requirement: TODO: Implement proper cognitive complexity (Sonar rule) (at column 9)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "info",
+      "file": "./src/tdg/storage_backend.rs",
+      "line": 148,
+      "message": "Design: Use in-memory database for temporary storage (at column 9)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "info",
+      "file": "./src/ast/polyglot/language_mapper.rs",
+      "line": 311,
+      "message": "Requirement: TODO: Add Kotlin-specific analysis when kotlin-ast feature is enabled (at column 9)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "info",
+      "file": "./src/agents/mod.rs",
+      "line": 105,
+      "message": "Requirement: TODO: Properly implement agent system initialization (at column 5)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "info",
+      "file": "./src/services/semantic/search_engine.rs",
+      "line": 145,
+      "message": "Requirement: TODO: Store actual content snippet in database for better display (at column 17)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "info",
+      "file": "./src/services/defect_report_service/mod.rs",
+      "line": 603,
+      "message": "Requirement: TODO: Implement line count filtering when metadata available (at column 21)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "info",
+      "file": "./src/services/context.rs",
+      "line": 558,
+      "message": "Requirement: Ruby files (tree-sitter) - TODO: implement analyze_ruby_file() (at column 9)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "info",
+      "file": "./src/services/context.rs",
+      "line": 565,
+      "message": "Requirement: Ruby files (ruchy parser - alternative) - TODO: implement analyze_ruby_file() (at column 9)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "info",
+      "file": "./src/services/context.rs",
+      "line": 588,
+      "message": "Requirement: Erlang files - TODO: implement analyze_erlang_file() (at column 9)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "info",
+      "file": "./src/services/context.rs",
+      "line": 595,
+      "message": "Requirement: Elixir files - TODO: implement analyze_elixir_file() (at column 9)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "info",
+      "file": "./src/services/context.rs",
+      "line": 602,
+      "message": "Requirement: Haskell files - TODO: implement analyze_haskell_file() (at column 9)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "info",
+      "file": "./src/services/context.rs",
+      "line": 609,
+      "message": "Requirement: OCaml files - TODO: implement analyze_ocaml_file() (at column 9)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "info",
+      "file": "./src/services/context.rs",
+      "line": 616,
+      "message": "Requirement: Shell script files - TODO: implement analyze_shell_file() (at column 9)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "info",
+      "file": "./src/services/context.rs",
+      "line": 623,
+      "message": "Requirement: WebAssembly files - TODO: implement analyze_wasm_file() (at column 9)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "warning",
+      "file": "./src/services/deep_context_concurrent.rs",
+      "line": 319,
+      "message": "Design: Technical debt gradient results (at column 5)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "info",
+      "file": "./src/services/deep_context/analysis_functions.rs",
+      "line": 567,
+      "message": "Requirement: TODO: Implement tree-sitter Ruby analyzer (at column 9)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "info",
+      "file": "./src/services/deep_context/analysis_functions.rs",
+      "line": 573,
+      "message": "Requirement: Fall back to ruchy parser - TODO: Implement proper ruchy integration (at column 9)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "info",
+      "file": "./src/services/deep_context/analysis_functions.rs",
+      "line": 592,
+      "message": "Requirement: TODO: Implement Swift tree-sitter analyzer (at column 9)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "info",
+      "file": "./src/services/context/analysis.rs",
+      "line": 505,
+      "message": "Requirement: TODO: Implement call graph edge extraction in future iteration (at column 5)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "info",
+      "file": "./src/services/ml_quality_scorer.rs",
+      "line": 562,
+      "message": "Requirement: TODO: Implement serialization when aprender supports it (at column 9)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "info",
+      "file": "./src/services/ml_quality_scorer.rs",
+      "line": 568,
+      "message": "Requirement: TODO: Implement deserialization when aprender supports it (at column 9)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "info",
+      "file": "./src/services/mutation/distributed.rs",
+      "line": 464,
+      "message": "Design: Convert string ID to numeric ID for temp file naming (at column 13)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "info",
+      "file": "./src/services/mutation/distributed.rs",
+      "line": 477,
+      "message": "Design: Write mutated source to temp file (at column 9)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "info",
+      "file": "./src/services/mutation/executor.rs",
+      "line": 235,
+      "message": "Design: Write mutated source to unique temp file (at column 9)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "info",
+      "file": "./src/services/mutation/executor.rs",
+      "line": 243,
+      "message": "Design: Cleanup temp file (at column 9)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "info",
+      "file": "./src/services/mutation/executor.rs",
+      "line": 559,
+      "message": "Design: Write to temp file (at column 9)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "info",
+      "file": "./src/services/mutation/executor.rs",
+      "line": 575,
+      "message": "Design: Atomically rename temp file to target (at column 9)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "info",
+      "file": "./src/services/analytics_backend.rs",
+      "line": 59,
+      "message": "Requirement: TODO: Check if GPU is actually available (at column 13)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "info",
+      "file": "./src/services/analytics_backend.rs",
+      "line": 75,
+      "message": "Requirement: TODO: Implement GPU device detection (at column 9)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "info",
+      "file": "./src/services/analytics_backend.rs",
+      "line": 218,
+      "message": "Requirement: TODO: Integrate trueno::simd::sum() when available (at column 9)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "info",
+      "file": "./src/services/analytics_backend.rs",
+      "line": 441,
+      "message": "Requirement: TODO: Implement GPU compute shader for parallel sum (at column 13)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "info",
+      "file": "./src/services/metric_trends.rs",
+      "line": 396,
+      "message": "Requirement: TODO Phase 3.2: Implement SIMD using aprender patterns (at column 9)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "error",
+      "file": "./src/services/gaming_detector.rs",
+      "line": 369,
+      "message": "Defect: The meta-check: if we CAN'T detect this pattern, the detector is broken (at column 5)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "info",
+      "file": "./src/services/languages/javascript.rs",
+      "line": 40,
+      "message": "Design: Write source code to temporary file (at column 9)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "info",
+      "file": "./src/services/languages/typescript.rs",
+      "line": 39,
+      "message": "Design: Write source code to temporary file (at column 9)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "info",
+      "file": "./src/services/coverage_improvement/mod.rs",
+      "line": 765,
+      "message": "Design: Clean up temporary file (at column 9)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "info",
+      "file": "./src/services/doc_validator.rs",
+      "line": 479,
+      "message": "Requirement: TODO: Parse markdown headers and validate anchor exists (at column 9)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "info",
+      "file": "./src/services/rust_project_score/rust_tooling_scorer.rs",
+      "line": 867,
+      "message": "Performance: Score clippy (10pts) - ONLY in full mode (too slow for fast mode) (at column 9)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "info",
+      "file": "./src/services/rust_project_score/rust_tooling_scorer.rs",
+      "line": 878,
+      "message": "Performance: Fast mode: Skip clippy (too slow - takes 60-90s on large projects) (at column 13)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "info",
+      "file": "./src/services/rust_project_score/rust_tooling_scorer.rs",
+      "line": 914,
+      "message": "Performance: Fast mode: Skip cargo-audit (network calls too slow) (at column 13)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "info",
+      "file": "./src/services/rust_project_score/rust_tooling_scorer.rs",
+      "line": 1008,
+      "message": "Performance: so cache is not actually used (no file reads to optimize) (at column 9)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "info",
+      "file": "./src/services/repo_score/scorers/hygiene_scorer.rs",
+      "line": 4,
+      "message": "Design: - C1: No Cruft Files (5 points) - No temp files, caches, build artifacts (at column 1)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "info",
+      "file": "./src/services/repo_score/scorers/hygiene_scorer.rs",
+      "line": 36,
+      "message": "Design: Temp files (at column 13)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "info",
+      "file": "./src/services/repo_score/scorers/hygiene_scorer.rs",
+      "line": 267,
+      "message": "Performance: With --deep: --all (slow, minutes on large repos) (at column 9)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "info",
+      "file": "./src/services/repo_score/scorers/precommit_scorer.rs",
+      "line": 124,
+      "message": "Performance: Skip performance test if requested (can be slow) (at column 9)"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/services/ast/languages/cpp.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 10 times (saves 1468 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/cli/handlers/comply_cb_detect.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 10 times (saves 1015 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/tdg/storage_backend.rs",
+      "line": null,
+      "message": "ApiCall pattern repeated 10 times (saves 1490 lines) - Fix: Create API client abstraction"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/services/dap/server.rs",
+      "line": null,
+      "message": "ResourceManagement pattern repeated 10 times (saves 806 lines) - Fix: Implement RAII pattern or use guard types"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/tdg/cuda_simd/detection.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 10 times (saves 734 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/cli/handlers/project_diag_handlers.rs",
+      "line": null,
+      "message": "ControlFlow pattern repeated 8 times (saves 705 lines) - Fix: Refactor to strategy pattern or polymorphism"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/cli/handlers/deps_audit_handlers.rs",
+      "line": null,
+      "message": "DataTransformation pattern repeated 10 times (saves 691 lines) - Fix: Extract to data transformation pipeline"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/services/deep_context/analyzer_formatting.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 10 times (saves 648 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/cli/handlers/comply_handlers/migrate_handlers.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 10 times (saves 626 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/services/spec_parser.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 10 times (saves 626 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/cli/language_analyzer.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 10 times (saves 496 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/services/rust_project_score/rust_tooling_scorer.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 10 times (saves 496 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/services/readme_compressor.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 10 times (saves 496 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/cli/handlers/work_handlers/ticket_handlers.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 10 times (saves 453 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/services/makefile_linter/rules/security.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 10 times (saves 432 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/cli/help_generator.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 10 times (saves 432 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/services/unified_bash_analyzer.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 10 times (saves 410 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/services/makefile_compressor.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 10 times (saves 410 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/services/embedded_templates.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 10 times (saves 410 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/services/dap/timeline_ui.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 10 times (saves 388 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/cli/handlers/project_diag_handlers.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 10 times (saves 388 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/entropy/pattern_extractor.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 10 times (saves 367 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/services/detection/polyglot.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 10 times (saves 345 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/cli/handlers/roadmap_handler.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 10 times (saves 324 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/cli/handlers/deps_audit_handlers.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 10 times (saves 324 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/cli/handlers/complexity_handlers.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 10 times (saves 324 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/maintenance/ticket.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 10 times (saves 302 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/cli/handlers/unified_context_advanced.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 10 times (saves 302 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/cli/handlers/spec_handlers/mod.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 10 times (saves 302 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/tdg/web_dashboard.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 10 times (saves 302 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/mcp_integration/transport.rs",
+      "line": null,
+      "message": "ResourceManagement pattern repeated 10 times (saves 288 lines) - Fix: Implement RAII pattern or use guard types"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/services/rich_reporter/data_science.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 10 times (saves 280 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/services/ast_strategies_impl.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 10 times (saves 280 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/cli/handlers/test_discovery_handlers.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 10 times (saves 280 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/cli/handlers/work_handlers/core_handlers.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 10 times (saves 280 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/tdg/cuda_simd/scoring.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 10 times (saves 280 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/cli/handlers/cleanup_resources_handler.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 10 times (saves 259 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/maintenance/roadmap.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 10 times (saves 259 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/cli/handlers/tdg_handlers.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 10 times (saves 259 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/services/popper_score/scorers/falsifiability.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 10 times (saves 237 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/cli/handlers/lint_hotspot_handlers.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 10 times (saves 237 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/tdg/storage_backend.rs",
+      "line": null,
+      "message": "ResourceManagement pattern repeated 9 times (saves 230 lines) - Fix: Implement RAII pattern or use guard types"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/services/enhanced_naming_tests.rs",
+      "line": null,
+      "message": "ApiCall pattern repeated 10 times (saves 216 lines) - Fix: Create API client abstraction"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/services/rich_reporter/mod.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 10 times (saves 216 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/cli/handlers/comply_cb_detect.rs",
+      "line": null,
+      "message": "ControlFlow pattern repeated 7 times (saves 201 lines) - Fix: Refactor to strategy pattern or polymorphism"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./examples/analysis/tdg_demo.rs",
+      "line": null,
+      "message": "ResourceManagement pattern repeated 8 times (saves 179 lines) - Fix: Implement RAII pattern or use guard types"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/services/file_discovery.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 9 times (saves 172 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/services/doc_validator.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 9 times (saves 172 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/cli/analysis_utilities/string_utils.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 9 times (saves 172 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/tdg/formatters.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 9 times (saves 172 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/contracts/real_service.rs",
+      "line": null,
+      "message": "ApiCall pattern repeated 9 times (saves 172 lines) - Fix: Create API client abstraction"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/services/semantic/chunker.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 9 times (saves 172 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./build.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 9 times (saves 172 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/services/dead_code_prover.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 9 times (saves 172 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/services/git_clone.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 9 times (saves 172 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/cli/handlers/subagent_handlers.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 9 times (saves 172 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/services/popper_score/models.rs",
+      "line": null,
+      "message": "ControlFlow pattern repeated 6 times (saves 144 lines) - Fix: Refactor to strategy pattern or polymorphism"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/cli/handlers/config_command_handlers.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 8 times (saves 134 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/services/mutation/executor.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 8 times (saves 134 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/services/rust_project_score/build_perf_impl.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 8 times (saves 134 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/mcp_integration/server.rs",
+      "line": null,
+      "message": "ResourceManagement pattern repeated 7 times (saves 134 lines) - Fix: Implement RAII pattern or use guard types"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/mcp_pmcp/tool_functions/analysis_tools.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 8 times (saves 134 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/tdg/tdg_graph.rs",
+      "line": null,
+      "message": "ApiCall pattern repeated 8 times (saves 134 lines) - Fix: Create API client abstraction"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/ast/polyglot/cross_language_dependencies.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 8 times (saves 134 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./examples/context_analysis_demo.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 8 times (saves 134 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/services/mermaid_property_tests.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 8 times (saves 134 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/cli/handlers/auto_refactor_engine.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 8 times (saves 134 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/workflow/executor.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 8 times (saves 134 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/services/popper_score/scorers/transparency.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 8 times (saves 134 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/services/file_classifier.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 8 times (saves 134 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/services/perfection_score.rs",
+      "line": null,
+      "message": "DataTransformation pattern repeated 9 times (saves 115 lines) - Fix: Extract to data transformation pipeline"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/cli/analysis_utilities/quality_gate.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 7 times (saves 100 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/services/incremental_churn.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 7 times (saves 100 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/services/wasm/binary.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 7 times (saves 100 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/services/big_o_analyzer.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 7 times (saves 100 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/services/deterministic_mermaid_engine.rs",
+      "line": null,
+      "message": "ApiCall pattern repeated 7 times (saves 100 lines) - Fix: Create API client abstraction"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/cli/analysis/symbol_table.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 7 times (saves 100 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/cli/formatting_helpers.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 7 times (saves 100 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/cli/handlers/refactor_docs_handlers.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 7 times (saves 100 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/services/semantic/openai_embeddings.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 7 times (saves 100 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/docs_enforcement/generic_detector.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 7 times (saves 100 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/cli/handlers/qa_work_handler/spec.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 7 times (saves 100 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/services/coverage_improvement/mod.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 7 times (saves 100 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/cli/diagnose.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 7 times (saves 100 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/demo/templates.rs",
+      "line": null,
+      "message": "ApiCall pattern repeated 7 times (saves 100 lines) - Fix: Create API client abstraction"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/handlers/tools/extended_tools.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 7 times (saves 100 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/docs_enforcement/cli_checker.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 7 times (saves 100 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/cli/handlers/satd_handler.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 7 times (saves 100 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./fuzz/fuzz_targets/fuzz_mermaid_generation.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 7 times (saves 100 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/services/duplicate_detector.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 7 times (saves 100 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/cli/unified_help.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 7 times (saves 100 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/models/deep_context_config.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 7 times (saves 100 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/tdg/olap_analytics.rs",
+      "line": null,
+      "message": "ResourceManagement pattern repeated 6 times (saves 96 lines) - Fix: Implement RAII pattern or use guard types"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/services/defect_report_service/mod.rs",
+      "line": null,
+      "message": "ResourceManagement pattern repeated 6 times (saves 96 lines) - Fix: Implement RAII pattern or use guard types"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/cli/handlers/similarity_handler_coverage_tests.rs",
+      "line": null,
+      "message": "DataTransformation pattern repeated 8 times (saves 89 lines) - Fix: Extract to data transformation pipeline"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/services/dag_builder.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 6 times (saves 72 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/red_team/evidence_gatherer/repository_impl.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 6 times (saves 72 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/cli/handlers/big_o_handlers.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 6 times (saves 72 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./examples/similarity_demo.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 6 times (saves 72 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/cli/handlers/comply_handlers/check_handlers.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 6 times (saves 72 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/cli/handlers/comprehensive_analysis_handler.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 6 times (saves 72 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/cli/handlers/dead_code_handlers.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 6 times (saves 72 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/cli/handlers/configuration_handlers.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 6 times (saves 72 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/services/unified_wasm_analyzer.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 6 times (saves 72 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/agents_md/executor.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 6 times (saves 72 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/services/memory_property_tests.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 6 times (saves 72 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/demo/runner.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 6 times (saves 72 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/cli/handlers/refactor_auto_handlers/setup_analysis.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 6 times (saves 72 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/cli/handlers/tdg_handler.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 6 times (saves 72 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/services/rust_project_score/testing_scorer.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 6 times (saves 72 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/tdg/baseline.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 6 times (saves 72 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/services/semantic/turso_vector_db.rs",
+      "line": null,
+      "message": "ApiCall pattern repeated 6 times (saves 72 lines) - Fix: Create API client abstraction"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/services/incremental_coverage_analyzer.rs",
+      "line": null,
+      "message": "DataValidation pattern repeated 6 times (saves 72 lines) - Fix: Create validation trait or module"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/demo/templates.rs",
+      "line": null,
+      "message": "DataTransformation pattern repeated 7 times (saves 67 lines) - Fix: Extract to data transformation pipeline"
+    },
+    {
+      "check_type": "entropy",
+      "severity": "warning",
+      "file": "./src/cli/handlers/qa_work_handler/validation.rs",
+      "line": null,
+      "message": "DataTransformation pattern repeated 6 times (saves 48 lines) - Fix: Extract to data transformation pipeline"
+    },
+    {
+      "check_type": "sections",
+      "severity": "warning",
+      "file": "README.md",
+      "line": null,
+      "message": "Missing required section: Installation"
+    },
+    {
+      "check_type": "sections",
+      "severity": "warning",
+      "file": "README.md",
+      "line": null,
+      "message": "Missing required section: Usage"
+    },
+    {
+      "check_type": "sections",
+      "severity": "warning",
+      "file": "README.md",
+      "line": null,
+      "message": "Missing required section: Contributing"
+    },
+    {
+      "check_type": "provability",
+      "severity": "warning",
+      "file": ".",
+      "line": null,
+      "message": "Provability score 0.65 is below minimum 0.70"
+    }
+  ]
+}

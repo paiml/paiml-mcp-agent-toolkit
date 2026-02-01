@@ -1,116 +1,67 @@
 {
-  "tree_hash": "7790567d25087b10b531c24c3ab50a46ce7fe9f9",
+  "tree_hash": "a018bb21b44f120accc4b719ddeb73e93cdfce15",
   "pmat_version": "2.215.0",
-  "timestamp": "2026-02-01T13:44:21.600078002Z",
+  "timestamp": "2026-02-01T13:58:49.749527041Z",
   "report": {
     "files_with_dead_code": [
       {
-        "file_path": "examples/claude_integration_example.rs",
+        "file_path": "examples/scaffold_agent_basics.rs",
         "dead_items": [
           {
-            "name": "complete_workflow_example",
+            "name": "validate_agent_quality",
             "kind": "Suppressed",
-            "line": 246,
+            "line": 158,
             "column": 1,
-            "message": "fn `complete_workflow_example` has #[allow(dead_code)] suppression (explicit dead code admission)"
+            "message": "fn `validate_agent_quality` has #[allow(dead_code)] suppression (explicit dead code admission)"
           }
         ],
-        "file_dead_percentage": 1.2658227848101267
+        "file_dead_percentage": 2.4096385542168677
       },
       {
-        "file_path": "src/cli/handlers/refactor_auto_handlers/output_handler.rs",
+        "file_path": "src/unified_quality/enhanced_parser.rs",
         "dead_items": [
           {
-            "name": "IterationResult",
+            "name": "ComplexityVisitor",
             "kind": "Suppressed",
-            "line": 312,
+            "line": 36,
             "column": 1,
-            "message": "struct `IterationResult` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "RefactoringSuccess",
-            "kind": "Suppressed",
-            "line": 323,
-            "column": 1,
-            "message": "struct `RefactoringSuccess` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "RefactoringFailure",
-            "kind": "Suppressed",
-            "line": 333,
-            "column": 1,
-            "message": "struct `RefactoringFailure` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "VerificationStatus",
-            "kind": "Suppressed",
-            "line": 342,
-            "column": 1,
-            "message": "enum `VerificationStatus` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "ValidationResult",
-            "kind": "Suppressed",
-            "line": 351,
-            "column": 1,
-            "message": "struct `ValidationResult` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "QualityImprovement",
-            "kind": "Suppressed",
-            "line": 362,
-            "column": 1,
-            "message": "struct `QualityImprovement` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "CompilationResult",
-            "kind": "Suppressed",
-            "line": 373,
-            "column": 1,
-            "message": "struct `CompilationResult` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "TestResult",
-            "kind": "Suppressed",
-            "line": 382,
-            "column": 1,
-            "message": "struct `TestResult` has #[allow(dead_code)] suppression (explicit dead code admission)"
+            "message": "struct `ComplexityVisitor` has #[allow(dead_code)] suppression (explicit dead code admission)"
           }
         ],
-        "file_dead_percentage": 3.038936372269706
+        "file_dead_percentage": 0.2520478890989288
       },
       {
-        "file_path": "src/unified_quality/enforcement.rs",
+        "file_path": "src/services/language_registry.rs",
         "dead_items": [
           {
-            "name": "ErrorBudgetEnforcer",
+            "name": "extensions_old",
             "kind": "Suppressed",
-            "line": 12,
+            "line": 359,
             "column": 1,
-            "message": "struct `ErrorBudgetEnforcer` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "EnforcementRules",
-            "kind": "Suppressed",
-            "line": 138,
-            "column": 1,
-            "message": "struct `EnforcementRules` has #[allow(dead_code)] suppression (explicit dead code admission)"
+            "message": "fn `extensions_old` has #[allow(dead_code)] suppression (explicit dead code admission)"
           }
         ],
-        "file_dead_percentage": 0.4592422502870264
+        "file_dead_percentage": 0.46511627906976744
       },
       {
-        "file_path": "src/unified_quality/performance.rs",
+        "file_path": "src/roadmap/commands/mod.rs",
         "dead_items": [
           {
-            "name": "PerformanceMetrics",
+            "name": "handle_init",
             "kind": "Suppressed",
-            "line": 137,
+            "line": 540,
             "column": 1,
-            "message": "struct `PerformanceMetrics` has #[allow(dead_code)] suppression (explicit dead code admission)"
+            "message": "fn `handle_init` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "handle_start",
+            "kind": "Suppressed",
+            "line": 580,
+            "column": 1,
+            "message": "fn `handle_start` has #[allow(dead_code)] suppression (explicit dead code admission)"
           }
         ],
-        "file_dead_percentage": 0.4123711340206186
+        "file_dead_percentage": 1.2965964343598055
       },
       {
         "file_path": "src/agents_md/router.rs",
@@ -133,38 +84,124 @@
         "file_dead_percentage": 1.5238095238095237
       },
       {
-        "file_path": "src/tdg/analyzer_ast/analyzer_impl2.rs",
+        "file_path": "src/demo/server.rs",
         "dead_items": [
           {
-            "name": "score_consistency_python",
+            "name": "calculate_graph_density",
             "kind": "Suppressed",
-            "line": 355,
+            "line": 470,
             "column": 1,
-            "message": "fn `score_consistency_python` has #[allow(dead_code)] suppression (explicit dead code admission)"
+            "message": "fn `calculate_graph_density` has #[allow(dead_code)] suppression (explicit dead code admission)"
           },
           {
-            "name": "calculate_cognitive_complexity",
+            "name": "calculate_avg_degree",
             "kind": "Suppressed",
-            "line": 560,
+            "line": 476,
             "column": 1,
-            "message": "fn `calculate_cognitive_complexity` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "calculate_max_nesting",
-            "kind": "Suppressed",
-            "line": 593,
-            "column": 1,
-            "message": "fn `calculate_max_nesting` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "calculate_max_function_length",
-            "kind": "Suppressed",
-            "line": 621,
-            "column": 1,
-            "message": "fn `calculate_max_function_length` has #[allow(dead_code)] suppression (explicit dead code admission)"
+            "message": "fn `calculate_avg_degree` has #[allow(dead_code)] suppression (explicit dead code admission)"
           }
         ],
-        "file_dead_percentage": 2.127659574468085
+        "file_dead_percentage": 0.64
+      },
+      {
+        "file_path": "src/wasm/verifier.rs",
+        "dead_items": [
+          {
+            "name": "check_all",
+            "kind": "Suppressed",
+            "line": 156,
+            "column": 1,
+            "message": "fn `check_all` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "InvariantViolation",
+            "kind": "Suppressed",
+            "line": 174,
+            "column": 1,
+            "message": "struct `InvariantViolation` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          }
+        ],
+        "file_dead_percentage": 0.9153318077803204
+      },
+      {
+        "file_path": "src/unified_quality/onboarding/mod.rs",
+        "dead_items": [
+          {
+            "name": "TeamOnboarding",
+            "kind": "Suppressed",
+            "line": 12,
+            "column": 1,
+            "message": "struct `TeamOnboarding` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "next_phase",
+            "kind": "Suppressed",
+            "line": 629,
+            "column": 1,
+            "message": "fn `next_phase` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "recommended_quality_mode",
+            "kind": "Suppressed",
+            "line": 643,
+            "column": 1,
+            "message": "fn `recommended_quality_mode` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          }
+        ],
+        "file_dead_percentage": 1.5544041450777202
+      },
+      {
+        "file_path": "src/tdg/olap_analytics.rs",
+        "dead_items": [
+          {
+            "name": "create_schema",
+            "kind": "Suppressed",
+            "line": 216,
+            "column": 1,
+            "message": "fn `create_schema` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          }
+        ],
+        "file_dead_percentage": 0.5270092226613966
+      },
+      {
+        "file_path": "src/ast/languages/c_cpp/c_cpp_strategy.rs",
+        "dead_items": [
+          {
+            "name": "parse_with_tree_sitter",
+            "kind": "Suppressed",
+            "line": 45,
+            "column": 1,
+            "message": "fn `parse_with_tree_sitter` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "parse_with_tree_sitter",
+            "kind": "Suppressed",
+            "line": 168,
+            "column": 1,
+            "message": "fn `parse_with_tree_sitter` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          }
+        ],
+        "file_dead_percentage": 3.5555555555555554
+      },
+      {
+        "file_path": "src/services/makefile_linter/parser.rs",
+        "dead_items": [
+          {
+            "name": "find_char_swar",
+            "kind": "Suppressed",
+            "line": 458,
+            "column": 1,
+            "message": "fn `find_char_swar` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "has_byte",
+            "kind": "Suppressed",
+            "line": 496,
+            "column": 1,
+            "message": "fn `has_byte` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          }
+        ],
+        "file_dead_percentage": 0.904977375565611
       },
       {
         "file_path": "src/resources/cpu_limiter.rs",
@@ -180,137 +217,96 @@
         "file_dead_percentage": 0.9456264775413712
       },
       {
-        "file_path": "src/unified_protocol/service.rs",
+        "file_path": "src/graph/parallel_louvain.rs",
         "dead_items": [
           {
-            "name": "record_request_metrics",
+            "name": "CommunityData",
             "kind": "Suppressed",
-            "line": 189,
+            "line": 375,
             "column": 1,
-            "message": "fn `record_request_metrics` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "extract_protocol_from_path",
-            "kind": "Suppressed",
-            "line": 230,
-            "column": 1,
-            "message": "fn `extract_protocol_from_path` has #[allow(dead_code)] suppression (explicit dead code admission)"
+            "message": "struct `CommunityData` has #[allow(dead_code)] suppression (explicit dead code admission)"
           }
         ],
-        "file_dead_percentage": 0.5873715124816447
+        "file_dead_percentage": 0.3755868544600939
       },
       {
-        "file_path": "src/services/rust_project_score/code_quality_scorer.rs",
+        "file_path": "src/services/context/analysis.rs",
         "dead_items": [
           {
-            "name": "unused",
+            "name": "analyze_deno_file",
             "kind": "Suppressed",
-            "line": 864,
+            "line": 441,
             "column": 1,
-            "message": "fn `unused` has #[allow(dead_code)] suppression (explicit dead code admission)"
+            "message": "fn `analyze_deno_file` has #[allow(dead_code)] suppression (explicit dead code admission)"
           }
         ],
-        "file_dead_percentage": 0.4012036108324975
+        "file_dead_percentage": 0.5102040816326531
       },
       {
-        "file_path": "src/agent/mcp_server.rs",
+        "file_path": "tests/modules/determinism_tests.rs",
         "dead_items": [
           {
-            "name": "send_server_info",
+            "name": "CANONICAL_TREE_HASH",
             "kind": "Suppressed",
-            "line": 530,
+            "line": 17,
             "column": 1,
-            "message": "fn `send_server_info` has #[allow(dead_code)] suppression (explicit dead code admission)"
+            "message": "const `CANONICAL_TREE_HASH` has #[allow(dead_code)] suppression (explicit dead code admission)"
           },
           {
-            "name": "handle_quality_gates",
+            "name": "CANONICAL_MERMAID_HASH",
             "kind": "Suppressed",
-            "line": 832,
+            "line": 19,
             "column": 1,
-            "message": "fn `handle_quality_gates` has #[allow(dead_code)] suppression (explicit dead code admission)"
+            "message": "const `CANONICAL_MERMAID_HASH` has #[allow(dead_code)] suppression (explicit dead code admission)"
           }
         ],
-        "file_dead_percentage": 0.7504690431519699
+        "file_dead_percentage": 1.2718600953895072
       },
       {
-        "file_path": "tests/modules/tools_coverage.rs",
+        "file_path": "tests/modules/mcp_documentation_sync.rs",
         "dead_items": [
           {
-            "name": "lint_test",
+            "name": "McpResponse",
             "kind": "Suppressed",
-            "line": 606,
+            "line": 19,
             "column": 1,
-            "message": "fn `lint_test` has #[allow(dead_code)] suppression (explicit dead code admission)"
+            "message": "struct `McpResponse` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "ToolDefinition",
+            "kind": "Suppressed",
+            "line": 28,
+            "column": 1,
+            "message": "struct `ToolDefinition` has #[allow(dead_code)] suppression (explicit dead code admission)"
           }
         ],
-        "file_dead_percentage": 0.5242463958060288
+        "file_dead_percentage": 1.5414258188824663
       },
       {
-        "file_path": "tests/modules/comparison_view_tests.rs",
+        "file_path": "src/cli/analysis/graph_metrics.rs",
         "dead_items": [
           {
-            "name": "create_test_recording",
+            "name": "index",
             "kind": "Suppressed",
-            "line": 300,
+            "line": 17,
             "column": 1,
-            "message": "fn `create_test_recording` has #[allow(dead_code)] suppression (explicit dead code admission)"
+            "message": "fn `index` has #[allow(dead_code)] suppression (explicit dead code admission)"
           }
         ],
-        "file_dead_percentage": 1.1976047904191618
+        "file_dead_percentage": 0.42238648363252373
       },
       {
-        "file_path": "tests/modules/cli_docs_enforcement.rs",
+        "file_path": "src/cli/handlers/unified_context_builder.rs",
         "dead_items": [
           {
-            "name": "extract_flags_from_help",
-            "kind": "Suppressed",
-            "line": 458,
-            "column": 1,
-            "message": "fn `extract_flags_from_help` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "extract_flags_from_clap_definitions",
-            "kind": "Suppressed",
-            "line": 466,
-            "column": 1,
-            "message": "fn `extract_flags_from_clap_definitions` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "is_generic_description",
-            "kind": "Suppressed",
-            "line": 474,
-            "column": 1,
-            "message": "fn `is_generic_description` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          }
-        ],
-        "file_dead_percentage": 2.3856858846918487
-      },
-      {
-        "file_path": "tests/modules/code_quality_scorer_tests.rs",
-        "dead_items": [
-          {
-            "name": "unused_function",
-            "kind": "Suppressed",
-            "line": 334,
-            "column": 1,
-            "message": "fn `unused_function` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "unused",
-            "kind": "Suppressed",
-            "line": 483,
-            "column": 1,
-            "message": "fn `unused` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "unused",
+            "name": "Error",
             "kind": "Suppressed",
             "line": 649,
             "column": 1,
-            "message": "fn `unused` has #[allow(dead_code)] suppression (explicit dead code admission)"
+            "message": "enum `Error` has #[allow(dead_code)] suppression (explicit dead code admission)"
           }
         ],
-        "file_dead_percentage": 1.8154311649016641
+        "file_dead_percentage": 0.3421727972626176
       },
       {
         "file_path": "src/services/deep_context/analysis_functions.rs",
@@ -368,57 +364,17 @@
         "file_dead_percentage": 1.755485893416928
       },
       {
-        "file_path": "src/unified_quality/onboarding/mod.rs",
+        "file_path": "tests/modules/timeline_player_tests.rs",
         "dead_items": [
           {
-            "name": "TeamOnboarding",
+            "name": "create_test_recording",
             "kind": "Suppressed",
-            "line": 12,
+            "line": 317,
             "column": 1,
-            "message": "struct `TeamOnboarding` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "next_phase",
-            "kind": "Suppressed",
-            "line": 629,
-            "column": 1,
-            "message": "fn `next_phase` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "recommended_quality_mode",
-            "kind": "Suppressed",
-            "line": 643,
-            "column": 1,
-            "message": "fn `recommended_quality_mode` has #[allow(dead_code)] suppression (explicit dead code admission)"
+            "message": "fn `create_test_recording` has #[allow(dead_code)] suppression (explicit dead code admission)"
           }
         ],
-        "file_dead_percentage": 1.5544041450777202
-      },
-      {
-        "file_path": "examples/scaffold_agent_basics.rs",
-        "dead_items": [
-          {
-            "name": "validate_agent_quality",
-            "kind": "Suppressed",
-            "line": 158,
-            "column": 1,
-            "message": "fn `validate_agent_quality` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          }
-        ],
-        "file_dead_percentage": 2.4096385542168677
-      },
-      {
-        "file_path": "src/cli/handlers/comply_handlers/comply_cb_detect.rs",
-        "dead_items": [
-          {
-            "name": "STRING_LITERAL_PATTERN",
-            "kind": "Suppressed",
-            "line": 332,
-            "column": 1,
-            "message": "static `STRING_LITERAL_PATTERN` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          }
-        ],
-        "file_dead_percentage": 0.37453183520599254
+        "file_dead_percentage": 1.1494252873563218
       },
       {
         "file_path": "src/contracts/simple_service.rs",
@@ -434,583 +390,6 @@
         "file_dead_percentage": 0.823045267489712
       },
       {
-        "file_path": "src/mcp_server/state_manager.rs",
-        "dead_items": [
-          {
-            "name": "load_from_snapshot",
-            "kind": "Suppressed",
-            "line": 321,
-            "column": 1,
-            "message": "fn `load_from_snapshot` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          }
-        ],
-        "file_dead_percentage": 0.6589785831960462
-      },
-      {
-        "file_path": "src/services/semantic/turso_vector_db.rs",
-        "dead_items": [
-          {
-            "name": "EmbeddingMetadata",
-            "kind": "Suppressed",
-            "line": 28,
-            "column": 1,
-            "message": "struct `EmbeddingMetadata` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          }
-        ],
-        "file_dead_percentage": 0.3673094582185491
-      },
-      {
-        "file_path": "src/ast/polyglot/cross_language_dependencies.rs",
-        "dead_items": [
-          {
-            "name": "detect_between_languages",
-            "kind": "Suppressed",
-            "line": 187,
-            "column": 1,
-            "message": "fn `detect_between_languages` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "add_dependency",
-            "kind": "Suppressed",
-            "line": 240,
-            "column": 1,
-            "message": "fn `add_dependency` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          }
-        ],
-        "file_dead_percentage": 1.353637901861252
-      },
-      {
-        "file_path": "src/services/context/analysis.rs",
-        "dead_items": [
-          {
-            "name": "analyze_deno_file",
-            "kind": "Suppressed",
-            "line": 441,
-            "column": 1,
-            "message": "fn `analyze_deno_file` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          }
-        ],
-        "file_dead_percentage": 0.5102040816326531
-      },
-      {
-        "file_path": "src/services/coupling_analyzer.rs",
-        "dead_items": [
-          {
-            "name": "extract_file_path",
-            "kind": "Suppressed",
-            "line": 141,
-            "column": 1,
-            "message": "fn `extract_file_path` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          }
-        ],
-        "file_dead_percentage": 0.9009009009009009
-      },
-      {
-        "file_path": "src/services/language_registry.rs",
-        "dead_items": [
-          {
-            "name": "extensions_old",
-            "kind": "Suppressed",
-            "line": 359,
-            "column": 1,
-            "message": "fn `extensions_old` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          }
-        ],
-        "file_dead_percentage": 0.46511627906976744
-      },
-      {
-        "file_path": "tests/modules/tdg_explain_mode_tests.rs",
-        "dead_items": [
-          {
-            "name": "DispatchPattern",
-            "kind": "Suppressed",
-            "line": 464,
-            "column": 1,
-            "message": "struct `DispatchPattern` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          }
-        ],
-        "file_dead_percentage": 0.7952286282306162
-      },
-      {
-        "file_path": "tests/modules/timeline_player_tests.rs",
-        "dead_items": [
-          {
-            "name": "create_test_recording",
-            "kind": "Suppressed",
-            "line": 317,
-            "column": 1,
-            "message": "fn `create_test_recording` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          }
-        ],
-        "file_dead_percentage": 1.1494252873563218
-      },
-      {
-        "file_path": "src/unified_quality/intelligence.rs",
-        "dead_items": [
-          {
-            "name": "AcceptedSuggestion",
-            "kind": "Suppressed",
-            "line": 111,
-            "column": 1,
-            "message": "struct `AcceptedSuggestion` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "RejectedSuggestion",
-            "kind": "Suppressed",
-            "line": 121,
-            "column": 1,
-            "message": "struct `RejectedSuggestion` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "SuggestionOutcome",
-            "kind": "Suppressed",
-            "line": 131,
-            "column": 1,
-            "message": "enum `SuggestionOutcome` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          }
-        ],
-        "file_dead_percentage": 1.6326530612244898
-      },
-      {
-        "file_path": "src/quality/efficiency_enhanced.rs",
-        "dead_items": [
-          {
-            "name": "AllocationSize",
-            "kind": "Suppressed",
-            "line": 349,
-            "column": 1,
-            "message": "enum `AllocationSize` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          }
-        ],
-        "file_dead_percentage": 0.45819014891179843
-      },
-      {
-        "file_path": "src/roadmap/commands/mod.rs",
-        "dead_items": [
-          {
-            "name": "handle_init",
-            "kind": "Suppressed",
-            "line": 540,
-            "column": 1,
-            "message": "fn `handle_init` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "handle_start",
-            "kind": "Suppressed",
-            "line": 580,
-            "column": 1,
-            "message": "fn `handle_start` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          }
-        ],
-        "file_dead_percentage": 1.2965964343598055
-      },
-      {
-        "file_path": "src/services/fault_localization.rs",
-        "dead_items": [
-          {
-            "name": "with_column",
-            "kind": "Suppressed",
-            "line": 33,
-            "column": 1,
-            "message": "fn `with_column` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "with_min_confidence",
-            "kind": "Suppressed",
-            "line": 227,
-            "column": 1,
-            "message": "fn `with_min_confidence` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "enrich_with_tdg",
-            "kind": "Suppressed",
-            "line": 621,
-            "column": 1,
-            "message": "fn `enrich_with_tdg` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          }
-        ],
-        "file_dead_percentage": 1.662049861495845
-      },
-      {
-        "file_path": "src/demo/mod.rs",
-        "dead_items": [
-          {
-            "name": "open_browser",
-            "kind": "Suppressed",
-            "line": 56,
-            "column": 1,
-            "message": "fn `open_browser` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "extract_analysis_from_demo_report",
-            "kind": "Suppressed",
-            "line": 333,
-            "column": 1,
-            "message": "fn `extract_analysis_from_demo_report` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "parse_dag_data",
-            "kind": "Suppressed",
-            "line": 426,
-            "column": 1,
-            "message": "fn `parse_dag_data` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "run_web_demo",
-            "kind": "Suppressed",
-            "line": 465,
-            "column": 1,
-            "message": "fn `run_web_demo` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "analyze_context",
-            "kind": "Suppressed",
-            "line": 581,
-            "column": 1,
-            "message": "fn `analyze_context` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "analyze_churn",
-            "kind": "Suppressed",
-            "line": 626,
-            "column": 1,
-            "message": "fn `analyze_churn` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "analyze_system_architecture",
-            "kind": "Suppressed",
-            "line": 634,
-            "column": 1,
-            "message": "fn `analyze_system_architecture` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "analyze_defect_probability",
-            "kind": "Suppressed",
-            "line": 671,
-            "column": 1,
-            "message": "fn `analyze_defect_probability` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          }
-        ],
-        "file_dead_percentage": 1.8192154633314381
-      },
-      {
-        "file_path": "src/claude_integration/pool.rs",
-        "dead_items": [
-          {
-            "name": "should_open_circuit",
-            "kind": "Suppressed",
-            "line": 117,
-            "column": 1,
-            "message": "fn `should_open_circuit` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          }
-        ],
-        "file_dead_percentage": 1.8867924528301887
-      },
-      {
-        "file_path": "src/cli/handlers/comply_handlers/falsification_tests.rs",
-        "dead_items": [
-          {
-            "name": "generate_falsification_report",
-            "kind": "Suppressed",
-            "line": 1509,
-            "column": 1,
-            "message": "fn `generate_falsification_report` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          }
-        ],
-        "file_dead_percentage": 0.2612671456564337
-      },
-      {
-        "file_path": "src/services/tdg_calculator.rs",
-        "dead_items": [
-          {
-            "name": "compute_complexity_gradient",
-            "kind": "Suppressed",
-            "line": 297,
-            "column": 1,
-            "message": "fn `compute_complexity_gradient` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "analyze_coupling",
-            "kind": "Suppressed",
-            "line": 522,
-            "column": 1,
-            "message": "fn `analyze_coupling` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "extract_dependencies",
-            "kind": "Suppressed",
-            "line": 549,
-            "column": 1,
-            "message": "fn `extract_dependencies` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          }
-        ],
-        "file_dead_percentage": 1.2024048096192386
-      },
-      {
-        "file_path": "src/handlers/tools_advanced_part4.rs",
-        "dead_items": [
-          {
-            "name": "LintHotspotArgs",
-            "kind": "Suppressed",
-            "line": 203,
-            "column": 1,
-            "message": "struct `LintHotspotArgs` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          }
-        ],
-        "file_dead_percentage": 0.9237875288683602
-      },
-      {
-        "file_path": "src/graph/parallel_louvain.rs",
-        "dead_items": [
-          {
-            "name": "CommunityData",
-            "kind": "Suppressed",
-            "line": 375,
-            "column": 1,
-            "message": "struct `CommunityData` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          }
-        ],
-        "file_dead_percentage": 0.3755868544600939
-      },
-      {
-        "file_path": "src/services/mutation/json_parser.rs",
-        "dead_items": [
-          {
-            "name": "ScenarioType",
-            "kind": "Suppressed",
-            "line": 106,
-            "column": 1,
-            "message": "enum `ScenarioType` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          }
-        ],
-        "file_dead_percentage": 0.9925558312655087
-      },
-      {
-        "file_path": "examples/typescript_mutation_workflow_parallel.rs",
-        "dead_items": [
-          {
-            "name": "copy_dir_recursive",
-            "kind": "Suppressed",
-            "line": 249,
-            "column": 1,
-            "message": "fn `copy_dir_recursive` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          }
-        ],
-        "file_dead_percentage": 1.4285714285714286
-      },
-      {
-        "file_path": "src/tests/kaizen_test_optimizations.rs",
-        "dead_items": [
-          {
-            "name": "TEST_METRICS",
-            "kind": "Suppressed",
-            "line": 13,
-            "column": 1,
-            "message": "static `TEST_METRICS` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "fast_unit_test_setup",
-            "kind": "Suppressed",
-            "line": 185,
-            "column": 1,
-            "message": "fn `fast_unit_test_setup` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "generate_test_data",
-            "kind": "Suppressed",
-            "line": 205,
-            "column": 1,
-            "message": "fn `generate_test_data` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "fast_analysis",
-            "kind": "Suppressed",
-            "line": 214,
-            "column": 1,
-            "message": "fn `fast_analysis` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          }
-        ],
-        "file_dead_percentage": 4.35967302452316
-      },
-      {
-        "file_path": "src/unified_quality/enhanced_parser.rs",
-        "dead_items": [
-          {
-            "name": "ComplexityVisitor",
-            "kind": "Suppressed",
-            "line": 36,
-            "column": 1,
-            "message": "struct `ComplexityVisitor` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          }
-        ],
-        "file_dead_percentage": 0.2520478890989288
-      },
-      {
-        "file_path": "src/cli/handlers/refactor_auto_handlers/setup_analysis.rs",
-        "dead_items": [
-          {
-            "name": "QualityProfile",
-            "kind": "Suppressed",
-            "line": 57,
-            "column": 1,
-            "message": "struct `QualityProfile` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "LintHotspotJsonResponse",
-            "kind": "Suppressed",
-            "line": 79,
-            "column": 1,
-            "message": "struct `LintHotspotJsonResponse` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "LintHotspotJson",
-            "kind": "Suppressed",
-            "line": 87,
-            "column": 1,
-            "message": "struct `LintHotspotJson` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "ViolationDetailJson",
-            "kind": "Suppressed",
-            "line": 95,
-            "column": 1,
-            "message": "struct `ViolationDetailJson` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "PatternConfig",
-            "kind": "Suppressed",
-            "line": 145,
-            "column": 1,
-            "message": "struct `PatternConfig` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "OutputConfig",
-            "kind": "Suppressed",
-            "line": 158,
-            "column": 1,
-            "message": "struct `OutputConfig` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "GitHubIssueContent",
-            "kind": "Suppressed",
-            "line": 507,
-            "column": 1,
-            "message": "struct `GitHubIssueContent` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "ProjectQualityAnalysis",
-            "kind": "Suppressed",
-            "line": 730,
-            "column": 1,
-            "message": "struct `ProjectQualityAnalysis` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "ComplexityAnalysis",
-            "kind": "Suppressed",
-            "line": 742,
-            "column": 1,
-            "message": "struct `ComplexityAnalysis` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "SatdAnalysis",
-            "kind": "Suppressed",
-            "line": 752,
-            "column": 1,
-            "message": "struct `SatdAnalysis` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "CoverageAnalysis",
-            "kind": "Suppressed",
-            "line": 761,
-            "column": 1,
-            "message": "struct `CoverageAnalysis` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "ComplexityViolation",
-            "kind": "Suppressed",
-            "line": 770,
-            "column": 1,
-            "message": "struct `ComplexityViolation` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "SatdComment",
-            "kind": "Suppressed",
-            "line": 781,
-            "column": 1,
-            "message": "struct `SatdComment` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "UncoveredLine",
-            "kind": "Suppressed",
-            "line": 791,
-            "column": 1,
-            "message": "struct `UncoveredLine` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "RefactoringRequest",
-            "kind": "Suppressed",
-            "line": 800,
-            "column": 1,
-            "message": "struct `RefactoringRequest` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "RefactoringType",
-            "kind": "Suppressed",
-            "line": 812,
-            "column": 1,
-            "message": "enum `RefactoringType` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "RefactoringPriority",
-            "kind": "Suppressed",
-            "line": 823,
-            "column": 1,
-            "message": "enum `RefactoringPriority` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "RefactoringEffort",
-            "kind": "Suppressed",
-            "line": 833,
-            "column": 1,
-            "message": "enum `RefactoringEffort` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          }
-        ],
-        "file_dead_percentage": 7.4150360453141095
-      },
-      {
-        "file_path": "src/services/cache/orchestrator.rs",
-        "dead_items": [
-          {
-            "name": "StrategyEvaluation",
-            "kind": "Suppressed",
-            "line": 129,
-            "column": 1,
-            "message": "struct `StrategyEvaluation` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          }
-        ],
-        "file_dead_percentage": 0.583941605839416
-      },
-      {
-        "file_path": "tests/modules/snapshot_serialization_tests.rs",
-        "dead_items": [
-          {
-            "name": "create_test_snapshot",
-            "kind": "Suppressed",
-            "line": 433,
-            "column": 1,
-            "message": "fn `create_test_snapshot` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "create_large_snapshot",
-            "kind": "Suppressed",
-            "line": 439,
-            "column": 1,
-            "message": "fn `create_large_snapshot` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          }
-        ],
-        "file_dead_percentage": 1.7660044150110374
-      },
-      {
         "file_path": "tests/modules/timeline_ui_playback_tests.rs",
         "dead_items": [
           {
@@ -1024,740 +403,24 @@
         "file_dead_percentage": 1.1527377521613833
       },
       {
-        "file_path": "src/tests/kaizen_reliability_patterns.rs",
+        "file_path": "src/unified_quality/enforcement.rs",
         "dead_items": [
           {
-            "name": "create_minimal_test_data",
+            "name": "ErrorBudgetEnforcer",
             "kind": "Suppressed",
-            "line": 202,
+            "line": 12,
             "column": 1,
-            "message": "fn `create_minimal_test_data` has #[allow(dead_code)] suppression (explicit dead code admission)"
+            "message": "struct `ErrorBudgetEnforcer` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "EnforcementRules",
+            "kind": "Suppressed",
+            "line": 138,
+            "column": 1,
+            "message": "struct `EnforcementRules` has #[allow(dead_code)] suppression (explicit dead code admission)"
           }
         ],
-        "file_dead_percentage": 1.1494252873563218
-      },
-      {
-        "file_path": "tests/modules/parse_sprint_section_refactor_test.rs",
-        "dead_items": [
-          {
-            "name": "MockParsers",
-            "kind": "Suppressed",
-            "line": 171,
-            "column": 1,
-            "message": "struct `MockParsers` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "MockPriority",
-            "kind": "Suppressed",
-            "line": 210,
-            "column": 1,
-            "message": "enum `MockPriority` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          }
-        ],
-        "file_dead_percentage": 2.9962546816479403
-      },
-      {
-        "file_path": "examples/scaffold_agent_course_project.rs",
-        "dead_items": [
-          {
-            "name": "example_metrics",
-            "kind": "Suppressed",
-            "line": 285,
-            "column": 1,
-            "message": "fn `example_metrics` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          }
-        ],
-        "file_dead_percentage": 1.2461059190031152
-      },
-      {
-        "file_path": "src/ast/polyglot/language_mapper.rs",
-        "dead_items": [
-          {
-            "name": "process_java_specific",
-            "kind": "Suppressed",
-            "line": 190,
-            "column": 1,
-            "message": "fn `process_java_specific` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "process_kotlin_specific",
-            "kind": "Suppressed",
-            "line": 273,
-            "column": 1,
-            "message": "fn `process_kotlin_specific` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "process_scala_specific",
-            "kind": "Suppressed",
-            "line": 341,
-            "column": 1,
-            "message": "fn `process_scala_specific` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          }
-        ],
-        "file_dead_percentage": 1.8808777429467085
-      },
-      {
-        "file_path": "src/tdg/olap_analytics.rs",
-        "dead_items": [
-          {
-            "name": "create_schema",
-            "kind": "Suppressed",
-            "line": 216,
-            "column": 1,
-            "message": "fn `create_schema` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          }
-        ],
-        "file_dead_percentage": 0.5270092226613966
-      },
-      {
-        "file_path": "src/services/deep_wasm/correlation_engine.rs",
-        "dead_items": [
-          {
-            "name": "create_dwarf_mapping",
-            "kind": "Suppressed",
-            "line": 155,
-            "column": 1,
-            "message": "fn `create_dwarf_mapping` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          }
-        ],
-        "file_dead_percentage": 0.7518796992481203
-      },
-      {
-        "file_path": "tests/modules/determinism_tests.rs",
-        "dead_items": [
-          {
-            "name": "CANONICAL_TREE_HASH",
-            "kind": "Suppressed",
-            "line": 17,
-            "column": 1,
-            "message": "const `CANONICAL_TREE_HASH` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "CANONICAL_MERMAID_HASH",
-            "kind": "Suppressed",
-            "line": 19,
-            "column": 1,
-            "message": "const `CANONICAL_MERMAID_HASH` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          }
-        ],
-        "file_dead_percentage": 1.2718600953895072
-      },
-      {
-        "file_path": "src/services/languages/ruchy.rs",
-        "dead_items": [
-          {
-            "name": "infer_literal_type",
-            "kind": "Suppressed",
-            "line": 506,
-            "column": 1,
-            "message": "fn `infer_literal_type` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "infer_binary_type",
-            "kind": "Suppressed",
-            "line": 519,
-            "column": 1,
-            "message": "fn `infer_binary_type` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          }
-        ],
-        "file_dead_percentage": 0.4681100058513751
-      },
-      {
-        "file_path": "examples/quality_gate_shows_checks.rs",
-        "dead_items": [
-          {
-            "name": "unused_function",
-            "kind": "Suppressed",
-            "line": 107,
-            "column": 1,
-            "message": "fn `unused_function` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          }
-        ],
-        "file_dead_percentage": 3.4782608695652173
-      },
-      {
-        "file_path": "src/cli/command_dispatcher/mod.rs",
-        "dead_items": [
-          {
-            "name": "CommandHandler",
-            "kind": "Suppressed",
-            "line": 32,
-            "column": 1,
-            "message": "trait `CommandHandler` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "AnalyzeCommandHandler",
-            "kind": "Suppressed",
-            "line": 39,
-            "column": 1,
-            "message": "trait `AnalyzeCommandHandler` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          }
-        ],
-        "file_dead_percentage": 0.9925558312655087
-      },
-      {
-        "file_path": "tests/modules/polyglot_integration.rs",
-        "dead_items": [
-          {
-            "name": "UnifiedNodeExt",
-            "kind": "Suppressed",
-            "line": 846,
-            "column": 1,
-            "message": "trait `UnifiedNodeExt` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          }
-        ],
-        "file_dead_percentage": 0.312256049960968
-      },
-      {
-        "file_path": "src/services/cargo_dead_code_analyzer.rs",
-        "dead_items": [
-          {
-            "name": "unused_function",
-            "kind": "Suppressed",
-            "line": 701,
-            "column": 1,
-            "message": "fn `unused_function` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "UnusedStruct",
-            "kind": "Suppressed",
-            "line": 706,
-            "column": 1,
-            "message": "struct `UnusedStruct` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "UNUSED_CONST",
-            "kind": "Suppressed",
-            "line": 711,
-            "column": 1,
-            "message": "const `UNUSED_CONST` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "StackedAttributes",
-            "kind": "Suppressed",
-            "line": 750,
-            "column": 1,
-            "message": "struct `StackedAttributes` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "function_in_suppressed_module",
-            "kind": "Suppressed",
-            "line": 774,
-            "column": 1,
-            "message": "fn `function_in_suppressed_module` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          }
-        ],
-        "file_dead_percentage": 2.358490566037736
-      },
-      {
-        "file_path": "src/services/dap/variable_inspector.rs",
-        "dead_items": [
-          {
-            "name": "extract_variables_python",
-            "kind": "Suppressed",
-            "line": 186,
-            "column": 1,
-            "message": "fn `extract_variables_python` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "extract_python_assignments",
-            "kind": "Suppressed",
-            "line": 503,
-            "column": 1,
-            "message": "fn `extract_python_assignments` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "extract_python_function_params",
-            "kind": "Suppressed",
-            "line": 542,
-            "column": 1,
-            "message": "fn `extract_python_function_params` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          }
-        ],
-        "file_dead_percentage": 0.8633093525179856
-      },
-      {
-        "file_path": "src/cli/handlers/unified_context_builder.rs",
-        "dead_items": [
-          {
-            "name": "Error",
-            "kind": "Suppressed",
-            "line": 649,
-            "column": 1,
-            "message": "enum `Error` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          }
-        ],
-        "file_dead_percentage": 0.3421727972626176
-      },
-      {
-        "file_path": "src/unified_quality/automation.rs",
-        "dead_items": [
-          {
-            "name": "GitSafetyNet",
-            "kind": "Suppressed",
-            "line": 94,
-            "column": 1,
-            "message": "struct `GitSafetyNet` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "RollbackManager",
-            "kind": "Suppressed",
-            "line": 104,
-            "column": 1,
-            "message": "struct `RollbackManager` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "add_rollback_point",
-            "kind": "Suppressed",
-            "line": 479,
-            "column": 1,
-            "message": "fn `add_rollback_point` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          }
-        ],
-        "file_dead_percentage": 0.9084027252081757
-      },
-      {
-        "file_path": "src/ast/languages/python.rs",
-        "dead_items": [
-          {
-            "name": "parse_with_tree_sitter",
-            "kind": "Suppressed",
-            "line": 82,
-            "column": 1,
-            "message": "fn `parse_with_tree_sitter` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "add_node",
-            "kind": "Suppressed",
-            "line": 202,
-            "column": 1,
-            "message": "fn `add_node` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          }
-        ],
-        "file_dead_percentage": 0.8403361344537815
-      },
-      {
-        "file_path": "src/roadmap/quality.rs",
-        "dead_items": [
-          {
-            "name": "extract_coverage_from_output",
-            "kind": "Suppressed",
-            "line": 421,
-            "column": 1,
-            "message": "fn `extract_coverage_from_output` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          }
-        ],
-        "file_dead_percentage": 0.6069802731411229
-      },
-      {
-        "file_path": "src/demo/adapters/tui.rs",
-        "dead_items": [
-          {
-            "name": "Severity",
-            "kind": "Suppressed",
-            "line": 94,
-            "column": 1,
-            "message": "enum `Severity` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "FileInfo",
-            "kind": "Suppressed",
-            "line": 103,
-            "column": 1,
-            "message": "struct `FileInfo` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "UpdateType",
-            "kind": "Suppressed",
-            "line": 127,
-            "column": 1,
-            "message": "enum `UpdateType` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          }
-        ],
-        "file_dead_percentage": 3.296703296703297
-      },
-      {
-        "file_path": "src/cli/defect_prediction_helpers.rs",
-        "dead_items": [
-          {
-            "name": "DefectPredictionConfig",
-            "kind": "Suppressed",
-            "line": 8,
-            "column": 1,
-            "message": "struct `DefectPredictionConfig` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "DefectAnalysisResult",
-            "kind": "Suppressed",
-            "line": 19,
-            "column": 1,
-            "message": "struct `DefectAnalysisResult` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "generate_recommendations",
-            "kind": "Suppressed",
-            "line": 294,
-            "column": 1,
-            "message": "fn `generate_recommendations` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "format_markdown_output",
-            "kind": "Suppressed",
-            "line": 421,
-            "column": 1,
-            "message": "fn `format_markdown_output` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          }
-        ],
-        "file_dead_percentage": 1.4571948998178506
-      },
-      {
-        "file_path": "src/cli/handlers/utility_handlers/project_analysis.rs",
-        "dead_items": [
-          {
-            "name": "analyze_project",
-            "kind": "Suppressed",
-            "line": 4,
-            "column": 1,
-            "message": "fn `analyze_project` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "build_project_context_from_simple",
-            "kind": "Suppressed",
-            "line": 65,
-            "column": 1,
-            "message": "fn `build_project_context_from_simple` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "build_project_context",
-            "kind": "Suppressed",
-            "line": 91,
-            "column": 1,
-            "message": "fn `build_project_context` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "process_file_context",
-            "kind": "Suppressed",
-            "line": 139,
-            "column": 1,
-            "message": "fn `process_file_context` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "format_context_output_simple",
-            "kind": "Suppressed",
-            "line": 161,
-            "column": 1,
-            "message": "fn `format_context_output_simple` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "update_project_summary",
-            "kind": "Suppressed",
-            "line": 330,
-            "column": 1,
-            "message": "fn `update_project_summary` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "format_context_output",
-            "kind": "Suppressed",
-            "line": 348,
-            "column": 1,
-            "message": "fn `format_context_output` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          }
-        ],
-        "file_dead_percentage": 7.4866310160427805
-      },
-      {
-        "file_path": "tests/modules/claude_skills_validation_tests.rs",
-        "dead_items": [
-          {
-            "name": "ClaudeSkill",
-            "kind": "Suppressed",
-            "line": 18,
-            "column": 1,
-            "message": "struct `ClaudeSkill` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          }
-        ],
-        "file_dead_percentage": 0.583941605839416
-      },
-      {
-        "file_path": "src/cli/handlers/refactor_auto_types.rs",
-        "dead_items": [
-          {
-            "name": "print_markdown_summary",
-            "kind": "Suppressed",
-            "line": 169,
-            "column": 1,
-            "message": "fn `print_markdown_summary` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          }
-        ],
-        "file_dead_percentage": 1.7316017316017316
-      },
-      {
-        "file_path": "tests/modules/replay_integration_tests.rs",
-        "dead_items": [
-          {
-            "name": "create_test_snapshot",
-            "kind": "Suppressed",
-            "line": 333,
-            "column": 1,
-            "message": "fn `create_test_snapshot` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "create_test_recording_with_snapshots",
-            "kind": "Suppressed",
-            "line": 339,
-            "column": 1,
-            "message": "fn `create_test_recording_with_snapshots` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "create_test_snapshot_with_variables",
-            "kind": "Suppressed",
-            "line": 346,
-            "column": 1,
-            "message": "fn `create_test_snapshot_with_variables` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "create_snapshot_with_stack",
-            "kind": "Suppressed",
-            "line": 353,
-            "column": 1,
-            "message": "fn `create_snapshot_with_stack` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "create_large_recording",
-            "kind": "Suppressed",
-            "line": 360,
-            "column": 1,
-            "message": "fn `create_large_recording` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "load_test_recording",
-            "kind": "Suppressed",
-            "line": 367,
-            "column": 1,
-            "message": "fn `load_test_recording` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          }
-        ],
-        "file_dead_percentage": 6.486486486486487
-      },
-      {
-        "file_path": "src/services/enhanced_naming_tests.rs",
-        "dead_items": [
-          {
-            "name": "create_mock_function",
-            "kind": "Suppressed",
-            "line": 1649,
-            "column": 1,
-            "message": "fn `create_mock_function` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "create_mock_class",
-            "kind": "Suppressed",
-            "line": 1660,
-            "column": 1,
-            "message": "fn `create_mock_class` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "validate_enhanced_function_names",
-            "kind": "Suppressed",
-            "line": 1672,
-            "column": 1,
-            "message": "fn `validate_enhanced_function_names` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "validate_wasm_function_names",
-            "kind": "Suppressed",
-            "line": 1699,
-            "column": 1,
-            "message": "fn `validate_wasm_function_names` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          }
-        ],
-        "file_dead_percentage": 0.9324009324009324
-      },
-      {
-        "file_path": "src/cli/handlers/comply_cb_detect.rs",
-        "dead_items": [
-          {
-            "name": "CbPatternViolation",
-            "kind": "Suppressed",
-            "line": 40,
-            "column": 1,
-            "message": "struct `CbPatternViolation` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          }
-        ],
-        "file_dead_percentage": 0.25673940949935814
-      },
-      {
-        "file_path": "src/ast/languages/c_cpp/c_cpp_strategy.rs",
-        "dead_items": [
-          {
-            "name": "parse_with_tree_sitter",
-            "kind": "Suppressed",
-            "line": 45,
-            "column": 1,
-            "message": "fn `parse_with_tree_sitter` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "parse_with_tree_sitter",
-            "kind": "Suppressed",
-            "line": 168,
-            "column": 1,
-            "message": "fn `parse_with_tree_sitter` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          }
-        ],
-        "file_dead_percentage": 3.5555555555555554
-      },
-      {
-        "file_path": "src/cli/provability_helpers.rs",
-        "dead_items": [
-          {
-            "name": "extract_function_name",
-            "kind": "Suppressed",
-            "line": 78,
-            "column": 1,
-            "message": "fn `extract_function_name` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          }
-        ],
-        "file_dead_percentage": 0.7067137809187279
-      },
-      {
-        "file_path": "src/handlers/vectorized_tools/mod.rs",
-        "dead_items": [
-          {
-            "name": "DuplicatesVectorizedArgs",
-            "kind": "Suppressed",
-            "line": 79,
-            "column": 1,
-            "message": "struct `DuplicatesVectorizedArgs` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "GraphMetricsVectorizedArgs",
-            "kind": "Suppressed",
-            "line": 150,
-            "column": 1,
-            "message": "struct `GraphMetricsVectorizedArgs` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "NameSimilarityVectorizedArgs",
-            "kind": "Suppressed",
-            "line": 222,
-            "column": 1,
-            "message": "struct `NameSimilarityVectorizedArgs` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "SymbolTableVectorizedArgs",
-            "kind": "Suppressed",
-            "line": 292,
-            "column": 1,
-            "message": "struct `SymbolTableVectorizedArgs` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "IncrementalCoverageVectorizedArgs",
-            "kind": "Suppressed",
-            "line": 358,
-            "column": 1,
-            "message": "struct `IncrementalCoverageVectorizedArgs` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "BigOVectorizedArgs",
-            "kind": "Suppressed",
-            "line": 424,
-            "column": 1,
-            "message": "struct `BigOVectorizedArgs` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "EnhancedReportArgs",
-            "kind": "Suppressed",
-            "line": 495,
-            "column": 1,
-            "message": "struct `EnhancedReportArgs` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          }
-        ],
-        "file_dead_percentage": 3.594351732991014
-      },
-      {
-        "file_path": "src/ast/languages/c_cpp/c_cpp_visitor.rs",
-        "dead_items": [
-          {
-            "name": "CTreeSitterVisitor",
-            "kind": "Suppressed",
-            "line": 10,
-            "column": 1,
-            "message": "struct `CTreeSitterVisitor` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          }
-        ],
-        "file_dead_percentage": 3.9603960396039604
-      },
-      {
-        "file_path": "src/bin/pmat.rs",
-        "dead_items": [
-          {
-            "name": "ExitCode",
-            "kind": "Suppressed",
-            "line": 18,
-            "column": 1,
-            "message": "enum `ExitCode` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          }
-        ],
-        "file_dead_percentage": 1.8018018018018018
-      },
-      {
-        "file_path": "src/ast/languages/rust.rs",
-        "dead_items": [
-          {
-            "name": "add_node",
-            "kind": "Suppressed",
-            "line": 131,
-            "column": 1,
-            "message": "fn `add_node` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          }
-        ],
-        "file_dead_percentage": 0.641025641025641
-      },
-      {
-        "file_path": "src/claude_integration/bridge.rs",
-        "dead_items": [
-          {
-            "name": "spawn_bridge_process",
-            "kind": "Suppressed",
-            "line": 179,
-            "column": 1,
-            "message": "fn `spawn_bridge_process` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          }
-        ],
-        "file_dead_percentage": 1.1204481792717087
-      },
-      {
-        "file_path": "tests/modules/recording_workflow_e2e_tests.rs",
-        "dead_items": [
-          {
-            "name": "create_test_snapshot",
-            "kind": "Suppressed",
-            "line": 326,
-            "column": 1,
-            "message": "fn `create_test_snapshot` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          }
-        ],
-        "file_dead_percentage": 1.1494252873563218
-      },
-      {
-        "file_path": "tests/modules/execution_recorder_integration_tests.rs",
-        "dead_items": [
-          {
-            "name": "create_test_snapshot",
-            "kind": "Suppressed",
-            "line": 331,
-            "column": 1,
-            "message": "fn `create_test_snapshot` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "create_large_test_snapshot",
-            "kind": "Suppressed",
-            "line": 367,
-            "column": 1,
-            "message": "fn `create_large_test_snapshot` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          }
-        ],
-        "file_dead_percentage": 2.056555269922879
+        "file_dead_percentage": 0.4592422502870264
       },
       {
         "file_path": "src/cli/handlers/utility_handlers/context_output.rs",
@@ -1948,76 +611,213 @@
         "file_dead_percentage": 11.995386389850058
       },
       {
-        "file_path": "src/services/context_impl/build.rs",
+        "file_path": "tests/modules/parse_sprint_section_refactor_test.rs",
         "dead_items": [
           {
-            "name": "analyze_deno_file",
+            "name": "MockParsers",
             "kind": "Suppressed",
-            "line": 334,
+            "line": 171,
             "column": 1,
-            "message": "fn `analyze_deno_file` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          }
-        ],
-        "file_dead_percentage": 0.9615384615384616
-      },
-      {
-        "file_path": "src/services/semantic/topic_modeling.rs",
-        "dead_items": [
-          {
-            "name": "simplified_lda",
-            "kind": "Suppressed",
-            "line": 215,
-            "column": 1,
-            "message": "fn `simplified_lda` has #[allow(dead_code)] suppression (explicit dead code admission)"
+            "message": "struct `MockParsers` has #[allow(dead_code)] suppression (explicit dead code admission)"
           },
           {
-            "name": "ChunkMetadata",
+            "name": "MockPriority",
             "kind": "Suppressed",
-            "line": 279,
+            "line": 210,
             "column": 1,
-            "message": "struct `ChunkMetadata` has #[allow(dead_code)] suppression (explicit dead code admission)"
+            "message": "enum `MockPriority` has #[allow(dead_code)] suppression (explicit dead code admission)"
           }
         ],
-        "file_dead_percentage": 2.484472049689441
+        "file_dead_percentage": 2.9962546816479403
       },
       {
-        "file_path": "src/services/analyzer/complexity.rs",
+        "file_path": "src/ast/languages/typescript.rs",
         "dead_items": [
           {
-            "name": "DEFAULT_THRESHOLD",
+            "name": "add_node",
             "kind": "Suppressed",
-            "line": 31,
+            "line": 249,
             "column": 1,
-            "message": "const `DEFAULT_THRESHOLD` has #[allow(dead_code)] suppression (explicit dead code admission)"
+            "message": "fn `add_node` has #[allow(dead_code)] suppression (explicit dead code admission)"
           }
         ],
-        "file_dead_percentage": 0.9925558312655087
+        "file_dead_percentage": 0.2871500358937545
       },
       {
-        "file_path": "src/handlers/tools/extended_tools.rs",
+        "file_path": "src/services/tdg_calculator.rs",
         "dead_items": [
           {
-            "name": "perform_complexity_analysis",
+            "name": "compute_complexity_gradient",
             "kind": "Suppressed",
-            "line": 62,
+            "line": 297,
             "column": 1,
-            "message": "fn `perform_complexity_analysis` has #[allow(dead_code)] suppression (explicit dead code admission)"
+            "message": "fn `compute_complexity_gradient` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "analyze_coupling",
+            "kind": "Suppressed",
+            "line": 522,
+            "column": 1,
+            "message": "fn `analyze_coupling` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "extract_dependencies",
+            "kind": "Suppressed",
+            "line": 549,
+            "column": 1,
+            "message": "fn `extract_dependencies` has #[allow(dead_code)] suppression (explicit dead code admission)"
           }
         ],
-        "file_dead_percentage": 0.42689434364994666
+        "file_dead_percentage": 1.2024048096192386
       },
       {
-        "file_path": "src/cli/analysis/graph_metrics.rs",
+        "file_path": "src/cli/defect_prediction_helpers.rs",
         "dead_items": [
           {
-            "name": "index",
+            "name": "DefectPredictionConfig",
             "kind": "Suppressed",
-            "line": 17,
+            "line": 8,
             "column": 1,
-            "message": "fn `index` has #[allow(dead_code)] suppression (explicit dead code admission)"
+            "message": "struct `DefectPredictionConfig` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "DefectAnalysisResult",
+            "kind": "Suppressed",
+            "line": 19,
+            "column": 1,
+            "message": "struct `DefectAnalysisResult` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "generate_recommendations",
+            "kind": "Suppressed",
+            "line": 294,
+            "column": 1,
+            "message": "fn `generate_recommendations` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "format_markdown_output",
+            "kind": "Suppressed",
+            "line": 421,
+            "column": 1,
+            "message": "fn `format_markdown_output` has #[allow(dead_code)] suppression (explicit dead code admission)"
           }
         ],
-        "file_dead_percentage": 0.42238648363252373
+        "file_dead_percentage": 1.4571948998178506
+      },
+      {
+        "file_path": "src/handlers/tools_advanced_part4.rs",
+        "dead_items": [
+          {
+            "name": "LintHotspotArgs",
+            "kind": "Suppressed",
+            "line": 203,
+            "column": 1,
+            "message": "struct `LintHotspotArgs` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          }
+        ],
+        "file_dead_percentage": 0.9237875288683602
+      },
+      {
+        "file_path": "src/demo/mod.rs",
+        "dead_items": [
+          {
+            "name": "open_browser",
+            "kind": "Suppressed",
+            "line": 56,
+            "column": 1,
+            "message": "fn `open_browser` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "extract_analysis_from_demo_report",
+            "kind": "Suppressed",
+            "line": 333,
+            "column": 1,
+            "message": "fn `extract_analysis_from_demo_report` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "parse_dag_data",
+            "kind": "Suppressed",
+            "line": 426,
+            "column": 1,
+            "message": "fn `parse_dag_data` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "run_web_demo",
+            "kind": "Suppressed",
+            "line": 465,
+            "column": 1,
+            "message": "fn `run_web_demo` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "analyze_context",
+            "kind": "Suppressed",
+            "line": 581,
+            "column": 1,
+            "message": "fn `analyze_context` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "analyze_churn",
+            "kind": "Suppressed",
+            "line": 626,
+            "column": 1,
+            "message": "fn `analyze_churn` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "analyze_system_architecture",
+            "kind": "Suppressed",
+            "line": 634,
+            "column": 1,
+            "message": "fn `analyze_system_architecture` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "analyze_defect_probability",
+            "kind": "Suppressed",
+            "line": 671,
+            "column": 1,
+            "message": "fn `analyze_defect_probability` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          }
+        ],
+        "file_dead_percentage": 1.8192154633314381
+      },
+      {
+        "file_path": "src/cli/handlers/comply_handlers/falsification_tests.rs",
+        "dead_items": [
+          {
+            "name": "generate_falsification_report",
+            "kind": "Suppressed",
+            "line": 1509,
+            "column": 1,
+            "message": "fn `generate_falsification_report` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          }
+        ],
+        "file_dead_percentage": 0.2612671456564337
+      },
+      {
+        "file_path": "src/ast/polyglot/language_mapper.rs",
+        "dead_items": [
+          {
+            "name": "process_java_specific",
+            "kind": "Suppressed",
+            "line": 190,
+            "column": 1,
+            "message": "fn `process_java_specific` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "process_kotlin_specific",
+            "kind": "Suppressed",
+            "line": 273,
+            "column": 1,
+            "message": "fn `process_kotlin_specific` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "process_scala_specific",
+            "kind": "Suppressed",
+            "line": 341,
+            "column": 1,
+            "message": "fn `process_scala_specific` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          }
+        ],
+        "file_dead_percentage": 1.8808777429467085
       },
       {
         "file_path": "src/cli/handlers/utility_handlers/mod.rs",
@@ -2047,50 +847,143 @@
         "file_dead_percentage": 3.6363636363636362
       },
       {
-        "file_path": "src/wasm/verifier.rs",
+        "file_path": "src/services/coupling_analyzer.rs",
         "dead_items": [
           {
-            "name": "check_all",
+            "name": "extract_file_path",
             "kind": "Suppressed",
-            "line": 156,
+            "line": 141,
             "column": 1,
-            "message": "fn `check_all` has #[allow(dead_code)] suppression (explicit dead code admission)"
+            "message": "fn `extract_file_path` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          }
+        ],
+        "file_dead_percentage": 0.9009009009009009
+      },
+      {
+        "file_path": "tests/modules/tdg_explain_mode_tests.rs",
+        "dead_items": [
+          {
+            "name": "DispatchPattern",
+            "kind": "Suppressed",
+            "line": 464,
+            "column": 1,
+            "message": "struct `DispatchPattern` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          }
+        ],
+        "file_dead_percentage": 0.7952286282306162
+      },
+      {
+        "file_path": "src/cli/provability_helpers.rs",
+        "dead_items": [
+          {
+            "name": "extract_function_name",
+            "kind": "Suppressed",
+            "line": 78,
+            "column": 1,
+            "message": "fn `extract_function_name` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          }
+        ],
+        "file_dead_percentage": 0.7067137809187279
+      },
+      {
+        "file_path": "src/quality/efficiency_enhanced.rs",
+        "dead_items": [
+          {
+            "name": "AllocationSize",
+            "kind": "Suppressed",
+            "line": 349,
+            "column": 1,
+            "message": "enum `AllocationSize` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          }
+        ],
+        "file_dead_percentage": 0.45819014891179843
+      },
+      {
+        "file_path": "src/services/enhanced_naming_tests.rs",
+        "dead_items": [
+          {
+            "name": "create_mock_function",
+            "kind": "Suppressed",
+            "line": 1649,
+            "column": 1,
+            "message": "fn `create_mock_function` has #[allow(dead_code)] suppression (explicit dead code admission)"
           },
           {
-            "name": "InvariantViolation",
+            "name": "create_mock_class",
             "kind": "Suppressed",
-            "line": 174,
+            "line": 1660,
             "column": 1,
-            "message": "struct `InvariantViolation` has #[allow(dead_code)] suppression (explicit dead code admission)"
+            "message": "fn `create_mock_class` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "validate_enhanced_function_names",
+            "kind": "Suppressed",
+            "line": 1672,
+            "column": 1,
+            "message": "fn `validate_enhanced_function_names` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "validate_wasm_function_names",
+            "kind": "Suppressed",
+            "line": 1699,
+            "column": 1,
+            "message": "fn `validate_wasm_function_names` has #[allow(dead_code)] suppression (explicit dead code admission)"
           }
         ],
-        "file_dead_percentage": 0.9153318077803204
+        "file_dead_percentage": 0.9324009324009324
       },
       {
-        "file_path": "src/services/metric_trends.rs",
+        "file_path": "tests/modules/cli_docs_enforcement.rs",
         "dead_items": [
           {
-            "name": "simd_linear_regression",
+            "name": "extract_flags_from_help",
             "kind": "Suppressed",
-            "line": 395,
+            "line": 458,
             "column": 1,
-            "message": "fn `simd_linear_regression` has #[allow(dead_code)] suppression (explicit dead code admission)"
+            "message": "fn `extract_flags_from_help` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "extract_flags_from_clap_definitions",
+            "kind": "Suppressed",
+            "line": 466,
+            "column": 1,
+            "message": "fn `extract_flags_from_clap_definitions` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "is_generic_description",
+            "kind": "Suppressed",
+            "line": 474,
+            "column": 1,
+            "message": "fn `is_generic_description` has #[allow(dead_code)] suppression (explicit dead code admission)"
           }
         ],
-        "file_dead_percentage": 0.3415883859948762
+        "file_dead_percentage": 2.3856858846918487
       },
       {
-        "file_path": "build.rs",
+        "file_path": "tests/modules/claude_skills_validation_tests.rs",
         "dead_items": [
           {
-            "name": "compile_capnp_schema",
+            "name": "ClaudeSkill",
             "kind": "Suppressed",
-            "line": 703,
+            "line": 18,
             "column": 1,
-            "message": "fn `compile_capnp_schema` has #[allow(dead_code)] suppression (explicit dead code admission)"
+            "message": "struct `ClaudeSkill` has #[allow(dead_code)] suppression (explicit dead code admission)"
           }
         ],
-        "file_dead_percentage": 0.2824858757062147
+        "file_dead_percentage": 0.583941605839416
+      },
+      {
+        "file_path": "examples/quality_gate_shows_checks.rs",
+        "dead_items": [
+          {
+            "name": "unused_function",
+            "kind": "Suppressed",
+            "line": 107,
+            "column": 1,
+            "message": "fn `unused_function` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          }
+        ],
+        "file_dead_percentage": 3.4782608695652173
       },
       {
         "file_path": "src/services/github_issues.rs",
@@ -2106,63 +999,172 @@
         "file_dead_percentage": 0.6153846153846154
       },
       {
-        "file_path": "tests/modules/dap_recording_capture_tests.rs",
+        "file_path": "examples/scaffold_agent_course_project.rs",
         "dead_items": [
           {
-            "name": "generate_recording_timestamp",
+            "name": "example_metrics",
             "kind": "Suppressed",
-            "line": 308,
+            "line": 285,
             "column": 1,
-            "message": "fn `generate_recording_timestamp` has #[allow(dead_code)] suppression (explicit dead code admission)"
+            "message": "fn `example_metrics` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          }
+        ],
+        "file_dead_percentage": 1.2461059190031152
+      },
+      {
+        "file_path": "src/tdg/analyzer_ast/analyzer_impl2.rs",
+        "dead_items": [
+          {
+            "name": "score_consistency_python",
+            "kind": "Suppressed",
+            "line": 355,
+            "column": 1,
+            "message": "fn `score_consistency_python` has #[allow(dead_code)] suppression (explicit dead code admission)"
           },
           {
-            "name": "generate_recording_path",
+            "name": "calculate_cognitive_complexity",
             "kind": "Suppressed",
-            "line": 317,
+            "line": 560,
             "column": 1,
-            "message": "fn `generate_recording_path` has #[allow(dead_code)] suppression (explicit dead code admission)"
+            "message": "fn `calculate_cognitive_complexity` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "calculate_max_nesting",
+            "kind": "Suppressed",
+            "line": 593,
+            "column": 1,
+            "message": "fn `calculate_max_nesting` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "calculate_max_function_length",
+            "kind": "Suppressed",
+            "line": 621,
+            "column": 1,
+            "message": "fn `calculate_max_function_length` has #[allow(dead_code)] suppression (explicit dead code admission)"
           }
         ],
-        "file_dead_percentage": 2.5
+        "file_dead_percentage": 2.127659574468085
       },
       {
-        "file_path": "src/ast/languages/typescript.rs",
+        "file_path": "src/services/mutation/json_parser.rs",
         "dead_items": [
           {
-            "name": "add_node",
+            "name": "ScenarioType",
             "kind": "Suppressed",
-            "line": 249,
+            "line": 106,
             "column": 1,
-            "message": "fn `add_node` has #[allow(dead_code)] suppression (explicit dead code admission)"
+            "message": "enum `ScenarioType` has #[allow(dead_code)] suppression (explicit dead code admission)"
           }
         ],
-        "file_dead_percentage": 0.2871500358937545
+        "file_dead_percentage": 0.9925558312655087
       },
       {
-        "file_path": "src/services/deterministic_mermaid_engine.rs",
+        "file_path": "src/services/semantic/topic_modeling.rs",
         "dead_items": [
           {
-            "name": "get_node",
+            "name": "simplified_lda",
             "kind": "Suppressed",
-            "line": 108,
+            "line": 215,
             "column": 1,
-            "message": "fn `get_node` has #[allow(dead_code)] suppression (explicit dead code admission)"
+            "message": "fn `simplified_lda` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "ChunkMetadata",
+            "kind": "Suppressed",
+            "line": 279,
+            "column": 1,
+            "message": "struct `ChunkMetadata` has #[allow(dead_code)] suppression (explicit dead code admission)"
           }
         ],
-        "file_dead_percentage": 0.45610034207525657
+        "file_dead_percentage": 2.484472049689441
       },
       {
-        "file_path": "src/demo/runner.rs",
+        "file_path": "src/cli/handlers/refactor_auto_handlers/output_handler.rs",
         "dead_items": [
           {
-            "name": "Component",
+            "name": "IterationResult",
             "kind": "Suppressed",
-            "line": 63,
+            "line": 312,
             "column": 1,
-            "message": "struct `Component` has #[allow(dead_code)] suppression (explicit dead code admission)"
+            "message": "struct `IterationResult` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "RefactoringSuccess",
+            "kind": "Suppressed",
+            "line": 323,
+            "column": 1,
+            "message": "struct `RefactoringSuccess` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "RefactoringFailure",
+            "kind": "Suppressed",
+            "line": 333,
+            "column": 1,
+            "message": "struct `RefactoringFailure` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "VerificationStatus",
+            "kind": "Suppressed",
+            "line": 342,
+            "column": 1,
+            "message": "enum `VerificationStatus` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "ValidationResult",
+            "kind": "Suppressed",
+            "line": 351,
+            "column": 1,
+            "message": "struct `ValidationResult` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "QualityImprovement",
+            "kind": "Suppressed",
+            "line": 362,
+            "column": 1,
+            "message": "struct `QualityImprovement` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "CompilationResult",
+            "kind": "Suppressed",
+            "line": 373,
+            "column": 1,
+            "message": "struct `CompilationResult` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "TestResult",
+            "kind": "Suppressed",
+            "line": 382,
+            "column": 1,
+            "message": "struct `TestResult` has #[allow(dead_code)] suppression (explicit dead code admission)"
           }
         ],
-        "file_dead_percentage": 0.34393809114359414
+        "file_dead_percentage": 3.038936372269706
+      },
+      {
+        "file_path": "tests/modules/feature_052_filtering_tests.rs",
+        "dead_items": [
+          {
+            "name": "create_mock_defect_report",
+            "kind": "Suppressed",
+            "line": 19,
+            "column": 1,
+            "message": "fn `create_mock_defect_report` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          }
+        ],
+        "file_dead_percentage": 0.9638554216867471
+      },
+      {
+        "file_path": "src/services/rust_project_score/code_quality_scorer.rs",
+        "dead_items": [
+          {
+            "name": "unused",
+            "kind": "Suppressed",
+            "line": 864,
+            "column": 1,
+            "message": "fn `unused` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          }
+        ],
+        "file_dead_percentage": 0.4012036108324975
       },
       {
         "file_path": "src/services/mutation/executor.rs",
@@ -2185,37 +1187,326 @@
         "file_dead_percentage": 0.9779951100244498
       },
       {
-        "file_path": "tests/modules/bug_006_parallel_count_tests.rs",
+        "file_path": "src/services/cargo_dead_code_analyzer.rs",
         "dead_items": [
           {
             "name": "unused_function",
             "kind": "Suppressed",
-            "line": 250,
+            "line": 701,
             "column": 1,
             "message": "fn `unused_function` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          }
-        ],
-        "file_dead_percentage": 1.2861736334405145
-      },
-      {
-        "file_path": "src/demo/server.rs",
-        "dead_items": [
-          {
-            "name": "calculate_graph_density",
-            "kind": "Suppressed",
-            "line": 470,
-            "column": 1,
-            "message": "fn `calculate_graph_density` has #[allow(dead_code)] suppression (explicit dead code admission)"
           },
           {
-            "name": "calculate_avg_degree",
+            "name": "UnusedStruct",
             "kind": "Suppressed",
-            "line": 476,
+            "line": 706,
             "column": 1,
-            "message": "fn `calculate_avg_degree` has #[allow(dead_code)] suppression (explicit dead code admission)"
+            "message": "struct `UnusedStruct` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "UNUSED_CONST",
+            "kind": "Suppressed",
+            "line": 711,
+            "column": 1,
+            "message": "const `UNUSED_CONST` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "StackedAttributes",
+            "kind": "Suppressed",
+            "line": 750,
+            "column": 1,
+            "message": "struct `StackedAttributes` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "function_in_suppressed_module",
+            "kind": "Suppressed",
+            "line": 774,
+            "column": 1,
+            "message": "fn `function_in_suppressed_module` has #[allow(dead_code)] suppression (explicit dead code admission)"
           }
         ],
-        "file_dead_percentage": 0.64
+        "file_dead_percentage": 2.358490566037736
+      },
+      {
+        "file_path": "src/services/semantic/turso_vector_db.rs",
+        "dead_items": [
+          {
+            "name": "EmbeddingMetadata",
+            "kind": "Suppressed",
+            "line": 28,
+            "column": 1,
+            "message": "struct `EmbeddingMetadata` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          }
+        ],
+        "file_dead_percentage": 0.3673094582185491
+      },
+      {
+        "file_path": "src/unified_quality/automation.rs",
+        "dead_items": [
+          {
+            "name": "GitSafetyNet",
+            "kind": "Suppressed",
+            "line": 94,
+            "column": 1,
+            "message": "struct `GitSafetyNet` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "RollbackManager",
+            "kind": "Suppressed",
+            "line": 104,
+            "column": 1,
+            "message": "struct `RollbackManager` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "add_rollback_point",
+            "kind": "Suppressed",
+            "line": 479,
+            "column": 1,
+            "message": "fn `add_rollback_point` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          }
+        ],
+        "file_dead_percentage": 0.9084027252081757
+      },
+      {
+        "file_path": "src/tests/kaizen_reliability_patterns.rs",
+        "dead_items": [
+          {
+            "name": "create_minimal_test_data",
+            "kind": "Suppressed",
+            "line": 202,
+            "column": 1,
+            "message": "fn `create_minimal_test_data` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          }
+        ],
+        "file_dead_percentage": 1.1494252873563218
+      },
+      {
+        "file_path": "src/roadmap/quality.rs",
+        "dead_items": [
+          {
+            "name": "extract_coverage_from_output",
+            "kind": "Suppressed",
+            "line": 421,
+            "column": 1,
+            "message": "fn `extract_coverage_from_output` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          }
+        ],
+        "file_dead_percentage": 0.6069802731411229
+      },
+      {
+        "file_path": "src/ast/languages/c_cpp/c_cpp_visitor.rs",
+        "dead_items": [
+          {
+            "name": "CTreeSitterVisitor",
+            "kind": "Suppressed",
+            "line": 10,
+            "column": 1,
+            "message": "struct `CTreeSitterVisitor` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          }
+        ],
+        "file_dead_percentage": 3.9603960396039604
+      },
+      {
+        "file_path": "tests/modules/recording_workflow_e2e_tests.rs",
+        "dead_items": [
+          {
+            "name": "create_test_snapshot",
+            "kind": "Suppressed",
+            "line": 326,
+            "column": 1,
+            "message": "fn `create_test_snapshot` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          }
+        ],
+        "file_dead_percentage": 1.1494252873563218
+      },
+      {
+        "file_path": "src/ast/languages/rust.rs",
+        "dead_items": [
+          {
+            "name": "add_node",
+            "kind": "Suppressed",
+            "line": 131,
+            "column": 1,
+            "message": "fn `add_node` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          }
+        ],
+        "file_dead_percentage": 0.641025641025641
+      },
+      {
+        "file_path": "src/claude_integration/bridge.rs",
+        "dead_items": [
+          {
+            "name": "spawn_bridge_process",
+            "kind": "Suppressed",
+            "line": 179,
+            "column": 1,
+            "message": "fn `spawn_bridge_process` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          }
+        ],
+        "file_dead_percentage": 1.1204481792717087
+      },
+      {
+        "file_path": "src/cli/handlers/utility_handlers/project_analysis.rs",
+        "dead_items": [
+          {
+            "name": "analyze_project",
+            "kind": "Suppressed",
+            "line": 4,
+            "column": 1,
+            "message": "fn `analyze_project` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "build_project_context_from_simple",
+            "kind": "Suppressed",
+            "line": 65,
+            "column": 1,
+            "message": "fn `build_project_context_from_simple` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "build_project_context",
+            "kind": "Suppressed",
+            "line": 91,
+            "column": 1,
+            "message": "fn `build_project_context` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "process_file_context",
+            "kind": "Suppressed",
+            "line": 139,
+            "column": 1,
+            "message": "fn `process_file_context` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "format_context_output_simple",
+            "kind": "Suppressed",
+            "line": 161,
+            "column": 1,
+            "message": "fn `format_context_output_simple` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "update_project_summary",
+            "kind": "Suppressed",
+            "line": 330,
+            "column": 1,
+            "message": "fn `update_project_summary` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "format_context_output",
+            "kind": "Suppressed",
+            "line": 348,
+            "column": 1,
+            "message": "fn `format_context_output` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          }
+        ],
+        "file_dead_percentage": 7.4866310160427805
+      },
+      {
+        "file_path": "src/services/metric_trends.rs",
+        "dead_items": [
+          {
+            "name": "simd_linear_regression",
+            "kind": "Suppressed",
+            "line": 395,
+            "column": 1,
+            "message": "fn `simd_linear_regression` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          }
+        ],
+        "file_dead_percentage": 0.3415883859948762
+      },
+      {
+        "file_path": "src/services/context_impl/build.rs",
+        "dead_items": [
+          {
+            "name": "analyze_deno_file",
+            "kind": "Suppressed",
+            "line": 334,
+            "column": 1,
+            "message": "fn `analyze_deno_file` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          }
+        ],
+        "file_dead_percentage": 0.9615384615384616
+      },
+      {
+        "file_path": "src/demo/adapters/tui.rs",
+        "dead_items": [
+          {
+            "name": "Severity",
+            "kind": "Suppressed",
+            "line": 94,
+            "column": 1,
+            "message": "enum `Severity` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "FileInfo",
+            "kind": "Suppressed",
+            "line": 103,
+            "column": 1,
+            "message": "struct `FileInfo` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "UpdateType",
+            "kind": "Suppressed",
+            "line": 127,
+            "column": 1,
+            "message": "enum `UpdateType` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          }
+        ],
+        "file_dead_percentage": 3.296703296703297
+      },
+      {
+        "file_path": "src/handlers/vectorized_tools/mod.rs",
+        "dead_items": [
+          {
+            "name": "DuplicatesVectorizedArgs",
+            "kind": "Suppressed",
+            "line": 79,
+            "column": 1,
+            "message": "struct `DuplicatesVectorizedArgs` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "GraphMetricsVectorizedArgs",
+            "kind": "Suppressed",
+            "line": 150,
+            "column": 1,
+            "message": "struct `GraphMetricsVectorizedArgs` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "NameSimilarityVectorizedArgs",
+            "kind": "Suppressed",
+            "line": 222,
+            "column": 1,
+            "message": "struct `NameSimilarityVectorizedArgs` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "SymbolTableVectorizedArgs",
+            "kind": "Suppressed",
+            "line": 292,
+            "column": 1,
+            "message": "struct `SymbolTableVectorizedArgs` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "IncrementalCoverageVectorizedArgs",
+            "kind": "Suppressed",
+            "line": 358,
+            "column": 1,
+            "message": "struct `IncrementalCoverageVectorizedArgs` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "BigOVectorizedArgs",
+            "kind": "Suppressed",
+            "line": 424,
+            "column": 1,
+            "message": "struct `BigOVectorizedArgs` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "EnhancedReportArgs",
+            "kind": "Suppressed",
+            "line": 495,
+            "column": 1,
+            "message": "struct `EnhancedReportArgs` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          }
+        ],
+        "file_dead_percentage": 3.594351732991014
       },
       {
         "file_path": "src/unified_quality/prometheus_exporter.rs",
@@ -2231,57 +1522,766 @@
         "file_dead_percentage": 0.819672131147541
       },
       {
-        "file_path": "tests/modules/mcp_documentation_sync.rs",
+        "file_path": "tests/modules/bug_006_parallel_count_tests.rs",
         "dead_items": [
           {
-            "name": "McpResponse",
+            "name": "unused_function",
             "kind": "Suppressed",
-            "line": 19,
+            "line": 250,
             "column": 1,
-            "message": "struct `McpResponse` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          },
-          {
-            "name": "ToolDefinition",
-            "kind": "Suppressed",
-            "line": 28,
-            "column": 1,
-            "message": "struct `ToolDefinition` has #[allow(dead_code)] suppression (explicit dead code admission)"
+            "message": "fn `unused_function` has #[allow(dead_code)] suppression (explicit dead code admission)"
           }
         ],
-        "file_dead_percentage": 1.5414258188824663
+        "file_dead_percentage": 1.2861736334405145
       },
       {
-        "file_path": "tests/modules/feature_052_filtering_tests.rs",
+        "file_path": "tests/modules/replay_integration_tests.rs",
         "dead_items": [
           {
-            "name": "create_mock_defect_report",
+            "name": "create_test_snapshot",
             "kind": "Suppressed",
-            "line": 19,
+            "line": 333,
             "column": 1,
-            "message": "fn `create_mock_defect_report` has #[allow(dead_code)] suppression (explicit dead code admission)"
-          }
-        ],
-        "file_dead_percentage": 0.9638554216867471
-      },
-      {
-        "file_path": "src/services/makefile_linter/parser.rs",
-        "dead_items": [
-          {
-            "name": "find_char_swar",
-            "kind": "Suppressed",
-            "line": 458,
-            "column": 1,
-            "message": "fn `find_char_swar` has #[allow(dead_code)] suppression (explicit dead code admission)"
+            "message": "fn `create_test_snapshot` has #[allow(dead_code)] suppression (explicit dead code admission)"
           },
           {
-            "name": "has_byte",
+            "name": "create_test_recording_with_snapshots",
             "kind": "Suppressed",
-            "line": 496,
+            "line": 339,
             "column": 1,
-            "message": "fn `has_byte` has #[allow(dead_code)] suppression (explicit dead code admission)"
+            "message": "fn `create_test_recording_with_snapshots` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "create_test_snapshot_with_variables",
+            "kind": "Suppressed",
+            "line": 346,
+            "column": 1,
+            "message": "fn `create_test_snapshot_with_variables` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "create_snapshot_with_stack",
+            "kind": "Suppressed",
+            "line": 353,
+            "column": 1,
+            "message": "fn `create_snapshot_with_stack` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "create_large_recording",
+            "kind": "Suppressed",
+            "line": 360,
+            "column": 1,
+            "message": "fn `create_large_recording` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "load_test_recording",
+            "kind": "Suppressed",
+            "line": 367,
+            "column": 1,
+            "message": "fn `load_test_recording` has #[allow(dead_code)] suppression (explicit dead code admission)"
           }
         ],
-        "file_dead_percentage": 0.904977375565611
+        "file_dead_percentage": 6.486486486486487
+      },
+      {
+        "file_path": "src/bin/pmat.rs",
+        "dead_items": [
+          {
+            "name": "ExitCode",
+            "kind": "Suppressed",
+            "line": 18,
+            "column": 1,
+            "message": "enum `ExitCode` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          }
+        ],
+        "file_dead_percentage": 1.8018018018018018
+      },
+      {
+        "file_path": "examples/typescript_mutation_workflow_parallel.rs",
+        "dead_items": [
+          {
+            "name": "copy_dir_recursive",
+            "kind": "Suppressed",
+            "line": 249,
+            "column": 1,
+            "message": "fn `copy_dir_recursive` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          }
+        ],
+        "file_dead_percentage": 1.4285714285714286
+      },
+      {
+        "file_path": "src/unified_quality/intelligence.rs",
+        "dead_items": [
+          {
+            "name": "AcceptedSuggestion",
+            "kind": "Suppressed",
+            "line": 111,
+            "column": 1,
+            "message": "struct `AcceptedSuggestion` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "RejectedSuggestion",
+            "kind": "Suppressed",
+            "line": 121,
+            "column": 1,
+            "message": "struct `RejectedSuggestion` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "SuggestionOutcome",
+            "kind": "Suppressed",
+            "line": 131,
+            "column": 1,
+            "message": "enum `SuggestionOutcome` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          }
+        ],
+        "file_dead_percentage": 1.6326530612244898
+      },
+      {
+        "file_path": "src/cli/handlers/refactor_auto_handlers/setup_analysis.rs",
+        "dead_items": [
+          {
+            "name": "QualityProfile",
+            "kind": "Suppressed",
+            "line": 57,
+            "column": 1,
+            "message": "struct `QualityProfile` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "LintHotspotJsonResponse",
+            "kind": "Suppressed",
+            "line": 79,
+            "column": 1,
+            "message": "struct `LintHotspotJsonResponse` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "LintHotspotJson",
+            "kind": "Suppressed",
+            "line": 87,
+            "column": 1,
+            "message": "struct `LintHotspotJson` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "ViolationDetailJson",
+            "kind": "Suppressed",
+            "line": 95,
+            "column": 1,
+            "message": "struct `ViolationDetailJson` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "PatternConfig",
+            "kind": "Suppressed",
+            "line": 145,
+            "column": 1,
+            "message": "struct `PatternConfig` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "OutputConfig",
+            "kind": "Suppressed",
+            "line": 158,
+            "column": 1,
+            "message": "struct `OutputConfig` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "GitHubIssueContent",
+            "kind": "Suppressed",
+            "line": 507,
+            "column": 1,
+            "message": "struct `GitHubIssueContent` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "ProjectQualityAnalysis",
+            "kind": "Suppressed",
+            "line": 730,
+            "column": 1,
+            "message": "struct `ProjectQualityAnalysis` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "ComplexityAnalysis",
+            "kind": "Suppressed",
+            "line": 742,
+            "column": 1,
+            "message": "struct `ComplexityAnalysis` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "SatdAnalysis",
+            "kind": "Suppressed",
+            "line": 752,
+            "column": 1,
+            "message": "struct `SatdAnalysis` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "CoverageAnalysis",
+            "kind": "Suppressed",
+            "line": 761,
+            "column": 1,
+            "message": "struct `CoverageAnalysis` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "ComplexityViolation",
+            "kind": "Suppressed",
+            "line": 770,
+            "column": 1,
+            "message": "struct `ComplexityViolation` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "SatdComment",
+            "kind": "Suppressed",
+            "line": 781,
+            "column": 1,
+            "message": "struct `SatdComment` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "UncoveredLine",
+            "kind": "Suppressed",
+            "line": 791,
+            "column": 1,
+            "message": "struct `UncoveredLine` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "RefactoringRequest",
+            "kind": "Suppressed",
+            "line": 800,
+            "column": 1,
+            "message": "struct `RefactoringRequest` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "RefactoringType",
+            "kind": "Suppressed",
+            "line": 812,
+            "column": 1,
+            "message": "enum `RefactoringType` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "RefactoringPriority",
+            "kind": "Suppressed",
+            "line": 823,
+            "column": 1,
+            "message": "enum `RefactoringPriority` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "RefactoringEffort",
+            "kind": "Suppressed",
+            "line": 833,
+            "column": 1,
+            "message": "enum `RefactoringEffort` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          }
+        ],
+        "file_dead_percentage": 7.4150360453141095
+      },
+      {
+        "file_path": "src/mcp_server/state_manager.rs",
+        "dead_items": [
+          {
+            "name": "load_from_snapshot",
+            "kind": "Suppressed",
+            "line": 321,
+            "column": 1,
+            "message": "fn `load_from_snapshot` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          }
+        ],
+        "file_dead_percentage": 0.6589785831960462
+      },
+      {
+        "file_path": "src/demo/runner.rs",
+        "dead_items": [
+          {
+            "name": "Component",
+            "kind": "Suppressed",
+            "line": 63,
+            "column": 1,
+            "message": "struct `Component` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          }
+        ],
+        "file_dead_percentage": 0.34393809114359414
+      },
+      {
+        "file_path": "src/unified_quality/performance.rs",
+        "dead_items": [
+          {
+            "name": "PerformanceMetrics",
+            "kind": "Suppressed",
+            "line": 137,
+            "column": 1,
+            "message": "struct `PerformanceMetrics` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          }
+        ],
+        "file_dead_percentage": 0.4123711340206186
+      },
+      {
+        "file_path": "src/tests/kaizen_test_optimizations.rs",
+        "dead_items": [
+          {
+            "name": "TEST_METRICS",
+            "kind": "Suppressed",
+            "line": 13,
+            "column": 1,
+            "message": "static `TEST_METRICS` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "fast_unit_test_setup",
+            "kind": "Suppressed",
+            "line": 185,
+            "column": 1,
+            "message": "fn `fast_unit_test_setup` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "generate_test_data",
+            "kind": "Suppressed",
+            "line": 205,
+            "column": 1,
+            "message": "fn `generate_test_data` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "fast_analysis",
+            "kind": "Suppressed",
+            "line": 214,
+            "column": 1,
+            "message": "fn `fast_analysis` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          }
+        ],
+        "file_dead_percentage": 4.35967302452316
+      },
+      {
+        "file_path": "src/cli/command_dispatcher/mod.rs",
+        "dead_items": [
+          {
+            "name": "CommandHandler",
+            "kind": "Suppressed",
+            "line": 32,
+            "column": 1,
+            "message": "trait `CommandHandler` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "AnalyzeCommandHandler",
+            "kind": "Suppressed",
+            "line": 39,
+            "column": 1,
+            "message": "trait `AnalyzeCommandHandler` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          }
+        ],
+        "file_dead_percentage": 0.9925558312655087
+      },
+      {
+        "file_path": "src/ast/languages/python.rs",
+        "dead_items": [
+          {
+            "name": "parse_with_tree_sitter",
+            "kind": "Suppressed",
+            "line": 82,
+            "column": 1,
+            "message": "fn `parse_with_tree_sitter` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "add_node",
+            "kind": "Suppressed",
+            "line": 202,
+            "column": 1,
+            "message": "fn `add_node` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          }
+        ],
+        "file_dead_percentage": 0.8403361344537815
+      },
+      {
+        "file_path": "src/services/deterministic_mermaid_engine.rs",
+        "dead_items": [
+          {
+            "name": "get_node",
+            "kind": "Suppressed",
+            "line": 108,
+            "column": 1,
+            "message": "fn `get_node` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          }
+        ],
+        "file_dead_percentage": 0.45610034207525657
+      },
+      {
+        "file_path": "src/cli/handlers/comply_handlers/comply_cb_detect.rs",
+        "dead_items": [
+          {
+            "name": "STRING_LITERAL_PATTERN",
+            "kind": "Suppressed",
+            "line": 332,
+            "column": 1,
+            "message": "static `STRING_LITERAL_PATTERN` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          }
+        ],
+        "file_dead_percentage": 0.37453183520599254
+      },
+      {
+        "file_path": "src/services/fault_localization.rs",
+        "dead_items": [
+          {
+            "name": "with_column",
+            "kind": "Suppressed",
+            "line": 33,
+            "column": 1,
+            "message": "fn `with_column` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "with_min_confidence",
+            "kind": "Suppressed",
+            "line": 227,
+            "column": 1,
+            "message": "fn `with_min_confidence` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "enrich_with_tdg",
+            "kind": "Suppressed",
+            "line": 621,
+            "column": 1,
+            "message": "fn `enrich_with_tdg` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          }
+        ],
+        "file_dead_percentage": 1.662049861495845
+      },
+      {
+        "file_path": "src/services/languages/ruchy.rs",
+        "dead_items": [
+          {
+            "name": "infer_literal_type",
+            "kind": "Suppressed",
+            "line": 506,
+            "column": 1,
+            "message": "fn `infer_literal_type` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "infer_binary_type",
+            "kind": "Suppressed",
+            "line": 519,
+            "column": 1,
+            "message": "fn `infer_binary_type` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          }
+        ],
+        "file_dead_percentage": 0.4681100058513751
+      },
+      {
+        "file_path": "src/ast/polyglot/cross_language_dependencies.rs",
+        "dead_items": [
+          {
+            "name": "detect_between_languages",
+            "kind": "Suppressed",
+            "line": 187,
+            "column": 1,
+            "message": "fn `detect_between_languages` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "add_dependency",
+            "kind": "Suppressed",
+            "line": 240,
+            "column": 1,
+            "message": "fn `add_dependency` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          }
+        ],
+        "file_dead_percentage": 1.353637901861252
+      },
+      {
+        "file_path": "src/cli/handlers/comply_cb_detect.rs",
+        "dead_items": [
+          {
+            "name": "CbPatternViolation",
+            "kind": "Suppressed",
+            "line": 40,
+            "column": 1,
+            "message": "struct `CbPatternViolation` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          }
+        ],
+        "file_dead_percentage": 0.25673940949935814
+      },
+      {
+        "file_path": "src/services/dap/variable_inspector.rs",
+        "dead_items": [
+          {
+            "name": "extract_variables_python",
+            "kind": "Suppressed",
+            "line": 186,
+            "column": 1,
+            "message": "fn `extract_variables_python` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "extract_python_assignments",
+            "kind": "Suppressed",
+            "line": 503,
+            "column": 1,
+            "message": "fn `extract_python_assignments` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "extract_python_function_params",
+            "kind": "Suppressed",
+            "line": 542,
+            "column": 1,
+            "message": "fn `extract_python_function_params` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          }
+        ],
+        "file_dead_percentage": 0.8633093525179856
+      },
+      {
+        "file_path": "src/services/cache/orchestrator.rs",
+        "dead_items": [
+          {
+            "name": "StrategyEvaluation",
+            "kind": "Suppressed",
+            "line": 129,
+            "column": 1,
+            "message": "struct `StrategyEvaluation` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          }
+        ],
+        "file_dead_percentage": 0.583941605839416
+      },
+      {
+        "file_path": "tests/modules/dap_recording_capture_tests.rs",
+        "dead_items": [
+          {
+            "name": "generate_recording_timestamp",
+            "kind": "Suppressed",
+            "line": 308,
+            "column": 1,
+            "message": "fn `generate_recording_timestamp` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "generate_recording_path",
+            "kind": "Suppressed",
+            "line": 317,
+            "column": 1,
+            "message": "fn `generate_recording_path` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          }
+        ],
+        "file_dead_percentage": 2.5
+      },
+      {
+        "file_path": "tests/modules/comparison_view_tests.rs",
+        "dead_items": [
+          {
+            "name": "create_test_recording",
+            "kind": "Suppressed",
+            "line": 300,
+            "column": 1,
+            "message": "fn `create_test_recording` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          }
+        ],
+        "file_dead_percentage": 1.1976047904191618
+      },
+      {
+        "file_path": "tests/modules/snapshot_serialization_tests.rs",
+        "dead_items": [
+          {
+            "name": "create_test_snapshot",
+            "kind": "Suppressed",
+            "line": 433,
+            "column": 1,
+            "message": "fn `create_test_snapshot` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "create_large_snapshot",
+            "kind": "Suppressed",
+            "line": 439,
+            "column": 1,
+            "message": "fn `create_large_snapshot` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          }
+        ],
+        "file_dead_percentage": 1.7660044150110374
+      },
+      {
+        "file_path": "examples/claude_integration_example.rs",
+        "dead_items": [
+          {
+            "name": "complete_workflow_example",
+            "kind": "Suppressed",
+            "line": 246,
+            "column": 1,
+            "message": "fn `complete_workflow_example` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          }
+        ],
+        "file_dead_percentage": 1.2658227848101267
+      },
+      {
+        "file_path": "src/agent/mcp_server.rs",
+        "dead_items": [
+          {
+            "name": "send_server_info",
+            "kind": "Suppressed",
+            "line": 530,
+            "column": 1,
+            "message": "fn `send_server_info` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "handle_quality_gates",
+            "kind": "Suppressed",
+            "line": 832,
+            "column": 1,
+            "message": "fn `handle_quality_gates` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          }
+        ],
+        "file_dead_percentage": 0.7504690431519699
+      },
+      {
+        "file_path": "build.rs",
+        "dead_items": [
+          {
+            "name": "compile_capnp_schema",
+            "kind": "Suppressed",
+            "line": 703,
+            "column": 1,
+            "message": "fn `compile_capnp_schema` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          }
+        ],
+        "file_dead_percentage": 0.2824858757062147
+      },
+      {
+        "file_path": "src/claude_integration/pool.rs",
+        "dead_items": [
+          {
+            "name": "should_open_circuit",
+            "kind": "Suppressed",
+            "line": 117,
+            "column": 1,
+            "message": "fn `should_open_circuit` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          }
+        ],
+        "file_dead_percentage": 1.8867924528301887
+      },
+      {
+        "file_path": "src/cli/handlers/refactor_auto_types.rs",
+        "dead_items": [
+          {
+            "name": "print_markdown_summary",
+            "kind": "Suppressed",
+            "line": 169,
+            "column": 1,
+            "message": "fn `print_markdown_summary` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          }
+        ],
+        "file_dead_percentage": 1.7316017316017316
+      },
+      {
+        "file_path": "src/services/analyzer/complexity.rs",
+        "dead_items": [
+          {
+            "name": "DEFAULT_THRESHOLD",
+            "kind": "Suppressed",
+            "line": 31,
+            "column": 1,
+            "message": "const `DEFAULT_THRESHOLD` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          }
+        ],
+        "file_dead_percentage": 0.9925558312655087
+      },
+      {
+        "file_path": "tests/modules/tools_coverage.rs",
+        "dead_items": [
+          {
+            "name": "lint_test",
+            "kind": "Suppressed",
+            "line": 606,
+            "column": 1,
+            "message": "fn `lint_test` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          }
+        ],
+        "file_dead_percentage": 0.5242463958060288
+      },
+      {
+        "file_path": "tests/modules/code_quality_scorer_tests.rs",
+        "dead_items": [
+          {
+            "name": "unused_function",
+            "kind": "Suppressed",
+            "line": 334,
+            "column": 1,
+            "message": "fn `unused_function` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "unused",
+            "kind": "Suppressed",
+            "line": 483,
+            "column": 1,
+            "message": "fn `unused` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "unused",
+            "kind": "Suppressed",
+            "line": 649,
+            "column": 1,
+            "message": "fn `unused` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          }
+        ],
+        "file_dead_percentage": 1.8154311649016641
+      },
+      {
+        "file_path": "tests/modules/polyglot_integration.rs",
+        "dead_items": [
+          {
+            "name": "UnifiedNodeExt",
+            "kind": "Suppressed",
+            "line": 846,
+            "column": 1,
+            "message": "trait `UnifiedNodeExt` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          }
+        ],
+        "file_dead_percentage": 0.312256049960968
+      },
+      {
+        "file_path": "src/unified_protocol/service.rs",
+        "dead_items": [
+          {
+            "name": "record_request_metrics",
+            "kind": "Suppressed",
+            "line": 189,
+            "column": 1,
+            "message": "fn `record_request_metrics` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "extract_protocol_from_path",
+            "kind": "Suppressed",
+            "line": 230,
+            "column": 1,
+            "message": "fn `extract_protocol_from_path` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          }
+        ],
+        "file_dead_percentage": 0.5873715124816447
+      },
+      {
+        "file_path": "src/handlers/tools/extended_tools.rs",
+        "dead_items": [
+          {
+            "name": "perform_complexity_analysis",
+            "kind": "Suppressed",
+            "line": 62,
+            "column": 1,
+            "message": "fn `perform_complexity_analysis` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          }
+        ],
+        "file_dead_percentage": 0.42689434364994666
+      },
+      {
+        "file_path": "tests/modules/execution_recorder_integration_tests.rs",
+        "dead_items": [
+          {
+            "name": "create_test_snapshot",
+            "kind": "Suppressed",
+            "line": 331,
+            "column": 1,
+            "message": "fn `create_test_snapshot` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          },
+          {
+            "name": "create_large_test_snapshot",
+            "kind": "Suppressed",
+            "line": 367,
+            "column": 1,
+            "message": "fn `create_large_test_snapshot` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          }
+        ],
+        "file_dead_percentage": 2.056555269922879
+      },
+      {
+        "file_path": "src/services/deep_wasm/correlation_engine.rs",
+        "dead_items": [
+          {
+            "name": "create_dwarf_mapping",
+            "kind": "Suppressed",
+            "line": 155,
+            "column": 1,
+            "message": "fn `create_dwarf_mapping` has #[allow(dead_code)] suppression (explicit dead code admission)"
+          }
+        ],
+        "file_dead_percentage": 0.7518796992481203
       }
     ],
     "total_dead_items": 239,

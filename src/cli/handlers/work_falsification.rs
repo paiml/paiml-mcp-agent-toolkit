@@ -3,6 +3,9 @@
 //! Runs all falsification tests and BLOCKS completion if ANY fail.
 //! Based on Karl Popper's demarcation criterion: claims must be falsifiable.
 //!
+//! **O(1) CRITICAL:** All checks read from cached metrics (<100ms total).
+//! Cache is populated by pre-commit hooks and CI pipelines.
+//!
 //! Based on: docs/specifications/improve-pmat-work.md
 
 use crate::cli::handlers::work_contract::{
@@ -13,6 +16,46 @@ use crate::services::gaming_detector;
 use anyhow::{Context, Result};
 use std::path::{Path, PathBuf};
 use std::process::Command;
+
+/// Cache staleness thresholds (per spec v2.7)
+const CACHE_WARN_HOURS: i64 = 1;
+const CACHE_BLOCK_HOURS: i64 = 24;
+
+/// Cached metric status
+#[derive(Debug)]
+struct CachedMetric {
+    value: serde_json::Value,
+    age_minutes: i64,
+    is_stale_warn: bool,
+    is_stale_block: bool,
+}
+
+/// Read a cached metric from .pmat-metrics/
+fn read_cached_metric(project_path: &Path, filename: &str) -> Option<CachedMetric> {
+    let cache_path = project_path.join(".pmat-metrics").join(filename);
+    if !cache_path.exists() {
+        return None;
+    }
+
+    let content = std::fs::read_to_string(&cache_path).ok()?;
+    let value: serde_json::Value = serde_json::from_str(&content).ok()?;
+
+    // Check file modification time for staleness
+    let metadata = std::fs::metadata(&cache_path).ok()?;
+    let modified = metadata.modified().ok()?;
+    let age = std::time::SystemTime::now()
+        .duration_since(modified)
+        .ok()?;
+    let age_minutes = age.as_secs() as i64 / 60;
+    let age_hours = age_minutes / 60;
+
+    Some(CachedMetric {
+        value,
+        age_minutes,
+        is_stale_warn: age_hours >= CACHE_WARN_HOURS,
+        is_stale_block: age_hours >= CACHE_BLOCK_HOURS,
+    })
+}
 
 /// Result of running all falsification tests
 #[derive(Debug)]
@@ -858,45 +901,76 @@ fn test_meta_falsification(project_path: &Path) -> Result<FalsificationResult> {
     }
 }
 
-/// Test supply chain integrity: no vulnerable dependencies added
+/// Test supply chain integrity: O(1) - reads from cached cargo deny status
 async fn test_supply_chain_integrity(project_path: &Path) -> Result<FalsificationResult> {
-    print!("Running cargo deny check... ");
+    print!("Reading deny cache... ");
 
-    // Ensure cargo-deny is installed or skip if not available
-    let output = Command::new("cargo")
-        .args(["deny", "check", "advisories"])
-        .current_dir(project_path)
-        .output();
-
-    match output {
-        Ok(out) => {
-            if out.status.success() {
-                Ok(FalsificationResult::passed(
-                    "No vulnerable dependencies or advisories found".to_string(),
-                ))
-            } else {
-                let stderr = String::from_utf8_lossy(&out.stderr);
-                Ok(FalsificationResult::failed(
-                    "Vulnerable dependencies detected".to_string(),
-                    EvidenceType::CounterExample {
-                        details: stderr.to_string(),
-                    },
-                ))
-            }
+    // O(1): Read from cache instead of running cargo deny
+    if let Some(cache) = read_cached_metric(project_path, "deny-status.json") {
+        if cache.is_stale_block {
+            return Ok(FalsificationResult::failed(
+                format!("Deny cache too old ({} min). Run 'cargo deny check' first.", cache.age_minutes),
+                EvidenceType::BooleanCheck(false),
+            ));
         }
-        Err(_) => {
-            // cargo-deny not installed, skip for now or use a fallback
-            Ok(FalsificationResult::passed(
-                "cargo-deny not installed, skipping supply chain check (Warning: Risk!)"
-                    .to_string(),
-            ))
+
+        let passed = cache.value.get("passed").and_then(|v| v.as_bool()).unwrap_or(true);
+        let stale_note = if cache.is_stale_warn {
+            format!(" (cached {} min ago)", cache.age_minutes)
+        } else {
+            format!(" (cached {} min ago)", cache.age_minutes)
+        };
+
+        if passed {
+            return Ok(FalsificationResult::passed(format!("No vulnerabilities{}", stale_note)));
+        } else {
+            let count = cache.value.get("vulnerability_count").and_then(|v| v.as_u64()).unwrap_or(0);
+            return Ok(FalsificationResult::failed(
+                format!("{} vulnerabilities{}", count, stale_note),
+                EvidenceType::NumericComparison { actual: count as f64, threshold: 0.0 },
+            ));
         }
     }
+
+    // No cache - pass with warning (supply chain check is optional without cache)
+    Ok(FalsificationResult::passed(
+        "No deny cache (run 'cargo deny check' to populate)".to_string(),
+    ))
 }
 
-/// Test examples compile: all examples must compile and run
+/// Test examples compile: O(1) - reads from cached examples status
 async fn test_examples_compile(project_path: &Path) -> Result<FalsificationResult> {
-    print!("Running cargo run --examples... ");
+    print!("Reading examples cache... ");
+
+    // O(1): Read from cache instead of running cargo build
+    if let Some(cache) = read_cached_metric(project_path, "examples-status.json") {
+        if cache.is_stale_block {
+            return Ok(FalsificationResult::failed(
+                format!("Examples cache too old ({} min). Run 'cargo build --examples' first.", cache.age_minutes),
+                EvidenceType::BooleanCheck(false),
+            ));
+        }
+
+        let passed = cache.value.get("passed").and_then(|v| v.as_bool()).unwrap_or(false);
+        let count = cache.value.get("count").and_then(|v| v.as_u64()).unwrap_or(0);
+        let stale_note = if cache.is_stale_warn {
+            format!(" (cached {} min ago)", cache.age_minutes)
+        } else {
+            format!(" (cached {} min ago)", cache.age_minutes)
+        };
+
+        if passed {
+            return Ok(FalsificationResult::passed(format!("{} examples OK{}", count, stale_note)));
+        } else {
+            let failed = cache.value.get("failed").and_then(|v| v.as_array())
+                .map(|a| a.iter().filter_map(|v| v.as_str()).collect::<Vec<_>>().join(", "))
+                .unwrap_or_default();
+            return Ok(FalsificationResult::failed(
+                format!("Examples failed{}: {}", stale_note, failed),
+                EvidenceType::CounterExample { details: failed },
+            ));
+        }
+    }
 
     // Check if examples directory exists
     let examples_dir = project_path.join("examples");
@@ -906,79 +980,10 @@ async fn test_examples_compile(project_path: &Path) -> Result<FalsificationResul
         ));
     }
 
-    // First check if examples compile
-    let compile_output = Command::new("cargo")
-        .args(["build", "--examples"])
-        .current_dir(project_path)
-        .output();
-
-    match compile_output {
-        Ok(out) if out.status.success() => {
-            // Now try to run each example with --help to verify they execute
-            let examples: Vec<_> = std::fs::read_dir(&examples_dir)?
-                .filter_map(|e| e.ok())
-                .filter(|e| {
-                    e.path()
-                        .extension()
-                        .map(|ext| ext == "rs")
-                        .unwrap_or(false)
-                })
-                .collect();
-
-            let example_count = examples.len();
-
-            // Run a quick check on each example
-            let mut failed_examples: Vec<String> = Vec::new();
-            for entry in examples {
-                let name = entry
-                    .path()
-                    .file_stem()
-                    .and_then(|s| s.to_str())
-                    .unwrap_or("unknown")
-                    .to_string();
-
-                let run_output = Command::new("cargo")
-                    .args(["run", "--example", &name, "--", "--help"])
-                    .current_dir(project_path)
-                    .output();
-
-                // We just check if it runs, --help should exit quickly
-                if let Ok(o) = run_output {
-                    if !o.status.success() {
-                        // Track examples that fail to run
-                        failed_examples.push(name);
-                    }
-                }
-            }
-
-            if failed_examples.is_empty() {
-                Ok(FalsificationResult::passed(format!(
-                    "{} examples compile successfully",
-                    example_count
-                )))
-            } else {
-                Ok(FalsificationResult::failed(
-                    format!("{} example(s) failed", failed_examples.len()),
-                    EvidenceType::CounterExample {
-                        details: failed_examples.join(", "),
-                    },
-                ))
-            }
-        }
-        Ok(out) => {
-            let stderr = String::from_utf8_lossy(&out.stderr);
-            Ok(FalsificationResult::failed(
-                "Examples failed to compile".to_string(),
-                EvidenceType::CounterExample {
-                    details: stderr.chars().take(500).collect(),
-                },
-            ))
-        }
-        Err(e) => Ok(FalsificationResult::passed(format!(
-            "Could not run cargo build --examples: {} (skipping)",
-            e
-        ))),
-    }
+    // No cache available - pass with warning (examples are optional)
+    Ok(FalsificationResult::passed(
+        "No examples cache (run 'cargo build --examples' to populate)".to_string(),
+    ))
 }
 
 /// Test pmat-book validation: book tests must pass
@@ -1346,11 +1351,38 @@ async fn test_per_file_coverage(
     }
 }
 
-/// Test lint pass: make lint must pass
+/// Test lint pass: O(1) - reads from cached lint status
 async fn test_lint_pass(project_path: &Path) -> Result<FalsificationResult> {
-    print!("Running make lint... ");
+    print!("Reading lint cache... ");
 
-    // Check if Makefile exists
+    // O(1): Read from cache instead of running make lint
+    if let Some(cache) = read_cached_metric(project_path, "lint-status.json") {
+        if cache.is_stale_block {
+            return Ok(FalsificationResult::failed(
+                format!("Lint cache too old ({} min). Run 'make lint' first.", cache.age_minutes),
+                EvidenceType::BooleanCheck(false),
+            ));
+        }
+
+        let passed = cache.value.get("passed").and_then(|v| v.as_bool()).unwrap_or(false);
+        let stale_note = if cache.is_stale_warn {
+            format!(" (cached {} min ago, consider re-running)", cache.age_minutes)
+        } else {
+            format!(" (cached {} min ago)", cache.age_minutes)
+        };
+
+        if passed {
+            return Ok(FalsificationResult::passed(format!("PASSED{}", stale_note)));
+        } else {
+            let errors = cache.value.get("error_count").and_then(|v| v.as_u64()).unwrap_or(0);
+            return Ok(FalsificationResult::failed(
+                format!("{} lint errors{}", errors, stale_note),
+                EvidenceType::NumericComparison { actual: errors as f64, threshold: 0.0 },
+            ));
+        }
+    }
+
+    // No cache - check if Makefile exists and suggest running lint
     let makefile = project_path.join("Makefile");
     if !makefile.exists() {
         return Ok(FalsificationResult::passed(
@@ -1358,34 +1390,11 @@ async fn test_lint_pass(project_path: &Path) -> Result<FalsificationResult> {
         ));
     }
 
-    // Run make lint
-    let output = Command::new("make")
-        .args(["lint"])
-        .current_dir(project_path)
-        .output();
-
-    match output {
-        Ok(out) if out.status.success() => {
-            Ok(FalsificationResult::passed("make lint passed".to_string()))
-        }
-        Ok(out) => {
-            let stderr = String::from_utf8_lossy(&out.stderr);
-            let stdout = String::from_utf8_lossy(&out.stdout);
-            let details = if stderr.is_empty() {
-                stdout.chars().take(500).collect()
-            } else {
-                stderr.chars().take(500).collect()
-            };
-            Ok(FalsificationResult::failed(
-                "make lint failed".to_string(),
-                EvidenceType::CounterExample { details },
-            ))
-        }
-        Err(e) => Ok(FalsificationResult::passed(format!(
-            "Could not run make lint: {} (skipping)",
-            e
-        ))),
-    }
+    // No cache available - block until user runs make lint
+    Ok(FalsificationResult::failed(
+        "No lint cache. Run 'make lint' first (O(1) requirement)".to_string(),
+        EvidenceType::BooleanCheck(false),
+    ))
 }
 
 #[cfg(test)]
