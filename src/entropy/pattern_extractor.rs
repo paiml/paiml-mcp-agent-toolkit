@@ -1055,7 +1055,6 @@ struct ProjectContext {
 }
 
 // Tests extracted to pattern_extractor_tests.rs for file health compliance (CB-040)
-// TEMPORARILY DISABLED: File splitting broke syntax
-#[cfg(all(test, feature = "broken-tests"))]
+#[cfg(test)]
 #[path = "pattern_extractor_tests.rs"]
 mod tests;

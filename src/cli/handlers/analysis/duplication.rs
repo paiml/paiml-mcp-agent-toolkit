@@ -98,8 +98,7 @@ mod unit_tests {
     }
 }
 
-/// NOTE: Temporarily disabled
-#[cfg(all(test, feature = "broken-tests"))]
+#[cfg(test)]
 mod coverage_tests {
     use super::*;
     use crate::cli::enums::{DuplicateOutputFormat, DuplicateType};

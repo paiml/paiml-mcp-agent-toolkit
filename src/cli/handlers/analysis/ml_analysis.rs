@@ -90,8 +90,7 @@ mod unit_tests {
     }
 }
 
-/// NOTE: Temporarily disabled
-#[cfg(all(test, feature = "broken-tests"))]
+#[cfg(test)]
 mod coverage_tests {
     use super::*;
     use crate::cli::enums::DefectPredictionOutputFormat;
@@ -172,7 +171,7 @@ mod coverage_tests {
             confidence_threshold: 0.5,
             min_lines: 10,
             include_low_confidence: false,
-            format: DefectPredictionOutputFormat::Markdown,
+            format: DefectPredictionOutputFormat::Detailed,
             high_risk_only: false,
             include_recommendations: false,
             include: None,

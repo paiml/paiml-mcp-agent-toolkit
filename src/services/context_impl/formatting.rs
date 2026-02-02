@@ -430,8 +430,7 @@ fn count_ast_items(
 }
 
 
-// Tests extracted to context_tests.rs for file health compliance (CB-040)
-// TEMPORARILY DISABLED: Test file is missing
+// BROKEN: context_tests.rs file is missing
 #[cfg(all(test, feature = "broken-tests"))]
 #[path = "context_tests.rs"]
 mod tests;

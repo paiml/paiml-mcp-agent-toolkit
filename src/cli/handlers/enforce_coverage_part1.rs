@@ -493,3 +493,6 @@ mod tests {
             let start_time = Instant::now();
             let result =
                 should_continue_enforcement(EnforcementState::Complete, 0, &config, start_time);
+            assert!(!result);
+        }
+    }

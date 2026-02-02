@@ -1,14 +1,23 @@
 // Tests for defect analyzers
 // Extracted to separate file for file health compliance (CB-040)
 
+#[allow(unused_imports)]
 use super::*;
+#[allow(unused_imports)]
 use crate::models::complexity_bound::{BigOClass, ComplexityBound, InputVariable};
+#[allow(unused_imports)]
 use crate::models::defect_report::{DefectCategory, Severity};
+#[allow(unused_imports)]
 use crate::models::tdg::{TDGComponents, TDGScore, TDGSeverity};
+#[allow(unused_imports)]
 use crate::services::dead_code_analyzer::{DeadCodeItem, DeadCodeType, UnreachableBlock};
+#[allow(unused_imports)]
 use crate::services::duplicate_detector::{CloneGroup, CloneInstance, CloneType};
+#[allow(unused_imports)]
 use crate::services::satd_detector::DebtCategory;
+#[allow(unused_imports)]
 use proptest::prelude::*;
+#[allow(unused_imports)]
 use std::path::PathBuf;
 
 mod property_tests {
@@ -94,6 +103,7 @@ mod tests {
                 coupling: 0.2,
                 domain_risk: 0.1,
                 duplication: 0.2,
+                dead_code: 0.0,
             },
             severity: TDGSeverity::Critical,
             percentile: 95.0,
@@ -114,6 +124,7 @@ mod tests {
                 coupling: 0.8,
                 domain_risk: 0.1,
                 duplication: 0.2,
+                dead_code: 0.0,
             },
             severity: TDGSeverity::Warning,
             percentile: 80.0,
@@ -134,6 +145,7 @@ mod tests {
                 coupling: 0.3,
                 domain_risk: 0.1,
                 duplication: 0.6,
+                dead_code: 0.0,
             },
             severity: TDGSeverity::Warning,
             percentile: 70.0,
@@ -154,6 +166,7 @@ mod tests {
                 coupling: 0.3,
                 domain_risk: 0.1,
                 duplication: 0.2,
+                dead_code: 0.0,
             },
             severity: TDGSeverity::Normal,
             percentile: 50.0,
@@ -174,6 +187,7 @@ mod tests {
                 coupling: 0.9,
                 domain_risk: 0.1,
                 duplication: 0.7,
+                dead_code: 0.0,
             },
             severity: TDGSeverity::Critical,
             percentile: 99.0,
@@ -197,6 +211,7 @@ mod tests {
                 coupling: 0.6,
                 domain_risk: 0.2,
                 duplication: 0.4,
+                dead_code: 0.0,
             },
             severity: TDGSeverity::Critical,
             percentile: 98.0,
@@ -234,6 +249,7 @@ mod tests {
                 coupling: 0.4,
                 domain_risk: 0.1,
                 duplication: 0.3,
+                dead_code: 0.0,
             },
             severity: TDGSeverity::Warning,
             percentile: 75.0,
@@ -261,6 +277,7 @@ mod tests {
                 coupling: 0.2,
                 domain_risk: 0.1,
                 duplication: 0.2,
+                dead_code: 0.0,
             },
             severity: TDGSeverity::Normal,
             percentile: 50.0,
@@ -288,6 +305,7 @@ mod tests {
                 coupling: 0.2,
                 domain_risk: 0.1,
                 duplication: 0.1,
+                dead_code: 0.0,
             },
             severity: TDGSeverity::Normal,
             percentile: 30.0,
@@ -1232,6 +1250,7 @@ mod tests {
                 coupling: 1.0,
                 domain_risk: 1.0,
                 duplication: 1.0,
+                dead_code: 0.0,
             },
             severity: TDGSeverity::Critical,
             percentile: 100.0,
@@ -1255,6 +1274,7 @@ mod tests {
                 coupling: 0.1,
                 domain_risk: 0.1,
                 duplication: 0.1,
+                dead_code: 0.0,
             },
             severity: TDGSeverity::Normal,
             percentile: 10.0,

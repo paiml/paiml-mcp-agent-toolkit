@@ -56,14 +56,24 @@ EOF
         ;;
 
     coverage)
-        # Extract coverage percentage (if available)
-        COVERAGE_PCT="$(cargo llvm-cov report 2>/dev/null | grep -oP '\d+\.\d+(?=%)' | head -1 || echo "0.0")"
+        # Extract line coverage percentage with same exclusions as Makefile
+        COVERAGE_PCT="$(cargo llvm-cov report --summary-only \
+            --ignore-filename-regex='(/tests/|_tests\.rs|_test\.rs|/benches/|/examples/|fixtures/|main\.rs|bin/)' \
+            2>/dev/null | grep -E '^TOTAL' | grep -oP '\d+\.\d+(?=%)' | tail -1 || echo "0.0")"
         cat > "$METRICS_DIR/coverage.result" <<EOF
 {
   "duration_ms": ${DURATION_MS},
   "coverage_pct": ${COVERAGE_PCT},
   "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 }
+EOF
+        # Write trends file for pmat work integration
+        TIMESTAMP="$(date +%s)"
+        mkdir -p "$METRICS_DIR/trends"
+        cat > "$METRICS_DIR/trends/test-coverage.json" <<EOF
+[
+  {"metric": "test-coverage", "value": ${COVERAGE_PCT}, "timestamp": ${TIMESTAMP}}
+]
 EOF
         ;;
 

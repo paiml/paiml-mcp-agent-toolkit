@@ -1,10 +1,5 @@
-            .unwrap();
-
-            assert!(
-                result.state == EnforcementState::Complete
-                    || result.state == EnforcementState::Violating
-            );
-        }
+    mod async_handler_tests_part2 {
+        use super::*;
 
         #[tokio::test]
         async fn test_execute_enforcement_iteration() {

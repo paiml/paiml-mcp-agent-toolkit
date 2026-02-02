@@ -2,11 +2,12 @@
 //! Extracted to separate file for file health compliance (CB-040)
 
 use super::*;
+#[allow(unused_imports)]
 use proptest::prelude::*;
+#[allow(unused_imports)]
 use std::collections::HashMap;
+#[allow(unused_imports)]
 use std::path::PathBuf;
-
-use super::*;
 
 #[test]
 fn test_pattern_type_equality() {
@@ -254,6 +255,7 @@ fn test_empty_content_no_patterns() {
 }
 
 // Property tests
+#[allow(unused_imports)]
 use proptest::prelude::*;
 
 proptest! {
@@ -271,6 +273,7 @@ proptest! {
 }
 
 // Coverage tests
+#[allow(unused_imports)]
 use super::*;
 
 // PatternType tests

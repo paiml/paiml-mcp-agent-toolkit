@@ -1389,3 +1389,91 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: PMAT-468
+  github_issue: null
+  item_type: task
+  title: Restructure CLI handlers for 95% unit test coverage
+  status: inprogress
+  priority: high
+  assigned_to: null
+  created: 2026-02-01T19:50:51Z
+  updated: 2026-02-01T19:50:56.875443931+00:00
+  spec: null
+  acceptance_criteria:
+  - 'Extract testable business logic from CLI handlers into separate service functions. Goal: Enable unit testing without CLI arg parsing overhead. Target: 95% coverage on core business logic.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - coverage
+  - refactoring
+  - tdd
+  notes: null
+- id: PMAT-469
+  github_issue: null
+  item_type: task
+  title: Make coverage hit 95% - fast and just work
+  status: inprogress
+  priority: critical
+  assigned_to: null
+  created: 2026-02-01T20:00:49Z
+  updated: 2026-02-01T21:58:22.422692760+00:00
+  spec: null
+  acceptance_criteria:
+  - make coverage must hit 95% without workarounds, new targets, or exclusion gaming. Requires adding tests for uncovered code paths in services and models.
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - coverage
+  - testing
+  - tdd
+  notes: null
+- id: make coverage at 95% - fast, no workarounds
+  github_issue: null
+  item_type: task
+  title: 'New task: make coverage at 95% - fast, no workarounds'
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2026-02-01T22:51:39.769091418+00:00
+  updated: 2026-02-01T22:51:39.769091418+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-COV-001
+  github_issue: null
+  item_type: task
+  title: 'New task: PMAT-COV-001'
+  status: completed
+  priority: medium
+  assigned_to: null
+  created: 2026-02-02T08:09:42.111853881+00:00
+  updated: 2026-02-02T08:51:14.750658231+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-ARCH-001
+  github_issue: null
+  item_type: task
+  title: 'New task: PMAT-ARCH-001'
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2026-02-02T09:03:12.067112835+00:00
+  updated: 2026-02-02T09:03:12.067112835+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null

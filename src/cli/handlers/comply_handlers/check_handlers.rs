@@ -1540,7 +1540,7 @@ fn collect_production_rs_files(src_dir: &Path) -> Vec<std::path::PathBuf> {
             let p = e.path();
             let path_str = p.to_string_lossy();
             p.is_file()
-                && p.extension().map_or(false, |ext| ext == "rs")
+                && p.extension().is_some_and(|ext| ext == "rs")
                 && !path_str.ends_with("_tests.rs")
                 && !path_str.contains("/tests/")
                 // Fix #135: Exclude falsification test modules (used for property testing)

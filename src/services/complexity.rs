@@ -1512,8 +1512,7 @@ pub async fn analyze_file_complexity_uncached(
         .with_context(|| format!("Failed to analyze file complexity: {}", path.display()))
 }
 
-// Tests extracted to complexity_tests.rs for file health compliance (CB-040)
-// TEMPORARILY DISABLED: File splitting broke syntax (functions/modules split across files)
+// BROKEN: complexity_tests_part1.rs truncated at line 500
 #[cfg(all(test, feature = "broken-tests"))]
 #[path = "complexity_tests.rs"]
 mod tests;

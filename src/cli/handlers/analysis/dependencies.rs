@@ -107,8 +107,7 @@ mod unit_tests {
     }
 }
 
-/// NOTE: Temporarily disabled
-#[cfg(all(test, feature = "broken-tests"))]
+#[cfg(test)]
 mod coverage_tests {
     use super::*;
     use crate::cli::enums::DagType;
@@ -258,7 +257,7 @@ mod coverage_tests {
         let cmd = AnalyzeCommands::SymbolTable {
             project_path: PathBuf::from("/tmp/test-symbols"),
             format: SymbolTableOutputFormat::Json,
-            filter: Some(SymbolTypeFilter::Function),
+            filter: Some(SymbolTypeFilter::Functions),
             query: Some("handle_".to_string()),
             include: vec!["src/**".to_string()],
             exclude: vec!["tests/**".to_string()],

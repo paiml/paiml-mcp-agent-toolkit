@@ -530,8 +530,7 @@ fn format_defect_csv(predictions: &[(String, DefectScore)]) -> Result<String> {
     Ok(csv)
 }
 
-/// NOTE: Temporarily disabled
-#[cfg(all(test, feature = "broken-tests"))]
+#[cfg(test)]
 mod coverage_tests {
     use super::*;
     use crate::services::defect_probability::RiskLevel;

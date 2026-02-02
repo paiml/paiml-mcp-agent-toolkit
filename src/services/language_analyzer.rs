@@ -595,8 +595,7 @@ impl LanguageAnalyzer {
     }
 }
 
-// Tests extracted to language_analyzer_tests.rs for file health compliance (CB-040)
-// TEMPORARILY DISABLED: File splitting broke syntax (functions/modules split across files)
+// BROKEN: lang_analyzer_tests_part1.rs truncated at line 500
 #[cfg(all(test, feature = "broken-tests"))]
 #[path = "language_analyzer_tests.rs"]
 mod tests;

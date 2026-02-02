@@ -80,8 +80,7 @@ mod unit_tests {
     }
 }
 
-/// NOTE: Temporarily disabled
-#[cfg(all(test, feature = "broken-tests"))]
+#[cfg(test)]
 mod coverage_tests {
     use super::*;
     use crate::cli::enums::ComplexityOutputFormat;
@@ -151,7 +150,7 @@ mod coverage_tests {
                 PathBuf::from("/tmp/file3.rs"),
             ],
             toolchain: None,
-            format: ComplexityOutputFormat::Detailed,
+            format: ComplexityOutputFormat::Summary,
             output: None,
             max_cyclomatic: None,
             max_cognitive: None,
@@ -176,7 +175,7 @@ mod coverage_tests {
             file: None,
             files: vec![],
             toolchain: None,
-            format: ComplexityOutputFormat::Table,
+            format: ComplexityOutputFormat::Full,
             output: None,
             max_cyclomatic: Some(20),
             max_cognitive: Some(15),

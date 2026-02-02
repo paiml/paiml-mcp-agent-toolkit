@@ -377,7 +377,6 @@ pub async fn handle_analyze_symbol_table(
 }
 
 // Tests extracted to advanced_analysis_handlers_tests.rs for file health compliance (CB-040)
-// TEMPORARILY DISABLED: File splitting broke syntax
-#[cfg(all(test, feature = "broken-tests"))]
+#[cfg(test)]
 #[path = "advanced_analysis_handlers_tests.rs"]
 mod tests;

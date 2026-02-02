@@ -706,7 +706,133 @@ impl ResourceControllerFactory {
     }
 }
 
-// TEMPORARILY DISABLED: File splitting broke syntax
+// External tests broken: double-nesting (mod.rs declares mod tests + tests.rs also
+// declares mod tests inside) causes use super::* to resolve to wrong parent.
+// All 1208 lines of tests have #[ignore] anyway.
 #[cfg(all(test, feature = "broken-tests"))]
 #[path = "tests.rs"]
-mod tests;
+mod resource_control_tests_external;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_resource_limits_default() {
+        let limits = ResourceLimits::default();
+        assert!(limits.max_memory_mb > 0.0);
+        assert!(limits.max_cpu_utilization > 0.0);
+        assert!(limits.max_concurrent_ops > 0);
+    }
+
+    #[test]
+    fn test_resource_limits_serde_roundtrip() {
+        let limits = ResourceLimits::default();
+        let json = serde_json::to_string(&limits).unwrap();
+        let back: ResourceLimits = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.max_memory_mb, limits.max_memory_mb);
+        assert_eq!(back.max_concurrent_ops, limits.max_concurrent_ops);
+    }
+
+    #[test]
+    fn test_operation_type_variants() {
+        let types = vec![
+            OperationType::Analysis,
+            OperationType::Commit,
+            OperationType::Background,
+            OperationType::Storage,
+            OperationType::Cleanup,
+        ];
+        for t in types {
+            let json = serde_json::to_string(&t).unwrap();
+            let back: OperationType = serde_json::from_str(&json).unwrap();
+            assert_eq!(t, back);
+        }
+    }
+
+    #[test]
+    fn test_operation_priority_variants() {
+        let low = OperationPriority::Low;
+        let medium = OperationPriority::Medium;
+        let high = OperationPriority::High;
+        let critical = OperationPriority::Critical;
+        assert_ne!(
+            std::mem::discriminant(&low),
+            std::mem::discriminant(&high)
+        );
+        assert_ne!(
+            std::mem::discriminant(&medium),
+            std::mem::discriminant(&critical)
+        );
+    }
+
+    #[test]
+    fn test_resource_pressure_variants() {
+        let pressures = vec![
+            ResourcePressure::Low,
+            ResourcePressure::Medium,
+            ResourcePressure::High,
+            ResourcePressure::Critical,
+        ];
+        for p in pressures {
+            let json = serde_json::to_string(&p).unwrap();
+            let back: ResourcePressure = serde_json::from_str(&json).unwrap();
+            assert_eq!(
+                std::mem::discriminant(&p),
+                std::mem::discriminant(&back)
+            );
+        }
+    }
+
+    #[test]
+    fn test_resource_action_variants() {
+        let actions = vec![
+            ResourceAction::Allow,
+            ResourceAction::Throttle { delay_ms: 100 },
+            ResourceAction::Queue { estimated_wait_ms: 500 },
+            ResourceAction::Reject { reason: "test".to_string() },
+            ResourceAction::EmergencyStop,
+        ];
+        for a in &actions {
+            let json = serde_json::to_string(a).unwrap();
+            let _back: ResourceAction = serde_json::from_str(&json).unwrap();
+        }
+        assert_eq!(actions.len(), 5);
+    }
+
+    #[test]
+    fn test_resource_controller_factory_default() {
+        let _controller = ResourceControllerFactory::create_default();
+    }
+
+    #[test]
+    fn test_resource_controller_factory_dev() {
+        let _controller = ResourceControllerFactory::create_dev_optimized();
+    }
+
+    #[test]
+    fn test_resource_controller_factory_ci() {
+        let _controller = ResourceControllerFactory::create_ci_optimized();
+    }
+
+    #[tokio::test]
+    async fn test_platform_controller_get_usage() {
+        let controller = PlatformResourceController::new(ResourceLimits::default());
+        let usage = controller.get_current_usage().await;
+        assert_eq!(usage.active_operations, 0);
+    }
+
+    #[tokio::test]
+    async fn test_platform_controller_request_resources() {
+        let controller = PlatformResourceController::new(ResourceLimits::default());
+        let result = controller
+            .request_resources(
+                "test-op".to_string(),
+                OperationType::Analysis,
+                OperationPriority::Medium,
+                50.0,
+            )
+            .await;
+        assert!(result.is_ok());
+    }
+}

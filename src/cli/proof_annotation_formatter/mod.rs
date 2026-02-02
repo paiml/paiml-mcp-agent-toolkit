@@ -268,7 +268,7 @@ pub fn generate_proof_sarif_rules() -> Vec<serde_json::Value> {
 #[path = "property_tests.rs"]
 mod property_tests;
 
-// TEMPORARILY DISABLED: File splitting broke syntax
+// BROKEN: coverage_tests_part1.rs truncated mid-expression at line 400
 #[cfg(all(test, feature = "broken-tests"))]
 #[path = "coverage_tests.rs"]
 mod coverage_tests;

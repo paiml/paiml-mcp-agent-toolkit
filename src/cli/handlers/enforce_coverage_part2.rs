@@ -1,5 +1,5 @@
-            assert!(!result);
-        }
+    mod helper_function_tests_part2 {
+        use super::*;
 
         #[test]
         fn test_should_continue_enforcement_max_iterations() {

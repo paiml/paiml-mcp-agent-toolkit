@@ -166,8 +166,7 @@ fn parse_quality_profile(value: &Value) -> QualityProfile {
         .unwrap_or_default()
 }
 
-// Tests extracted to mcp_mapping_tests.rs for file health compliance (CB-040)
-// TEMPORARILY DISABLED: File splitting broke syntax (missing Debug impl for ContractValidation)
+// BROKEN: ContractValidation doesn't implement Debug
 #[cfg(all(test, feature = "broken-tests"))]
 #[path = "mcp_mapping_tests.rs"]
 mod tests;

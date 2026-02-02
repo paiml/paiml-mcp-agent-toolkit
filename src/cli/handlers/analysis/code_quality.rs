@@ -90,8 +90,7 @@ mod unit_tests {
     }
 }
 
-/// NOTE: Temporarily disabled
-#[cfg(all(test, feature = "broken-tests"))]
+#[cfg(test)]
 mod coverage_tests {
     use super::*;
     use crate::cli::enums::DeadCodeOutputFormat;
@@ -185,7 +184,7 @@ mod coverage_tests {
 
         let cmd = AnalyzeCommands::Satd {
             path: PathBuf::from("/tmp/test-satd"),
-            format: SatdOutputFormat::Detailed,
+            format: SatdOutputFormat::Summary,
             severity: Some(SatdSeverity::High),
             critical_only: true,
             include_tests: true,
@@ -213,7 +212,7 @@ mod coverage_tests {
         let cmd = AnalyzeCommands::Makefile {
             path: PathBuf::from("/nonexistent/Makefile"),
             rules: vec![],
-            format: MakefileOutputFormat::Text,
+            format: MakefileOutputFormat::Human,
             fix: false,
             gnu_version: "4.3".to_string(),
             top_files: 10,

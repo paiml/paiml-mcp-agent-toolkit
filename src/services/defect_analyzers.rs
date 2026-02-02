@@ -792,8 +792,7 @@ impl DefectAnalyzer for ArchitectureDefectAnalyzer {
     }
 }
 
-// Tests extracted to defect_analyzers_tests.rs for file health compliance (CB-040)
-// TEMPORARILY DISABLED: File splitting broke syntax
-#[cfg(all(test, feature = "broken-tests"))]
+// Fixed: TDGComponents dead_code field added to all initializers
+#[cfg(test)]
 #[path = "defect_analyzers_tests.rs"]
 mod tests;

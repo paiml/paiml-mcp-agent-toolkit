@@ -430,7 +430,8 @@ COV_THRESHOLD ?= 75
 coverage: ## Generate HTML coverage report (<5 min, honest measurement)
 	@echo "📊 Running coverage analysis..."
 	@which cargo-llvm-cov > /dev/null 2>&1 || cargo install cargo-llvm-cov --locked
-	@mkdir -p target/coverage
+	@mkdir -p target/coverage .pmat-metrics
+	@date +%s%3N > .pmat-metrics/coverage.start
 	@cargo llvm-cov clean --workspace
 	@echo "🧪 Running tests with instrumentation..."
 	@env RUSTC_WRAPPER= PROPTEST_CASES=2 QUICKCHECK_TESTS=2 cargo llvm-cov test \
@@ -448,6 +449,7 @@ coverage: ## Generate HTML coverage report (<5 min, honest measurement)
 	@cargo llvm-cov report --html --output-dir target/coverage/html $(COVERAGE_EXCLUDE)
 	@echo ""
 	@cargo llvm-cov report --summary-only $(COVERAGE_EXCLUDE) | grep -E "^TOTAL"
+	@./scripts/record-metric.sh coverage
 	@echo "💡 HTML: target/coverage/html/index.html"
 
 coverage-ci: ## Generate LCOV report for CI (fast mode, --lib only)

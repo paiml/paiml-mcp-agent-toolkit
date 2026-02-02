@@ -216,7 +216,7 @@ impl CoverageImprovementService {
     /// `TOTAL   241150  203105  15.78%  17533  14596  16.75%  173884  145810  16.15%  0  0  -`
     ///
     /// We extract the last percentage before the dash (line coverage)
-    fn parse_coverage_percentage(output: &str) -> Result<f64> {
+    pub(crate) fn parse_coverage_percentage(output: &str) -> Result<f64> {
         for line in output.lines() {
             if line.trim().starts_with("TOTAL") {
                 // Split by whitespace and find all percentages
@@ -389,7 +389,7 @@ impl CoverageImprovementService {
     /// Parse PMAT analyze output and add weighted scores to file_scores map
     ///
     /// Simple heuristic: Count occurrences of file paths in the output and normalize
-    fn parse_and_score(
+    pub(crate) fn parse_and_score(
         &self,
         output: &str,
         file_scores: &mut std::collections::HashMap<PathBuf, f64>,
@@ -412,7 +412,7 @@ impl CoverageImprovementService {
     }
 
     /// Extract file paths from JSON recursively
-    fn extract_files_from_json(
+    pub(crate) fn extract_files_from_json(
         &self,
         json: &serde_json::Value,
         file_scores: &mut std::collections::HashMap<PathBuf, f64>,
@@ -447,7 +447,7 @@ impl CoverageImprovementService {
     }
 
     /// Extract file path from a text line
-    fn extract_file_path_from_line(&self, line: &str) -> Option<PathBuf> {
+    pub(crate) fn extract_file_path_from_line(&self, line: &str) -> Option<PathBuf> {
         // Look for patterns like "src/path/to/file.rs"
         let parts: Vec<&str> = line.split_whitespace().collect();
         for part in parts {
@@ -539,7 +539,7 @@ impl CoverageImprovementService {
     }
 
     /// Extract public functions from a syn::File
-    fn extract_public_functions(&self, syntax_tree: &syn::File) -> Vec<syn::ItemFn> {
+    pub(crate) fn extract_public_functions(&self, syntax_tree: &syn::File) -> Vec<syn::ItemFn> {
         let mut functions = Vec::new();
 
         for item in &syntax_tree.items {
@@ -555,7 +555,7 @@ impl CoverageImprovementService {
     }
 
     /// Generate a proptest module for the given functions
-    fn generate_proptest_module(
+    pub(crate) fn generate_proptest_module(
         &self,
         target: &PathBuf,
         functions: &[syn::ItemFn],
@@ -638,7 +638,7 @@ fn {}() {{
     }
 
     /// Generate a proptest strategy for a given type
-    fn generate_strategy_for_type(&self, ty: &syn::Type) -> String {
+    pub(crate) fn generate_strategy_for_type(&self, ty: &syn::Type) -> String {
         match ty {
             syn::Type::Path(type_path) => {
                 let type_str = type_path

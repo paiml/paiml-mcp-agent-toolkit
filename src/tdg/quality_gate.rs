@@ -138,7 +138,7 @@ impl QualityGate for RegressionGate {
 
         for regressed in &comparison.regressed {
             let score_drop = regressed.old_score.total - regressed.new_score.total;
-            let grade_dropped = regressed.old_score.grade > regressed.new_score.grade;
+            let grade_dropped = regressed.old_score.grade < regressed.new_score.grade;
 
             // Check if this violates our thresholds
             let is_violation = if !self.config.allow_grade_drop && grade_dropped {
@@ -253,7 +253,7 @@ impl QualityGate for MinimumGradeGate {
 
         for (path, entry) in &current.files {
             let min_grade = self.get_min_grade_for_file(path);
-            if entry.score.grade < min_grade {
+            if entry.score.grade > min_grade {
                 violations.push(Violation {
                     path: path.clone(),
                     violation_type: ViolationType::BelowMinimum,
@@ -328,7 +328,7 @@ impl QualityGate for NewFileGate {
         // Check newly added files
         for added_path in &comparison.added {
             if let Some(entry) = current.files.get(added_path) {
-                if entry.score.grade < self.config.new_file_min_grade {
+                if entry.score.grade > self.config.new_file_min_grade {
                     violations.push(Violation {
                         path: added_path.clone(),
                         violation_type: ViolationType::NewFileBelowThreshold,
@@ -460,7 +460,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore] // Test has assertion issues - needs investigation
     fn test_minimum_grade_gate_enforces_threshold() {
         let baseline = TdgBaseline::new(None);
         let current = create_test_baseline(vec![
@@ -477,7 +476,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore] // Test has assertion issues - needs investigation
     fn test_minimum_grade_gate_passes_all_above_threshold() {
         let baseline = TdgBaseline::new(None);
         let current = create_test_baseline(vec![
@@ -492,7 +490,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore] // Test has assertion issues - needs investigation
     fn test_new_file_gate_detects_low_quality_new_files() {
         let baseline =
             create_test_baseline(vec![(PathBuf::from("src/existing.rs"), 90.0, Grade::A)]);
@@ -514,7 +511,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore] // Test has assertion issues - needs investigation
     fn test_new_file_gate_allows_good_new_files() {
         let baseline =
             create_test_baseline(vec![(PathBuf::from("src/existing.rs"), 90.0, Grade::A)]);
@@ -550,7 +546,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore] // Test has assertion issues - needs investigation
     fn test_grade_drop_not_allowed() {
         let mut config = GateConfig::default();
         config.allow_grade_drop = false;
@@ -567,7 +562,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore] // Test has assertion issues - needs investigation
     fn test_language_specific_min_grades() {
         let baseline = TdgBaseline::new(None);
         let current = create_test_baseline(vec![
@@ -1301,6 +1295,7 @@ mod tests {
     fn test_regression_gate_exact_threshold() {
         let mut config = GateConfig::default();
         config.max_score_drop = 5.0;
+        config.allow_grade_drop = true; // Test score threshold only
 
         let baseline =
             create_test_baseline(vec![(PathBuf::from("src/main.rs"), 80.0, Grade::BMinus)]);
@@ -1331,21 +1326,20 @@ mod tests {
     }
 
     #[test]
-    #[ignore] // Grade ordering semantics differ from expected - needs investigation
     fn test_minimum_grade_gate_all_grades() {
         let config = GateConfig::default();
         let gate = MinimumGradeGate::new(config);
 
-        // Test with various grades
+        // Test with various grades - using .txt to test default_min_grade (B)
         let grades_and_expected = vec![
             (Grade::APLus, true),
             (Grade::A, true),
             (Grade::AMinus, true),
             (Grade::BPlus, true),
-            (Grade::B, true),
-            (Grade::BMinus, true),
-            (Grade::CPlus, true),
-            (Grade::C, false), // Below default threshold
+            (Grade::B, true),       // At default threshold
+            (Grade::BMinus, false), // Below default threshold (B)
+            (Grade::CPlus, false),
+            (Grade::C, false),
             (Grade::CMinus, false),
             (Grade::D, false),
             (Grade::F, false),
@@ -1367,17 +1361,19 @@ mod tests {
             };
 
             let baseline = create_test_baseline(vec![]);
-            let current = create_test_baseline(vec![(PathBuf::from("test.rs"), score, grade)]);
+            // Use .txt extension to test default_min_grade (avoids language-specific overrides)
+            let current = create_test_baseline(vec![(PathBuf::from("test.txt"), score, grade)]);
 
             let result = gate.check(&baseline, &current).unwrap();
             if should_pass {
                 assert!(result.passed, "Grade {:?} should pass", grade);
+            } else {
+                assert!(!result.passed, "Grade {:?} should fail", grade);
             }
         }
     }
 
     #[test]
-    #[ignore] // Grade ordering semantics differ from expected - needs investigation
     fn test_new_file_gate_with_threshold_score() {
         let mut config = GateConfig::default();
         config.new_file_min_grade = Grade::C;
@@ -1393,7 +1389,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore] // Grade ordering semantics differ from expected - needs investigation
     fn test_new_file_gate_just_below_threshold() {
         let mut config = GateConfig::default();
         config.new_file_min_grade = Grade::C;
@@ -1477,15 +1472,15 @@ mod tests {
     }
 
     #[test]
-    #[ignore] // Grade ordering semantics differ from expected - needs investigation
     fn test_minimum_grade_gate_multiple_files() {
         let config = GateConfig::default();
 
         let baseline = create_test_baseline(vec![]);
+        // All files meet rust min_grade (BPlus) threshold
         let current = create_test_baseline(vec![
             (PathBuf::from("a.rs"), 95.0, Grade::A),
             (PathBuf::from("b.rs"), 90.0, Grade::AMinus),
-            (PathBuf::from("c.rs"), 85.0, Grade::B),
+            (PathBuf::from("c.rs"), 85.0, Grade::BPlus),
         ]);
 
         let gate = MinimumGradeGate::new(config);
@@ -1494,7 +1489,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore] // Grade ordering semantics differ from expected - needs investigation
     fn test_new_file_gate_multiple_new_files() {
         let config = GateConfig::default();
 

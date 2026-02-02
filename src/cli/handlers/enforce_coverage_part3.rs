@@ -498,3 +498,11 @@
                 None,
             )
             .await
+            .unwrap();
+
+            assert!(
+                result.state == EnforcementState::Complete
+                    || result.state == EnforcementState::Violating
+            );
+        }
+    }

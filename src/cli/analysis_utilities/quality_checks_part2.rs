@@ -432,7 +432,7 @@ fn collect_source_files(root: &Path) -> Vec<std::path::PathBuf> {
         .filter(|e| {
             let p = e.path();
             p.is_file()
-                && p.extension().map_or(false, |ext| ext == "rs")
+                && p.extension().is_some_and(|ext| ext == "rs")
                 && !p.to_string_lossy().contains("_tests.rs")
                 && !p.to_string_lossy().contains("/tests/")
         })

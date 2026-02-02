@@ -102,8 +102,7 @@ mod unit_tests {
     }
 }
 
-/// NOTE: Temporarily disabled
-#[cfg(all(test, feature = "broken-tests"))]
+#[cfg(test)]
 mod coverage_tests {
     use super::*;
     use crate::cli::enums::TdgOutputFormat;
@@ -174,7 +173,7 @@ mod coverage_tests {
             path: PathBuf::from("/tmp/test-tdg-components"),
             threshold: 0.5,
             top_files: 0,
-            format: TdgOutputFormat::Summary,
+            format: TdgOutputFormat::Table,
             include_components: true,
             output: Some(PathBuf::from("/tmp/tdg-components.txt")),
             critical_only: false,
@@ -193,7 +192,7 @@ mod coverage_tests {
             path: PathBuf::from("/nonexistent"),
             threshold: 5.0,
             top_files: 3,
-            format: TdgOutputFormat::Csv,
+            format: TdgOutputFormat::Markdown,
             include_components: false,
             output: None,
             critical_only: true,

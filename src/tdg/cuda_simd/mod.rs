@@ -132,8 +132,7 @@ struct FileAnalysis {
     coalescing: CoalescingResult,
 }
 
-// Tests extracted to cuda_simd_tests.rs for file health compliance (CB-040)
-// TEMPORARILY DISABLED: File splitting broke syntax
+// BROKEN: cuda_tests_basic.rs missing PathBuf import + private field access
 #[cfg(all(test, feature = "broken-tests"))]
 #[path = "cuda_simd_tests.rs"]
 mod tests;

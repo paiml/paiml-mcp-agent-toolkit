@@ -74,6 +74,106 @@ mod coverage_boost_performance;
 // Coverage boost tests - services/perfection_score module
 mod coverage_boost_perfection_score;
 
+// Coverage boost tests - cli/analysis_utilities/churn module
+mod coverage_boost_churn;
+
+// Coverage boost tests - services/file_health module
+mod coverage_boost_file_health;
+
+// Coverage boost tests - cli/handlers/lint_hotspot_handlers module
+mod coverage_boost_lint_hotspot;
+
+// Coverage boost tests - cli/analysis_utilities/quality_gate module
+mod coverage_boost_quality_gate;
+
+// Coverage boost tests - demo module (requires demo feature)
+#[cfg(feature = "demo")]
+mod coverage_boost_demo;
+
+// Coverage boost tests - services/mermaid_generator module
+mod coverage_boost_mermaid;
+
+// Coverage boost tests - services/enhanced_reporting module
+mod coverage_boost_enhanced_reporting2;
+
+// Coverage boost tests - qdd module
+mod coverage_boost_qdd;
+
+// Coverage boost tests - services/coverage_improvement module
+mod coverage_boost_coverage_improvement;
+
+// Coverage boost tests - models/dead_code and dead_code_handlers
+mod coverage_boost_dead_code;
+
+// Coverage boost tests - cli/analysis_utilities/comprehensive
+mod coverage_boost_comprehensive;
+
+// Coverage boost tests - cli/handlers/enforce_handlers
+mod coverage_boost_enforce;
+
+// Coverage boost tests - unified_ast_types part 2 (Location, Span, QualifiedName, UnifiedAstNode)
+mod coverage_boost_unified_ast2;
+
+// Coverage boost tests - maintenance module (roadmap, ticket, validator)
+mod coverage_boost_maintenance;
+
+// Coverage boost tests - models/refactor module (state machine, configs)
+mod coverage_boost_refactor;
+
+// Coverage boost tests - services/normalized_score module (Grade, SimpleScore)
+mod coverage_boost_normalized_score;
+
+// Coverage boost tests - models/defect_report module (Severity, DefectCategory, Defect)
+mod coverage_boost_defect_report;
+
+// Coverage boost tests - models/tdg module (TDGScore, TDGSeverity, TDGConfig)
+mod coverage_boost_tdg;
+
+// Coverage boost tests - models/debug_analysis module (Five Whys)
+mod coverage_boost_debug_analysis;
+
+// Coverage boost tests - services/brick_score module (SIMD, GPU, hardware)
+mod coverage_boost_brick_score;
+
+// Coverage boost tests - services/ml_quality_scorer module
+mod coverage_boost_ml_quality;
+
+// Coverage boost tests - services/metric_trends module
+mod coverage_boost_metric_trends;
+
+// Coverage boost tests - services/ranking module
+mod coverage_boost_ranking;
+
+// Coverage boost tests - services/polyglot_analyzer module
+mod coverage_boost_polyglot;
+
+// Coverage boost tests - services/big_o_analyzer and models/complexity_bound
+mod coverage_boost_big_o;
+
+// Coverage boost tests - services/tdg_calculator module
+mod coverage_boost_tdg_calculator;
+
+// Coverage boost tests - services/defect_report_service (compute_summary, format_*, filter)
+mod coverage_boost_defect_report_svc;
+
+// Coverage boost tests - services/language_analyzer (analyze_file, supports_analysis)
+mod coverage_boost_language_analyzer;
+
+// Coverage boost tests - services/defect_report_service (compute_summary, format_*, filter)
+mod coverage_boost_defect_report_svc2;
+
+// Coverage boost tests - services/coverage_improvement (parse_coverage, extract_files, generate)
+mod coverage_boost_coverage_improvement2;
+
+// Coverage boost tests - services/enhanced_reporting (generate_report, format_report, all sections)
+mod coverage_boost_enhanced_reporting3;
+
+// Coverage boost tests - cli/handlers/work_falsification (FalsificationReport methods)
+mod coverage_boost_falsification;
+
+// Coverage boost tests - services/deep_context/analyzer_formatting (format_as_*)
+mod coverage_boost_analyzer_formatting;
+
 // Include protocol service tests for coverage (requires unified-protocol feature)
 #[cfg(feature = "unified-protocol")]
 mod protocol_service_tests;
