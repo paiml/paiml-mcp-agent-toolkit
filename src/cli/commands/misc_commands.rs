@@ -537,7 +537,7 @@ pub enum SpecOutputFormat {
 }
 
 /// Output format for work annotate command
-#[derive(Debug, Clone, Copy, Default, clap::ValueEnum)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, clap::ValueEnum)]
 pub enum AnnotateOutputFormat {
     /// Human-readable text format
     #[default]
