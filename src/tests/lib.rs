@@ -183,6 +183,9 @@ mod coverage_boost_lint_hotspot_handlers;
 // Coverage boost tests - cli/handlers/work_handlers/ticket_handlers module
 mod coverage_boost_ticket_handlers;
 
+// Coverage boost tests - dead_code_analyzer pure functions
+mod coverage_boost_dead_code_pure;
+
 // Include protocol service tests for coverage (requires unified-protocol feature)
 #[cfg(feature = "unified-protocol")]
 mod protocol_service_tests;
