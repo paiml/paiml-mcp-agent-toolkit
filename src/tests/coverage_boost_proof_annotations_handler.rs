@@ -745,7 +745,6 @@ fn test_format_as_table_with_annotations() {
 // =============================================================================
 
 #[test]
-#[ignore = "format output differs"]
 fn test_format_as_full_empty() {
     let annotations: Vec<(Location, ProofAnnotation)> = vec![];
     let project_path = Path::new("/test/project");
@@ -759,7 +758,6 @@ fn test_format_as_full_empty() {
 }
 
 #[test]
-#[ignore = "format output differs"]
 fn test_format_as_full_with_annotations() {
     let annotations = create_diverse_annotations();
     let project_path = Path::new("/test/project");

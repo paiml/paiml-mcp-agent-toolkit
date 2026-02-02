@@ -86,7 +86,6 @@ fn test_extract_links_multiple_lines() {
 }
 
 #[test]
-#[ignore = "code block skipping behavior differs"]
 fn test_extract_links_skips_code_blocks() {
     // The implementation only skips lines that START with ``` (code block markers)
     // Links inside code blocks on non-marker lines are still extracted
@@ -98,7 +97,6 @@ fn test_extract_links_skips_code_blocks() {
 }
 
 #[test]
-#[ignore = "code block skipping behavior differs"]
 fn test_extract_links_skips_code_blocks_with_indent() {
     // Same as above - only lines starting with ``` (after trim) are skipped
     let content = "  ```rust\n  [code](./skip.md)\n  ```\n[real](./real.md)";
