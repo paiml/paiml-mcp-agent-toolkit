@@ -1,7 +1,7 @@
 
 /// Check Sovereign AI Stack compliance patterns (CB-040 complexity refactor)
 /// Validates: Five-Whys in fixes, falsification tests, APR models, ticket refs
-fn check_sovereign_stack_patterns(project_path: &Path) -> ComplianceCheck {
+pub(crate) fn check_sovereign_stack_patterns(project_path: &Path) -> ComplianceCheck {
     // Check if this is a Sovereign Stack project
     let cargo_toml = project_path.join("Cargo.toml");
     if !cargo_toml.exists() {
@@ -28,7 +28,7 @@ fn check_sovereign_stack_patterns(project_path: &Path) -> ComplianceCheck {
 }
 
 /// Helper: Create skip check result
-fn skip_check(name: &str, message: &str) -> ComplianceCheck {
+pub(crate) fn skip_check(name: &str, message: &str) -> ComplianceCheck {
     ComplianceCheck {
         name: name.to_string(),
         status: CheckStatus::Skip,
@@ -38,13 +38,13 @@ fn skip_check(name: &str, message: &str) -> ComplianceCheck {
 }
 
 /// Helper: Check if Cargo.toml contains sovereign stack dependencies
-fn is_sovereign_stack_project(content: &str) -> bool {
+pub(crate) fn is_sovereign_stack_project(content: &str) -> bool {
     const SOVEREIGN_DEPS: &[&str] = &["trueno", "aprender", "realizar", "batuta", "renacer"];
     SOVEREIGN_DEPS.iter().any(|dep| content.contains(dep))
 }
 
 /// Helper: Check Five-Whys patterns in git commits
-fn check_five_whys_patterns(project_path: &Path, issues: &mut Vec<String>, good_patterns: &mut Vec<String>) {
+pub(crate) fn check_five_whys_patterns(project_path: &Path, issues: &mut Vec<String>, good_patterns: &mut Vec<String>) {
     use std::process::Command;
 
     let git_log = Command::new("git")
@@ -74,7 +74,7 @@ fn check_five_whys_patterns(project_path: &Path, issues: &mut Vec<String>, good_
 }
 
 /// Helper: Check for falsification tests
-fn check_falsification_tests(project_path: &Path, good_patterns: &mut Vec<String>) {
+pub(crate) fn check_falsification_tests(project_path: &Path, good_patterns: &mut Vec<String>) {
     let tests_dir = project_path.join("tests");
     if !tests_dir.exists() {
         return;
@@ -97,7 +97,7 @@ fn check_falsification_tests(project_path: &Path, good_patterns: &mut Vec<String
 }
 
 /// Helper: Check for APR model files
-fn check_apr_models(project_path: &Path, good_patterns: &mut Vec<String>) {
+pub(crate) fn check_apr_models(project_path: &Path, good_patterns: &mut Vec<String>) {
     let models_dir = project_path.join("models");
     if !models_dir.exists() {
         return;
@@ -116,7 +116,7 @@ fn check_apr_models(project_path: &Path, good_patterns: &mut Vec<String>) {
 }
 
 /// Helper: Check ticket references in commits
-fn check_ticket_refs(project_path: &Path, issues: &mut Vec<String>, good_patterns: &mut Vec<String>) {
+pub(crate) fn check_ticket_refs(project_path: &Path, issues: &mut Vec<String>, good_patterns: &mut Vec<String>) {
     use std::process::Command;
 
     let ticket_refs = Command::new("git")
@@ -139,7 +139,7 @@ fn check_ticket_refs(project_path: &Path, issues: &mut Vec<String>, good_pattern
 }
 
 /// Helper: Check ML-based commit classification
-fn check_ml_commit_classification(project_path: &Path, good_patterns: &mut Vec<String>) {
+pub(crate) fn check_ml_commit_classification(project_path: &Path, good_patterns: &mut Vec<String>) {
     use std::process::Command;
 
     let classifier = match CommitClassifier::load_sovereign_stack() {
@@ -184,7 +184,7 @@ fn check_ml_commit_classification(project_path: &Path, good_patterns: &mut Vec<S
 }
 
 /// Helper: Build final result from issues and good patterns
-fn build_sovereign_result(issues: &[String], good_patterns: &[String]) -> ComplianceCheck {
+pub(crate) fn build_sovereign_result(issues: &[String], good_patterns: &[String]) -> ComplianceCheck {
     if issues.is_empty() && !good_patterns.is_empty() {
         ComplianceCheck {
             name: "Sovereign Stack Patterns".to_string(),
@@ -211,7 +211,7 @@ fn build_sovereign_result(issues: &[String], good_patterns: &[String]) -> Compli
 
 /// Check PAIML dependency workspace state (dirty/clean/version drift)
 /// Detects when local PAIML projects have uncommitted changes or version mismatches
-fn check_paiml_deps_workspace(project_path: &Path) -> ComplianceCheck {
+pub(crate) fn check_paiml_deps_workspace(project_path: &Path) -> ComplianceCheck {
     use std::process::Command;
 
     // Known PAIML/Sovereign stack packages
@@ -351,7 +351,7 @@ fn check_paiml_deps_workspace(project_path: &Path) -> ComplianceCheck {
 /// Check file health across the project (CB-040)
 /// Validates: max-lines (500), TLR (test-to-lines ratio), complexity, health score
 /// Based on: docs/specifications/max-lines.md
-fn check_file_health(project_path: &Path) -> ComplianceCheck {
+pub(crate) fn check_file_health(project_path: &Path) -> ComplianceCheck {
     // Skip if not a Rust project
     let cargo_toml = project_path.join("Cargo.toml");
     if !cargo_toml.exists() {
@@ -470,7 +470,7 @@ fn check_file_health(project_path: &Path) -> ComplianceCheck {
 }
 
 /// Estimate test lines by counting lines in #[cfg(test)] modules and test functions
-fn estimate_test_lines(content: &str) -> usize {
+pub(crate) fn estimate_test_lines(content: &str) -> usize {
     let mut test_lines = 0;
     let mut in_test_module = false;
     let mut brace_depth = 0;
@@ -504,7 +504,7 @@ fn estimate_test_lines(content: &str) -> usize {
 }
 
 /// Estimate average cyclomatic complexity by counting control flow statements
-fn estimate_avg_complexity(content: &str) -> f32 {
+pub(crate) fn estimate_avg_complexity(content: &str) -> f32 {
     let mut total_complexity = 1; // Base complexity
     let mut function_count = 0;
 
@@ -551,7 +551,7 @@ fn estimate_avg_complexity(content: &str) -> f32 {
     total_complexity as f32 / function_count as f32
 }
 
-fn calculate_versions_behind(project_version: &str) -> u32 {
+pub(crate) fn calculate_versions_behind(project_version: &str) -> u32 {
     let current_parts: Vec<u32> = PMAT_VERSION
         .split('.')
         .filter_map(|s| s.parse().ok())
@@ -571,7 +571,7 @@ fn calculate_versions_behind(project_version: &str) -> u32 {
     }
 }
 
-fn get_breaking_changes_since(_from_version: &str) -> Vec<BreakingChange> {
+pub(crate) fn get_breaking_changes_since(_from_version: &str) -> Vec<BreakingChange> {
     vec![]
 }
 
@@ -582,7 +582,7 @@ struct ChangelogEntry {
     breaking: bool,
 }
 
-fn get_changelog_entries(_from: &str, _to: &str) -> Vec<ChangelogEntry> {
+pub(crate) fn get_changelog_entries(_from: &str, _to: &str) -> Vec<ChangelogEntry> {
     vec![
         ChangelogEntry {
             version: PMAT_VERSION.to_string(),
@@ -602,7 +602,7 @@ fn get_changelog_entries(_from: &str, _to: &str) -> Vec<ChangelogEntry> {
     ]
 }
 
-fn migrate_project_version(project_path: &Path, target: &str, dry_run: bool) -> Result<bool> {
+pub(crate) fn migrate_project_version(project_path: &Path, target: &str, dry_run: bool) -> Result<bool> {
     if dry_run {
         return Ok(true);
     }
@@ -617,7 +617,7 @@ fn migrate_project_version(project_path: &Path, target: &str, dry_run: bool) -> 
     Ok(true)
 }
 
-fn migrate_gitignore(project_path: &Path, dry_run: bool) -> Result<bool> {
+pub(crate) fn migrate_gitignore(project_path: &Path, dry_run: bool) -> Result<bool> {
     let gitignore_path = project_path.join(".gitignore");
     let pmat_entries = [".pmat/backup/", ".pmat-qa/"];
     if !gitignore_path.exists() {
@@ -647,11 +647,11 @@ fn migrate_gitignore(project_path: &Path, dry_run: bool) -> Result<bool> {
     Ok(needs_update)
 }
 
-fn update_project_config(project_path: &Path, dry_run: bool) -> Result<bool> {
+pub(crate) fn update_project_config(project_path: &Path, dry_run: bool) -> Result<bool> {
     migrate_project_version(project_path, PMAT_VERSION, dry_run)
 }
 
-fn print_compliance_text(report: &ComplianceReport) {
+pub(crate) fn print_compliance_text(report: &ComplianceReport) {
     println!("\n{}", "=".repeat(60));
     println!("PMAT Compliance Report");
     println!("{}", "=".repeat(60));
@@ -683,7 +683,7 @@ fn print_compliance_text(report: &ComplianceReport) {
     println!("\n{}", "=".repeat(60));
 }
 
-fn print_compliance_markdown(report: &ComplianceReport) {
+pub(crate) fn print_compliance_markdown(report: &ComplianceReport) {
     println!("# PMAT Compliance Report\n");
     println!("| Property | Value |");
     println!("|----------|-------|");

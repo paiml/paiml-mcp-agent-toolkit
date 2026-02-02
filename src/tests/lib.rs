@@ -174,6 +174,15 @@ mod coverage_boost_falsification;
 // Coverage boost tests - services/deep_context/analyzer_formatting (format_as_*)
 mod coverage_boost_analyzer_formatting;
 
+// Coverage boost tests - cli/handlers/comply_handlers/check_handlers module
+mod coverage_boost_check_handlers;
+
+// Coverage boost tests - cli/handlers/lint_hotspot_handlers (full module coverage)
+mod coverage_boost_lint_hotspot_handlers;
+
+// Coverage boost tests - cli/handlers/work_handlers/ticket_handlers module
+mod coverage_boost_ticket_handlers;
+
 // Include protocol service tests for coverage (requires unified-protocol feature)
 #[cfg(feature = "unified-protocol")]
 mod protocol_service_tests;

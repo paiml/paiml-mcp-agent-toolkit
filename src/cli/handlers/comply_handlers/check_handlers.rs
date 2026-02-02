@@ -119,7 +119,7 @@ impl From<ConfigSeverity> for Severity {
 /// Filter a check result based on YAML configuration
 ///
 /// Returns Skip status if the check is disabled in .pmat.yaml
-fn filter_check_by_config(
+pub(crate) fn filter_check_by_config(
     check: ComplianceCheck,
     check_id: &str,
     config: &ComplyConfig,
@@ -512,7 +512,7 @@ async fn handle_init(project_path: &Path, force: bool) -> Result<()> {
 
 // Helper functions
 
-fn load_or_create_project_config(project_path: &Path) -> Result<ProjectConfig> {
+pub(crate) fn load_or_create_project_config(project_path: &Path) -> Result<ProjectConfig> {
     let config_path = project_path.join(".pmat").join("project.toml");
 
     if config_path.exists() {
@@ -530,7 +530,7 @@ fn load_or_create_project_config(project_path: &Path) -> Result<ProjectConfig> {
     }
 }
 
-fn update_last_check_timestamp(project_path: &Path) -> Result<()> {
+pub(crate) fn update_last_check_timestamp(project_path: &Path) -> Result<()> {
     let config_path = project_path.join(".pmat").join("project.toml");
     if let Ok(mut config) = load_or_create_project_config(project_path) {
         config.pmat.last_compliance_check = Some(Utc::now());
@@ -540,7 +540,7 @@ fn update_last_check_timestamp(project_path: &Path) -> Result<()> {
     Ok(())
 }
 
-fn check_version_currency(project_version: &str) -> ComplianceCheck {
+pub(crate) fn check_version_currency(project_version: &str) -> ComplianceCheck {
     let behind = calculate_versions_behind(project_version);
     if behind == 0 {
         ComplianceCheck {
@@ -569,7 +569,7 @@ fn check_version_currency(project_version: &str) -> ComplianceCheck {
     }
 }
 
-fn check_config_files(project_path: &Path) -> ComplianceCheck {
+pub(crate) fn check_config_files(project_path: &Path) -> ComplianceCheck {
     let config_files = [".pmat/project.toml", ".pmat-metrics.toml"];
     let missing: Vec<&str> = config_files
         .iter()
@@ -594,7 +594,7 @@ fn check_config_files(project_path: &Path) -> ComplianceCheck {
     }
 }
 
-fn check_hooks_installed(project_path: &Path) -> ComplianceCheck {
+pub(crate) fn check_hooks_installed(project_path: &Path) -> ComplianceCheck {
     let pre_commit = project_path.join(".git").join("hooks").join("pre-commit");
     if pre_commit.exists() {
         if let Ok(content) = fs::read_to_string(&pre_commit) {
@@ -624,7 +624,7 @@ fn check_hooks_installed(project_path: &Path) -> ComplianceCheck {
 }
 
 /// CB-030: Check if hooks have O(1) capability (PMAT-453)
-fn check_hooks_o1_capable(project_path: &Path) -> ComplianceCheck {
+pub(crate) fn check_hooks_o1_capable(project_path: &Path) -> ComplianceCheck {
     let cache_dir = project_path.join(".pmat").join("hooks-cache");
 
     if cache_dir.exists() {
@@ -658,7 +658,7 @@ fn check_hooks_o1_capable(project_path: &Path) -> ComplianceCheck {
 }
 
 /// CB-031: Check hooks cache health (hit rate >= 60%)
-fn check_hooks_cache_health(project_path: &Path) -> ComplianceCheck {
+pub(crate) fn check_hooks_cache_health(project_path: &Path) -> ComplianceCheck {
     let metrics_path = project_path
         .join(".pmat")
         .join("hooks-cache")
@@ -727,7 +727,7 @@ fn check_hooks_cache_health(project_path: &Path) -> ComplianceCheck {
     }
 }
 
-fn check_quality_thresholds(project_path: &Path) -> ComplianceCheck {
+pub(crate) fn check_quality_thresholds(project_path: &Path) -> ComplianceCheck {
     if project_path.join(".pmat-metrics.toml").exists() {
         ComplianceCheck {
             name: "Quality Thresholds".to_string(),
@@ -745,7 +745,7 @@ fn check_quality_thresholds(project_path: &Path) -> ComplianceCheck {
     }
 }
 
-fn check_deprecated_features(_project_path: &Path) -> ComplianceCheck {
+pub(crate) fn check_deprecated_features(_project_path: &Path) -> ComplianceCheck {
     ComplianceCheck {
         name: "Deprecated Features".to_string(),
         status: CheckStatus::Pass,
@@ -756,7 +756,7 @@ fn check_deprecated_features(_project_path: &Path) -> ComplianceCheck {
 
 /// Collect static analysis violations for ComputeBrick patterns.
 /// Returns (issues, critical_count, warning_count).
-fn collect_cb_violations(project_path: &Path, has_probar: bool, has_brick_dir: bool) -> (Vec<String>, usize, usize) {
+pub(crate) fn collect_cb_violations(project_path: &Path, has_probar: bool, has_brick_dir: bool) -> (Vec<String>, usize, usize) {
     let mut all_issues: Vec<String> = Vec::new();
     let mut critical_count = 0;
     let mut warning_count = 0;
@@ -819,7 +819,7 @@ fn collect_cb_violations(project_path: &Path, has_probar: bool, has_brick_dir: b
 }
 
 /// Build a ComplianceCheck result from collected violations.
-fn build_cb_result(all_issues: Vec<String>, critical_count: usize, warning_count: usize) -> ComplianceCheck {
+pub(crate) fn build_cb_result(all_issues: Vec<String>, critical_count: usize, warning_count: usize) -> ComplianceCheck {
     if critical_count > 0 {
         ComplianceCheck {
             name: "ComputeBrick Compliance".to_string(),
@@ -854,7 +854,7 @@ fn build_cb_result(all_issues: Vec<String>, critical_count: usize, warning_count
 }
 
 /// Format a list of violations for display (indented, one per line).
-fn format_violation_list(issues: &[String]) -> String {
+pub(crate) fn format_violation_list(issues: &[String]) -> String {
     issues.iter()
         .map(|i| format!("    - {}", i))
         .collect::<Vec<_>>()
@@ -868,7 +868,7 @@ fn format_violation_list(issues: &[String]) -> String {
 /// - CB-BUDGET: Bricks without assertion/validation
 /// - BrickProfiler anomalies: CV > 15%, efficiency < 25%
 /// - Probar GUI coverage >= 80%
-fn check_compute_brick(project_path: &Path) -> ComplianceCheck {
+pub(crate) fn check_compute_brick(project_path: &Path) -> ComplianceCheck {
     let cargo_toml = project_path.join("Cargo.toml");
     let brick_dir = project_path.join("src").join("brick");
     let has_probar = cargo_toml.exists()
@@ -904,7 +904,7 @@ fn check_compute_brick(project_path: &Path) -> ComplianceCheck {
 /// - CB-122: Serde deserialization safety (from_str().unwrap())
 /// - CB-123: Undocumented #[ignore] tests
 /// - CB-124: Low coverage thresholds (<80%)
-fn check_oip_tarantula_patterns(project_path: &Path) -> ComplianceCheck {
+pub(crate) fn check_oip_tarantula_patterns(project_path: &Path) -> ComplianceCheck {
     let mut all_issues: Vec<String> = Vec::new();
     let mut critical_count = 0;
     let mut warning_count = 0;
@@ -994,7 +994,7 @@ fn check_oip_tarantula_patterns(project_path: &Path) -> ComplianceCheck {
 
 /// Check Coverage Quality & Test Performance patterns (CB-125 through CB-127)
 /// Per improve-pmat-comply.md v2.2.0
-fn check_coverage_quality_patterns(project_path: &Path) -> ComplianceCheck {
+pub(crate) fn check_coverage_quality_patterns(project_path: &Path) -> ComplianceCheck {
     let mut all_issues: Vec<String> = Vec::new();
     let mut critical_count = 0;
     let mut error_count = 0;
@@ -1091,7 +1091,7 @@ fn check_coverage_quality_patterns(project_path: &Path) -> ComplianceCheck {
 }
 
 /// Check Cargo.lock presence (reproducible builds)
-fn check_cargo_lock(project_path: &Path) -> ComplianceCheck {
+pub(crate) fn check_cargo_lock(project_path: &Path) -> ComplianceCheck {
     let cargo_lock = project_path.join("Cargo.lock");
 
     if cargo_lock.exists() {
@@ -1112,7 +1112,7 @@ fn check_cargo_lock(project_path: &Path) -> ComplianceCheck {
 }
 
 /// Check MSRV (Minimum Supported Rust Version) defined
-fn check_msrv(project_path: &Path) -> ComplianceCheck {
+pub(crate) fn check_msrv(project_path: &Path) -> ComplianceCheck {
     let cargo_toml = project_path.join("Cargo.toml");
 
     if !cargo_toml.exists() {
@@ -1144,7 +1144,7 @@ fn check_msrv(project_path: &Path) -> ComplianceCheck {
 }
 
 /// Check CI configuration present
-fn check_ci_configured(project_path: &Path) -> ComplianceCheck {
+pub(crate) fn check_ci_configured(project_path: &Path) -> ComplianceCheck {
     let github_workflows = project_path.join(".github").join("workflows");
     let gitlab_ci = project_path.join(".gitlab-ci.yml");
     let jenkinsfile = project_path.join("Jenkinsfile");
@@ -1280,7 +1280,7 @@ meta_check = "block"
 
 /// CB-300: Muda Waste Score (COMPLY-040)
 /// Aggregates Seven Wastes into a single quality health metric.
-fn check_muda_waste_score(project_path: &Path) -> ComplianceCheck {
+pub(crate) fn check_muda_waste_score(project_path: &Path) -> ComplianceCheck {
     use crate::cli::handlers::comply_handlers::muda_handlers;
 
     let report = muda_handlers::calculate_muda_score(project_path);
@@ -1316,7 +1316,7 @@ fn check_muda_waste_score(project_path: &Path) -> ComplianceCheck {
 
 /// CB-301: Reproducibility Level Check (COMPLY-041)
 /// Classifies project reproducibility as None/Bronze/Silver/Gold per NeurIPS/ICLR standards.
-fn check_reproducibility_level(project_path: &Path) -> ComplianceCheck {
+pub(crate) fn check_reproducibility_level(project_path: &Path) -> ComplianceCheck {
     use crate::cli::handlers::comply_handlers::reproducibility_handlers;
 
     let report = reproducibility_handlers::check_reproducibility(project_path);
@@ -1352,7 +1352,7 @@ fn check_reproducibility_level(project_path: &Path) -> ComplianceCheck {
 
 /// CB-302: Golden Trace Drift Detection (COMPLY-042)
 /// Validates that renacer golden traces are still passing.
-fn check_golden_trace_drift(project_path: &Path) -> ComplianceCheck {
+pub(crate) fn check_golden_trace_drift(project_path: &Path) -> ComplianceCheck {
     use crate::cli::handlers::comply_handlers::reproducibility_handlers;
 
     match reproducibility_handlers::check_golden_trace_drift(project_path) {
@@ -1379,7 +1379,7 @@ fn check_golden_trace_drift(project_path: &Path) -> ComplianceCheck {
 
 /// CB-303: Equation-Driven Development Compliance (COMPLY-043)
 /// Validates that simulation projects document mathematical models in pub fn docs.
-fn check_edd_compliance(project_path: &Path) -> ComplianceCheck {
+pub(crate) fn check_edd_compliance(project_path: &Path) -> ComplianceCheck {
     use crate::cli::handlers::comply_handlers::edd_handlers;
 
     let report = edd_handlers::check_edd_compliance(project_path);
@@ -1430,7 +1430,7 @@ fn check_edd_compliance(project_path: &Path) -> ComplianceCheck {
 /// Enforces the dead_code_threshold from DeepContextConfig.
 /// Scans source files for dead code indicators (#[allow(dead_code)], unused items)
 /// and flags when the estimated dead code percentage exceeds the threshold (default 15%).
-fn check_dead_code_percentage(project_path: &Path) -> ComplianceCheck {
+pub(crate) fn check_dead_code_percentage(project_path: &Path) -> ComplianceCheck {
     let config = crate::models::deep_context_config::DeepContextConfig::default();
     let threshold_pct = config.dead_code_threshold * 100.0; // 15.0%
 
@@ -1493,7 +1493,7 @@ fn check_dead_code_percentage(project_path: &Path) -> ComplianceCheck {
 
 /// Scan source files for dead code indicators.
 /// Returns (total_items, dead_items, total_lines, estimated_dead_lines).
-fn scan_dead_code_indicators(src_dir: &Path) -> (usize, usize, usize, usize) {
+pub(crate) fn scan_dead_code_indicators(src_dir: &Path) -> (usize, usize, usize, usize) {
     let mut total_items = 0usize;
     let mut dead_items = 0usize;
     let mut total_lines = 0usize;
@@ -1522,7 +1522,7 @@ fn scan_dead_code_indicators(src_dir: &Path) -> (usize, usize, usize, usize) {
 
 /// Check if a file is heavily cfg-gated (SIMD, arch-specific code).
 /// These files have code that only compiles on certain architectures, causing false dead code reports.
-fn is_heavily_cfg_gated(content: &str) -> bool {
+pub(crate) fn is_heavily_cfg_gated(content: &str) -> bool {
     let cfg_count = content.matches("#[cfg(target").count()
         + content.matches("#[target_feature").count()
         + content.matches("#[cfg(feature").count();
@@ -1531,7 +1531,7 @@ fn is_heavily_cfg_gated(content: &str) -> bool {
 }
 
 /// Collect production .rs files (skip test files, falsification modules, SIMD code).
-fn collect_production_rs_files(src_dir: &Path) -> Vec<std::path::PathBuf> {
+pub(crate) fn collect_production_rs_files(src_dir: &Path) -> Vec<std::path::PathBuf> {
     walkdir::WalkDir::new(src_dir)
         .max_depth(10)
         .into_iter()
@@ -1556,7 +1556,7 @@ fn collect_production_rs_files(src_dir: &Path) -> Vec<std::path::PathBuf> {
 
 /// Analyze a single file for dead code indicators.
 /// Returns (total_items, dead_items, prod_lines, estimated_dead_lines).
-fn analyze_file_dead_code(lines: &[&str]) -> (usize, usize, usize, usize) {
+pub(crate) fn analyze_file_dead_code(lines: &[&str]) -> (usize, usize, usize, usize) {
     let prod_lines: Vec<&str> = filter_production_lines(lines);
     let (total_items, dead_items, allow_dead_count) = count_dead_items(&prod_lines);
     let block_comment_lines = count_block_comment_code_lines(lines);
@@ -1566,7 +1566,7 @@ fn analyze_file_dead_code(lines: &[&str]) -> (usize, usize, usize, usize) {
 }
 
 /// Filter out test module lines, returning only production lines.
-fn filter_production_lines<'a>(lines: &[&'a str]) -> Vec<&'a str> {
+pub(crate) fn filter_production_lines<'a>(lines: &[&'a str]) -> Vec<&'a str> {
     let mut result = Vec::new();
     let mut in_test_module = false;
     for line in lines {
@@ -1585,7 +1585,7 @@ fn filter_production_lines<'a>(lines: &[&'a str]) -> Vec<&'a str> {
 /// Count total items and dead items from production lines.
 /// Returns (total_items, dead_items, annotation_count).
 /// Excludes fn declarations inside macro_rules! blocks (they inflate the denominator).
-fn count_dead_items(lines: &[&str]) -> (usize, usize, usize) {
+pub(crate) fn count_dead_items(lines: &[&str]) -> (usize, usize, usize) {
     let mut total = 0usize;
     let mut dead = 0usize;
     let mut annotations = 0usize;
@@ -1604,7 +1604,7 @@ fn count_dead_items(lines: &[&str]) -> (usize, usize, usize) {
 }
 
 /// Classify a single line for item counting.
-fn classify_item_line(
+pub(crate) fn classify_item_line(
     trimmed: &str,
     total: &mut usize,
     dead: &mut usize,
@@ -1627,7 +1627,7 @@ fn classify_item_line(
 
 /// Track brace depth inside macro_rules! blocks.
 /// Returns Some(depth) while inside a macro, None when outside.
-fn update_macro_depth(trimmed: &str, current: Option<i32>) -> Option<i32> {
+pub(crate) fn update_macro_depth(trimmed: &str, current: Option<i32>) -> Option<i32> {
     let mut depth = if trimmed.starts_with("macro_rules!") {
         Some(current.unwrap_or(0))
     } else {
@@ -1649,12 +1649,12 @@ fn update_macro_depth(trimmed: &str, current: Option<i32>) -> Option<i32> {
 }
 
 /// Check if a line is a dead code annotation.
-fn is_dead_code_annotation(trimmed: &str) -> bool {
+pub(crate) fn is_dead_code_annotation(trimmed: &str) -> bool {
     trimmed.starts_with("#[allow(dead_code)]") || trimmed.starts_with("#[allow(unused")
 }
 
 /// Check if a line declares a code item (fn, struct, enum, trait, const, static).
-fn is_code_item_declaration(trimmed: &str) -> bool {
+pub(crate) fn is_code_item_declaration(trimmed: &str) -> bool {
     const ITEM_PREFIXES: &[&str] = &[
         "pub fn ", "pub async fn ", "fn ", "async fn ",
         "pub struct ", "struct ", "pub enum ", "enum ",
@@ -1665,7 +1665,7 @@ fn is_code_item_declaration(trimmed: &str) -> bool {
 }
 
 /// Count lines inside `/* ... */` block comments that look like code.
-fn count_block_comment_code_lines(lines: &[&str]) -> usize {
+pub(crate) fn count_block_comment_code_lines(lines: &[&str]) -> usize {
     let mut dead_lines = 0usize;
     let mut in_block = false;
     let mut block_lines = 0usize;
@@ -1702,13 +1702,13 @@ fn count_block_comment_code_lines(lines: &[&str]) -> usize {
 }
 
 /// Check if text contains code-like markers.
-fn has_code_markers(text: &str) -> bool {
+pub(crate) fn has_code_markers(text: &str) -> bool {
     const MARKERS: &[&str] = &["fn ", "let ", "if ", "return ", ";", "struct ", "impl ", "pub "];
     MARKERS.iter().any(|m| text.contains(m))
 }
 
 /// Count lines in large blocks of `//` commented-out code (3+ consecutive lines).
-fn count_commented_code_lines(lines: &[&str]) -> usize {
+pub(crate) fn count_commented_code_lines(lines: &[&str]) -> usize {
     let mut dead_lines = 0usize;
     let mut run = 0usize;
 
@@ -1724,12 +1724,12 @@ fn count_commented_code_lines(lines: &[&str]) -> usize {
 }
 
 /// Flush a run of consecutive code comments (count if >= 3).
-fn flush_comment_run(run: usize) -> usize {
+pub(crate) fn flush_comment_run(run: usize) -> usize {
     if run >= 3 { run } else { 0 }
 }
 
 /// Check if a comment line looks like commented-out code.
-fn is_commented_out_code(trimmed: &str) -> bool {
+pub(crate) fn is_commented_out_code(trimmed: &str) -> bool {
     let body = if let Some(b) = trimmed.strip_prefix("// ") {
         b
     } else if let Some(b) = trimmed.strip_prefix("//\t") {
