@@ -798,7 +798,15 @@ pub fn chunk_text_recursive(text: &str, chunk_size: usize, overlap: usize) -> Ve
 }
 
 /// Simple fixed-size text chunking with overlap (fallback implementation)
-fn chunk_text_fixed(text: &str, chunk_size: usize, overlap: usize) -> Vec<String> {
+///
+/// # Arguments
+/// * `text` - The text to chunk
+/// * `chunk_size` - Target chunk size in characters
+/// * `overlap` - Number of characters to overlap between chunks
+///
+/// # Returns
+/// Vector of text chunks with overlap applied
+pub fn chunk_text_fixed(text: &str, chunk_size: usize, overlap: usize) -> Vec<String> {
     if text.is_empty() {
         return Vec::new();
     }

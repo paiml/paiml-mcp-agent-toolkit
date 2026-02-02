@@ -15,7 +15,10 @@ pub mod search_engine;
 pub mod topic_modeling;
 pub mod turso_vector_db;
 
-pub use chunker::{chunk_code, ChunkType, CodeChunk, Language};
+pub use chunker::{
+    chunk_code, chunk_text_fixed, chunk_text_recursive, chunk_text_with_overlap, ChunkType,
+    CodeChunk, Language,
+};
 pub use clustering::{
     Cluster, ClusterFilters, ClusterMember, ClusterResult, ClusteringEngine, ClusteringMethod,
     Dendrogram, DendrogramMerge, Linkage, OutlierPoint,

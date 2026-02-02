@@ -65,6 +65,9 @@ mod coverage_boost_unified_ast;
 // Coverage boost tests - error module
 mod coverage_boost_error;
 
+// Coverage boost tests - error module part 2 (recovery, severity, edge cases)
+mod coverage_boost_error2;
+
 // Coverage boost tests - unified_quality/onboarding module
 mod coverage_boost_onboarding;
 
@@ -113,6 +116,9 @@ mod coverage_boost_enforce;
 
 // Coverage boost tests - unified_ast_types part 2 (Location, Span, QualifiedName, UnifiedAstNode)
 mod coverage_boost_unified_ast2;
+
+// Coverage boost tests - unified_ast_types part 3 (AstDag, ColumnStore, advanced methods)
+mod coverage_boost_unified_ast3;
 
 // Coverage boost tests - maintenance module (roadmap, ticket, validator)
 mod coverage_boost_maintenance;
@@ -221,6 +227,15 @@ mod coverage_boost_proof_annotations_handler;
 
 // Coverage boost tests - cli/handlers/analyze_defects_handler module
 mod coverage_boost_analyze_defects_handler;
+
+// Coverage boost tests - services/semantic/chunker module (code chunking, text chunking)
+mod coverage_boost_chunker;
+
+// Coverage boost tests - services/ast_strategies_impl module (StrategyRegistry, language strategies)
+mod coverage_boost_ast_strategies;
+
+// Coverage boost tests - services/similarity module (SimilarityDetector, Winnowing, entropy)
+mod coverage_boost_similarity;
 
 // Include protocol service tests for coverage (requires unified-protocol feature)
 #[cfg(feature = "unified-protocol")]

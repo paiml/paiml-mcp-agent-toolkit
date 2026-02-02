@@ -254,3 +254,4 @@ pmat-*.tar.gz
 .pmat/backup/
 .pmat-qa/
 .pmat/dead-code-cache.json
+algorithm-competition-corpus/
