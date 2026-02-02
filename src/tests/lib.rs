@@ -237,6 +237,15 @@ mod coverage_boost_ast_strategies;
 // Coverage boost tests - services/similarity module (SimilarityDetector, Winnowing, entropy)
 mod coverage_boost_similarity;
 
+// Coverage boost tests - facades and MCP mapping (SATD, DefectPrediction, Project analyzer)
+mod coverage_boost_facades;
+
+// Coverage boost tests - language_analyzer module (AnalysisType, OutputFormat, AnalysisOptions)
+mod coverage_boost_language_analyzer2;
+
+// Coverage boost tests - cli/enums module (all Display implementations)
+mod coverage_boost_cli_enums;
+
 // Include protocol service tests for coverage (requires unified-protocol feature)
 #[cfg(feature = "unified-protocol")]
 mod protocol_service_tests;
