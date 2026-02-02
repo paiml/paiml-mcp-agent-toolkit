@@ -189,6 +189,9 @@ mod coverage_boost_dead_code_pure;
 // Coverage boost tests - configuration_service module
 mod coverage_boost_configuration_service;
 
+// Coverage boost tests - dag_builder module
+mod coverage_boost_dag_builder;
+
 // Include protocol service tests for coverage (requires unified-protocol feature)
 #[cfg(feature = "unified-protocol")]
 mod protocol_service_tests;
