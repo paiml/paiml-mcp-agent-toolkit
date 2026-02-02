@@ -1,4 +1,5 @@
 #![cfg(feature = "demo")]
+#![cfg(feature = "demo")]
 
 use pmat::demo::server::EnhancedHotspot;
 use pmat::demo::{DemoContent, LocalDemoServer};

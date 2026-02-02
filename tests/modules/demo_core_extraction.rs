@@ -1,3 +1,4 @@
+#![cfg(feature = "demo")]
 //! Fast demo core extraction tests
 //!
 //! Slow integration tests have been moved to `tests/slow_integration.rs` to ensure

@@ -1,3 +1,4 @@
+#![cfg(feature = "demo")]
 //! Simple integration tests for Universal Demo
 //!
 //! These tests verify basic functionality works.

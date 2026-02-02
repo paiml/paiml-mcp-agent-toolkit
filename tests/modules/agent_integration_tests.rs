@@ -1,3 +1,4 @@
+#![cfg(feature = "agent-daemon")]
 //! Integration tests for Claude Code Agent
 //!
 //! These tests verify the complete agent functionality including

@@ -1737,6 +1737,7 @@ mod tdg_utility_helpers {
             coupling: 5.0,
             domain_risk: 2.0,
             duplication: 1.0,
+            dead_code: 0.0,
         };
         assert_eq!(identify_primary_factor(&components), "High Complexity");
     }
@@ -1749,6 +1750,7 @@ mod tdg_utility_helpers {
             coupling: 5.0,
             domain_risk: 2.0,
             duplication: 1.0,
+            dead_code: 0.0,
         };
         assert_eq!(identify_primary_factor(&components), "Frequent Changes");
     }
@@ -1761,6 +1763,7 @@ mod tdg_utility_helpers {
             coupling: 100.0, // Only non-zero
             domain_risk: 0.0,
             duplication: 0.0,
+            dead_code: 0.0,
         };
         assert_eq!(identify_primary_factor(&components), "High Coupling");
     }
@@ -1773,6 +1776,7 @@ mod tdg_utility_helpers {
             coupling: 10.0,
             domain_risk: 10.0,
             duplication: 10.0,
+            dead_code: 0.0,
         };
         // Churn has highest weight (0.35)
         assert_eq!(identify_primary_factor(&components), "Frequent Changes");

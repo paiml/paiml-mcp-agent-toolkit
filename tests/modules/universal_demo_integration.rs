@@ -1,3 +1,4 @@
+#![cfg(feature = "demo")]
 //! Integration tests for Universal Demo "Just Works" functionality
 //!
 //! These tests verify that pmat can analyze any GitHub repository

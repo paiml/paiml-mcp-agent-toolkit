@@ -1,3 +1,4 @@
+#![cfg(feature = "demo")]
 #[cfg(test)]
 mod export_integration_tests {
     use anyhow::Result;

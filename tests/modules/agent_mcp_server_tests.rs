@@ -1,3 +1,4 @@
+#![cfg(feature = "agent-daemon")]
 //! Extreme TDD Tests for agent/mcp_server.rs
 //! Sprint: Test Coverage Enhancement - TDG-Driven Quality
 //!

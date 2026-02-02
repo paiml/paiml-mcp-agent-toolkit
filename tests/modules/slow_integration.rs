@@ -1,3 +1,4 @@
+#![cfg(feature = "demo")]
 //! Slow integration tests that take >30 seconds and should not block fast test coverage
 //!
 //! These tests are moved here to ensure fast tests complete within 3 minutes.

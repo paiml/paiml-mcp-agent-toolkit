@@ -1,3 +1,4 @@
+#![cfg(feature = "agent-daemon")]
 //! Comprehensive tests for ClaudeCodeAgentMcpServer
 //!
 //! Achieves 80+ test coverage through:

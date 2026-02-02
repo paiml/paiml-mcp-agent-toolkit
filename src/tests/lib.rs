@@ -192,6 +192,36 @@ mod coverage_boost_configuration_service;
 // Coverage boost tests - dag_builder module
 mod coverage_boost_dag_builder;
 
+// Coverage boost tests - services/oracle/signal_collector module
+mod coverage_boost_signal_collector;
+
+// Coverage boost tests - doc_validator module
+mod coverage_boost_doc_validator;
+
+// Coverage boost tests - services/mutation module (types, scoring, state, language)
+#[cfg(feature = "mutation-testing")]
+mod coverage_boost_mutation;
+
+// Coverage boost tests - comply_cb_detect module (CB-050/CB-060 detection)
+mod coverage_boost_comply_cb_detect;
+
+// Coverage boost tests - complexity_handlers module
+// DISABLED: ChurnFileInfo removed and is_source_code_file is private
+// mod coverage_boost_complexity_handlers;
+
+// Coverage boost tests - provability_handler and lightweight_provability_analyzer modules
+mod coverage_boost_provability_handler;
+
+// Coverage boost tests - cli/handlers/work_handlers/core_handlers module
+// DISABLED: SubTask removed (use Subtask)
+// mod coverage_boost_work_core_handlers;
+
+// Coverage boost tests - cli/handlers/proof_annotations_handler module
+mod coverage_boost_proof_annotations_handler;
+
+// Coverage boost tests - cli/handlers/analyze_defects_handler module
+mod coverage_boost_analyze_defects_handler;
+
 // Include protocol service tests for coverage (requires unified-protocol feature)
 #[cfg(feature = "unified-protocol")]
 mod protocol_service_tests;

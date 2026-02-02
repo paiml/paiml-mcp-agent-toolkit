@@ -1,3 +1,4 @@
+#![cfg(feature = "demo")]
 #![allow(deprecated)]
 #[cfg(test)]
 mod demo_tests {

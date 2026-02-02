@@ -1,3 +1,4 @@
+#![cfg(feature = "demo")]
 #[cfg(test)]
 mod config_integration_tests {
     use anyhow::Result;
