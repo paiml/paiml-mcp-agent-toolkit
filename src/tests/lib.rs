@@ -438,3 +438,7 @@ fn test_public_exports() {
         uri: "test".to_string(),
     };
 }
+
+// Batch 1: Additional unregistered test modules (verified working)
+mod additional_coverage;
+mod cache;
