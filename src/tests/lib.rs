@@ -250,8 +250,8 @@ mod coverage_boost_cli_enums;
 #[cfg(feature = "unified-protocol")]
 mod protocol_service_tests;
 
-// TRACKED: Fix diagnostic command tests
-// mod diagnose_tests;
+// Diagnostic command tests (fixed struct fields for current API)
+mod diagnose_tests;
 
 #[tokio::test]
 async fn test_template_server_new() {
