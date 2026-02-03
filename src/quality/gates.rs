@@ -149,6 +149,15 @@ pub fn execute_clippy(config: &GateConfig, project_dir: &Path) -> Result<GateRes
 
 /// Execute test gate
 ///
+/// Runs `cargo test --lib` to test library code only. This matches user
+/// expectations when they say "tests pass" (typically meaning unit tests).
+/// Integration tests, doc tests, and examples are excluded for reliability.
+///
+/// # Issue #143 Fix
+/// Previously ran `cargo test --all-features` which included doc tests,
+/// integration tests, etc. that could fail independently of the main test suite.
+/// Now uses `--lib` flag to match typical user workflow.
+///
 /// # Complexity
 /// - Time: O(test suite size)
 /// - Cyclomatic: 3
@@ -158,6 +167,7 @@ pub fn execute_tests(config: &GateConfig, project_dir: &Path) -> Result<GateResu
     let start = Instant::now();
     let output = Command::new("cargo")
         .arg("test")
+        .arg("--lib")
         .arg("--all-features")
         .current_dir(project_dir)
         .output()?;
@@ -172,11 +182,33 @@ pub fn execute_tests(config: &GateConfig, project_dir: &Path) -> Result<GateResu
     let message = if passed {
         "✓ Tests passed".to_string()
     } else {
+        // Test failures appear in stdout, compilation errors in stderr
+        let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
-        format!(
-            "✗ Tests failed:\n{}",
-            stderr.lines().take(10).collect::<Vec<_>>().join("\n")
-        )
+
+        // Look for actual test failure lines in stdout first
+        let failure_lines: Vec<&str> = stdout
+            .lines()
+            .filter(|line| {
+                line.contains("FAILED")
+                    || line.contains("panicked")
+                    || line.contains("error[")
+                    || line.starts_with("failures:")
+                    || line.starts_with("    ")
+                        && (line.contains("::") || line.trim().starts_with("thread"))
+            })
+            .take(15)
+            .collect();
+
+        if !failure_lines.is_empty() {
+            format!("✗ Tests failed:\n{}", failure_lines.join("\n"))
+        } else {
+            // Fall back to stderr for compilation errors
+            format!(
+                "✗ Tests failed:\n{}",
+                stderr.lines().take(10).collect::<Vec<_>>().join("\n")
+            )
+        }
     };
 
     Ok(GateResult {
