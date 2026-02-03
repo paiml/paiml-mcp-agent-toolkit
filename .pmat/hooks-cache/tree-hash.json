@@ -1,8 +1,8 @@
 {
-  "tree_hash": "a6f5a124d6236759035597eb21cbe50260a03af4",
-  "result": "Fail",
+  "tree_hash": "cde6d81a1279737c835f64e99e5bc75f5b4d69a6",
+  "result": "Pass",
   "gates": {},
-  "timestamp": "2026-02-03T09:52:43.347181556Z",
+  "timestamp": "2026-02-03T10:10:44.508609591Z",
   "pmat_version": "2.215.0",
   "config_hash": "c5c3c8b0138b3dfaf6555c46e51bc6d7d0157c3d5e4a4b68a36784f7c093421f"
 }
