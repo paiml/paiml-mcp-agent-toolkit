@@ -508,3 +508,118 @@ mod property_tests {
         }
     }
 }
+
+#[cfg(test)]
+mod unit_tests {
+    use super::*;
+
+    #[test]
+    fn test_analyzer_new_defaults() {
+        let analyzer = AccurateComplexityAnalyzer::new();
+        // Default values checked via builder methods
+        assert!(!analyzer.exclude_tests);
+        assert!(!analyzer.respect_annotations);
+    }
+
+    #[test]
+    fn test_analyzer_builder_exclude_tests() {
+        let analyzer = AccurateComplexityAnalyzer::new().exclude_tests(true);
+        assert!(analyzer.exclude_tests);
+    }
+
+    #[test]
+    fn test_analyzer_builder_respect_annotations() {
+        let analyzer = AccurateComplexityAnalyzer::new().respect_annotations(true);
+        assert!(analyzer.respect_annotations);
+    }
+
+    #[test]
+    fn test_analyzer_builder_chaining() {
+        let analyzer = AccurateComplexityAnalyzer::new()
+            .exclude_tests(true)
+            .respect_annotations(true);
+        assert!(analyzer.exclude_tests);
+        assert!(analyzer.respect_annotations);
+    }
+
+    #[test]
+    fn test_is_test_file_test_suffix() {
+        let analyzer = AccurateComplexityAnalyzer::new().exclude_tests(true);
+        let path = Path::new("src/foo_test.rs");
+        assert!(analyzer.is_test_file(path));
+    }
+
+    #[test]
+    fn test_is_test_file_tests_suffix() {
+        let analyzer = AccurateComplexityAnalyzer::new().exclude_tests(true);
+        let path = Path::new("src/foo_tests.rs");
+        assert!(analyzer.is_test_file(path));
+    }
+
+    #[test]
+    fn test_is_test_file_tests_dir() {
+        let analyzer = AccurateComplexityAnalyzer::new().exclude_tests(true);
+        // Need full path with /tests/ to match
+        let path = Path::new("src/tests/integration.rs");
+        assert!(analyzer.is_test_file(path));
+    }
+
+    #[test]
+    fn test_is_test_file_regular_file() {
+        let analyzer = AccurateComplexityAnalyzer::new().exclude_tests(true);
+        let path = Path::new("src/lib.rs");
+        assert!(!analyzer.is_test_file(path));
+    }
+
+    #[test]
+    fn test_is_test_file_always_checks() {
+        let analyzer = AccurateComplexityAnalyzer::new().exclude_tests(false);
+        let path = Path::new("src/foo_test.rs");
+        // is_test_file always checks the path, regardless of exclude_tests flag
+        // The flag is only used in analyze_project to skip files
+        assert!(analyzer.is_test_file(path));
+    }
+
+    #[test]
+    fn test_extract_fn_name_simple() {
+        let result = extract_fn_name("fn foo() {}");
+        assert_eq!(result, Some("foo".to_string()));
+    }
+
+    #[test]
+    fn test_extract_fn_name_pub() {
+        let result = extract_fn_name("pub fn bar() {}");
+        assert_eq!(result, Some("bar".to_string()));
+    }
+
+    #[test]
+    fn test_extract_fn_name_async() {
+        let result = extract_fn_name("async fn baz() {}");
+        assert_eq!(result, Some("baz".to_string()));
+    }
+
+    #[test]
+    fn test_extract_fn_name_pub_async() {
+        let result = extract_fn_name("pub async fn qux() {}");
+        assert_eq!(result, Some("qux".to_string()));
+    }
+
+    #[test]
+    fn test_extract_fn_name_generic() {
+        let result = extract_fn_name("fn generic<T>() {}");
+        assert_eq!(result, Some("generic".to_string()));
+    }
+
+    #[test]
+    fn test_extract_fn_name_no_fn() {
+        let result = extract_fn_name("let x = 42;");
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn test_default_impl() {
+        let analyzer = AccurateComplexityAnalyzer::default();
+        assert!(!analyzer.exclude_tests);
+        assert!(!analyzer.respect_annotations);
+    }
+}
