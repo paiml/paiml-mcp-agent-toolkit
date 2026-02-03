@@ -103,6 +103,59 @@ mod tests {
         let debug_str = format!("{:?}", err);
         assert!(debug_str.contains("ParseError"));
     }
+
+    #[test]
+    fn test_wasm_result_ok() {
+        let result: WasmResult<i32> = Ok(42);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), 42);
+    }
+
+    #[test]
+    fn test_wasm_result_err() {
+        let result: WasmResult<i32> = Err(WasmError::parse("error"));
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_wasm_error_parse_with_string() {
+        let err = WasmError::parse(String::from("string error"));
+        assert!(err.to_string().contains("string error"));
+    }
+
+    #[test]
+    fn test_wasm_error_format_with_string() {
+        let err = WasmError::format(String::from("format error"));
+        assert!(err.to_string().contains("format error"));
+    }
+
+    #[test]
+    fn test_wasm_error_analysis_with_string() {
+        let err = WasmError::analysis(String::from("analysis error"));
+        assert!(err.to_string().contains("analysis error"));
+    }
+
+    #[test]
+    fn test_wasm_error_io_permission_denied() {
+        let io_err = std::io::Error::new(std::io::ErrorKind::PermissionDenied, "access denied");
+        let wasm_err: WasmError = io_err.into();
+        assert!(wasm_err.to_string().contains("access denied"));
+    }
+
+    #[test]
+    fn test_wasm_error_all_variants_debug() {
+        // Test Debug impl for all variants
+        let errors = vec![
+            WasmError::parse("parse"),
+            WasmError::format("format"),
+            WasmError::analysis("analysis"),
+            WasmError::Other("other".to_string()),
+        ];
+        for err in errors {
+            let debug_str = format!("{:?}", err);
+            assert!(!debug_str.is_empty());
+        }
+    }
 }
 
 #[cfg(test)]
