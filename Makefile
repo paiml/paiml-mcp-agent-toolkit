@@ -434,8 +434,10 @@ coverage: ## Generate HTML coverage report (<5 min, honest measurement)
 	@date +%s%3N > .pmat-metrics/coverage.start
 	@cargo llvm-cov clean --workspace
 	@echo "🧪 Running tests with instrumentation..."
+	@echo "   Features: most-languages (python, go, c, cpp, shell + default)"
 	@env RUSTC_WRAPPER= PROPTEST_CASES=2 QUICKCHECK_TESTS=2 cargo llvm-cov test \
 		--lib \
+		--features most-languages \
 		$(COVERAGE_EXCLUDE) \
 		-- --test-threads=$$(nproc) \
 		--skip test_handle_run_quality --skip test_handle_test_performance \
