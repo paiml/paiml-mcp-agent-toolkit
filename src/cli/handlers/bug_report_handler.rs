@@ -152,7 +152,6 @@ mod tests {
     use super::*;
 
     #[tokio::test]
-    #[ignore = "Flaky test due to shared ~/.pmat/last_error.json in parallel test execution"]
     async fn test_handle_bug_report_no_error() {
         // Clear any existing error first
         let _ = clear_error();
@@ -166,7 +165,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore = "Flaky test due to file system race conditions in parallel test execution"]
     async fn test_handle_bug_report_clear() {
         // Clear should always succeed (no-op if file doesn't exist)
         let result = handle_bug_report(None, false, false, true).await;

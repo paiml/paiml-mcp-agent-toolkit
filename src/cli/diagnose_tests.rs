@@ -827,7 +827,6 @@ async fn test_git_integration_test_execute() {
 // ============================================================================
 
 #[tokio::test]
-#[ignore = "Requires full integration, may timeout in CI"]
 async fn test_run_diagnostic_all_tests() {
     let diagnostic = SelfDiagnostic::new();
     let args = DiagnoseArgs {
