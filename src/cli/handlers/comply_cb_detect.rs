@@ -1608,6 +1608,7 @@ fn load_dependency_trend(project_path: &Path) -> Option<DependencyTrend> {
     let content = fs::read_to_string(&metrics_path).ok()?;
 
     #[derive(serde::Deserialize)]
+    #[allow(dead_code)] // Fields used for JSON deserialization structure matching
     struct PreviousMetrics {
         direct_count: usize,
         transitive_count: usize,
@@ -1616,11 +1617,10 @@ fn load_dependency_trend(project_path: &Path) -> Option<DependencyTrend> {
 
     let prev: PreviousMetrics = serde_json::from_str(&content).ok()?;
 
-    // We'll calculate deltas in the main function after we have current counts
-    // For now, return the previous values wrapped in a trend struct
+    // Return trend with previous timestamp - deltas calculated elsewhere
     Some(DependencyTrend {
-        direct_delta: 0,   // Will be calculated
-        transitive_delta: 0, // Will be calculated
+        direct_delta: 0,
+        transitive_delta: 0,
         previous_timestamp: prev.timestamp,
     })
 }
@@ -1654,6 +1654,7 @@ fn save_dependency_metrics(project_path: &Path, direct: usize, transitive: usize
 }
 
 /// Recalculate trend deltas with current counts
+#[allow(dead_code)] // Reserved for future trend comparison feature
 fn calculate_trend_deltas(
     project_path: &Path,
     current_direct: usize,
