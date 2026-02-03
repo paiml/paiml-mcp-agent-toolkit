@@ -435,7 +435,8 @@ coverage: ## Generate HTML coverage report (<5 min, honest measurement)
 	@cargo llvm-cov clean --workspace
 	@echo "🧪 Running tests with instrumentation..."
 	@echo "   Features: most-languages (python, go, c, cpp, shell + default)"
-	@env RUSTC_WRAPPER= PROPTEST_CASES=2 QUICKCHECK_TESTS=2 cargo llvm-cov test \
+	@echo "   Stack: 8MB (RUST_MIN_STACK) to prevent Clap overflow"
+	@env RUSTC_WRAPPER= PROPTEST_CASES=2 QUICKCHECK_TESTS=2 RUST_MIN_STACK=8388608 cargo llvm-cov test \
 		--lib \
 		--features most-languages \
 		$(COVERAGE_EXCLUDE) \

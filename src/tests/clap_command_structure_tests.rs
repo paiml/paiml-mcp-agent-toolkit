@@ -17,7 +17,6 @@ mod tests {
     use std::env;
 
     #[test]
-    #[ignore = "Stack overflow in coverage instrumented build"]
     fn test_derive_parser_propagation() {
         // Verify Cli struct derives Parser
         let cmd = Cli::command();
@@ -31,7 +30,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "Stack overflow in coverage instrumented build"]
     fn test_binary_name_detection() {
         let cmd = Cli::command();
 
@@ -44,7 +42,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "Stack overflow in coverage instrumented build"]
     fn test_global_args_accessible() {
         // Test that global args are accessible from all subcommands
         let cli = Cli::try_parse_from(["pmat", "--verbose", "analyze", "complexity"]);
@@ -63,7 +60,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "Stack overflow in coverage instrumented build"]
     fn test_subcommand_hierarchy() {
         // Test the expected command structure
         let cmd = Cli::command();
@@ -98,7 +94,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "Stack overflow in coverage instrumented build"]
     fn test_propagate_version() {
         let cmd = Cli::command();
 
@@ -112,7 +107,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "Stack overflow in coverage instrumented build"]
     fn test_help_generation() {
         // Test that help can be generated without panic
         let cmd = Cli::command();
@@ -140,7 +134,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "Stack overflow in coverage instrumented build"]
     fn test_env_var_support() {
         let _guard = ENV_MUTEX.lock();
 
@@ -165,7 +158,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "Stack overflow in coverage instrumented build"]
     fn test_command_aliases() {
         // Test if command aliases work (if configured)
         // For example, 'gen' for 'generate'
@@ -189,7 +181,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "Stack overflow in coverage instrumented build"]
     fn test_required_args_validation() {
         // Test that required arguments are enforced
         let result = Cli::try_parse_from(["pmat", "generate"]);
@@ -204,7 +195,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "Stack overflow in coverage instrumented build"]
     fn test_global_flags_precedence() {
         // Test that global flags work with any subcommand position
         let variations = vec![
@@ -220,7 +210,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "Stack overflow in coverage instrumented build"]
     fn test_subcommand_specific_args() {
         // Test analyze complexity specific args
         let cli = Cli::try_parse_from([
@@ -250,7 +239,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "Stack overflow in coverage instrumented build"]
     fn test_value_enum_parsing() {
         // Test that value enums parse correctly
         let cli = Cli::try_parse_from(["pmat", "--mode", "cli", "list"]);
@@ -262,7 +250,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "Stack overflow in coverage instrumented build"]
     fn test_command_error_suggestions() {
         // Test that similar command names provide suggestions
         let result = Cli::try_parse_from(["pmat", "analize", "complexity"]);
@@ -286,7 +273,6 @@ mod clap_derive_completeness_tests {
     use super::*;
 
     #[test]
-    #[ignore = "Stack overflow in coverage instrumented build"]
     fn test_all_commands_have_help() {
         let cmd = Cli::command();
 
@@ -308,7 +294,6 @@ mod clap_derive_completeness_tests {
     }
 
     #[test]
-    #[ignore = "Stack overflow in coverage instrumented build"]
     fn test_all_args_have_help() {
         let cmd = Cli::command();
 
@@ -337,7 +322,6 @@ mod clap_derive_completeness_tests {
     }
 
     #[test]
-    #[ignore = "Stack overflow in coverage instrumented build"]
     fn test_conflicting_args() {
         // Test that --verbose, --debug, and --trace are handled correctly
         // They shouldn't conflict since they're different levels
@@ -355,7 +339,6 @@ mod clap_output_validation_tests {
     use super::*;
 
     #[test]
-    #[ignore = "Stack overflow in coverage instrumented build"]
     fn test_help_output_format() {
         let cmd = Cli::command();
         let mut help = Vec::new();
@@ -373,7 +356,6 @@ mod clap_output_validation_tests {
     }
 
     #[test]
-    #[ignore = "Stack overflow in coverage instrumented build"]
     fn test_error_output_format() {
         let result = Cli::try_parse_from(["pmat", "--unknown-flag"]);
         assert!(result.is_err());

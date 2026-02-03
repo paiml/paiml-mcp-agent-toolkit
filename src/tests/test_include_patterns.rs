@@ -4,7 +4,6 @@ mod tests {
     use clap::Parser;
 
     #[test]
-    #[ignore = "Stack overflow in coverage instrumented build"]
     fn test_analyze_complexity_with_include_patterns() {
         // Test that include patterns are parsed correctly
         let args = vec![
