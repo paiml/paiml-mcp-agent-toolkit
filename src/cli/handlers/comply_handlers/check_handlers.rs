@@ -272,6 +272,8 @@ async fn handle_check(
         filter_check_by_config(check_dead_code_percentage(project_path), "cb-304", comply_config),
         // CB-081: Dependency Count - rust-project-score-v1.1 integration
         filter_check_by_config(check_dependency_count(project_path), "cb-081", comply_config),
+        // CB-400: Shell & Makefile Quality (bashrs integration)
+        filter_check_by_config(check_shell_makefile_quality(project_path), "cb-400", comply_config),
     ];
 
     // Calculate compliance
@@ -1856,6 +1858,88 @@ pub(crate) fn is_commented_out_code(trimmed: &str) -> bool {
     };
     const CODE_MARKERS: &[&str] = &["fn ", "let ", "if ", "return ", ";", "{", "}"];
     CODE_MARKERS.iter().any(|m| body.contains(m))
+}
+
+/// CB-400: Check Shell & Makefile Quality using bashrs
+///
+/// Uses bashrs to lint:
+/// - CB-400: Git hooks (pre-commit, pre-push, etc.)
+/// - CB-401: Makefile
+/// - CB-402: Shell scripts (*.sh)
+pub(crate) fn check_shell_makefile_quality(project_path: &Path) -> ComplianceCheck {
+    use super::comply_cb_detect::{
+        detect_cb400_git_hooks_quality,
+        detect_cb401_makefile_quality,
+        detect_cb402_shell_script_quality,
+    };
+
+    let mut all_issues: Vec<String> = Vec::new();
+    let mut warning_count = 0;
+    let mut error_count = 0;
+
+    // CB-400: Git hooks
+    let hook_violations = detect_cb400_git_hooks_quality(project_path);
+    for v in &hook_violations {
+        all_issues.push(format!("{}: {} ({}:{})", v.pattern_id, v.description, v.file, v.line));
+        match v.severity {
+            super::comply_cb_detect::Severity::Error | super::comply_cb_detect::Severity::Critical => error_count += 1,
+            _ => warning_count += 1,
+        }
+    }
+
+    // CB-401: Makefile
+    let makefile_violations = detect_cb401_makefile_quality(project_path);
+    for v in &makefile_violations {
+        all_issues.push(format!("{}: {} ({}:{})", v.pattern_id, v.description, v.file, v.line));
+        match v.severity {
+            super::comply_cb_detect::Severity::Error | super::comply_cb_detect::Severity::Critical => error_count += 1,
+            _ => warning_count += 1,
+        }
+    }
+
+    // CB-402: Shell scripts
+    let shell_violations = detect_cb402_shell_script_quality(project_path);
+    for v in &shell_violations {
+        all_issues.push(format!("{}: {} ({}:{})", v.pattern_id, v.description, v.file, v.line));
+        match v.severity {
+            super::comply_cb_detect::Severity::Error | super::comply_cb_detect::Severity::Critical => error_count += 1,
+            _ => warning_count += 1,
+        }
+    }
+
+    let total_violations = hook_violations.len() + makefile_violations.len() + shell_violations.len();
+
+    if total_violations == 0 {
+        ComplianceCheck {
+            name: "CB-400: Shell & Makefile Quality".to_string(),
+            status: CheckStatus::Pass,
+            message: "bashrs: All shell scripts and Makefiles pass quality checks".to_string(),
+            severity: Severity::Info,
+        }
+    } else if error_count > 0 {
+        ComplianceCheck {
+            name: "CB-400: Shell & Makefile Quality".to_string(),
+            status: CheckStatus::Fail,
+            message: format!(
+                "bashrs: {} errors, {} warnings:\n{}",
+                error_count,
+                warning_count,
+                format_violation_list(&all_issues),
+            ),
+            severity: Severity::Error,
+        }
+    } else {
+        ComplianceCheck {
+            name: "CB-400: Shell & Makefile Quality".to_string(),
+            status: CheckStatus::Warn,
+            message: format!(
+                "bashrs: {} warnings:\n{}",
+                warning_count,
+                format_violation_list(&all_issues),
+            ),
+            severity: Severity::Warning,
+        }
+    }
 }
 
 // Three-layer CLI (review/audit) extracted for file health (CB-040)
