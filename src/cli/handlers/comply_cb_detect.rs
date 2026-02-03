@@ -2343,4 +2343,109 @@ tokio-test = "0.4"
         assert_eq!(report.direct_count, 0);
         assert_eq!(report.transitive_count, 0);
     }
+
+    // =========================================================================
+    // CB-400/401/402 bashrs integration tests
+    // =========================================================================
+
+    #[test]
+    fn test_cb400_no_git_hooks_dir() {
+        let temp = TempDir::new().unwrap();
+        // No .git/hooks directory
+        let violations = detect_cb400_git_hooks_quality(temp.path());
+        assert!(violations.is_empty(), "No hooks dir should return empty");
+    }
+
+    #[test]
+    fn test_cb400_empty_git_hooks_dir() {
+        let temp = TempDir::new().unwrap();
+        fs::create_dir_all(temp.path().join(".git/hooks")).unwrap();
+        // Empty hooks dir - no hook files
+        let violations = detect_cb400_git_hooks_quality(temp.path());
+        assert!(violations.is_empty(), "Empty hooks dir should return empty");
+    }
+
+    #[test]
+    fn test_cb400_sample_hooks_ignored() {
+        let temp = TempDir::new().unwrap();
+        let hooks_dir = temp.path().join(".git/hooks");
+        fs::create_dir_all(&hooks_dir).unwrap();
+        // Sample hooks should be ignored
+        fs::write(hooks_dir.join("pre-commit.sample"), "#!/bin/bash\necho test").unwrap();
+        let violations = detect_cb400_git_hooks_quality(temp.path());
+        assert!(violations.is_empty(), "Sample hooks should be ignored");
+    }
+
+    #[test]
+    fn test_cb401_no_makefile() {
+        let temp = TempDir::new().unwrap();
+        // No Makefile
+        let violations = detect_cb401_makefile_quality(temp.path());
+        assert!(violations.is_empty(), "No Makefile should return empty");
+    }
+
+    #[test]
+    fn test_cb402_no_shell_scripts() {
+        let temp = TempDir::new().unwrap();
+        // No shell scripts
+        let violations = detect_cb402_shell_script_quality(temp.path());
+        assert!(violations.is_empty(), "No shell scripts should return empty");
+    }
+
+    #[test]
+    fn test_cb402_target_dir_excluded() {
+        let temp = TempDir::new().unwrap();
+        // Shell script in target/ should be ignored
+        let target_dir = temp.path().join("target");
+        fs::create_dir_all(&target_dir).unwrap();
+        fs::write(target_dir.join("test.sh"), "#!/bin/bash\necho test").unwrap();
+        let violations = detect_cb402_shell_script_quality(temp.path());
+        assert!(violations.is_empty(), "Scripts in target/ should be ignored");
+    }
+
+    #[test]
+    fn test_parse_bashrs_json_array() {
+        let json = r#"[{"code":"SC2086","message":"Double quote","line":5,"severity":"warning"}]"#;
+        let result = parse_bashrs_json_output(json).unwrap();
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].code, "SC2086");
+        assert_eq!(result[0].line, 5);
+    }
+
+    #[test]
+    fn test_parse_bashrs_json_object() {
+        let json = r#"{"diagnostics":[{"code":"SC2046","message":"Quote this","line":3,"severity":"error"}]}"#;
+        let result = parse_bashrs_json_output(json).unwrap();
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].code, "SC2046");
+        assert_eq!(result[0].severity, "error");
+    }
+
+    #[test]
+    fn test_parse_bashrs_json_invalid() {
+        let json = "not valid json";
+        let result = parse_bashrs_json_output(json).unwrap();
+        assert!(result.is_empty(), "Invalid JSON should return empty");
+    }
+
+    #[test]
+    fn test_parse_bashrs_json_empty_array() {
+        let json = "[]";
+        let result = parse_bashrs_json_output(json).unwrap();
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn test_parse_bashrs_json_multiple_issues() {
+        let json = r#"[
+            {"code":"SC2086","message":"Double quote","line":5,"severity":"warning"},
+            {"code":"SC2046","message":"Quote this","line":10,"severity":"error"},
+            {"code":"SC2116","message":"Useless echo","line":15,"severity":"info"}
+        ]"#;
+        let result = parse_bashrs_json_output(json).unwrap();
+        assert_eq!(result.len(), 3);
+        assert_eq!(result[0].code, "SC2086");
+        assert_eq!(result[1].code, "SC2046");
+        assert_eq!(result[2].code, "SC2116");
+    }
 }
