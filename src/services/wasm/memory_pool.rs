@@ -28,6 +28,35 @@ impl Default for MemoryPool {
 }
 
 #[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_memory_pool_new() {
+        let pool = MemoryPool::new(1024);
+        assert_eq!(pool.max_size(), 1024);
+    }
+
+    #[test]
+    fn test_memory_pool_default() {
+        let pool = MemoryPool::default();
+        assert_eq!(pool.max_size(), 64 * 1024 * 1024); // 64MB
+    }
+
+    #[test]
+    fn test_memory_pool_zero_size() {
+        let pool = MemoryPool::new(0);
+        assert_eq!(pool.max_size(), 0);
+    }
+
+    #[test]
+    fn test_memory_pool_large_size() {
+        let pool = MemoryPool::new(usize::MAX);
+        assert_eq!(pool.max_size(), usize::MAX);
+    }
+}
+
+#[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;
 

@@ -103,6 +103,18 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_complexity_analyzer_new() {
+        let analyzer = WasmComplexityAnalyzer::new();
+        assert!(analyzer._max_complexity == 100);
+    }
+
+    #[test]
+    fn test_complexity_analyzer_default() {
+        let analyzer = WasmComplexityAnalyzer::default();
+        assert!(analyzer._max_complexity == 100);
+    }
+
+    #[test]
     fn test_complexity_analyzer() {
         let analyzer = WasmComplexityAnalyzer::new();
         let content = "(module (func $test (result i32) i32.const 42))";
@@ -110,6 +122,66 @@ mod tests {
         let complexity = analyzer.analyze_text(content).unwrap();
         assert!(complexity.cyclomatic > 0);
         assert!(complexity.cognitive > 0);
+    }
+
+    #[test]
+    fn test_analyze_text_empty() {
+        let analyzer = WasmComplexityAnalyzer::new();
+        let complexity = analyzer.analyze_text("").unwrap();
+        assert_eq!(complexity.cyclomatic, 0);
+        assert_eq!(complexity.cognitive, 0);
+    }
+
+    #[test]
+    fn test_analyze_text_with_multiple_functions() {
+        let analyzer = WasmComplexityAnalyzer::new();
+        let content = "(module (func $a) (func $b) (func $c))";
+        let complexity = analyzer.analyze_text(content).unwrap();
+        // 3 functions * 2 = 6
+        assert!(complexity.cyclomatic >= 6);
+    }
+
+    #[test]
+    fn test_memory_cost_model_default() {
+        let model = MemoryCostModel::default();
+        assert_eq!(model.load_cost, 3.0);
+        assert_eq!(model.store_cost, 5.0);
+        assert_eq!(model.grow_cost, 100.0);
+    }
+
+    #[test]
+    fn test_memory_cost_model_clone() {
+        let model = MemoryCostModel::default();
+        let cloned = model.clone();
+        assert_eq!(model.load_cost, cloned.load_cost);
+        assert_eq!(model.store_cost, cloned.store_cost);
+        assert_eq!(model.grow_cost, cloned.grow_cost);
+    }
+
+    #[test]
+    fn test_memory_cost_model_debug() {
+        let model = MemoryCostModel::default();
+        let debug_str = format!("{:?}", model);
+        assert!(debug_str.contains("MemoryCostModel"));
+    }
+
+    #[test]
+    fn test_analyze_ast() {
+        let analyzer = WasmComplexityAnalyzer::new();
+        let dag = AstDag::new();
+        let complexity = analyzer.analyze_ast(&dag).unwrap();
+        assert_eq!(complexity.cyclomatic, 5);
+        assert_eq!(complexity.cognitive, 5);
+    }
+
+    #[test]
+    fn test_analyze_function() {
+        let analyzer = WasmComplexityAnalyzer::new();
+        let dag = AstDag::new();
+        let func_id: NodeKey = 0;
+        let complexity = analyzer.analyze_function(&dag, func_id);
+        assert_eq!(complexity.cyclomatic, 1);
+        assert_eq!(complexity.cognitive, 1);
     }
 }
 

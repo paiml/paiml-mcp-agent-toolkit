@@ -50,6 +50,62 @@ impl From<anyhow::Error> for WasmError {
 }
 
 #[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_wasm_error_parse() {
+        let err = WasmError::parse("test parse error");
+        assert!(matches!(err, WasmError::ParseError(_)));
+        assert!(err.to_string().contains("Parse error"));
+    }
+
+    #[test]
+    fn test_wasm_error_format() {
+        let err = WasmError::format("test format error");
+        assert!(matches!(err, WasmError::InvalidFormat(_)));
+        assert!(err.to_string().contains("Invalid format"));
+    }
+
+    #[test]
+    fn test_wasm_error_analysis() {
+        let err = WasmError::analysis("test analysis error");
+        assert!(matches!(err, WasmError::AnalysisError(_)));
+        assert!(err.to_string().contains("Analysis error"));
+    }
+
+    #[test]
+    fn test_wasm_error_from_io_error() {
+        let io_err = std::io::Error::new(std::io::ErrorKind::NotFound, "file not found");
+        let wasm_err: WasmError = io_err.into();
+        assert!(matches!(wasm_err, WasmError::IoError(_)));
+        assert!(wasm_err.to_string().contains("IO error"));
+    }
+
+    #[test]
+    fn test_wasm_error_from_anyhow() {
+        let anyhow_err = anyhow::anyhow!("anyhow error message");
+        let wasm_err: WasmError = anyhow_err.into();
+        assert!(matches!(wasm_err, WasmError::Other(_)));
+        assert!(wasm_err.to_string().contains("anyhow error message"));
+    }
+
+    #[test]
+    fn test_wasm_error_other() {
+        let err = WasmError::Other("custom error".to_string());
+        assert!(matches!(err, WasmError::Other(_)));
+        assert!(err.to_string().contains("Other error"));
+    }
+
+    #[test]
+    fn test_wasm_error_debug() {
+        let err = WasmError::parse("debug test");
+        let debug_str = format!("{:?}", err);
+        assert!(debug_str.contains("ParseError"));
+    }
+}
+
+#[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;
 
