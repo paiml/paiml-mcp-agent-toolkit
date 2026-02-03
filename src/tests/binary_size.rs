@@ -4,7 +4,6 @@
 use std::fs;
 
 #[test]
-#[ignore]
 fn binary_size_regression() {
     // Apply Kaizen - Use correct binary name and path with fallback strategy
     // In a workspace, binaries are at the workspace root
@@ -101,7 +100,6 @@ fn template_compression_works() {
 mod benchmarks {
 
     #[test]
-    #[ignore]
     fn startup_time_regression() {
         use std::process::Command;
         use std::time::Instant;
