@@ -293,4 +293,115 @@ mod tests {
         assert!(path.to_string_lossy().contains(".pmat"));
         assert!(path.to_string_lossy().contains("last_error.json"));
     }
+
+    #[test]
+    fn test_generate_issue_markdown_with_backtrace() {
+        let error = CapturedError::new("pmat", &["cmd".to_string()], "Error message")
+            .with_backtrace("stack frame 1\nstack frame 2");
+        let md = generate_issue_markdown(&error, None);
+
+        assert!(md.contains("<details>"));
+        assert!(md.contains("<summary>Backtrace</summary>"));
+        assert!(md.contains("stack frame 1"));
+        assert!(md.contains("stack frame 2"));
+        assert!(md.contains("</details>"));
+    }
+
+    #[test]
+    fn test_generate_issue_markdown_with_exit_code() {
+        let error = CapturedError::new("pmat", &[], "Error").with_exit_code(127);
+        let md = generate_issue_markdown(&error, None);
+
+        assert!(md.contains("**Exit Code**: 127"));
+    }
+
+    #[test]
+    fn test_generate_issue_markdown_no_args() {
+        let error = CapturedError::new("pmat", &[], "Error");
+        let md = generate_issue_markdown(&error, None);
+
+        // Should contain just the command without extra space
+        assert!(md.contains("```bash\npmat\n```"));
+    }
+
+    #[test]
+    fn test_captured_error_serialization() {
+        let error = CapturedError::new("pmat", &["arg1".to_string()], "Error message")
+            .with_backtrace("trace")
+            .with_exit_code(42);
+
+        let json = serde_json::to_string(&error).unwrap();
+        let deserialized: CapturedError = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(deserialized.command, "pmat");
+        assert_eq!(deserialized.args, vec!["arg1"]);
+        assert_eq!(deserialized.error_message, "Error message");
+        assert_eq!(deserialized.backtrace, Some("trace".to_string()));
+        assert_eq!(deserialized.exit_code, Some(42));
+    }
+
+    #[test]
+    fn test_captured_error_debug() {
+        let error = CapturedError::new("pmat", &[], "Error");
+        let debug_str = format!("{:?}", error);
+        assert!(debug_str.contains("CapturedError"));
+        assert!(debug_str.contains("pmat"));
+    }
+
+    #[test]
+    fn test_captured_error_clone() {
+        let error = CapturedError::new("pmat", &["arg".to_string()], "Error")
+            .with_backtrace("trace")
+            .with_exit_code(1);
+        let cloned = error.clone();
+
+        assert_eq!(error.command, cloned.command);
+        assert_eq!(error.args, cloned.args);
+        assert_eq!(error.backtrace, cloned.backtrace);
+        assert_eq!(error.exit_code, cloned.exit_code);
+    }
+
+    #[test]
+    fn test_redact_paths_with_user() {
+        let mut error =
+            CapturedError::new("pmat", &[], "Path /home/johndoe/project has error for johndoe");
+        std::env::set_var("HOME", "/home/johndoe");
+        std::env::set_var("USER", "johndoe");
+        error.redact_paths();
+
+        assert!(error.error_message.contains("~"));
+        assert!(error.error_message.contains("<user>"));
+        assert!(!error.error_message.contains("johndoe"));
+    }
+
+    #[test]
+    fn test_redact_paths_with_backtrace() {
+        let mut error =
+            CapturedError::new("pmat", &[], "Error").with_backtrace("/home/testuser/file.rs:42");
+        std::env::set_var("HOME", "/home/testuser");
+        error.redact_paths();
+
+        assert!(error.backtrace.as_ref().unwrap().contains("~"));
+        assert!(!error.backtrace.as_ref().unwrap().contains("testuser"));
+    }
+
+    #[test]
+    fn test_redact_paths_with_project_path() {
+        let mut error = CapturedError::new("pmat", &[], "Error");
+        error.project_path = Some("/home/testuser/projects/myproject".to_string());
+        std::env::set_var("HOME", "/home/testuser");
+        error.redact_paths();
+
+        assert!(error.project_path.as_ref().unwrap().contains("~"));
+        assert!(!error.project_path.as_ref().unwrap().contains("testuser"));
+    }
+
+    #[test]
+    fn test_generate_issue_markdown_with_project_path() {
+        let mut error = CapturedError::new("pmat", &[], "Error");
+        error.project_path = Some("/projects/myproject".to_string());
+        let md = generate_issue_markdown(&error, None);
+
+        assert!(md.contains("**Project Path**: `/projects/myproject`"));
+    }
 }
