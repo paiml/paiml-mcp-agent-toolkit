@@ -316,6 +316,163 @@ async fn handle_output(output: Option<PathBuf>, output_content: &str) -> Result<
     Ok(())
 }
 #[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::models::tdg::TDGHotspot;
+
+    #[test]
+    fn test_prepare_files_for_analysis_single_file() {
+        let file = Some(PathBuf::from("test.rs"));
+        let files: Vec<PathBuf> = vec![];
+        let result = prepare_files_for_analysis(file, files);
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0], PathBuf::from("test.rs"));
+    }
+
+    #[test]
+    fn test_prepare_files_for_analysis_multiple_files() {
+        let file = None;
+        let files = vec![PathBuf::from("a.rs"), PathBuf::from("b.rs")];
+        let result = prepare_files_for_analysis(file, files);
+        assert_eq!(result.len(), 2);
+    }
+
+    #[test]
+    fn test_prepare_files_for_analysis_no_files() {
+        let file = None;
+        let files: Vec<PathBuf> = vec![];
+        let result = prepare_files_for_analysis(file, files);
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn test_prepare_files_for_analysis_single_overrides_multiple() {
+        let file = Some(PathBuf::from("single.rs"));
+        let files = vec![PathBuf::from("a.rs"), PathBuf::from("b.rs")];
+        let result = prepare_files_for_analysis(file, files);
+        // Single file takes precedence
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0], PathBuf::from("single.rs"));
+    }
+
+    #[test]
+    fn test_filter_and_sort_hotspots_by_threshold() {
+        let summary = TDGSummary {
+            total_files: 3,
+            critical_files: 1,
+            warning_files: 1,
+            average_tdg: 1.5,
+            p95_tdg: 2.5,
+            p99_tdg: 3.0,
+            estimated_debt_hours: 10.0,
+            hotspots: vec![
+                TDGHotspot {
+                    path: "high.rs".to_string(),
+                    tdg_score: 3.0,
+                    primary_factor: "complexity".to_string(),
+                    estimated_hours: 5.0,
+                    breakdown: Default::default(),
+                },
+                TDGHotspot {
+                    path: "medium.rs".to_string(),
+                    tdg_score: 1.5,
+                    primary_factor: "churn".to_string(),
+                    estimated_hours: 2.0,
+                    breakdown: Default::default(),
+                },
+                TDGHotspot {
+                    path: "low.rs".to_string(),
+                    tdg_score: 0.5,
+                    primary_factor: "coupling".to_string(),
+                    estimated_hours: 1.0,
+                    breakdown: Default::default(),
+                },
+            ],
+        };
+
+        // Filter with threshold 1.0
+        let result = filter_and_sort_hotspots(&summary, 1.0, false, 10);
+        assert_eq!(result.len(), 2); // high and medium
+        assert_eq!(result[0].path, "high.rs"); // sorted by score descending
+        assert_eq!(result[1].path, "medium.rs");
+    }
+
+    #[test]
+    fn test_filter_and_sort_hotspots_critical_only() {
+        let summary = TDGSummary {
+            total_files: 2,
+            critical_files: 1,
+            warning_files: 0,
+            average_tdg: 2.0,
+            p95_tdg: 3.0,
+            p99_tdg: 3.5,
+            estimated_debt_hours: 8.0,
+            hotspots: vec![
+                TDGHotspot {
+                    path: "critical.rs".to_string(),
+                    tdg_score: 3.0,
+                    primary_factor: "complexity".to_string(),
+                    estimated_hours: 5.0,
+                    breakdown: Default::default(),
+                },
+                TDGHotspot {
+                    path: "warning.rs".to_string(),
+                    tdg_score: 2.0,
+                    primary_factor: "churn".to_string(),
+                    estimated_hours: 3.0,
+                    breakdown: Default::default(),
+                },
+            ],
+        };
+
+        // Critical only (tdg_score > 2.5)
+        let result = filter_and_sort_hotspots(&summary, 0.0, true, 10);
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].path, "critical.rs");
+    }
+
+    #[test]
+    fn test_filter_and_sort_hotspots_top_limit() {
+        let summary = TDGSummary {
+            total_files: 5,
+            critical_files: 3,
+            warning_files: 2,
+            average_tdg: 2.0,
+            p95_tdg: 3.0,
+            p99_tdg: 3.5,
+            estimated_debt_hours: 20.0,
+            hotspots: vec![
+                TDGHotspot {
+                    path: "a.rs".to_string(),
+                    tdg_score: 3.0,
+                    primary_factor: "a".to_string(),
+                    estimated_hours: 1.0,
+                    breakdown: Default::default(),
+                },
+                TDGHotspot {
+                    path: "b.rs".to_string(),
+                    tdg_score: 2.8,
+                    primary_factor: "b".to_string(),
+                    estimated_hours: 1.0,
+                    breakdown: Default::default(),
+                },
+                TDGHotspot {
+                    path: "c.rs".to_string(),
+                    tdg_score: 2.6,
+                    primary_factor: "c".to_string(),
+                    estimated_hours: 1.0,
+                    breakdown: Default::default(),
+                },
+            ],
+        };
+
+        // Top 2 only
+        let result = filter_and_sort_hotspots(&summary, 0.0, false, 2);
+        assert_eq!(result.len(), 2);
+    }
+}
+
+#[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;
 
@@ -326,7 +483,7 @@ mod property_tests {
             prop_assert!(true);
         }
 
-        #[test] 
+        #[test]
         fn module_consistency_check(_x in 0u32..1000) {
             // Module consistency verification
             prop_assert!(_x < 1001);
