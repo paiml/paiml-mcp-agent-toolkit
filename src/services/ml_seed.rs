@@ -92,8 +92,10 @@ pub fn create_clustering_rng() -> rand::rngs::StdRng {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serial_test::serial;
 
     #[test]
+    #[serial]
     fn test_seed_defaults() {
         // Reset to defaults
         set_embedding_seed(42);
@@ -106,6 +108,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_seed_modification() {
         set_embedding_seed(100);
         assert_eq!(get_embedding_seed(), 100);
@@ -115,6 +118,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_rng_reproducibility() {
         use rand::Rng;
 
@@ -127,5 +131,165 @@ mod tests {
         let val2: u64 = rng2.random();
 
         assert_eq!(val1, val2, "Same seed must produce same sequence");
+    }
+
+    #[test]
+    #[serial]
+    fn test_clustering_seed_modification() {
+        set_clustering_seed(999);
+        assert_eq!(get_clustering_seed(), 999);
+
+        // Reset
+        set_clustering_seed(12345);
+    }
+
+    #[test]
+    #[serial]
+    fn test_mutation_seed_modification() {
+        set_mutation_seed(555);
+        assert_eq!(get_mutation_seed(), 555);
+
+        // Reset
+        set_mutation_seed(98765);
+    }
+
+    #[test]
+    #[serial]
+    fn test_create_clustering_rng_reproducibility() {
+        use rand::Rng;
+
+        set_clustering_seed(777);
+        let mut rng1 = create_clustering_rng();
+        let val1: u64 = rng1.random();
+
+        set_clustering_seed(777);
+        let mut rng2 = create_clustering_rng();
+        let val2: u64 = rng2.random();
+
+        assert_eq!(val1, val2, "Same seed must produce same sequence");
+
+        // Reset
+        set_clustering_seed(12345);
+    }
+
+    #[test]
+    #[serial]
+    fn test_different_seeds_produce_different_values() {
+        use rand::Rng;
+
+        set_embedding_seed(1);
+        let mut rng1 = create_embedding_rng();
+        let val1: u64 = rng1.random();
+
+        set_embedding_seed(2);
+        let mut rng2 = create_embedding_rng();
+        let val2: u64 = rng2.random();
+
+        assert_ne!(val1, val2, "Different seeds should produce different values");
+
+        // Reset
+        set_embedding_seed(42);
+    }
+
+    #[test]
+    #[serial]
+    fn test_init_seeds_from_env_without_vars() {
+        // Clear any existing env vars
+        std::env::remove_var("PMAT_EMBEDDING_SEED");
+        std::env::remove_var("PMAT_CLUSTERING_SEED");
+        std::env::remove_var("PMAT_MUTATION_SEED");
+
+        // Set known values
+        set_embedding_seed(42);
+        set_clustering_seed(12345);
+        set_mutation_seed(98765);
+
+        // Call init - should not change values since env vars not set
+        init_seeds_from_env();
+
+        // Values should remain unchanged
+        assert_eq!(get_embedding_seed(), 42);
+        assert_eq!(get_clustering_seed(), 12345);
+        assert_eq!(get_mutation_seed(), 98765);
+    }
+
+    #[test]
+    #[serial]
+    fn test_init_seeds_from_env_with_vars() {
+        // Set env vars
+        std::env::set_var("PMAT_EMBEDDING_SEED", "111");
+        std::env::set_var("PMAT_CLUSTERING_SEED", "222");
+        std::env::set_var("PMAT_MUTATION_SEED", "333");
+
+        init_seeds_from_env();
+
+        assert_eq!(get_embedding_seed(), 111);
+        assert_eq!(get_clustering_seed(), 222);
+        assert_eq!(get_mutation_seed(), 333);
+
+        // Cleanup
+        std::env::remove_var("PMAT_EMBEDDING_SEED");
+        std::env::remove_var("PMAT_CLUSTERING_SEED");
+        std::env::remove_var("PMAT_MUTATION_SEED");
+
+        // Reset to defaults
+        set_embedding_seed(42);
+        set_clustering_seed(12345);
+        set_mutation_seed(98765);
+    }
+
+    #[test]
+    #[serial]
+    fn test_init_seeds_from_env_with_invalid_values() {
+        // Set known values
+        set_embedding_seed(42);
+
+        // Set invalid env var
+        std::env::set_var("PMAT_EMBEDDING_SEED", "not_a_number");
+
+        init_seeds_from_env();
+
+        // Value should remain unchanged because parse failed
+        assert_eq!(get_embedding_seed(), 42);
+
+        // Cleanup
+        std::env::remove_var("PMAT_EMBEDDING_SEED");
+    }
+
+    #[test]
+    #[serial]
+    fn test_seed_boundary_values() {
+        // Test with zero
+        set_embedding_seed(0);
+        assert_eq!(get_embedding_seed(), 0);
+
+        // Test with max value
+        set_embedding_seed(u64::MAX);
+        assert_eq!(get_embedding_seed(), u64::MAX);
+
+        // Reset
+        set_embedding_seed(42);
+    }
+
+    #[test]
+    #[serial]
+    fn test_all_rngs_independent() {
+        use rand::Rng;
+
+        set_embedding_seed(42);
+        set_clustering_seed(42);
+
+        let mut emb_rng = create_embedding_rng();
+        let mut clust_rng = create_clustering_rng();
+
+        // Same seed produces same sequence
+        let emb_val: u64 = emb_rng.random();
+        let clust_val: u64 = clust_rng.random();
+
+        // Both should produce identical values since they have the same seed
+        assert_eq!(emb_val, clust_val);
+
+        // Reset
+        set_clustering_seed(12345);
     }
 }

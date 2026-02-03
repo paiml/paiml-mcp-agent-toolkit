@@ -838,3 +838,169 @@ mod property_tests {
         }
     }
 }
+
+#[cfg(test)]
+mod getter_tests {
+    use super::*;
+
+    #[test]
+    fn test_default_config_system_values() {
+        let config = ConfigurationService::default_config();
+        assert_eq!(config.system.project_name, "pmat");
+        // max_concurrent_operations uses num_cpus::get(), just verify > 0
+        assert!(config.system.max_concurrent_operations > 0);
+        assert!(!config.system.verbose);
+        assert!(!config.system.debug);
+        assert_eq!(config.system.default_toolchain, "rust");
+    }
+
+    #[test]
+    fn test_default_config_quality_values() {
+        let config = ConfigurationService::default_config();
+        assert_eq!(config.quality.max_complexity, 30);
+        assert_eq!(config.quality.max_cognitive_complexity, 25);
+        assert!(config.quality.fail_on_violation);
+        assert!(!config.quality.allow_satd);
+        assert!(config.quality.require_docs);
+        assert!(config.quality.lint_compliance);
+    }
+
+    #[test]
+    fn test_default_config_analysis_values() {
+        let config = ConfigurationService::default_config();
+        assert_eq!(config.analysis.max_file_size, 1024 * 1024); // 1MB
+        assert_eq!(config.analysis.max_line_length, 100);
+        assert!(config.analysis.skip_vendor);
+        assert!(config.analysis.parallel);
+        assert_eq!(config.analysis.thread_count, 0); // Auto
+        assert_eq!(config.analysis.timeout_seconds, 300);
+    }
+
+    #[test]
+    fn test_default_config_performance_values() {
+        let config = ConfigurationService::default_config();
+        assert_eq!(config.performance.test_iterations, 10);
+        assert_eq!(config.performance.timeout_ms, 30000);
+        assert!(config.performance.enable_regression_tests);
+        assert!(config.performance.enable_memory_tests);
+        assert!(config.performance.enable_throughput_tests);
+    }
+
+    #[test]
+    fn test_default_config_mcp_values() {
+        let config = ConfigurationService::default_config();
+        assert_eq!(config.mcp.server_name, "pmat-mcp-server");
+        assert!(!config.mcp.server_version.is_empty());
+        assert!(config.mcp.enable_compression);
+        assert_eq!(config.mcp.request_timeout_seconds, 30);
+        assert!(!config.mcp.log_requests);
+    }
+
+    #[test]
+    fn test_default_config_telemetry_values() {
+        let config = ConfigurationService::default_config();
+        assert!(config.telemetry.enabled);
+        assert_eq!(config.telemetry.collection_interval_seconds, 60);
+        assert_eq!(config.telemetry.max_data_age_days, 30);
+        assert!(config.telemetry.enable_aggregation);
+        assert!(!config.telemetry.enable_export);
+    }
+
+    #[test]
+    fn test_default_config_semantic_values() {
+        let config = ConfigurationService::default_config();
+        assert!(!config.semantic.enabled);
+        assert!(config.semantic.openai_api_key.is_none());
+        assert!(config.semantic.vector_db_path.is_none());
+        assert_eq!(config.semantic.embedding_model, "text-embedding-3-small");
+        assert_eq!(config.semantic.embedding_dimensions, 1536);
+    }
+
+    #[test]
+    fn test_default_config_custom_empty() {
+        let config = ConfigurationService::default_config();
+        assert!(config.custom.is_empty());
+    }
+
+    #[test]
+    fn test_default_config_roadmap_values() {
+        let config = ConfigurationService::default_config();
+        assert!(config.roadmap.auto_generate_todos);
+        assert!(config.roadmap.enforce_quality_gates);
+        assert!(config.roadmap.require_task_ids);
+        assert!(config.roadmap.velocity_tracking);
+        assert!(!config.roadmap.git.create_branches); // Per CLAUDE.md zero-branching
+    }
+
+    #[test]
+    fn test_service_new_without_path() {
+        let service = ConfigurationService::new(None);
+        // config_path is PathBuf, defaults to cwd/pmat.toml
+        assert!(service.config_path.to_string_lossy().ends_with("pmat.toml"));
+    }
+
+    #[test]
+    fn test_service_new_with_path() {
+        let path = PathBuf::from("/tmp/test-config.toml");
+        let service = ConfigurationService::new(Some(path.clone()));
+        assert_eq!(service.config_path, path);
+    }
+
+    #[test]
+    fn test_get_quality_config() {
+        let service = ConfigurationService::new(None);
+        let quality = service.get_quality_config().unwrap();
+        assert_eq!(quality.max_complexity, 30);
+    }
+
+    #[test]
+    fn test_get_analysis_config() {
+        let service = ConfigurationService::new(None);
+        let analysis = service.get_analysis_config().unwrap();
+        assert_eq!(analysis.max_file_size, 1024 * 1024);
+    }
+
+    #[test]
+    fn test_get_performance_config() {
+        let service = ConfigurationService::new(None);
+        let perf = service.get_performance_config().unwrap();
+        assert_eq!(perf.test_iterations, 10);
+    }
+
+    #[test]
+    fn test_get_mcp_config() {
+        let service = ConfigurationService::new(None);
+        let mcp = service.get_mcp_config().unwrap();
+        assert_eq!(mcp.server_name, "pmat-mcp-server");
+    }
+
+    #[test]
+    fn test_get_roadmap_config() {
+        let service = ConfigurationService::new(None);
+        let roadmap = service.get_roadmap_config().unwrap();
+        assert!(roadmap.auto_generate_todos);
+    }
+
+    #[test]
+    fn test_get_telemetry_config() {
+        let service = ConfigurationService::new(None);
+        let telemetry = service.get_telemetry_config().unwrap();
+        assert!(telemetry.enabled);
+    }
+
+    #[test]
+    fn test_get_semantic_config() {
+        let service = ConfigurationService::new(None);
+        let semantic = service.get_semantic_config().unwrap();
+        assert!(!semantic.enabled);
+    }
+
+    #[test]
+    fn test_get_config_returns_full_config() {
+        let service = ConfigurationService::new(None);
+        let config = service.get_config().unwrap();
+        assert_eq!(config.system.project_name, "pmat");
+        assert_eq!(config.quality.max_complexity, 30);
+        assert!(!config.semantic.enabled);
+    }
+}
