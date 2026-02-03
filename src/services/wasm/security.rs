@@ -105,6 +105,113 @@ impl Default for WasmSecurityValidator {
 }
 
 #[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_security_validator_new() {
+        let validator = WasmSecurityValidator::new();
+        // Validator is a unit struct, just verify it can be created
+        let _ = validator;
+    }
+
+    #[test]
+    fn test_security_validator_default() {
+        let validator = WasmSecurityValidator::default();
+        let _ = validator;
+    }
+
+    #[test]
+    fn test_validate_valid_wasm_header() {
+        let validator = WasmSecurityValidator::new();
+        // Valid WASM magic number + version
+        let data = b"\0asm\x01\x00\x00\x00";
+        let result = validator.validate(data).unwrap();
+        assert!(result.passed);
+        assert!(result.issues.is_empty());
+    }
+
+    #[test]
+    fn test_validate_too_small() {
+        let validator = WasmSecurityValidator::new();
+        let data = b"\0asm"; // Only 4 bytes
+        let result = validator.validate(data).unwrap();
+        assert!(!result.passed);
+        assert_eq!(result.issues.len(), 1);
+        assert!(matches!(result.issues[0].category, SecurityCategory::InvalidFormat));
+    }
+
+    #[test]
+    fn test_validate_invalid_magic() {
+        let validator = WasmSecurityValidator::new();
+        let data = b"invalid\x00"; // Wrong magic number
+        let result = validator.validate(data).unwrap();
+        assert!(!result.passed);
+        assert_eq!(result.issues.len(), 1);
+        assert!(result.issues[0].description.contains("magic number"));
+    }
+
+    #[test]
+    fn test_validate_ast() {
+        let validator = WasmSecurityValidator::new();
+        let dag = AstDag::new();
+        let result = validator.validate_ast(&dag);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_validate_text() {
+        let validator = WasmSecurityValidator::new();
+        let result = validator.validate_text("(module)");
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_security_category_eq() {
+        assert_eq!(SecurityCategory::InvalidFormat, SecurityCategory::InvalidFormat);
+        assert_ne!(SecurityCategory::InvalidFormat, SecurityCategory::MemorySafety);
+    }
+
+    #[test]
+    fn test_security_category_debug() {
+        let category = SecurityCategory::MemorySafety;
+        let debug_str = format!("{:?}", category);
+        assert!(debug_str.contains("MemorySafety"));
+    }
+
+    #[test]
+    fn test_security_issue_clone() {
+        let issue = SecurityIssue {
+            severity: Severity::High,
+            description: "test issue".to_string(),
+            category: SecurityCategory::Other,
+        };
+        let cloned = issue.clone();
+        assert_eq!(issue.description, cloned.description);
+    }
+
+    #[test]
+    fn test_security_validation_clone() {
+        let validation = SecurityValidation {
+            passed: true,
+            issues: vec![],
+        };
+        let cloned = validation.clone();
+        assert_eq!(validation.passed, cloned.passed);
+    }
+
+    #[test]
+    fn test_all_security_categories() {
+        // Test all category variants exist
+        let _ = SecurityCategory::InvalidFormat;
+        let _ = SecurityCategory::MemorySafety;
+        let _ = SecurityCategory::ResourceExhaustion;
+        let _ = SecurityCategory::CodeInjection;
+        let _ = SecurityCategory::Other;
+    }
+}
+
+#[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;
 

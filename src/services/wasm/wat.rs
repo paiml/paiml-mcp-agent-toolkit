@@ -52,6 +52,18 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_wat_parser_new() {
+        let parser = WatParser::new();
+        assert_eq!(parser.max_file_size, 10 * 1024 * 1024);
+    }
+
+    #[test]
+    fn test_wat_parser_default() {
+        let parser = WatParser::default();
+        assert_eq!(parser.max_file_size, 10 * 1024 * 1024);
+    }
+
+    #[test]
     fn test_wat_parser() {
         let mut parser = WatParser::new();
         let content = "(module (func $test (result i32) i32.const 42))";
@@ -67,6 +79,47 @@ mod tests {
 
         let result = parser.parse(content);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_wat_parser_empty() {
+        let mut parser = WatParser::new();
+        let content = "";
+
+        let result = parser.parse(content);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_wat_parser_whitespace_before_paren() {
+        let mut parser = WatParser::new();
+        let content = "  (module)";
+
+        let result = parser.parse(content);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_wat_parser_simple_module() {
+        let mut parser = WatParser::new();
+        let content = "(module)";
+
+        let result = parser.parse(content);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_wat_parser_error_message_format() {
+        let mut parser = WatParser::new();
+        let content = "not valid";
+
+        let result = parser.parse(content);
+        assert!(result.is_err());
+        // Use match to avoid Debug requirement on Ok type
+        match result {
+            Err(err) => assert!(err.to_string().contains("must start with")),
+            Ok(_) => panic!("Expected error"),
+        }
     }
 }
 
