@@ -109,6 +109,7 @@ pub mod unified_context_builder;
 pub mod unified_context_property_tests;
 pub mod utility_handlers;
 pub mod utility_serve_handlers; // Server handlers extracted for file health (CB-040)
+#[cfg(feature = "wasm-ast")]
 pub mod wasm_handler;
 pub mod wasm_handlers; // Phase 4: Organizational Intelligence Integration
 pub mod work_contract; // PMAT Work Contract: Popperian falsification-based quality enforcement

@@ -270,7 +270,12 @@ async fn route_language_specific_analysis(cmd: AnalyzeCommands) -> Result<()> {
     match cmd {
         AnalyzeCommands::AssemblyScript { .. } => route_assemblyscript_analysis(cmd).await,
         AnalyzeCommands::WebAssembly { .. } => route_webassembly_analysis(cmd).await,
+        #[cfg(feature = "wasm-ast")]
         AnalyzeCommands::Wasm { .. } => route_wasm_analysis(cmd).await,
+        #[cfg(not(feature = "wasm-ast"))]
+        AnalyzeCommands::Wasm { .. } => {
+            anyhow::bail!("WASM analysis requires the 'wasm-ast' feature. Build with --features wasm-ast")
+        }
         _ => unreachable!("Expected language-specific analysis command"),
     }
 }
@@ -1152,6 +1157,7 @@ async fn route_webassembly_analysis(cmd: AnalyzeCommands) -> Result<()> {
     }
 }
 
+#[cfg(feature = "wasm-ast")]
 async fn route_wasm_analysis(cmd: AnalyzeCommands) -> Result<()> {
     if let AnalyzeCommands::Wasm {
         wasm_file,

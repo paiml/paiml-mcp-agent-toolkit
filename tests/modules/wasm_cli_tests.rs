@@ -1,5 +1,6 @@
 //! TDD Tests for WASM CLI commands
 //! Following RED-GREEN-REFACTOR cycle
+#![cfg(feature = "wasm-ast")]
 
 use pmat::cli::commands::AnalyzeCommands;
 use pmat::cli::enums::WasmOutputFormat;

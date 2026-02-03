@@ -166,6 +166,7 @@ pub mod unified_protocol;
 pub mod unified_quality; // Unified Quality Enforcement System
 pub mod utils;
 pub mod viz; // Terminal graph visualization (trueno-viz integration)
+#[cfg(feature = "wasm-ast")]
 pub mod wasm; // WebAssembly quality assurance module
 
 use anyhow::Result;

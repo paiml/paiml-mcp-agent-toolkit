@@ -1497,10 +1497,14 @@ fn analyze_cargo_toml(cargo_toml_path: &Path) -> (usize, usize, Vec<String>) {
             continue;
         }
 
-        // Count dependencies (excluding dev and build deps for scoring)
+        // Count dependencies (excluding dev, build, and optional deps for scoring)
         if in_dependencies && !in_dev_dependencies && !in_build_dependencies {
             if trimmed.contains('=') && !trimmed.starts_with('#') {
-                direct_count += 1;
+                // Skip optional dependencies - they don't count toward direct count
+                let is_optional = trimmed.contains("optional") && trimmed.contains("true");
+                if !is_optional {
+                    direct_count += 1;
+                }
 
                 // Check for default-features = false
                 if trimmed.contains("default-features") && trimmed.contains("false") {
