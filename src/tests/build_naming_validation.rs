@@ -1,8 +1,10 @@
 #[cfg(test)]
 mod tests {
+    use serial_test::serial;
     use std::process::Command;
 
     #[test]
+    #[serial]
     fn test_cargo_build_has_single_correct_binary() {
         // Run cargo metadata to get project info
         let output = Command::new("cargo")
@@ -204,6 +206,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_cargo_lock_only_in_root() {
         use std::env;
 
@@ -235,6 +238,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_build_script_workspace_aware() {
         // Read the build.rs file
         let build_script = std::fs::read_to_string("build.rs").expect("Failed to read build.rs");

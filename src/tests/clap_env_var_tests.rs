@@ -351,6 +351,7 @@ mod env_var_edge_cases {
     }
 
     #[test]
+    #[serial_test::serial]
     fn test_env_var_with_newlines() {
         let _guard = ENV_MUTEX.lock();
 

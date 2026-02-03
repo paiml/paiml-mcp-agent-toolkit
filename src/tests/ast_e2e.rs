@@ -219,8 +219,10 @@ mod ast_python_tests {
 #[cfg(all(test, feature = "typescript-ast"))]
 mod ast_typescript_tests {
     use super::*;
+    use serial_test::serial;
 
     #[tokio::test]
+    #[serial]
     async fn test_analyze_typescript_file_comprehensive() {
         let fixture_path = Path::new("src/tests/fixtures/sample.ts");
         let result = ast_typescript::analyze_typescript_file(fixture_path).await;
@@ -245,6 +247,7 @@ mod ast_typescript_tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn test_analyze_javascript_file() {
         let fixture_path = Path::new("src/tests/fixtures/sample.js");
         let result = ast_typescript::analyze_javascript_file(fixture_path).await;
@@ -269,6 +272,7 @@ mod ast_typescript_tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn test_typescript_class_field_count() {
         let fixture_path = Path::new("src/tests/fixtures/sample.ts");
         let result = ast_typescript::analyze_typescript_file(fixture_path).await;

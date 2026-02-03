@@ -447,6 +447,10 @@ coverage: ## Generate HTML coverage report (<5 min, honest measurement)
 		--skip test_handle_request_refactor_start --skip test_entry_point_detection_empty \
 		--skip test_merge_with_detected --skip test_save_and_load_from_file \
 		--skip test_detect_project_type \
+		--skip test_cargo_build_has_single_correct_binary --skip test_build_script_workspace_aware \
+		--skip test_cargo_lock_only_in_root --skip test_cli_context_generation \
+		--skip test_analyze_typescript_file_comprehensive --skip test_analyze_javascript_file \
+		--skip test_typescript_class_field_count --skip test_env_var_with_newlines \
 		2>&1 | tail -10
 	@echo "📊 Generating reports..."
 	@cargo llvm-cov report --html --output-dir target/coverage/html $(COVERAGE_EXCLUDE)
