@@ -331,7 +331,7 @@ impl CAstStrategy {
     }
 
     /// Extract function name from source text
-    fn extract_function_name(source_text: &str) -> Option<String> {
+    pub(crate) fn extract_function_name(source_text: &str) -> Option<String> {
         // Look for pattern: type name(...) or name(...)
         if let Some(paren_pos) = source_text.find('(') {
             let before_paren = &source_text[..paren_pos];
@@ -346,7 +346,7 @@ impl CAstStrategy {
     }
 
     /// Extract type name from source text (struct, enum, etc.)
-    fn extract_type_name(source_text: &str) -> Option<String> {
+    pub(crate) fn extract_type_name(source_text: &str) -> Option<String> {
         // Look for patterns like "struct name" or "enum name"
         let words: Vec<&str> = source_text.split_whitespace().collect();
         if words.len() >= 2 {
@@ -361,7 +361,7 @@ impl CAstStrategy {
     }
 
     /// Convert byte position to line number
-    fn byte_pos_to_line(byte_pos: usize, content_lines: &[&str]) -> usize {
+    pub(crate) fn byte_pos_to_line(byte_pos: usize, content_lines: &[&str]) -> usize {
         let mut current_pos = 0;
         for (line_idx, line) in content_lines.iter().enumerate() {
             if current_pos + line.len() >= byte_pos {
@@ -500,7 +500,7 @@ impl CppAstStrategy {
     }
 
     /// Extract function name from source text (C++ can include templates, operators, etc.)
-    fn extract_function_name(source_text: &str) -> Option<String> {
+    pub(crate) fn extract_function_name(source_text: &str) -> Option<String> {
         // Look for pattern: type name(...) or name(...)
         if let Some(paren_pos) = source_text.find('(') {
             let before_paren = &source_text[..paren_pos];
@@ -524,7 +524,7 @@ impl CppAstStrategy {
     }
 
     /// Extract type name from source text (struct, class, enum, etc.)
-    fn extract_type_name(source_text: &str) -> Option<String> {
+    pub(crate) fn extract_type_name(source_text: &str) -> Option<String> {
         // Look for patterns like "class name", "struct name", "enum class name"
         let words: Vec<&str> = source_text.split_whitespace().collect();
         if words.len() >= 2 {
@@ -549,7 +549,7 @@ impl CppAstStrategy {
     }
 
     /// Convert byte position to line number
-    fn byte_pos_to_line(byte_pos: usize, content_lines: &[&str]) -> usize {
+    pub(crate) fn byte_pos_to_line(byte_pos: usize, content_lines: &[&str]) -> usize {
         let mut current_pos = 0;
         for (line_idx, line) in content_lines.iter().enumerate() {
             if current_pos + line.len() >= byte_pos {
@@ -592,7 +592,7 @@ impl KotlinAstStrategy {
     }
 
     /// Extract function name from Kotlin source text
-    fn extract_function_name(source_text: &str) -> Option<String> {
+    pub(crate) fn extract_function_name(source_text: &str) -> Option<String> {
         // Look for pattern: fun name(...)
         if let Some(fun_pos) = source_text.find("fun ") {
             let after_fun = &source_text[fun_pos + 4..];
@@ -609,7 +609,7 @@ impl KotlinAstStrategy {
     }
 
     /// Extract class/interface/object name from source text
-    fn extract_class_name(source_text: &str) -> Option<String> {
+    pub(crate) fn extract_class_name(source_text: &str) -> Option<String> {
         // Look for patterns like "class Name", "interface Name", "object Name", "data class Name", "enum class Name"
         let lines = source_text.lines().next()?; // Get first line
         let words: Vec<&str> = lines.split_whitespace().collect();
@@ -652,7 +652,7 @@ impl KotlinAstStrategy {
     }
 
     /// Convert byte position to line number
-    fn byte_pos_to_line(byte_pos: usize, content_lines: &[&str]) -> usize {
+    pub(crate) fn byte_pos_to_line(byte_pos: usize, content_lines: &[&str]) -> usize {
         let mut current_pos = 0;
         for (line_idx, line) in content_lines.iter().enumerate() {
             if current_pos + line.len() >= byte_pos {
