@@ -576,7 +576,7 @@ pub(crate) fn get_breaking_changes_since(_from_version: &str) -> Vec<BreakingCha
 }
 
 #[derive(Debug, Clone)]
-struct ChangelogEntry {
+pub(crate) struct ChangelogEntry {
     version: String,
     description: String,
     breaking: bool,

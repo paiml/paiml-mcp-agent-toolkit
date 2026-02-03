@@ -1409,7 +1409,7 @@ pub fn detect_cb402_shell_script_quality(project_path: &Path) -> Vec<CbPatternVi
         .filter_map(|e| e.ok())
         .filter(|e| {
             let path = e.path();
-            path.extension().map_or(false, |ext| ext == "sh")
+            path.extension().is_some_and(|ext| ext == "sh")
                 && !path.to_string_lossy().contains("target/")
                 && !path.to_string_lossy().contains("node_modules/")
         })
@@ -1745,27 +1745,27 @@ fn analyze_cargo_toml(cargo_toml_path: &Path) -> (usize, usize, Vec<String>) {
         }
 
         // Count dependencies (excluding dev, build, and optional deps for scoring)
-        if in_dependencies && !in_dev_dependencies && !in_build_dependencies {
-            if trimmed.contains('=') && !trimmed.starts_with('#') {
-                // Skip optional dependencies - they don't count toward direct count
-                let is_optional = trimmed.contains("optional") && trimmed.contains("true");
-                if !is_optional {
-                    direct_count += 1;
-                }
+        if in_dependencies && !in_dev_dependencies && !in_build_dependencies
+            && trimmed.contains('=') && !trimmed.starts_with('#')
+        {
+            // Skip optional dependencies - they don't count toward direct count
+            let is_optional = trimmed.contains("optional") && trimmed.contains("true");
+            if !is_optional {
+                direct_count += 1;
+            }
 
-                // Check for default-features = false
-                if trimmed.contains("default-features") && trimmed.contains("false") {
-                    feature_gated_count += 1;
-                }
+            // Check for default-features = false
+            if trimmed.contains("default-features") && trimmed.contains("false") {
+                feature_gated_count += 1;
+            }
 
-                // Check for sovereign crates
-                for crate_name in SOVEREIGN_CRATES {
-                    if trimmed.starts_with(crate_name)
-                        && (trimmed.chars().nth(crate_name.len()) == Some(' ')
-                            || trimmed.chars().nth(crate_name.len()) == Some('='))
-                    {
-                        sovereign_found.push(crate_name.to_string());
-                    }
+            // Check for sovereign crates
+            for crate_name in SOVEREIGN_CRATES {
+                if trimmed.starts_with(crate_name)
+                    && (trimmed.chars().nth(crate_name.len()) == Some(' ')
+                        || trimmed.chars().nth(crate_name.len()) == Some('='))
+                {
+                    sovereign_found.push(crate_name.to_string());
                 }
             }
         }
