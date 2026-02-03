@@ -247,6 +247,68 @@ mod tests {
         assert!(result.is_err());
     }
 
+    #[test]
+    fn test_kebab_case_helper_error_missing_param() {
+        let mut handlebars = Handlebars::new();
+        handlebars.register_helper("kebab_case", Box::new(kebab_case_helper));
+
+        // Missing parameter
+        let template = "{{kebab_case}}";
+        let data = json!({});
+        let result = handlebars.render_template(template, &data);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_kebab_case_helper_error_non_string() {
+        let mut handlebars = Handlebars::new();
+        handlebars.register_helper("kebab_case", Box::new(kebab_case_helper));
+
+        // Non-string parameter
+        let template = "{{kebab_case number}}";
+        let data = json!({"number": 456});
+        let result = handlebars.render_template(template, &data);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_pascal_case_helper_error_missing_param() {
+        let mut handlebars = Handlebars::new();
+        handlebars.register_helper("pascal_case", Box::new(pascal_case_helper));
+
+        // Missing parameter
+        let template = "{{pascal_case}}";
+        let data = json!({});
+        let result = handlebars.render_template(template, &data);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_pascal_case_helper_error_non_string() {
+        let mut handlebars = Handlebars::new();
+        handlebars.register_helper("pascal_case", Box::new(pascal_case_helper));
+
+        // Non-string parameter
+        let template = "{{pascal_case number}}";
+        let data = json!({"number": 789});
+        let result = handlebars.render_template(template, &data);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_to_pascal_case_empty_segment() {
+        // Tests the None branch in to_pascal_case when splitting produces empty segments
+        assert_eq!(to_pascal_case("__double__underscore__"), "DoubleUnderscore");
+        assert_eq!(to_pascal_case("--double--dash--"), "DoubleDash");
+        assert_eq!(to_pascal_case("  double  space  "), "DoubleSpace");
+    }
+
+    #[test]
+    fn test_to_pascal_case_single_char_segments() {
+        assert_eq!(to_pascal_case("a_b_c"), "ABC");
+        assert_eq!(to_pascal_case("x-y-z"), "XYZ");
+    }
+
     /// Test that to_snake_case handles Unicode characters correctly
     /// Validates expect() at line 99-104 (to_lowercase() always yields at least one char)
     #[test]
