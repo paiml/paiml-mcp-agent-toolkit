@@ -1479,4 +1479,96 @@ mod tests {
 
         assert_eq!(ahead, 2);
     }
+
+    #[test]
+    fn test_falsification_report_warnings() {
+        let report = FalsificationReport {
+            total_claims: 2,
+            passed: 1,
+            failed: 1,
+            warnings: 1,
+            claim_results: vec![
+                ClaimResult {
+                    index: 1,
+                    hypothesis: "Test OK".to_string(),
+                    method: FalsificationMethod::ManifestIntegrity,
+                    result: FalsificationResult::passed("OK"),
+                    is_blocking: false,
+                },
+                ClaimResult {
+                    index: 2,
+                    hypothesis: "Warning test".to_string(),
+                    method: FalsificationMethod::LintPass,
+                    result: FalsificationResult::failed(
+                        "Size above warning threshold",
+                        EvidenceType::NumericComparison {
+                            actual: 45.0,
+                            threshold: 40.0,
+                        },
+                    ),
+                    is_blocking: false,
+                },
+            ],
+            all_passed: false,
+        };
+
+        assert!(!report.has_blocking_failures());
+        assert_eq!(report.blocking_failures().len(), 0);
+        assert_eq!(report.warning_failures().len(), 1);
+    }
+
+    #[test]
+    fn test_falsification_report_all_passed() {
+        let report = FalsificationReport {
+            total_claims: 2,
+            passed: 2,
+            failed: 0,
+            warnings: 0,
+            claim_results: vec![
+                ClaimResult {
+                    index: 1,
+                    hypothesis: "Test 1".to_string(),
+                    method: FalsificationMethod::ManifestIntegrity,
+                    result: FalsificationResult::passed("OK"),
+                    is_blocking: true,
+                },
+                ClaimResult {
+                    index: 2,
+                    hypothesis: "Test 2".to_string(),
+                    method: FalsificationMethod::AbsoluteCoverage,
+                    result: FalsificationResult::passed("Coverage OK"),
+                    is_blocking: true,
+                },
+            ],
+            all_passed: true,
+        };
+
+        assert!(!report.has_blocking_failures());
+        assert_eq!(report.blocking_failures().len(), 0);
+        assert_eq!(report.warning_failures().len(), 0);
+    }
+
+    #[test]
+    fn test_falsification_result_constructors() {
+        let passed = FalsificationResult::passed("Success");
+        assert!(!passed.falsified);
+        assert_eq!(passed.explanation, "Success");
+
+        let failed = FalsificationResult::failed("Error", EvidenceType::BooleanCheck(false));
+        assert!(failed.falsified);
+        assert_eq!(failed.explanation, "Error");
+    }
+
+    #[test]
+    fn test_evidence_type_display() {
+        let bool_check = EvidenceType::BooleanCheck(true);
+        let numeric = EvidenceType::NumericComparison {
+            actual: 80.0,
+            threshold: 95.0,
+        };
+
+        // Just verify these don't panic when formatted
+        let _ = format!("{:?}", bool_check);
+        let _ = format!("{:?}", numeric);
+    }
 }
