@@ -1632,3 +1632,66 @@ pub async fn handle_analyze_dag(
 
     Ok(())
 }
+
+#[cfg(test)]
+mod satd_formatting_tests {
+    use super::*;
+    use crate::services::satd_detector::{SATDAnalysisResult, SATDSummary};
+    use chrono::Utc;
+    use std::collections::HashMap;
+
+    fn create_test_satd_result(items: Vec<crate::services::satd_detector::TechnicalDebt>) -> SATDAnalysisResult {
+        SATDAnalysisResult {
+            items,
+            summary: SATDSummary {
+                total_items: 0,
+                by_severity: HashMap::new(),
+                by_category: HashMap::new(),
+                files_with_satd: 0,
+                avg_age_days: 0.0,
+            },
+            total_files_analyzed: 5,
+            files_with_debt: 2,
+            analysis_timestamp: Utc::now(),
+        }
+    }
+
+    #[test]
+    fn test_format_satd_summary_empty() {
+        let result = create_test_satd_result(vec![]);
+        let output = format_satd_summary(&result, false);
+
+        assert!(output.contains("SATD Analysis Summary"));
+        assert!(output.contains("Files analyzed"));
+        assert!(output.contains("5")); // total_files_analyzed
+        assert!(output.contains("Files with SATD"));
+        assert!(output.contains("2")); // files_with_debt
+    }
+
+    #[test]
+    fn test_format_satd_summary_with_metrics() {
+        let mut result = create_test_satd_result(vec![]);
+        result.summary.by_severity.insert("high".to_string(), 3);
+        result.summary.by_severity.insert("low".to_string(), 5);
+        result.summary.by_category.insert("TODO".to_string(), 4);
+
+        let output = format_satd_summary(&result, true);
+
+        assert!(output.contains("By Severity"));
+        assert!(output.contains("high"));
+        assert!(output.contains("3"));
+        assert!(output.contains("By Category"));
+        assert!(output.contains("TODO"));
+    }
+
+    #[test]
+    fn test_format_satd_summary_no_metrics() {
+        let mut result = create_test_satd_result(vec![]);
+        result.summary.by_severity.insert("high".to_string(), 3);
+
+        let output = format_satd_summary(&result, false);
+
+        // With metrics=false, severity breakdown should not appear
+        assert!(!output.contains("By Severity"));
+    }
+}
