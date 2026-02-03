@@ -32,6 +32,8 @@ use super::comply_cb_detect::{
     // Coverage Quality & Test Performance (CB-125 through CB-127) - improve-pmat-comply.md v2.2.0
     detect_cb125_coverage_exclusion_gaming, detect_cb126_slow_tests,
     detect_cb127_slow_coverage,
+    // Dependency Health (CB-081) - rust-project-score-v1.1 integration
+    detect_cb081_dependency_count,
 };
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -268,6 +270,8 @@ async fn handle_check(
         filter_check_by_config(check_edd_compliance(project_path), "cb-303", comply_config),
         // CB-304: Dead Code Percentage (COMPLY-044) - enforce dead_code_threshold
         filter_check_by_config(check_dead_code_percentage(project_path), "cb-304", comply_config),
+        // CB-081: Dependency Count - rust-project-score-v1.1 integration
+        filter_check_by_config(check_dependency_count(project_path), "cb-081", comply_config),
     ];
 
     // Calculate compliance
@@ -1422,6 +1426,66 @@ pub(crate) fn check_edd_compliance(project_path: &Path) -> ComplianceCheck {
             status: CheckStatus::Pass,
             message,
             severity: Severity::Info,
+        }
+    }
+}
+
+/// CB-081: Dependency Count Check
+/// Per rust-project-score-v1.1-update.md, excessive dependencies degrade:
+/// - Build times (more crates to compile)
+/// - Binary size (more code linked)
+/// - Supply chain security (more attack surface)
+///
+/// Thresholds:
+/// - 5 points: ≤20 direct, ≤100 transitive (excellent)
+/// - 4 points: ≤30 direct, ≤150 transitive (good)
+/// - 3 points: ≤40 direct, ≤200 transitive (moderate)
+/// - 2 points: ≤50 direct, ≤250 transitive (high)
+/// - 0 points: >50 direct or >250 transitive (critical)
+pub(crate) fn check_dependency_count(project_path: &Path) -> ComplianceCheck {
+    let report = detect_cb081_dependency_count(project_path);
+
+    let cargo_toml = project_path.join("Cargo.toml");
+    if !cargo_toml.exists() {
+        return ComplianceCheck {
+            name: "CB-081: Dependency Count".to_string(),
+            status: CheckStatus::Skip,
+            message: "No Cargo.toml found".to_string(),
+            severity: Severity::Info,
+        };
+    }
+
+    let message = format!(
+        "Dependencies: {} direct, {} transitive (score: {}/5)",
+        report.direct_count, report.transitive_count, report.score
+    );
+
+    if report.score >= 4 {
+        ComplianceCheck {
+            name: "CB-081: Dependency Count".to_string(),
+            status: CheckStatus::Pass,
+            message,
+            severity: Severity::Info,
+        }
+    } else if report.score >= 2 {
+        ComplianceCheck {
+            name: "CB-081: Dependency Count".to_string(),
+            status: CheckStatus::Warn,
+            message: format!(
+                "{} - consider reducing dependencies. Run 'cargo tree --duplicates' to find redundant deps",
+                message
+            ),
+            severity: Severity::Warning,
+        }
+    } else {
+        ComplianceCheck {
+            name: "CB-081: Dependency Count".to_string(),
+            status: CheckStatus::Fail,
+            message: format!(
+                "{} - critical: too many dependencies. Review with 'cargo tree' and remove unused deps",
+                message
+            ),
+            severity: Severity::Error,
         }
     }
 }

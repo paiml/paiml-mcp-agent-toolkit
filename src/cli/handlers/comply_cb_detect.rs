@@ -1277,6 +1277,155 @@ pub fn detect_cb127_slow_coverage(project_path: &Path) -> Vec<CbPatternViolation
 }
 
 // =============================================================================
+// CB-081: Dependency Count Detection
+// Per rust-project-score spec: Too many dependencies degrades build times,
+// increases supply chain risk, and bloats binaries.
+// =============================================================================
+
+/// Dependency count analysis result
+#[derive(Debug, Clone)]
+pub struct DependencyCountReport {
+    pub direct_count: usize,
+    pub transitive_count: usize,
+    pub score: u8,  // 0-5 points based on rust-project-score thresholds
+    pub violations: Vec<CbPatternViolation>,
+}
+
+/// CB-081: Detect excessive dependency counts
+/// Thresholds from rust-project-score-v1.1-update.md:
+/// - 5 points: ≤20 direct, ≤100 transitive
+/// - 4 points: ≤30 direct, ≤150 transitive
+/// - 3 points: ≤40 direct, ≤200 transitive
+/// - 2 points: ≤50 direct, ≤250 transitive
+/// - 0 points: >50 direct or >250 transitive
+pub fn detect_cb081_dependency_count(project_path: &Path) -> DependencyCountReport {
+    let cargo_toml_path = project_path.join("Cargo.toml");
+    let cargo_lock_path = project_path.join("Cargo.lock");
+
+    let mut violations = Vec::new();
+
+    // Count direct dependencies from Cargo.toml
+    let direct_count = count_direct_dependencies(&cargo_toml_path);
+
+    // Count transitive dependencies from Cargo.lock
+    let transitive_count = count_transitive_dependencies(&cargo_lock_path);
+
+    // Calculate score based on thresholds
+    let score = calculate_dependency_score(direct_count, transitive_count);
+
+    // Generate violations based on severity
+    if direct_count > 50 || transitive_count > 250 {
+        violations.push(CbPatternViolation {
+            pattern_id: "CB-081-A".to_string(),
+            file: cargo_toml_path.display().to_string(),
+            line: 0,
+            description: format!(
+                "Critical: {} direct deps (max 50), {} transitive deps (max 250). \
+                Consider removing unused dependencies or using feature flags.",
+                direct_count, transitive_count
+            ),
+            severity: Severity::Error,
+        });
+    } else if direct_count > 40 || transitive_count > 200 {
+        violations.push(CbPatternViolation {
+            pattern_id: "CB-081-B".to_string(),
+            file: cargo_toml_path.display().to_string(),
+            line: 0,
+            description: format!(
+                "High dependency count: {} direct (threshold 40), {} transitive (threshold 200). \
+                Review dependencies with 'cargo tree --duplicates'.",
+                direct_count, transitive_count
+            ),
+            severity: Severity::Warning,
+        });
+    } else if direct_count > 30 || transitive_count > 150 {
+        violations.push(CbPatternViolation {
+            pattern_id: "CB-081-C".to_string(),
+            file: cargo_toml_path.display().to_string(),
+            line: 0,
+            description: format!(
+                "Moderate dependency count: {} direct, {} transitive. \
+                Consider using 'default-features = false' where possible.",
+                direct_count, transitive_count
+            ),
+            severity: Severity::Info,
+        });
+    }
+
+    DependencyCountReport {
+        direct_count,
+        transitive_count,
+        score,
+        violations,
+    }
+}
+
+/// Count direct dependencies from Cargo.toml
+fn count_direct_dependencies(cargo_toml_path: &Path) -> usize {
+    let content = match fs::read_to_string(cargo_toml_path) {
+        Ok(c) => c,
+        Err(_) => return 0,
+    };
+
+    let mut count = 0;
+    let mut in_dependencies = false;
+    let mut in_dev_dependencies = false;
+    let mut in_build_dependencies = false;
+
+    for line in content.lines() {
+        let trimmed = line.trim();
+
+        // Track section headers
+        if trimmed.starts_with('[') {
+            in_dependencies = trimmed == "[dependencies]"
+                || trimmed.starts_with("[dependencies.")
+                || trimmed.starts_with("[target.");
+            in_dev_dependencies = trimmed == "[dev-dependencies]"
+                || trimmed.starts_with("[dev-dependencies.");
+            in_build_dependencies = trimmed == "[build-dependencies]"
+                || trimmed.starts_with("[build-dependencies.");
+            continue;
+        }
+
+        // Count dependencies (excluding dev and build deps for scoring)
+        if in_dependencies && !in_dev_dependencies && !in_build_dependencies {
+            // Lines like: package = "version" or package = { ... }
+            if trimmed.contains('=') && !trimmed.starts_with('#') {
+                count += 1;
+            }
+        }
+    }
+
+    count
+}
+
+/// Count transitive dependencies from Cargo.lock
+fn count_transitive_dependencies(cargo_lock_path: &Path) -> usize {
+    let content = match fs::read_to_string(cargo_lock_path) {
+        Ok(c) => c,
+        Err(_) => return 0,
+    };
+
+    // Count [[package]] entries in Cargo.lock
+    content.matches("[[package]]").count()
+}
+
+/// Calculate dependency health score (0-5 points)
+fn calculate_dependency_score(direct: usize, transitive: usize) -> u8 {
+    if direct <= 20 && transitive <= 100 {
+        5
+    } else if direct <= 30 && transitive <= 150 {
+        4
+    } else if direct <= 40 && transitive <= 200 {
+        3
+    } else if direct <= 50 && transitive <= 250 {
+        2
+    } else {
+        0
+    }
+}
+
+// =============================================================================
 // Tests for OIP Tarantula Pattern Detection
 // =============================================================================
 
@@ -1570,5 +1719,123 @@ fail_under = 95.0
 
         let violations = detect_cb124_coverage_threshold(temp.path());
         assert!(violations.is_empty());
+    }
+}
+
+// =============================================================================
+// Tests for CB-081 Dependency Count Detection
+// =============================================================================
+
+#[cfg(test)]
+mod cb081_dependency_tests {
+    use super::*;
+    use std::fs;
+    use tempfile::TempDir;
+
+    #[test]
+    fn test_cb081_detects_excessive_direct_deps() {
+        let temp = TempDir::new().unwrap();
+
+        // Create Cargo.toml with many dependencies (>50)
+        let mut deps = String::from("[package]\nname = \"test\"\nversion = \"0.1.0\"\n\n[dependencies]\n");
+        for i in 0..60 {
+            deps.push_str(&format!("dep{} = \"1.0\"\n", i));
+        }
+        fs::write(temp.path().join("Cargo.toml"), &deps).unwrap();
+        fs::write(temp.path().join("Cargo.lock"), "[[package]]\nname = \"test\"").unwrap();
+
+        let report = detect_cb081_dependency_count(temp.path());
+        assert_eq!(report.direct_count, 60);
+        assert_eq!(report.score, 0);  // >50 direct = score 0
+        assert!(!report.violations.is_empty());
+        assert_eq!(report.violations[0].pattern_id, "CB-081-A");
+    }
+
+    #[test]
+    fn test_cb081_moderate_deps() {
+        let temp = TempDir::new().unwrap();
+
+        // Create Cargo.toml with moderate dependencies (30-40)
+        let mut deps = String::from("[package]\nname = \"test\"\nversion = \"0.1.0\"\n\n[dependencies]\n");
+        for i in 0..35 {
+            deps.push_str(&format!("dep{} = \"1.0\"\n", i));
+        }
+        fs::write(temp.path().join("Cargo.toml"), &deps).unwrap();
+
+        // Create Cargo.lock with 180 packages (between 150-200)
+        let mut lock = String::new();
+        for _ in 0..180 {
+            lock.push_str("[[package]]\nname = \"pkg\"\n");
+        }
+        fs::write(temp.path().join("Cargo.lock"), &lock).unwrap();
+
+        let report = detect_cb081_dependency_count(temp.path());
+        assert_eq!(report.direct_count, 35);
+        assert_eq!(report.transitive_count, 180);
+        assert_eq!(report.score, 3);  // 30-40 direct, 150-200 transitive = 3
+    }
+
+    #[test]
+    fn test_cb081_low_deps_excellent() {
+        let temp = TempDir::new().unwrap();
+
+        // Create Cargo.toml with few dependencies (≤20)
+        let mut deps = String::from("[package]\nname = \"test\"\nversion = \"0.1.0\"\n\n[dependencies]\n");
+        for i in 0..15 {
+            deps.push_str(&format!("dep{} = \"1.0\"\n", i));
+        }
+        fs::write(temp.path().join("Cargo.toml"), &deps).unwrap();
+
+        // Create Cargo.lock with few packages (≤100)
+        let mut lock = String::new();
+        for _ in 0..80 {
+            lock.push_str("[[package]]\nname = \"pkg\"\n");
+        }
+        fs::write(temp.path().join("Cargo.lock"), &lock).unwrap();
+
+        let report = detect_cb081_dependency_count(temp.path());
+        assert_eq!(report.direct_count, 15);
+        assert_eq!(report.transitive_count, 80);
+        assert_eq!(report.score, 5);  // ≤20 direct, ≤100 transitive = 5
+        assert!(report.violations.is_empty());
+    }
+
+    #[test]
+    fn test_cb081_excludes_dev_dependencies() {
+        let temp = TempDir::new().unwrap();
+
+        // Create Cargo.toml with few regular deps but many dev-deps
+        let deps = r#"
+[package]
+name = "test"
+version = "0.1.0"
+
+[dependencies]
+serde = "1.0"
+anyhow = "1.0"
+
+[dev-dependencies]
+criterion = "0.5"
+tempfile = "3.0"
+proptest = "1.0"
+quickcheck = "1.0"
+tokio-test = "0.4"
+"#;
+        fs::write(temp.path().join("Cargo.toml"), deps).unwrap();
+        fs::write(temp.path().join("Cargo.lock"), "[[package]]\nname = \"test\"").unwrap();
+
+        let report = detect_cb081_dependency_count(temp.path());
+        // Only counts [dependencies], not [dev-dependencies]
+        assert_eq!(report.direct_count, 2);
+    }
+
+    #[test]
+    fn test_cb081_no_cargo_toml() {
+        let temp = TempDir::new().unwrap();
+        // No Cargo.toml
+
+        let report = detect_cb081_dependency_count(temp.path());
+        assert_eq!(report.direct_count, 0);
+        assert_eq!(report.transitive_count, 0);
     }
 }
