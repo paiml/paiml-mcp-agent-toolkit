@@ -410,6 +410,135 @@ mod tests {
         assert_eq!(z.normalized(), 0.0);
     }
 
+    #[test]
+    fn test_grade_display() {
+        assert_eq!(format!("{}", Grade::A), "A");
+        assert_eq!(format!("{}", Grade::B), "B");
+        assert_eq!(format!("{}", Grade::C), "C");
+        assert_eq!(format!("{}", Grade::D), "D");
+        assert_eq!(format!("{}", Grade::F), "F");
+    }
+
+    #[test]
+    fn test_grade_description() {
+        assert_eq!(Grade::A.description(), "A (Excellent)");
+        assert_eq!(Grade::B.description(), "B (Good)");
+        assert_eq!(Grade::C.description(), "C (Satisfactory)");
+        assert_eq!(Grade::D.description(), "D (Needs Improvement)");
+        assert_eq!(Grade::F.description(), "F (Failing)");
+    }
+
+    #[test]
+    fn test_grade_min_score() {
+        assert_eq!(Grade::A.min_score(), 90.0);
+        assert_eq!(Grade::B.min_score(), 80.0);
+        assert_eq!(Grade::C.min_score(), 70.0);
+        assert_eq!(Grade::D.min_score(), 60.0);
+        assert_eq!(Grade::F.min_score(), 0.0);
+    }
+
+    #[test]
+    fn test_grade_partial_cmp() {
+        assert!(Grade::A.partial_cmp(&Grade::B) == Some(std::cmp::Ordering::Greater));
+        assert!(Grade::B.partial_cmp(&Grade::B) == Some(std::cmp::Ordering::Equal));
+        assert!(Grade::C.partial_cmp(&Grade::B) == Some(std::cmp::Ordering::Less));
+    }
+
+    #[test]
+    fn test_grade_hash() {
+        use std::collections::HashSet;
+        let mut set = HashSet::new();
+        set.insert(Grade::A);
+        set.insert(Grade::B);
+        assert!(set.contains(&Grade::A));
+        assert!(set.contains(&Grade::B));
+        assert!(!set.contains(&Grade::C));
+    }
+
+    #[test]
+    fn test_aggregate_display() {
+        let mut agg = AggregateScore::new("Combined Score");
+        agg.add(SimpleScore::new(80.0, 100.0, "a"), 1.0);
+        agg.add(SimpleScore::new(90.0, 100.0, "b"), 1.0);
+        let display = format!("{}", agg);
+        assert!(display.contains("Combined Score"));
+        assert!(display.contains("85.0"));
+    }
+
+    #[test]
+    fn test_aggregate_total_weight() {
+        let mut agg = AggregateScore::new("Test");
+        agg.add(SimpleScore::new(50.0, 100.0, "a"), 2.0);
+        agg.add(SimpleScore::new(50.0, 100.0, "b"), 3.0);
+        assert_eq!(agg.total_weight(), 5.0);
+    }
+
+    #[test]
+    fn test_aggregate_negative_weight_clamped() {
+        let mut agg = AggregateScore::new("Test");
+        agg.add(SimpleScore::new(50.0, 100.0, "a"), -1.0); // Negative weight should be clamped to 0
+        agg.add(SimpleScore::new(100.0, 100.0, "b"), 1.0);
+        assert_eq!(agg.total_weight(), 1.0); // -1 clamped to 0 + 1 = 1
+    }
+
+    #[test]
+    fn test_simple_score_raw_and_max() {
+        let score = SimpleScore::new(75.0, 100.0, "Test");
+        assert_eq!(score.raw(), 75.0);
+        assert_eq!(score.max_raw(), 100.0);
+    }
+
+    #[test]
+    fn test_from_percentage_clamps() {
+        // Test clamping of extreme values
+        let high = SimpleScore::from_percentage(150.0, "High");
+        assert_eq!(high.raw(), 100.0);
+
+        let low = SimpleScore::from_percentage(-50.0, "Low");
+        assert_eq!(low.raw(), 0.0);
+    }
+
+    #[test]
+    fn test_normalized_score_clone_box() {
+        let score = SimpleScore::new(80.0, 100.0, "test");
+        let boxed: Box<dyn NormalizedScoreClone> = Box::new(score);
+        let cloned = boxed.clone();
+        assert_eq!(cloned.normalized(), 80.0);
+    }
+
+    #[test]
+    fn test_normalized_score_clone_debug() {
+        let score = SimpleScore::new(80.0, 100.0, "test");
+        let boxed: Box<dyn NormalizedScoreClone> = Box::new(score);
+        let debug_str = format!("{:?}", boxed);
+        assert!(debug_str.contains("NormalizedScore"));
+        assert!(debug_str.contains("80.0"));
+    }
+
+    #[test]
+    fn test_simple_score_debug() {
+        let score = SimpleScore::new(75.0, 100.0, "Test");
+        let debug_str = format!("{:?}", score);
+        assert!(debug_str.contains("SimpleScore"));
+        assert!(debug_str.contains("75.0"));
+    }
+
+    #[test]
+    fn test_aggregate_score_debug() {
+        let mut agg = AggregateScore::new("Test");
+        agg.add(SimpleScore::new(50.0, 100.0, "a"), 1.0);
+        let debug_str = format!("{:?}", agg);
+        assert!(debug_str.contains("AggregateScore"));
+        assert!(debug_str.contains("Test"));
+    }
+
+    #[test]
+    fn test_simple_score_copy() {
+        let score = SimpleScore::new(70.0, 100.0, "Test");
+        let copied = score; // Copy (SimpleScore is Copy)
+        assert_eq!(copied.normalized(), 70.0);
+    }
+
     // =============================================================================
     // Property-based tests for score normalization
     // =============================================================================
