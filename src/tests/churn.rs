@@ -199,7 +199,7 @@ mod tests {
             .expect("Failed to add file");
 
         std::process::Command::new("git")
-            .args(["commit", "-m", "Initial commit"])
+            .args(["commit", "--no-verify", "-m", "Initial commit"])
             .current_dir(repo_path)
             .output()
             .expect("Failed to commit");
@@ -251,7 +251,7 @@ mod tests {
             .output()
             .unwrap();
         std::process::Command::new("git")
-            .args(["commit", "-m", "Add file1"])
+            .args(["commit", "--no-verify", "-m", "Add file1"])
             .current_dir(repo_path)
             .output()
             .unwrap();
@@ -265,7 +265,7 @@ mod tests {
             .output()
             .unwrap();
         std::process::Command::new("git")
-            .args(["commit", "-m", "Modify file1 and add file2"])
+            .args(["commit", "--no-verify", "-m", "Modify file1 and add file2"])
             .current_dir(repo_path)
             .output()
             .unwrap();
