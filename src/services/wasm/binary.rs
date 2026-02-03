@@ -194,6 +194,105 @@ mod tests {
         let count = count_occurrences(data, &[0x01]);
         assert_eq!(count, 3);
     }
+
+    #[test]
+    fn test_count_occurrences_empty_haystack() {
+        assert_eq!(count_occurrences(b"", &[0x01]), 0);
+    }
+
+    #[test]
+    fn test_count_occurrences_needle_larger_than_haystack() {
+        assert_eq!(count_occurrences(b"hi", b"hello"), 0);
+    }
+
+    #[test]
+    fn test_count_occurrences_no_match() {
+        assert_eq!(count_occurrences(b"hello world", b"xyz"), 0);
+    }
+
+    #[test]
+    fn test_count_occurrences_multi_byte() {
+        let data = b"hello world hello";
+        assert_eq!(count_occurrences(data, b"hello"), 2);
+    }
+
+    #[test]
+    fn test_wasm_binary_analyzer_default() {
+        let analyzer = WasmBinaryAnalyzer::default();
+        assert_eq!(analyzer.max_file_size, 10 * 1024 * 1024);
+    }
+
+    #[test]
+    fn test_analyze_bytes_valid() {
+        let analyzer = WasmBinaryAnalyzer::new();
+        // Minimal valid WASM with no sections
+        let data = b"\0asm\x01\x00\x00\x00";
+        let result = analyzer.analyze_bytes(data);
+        assert!(result.is_ok());
+        let analysis = result.unwrap();
+        assert!(analysis.sections.is_empty());
+    }
+
+    #[test]
+    fn test_analyze_bytes_with_section() {
+        let analyzer = WasmBinaryAnalyzer::new();
+        // WASM with a type section (id=1, size=0)
+        let data = b"\0asm\x01\x00\x00\x00\x01\x00";
+        let result = analyzer.analyze_bytes(data);
+        assert!(result.is_ok());
+        let analysis = result.unwrap();
+        assert_eq!(analysis.sections.len(), 1);
+        assert_eq!(analysis.sections[0].id, 1);
+        assert_eq!(analysis.sections[0].size, 0);
+    }
+
+    #[test]
+    fn test_analyze_bytes_too_small() {
+        let analyzer = WasmBinaryAnalyzer::new();
+        let data = b"\0asm";
+        let result = analyzer.analyze_bytes(data);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("too small"));
+    }
+
+    #[test]
+    fn test_analyze_bytes_invalid_magic() {
+        let analyzer = WasmBinaryAnalyzer::new();
+        let data = b"invalid\x00";
+        let result = analyzer.analyze_bytes(data);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("magic number"));
+    }
+
+    #[test]
+    fn test_wasm_section_clone() {
+        let section = WasmSection { id: 5, size: 100 };
+        let cloned = section.clone();
+        assert_eq!(cloned.id, 5);
+        assert_eq!(cloned.size, 100);
+    }
+
+    #[test]
+    fn test_wasm_analysis_clone() {
+        let analysis = WasmAnalysis {
+            sections: vec![WasmSection { id: 1, size: 10 }],
+        };
+        let cloned = analysis.clone();
+        assert_eq!(cloned.sections.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_analyze_file_invalid_format() {
+        let analyzer = WasmBinaryAnalyzer::new();
+        let temp_file = NamedTempFile::new().unwrap();
+        let mut file = tokio::fs::File::create(temp_file.path()).await.unwrap();
+        file.write_all(b"not wasm content").await.unwrap();
+        file.flush().await.unwrap();
+
+        let result = analyzer.analyze_file(temp_file.path()).await;
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("Invalid WASM"));
+    }
 }
 
 #[cfg(test)]

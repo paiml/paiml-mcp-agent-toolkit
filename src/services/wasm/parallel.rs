@@ -194,6 +194,135 @@ mod tests {
         assert!(analyzer.is_relevant_file(Path::new("test.ts")));
         assert!(!analyzer.is_relevant_file(Path::new("test.txt")));
     }
+
+    #[test]
+    fn test_parallel_config_default() {
+        let config = ParallelConfig::default();
+        assert_eq!(config.thread_count, 0);
+        assert_eq!(config.chunk_size, 100);
+        assert_eq!(config.max_depth, 10);
+        assert_eq!(config.sequential_threshold, 10 * 1_024 * 1_024);
+        assert!(!config.enable_progress);
+    }
+
+    #[test]
+    fn test_parallel_config_clone() {
+        let config = ParallelConfig {
+            thread_count: 4,
+            chunk_size: 50,
+            max_depth: 5,
+            sequential_threshold: 1024,
+            enable_progress: true,
+        };
+        let cloned = config.clone();
+        assert_eq!(cloned.thread_count, 4);
+        assert_eq!(cloned.chunk_size, 50);
+        assert!(cloned.enable_progress);
+    }
+
+    #[test]
+    fn test_parallel_analyzer_new_with_config() {
+        let config = ParallelConfig {
+            thread_count: 2,
+            chunk_size: 10,
+            max_depth: 3,
+            sequential_threshold: 1024,
+            enable_progress: true,
+        };
+        let analyzer = ParallelWasmAnalyzer::new(config);
+        assert_eq!(analyzer._config.thread_count, 2);
+        assert_eq!(analyzer._config.max_depth, 3);
+    }
+
+    #[test]
+    fn test_file_analysis_result() {
+        let result = FileAnalysisResult {
+            path: PathBuf::from("test.wasm"),
+            size_bytes: 1024,
+            parse_time_ms: 10,
+            errors: vec!["test error".to_string()],
+        };
+        assert_eq!(result.size_bytes, 1024);
+        assert_eq!(result.errors.len(), 1);
+    }
+
+    #[test]
+    fn test_aggregated_analysis_default() {
+        let analysis = AggregatedAnalysis::default();
+        assert_eq!(analysis.total_files, 0);
+        assert_eq!(analysis.successful_analyses, 0);
+        assert_eq!(analysis.failed_analyses, 0);
+        assert!(analysis.file_results.is_empty());
+        assert!(analysis.errors_by_type.is_empty());
+    }
+
+    #[test]
+    fn test_file_relevance_no_extension() {
+        let analyzer = ParallelWasmAnalyzer::default();
+        assert!(!analyzer.is_relevant_file(Path::new("Makefile")));
+        assert!(!analyzer.is_relevant_file(Path::new("README")));
+    }
+
+    #[tokio::test]
+    async fn test_analyze_empty_directory() {
+        let analyzer = ParallelWasmAnalyzer::default();
+        let temp_dir = TempDir::new().unwrap();
+
+        let result = analyzer.analyze_directory(temp_dir.path()).await;
+        assert!(result.is_ok());
+
+        let analysis = result.unwrap();
+        assert_eq!(analysis.total_files, 0);
+        assert_eq!(analysis.successful_analyses, 0);
+    }
+
+    #[tokio::test]
+    async fn test_analyze_directory_with_subdirs() {
+        let analyzer = ParallelWasmAnalyzer::default();
+        let temp_dir = TempDir::new().unwrap();
+
+        // Create subdirectory with file
+        let sub_dir = temp_dir.path().join("subdir");
+        fs::create_dir(&sub_dir).unwrap();
+        fs::write(sub_dir.join("nested.wat"), "(module)").unwrap();
+
+        let result = analyzer.analyze_directory(temp_dir.path()).await;
+        assert!(result.is_ok());
+
+        let analysis = result.unwrap();
+        assert_eq!(analysis.total_files, 1);
+    }
+
+    #[test]
+    fn test_analyze_file_nonexistent() {
+        let analyzer = ParallelWasmAnalyzer::default();
+        let result = analyzer.analyze_file(Path::new("/nonexistent/file.wasm"));
+        assert!(!result.errors.is_empty());
+    }
+
+    #[test]
+    fn test_file_analysis_result_serialization() {
+        let result = FileAnalysisResult {
+            path: PathBuf::from("test.wasm"),
+            size_bytes: 512,
+            parse_time_ms: 5,
+            errors: vec![],
+        };
+        let json = serde_json::to_string(&result).unwrap();
+        let deserialized: FileAnalysisResult = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.size_bytes, 512);
+    }
+
+    #[test]
+    fn test_aggregated_analysis_serialization() {
+        let mut analysis = AggregatedAnalysis::default();
+        analysis.total_files = 5;
+        analysis.successful_analyses = 4;
+        analysis.failed_analyses = 1;
+        let json = serde_json::to_string(&analysis).unwrap();
+        let deserialized: AggregatedAnalysis = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.total_files, 5);
+    }
 }
 
 #[cfg(test)]
