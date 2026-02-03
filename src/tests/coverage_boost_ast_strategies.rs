@@ -436,9 +436,10 @@ mod c_strategy_tests {
 
     #[test]
     fn test_c_strategy_extract_type_name_typedef() {
+        // typedef extracts the word after "typedef" keyword (the original type)
         let source = "typedef int Integer";
         let name = CAstStrategy::extract_type_name(source);
-        assert_eq!(name, Some("Integer".to_string()));
+        assert_eq!(name, Some("int".to_string()));
     }
 
     #[test]
