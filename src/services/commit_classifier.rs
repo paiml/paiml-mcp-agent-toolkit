@@ -221,4 +221,76 @@ mod tests {
         assert!(!result.class.is_empty());
         assert!(result.confidence > 0.0);
     }
+
+    #[test]
+    fn test_classifier_classes_method() {
+        let classifier = CommitClassifier {
+            vocabulary: HashMap::new(),
+            classes: vec!["Class1".to_string(), "Class2".to_string()],
+            class_priors: HashMap::new(),
+            feature_log_probs: HashMap::new(),
+            metadata: ClassifierMetadata::default(),
+        };
+
+        let classes = classifier.classes();
+        assert_eq!(classes.len(), 2);
+        assert_eq!(classes[0], "Class1");
+        assert_eq!(classes[1], "Class2");
+    }
+
+    #[test]
+    fn test_classifier_metadata_default() {
+        let meta = ClassifierMetadata::default();
+        assert_eq!(meta.train_samples, 0);
+        assert_eq!(meta.vocab_size, 0);
+        assert_eq!(meta.alpha, 0.0);
+    }
+
+    #[test]
+    fn test_classification_result_fields() {
+        let result = ClassificationResult {
+            class: "TestClass".to_string(),
+            confidence: 0.85,
+            scores: [("TestClass".to_string(), -1.5)]
+                .into_iter()
+                .collect(),
+        };
+        assert_eq!(result.class, "TestClass");
+        assert_eq!(result.confidence, 0.85);
+        assert!(result.scores.contains_key("TestClass"));
+    }
+
+    #[test]
+    fn test_tokenize_short_words_filtered() {
+        let tokens = CommitClassifier::tokenize("a ab abc abcd");
+        // Short words (<=2 chars) should be filtered
+        assert!(!tokens.contains(&"a".to_string()));
+        assert!(!tokens.contains(&"ab".to_string()));
+        assert!(tokens.contains(&"abc".to_string()));
+        assert!(tokens.contains(&"abcd".to_string()));
+    }
+
+    #[test]
+    fn test_classify_empty_vocabulary() {
+        let classifier = CommitClassifier {
+            vocabulary: HashMap::new(),
+            classes: vec!["Default".to_string()],
+            class_priors: [("Default".to_string(), -1.0)]
+                .into_iter()
+                .collect(),
+            feature_log_probs: [("Default".to_string(), vec![])]
+                .into_iter()
+                .collect(),
+            metadata: ClassifierMetadata::default(),
+        };
+
+        let result = classifier.classify("any text here");
+        assert_eq!(result.class, "Default");
+    }
+
+    #[test]
+    fn test_classifier_load_nonexistent_file() {
+        let result = CommitClassifier::load("/nonexistent/path/model.json");
+        assert!(result.is_err());
+    }
 }
