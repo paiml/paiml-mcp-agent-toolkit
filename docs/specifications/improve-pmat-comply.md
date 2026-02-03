@@ -1088,6 +1088,89 @@ pub fn detect_cb080_dependency_drift(project_path: &Path) -> Vec<CbViolation> {
 | CB-080-B (stack mismatch) | Warning | May cause runtime issues |
 | CB-080-C (major behind) | Info | Security/feature consideration |
 
+### 3.7.1 CB-081: Dependency Count & Health Detection [P1 HIGH] (NEW - v2.9)
+
+**Justification**: Per rust-project-score-v1.1 spec, excessive dependencies degrade build times, inflate binary size, and increase supply chain attack surface. [DEP-002] confirms transitive deps introduce 40% of vulnerabilities.
+
+**Source Evidence**:
+- rust-project-score-v1.1-update.md: Dependency Health scoring (12 points total)
+- pmat itself: 114 direct, 1019 transitive deps = score 0/5 (critical)
+
+**Detection Patterns**:
+```rust
+// File: src/cli/handlers/comply_cb_detect.rs
+
+/// CB-081: Dependency count and health analysis
+pub struct DependencyCountReport {
+    pub direct_count: usize,
+    pub transitive_count: usize,
+    pub score: u8,                    // 0-5 based on thresholds
+    pub duplicate_crates: Vec<(String, Vec<String>)>,  // (name, [versions])
+    pub feature_gated_count: usize,   // deps with default-features = false
+    pub sovereign_count: usize,       // batuta stack crates used
+    pub violations: Vec<CbPatternViolation>,
+}
+
+/// CB-081-A: Base dependency count scoring
+/// Thresholds from rust-project-score-v1.1:
+///   5 points: ≤20 direct, ≤100 transitive
+///   4 points: ≤30 direct, ≤150 transitive
+///   3 points: ≤40 direct, ≤200 transitive
+///   2 points: ≤50 direct, ≤250 transitive
+///   0 points: >50 direct or >250 transitive
+
+/// CB-081-B: Duplicate crate detection
+/// Parse Cargo.lock to find crates with multiple versions
+/// Duplicates inflate binary size and compilation time
+
+/// CB-081-C: Feature flag hygiene
+/// Count deps using `default-features = false`
+/// Higher percentage = better dependency hygiene (+1 point for >50%)
+
+/// CB-081-D: Sovereign stack bonus
+/// Award bonus for using batuta stack crates instead of external alternatives
+/// +1 point per sovereign crate (max +3)
+const SOVEREIGN_CRATES: &[&str] = &[
+    "aprender", "trueno", "trueno-graph", "trueno-db", "trueno-rag",
+    "trueno-viz", "trueno-zram-core", "pmcp", "presentar-core",
+    "renacer", "certeza", "bashrs", "probar"
+];
+
+/// CB-081-E: Trend tracking
+/// Store dependency counts in .pmat/metrics/dependencies.json
+/// Warn when deps increase significantly between checks
+```
+
+**Severity Mapping**:
+| Pattern | Severity | Rationale |
+|---------|----------|-----------|
+| CB-081-A (>50 direct or >250 transitive) | Error | Critical bloat, supply chain risk |
+| CB-081-A (>40 direct or >200 transitive) | Warning | High dependency count |
+| CB-081-A (>30 direct or >150 transitive) | Info | Moderate, room for improvement |
+| CB-081-B (duplicate crates) | Warning | Binary bloat, version conflicts |
+| CB-081-C (low feature gating) | Info | Optimization opportunity |
+| CB-081-D (no sovereign crates) | Info | Consider batuta stack alternatives |
+| CB-081-E (deps increased >10%) | Warning | Dependency creep detected |
+
+**Output Format**:
+```
+CB-081: Dependency Count
+  Direct: 35 (+3 since last check)
+  Transitive: 180 (+12 since last check)
+  Score: 3/5 (moderate)
+
+  Duplicates: 2 crates with multiple versions
+    - rand: 0.7.3, 0.8.5
+    - syn: 1.0.109, 2.0.87
+
+  Feature Hygiene: 45% deps use default-features = false
+  Sovereign Stack: 3 crates (aprender, trueno, pmcp) [+3 bonus]
+
+  Recommendations:
+    - Run 'cargo tree --duplicates' to identify consolidation opportunities
+    - Consider 'default-features = false' for: serde, tokio, reqwest
+```
+
 ### 3.8 CB-090: Flaky Test Pattern Detection [P1 HIGH] (NEW)
 
 **Justification**: [FLAKY-001] shows 4.56% of tests are flaky, 45% due to timing. [FLAKY-003] estimates $1.3M/year cost at large organizations. trueno's 7 flaky test fixes demonstrate pattern prevalence.

@@ -1430,61 +1430,114 @@ pub(crate) fn check_edd_compliance(project_path: &Path) -> ComplianceCheck {
     }
 }
 
-/// CB-081: Dependency Count Check
+/// CB-081: Dependency Count Check (Enhanced v2.9)
 /// Per rust-project-score-v1.1-update.md, excessive dependencies degrade:
 /// - Build times (more crates to compile)
 /// - Binary size (more code linked)
 /// - Supply chain security (more attack surface)
 ///
-/// Thresholds:
-/// - 5 points: ≤20 direct, ≤100 transitive (excellent)
-/// - 4 points: ≤30 direct, ≤150 transitive (good)
-/// - 3 points: ≤40 direct, ≤200 transitive (moderate)
-/// - 2 points: ≤50 direct, ≤250 transitive (high)
-/// - 0 points: >50 direct or >250 transitive (critical)
+/// Enhancements:
+/// - CB-081-A: Base dependency count scoring (0-5 points)
+/// - CB-081-B: Duplicate crate detection
+/// - CB-081-C: Feature flag hygiene analysis
+/// - CB-081-D: Sovereign stack bonus (+1-3 points)
+/// - CB-081-E: Trend tracking (delta from last check)
 pub(crate) fn check_dependency_count(project_path: &Path) -> ComplianceCheck {
     let report = detect_cb081_dependency_count(project_path);
 
     let cargo_toml = project_path.join("Cargo.toml");
     if !cargo_toml.exists() {
         return ComplianceCheck {
-            name: "CB-081: Dependency Count".to_string(),
+            name: "CB-081: Dependency Health".to_string(),
             status: CheckStatus::Skip,
             message: "No Cargo.toml found".to_string(),
             severity: Severity::Info,
         };
     }
 
+    // Build enhanced message with all metrics
+    let mut details = vec![format!(
+        "{} direct, {} transitive",
+        report.direct_count, report.transitive_count
+    )];
+
+    // Add trend info if available
+    if let Some(ref trend) = report.trend {
+        if trend.direct_delta != 0 || trend.transitive_delta != 0 {
+            details.push(format!(
+                "Δ {:+}/{:+} since last",
+                trend.direct_delta, trend.transitive_delta
+            ));
+        }
+    }
+
+    // Add duplicate crate count
+    if !report.duplicate_crates.is_empty() {
+        details.push(format!("{} duplicates", report.duplicate_crates.len()));
+    }
+
+    // Add feature gating percentage
+    details.push(format!("{:.0}% feature-gated", report.feature_gated_pct));
+
+    // Add sovereign bonus if any
+    if report.sovereign_bonus > 0 {
+        details.push(format!(
+            "+{} sovereign ({})",
+            report.sovereign_bonus,
+            report.sovereign_crates.join(", ")
+        ));
+    }
+
     let message = format!(
-        "Dependencies: {} direct, {} transitive (score: {}/5)",
-        report.direct_count, report.transitive_count, report.score
+        "Score: {}/5 | {}",
+        report.score,
+        details.join(" | ")
     );
 
-    if report.score >= 4 {
+    // Determine status based on score and violations
+    let has_critical = report.violations.iter().any(|v| {
+        v.severity == super::comply_cb_detect::Severity::Error
+    });
+    let has_warnings = report.violations.iter().any(|v| {
+        v.severity == super::comply_cb_detect::Severity::Warning
+    });
+
+    if report.score >= 4 && !has_critical {
         ComplianceCheck {
-            name: "CB-081: Dependency Count".to_string(),
+            name: "CB-081: Dependency Health".to_string(),
             status: CheckStatus::Pass,
             message,
             severity: Severity::Info,
         }
-    } else if report.score >= 2 {
+    } else if report.score >= 2 && !has_critical {
+        let mut msg = message;
+        if has_warnings {
+            // Add first warning violation as detail
+            if let Some(v) = report.violations.iter().find(|v| {
+                v.severity == super::comply_cb_detect::Severity::Warning
+            }) {
+                msg = format!("{}\n    ⚠ {}", msg, v.description);
+            }
+        }
         ComplianceCheck {
-            name: "CB-081: Dependency Count".to_string(),
+            name: "CB-081: Dependency Health".to_string(),
             status: CheckStatus::Warn,
-            message: format!(
-                "{} - consider reducing dependencies. Run 'cargo tree --duplicates' to find redundant deps",
-                message
-            ),
+            message: msg,
             severity: Severity::Warning,
         }
     } else {
+        let mut msg = message;
+        // Add violations as details
+        for v in report.violations.iter().take(3) {
+            msg = format!("{}\n    {} {}", msg,
+                if v.severity == super::comply_cb_detect::Severity::Error { "✗" } else { "⚠" },
+                v.description
+            );
+        }
         ComplianceCheck {
-            name: "CB-081: Dependency Count".to_string(),
+            name: "CB-081: Dependency Health".to_string(),
             status: CheckStatus::Fail,
-            message: format!(
-                "{} - critical: too many dependencies. Review with 'cargo tree' and remove unused deps",
-                message
-            ),
+            message: msg,
             severity: Severity::Error,
         }
     }

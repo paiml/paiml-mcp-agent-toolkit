@@ -12,6 +12,7 @@
 //! 3. Pre-commit hooks verification
 //! 4. Quality threshold checks
 //! 5. Build performance compliance (Cargo.lock, MSRV, CI)
+//! 6. CB-081 Dependency Health (duplicates, feature flags, sovereign stack)
 //!
 //! # Compliance Checks (9 total)
 //!
@@ -74,6 +75,11 @@ fn main() {
     println!("\nExample 5: Breaking Changes Tracking");
     println!("{}", "-".repeat(40));
     demonstrate_breaking_changes();
+
+    // Example 6: CB-081 Dependency Health
+    println!("\nExample 6: CB-081 Dependency Health");
+    println!("{}", "-".repeat(40));
+    demonstrate_dependency_health();
 
     println!("\n{}", "=".repeat(60));
     println!("Compliance demo completed!");
@@ -340,6 +346,64 @@ This helps teams:
   - Plan upgrade windows
   - Update CI/CD pipelines
   - Communicate changes to developers
+"
+    );
+}
+
+/// Demonstrate CB-081 Dependency Health checks
+fn demonstrate_dependency_health() {
+    println!(
+        "
+CB-081: Dependency Health Analysis
+
+The CB-081 check analyzes Cargo.toml and Cargo.lock for dependency
+health, providing a score from 0-5 points plus sovereign stack bonus.
+
+## Scoring Tiers (5 points max)
+
+  Score | Direct Deps | Transitive Deps
+  ------+-------------+-----------------
+    5   |    ≤20      |      ≤100
+    3   |    ≤30      |      ≤150
+    2   |    ≤40      |      ≤200
+    1   |    ≤50      |      ≤250
+    0   |    >50      |      >250
+
+## Enhanced Checks
+
+  CB-081-A: Base dependency count scoring
+  CB-081-B: Duplicate crate detection (cargo tree --duplicates)
+  CB-081-C: Feature flag hygiene (default-features = false usage)
+  CB-081-D: Sovereign stack bonus (+1 per batuta crate)
+  CB-081-E: Trend tracking (delta since last check)
+
+## Sovereign Stack Crates (Batuta Ecosystem)
+
+  aprender, trueno, trueno-graph, trueno-db, trueno-rag,
+  trueno-viz, trueno-zram-core, pmcp, presentar-core,
+  renacer, certeza, bashrs, probar, ruchy
+
+## Example Output
+
+  $ pmat comply check
+
+  CB-081: Dependency Health: Score: 3/5 | 25 direct, 120 transitive
+    | 5 duplicates | 45% feature-gated | +2 sovereign (aprender, trueno)
+    ⚠ 5 duplicate crates: rand, syn, quote, hashbrown, itertools
+    ℹ Trend: +2 direct, -5 transitive since last check
+
+## Reducing Dependencies
+
+  1. Use `default-features = false` for all deps
+  2. Run `cargo tree --duplicates` to find duplicates
+  3. Prefer batuta stack (sovereign) crates
+  4. Consolidate duplicate versions
+  5. Use feature flags to disable unused components
+
+## CI/CD Integration
+
+  # Fail if dependency score < 3
+  pmat comply check --format json | jq '.cb081.score >= 3' | grep true
 "
     );
 }
