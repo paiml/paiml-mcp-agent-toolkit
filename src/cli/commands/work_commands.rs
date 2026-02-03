@@ -401,7 +401,7 @@ pub enum QaWorkCommands {
     ///
     /// Parses markdown specifications and validates claims through evidence.
     /// All claims are FALSE until PROVEN true (Popperian epistemology).
-    #[command(visible_aliases = &["spec", "popper"])]
+    #[command(visible_aliases = &["popper"])]
     Spec {
         /// Specification file or ticket ID (e.g., "docs/specifications/foo.md" or "GH-118")
         target: String,
@@ -466,7 +466,7 @@ pub enum QaOutputFormat {
 #[derive(Debug, Clone, Subcommand)]
 pub enum TestDiscoveryCommands {
     /// Discover all test failures in workspace
-    #[command(visible_aliases = &["discover", "d"])]
+    #[command(visible_aliases = &["d"])]
     Run {
         /// Project path (defaults to current directory)
         #[arg(short = 'p', long = "path", default_value = ".")]
@@ -486,7 +486,7 @@ pub enum TestDiscoveryCommands {
     },
 
     /// Categorize test failures by root cause
-    #[command(visible_aliases = &["categorize", "cat"])]
+    #[command(visible_aliases = &["cat"])]
     Categorize {
         /// Input failures JSON from discovery
         #[arg(short = 'i', long = "input")]
@@ -498,7 +498,7 @@ pub enum TestDiscoveryCommands {
     },
 
     /// Mark tests as #[ignore] with reasons
-    #[command(visible_aliases = &["mark", "m"])]
+    #[command(visible_aliases = &["m"])]
     Mark {
         /// Input categories JSON
         #[arg(short = 'i', long = "input")]
@@ -510,7 +510,7 @@ pub enum TestDiscoveryCommands {
     },
 
     /// Verify all tests pass after marking
-    #[command(visible_aliases = &["verify", "v"])]
+    #[command(visible_aliases = &["v"])]
     Verify {
         /// Project path
         #[arg(short = 'p', long = "path", default_value = ".")]
