@@ -7,7 +7,6 @@ mod readme_scorer_tests {
     use crate::tests::repo_score::test_utils::*;
 
     #[tokio::test]
-    #[ignore] // GREEN: ReadmeScorer implemented, testing
     async fn test_readme_scorer_missing_file() {
         // ARRANGE
         let temp_dir = create_temp_repo();
@@ -36,7 +35,6 @@ mod readme_scorer_tests {
     }
 
     #[tokio::test]
-    #[ignore] // GREEN: ReadmeScorer implemented, testing
     async fn test_readme_scorer_perfect_readme() {
         // ARRANGE
         let temp_dir = create_temp_repo();
@@ -64,7 +62,6 @@ mod readme_scorer_tests {
     }
 
     #[tokio::test]
-    #[ignore] // GREEN: ReadmeScorer implemented, testing
     async fn test_readme_scorer_minimal_readme() {
         // ARRANGE
         let temp_dir = create_temp_repo();
@@ -92,7 +89,6 @@ mod readme_scorer_tests {
     }
 
     #[tokio::test]
-    #[ignore] // GREEN: ReadmeScorer implemented, testing
     async fn test_readme_accuracy_subcategory() {
         // Test A1: README Accuracy (10 points)
         let temp_dir = create_temp_repo();
@@ -118,7 +114,6 @@ mod readme_scorer_tests {
     }
 
     #[tokio::test]
-    #[ignore] // GREEN: ReadmeScorer implemented, testing
     async fn test_readme_comprehensiveness_subcategory() {
         // Test A2: README Comprehensiveness (10 points)
         let temp_dir = create_temp_repo();
@@ -144,7 +139,6 @@ mod readme_scorer_tests {
     }
 
     #[tokio::test]
-    #[ignore] // GREEN: ReadmeScorer implemented, testing (TODO: link validation)
     async fn test_readme_with_broken_links() {
         // ARRANGE
         let temp_dir = create_temp_repo();
@@ -187,7 +181,6 @@ Normal content here.
     }
 
     #[tokio::test]
-    #[ignore] // GREEN: ReadmeScorer implemented, testing
     async fn test_readme_required_sections_detection() {
         // Test that scorer correctly identifies required sections
         let temp_dir = create_temp_repo();
