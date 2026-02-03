@@ -247,6 +247,22 @@ fn test_satd_severity_variants() {
     }
 }
 
+// --- QualityCheckType Display tests ---
+
+#[test]
+fn test_quality_check_type_display() {
+    // Test Display impl for models::quality_gate::QualityCheckType
+    use crate::models::quality_gate::QualityCheckType as ModelQualityCheckType;
+
+    assert_eq!(format!("{}", ModelQualityCheckType::Complexity), "complexity");
+    assert_eq!(format!("{}", ModelQualityCheckType::DeadCode), "dead_code");
+    assert_eq!(format!("{}", ModelQualityCheckType::Satd), "satd");
+    assert_eq!(format!("{}", ModelQualityCheckType::Security), "security");
+    assert_eq!(format!("{}", ModelQualityCheckType::Entropy), "entropy");
+    assert_eq!(format!("{}", ModelQualityCheckType::Duplicates), "duplicates");
+    assert_eq!(format!("{}", ModelQualityCheckType::Coverage), "coverage");
+}
+
 // --- Integration tests with single file quality gate ---
 
 #[tokio::test]

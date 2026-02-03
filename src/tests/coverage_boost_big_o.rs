@@ -295,3 +295,51 @@ fn test_big_o_analysis_report_serde() {
     assert_eq!(back.analyzed_functions, 100);
     assert_eq!(back.recommendations.len(), 1);
 }
+
+// ============ Display Implementation Tests ============
+
+#[test]
+fn test_big_o_class_display() {
+    // Display uses notation() internally
+    assert_eq!(format!("{}", BigOClass::Constant), "O(1)");
+    assert_eq!(format!("{}", BigOClass::Logarithmic), "O(log n)");
+    assert_eq!(format!("{}", BigOClass::Linear), "O(n)");
+    assert_eq!(format!("{}", BigOClass::Linearithmic), "O(n log n)");
+    assert_eq!(format!("{}", BigOClass::Quadratic), "O(n²)");
+    assert_eq!(format!("{}", BigOClass::Cubic), "O(n³)");
+    assert_eq!(format!("{}", BigOClass::Exponential), "O(2^n)");
+    assert_eq!(format!("{}", BigOClass::Factorial), "O(n!)");
+    assert_eq!(format!("{}", BigOClass::Unknown), "O(?)");
+}
+
+#[test]
+fn test_complexity_bound_display() {
+    let bound = ComplexityBound::new(BigOClass::Quadratic, 1, InputVariable::N).with_confidence(85);
+    let display = format!("{}", bound);
+    // Display format: "O(n²) (85% confidence)"
+    assert!(display.contains("O(n²)"));
+    assert!(display.contains("85% confidence"));
+}
+
+#[test]
+fn test_complexity_bound_display_constant() {
+    let bound = ComplexityBound::constant();
+    let display = format!("{}", bound);
+    assert!(display.contains("O(1)"));
+    assert!(display.contains("100% confidence"));
+}
+
+#[test]
+fn test_complexity_bound_display_various() {
+    let cases = vec![
+        (BigOClass::Linear, 75, "O(n)", "75%"),
+        (BigOClass::Logarithmic, 90, "O(log n)", "90%"),
+        (BigOClass::Exponential, 50, "O(2^n)", "50%"),
+    ];
+    for (class, conf, expected_class, expected_conf) in cases {
+        let bound = ComplexityBound::new(class, 1, InputVariable::N).with_confidence(conf);
+        let display = format!("{}", bound);
+        assert!(display.contains(expected_class), "Expected {} in {}", expected_class, display);
+        assert!(display.contains(expected_conf), "Expected {} in {}", expected_conf, display);
+    }
+}

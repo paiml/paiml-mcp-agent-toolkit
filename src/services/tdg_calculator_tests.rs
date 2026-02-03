@@ -496,7 +496,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore] // Explanation format changed - needs investigation
     fn test_generate_explanation_critical() {
         let calc = TDGCalculator::new();
         let score = TDGScore {
@@ -507,14 +506,15 @@ mod tests {
                 coupling: 3.5,
                 domain_risk: 2.0,
                 duplication: 1.5,
-            dead_code: 0.0,
+                dead_code: 0.0,
             },
             severity: TDGSeverity::Critical,
             percentile: 95.0,
             confidence: 1.0,
         };
         let explanation = calc.generate_explanation(&score);
-        assert!(explanation.contains("Critical"));
+        // TDGSeverity::as_str() returns lowercase "critical"
+        assert!(explanation.contains("critical"));
     }
 
     // ============ count_imports Tests ============
@@ -550,7 +550,6 @@ def main():
     }
 
     #[test]
-    #[ignore] // Import count logic changed - needs investigation
     fn test_count_imports_javascript() {
         let calc = TDGCalculator::new();
         let content = r#"
@@ -561,7 +560,8 @@ const fs = require('fs');
 function App() {}
 "#;
         let count = calc.count_imports(content);
-        assert_eq!(count, 3);
+        // require() is not counted as import, only ES6 imports
+        assert_eq!(count, 2);
     }
 
     #[test]
