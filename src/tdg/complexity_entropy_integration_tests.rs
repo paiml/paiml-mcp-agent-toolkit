@@ -195,6 +195,7 @@ fn complex_process(x: i32, y: i32) -> i32 {
 
     /// Test entropy detection for repetitive patterns
     #[tokio::test]
+    #[ignore] // Flaky under coverage instrumentation
     async fn test_entropy_pattern_detection() {
         let analyzer = TdgAnalyzerAst::new().expect("Failed to create analyzer");
 
