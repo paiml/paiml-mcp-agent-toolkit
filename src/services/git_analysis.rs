@@ -275,12 +275,196 @@ struct CommitInfo {
 
 #[cfg(test)]
 mod tests {
-    // use super::*; // Unused in simple tests
+    use super::*;
+    use tempfile::TempDir;
 
     #[test]
     fn test_git_analysis_basic() {
         // Basic test
         assert_eq!(1 + 1, 2);
+    }
+
+    #[test]
+    fn test_parse_commit_line_valid() {
+        let line = "abc123|John Doe|2024-01-15T10:30:00Z";
+        let result = GitAnalysisService::parse_commit_line(line);
+        assert!(result.is_some());
+        let (hash, author, date) = result.unwrap();
+        assert_eq!(hash, "abc123");
+        assert_eq!(author, "John Doe");
+        assert_eq!(date, "2024-01-15T10:30:00Z");
+    }
+
+    #[test]
+    fn test_parse_commit_line_invalid_too_few() {
+        let line = "abc123|John Doe";
+        let result = GitAnalysisService::parse_commit_line(line);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_parse_commit_line_invalid_empty() {
+        let line = "";
+        let result = GitAnalysisService::parse_commit_line(line);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_parse_numstat_line_valid() {
+        let line = "10\t20\tsrc/main.rs";
+        let result = GitAnalysisService::parse_numstat_line(line);
+        assert!(result.is_some());
+        let (additions, deletions, path) = result.unwrap();
+        assert_eq!(additions, 10);
+        assert_eq!(deletions, 20);
+        assert_eq!(path, "src/main.rs");
+    }
+
+    #[test]
+    fn test_parse_numstat_line_with_spaces() {
+        let line = "5\t15\tpath/to file.rs";
+        let result = GitAnalysisService::parse_numstat_line(line);
+        assert!(result.is_some());
+        let (additions, deletions, path) = result.unwrap();
+        assert_eq!(additions, 5);
+        assert_eq!(deletions, 15);
+        assert_eq!(path, "path/to file.rs");
+    }
+
+    #[test]
+    fn test_parse_numstat_line_invalid() {
+        let line = "invalid";
+        let result = GitAnalysisService::parse_numstat_line(line);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_parse_numstat_line_binary() {
+        let line = "-\t-\timage.png";
+        let result = GitAnalysisService::parse_numstat_line(line);
+        assert!(result.is_none()); // '-' can't parse as usize
+    }
+
+    #[test]
+    fn test_generate_summary_empty() {
+        let files: Vec<FileChurnMetrics> = vec![];
+        let summary = GitAnalysisService::generate_summary(&files);
+        assert_eq!(summary.total_commits, 0);
+        assert_eq!(summary.total_files_changed, 0);
+        assert!(summary.hotspot_files.is_empty());
+        assert!(summary.stable_files.is_empty());
+        assert_eq!(summary.mean_churn_score, 0.0);
+    }
+
+    #[test]
+    fn test_generate_summary_single_file() {
+        let files = vec![FileChurnMetrics {
+            path: PathBuf::from("src/main.rs"),
+            relative_path: "src/main.rs".to_string(),
+            commit_count: 5,
+            unique_authors: vec!["Author1".to_string()],
+            additions: 100,
+            deletions: 50,
+            churn_score: 0.7,
+            last_modified: Utc::now(),
+            first_seen: Utc::now(),
+        }];
+        let summary = GitAnalysisService::generate_summary(&files);
+        assert_eq!(summary.total_commits, 5);
+        assert_eq!(summary.total_files_changed, 1);
+        assert_eq!(summary.hotspot_files.len(), 1); // churn_score > 0.5
+    }
+
+    #[test]
+    fn test_generate_summary_multiple_authors() {
+        let files = vec![
+            FileChurnMetrics {
+                path: PathBuf::from("file1.rs"),
+                relative_path: "file1.rs".to_string(),
+                commit_count: 3,
+                unique_authors: vec!["Author1".to_string(), "Author2".to_string()],
+                additions: 50,
+                deletions: 20,
+                churn_score: 0.3,
+                last_modified: Utc::now(),
+                first_seen: Utc::now(),
+            },
+            FileChurnMetrics {
+                path: PathBuf::from("file2.rs"),
+                relative_path: "file2.rs".to_string(),
+                commit_count: 2,
+                unique_authors: vec!["Author2".to_string()],
+                additions: 30,
+                deletions: 10,
+                churn_score: 0.05,
+                last_modified: Utc::now(),
+                first_seen: Utc::now(),
+            },
+        ];
+        let summary = GitAnalysisService::generate_summary(&files);
+        assert_eq!(summary.total_commits, 5);
+        assert_eq!(summary.total_files_changed, 2);
+        assert_eq!(summary.author_contributions.len(), 2);
+    }
+
+    #[test]
+    fn test_analyze_code_churn_no_git() {
+        let temp_dir = TempDir::new().unwrap();
+        let result = GitAnalysisService::analyze_code_churn(temp_dir.path(), 30);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_generate_summary_stable_files() {
+        let files = vec![
+            FileChurnMetrics {
+                path: PathBuf::from("stable.rs"),
+                relative_path: "stable.rs".to_string(),
+                commit_count: 1,
+                unique_authors: vec!["Author".to_string()],
+                additions: 10,
+                deletions: 5,
+                churn_score: 0.05, // Low churn
+                last_modified: Utc::now(),
+                first_seen: Utc::now(),
+            },
+        ];
+        let summary = GitAnalysisService::generate_summary(&files);
+        assert_eq!(summary.stable_files.len(), 1);
+    }
+
+    #[test]
+    fn test_churn_summary_statistics() {
+        let files = vec![
+            FileChurnMetrics {
+                path: PathBuf::from("f1.rs"),
+                relative_path: "f1.rs".to_string(),
+                commit_count: 2,
+                unique_authors: vec![],
+                additions: 0,
+                deletions: 0,
+                churn_score: 0.2,
+                last_modified: Utc::now(),
+                first_seen: Utc::now(),
+            },
+            FileChurnMetrics {
+                path: PathBuf::from("f2.rs"),
+                relative_path: "f2.rs".to_string(),
+                commit_count: 4,
+                unique_authors: vec![],
+                additions: 0,
+                deletions: 0,
+                churn_score: 0.8,
+                last_modified: Utc::now(),
+                first_seen: Utc::now(),
+            },
+        ];
+        let summary = GitAnalysisService::generate_summary(&files);
+        // Mean of 0.2 and 0.8 = 0.5
+        assert!((summary.mean_churn_score - 0.5).abs() < 0.01);
+        // Variance and stddev should be calculated
+        assert!(summary.variance_churn_score >= 0.0);
+        assert!(summary.stddev_churn_score >= 0.0);
     }
 }
 
