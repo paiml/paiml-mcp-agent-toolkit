@@ -1,15 +1,71 @@
-# Specification: Improve Context Generation & Hallucination Detection
+# Specification: Improve Context Generation & Agent Integration
 
 **Status**: Draft
-**Version**: 1.0.0
+**Version**: 2.0.0
 **Created**: 2025-02-04
+**Updated**: 2025-02-04
 **Author**: PMAT Team
 
-## Problem Statement
+## The Real Problem: Agents Don't Use Context
 
-### Current State
+### Core Issue
 
-The `pmat context` and `pmat validate-readme` commands have significant limitations:
+`pmat context` generates rich AST with quality annotations:
+- Function signatures with complexity scores
+- TDG grades per file
+- SATD markers
+- Big-O estimates
+- Provability scores
+
+**But agents like Claude Code NEVER use it.** They grep/glob the codebase instead.
+
+This is wasteful:
+1. Grepping is slow and context-inefficient
+2. No quality awareness (agents don't know what's complex/risky)
+3. No semantic understanding (just text matching)
+4. Repeated work every session
+
+### The Vision: RAG-Powered Agent Context
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                    CURRENT (Broken)                                  │
+├─────────────────────────────────────────────────────────────────────┤
+│  Agent: "Find error handling code"                                   │
+│    ↓                                                                 │
+│  grep -r "error" src/ | head -50                                     │
+│    ↓                                                                 │
+│  [500 irrelevant matches, no context, no quality info]              │
+└─────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────┐
+│                    PROPOSED (RAG-Powered)                            │
+├─────────────────────────────────────────────────────────────────────┤
+│  Agent: "Find error handling code"                                   │
+│    ↓                                                                 │
+│  pmat query "error handling"                                         │
+│    ↓                                                                 │
+│  [Top 5 functions with error handling, ranked by:                    │
+│   - Semantic relevance                                               │
+│   - TDG score (quality)                                              │
+│   - Complexity (maintainability)                                     │
+│   - Full function signatures + doc comments]                         │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### What Agents Need
+
+| Need | Current | Proposed |
+|------|---------|----------|
+| Find code by intent | grep (text match) | Semantic search |
+| Know code quality | Nothing | TDG/complexity scores |
+| Understand structure | Read files | AST-aware chunks |
+| Find related code | Manual | Graph traversal |
+| Avoid bad code | Nothing | Quality filtering |
+
+## Problem Statement (Original)
+
+### Hallucination Detection Limitations
 
 1. **Claim Extraction is Too Narrow**
    - Only matches 3 regex patterns:
@@ -387,11 +443,274 @@ fn test_false_claim_detected() {
 2. Should claim extraction be LLM-assisted for better semantic understanding?
 3. Should we add a `--semantic` flag for optional deep validation?
 
+## Proposed: RAG-Powered Agent Context
+
+### Architecture
+
+```
+┌──────────────────────────────────────────────────────────────────────────┐
+│                         pmat context --serve                              │
+├──────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  ┌─────────────┐    ┌──────────────┐    ┌─────────────────────────────┐ │
+│  │ AST Parser  │───▶│ Annotator    │───▶│ trueno-rag Index            │ │
+│  │ (tree-sitter│    │ - TDG scores │    │ - VectorStore (embeddings)  │ │
+│  │  + custom)  │    │ - Complexity │    │ - BM25Index (keywords)      │ │
+│  │             │    │ - SATD       │    │ - StructuralChunker         │ │
+│  │             │    │ - Big-O      │    │                             │ │
+│  └─────────────┘    └──────────────┘    └─────────────────────────────┘ │
+│                                                    │                     │
+│                                                    ▼                     │
+│                                          ┌─────────────────┐            │
+│                                          │ MCP Server      │            │
+│                                          │ - query_code    │            │
+│                                          │ - get_function  │            │
+│                                          │ - find_similar  │            │
+│                                          │ - quality_filter│            │
+│                                          └─────────────────┘            │
+│                                                    │                     │
+└────────────────────────────────────────────────────│─────────────────────┘
+                                                     │
+                                                     ▼
+                                          ┌─────────────────┐
+                                          │ Claude Code     │
+                                          │ Cline           │
+                                          │ Other Agents    │
+                                          └─────────────────┘
+```
+
+### New MCP Tools
+
+```json
+{
+  "tools": [
+    {
+      "name": "pmat_query_code",
+      "description": "Semantic search for code by intent, returns annotated functions",
+      "input": {
+        "query": "error handling in API layer",
+        "limit": 5,
+        "min_quality": "B",
+        "max_complexity": 15
+      },
+      "output": {
+        "results": [
+          {
+            "function": "handle_api_error",
+            "file": "src/api/error.rs",
+            "line": 42,
+            "signature": "pub fn handle_api_error(err: ApiError) -> Response",
+            "doc": "Converts API errors to HTTP responses",
+            "tdg_score": 2.1,
+            "tdg_grade": "A",
+            "complexity": 8,
+            "cognitive": 5,
+            "big_o": "O(1)",
+            "satd_count": 0,
+            "relevance_score": 0.92
+          }
+        ]
+      }
+    },
+    {
+      "name": "pmat_get_function",
+      "description": "Get full function with context and quality metrics",
+      "input": {
+        "file": "src/api/error.rs",
+        "function": "handle_api_error"
+      }
+    },
+    {
+      "name": "pmat_find_similar",
+      "description": "Find functions similar to a given one (for refactoring)",
+      "input": {
+        "file": "src/api/error.rs",
+        "function": "handle_api_error",
+        "limit": 5
+      }
+    },
+    {
+      "name": "pmat_quality_report",
+      "description": "Get quality summary for a file or module",
+      "input": {
+        "path": "src/api/"
+      }
+    }
+  ]
+}
+```
+
+### Why This Stops Grepping
+
+1. **Semantic Search**: Agents ask "find error handling" not `grep -r "error"`
+2. **Quality Awareness**: Results sorted by TDG score, not file order
+3. **Context Included**: Full signatures, docs, metrics - no need to read files
+4. **Pre-indexed**: O(1) lookup vs O(n) grep
+5. **Structured Output**: JSON with all metadata, not raw text
+
+### Integration with `pmat comply`
+
+Add compliance check for agent behavior:
+
+```yaml
+# .pmat-gates.toml
+[agent-context]
+# Require agents to use RAG instead of grep
+require_semantic_search = true
+max_grep_calls = 5  # Allow some for edge cases
+warn_on_file_read_without_query = true
+```
+
+```bash
+$ pmat comply check
+✓ Agent Context: 95% queries via RAG (target: >80%)
+⚠ Agent Context: 3 grep calls detected (max: 5)
+```
+
+### Implementation with trueno-rag
+
+```rust
+// src/services/agent_context.rs
+use trueno_rag::{
+    pipeline::RagPipelineBuilder,
+    chunk::StructuralChunker,
+    embed::FastEmbedder,
+    fusion::FusionStrategy,
+};
+
+pub struct AgentContextServer {
+    pipeline: RagPipeline,
+    quality_index: HashMap<String, QualityMetrics>,
+}
+
+impl AgentContextServer {
+    /// Build from pmat context output
+    pub async fn from_project(project_path: &Path) -> Result<Self> {
+        // 1. Generate annotated context
+        let context = pmat_context::analyze_project(project_path).await?;
+
+        // 2. Build quality index
+        let mut quality_index = HashMap::new();
+        for file in &context.files {
+            for func in &file.functions {
+                quality_index.insert(
+                    format!("{}::{}", file.path, func.name),
+                    QualityMetrics {
+                        tdg_score: func.tdg_score,
+                        complexity: func.complexity,
+                        cognitive: func.cognitive,
+                        big_o: func.big_o.clone(),
+                        satd_count: func.satd_markers.len(),
+                    },
+                );
+            }
+        }
+
+        // 3. Build RAG pipeline with function-aware chunking
+        let mut pipeline = RagPipelineBuilder::new()
+            .chunker(FunctionAwareChunker::new())  // Custom: one chunk per function
+            .embedder(FastEmbedder::new(EmbeddingModelType::AllMiniLmL6V2)?)
+            .fusion(FusionStrategy::RRF { k: 60.0 })
+            .build()?;
+
+        // 4. Index all functions with metadata
+        for file in &context.files {
+            for func in &file.functions {
+                let doc = Document::new(&func.to_markdown())
+                    .with_metadata("file", &file.path)
+                    .with_metadata("function", &func.name)
+                    .with_metadata("tdg_score", func.tdg_score)
+                    .with_metadata("complexity", func.complexity);
+                pipeline.index_document(&doc)?;
+            }
+        }
+
+        Ok(Self { pipeline, quality_index })
+    }
+
+    /// Semantic search with quality filtering
+    pub async fn query(
+        &self,
+        query: &str,
+        limit: usize,
+        min_quality: Option<Grade>,
+        max_complexity: Option<u32>,
+    ) -> Result<Vec<AnnotatedResult>> {
+        let results = self.pipeline.query(query, limit * 2)?;  // Over-fetch for filtering
+
+        let mut annotated: Vec<_> = results
+            .into_iter()
+            .filter_map(|r| {
+                let key = format!("{}::{}", r.metadata["file"], r.metadata["function"]);
+                let quality = self.quality_index.get(&key)?;
+
+                // Apply quality filters
+                if let Some(min) = min_quality {
+                    if quality.grade() < min { return None; }
+                }
+                if let Some(max) = max_complexity {
+                    if quality.complexity > max { return None; }
+                }
+
+                Some(AnnotatedResult {
+                    content: r.content,
+                    file: r.metadata["file"].clone(),
+                    function: r.metadata["function"].clone(),
+                    relevance: r.score,
+                    quality: quality.clone(),
+                })
+            })
+            .take(limit)
+            .collect();
+
+        // Sort by relevance * quality
+        annotated.sort_by(|a, b| {
+            let score_a = a.relevance * (1.0 - a.quality.tdg_score / 10.0);
+            let score_b = b.relevance * (1.0 - b.quality.tdg_score / 10.0);
+            score_b.partial_cmp(&score_a).unwrap()
+        });
+
+        Ok(annotated)
+    }
+}
+```
+
+### CLI Command
+
+```bash
+# Start context server (indexes project, starts MCP)
+pmat context --serve
+
+# One-shot query (for scripting)
+pmat query "error handling in API" --limit 5 --min-quality B
+
+# Check if context is indexed
+pmat context --status
+```
+
+### Benefits
+
+| Metric | Grep Approach | RAG Approach |
+|--------|---------------|--------------|
+| Time to find code | O(n) scan | O(1) lookup |
+| Context tokens | ~500 per match | ~100 per match (structured) |
+| Quality awareness | None | Full metrics |
+| Semantic match | No | Yes |
+| Repeated work | Every query | Indexed once |
+
+### Migration Path
+
+1. **Phase 1**: Add `pmat query` command using existing trueno-rag
+2. **Phase 2**: Add MCP tools for agent integration
+3. **Phase 3**: Add `pmat context --serve` for persistent index
+4. **Phase 4**: Add compliance checks for grep vs query
+
 ## References
 
 - [trueno-rag documentation](https://docs.rs/trueno-rag)
 - [Semantic Entropy paper (Farquhar et al., Nature 2024)](https://www.nature.com/articles/s41586-024-07421-0)
 - [PMAT hallucination detection](../CLAUDE.md#documentation-accuracy-enforcement)
+- [Claude Code MCP integration](https://docs.anthropic.com/claude-code/mcp)
 
 ## Appendix: Current ClaimExtractor Code
 
