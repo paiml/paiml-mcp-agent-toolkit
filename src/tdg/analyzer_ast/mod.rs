@@ -16,7 +16,7 @@ use crate::tdg::{
 
 /// AST-based TDG analyzer - proper implementation per specification
 pub struct TdgAnalyzerAst {
-    config: TdgConfig,
+    pub(crate) config: TdgConfig,
     storage: Option<TieredStore>,
     scheduler: Option<SimpleFairScheduler>,
     adaptive_manager: Option<AdaptiveThresholdManager>,
