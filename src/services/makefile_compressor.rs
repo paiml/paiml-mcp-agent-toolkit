@@ -596,6 +596,88 @@ deps:
             );
         }
     }
+
+    #[test]
+    fn test_extract_package_name_cargo() {
+        let line = "cargo install sccache";
+        let result = extract_package_name(line, "cargo install");
+        assert_eq!(result, Some("sccache".to_string()));
+    }
+
+    #[test]
+    fn test_extract_package_name_npm() {
+        let line = "npm install typescript";
+        let result = extract_package_name(line, "npm install");
+        assert_eq!(result, Some("typescript".to_string()));
+    }
+
+    #[test]
+    fn test_extract_package_name_with_flags() {
+        let line = "npm install -g typescript";
+        let result = extract_package_name(line, "npm install");
+        // Should skip the -g flag and get typescript
+        assert_eq!(result, Some("typescript".to_string()));
+    }
+
+    #[test]
+    fn test_extract_package_name_apt() {
+        let line = "apt-get install -y build-essential";
+        let result = extract_package_name(line, "install");
+        assert_eq!(result, Some("build-essential".to_string()));
+    }
+
+    #[test]
+    fn test_find_cargo_install_position() {
+        let parts = vec!["cargo", "install", "package"];
+        assert_eq!(find_cargo_install_position(&parts), Some(2));
+
+        let parts_no_cargo = vec!["npm", "install", "package"];
+        assert_eq!(find_cargo_install_position(&parts_no_cargo), None);
+    }
+
+    #[test]
+    fn test_find_npm_install_position() {
+        let parts = vec!["npm", "install", "package"];
+        assert_eq!(find_npm_install_position(&parts), Some(2));
+
+        let parts_no_npm = vec!["cargo", "install", "package"];
+        assert_eq!(find_npm_install_position(&parts_no_npm), None);
+    }
+
+    #[test]
+    fn test_get_valid_package() {
+        let parts = vec!["install", "-y", "package"];
+        assert_eq!(get_valid_package(&parts, 0), Some("install".to_string()));
+        assert_eq!(get_valid_package(&parts, 1), None); // -y is a flag
+        assert_eq!(get_valid_package(&parts, 2), Some("package".to_string()));
+        assert_eq!(get_valid_package(&parts, 3), None); // Out of bounds
+    }
+
+    #[test]
+    fn test_compressor_default() {
+        let compressor = MakefileCompressor::default();
+        assert!(compressor.critical_targets.contains("build"));
+        assert!(compressor.critical_vars.contains("CC"));
+    }
+
+    #[test]
+    fn test_compress_empty_makefile() {
+        let compressor = MakefileCompressor::new();
+        let result = compressor.compress("");
+        assert!(result.variables.is_empty());
+        assert!(result.targets.is_empty());
+        assert!(result.detected_toolchain.is_none());
+    }
+
+    #[test]
+    fn test_is_critical_target() {
+        let compressor = MakefileCompressor::new();
+        assert!(compressor.is_critical_target("build"));
+        assert!(compressor.is_critical_target("test"));
+        assert!(compressor.is_critical_target("test-unit")); // prefixed
+        assert!(compressor.is_critical_target("build-release"));
+        assert!(!compressor.is_critical_target("random"));
+    }
 }
 
 #[cfg(test)]
