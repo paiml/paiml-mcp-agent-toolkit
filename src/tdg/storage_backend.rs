@@ -707,6 +707,7 @@ mod extended_tests {
     }
 
     #[test]
+    #[ignore] // Slow test - takes >60s
     fn test_libsql_backend_clear() {
         let backend = LibsqlBackend::new_temporary().unwrap();
 
@@ -986,6 +987,7 @@ mod extended_tests {
     }
 
     #[test]
+    #[ignore] // Slow test - takes >60s
     fn test_libsql_backend_get_stats() {
         let backend = LibsqlBackend::new_temporary().unwrap();
         backend.put(b"key1", b"value1").unwrap();

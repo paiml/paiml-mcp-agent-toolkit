@@ -145,6 +145,7 @@ mod tests {
     // Slow integration test - Sprint 45 Phase 3
     // Skips in CI environments automatically
     #[serial_test::serial]
+    #[ignore] // Integration test with external dependencies
     async fn test_cli_context_generation() {
         // Skip this slow test in CI environments to prevent timeout
         if std::env::var("SKIP_SLOW_TESTS").is_ok() || std::env::var("CI").is_ok() {

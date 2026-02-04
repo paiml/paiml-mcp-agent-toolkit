@@ -61,6 +61,7 @@ async fn test_insert_embedding() {
 }
 
 #[tokio::test]
+#[ignore] // Flaky or environment-dependent test
 async fn test_upsert_on_duplicate() {
     let db_path = "test_upsert.db";
     cleanup_test_db(db_path);

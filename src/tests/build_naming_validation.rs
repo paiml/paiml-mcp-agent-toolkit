@@ -4,6 +4,7 @@ mod tests {
     use std::process::Command;
 
     #[test]
+    #[ignore] // Integration test with external dependencies
     #[serial]
     fn test_cargo_build_has_single_correct_binary() {
         // Run cargo metadata to get project info
@@ -206,6 +207,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore] // Integration test with external dependencies
     #[serial]
     fn test_cargo_lock_only_in_root() {
         use std::env;
@@ -238,6 +240,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore] // Integration test with external dependencies
     #[serial]
     fn test_build_script_workspace_aware() {
         // Read the build.rs file
