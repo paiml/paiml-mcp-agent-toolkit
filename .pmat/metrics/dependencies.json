@@ -1,196 +1,201 @@
 {
   "direct_count": 74,
   "transitive_count": 1019,
-  "timestamp": "2026-02-04T03:46:11.687766001+00:00",
+  "timestamp": "2026-02-04T03:48:44.531813284+00:00",
   "previous": {
     "direct_count": 74,
     "transitive_count": 1019,
-    "timestamp": "2026-02-04T03:44:17.504805309+00:00",
+    "timestamp": "2026-02-04T03:46:11.687766001+00:00",
     "previous": {
       "direct_count": 74,
       "transitive_count": 1019,
-      "timestamp": "2026-02-04T03:39:00.158626145+00:00",
+      "timestamp": "2026-02-04T03:44:17.504805309+00:00",
       "previous": {
         "direct_count": 74,
         "transitive_count": 1019,
-        "timestamp": "2026-02-04T03:13:38.191918836+00:00",
+        "timestamp": "2026-02-04T03:39:00.158626145+00:00",
         "previous": {
           "direct_count": 74,
           "transitive_count": 1019,
-          "timestamp": "2026-02-04T02:57:45.112083086+00:00",
+          "timestamp": "2026-02-04T03:13:38.191918836+00:00",
           "previous": {
             "direct_count": 74,
             "transitive_count": 1019,
-            "timestamp": "2026-02-04T00:00:43.581517671+00:00",
+            "timestamp": "2026-02-04T02:57:45.112083086+00:00",
             "previous": {
               "direct_count": 74,
               "transitive_count": 1019,
-              "timestamp": "2026-02-03T23:50:53.667956789+00:00",
+              "timestamp": "2026-02-04T00:00:43.581517671+00:00",
               "previous": {
                 "direct_count": 74,
                 "transitive_count": 1019,
-                "timestamp": "2026-02-03T23:45:28.818477410+00:00",
+                "timestamp": "2026-02-03T23:50:53.667956789+00:00",
                 "previous": {
                   "direct_count": 74,
                   "transitive_count": 1019,
-                  "timestamp": "2026-02-03T23:30:46.346726633+00:00",
+                  "timestamp": "2026-02-03T23:45:28.818477410+00:00",
                   "previous": {
                     "direct_count": 74,
                     "transitive_count": 1019,
-                    "timestamp": "2026-02-03T23:27:29.498425074+00:00",
+                    "timestamp": "2026-02-03T23:30:46.346726633+00:00",
                     "previous": {
                       "direct_count": 74,
                       "transitive_count": 1019,
-                      "timestamp": "2026-02-03T23:25:17.490317167+00:00",
+                      "timestamp": "2026-02-03T23:27:29.498425074+00:00",
                       "previous": {
                         "direct_count": 74,
                         "transitive_count": 1019,
-                        "timestamp": "2026-02-03T23:23:17.354171674+00:00",
+                        "timestamp": "2026-02-03T23:25:17.490317167+00:00",
                         "previous": {
                           "direct_count": 74,
                           "transitive_count": 1019,
-                          "timestamp": "2026-02-03T23:12:00.242130068+00:00",
+                          "timestamp": "2026-02-03T23:23:17.354171674+00:00",
                           "previous": {
                             "direct_count": 74,
                             "transitive_count": 1019,
-                            "timestamp": "2026-02-03T22:59:03.904509937+00:00",
+                            "timestamp": "2026-02-03T23:12:00.242130068+00:00",
                             "previous": {
                               "direct_count": 74,
                               "transitive_count": 1019,
-                              "timestamp": "2026-02-03T22:56:50.198495526+00:00",
+                              "timestamp": "2026-02-03T22:59:03.904509937+00:00",
                               "previous": {
                                 "direct_count": 74,
                                 "transitive_count": 1019,
-                                "timestamp": "2026-02-03T22:55:14.778656447+00:00",
+                                "timestamp": "2026-02-03T22:56:50.198495526+00:00",
                                 "previous": {
                                   "direct_count": 74,
                                   "transitive_count": 1019,
-                                  "timestamp": "2026-02-03T22:45:54.230621450+00:00",
+                                  "timestamp": "2026-02-03T22:55:14.778656447+00:00",
                                   "previous": {
                                     "direct_count": 74,
                                     "transitive_count": 1019,
-                                    "timestamp": "2026-02-03T22:40:22.373478719+00:00",
+                                    "timestamp": "2026-02-03T22:45:54.230621450+00:00",
                                     "previous": {
                                       "direct_count": 74,
                                       "transitive_count": 1019,
-                                      "timestamp": "2026-02-03T22:33:26.926799138+00:00",
+                                      "timestamp": "2026-02-03T22:40:22.373478719+00:00",
                                       "previous": {
                                         "direct_count": 74,
                                         "transitive_count": 1019,
-                                        "timestamp": "2026-02-03T22:27:51.589423787+00:00",
+                                        "timestamp": "2026-02-03T22:33:26.926799138+00:00",
                                         "previous": {
                                           "direct_count": 74,
                                           "transitive_count": 1019,
-                                          "timestamp": "2026-02-03T22:10:58.291926586+00:00",
+                                          "timestamp": "2026-02-03T22:27:51.589423787+00:00",
                                           "previous": {
                                             "direct_count": 74,
                                             "transitive_count": 1019,
-                                            "timestamp": "2026-02-03T22:10:37.673039417+00:00",
+                                            "timestamp": "2026-02-03T22:10:58.291926586+00:00",
                                             "previous": {
                                               "direct_count": 74,
                                               "transitive_count": 1019,
-                                              "timestamp": "2026-02-03T18:59:59.407632498+00:00",
+                                              "timestamp": "2026-02-03T22:10:37.673039417+00:00",
                                               "previous": {
                                                 "direct_count": 74,
                                                 "transitive_count": 1019,
-                                                "timestamp": "2026-02-03T18:58:50.527699215+00:00",
+                                                "timestamp": "2026-02-03T18:59:59.407632498+00:00",
                                                 "previous": {
                                                   "direct_count": 74,
                                                   "transitive_count": 1019,
-                                                  "timestamp": "2026-02-03T18:51:36.800817618+00:00",
+                                                  "timestamp": "2026-02-03T18:58:50.527699215+00:00",
                                                   "previous": {
                                                     "direct_count": 74,
                                                     "transitive_count": 1019,
-                                                    "timestamp": "2026-02-03T17:45:25.475147547+00:00",
+                                                    "timestamp": "2026-02-03T18:51:36.800817618+00:00",
                                                     "previous": {
                                                       "direct_count": 74,
                                                       "transitive_count": 1019,
-                                                      "timestamp": "2026-02-03T16:49:25.198989255+00:00",
+                                                      "timestamp": "2026-02-03T17:45:25.475147547+00:00",
                                                       "previous": {
                                                         "direct_count": 74,
                                                         "transitive_count": 1019,
-                                                        "timestamp": "2026-02-03T16:40:06.519493239+00:00",
+                                                        "timestamp": "2026-02-03T16:49:25.198989255+00:00",
                                                         "previous": {
                                                           "direct_count": 74,
                                                           "transitive_count": 1019,
-                                                          "timestamp": "2026-02-03T16:33:59.268950376+00:00",
+                                                          "timestamp": "2026-02-03T16:40:06.519493239+00:00",
                                                           "previous": {
                                                             "direct_count": 74,
                                                             "transitive_count": 1019,
-                                                            "timestamp": "2026-02-03T16:24:01.052750408+00:00",
+                                                            "timestamp": "2026-02-03T16:33:59.268950376+00:00",
                                                             "previous": {
                                                               "direct_count": 74,
                                                               "transitive_count": 1019,
-                                                              "timestamp": "2026-02-03T16:22:08.373901378+00:00",
+                                                              "timestamp": "2026-02-03T16:24:01.052750408+00:00",
                                                               "previous": {
                                                                 "direct_count": 74,
                                                                 "transitive_count": 1019,
-                                                                "timestamp": "2026-02-03T16:17:46.266705861+00:00",
+                                                                "timestamp": "2026-02-03T16:22:08.373901378+00:00",
                                                                 "previous": {
                                                                   "direct_count": 74,
                                                                   "transitive_count": 1019,
-                                                                  "timestamp": "2026-02-03T15:33:20.907254844+00:00",
+                                                                  "timestamp": "2026-02-03T16:17:46.266705861+00:00",
                                                                   "previous": {
                                                                     "direct_count": 74,
                                                                     "transitive_count": 1019,
-                                                                    "timestamp": "2026-02-03T15:33:14.657231648+00:00",
+                                                                    "timestamp": "2026-02-03T15:33:20.907254844+00:00",
                                                                     "previous": {
                                                                       "direct_count": 74,
                                                                       "transitive_count": 1019,
-                                                                      "timestamp": "2026-02-03T15:33:03.443362004+00:00",
+                                                                      "timestamp": "2026-02-03T15:33:14.657231648+00:00",
                                                                       "previous": {
-                                                                        "direct_count": 114,
+                                                                        "direct_count": 74,
                                                                         "transitive_count": 1019,
-                                                                        "timestamp": "2026-02-03T15:30:43.597189873+00:00",
+                                                                        "timestamp": "2026-02-03T15:33:03.443362004+00:00",
                                                                         "previous": {
-                                                                          "direct_count": 74,
+                                                                          "direct_count": 114,
                                                                           "transitive_count": 1019,
-                                                                          "timestamp": "2026-02-03T15:27:58.352420974+00:00",
+                                                                          "timestamp": "2026-02-03T15:30:43.597189873+00:00",
                                                                           "previous": {
-                                                                            "direct_count": 114,
+                                                                            "direct_count": 74,
                                                                             "transitive_count": 1019,
-                                                                            "timestamp": "2026-02-03T15:23:49.313614272+00:00",
+                                                                            "timestamp": "2026-02-03T15:27:58.352420974+00:00",
                                                                             "previous": {
                                                                               "direct_count": 114,
                                                                               "transitive_count": 1019,
-                                                                              "timestamp": "2026-02-03T14:45:39.655817456+00:00",
+                                                                              "timestamp": "2026-02-03T15:23:49.313614272+00:00",
                                                                               "previous": {
-                                                                                "direct_count": 74,
+                                                                                "direct_count": 114,
                                                                                 "transitive_count": 1019,
-                                                                                "timestamp": "2026-02-03T14:38:55.659495261+00:00",
+                                                                                "timestamp": "2026-02-03T14:45:39.655817456+00:00",
                                                                                 "previous": {
-                                                                                  "direct_count": 114,
+                                                                                  "direct_count": 74,
                                                                                   "transitive_count": 1019,
-                                                                                  "timestamp": "2026-02-03T14:37:17.804646351+00:00",
+                                                                                  "timestamp": "2026-02-03T14:38:55.659495261+00:00",
                                                                                   "previous": {
                                                                                     "direct_count": 114,
                                                                                     "transitive_count": 1019,
-                                                                                    "timestamp": "2026-02-03T14:24:31.829073080+00:00",
+                                                                                    "timestamp": "2026-02-03T14:37:17.804646351+00:00",
                                                                                     "previous": {
                                                                                       "direct_count": 114,
                                                                                       "transitive_count": 1019,
-                                                                                      "timestamp": "2026-02-03T13:03:02.710872057+00:00",
+                                                                                      "timestamp": "2026-02-03T14:24:31.829073080+00:00",
                                                                                       "previous": {
                                                                                         "direct_count": 114,
                                                                                         "transitive_count": 1019,
-                                                                                        "timestamp": "2026-02-03T12:57:45.548668200+00:00",
+                                                                                        "timestamp": "2026-02-03T13:03:02.710872057+00:00",
                                                                                         "previous": {
                                                                                           "direct_count": 114,
                                                                                           "transitive_count": 1019,
-                                                                                          "timestamp": "2026-02-03T12:50:48.023556120+00:00",
+                                                                                          "timestamp": "2026-02-03T12:57:45.548668200+00:00",
                                                                                           "previous": {
                                                                                             "direct_count": 114,
                                                                                             "transitive_count": 1019,
-                                                                                            "timestamp": "2026-02-03T12:28:24.678031880+00:00",
+                                                                                            "timestamp": "2026-02-03T12:50:48.023556120+00:00",
                                                                                             "previous": {
                                                                                               "direct_count": 114,
                                                                                               "transitive_count": 1019,
-                                                                                              "timestamp": "2026-02-03T12:28:13.949847158+00:00",
+                                                                                              "timestamp": "2026-02-03T12:28:24.678031880+00:00",
                                                                                               "previous": {
                                                                                                 "direct_count": 114,
                                                                                                 "transitive_count": 1019,
-                                                                                                "timestamp": "2026-02-03T12:23:24.681893644+00:00",
-                                                                                                "previous": null
+                                                                                                "timestamp": "2026-02-03T12:28:13.949847158+00:00",
+                                                                                                "previous": {
+                                                                                                  "direct_count": 114,
+                                                                                                  "transitive_count": 1019,
+                                                                                                  "timestamp": "2026-02-03T12:23:24.681893644+00:00",
+                                                                                                  "previous": null
+                                                                                                }
                                                                                               }
                                                                                             }
                                                                                           }
