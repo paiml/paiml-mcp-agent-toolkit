@@ -1556,4 +1556,109 @@ mod coverage_tests {
         assert_eq!(c2.max_score, 5.0);
         assert_eq!(c3.max_score, 5.0);
     }
+
+    // ============ matches_pattern Tests ============
+
+    #[test]
+    fn test_matches_pattern_exact_file() {
+        assert!(matches_pattern("path/to/.DS_Store", ".DS_Store"));
+        assert!(matches_pattern(".DS_Store", ".DS_Store"));
+        assert!(!matches_pattern("path/to/file.txt", ".DS_Store"));
+    }
+
+    #[test]
+    fn test_matches_pattern_directory() {
+        assert!(matches_pattern("path/to/target/", "target/"));
+        assert!(matches_pattern("path/to/node_modules/", "node_modules/"));
+        assert!(!matches_pattern("path/to/src/", "target/"));
+    }
+
+    #[test]
+    fn test_matches_pattern_wildcard_prefix() {
+        assert!(matches_pattern("file.pyc", "*.pyc"));
+        assert!(matches_pattern("module.pyc", "*.pyc"));
+        assert!(!matches_pattern("file.py", "*.pyc"));
+    }
+
+    #[test]
+    fn test_matches_pattern_wildcard_suffix() {
+        assert!(matches_pattern("file~", "*~"));
+        assert!(matches_pattern("backup~", "*~"));
+        assert!(!matches_pattern("file.txt", "*~"));
+    }
+
+    #[test]
+    fn test_matches_pattern_pycache() {
+        assert!(matches_pattern("path/__pycache__/", "__pycache__/"));
+        assert!(matches_pattern("src/__pycache__/module.pyc", "__pycache__/"));
+    }
+
+    #[test]
+    fn test_matches_pattern_editor_files() {
+        assert!(matches_pattern("file.swp", "*.swp"));
+        assert!(matches_pattern("file.swo", "*.swo"));
+        assert!(matches_pattern("file.bak", "*.bak"));
+        assert!(matches_pattern("file.orig", "*.orig"));
+        assert!(matches_pattern("file.tmp", "*.tmp"));
+    }
+
+    #[test]
+    fn test_matches_pattern_os_files() {
+        assert!(matches_pattern("Thumbs.db", "Thumbs.db"));
+        assert!(matches_pattern("folder/Thumbs.db", "Thumbs.db"));
+        assert!(matches_pattern("desktop.ini", "desktop.ini"));
+    }
+
+    // ============ Edge Cases ============
+
+    #[tokio::test]
+    async fn test_hygiene_scorer_empty_repo() {
+        let temp_dir = create_temp_repo();
+        let repo_path = temp_dir.path();
+
+        let scorer = HygieneScorer::new();
+        let config = ScorerConfig::default();
+        let result = scorer.score(repo_path, &config).await.unwrap();
+
+        // Empty repo should get scores within valid range
+        assert!(result.score >= 0.0);
+        assert!(result.score <= 15.0);
+    }
+
+    #[tokio::test]
+    async fn test_hygiene_scorer_with_ide_files() {
+        let temp_dir = create_temp_repo();
+        let repo_path = temp_dir.path();
+
+        // Create IDE-specific files
+        std::fs::create_dir_all(repo_path.join(".idea")).unwrap();
+        create_file(&repo_path.join(".idea"), "workspace.xml", "<project/>");
+        create_file(repo_path, "src/main.rs", "fn main() {}");
+
+        let scorer = HygieneScorer::new();
+        let config = ScorerConfig::default();
+        let result = scorer.score(repo_path, &config).await.unwrap();
+
+        // Should have deduction for IDE files
+        let c2 = result.subcategories.iter().find(|s| s.id == "C2").unwrap();
+        assert!(c2.findings.len() >= 1 || c2.score < 5.0);
+    }
+
+    #[tokio::test]
+    async fn test_hygiene_scorer_with_temp_files() {
+        let temp_dir = create_temp_repo();
+        let repo_path = temp_dir.path();
+
+        create_file(repo_path, "src/main.rs", "fn main() {}");
+        create_file(repo_path, "file.tmp", "temp content");
+        create_file(repo_path, "backup~", "backup content");
+
+        let scorer = HygieneScorer::new();
+        let config = ScorerConfig::default();
+        let result = scorer.score(repo_path, &config).await.unwrap();
+
+        // Should have deductions for temp files
+        let c1 = result.subcategories.iter().find(|s| s.id == "C1").unwrap();
+        assert!(c1.findings.len() >= 1 || c1.score < 5.0);
+    }
 }

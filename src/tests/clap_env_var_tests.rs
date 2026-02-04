@@ -441,12 +441,7 @@ mod env_var_edge_cases {
     }
 
     #[test]
-    #[ignore] // Stack overflow - CLI parser too large for test thread stack
-    #[ignore] // Five Whys: Process-global environment variable causes race conditions under parallel execution
-              // Root cause: std::env::set_var() is process-wide, not thread-local
-              // Fix attempted: ENV_MUTEX lock failed because environment is modified by other tests
-              // Decision: Mark as #[ignore] - unsuitable for parallel test execution
-              // Run manually: cargo test test_env_var_concurrent_modification -- --ignored --test-threads=1
+    #[ignore] // Stack overflow - CLI parser too large for test thread stack; also race conditions
     fn test_env_var_concurrent_modification() {
         let _guard = ENV_MUTEX.lock();
 
