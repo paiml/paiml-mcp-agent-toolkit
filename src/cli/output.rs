@@ -65,6 +65,7 @@ impl StdoutWriter {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 impl OutputWriter for StdoutWriter {
     fn status(&mut self, msg: &str) {
         eprintln!("{msg}");

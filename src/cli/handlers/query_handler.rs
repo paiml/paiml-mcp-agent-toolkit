@@ -41,12 +41,29 @@ pub async fn handle_query(
     // Suppress status messages for JSON format (issue #145)
     let quiet = matches!(format, QueryOutputFormat::Json);
 
-    let index = if index_path.exists() && !rebuild_index {
+    let mut index = if index_path.exists() && !rebuild_index {
         if !quiet {
             eprintln!("Loading index from {:?}...", index_path);
         }
         match AgentContextIndex::load(&index_path) {
-            Ok(idx) => idx,
+            Ok(existing) => {
+                // Try incremental update if checksums are available
+                if !existing.manifest().file_checksums.is_empty() {
+                    if !quiet {
+                        eprintln!("Checking for incremental updates...");
+                    }
+                    match AgentContextIndex::build_incremental(&project_path, &existing) {
+                        Ok(updated) => {
+                            // Save the updated index
+                            let _ = updated.save(&index_path);
+                            updated
+                        }
+                        Err(_) => existing, // Fall back to loaded index
+                    }
+                } else {
+                    existing
+                }
+            }
             Err(e) => {
                 eprintln!("Failed to load index ({}), rebuilding...", e);
                 build_and_save_index(&project_path, &index_path)?
@@ -58,6 +75,29 @@ pub async fn handle_query(
         }
         build_and_save_index(&project_path, &index_path)?
     };
+
+    // Auto-discover sibling projects with indexes
+    let siblings = AgentContextIndex::discover_sibling_indexes(&project_path);
+    if !siblings.is_empty() {
+        let workspace_idx = project_path.join(".pmat/workspace.idx");
+        if !rebuild_index && is_workspace_cache_fresh(&workspace_idx, &siblings) {
+            // Fast path: load cached merged index
+            if !quiet {
+                eprintln!("Loading cached workspace index...");
+            }
+            match AgentContextIndex::load(&workspace_idx) {
+                Ok(cached) => {
+                    index = cached;
+                }
+                Err(_) => {
+                    // Cache corrupted, fall through to merge
+                    merge_and_cache_workspace(&mut index, &siblings, &workspace_idx, quiet);
+                }
+            }
+        } else {
+            merge_and_cache_workspace(&mut index, &siblings, &workspace_idx, quiet);
+        }
+    }
 
     if !quiet {
         let manifest = index.manifest();
@@ -108,6 +148,54 @@ pub async fn handle_query(
     println!("{}", output);
 
     Ok(())
+}
+
+/// Check if the cached workspace index is newer than all sibling indexes.
+fn is_workspace_cache_fresh(
+    workspace_idx: &std::path::Path,
+    siblings: &[(PathBuf, String)],
+) -> bool {
+    let cache_mtime = match std::fs::metadata(workspace_idx).and_then(|m| m.modified()) {
+        Ok(t) => t,
+        Err(_) => return false, // No cache
+    };
+
+    // Cache is fresh if it's newer than every sibling's index
+    siblings.iter().all(|(idx_path, _)| {
+        // Check manifest.json mtime (always written on save)
+        let manifest = idx_path.join("manifest.json");
+        match std::fs::metadata(&manifest).and_then(|m| m.modified()) {
+            Ok(sibling_mtime) => cache_mtime > sibling_mtime,
+            Err(_) => true, // Sibling gone, cache still valid for others
+        }
+    })
+}
+
+/// Merge siblings into index and save the combined result as workspace cache.
+fn merge_and_cache_workspace(
+    index: &mut AgentContextIndex,
+    siblings: &[(PathBuf, String)],
+    workspace_idx: &std::path::Path,
+    quiet: bool,
+) {
+    if !quiet {
+        eprintln!("Merging {} sibling project(s):", siblings.len());
+    }
+    index.merge_siblings(siblings);
+
+    // Cache the merged index for next time
+    match index.save(workspace_idx) {
+        Ok(()) => {
+            if !quiet {
+                eprintln!("Workspace index cached.");
+            }
+        }
+        Err(e) => {
+            if !quiet {
+                eprintln!("Failed to cache workspace index: {}", e);
+            }
+        }
+    }
 }
 
 /// Build index and save to disk

@@ -38,7 +38,7 @@ impl IndexManager {
         }
     }
 
-    /// Get or build the index
+    /// Get or build the index, using incremental updates when possible
     pub async fn get_index(&self) -> Result<AgentContextIndex, String> {
         // First check if we have a cached index
         {
@@ -51,7 +51,19 @@ impl IndexManager {
         // Build or load index
         let index_path = self.project_path.join(".pmat/context.idx");
         let index = if index_path.exists() {
-            AgentContextIndex::load(&index_path)?
+            let existing = AgentContextIndex::load(&index_path)?;
+            // Try incremental update if checksums are available
+            if !existing.manifest().file_checksums.is_empty() {
+                match AgentContextIndex::build_incremental(&self.project_path, &existing) {
+                    Ok(updated) => {
+                        let _ = updated.save(&index_path);
+                        updated
+                    }
+                    Err(_) => existing,
+                }
+            } else {
+                existing
+            }
         } else {
             let idx = AgentContextIndex::build(&self.project_path)?;
             // Create directory and save
@@ -62,6 +74,13 @@ impl IndexManager {
             idx.save(&index_path)?;
             idx
         };
+
+        // Auto-discover and merge sibling project indexes
+        let siblings = AgentContextIndex::discover_sibling_indexes(&self.project_path);
+        let mut index = index;
+        if !siblings.is_empty() {
+            index.merge_siblings(&siblings);
+        }
 
         // Cache it
         {
@@ -249,6 +268,14 @@ impl McpTool for QueryCodeTool {
 
                 if let Some(source) = &r.source {
                     result["source"] = json!(source);
+                }
+
+                if !r.calls.is_empty() {
+                    result["calls"] = json!(r.calls);
+                }
+
+                if !r.called_by.is_empty() {
+                    result["called_by"] = json!(r.called_by);
                 }
 
                 result

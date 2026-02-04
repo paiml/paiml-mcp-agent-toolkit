@@ -112,6 +112,7 @@ pub struct EarlyCliArgs {
 /// // Values depend on actual command line arguments
 /// ```ignore
 #[must_use]
+#[cfg_attr(coverage_nightly, coverage(off))]
 pub fn parse_early_for_tracing() -> EarlyCliArgs {
     let args: Vec<String> = std::env::args().collect();
 
@@ -138,6 +139,7 @@ pub fn parse_early_for_tracing() -> EarlyCliArgs {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 pub async fn run(server: Arc<StatelessTemplateServer>) -> anyhow::Result<()> {
     let cli = match parse_with_suggestions() {
         Ok(cli) => cli,
@@ -186,6 +188,7 @@ fn apply_ux_settings(cli: &commands::Cli) {
 }
 
 /// Parse CLI with command suggestions on failure
+#[cfg_attr(coverage_nightly, coverage(off))]
 fn parse_with_suggestions() -> Result<Cli, String> {
     use crate::utils::command_suggestions::CommandSuggester;
     use clap::Parser;

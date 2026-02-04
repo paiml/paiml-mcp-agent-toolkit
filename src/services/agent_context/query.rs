@@ -4,6 +4,17 @@
 
 use super::{AgentContextIndex, FunctionEntry};
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
+
+/// Deduplicate a list of strings while preserving first-seen order
+fn dedup_ordered(items: &[&str]) -> Vec<String> {
+    let mut seen = HashSet::new();
+    items
+        .iter()
+        .filter(|s| seen.insert(**s))
+        .map(|s| s.to_string())
+        .collect()
+}
 
 /// Check if function is a test (test_ prefix or in tests/ directory)
 fn is_test_function(func: &FunctionEntry) -> bool {
@@ -66,6 +77,12 @@ pub struct QueryResult {
     pub relevance_score: f32,
     /// Full source (if requested)
     pub source: Option<String>,
+    /// Function names this function calls
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub calls: Vec<String>,
+    /// Function names that call this function
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub called_by: Vec<String>,
 }
 
 impl QueryResult {
@@ -91,7 +108,42 @@ impl QueryResult {
             } else {
                 None
             },
+            calls: Vec::new(),
+            called_by: Vec::new(),
         }
+    }
+
+    /// Create from function entry with caller/callee context from the index
+    pub fn from_entry_with_context(
+        entry: &FunctionEntry,
+        func_idx: usize,
+        index: &AgentContextIndex,
+        relevance: f32,
+        include_source: bool,
+    ) -> Self {
+        let mut result = Self::from_entry(entry, relevance, include_source);
+        // Deduplicate while preserving first-seen order
+        result.calls = dedup_ordered(&index.get_calls(func_idx));
+        // Separate production callers from test callers, cap display
+        let all_callers = dedup_ordered(&index.get_called_by(func_idx));
+        let (prod, tests): (Vec<_>, Vec<_>) = all_callers
+            .into_iter()
+            .partition(|name| !name.starts_with("test_"));
+        const MAX_CALLERS: usize = 10;
+        if prod.len() > MAX_CALLERS {
+            result.called_by = prod[..MAX_CALLERS].to_vec();
+            result
+                .called_by
+                .push(format!("(+{} more)", prod.len() - MAX_CALLERS));
+        } else {
+            result.called_by = prod;
+        }
+        if !tests.is_empty() {
+            result
+                .called_by
+                .push(format!("(+{} tests)", tests.len()));
+        }
+        result
     }
 
     /// Format for display
@@ -112,11 +164,44 @@ impl QueryResult {
     }
 }
 
+/// Parse `file:` and `fn:` prefixes from a query string.
+///
+/// Extracts optional scope filters:
+/// - `file:query.rs error handling` -> (Some("query.rs"), None, "error handling")
+/// - `fn:handle_ auth` -> (None, Some("handle_"), "auth")
+/// - `file:foo.rs fn:bar baz` -> (Some("foo.rs"), Some("bar"), "baz")
+fn parse_query_prefixes(query: &str) -> (Option<String>, Option<String>, String) {
+    let mut file_filter = None;
+    let mut fn_filter = None;
+    let mut remaining_parts = Vec::new();
+
+    for token in query.split_whitespace() {
+        if let Some(pattern) = token.strip_prefix("file:") {
+            if !pattern.is_empty() {
+                file_filter = Some(pattern.to_string());
+            }
+        } else if let Some(pattern) = token.strip_prefix("fn:") {
+            if !pattern.is_empty() {
+                fn_filter = Some(pattern.to_string());
+            }
+        } else {
+            remaining_parts.push(token);
+        }
+    }
+
+    let remaining = remaining_parts.join(" ");
+    (file_filter, fn_filter, remaining)
+}
+
 impl AgentContextIndex {
     /// Query the index with semantic search
     ///
+    /// Supports scope-aware prefixes:
+    /// - `file:query.rs error handling` - search only in matching files
+    /// - `fn:handle_ auth` - search only functions matching name prefix
+    ///
     /// # Arguments
-    /// * `query` - Natural language query
+    /// * `query` - Natural language query (with optional file:/fn: prefixes)
     /// * `options` - Query options for filtering
     ///
     /// # Returns
@@ -128,13 +213,69 @@ impl AgentContextIndex {
 
         let limit = if options.limit == 0 { 10 } else { options.limit };
 
-        // Calculate relevance scores using term matching
-        let scores = self.calculate_relevance_scores(query)?;
+        // Parse scope prefixes
+        let (file_filter, fn_filter, remaining_query) = parse_query_prefixes(query);
+
+        // Determine candidate set based on scope prefixes
+        let candidates: Option<Vec<usize>> = match (&file_filter, &fn_filter) {
+            (Some(file_pat), Some(fn_pat)) => {
+                // Both filters: intersect file and name matches
+                let file_candidates: std::collections::HashSet<usize> = self
+                    .file_index
+                    .iter()
+                    .filter(|(path, _)| path.contains(file_pat.as_str()))
+                    .flat_map(|(_, indices)| indices.iter().copied())
+                    .collect();
+                let fn_candidates: Vec<usize> = self
+                    .name_index
+                    .iter()
+                    .filter(|(name, _)| name.starts_with(fn_pat.as_str()))
+                    .flat_map(|(_, indices)| indices.iter().copied())
+                    .filter(|idx| file_candidates.contains(idx))
+                    .collect();
+                Some(fn_candidates)
+            }
+            (Some(file_pat), None) => {
+                // File filter only: use file_index for O(1)-ish lookup
+                let indices: Vec<usize> = self
+                    .file_index
+                    .iter()
+                    .filter(|(path, _)| path.contains(file_pat.as_str()))
+                    .flat_map(|(_, indices)| indices.iter().copied())
+                    .collect();
+                Some(indices)
+            }
+            (None, Some(fn_pat)) => {
+                // Function name filter: use name_index
+                let indices: Vec<usize> = self
+                    .name_index
+                    .iter()
+                    .filter(|(name, _)| name.starts_with(fn_pat.as_str()))
+                    .flat_map(|(_, indices)| indices.iter().copied())
+                    .collect();
+                Some(indices)
+            }
+            (None, None) => None, // Full corpus scan
+        };
+
+        // Use remaining query for scoring, or original if no prefixes found
+        let search_query = if remaining_query.is_empty() {
+            query
+        } else {
+            &remaining_query
+        };
+
+        // Calculate relevance scores
+        let scores = if let Some(ref candidate_indices) = candidates {
+            // Scoped scoring: only score candidate functions
+            self.calculate_relevance_scores_scoped(search_query, candidate_indices)?
+        } else {
+            self.calculate_relevance_scores(search_query)?
+        };
 
         // Combine with quality score for final ranking
         let mut ranked: Vec<(usize, f32)> = scores
             .into_iter()
-            .enumerate()
             .filter(|(idx, _)| self.passes_filters(*idx, &options))
             .map(|(idx, relevance)| {
                 let func = &self.functions[idx];
@@ -148,6 +289,17 @@ impl AgentContextIndex {
                     combined *= 0.6;
                 }
 
+                // Demote generic/common function names
+                let freq = self
+                    .name_frequency
+                    .get(&func.function_name)
+                    .copied()
+                    .unwrap_or(0.0);
+                if freq > 0.001 {
+                    // name appears in >0.1% of functions
+                    combined *= (1.0 - freq).max(0.3); // floor at 0.3x
+                }
+
                 (idx, combined)
             })
             .collect();
@@ -155,12 +307,18 @@ impl AgentContextIndex {
         // Sort by combined score (descending)
         ranked.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
 
-        // Take top results
+        // Take top results with caller/callee context
         let results: Vec<QueryResult> = ranked
             .into_iter()
             .take(limit)
             .map(|(idx, score)| {
-                QueryResult::from_entry(&self.functions[idx], score, options.include_source)
+                QueryResult::from_entry_with_context(
+                    &self.functions[idx],
+                    idx,
+                    self,
+                    score,
+                    options.include_source,
+                )
             })
             .collect();
 
@@ -171,8 +329,9 @@ impl AgentContextIndex {
     pub fn get_function(&self, file_path: &str, function_name: &str) -> Option<QueryResult> {
         self.functions
             .iter()
-            .find(|f| f.file_path == file_path && f.function_name == function_name)
-            .map(|f| QueryResult::from_entry(f, 1.0, true))
+            .enumerate()
+            .find(|(_, f)| f.file_path == file_path && f.function_name == function_name)
+            .map(|(idx, f)| QueryResult::from_entry_with_context(f, idx, self, 1.0, true))
     }
 
     /// Find similar functions
@@ -197,7 +356,6 @@ impl AgentContextIndex {
 
         let mut ranked: Vec<(usize, f32)> = scores
             .into_iter()
-            .enumerate()
             .filter(|(idx, _)| *idx != ref_idx) // Exclude self
             .collect();
 
@@ -206,17 +364,24 @@ impl AgentContextIndex {
         let results: Vec<QueryResult> = ranked
             .into_iter()
             .take(limit)
-            .map(|(idx, score)| QueryResult::from_entry(&self.functions[idx], score, false))
+            .map(|(idx, score)| {
+                QueryResult::from_entry_with_context(
+                    &self.functions[idx],
+                    idx,
+                    self,
+                    score,
+                    false,
+                )
+            })
             .collect();
 
         Ok(results)
     }
 
-    /// Calculate term-based relevance scores using pre-computed lowercase corpus.
+    /// Calculate term-based relevance scores for all documents.
     ///
-    /// Uses pre-computed `corpus_lower` to avoid per-query `.to_lowercase()` on
-    /// all 42K+ documents. Linear scan with TF scoring for quality ranking.
-    fn calculate_relevance_scores(&self, query: &str) -> Result<Vec<f32>, String> {
+    /// Returns (index, score) pairs for all documents with non-zero scores.
+    fn calculate_relevance_scores(&self, query: &str) -> Result<Vec<(usize, f32)>, String> {
         if self.corpus.is_empty() {
             return Ok(Vec::new());
         }
@@ -229,11 +394,12 @@ impl AgentContextIndex {
             .collect();
 
         if query_terms.is_empty() {
-            return Ok(vec![0.0; self.corpus.len()]);
+            return Ok(Vec::new());
         }
 
         // Score each document using pre-computed lowercase corpus
-        let mut scores = vec![0.0f32; self.corpus.len()];
+        let mut results = Vec::new();
+        let mut max_score = 0.0f32;
 
         for (doc_idx, doc_lower) in self.corpus_lower.iter().enumerate() {
             let mut term_score = 0.0f32;
@@ -250,19 +416,85 @@ impl AgentContextIndex {
             }
 
             if term_count > 0 {
-                scores[doc_idx] = term_score / query_terms.len() as f32;
+                let score = term_score / query_terms.len() as f32;
+                if score > 0.0 {
+                    max_score = max_score.max(score);
+                    results.push((doc_idx, score));
+                }
             }
         }
 
         // Normalize scores to 0-1 range
-        let max_score = scores.iter().cloned().fold(0.0f32, f32::max);
         if max_score > 0.0 {
-            for score in &mut scores {
+            for (_, score) in &mut results {
                 *score /= max_score;
             }
         }
 
-        Ok(scores)
+        Ok(results)
+    }
+
+    /// Calculate relevance scores for a scoped subset of documents.
+    ///
+    /// Only scores the candidate indices instead of the full 42K corpus.
+    fn calculate_relevance_scores_scoped(
+        &self,
+        query: &str,
+        candidates: &[usize],
+    ) -> Result<Vec<(usize, f32)>, String> {
+        if candidates.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        let query_terms: Vec<String> = query
+            .split(|c: char| !c.is_alphanumeric() && c != '_')
+            .filter(|s| !s.is_empty())
+            .map(|s| s.to_lowercase())
+            .collect();
+
+        if query_terms.is_empty() {
+            // No remaining query terms: return all candidates with equal score
+            return Ok(candidates.iter().map(|&idx| (idx, 1.0)).collect());
+        }
+
+        let mut results = Vec::new();
+        let mut max_score = 0.0f32;
+
+        for &doc_idx in candidates {
+            if doc_idx >= self.corpus_lower.len() {
+                continue;
+            }
+            let doc_lower = &self.corpus_lower[doc_idx];
+            let mut term_score = 0.0f32;
+            let mut term_count = 0;
+            let doc_len_factor = 1.0 + (self.corpus[doc_idx].len() as f32).ln();
+
+            for term in &query_terms {
+                let count = doc_lower.matches(term.as_str()).count() as f32;
+                if count > 0.0 {
+                    let tf = (1.0 + count.ln()) / doc_len_factor;
+                    term_score += tf;
+                    term_count += 1;
+                }
+            }
+
+            if term_count > 0 {
+                let score = term_score / query_terms.len() as f32;
+                if score > 0.0 {
+                    max_score = max_score.max(score);
+                    results.push((doc_idx, score));
+                }
+            }
+        }
+
+        // Normalize
+        if max_score > 0.0 {
+            for (_, score) in &mut results {
+                *score /= max_score;
+            }
+        }
+
+        Ok(results)
     }
 
     /// Check if function passes filter options
@@ -343,6 +575,13 @@ pub fn format_markdown(results: &[QueryResult]) -> String {
             output.push_str(&format!("**Documentation:** {}\n\n", doc));
         }
 
+        if !r.calls.is_empty() {
+            output.push_str(&format!("**Calls:** {}\n\n", r.calls.join(", ")));
+        }
+        if !r.called_by.is_empty() {
+            output.push_str(&format!("**Called by:** {}\n\n", r.called_by.join(", ")));
+        }
+
         output.push_str(&format!("**Relevance:** {:.2}\n\n", r.relevance_score));
         output.push_str("---\n\n");
     }
@@ -374,6 +613,13 @@ pub fn format_text(results: &[QueryResult]) -> String {
             output.push_str(&format!("   Doc: {}\n", doc));
         }
 
+        if !r.calls.is_empty() {
+            output.push_str(&format!("   Calls: {}\n", r.calls.join(", ")));
+        }
+        if !r.called_by.is_empty() {
+            output.push_str(&format!("   Called by: {}\n", r.called_by.join(", ")));
+        }
+
         output.push_str(&format!("   Relevance: {:.2}\n\n", r.relevance_score));
     }
 
@@ -384,6 +630,7 @@ pub fn format_text(results: &[QueryResult]) -> String {
 mod tests {
     use super::*;
     use crate::services::agent_context::QualityMetrics;
+    use std::collections::HashMap;
 
     fn create_test_entry(name: &str, complexity: u32, tdg_score: f32) -> FunctionEntry {
         FunctionEntry {
@@ -468,5 +715,700 @@ mod tests {
         let json = format_json(&[result]).unwrap();
 
         assert!(json.contains("\"function_name\": \"test_func\""));
+    }
+
+    #[test]
+    fn test_parse_query_prefixes_file_only() {
+        let (file, func, remaining) = parse_query_prefixes("file:query.rs error handling");
+        assert_eq!(file, Some("query.rs".to_string()));
+        assert_eq!(func, None);
+        assert_eq!(remaining, "error handling");
+    }
+
+    #[test]
+    fn test_parse_query_prefixes_fn_only() {
+        let (file, func, remaining) = parse_query_prefixes("fn:handle_ auth");
+        assert_eq!(file, None);
+        assert_eq!(func, Some("handle_".to_string()));
+        assert_eq!(remaining, "auth");
+    }
+
+    #[test]
+    fn test_parse_query_prefixes_both() {
+        let (file, func, remaining) =
+            parse_query_prefixes("file:foo.rs fn:bar baz");
+        assert_eq!(file, Some("foo.rs".to_string()));
+        assert_eq!(func, Some("bar".to_string()));
+        assert_eq!(remaining, "baz");
+    }
+
+    #[test]
+    fn test_parse_query_prefixes_none() {
+        let (file, func, remaining) = parse_query_prefixes("error handling");
+        assert_eq!(file, None);
+        assert_eq!(func, None);
+        assert_eq!(remaining, "error handling");
+    }
+
+    #[test]
+    fn test_parse_query_prefixes_empty_value() {
+        let (file, func, remaining) = parse_query_prefixes("file: fn: hello");
+        assert_eq!(file, None);
+        assert_eq!(func, None);
+        assert_eq!(remaining, "hello");
+    }
+
+    #[test]
+    fn test_query_result_has_calls_fields() {
+        let entry = create_test_entry("test_func", 5, 1.5);
+        let result = QueryResult::from_entry(&entry, 0.9, false);
+        assert!(result.calls.is_empty());
+        assert!(result.called_by.is_empty());
+    }
+
+    #[test]
+    fn test_format_text_with_calls() {
+        let entry = create_test_entry("test_func", 5, 1.5);
+        let mut result = QueryResult::from_entry(&entry, 0.9, false);
+        result.calls = vec!["helper_func".to_string()];
+        result.called_by = vec!["main".to_string()];
+        let text = format_text(&[result]);
+        assert!(text.contains("Calls: helper_func"));
+        assert!(text.contains("Called by: main"));
+    }
+
+    #[test]
+    fn test_format_markdown_with_calls() {
+        let entry = create_test_entry("test_func", 5, 1.5);
+        let mut result = QueryResult::from_entry(&entry, 0.9, false);
+        result.calls = vec!["helper_func".to_string(), "other".to_string()];
+        let md = format_markdown(&[result]);
+        assert!(md.contains("**Calls:** helper_func, other"));
+    }
+
+    #[test]
+    fn test_format_json_skips_empty_calls() {
+        let entry = create_test_entry("test_func", 5, 1.5);
+        let result = QueryResult::from_entry(&entry, 0.9, false);
+        let json = format_json(&[result]).unwrap();
+        // Empty calls/called_by should not appear in JSON (skip_serializing_if)
+        assert!(!json.contains("\"calls\""));
+        assert!(!json.contains("\"called_by\""));
+    }
+
+    /// Build a small in-memory index for testing query paths
+    fn build_test_index() -> AgentContextIndex {
+        let functions = vec![
+            FunctionEntry {
+                file_path: "src/handler.rs".to_string(),
+                function_name: "handle_error".to_string(),
+                signature: "fn handle_error(e: Error)".to_string(),
+                doc_comment: Some("Handle API errors gracefully".to_string()),
+                source: "fn handle_error(e: Error) { log(e); respond(500); }".to_string(),
+                start_line: 10,
+                end_line: 15,
+                language: "Rust".to_string(),
+                quality: QualityMetrics {
+                    tdg_score: 1.0,
+                    tdg_grade: "A".to_string(),
+                    complexity: 3,
+                    cognitive_complexity: 3,
+                    big_o: "O(1)".to_string(),
+                    satd_count: 0,
+                    loc: 6,
+                },
+                checksum: "aaa".to_string(),
+            },
+            FunctionEntry {
+                file_path: "src/handler.rs".to_string(),
+                function_name: "handle_request".to_string(),
+                signature: "fn handle_request(req: Request)".to_string(),
+                doc_comment: Some("Process incoming HTTP requests".to_string()),
+                source: "fn handle_request(req: Request) { validate(req); handle_error(err); }"
+                    .to_string(),
+                start_line: 20,
+                end_line: 30,
+                language: "Rust".to_string(),
+                quality: QualityMetrics {
+                    tdg_score: 2.0,
+                    tdg_grade: "B".to_string(),
+                    complexity: 5,
+                    cognitive_complexity: 5,
+                    big_o: "O(n)".to_string(),
+                    satd_count: 0,
+                    loc: 11,
+                },
+                checksum: "bbb".to_string(),
+            },
+            FunctionEntry {
+                file_path: "src/utils.rs".to_string(),
+                function_name: "validate".to_string(),
+                signature: "fn validate(input: &str) -> bool".to_string(),
+                doc_comment: Some("Validate input data".to_string()),
+                source: "fn validate(input: &str) -> bool { !input.is_empty() }".to_string(),
+                start_line: 1,
+                end_line: 3,
+                language: "Rust".to_string(),
+                quality: QualityMetrics {
+                    tdg_score: 0.5,
+                    tdg_grade: "A".to_string(),
+                    complexity: 1,
+                    cognitive_complexity: 1,
+                    big_o: "O(1)".to_string(),
+                    satd_count: 0,
+                    loc: 3,
+                },
+                checksum: "ccc".to_string(),
+            },
+            FunctionEntry {
+                file_path: "tests/test_handler.rs".to_string(),
+                function_name: "test_error_handling".to_string(),
+                signature: "fn test_error_handling()".to_string(),
+                doc_comment: None,
+                source: "fn test_error_handling() { handle_error(mock_err()); }".to_string(),
+                start_line: 1,
+                end_line: 5,
+                language: "Rust".to_string(),
+                quality: QualityMetrics {
+                    tdg_score: 1.0,
+                    tdg_grade: "A".to_string(),
+                    complexity: 1,
+                    cognitive_complexity: 1,
+                    big_o: "O(1)".to_string(),
+                    satd_count: 0,
+                    loc: 5,
+                },
+                checksum: "ddd".to_string(),
+            },
+            FunctionEntry {
+                file_path: "src/utils.rs".to_string(),
+                function_name: "new".to_string(),
+                signature: "fn new() -> Self".to_string(),
+                doc_comment: None,
+                source: "fn new() -> Self { Self {} }".to_string(),
+                start_line: 10,
+                end_line: 12,
+                language: "Rust".to_string(),
+                quality: QualityMetrics {
+                    tdg_score: 0.5,
+                    tdg_grade: "A".to_string(),
+                    complexity: 1,
+                    cognitive_complexity: 1,
+                    big_o: "O(1)".to_string(),
+                    satd_count: 0,
+                    loc: 3,
+                },
+                checksum: "eee".to_string(),
+            },
+        ];
+
+        let (name_index, file_index, corpus) =
+            crate::services::agent_context::function_index::build_indices(&functions);
+        let corpus_lower: Vec<String> = corpus.iter().map(|c| c.to_lowercase()).collect();
+        let name_frequency = crate::services::agent_context::function_index::compute_name_frequency(
+            &name_index,
+            functions.len(),
+        );
+        let (calls, called_by) =
+            crate::services::agent_context::function_index::build_call_graph(&functions, &name_index);
+
+        AgentContextIndex {
+            functions,
+            name_index,
+            file_index,
+            corpus,
+            corpus_lower,
+            name_frequency,
+            calls,
+            called_by,
+            project_root: std::path::PathBuf::from("/test"),
+            manifest: crate::services::agent_context::IndexManifest {
+                version: "1.1.0".to_string(),
+                built_at: "2025-01-01T00:00:00Z".to_string(),
+                project_root: "/test".to_string(),
+                function_count: 5,
+                file_count: 3,
+                languages: vec!["Rust".to_string()],
+                avg_tdg_score: 1.0,
+                file_checksums: HashMap::new(),
+            },
+        }
+    }
+
+    #[test]
+    fn test_query_empty_query_returns_error() {
+        let index = build_test_index();
+        let result = index.query("", QueryOptions::default());
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("empty"));
+    }
+
+    #[test]
+    fn test_query_basic_search() {
+        let index = build_test_index();
+        let results = index
+            .query(
+                "error handling",
+                QueryOptions {
+                    limit: 5,
+                    ..Default::default()
+                },
+            )
+            .unwrap();
+        assert!(!results.is_empty());
+        // handle_error should rank high for "error handling"
+        assert_eq!(results[0].function_name, "handle_error");
+    }
+
+    #[test]
+    fn test_query_with_file_scope() {
+        let index = build_test_index();
+        let results = index
+            .query(
+                "file:utils.rs validate",
+                QueryOptions {
+                    limit: 5,
+                    ..Default::default()
+                },
+            )
+            .unwrap();
+        assert!(!results.is_empty());
+        // All results must be from utils.rs
+        for r in &results {
+            assert!(r.file_path.contains("utils.rs"), "unexpected file: {}", r.file_path);
+        }
+    }
+
+    #[test]
+    fn test_query_with_fn_scope() {
+        let index = build_test_index();
+        let results = index
+            .query(
+                "fn:handle_ request",
+                QueryOptions {
+                    limit: 5,
+                    ..Default::default()
+                },
+            )
+            .unwrap();
+        assert!(!results.is_empty());
+        // All results must have function names starting with "handle_"
+        for r in &results {
+            assert!(
+                r.function_name.starts_with("handle_"),
+                "unexpected fn: {}",
+                r.function_name
+            );
+        }
+    }
+
+    #[test]
+    fn test_query_with_both_scopes() {
+        let index = build_test_index();
+        let results = index
+            .query(
+                "file:handler.rs fn:handle_ error",
+                QueryOptions {
+                    limit: 5,
+                    ..Default::default()
+                },
+            )
+            .unwrap();
+        assert!(!results.is_empty());
+        for r in &results {
+            assert!(r.file_path.contains("handler.rs"));
+            assert!(r.function_name.starts_with("handle_"));
+        }
+    }
+
+    #[test]
+    fn test_query_grade_filter() {
+        let index = build_test_index();
+        let results = index
+            .query(
+                "handle",
+                QueryOptions {
+                    limit: 10,
+                    min_grade: Some("A".to_string()),
+                    ..Default::default()
+                },
+            )
+            .unwrap();
+        // Only grade A results
+        for r in &results {
+            assert_eq!(r.tdg_grade, "A", "expected A grade, got {}", r.tdg_grade);
+        }
+    }
+
+    #[test]
+    fn test_query_complexity_filter() {
+        let index = build_test_index();
+        let results = index
+            .query(
+                "handle",
+                QueryOptions {
+                    limit: 10,
+                    max_complexity: Some(3),
+                    ..Default::default()
+                },
+            )
+            .unwrap();
+        for r in &results {
+            assert!(r.complexity <= 3, "complexity {} exceeds max 3", r.complexity);
+        }
+    }
+
+    #[test]
+    fn test_query_language_filter() {
+        let index = build_test_index();
+        let results = index
+            .query(
+                "validate",
+                QueryOptions {
+                    limit: 10,
+                    language: Some("Rust".to_string()),
+                    ..Default::default()
+                },
+            )
+            .unwrap();
+        for r in &results {
+            assert_eq!(r.language, "Rust");
+        }
+    }
+
+    #[test]
+    fn test_query_path_pattern_filter() {
+        let index = build_test_index();
+        let results = index
+            .query(
+                "handle",
+                QueryOptions {
+                    limit: 10,
+                    path_pattern: Some("src/".to_string()),
+                    ..Default::default()
+                },
+            )
+            .unwrap();
+        for r in &results {
+            assert!(r.file_path.contains("src/"));
+        }
+    }
+
+    #[test]
+    fn test_query_loc_filter() {
+        let index = build_test_index();
+        let results = index
+            .query(
+                "handle",
+                QueryOptions {
+                    limit: 10,
+                    max_loc: Some(5),
+                    ..Default::default()
+                },
+            )
+            .unwrap();
+        for r in &results {
+            assert!(r.loc <= 5, "loc {} exceeds max 5", r.loc);
+        }
+    }
+
+    #[test]
+    fn test_query_test_function_demotion() {
+        let index = build_test_index();
+        let results = index
+            .query(
+                "error handling",
+                QueryOptions {
+                    limit: 10,
+                    ..Default::default()
+                },
+            )
+            .unwrap();
+        // test_error_handling should be ranked lower than handle_error
+        let handle_pos = results.iter().position(|r| r.function_name == "handle_error");
+        let test_pos = results
+            .iter()
+            .position(|r| r.function_name == "test_error_handling");
+        if let (Some(h), Some(t)) = (handle_pos, test_pos) {
+            assert!(h < t, "production fn should rank higher than test fn");
+        }
+    }
+
+    #[test]
+    fn test_query_generic_name_demotion() {
+        let index = build_test_index();
+        let results = index
+            .query(
+                "new",
+                QueryOptions {
+                    limit: 10,
+                    ..Default::default()
+                },
+            )
+            .unwrap();
+        // "new" is a common name - if it appears, its score should be demoted
+        if let Some(new_result) = results.iter().find(|r| r.function_name == "new") {
+            // Score should be < 1.0 due to name frequency demotion
+            assert!(new_result.relevance_score < 1.0);
+        }
+    }
+
+    #[test]
+    fn test_query_include_source() {
+        let index = build_test_index();
+        let results = index
+            .query(
+                "validate",
+                QueryOptions {
+                    limit: 1,
+                    include_source: true,
+                    ..Default::default()
+                },
+            )
+            .unwrap();
+        assert!(!results.is_empty());
+        assert!(results[0].source.is_some());
+    }
+
+    #[test]
+    fn test_query_zero_limit_defaults_to_10() {
+        let index = build_test_index();
+        let results = index
+            .query(
+                "handle",
+                QueryOptions {
+                    limit: 0,
+                    ..Default::default()
+                },
+            )
+            .unwrap();
+        // Should not panic with limit=0, should default to 10
+        assert!(results.len() <= 10);
+    }
+
+    #[test]
+    fn test_query_results_have_calls() {
+        let index = build_test_index();
+        let results = index
+            .query(
+                "handle_request",
+                QueryOptions {
+                    limit: 1,
+                    ..Default::default()
+                },
+            )
+            .unwrap();
+        if let Some(r) = results.iter().find(|r| r.function_name == "handle_request") {
+            // handle_request calls validate and handle_error
+            assert!(!r.calls.is_empty(), "expected calls to be populated");
+        }
+    }
+
+    #[test]
+    fn test_get_function() {
+        let index = build_test_index();
+        let result = index.get_function("src/handler.rs", "handle_error");
+        assert!(result.is_some());
+        let r = result.unwrap();
+        assert_eq!(r.function_name, "handle_error");
+        assert_eq!(r.file_path, "src/handler.rs");
+        assert!(r.source.is_some()); // get_function always includes source
+    }
+
+    #[test]
+    fn test_get_function_not_found() {
+        let index = build_test_index();
+        let result = index.get_function("nonexistent.rs", "foo");
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_find_similar() {
+        let index = build_test_index();
+        let results = index
+            .find_similar("src/handler.rs", "handle_error", 3)
+            .unwrap();
+        // Should find similar functions (handle_request is similar)
+        assert!(!results.is_empty());
+        // Should not include self
+        assert!(results.iter().all(|r| !(r.file_path == "src/handler.rs" && r.function_name == "handle_error")));
+    }
+
+    #[test]
+    fn test_find_similar_not_found() {
+        let index = build_test_index();
+        let result = index.find_similar("nonexistent.rs", "foo", 3);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_scoped_scoring_empty_candidates() {
+        let index = build_test_index();
+        let results = index
+            .calculate_relevance_scores_scoped("test", &[])
+            .unwrap();
+        assert!(results.is_empty());
+    }
+
+    #[test]
+    fn test_scoped_scoring_no_query_terms() {
+        let index = build_test_index();
+        // Only special chars = no query terms after tokenization
+        let results = index
+            .calculate_relevance_scores_scoped("!@#$%", &[0, 1])
+            .unwrap();
+        // Returns all candidates with equal score when no terms
+        assert_eq!(results.len(), 2);
+        assert!((results[0].1 - 1.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_full_scoring_empty_corpus() {
+        let index = AgentContextIndex {
+            functions: vec![],
+            name_index: HashMap::new(),
+            file_index: HashMap::new(),
+            corpus: vec![],
+            corpus_lower: vec![],
+            name_frequency: HashMap::new(),
+            calls: HashMap::new(),
+            called_by: HashMap::new(),
+            project_root: std::path::PathBuf::from("/test"),
+            manifest: crate::services::agent_context::IndexManifest {
+                version: "1.1.0".to_string(),
+                built_at: "2025-01-01T00:00:00Z".to_string(),
+                project_root: "/test".to_string(),
+                function_count: 0,
+                file_count: 0,
+                languages: vec![],
+                avg_tdg_score: 0.0,
+                file_checksums: HashMap::new(),
+            },
+        };
+        let results = index.calculate_relevance_scores("test").unwrap();
+        assert!(results.is_empty());
+    }
+
+    #[test]
+    fn test_full_scoring_no_query_terms() {
+        let index = build_test_index();
+        let results = index.calculate_relevance_scores("!!!").unwrap();
+        assert!(results.is_empty());
+    }
+
+    #[test]
+    fn test_dedup_ordered() {
+        let items = vec!["a", "b", "a", "c", "b", "d"];
+        let result = dedup_ordered(&items);
+        assert_eq!(result, vec!["a", "b", "c", "d"]);
+    }
+
+    #[test]
+    fn test_dedup_ordered_empty() {
+        let items: Vec<&str> = vec![];
+        let result = dedup_ordered(&items);
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn test_is_test_function() {
+        let mut entry = create_test_entry("test_something", 1, 0.5);
+        assert!(is_test_function(&entry));
+
+        entry.function_name = "handle_request".to_string();
+        entry.file_path = "src/handler.rs".to_string();
+        assert!(!is_test_function(&entry));
+
+        entry.file_path = "tests/integration.rs".to_string();
+        assert!(is_test_function(&entry));
+
+        entry.file_path = "src/tests/mod.rs".to_string();
+        assert!(is_test_function(&entry));
+
+        entry.file_path = "src/handler_tests.rs".to_string();
+        assert!(is_test_function(&entry));
+
+        entry.file_path = "src/handler_test.rs".to_string();
+        assert!(is_test_function(&entry));
+    }
+
+    #[test]
+    fn test_called_by_test_summarization() {
+        let mut index = build_test_index();
+        // Simulate many test callers for function 0
+        let mut callers = vec![1usize]; // one production caller
+        for i in 10..25 {
+            // Add fake test function indices
+            index.functions.push(FunctionEntry {
+                file_path: "tests/t.rs".to_string(),
+                function_name: format!("test_case_{i}"),
+                signature: format!("fn test_case_{i}()"),
+                doc_comment: None,
+                source: "fn test() {}".to_string(),
+                start_line: 1,
+                end_line: 1,
+                language: "Rust".to_string(),
+                quality: QualityMetrics::default(),
+                checksum: format!("t{i}"),
+            });
+            callers.push(index.functions.len() - 1);
+        }
+        index.called_by.insert(0, callers);
+        // Rebuild name_index for the new functions
+        for (i, f) in index.functions.iter().enumerate() {
+            index.name_index.entry(f.function_name.clone()).or_default().push(i);
+        }
+
+        let result = QueryResult::from_entry_with_context(
+            &index.functions[0],
+            0,
+            &index,
+            0.9,
+            false,
+        );
+        // Should have production caller + test summary
+        assert!(result.called_by.iter().any(|s| s.contains("tests)")));
+        // Should not list individual test_case_N names
+        assert!(!result.called_by.iter().any(|s| s.starts_with("test_case_")));
+    }
+
+    #[test]
+    fn test_called_by_production_cap() {
+        let mut index = build_test_index();
+        // Simulate >10 production callers for function 0
+        let mut callers = Vec::new();
+        for i in 10..25 {
+            index.functions.push(FunctionEntry {
+                file_path: "src/callers.rs".to_string(),
+                function_name: format!("caller_{i}"),
+                signature: format!("fn caller_{i}()"),
+                doc_comment: None,
+                source: "fn caller() {}".to_string(),
+                start_line: 1,
+                end_line: 1,
+                language: "Rust".to_string(),
+                quality: QualityMetrics::default(),
+                checksum: format!("c{i}"),
+            });
+            callers.push(index.functions.len() - 1);
+            index
+                .name_index
+                .entry(format!("caller_{i}"))
+                .or_default()
+                .push(index.functions.len() - 1);
+        }
+        index.called_by.insert(0, callers);
+
+        let result = QueryResult::from_entry_with_context(
+            &index.functions[0],
+            0,
+            &index,
+            0.9,
+            false,
+        );
+        // Should cap at 10 + "(+N more)"
+        assert!(result.called_by.iter().any(|s| s.contains("more)")));
+        // Total entries should be 10 visible + 1 summary = 11
+        assert!(result.called_by.len() <= 12);
     }
 }
