@@ -1522,6 +1522,393 @@ fn find_workspace_root(start_path: &Path) -> Result<Option<PathBuf>> {
     Ok(None)
 }
 
+#[cfg(test)]
+mod lint_hotspot_unit_tests {
+    use super::*;
+
+    // ===================
+    // count_sloc Tests
+    // ===================
+
+    #[test]
+    fn test_count_sloc_simple() {
+        let content = "fn main() {\n    println!(\"Hello\");\n}";
+        assert_eq!(count_sloc(content), 3);
+    }
+
+    #[test]
+    fn test_count_sloc_with_comments() {
+        let content = "// Comment\nfn main() {\n    // Another comment\n    let x = 1;\n}";
+        // Lines: fn main() {, let x = 1;, } = 3 (excluding comments)
+        assert_eq!(count_sloc(content), 3);
+    }
+
+    #[test]
+    fn test_count_sloc_with_blank_lines() {
+        let content = "fn main() {\n\n    let x = 1;\n\n}";
+        // Lines: fn main() {, let x = 1;, } = 3 (excluding blank)
+        assert_eq!(count_sloc(content), 3);
+    }
+
+    #[test]
+    fn test_count_sloc_empty() {
+        assert_eq!(count_sloc(""), 0);
+    }
+
+    #[test]
+    fn test_count_sloc_only_comments() {
+        let content = "// Comment 1\n// Comment 2\n// Comment 3";
+        assert_eq!(count_sloc(content), 0);
+    }
+
+    #[test]
+    fn test_count_sloc_only_blank_lines() {
+        let content = "\n\n\n";
+        assert_eq!(count_sloc(content), 0);
+    }
+
+    #[test]
+    fn test_count_sloc_mixed() {
+        let content = "// Header\n\nfn foo() {\n    // Logic\n    bar();\n}\n";
+        // Code lines: fn foo() {, bar();, } = 3
+        assert_eq!(count_sloc(content), 3);
+    }
+
+    // ===================
+    // calculate_total_violations Tests
+    // ===================
+
+    #[test]
+    fn test_calculate_total_violations_all_types() {
+        let metrics = FileMetrics {
+            severity_counts: SeverityDistribution {
+                error: 2,
+                warning: 3,
+                suggestion: 1,
+                note: 5, // Note is not counted
+            },
+            sloc: 100,
+            violations: HashMap::new(),
+            detailed_violations: vec![],
+        };
+        // error + warning + suggestion = 2 + 3 + 1 = 6
+        assert_eq!(calculate_total_violations(&metrics), 6);
+    }
+
+    #[test]
+    fn test_calculate_total_violations_zeros() {
+        let metrics = FileMetrics {
+            severity_counts: SeverityDistribution::default(),
+            sloc: 50,
+            violations: HashMap::new(),
+            detailed_violations: vec![],
+        };
+        assert_eq!(calculate_total_violations(&metrics), 0);
+    }
+
+    #[test]
+    fn test_calculate_total_violations_only_errors() {
+        let metrics = FileMetrics {
+            severity_counts: SeverityDistribution {
+                error: 10,
+                warning: 0,
+                suggestion: 0,
+                note: 0,
+            },
+            sloc: 100,
+            violations: HashMap::new(),
+            detailed_violations: vec![],
+        };
+        assert_eq!(calculate_total_violations(&metrics), 10);
+    }
+
+    // ===================
+    // calculate_defect_density Tests
+    // ===================
+
+    #[test]
+    fn test_calculate_defect_density_normal() {
+        // 10 violations / 100 SLOC = 0.1
+        let density = calculate_defect_density(10, 100);
+        assert!((density - 0.1).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_calculate_defect_density_zero_sloc() {
+        // Should return 0.0 to avoid division by zero
+        let density = calculate_defect_density(5, 0);
+        assert_eq!(density, 0.0);
+    }
+
+    #[test]
+    fn test_calculate_defect_density_zero_violations() {
+        let density = calculate_defect_density(0, 100);
+        assert_eq!(density, 0.0);
+    }
+
+    #[test]
+    fn test_calculate_defect_density_high() {
+        // 50 violations / 10 SLOC = 5.0
+        let density = calculate_defect_density(50, 10);
+        assert!((density - 5.0).abs() < 0.001);
+    }
+
+    // ===================
+    // SeverityDistribution Tests
+    // ===================
+
+    #[test]
+    fn test_severity_distribution_default() {
+        let dist = SeverityDistribution::default();
+        assert_eq!(dist.error, 0);
+        assert_eq!(dist.warning, 0);
+        assert_eq!(dist.suggestion, 0);
+        assert_eq!(dist.note, 0);
+    }
+
+    // ===================
+    // check_quality_gates Tests
+    // ===================
+
+    #[test]
+    fn test_check_quality_gates_pass() {
+        let hotspot = LintHotspot {
+            file: PathBuf::from("src/test.rs"),
+            defect_density: 0.05, // Below max
+            total_violations: 10, // Below 50
+            sloc: 200,
+            severity_distribution: SeverityDistribution::default(),
+            top_lints: vec![],
+            detailed_violations: vec![],
+        };
+
+        let status = check_quality_gates(&hotspot, 0.1);
+        assert!(status.passed);
+        assert!(!status.blocking);
+        assert!(status.violations.is_empty());
+    }
+
+    #[test]
+    fn test_check_quality_gates_fail_density() {
+        let hotspot = LintHotspot {
+            file: PathBuf::from("src/test.rs"),
+            defect_density: 0.15, // Above max of 0.1
+            total_violations: 30,
+            sloc: 200,
+            severity_distribution: SeverityDistribution::default(),
+            top_lints: vec![],
+            detailed_violations: vec![],
+        };
+
+        let status = check_quality_gates(&hotspot, 0.1);
+        assert!(!status.passed);
+        assert!(status.blocking);
+        assert_eq!(status.violations.len(), 1);
+        assert_eq!(status.violations[0].rule, "max_defect_density");
+    }
+
+    #[test]
+    fn test_check_quality_gates_fail_violations() {
+        let hotspot = LintHotspot {
+            file: PathBuf::from("src/test.rs"),
+            defect_density: 0.05,
+            total_violations: 55, // Above 50
+            sloc: 1100,
+            severity_distribution: SeverityDistribution::default(),
+            top_lints: vec![],
+            detailed_violations: vec![],
+        };
+
+        let status = check_quality_gates(&hotspot, 0.1);
+        assert!(!status.passed);
+        assert!(!status.blocking); // Warning, not blocking
+        assert_eq!(status.violations.len(), 1);
+        assert_eq!(status.violations[0].rule, "max_single_file_violations");
+    }
+
+    #[test]
+    fn test_check_quality_gates_fail_both() {
+        let hotspot = LintHotspot {
+            file: PathBuf::from("src/test.rs"),
+            defect_density: 0.5, // Way above max
+            total_violations: 100, // Above 50
+            sloc: 200,
+            severity_distribution: SeverityDistribution::default(),
+            top_lints: vec![],
+            detailed_violations: vec![],
+        };
+
+        let status = check_quality_gates(&hotspot, 0.1);
+        assert!(!status.passed);
+        assert!(status.blocking);
+        assert_eq!(status.violations.len(), 2);
+    }
+
+    // ===================
+    // calculate_enforcement_metadata Tests
+    // ===================
+
+    #[test]
+    fn test_calculate_enforcement_metadata_low_density() {
+        let hotspot = LintHotspot {
+            file: PathBuf::from("src/test.rs"),
+            defect_density: 0.3,
+            total_violations: 5,
+            sloc: 100,
+            severity_distribution: SeverityDistribution::default(),
+            top_lints: vec![],
+            detailed_violations: vec![],
+        };
+
+        let metadata = calculate_enforcement_metadata(&hotspot, 0.7);
+        assert!((metadata.enforcement_score - 3.0).abs() < 0.1);
+        assert_eq!(metadata.estimated_fix_time, 5 * 300); // 5 violations * 300 seconds
+        assert!(!metadata.requires_enforcement); // Score < 7.0
+    }
+
+    #[test]
+    fn test_calculate_enforcement_metadata_high_density_with_unused() {
+        let hotspot = LintHotspot {
+            file: PathBuf::from("src/test.rs"),
+            defect_density: 0.8,
+            total_violations: 20,
+            sloc: 25,
+            severity_distribution: SeverityDistribution::default(),
+            top_lints: vec![("unused_variable".to_string(), 10)],
+            detailed_violations: vec![],
+        };
+
+        let metadata = calculate_enforcement_metadata(&hotspot, 0.7);
+        assert!((metadata.enforcement_score - 8.0).abs() < 0.1);
+        assert_eq!(metadata.automation_confidence, 0.9); // Has "unused" lint
+        assert!(metadata.requires_enforcement); // Score >= 7.0 and confidence >= 0.7
+    }
+
+    #[test]
+    fn test_calculate_enforcement_metadata_high_density_no_easy_fixes() {
+        let hotspot = LintHotspot {
+            file: PathBuf::from("src/test.rs"),
+            defect_density: 1.0,
+            total_violations: 30,
+            sloc: 30,
+            severity_distribution: SeverityDistribution::default(),
+            top_lints: vec![("clippy::too_many_arguments".to_string(), 15)],
+            detailed_violations: vec![],
+        };
+
+        let metadata = calculate_enforcement_metadata(&hotspot, 0.8);
+        assert!((metadata.enforcement_score - 10.0).abs() < 0.1); // Capped at 10.0
+        assert_eq!(metadata.automation_confidence, 0.7); // No "unused" or "redundant"
+        assert!(!metadata.requires_enforcement); // Confidence 0.7 < min 0.8
+    }
+
+    // ===================
+    // ViolationDetail Tests
+    // ===================
+
+    #[test]
+    fn test_violation_detail_struct() {
+        let violation = ViolationDetail {
+            file: PathBuf::from("src/main.rs"),
+            line: 10,
+            column: 5,
+            end_line: 10,
+            end_column: 20,
+            lint_name: "unused_variable".to_string(),
+            message: "unused variable: x".to_string(),
+            severity: "warning".to_string(),
+            suggestion: Some("remove the variable".to_string()),
+            machine_applicable: true,
+        };
+
+        assert_eq!(violation.file, PathBuf::from("src/main.rs"));
+        assert_eq!(violation.line, 10);
+        assert!(violation.machine_applicable);
+    }
+
+    // ===================
+    // FileSummary Tests
+    // ===================
+
+    #[test]
+    fn test_file_summary_struct() {
+        let summary = FileSummary {
+            total_violations: 15,
+            errors: 5,
+            warnings: 10,
+            sloc: 200,
+            defect_density: 0.075,
+        };
+
+        assert_eq!(summary.total_violations, 15);
+        assert_eq!(summary.errors, 5);
+        assert!((summary.defect_density - 0.075).abs() < 0.001);
+    }
+
+    // ===================
+    // QualityGateStatus Tests
+    // ===================
+
+    #[test]
+    fn test_quality_gate_status_passed() {
+        let status = QualityGateStatus {
+            passed: true,
+            violations: vec![],
+            blocking: false,
+        };
+
+        assert!(status.passed);
+        assert!(status.violations.is_empty());
+    }
+
+    // ===================
+    // QualityViolation Tests
+    // ===================
+
+    #[test]
+    fn test_quality_violation_struct() {
+        let violation = QualityViolation {
+            rule: "max_density".to_string(),
+            threshold: 0.1,
+            actual: 0.25,
+            severity: "blocking".to_string(),
+        };
+
+        assert_eq!(violation.rule, "max_density");
+        assert!((violation.threshold - 0.1).abs() < 0.001);
+        assert!((violation.actual - 0.25).abs() < 0.001);
+    }
+
+    // ===================
+    // LintHotspot Tests
+    // ===================
+
+    #[test]
+    fn test_lint_hotspot_struct() {
+        let hotspot = LintHotspot {
+            file: PathBuf::from("src/complex.rs"),
+            defect_density: 0.2,
+            total_violations: 40,
+            sloc: 200,
+            severity_distribution: SeverityDistribution {
+                error: 10,
+                warning: 25,
+                suggestion: 5,
+                note: 0,
+            },
+            top_lints: vec![
+                ("unused_variable".to_string(), 15),
+                ("clippy::too_many_arguments".to_string(), 8),
+            ],
+            detailed_violations: vec![],
+        };
+
+        assert_eq!(hotspot.file, PathBuf::from("src/complex.rs"));
+        assert_eq!(hotspot.total_violations, 40);
+        assert_eq!(hotspot.top_lints.len(), 2);
+    }
+}
+
 // Tests extracted to lint_hotspot_handlers_tests.rs for file health compliance (CB-040)
 // TEMPORARILY DISABLED: File splitting broke syntax (functions/modules split across files)
 #[cfg(all(test, feature = "broken-tests"))]

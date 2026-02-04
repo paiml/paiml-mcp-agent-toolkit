@@ -99,3 +99,141 @@ impl<'a> CTreeSitterVisitor<'a> {
         self.current_parent = old_parent;
     }
 }
+
+#[cfg(test)]
+mod c_cpp_visitor_tests {
+    use super::*;
+
+    fn create_test_dag() -> AstDag {
+        AstDag::default()
+    }
+
+    #[test]
+    fn test_new_visitor() {
+        let mut dag = create_test_dag();
+        let content = "int main() {}";
+        let visitor = CTreeSitterVisitor::new(&mut dag, content, Language::C);
+
+        assert_eq!(visitor.language, Language::C);
+        assert!(visitor.current_parent.is_none());
+    }
+
+    #[test]
+    fn test_new_visitor_cpp() {
+        let mut dag = create_test_dag();
+        let content = "class Foo {};";
+        let visitor = CTreeSitterVisitor::new(&mut dag, content, Language::Cpp);
+
+        assert_eq!(visitor.language, Language::Cpp);
+    }
+
+    #[test]
+    fn test_add_node_function() {
+        let mut dag = create_test_dag();
+        let content = "";
+        let mut visitor = CTreeSitterVisitor::new(&mut dag, content, Language::C);
+
+        let key = visitor.add_node(AstKind::Function(FunctionKind::Regular));
+
+        assert_eq!(key, 0); // First node gets key 0
+        assert_eq!(dag.nodes.len(), 1);
+    }
+
+    #[test]
+    fn test_add_node_with_parent() {
+        let mut dag = create_test_dag();
+        let content = "";
+        let mut visitor = CTreeSitterVisitor::new(&mut dag, content, Language::C);
+
+        // Add parent node
+        let parent_key = visitor.add_node(AstKind::Class(ClassKind::Struct));
+        visitor.current_parent = Some(parent_key);
+
+        // Add child node
+        let child_key = visitor.add_node(AstKind::Function(FunctionKind::Regular));
+
+        // Child's parent should be set
+        assert_eq!(dag.nodes.len(), 2);
+        let child = dag.nodes.get(child_key);
+        assert!(child.is_some());
+        assert_eq!(child.unwrap().parent, parent_key);
+    }
+
+    #[test]
+    fn test_add_node_struct() {
+        let mut dag = create_test_dag();
+        let content = "";
+        let mut visitor = CTreeSitterVisitor::new(&mut dag, content, Language::C);
+
+        let key = visitor.add_node(AstKind::Class(ClassKind::Struct));
+
+        let node = dag.nodes.get(key);
+        assert!(node.is_some());
+        matches!(node.unwrap().kind, AstKind::Class(ClassKind::Struct));
+    }
+
+    #[test]
+    fn test_add_node_enum() {
+        let mut dag = create_test_dag();
+        let content = "";
+        let mut visitor = CTreeSitterVisitor::new(&mut dag, content, Language::C);
+
+        let key = visitor.add_node(AstKind::Class(ClassKind::Enum));
+
+        let node = dag.nodes.get(key);
+        assert!(node.is_some());
+        matches!(node.unwrap().kind, AstKind::Class(ClassKind::Enum));
+    }
+
+    #[test]
+    fn test_add_multiple_nodes() {
+        let mut dag = create_test_dag();
+        let content = "";
+        let mut visitor = CTreeSitterVisitor::new(&mut dag, content, Language::Cpp);
+
+        visitor.add_node(AstKind::Function(FunctionKind::Regular));
+        visitor.add_node(AstKind::Class(ClassKind::Regular));
+        visitor.add_node(AstKind::Class(ClassKind::Struct));
+
+        assert_eq!(dag.nodes.len(), 3);
+    }
+
+    #[test]
+    fn test_visitor_language_preservation() {
+        let mut dag = create_test_dag();
+        let content = "";
+        let mut visitor = CTreeSitterVisitor::new(&mut dag, content, Language::Cpp);
+
+        let key = visitor.add_node(AstKind::Function(FunctionKind::Regular));
+
+        let node = dag.nodes.get(key);
+        assert!(node.is_some());
+        assert_eq!(node.unwrap().lang, Language::Cpp);
+    }
+
+    #[test]
+    fn test_add_import_node() {
+        let mut dag = create_test_dag();
+        let content = "";
+        let mut visitor = CTreeSitterVisitor::new(&mut dag, content, Language::C);
+
+        let key = visitor.add_node(AstKind::Import(ImportKind::Module));
+
+        let node = dag.nodes.get(key);
+        assert!(node.is_some());
+        matches!(node.unwrap().kind, AstKind::Import(ImportKind::Module));
+    }
+
+    #[test]
+    fn test_add_statement_node() {
+        let mut dag = create_test_dag();
+        let content = "";
+        let mut visitor = CTreeSitterVisitor::new(&mut dag, content, Language::C);
+
+        let key = visitor.add_node(AstKind::Statement(StmtKind::If));
+
+        let node = dag.nodes.get(key);
+        assert!(node.is_some());
+        matches!(node.unwrap().kind, AstKind::Statement(StmtKind::If));
+    }
+}
