@@ -8,7 +8,6 @@ mod tests {
     /// Stack overflow under 48-thread coverage instrumentation
     /// Run manually: cargo test test_analyze_churn_command_parsing -- --ignored --test-threads=1
     #[test]
-    #[ignore] // Stack overflow - CLI parser too large for test thread stack
     fn test_analyze_churn_command_parsing() {
         // Test basic analyze churn command
         let args = vec!["pmat", "analyze", "churn"];
@@ -42,7 +41,6 @@ mod tests {
 
     /// Stack overflow under 48-thread coverage instrumentation
     #[test]
-    #[ignore] // Stack overflow - CLI parser too large for test thread stack
     fn test_analyze_churn_with_all_options() {
         let args = vec![
             "pmat",
@@ -85,7 +83,6 @@ mod tests {
 
     /// Stack overflow under 48-thread coverage instrumentation
     #[test]
-    #[ignore] // Stack overflow - CLI parser too large for test thread stack
     fn test_analyze_churn_format_options() {
         // Test each format option
         let formats = vec!["json", "markdown", "csv", "summary"];
@@ -109,7 +106,6 @@ mod tests {
 
     /// Stack overflow under 48-thread coverage instrumentation
     #[test]
-    #[ignore] // Stack overflow - CLI parser too large for test thread stack
     fn test_analyze_churn_invalid_format() {
         let args = vec!["pmat", "analyze", "churn", "--format", "invalid"];
         let result = Cli::try_parse_from(args);
@@ -118,7 +114,6 @@ mod tests {
 
     /// Stack overflow under 48-thread coverage instrumentation
     #[test]
-    #[ignore] // Stack overflow - CLI parser too large for test thread stack
     fn test_analyze_churn_short_flags() {
         let args = vec![
             "pmat", "analyze", "churn", "-d", "7", // Short form of --days
@@ -148,7 +143,6 @@ mod tests {
 
     /// Stack overflow under 48-thread coverage instrumentation
     #[test]
-    #[ignore] // Stack overflow - CLI parser too large for test thread stack
     fn test_analyze_subcommand_help() {
         // Test that help works
         let args = vec!["pmat", "analyze", "--help"];
@@ -161,7 +155,6 @@ mod tests {
 
     /// Stack overflow under 48-thread coverage instrumentation
     #[test]
-    #[ignore] // Stack overflow - CLI parser too large for test thread stack
     fn test_analyze_churn_help() {
         // Test that help works for churn subcommand
         let args = vec!["pmat", "analyze", "churn", "--help"];
