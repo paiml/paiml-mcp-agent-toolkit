@@ -664,6 +664,20 @@ pub fn detect_cb121_lock_poisoning(project_path: &Path) -> Vec<CbPatternViolatio
 
                     let trimmed = line.trim();
 
+                    // Skip comment lines to avoid false positives from documentation
+                    if trimmed.starts_with("//") || trimmed.starts_with("/*") || trimmed.starts_with("*") {
+                        continue;
+                    }
+
+                    // Skip string literals containing the pattern (error messages, docs)
+                    if let Some(idx) = trimmed.find(".lock()") {
+                        let before = &trimmed[..idx];
+                        let quote_count = before.chars().filter(|&c| c == '"').count();
+                        if quote_count % 2 == 1 {
+                            continue;
+                        }
+                    }
+
                     // Check for mutex.lock().unwrap() pattern
                     if trimmed.contains(".lock()") && trimmed.contains(".unwrap()") {
                         // Skip safe patterns
@@ -755,7 +769,21 @@ pub fn detect_cb122_serde_safety(project_path: &Path) -> Vec<CbPatternViolation>
 
                     let trimmed = line.trim();
 
+                    // Skip comment lines to avoid false positives from documentation
+                    if trimmed.starts_with("//") || trimmed.starts_with("/*") || trimmed.starts_with("*") {
+                        continue;
+                    }
+
                     for pattern in &serde_patterns {
+                        // Skip if pattern is inside a string literal (error messages)
+                        if let Some(idx) = trimmed.find(pattern) {
+                            let before = &trimmed[..idx];
+                            let quote_count = before.chars().filter(|&c| c == '"').count();
+                            if quote_count % 2 == 1 {
+                                continue;
+                            }
+                        }
+
                         if trimmed.contains(pattern) {
                             // Check for unsafe unwrap patterns
                             if trimmed.contains(".unwrap()") && !trimmed.contains("unwrap_or") {
