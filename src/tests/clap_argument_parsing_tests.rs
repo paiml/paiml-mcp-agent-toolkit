@@ -7,6 +7,7 @@ use crate::cli::{AnalyzeCommands, Cli, Commands, ComplexityOutputFormat, Mode};
 use clap::Parser;
 use std::path::PathBuf;
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod type_coercion_tests {
     use super::*;
@@ -132,7 +133,7 @@ mod type_coercion_tests {
 
     /// IGNORED: Clap argument parsing test - requires CLI infrastructure verification
     #[test]
-    #[ignore]
+    #[ignore = "e2e test - requires binary build"]
     fn test_optional_argument_coercion() {
         // Test optional arguments
         let cli = Cli::try_parse_from(["pmat", "analyze", "complexity"]);
@@ -188,6 +189,7 @@ mod type_coercion_tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod validation_tests {
     use super::*;
@@ -324,6 +326,7 @@ mod validation_tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod custom_validator_tests {
     use super::*;
@@ -423,6 +426,7 @@ mod custom_validator_tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod edge_case_tests {
     use super::*;
@@ -638,6 +642,7 @@ mod edge_case_tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod parser_behavior_tests {
     use super::*;

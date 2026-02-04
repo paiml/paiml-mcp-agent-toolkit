@@ -10,7 +10,7 @@ use serde_json::json;
 /// Test MCP initialization sequence
 #[tokio::test]
 /// FAILED: MCP server acceptance test - requires MCP server running
-#[ignore]
+#[ignore = "MCP acceptance test - requires server"]
 async fn test_mcp_initialization_sequence() -> Result<()> {
     let mut client = McpTestClient::new()?;
 
@@ -407,7 +407,7 @@ mod integration_tests {
     /// Test complete protocol compliance workflow
     #[tokio::test]
     /// FAILED: MCP server acceptance test - requires MCP server running
-    #[ignore]
+    #[ignore = "MCP acceptance test - requires server"]
     async fn test_complete_protocol_workflow() -> Result<()> {
         let mut client = McpTestClient::new()?;
 

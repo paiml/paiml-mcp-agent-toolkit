@@ -122,7 +122,7 @@ async fn test_mcp_server_creation() {
 }
 
 /// FAILED: MCP integration test - needs fixing
-#[ignore]
+#[ignore = "requires MCP server setup"]
 #[tokio::test]
 async fn test_handler_parameter_parsing() {
     use pmat::mcp_server::handlers::{

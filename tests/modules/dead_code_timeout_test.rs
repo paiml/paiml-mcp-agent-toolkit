@@ -131,7 +131,7 @@ fn test_dead_code_handles_single_file() {
 
 /// SLOW: >240s - excluded from fast test suite
 #[test]
-#[ignore]
+#[ignore = "requires dead code analyzer"]
 fn test_dead_code_with_max_depth_limit() {
     // Test that max-depth parameter prevents infinite recursion
     let output = Command::new(env!("CARGO_BIN_EXE_pmat"))

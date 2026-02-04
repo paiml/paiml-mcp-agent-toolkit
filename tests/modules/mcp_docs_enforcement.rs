@@ -53,7 +53,7 @@ fn red_test_all_mcp_tools_have_descriptions() {
 /// Too-short descriptions are likely generic or incomplete.
 /// Minimum 20 chars ensures some level of detail.
 #[test]
-#[ignore]
+#[ignore = "requires MCP server setup"]
 fn red_test_tool_descriptions_sufficient_length() {
     let tools = vec![
         "scaffold_agent",
@@ -80,7 +80,7 @@ fn red_test_tool_descriptions_sufficient_length() {
 /// Generic descriptions like "Tool for X" or "Scaffold tool" don't
 /// provide useful information.
 #[test]
-#[ignore]
+#[ignore = "requires MCP server setup"]
 fn red_test_tool_descriptions_not_generic() {
     let tools = vec![
         "scaffold_agent",
@@ -114,7 +114,7 @@ fn red_test_tool_descriptions_not_generic() {
 /// - quality_level
 /// - features
 #[test]
-#[ignore]
+#[ignore = "requires MCP server setup"]
 fn red_test_scaffold_agent_params_documented() {
     let tool = get_mcp_tool_definition("scaffold_agent");
     let schema = tool.input_schema;
@@ -152,7 +152,7 @@ fn red_test_scaffold_agent_params_documented() {
 /// - roadmap_path
 /// - tickets_dir
 #[test]
-#[ignore]
+#[ignore = "requires MCP server setup"]
 fn red_test_validate_roadmap_params_documented() {
     let tool = get_mcp_tool_definition("validate_roadmap");
     let schema = tool.input_schema;
@@ -189,7 +189,7 @@ fn red_test_validate_roadmap_params_documented() {
 /// - quick
 /// - check_build, check_tests, etc.
 #[test]
-#[ignore]
+#[ignore = "requires MCP server setup"]
 fn red_test_health_check_params_documented() {
     let tool = get_mcp_tool_definition("health_check");
     let schema = tool.input_schema;
@@ -220,7 +220,7 @@ fn red_test_health_check_params_documented() {
 /// - tickets_dir
 /// - dry_run
 #[test]
-#[ignore]
+#[ignore = "requires MCP server setup"]
 fn red_test_generate_tickets_params_documented() {
     let tool = get_mcp_tool_definition("generate_tickets");
     let schema = tool.input_schema;
@@ -253,7 +253,7 @@ fn red_test_generate_tickets_params_documented() {
 /// This is the core algorithm that identifies generic/placeholder
 /// descriptions.
 #[test]
-#[ignore]
+#[ignore = "requires MCP server setup"]
 fn red_test_generic_description_detector() {
     // These should be detected as GENERIC (forbidden)
     let generic = vec![
@@ -296,7 +296,7 @@ fn red_test_generic_description_detector() {
 
 /// RED: Detector must catch common generic patterns
 #[test]
-#[ignore]
+#[ignore = "requires MCP server setup"]
 fn red_test_generic_detector_catches_patterns() {
     // Pattern: "The X parameter"
     assert!(is_generic_description("The name parameter"));
@@ -318,7 +318,7 @@ fn red_test_generic_detector_catches_patterns() {
 
 /// RED: Detector must allow domain-specific terms
 #[test]
-#[ignore]
+#[ignore = "requires MCP server setup"]
 fn red_test_generic_detector_allows_domain_terms() {
     // Domain-specific terms should NOT be flagged as generic
     // if they have sufficient context
@@ -344,7 +344,7 @@ fn red_test_generic_detector_allows_domain_terms() {
 
 /// RED: Required parameters must be marked as required
 #[test]
-#[ignore]
+#[ignore = "requires MCP server setup"]
 fn red_test_required_params_marked() {
     let tool = get_mcp_tool_definition("scaffold_agent");
     let schema = tool.input_schema;
@@ -362,7 +362,7 @@ fn red_test_required_params_marked() {
 
 /// RED: Optional parameters should have defaults documented
 #[test]
-#[ignore]
+#[ignore = "requires MCP server setup"]
 fn red_test_optional_params_have_defaults() {
     let tool = get_mcp_tool_definition("scaffold_agent");
     let schema = tool.input_schema;
@@ -382,7 +382,7 @@ fn red_test_optional_params_have_defaults() {
 
 /// RED: Parameter types must be correct
 #[test]
-#[ignore]
+#[ignore = "requires MCP server setup"]
 fn red_test_parameter_types_correct() {
     let tool = get_mcp_tool_definition("scaffold_agent");
     let schema = tool.input_schema;
@@ -408,7 +408,7 @@ fn red_test_parameter_types_correct() {
 
 /// RED: All tools should use consistent parameter naming
 #[test]
-#[ignore]
+#[ignore = "requires MCP server setup"]
 fn red_test_consistent_parameter_naming() {
     // Tools that take roadmap path should use same parameter name
     let validate_tool = get_mcp_tool_definition("validate_roadmap");

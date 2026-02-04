@@ -13,7 +13,7 @@ mod ast_python_tests {
     use super::*;
 
     #[tokio::test]
-    #[ignore]
+    #[ignore = "e2e test - requires binary build"]
     async fn test_analyze_python_file_comprehensive() {
         let fixture_path = Path::new("src/tests/fixtures/sample.py");
         let result = ast_python::analyze_python_file(fixture_path).await;
@@ -133,7 +133,7 @@ mod ast_python_tests {
     }
 
     #[tokio::test]
-    #[ignore]
+    #[ignore = "e2e test - requires binary build"]
     async fn test_python_class_field_count() {
         let fixture_path = Path::new("src/tests/fixtures/sample.py");
         let result = ast_python::analyze_python_file(fixture_path).await;
@@ -163,7 +163,7 @@ mod ast_python_tests {
     }
 
     #[tokio::test]
-    #[ignore]
+    #[ignore = "e2e test - requires binary build"]
     async fn test_python_import_parsing() {
         let fixture_path = Path::new("src/tests/fixtures/sample.py");
         let result = ast_python::analyze_python_file(fixture_path).await;
@@ -289,7 +289,7 @@ mod ast_typescript_tests {
     }
 
     #[tokio::test]
-    #[ignore]
+    #[ignore = "e2e test - requires binary build"]
     async fn test_tsx_file_detection() {
         use tokio::io::AsyncWriteExt;
 
@@ -311,7 +311,7 @@ mod ast_typescript_tests {
     }
 
     #[tokio::test]
-    #[ignore]
+    #[ignore = "e2e test - requires binary build"]
     async fn test_jsx_file_detection() {
         use tokio::io::AsyncWriteExt;
 
@@ -369,7 +369,7 @@ mod ast_integration_tests {
     use super::*;
 
     #[tokio::test]
-    #[ignore]
+    #[ignore = "e2e test - requires binary build"]
     async fn test_mixed_language_project_context() {
         // This test simulates analyzing a project with both Python and TypeScript files
         let py_path = Path::new("src/tests/fixtures/sample.py");

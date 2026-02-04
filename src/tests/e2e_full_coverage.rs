@@ -191,7 +191,7 @@ fn test_cli_main_binary_version() {
 }
 
 #[test]
-#[ignore]
+#[ignore = "e2e test - requires binary build"]
 // Requires pmat binary compilation (E2E test) - Sprint 45 Phase 2
 // Run manually: cargo build --bin pmat && cargo test test_cli_main_binary_help -- --ignored
 #[serial_test::serial]

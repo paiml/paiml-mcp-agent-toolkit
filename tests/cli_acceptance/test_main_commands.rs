@@ -10,7 +10,7 @@ use std::time::Duration;
 /// Test the --version flag
 #[tokio::test]
 /// FAILED: Outdated acceptance test - needs CLI output update
-#[ignore]
+#[ignore = "CLI acceptance test - requires binary"]
 async fn test_version_flag() -> Result<()> {
     let runner = CliTestRunner::new()?;
 
@@ -169,7 +169,7 @@ async fn test_global_flags() -> Result<()> {
 /// Test invalid command handling
 #[tokio::test]
 /// FAILED: Outdated acceptance test - needs CLI output update
-#[ignore]
+#[ignore = "CLI acceptance test - requires binary"]
 async fn test_invalid_commands() -> Result<()> {
     let runner = CliTestRunner::new()?;
 
@@ -239,7 +239,7 @@ async fn test_help_system_consistency() -> Result<()> {
 /// Test error message quality
 #[tokio::test]
 /// FAILED: Outdated acceptance test - needs CLI output update
-#[ignore]
+#[ignore = "CLI acceptance test - requires binary"]
 async fn test_error_message_quality() -> Result<()> {
     let runner = CliTestRunner::new()?;
 

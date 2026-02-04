@@ -384,7 +384,7 @@ fn test_context_alias_ast() {
 
 /// SLOW: >240s - excluded from fast test suite
 #[test]
-#[ignore]
+#[ignore = "CLI integration test - requires binary"]
 fn test_context_default_path() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -395,7 +395,7 @@ fn test_context_default_path() {
 
 /// SLOW: >240s - excluded from fast test suite
 #[test]
-#[ignore]
+#[ignore = "CLI integration test - requires binary"]
 fn test_context_with_path() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -573,7 +573,7 @@ fn test_analyze_dead_code_help() {
 
 /// SLOW: >240s - excluded from fast test suite
 #[test]
-#[ignore]
+#[ignore = "CLI integration test - requires binary"]
 fn test_analyze_dead_code_current_dir() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -585,7 +585,7 @@ fn test_analyze_dead_code_current_dir() {
 
 /// SLOW: >240s - excluded from fast test suite
 #[test]
-#[ignore]
+#[ignore = "CLI integration test - requires binary"]
 fn test_analyze_dead_code_format_json() {
     Command::cargo_bin("pmat")
         .unwrap()
@@ -1604,7 +1604,7 @@ fn test_analyze_satd_nonexistent_path() {
 
 /// SLOW: >240s - excluded from fast test suite
 #[test]
-#[ignore]
+#[ignore = "CLI integration test - requires binary"]
 fn test_context_format_json() {
     Command::cargo_bin("pmat")
         .unwrap()

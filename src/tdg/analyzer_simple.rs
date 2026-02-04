@@ -382,6 +382,7 @@ impl TdgAnalyzer {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -413,7 +414,7 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
+    #[ignore = "requires TDG analyzer setup"]
     fn test_analyze_complex_code() -> Result<()> {
         let source = r#"
             fn complex_function(x: i32) -> i32 {
@@ -851,6 +852,7 @@ fn foo() {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;

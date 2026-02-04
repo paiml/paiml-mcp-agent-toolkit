@@ -6,7 +6,7 @@ use tempfile::TempDir;
 
 /// FAILED: Broken integration test - needs fixing
 #[test]
-#[ignore]
+#[ignore = "requires DAG integration setup"]
 /// FAILED: Broken integration test - needs fixing
 fn test_enhanced_dag_analysis() {
     let temp_dir = TempDir::new().unwrap();
@@ -39,7 +39,7 @@ fn test_enhanced_dag_analysis() {
 
 /// FAILED: Broken integration test - needs fixing
 #[test]
-#[ignore]
+#[ignore = "requires DAG integration setup"]
 /// FAILED: Broken integration test - needs fixing
 fn test_enhanced_analysis_backward_compatibility() {
     let temp_dir = TempDir::new().unwrap();

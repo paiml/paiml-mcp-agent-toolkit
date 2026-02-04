@@ -15,7 +15,7 @@ fn has_api_key() -> bool {
 }
 
 // Test 1: pmat embed --help shows help text
-#[ignore]
+#[ignore = "requires semantic integration setup"]
 #[test]
 #[ignore] // Integration test requires pmat binary
 fn test_embed_help() {
@@ -33,7 +33,7 @@ fn test_embed_help() {
 }
 
 // Test 2: pmat embed sync --help shows sync help
-#[ignore]
+#[ignore = "requires semantic integration setup"]
 #[test]
 #[ignore] // Integration test requires pmat binary
 fn test_embed_sync_help() {
@@ -48,7 +48,7 @@ fn test_embed_sync_help() {
 }
 
 // Test 3: pmat embed status --help shows status help
-#[ignore]
+#[ignore = "requires semantic integration setup"]
 #[test]
 #[ignore] // Integration test requires pmat binary
 fn test_embed_status_help() {
@@ -61,7 +61,7 @@ fn test_embed_status_help() {
 }
 
 // Test 4: pmat embed clear --help shows clear help
-#[ignore]
+#[ignore = "requires semantic integration setup"]
 #[test]
 #[ignore] // Integration test requires pmat binary
 fn test_embed_clear_help() {
@@ -75,7 +75,7 @@ fn test_embed_clear_help() {
 }
 
 // Test 5: pmat semantic --help shows help text
-#[ignore]
+#[ignore = "requires semantic integration setup"]
 #[test]
 #[ignore] // Integration test requires pmat binary
 fn test_semantic_help() {
@@ -90,7 +90,7 @@ fn test_semantic_help() {
 }
 
 // Test 6: pmat semantic search --help shows search help
-#[ignore]
+#[ignore = "requires semantic integration setup"]
 #[test]
 #[ignore] // Integration test requires pmat binary
 fn test_semantic_search_help() {
@@ -106,7 +106,7 @@ fn test_semantic_search_help() {
 }
 
 // Test 7: pmat semantic similar --help shows similar help
-#[ignore]
+#[ignore = "requires semantic integration setup"]
 #[test]
 #[ignore] // Integration test requires pmat binary
 fn test_semantic_similar_help() {
@@ -120,7 +120,7 @@ fn test_semantic_similar_help() {
 }
 
 // Test 8: pmat analyze cluster --help shows cluster help
-#[ignore]
+#[ignore = "requires semantic integration setup"]
 #[test]
 #[ignore] // Integration test requires pmat binary
 fn test_analyze_cluster_help() {
@@ -135,7 +135,7 @@ fn test_analyze_cluster_help() {
 }
 
 // Test 9: pmat analyze topics --help shows topics help
-#[ignore]
+#[ignore = "requires semantic integration setup"]
 #[test]
 #[ignore] // Integration test requires pmat binary
 fn test_analyze_topics_help() {
@@ -149,7 +149,7 @@ fn test_analyze_topics_help() {
 }
 
 // Test 10: pmat embed sync without API key shows error
-#[ignore]
+#[ignore = "requires semantic integration setup"]
 #[test]
 #[ignore] // Integration test requires pmat binary
 fn test_embed_sync_no_api_key() {
@@ -173,7 +173,7 @@ fn test_embed_sync_no_api_key() {
 }
 
 // Test 11: pmat semantic search without API key shows error
-#[ignore]
+#[ignore = "requires semantic integration setup"]
 #[test]
 #[ignore] // Integration test requires pmat binary
 fn test_semantic_search_no_api_key() {
@@ -194,7 +194,7 @@ fn test_semantic_search_no_api_key() {
 }
 
 // Test 12: pmat embed status without initialized database
-#[ignore]
+#[ignore = "requires semantic integration setup"]
 #[test]
 #[ignore] // Integration test requires pmat binary
 fn test_embed_status_no_database() {
@@ -217,7 +217,7 @@ fn test_embed_status_no_database() {
 }
 
 // Test 13: pmat embed clear without --confirm flag shows error
-#[ignore]
+#[ignore = "requires semantic integration setup"]
 #[test]
 #[ignore] // Integration test requires pmat binary
 fn test_embed_clear_requires_confirm() {
@@ -229,7 +229,7 @@ fn test_embed_clear_requires_confirm() {
 }
 
 // Test 14: pmat semantic search with invalid mode shows error
-#[ignore]
+#[ignore = "requires semantic integration setup"]
 #[test]
 // Requires API key and database
 fn test_semantic_search_invalid_mode() {
@@ -246,7 +246,7 @@ fn test_semantic_search_invalid_mode() {
 }
 
 // Test 15: pmat semantic similar requires file path
-#[ignore]
+#[ignore = "requires semantic integration setup"]
 #[test]
 #[ignore] // Integration test requires pmat binary
 fn test_semantic_similar_requires_file_path() {
@@ -258,7 +258,7 @@ fn test_semantic_similar_requires_file_path() {
 }
 
 // Test 16: pmat analyze cluster requires method
-#[ignore]
+#[ignore = "requires semantic integration setup"]
 #[test]
 #[ignore] // Integration test requires pmat binary
 fn test_analyze_cluster_requires_method() {
@@ -270,7 +270,7 @@ fn test_analyze_cluster_requires_method() {
 }
 
 // Test 17: pmat analyze topics requires num_topics
-#[ignore]
+#[ignore = "requires semantic integration setup"]
 #[test]
 #[ignore] // Integration test requires pmat binary
 fn test_analyze_topics_requires_num_topics() {
@@ -282,7 +282,7 @@ fn test_analyze_topics_requires_num_topics() {
 }
 
 // Test 18: Configuration environment variables are respected
-#[ignore]
+#[ignore = "requires semantic integration setup"]
 #[test]
 #[ignore] // Integration test requires pmat binary
 fn test_env_var_configuration() {

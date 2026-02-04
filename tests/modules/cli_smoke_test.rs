@@ -19,7 +19,7 @@ fn run_command(args: &[&str]) -> (bool, String, String) {
 
 /// SLOW: >240s - excluded from fast test suite
 #[test]
-#[ignore]
+#[ignore = "CLI smoke test - requires binary"]
 fn test_critical_commands_work() {
     let mut failures = Vec::new();
 

@@ -455,6 +455,7 @@ pub fn format_report(report: &QualityReport) -> String {
     output
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -622,7 +623,7 @@ mod tests {
 
     /// SLOW: 106s - excluded from fast test suite
     #[test]
-    #[ignore]
+    #[ignore = "requires quality gate setup"]
     fn integration_execute_clippy() {
         let config = GateConfig::default();
         let project_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));

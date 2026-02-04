@@ -282,6 +282,7 @@ pub struct CacheStats {
     pub memory_usage_estimate: usize,
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -416,6 +417,7 @@ mod tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use super::*;
@@ -459,7 +461,7 @@ mod property_tests {
         }
 
         #[test]
-        #[ignore]
+        #[ignore = "requires quality framework setup"]
         fn complexity_increases_with_control_flow(
             name in valid_rust_identifier(),
             condition in valid_rust_identifier()
@@ -479,7 +481,7 @@ mod property_tests {
         }
 
         #[test]
-        #[ignore]
+        #[ignore = "requires quality framework setup"]
         fn cache_consistency(
             name in valid_rust_identifier(),
             _content_variations in prop::collection::vec(valid_rust_identifier(), 1..10)
@@ -516,7 +518,7 @@ mod property_tests {
         }
 
         #[test]
-        #[ignore]
+        #[ignore = "requires quality framework setup"]
         fn satd_detection_accuracy(
             base_code in "[a-zA-Z0-9\\s\\n{}();]{50,200}",
             satd_count in 0usize..5
@@ -540,7 +542,7 @@ mod property_tests {
         }
 
         #[test]
-        #[ignore]
+        #[ignore = "requires quality framework setup"]
         fn nesting_affects_cognitive_complexity(
             function_name in valid_rust_identifier(),
             nesting_levels in 1usize..5
@@ -593,7 +595,7 @@ mod property_tests {
         }
 
         #[test]
-        #[ignore]
+        #[ignore = "requires quality framework setup"]
         fn cache_invalidation_works(
             name in valid_rust_identifier(),
             content1 in "[a-zA-Z0-9]{10,100}",
@@ -622,7 +624,7 @@ mod property_tests {
         }
 
         #[test]
-        #[ignore]
+        #[ignore = "requires quality framework setup"]
         fn match_expression_complexity(
             function_name in valid_rust_identifier(),
             arm_count in 2usize..8
@@ -671,6 +673,7 @@ mod property_tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod coverage_tests {
     use super::*;

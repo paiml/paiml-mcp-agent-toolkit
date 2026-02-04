@@ -1,6 +1,7 @@
 // Enforcement tests extracted from enforcement.rs for file health (CB-040).
 // This file is include!()'d into enforcement.rs scope.
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -54,6 +55,7 @@ mod tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use super::*;
@@ -131,7 +133,7 @@ mod property_tests {
         }
 
         #[test]
-        #[ignore]
+        #[ignore = "requires quality framework setup"]
         fn budget_consumption_accumulates_correctly(
             team_id in team_id_strategy(),
             diffs in prop::collection::vec(diff_analysis_strategy(), 1..10)
@@ -167,7 +169,7 @@ mod property_tests {
         }
 
         #[test]
-        #[ignore]
+        #[ignore = "requires quality framework setup"]
         fn decisions_respect_budget_limits(
             team_id in team_id_strategy(),
             budget in valid_budget_strategy(),
@@ -233,7 +235,7 @@ mod property_tests {
         }
 
         #[test]
-        #[ignore]
+        #[ignore = "requires quality framework setup"]
         fn refactor_target_generation_properties(
             team_id in team_id_strategy(),
             files in prop::collection::vec("[a-zA-Z0-9_-]{1,20}\\.rs", 1..20),
@@ -289,7 +291,7 @@ mod property_tests {
         }
 
         #[test]
-        #[ignore]
+        #[ignore = "requires quality framework setup"]
         fn time_series_operations_stable(
             team_id in team_id_strategy(),
             measurements in prop::collection::vec(0u32..100, 1..100)
@@ -345,7 +347,7 @@ mod property_tests {
         }
 
         #[test]
-        #[ignore]
+        #[ignore = "requires quality framework setup"]
         fn grace_period_enforcement_properties(
             team_id in team_id_strategy(),
             grace_period_days in 1u64..100,
@@ -385,6 +387,7 @@ mod property_tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod coverage_tests {
     use super::*;

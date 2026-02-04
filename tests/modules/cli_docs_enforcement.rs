@@ -61,7 +61,7 @@ fn red_test_all_commands_have_help() {
 
 /// RED: Help text must include basic structure
 #[test]
-#[ignore]
+#[ignore = "requires docs validation setup"]
 fn red_test_help_has_basic_structure() {
     let output = Command::cargo_bin("pmat")
         .unwrap()
@@ -95,7 +95,7 @@ fn red_test_help_has_basic_structure() {
 /// - --dry-run
 /// - --format
 #[test]
-#[ignore]
+#[ignore = "requires docs validation setup"]
 fn red_test_maintain_roadmap_flags_complete() {
     let output = Command::cargo_bin("pmat")
         .unwrap()
@@ -134,7 +134,7 @@ fn red_test_maintain_roadmap_flags_complete() {
 
 /// RED: scaffold agent must document ALL flags
 #[test]
-#[ignore]
+#[ignore = "requires docs validation setup"]
 fn red_test_scaffold_agent_flags_complete() {
     let output = Command::cargo_bin("pmat")
         .unwrap()
@@ -169,7 +169,7 @@ fn red_test_scaffold_agent_flags_complete() {
 ///
 /// From PMAT-6010, health has parallel check flags
 #[test]
-#[ignore]
+#[ignore = "requires docs validation setup"]
 fn red_test_maintain_health_flags_complete() {
     let output = Command::cargo_bin("pmat")
         .unwrap()
@@ -206,7 +206,7 @@ fn red_test_maintain_health_flags_complete() {
 /// Bad:  "--validate    Validate"
 /// Good: "--validate    Validate roadmap structure and ticket consistency"
 #[test]
-#[ignore]
+#[ignore = "requires docs validation setup"]
 fn red_test_help_has_descriptive_text() {
     let output = Command::cargo_bin("pmat")
         .unwrap()
@@ -247,7 +247,7 @@ fn red_test_help_has_descriptive_text() {
 /// - "Output value"
 /// - Just the parameter name repeated
 #[test]
-#[ignore]
+#[ignore = "requires docs validation setup"]
 fn red_test_no_generic_descriptions_cli() {
     let commands = vec!["scaffold agent", "maintain roadmap", "maintain health"];
 
@@ -293,7 +293,7 @@ fn red_test_no_generic_descriptions_cli() {
 /// Users learn best from examples. Every command should show
 /// at least one example of common usage.
 #[test]
-#[ignore]
+#[ignore = "requires docs validation setup"]
 fn red_test_help_includes_examples() {
     let commands = vec![
         "scaffold agent",
@@ -329,7 +329,7 @@ fn red_test_help_includes_examples() {
 
 /// RED: Examples should show actual command syntax
 #[test]
-#[ignore]
+#[ignore = "requires docs validation setup"]
 fn red_test_examples_show_command_syntax() {
     let output = Command::cargo_bin("pmat")
         .unwrap()
@@ -365,7 +365,7 @@ fn red_test_examples_show_command_syntax() {
 ///
 /// **Status**: Deferred to Phase 3 - requires syn crate integration
 #[test]
-#[ignore]
+#[ignore = "requires docs validation setup"]
 fn red_test_no_undocumented_flags() {
     // TODO: Phase 3 - Implement automated drift detection
     // Requires:
@@ -379,7 +379,7 @@ fn red_test_no_undocumented_flags() {
 
 /// RED: Required vs optional should be clear
 #[test]
-#[ignore]
+#[ignore = "requires docs validation setup"]
 fn red_test_required_vs_optional_clear() {
     let output = Command::cargo_bin("pmat")
         .unwrap()
@@ -409,7 +409,7 @@ fn red_test_required_vs_optional_clear() {
 
 /// RED: hooks commands must be documented
 #[test]
-#[ignore]
+#[ignore = "requires docs validation setup"]
 fn red_test_hooks_commands_documented() {
     let hook_commands = vec!["hooks install", "hooks verify", "hooks refresh"];
 
@@ -426,7 +426,7 @@ fn red_test_hooks_commands_documented() {
 
 /// RED: analyze commands must be documented
 #[test]
-#[ignore]
+#[ignore = "requires docs validation setup"]
 fn red_test_analyze_commands_documented() {
     let analyze_commands = vec![
         "analyze complexity",

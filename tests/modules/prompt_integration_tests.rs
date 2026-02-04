@@ -10,7 +10,7 @@ use std::fs;
 use tempfile::TempDir;
 
 /// FAILED: Integration test - requires pmat binary
-#[ignore]
+#[ignore = "requires prompt integration setup"]
 #[test]
 #[ignore] // Integration test requires pmat binary
 fn test_prompt_list() {
@@ -26,7 +26,7 @@ fn test_prompt_list() {
 }
 
 /// FAILED: Integration test - requires pmat binary
-#[ignore]
+#[ignore = "requires prompt integration setup"]
 #[test]
 #[ignore] // Integration test requires pmat binary
 fn test_prompt_show_yaml_format() {
@@ -41,7 +41,7 @@ fn test_prompt_show_yaml_format() {
 }
 
 /// FAILED: Integration test - requires pmat binary
-#[ignore]
+#[ignore = "requires prompt integration setup"]
 #[test]
 #[ignore] // Integration test requires pmat binary
 fn test_prompt_show_json_format() {
@@ -56,7 +56,7 @@ fn test_prompt_show_json_format() {
 }
 
 /// FAILED: Integration test - requires pmat binary
-#[ignore]
+#[ignore = "requires prompt integration setup"]
 #[test]
 #[ignore] // Integration test requires pmat binary
 fn test_prompt_show_text_format() {
@@ -70,7 +70,7 @@ fn test_prompt_show_text_format() {
 }
 
 /// FAILED: Integration test - requires pmat binary
-#[ignore]
+#[ignore = "requires prompt integration setup"]
 #[test]
 #[ignore] // Integration test requires pmat binary
 fn test_prompt_not_found() {
@@ -82,7 +82,7 @@ fn test_prompt_not_found() {
 }
 
 /// FAILED: Integration test - requires pmat binary
-#[ignore]
+#[ignore = "requires prompt integration setup"]
 #[test]
 #[ignore] // Integration test requires pmat binary
 fn test_prompt_show_variables() {
@@ -93,7 +93,7 @@ fn test_prompt_show_variables() {
 }
 
 /// FAILED: Integration test - requires pmat binary
-#[ignore]
+#[ignore = "requires prompt integration setup"]
 #[test]
 #[ignore] // Integration test requires pmat binary
 fn test_prompt_write_to_file() {
@@ -119,7 +119,7 @@ fn test_prompt_write_to_file() {
 }
 
 /// FAILED: Integration test - requires pmat binary
-#[ignore]
+#[ignore = "requires prompt integration setup"]
 #[test]
 #[ignore] // Integration test requires pmat binary
 fn test_prompt_json_to_file() {
@@ -147,7 +147,7 @@ fn test_prompt_json_to_file() {
 }
 
 /// FAILED: Integration test - requires pmat binary
-#[ignore]
+#[ignore = "requires prompt integration setup"]
 #[test]
 #[ignore] // Integration test requires pmat binary
 fn test_prompt_all_available_prompts() {
@@ -175,7 +175,7 @@ fn test_prompt_all_available_prompts() {
 }
 
 /// FAILED: Integration test - requires pmat binary
-#[ignore]
+#[ignore = "requires prompt integration setup"]
 #[test]
 #[ignore] // Integration test requires pmat binary
 fn test_prompt_help() {
@@ -190,7 +190,7 @@ fn test_prompt_help() {
 }
 
 /// FAILED: Integration test - requires pmat binary
-#[ignore]
+#[ignore = "requires prompt integration setup"]
 #[test]
 #[ignore] // Integration test requires pmat binary
 fn test_prompt_short_alias() {
@@ -202,7 +202,7 @@ fn test_prompt_short_alias() {
 }
 
 /// FAILED: Integration test - requires pmat binary
-#[ignore]
+#[ignore = "requires prompt integration setup"]
 #[test]
 #[ignore] // Integration test requires pmat binary
 fn test_prompt_missing_name_without_list() {
@@ -214,7 +214,7 @@ fn test_prompt_missing_name_without_list() {
 }
 
 /// FAILED: Integration test - requires pmat binary
-#[ignore]
+#[ignore = "requires prompt integration setup"]
 #[test]
 #[ignore] // Integration test requires pmat binary
 fn test_prompt_yaml_format_explicit() {
@@ -228,7 +228,7 @@ fn test_prompt_yaml_format_explicit() {
 }
 
 /// FAILED: Integration test - requires pmat binary
-#[ignore]
+#[ignore = "requires prompt integration setup"]
 #[test]
 #[ignore] // Integration test requires pmat binary
 fn test_prompt_performance_optimization() {
@@ -242,7 +242,7 @@ fn test_prompt_performance_optimization() {
 }
 
 /// FAILED: Integration test - requires pmat binary
-#[ignore]
+#[ignore = "requires prompt integration setup"]
 #[test]
 #[ignore] // Integration test requires pmat binary
 fn test_prompt_quality_enforcement() {
@@ -256,7 +256,7 @@ fn test_prompt_quality_enforcement() {
 }
 
 /// FAILED: Integration test - requires pmat binary
-#[ignore]
+#[ignore = "requires prompt integration setup"]
 #[test]
 #[ignore] // Integration test requires pmat binary
 fn test_prompt_clean_repo_cruft() {
@@ -269,7 +269,7 @@ fn test_prompt_clean_repo_cruft() {
 }
 
 /// FAILED: Integration test - requires pmat binary
-#[ignore]
+#[ignore = "requires prompt integration setup"]
 #[test]
 #[ignore] // Integration test requires pmat binary
 fn test_prompt_assert_cmd_testing() {
@@ -282,7 +282,7 @@ fn test_prompt_assert_cmd_testing() {
 }
 
 /// FAILED: Integration test - requires pmat binary
-#[ignore]
+#[ignore = "requires prompt integration setup"]
 #[test]
 #[ignore] // Integration test requires pmat binary
 fn test_prompt_documentation() {
@@ -340,7 +340,7 @@ mod property_tests {
     }
 
     /// FAILED: Integration test - requires pmat binary
-    #[ignore]
+    #[ignore = "requires prompt integration setup"]
     #[test]
     #[ignore] // Integration test requires pmat binary
     fn test_all_prompts_produce_valid_json() {

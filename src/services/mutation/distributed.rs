@@ -525,6 +525,7 @@ impl DistributedExecutor {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -774,7 +775,7 @@ mod tests {
 
         /// SLOW: Test was killed - excluded from fast test suite
         #[actix_rt::test]
-        #[ignore]
+        #[ignore = "slow mutation test - run manually"]
         async fn test_parallel_execution_empty() {
             let adapter = Arc::new(RustAdapter::new());
             let config = DistributedConfig {

@@ -1,3 +1,4 @@
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use serial_test::serial;
@@ -106,7 +107,7 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
+    #[ignore = "e2e test - requires binary build"]
     fn test_correct_binary_name_in_workflows() {
         // Ensure workflows use the correct binary name
         let output = Command::new("grep")
@@ -157,7 +158,7 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
+    #[ignore = "e2e test - requires binary build"]
     fn test_workspace_aware_cargo_commands_in_makefile() {
         // Read the root Makefile (server/Makefile was consolidated into root)
         let makefile_content =

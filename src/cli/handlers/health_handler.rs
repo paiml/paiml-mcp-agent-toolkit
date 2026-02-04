@@ -598,6 +598,7 @@ fn print_health_yaml(report: &HealthReport) {
     println!("  skipped: {}", report.summary.skipped);
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -793,6 +794,7 @@ fn determine_checks_to_run(
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use super::*;
@@ -851,6 +853,7 @@ mod property_tests {
 }
 
 // TICKET-PMAT-6010: Tests for parallel health check execution
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod parallel_tests {
     use super::*;
@@ -888,7 +891,7 @@ mod parallel_tests {
 
     /// SLOW: 100s - excluded from fast test suite
     #[tokio::test]
-    #[ignore]
+    #[ignore = "requires health check setup"]
     async fn test_run_checks_parallel_single_check() {
         let project_dir = PathBuf::from(".");
         let check_types = vec![CheckType::Build];

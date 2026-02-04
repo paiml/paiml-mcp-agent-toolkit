@@ -3,6 +3,7 @@
 //! Following Toyota Way principles: Test-Driven Development with comprehensive coverage
 //! These tests verify accurate dead code detection using cargo/rustc integration
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use serial_test::serial;
@@ -14,7 +15,7 @@ mod tests {
     /// Test that cargo detects zero dead code in a minimal project
     /// IGNORED: Environment-dependent - cargo dead_code detection behavior varies by version/env
     #[test]
-    #[ignore]
+    #[ignore = "requires dead code analyzer setup"]
     fn test_cargo_reports_zero_dead_code_for_used_functions() {
         let temp_dir = TempDir::new().unwrap();
         let project_path = temp_dir.path();
@@ -181,6 +182,7 @@ mod tests {
                 42
             }
             
+            #[cfg_attr(coverage_nightly, coverage(off))]
             #[cfg(test)]
             mod tests {
                 use super::*;

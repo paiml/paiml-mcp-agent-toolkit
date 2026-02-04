@@ -23,7 +23,7 @@ fn test_repo_score_help() {
 }
 
 /// FAILED: CLI integration test - requires pmat binary
-#[ignore]
+#[ignore = "repo score integration test"]
 #[test]
 #[ignore] // Integration test requires pmat binary
 fn test_repo_score_basic_execution() {
@@ -47,7 +47,7 @@ fn test_repo_score_basic_execution() {
 }
 
 /// FAILED: CLI integration test - requires pmat binary
-#[ignore]
+#[ignore = "repo score integration test"]
 #[test]
 #[ignore] // Integration test requires pmat binary
 fn test_repo_score_json_output() {
@@ -81,7 +81,7 @@ fn test_repo_score_json_output() {
 }
 
 /// FAILED: CLI integration test - requires pmat binary
-#[ignore]
+#[ignore = "repo score integration test"]
 #[test]
 #[ignore] // Integration test requires pmat binary
 fn test_repo_score_text_output() {

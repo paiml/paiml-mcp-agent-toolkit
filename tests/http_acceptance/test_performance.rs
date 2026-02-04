@@ -111,7 +111,7 @@ async fn test_concurrent_requests() -> Result<()> {
 /// Test sustained load handling
 #[tokio::test]
 /// FAILED: HTTP server acceptance test - requires server running
-#[ignore]
+#[ignore = "HTTP performance test - requires server"]
 async fn test_sustained_load() -> Result<()> {
     let client = HttpTestClient::new("http://localhost:3000")?;
     let test_duration = Duration::from_secs(30);
@@ -351,7 +351,7 @@ async fn test_response_efficiency() -> Result<()> {
 /// Test error rate under stress
 #[tokio::test]
 /// FAILED: HTTP server acceptance test - requires server running
-#[ignore]
+#[ignore = "HTTP performance test - requires server"]
 async fn test_error_rate_under_stress() -> Result<()> {
     let base_url = "http://localhost:3000";
     let concurrent_clients = 20;
@@ -453,7 +453,7 @@ mod integration_tests {
     /// Test complete performance validation workflow
     #[tokio::test]
     /// FAILED: HTTP server acceptance test - requires server running
-    #[ignore]
+    #[ignore = "HTTP performance test - requires server"]
     async fn test_complete_performance_validation() -> Result<()> {
         println!("Starting comprehensive HTTP performance validation...");
 

@@ -565,7 +565,7 @@ mod integration_tests {
     use std::path::PathBuf;
 
     // These tests require actual project paths and are ignored by default
-    #[ignore]
+    #[ignore = "requires oracle service setup"]
     #[tokio::test]
     async fn test_run_on_real_project() {
         let pdca = PdcaLoop::new();
@@ -575,7 +575,7 @@ mod integration_tests {
         assert!(!results.is_empty());
     }
 
-    #[ignore]
+    #[ignore = "requires oracle service setup"]
     #[tokio::test]
     async fn test_single_iteration() {
         let pdca = PdcaLoop::new();

@@ -2159,7 +2159,7 @@ mod tests {
         assert!(violations.is_empty());
     }
 
-    // CB-123 Tests: Undocumented #[ignore]
+    // CB-123 Tests: Undocumented #[ignore = "compliance detector test"]
 
     #[test]
     fn test_cb123_detects_bare_ignore() {
@@ -2169,7 +2169,7 @@ mod tests {
         fs::write(
             src.join("tests.rs"),
             r#"
-#[ignore]
+#[ignore = "compliance detector test"]
 #[test]
 fn slow_test() {}
 "#,

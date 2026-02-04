@@ -344,7 +344,7 @@ fn test_exact_threshold_boundary() {
     );
 }
 
-#[ignore]
+#[ignore = "requires complexity analyzer"]
 #[test]
 #[ignore] // Integration test requires pmat binary
 fn test_no_files_above_threshold() {

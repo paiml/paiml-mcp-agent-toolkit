@@ -26,7 +26,7 @@ use tempfile::tempdir;
 /// 4. Verify results are returned
 #[tokio::test]
 /// FAILED: Mutation integration test - needs fixing
-#[ignore]
+#[ignore = "slow mutation test - run manually"]
 async fn test_rust_mutation_full_workflow() {
     // Arrange: Create temporary Rust file
     let temp_dir = tempdir().unwrap();
@@ -89,7 +89,7 @@ fn test_multiply() {
 /// The test verifies that the handler accepts Python files and attempts processing.
 #[tokio::test]
 /// FAILED: Mutation integration test - needs fixing
-#[ignore]
+#[ignore = "slow mutation test - run manually"]
 async fn test_python_mutation_full_workflow() {
     // Arrange: Create temporary Python file
     let temp_dir = tempdir().unwrap();
@@ -158,7 +158,7 @@ def test_multiply():
 /// Note: This test verifies TypeScript file handling.
 #[tokio::test]
 /// FAILED: Mutation integration test - needs fixing
-#[ignore]
+#[ignore = "slow mutation test - run manually"]
 async fn test_typescript_mutation_full_workflow() {
     // Arrange: Create temporary TypeScript file
     let temp_dir = tempdir().unwrap();
@@ -230,7 +230,7 @@ describe('Math functions', () => {
 /// Test 4: Complete JavaScript mutation workflow
 /// IGNORED: Mutation testing integration test - requires external mutation testing tools
 #[tokio::test]
-#[ignore]
+#[ignore = "slow mutation test - run manually"]
 async fn test_javascript_mutation_full_workflow() {
     // Arrange: Create temporary JavaScript file
     let temp_dir = tempdir().unwrap();
@@ -302,7 +302,7 @@ describe('Math functions', () => {
 /// Test 5: Complete Go mutation workflow
 /// IGNORED: Mutation testing integration test - requires external mutation testing tools
 #[tokio::test]
-#[ignore]
+#[ignore = "slow mutation test - run manually"]
 async fn test_go_mutation_full_workflow() {
     // Arrange: Create temporary Go file
     let temp_dir = tempdir().unwrap();
@@ -369,7 +369,7 @@ func main() {
 /// Test 6: Complete C++ mutation workflow
 /// IGNORED: Mutation testing integration test - requires external mutation testing tools
 #[tokio::test]
-#[ignore]
+#[ignore = "slow mutation test - run manually"]
 async fn test_cpp_mutation_full_workflow() {
     // Arrange: Create temporary C++ file
     let temp_dir = tempdir().unwrap();
@@ -439,7 +439,7 @@ int main() {
 /// Verifies mutation testing can handle multiple files in a project
 /// IGNORED: Mutation testing integration test - requires external mutation testing tools
 #[tokio::test]
-#[ignore]
+#[ignore = "slow mutation test - run manually"]
 async fn test_multi_file_mutation_testing() {
     // Arrange: Create temporary directory with multiple Rust files
     let temp_dir = tempdir().unwrap();
@@ -512,7 +512,7 @@ pub fn divide(a: i32, b: i32) -> i32 {
 /// Verifies mutation testing can handle workspace structure
 #[tokio::test]
 /// FAILED: Mutation integration test - needs fixing
-#[ignore]
+#[ignore = "slow mutation test - run manually"]
 async fn test_workspace_level_mutation() {
     // Arrange: Create temporary workspace structure
     let temp_dir = tempdir().unwrap();
@@ -574,7 +574,7 @@ fn test_add() {
 /// Verifies mutation testing can handle large files efficiently
 #[tokio::test]
 /// SLOW: >60s - excluded from fast test suite
-#[ignore]
+#[ignore = "slow mutation test - run manually"]
 async fn test_large_file_mutation() {
     // Arrange: Create large Rust file (simulating ~1000+ lines)
     let temp_dir = tempdir().unwrap();
@@ -637,7 +637,7 @@ fn function_{}(a: i32, b: i32) -> i32 {{
 /// Verifies mutation testing can handle many mutants efficiently
 #[tokio::test]
 /// SLOW: >60s - excluded from fast test suite
-#[ignore]
+#[ignore = "slow mutation test - run manually"]
 async fn test_many_mutants_handling() {
     // Arrange: Create file with many mutation opportunities
     let temp_dir = tempdir().unwrap();
@@ -702,7 +702,7 @@ async fn test_many_mutants_handling() {
 /// Verifies parallel execution works correctly with different thread counts
 #[tokio::test]
 /// FAILED: Mutation integration test - needs fixing
-#[ignore]
+#[ignore = "slow mutation test - run manually"]
 async fn test_parallel_execution_scaling() {
     // Arrange: Create test file
     let temp_dir = tempdir().unwrap();
@@ -759,7 +759,7 @@ fn div(a: i32, b: i32) -> i32 { a / b }
 /// Verifies mutation testing respects timeout settings
 #[tokio::test]
 /// FAILED: Mutation integration test - needs fixing
-#[ignore]
+#[ignore = "slow mutation test - run manually"]
 async fn test_timeout_handling() {
     // Arrange: Create test file
     let temp_dir = tempdir().unwrap();
@@ -821,7 +821,7 @@ fn compute(n: i32) -> i32 {
 /// Verifies mutation testing doesn't consume excessive memory
 #[tokio::test]
 /// SLOW: >60s - excluded from fast test suite
-#[ignore]
+#[ignore = "slow mutation test - run manually"]
 async fn test_memory_usage_bounds() {
     // Arrange: Create moderately large file
     let temp_dir = tempdir().unwrap();
@@ -872,7 +872,7 @@ async fn test_memory_usage_bounds() {
 /// Verifies mutation testing completes within reasonable time
 #[tokio::test]
 /// SLOW: >60s - excluded from fast test suite
-#[ignore]
+#[ignore = "slow mutation test - run manually"]
 async fn test_execution_time_bounds() {
     use std::time::Instant;
 
@@ -926,7 +926,7 @@ fn sub(a: i32, b: i32) -> i32 { a - b }
 /// Test 15: Parallel mutant execution correctness
 #[tokio::test]
 /// SLOW: >60s - excluded from fast test suite
-#[ignore]
+#[ignore = "slow mutation test - run manually"]
 async fn test_parallel_mutant_execution_correctness() {
     let temp_dir = tempdir().unwrap();
     let file_path = temp_dir.path().join("parallel.rs");
@@ -966,7 +966,7 @@ async fn test_parallel_mutant_execution_correctness() {
 /// Test 16: Race condition handling
 #[tokio::test]
 /// SLOW: >60s - excluded from fast test suite
-#[ignore]
+#[ignore = "slow mutation test - run manually"]
 async fn test_race_condition_handling() {
     let temp_dir = tempdir().unwrap();
     let file_path = temp_dir.path().join("race.rs");
@@ -997,7 +997,7 @@ async fn test_race_condition_handling() {
 /// Test 17: Resource contention
 #[tokio::test]
 /// SLOW: >60s - excluded from fast test suite
-#[ignore]
+#[ignore = "slow mutation test - run manually"]
 async fn test_resource_contention() {
     let temp_dir = tempdir().unwrap();
     let file_path = temp_dir.path().join("contention.rs");
@@ -1064,7 +1064,7 @@ async fn test_graceful_shutdown_on_error() {
 /// Test 19: Mutation of actual PMAT code
 #[tokio::test]
 /// SLOW: >60s - excluded from fast test suite
-#[ignore]
+#[ignore = "slow mutation test - run manually"]
 async fn test_mutation_of_actual_pmat_code() {
     use std::path::Path;
     let pmat_file = Path::new("src/utils/path_validator.rs");
@@ -1136,7 +1136,7 @@ fn test_add() { assert_eq!(buggy_add(2, 3), 5); }
 /// Test 21: Mutation with no tests
 /// IGNORED: Mutation testing integration test - requires external mutation testing tools
 #[tokio::test]
-#[ignore]
+#[ignore = "slow mutation test - run manually"]
 async fn test_mutation_with_no_tests() {
     let temp_dir = tempdir().unwrap();
     let file_path = temp_dir.path().join("notests.rs");

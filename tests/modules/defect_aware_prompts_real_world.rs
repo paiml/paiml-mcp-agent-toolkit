@@ -69,7 +69,7 @@ fn test_real_world_paiml_analysis() {
 }
 
 #[test]
-#[ignore]
+#[ignore = "requires defect analysis setup"]
 fn test_paiml_defect_patterns() {
     let summary_path = "/tmp/paiml-summary.yaml";
 
@@ -114,7 +114,7 @@ fn test_paiml_defect_patterns() {
 }
 
 #[test]
-#[ignore]
+#[ignore = "requires defect analysis setup"]
 fn test_paiml_vs_test_data_comparison() {
     let test_baseline = "/tmp/oip-test-baseline.yaml";
     let paiml_summary = "/tmp/paiml-summary.yaml";

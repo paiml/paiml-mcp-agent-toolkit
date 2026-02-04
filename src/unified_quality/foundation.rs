@@ -299,6 +299,7 @@ impl QualityMonitor {
 // Re-export dashmap for metrics storage
 pub use dashmap::DashMap;
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -352,6 +353,7 @@ mod tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use super::*;
@@ -468,7 +470,7 @@ mod property_tests {
         }
 
         #[test]
-        #[ignore]
+        #[ignore = "requires quality framework setup"]
         fn pattern_matching_edge_cases(
             pattern_type in 0..3usize,
             file_extension in "[a-z]{1,10}"
@@ -532,6 +534,7 @@ mod property_tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod coverage_tests {
     use super::*;

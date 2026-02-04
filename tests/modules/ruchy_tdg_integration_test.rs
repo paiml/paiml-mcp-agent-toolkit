@@ -6,7 +6,7 @@
 mod ruchy_tdg_integration_tests {
     use std::path::Path;
 
-    #[ignore]
+    #[ignore = "requires ruchy integration setup"]
     #[test]
     fn test_ruchy_language_detection_from_extension() {
         // RED: This should fail because Ruchy is not yet added to Language enum
@@ -17,7 +17,7 @@ mod ruchy_tdg_integration_tests {
         assert_eq!(language, pmat::tdg::Language::Ruchy);
     }
 
-    #[ignore]
+    #[ignore = "requires ruchy integration setup"]
     #[test]
     fn test_ruchy_alternative_extension() {
         // RED: Test alternative .rh extension
@@ -27,7 +27,7 @@ mod ruchy_tdg_integration_tests {
         assert_eq!(language, pmat::tdg::Language::Ruchy);
     }
 
-    #[ignore]
+    #[ignore = "requires ruchy integration setup"]
     #[test]
     fn test_ruchy_language_confidence() {
         // RED: Test that Ruchy has appropriate confidence level
@@ -41,7 +41,7 @@ mod ruchy_tdg_integration_tests {
         );
     }
 
-    #[ignore]
+    #[ignore = "requires ruchy integration setup"]
     #[test]
     fn test_ruchy_language_display() {
         // RED: Test that Ruchy has proper string representation
@@ -52,7 +52,7 @@ mod ruchy_tdg_integration_tests {
     }
 
     #[cfg(feature = "ruchy-ast")]
-    #[ignore]
+    #[ignore = "requires ruchy integration setup"]
     #[tokio::test]
     async fn test_ruchy_tdg_analysis_integration() -> anyhow::Result<()> {
         // RED: Test that TDG analysis works with Ruchy files
@@ -99,7 +99,7 @@ fun main() {
         Ok(())
     }
 
-    #[ignore]
+    #[ignore = "requires ruchy integration setup"]
     #[test]
     fn test_ruchy_language_rules() {
         // RED: Test that Ruchy has appropriate language rules
@@ -114,7 +114,7 @@ fun main() {
         assert_eq!(rules.language, pmat::tdg::Language::Ruchy);
     }
 
-    #[ignore]
+    #[ignore = "requires ruchy integration setup"]
     #[test]
     fn test_ruchy_semantic_signature_patterns() {
         // RED: Test that Ruchy files generate appropriate semantic signatures
@@ -133,7 +133,7 @@ fun main() {
     }
 
     #[cfg(feature = "ruchy-ast")]
-    #[ignore]
+    #[ignore = "requires ruchy integration setup"]
     #[tokio::test]
     async fn test_ruchy_actor_model_complexity() -> anyhow::Result<()> {
         // RED: Test that actor model patterns are analyzed correctly
@@ -193,7 +193,7 @@ fun main() {
     }
 
     #[cfg(feature = "ruchy-ast")]
-    #[ignore]
+    #[ignore = "requires ruchy integration setup"]
     #[tokio::test]
     async fn test_ruchy_pipeline_operator_complexity() -> anyhow::Result<()> {
         // RED: Test that pipeline operators are handled in complexity analysis
@@ -248,7 +248,7 @@ fun main() {
 mod ruchy_tdg_fallback_tests {
     use std::path::Path;
 
-    #[ignore]
+    #[ignore = "requires ruchy integration setup"]
     #[test]
     fn test_ruchy_detection_without_ast_feature() {
         // When ruchy-ast feature is disabled, should still detect language
@@ -258,7 +258,7 @@ mod ruchy_tdg_fallback_tests {
         assert_eq!(language, pmat::tdg::Language::Ruchy);
     }
 
-    #[ignore]
+    #[ignore = "requires ruchy integration setup"]
     #[test]
     fn test_ruchy_fallback_confidence() {
         // Should still provide confidence even without full AST support

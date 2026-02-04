@@ -134,7 +134,7 @@ async fn test_tdg_storage_persists_across_sessions() {
     }
 }
 
-#[ignore]
+#[ignore = "requires TDG storage setup"]
 #[tokio::test]
 async fn test_tdg_storage_updates_on_file_change() {
     // Arrange
@@ -213,7 +213,7 @@ async fn test_tdg_storage_statistics_accuracy() {
     );
 }
 
-#[ignore]
+#[ignore = "requires TDG storage setup"]
 #[tokio::test]
 async fn test_tdg_score_comparison_tracking() {
     // Arrange
@@ -348,7 +348,7 @@ async fn test_tdg_storage_consistency_invariants() {
 mod tdg_storage_integration {
 
     /// Integration test for complete TDG storage workflow
-    #[ignore]
+    #[ignore = "requires TDG storage setup"]
     #[tokio::test]
     async fn test_complete_tdg_storage_workflow() {
         // This integration test verifies the complete workflow:

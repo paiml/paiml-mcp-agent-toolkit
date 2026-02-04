@@ -114,11 +114,12 @@ fn map_operator_name_to_type(name: &str) -> MutationOperatorType {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    #[ignore]
+    #[ignore = "slow mutation test - run manually"]
     #[test]
     fn test_rust_generator_basic() {
         let source = r#"
@@ -145,7 +146,7 @@ fn add(a: i32, b: i32) -> i32 {
         assert_eq!(mutant.status, MutantStatus::Pending);
     }
 
-    #[ignore]
+    #[ignore = "slow mutation test - run manually"]
     #[test]
     fn test_rust_generator_multiple_operators() {
         let source = r#"
@@ -172,7 +173,7 @@ fn compare(a: i32, b: i32) -> bool {
         assert!(has_logical, "Should have logical operator mutants");
     }
 
-    #[ignore]
+    #[ignore = "slow mutation test - run manually"]
     #[test]
     fn test_rust_generator_range_operators() {
         let source = r#"
@@ -191,7 +192,7 @@ fn range_sum(start: i32, end: i32) -> i32 {
         assert!(has_range, "Should have range operator mutants");
     }
 
-    #[ignore]
+    #[ignore = "slow mutation test - run manually"]
     #[test]
     fn test_rust_generator_pattern_matching() {
         let source = r#"
@@ -212,7 +213,7 @@ fn unwrap(value: Option<i32>) -> i32 {
         // Generator works without errors (validated by Result::Ok)
     }
 
-    #[ignore]
+    #[ignore = "slow mutation test - run manually"]
     #[test]
     fn test_rust_generator_method_chains() {
         let source = r#"

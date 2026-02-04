@@ -119,7 +119,7 @@ fn example() -> i32 {
 /// RED TEST: Context generation with all analyses should complete within bounds
 /// IGNORED: Requires full async context generation infrastructure - long-running test
 #[tokio::test]
-#[ignore]
+#[ignore = "e2e test - requires binary build"]
 async fn test_full_analysis_smart_bounds() {
     // ARRANGE: Create moderate complexity project
     let temp_dir = TempDir::new().unwrap();

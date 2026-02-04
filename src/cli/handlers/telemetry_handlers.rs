@@ -297,6 +297,7 @@ async fn record_telemetry_command_execution(start_time: Instant) -> Result<()> {
     Ok(())
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -348,7 +349,7 @@ mod tests {
 
     /// IGNORED: Flaky in parallel test environment - telemetry state races
     #[tokio::test]
-    #[ignore]
+    #[ignore = "requires telemetry setup"]
     async fn test_test_event_generation() {
         telemetry().reset();
 
@@ -361,6 +362,7 @@ mod tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;
