@@ -298,4 +298,194 @@ mod tests {
         let _ = analyzer.analyze().await;
         assert_eq!(analyzer.parse_count(), 1);
     }
+
+    #[test]
+    fn test_extract_function_name_function_keyword() {
+        let analyzer = UnifiedBashAnalyzer::new(PathBuf::from("test.sh"));
+        assert_eq!(
+            analyzer.extract_function_name("function my_func()"),
+            Some("my_func".to_string())
+        );
+        assert_eq!(
+            analyzer.extract_function_name("function my_func() {"),
+            Some("my_func".to_string())
+        );
+    }
+
+    #[test]
+    fn test_extract_function_name_parentheses_style() {
+        let analyzer = UnifiedBashAnalyzer::new(PathBuf::from("test.sh"));
+        assert_eq!(
+            analyzer.extract_function_name("my_func() {"),
+            Some("my_func".to_string())
+        );
+        assert_eq!(
+            analyzer.extract_function_name("setup() {"),
+            Some("setup".to_string())
+        );
+    }
+
+    #[test]
+    fn test_extract_function_name_invalid() {
+        let analyzer = UnifiedBashAnalyzer::new(PathBuf::from("test.sh"));
+        // Empty before ()
+        assert_eq!(analyzer.extract_function_name("() {"), None);
+        // No function pattern
+        assert_eq!(analyzer.extract_function_name("echo hello"), None);
+    }
+
+    #[test]
+    fn test_calculate_script_complexity_simple() {
+        let analyzer = UnifiedBashAnalyzer::new(PathBuf::from("test.sh"));
+        let content = "#!/bin/bash\necho hello\n";
+        // Base complexity of 1
+        assert_eq!(analyzer.calculate_script_complexity(content), 1);
+    }
+
+    #[test]
+    fn test_calculate_script_complexity_with_if() {
+        let analyzer = UnifiedBashAnalyzer::new(PathBuf::from("test.sh"));
+        let content = "#!/bin/bash\nif [ -f file ]; then\n  echo found\nfi";
+        // Base 1 + if 1 = 2
+        assert_eq!(analyzer.calculate_script_complexity(content), 2);
+    }
+
+    #[test]
+    fn test_calculate_script_complexity_with_loop() {
+        let analyzer = UnifiedBashAnalyzer::new(PathBuf::from("test.sh"));
+        let content = "#!/bin/bash\nfor i in 1 2 3; do\n  echo $i\ndone";
+        // Base 1 + for 1 = 2
+        assert_eq!(analyzer.calculate_script_complexity(content), 2);
+    }
+
+    #[test]
+    fn test_calculate_script_complexity_with_while() {
+        let analyzer = UnifiedBashAnalyzer::new(PathBuf::from("test.sh"));
+        let content = "#!/bin/bash\nwhile true; do\n  echo loop\ndone";
+        // Base 1 + while 1 = 2
+        assert_eq!(analyzer.calculate_script_complexity(content), 2);
+    }
+
+    #[test]
+    fn test_calculate_script_complexity_with_logical_ops() {
+        let analyzer = UnifiedBashAnalyzer::new(PathBuf::from("test.sh"));
+        let content = "#!/bin/bash\n[ -f file ] && echo exists || echo missing";
+        // Base 1 + (line with && or ||) 1 = 2 (both operators on same line count once)
+        assert_eq!(analyzer.calculate_script_complexity(content), 2);
+    }
+
+    #[test]
+    fn test_calculate_script_complexity_with_pipeline() {
+        let analyzer = UnifiedBashAnalyzer::new(PathBuf::from("test.sh"));
+        let content = "#!/bin/bash\ncat file | grep foo | wc -l";
+        // Base 1 + 2 pipes = 3
+        assert_eq!(analyzer.calculate_script_complexity(content), 3);
+    }
+
+    #[test]
+    fn test_calculate_script_complexity_with_case() {
+        let analyzer = UnifiedBashAnalyzer::new(PathBuf::from("test.sh"));
+        let content = "#!/bin/bash\ncase $1 in\n  start) echo start;;\nesac";
+        // Base 1 + case 1 = 2
+        assert_eq!(analyzer.calculate_script_complexity(content), 2);
+    }
+
+    #[test]
+    fn test_calculate_script_complexity_with_elif() {
+        let analyzer = UnifiedBashAnalyzer::new(PathBuf::from("test.sh"));
+        let content = "#!/bin/bash\nif [ $1 -eq 1 ]; then\n  echo one\nelif [ $1 -eq 2 ]; then\n  echo two\nfi";
+        // Base 1 + if 1 + elif 1 = 3
+        assert_eq!(analyzer.calculate_script_complexity(content), 3);
+    }
+
+    #[test]
+    fn test_calculate_script_complexity_ignores_comments() {
+        let analyzer = UnifiedBashAnalyzer::new(PathBuf::from("test.sh"));
+        let content = "#!/bin/bash\n# if something\n# for loop\necho hello";
+        // Just base 1 - comments are ignored
+        assert_eq!(analyzer.calculate_script_complexity(content), 1);
+    }
+
+    #[test]
+    fn test_extract_complexity_metrics_simple_script() {
+        let analyzer = UnifiedBashAnalyzer::new(PathBuf::from("test.sh"));
+        let content = "#!/bin/bash\necho hello world";
+
+        let metrics = analyzer.extract_complexity_metrics(content);
+
+        assert_eq!(metrics.functions.len(), 0);
+        assert!(metrics.total_complexity.cyclomatic >= 1);
+    }
+
+    #[test]
+    fn test_extract_complexity_metrics_with_function() {
+        let analyzer = UnifiedBashAnalyzer::new(PathBuf::from("test.sh"));
+        let content = r#"#!/bin/bash
+function hello() {
+    echo "hello"
+}
+"#;
+
+        let metrics = analyzer.extract_complexity_metrics(content);
+
+        assert_eq!(metrics.functions.len(), 1);
+        assert_eq!(metrics.functions[0].name, "hello");
+    }
+
+    #[test]
+    fn test_extract_complexity_metrics_function_with_if() {
+        let analyzer = UnifiedBashAnalyzer::new(PathBuf::from("test.sh"));
+        let content = r#"#!/bin/bash
+function check_file() {
+    if [ -f "$1" ]; then
+        echo "exists"
+    fi
+}
+"#;
+
+        let metrics = analyzer.extract_complexity_metrics(content);
+
+        assert_eq!(metrics.functions.len(), 1);
+        assert_eq!(metrics.functions[0].name, "check_file");
+        // Base 1 + if 1 = 2
+        assert!(metrics.functions[0].metrics.cyclomatic >= 2);
+    }
+
+    #[test]
+    fn test_unified_analysis_struct() {
+        let analysis = UnifiedAnalysis {
+            ast_items: vec![],
+            file_metrics: FileComplexityMetrics {
+                path: "test.sh".to_string(),
+                total_complexity: ComplexityMetrics {
+                    cyclomatic: 1,
+                    cognitive: 1,
+                    nesting_max: 0,
+                    lines: 5,
+                    halstead: None,
+                },
+                functions: vec![],
+                classes: vec![],
+            },
+            parsed_at: std::time::Instant::now(),
+        };
+
+        assert!(analysis.ast_items.is_empty());
+        assert_eq!(analysis.file_metrics.path, "test.sh");
+    }
+
+    #[test]
+    fn test_analysis_error_display() {
+        let io_err = AnalysisError::Io(std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            "file not found",
+        ));
+        assert!(format!("{}", io_err).contains("Failed to read file"));
+
+        let parse_err = AnalysisError::Parse("syntax error".to_string());
+        assert!(format!("{}", parse_err).contains("Failed to parse"));
+
+        let analysis_err = AnalysisError::Analysis("analysis failed".to_string());
+        assert!(format!("{}", analysis_err).contains("Analysis error"));
+    }
 }
