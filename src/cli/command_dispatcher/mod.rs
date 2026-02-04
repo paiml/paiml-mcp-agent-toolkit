@@ -104,6 +104,32 @@ impl CommandDispatcher {
                 )
                 .await
             }
+            Commands::Query {
+                query,
+                limit,
+                min_grade,
+                max_complexity,
+                language,
+                path,
+                project_path,
+                format,
+                include_source,
+                rebuild_index,
+            } => {
+                handlers::handle_query(
+                    query,
+                    limit,
+                    min_grade,
+                    max_complexity,
+                    language,
+                    path,
+                    project_path,
+                    format,
+                    include_source,
+                    rebuild_index,
+                )
+                .await
+            }
             Commands::Analyze(analyze_cmd) => Self::execute_analyze_command(analyze_cmd).await,
             Commands::Qdd(qdd_cmd) => Self::execute_qdd_command(qdd_cmd).await,
             Commands::Embed(embed_cmd) => Self::execute_embed_command(embed_cmd).await,

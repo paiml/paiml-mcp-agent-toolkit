@@ -62,6 +62,7 @@ pub mod language_registry;
 pub mod languages;
 pub mod memory_integration;
 pub mod memory_manager;
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 pub mod memory_property_tests;
 pub mod metric_trends; // Phase 3: O(1) Quality Gates trend analysis
@@ -102,6 +103,7 @@ pub mod ast_typescript;
 #[cfg(feature = "typescript-ast")]
 pub mod ast_typescript_compat; // Compatibility layer for TypeScript AST migration
 pub mod big_o_analyzer;
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod big_o_analyzer_property_tests;
 pub mod cache;
@@ -110,11 +112,14 @@ pub mod cargo_dead_code_analyzer;
 pub mod clippy_fix;
 pub mod code_intelligence;
 pub mod complexity;
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod complexity_analyzer_tests;
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod complexity_file_extraction_tests;
 pub mod complexity_patterns;
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod complexity_property_tests;
 pub mod configuration_service;
@@ -124,9 +129,11 @@ pub mod coupling_analyzer;
 pub mod coverage_improvement;
 pub mod dag_builder;
 pub mod dead_code_analyzer;
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod dead_code_analyzer_tests;
 pub mod dead_code_multi_language; // BUG-004: Multi-language dead code analysis
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod dead_code_property_tests;
 pub mod dead_code_prover;
@@ -143,11 +150,13 @@ pub mod deterministic_mermaid_engine;
 pub mod doc_validator;
 pub mod dogfooding_engine;
 pub mod duplicate_detector;
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod duplicate_detector_property_tests;
 pub mod embedded_templates;
 pub mod enhanced_ast_visitor;
 pub mod enhanced_language_detection; // BUG-011: Multi-language detection with confidence
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 pub mod enhanced_naming_tests;
 pub mod enhanced_python_visitor;
@@ -156,6 +165,7 @@ pub mod enhanced_typescript_visitor;
 pub mod error_capture; // Issue #81: Bug report error capture
 pub mod fault_localization; // Issue #103: Tarantula SBFL fault localization
 pub mod file_classifier;
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod file_classifier_property_tests;
 pub mod file_discovery;
@@ -187,12 +197,14 @@ pub mod project_analyzer;
 pub mod project_meta_detector;
 pub mod proof_annotator;
 pub mod quality_gates;
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 pub mod real_world_enhanced_naming_test;
 pub mod repo_score; // Repository health scoring system
 pub mod rust_project_score; // Rust Project Score v1.1 (evidence-based quality scoring)
 pub mod similarity; // Advanced similarity and entropy detection
 pub use quality_gates as quality_gate;
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod deep_context_property_tests;
 #[cfg(feature = "deep-wasm")]
@@ -243,15 +255,18 @@ pub mod oracle;
 // PMAT-REPORT-V1: Universal Rich Reporting with Data Science and ASCII Visualization
 pub mod rich_reporter;
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod satd_property_tests;
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod mcp_property_tests;
 
 #[cfg(all(test, feature = "git-lib"))]
 mod git_clone_property_tests;
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod quality_proxy_property_tests;
 
@@ -262,7 +277,9 @@ pub mod hook_manager; // Issue #75 Phase 6: Git hooks for workflow
 pub mod roadmap_service;
 pub mod telemetry_service; // Issue #75 Phase 7: CHANGELOG automation
 pub mod gaming_detector; // PMAT Work Contract: Anti-gaming detection for coverage metrics
+pub mod agent_context; // PMAT-470: RAG-powered agent context with semantic code search
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     #[test]
@@ -272,6 +289,7 @@ mod tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;

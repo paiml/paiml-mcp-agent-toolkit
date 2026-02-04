@@ -230,6 +230,32 @@ impl CommandExecutor {
                     )
                     .await
             }
+            Commands::Query {
+                query,
+                limit,
+                min_grade,
+                max_complexity,
+                language,
+                path,
+                project_path,
+                format,
+                include_source,
+                rebuild_index,
+            } => {
+                crate::cli::handlers::handle_query(
+                    query,
+                    limit,
+                    min_grade,
+                    max_complexity,
+                    language,
+                    path,
+                    project_path,
+                    format,
+                    include_source,
+                    rebuild_index,
+                )
+                .await
+            }
             Commands::Serve {
                 port,
                 host,
@@ -1086,6 +1112,7 @@ impl CommandExecutorFactory {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1549,6 +1576,7 @@ mod tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use super::*;
@@ -1595,6 +1623,7 @@ mod property_tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod integration_tests {
     use super::*;
@@ -1682,6 +1711,7 @@ mod integration_tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod edge_case_tests {
     use super::*;

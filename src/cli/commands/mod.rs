@@ -16,10 +16,10 @@ use crate::cli::{
     IncrementalCoverageOutputFormat, LintHotspotOutputFormat, MakefileOutputFormat,
     NameSimilarityOutputFormat, OutputFormat, PromptOutputFormat, ProofAnnotationOutputFormat,
     PropertyTypeFilter, ProvabilityOutputFormat, QualityCheckType, QualityGateOutputFormat,
-    QualityProfile, RefactorAutoOutputFormat, RefactorDocsOutputFormat, RefactorMode,
-    RefactorOutputFormat, RepoScoreOutputFormat, ReportOutputFormat, SatdOutputFormat,
-    SatdSeverity, SearchScope, SymbolTableOutputFormat, SymbolTypeFilter, TdgOutputFormat,
-    VerificationMethodFilter, WasmOutputFormat,
+    QualityProfile, QueryOutputFormat, RefactorAutoOutputFormat, RefactorDocsOutputFormat,
+    RefactorMode, RefactorOutputFormat, RepoScoreOutputFormat, ReportOutputFormat,
+    SatdOutputFormat, SatdSeverity, SearchScope, SymbolTableOutputFormat, SymbolTypeFilter,
+    TdgOutputFormat, VerificationMethodFilter, WasmOutputFormat,
 };
 
 #[cfg(feature = "deep-wasm")]
@@ -228,6 +228,52 @@ pub enum Commands {
         /// BUG-012: Multi-language override support
         #[arg(long, value_delimiter = ',')]
         languages: Option<Vec<String>>,
+    },
+
+    /// Semantic code search with quality annotations (RAG-powered)
+    ///
+    /// Search functions by intent, returns results ranked by relevance and quality.
+    /// Use instead of grep for quality-aware code discovery.
+    #[command(visible_aliases = &["q", "search-code"])]
+    Query {
+        /// Natural language query (e.g., "error handling", "database connection")
+        query: String,
+
+        /// Maximum number of results
+        #[arg(short, long, default_value_t = 10)]
+        limit: usize,
+
+        /// Minimum TDG grade filter (A, B, C, D, F)
+        #[arg(long, value_name = "GRADE")]
+        min_grade: Option<String>,
+
+        /// Maximum cyclomatic complexity filter
+        #[arg(long, value_name = "N")]
+        max_complexity: Option<u32>,
+
+        /// Filter by language (rust, typescript, python, etc.)
+        #[arg(long)]
+        language: Option<String>,
+
+        /// Filter by file path pattern
+        #[arg(long)]
+        path: Option<String>,
+
+        /// Project path to search
+        #[arg(short = 'p', long, default_value = ".")]
+        project_path: PathBuf,
+
+        /// Output format
+        #[arg(short, long, value_enum, default_value = "text")]
+        format: QueryOutputFormat,
+
+        /// Include full source code in results
+        #[arg(long)]
+        include_source: bool,
+
+        /// Build/rebuild the index before querying
+        #[arg(long)]
+        rebuild_index: bool,
     },
 
     /// Analyze code metrics and patterns

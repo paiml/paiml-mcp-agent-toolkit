@@ -41,6 +41,28 @@ impl fmt::Display for OutputFormat {
     }
 }
 
+/// Output format for query command (PMAT-470: RAG agent context)
+#[derive(Clone, Debug, ValueEnum, PartialEq, Default)]
+pub enum QueryOutputFormat {
+    /// Plain text output
+    #[default]
+    Text,
+    /// JSON output for scripting
+    Json,
+    /// Markdown output for documentation
+    Markdown,
+}
+
+impl fmt::Display for QueryOutputFormat {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            QueryOutputFormat::Text => write!(f, "text"),
+            QueryOutputFormat::Json => write!(f, "json"),
+            QueryOutputFormat::Markdown => write!(f, "markdown"),
+        }
+    }
+}
+
 /// Explain level for code explanations
 #[derive(Clone, Debug, ValueEnum, PartialEq)]
 pub enum ExplainLevel {
@@ -1159,6 +1181,7 @@ impl fmt::Display for QualityCheckType {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1362,6 +1385,7 @@ impl fmt::Display for DeepWasmOutputFormat {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;
