@@ -115,6 +115,7 @@ impl CommandDispatcher {
                 format,
                 include_source,
                 rebuild_index,
+                exclude_tests,
             } => {
                 handlers::handle_query(
                     query,
@@ -127,6 +128,7 @@ impl CommandDispatcher {
                     format,
                     include_source,
                     rebuild_index,
+                    exclude_tests,
                 )
                 .await
             }

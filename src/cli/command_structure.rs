@@ -241,6 +241,7 @@ impl CommandExecutor {
                 format,
                 include_source,
                 rebuild_index,
+                exclude_tests,
             } => {
                 crate::cli::handlers::handle_query(
                     query,
@@ -253,6 +254,7 @@ impl CommandExecutor {
                     format,
                     include_source,
                     rebuild_index,
+                    exclude_tests,
                 )
                 .await
             }

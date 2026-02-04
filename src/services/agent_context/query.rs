@@ -5,6 +5,15 @@
 use super::{AgentContextIndex, FunctionEntry};
 use serde::{Deserialize, Serialize};
 
+/// Check if function is a test (test_ prefix or in tests/ directory)
+fn is_test_function(func: &FunctionEntry) -> bool {
+    func.function_name.starts_with("test_")
+        || func.file_path.starts_with("tests/")
+        || func.file_path.contains("/tests/")
+        || func.file_path.contains("_tests.")
+        || func.file_path.contains("_test.")
+}
+
 /// Query options for filtering results
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct QueryOptions {
@@ -132,7 +141,13 @@ impl AgentContextIndex {
                 // Combine relevance with quality
                 // Higher TDG score = worse quality, so invert
                 let quality_factor = 1.0 - (func.quality.tdg_score / 10.0);
-                let combined = relevance * 0.7 + quality_factor * 0.3;
+                let mut combined = relevance * 0.7 + quality_factor * 0.3;
+
+                // Demote test functions so production code ranks higher
+                if is_test_function(func) {
+                    combined *= 0.6;
+                }
+
                 (idx, combined)
             })
             .collect();
@@ -197,45 +212,43 @@ impl AgentContextIndex {
         Ok(results)
     }
 
-    /// Calculate term-based relevance scores for a query
+    /// Calculate term-based relevance scores using pre-computed lowercase corpus.
+    ///
+    /// Uses pre-computed `corpus_lower` to avoid per-query `.to_lowercase()` on
+    /// all 42K+ documents. Linear scan with TF scoring for quality ranking.
     fn calculate_relevance_scores(&self, query: &str) -> Result<Vec<f32>, String> {
         if self.corpus.is_empty() {
             return Ok(Vec::new());
         }
 
         // Tokenize query
-        let query_terms: Vec<&str> = query
+        let query_terms: Vec<String> = query
             .split(|c: char| !c.is_alphanumeric() && c != '_')
             .filter(|s| !s.is_empty())
+            .map(|s| s.to_lowercase())
             .collect();
 
         if query_terms.is_empty() {
             return Ok(vec![0.0; self.corpus.len()]);
         }
 
-        // Calculate term frequency for each document
+        // Score each document using pre-computed lowercase corpus
         let mut scores = vec![0.0f32; self.corpus.len()];
 
-        for (doc_idx, doc) in self.corpus.iter().enumerate() {
-            let doc_lower = doc.to_lowercase();
+        for (doc_idx, doc_lower) in self.corpus_lower.iter().enumerate() {
             let mut term_score = 0.0f32;
             let mut term_count = 0;
+            let doc_len_factor = 1.0 + (self.corpus[doc_idx].len() as f32).ln();
 
             for term in &query_terms {
-                let term_lower = term.to_lowercase();
-
-                // Count occurrences
-                let count = doc_lower.matches(&term_lower).count() as f32;
+                let count = doc_lower.matches(term.as_str()).count() as f32;
                 if count > 0.0 {
-                    // TF-IDF like scoring (simplified)
-                    // Log normalization for TF
-                    let tf = (1.0 + count.ln()) / (1.0 + (doc.len() as f32).ln());
+                    let tf = (1.0 + count.ln()) / doc_len_factor;
                     term_score += tf;
                     term_count += 1;
                 }
             }
 
-            // Normalize by query length
             if term_count > 0 {
                 scores[doc_idx] = term_score / query_terms.len() as f32;
             }

@@ -3,11 +3,11 @@
 //! Builds a searchable index of all functions in a project with quality annotations.
 
 use crate::services::semantic::{chunk_code, CodeChunk, Language};
+use ignore::WalkBuilder;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
-use walkdir::WalkDir;
 
 /// Quality metrics for a function
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -98,6 +98,8 @@ pub struct AgentContextIndex {
     pub(crate) file_index: HashMap<String, Vec<usize>>,
     /// Document corpus for BM25-style search
     pub(crate) corpus: Vec<String>,
+    /// Pre-computed lowercase corpus (avoids per-query lowercasing of 42K+ docs)
+    pub(crate) corpus_lower: Vec<String>,
     /// Project root
     pub(crate) project_root: PathBuf,
     /// Manifest
@@ -121,11 +123,13 @@ impl AgentContextIndex {
         let mut file_count = 0;
         let mut languages_seen = HashMap::new();
 
-        // Walk the project directory
-        for entry in WalkDir::new(&project_root)
-            .follow_links(false)
-            .into_iter()
+        // Walk the project directory respecting .gitignore (fixes issue #146)
+        for entry in WalkBuilder::new(&project_root)
+            .hidden(true)
+            .git_ignore(true)
+            .git_global(true)
             .filter_entry(|e| !is_ignored_dir(e.path()))
+            .build()
             .filter_map(|e| e.ok())
         {
             let path = entry.path();
@@ -214,13 +218,15 @@ impl AgentContextIndex {
                 .or_default()
                 .push(idx);
 
-            // Build corpus document: name + signature + doc + content
+            // Build corpus document with weighted sections:
+            // Name and doc are repeated for higher term weight
             let doc = format!(
-                "{} {} {} {}",
-                func.function_name,
-                func.signature,
-                func.doc_comment.as_deref().unwrap_or(""),
-                extract_identifiers(&func.source)
+                "{name} {name} {sig} {sig} {doc} {doc} {path} {idents}",
+                name = func.function_name,
+                sig = func.signature,
+                doc = func.doc_comment.as_deref().unwrap_or(""),
+                path = func.file_path,
+                idents = extract_identifiers(&func.source)
             );
             corpus.push(doc);
         }
@@ -242,11 +248,15 @@ impl AgentContextIndex {
             avg_tdg_score: avg_tdg,
         };
 
+        // Pre-compute lowercase corpus (avoids per-query lowercasing of 42K+ docs)
+        let corpus_lower: Vec<String> = corpus.iter().map(|d| d.to_lowercase()).collect();
+
         Ok(Self {
             functions,
             name_index,
             file_index,
             corpus,
+            corpus_lower,
             project_root,
             manifest,
         })
@@ -315,6 +325,74 @@ impl AgentContextIndex {
         &self.project_root
     }
 
+    /// Build a workspace-level index across multiple project roots.
+    ///
+    /// For cross-project RAG, each project is indexed and merged into a single
+    /// searchable index. File paths are prefixed with the project directory name
+    /// to disambiguate across projects.
+    pub fn build_workspace(project_paths: &[&Path]) -> Result<Self, String> {
+        if project_paths.is_empty() {
+            return Err("No project paths provided".to_string());
+        }
+
+        if project_paths.len() == 1 {
+            return Self::build(project_paths[0]);
+        }
+
+        // Build first project as base
+        let mut merged = Self::build(project_paths[0])?;
+
+        // Merge remaining projects
+        for &path in &project_paths[1..] {
+            let other = Self::build(path)?;
+            merged.merge(other);
+        }
+
+        Ok(merged)
+    }
+
+    /// Merge another index into this one.
+    fn merge(&mut self, other: Self) {
+        let offset = self.functions.len();
+
+        for func in other.functions {
+            self.functions.push(func);
+        }
+
+        // Rebuild all indices from scratch after merge
+        self.name_index.clear();
+        self.file_index.clear();
+        self.corpus.clear();
+
+        for (idx, func) in self.functions.iter().enumerate() {
+            self.name_index
+                .entry(func.function_name.clone())
+                .or_default()
+                .push(idx);
+            self.file_index
+                .entry(func.file_path.clone())
+                .or_default()
+                .push(idx);
+
+            let doc = format!(
+                "{name} {name} {sig} {sig} {doc} {doc} {path} {idents}",
+                name = func.function_name,
+                sig = func.signature,
+                doc = func.doc_comment.as_deref().unwrap_or(""),
+                path = func.file_path,
+                idents = extract_identifiers(&func.source)
+            );
+            self.corpus.push(doc);
+        }
+
+        // Rebuild lowercase corpus after merge
+        self.corpus_lower = self.corpus.iter().map(|d| d.to_lowercase()).collect();
+        // Update manifest
+        self.manifest.function_count = self.functions.len();
+        self.manifest.file_count += other.manifest.file_count;
+        let _ = offset; // used implicitly via rebuild
+    }
+
     /// Save index to directory
     pub fn save(&self, index_path: &Path) -> Result<(), String> {
         fs::create_dir_all(index_path)
@@ -326,12 +404,12 @@ impl AgentContextIndex {
         fs::write(index_path.join("manifest.json"), manifest_json)
             .map_err(|e| format!("Failed to write manifest: {e}"))?;
 
-        // Save functions
-        let functions_json = serde_json::to_string(&self.functions)
+        // Save functions using bincode (faster than JSON for Rust structs)
+        let functions_bin = bincode::serialize(&self.functions)
             .map_err(|e| format!("Failed to serialize functions: {e}"))?;
 
         // Compress with LZ4
-        let compressed = lz4_flex::compress_prepend_size(functions_json.as_bytes());
+        let compressed = lz4_flex::compress_prepend_size(&functions_bin);
         fs::write(index_path.join("functions.lz4"), compressed)
             .map_err(|e| format!("Failed to write functions: {e}"))?;
 
@@ -346,12 +424,12 @@ impl AgentContextIndex {
         let manifest: IndexManifest = serde_json::from_str(&manifest_str)
             .map_err(|e| format!("Failed to parse manifest: {e}"))?;
 
-        // Load functions
+        // Load functions using bincode (faster than JSON for Rust structs)
         let compressed = fs::read(index_path.join("functions.lz4"))
             .map_err(|e| format!("Failed to read functions: {e}"))?;
         let decompressed = lz4_flex::decompress_size_prepended(&compressed)
             .map_err(|e| format!("Failed to decompress functions: {e}"))?;
-        let functions: Vec<FunctionEntry> = serde_json::from_slice(&decompressed)
+        let functions: Vec<FunctionEntry> = bincode::deserialize(&decompressed)
             .map_err(|e| format!("Failed to parse functions: {e}"))?;
 
         // Rebuild indices
@@ -369,15 +447,20 @@ impl AgentContextIndex {
                 .or_default()
                 .push(idx);
 
+            // Use same weighted corpus as build() for consistent ranking
             let doc = format!(
-                "{} {} {} {}",
-                func.function_name,
-                func.signature,
-                func.doc_comment.as_deref().unwrap_or(""),
-                extract_identifiers(&func.source)
+                "{name} {name} {sig} {sig} {doc} {doc} {path} {idents}",
+                name = func.function_name,
+                sig = func.signature,
+                doc = func.doc_comment.as_deref().unwrap_or(""),
+                path = func.file_path,
+                idents = extract_identifiers(&func.source)
             );
             corpus.push(doc);
         }
+
+        // Pre-compute lowercase corpus (avoids per-query lowercasing)
+        let corpus_lower: Vec<String> = corpus.iter().map(|d| d.to_lowercase()).collect();
 
         let project_root = PathBuf::from(&manifest.project_root);
 
@@ -386,6 +469,7 @@ impl AgentContextIndex {
             name_index,
             file_index,
             corpus,
+            corpus_lower,
             project_root,
             manifest,
         })
@@ -410,6 +494,14 @@ fn is_ignored_dir(path: &Path) -> bool {
             | ".next"
             | ".cache"
             | "vendor"
+            | "third_party"
+            | "third-party"
+            | "external"
+            | "deps"
+            | "book"
+            | "theme"
+            | "fixtures"
+            | ".cargo"
     )
 }
 

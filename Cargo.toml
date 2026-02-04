@@ -626,6 +626,10 @@ name = "claude_integration_example"
 path = "examples/claude_integration_example.rs"
 required-features = ["claude-integration"]
 
+[[example]]
+name = "agent_context_query_demo"
+path = "examples/agent_context_query_demo.rs"
+
 # Profile configuration moved to workspace root
 
 [package.metadata.docs.rs]
@@ -641,6 +645,8 @@ rustc-args = ["--cfg", "docsrs"]
 unsafe_op_in_unsafe_fn = "warn"
 unreachable_pub = "warn"
 missing_docs = "allow"
+# Coverage: Allow coverage cfg flags from cargo-llvm-cov
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(coverage)', 'cfg(coverage_nightly)'] }
 
 [lints.clippy]
 correctness = { level = "deny", priority = -1 }

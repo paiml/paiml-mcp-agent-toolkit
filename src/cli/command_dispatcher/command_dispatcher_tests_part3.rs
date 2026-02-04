@@ -3,6 +3,7 @@
 
 use super::*;
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod scaffold_quality_tests {
     use super::*;

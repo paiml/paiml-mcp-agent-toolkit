@@ -914,3 +914,64 @@ The RAG index includes CLAUDE.md, README.md, and source files from all stack com
 Index auto-updates via post-commit hooks and `ora-fresh` on shell login.
 To manually check freshness: `ora-fresh`
 To force full reindex: `batuta oracle --rag-index --force`
+
+---
+
+## CRITICAL: Agent Context - RAG-Powered Code Search
+
+**PREFER `pmat query` over grep/glob for ALL code search.**
+
+This project has a RAG-indexed context with quality annotations (TDG, complexity, Big-O, SATD) for 42,000+ functions.
+
+### Why Use pmat query
+
+| grep | pmat query |
+|------|------------|
+| 500+ irrelevant text matches | 5-10 ranked functions |
+| No context or quality info | Full signatures, docs, TDG grades |
+| O(n) scan every time | O(1) cached index lookup (322ms) |
+
+### CLI Usage
+
+```bash
+# Semantic search by intent
+pmat query "error handling in API layer"
+
+# Quality-filtered (only grade A/B, low complexity)
+pmat query "validation logic" --min-grade B --max-complexity 10
+
+# JSON output for scripting
+pmat query "database connection" --format json --limit 5
+
+# Language filter
+pmat query "parsing" --language rust
+
+# Path filter
+pmat query "middleware" --path src/api/
+```
+
+### MCP Tools (for agent integration)
+
+| Tool | Use Case |
+|------|----------|
+| `pmat_query_code` | Semantic search by intent |
+| `pmat_get_function` | Get full function with metrics |
+| `pmat_find_similar` | Find similar functions (refactoring) |
+| `pmat_index_stats` | Index health and statistics |
+
+### Cross-Project Search
+
+For workspace-level search across multiple codebases:
+
+```bash
+# Each project maintains its own .pmat/context.idx
+# Use --path to restrict search scope
+pmat query "authentication" --path src/auth/
+```
+
+The `build_workspace` API supports merging indexes from multiple project roots programmatically.
+
+### Compliance
+
+CB-130 validates agent context adoption via `pmat comply check`.
+The index is auto-built on first `pmat query` and cached at `.pmat/context.idx`.

@@ -4,6 +4,7 @@
 
 use super::*;
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1666,6 +1667,7 @@ mod tests {
         assert!(result.is_ok());
     }
 }
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;

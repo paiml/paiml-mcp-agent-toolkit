@@ -192,14 +192,12 @@ fn create_fix_response(results: Value, is_dry_run: bool) -> ToolResult {
         "message": format!("🔧 Clippy fixes {} successfully", action)
     });
 
-    ToolResult {
-        content: vec![pmcp::Content::Text {
-            text: serde_json::to_string_pretty(&response).unwrap_or_else(|_| response.to_string()),
-        }],
-        is_error: false,
-    }
+    ToolResult::new(vec![pmcp::Content::Text {
+        text: serde_json::to_string_pretty(&response).unwrap_or_else(|_| response.to_string()),
+    }])
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;
@@ -219,6 +217,7 @@ mod property_tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod coverage_tests {
     use super::*;

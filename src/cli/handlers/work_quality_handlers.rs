@@ -176,8 +176,35 @@ pub async fn run_quality_gates(project_path: &PathBuf) -> Result<bool> {
     let traces_ok = run_golden_trace_validation(project_path)?;
     let clippy_ok = run_clippy_check(project_path)?;
 
+    // Refresh agent context index for future searches (non-blocking)
+    refresh_agent_context_index(project_path);
+
     println!();
     Ok(tests_ok && rust_ok && traces_ok && clippy_ok)
+}
+
+/// Refresh agent context index after quality gates pass.
+/// Non-blocking: failures are logged but don't block quality gates.
+fn refresh_agent_context_index(project_path: &PathBuf) {
+    use crate::services::agent_context::AgentContextIndex;
+
+    let index_path = project_path.join(".pmat/context.idx");
+    match AgentContextIndex::build(project_path) {
+        Ok(index) => {
+            if let Err(e) = index.save(&index_path) {
+                eprintln!("   ⚠  Agent context index save failed: {}", e);
+            } else {
+                let m = index.manifest();
+                println!(
+                    "   📚 Agent context index refreshed: {} functions in {} files",
+                    m.function_count, m.file_count
+                );
+            }
+        }
+        Err(e) => {
+            eprintln!("   ⚠  Agent context index build failed: {}", e);
+        }
+    }
 }
 
 /// Karl Popper Falsification Result

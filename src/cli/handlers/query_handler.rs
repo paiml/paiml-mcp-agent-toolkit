@@ -33,13 +33,18 @@ pub async fn handle_query(
     format: QueryOutputFormat,
     include_source: bool,
     rebuild_index: bool,
+    exclude_tests: bool,
 ) -> anyhow::Result<()> {
     // Check for existing index
     let index_path = project_path.join(".pmat/context.idx");
 
+    // Suppress status messages for JSON format (issue #145)
+    let quiet = matches!(format, QueryOutputFormat::Json);
+
     let index = if index_path.exists() && !rebuild_index {
-        // Load existing index
-        eprintln!("Loading index from {:?}...", index_path);
+        if !quiet {
+            eprintln!("Loading index from {:?}...", index_path);
+        }
         match AgentContextIndex::load(&index_path) {
             Ok(idx) => idx,
             Err(e) => {
@@ -48,16 +53,19 @@ pub async fn handle_query(
             }
         }
     } else {
-        // Build new index
-        eprintln!("Building index for {:?}...", project_path);
+        if !quiet {
+            eprintln!("Building index for {:?}...", project_path);
+        }
         build_and_save_index(&project_path, &index_path)?
     };
 
-    let manifest = index.manifest();
-    eprintln!(
-        "Index: {} functions in {} files (avg TDG: {:.1})",
-        manifest.function_count, manifest.file_count, manifest.avg_tdg_score
-    );
+    if !quiet {
+        let manifest = index.manifest();
+        eprintln!(
+            "Index: {} functions in {} files (avg TDG: {:.1})",
+            manifest.function_count, manifest.file_count, manifest.avg_tdg_score
+        );
+    }
 
     // Execute query
     let options = QueryOptions {
@@ -70,9 +78,20 @@ pub async fn handle_query(
         include_source,
     };
 
-    let results = index
+    let mut results = index
         .query(&query, options)
         .map_err(|e| anyhow::anyhow!("{}", e))?;
+
+    // Filter out test functions if requested
+    if exclude_tests {
+        results.retain(|r| {
+            !r.function_name.starts_with("test_")
+                && !r.file_path.starts_with("tests/")
+                && !r.file_path.contains("/tests/")
+                && !r.file_path.contains("_tests.")
+                && !r.file_path.contains("_test.")
+        });
+    }
 
     if results.is_empty() {
         eprintln!("No matching functions found for: {}", query);
@@ -139,6 +158,7 @@ mod tests {
             QueryOutputFormat::Text,
             false,
             false,
+            false,
         )
         .await;
 
@@ -179,6 +199,7 @@ fn main() {
             QueryOutputFormat::Json,
             false,
             true, // Force rebuild
+            false,
         )
         .await;
 

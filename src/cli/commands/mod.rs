@@ -274,6 +274,10 @@ pub enum Commands {
         /// Build/rebuild the index before querying
         #[arg(long)]
         rebuild_index: bool,
+
+        /// Exclude test functions from results
+        #[arg(long)]
+        exclude_tests: bool,
     },
 
     /// Analyze code metrics and patterns
