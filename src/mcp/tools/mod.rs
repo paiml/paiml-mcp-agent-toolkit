@@ -1,12 +1,17 @@
 // MCP Tools Module
 // PMAT-SEARCH-006: MCP Tools Integration
+// PMAT-470: Agent Context Tools
 
+pub mod agent_context_tools;
 pub mod semantic_search_tools;
 
 // Phase 4: Organizational Intelligence Plugin Integration
 #[cfg(feature = "org-intelligence")]
 pub mod oip_tools;
 
+pub use agent_context_tools::{
+    FindSimilarTool, GetFunctionTool, IndexManager, IndexStatsTool, QueryCodeTool,
+};
 pub use semantic_search_tools::{
     AnalyzeTopicsTool, ClusterCodeTool, FindSimilarCodeTool, McpTool, SemanticSearchTool,
 };

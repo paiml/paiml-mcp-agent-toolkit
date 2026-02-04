@@ -4,5 +4,6 @@
 pub mod tools;
 
 pub use tools::{
-    AnalyzeTopicsTool, ClusterCodeTool, FindSimilarCodeTool, McpTool, SemanticSearchTool,
+    AnalyzeTopicsTool, ClusterCodeTool, FindSimilarCodeTool, FindSimilarTool, GetFunctionTool,
+    IndexManager, IndexStatsTool, McpTool, QueryCodeTool, SemanticSearchTool,
 };
