@@ -234,7 +234,7 @@ impl TDGCalculator {
         }
 
         // Sort for percentile calculation
-        tdg_values.sort_by(|a, b| a.partial_cmp(b).expect("internal error"));
+        tdg_values.sort_by(|a, b| a.total_cmp(b));
 
         let average_tdg = if tdg_values.is_empty() {
             0.0
@@ -253,7 +253,7 @@ impl TDGCalculator {
             .map(|((idx, score), path)| (idx, score, path.clone()))
             .collect();
 
-        indexed_scores.sort_by(|a, b| b.1.value.partial_cmp(&a.1.value).expect("internal error"));
+        indexed_scores.sort_by(|a, b| b.1.value.total_cmp(&a.1.value));
 
         let hotspots = indexed_scores
             .iter()
@@ -713,11 +713,11 @@ impl TDGCalculator {
     /// Calculate percentiles for a batch of scores
     fn calculate_percentiles(&self, scores: &mut [TDGScore]) {
         let mut values: Vec<f64> = scores.iter().map(|s| s.value).collect();
-        values.sort_by(|a, b| a.partial_cmp(b).expect("internal error"));
+        values.sort_by(|a, b| a.total_cmp(b));
 
         for score in scores.iter_mut() {
             let position = values
-                .binary_search_by(|&v| v.partial_cmp(&score.value).expect("internal error"))
+                .binary_search_by(|&v| v.total_cmp(&score.value))
                 .unwrap_or_else(|i| i);
             score.percentile = (position as f64 / values.len() as f64) * 100.0;
         }
@@ -759,7 +759,7 @@ impl TDGCalculator {
             ),
         ];
 
-        factors.sort_by(|a, b| b.0.partial_cmp(&a.0).expect("internal error"));
+        factors.sort_by(|a, b| b.0.total_cmp(&a.0));
         factors[0].1.to_string()
     }
 

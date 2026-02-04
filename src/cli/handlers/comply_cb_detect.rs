@@ -591,6 +591,21 @@ pub fn detect_cb120_nan_unsafe_comparison(project_path: &Path) -> Vec<CbPatternV
 
                     let trimmed = line.trim();
 
+                    // Skip comment lines to avoid false positives from documentation
+                    if trimmed.starts_with("//") || trimmed.starts_with("/*") || trimmed.starts_with("*") {
+                        continue;
+                    }
+
+                    // Skip string literals containing the pattern (error messages, docs)
+                    // Heuristic: if odd number of quotes before "partial_cmp", it's inside a string
+                    if let Some(idx) = trimmed.find("partial_cmp") {
+                        let before = &trimmed[..idx];
+                        let quote_count = before.chars().filter(|&c| c == '"').count();
+                        if quote_count % 2 == 1 {
+                            continue;
+                        }
+                    }
+
                     // Check for partial_cmp().unwrap() pattern
                     if trimmed.contains("partial_cmp") && trimmed.contains(".unwrap()") {
                         // Make sure it's not a safe variant
@@ -599,7 +614,7 @@ pub fn detect_cb120_nan_unsafe_comparison(project_path: &Path) -> Vec<CbPatternV
                                 pattern_id: "CB-120".to_string(),
                                 file: entry.display().to_string(),
                                 line: line_num + 1,
-                                description: "NaN-unsafe: partial_cmp().unwrap() panics on NaN. Use total_cmp() or unwrap_or()".to_string(),
+                                description: "NaN-unsafe: .partial_cmp().unwrap() panics on NaN. Use .total_cmp() or .unwrap_or()".to_string(),
                                 severity: Severity::Error,
                             });
                         }
@@ -611,7 +626,7 @@ pub fn detect_cb120_nan_unsafe_comparison(project_path: &Path) -> Vec<CbPatternV
                             pattern_id: "CB-120".to_string(),
                             file: entry.display().to_string(),
                             line: line_num + 1,
-                            description: "NaN-unsafe: partial_cmp().expect() panics on NaN. Use total_cmp() or unwrap_or()".to_string(),
+                            description: "NaN-unsafe: .partial_cmp().expect() panics on NaN. Use .total_cmp() or .unwrap_or()".to_string(),
                             severity: Severity::Error,
                         });
                     }
@@ -1934,6 +1949,7 @@ fn calculate_trend_deltas(
 // Tests for OIP Tarantula Pattern Detection
 // =============================================================================
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod oip_tarantula_tests {
     use super::*;
@@ -1990,6 +2006,7 @@ fn sort_floats(vec: &mut Vec<f64>) {
         fs::write(
             src.join("lib.rs"),
             r#"
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     #[test]
@@ -2098,6 +2115,7 @@ fn load(s: &str) -> Settings {
         fs::write(
             src.join("lib.rs"),
             r#"
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     #[test]
@@ -2231,6 +2249,7 @@ fail_under = 95.0
 // Tests for CB-081 Dependency Count Detection
 // =============================================================================
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod cb081_dependency_tests {
     use super::*;

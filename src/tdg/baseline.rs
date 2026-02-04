@@ -207,8 +207,8 @@ impl TdgBaseline {
         }
 
         // Sort by delta magnitude
-        improved.sort_by(|a, b| b.delta.partial_cmp(&a.delta).expect("internal error"));
-        regressed.sort_by(|a, b| a.delta.partial_cmp(&b.delta).expect("internal error"));
+        improved.sort_by(|a, b| b.delta.total_cmp(&a.delta));
+        regressed.sort_by(|a, b| a.delta.total_cmp(&b.delta));
 
         BaselineComparison {
             improved,
@@ -301,6 +301,7 @@ impl BaselineComparison {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

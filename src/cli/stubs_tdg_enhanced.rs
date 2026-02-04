@@ -118,7 +118,7 @@ fn filter_and_sort_hotspots(
         .collect();
     
     // Sort by TDG score descending
-    filtered_hotspots.sort_by(|a, b| b.tdg_score.partial_cmp(&a.tdg_score).expect("tdg_score is not NaN"));
+    filtered_hotspots.sort_by(|a, b| b.tdg_score.total_cmp(&a.tdg_score));
     filtered_hotspots
 }
 
@@ -315,6 +315,7 @@ async fn handle_output(output: Option<PathBuf>, output_content: &str) -> Result<
     eprintln!("✅ TDG analysis complete");
     Ok(())
 }
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -472,6 +473,7 @@ mod tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;

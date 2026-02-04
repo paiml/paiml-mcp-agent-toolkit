@@ -109,7 +109,7 @@ impl ReadmeCompressor {
         }
 
         // Phase 2: Sort by importance
-        scored_sections.sort_by(|a, b| b.1.partial_cmp(&a.1).expect("internal error"));
+        scored_sections.sort_by(|a, b| b.1.total_cmp(&a.1));
 
         // Phase 3: Allocate token budget
         let mut token_budget = 2000; // Target ~2KB compressed
@@ -467,6 +467,7 @@ struct List {
     items: Vec<String>,
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -806,6 +807,7 @@ fn main() {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;

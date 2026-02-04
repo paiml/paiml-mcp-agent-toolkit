@@ -100,7 +100,7 @@ pub fn detect_project_language_enhanced(path: &Path) -> LanguageDetection {
     // Find highest score
     let (best_lang, best_score) = scores
         .iter()
-        .max_by(|a, b| a.1.partial_cmp(b.1).expect("internal error"))
+        .max_by(|a, b| a.1.total_cmp(b.1))
         .map(|(lang, score)| (lang.clone(), *score))
         .unwrap_or_else(|| ("unknown".to_string(), 0.0));
 
@@ -296,6 +296,7 @@ fn extension_to_language(ext: &str) -> Option<&'static str> {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

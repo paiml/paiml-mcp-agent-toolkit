@@ -900,7 +900,7 @@ impl DeepContextAnalyzer {
             .filter(|s| matches!(s, TDGSeverity::Warning))
             .count();
 
-        tdg_values.sort_unstable_by(|a, b| a.partial_cmp(b).expect("internal error"));
+        tdg_values.sort_unstable_by(|a, b| a.total_cmp(b));
 
         let average_tdg = if tdg_values.is_empty() {
             0.0

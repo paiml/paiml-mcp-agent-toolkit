@@ -145,7 +145,7 @@ impl CorrelationEngine {
         mappings.retain(|m| m.confidence >= self.confidence_threshold);
 
         // Sort by confidence (highest first)
-        mappings.sort_by(|a, b| b.confidence.partial_cmp(&a.confidence).expect("confidence is not NaN"));
+        mappings.sort_by(|a, b| b.confidence.total_cmp(&a.confidence));
 
         Ok(mappings)
     }
@@ -263,7 +263,7 @@ impl CorrelationEngine {
         mappings.retain(|m| m.confidence >= self.confidence_threshold);
 
         // Sort by confidence (highest first)
-        mappings.sort_by(|a, b| b.confidence.partial_cmp(&a.confidence).expect("confidence is not NaN"));
+        mappings.sort_by(|a, b| b.confidence.total_cmp(&a.confidence));
 
         Ok(mappings)
     }
@@ -340,6 +340,7 @@ impl Default for CorrelationEngine {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

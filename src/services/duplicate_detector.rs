@@ -1465,7 +1465,7 @@ impl DuplicateDetectionEngine {
             })
             .collect();
 
-        hotspots.sort_by(|a, b| b.severity.partial_cmp(&a.severity).expect("internal error"));
+        hotspots.sort_by(|a, b| b.severity.total_cmp(&a.severity));
         hotspots.truncate(10); // Top 10 hotspots
         hotspots
     }

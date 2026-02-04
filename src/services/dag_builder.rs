@@ -634,7 +634,7 @@ pub fn prune_graph_pagerank(graph: &DependencyGraph, max_nodes: usize) -> Depend
 
     // Select top-k nodes
     let mut ranked: Vec<_> = scores.iter().enumerate().collect();
-    ranked.sort_by(|a, b| b.1.partial_cmp(a.1).expect("internal error"));
+    ranked.sort_by(|a, b| b.1.total_cmp(a.1));
     let keep: FxHashSet<&String> = ranked
         .iter()
         .take(max_nodes)
@@ -666,6 +666,7 @@ pub fn prune_graph_pagerank(graph: &DependencyGraph, max_nodes: usize) -> Depend
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -846,6 +847,7 @@ mod tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;

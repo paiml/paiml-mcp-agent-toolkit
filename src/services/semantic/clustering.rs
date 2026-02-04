@@ -324,11 +324,11 @@ impl ClusteringEngine {
         match linkage {
             Linkage::Single => *dists
                 .iter()
-                .min_by(|a, b| a.partial_cmp(b).expect("internal error"))
+                .min_by(|a, b| a.total_cmp(b))
                 .expect("internal error"),
             Linkage::Complete => *dists
                 .iter()
-                .max_by(|a, b| a.partial_cmp(b).expect("internal error"))
+                .max_by(|a, b| a.total_cmp(b))
                 .expect("internal error"),
             Linkage::Average => dists.iter().sum::<f64>() / dists.len() as f64,
         }
@@ -478,6 +478,7 @@ impl ClusteringEngine {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -92,7 +92,7 @@ impl CommandDispatcher {
                         (m.clone(), score)
                     })
                     .collect();
-                sorted_metrics.sort_by(|a, b| b.1.partial_cmp(&a.1).expect("internal error"));
+                sorted_metrics.sort_by(|a, b| b.1.total_cmp(&a.1));
 
                 for (metric_name, _hotness) in sorted_metrics {
                     if let Ok(trend_analysis) = store.trend(&metric_name, days) {

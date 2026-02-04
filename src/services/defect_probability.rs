@@ -279,7 +279,7 @@ impl DefectProbabilityCalculator {
         // Find the highest contributing factor
         let max_factor = factors
             .iter()
-            .max_by(|a, b| a.1.partial_cmp(&b.1).expect("internal error"));
+            .max_by(|a, b| a.1.total_cmp(&b.1));
 
         if let Some((factor_name, contribution)) = max_factor {
             if *contribution > 0.2 {
@@ -395,13 +395,13 @@ impl ProjectDefectAnalysis {
         high_risk_files.sort_by(|a, b| {
             let a_prob = file_scores.get(a).map_or(0.0, |s| s.probability);
             let b_prob = file_scores.get(b).map_or(0.0, |s| s.probability);
-            b_prob.partial_cmp(&a_prob).expect("internal error")
+            b_prob.total_cmp(&a_prob)
         });
 
         medium_risk_files.sort_by(|a, b| {
             let a_prob = file_scores.get(a).map_or(0.0, |s| s.probability);
             let b_prob = file_scores.get(b).map_or(0.0, |s| s.probability);
-            b_prob.partial_cmp(&a_prob).expect("internal error")
+            b_prob.total_cmp(&a_prob)
         });
 
         Self {
@@ -431,6 +431,7 @@ impl Default for DefectProbabilityCalculator {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -514,6 +515,7 @@ mod tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;

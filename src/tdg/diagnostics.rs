@@ -309,7 +309,7 @@ impl DiagnosticTool {
             .iter()
             .map(|s| s.response_time_ms)
             .collect();
-        response_times.sort_by(|a, b| a.partial_cmp(b).expect("internal error"));
+        response_times.sort_by(|a, b| a.total_cmp(b));
 
         let len = response_times.len();
         let sum: f64 = response_times.iter().sum();
@@ -589,6 +589,7 @@ impl Default for PerformanceDiagnostics {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1469,6 +1470,7 @@ mod tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;

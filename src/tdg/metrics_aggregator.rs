@@ -277,7 +277,7 @@ impl MetricsAggregator {
 
         // Calculate median
         let mut sorted = values.to_vec();
-        sorted.sort_by(|a, b| a.partial_cmp(b).expect("internal error"));
+        sorted.sort_by(|a, b| a.total_cmp(b));
         let median = if count % 2 == 0 {
             (sorted[count / 2 - 1] + sorted[count / 2]) / 2.0
         } else {
@@ -526,6 +526,7 @@ pub enum ExportFormat {
 
 use serde_json::json;
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1031,6 +1032,7 @@ mod tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;
