@@ -185,3 +185,133 @@ fn format_defect_csv(report: &DefectPredictionReport) -> Result<String> {
 
 // Single file quality gate check functions
 
+#[cfg(test)]
+mod defect_report_tests {
+    use super::*;
+
+    fn create_test_prediction(file: &str, score: f32, level: &str) -> FilePrediction {
+        FilePrediction {
+            file_path: file.to_string(),
+            risk_score: score,
+            risk_level: level.to_string(),
+            factors: vec!["test factor".to_string()],
+        }
+    }
+
+    fn create_test_report() -> DefectPredictionReport {
+        DefectPredictionReport {
+            total_files: 3,
+            high_risk_files: 1,
+            medium_risk_files: 1,
+            low_risk_files: 1,
+            file_predictions: vec![
+                create_test_prediction("src/high.rs", 0.9, "High"),
+                create_test_prediction("src/medium.rs", 0.5, "Medium"),
+                create_test_prediction("src/low.rs", 0.2, "Low"),
+            ],
+        }
+    }
+
+    #[test]
+    fn test_extract_filename_from_prediction() {
+        let pred = create_test_prediction("src/services/context.rs", 0.5, "Medium");
+        assert_eq!(extract_filename_from_prediction(&pred), "context.rs");
+    }
+
+    #[test]
+    fn test_extract_filename_simple_path() {
+        let pred = create_test_prediction("main.rs", 0.5, "Medium");
+        assert_eq!(extract_filename_from_prediction(&pred), "main.rs");
+    }
+
+    #[test]
+    fn test_format_defect_prediction_entry() {
+        let pred = create_test_prediction("src/test.rs", 0.85, "High");
+        let mut output = String::new();
+        format_defect_prediction_entry(&mut output, 1, &pred).unwrap();
+        assert!(output.contains("1. `test.rs`"));
+        assert!(output.contains("85.0% risk"));
+        assert!(output.contains("High"));
+    }
+
+    #[test]
+    fn test_format_defect_summary_stats() {
+        let report = create_test_report();
+        let mut output = String::new();
+        format_defect_summary_stats(&mut output, &report).unwrap();
+
+        assert!(output.contains("## Summary"));
+        assert!(output.contains("Total files analyzed: 3"));
+        assert!(output.contains("High risk files: 1"));
+        assert!(output.contains("Medium risk files: 1"));
+        assert!(output.contains("Low risk files: 1"));
+    }
+
+    #[test]
+    fn test_format_defect_top_files() {
+        let report = create_test_report();
+        let mut output = String::new();
+        format_defect_top_files(&mut output, &report, 2).unwrap();
+
+        assert!(output.contains("## Top Files by Defect Risk"));
+        assert!(output.contains("high.rs"));
+        assert!(output.contains("medium.rs"));
+    }
+
+    #[test]
+    fn test_format_defect_top_files_default_count() {
+        let report = create_test_report();
+        let mut output = String::new();
+        // When top_files is 0, it defaults to 10
+        format_defect_top_files(&mut output, &report, 0).unwrap();
+
+        // Should show all 3 files (we only have 3)
+        assert!(output.contains("high.rs"));
+        assert!(output.contains("medium.rs"));
+        assert!(output.contains("low.rs"));
+    }
+
+    #[test]
+    fn test_format_defect_summary() {
+        let report = create_test_report();
+        let output = format_defect_summary(&report, 2).unwrap();
+
+        assert!(output.contains("# Defect Prediction Analysis"));
+        assert!(output.contains("## Summary"));
+        assert!(output.contains("## Top Files by Defect Risk"));
+    }
+
+    #[test]
+    fn test_format_defect_summary_empty_predictions() {
+        let report = DefectPredictionReport {
+            total_files: 0,
+            high_risk_files: 0,
+            medium_risk_files: 0,
+            low_risk_files: 0,
+            file_predictions: vec![],
+        };
+        let output = format_defect_summary(&report, 5).unwrap();
+
+        assert!(output.contains("# Defect Prediction Analysis"));
+        assert!(output.contains("Total files analyzed: 0"));
+        // Should not have top files section since predictions is empty
+        assert!(!output.contains("## Top Files by Defect Risk"));
+    }
+
+    #[test]
+    fn test_defect_prediction_report_struct() {
+        let report = create_test_report();
+        assert_eq!(report.total_files, 3);
+        assert_eq!(report.high_risk_files, 1);
+        assert_eq!(report.file_predictions.len(), 3);
+    }
+
+    #[test]
+    fn test_file_prediction_struct() {
+        let pred = create_test_prediction("path/to/file.rs", 0.75, "High");
+        assert_eq!(pred.file_path, "path/to/file.rs");
+        assert!((pred.risk_score - 0.75).abs() < 0.001);
+        assert_eq!(pred.risk_level, "High");
+        assert_eq!(pred.factors.len(), 1);
+    }
+}
