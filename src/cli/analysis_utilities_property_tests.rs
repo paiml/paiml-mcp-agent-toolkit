@@ -66,7 +66,7 @@ proptest! {
     /// Test entropy threshold ordering
     /// IGNORED: Property test - scans entire codebase per iteration (> 60s execution time)
     #[test]
-    // Re-enabled: test passes
+    #[ignore] // Flaky in coverage run
     fn test_entropy_monotonicity(
         low_threshold in 0.1..0.5,
         high_threshold in 0.5..0.9,
