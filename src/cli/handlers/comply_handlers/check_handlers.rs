@@ -34,6 +34,8 @@ use super::comply_cb_detect::{
     detect_cb127_slow_coverage,
     // Dependency Health (CB-081) - rust-project-score-v1.1 integration
     detect_cb081_dependency_count,
+    // Agent Context Adoption (CB-130) - PMAT-470
+    detect_cb130_agent_context_adoption,
 };
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -274,6 +276,8 @@ async fn handle_check(
         filter_check_by_config(check_dependency_count(project_path), "cb-081", comply_config),
         // CB-400: Shell & Makefile Quality (bashrs integration)
         filter_check_by_config(check_shell_makefile_quality(project_path), "cb-400", comply_config),
+        // CB-130: Agent Context Adoption (PMAT-470)
+        filter_check_by_config(check_agent_context_adoption(project_path), "cb-130", comply_config),
     ];
 
     // Calculate compliance
@@ -1942,9 +1946,84 @@ pub(crate) fn check_shell_makefile_quality(project_path: &Path) -> ComplianceChe
     }
 }
 
+/// CB-130: Agent Context Adoption (PMAT-470)
+///
+/// Checks whether the project has a RAG-powered agent context index
+/// set up for intelligent code search. Validates:
+/// - Index exists at .pmat/context.idx
+/// - Index is fresh (less than 24 hours old)
+/// - CLAUDE.md references pmat_query_code (optional)
+pub(crate) fn check_agent_context_adoption(project_path: &Path) -> ComplianceCheck {
+    let report = detect_cb130_agent_context_adoption(project_path);
+
+    let mut issues: Vec<String> = Vec::new();
+    let mut warning_count = 0;
+
+    if !report.index_exists {
+        issues.push("CB-130: No agent context index found at .pmat/context.idx".to_string());
+        issues.push("  Run 'pmat query \"test\" --rebuild-index' to build the index".to_string());
+        warning_count += 1;
+    } else {
+        if report.index_stale {
+            let age = report.index_age_hours.unwrap_or(0.0);
+            issues.push(format!(
+                "CB-130: Agent context index is stale ({:.0} hours old, threshold: 24h)",
+                age
+            ));
+            issues.push(
+                "  Run 'pmat query \"test\" --rebuild-index' to refresh".to_string(),
+            );
+            warning_count += 1;
+        }
+
+        if report.function_count == 0 {
+            issues.push("CB-130: Agent context index has 0 functions".to_string());
+            warning_count += 1;
+        }
+    }
+
+    if !report.claude_md_configured {
+        issues.push(
+            "CB-130: CLAUDE.md does not reference pmat_query_code or pmat query".to_string(),
+        );
+        issues.push(
+            "  Add agent context instructions to CLAUDE.md for agent adoption".to_string(),
+        );
+        warning_count += 1;
+    }
+
+    if issues.is_empty() {
+        ComplianceCheck {
+            name: "CB-130: Agent Context Adoption".to_string(),
+            status: CheckStatus::Pass,
+            message: format!(
+                "Agent context index: {} functions, CLAUDE.md configured",
+                report.function_count
+            ),
+            severity: Severity::Info,
+        }
+    } else {
+        ComplianceCheck {
+            name: "CB-130: Agent Context Adoption".to_string(),
+            status: CheckStatus::Warn,
+            message: format!(
+                "{} issues:\n{}",
+                warning_count,
+                issues
+                    .iter()
+                    .map(|i| format!("    - {}", i))
+                    .collect::<Vec<_>>()
+                    .join("\n"),
+            ),
+            severity: Severity::Warning,
+        }
+    }
+}
+
 // Three-layer CLI (review/audit) extracted for file health (CB-040)
 include!("review_audit_handlers.rs");
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod check_handlers_tests {
     use super::*;

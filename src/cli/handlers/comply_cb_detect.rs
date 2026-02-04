@@ -1974,6 +1974,167 @@ fn calculate_trend_deltas(
 }
 
 // =============================================================================
+// CB-130: Agent Context Adoption (PMAT-470)
+// =============================================================================
+
+/// CB-130 Agent Context Adoption report
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AgentContextReport {
+    /// Whether the RAG index exists
+    pub index_exists: bool,
+    /// Index age in hours (None if no index)
+    pub index_age_hours: Option<f64>,
+    /// Whether index is considered stale (>24h)
+    pub index_stale: bool,
+    /// Number of functions indexed
+    pub function_count: usize,
+    /// Whether CLAUDE.md mentions pmat_query_code
+    pub claude_md_configured: bool,
+}
+
+/// CB-130: Detect agent context adoption issues
+///
+/// Checks:
+/// 1. RAG index exists at .pmat/context.idx
+/// 2. Index is fresh (less than 24 hours old)
+/// 3. CLAUDE.md references pmat_query_code (optional)
+pub fn detect_cb130_agent_context_adoption(project_path: &Path) -> AgentContextReport {
+    let index_path = project_path.join(".pmat/context.idx");
+
+    let index_exists = index_path.exists();
+
+    let (index_age_hours, index_stale) = if index_exists {
+        match fs::metadata(&index_path) {
+            Ok(metadata) => {
+                if let Ok(modified) = metadata.modified() {
+                    let age = std::time::SystemTime::now()
+                        .duration_since(modified)
+                        .unwrap_or_default();
+                    let hours = age.as_secs_f64() / 3600.0;
+                    (Some(hours), hours > 24.0)
+                } else {
+                    (None, false)
+                }
+            }
+            Err(_) => (None, false),
+        }
+    } else {
+        (None, false)
+    };
+
+    // Try to get function count from index
+    let function_count = if index_exists {
+        // Read index to get function count
+        match crate::services::agent_context::AgentContextIndex::load(&index_path) {
+            Ok(idx) => idx.manifest().function_count,
+            Err(_) => 0,
+        }
+    } else {
+        0
+    };
+
+    // Check if CLAUDE.md mentions pmat_query_code
+    let claude_md_configured = {
+        let claude_md_path = project_path.join("CLAUDE.md");
+        if claude_md_path.exists() {
+            fs::read_to_string(&claude_md_path)
+                .map(|content| {
+                    content.contains("pmat_query_code") || content.contains("pmat query")
+                })
+                .unwrap_or(false)
+        } else {
+            false
+        }
+    };
+
+    AgentContextReport {
+        index_exists,
+        index_age_hours,
+        index_stale,
+        function_count,
+        claude_md_configured,
+    }
+}
+
+// =============================================================================
+// Tests for CB-130 Agent Context Adoption
+// =============================================================================
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod cb130_tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    #[test]
+    fn test_cb130_no_index() {
+        let temp = TempDir::new().unwrap();
+        let report = detect_cb130_agent_context_adoption(temp.path());
+
+        assert!(!report.index_exists);
+        assert!(report.index_age_hours.is_none());
+        assert!(!report.index_stale);
+        assert_eq!(report.function_count, 0);
+        assert!(!report.claude_md_configured);
+    }
+
+    #[test]
+    fn test_cb130_with_claude_md_pmat_query() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("CLAUDE.md"),
+            "# Instructions\n\nUse `pmat query` for code search.\n",
+        )
+        .unwrap();
+
+        let report = detect_cb130_agent_context_adoption(temp.path());
+        assert!(report.claude_md_configured);
+    }
+
+    #[test]
+    fn test_cb130_with_claude_md_mcp_tool() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("CLAUDE.md"),
+            "# Instructions\n\nUse pmat_query_code tool for search.\n",
+        )
+        .unwrap();
+
+        let report = detect_cb130_agent_context_adoption(temp.path());
+        assert!(report.claude_md_configured);
+    }
+
+    #[test]
+    fn test_cb130_claude_md_no_mention() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("CLAUDE.md"),
+            "# Instructions\n\nJust some generic instructions.\n",
+        )
+        .unwrap();
+
+        let report = detect_cb130_agent_context_adoption(temp.path());
+        assert!(!report.claude_md_configured);
+    }
+
+    #[test]
+    fn test_cb130_with_index_file() {
+        let temp = TempDir::new().unwrap();
+
+        // Create .pmat directory and a dummy index file
+        let pmat_dir = temp.path().join(".pmat");
+        fs::create_dir_all(&pmat_dir).unwrap();
+        // Write some bytes - it won't deserialize but index_exists is checked first
+        fs::write(pmat_dir.join("context.idx"), b"dummy").unwrap();
+
+        let report = detect_cb130_agent_context_adoption(temp.path());
+        assert!(report.index_exists);
+        // function_count will be 0 because the index can't be loaded
+        assert_eq!(report.function_count, 0);
+    }
+}
+
+// =============================================================================
 // Tests for OIP Tarantula Pattern Detection
 // =============================================================================
 
