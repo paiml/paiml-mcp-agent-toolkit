@@ -168,9 +168,7 @@ async fn test_mcp_server_e2e_coverage() {
 }
 
 #[test]
-#[ignore]
-// Requires pmat binary compilation (E2E test) - Sprint 45 Phase 2
-// Run manually: cargo build --bin pmat && cargo test test_cli_main_binary_version -- --ignored
+// Re-enabled: pmat binary now available
 #[serial_test::serial]
 fn test_cli_main_binary_version() {
     let output = Command::new("cargo")
@@ -214,7 +212,7 @@ fn test_cli_main_binary_help() {
 }
 
 #[test]
-#[ignore = "Integration test that requires binary compilation - run manually with --ignored"]
+// Re-enabled: pmat binary now available
 fn test_cli_subcommand_help() {
     // Test generate help
     let output = Command::new("cargo")
@@ -239,7 +237,7 @@ fn test_cli_subcommand_help() {
 
 /// SLOW: >240s - excluded from fast test suite
 #[test]
-#[ignore]
+// Re-enabled: test passes
 fn test_cli_mode_list_templates() {
     let output = Command::new("cargo")
         .args(["run", "--bin", "pmat", "--", "--mode", "cli", "list"])
@@ -260,7 +258,7 @@ fn test_cli_mode_list_templates() {
 
 /// SLOW: >240s - excluded from fast test suite
 #[test]
-#[ignore]
+// Re-enabled: test passes
 fn test_cli_generate_validation_error() {
     let output = Command::new("cargo")
         .args([
@@ -285,7 +283,7 @@ fn test_cli_generate_validation_error() {
 
 /// SLOW: >240s - excluded from fast test suite
 #[test]
-#[ignore]
+// Re-enabled: test passes
 fn test_cli_search_templates() {
     let output = Command::new("cargo")
         .args(["run", "--bin", "pmat", "--", "search", "rust"])
@@ -301,7 +299,7 @@ fn test_cli_search_templates() {
 
 /// SLOW: >240s - excluded from fast test suite
 #[test]
-#[ignore]
+// Re-enabled: test passes
 fn test_cli_invalid_command() {
     let output = Command::new("cargo")
         .args(["run", "--bin", "pmat", "--", "invalid-command"])
@@ -314,9 +312,7 @@ fn test_cli_invalid_command() {
 }
 
 #[test]
-#[ignore]
-// Requires pmat binary compilation (E2E test) - Sprint 45 Phase 2
-// Run manually: cargo build --bin pmat && cargo test test_cli_analyze_churn -- --ignored
+// Re-enabled: pmat binary now available
 #[serial_test::serial]
 fn test_cli_analyze_churn() {
     let output = Command::new("cargo")
