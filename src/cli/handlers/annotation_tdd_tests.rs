@@ -10,7 +10,7 @@ mod red_phase_tests {
     use super::*;
 
     #[tokio::test]
-    #[ignore = "Requires pmat binary to be built"]
+    // Re-enabled: pmat binary now available
     async fn red_must_show_individual_function_names() {
         // RED: This test MUST fail initially, proving we're missing function names
         let temp_dir = TempDir::new().unwrap();
@@ -53,7 +53,7 @@ const validateInput = () => { return true; };
     }
 
     #[tokio::test]
-    #[ignore = "Requires pmat binary to be built"]
+    // Re-enabled: pmat binary now available
     async fn red_must_show_file_level_breakdown() {
         // RED: Must show which functions belong to which files
         let temp_dir = TempDir::new().unwrap();
@@ -266,7 +266,7 @@ function leakyFunction() {
     }
 
     #[tokio::test]
-    #[ignore = "Requires pmat binary to be built"]
+    // Re-enabled: pmat binary now available
     async fn red_must_show_dead_code_markers() {
         // RED: Must identify potentially dead code
         let temp_dir = TempDir::new().unwrap();
