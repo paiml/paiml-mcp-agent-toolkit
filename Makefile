@@ -424,6 +424,32 @@ test-doc:
 	@echo "✅ Doctests completed!"
 
 # =============================================================================
+# INTEGRATION TESTS: CLI handlers, dispatchers (excluded from coverage)
+# =============================================================================
+# These test the "thin shim" CLI layer that's excluded from coverage measurement.
+# Run separately to keep `make coverage` fast while ensuring handlers work.
+# =============================================================================
+
+test-integration: ## Run integration tests for CLI handlers (<60s, excluded from coverage)
+	@echo "🔌 Running CLI integration tests (<60s target)..."
+	@echo "   Tests handlers/dispatchers excluded from coverage measurement"
+	@RUST_MIN_STACK=33554432 cargo test --lib -- \
+		cli::handlers::complexity_handlers::tests \
+		cli::handlers::analysis_handlers::tests \
+		command_dispatcher::tests \
+		--test-threads=$$(nproc) \
+		2>&1 | tail -10
+	@echo "✅ Integration tests completed!"
+
+# Pre-push validation (called by git hook)
+pre-push: test-integration
+	@echo "✅ Pre-push validation passed"
+
+# Full CI target (coverage + integration)
+ci-full: coverage test-integration
+	@echo "✅ Full CI validation passed"
+
+# =============================================================================
 # COVERAGE: ruchy-style fast coverage (target: <5 min, 75%+)
 # =============================================================================
 # Pattern: clean -> test -> report (simple, reliable)

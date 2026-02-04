@@ -93,6 +93,16 @@ jobs:
           RUST_BACKTRACE: 1
           SKIP_SLOW_TESTS: true
           CI: true
+
+      - name: Run integration tests (CLI handlers)
+        run: |
+          echo "🔌 Running integration tests for CLI handlers..."
+          echo "   These test handlers/dispatchers excluded from coverage measurement"
+          make test-integration
+        timeout-minutes: 5
+        env:
+          RUST_BACKTRACE: 1
+          CI: true
       
       - name: Upload binary artifact
         uses: actions/upload-artifact@v4
