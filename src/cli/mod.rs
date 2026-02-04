@@ -25,6 +25,7 @@ pub mod help_generator;
 pub mod language_analyzer;
 pub mod mcp_schema_generator;
 pub mod name_similarity_helpers;
+pub mod output;
 pub mod progress;
 pub mod proof_annotation_formatter;
 pub mod proof_annotation_helpers;
@@ -453,6 +454,7 @@ pub fn detect_primary_language_with_confidence(path: &Path) -> Option<(String, f
 }
 
 // Import tests in test configuration
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod language_detection_tests;
 
@@ -764,9 +766,11 @@ pub async fn handle_analyze_comprehensive(
     Ok(())
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod analysis_utilities_property_tests;
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;
