@@ -33,9 +33,9 @@ fn test_deprecation_warnings_with_project_path() {
         ml: false,
     };
 
+    // No deprecation warnings - silently accept both --path and --project-path
     let warnings = ContractAdapter::deprecation_warnings(&cmd);
-    assert_eq!(warnings.len(), 1);
-    assert!(warnings[0].contains("--project-path is deprecated"));
+    assert!(warnings.is_empty());
 }
 
 #[test]

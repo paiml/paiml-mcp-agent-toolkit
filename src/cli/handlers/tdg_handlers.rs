@@ -50,48 +50,52 @@ pub struct TdgCommandConfig {
     pub viz_theme: String,
 }
 
+/// Check if path should be skipped (test/bench files)
+fn should_skip_path(config: &TdgCommandConfig) -> bool {
+    if !config.path.is_file() {
+        return false;
+    }
+    let path_str = config.path.to_string_lossy();
+    path_str.contains("/tests/") || path_str.contains("/benches/")
+}
+
+/// Setup git context for analyzer if enabled
+fn setup_git_context(analyzer: &mut TdgAnalyzer, config: &TdgCommandConfig) {
+    if !config.with_git_context {
+        return;
+    }
+    let search_path = if config.path.is_file() {
+        config.path.parent().unwrap_or(&config.path)
+    } else {
+        &config.path
+    };
+    let git_context = discover_git_workdir(search_path).and_then(|workdir| {
+        crate::models::git_context::GitContext::try_from_current_dir(&workdir)
+    });
+    analyzer.set_git_context(git_context);
+}
+
 /// Handle TDG command execution
 pub async fn handle_tdg_command(config: TdgCommandConfig) -> Result<()> {
-    if config.path.is_file() {
-        let path_str = config.path.to_string_lossy();
-        if path_str.contains("/tests/") || path_str.contains("/benches/") {
-            if !config.quiet {
-                println!("Skipping test file: {}", config.path.display());
-            }
-            return Ok(());
+    if should_skip_path(&config) {
+        if !config.quiet {
+            println!("Skipping test file: {}", config.path.display());
         }
+        return Ok(());
     }
 
     let tdg_config = load_tdg_configuration(&config)?;
     let mut analyzer = TdgAnalyzer::with_storage(tdg_config)?;
-
-    // Sprint 65: Extract git context if --with-git-context flag enabled
-    if config.with_git_context {
-        // Use parent directory of file for git repo discovery
-        let search_path = if config.path.is_file() {
-            config.path.parent().unwrap_or(&config.path)
-        } else {
-            &config.path
-        };
-
-        // Discover git repo root from the search path
-        let git_context = discover_git_workdir(search_path).and_then(|workdir| {
-            crate::models::git_context::GitContext::try_from_current_dir(&workdir)
-        });
-
-        analyzer.set_git_context(git_context);
-    }
+    setup_git_context(&mut analyzer, &config);
 
     if let Some(ref cmd) = config.command {
         return handle_tdg_subcommand(cmd.clone(), &analyzer, &config).await;
     }
 
-    // Issue #78: Handle explain mode with function-level breakdown
     if config.explain {
         return handle_explain_mode(&analyzer, &config).await;
     }
 
-    // trueno-viz: Handle graph visualization mode
     #[cfg(feature = "viz")]
     if config.viz {
         return handle_viz_mode(&analyzer, &config).await;
@@ -100,7 +104,6 @@ pub async fn handle_tdg_command(config: TdgCommandConfig) -> Result<()> {
     let score = execute_tdg_analysis(&analyzer, &config).await?;
     validate_minimum_grade(&score, &config)?;
 
-    // Sprint 65: Get git context from analyzer for output formatting
     let git_context = analyzer.get_git_context();
     let output_str = format_tdg_output(&score, git_context, &config)?;
     write_tdg_output(&output_str, &config)?;
@@ -204,6 +207,34 @@ async fn handle_compare_command(
     Ok(())
 }
 
+/// Query TDG history records based on command flags
+async fn query_history_records(
+    storage: &crate::tdg::storage::TdgStorage,
+    commit: Option<String>,
+    since: Option<String>,
+    range: Option<String>,
+    repo_path: &Path,
+) -> Result<Vec<crate::tdg::storage::FullTdgRecord>> {
+    if let Some(commit_ref) = commit {
+        let found = storage.get_by_commit(&commit_ref).await?;
+        if found.is_empty() {
+            return Err(anyhow!(
+                "No TDG data found for commit '{}'. Ensure TDG was run with --with-git-context.",
+                commit_ref
+            ));
+        }
+        return Ok(found);
+    }
+    let all_records = storage.get_all_with_git_context().await?;
+    if let Some(since_ref) = since {
+        return filter_by_git_since(&since_ref, all_records, repo_path);
+    }
+    if let Some(range_ref) = range {
+        return filter_by_git_range(&range_ref, all_records, repo_path);
+    }
+    Ok(all_records)
+}
+
 /// Handle TDG history subcommand (Sprint 65 Phase 3)
 async fn handle_history_command(
     analyzer: &TdgAnalyzer,
@@ -214,36 +245,12 @@ async fn handle_history_command(
     format: TdgOutputFormat,
     config: &TdgCommandConfig,
 ) -> Result<()> {
-    // Get storage from analyzer
     let storage = analyzer
         .storage()
         .ok_or_else(|| anyhow!("TDG storage not initialized. Run with --with-git-context flag."))?;
 
-    // Query based on flags
-    let mut records = if let Some(commit_ref) = commit {
-        // Query by specific commit
-        let found_records = storage.get_by_commit(&commit_ref).await?;
-        if found_records.is_empty() {
-            return Err(anyhow!(
-                "No TDG data found for commit '{}'. Ensure TDG was run with --with-git-context.",
-                commit_ref
-            ));
-        }
-        found_records
-    } else if let Some(since_ref) = since {
-        // Query all records and filter by commit history since ref
-        let all_records = storage.get_all_with_git_context().await?;
-        filter_by_git_since(&since_ref, all_records, &config.path)?
-    } else if let Some(range_ref) = range {
-        // Query all records and filter by commit range
-        let all_records = storage.get_all_with_git_context().await?;
-        filter_by_git_range(&range_ref, all_records, &config.path)?
-    } else {
-        // No flags - show all records with git context
-        storage.get_all_with_git_context().await?
-    };
+    let mut records = query_history_records(storage, commit, since, range, &config.path).await?;
 
-    // Apply path filter if specified
     if let Some(target_path) = path_filter {
         records.retain(|r| r.identity.path == target_path);
     }
@@ -253,12 +260,10 @@ async fn handle_history_command(
         return Ok(());
     }
 
-    // Format and output
     let output_str = format_history_output(&records, format)?;
-    if let Some(output_path) = &config.output {
-        fs::write(output_path, output_str)?;
-    } else {
-        println!("{output_str}");
+    match &config.output {
+        Some(output_path) => fs::write(output_path, output_str)?,
+        None => println!("{output_str}"),
     }
 
     Ok(())
@@ -378,6 +383,66 @@ async fn handle_baseline_command(
     }
 }
 
+/// Extract git context for baseline creation
+fn extract_git_context(path: &Path, with_git_context: bool) -> Option<crate::models::git_context::GitContext> {
+    if !with_git_context {
+        return None;
+    }
+    match crate::models::git_context::GitContext::try_from_current_dir(path) {
+        Some(ctx) => {
+            println!("   📍 Git: {} on {}", ctx.commit_sha_short, ctx.branch);
+            Some(ctx)
+        }
+        None => {
+            println!("   ⚠️  Warning: Not in a git repository, git context unavailable");
+            None
+        }
+    }
+}
+
+/// Display grade distribution histogram
+fn display_grade_distribution(baseline: &crate::tdg::TdgBaseline) {
+    let mut grade_counts: std::collections::HashMap<Grade, usize> = std::collections::HashMap::new();
+    let mut f_grade_files: Vec<String> = Vec::new();
+
+    for (path, entry) in &baseline.files {
+        *grade_counts.entry(entry.score.grade).or_insert(0) += 1;
+        if entry.score.grade == Grade::F {
+            f_grade_files.push(format!("     {} ({:.1})", path.display(), entry.score.total));
+        }
+    }
+
+    println!("\n📊 Grade Distribution:");
+    let grade_order = [
+        Grade::APLus, Grade::A, Grade::AMinus, Grade::BPlus, Grade::B,
+        Grade::BMinus, Grade::CPlus, Grade::C, Grade::CMinus, Grade::D, Grade::F,
+    ];
+    for grade in grade_order {
+        let count = grade_counts.get(&grade).unwrap_or(&0);
+        if *count > 0 {
+            let bar = "█".repeat((*count).min(30));
+            println!("   {:>3}: {:>4} {}", grade, count, bar);
+        }
+    }
+
+    display_f_grade_warning(&f_grade_files);
+}
+
+/// Display F-grade warning if any files have F grades
+fn display_f_grade_warning(f_grade_files: &[String]) {
+    if f_grade_files.is_empty() {
+        return;
+    }
+    println!("\n⚠️  F-Grade Warning: {} file(s) with F grade:", f_grade_files.len());
+    for file in f_grade_files.iter().take(10) {
+        println!("{}", file);
+    }
+    if f_grade_files.len() > 10 {
+        println!("     ... and {} more", f_grade_files.len() - 10);
+    }
+    println!("\n   F-grades cap project score at B. Fix these to improve project grade.");
+}
+
 /// Create a new TDG baseline for the project (Sprint 66 Phase 1)
 async fn create_baseline(
     analyzer: &TdgAnalyzer,
@@ -392,31 +457,36 @@ async fn create_baseline(
     println!("🔨 Creating TDG baseline...");
     println!("   Path: {}", path.display());
     println!("   Output: {}", output.display());
-    println!(
-        "   Git context: {}",
-        if with_git_context { "yes" } else { "no" }
-    );
+    println!("   Git context: {}", if with_git_context { "yes" } else { "no" });
 
-    // Extract git context if requested
-    let git_context = if with_git_context {
-        match crate::models::git_context::GitContext::try_from_current_dir(path) {
-            Some(ctx) => {
-                println!("   📍 Git: {} on {}", ctx.commit_sha_short, ctx.branch);
-                Some(ctx)
-            }
-            None => {
-                println!("   ⚠️  Warning: Not in a git repository, git context unavailable");
-                None
-            }
-        }
-    } else {
-        None
-    };
-
-    // Create baseline
+    let git_context = extract_git_context(path, with_git_context);
     let mut baseline = TdgBaseline::new(git_context);
+    let (files_analyzed, files_skipped) = analyze_baseline_files(analyzer, path, &mut baseline).await?;
 
-    // Find all source files
+    println!();
+    println!("\n✅ Analysis complete:");
+    println!("   Files analyzed: {}", files_analyzed);
+    println!("   Files skipped: {}", files_skipped);
+    println!("   Average score: {:.1}", baseline.summary.avg_score);
+
+    display_grade_distribution(&baseline);
+
+    baseline.save(output)?;
+    println!("\n💾 Baseline saved to: {}", output.display());
+
+    Ok(())
+}
+
+/// Analyze files and populate the baseline
+async fn analyze_baseline_files(
+    analyzer: &TdgAnalyzer,
+    path: &Path,
+    baseline: &mut crate::tdg::TdgBaseline,
+) -> Result<(usize, usize)> {
+    use crate::tdg::BaselineEntry;
+    use std::fs;
+    use walkdir::WalkDir;
+
     let mut files_analyzed = 0;
     let mut files_skipped = 0;
 
@@ -426,45 +496,27 @@ async fn create_baseline(
         .follow_links(false)
         .into_iter()
         .filter_entry(|e| {
-            // Skip common non-source directories
             let name = e.file_name().to_string_lossy();
-            !name.starts_with('.')
-                && name != "target"
-                && name != "node_modules"
-                && name != "dist"
-                && name != "build"
+            !name.starts_with('.') && !matches!(name.as_ref(), "target" | "node_modules" | "dist" | "build")
         })
     {
         let entry = entry?;
-        if !entry.file_type().is_file() {
+        if !entry.file_type().is_file() || !is_analyzable_file(entry.path()) {
             continue;
         }
 
         let file_path = entry.path();
-
-        // Check if it's a source file we can analyze
-        if !is_analyzable_file(file_path) {
-            continue;
-        }
-
-        // Analyze the file
         match analyzer.analyze_file(file_path).await {
             Ok(score) => {
-                // Read file content for hash
                 let content = fs::read(file_path)?;
-                let content_hash = blake3::hash(&content);
-
-                // Create baseline entry
                 let entry = BaselineEntry {
-                    content_hash,
+                    content_hash: blake3::hash(&content),
                     score: score.clone(),
                     components: crate::tdg::storage::ComponentScores::default(),
                     git_context: None,
                 };
-
                 baseline.add_entry(file_path.to_path_buf(), entry);
                 files_analyzed += 1;
-
                 if files_analyzed % 10 == 0 {
                     print!(".");
                     use std::io::Write;
@@ -480,17 +532,7 @@ async fn create_baseline(
         }
     }
 
-    println!();
-    println!("\n✅ Analysis complete:");
-    println!("   Files analyzed: {}", files_analyzed);
-    println!("   Files skipped: {}", files_skipped);
-    println!("   Average score: {:.1}", baseline.summary.avg_score);
-
-    // Save baseline
-    baseline.save(output)?;
-    println!("\n💾 Baseline saved to: {}", output.display());
-
-    Ok(())
+    Ok((files_analyzed, files_skipped))
 }
 
 /// Check if file is analyzable by extension
@@ -581,32 +623,46 @@ async fn compare_baseline(
     Ok(())
 }
 
-/// List all baselines in a directory (Sprint 66 Phase 1)
-async fn list_baselines(path: &Path, format: crate::cli::TdgOutputFormat) -> Result<()> {
+/// Find all baseline files in a directory
+fn find_baseline_files(path: &Path) -> Vec<(PathBuf, crate::tdg::TdgBaseline)> {
     use crate::tdg::TdgBaseline;
     use walkdir::WalkDir;
 
-    println!("📋 Listing baselines in: {}", path.display());
-
-    let mut baselines = Vec::new();
-
-    // Find all .pmat-baseline.json files
-    for entry in WalkDir::new(path)
+    WalkDir::new(path)
         .max_depth(3)
         .follow_links(false)
         .into_iter()
         .filter_map(|e| e.ok())
-    {
-        if entry.file_type().is_file() {
-            if let Some(name) = entry.file_name().to_str() {
-                if name.ends_with("-baseline.json") || name == ".pmat-baseline.json" {
-                    if let Ok(baseline) = TdgBaseline::load(entry.path()) {
-                        baselines.push((entry.path().to_path_buf(), baseline));
-                    }
-                }
+        .filter(|e| e.file_type().is_file())
+        .filter_map(|entry| {
+            let name = entry.file_name().to_str()?;
+            if name.ends_with("-baseline.json") || name == ".pmat-baseline.json" {
+                TdgBaseline::load(entry.path()).ok().map(|b| (entry.path().to_path_buf(), b))
+            } else {
+                None
             }
-        }
+        })
+        .collect()
+}
+
+/// Display baseline in table format
+fn display_baseline_table(path: &Path, baseline: &crate::tdg::TdgBaseline) {
+    println!("📝 {}", path.display());
+    println!("   Version: {}", baseline.version);
+    println!("   Created: {}", baseline.created_at.format("%Y-%m-%d %H:%M:%S"));
+    println!("   Files: {}", baseline.summary.total_files);
+    println!("   Avg Score: {:.1}", baseline.summary.avg_score);
+    if let Some(git_ctx) = &baseline.git_context {
+        println!("   Git: {} on {}", git_ctx.commit_sha_short, git_ctx.branch);
     }
+    println!();
+}
+
+/// List all baselines in a directory (Sprint 66 Phase 1)
+async fn list_baselines(path: &Path, format: crate::cli::TdgOutputFormat) -> Result<()> {
+    println!("📋 Listing baselines in: {}", path.display());
+
+    let baselines = find_baseline_files(path);
 
     if baselines.is_empty() {
         println!("   No baselines found");
@@ -618,44 +674,26 @@ async fn list_baselines(path: &Path, format: crate::cli::TdgOutputFormat) -> Res
     match format {
         crate::cli::TdgOutputFormat::Table | crate::cli::TdgOutputFormat::Markdown => {
             for (path, baseline) in &baselines {
-                println!("📝 {}", path.display());
-                println!("   Version: {}", baseline.version);
-                println!(
-                    "   Created: {}",
-                    baseline.created_at.format("%Y-%m-%d %H:%M:%S")
-                );
-                println!("   Files: {}", baseline.summary.total_files);
-                println!("   Avg Score: {:.1}", baseline.summary.avg_score);
-                if let Some(git_ctx) = &baseline.git_context {
-                    println!("   Git: {} on {}", git_ctx.commit_sha_short, git_ctx.branch);
-                }
-                println!();
+                display_baseline_table(path, baseline);
             }
         }
         crate::cli::TdgOutputFormat::Json => {
-            let output = baselines
-                .iter()
-                .map(|(path, baseline)| {
-                    serde_json::json!({
-                        "path": path.display().to_string(),
-                        "version": baseline.version,
-                        "created_at": baseline.created_at,
-                        "total_files": baseline.summary.total_files,
-                        "avg_score": baseline.summary.avg_score,
-                        "git_context": baseline.git_context
-                    })
+            let output: Vec<_> = baselines.iter().map(|(path, baseline)| {
+                serde_json::json!({
+                    "path": path.display().to_string(),
+                    "version": baseline.version,
+                    "created_at": baseline.created_at,
+                    "total_files": baseline.summary.total_files,
+                    "avg_score": baseline.summary.avg_score,
+                    "git_context": baseline.git_context
                 })
-                .collect::<Vec<_>>();
+            }).collect();
             println!("{}", serde_json::to_string_pretty(&output)?);
         }
         crate::cli::TdgOutputFormat::Sarif => {
-            // SARIF not implemented, use table
             for (path, baseline) in &baselines {
                 println!("📝 {}", path.display());
-                println!(
-                    "   Files: {} | Avg: {:.1}",
-                    baseline.summary.total_files, baseline.summary.avg_score
-                );
+                println!("   Files: {} | Avg: {:.1}", baseline.summary.total_files, baseline.summary.avg_score);
             }
         }
     }
@@ -1134,6 +1172,55 @@ async fn handle_check_regression(
     Ok(())
 }
 
+/// Run the primary quality gate based on mode
+fn run_primary_gate(
+    new_files_only: bool,
+    min_grade_str: Option<&str>,
+    baseline_path: Option<&PathBuf>,
+    current: &crate::tdg::TdgBaseline,
+) -> Result<crate::tdg::GateResult> {
+    use crate::tdg::{GateConfig, MinimumGradeGate, NewFileGate, QualityGate, TdgBaseline};
+
+    if new_files_only {
+        let baseline_path = baseline_path.ok_or_else(|| {
+            anyhow::anyhow!("Baseline required for --new-files-only mode")
+        })?;
+        let baseline = TdgBaseline::load(baseline_path)?;
+        let mut config = GateConfig::default();
+        if let Some(grade_str) = min_grade_str {
+            config.new_file_min_grade = parse_grade(grade_str)?;
+        }
+        NewFileGate::new(config).check(&baseline, current)
+    } else {
+        let baseline = TdgBaseline::new(None);
+        let mut config = GateConfig::default();
+        if let Some(grade_str) = min_grade_str {
+            config.default_min_grade = parse_grade(grade_str)?;
+        }
+        MinimumGradeGate::new(config).check(&baseline, current)
+    }
+}
+
+/// Display gate result in the requested format
+fn display_gate_result(
+    result: &crate::tdg::GateResult,
+    format: &crate::cli::TdgOutputFormat,
+) -> Result<()> {
+    match format {
+        crate::cli::TdgOutputFormat::Table => display_gate_result_table(result),
+        crate::cli::TdgOutputFormat::Json => {
+            println!("{}", serde_json::to_string_pretty(result)?);
+        }
+        crate::cli::TdgOutputFormat::Sarif => {
+            println!("SARIF format not yet implemented for quality gates");
+        }
+        crate::cli::TdgOutputFormat::Markdown => {
+            println!("Markdown format not yet implemented for quality gates");
+        }
+    }
+    Ok(())
+}
+
 /// Handle check-quality command (Sprint 66 Phase 2)
 async fn handle_check_quality(
     analyzer: &TdgAnalyzer,
@@ -1144,60 +1231,28 @@ async fn handle_check_quality(
     new_files_only: bool,
     baseline_path: Option<&PathBuf>,
 ) -> Result<()> {
-    use crate::tdg::{GateConfig, MinimumGradeGate, NewFileGate, QualityGate, TdgBaseline};
+    use crate::tdg::{FGradeGate, QualityGate, TdgBaseline};
 
     println!("🔍 Checking quality thresholds...");
 
-    // Create current baseline
     let temp_output = std::env::temp_dir().join("pmat-quality-check.json");
     create_baseline(analyzer, path, &temp_output, false).await?;
     let current = TdgBaseline::load(&temp_output)?;
     std::fs::remove_file(&temp_output).ok();
 
-    // Choose gate based on mode
-    let result = if new_files_only {
-        if baseline_path.is_none() {
-            return Err(anyhow::anyhow!(
-                "Baseline required for --new-files-only mode"
-            ));
-        }
-        let baseline = TdgBaseline::load(baseline_path.expect("internal error"))?;
+    let f_grade_result = FGradeGate::with_defaults().check(&TdgBaseline::new(None), &current)?;
+    let result = run_primary_gate(new_files_only, min_grade_str, baseline_path, &current)?;
 
-        let mut config = GateConfig::default();
-        if let Some(grade_str) = min_grade_str {
-            config.new_file_min_grade = parse_grade(grade_str)?;
-        }
-
-        let gate = NewFileGate::new(config);
-        gate.check(&baseline, &current)?
-    } else {
-        let baseline = TdgBaseline::new(None); // Empty baseline for minimum grade check
-
-        let mut config = GateConfig::default();
-        if let Some(grade_str) = min_grade_str {
-            config.default_min_grade = parse_grade(grade_str)?;
-        }
-
-        let gate = MinimumGradeGate::new(config);
-        gate.check(&baseline, &current)?
-    };
-
-    // Display results
-    match &format {
-        crate::cli::TdgOutputFormat::Table => display_gate_result_table(&result),
-        crate::cli::TdgOutputFormat::Json => {
-            println!("{}", serde_json::to_string_pretty(&result)?);
-        }
-        crate::cli::TdgOutputFormat::Sarif => {
-            println!("SARIF format not yet implemented for quality gates");
-        }
-        crate::cli::TdgOutputFormat::Markdown => {
-            println!("Markdown format not yet implemented for quality gates");
-        }
+    if !f_grade_result.violations.is_empty() {
+        println!("\n⚠️  F-Grade Warning: {}", f_grade_result.message);
+        println!("   F-grades cap project score at B regardless of average.");
+        display_gate_result(&f_grade_result, &format)?;
+        println!();
     }
 
-    // Exit with error if requested and gate failed
-    if fail_on_violation && !result.passed {
+    display_gate_result(&result, &format)?;
+
+    if fail_on_violation && (!result.passed || !f_grade_result.passed) {
         return Err(anyhow::anyhow!("Quality violations detected"));
     }
 
@@ -1400,91 +1455,47 @@ fn truncate_string(s: &str, max_len: usize) -> String {
 
 /// Handle --viz mode: render TDG dependency graph in terminal
 ///
-/// Uses trueno-viz force-directed layout with PageRank-based criticality scoring.
-/// Supports multiple themes including colorblind-safe (Okabe-Ito palette).
+/// Collect all Rust files from path, excluding target directory
 #[cfg(feature = "viz")]
-async fn handle_viz_mode(_analyzer: &TdgAnalyzer, config: &TdgCommandConfig) -> Result<()> {
-    use crate::tdg::function_analyzer::FunctionAnalyzer;
-    use crate::tdg::tdg_graph::TdgGraph;
-    use crate::viz::terminal::{RenderConfig, TerminalTheme, Visualizable};
+fn collect_rust_files(path: &Path) -> Vec<PathBuf> {
     use walkdir::WalkDir;
-
-    // Build TDG graph from function analysis
-    let mut tdg_graph = TdgGraph::new();
-    let mut func_analyzer = FunctionAnalyzer::new()?;
-
-    // Collect all Rust files
-    let rust_files: Vec<_> = if config.path.is_file() {
-        vec![config.path.clone()]
-    } else {
-        WalkDir::new(&config.path)
-            .into_iter()
-            .filter_map(|e| e.ok())
-            .filter(|e| {
-                e.path().extension().is_some_and(|ext| ext == "rs")
-                    && !e.path().to_string_lossy().contains("/target/")
-            })
-            .map(|e| e.path().to_path_buf())
-            .collect()
-    };
-
-    // Analyze each file and add functions as nodes
-    let mut all_functions = Vec::new();
-    for file_path in &rust_files {
-        if let Ok(functions) = func_analyzer.analyze_file(file_path) {
-            for func in functions {
-                let func_name = format!("{}::{}", file_path.display(), func.name);
-                // Ignore duplicate errors
-                let _ = tdg_graph.add_function(func_name.clone());
-                all_functions.push((file_path.clone(), func_name, func.cognitive));
-            }
-        }
+    if path.is_file() {
+        return vec![path.to_path_buf()];
     }
+    WalkDir::new(path)
+        .into_iter()
+        .filter_map(|e| e.ok())
+        .filter(|e| {
+            e.path().extension().is_some_and(|ext| ext == "rs")
+                && !e.path().to_string_lossy().contains("/target/")
+        })
+        .map(|e| e.path().to_path_buf())
+        .collect()
+}
 
-    // Add edges from call graph (co-location heuristic)
-    // Functions in the same file are likely connected
-    for (i, (file1, name1, _)) in all_functions.iter().enumerate() {
-        for (file2, name2, _) in all_functions.iter().skip(i + 1) {
-            if file1 == file2 {
-                let _ = tdg_graph.add_edge(name1, name2);
-            }
-        }
-    }
-
-    // Update PageRank criticality scores
-    tdg_graph.update_criticality()?;
-
-    // Parse theme from string
-    let theme = match config.viz_theme.to_lowercase().as_str() {
+/// Parse visualization theme from string
+#[cfg(feature = "viz")]
+fn parse_viz_theme(theme_str: &str) -> crate::viz::terminal::TerminalTheme {
+    use crate::viz::terminal::TerminalTheme;
+    match theme_str.to_lowercase().as_str() {
         "high-contrast" | "highcontrast" => TerminalTheme::HighContrast,
         "light" => TerminalTheme::Light,
         "colorblind-safe" | "colorblind" | "cb" => TerminalTheme::ColorblindSafe,
         _ => TerminalTheme::Default,
-    };
+    }
+}
 
-    // Create render config with adaptive defaults
-    let render_config = RenderConfig {
-        width: 120,
-        height: 40,
-        theme,
-        mode: trueno_viz::output::TerminalMode::AnsiTrueColor,
-        iterations: 100,
-        critical_threshold: 0.5,
-        max_nodes: 50, // Semantic zooming: show top 50 by criticality
-        show_labels: true,
-    };
-
-    // Render to terminal
-    let output = tdg_graph.render_terminal(&render_config)?;
-    println!("{}", output);
-
-    // Print legend
+/// Print visualization legend and critical functions
+#[cfg(feature = "viz")]
+fn print_viz_legend(
+    tdg_graph: &crate::tdg::tdg_graph::TdgGraph,
+    theme: crate::viz::terminal::TerminalTheme,
+) {
     println!("\n--- TDG Dependency Graph ---");
     println!("Theme: {:?}", theme);
     println!("Nodes: {} functions", tdg_graph.num_nodes());
     println!("Edges: {} dependencies", tdg_graph.num_edges());
 
-    // Print top 10 critical functions
     let critical = tdg_graph.critical_functions();
     if !critical.is_empty() {
         println!("\nTop Critical Functions (by PageRank):");
@@ -1492,6 +1503,56 @@ async fn handle_viz_mode(_analyzer: &TdgAnalyzer, config: &TdgCommandConfig) -> 
             println!("  {}. {} (score: {:.4})", i + 1, name, score);
         }
     }
+}
+
+/// Uses trueno-viz force-directed layout with PageRank-based criticality scoring.
+/// Supports multiple themes including colorblind-safe (Okabe-Ito palette).
+#[cfg(feature = "viz")]
+async fn handle_viz_mode(_analyzer: &TdgAnalyzer, config: &TdgCommandConfig) -> Result<()> {
+    use crate::tdg::function_analyzer::FunctionAnalyzer;
+    use crate::tdg::tdg_graph::TdgGraph;
+    use crate::viz::terminal::{RenderConfig, Visualizable};
+
+    let mut tdg_graph = TdgGraph::new();
+    let mut func_analyzer = FunctionAnalyzer::new()?;
+    let rust_files = collect_rust_files(&config.path);
+
+    let mut all_functions = Vec::new();
+    for file_path in &rust_files {
+        if let Ok(functions) = func_analyzer.analyze_file(file_path) {
+            for func in functions {
+                let func_name = format!("{}::{}", file_path.display(), func.name);
+                let _ = tdg_graph.add_function(func_name.clone());
+                all_functions.push((file_path.clone(), func_name));
+            }
+        }
+    }
+
+    // Add edges: functions in same file are likely connected
+    for (i, (file1, name1)) in all_functions.iter().enumerate() {
+        for (file2, name2) in all_functions.iter().skip(i + 1) {
+            if file1 == file2 {
+                let _ = tdg_graph.add_edge(name1, name2);
+            }
+        }
+    }
+
+    tdg_graph.update_criticality()?;
+
+    let theme = parse_viz_theme(&config.viz_theme);
+    let render_config = RenderConfig {
+        width: 120,
+        height: 40,
+        theme,
+        mode: trueno_viz::output::TerminalMode::AnsiTrueColor,
+        iterations: 100,
+        critical_threshold: 0.5,
+        max_nodes: 50,
+        show_labels: true,
+    };
+
+    println!("{}", tdg_graph.render_terminal(&render_config)?);
+    print_viz_legend(&tdg_graph, theme);
 
     Ok(())
 }

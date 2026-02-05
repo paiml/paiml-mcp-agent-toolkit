@@ -416,7 +416,8 @@ mod tests {
         use crate::cli::ComplexityOutputFormat;
 
         #[test]
-        fn test_complexity_with_project_path_emits_warning() {
+        fn test_complexity_with_project_path_no_warning() {
+            // No deprecation warnings - silently accept both --path and --project-path
             let cmd = AnalyzeCommands::Complexity {
                 path: PathBuf::from("."),
                 project_path: Some(PathBuf::from("/deprecated/path")),
@@ -436,9 +437,7 @@ mod tests {
             };
 
             let warnings = ContractAdapter::deprecation_warnings(&cmd);
-            assert_eq!(warnings.len(), 1);
-            assert!(warnings[0].contains("--project-path is deprecated"));
-            assert!(warnings[0].contains("use --path instead"));
+            assert!(warnings.is_empty());
         }
 
         #[test]

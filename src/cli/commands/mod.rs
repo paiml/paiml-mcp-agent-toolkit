@@ -40,7 +40,7 @@ use std::path::PathBuf;
     long_about = None,
     after_help = "EXAMPLES:
 # Analyze code complexity
-pmat analyze complexity --project-path .
+pmat analyze complexity --path .
 
 # Calculate Technical Debt Grade (TDG)
 pmat tdg .

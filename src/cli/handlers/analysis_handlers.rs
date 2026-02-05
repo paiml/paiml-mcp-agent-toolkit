@@ -622,84 +622,82 @@ async fn route_tdg_analysis(cmd: AnalyzeCommands) -> Result<()> {
     }
 }
 
+/// Run cargo build step for build-tdg command
+fn run_cargo_build(path: &Path, release: bool) -> Result<()> {
+    use std::process::Command;
+    println!("📦 Building project...");
+    let mut build_cmd = Command::new("cargo");
+    build_cmd.arg("build");
+    if release {
+        build_cmd.arg("--release");
+    }
+    build_cmd.current_dir(path);
+    let status = build_cmd.status()?;
+    if !status.success() {
+        anyhow::bail!("Build failed with exit code: {:?}", status.code());
+    }
+    println!("✅ Build successful\n");
+    Ok(())
+}
+
+/// Check for quality regressions against baseline
+fn check_quality_regression(path: &Path) -> Result<()> {
+    let baseline_path = path.join(".pmat/baseline.json");
+    if !baseline_path.exists() {
+        println!("⚠️  No baseline found at {}, skipping regression check", baseline_path.display());
+        println!("   Run 'pmat tdg baseline create' to create a baseline");
+        return Ok(());
+    }
+    println!("🔍 Checking for quality regressions...");
+    let status = std::process::Command::new("pmat")
+        .args([
+            "tdg", "check-regression",
+            "--baseline", baseline_path.to_str().unwrap_or(".pmat/baseline.json"),
+            "--path", path.to_str().unwrap_or("."),
+            "--fail-on-regression",
+        ])
+        .status();
+    match status {
+        Ok(s) if s.success() => println!("✅ No regressions detected"),
+        Ok(_) => anyhow::bail!("Quality regression detected"),
+        Err(e) => println!("⚠️  Could not run regression check: {}", e),
+    }
+    Ok(())
+}
+
 /// Route build-tdg analysis command (build + TDG quality gate)
 async fn route_build_tdg_analysis(cmd: AnalyzeCommands) -> Result<()> {
-    if let AnalyzeCommands::BuildTdg {
-        path,
-        release,
-        threshold,
-        fail_on_regression,
-        tdg_only,
-        top_files,
-        format,
-        output,
-    } = cmd
-    {
-        use super::new_tdg_handler::TdgAnalysisConfig;
-        use std::process::Command;
-
-        // Step 1: Run cargo build (unless tdg_only)
-        if !tdg_only {
-            println!("📦 Building project...");
-            let mut build_cmd = Command::new("cargo");
-            build_cmd.arg("build");
-            if release {
-                build_cmd.arg("--release");
-            }
-            build_cmd.current_dir(&path);
-
-            let status = build_cmd.status()?;
-            if !status.success() {
-                anyhow::bail!("Build failed with exit code: {:?}", status.code());
-            }
-            println!("✅ Build successful\n");
-        }
-
-        // Step 2: Run TDG analysis
-        println!("📊 Running TDG analysis...");
-        let config = TdgAnalysisConfig {
-            path: path.clone(),
-            threshold: Some(threshold),
-            top_files: Some(top_files),
-            format,
-            include_components: false,
-            output,
-            critical_only: false,
-            verbose: false,
-        };
-
-        // Run TDG analysis and get score
-        let result = super::new_tdg_handler::handle_analyze_tdg(config).await;
-
-        // Step 3: Check for regression if requested
-        if fail_on_regression {
-            let baseline_path = path.join(".pmat/baseline.json");
-            if baseline_path.exists() {
-                println!("🔍 Checking for quality regressions...");
-                // Shell out to pmat tdg check-regression for simplicity
-                let status = std::process::Command::new("pmat")
-                    .args([
-                        "tdg", "check-regression",
-                        "--baseline", baseline_path.to_str().unwrap_or(".pmat/baseline.json"),
-                        "--path", path.to_str().unwrap_or("."),
-                        "--fail-on-regression",
-                    ])
-                    .status();
-                match status {
-                    Ok(s) if s.success() => println!("✅ No regressions detected"),
-                    Ok(_) => anyhow::bail!("Quality regression detected"),
-                    Err(e) => println!("⚠️  Could not run regression check: {}", e),
-                }
-            } else {
-                println!("⚠️  No baseline found at {}, skipping regression check", baseline_path.display());
-                println!("   Run 'pmat tdg baseline create' to create a baseline");
-            }
-        }
-
-        result
-    } else {
+    let AnalyzeCommands::BuildTdg {
+        path, release, threshold, fail_on_regression, tdg_only, top_files, format, output,
+    } = cmd else {
         unreachable!("Expected BuildTdg command")
+    };
+
+    use super::new_tdg_handler::TdgAnalysisConfig;
+
+    if !tdg_only {
+        run_cargo_build(&path, release)?;
     }
+
+    println!("📊 Running TDG analysis...");
+    let config = TdgAnalysisConfig {
+        path: path.clone(),
+        threshold: Some(threshold),
+        top_files: Some(top_files),
+        format,
+        include_components: false,
+        output,
+        critical_only: false,
+        verbose: false,
+    };
+
+    let result = super::new_tdg_handler::handle_analyze_tdg(config).await;
+
+    if fail_on_regression {
+        check_quality_regression(&path)?;
+    }
+
+    result
 }
 
 /// Route lint hotspot analysis command
@@ -1318,12 +1316,8 @@ async fn route_complexity_command(
     timeout: u64,
 ) -> Result<()> {
     // Handle parameter migration: use new 'path' or deprecated 'project_path'
-    let analysis_path = if let Some(deprecated_path) = project_path {
-        eprintln!("⚠️  WARNING: --project-path is deprecated. Use --path instead.");
-        deprecated_path
-    } else {
-        path
-    };
+    // Silently accept both for backwards compatibility
+    let analysis_path = project_path.unwrap_or(path);
 
     super::complexity_handlers::handle_analyze_complexity(
         analysis_path,
@@ -1577,145 +1571,123 @@ fn output_entropy_results(output: Option<std::path::PathBuf>, content: &str) -> 
     Ok(())
 }
 
+/// Index workspace and validate document count
+fn index_workspace(
+    engine: &mut crate::services::local_semantic::LocalSemanticEngine,
+    workspace: &Path,
+    language: Option<&str>,
+) -> Result<usize> {
+    println!("🔍 Indexing source files...");
+    let num_docs = engine
+        .index_directory(workspace, language)
+        .map_err(|e| anyhow::anyhow!("Failed to index directory: {}", e))?;
+    if num_docs == 0 {
+        anyhow::bail!("No source files found to analyze");
+    }
+    println!("📁 Indexed {} source files", num_docs);
+    Ok(num_docs)
+}
+
+/// Output clustering results in the requested format
+fn output_cluster_results(
+    result: &crate::services::local_semantic::ClusterResult,
+    format: &crate::cli::enums::OutputFormat,
+) -> Result<()> {
+    match format {
+        crate::cli::enums::OutputFormat::Json => {
+            let json_output = serde_json::json!({
+                "method": result.method,
+                "num_documents": result.num_documents,
+                "num_clusters": result.clusters.len(),
+                "clusters": result.clusters.iter().map(|c| serde_json::json!({
+                    "id": c.id, "size": c.size,
+                    "files": c.files.iter().map(|f| f.display().to_string()).collect::<Vec<_>>()
+                })).collect::<Vec<_>>()
+            });
+            println!("{}", serde_json::to_string_pretty(&json_output)?);
+        }
+        _ => {
+            println!("\n📊 Clustering Results ({}):", result.method);
+            println!("   Documents: {}", result.num_documents);
+            println!("   Clusters: {}\n", result.clusters.len());
+            for cluster in &result.clusters {
+                println!("   Cluster {} ({} files):", cluster.id, cluster.size);
+                for file in cluster.files.iter().take(5) {
+                    println!("     - {}", file.display());
+                }
+                if cluster.files.len() > 5 {
+                    println!("     ... and {} more", cluster.files.len() - 5);
+                }
+                println!();
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Output topic extraction results in the requested format
+fn output_topic_results(
+    result: &crate::services::local_semantic::TopicResult,
+    format: &crate::cli::enums::OutputFormat,
+) -> Result<()> {
+    match format {
+        crate::cli::enums::OutputFormat::Json => {
+            let json_output = serde_json::json!({
+                "num_documents": result.num_documents,
+                "num_topics": result.topics.len(),
+                "topics": result.topics.iter().map(|t| serde_json::json!({
+                    "id": t.id, "document_count": t.document_count,
+                    "top_terms": t.top_terms.iter().map(|(term, weight)| {
+                        serde_json::json!({"term": term, "weight": weight})
+                    }).collect::<Vec<_>>()
+                })).collect::<Vec<_>>()
+            });
+            println!("{}", serde_json::to_string_pretty(&json_output)?);
+        }
+        _ => {
+            println!("\n📊 Topic Extraction Results:");
+            println!("   Documents: {}", result.num_documents);
+            println!("   Topics: {}\n", result.topics.len());
+            for topic in &result.topics {
+                println!("   Topic {} ({} documents):", topic.id, topic.document_count);
+                println!("     Top terms:");
+                for (term, weight) in topic.top_terms.iter().take(10) {
+                    println!("       - {} ({:.3})", term, weight);
+                }
+                println!();
+            }
+        }
+    }
+    Ok(())
+}
+
 /// Route semantic analysis commands (PMAT-SEARCH-011)
 /// Uses local aprender-based analysis - NO external API required
 async fn route_semantic_analysis(cmd: AnalyzeCommands) -> Result<()> {
     use crate::services::local_semantic::LocalSemanticEngine;
 
-    // Get workspace path
     let workspace = std::env::current_dir().unwrap_or_default();
-
-    // Initialize local semantic engine (pure Rust, no API keys needed)
     let mut engine = LocalSemanticEngine::new();
 
     match cmd {
-        AnalyzeCommands::Cluster {
-            method,
-            k,
-            language,
-            format,
-        } => {
-            // Convert ClusterMethod to string
+        AnalyzeCommands::Cluster { method, k, language, format } => {
             let method_str = match method {
                 crate::cli::commands::ClusterMethod::Kmeans => "kmeans",
                 crate::cli::commands::ClusterMethod::Hierarchical => "hierarchical",
                 crate::cli::commands::ClusterMethod::Dbscan => "dbscan",
             };
-
-            // Index the workspace
-            println!("🔍 Indexing source files...");
-            let num_docs = engine
-                .index_directory(&workspace, language.as_deref())
-                .map_err(|e| anyhow::anyhow!("Failed to index directory: {}", e))?;
-
-            if num_docs == 0 {
-                anyhow::bail!("No source files found to analyze");
-            }
-
-            println!("📁 Indexed {} source files", num_docs);
+            index_workspace(&mut engine, &workspace, language.as_deref())?;
             println!("🧮 Running {} clustering...", method_str);
-
-            let result = engine
-                .cluster(method_str, k)
+            let result = engine.cluster(method_str, k)
                 .map_err(|e| anyhow::anyhow!("Clustering failed: {}", e))?;
-
-            // Output results
-            match format {
-                crate::cli::enums::OutputFormat::Json => {
-                    let json_output = serde_json::json!({
-                        "method": result.method,
-                        "num_documents": result.num_documents,
-                        "num_clusters": result.clusters.len(),
-                        "clusters": result.clusters.iter().map(|c| {
-                            serde_json::json!({
-                                "id": c.id,
-                                "size": c.size,
-                                "files": c.files.iter().map(|f| f.display().to_string()).collect::<Vec<_>>()
-                            })
-                        }).collect::<Vec<_>>()
-                    });
-                    println!("{}", serde_json::to_string_pretty(&json_output)?);
-                }
-                _ => {
-                    println!("\n📊 Clustering Results ({}):", result.method);
-                    println!("   Documents: {}", result.num_documents);
-                    println!("   Clusters: {}\n", result.clusters.len());
-
-                    for cluster in &result.clusters {
-                        println!("   Cluster {} ({} files):", cluster.id, cluster.size);
-                        for file in cluster.files.iter().take(5) {
-                            println!("     - {}", file.display());
-                        }
-                        if cluster.files.len() > 5 {
-                            println!("     ... and {} more", cluster.files.len() - 5);
-                        }
-                        println!();
-                    }
-                }
-            }
-
-            Ok(())
+            output_cluster_results(&result, &format)
         }
-        AnalyzeCommands::Topics {
-            num_topics,
-            language,
-            format,
-        } => {
-            // Index the workspace
-            println!("🔍 Indexing source files...");
-            let num_docs = engine
-                .index_directory(&workspace, language.as_deref())
-                .map_err(|e| anyhow::anyhow!("Failed to index directory: {}", e))?;
-
-            if num_docs == 0 {
-                anyhow::bail!("No source files found to analyze");
-            }
-
-            println!("📁 Indexed {} source files", num_docs);
+        AnalyzeCommands::Topics { num_topics, language, format } => {
+            index_workspace(&mut engine, &workspace, language.as_deref())?;
             println!("🔬 Extracting {} topics using LDA...", num_topics);
-
-            let result = engine
-                .extract_topics(num_topics, language)
+            let result = engine.extract_topics(num_topics, language)
                 .map_err(|e| anyhow::anyhow!("Topic extraction failed: {}", e))?;
-
-            // Output results
-            match format {
-                crate::cli::enums::OutputFormat::Json => {
-                    let json_output = serde_json::json!({
-                        "num_documents": result.num_documents,
-                        "num_topics": result.topics.len(),
-                        "topics": result.topics.iter().map(|t| {
-                            serde_json::json!({
-                                "id": t.id,
-                                "document_count": t.document_count,
-                                "top_terms": t.top_terms.iter().map(|(term, weight)| {
-                                    serde_json::json!({"term": term, "weight": weight})
-                                }).collect::<Vec<_>>()
-                            })
-                        }).collect::<Vec<_>>()
-                    });
-                    println!("{}", serde_json::to_string_pretty(&json_output)?);
-                }
-                _ => {
-                    println!("\n📊 Topic Extraction Results:");
-                    println!("   Documents: {}", result.num_documents);
-                    println!("   Topics: {}\n", result.topics.len());
-
-                    for topic in &result.topics {
-                        println!(
-                            "   Topic {} ({} documents):",
-                            topic.id, topic.document_count
-                        );
-                        println!("     Top terms:");
-                        for (term, weight) in topic.top_terms.iter().take(10) {
-                            println!("       - {} ({:.3})", term, weight);
-                        }
-                        println!();
-                    }
-                }
-            }
-
-            Ok(())
+            output_topic_results(&result, &format)
         }
         _ => unreachable!("Expected semantic analysis command"),
     }

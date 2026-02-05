@@ -79,8 +79,8 @@ pub use language_simple::{Language, LanguageRules};
 pub use olap_analytics::TruenoOlapAnalytics;
 pub use olap_analytics::{AggOp, OlapAnalytics};
 pub use quality_gate::{
-    GateConfig, GateResult, MinimumGradeGate, NewFileGate, QualityGate, RegressionGate, Severity,
-    Violation, ViolationType,
+    FGradeGate, GateConfig, GateResult, MinimumGradeGate, NewFileGate, QualityGate,
+    RegressionGate, Severity, Violation, ViolationType,
 };
 pub use recommendation_engine::generate_recommendations;
 pub use resource_control::{
@@ -294,6 +294,15 @@ pub struct ProjectScore {
     pub average_grade: Grade,
     pub total_files: usize,
     pub language_distribution: HashMap<Language, usize>,
+    /// Grade distribution: count of files per grade (A+, A, ..., F)
+    #[serde(default)]
+    pub grade_distribution: HashMap<Grade, usize>,
+    /// Count of F-grade files (critical quality issues)
+    #[serde(default)]
+    pub f_grade_count: usize,
+    /// Whether grade was capped due to F-grade files
+    #[serde(default)]
+    pub grade_capped: bool,
 }
 
 impl ProjectScore {
@@ -307,16 +316,40 @@ impl ProjectScore {
         };
 
         let mut language_distribution = HashMap::new();
+        let mut grade_distribution = HashMap::new();
+        let mut f_grade_count = 0;
+
         for score in &scores {
             *language_distribution.entry(score.language).or_insert(0) += 1;
+            *grade_distribution.entry(score.grade).or_insert(0) += 1;
+            if score.grade == Grade::F {
+                f_grade_count += 1;
+            }
         }
+
+        // F-GRADE CAPPING: Any F-grade file caps the project grade at B
+        // This prevents hiding critical quality issues in averaging
+        let (average_grade, grade_capped) = if f_grade_count > 0 {
+            let uncapped_grade = Grade::from_score(average_score);
+            // Cap at B (score 79.9 equivalent) if any F-grades exist
+            if uncapped_grade < Grade::B {
+                (Grade::B, true)
+            } else {
+                (uncapped_grade, false)
+            }
+        } else {
+            (Grade::from_score(average_score), false)
+        };
 
         Self {
             files: scores,
             average_score,
-            average_grade: Grade::from_score(average_score),
+            average_grade,
             total_files,
             language_distribution,
+            grade_distribution,
+            f_grade_count,
+            grade_capped,
         }
     }
 
@@ -936,6 +969,231 @@ mod tests {
         let avg = project.average();
         assert_eq!(avg.structural_complexity, 15.0);
         assert_eq!(avg.semantic_complexity, 15.0);
+    }
+
+    // ============ F-Grade Capping Tests ============
+
+    #[test]
+    fn test_project_score_f_grade_capping() {
+        // Test that F-grade files cap project grade at B
+        // Many A+ files would hide the F-grade in the average without capping
+        let scores = vec![
+            TdgScore {
+                total: 95.0,
+                grade: Grade::APLus,
+                language: Language::Rust,
+                ..TdgScore::default()
+            },
+            TdgScore {
+                total: 95.0,
+                grade: Grade::APLus,
+                language: Language::Rust,
+                ..TdgScore::default()
+            },
+            TdgScore {
+                total: 95.0,
+                grade: Grade::APLus,
+                language: Language::Rust,
+                ..TdgScore::default()
+            },
+            TdgScore {
+                total: 95.0,
+                grade: Grade::APLus,
+                language: Language::Rust,
+                ..TdgScore::default()
+            },
+            TdgScore {
+                total: 95.0,
+                grade: Grade::APLus,
+                language: Language::Rust,
+                ..TdgScore::default()
+            },
+            TdgScore {
+                total: 95.0,
+                grade: Grade::APLus,
+                language: Language::Rust,
+                ..TdgScore::default()
+            },
+            TdgScore {
+                total: 95.0,
+                grade: Grade::APLus,
+                language: Language::Rust,
+                ..TdgScore::default()
+            },
+            TdgScore {
+                total: 95.0,
+                grade: Grade::APLus,
+                language: Language::Rust,
+                ..TdgScore::default()
+            },
+            TdgScore {
+                total: 95.0,
+                grade: Grade::APLus,
+                language: Language::Rust,
+                ..TdgScore::default()
+            },
+            TdgScore {
+                total: 40.0, // F-grade - hidden in average!
+                grade: Grade::F,
+                language: Language::Rust,
+                ..TdgScore::default()
+            },
+        ];
+        let project = ProjectScore::aggregate(scores);
+
+        // Without capping: (9×95 + 40)/10 = 895/10 = 89.5 → A- (F hidden!)
+        // With F-grade capping: Grade is capped to B
+        assert_eq!(project.f_grade_count, 1);
+        assert!(project.grade_capped);
+        assert_eq!(project.average_grade, Grade::B);
+    }
+
+    #[test]
+    fn test_project_score_no_f_grade_capping() {
+        // Test that projects without F-grades are not capped
+        let scores = vec![
+            TdgScore {
+                total: 95.0,
+                grade: Grade::APLus,
+                language: Language::Rust,
+                ..TdgScore::default()
+            },
+            TdgScore {
+                total: 90.0,
+                grade: Grade::A,
+                language: Language::Rust,
+                ..TdgScore::default()
+            },
+        ];
+        let project = ProjectScore::aggregate(scores);
+
+        assert_eq!(project.f_grade_count, 0);
+        assert!(!project.grade_capped);
+        // Average: (95+90)/2 = 92.5 → A (90-94 range)
+        assert_eq!(project.average_grade, Grade::A);
+    }
+
+    #[test]
+    fn test_project_score_grade_distribution() {
+        let scores = vec![
+            TdgScore {
+                total: 95.0,
+                grade: Grade::APLus,
+                language: Language::Rust,
+                ..TdgScore::default()
+            },
+            TdgScore {
+                total: 85.0,
+                grade: Grade::AMinus,
+                language: Language::Rust,
+                ..TdgScore::default()
+            },
+            TdgScore {
+                total: 75.0,
+                grade: Grade::B,
+                language: Language::Rust,
+                ..TdgScore::default()
+            },
+        ];
+        let project = ProjectScore::aggregate(scores);
+
+        assert_eq!(*project.grade_distribution.get(&Grade::APLus).unwrap(), 1);
+        assert_eq!(*project.grade_distribution.get(&Grade::AMinus).unwrap(), 1);
+        assert_eq!(*project.grade_distribution.get(&Grade::B).unwrap(), 1);
+    }
+
+    #[test]
+    fn test_project_score_multiple_f_grades() {
+        // Multiple F-grades that would still average above B+ without capping
+        let scores = vec![
+            TdgScore {
+                total: 95.0,
+                grade: Grade::APLus,
+                language: Language::Rust,
+                ..TdgScore::default()
+            },
+            TdgScore {
+                total: 95.0,
+                grade: Grade::APLus,
+                language: Language::Rust,
+                ..TdgScore::default()
+            },
+            TdgScore {
+                total: 95.0,
+                grade: Grade::APLus,
+                language: Language::Rust,
+                ..TdgScore::default()
+            },
+            TdgScore {
+                total: 95.0,
+                grade: Grade::APLus,
+                language: Language::Rust,
+                ..TdgScore::default()
+            },
+            TdgScore {
+                total: 30.0, // F-grade
+                grade: Grade::F,
+                language: Language::Rust,
+                ..TdgScore::default()
+            },
+            TdgScore {
+                total: 40.0, // F-grade
+                grade: Grade::F,
+                language: Language::Rust,
+                ..TdgScore::default()
+            },
+        ];
+        let project = ProjectScore::aggregate(scores);
+
+        // Without capping: (4×95 + 30 + 40)/6 = 450/6 = 75.0 → B (borderline)
+        // With F-grades: even at B average, grade_capped should not be set
+        // because we only cap grades BETTER than B
+        assert_eq!(project.f_grade_count, 2);
+        assert_eq!(*project.grade_distribution.get(&Grade::F).unwrap_or(&0), 2);
+    }
+
+    #[test]
+    fn test_project_score_f_grade_capping_from_a_plus() {
+        // Many A+ files with one F grade - demonstrates hiding problem
+        let scores = vec![
+            TdgScore {
+                total: 97.0,
+                grade: Grade::APLus,
+                language: Language::Rust,
+                ..TdgScore::default()
+            },
+            TdgScore {
+                total: 97.0,
+                grade: Grade::APLus,
+                language: Language::Rust,
+                ..TdgScore::default()
+            },
+            TdgScore {
+                total: 97.0,
+                grade: Grade::APLus,
+                language: Language::Rust,
+                ..TdgScore::default()
+            },
+            TdgScore {
+                total: 97.0,
+                grade: Grade::APLus,
+                language: Language::Rust,
+                ..TdgScore::default()
+            },
+            TdgScore {
+                total: 45.0, // F-grade hidden by A+ files
+                grade: Grade::F,
+                language: Language::Rust,
+                ..TdgScore::default()
+            },
+        ];
+        let project = ProjectScore::aggregate(scores);
+
+        // Without capping: (4×97 + 45)/5 = 433/5 = 86.6 → A- (F hidden!)
+        // With capping: Grade should be B
+        assert_eq!(project.f_grade_count, 1);
+        assert!(project.grade_capped);
+        assert_eq!(project.average_grade, Grade::B);
     }
 
     // ============ Comparison Tests ============

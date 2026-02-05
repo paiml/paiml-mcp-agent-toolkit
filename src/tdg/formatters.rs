@@ -1026,6 +1026,9 @@ mod tests {
                 },
             ],
             language_distribution,
+            grade_distribution: std::collections::HashMap::new(),
+            f_grade_count: 0,
+            grade_capped: false,
         };
 
         let output = format_project(&project);

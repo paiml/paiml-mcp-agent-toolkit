@@ -67,18 +67,9 @@ struct LintHotspotMapParams<'a> {
 impl ContractAdapter {
     /// Generate deprecation warnings for inconsistent parameters
     #[must_use]
-    pub fn deprecation_warnings(cmd: &AnalyzeCommands) -> Vec<String> {
-        let mut warnings = Vec::new();
-
-        if let AnalyzeCommands::Complexity {
-            project_path: Some(_),
-            ..
-        } = cmd
-        {
-            warnings.push("Warning: --project-path is deprecated, use --path instead".to_string());
-        }
-
-        warnings
+    pub fn deprecation_warnings(_cmd: &AnalyzeCommands) -> Vec<String> {
+        // No deprecation warnings - silently accept both --path and --project-path
+        Vec::new()
     }
 
     /// Map existing CLI analyze commands to uniform contracts
