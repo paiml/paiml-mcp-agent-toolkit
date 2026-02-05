@@ -619,7 +619,14 @@ pub(crate) fn migrate_project_version(project_path: &Path, target: &str, dry_run
 
 pub(crate) fn migrate_gitignore(project_path: &Path, dry_run: bool) -> Result<bool> {
     let gitignore_path = project_path.join(".gitignore");
-    let pmat_entries = [".pmat/backup/", ".pmat-qa/"];
+    // Cache and index files that should not be committed
+    let pmat_entries = [
+        ".pmat/backup/",
+        ".pmat-qa/",
+        ".pmat/context.idx/",      // Agent context RAG index
+        ".pmat/workspace.idx/",    // Merged workspace index
+        ".pmat/deps-cache.json",   // CB-081 dependency cache
+    ];
     if !gitignore_path.exists() {
         return Ok(false);
     }
@@ -649,6 +656,53 @@ pub(crate) fn migrate_gitignore(project_path: &Path, dry_run: bool) -> Result<bo
 
 pub(crate) fn update_project_config(project_path: &Path, dry_run: bool) -> Result<bool> {
     migrate_project_version(project_path, PMAT_VERSION, dry_run)
+}
+
+/// Update project hooks to latest templates
+///
+/// Returns true if hooks were updated, false if already up-to-date
+pub(crate) async fn update_project_hooks(project_path: &Path, dry_run: bool) -> Result<bool> {
+    use crate::cli::handlers::hooks_command_handlers::HooksCommand;
+
+    let hooks_dir = project_path.join(".git/hooks");
+    if !hooks_dir.exists() {
+        return Ok(false); // Not a git repo or no hooks dir
+    }
+
+    let hooks_cmd = HooksCommand::new(hooks_dir.clone(), project_path.join("pmat.toml"));
+
+    // Check current status
+    let status = hooks_cmd.status().await?;
+
+    if !status.installed {
+        // No hooks installed - install them
+        if dry_run {
+            return Ok(true); // Would install
+        }
+        hooks_cmd.install(false, true, false).await?;
+        return Ok(true);
+    }
+
+    if !status.is_pmat_managed {
+        // Hooks exist but not PMAT-managed - offer to replace
+        if dry_run {
+            return Ok(true); // Would replace
+        }
+        hooks_cmd.install(true, true, false).await?; // force + backup
+        return Ok(true);
+    }
+
+    // PMAT-managed - check if up-to-date
+    let verify = hooks_cmd.verify(false).await?;
+    if verify.issues.iter().any(|i| i.contains("outdated")) {
+        if dry_run {
+            return Ok(true); // Would update
+        }
+        hooks_cmd.refresh().await?;
+        return Ok(true);
+    }
+
+    Ok(false) // Already up-to-date
 }
 
 pub(crate) fn print_compliance_text(report: &ComplianceReport) {

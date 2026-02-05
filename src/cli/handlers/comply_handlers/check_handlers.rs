@@ -405,6 +405,13 @@ async fn handle_migrate(
         }
     }
 
+    // Update hooks (async operation)
+    match update_project_hooks(project_path, dry_run).await {
+        Ok(true) => println!("  \x1b[32m✓\x1b[0m Update git hooks"),
+        Ok(false) => println!("  \x1b[90m-\x1b[0m Update git hooks (no changes needed)"),
+        Err(e) => println!("  \x1b[31m✗\x1b[0m Update git hooks - {}", e),
+    }
+
     if dry_run {
         println!("\n(dry-run complete - no changes were made)");
     } else {
@@ -471,7 +478,11 @@ async fn handle_update(
 
     if update_hooks || update_both {
         println!("Updating hooks...");
-        println!("  \x1b[90m-\x1b[0m Hooks already up to date");
+        match update_project_hooks(project_path, dry_run).await {
+            Ok(true) => println!("  \x1b[32m✓\x1b[0m Hooks updated to latest templates"),
+            Ok(false) => println!("  \x1b[90m-\x1b[0m Hooks already up to date"),
+            Err(e) => println!("  \x1b[31m✗\x1b[0m Failed: {}", e),
+        }
     }
 
     if update_config || update_both {
@@ -1989,6 +2000,27 @@ pub(crate) fn check_agent_context_adoption(project_path: &Path) -> ComplianceChe
         issues.push(
             "  Add agent context instructions to CLAUDE.md for agent adoption".to_string(),
         );
+        warning_count += 1;
+    }
+
+    // Check for missing required patterns
+    if !report.missing_required_patterns.is_empty() {
+        for pattern in &report.missing_required_patterns {
+            issues.push(format!("CB-130: CLAUDE.md missing required: \"{}\"", pattern));
+        }
+        issues.push("  Add pmat query decision tree to CLAUDE.md".to_string());
+        warning_count += 1;
+    }
+
+    // Check for forbidden patterns (potential grep usage instructions)
+    if !report.forbidden_patterns_found.is_empty() {
+        for found in &report.forbidden_patterns_found {
+            issues.push(format!(
+                "CB-130: CLAUDE.md contains forbidden pattern \"{}\" at line {}",
+                found.pattern, found.line
+            ));
+        }
+        issues.push("  Remove grep/find examples from CLAUDE.md (use pmat query instead)".to_string());
         warning_count += 1;
     }
 
