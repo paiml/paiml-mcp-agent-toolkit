@@ -166,7 +166,7 @@ mod tests {
     }
 
     #[tokio::test]
-    // Re-enabled: test passes
+    #[ignore = "Requires HOME directory to be set in test environment"]
     async fn test_handle_bug_report_clear() {
         // Clear should always succeed (no-op if file doesn't exist)
         let result = handle_bug_report(None, false, false, true).await;

@@ -339,11 +339,26 @@ mod tests {
             let mut content = String::new();
 
             // Generate content with newlines to avoid LineTooLong
-            for _i in 0..(size / 100) {
+            // Each line is 99 chars + newline = 100 bytes
+            let num_lines = size / 100;
+            for _i in 0..num_lines {
                 content.push_str(&"a".repeat(99));
                 content.push('\n');
             }
+            // Pad to exact size to ensure we're above threshold
+            let remaining = size - content.len();
+            if remaining > 0 {
+                // Add remaining as short lines to avoid LineTooLong
+                for _ in 0..remaining {
+                    content.push('b');
+                }
+            }
             let content_bytes = content.as_bytes();
+
+            // Verify content is actually above threshold
+            prop_assert!(content_bytes.len() > LARGE_FILE_THRESHOLD,
+                "Content size {} should be > threshold {}",
+                content_bytes.len(), LARGE_FILE_THRESHOLD);
 
             // Without flag - should skip large files
             let decision = classifier.should_parse_with_options(&path, content_bytes, false);
