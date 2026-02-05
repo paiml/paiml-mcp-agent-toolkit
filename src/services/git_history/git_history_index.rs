@@ -98,7 +98,7 @@ pub enum GitHistoryError {
 /// Git history index using SQLite
 /// Stores commit messages with embeddings for semantic search
 pub struct GitHistoryIndex {
-    conn: Connection,
+    pub(crate) conn: Connection,
 }
 
 impl GitHistoryIndex {
