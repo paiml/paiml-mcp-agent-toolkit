@@ -44,6 +44,7 @@ impl CAstParser {
 // Keep any other types that were exported
 // (The rest of the original implementation is preserved in ast_c_compat.rs)
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;

@@ -15,6 +15,7 @@ pub use super::ast_rust_compat::{
 // Keep any other types that were exported
 // (The rest of the original implementation is preserved in ast_rust_compat.rs)
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;

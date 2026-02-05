@@ -525,6 +525,7 @@ impl PerfectionScoreCalculator {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -598,6 +599,7 @@ mod tests {
 }
 
 /// EXTREME TDD coverage tests for perfection_score module
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod coverage_tests {
     use super::*;

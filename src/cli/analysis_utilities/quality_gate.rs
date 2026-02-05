@@ -1532,6 +1532,7 @@ pub fn get_severity_icon(severity: &str) -> &'static str {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod quality_gate_unit_tests {
     use super::*;

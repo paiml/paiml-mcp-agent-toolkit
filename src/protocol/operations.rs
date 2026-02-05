@@ -250,6 +250,7 @@ fn generate_todos_from_requirement(requirement: &str, seed: u64, granularity: &s
     todos
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -329,6 +330,7 @@ mod tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;

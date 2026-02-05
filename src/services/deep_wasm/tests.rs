@@ -1,5 +1,6 @@
 //! Integration tests for deep WASM module
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod integration_tests {
     use crate::services::deep_wasm::*;

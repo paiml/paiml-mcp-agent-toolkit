@@ -297,6 +297,7 @@ pub fn score_project(project_path: &Path) -> PopperScorerResult<PopperScore> {
     PopperOrchestrator::new().score(project_path)
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

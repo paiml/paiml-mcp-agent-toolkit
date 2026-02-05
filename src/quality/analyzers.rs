@@ -44,6 +44,7 @@ impl QualityAnalyzer for EfficiencyAnalyzer {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod coverage_tests {
     use super::*;

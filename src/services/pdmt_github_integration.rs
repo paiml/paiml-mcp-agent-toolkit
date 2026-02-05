@@ -756,6 +756,7 @@ impl Default for PdmtGitHubService {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -906,6 +907,7 @@ mod tests {
         assert_eq!(service.extract_issue_type_from_title("Random title"), IssueType::Feature);
     }
 }
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;

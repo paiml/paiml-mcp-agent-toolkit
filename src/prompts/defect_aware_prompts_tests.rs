@@ -1,6 +1,7 @@
 // RED tests for DefectAwarePromptGenerator (EXTREME TDD)
 // These tests are written BEFORE implementation
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use crate::prompts::DefectAwarePromptGenerator;

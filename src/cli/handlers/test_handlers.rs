@@ -346,6 +346,7 @@ async fn run_integration_tests(_timeout: u64, output: Option<PathBuf>) -> Result
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     #[cfg(not(feature = "skip-slow-tests"))] // Import only needed when slow tests enabled

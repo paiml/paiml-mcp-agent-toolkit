@@ -412,6 +412,7 @@ fn write_qg_markdown_table_rows(output: &mut String, results: &QualityGateResult
     Ok(())
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod quality_checks_part3_tests {
     use super::*;

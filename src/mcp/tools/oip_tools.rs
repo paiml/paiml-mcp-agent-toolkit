@@ -202,6 +202,7 @@ pub fn analyze_oip_summary(request: AnalyzeOipSummaryRequest) -> Result<AnalyzeO
     })
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

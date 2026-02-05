@@ -1,9 +1,9 @@
 {
-  "total_runs": 252,
-  "cache_hits": 176,
-  "cache_misses": 76,
-  "avg_cache_hit_time_ms": 5.732954545454545,
-  "avg_cache_miss_time_ms": 317.13157894736827,
-  "last_full_rebuild": "2026-02-04T10:35:50.967658306Z",
-  "cache_size_bytes": 503
+  "total_runs": 305,
+  "cache_hits": 216,
+  "cache_misses": 89,
+  "avg_cache_hit_time_ms": 5.48148148148148,
+  "avg_cache_miss_time_ms": 273.4831460674156,
+  "last_full_rebuild": "2026-02-05T06:03:41.311552905Z",
+  "cache_size_bytes": 501
 }

@@ -97,6 +97,7 @@ pub async fn put_content(
 }
 
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     // use super::*; // Unused in simple tests
@@ -108,6 +109,7 @@ mod tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;

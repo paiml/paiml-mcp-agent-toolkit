@@ -235,6 +235,7 @@ fn has_source_extension(path: &std::path::Path) -> bool {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

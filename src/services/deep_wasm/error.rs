@@ -37,6 +37,7 @@ pub enum DeepWasmError {
 
 pub type DeepWasmResult<T> = Result<T, DeepWasmError>;
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

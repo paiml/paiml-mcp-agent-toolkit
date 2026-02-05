@@ -55,6 +55,7 @@ lazy_static! {
         Regex::new(r"typedef\s+(?:struct\s+)?(\w+)").expect("Hardcoded regex pattern must be valid"),
     ];
 }
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;

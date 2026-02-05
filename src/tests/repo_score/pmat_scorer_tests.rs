@@ -2,6 +2,7 @@
 // Tests Category F: PMAT Compliance (5 points)
 // All tests should FAIL until PmatScorer is implemented
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod pmat_scorer_tests {
     use crate::tests::repo_score::test_utils::*;

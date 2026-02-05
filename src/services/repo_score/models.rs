@@ -339,6 +339,7 @@ impl ScoreMetadata {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

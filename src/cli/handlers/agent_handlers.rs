@@ -409,6 +409,7 @@ async fn load_daemon_config(config_path: &PathBuf) -> Result<DaemonConfig> {
     Ok(config)
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -803,6 +804,7 @@ health_check_interval_secs = 30
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;

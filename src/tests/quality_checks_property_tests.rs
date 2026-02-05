@@ -232,6 +232,7 @@ fn extract_files_from_duplicate_message(message: &str) -> Option<Vec<String>> {
         .map(|files_part| files_part.split(", ").map(String::from).collect())
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod additional_property_tests {
     use super::*;
@@ -271,6 +272,7 @@ mod additional_property_tests {
 
 /// Unit tests for quality gate check display and performance metrics functionality
 /// These tests specifically verify the fixes for issues #30 and #31.
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod unit_tests {
     use super::*;

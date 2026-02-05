@@ -3,6 +3,7 @@
 //! Tests for enhanced correlation with DWARF line program integration.
 //! These tests MUST fail until implementation is complete.
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod line_program_integration_tests {
     use crate::services::deep_wasm::correlation_engine::CorrelationEngine;
@@ -331,6 +332,7 @@ mod line_program_integration_tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod enhanced_confidence_scoring_tests {
     use crate::services::deep_wasm::correlation_engine::CorrelationEngine;

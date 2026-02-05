@@ -3,6 +3,7 @@
 //! These tests ensure that deep_context.md properly analyzes and displays
 //! AST information for ALL supported languages.
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod red_phase_tests {
     use std::fs;
@@ -351,6 +352,7 @@ export function tsFunc(x: number): number {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod integration_tests {
     use std::fs;

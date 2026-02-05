@@ -494,6 +494,7 @@ fn format_as_sarif(result: &ComprehensiveAnalysisResult) -> Result<String> {
     serde_json::to_string_pretty(&sarif).map_err(Into::into)
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1351,6 +1352,7 @@ mod tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use super::*;

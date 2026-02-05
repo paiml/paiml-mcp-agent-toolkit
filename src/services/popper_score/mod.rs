@@ -58,5 +58,6 @@ pub use models::*;
 pub use orchestrator::*;
 pub use scorer::*;
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests;

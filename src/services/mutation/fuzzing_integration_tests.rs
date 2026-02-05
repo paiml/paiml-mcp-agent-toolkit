@@ -2,6 +2,7 @@
 //!
 //! EXTREME TDD: RED PHASE - These tests MUST fail until implementation is complete
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod fuzzing_red_tests {
     use crate::services::mutation::{

@@ -13,6 +13,7 @@ pub trait AstCacheManager: Send + Sync {
         Fut: std::future::Future<Output = Result<FileContext>> + Send;
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;

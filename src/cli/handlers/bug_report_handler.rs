@@ -147,6 +147,7 @@ pub fn capture_command_error_with_code(command: &str, args: &[String], error: &s
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -492,6 +492,7 @@ fn format_violations_markdown(grouped: &HashMap<String, Vec<&QualityViolation>>)
     output
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -735,6 +736,7 @@ mod tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;
@@ -754,6 +756,7 @@ mod property_tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod violation_display_tests {
     use super::*;

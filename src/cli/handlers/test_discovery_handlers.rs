@@ -919,6 +919,7 @@ fn extract_number(line: &str, keyword: &str) -> Option<usize> {
     None
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

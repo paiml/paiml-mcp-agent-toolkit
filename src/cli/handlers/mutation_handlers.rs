@@ -337,6 +337,7 @@ fn print_summary(score: &MutationScore) {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

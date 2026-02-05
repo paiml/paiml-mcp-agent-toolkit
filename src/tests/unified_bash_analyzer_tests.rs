@@ -184,6 +184,7 @@ done
 }
 
 /// Test 7: Property-Based Test - Various Function Counts
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use super::*;

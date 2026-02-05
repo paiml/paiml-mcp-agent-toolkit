@@ -565,9 +565,57 @@ async fn run_dead_code_analysis(_path: &Path) -> Result<DeadCodeAnalysis, Error>
     })
 }
 
-async fn run_satd_analysis(_path: &Path) -> Result<SatdAnalysis, Error> {
-    // TODO: Implement actual SATD analysis call
-    Err(Error::NotImplemented)
+async fn run_satd_analysis(path: &Path) -> Result<SatdAnalysis, Error> {
+    use crate::services::satd_detector::SATDDetector;
+    use walkdir::WalkDir;
+
+    let detector = SATDDetector::new();
+    let mut todos = Vec::new();
+    let mut fixmes = Vec::new();
+    let mut hacks = Vec::new();
+    let mut tech_debt = Vec::new();
+
+    // Walk directory and analyze files
+    for entry in WalkDir::new(path)
+        .into_iter()
+        .filter_map(|e| e.ok())
+        .filter(|e| e.path().is_file())
+        .filter(|e| {
+            e.path()
+                .extension()
+                .map(|ext| matches!(ext.to_str(), Some("rs" | "py" | "ts" | "js" | "go")))
+                .unwrap_or(false)
+        })
+    {
+        let file_path = entry.path();
+        if let Ok(content) = std::fs::read_to_string(file_path) {
+            if let Ok(debts) = detector.extract_from_content(&content, file_path) {
+                for debt in debts {
+                    let comment = SatdComment {
+                        location: format!("{}:{}", file_path.display(), debt.line),
+                        comment: debt.text.clone(),
+                    };
+                    match debt.text.to_uppercase() {
+                        t if t.contains("TODO") => todos.push(comment),
+                        t if t.contains("FIXME") => fixmes.push(comment),
+                        t if t.contains("HACK") || t.contains("XXX") => hacks.push(comment),
+                        _ => tech_debt.push(comment),
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(SatdAnalysis {
+        design_debt_count: tech_debt.len(),
+        code_debt_count: hacks.len(),
+        test_debt_count: 0, // Would need test-specific detection
+        doc_debt_count: 0,  // Would need doc-specific detection
+        todos,
+        fixmes,
+        hacks,
+        tech_debt,
+    })
 }
 
 // Analysis result structs
@@ -651,6 +699,7 @@ enum Error {
     AnalysisFailed(String),
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -49,6 +49,7 @@ pub mod churn;
 pub mod complexity_bound;
 pub mod comply_config;
 pub mod dag;
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 pub mod dag_property_tests;
 pub mod dead_code;
@@ -70,6 +71,7 @@ pub mod tdg;
 pub mod template;
 pub mod unified_ast;
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -214,6 +216,7 @@ mod tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;
@@ -233,6 +236,7 @@ mod property_tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod coverage_tests {
     //! EXTREME TDD coverage tests for models/mod.rs

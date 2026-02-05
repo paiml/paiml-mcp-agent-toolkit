@@ -93,6 +93,7 @@ fn map_to_vec(map: &HashMap<usize, f64>, size: usize) -> Vec<f64> {
     vec
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

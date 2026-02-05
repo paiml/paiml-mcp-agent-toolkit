@@ -34,12 +34,15 @@ pub mod source_map_handler;
 pub mod types;
 pub mod wasm_inspector;
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests;
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod dwarf_parser_phase2_tests;
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod correlation_engine_phase2_tests;
 

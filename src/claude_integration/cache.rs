@@ -245,6 +245,7 @@ pub struct CacheMetrics {
     pub l2_size: usize,
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

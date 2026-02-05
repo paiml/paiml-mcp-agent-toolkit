@@ -247,6 +247,7 @@ fn default_cognitive_error() -> u32 {
     30
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -723,6 +724,7 @@ dead_code_threshold = 2.0
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;

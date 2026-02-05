@@ -154,6 +154,7 @@ fn extract_test_name_from_pytest(line: &str) -> Option<String> {
     None
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

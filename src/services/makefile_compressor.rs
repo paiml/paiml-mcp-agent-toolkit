@@ -406,6 +406,7 @@ fn get_valid_package(parts: &[&str], position: usize) -> Option<String> {
         .map(|pkg| (*pkg).to_string())
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -680,6 +681,7 @@ deps:
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;

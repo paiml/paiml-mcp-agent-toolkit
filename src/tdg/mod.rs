@@ -37,9 +37,11 @@ pub mod storage;
 pub mod storage_backend;
 pub mod web_dashboard;
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod normalization_tests;
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod complexity_entropy_integration_tests;
 
@@ -504,6 +506,7 @@ impl PenaltyTracker {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1119,6 +1122,7 @@ mod tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;

@@ -122,6 +122,7 @@ proptest! {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod integration_tests {
     use super::*;

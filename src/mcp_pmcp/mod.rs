@@ -102,6 +102,7 @@ pub mod quality_handlers;
 pub mod quality_proxy_handler;
 pub mod server;
 pub mod simple_unified_server;
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 pub mod tdg_git_context_tests;
 pub mod tdg_handlers;
@@ -115,6 +116,7 @@ pub use server::PmcpServer;
 // Export the discovery service for MCP optimization
 pub use discovery::{Context, DiscoveryMetrics, DiscoveryService, ToolInfo};
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;

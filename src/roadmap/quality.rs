@@ -440,6 +440,7 @@ fn extract_percentage_value(text: &str) -> Option<u8> {
     num_str.parse::<f64>().ok().map(|val| val as u8)
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -639,6 +640,7 @@ mod tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;

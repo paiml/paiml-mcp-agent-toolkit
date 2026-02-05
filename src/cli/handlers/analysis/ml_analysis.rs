@@ -9,6 +9,7 @@ pub async fn handle_defect_prediction(cmd: AnalyzeCommands) -> Result<()> {
     crate::cli::handlers::route_analyze_command(cmd).await
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;
@@ -28,6 +29,7 @@ mod property_tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod unit_tests {
     use super::*;
@@ -90,6 +92,7 @@ mod unit_tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod coverage_tests {
     use super::*;

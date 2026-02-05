@@ -2,6 +2,7 @@
 // Tests Category E: Continuous Integration (20 points)
 // All tests should FAIL until CiScorer is implemented
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod ci_scorer_tests {
     use crate::tests::repo_score::test_utils::*;

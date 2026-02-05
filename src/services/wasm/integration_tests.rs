@@ -2,6 +2,7 @@
 //!
 //! These tests use the public API to ensure LLVM coverage properly tracks execution.
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use crate::services::wasm;

@@ -36,6 +36,7 @@ impl ProjectFixture {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use super::*;
@@ -235,6 +236,7 @@ version = "0.1.0""#,
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod integration_tests {
 
@@ -255,6 +257,7 @@ mod integration_tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod regression_tests {
     use super::*;

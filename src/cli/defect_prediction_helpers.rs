@@ -569,6 +569,7 @@ pub fn format_sarif_output(filtered_predictions: &[(String, DefectScore)]) -> Re
     serde_json::to_string_pretty(&sarif).map_err(Into::into)
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1078,6 +1079,7 @@ fn main() {}
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;

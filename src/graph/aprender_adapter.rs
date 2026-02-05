@@ -219,6 +219,7 @@ pub fn louvain_communities(graph: &UndirectedGraph) -> Vec<Vec<usize>> {
     aprender_graph.louvain()
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

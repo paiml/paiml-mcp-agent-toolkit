@@ -361,6 +361,7 @@ impl ViolationDetector {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -381,6 +382,7 @@ mod tests {
         assert_eq!(detector.calculate_repetition_severity(15), Severity::High);
     }
 }
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;
@@ -400,6 +402,7 @@ mod property_tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod coverage_tests {
     use super::*;

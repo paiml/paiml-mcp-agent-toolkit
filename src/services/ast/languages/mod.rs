@@ -26,6 +26,7 @@ pub mod c_cpp_strategy;
 #[cfg(feature = "kotlin-ast")]
 pub mod kotlin_strategy;
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;

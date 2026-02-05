@@ -1,3 +1,4 @@
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod project_meta_integration_tests {
     use crate::models::project_meta::MetaFileType;

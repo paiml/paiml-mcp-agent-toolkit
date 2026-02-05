@@ -99,6 +99,7 @@ fn template_compression_works() {
     println!("Compressed templates file size: {compressed_size} bytes");
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod benchmarks {
 

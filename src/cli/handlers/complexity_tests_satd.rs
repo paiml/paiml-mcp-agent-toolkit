@@ -1,3 +1,4 @@
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod satd_format_tests {
     use super::*;
@@ -251,6 +252,7 @@ mod satd_format_tests {
 
 // Extended Coverage Tests - Churn Analysis
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod churn_tests {
     use super::*;

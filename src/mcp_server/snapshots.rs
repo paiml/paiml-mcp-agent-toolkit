@@ -153,6 +153,7 @@ impl Default for SnapshotManager {
 // Cap'n Proto serialization is implemented via capnp_conversion module
 // Falls back to JSON when Cap'n Proto is not available
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -180,6 +181,7 @@ mod tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;

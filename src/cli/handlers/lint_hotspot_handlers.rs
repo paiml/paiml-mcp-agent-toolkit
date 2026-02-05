@@ -1522,6 +1522,7 @@ fn find_workspace_root(start_path: &Path) -> Result<Option<PathBuf>> {
     Ok(None)
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod lint_hotspot_unit_tests {
     use super::*;

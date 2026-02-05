@@ -205,6 +205,7 @@ pub fn detect_test_command(package_json: &str) -> Result<String> {
     Err(anyhow::anyhow!("No test command found in package.json"))
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

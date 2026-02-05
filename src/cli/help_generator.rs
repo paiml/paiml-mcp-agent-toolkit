@@ -472,6 +472,7 @@ fn truncate_str(s: &str, max_len: usize) -> String {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

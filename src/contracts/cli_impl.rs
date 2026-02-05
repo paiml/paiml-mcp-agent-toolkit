@@ -168,6 +168,7 @@ impl AsAny for Box<dyn ContractValidation> {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;
@@ -187,6 +188,7 @@ mod property_tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -343,6 +345,7 @@ mod tests {
             timeout: 60,
             include: vec![],
             exclude: vec![],
+            extended: false,
         };
 
         let output = handler.output_result(result, &cmd);
@@ -522,6 +525,7 @@ mod tests {
             timeout: 60,
             include: vec![],
             exclude: vec![],
+            extended: false,
         };
 
         let output = handler.output_result(result, &cmd);
@@ -757,6 +761,7 @@ mod tests {
             timeout: 60,
             include: vec![],
             exclude: vec![],
+            extended: false,
         };
 
         let result = handler.handle_analyze_command(cmd).await;
@@ -898,6 +903,7 @@ mod tests {
             timeout: 60,
             include: vec![],
             exclude: vec![],
+            extended: false,
         };
 
         let result = handler.handle_analyze_command(cmd).await;
@@ -1069,6 +1075,7 @@ mod tests {
             timeout: 60,
             include: vec![],
             exclude: vec![],
+            extended: false,
         };
 
         let output = handler.output_result(result, &cmd);
@@ -1216,6 +1223,7 @@ mod tests {
             timeout: 90,
             include: vec![],
             exclude: vec!["target/**".to_string()],
+            extended: false,
         };
 
         let result = handler.handle_analyze_command(cmd).await;

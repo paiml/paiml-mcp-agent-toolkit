@@ -5,6 +5,7 @@
 use std::fs;
 use tempfile::TempDir;
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod red_phase_tests {
     use super::*;
@@ -371,6 +372,7 @@ export { usedFunction };
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod green_phase_implementation {
 
@@ -446,6 +448,7 @@ mod green_phase_implementation {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod refactor_phase_quality {
     use super::*;

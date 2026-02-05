@@ -14,6 +14,7 @@ mod satd_facade_tests {
             path: std::path::PathBuf::from("/test/path"),
             strict_mode: true,
             include_tests: false,
+            extended: false,
         };
         let cloned = request.clone();
         assert_eq!(cloned.path, request.path);
@@ -27,6 +28,7 @@ mod satd_facade_tests {
             path: std::path::PathBuf::from("/test"),
             strict_mode: false,
             include_tests: true,
+            extended: false,
         };
         let debug = format!("{:?}", request);
         assert!(debug.contains("SatdAnalysisRequest"));

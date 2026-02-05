@@ -44,6 +44,7 @@ use super::comply_cb_detect::{
 // Hypothesis A: CB-050 correctly identifies all code-level stubs without FPs
 // ============================================================================
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod cb050_falsification {
     use super::*;
@@ -397,6 +398,7 @@ mod cb050_falsification {
 // Hypothesis B: Regex is sufficient for GPU pattern detection (>90% precision)
 // ============================================================================
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod cb060_falsification {
     use super::*;
@@ -821,6 +823,7 @@ mod cb060_falsification {
 // SATD MANIFESTATION TYPE TESTS (15 tests)
 // ============================================================================
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod satd_manifestation_falsification {
     use super::super::comply_cb_detect::{
@@ -999,6 +1002,7 @@ mod satd_manifestation_falsification {
 // SUPPRESSION LOGIC TESTS (15 tests)
 // ============================================================================
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod suppression_falsification {
     use super::super::comply_cb_detect::{SuppressionConfig, SuppressionRule};
@@ -1319,6 +1323,7 @@ mod suppression_falsification {
 // Hypothesis C: Checks are stable on unseen "Wild" code
 // ============================================================================
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod integration_falsification {
     // Tests 086-100: End-to-end comply behavior and Wild stability

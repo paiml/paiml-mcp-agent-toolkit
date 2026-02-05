@@ -194,6 +194,7 @@ impl Default for RustDefectDetector {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -244,6 +245,7 @@ mod tests {
     fn test_excludes_test_code() {
         let detector = RustDefectDetector::new();
         let code = r#"
+            #[cfg_attr(coverage_nightly, coverage(off))]
             #[cfg(test)]
             mod tests {
                 fn test_foo() {

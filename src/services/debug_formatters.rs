@@ -195,6 +195,7 @@ pub fn format_markdown(analysis: &DebugAnalysis) -> Result<String> {
     Ok(output)
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

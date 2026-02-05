@@ -378,6 +378,7 @@ pub fn run_meta_falsification(_project_path: &Path) -> Result<bool> {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -437,6 +438,7 @@ mod tests {
                 println!("Hello, world!");
             }
 
+            #[cfg_attr(coverage_nightly, coverage(off))]
             #[cfg(test)]
             mod tests {
                 #[test]

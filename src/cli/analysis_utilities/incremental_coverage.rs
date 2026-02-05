@@ -371,6 +371,7 @@ fn format_incremental_coverage_delta(
     Ok(output)
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod incremental_coverage_tests {
     use super::*;

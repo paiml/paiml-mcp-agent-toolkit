@@ -104,6 +104,7 @@ fn test_panic() { panic!("expected"); }
 /// Public function
 pub fn process() {}
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     #[test]

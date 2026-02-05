@@ -619,6 +619,7 @@ fn estimate_cost(op: &Operator) -> u32 {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

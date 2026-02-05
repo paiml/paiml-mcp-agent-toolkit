@@ -152,6 +152,7 @@ impl PmatModule for TransformerImpl {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

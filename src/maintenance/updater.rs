@@ -180,6 +180,7 @@ fn process_ticket_update(
     Ok(update_roadmap_ticket(roadmap, ticket_id, &commit.hash)?)
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

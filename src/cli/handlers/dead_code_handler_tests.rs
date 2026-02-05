@@ -3,6 +3,7 @@
 //! Sprint 62: Ensures CLI handler uses cargo-based analyzer for accurate detection
 //! Following Toyota Way TDD principles with comprehensive coverage
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod cli_dead_code_handler_tests {
     use super::super::*;

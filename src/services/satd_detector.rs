@@ -302,6 +302,156 @@ impl DebtClassifier {
         }
     }
 
+    /// Extended mode: includes euphemisms used by AI coding assistants to bypass SATD detection
+    /// Detects: placeholder, stub, simplified, demo, mock, dummy, fake, hardcoded, "for now", WIP
+    /// See issue #149: https://github.com/paiml/paiml-mcp-agent-toolkit/issues/149
+    #[must_use]
+    pub fn new_extended() -> Self {
+        // Extended mode includes standard patterns PLUS euphemism patterns
+        let mut patterns = vec![
+            // Standard patterns (same as new())
+            DebtPattern {
+                regex: r"(?i)\b(hack|kludge|smell|xxx)\b".to_string(),
+                category: DebtCategory::Design,
+                severity: Severity::Medium,
+                description: "Architectural compromise".to_string(),
+            },
+            DebtPattern {
+                regex: r"(?i)\b(fixme|broken|bug)\b".to_string(),
+                category: DebtCategory::Defect,
+                severity: Severity::High,
+                description: "Known defect".to_string(),
+            },
+            DebtPattern {
+                regex: r"(?i)\btodo\b".to_string(),
+                category: DebtCategory::Requirement,
+                severity: Severity::Low,
+                description: "Missing feature".to_string(),
+            },
+            DebtPattern {
+                regex: r"(?i)\b(security|vuln|vulnerability|cve|xss)\b".to_string(),
+                category: DebtCategory::Security,
+                severity: Severity::Critical,
+                description: "Security concern".to_string(),
+            },
+            DebtPattern {
+                regex: r"(?i)\bperformance\s+(issue|problem)\b".to_string(),
+                category: DebtCategory::Performance,
+                severity: Severity::Medium,
+                description: "Performance issue".to_string(),
+            },
+            DebtPattern {
+                regex: r"(?i)\btest.*\b(disabled|skipped|failing)\b".to_string(),
+                category: DebtCategory::Test,
+                severity: Severity::Medium,
+                description: "Test debt".to_string(),
+            },
+            DebtPattern {
+                regex: r"(?i)\btechnical\s+debt\b".to_string(),
+                category: DebtCategory::Design,
+                severity: Severity::Medium,
+                description: "Explicit technical debt".to_string(),
+            },
+            DebtPattern {
+                regex: r"(?i)\bcode\s+smell\b".to_string(),
+                category: DebtCategory::Design,
+                severity: Severity::Medium,
+                description: "Code smell".to_string(),
+            },
+            DebtPattern {
+                regex: r"(?i)\b(workaround|temp|temporary)\b".to_string(),
+                category: DebtCategory::Design,
+                severity: Severity::Low,
+                description: "Temporary solution".to_string(),
+            },
+            DebtPattern {
+                regex: r"(?i)\b(optimize|slow)\b".to_string(),
+                category: DebtCategory::Performance,
+                severity: Severity::Low,
+                description: "Performance optimization needed".to_string(),
+            },
+        ];
+
+        // EXTENDED PATTERNS: Euphemisms that hide technical debt (issue #149)
+        // These are commonly used by AI coding assistants to bypass SATD detection
+        let extended_patterns = vec![
+            // Placeholder patterns - indicate incomplete implementation
+            DebtPattern {
+                regex: r"(?i)\bplaceholder\b".to_string(),
+                category: DebtCategory::Requirement,
+                severity: Severity::Medium,
+                description: "Placeholder - incomplete implementation".to_string(),
+            },
+            // Stub patterns - indicate missing implementation
+            DebtPattern {
+                regex: r"(?i)\bstub\b".to_string(),
+                category: DebtCategory::Requirement,
+                severity: Severity::Medium,
+                description: "Stub - missing implementation".to_string(),
+            },
+            // Simplified patterns - indicate corners were cut
+            DebtPattern {
+                regex: r"(?i)\bsimplified\b".to_string(),
+                category: DebtCategory::Design,
+                severity: Severity::Low,
+                description: "Simplified - corners cut".to_string(),
+            },
+            // Demo/demonstration patterns - indicate non-production code
+            DebtPattern {
+                regex: r"(?i)\b(for\s+)?demonstrat(e|ion)\b".to_string(),
+                category: DebtCategory::Requirement,
+                severity: Severity::Low,
+                description: "Demo code - not production ready".to_string(),
+            },
+            // Mock/dummy/fake patterns - indicate fake implementations
+            DebtPattern {
+                regex: r"(?i)\b(mock|dummy|fake)\b".to_string(),
+                category: DebtCategory::Test,
+                severity: Severity::Low,
+                description: "Mock/dummy - fake implementation".to_string(),
+            },
+            // Hardcoded patterns - indicate missing configuration
+            DebtPattern {
+                regex: r"(?i)\bhardcoded\b".to_string(),
+                category: DebtCategory::Design,
+                severity: Severity::Medium,
+                description: "Hardcoded - missing configuration".to_string(),
+            },
+            // "For now" patterns - indicate temporary solutions
+            DebtPattern {
+                regex: r"(?i)\bfor\s+now\b".to_string(),
+                category: DebtCategory::Design,
+                severity: Severity::Medium,
+                description: "For now - temporary solution".to_string(),
+            },
+            // WIP patterns - work in progress
+            DebtPattern {
+                regex: r"\bWIP\b".to_string(),
+                category: DebtCategory::Requirement,
+                severity: Severity::Medium,
+                description: "WIP - work in progress".to_string(),
+            },
+            // Skip/bypass patterns - indicate missing validation
+            DebtPattern {
+                regex: r"(?i)\b(skip|bypass)\s+(for\s+now|this|validation)\b".to_string(),
+                category: DebtCategory::Design,
+                severity: Severity::High,
+                description: "Skip/bypass - missing validation".to_string(),
+            },
+        ];
+
+        patterns.extend(extended_patterns);
+
+        let regex_strings: Vec<&str> = patterns.iter().map(|p| p.regex.as_str()).collect();
+        let compiled_patterns =
+            RegexSet::new(&regex_strings).expect("Failed to compile extended SATD patterns");
+
+        Self {
+            patterns,
+            compiled_patterns,
+        }
+    }
+
     #[must_use]
     pub fn new_strict() -> Self {
         // Strict mode only includes explicit SATD markers
@@ -413,7 +563,22 @@ impl SATDDetector {
 
     #[must_use]
     pub fn new_strict() -> Self {
-        Self::with_config(true)
+        Self::with_classifier(DebtClassifier::new_strict())
+    }
+
+    /// Extended mode: detects euphemisms like placeholder, stub, "for now"
+    /// See issue #149
+    #[must_use]
+    pub fn new_extended() -> Self {
+        Self::with_classifier(DebtClassifier::new_extended())
+    }
+
+    fn with_classifier(debt_classifier: DebtClassifier) -> Self {
+        let patterns = debt_classifier.compiled_patterns.clone();
+        Self {
+            patterns,
+            debt_classifier,
+        }
     }
 
     fn with_config(strict_mode: bool) -> Self {

@@ -344,6 +344,7 @@ pub use crate::services::lightweight_provability_analyzer::{ProofSummary, Functi
 pub use crate::services::satd_detector::SATDAnalysisResult;
 pub use crate::services::deep_context::{ChurnAnalysis, DependencyGraph};
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

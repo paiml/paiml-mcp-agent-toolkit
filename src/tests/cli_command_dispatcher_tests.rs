@@ -1,3 +1,4 @@
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod cli_command_dispatcher_tests {
     use crate::cli::{

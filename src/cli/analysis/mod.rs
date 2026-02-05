@@ -29,6 +29,7 @@ pub use graph_metrics::handle_analyze_graph_metrics;
 pub use name_similarity::handle_analyze_name_similarity;
 pub use symbol_table::handle_analyze_symbol_table;
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     // use super::*; // Unused in simple tests // Commented out: unused import
@@ -40,6 +41,7 @@ mod tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;

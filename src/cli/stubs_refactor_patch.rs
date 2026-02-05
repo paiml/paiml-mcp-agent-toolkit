@@ -60,6 +60,7 @@ pub fn format_dead_code_output(
 //
 // This follows the Toyota Way principle of continuous improvement
 // through proper modularization and single responsibility.
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;

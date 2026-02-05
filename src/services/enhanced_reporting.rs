@@ -923,6 +923,7 @@ impl Default for EnhancedReportingService {
 #[path = "enhanced_reporting_tests.rs"]
 mod enhanced_reporting_tests_external;
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

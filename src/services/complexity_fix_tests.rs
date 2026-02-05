@@ -2,6 +2,7 @@
 //! 
 //! These tests ensure that our complexity fixes work correctly and prevent regression.
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

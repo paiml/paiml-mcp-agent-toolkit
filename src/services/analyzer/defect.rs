@@ -88,6 +88,7 @@ pub struct DefectReport {
     pub total_files_analyzed: usize,
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;

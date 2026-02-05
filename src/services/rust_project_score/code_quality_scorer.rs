@@ -469,6 +469,7 @@ impl Scorer for CodeQualityScorer {
 unsafe impl Send for CodeQualityScorer {}
 unsafe impl Sync for CodeQualityScorer {}
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

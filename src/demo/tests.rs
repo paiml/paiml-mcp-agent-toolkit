@@ -86,6 +86,7 @@ async fn test_demo_runner_creation() {
     assert!(runner.is_ok());
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod demo_server_tests {
     use super::*;
@@ -114,6 +115,7 @@ mod demo_server_tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod router_tests {
     use super::*;

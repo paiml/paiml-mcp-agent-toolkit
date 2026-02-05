@@ -1,6 +1,7 @@
 // RED PHASE TDD tests for Claude integration
 // These tests define the expected behavior before implementation
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod red_phase_integration_tests {
     use std::time::{Duration, Instant};
@@ -78,6 +79,7 @@ mod red_phase_integration_tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
 
@@ -107,6 +109,7 @@ mod property_tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod integration_tests {
 

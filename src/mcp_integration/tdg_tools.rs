@@ -347,6 +347,7 @@ fn generate_suggestion(reason: &str, category: &str) -> String {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

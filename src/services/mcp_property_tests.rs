@@ -3,6 +3,7 @@
 //! These tests verify that MCP tool composition workflows maintain consistency
 //! and correctness across different input combinations using property-based testing.
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use proptest::prelude::*;
@@ -198,6 +199,7 @@ mod tests {
     }
 
     /// Unit tests for MCP-specific edge cases
+    #[cfg_attr(coverage_nightly, coverage(off))]
     #[cfg(test)]
     mod unit_tests {
         use super::*;

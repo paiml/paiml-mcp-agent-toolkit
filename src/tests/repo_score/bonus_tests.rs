@@ -2,6 +2,7 @@
 // Tests Bonus Points Detection (+10 maximum)
 // All tests should FAIL until BonusDetector is implemented
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod bonus_detector_tests {
     use crate::tests::repo_score::test_utils::*;

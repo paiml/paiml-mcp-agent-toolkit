@@ -26,5 +26,6 @@ pub use pagerank::*;
 pub use structure::*;
 pub use types::*;
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests;

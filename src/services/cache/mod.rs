@@ -1,8 +1,10 @@
 pub mod adapters;
 pub mod advanced_strategies;
 pub mod base;
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 pub mod cache_property_tests;
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 pub mod cache_property_tests_fast;
 pub mod cache_trait;
@@ -37,6 +39,7 @@ pub use strategies::{
     TemplateCacheStrategy,
 };
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod coverage_tests {
     use super::*;
@@ -471,6 +474,7 @@ mod coverage_tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use super::*;

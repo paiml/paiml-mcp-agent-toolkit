@@ -2,6 +2,7 @@
 // Tests Category A: Documentation Quality (20 points)
 // All tests should FAIL until ReadmeScorer is implemented
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod readme_scorer_tests {
     use crate::tests::repo_score::test_utils::*;

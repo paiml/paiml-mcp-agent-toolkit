@@ -27,6 +27,8 @@ pub struct SatdAnalysisConfig {
     pub timeout: u64,
     pub include: Vec<String>,
     pub exclude: Vec<String>,
+    /// Extended mode: detects euphemisms like placeholder, stub, "for now" (issue #149)
+    pub extended: bool,
 }
 
 // Sprint 89 GREEN Phase: Refactored handle_analyze_satd function
@@ -73,11 +75,17 @@ async fn execute_satd_analysis(config: &SatdAnalysisConfig) -> Result<SatdAnalys
     let registry = Arc::new(ServiceRegistry::new());
     let facade = SatdFacade::new(registry);
 
+    // Log extended mode if enabled
+    if config.extended {
+        eprintln!("📋 Extended mode: detecting euphemisms (placeholder, stub, for now...)");
+    }
+
     // Build analysis request
     let request = SatdAnalysisRequest {
         path: config.path.clone(),
         strict_mode: config.strict,
         include_tests: config.include_tests,
+        extended: config.extended,
     };
 
     // Perform analysis
@@ -491,6 +499,7 @@ fn print_metrics(result: &SatdAnalysisResult) {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -516,6 +525,7 @@ mod tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;

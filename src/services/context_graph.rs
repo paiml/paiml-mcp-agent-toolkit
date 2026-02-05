@@ -238,6 +238,7 @@ impl Default for ProjectContextGraph {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -431,6 +432,7 @@ mod tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod coverage_tests {
     use super::*;
@@ -1073,6 +1075,7 @@ mod coverage_tests {
     // Property-Based Tests
     // ============================================================
 
+    #[cfg_attr(coverage_nightly, coverage(off))]
     #[cfg(test)]
     mod property_tests {
         use super::*;

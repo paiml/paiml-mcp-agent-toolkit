@@ -694,6 +694,7 @@ impl Default for KeyboardHandler {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

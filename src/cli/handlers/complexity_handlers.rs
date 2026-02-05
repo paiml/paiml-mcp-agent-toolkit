@@ -10,6 +10,7 @@ use std::path::{Path, PathBuf};
 use std::sync::mpsc::channel;
 use std::time::Duration;
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod complexity_handlers_tests;
 
@@ -1633,6 +1634,7 @@ pub async fn handle_analyze_dag(
     Ok(())
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod satd_formatting_tests {
     use super::*;

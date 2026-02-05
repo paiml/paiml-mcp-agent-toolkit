@@ -144,6 +144,7 @@ fn print_predictions_table(predictions: &[PredictionResult]) {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

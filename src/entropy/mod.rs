@@ -116,6 +116,7 @@ impl EntropyAnalyzer {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -134,6 +135,7 @@ mod tests {
         assert!(!analyzer.config.pattern_types.is_empty());
     }
 }
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;

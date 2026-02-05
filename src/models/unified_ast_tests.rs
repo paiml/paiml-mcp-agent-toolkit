@@ -430,6 +430,7 @@ fn test_unified_ast_node_languages() {
     assert_eq!(py_node.lang, Language::Python);
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;

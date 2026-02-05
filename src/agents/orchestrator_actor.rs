@@ -100,6 +100,7 @@ impl Handler<ValidateRequest> for OrchestratorActor {
 // We don't need to implement PmatAgent for OrchestratorActor for now
 // since the trait requires AgentMessage which our request types don't implement
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

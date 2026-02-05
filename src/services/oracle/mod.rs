@@ -17,6 +17,7 @@ pub mod pdca_loop;
 pub mod signal_collector;
 pub mod types;
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests;
 

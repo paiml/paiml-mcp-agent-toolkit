@@ -3,6 +3,7 @@
 //! These tests verify that complexity and entropy metrics work together correctly
 //! and contribute appropriately to the final TDG score.
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod integration_tests {
     use crate::tdg::analyzer_ast::TdgAnalyzerAst;
@@ -303,6 +304,7 @@ fn func5() -> i32 { return 42; }
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use crate::tdg::analyzer_ast::TdgAnalyzerAst;

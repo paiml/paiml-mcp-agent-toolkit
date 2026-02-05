@@ -846,6 +846,7 @@ fn update_stack_depth(op: &Operator, depth: &mut u32) {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

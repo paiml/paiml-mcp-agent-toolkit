@@ -313,6 +313,7 @@ mod cli_timeout_integration {
             timeout: 60, // This field must exist
             include: vec![],
             exclude: vec![],
+            extended: false,
         }) {
             AnalyzeCommands::Satd { timeout, .. } => timeout,
             _ => panic!("Pattern match should work"),

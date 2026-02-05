@@ -185,6 +185,7 @@ pub struct PoolStats {
     pub circuit_state: CircuitState,
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

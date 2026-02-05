@@ -490,6 +490,7 @@ fn extract_function_name(line: &str) -> Option<String> {
     None
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -537,6 +538,7 @@ fn add(a: i32, b: i32) -> i32 {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;

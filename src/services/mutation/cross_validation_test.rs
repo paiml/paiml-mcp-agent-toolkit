@@ -1,5 +1,6 @@
 //! Cross-Validation Tests for ML Predictor
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod cross_validation_tests {
     use crate::services::mutation::{

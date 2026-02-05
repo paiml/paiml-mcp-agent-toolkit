@@ -432,6 +432,7 @@ pub fn calculate_maintainability_index(
     mi.max(0.0).min(100.0)
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

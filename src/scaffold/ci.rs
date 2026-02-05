@@ -156,6 +156,7 @@ pub fn install_github_workflow(project_dir: &Path, config: &WorkflowConfig) -> s
     Ok(())
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -1,5 +1,6 @@
 // Web dashboard tests extracted from web_dashboard.rs for file health (CB-040).
 // This file is include!()'d into web_dashboard.rs scope.
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -794,6 +795,7 @@ mod tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use super::*;
@@ -981,6 +983,7 @@ mod property_tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod integration_tests {
     use super::*;

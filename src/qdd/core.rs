@@ -193,6 +193,7 @@ impl QualityMetrics {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -301,6 +302,7 @@ mod tests {
         assert!(!profile.meets_thresholds(&metrics));
     }
 }
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;

@@ -107,6 +107,7 @@ pub fn ticket_file_updated(commit: &CommitInfo, ticket_id: &str) -> bool {
     commit.files.iter().any(|f| f.contains(&ticket_file))
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

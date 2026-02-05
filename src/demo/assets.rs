@@ -131,6 +131,7 @@ pub fn get_asset_hash() -> &'static str {
     option_env!("ASSET_HASH").unwrap_or("development")
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     // use super::*; // Unused in simple tests
@@ -142,6 +143,7 @@ mod tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;

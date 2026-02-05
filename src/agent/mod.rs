@@ -35,6 +35,7 @@ pub use state_persistence::{
     QualitySnapshot, QualityThresholds, StatePersistence,
 };
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;

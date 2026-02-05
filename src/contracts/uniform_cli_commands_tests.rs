@@ -1,5 +1,6 @@
 // Uniform CLI commands tests extracted from uniform_cli_commands.rs for file health (CB-040).
 // This file is include!()'d into uniform_cli_commands.rs scope.
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;
@@ -19,6 +20,7 @@ mod property_tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod coverage_tests {
     use super::*;

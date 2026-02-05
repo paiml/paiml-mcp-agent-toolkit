@@ -7,6 +7,7 @@ pub use cli::CliAdapter;
 pub use http::HttpAdapter;
 pub use mcp::McpAdapter;
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     // use super::*; // Unused in simple tests
@@ -18,6 +19,7 @@ mod tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;

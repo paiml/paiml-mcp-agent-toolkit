@@ -3,6 +3,8 @@
 //! A comprehensive toolkit for project analysis, quality assurance, and technical debt management.
 //
 // EXTREME TDD - Quality Cleanup Sprint 26
+// Coverage: Exclude test modules from coverage measurement (nightly only)
+#![cfg_attr(coverage_nightly, feature(coverage_attribute))]
 #![deny(unused_imports)]
 #![deny(unused_variables)]
 //
@@ -557,6 +559,7 @@ fn write_response_to_stdout<W: std::io::Write>(
     Ok(())
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     #[path = "../tests/template_rendering.rs"]
@@ -722,8 +725,297 @@ mod tests {
     // CLI structure coverage boost (Option 2)
     #[path = "../tests/cli_coverage_boost.rs"]
     mod cli_coverage_boost;
+
+    // === MISSING TEST FILES (92 files discovered via Five Whys analysis) ===
+    // BROKEN: uses compile-time env var CARGO_BIN_EXE_pmat
+    // #[path = "../tests/binary_integration.rs"]
+    // mod binary_integration;
+
+    #[path = "../tests/clap_argument_parsing_tests.rs"]
+    mod clap_argument_parsing_tests;
+
+    #[path = "../tests/clap_command_structure_tests.rs"]
+    mod clap_command_structure_tests;
+
+    #[path = "../tests/clap_env_var_tests.rs"]
+    mod clap_env_var_tests;
+
+    #[path = "../tests/cli_basic_tests.rs"]
+    mod cli_basic_tests;
+
+    // BROKEN: Commands API changed
+    // #[path = "../tests/cli_command_dispatcher_tests.rs"]
+    // mod cli_command_dispatcher_tests;
+
+    // BROKEN: handle_context takes 8 args now
+    // #[path = "../tests/cli_handlers_integration_tests.rs"]
+    // mod cli_handlers_integration_tests;
+
+    // BROKEN: SatdSeverity type mismatch, EarlyCliArgs changed
+    // #[path = "../tests/cli_module_tests.rs"]
+    // mod cli_module_tests;
+
+    #[path = "../tests/code_smell_comprehensive_tests.rs"]
+    mod code_smell_comprehensive_tests;
+
+    #[path = "../tests/coverage_boost_analyze_defects_handler.rs"]
+    mod coverage_boost_analyze_defects_handler;
+
+    #[path = "../tests/coverage_boost_analyzer_formatting.rs"]
+    mod coverage_boost_analyzer_formatting;
+
+    #[path = "../tests/coverage_boost_ast_strategies.rs"]
+    mod coverage_boost_ast_strategies;
+
+    #[path = "../tests/coverage_boost_big_o.rs"]
+    mod coverage_boost_big_o;
+
+    #[path = "../tests/coverage_boost_brick_score.rs"]
+    mod coverage_boost_brick_score;
+
+    #[path = "../tests/coverage_boost_check_handlers.rs"]
+    mod coverage_boost_check_handlers;
+
+    #[path = "../tests/coverage_boost_chunker.rs"]
+    mod coverage_boost_chunker;
+
+    #[path = "../tests/coverage_boost_churn.rs"]
+    mod coverage_boost_churn;
+
+    #[path = "../tests/coverage_boost_cli_enums.rs"]
+    mod coverage_boost_cli_enums;
+
+    // BROKEN: ChurnFileInfo removed, is_source_code_file private
+    // #[path = "../tests/coverage_boost_complexity_handlers.rs"]
+    // mod coverage_boost_complexity_handlers;
+
+    #[path = "../tests/coverage_boost_complexity.rs"]
+    mod coverage_boost_complexity;
+
+    #[path = "../tests/coverage_boost_comply_cb_detect.rs"]
+    mod coverage_boost_comply_cb_detect;
+
+    #[path = "../tests/coverage_boost_comprehensive.rs"]
+    mod coverage_boost_comprehensive;
+
+    #[path = "../tests/coverage_boost_configuration_service.rs"]
+    mod coverage_boost_configuration_service;
+
+    #[path = "../tests/coverage_boost_coverage_improvement2.rs"]
+    mod coverage_boost_coverage_improvement2;
+
+    #[path = "../tests/coverage_boost_coverage_improvement.rs"]
+    mod coverage_boost_coverage_improvement;
+
+    #[path = "../tests/coverage_boost_dag_builder.rs"]
+    mod coverage_boost_dag_builder;
+
+    #[path = "../tests/coverage_boost_dead_code_pure.rs"]
+    mod coverage_boost_dead_code_pure;
+
+    #[path = "../tests/coverage_boost_dead_code.rs"]
+    mod coverage_boost_dead_code;
+
+    #[path = "../tests/coverage_boost_debug_analysis.rs"]
+    mod coverage_boost_debug_analysis;
+
+    #[path = "../tests/coverage_boost_defect_analyzers.rs"]
+    mod coverage_boost_defect_analyzers;
+
+    #[path = "../tests/coverage_boost_defect_report.rs"]
+    mod coverage_boost_defect_report;
+
+    #[path = "../tests/coverage_boost_defect_report_svc2.rs"]
+    mod coverage_boost_defect_report_svc2;
+
+    #[path = "../tests/coverage_boost_defect_report_svc.rs"]
+    mod coverage_boost_defect_report_svc;
+
+    // BROKEN: demo module is feature-gated
+    // #[path = "../tests/coverage_boost_demo.rs"]
+    // mod coverage_boost_demo;
+
+    #[path = "../tests/coverage_boost_doc_validator.rs"]
+    mod coverage_boost_doc_validator;
+
+    #[path = "../tests/coverage_boost_enforce.rs"]
+    mod coverage_boost_enforce;
+
+    #[path = "../tests/coverage_boost_enhanced_reporting2.rs"]
+    mod coverage_boost_enhanced_reporting2;
+
+    #[path = "../tests/coverage_boost_enhanced_reporting3.rs"]
+    mod coverage_boost_enhanced_reporting3;
+
+    #[path = "../tests/coverage_boost_enhanced_reporting.rs"]
+    mod coverage_boost_enhanced_reporting;
+
+    #[path = "../tests/coverage_boost_error2.rs"]
+    mod coverage_boost_error2;
+
+    #[path = "../tests/coverage_boost_error.rs"]
+    mod coverage_boost_error;
+
+    #[path = "../tests/coverage_boost_facades.rs"]
+    mod coverage_boost_facades;
+
+    #[path = "../tests/coverage_boost_falsification.rs"]
+    mod coverage_boost_falsification;
+
+    #[path = "../tests/coverage_boost_file_health.rs"]
+    mod coverage_boost_file_health;
+
+    #[path = "../tests/coverage_boost_language_analyzer2.rs"]
+    mod coverage_boost_language_analyzer2;
+
+    #[path = "../tests/coverage_boost_language_analyzer.rs"]
+    mod coverage_boost_language_analyzer;
+
+    #[path = "../tests/coverage_boost_lint_hotspot_handlers.rs"]
+    mod coverage_boost_lint_hotspot_handlers;
+
+    #[path = "../tests/coverage_boost_lint_hotspot.rs"]
+    mod coverage_boost_lint_hotspot;
+
+    #[path = "../tests/coverage_boost_maintenance.rs"]
+    mod coverage_boost_maintenance;
+
+    #[path = "../tests/coverage_boost_mermaid.rs"]
+    mod coverage_boost_mermaid;
+
+    #[path = "../tests/coverage_boost_metric_trends.rs"]
+    mod coverage_boost_metric_trends;
+
+    #[path = "../tests/coverage_boost_ml_quality.rs"]
+    mod coverage_boost_ml_quality;
+
+    #[path = "../tests/coverage_boost_mutation.rs"]
+    mod coverage_boost_mutation;
+
+    #[path = "../tests/coverage_boost_normalized_score.rs"]
+    mod coverage_boost_normalized_score;
+
+    #[path = "../tests/coverage_boost_onboarding.rs"]
+    mod coverage_boost_onboarding;
+
+    #[path = "../tests/coverage_boost_perfection_score.rs"]
+    mod coverage_boost_perfection_score;
+
+    #[path = "../tests/coverage_boost_performance.rs"]
+    mod coverage_boost_performance;
+
+    #[path = "../tests/coverage_boost_polyglot.rs"]
+    mod coverage_boost_polyglot;
+
+    #[path = "../tests/coverage_boost_proof_annotations_handler.rs"]
+    mod coverage_boost_proof_annotations_handler;
+
+    #[path = "../tests/coverage_boost_provability_handler.rs"]
+    mod coverage_boost_provability_handler;
+
+    #[path = "../tests/coverage_boost_qdd.rs"]
+    mod coverage_boost_qdd;
+
+    #[path = "../tests/coverage_boost_quality_gate.rs"]
+    mod coverage_boost_quality_gate;
+
+    #[path = "../tests/coverage_boost_ranking.rs"]
+    mod coverage_boost_ranking;
+
+    #[path = "../tests/coverage_boost_refactor.rs"]
+    mod coverage_boost_refactor;
+
+    #[path = "../tests/coverage_boost_services1.rs"]
+    mod coverage_boost_services1;
+
+    #[path = "../tests/coverage_boost_services2.rs"]
+    mod coverage_boost_services2;
+
+    #[path = "../tests/coverage_boost_services3.rs"]
+    mod coverage_boost_services3;
+
+    #[path = "../tests/coverage_boost_services4.rs"]
+    mod coverage_boost_services4;
+
+    #[path = "../tests/coverage_boost_signal_collector.rs"]
+    mod coverage_boost_signal_collector;
+
+    #[path = "../tests/coverage_boost_similarity.rs"]
+    mod coverage_boost_similarity;
+
+    #[path = "../tests/coverage_boost_tdg_calculator.rs"]
+    mod coverage_boost_tdg_calculator;
+
+    #[path = "../tests/coverage_boost_tdg.rs"]
+    mod coverage_boost_tdg;
+
+    #[path = "../tests/coverage_boost_ticket_handlers.rs"]
+    mod coverage_boost_ticket_handlers;
+
+    #[path = "../tests/coverage_boost_unified_ast2.rs"]
+    mod coverage_boost_unified_ast2;
+
+    #[path = "../tests/coverage_boost_unified_ast3.rs"]
+    mod coverage_boost_unified_ast3;
+
+    #[path = "../tests/coverage_boost_unified_ast.rs"]
+    mod coverage_boost_unified_ast;
+
+    // BROKEN: SubTask renamed to Subtask, Phase missing field
+    // #[path = "../tests/coverage_boost_work_core_handlers.rs"]
+    // mod coverage_boost_work_core_handlers;
+
+    #[path = "../tests/diagnose_tests.rs"]
+    mod diagnose_tests;
+
+    // BROKEN: ContextFormat is private
+    // #[path = "../tests/extreme_tdd_ast_only.rs"]
+    // mod extreme_tdd_ast_only;
+
+    // BROKEN: ContextFormat is private
+    // #[path = "../tests/extreme_tdd_context_fix.rs"]
+    // mod extreme_tdd_context_fix;
+
+    // BROKEN: ContextFormat is private
+    // #[path = "../tests/extreme_tdd_context_tests.rs"]
+    // mod extreme_tdd_context_tests;
+
+    // BROKEN: ContextFormat is private
+    // #[path = "../tests/extreme_tdd_enhanced_ast.rs"]
+    // mod extreme_tdd_enhanced_ast;
+
+    // BROKEN: ContextFormat is private
+    // #[path = "../tests/extreme_tdd_regression_prevention.rs"]
+    // mod extreme_tdd_regression_prevention;
+
+    // BROKEN: ContextFormat is private
+    // #[path = "../tests/extreme_tdd_stack_overflow_fix.rs"]
+    // mod extreme_tdd_stack_overflow_fix;
+
+    #[path = "../tests/gitignore_respect_tests.rs"]
+    mod gitignore_respect_tests;
+
+    #[path = "../tests/kaizen_reliability_patterns.rs"]
+    mod kaizen_reliability_patterns;
+
+    #[path = "../tests/kaizen_test_optimizations.rs"]
+    mod kaizen_test_optimizations;
+
+    #[path = "../tests/metric_accuracy_suite.rs"]
+    mod metric_accuracy_suite;
+
+    #[path = "../tests/project_meta_integration_test.rs"]
+    mod project_meta_integration_test;
+
+    // BROKEN: unified_protocol is feature-gated
+    // #[path = "../tests/protocol_service_tests.rs"]
+    // mod protocol_service_tests;
+
+    #[path = "../tests/test_include_patterns.rs"]
+    mod test_include_patterns;
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;
@@ -743,6 +1035,7 @@ mod property_tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod lib_unit_tests {
     use super::*;

@@ -2,6 +2,7 @@
 // Tests Category B: Pre-commit Hooks and Linting (20 points)
 // All tests should FAIL until PrecommitScorer is implemented
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod precommit_scorer_tests {
     use crate::tests::repo_score::test_utils::*;

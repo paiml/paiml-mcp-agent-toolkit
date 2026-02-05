@@ -1,6 +1,7 @@
 //! Extreme TDD tests for Ruchy language support
 //! RED phase: Write failing tests first
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use crate::models::AstItem;
@@ -198,6 +199,7 @@ let classify(x) =
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use super::*;

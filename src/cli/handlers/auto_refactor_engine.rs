@@ -458,6 +458,7 @@ async fn find_high_complexity_functions(project_path: &Path) -> Result<Vec<(Path
     
     Ok(high_complexity)
 }
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;

@@ -5,6 +5,7 @@
 /// - Week 3: Fair Scheduling (Priority-based with tokio primitives)
 /// - Week 4: Adaptive Thresholds (Performance monitoring and auto-adjustment)
 /// - Week 5: Platform Resource Control (CPU/memory limits with enforcement)
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod sprint30_integration_tests {
     use crate::tdg::{

@@ -335,6 +335,7 @@ fn is_automatic_var(var: &str) -> bool {
     matches!(var, "@" | "<" | "^" | "?" | "*" | "%" | "+" | "|" | "$")
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -446,6 +447,7 @@ target1 target2 target3: $(FILES)
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;

@@ -89,6 +89,7 @@ pub fn create_clustering_rng() -> rand::rngs::StdRng {
     rand::rngs::StdRng::seed_from_u64(get_clustering_seed())
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

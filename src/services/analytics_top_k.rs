@@ -263,6 +263,7 @@ pub fn select_top_k_arrow(data: &[i64], k: usize) -> Result<Vec<i64>, Box<dyn st
     Ok(result_array.values().to_vec())
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

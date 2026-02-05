@@ -1113,6 +1113,7 @@ fn print_text_report(report: &DepsAuditReport) {
     println!("Run with --all to see Core and Sovereign deps");
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

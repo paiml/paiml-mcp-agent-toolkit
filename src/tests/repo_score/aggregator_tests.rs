@@ -2,6 +2,7 @@
 // Tests score combination and recommendation generation
 // All tests should FAIL until ScoreAggregator is implemented
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod aggregator_tests {
     // use crate::services::repo_score::models::*;

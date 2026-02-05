@@ -499,6 +499,7 @@ impl EnhancedTypeScriptVisitor {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -669,6 +670,7 @@ mod tests {
     }
 
     /// Property tests for enhanced TypeScript visitor
+    #[cfg_attr(coverage_nightly, coverage(off))]
     #[cfg(test)]
     mod property_tests {
         use super::*;

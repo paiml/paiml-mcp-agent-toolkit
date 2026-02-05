@@ -6,6 +6,7 @@ use super::file_filter::FileFilter;
 use super::pattern_helpers::*;
 use std::path::Path;
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod integration_tests {
     use super::*;

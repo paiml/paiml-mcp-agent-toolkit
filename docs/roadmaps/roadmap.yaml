@@ -1477,3 +1477,44 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: PMAT-470
+  github_issue: null
+  item_type: task
+  title: RAG-powered agent context with pmat query command
+  status: inprogress
+  priority: high
+  assigned_to: null
+  created: 2026-02-04T18:09:09Z
+  updated: 2026-02-04T18:09:13.520215483+00:00
+  spec: null
+  acceptance_criteria:
+  - Implement semantic code search for agents. See docs/specifications/improve-context.md
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - rag
+  - context
+  - mcp
+  - trueno-rag
+  notes: null
+- id: PMAT-471
+  github_issue: null
+  item_type: task
+  title: Integrate graph metrics into pmat query
+  status: inprogress
+  priority: high
+  assigned_to: null
+  created: 2026-02-05T05:31:15Z
+  updated: 2026-02-05T05:31:19.318121323+00:00
+  spec: null
+  acceptance_criteria:
+  - 'Add --rank-by pagerank|betweenness|centrality options. Pre-compute graph metrics at index build time. Expand caller/callee depth traversal. Spec: docs/specifications/improve-context.md Phase 6'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - enhancement
+  - query
+  - graph
+  notes: null

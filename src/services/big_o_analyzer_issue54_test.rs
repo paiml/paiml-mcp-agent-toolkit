@@ -3,6 +3,7 @@
 // This test verifies that the Big-O analyzer correctly counts functions
 // and doesn't over-count by matching multiple language patterns.
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod issue_54_function_count_tests {
     use crate::services::big_o_analyzer::{BigOAnalysisConfig, BigOAnalyzer};

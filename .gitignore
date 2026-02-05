@@ -255,3 +255,8 @@ pmat-*.tar.gz
 .pmat-qa/
 .pmat/dead-code-cache.json
 algorithm-competition-corpus/
+
+# Agent Context (machine-generated, auto-rebuilt)
+.pmat/context.idx/
+.pmat/workspace.idx/
+.pmat/deps-cache.json

@@ -266,6 +266,7 @@ impl Default for MakefileScorer {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -585,6 +585,7 @@ impl Default for DocValidator {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod unit_tests {
     use super::*;
@@ -851,6 +852,7 @@ mod unit_tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use super::*;

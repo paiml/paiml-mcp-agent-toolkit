@@ -13,6 +13,7 @@ use parking_lot::Mutex;
 // Using parking_lot::Mutex which doesn't poison on panic
 static ENV_MUTEX: Mutex<()> = Mutex::new(());
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod env_var_expansion_tests {
     use super::*;
@@ -140,6 +141,7 @@ mod env_var_expansion_tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod env_var_interaction_tests {
     use super::*;
@@ -221,6 +223,7 @@ mod env_var_interaction_tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod env_var_precedence_tests {
     use super::*;
@@ -321,6 +324,7 @@ mod env_var_precedence_tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod env_var_edge_cases {
     use super::*;
@@ -478,6 +482,7 @@ mod env_var_edge_cases {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod env_var_documentation_tests {
     use super::*;
@@ -516,6 +521,7 @@ mod env_var_documentation_tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod env_var_isolation_tests {
     use super::*;

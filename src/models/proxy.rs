@@ -134,6 +134,7 @@ pub struct ProxyResponse {
     pub refactoring_plan: Option<Vec<HashMap<String, serde_json::Value>>>,
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -724,6 +725,7 @@ mod tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;

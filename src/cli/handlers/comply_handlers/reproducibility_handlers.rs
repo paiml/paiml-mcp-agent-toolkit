@@ -211,6 +211,7 @@ pub fn check_golden_trace_drift(project_path: &Path) -> Option<bool> {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

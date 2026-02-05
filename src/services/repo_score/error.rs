@@ -31,6 +31,7 @@ pub enum RepoScoreError {
 
 pub type Result<T> = std::result::Result<T, RepoScoreError>;
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

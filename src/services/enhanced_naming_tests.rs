@@ -3,6 +3,7 @@
 //! Following extreme TDD approach - these tests define the enhanced naming behaviors
 //! we want to implement for better deep context generation.
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod enhanced_javascript_naming_tests {
     use crate::services::context::AstItem;
@@ -643,6 +644,7 @@ mod enhanced_javascript_naming_tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod enhanced_typescript_naming_tests {
     use crate::services::context::AstItem;
@@ -1568,6 +1570,7 @@ mod enhanced_wasm_naming_tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod enhanced_naming_integration_tests {
 
@@ -1640,6 +1643,7 @@ mod enhanced_naming_integration_tests {
 }
 
 /// Test utility functions for enhanced naming tests
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod test_utilities {
     use crate::services::context::AstItem;

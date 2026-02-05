@@ -4,6 +4,7 @@
 //! to ensure 80%+ code coverage and quality standards.
 #![allow(clippy::cast_possible_truncation)]
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod integration_tests {
     use super::super::*;
@@ -314,6 +315,7 @@ mod integration_tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod unit_tests {
     use super::super::*;

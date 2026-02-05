@@ -151,6 +151,7 @@ async fn red_test_unified_analyzer_handles_invalid_syntax() {
 
 /// Test 6: Property-Based Test - Various File Sizes
 /// Expected: ❌ FAIL - Property test will fail initially
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use super::*;

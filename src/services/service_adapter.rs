@@ -219,6 +219,7 @@ impl Default for ServiceRegistryBuilder {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::complexity_adapter::*;
@@ -600,6 +601,7 @@ mod tests {
     // be called from within a tokio runtime.
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;

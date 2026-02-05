@@ -690,6 +690,7 @@ pub fn format_as_sarif(
     serde_json::to_string_pretty(&sarif).map_err(Into::into)
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     // use super::*; // Unused in simple tests
@@ -701,6 +702,7 @@ mod tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;

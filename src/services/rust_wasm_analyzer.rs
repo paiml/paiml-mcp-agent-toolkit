@@ -237,6 +237,7 @@ fn has_attribute(attrs: &[Attribute], name: &str) -> bool {
     })
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

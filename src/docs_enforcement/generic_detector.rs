@@ -207,6 +207,7 @@ pub fn suggest_improvements(desc: &str) -> Vec<String> {
     suggestions
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

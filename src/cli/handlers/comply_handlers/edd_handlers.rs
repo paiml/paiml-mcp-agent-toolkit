@@ -266,6 +266,7 @@ fn has_math_notation(doc: &str) -> bool {
     false
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

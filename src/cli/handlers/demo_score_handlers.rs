@@ -234,6 +234,7 @@ fn grade_from_percentage(pct: f64) -> &'static str {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -100,6 +100,7 @@ pub fn parse_key_val(s: &str) -> Result<(String, Value), String> {
     Ok((key.to_string(), value))
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -327,6 +328,7 @@ mod tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;

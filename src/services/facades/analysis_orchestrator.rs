@@ -145,6 +145,7 @@ impl AnalysisOrchestrator {
                 path: request.path.clone(),
                 strict_mode: false,
                 include_tests: request.include_tests,
+                extended: false,
             };
 
             tasks.push(tokio::spawn(async move {
@@ -221,6 +222,7 @@ impl AnalysisOrchestrator {
                 path: request.path.clone(),
                 strict_mode: false,
                 include_tests: request.include_tests,
+                extended: false,
             };
 
             match self.satd_facade.analyze_project(req).await {
@@ -328,6 +330,7 @@ impl AnalysisOrchestrator {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -355,6 +358,7 @@ mod tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;

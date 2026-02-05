@@ -130,6 +130,7 @@ pub fn get_language_detection_with_override(
     Ok(detect_project_language_enhanced(path))
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

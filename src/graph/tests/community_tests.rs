@@ -1,6 +1,7 @@
 // Community detection tests - TDD approach
 // All tests written FIRST before implementation
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::super::super::*;

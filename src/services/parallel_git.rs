@@ -318,6 +318,7 @@ pub struct DiffStats {
     pub deletions: usize,
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -576,6 +577,7 @@ def456|Jane Smith|2024-01-02T12:00:00Z|Add feature"#;
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;

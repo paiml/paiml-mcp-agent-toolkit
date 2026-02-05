@@ -223,6 +223,7 @@ pub fn is_code_item_declaration(line: &str) -> bool {
         || trimmed.starts_with("impl ")
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -486,6 +487,7 @@ mod tests {
     fn test_is_heavily_cfg_gated_false() {
         let content = r#"
             fn normal_function() {}
+            #[cfg_attr(coverage_nightly, coverage(off))]
             #[cfg(test)]
             mod tests {}
         "#;

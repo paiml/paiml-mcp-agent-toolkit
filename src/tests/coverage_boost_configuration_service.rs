@@ -134,18 +134,17 @@ fn test_default_config_telemetry_defaults() {
 fn test_default_config_semantic_defaults() {
     let config = ConfigurationService::default_config();
 
-    // Semantic search is disabled by default (requires API key)
+    // Semantic search is disabled by default (uses local embeddings, no API key needed)
     assert!(!config.semantic.enabled);
-    assert!(config.semantic.openai_api_key.is_none());
     assert!(config.semantic.vector_db_path.is_none());
     assert!(config.semantic.workspace_path.is_none());
-    assert_eq!(config.semantic.embedding_model, "text-embedding-3-small");
-    assert_eq!(config.semantic.embedding_dimensions, 1536);
+    assert_eq!(config.semantic.embedding_model, "aprender-tfidf-local");
+    assert_eq!(config.semantic.embedding_dimensions, 256);
     assert_eq!(config.semantic.default_search_mode, "hybrid");
     assert_eq!(config.semantic.default_limit, 10);
     assert!(!config.semantic.auto_sync);
     assert_eq!(config.semantic.sync_interval_seconds, 300);
-    assert_eq!(config.semantic.max_chunk_tokens, 8000);
+    assert_eq!(config.semantic.max_chunk_tokens, 500);
     assert!(!config.semantic.supported_languages.is_empty());
 }
 

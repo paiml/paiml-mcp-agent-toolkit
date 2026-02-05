@@ -1,5 +1,6 @@
 //! Tests for the QDD generator module
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use crate::qdd::{
@@ -169,6 +170,7 @@ mod tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod coverage_tests {
     use crate::qdd::{

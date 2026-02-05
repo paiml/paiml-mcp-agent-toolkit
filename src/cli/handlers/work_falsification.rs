@@ -1417,6 +1417,7 @@ async fn test_lint_pass(project_path: &Path) -> Result<FalsificationResult> {
     ))
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

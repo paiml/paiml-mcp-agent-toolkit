@@ -557,6 +557,7 @@ pub async fn analyze_c_file(
     })
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     #[cfg(feature = "c-ast")]

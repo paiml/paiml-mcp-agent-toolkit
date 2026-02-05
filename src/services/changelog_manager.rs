@@ -189,6 +189,7 @@ fn insert_entry(content: &str, entry: &ChangelogEntry) -> Result<String> {
     Ok(result.join("\n"))
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

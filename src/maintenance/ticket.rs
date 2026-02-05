@@ -387,6 +387,7 @@ pub fn ticket_exists(tickets_dir: &Path, ticket_id: &str) -> bool {
     path.exists()
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -537,6 +538,7 @@ mod tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use super::*;

@@ -1512,6 +1512,7 @@ pub async fn analyze_file_complexity_uncached(
         .with_context(|| format!("Failed to analyze file complexity: {}", path.display()))
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod complexity_unit_tests {
     use super::*;

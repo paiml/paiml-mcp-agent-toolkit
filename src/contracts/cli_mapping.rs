@@ -12,6 +12,7 @@ pub fn map_analyze_command(cmd: &AnalyzeCommands) -> Result<Box<dyn ContractVali
     super::adapter::ContractAdapter::from_cli(cmd)
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
 
@@ -23,6 +24,7 @@ mod tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;

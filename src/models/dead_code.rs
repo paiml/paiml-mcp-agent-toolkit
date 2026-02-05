@@ -189,6 +189,7 @@ impl Default for DeadCodeAnalysisConfig {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -422,6 +423,7 @@ pub struct DeadCodeResult {
     pub analyzed_files: usize,
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;

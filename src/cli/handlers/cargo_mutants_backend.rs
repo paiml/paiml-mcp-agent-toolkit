@@ -201,6 +201,7 @@ pub fn display_statistics(report: &CargoMutantsReport) {
     eprintln!();
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

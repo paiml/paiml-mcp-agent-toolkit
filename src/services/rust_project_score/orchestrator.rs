@@ -251,6 +251,7 @@ pub struct ProjectScore {
 unsafe impl Send for RustProjectScoreOrchestrator {}
 unsafe impl Sync for RustProjectScoreOrchestrator {}
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

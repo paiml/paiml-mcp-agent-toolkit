@@ -24,6 +24,7 @@ pub mod polyglot_tools;
 
 #[cfg(all(test, feature = "java-ast", feature = "scala-ast"))]
 mod jvm_tools_integration_tests;
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tools_integration_tests;
 
@@ -616,6 +617,7 @@ impl McpSession {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -646,6 +648,7 @@ mod tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod coverage_tests {
     use super::*;
@@ -1483,6 +1486,7 @@ mod coverage_tests {
     // Property-Based Tests
     // ============================================================
 
+    #[cfg_attr(coverage_nightly, coverage(off))]
     #[cfg(test)]
     mod property_tests {
         use super::*;

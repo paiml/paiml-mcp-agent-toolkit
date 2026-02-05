@@ -1,3 +1,4 @@
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::super::lint_hotspot_handlers::{FileSummary, SeverityDistribution, ViolationDetail};

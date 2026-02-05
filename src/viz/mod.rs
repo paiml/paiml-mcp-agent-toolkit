@@ -59,6 +59,7 @@ pub mod stub {
 #[cfg(not(feature = "viz"))]
 pub use stub::*;
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     #[cfg(not(feature = "viz"))]

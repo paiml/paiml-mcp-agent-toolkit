@@ -303,6 +303,7 @@ struct PublicItem {
     byte_range: std::ops::Range<usize>,
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

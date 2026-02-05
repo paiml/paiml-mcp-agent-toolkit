@@ -519,6 +519,7 @@ fn count_loose_objects(objects_dir: &Path) -> usize {
         .count()
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

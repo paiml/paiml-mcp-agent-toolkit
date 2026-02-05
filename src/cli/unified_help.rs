@@ -530,6 +530,7 @@ fn levenshtein(a: &str, b: &str) -> usize {
     matrix[a_len][b_len]
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -234,6 +234,7 @@ impl Scorer for PerformanceScorer {
 unsafe impl Send for PerformanceScorer {}
 unsafe impl Sync for PerformanceScorer {}
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

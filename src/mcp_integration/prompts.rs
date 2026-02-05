@@ -302,6 +302,7 @@ Provide comprehensive repository health assessment with actionable recommendatio
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod coverage_tests {
     use super::*;

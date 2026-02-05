@@ -406,6 +406,7 @@ pub enum SnapshotError {
     ChecksumMismatch { expected: String, actual: String },
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

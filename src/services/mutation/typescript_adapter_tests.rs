@@ -2,6 +2,7 @@
 //!
 //! RED PHASE: All tests written BEFORE implementation
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod typescript_adapter_red_tests {
     use crate::services::mutation::{LanguageAdapter, TypeScriptAdapter};

@@ -19,18 +19,21 @@ pub struct SemanticCli {
 }
 
 impl SemanticCli {
-    /// Create new semantic CLI handler
+    /// Create new semantic CLI handler with local embeddings
+    ///
+    /// # Note
+    /// Uses pure Rust TF-IDF embeddings via aprender.
+    /// No external API keys or internet connection required.
     pub async fn new(
         db_path: &str,
-        api_key: &str,
         workspace_path: &std::path::Path,
     ) -> Result<Self, String> {
         let vector_db = Arc::new(TursoVectorDB::new_local(db_path).await?);
 
-        let search_engine = Arc::new(SemanticSearchEngine::new(api_key, db_path).await?);
+        let search_engine = Arc::new(SemanticSearchEngine::new(db_path).await?);
 
         let hybrid_engine =
-            Arc::new(HybridSearchEngine::new(api_key, db_path, workspace_path).await?);
+            Arc::new(HybridSearchEngine::new(db_path, workspace_path).await?);
 
         let clustering_engine = Arc::new(ClusteringEngine::new(Arc::clone(&vector_db)));
         let topic_engine = Arc::new(TopicEngine::new(Arc::clone(&vector_db)));
@@ -181,6 +184,7 @@ impl SemanticCli {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -190,13 +194,9 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let db_path = temp_dir.path().join("test.db");
 
-        let cli = SemanticCli::new(
-            db_path.to_str().unwrap(),
-            "sk-test-key-1234567890abcdefghijklmnop",
-            temp_dir.path(),
-        )
-        .await
-        .unwrap();
+        let cli = SemanticCli::new(db_path.to_str().unwrap(), temp_dir.path())
+            .await
+            .unwrap();
 
         (cli, temp_dir)
     }

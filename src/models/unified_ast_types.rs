@@ -1359,6 +1359,7 @@ pub struct LanguageParsers {
     // TRACKED: Add actual parser implementations
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod unified_ast_types_tests {
     use super::*;

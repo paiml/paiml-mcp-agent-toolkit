@@ -18,6 +18,7 @@ pub use defect_prediction_facade::DefectPredictionFacade;
 pub use incremental_coverage_facade::IncrementalCoverageFacade;
 pub use satd_facade::SatdFacade;
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;

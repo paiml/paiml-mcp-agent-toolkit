@@ -3,6 +3,7 @@
 //! This module provides comprehensive unit tests to ensure complete coverage
 //! of error handling, type conversions, and utility functions.
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod error_coverage_tests {
     use crate::services::wasm::error::{WasmError, WasmResult};
@@ -56,6 +57,7 @@ mod error_coverage_tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod memory_pool_coverage_tests {
     use crate::services::wasm::memory_pool::MemoryPool;
@@ -82,6 +84,7 @@ mod memory_pool_coverage_tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod security_coverage_tests {
     use crate::services::wasm::security::{
@@ -201,6 +204,7 @@ mod security_coverage_tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod traits_coverage_tests {
     use crate::models::unified_ast::{AstDag, Language};
@@ -252,6 +256,7 @@ mod traits_coverage_tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod types_coverage_tests {
     use crate::services::wasm::types::*;
@@ -489,6 +494,7 @@ mod types_coverage_tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod complexity_coverage_tests {
     use crate::models::unified_ast::{AstDag, AstKind, FunctionKind, Language, UnifiedAstNode};

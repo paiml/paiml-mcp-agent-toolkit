@@ -334,6 +334,7 @@ fn check_less_than_or_equal(var_value: &Value, expected: &str) -> bool {
     false
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

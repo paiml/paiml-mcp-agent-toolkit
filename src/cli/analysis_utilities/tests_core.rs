@@ -1,4 +1,5 @@
 // Tests extracted to tests.rs for file health compliance (CB-040)
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

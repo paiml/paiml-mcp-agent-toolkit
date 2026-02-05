@@ -834,6 +834,7 @@ pub fn find_profiler_files(project_path: &Path) -> Vec<std::path::PathBuf> {
     files
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

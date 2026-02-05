@@ -485,6 +485,7 @@ mod tests {
                 timeout: 60,
                 include: vec![],
                 exclude: vec![],
+                extended: false,
             };
 
             let warnings = ContractAdapter::deprecation_warnings(&cmd);
@@ -742,6 +743,7 @@ mod tests {
                 timeout: 60,
                 include: vec![],
                 exclude: vec![],
+                extended: false,
             };
 
             let result = ContractAdapter::from_cli(&cmd);
@@ -768,6 +770,7 @@ mod tests {
                 timeout: 120,
                 include: vec!["**/*.rs".to_string()],
                 exclude: vec!["target/**".to_string()],
+                extended: false,
             };
 
             let result = ContractAdapter::from_cli(&cmd);
@@ -792,6 +795,7 @@ mod tests {
                 timeout: 60,
                 include: vec![],
                 exclude: vec![],
+                extended: false,
             };
 
             let result = ContractAdapter::from_cli(&cmd);

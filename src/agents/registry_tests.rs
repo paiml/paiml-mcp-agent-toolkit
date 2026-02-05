@@ -2,6 +2,7 @@
 //!
 //! RED PHASE: All tests written BEFORE implementation
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod agent_registry_red_tests {
     use crate::agents::registry::AgentRegistry;

@@ -173,6 +173,7 @@ impl DiscoveryMetrics {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -316,6 +317,7 @@ mod tests {
 #[path = "discovery_integration_test.rs"]
 mod integration_tests;
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;

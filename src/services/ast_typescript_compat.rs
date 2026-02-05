@@ -422,6 +422,7 @@ fn parse_typescript_content(content: &str, path: &Path) -> Result<Module, anyhow
         .map_err(|e| anyhow::anyhow!("Parse error: {e:?}"))
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;

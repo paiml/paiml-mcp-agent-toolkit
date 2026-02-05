@@ -107,6 +107,7 @@ fn map_operator_name_to_type(name: &str) -> MutationOperatorType {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

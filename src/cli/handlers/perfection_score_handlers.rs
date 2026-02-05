@@ -168,6 +168,7 @@ fn create_progress_bar(current: f64, max: f64, width: usize) -> String {
     )
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

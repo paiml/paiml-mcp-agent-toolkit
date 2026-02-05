@@ -3,6 +3,7 @@
 //! Sprint 63: Fixes complexity false positives using industry-standard algorithms
 //! Following Toyota Way TDD principles with comprehensive coverage
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod accurate_complexity_tests {
     use crate::services::accurate_complexity_analyzer::AccurateComplexityAnalyzer;

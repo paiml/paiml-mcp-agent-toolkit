@@ -121,6 +121,7 @@ fn generate_suggestions(file: &PathBuf, survived_count: usize) -> Vec<String> {
     suggestions
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

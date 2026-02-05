@@ -241,16 +241,12 @@ pub struct TelemetryConfig {
 /// Semantic search configuration (PMAT-SEARCH-011, PMAT-SEARCH-012)
 ///
 /// Configuration for semantic search, code embeddings, and AI-powered code analysis.
-/// Requires OpenAI API key for embedding generation.
+/// Uses pure Rust local embeddings via aprender/trueno-rag (NO external API keys required).
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct SemanticConfig {
     #[serde(default)]
     /// Enable semantic search features
     pub enabled: bool,
-
-    /// OpenAI API key for embeddings (can also be set via OPENAI_API_KEY env var)
-    /// Takes precedence: CLI flag > config file > env var
-    pub openai_api_key: Option<String>,
 
     /// Path to vector database file (default: ~/.pmat/embeddings.db)
     pub vector_db_path: Option<String>,
@@ -258,28 +254,35 @@ pub struct SemanticConfig {
     /// Workspace path for code indexing (default: current directory)
     pub workspace_path: Option<PathBuf>,
 
-    /// OpenAI embedding model to use
+    /// Local embedding model to use (aprender-tfidf-local)
+    #[serde(default = "default_embedding_model")]
     pub embedding_model: String,
 
-    /// Embedding dimensions (1536 for text-embedding-3-small)
+    /// Embedding dimensions (vocabulary-based, typically 256-512)
+    #[serde(default = "default_embedding_dimensions")]
     pub embedding_dimensions: usize,
 
     /// Default search mode: keyword, vector, or hybrid
+    #[serde(default = "default_search_mode")]
     pub default_search_mode: String,
 
     /// Default number of search results
+    #[serde(default = "default_limit")]
     pub default_limit: usize,
 
     /// Auto-sync embeddings on file changes
     pub auto_sync: bool,
 
     /// Sync interval in seconds (if auto_sync is enabled)
+    #[serde(default = "default_sync_interval")]
     pub sync_interval_seconds: u64,
 
     /// Maximum chunk size for code embeddings (in tokens)
+    #[serde(default = "default_max_chunk_tokens")]
     pub max_chunk_tokens: usize,
 
     /// Supported languages for semantic analysis
+    #[serde(default = "default_supported_languages")]
     pub supported_languages: Vec<String>,
 
     /// Enable MCP semantic tools
@@ -289,7 +292,48 @@ pub struct SemanticConfig {
     pub enable_cache: bool,
 
     /// Cache expiration in days
+    #[serde(default = "default_cache_expiration")]
     pub cache_expiration_days: u32,
+}
+
+fn default_embedding_model() -> String {
+    "aprender-tfidf-local".to_string()
+}
+
+fn default_embedding_dimensions() -> usize {
+    256
+}
+
+fn default_search_mode() -> String {
+    "hybrid".to_string()
+}
+
+fn default_limit() -> usize {
+    10
+}
+
+fn default_sync_interval() -> u64 {
+    300
+}
+
+fn default_max_chunk_tokens() -> usize {
+    500
+}
+
+fn default_supported_languages() -> Vec<String> {
+    vec![
+        "rust".to_string(),
+        "python".to_string(),
+        "typescript".to_string(),
+        "javascript".to_string(),
+        "go".to_string(),
+        "c".to_string(),
+        "cpp".to_string(),
+    ]
+}
+
+fn default_cache_expiration() -> u32 {
+    30
 }
 
 /// Configuration service providing centralized config management
@@ -453,6 +497,7 @@ impl ConfigurationService {
     }
 
     /// Get semantic configuration with environment variable fallbacks
+    /// Get semantic configuration with environment variable fallbacks
     ///
     /// Priority order:
     /// 1. Config file values (if explicitly set)
@@ -460,16 +505,12 @@ impl ConfigurationService {
     /// 3. Defaults
     ///
     /// Environment variables:
-    /// - OPENAI_API_KEY: API key for OpenAI embeddings
     /// - PMAT_VECTOR_DB_PATH: Path to vector database
     /// - PMAT_WORKSPACE: Workspace path for code indexing
+    ///
+    /// NOTE: No API keys required - uses local embeddings via aprender/trueno-rag
     pub fn get_semantic_config_with_env_fallback(&self) -> Result<SemanticConfig> {
         let mut config = self.get_semantic_config()?;
-
-        // API key fallback: config file > env var
-        if config.openai_api_key.is_none() {
-            config.openai_api_key = std::env::var("OPENAI_API_KEY").ok();
-        }
 
         // Vector DB path fallback: config file > env var > default
         if config.vector_db_path.is_none() {
@@ -594,17 +635,16 @@ impl ConfigurationService {
                 export_format: "json".to_string(),
             },
             semantic: SemanticConfig {
-                enabled: false,       // Disabled by default (requires API key)
-                openai_api_key: None, // Can be set via OPENAI_API_KEY env var
+                enabled: false,       // Disabled by default
                 vector_db_path: None, // Defaults to ~/.pmat/embeddings.db
                 workspace_path: None, // Defaults to current directory
-                embedding_model: "text-embedding-3-small".to_string(),
-                embedding_dimensions: 1536,
+                embedding_model: "aprender-tfidf-local".to_string(), // Local embeddings (no API key)
+                embedding_dimensions: 256,
                 default_search_mode: "hybrid".to_string(),
                 default_limit: 10,
                 auto_sync: false,
                 sync_interval_seconds: 300, // 5 minutes
-                max_chunk_tokens: 8000,
+                max_chunk_tokens: 500,
                 supported_languages: vec![
                     "rust".to_string(),
                     "typescript".to_string(),
@@ -612,6 +652,7 @@ impl ConfigurationService {
                     "c".to_string(),
                     "cpp".to_string(),
                     "go".to_string(),
+                    "javascript".to_string(),
                 ],
                 enable_mcp_tools: true,
                 enable_cache: true,
@@ -702,6 +743,7 @@ pub fn configuration() -> Arc<ConfigurationService> {
     CONFIGURATION.clone()
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -820,6 +862,7 @@ mod tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;
@@ -839,6 +882,7 @@ mod property_tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod getter_tests {
     use super::*;
@@ -910,10 +954,9 @@ mod getter_tests {
     fn test_default_config_semantic_values() {
         let config = ConfigurationService::default_config();
         assert!(!config.semantic.enabled);
-        assert!(config.semantic.openai_api_key.is_none());
         assert!(config.semantic.vector_db_path.is_none());
-        assert_eq!(config.semantic.embedding_model, "text-embedding-3-small");
-        assert_eq!(config.semantic.embedding_dimensions, 1536);
+        assert_eq!(config.semantic.embedding_model, "aprender-tfidf-local");
+        assert_eq!(config.semantic.embedding_dimensions, 256);
     }
 
     #[test]

@@ -14,6 +14,8 @@ pub struct SatdAnalysisRequest {
     pub path: std::path::PathBuf,
     pub strict_mode: bool,
     pub include_tests: bool,
+    /// Extended mode: detects euphemisms like placeholder, stub, "for now" (issue #149)
+    pub extended: bool,
 }
 
 /// Result of SATD analysis
@@ -64,8 +66,11 @@ impl SatdFacade {
     ) -> Result<SatdAnalysisResult> {
         use crate::services::satd_detector::SATDDetector;
 
+        // Priority: strict_mode > extended > default
         let detector = if request.strict_mode {
             SATDDetector::new_strict()
+        } else if request.extended {
+            SATDDetector::new_extended()
         } else {
             SATDDetector::new()
         };
@@ -125,12 +130,14 @@ impl SatdFacade {
             path: path.as_ref().to_path_buf(),
             strict_mode: false,
             include_tests: true,
+            extended: false,
         };
 
         self.analyze_project(request).await
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -143,6 +150,7 @@ mod tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;

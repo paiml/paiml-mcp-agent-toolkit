@@ -18,5 +18,6 @@ pub mod edd_handlers;
 #[path = "comply_handlers_tests.rs"]
 mod tests;
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod falsification_tests;

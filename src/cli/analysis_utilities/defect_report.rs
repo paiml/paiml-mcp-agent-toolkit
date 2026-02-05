@@ -185,6 +185,7 @@ fn format_defect_csv(report: &DefectPredictionReport) -> Result<String> {
 
 // Single file quality gate check functions
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod defect_report_tests {
     use super::*;

@@ -58,6 +58,7 @@ Functions:
     db
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod green_phase_tests {
     use super::*;

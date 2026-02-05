@@ -1,5 +1,6 @@
 //! Property-based tests for QDD generator module
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests_coverage {
     use crate::qdd::{

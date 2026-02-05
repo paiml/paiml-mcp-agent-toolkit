@@ -1,3 +1,4 @@
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod markdown_formatting_tests {
     use super::QualityGateResults;

@@ -2,6 +2,7 @@
 // End-to-end tests for pmat repo-score CLI
 // All tests should FAIL until full implementation is complete
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod integration_tests {
     use crate::tests::repo_score::test_utils::*;

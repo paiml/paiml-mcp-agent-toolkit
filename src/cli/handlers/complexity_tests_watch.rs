@@ -1,3 +1,4 @@
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod watch_mode_tests {
     use super::*;
@@ -60,6 +61,7 @@ mod watch_mode_tests {
 
 // Extended Coverage Tests - Dead Code Conversion Helpers
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod dead_code_conversion_tests {
     use super::*;

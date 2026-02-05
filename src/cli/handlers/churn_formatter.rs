@@ -236,6 +236,7 @@ fn is_test_filename(path: &Path) -> bool {
         })
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod coverage_tests {
     //! EXTREME TDD coverage tests for churn formatter
@@ -793,6 +794,7 @@ mod coverage_tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use super::*;

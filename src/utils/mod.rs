@@ -27,9 +27,11 @@ pub mod path_validator;
 pub mod pattern_helpers;
 pub mod sovereign_compression;
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod pattern_helpers_integration_tests;
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     // use super::*; // Unused in simple tests
@@ -41,6 +43,7 @@ mod tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;

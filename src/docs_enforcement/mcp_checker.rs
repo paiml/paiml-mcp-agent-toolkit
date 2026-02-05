@@ -376,6 +376,7 @@ pub fn generate_validation_report_json() -> Result<String> {
     Ok(serde_json::to_string_pretty(&summary)?)
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

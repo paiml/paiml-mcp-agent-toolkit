@@ -279,6 +279,7 @@ pub fn format_health_report(health: &HealthScore) -> String {
     output
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

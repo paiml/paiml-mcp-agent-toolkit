@@ -522,6 +522,7 @@ impl TieredStorageFactory {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod storage_impl_tests {
     use super::*;

@@ -3,6 +3,7 @@
 
 use super::*;
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -854,6 +855,7 @@ function App() {}
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;
@@ -875,6 +877,7 @@ mod property_tests {
 
 /// SIMD/Scalar equivalence property tests for Trueno integration
 /// RED phase tests - verify SIMD implementations match scalar
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod simd_equivalence_tests {
     use proptest::prelude::*;

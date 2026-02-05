@@ -100,6 +100,7 @@ impl<'a> CTreeSitterVisitor<'a> {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod c_cpp_visitor_tests {
     use super::*;

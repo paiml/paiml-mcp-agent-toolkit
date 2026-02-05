@@ -553,6 +553,7 @@ fn analyze_rust_files(
     Ok((defined_functions, called_functions))
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

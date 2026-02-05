@@ -9,6 +9,7 @@ pub use cache::{CacheConfig, CacheKeyBuilder, McpCache};
 pub use server::McpServer;
 pub use state_manager::StateManager;
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;

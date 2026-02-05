@@ -945,6 +945,7 @@ pub async fn analyze_cpp_file(
     })
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     #[cfg(feature = "cpp-ast")]

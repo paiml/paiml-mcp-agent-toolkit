@@ -2,6 +2,7 @@ use crate::services::simple_deep_context::{SimpleAnalysisConfig, SimpleDeepConte
 use std::fs;
 use tempfile::TempDir;
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod extreme_tdd_tests {
     use super::*;
@@ -248,6 +249,7 @@ class UserManager {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use super::*;

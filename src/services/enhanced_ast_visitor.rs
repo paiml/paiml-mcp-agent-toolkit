@@ -209,6 +209,7 @@ impl<'ast> Visit<'ast> for EnhancedAstVisitor {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -348,6 +349,7 @@ mod tests {
 }
 
 /// Property tests for enhanced AST visitor
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use super::*;

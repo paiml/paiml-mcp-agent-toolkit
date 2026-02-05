@@ -204,6 +204,7 @@ pub mod muda_elimination {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod kaizen_reliability_tests {
     use super::*;

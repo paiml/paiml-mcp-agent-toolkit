@@ -653,6 +653,7 @@ pub struct ValidationSummary {
     pub gateway_passed: bool,
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -8,6 +8,7 @@ fn test_adapter_module_basics() {
     assert_eq!(1, 1);
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod cli_adapter_tests {
     use super::super::cli::*;
@@ -37,6 +38,7 @@ mod cli_adapter_tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod http_adapter_tests {
     use super::super::http::*;
@@ -67,6 +69,7 @@ mod http_adapter_tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod mcp_adapter_tests {
     use super::super::mcp::*;

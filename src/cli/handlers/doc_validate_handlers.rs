@@ -290,6 +290,7 @@ fn xml_escape(s: &str) -> String {
         .replace('\'', "&apos;")
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

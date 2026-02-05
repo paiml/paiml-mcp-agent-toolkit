@@ -151,6 +151,7 @@ pub fn create_agent_context(name: &str, template: &str) -> AgentContextBuilder {
     AgentContextBuilder::new(name, template)
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -201,6 +202,7 @@ mod tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;

@@ -251,6 +251,7 @@ fn is_valid_check_name(name: &str) -> bool {
     valid_names.contains(&name.to_string())
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

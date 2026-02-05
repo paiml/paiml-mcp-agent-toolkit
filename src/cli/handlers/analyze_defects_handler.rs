@@ -292,6 +292,7 @@ fn print_junit_report(report: &DefectReport) -> Result<()> {
     Ok(())
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod coverage_tests {
     use super::*;

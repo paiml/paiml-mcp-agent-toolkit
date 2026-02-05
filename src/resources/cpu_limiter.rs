@@ -390,6 +390,7 @@ impl Drop for CpuLimiter {
 #[cfg(target_os = "linux")]
 const CPU_SETSIZE: usize = 1024;
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

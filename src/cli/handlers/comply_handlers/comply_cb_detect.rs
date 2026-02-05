@@ -954,6 +954,7 @@ pub fn detect_tiled_kernel_no_bounds_in_str(code: &str) -> Vec<(u32, &'static st
 // TESTS
 // =============================================================================
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod unit_tests {
     use super::*;

@@ -1,3 +1,4 @@
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -434,6 +435,7 @@ fn main() {{
     // {}: production bug
 }}
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {{
     // {}: this should be ignored
@@ -1242,6 +1244,7 @@ fn helper_test() {{
         let content = r#"
 // TODO: regular debt
 fn main() {
+    #[cfg_attr(coverage_nightly, coverage(off))]
     #[cfg(test)]
     mod nested_tests {
         // TODO: should be ignored
@@ -1604,6 +1607,7 @@ fn halstead_metrics() {}
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;

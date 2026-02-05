@@ -3,6 +3,7 @@
 // This test suite validates the end-to-end functionality of our unified AST
 // framework, ensuring all language strategies work correctly.
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod unified_ast_integration_tests {
     use super::super::{
@@ -98,6 +99,7 @@ mod unified_ast_integration_tests {
                 }
             }
             
+            #[cfg_attr(coverage_nightly, coverage(off))]
             #[cfg(test)]
             mod tests {
                 use super::*;

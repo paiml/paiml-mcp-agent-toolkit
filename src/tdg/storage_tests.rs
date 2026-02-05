@@ -769,6 +769,7 @@ async fn test_storage_overwrite_same_hash() {
     assert_eq!(hot_entry.total_score, 75.0);
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod extended_tests {
     use super::*;
@@ -1122,6 +1123,7 @@ mod extended_tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;
@@ -1141,6 +1143,7 @@ mod property_tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod git_context_integration_tests {
     use super::*;

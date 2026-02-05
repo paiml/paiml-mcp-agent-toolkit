@@ -57,6 +57,7 @@ fn calculate_quality_score(violations: &[Violation]) -> f32 {
     score.max(0.0)
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -98,8 +98,6 @@ pub async fn analyze_satd(paths: &[PathBuf], _include_resolved: bool) -> Result<
         return Err(anyhow::anyhow!("At least one path must be provided"));
     }
 
-    // TODO: implement include_resolved parameter to filter resolved debt (DONE, RESOLVED comments)
-    // Currently using standard detector which detects all SATD markers
     let detector = SATDDetector::new();
 
     let mut total_satd = 0;
@@ -113,6 +111,17 @@ pub async fn analyze_satd(paths: &[PathBuf], _include_resolved: bool) -> Result<
         match tokio::fs::read_to_string(path).await {
             Ok(content) => match detector.extract_from_content(&content, path) {
                 Ok(debts) => {
+                    // Filter out resolved debt markers (DONE, RESOLVED, FIXED) unless include_resolved
+                    let debts: Vec<_> = if _include_resolved {
+                        debts
+                    } else {
+                        debts.into_iter()
+                            .filter(|d| {
+                                let upper = d.text.to_uppercase();
+                                !upper.contains("DONE") && !upper.contains("RESOLVED") && !upper.contains("FIXED")
+                            })
+                            .collect()
+                    };
                     let satd_count = debts.len();
                     total_satd += satd_count;
 

@@ -2,6 +2,7 @@
 //!
 //! Sprint 65 Phase 2B: MCP tool integration tests
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use std::path::PathBuf;

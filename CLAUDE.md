@@ -65,13 +65,23 @@ When touching these deps, evaluate batuta stack alternatives:
 # 1. Check batuta stack first
 ls /home/noah/src/ | grep -E "^(aprender|trueno|renacer|certeza|probar|bashrs|pmcp|presentar)"
 
-# 2. Check if feature exists in aprender
-grep -r "YourFeature" /home/noah/src/aprender/src/
+# 2. Check if feature exists in aprender (use pmat query, not grep)
+cd /home/noah/src/aprender && pmat query "YourFeature" --limit 5
 
 # 3. If must add external: Document in PR why batuta stack didn't work
 ```
 
 **Rationale**: Sovereign AI Stack reduces supply chain risk, enables deep optimization, maintains code quality control, and supports the ecosystem.
+
+**CRITICAL: Code Search Policy**
+
+**NEVER use grep/glob for code search. ALWAYS use pmat query.**
+
+| Task | Command |
+|------|---------|
+| Find functions by intent | `pmat query "error handling" --limit 10` |
+| Find important functions | `pmat query "mcp" --rank-by pagerank --limit 5` |
+| Cross-project search | `pmat query "feature" --include-project ~/src/aprender` |
 
 ---
 

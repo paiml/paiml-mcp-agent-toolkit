@@ -414,6 +414,7 @@ impl Scorer for DocumentationScorer {
 unsafe impl Send for DocumentationScorer {}
 unsafe impl Sync for DocumentationScorer {}
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

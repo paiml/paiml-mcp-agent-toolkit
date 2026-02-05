@@ -129,6 +129,7 @@ async fn test_context_shows_code_plus_analysis() {
     a + b
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

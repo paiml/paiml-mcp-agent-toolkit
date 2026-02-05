@@ -2,6 +2,7 @@
 //!
 //! Sprint 65 Phase 2: CLI integration tests
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use crate::cli::TdgOutputFormat;

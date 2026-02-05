@@ -256,6 +256,7 @@ fn calculate_hash(content: &str) -> u64 {
     hasher.finish()
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

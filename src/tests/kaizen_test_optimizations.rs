@@ -263,6 +263,7 @@ impl Drop for TestMetrics {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod kaizen_optimization_tests {
     use super::*;

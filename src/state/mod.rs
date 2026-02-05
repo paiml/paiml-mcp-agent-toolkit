@@ -1,6 +1,7 @@
 // Hybrid event sourcing with snapshots for state management
 pub mod event_store;
-// TODO: Fix async_raft v0.6 API compatibility
+// Raft consensus disabled: async_raft v0.6 requires breaking API changes.
+// Re-enable when migrating to openraft or similar maintained crate.
 // pub mod raft_consensus;
 pub mod recovery;
 pub mod snapshot_store;
@@ -111,6 +112,7 @@ impl AgentState for ExampleState {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

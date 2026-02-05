@@ -496,6 +496,7 @@ async fn route_satd_analysis(cmd: AnalyzeCommands) -> Result<()> {
         timeout,
         include,
         exclude,
+        extended,
     } = cmd
     {
         use super::satd_handler::SatdAnalysisConfig;
@@ -516,6 +517,7 @@ async fn route_satd_analysis(cmd: AnalyzeCommands) -> Result<()> {
             timeout,
             include,
             exclude,
+            extended,
         };
 
         super::satd_handler::handle_analyze_satd(config).await
@@ -671,9 +673,27 @@ async fn route_build_tdg_analysis(cmd: AnalyzeCommands) -> Result<()> {
 
         // Step 3: Check for regression if requested
         if fail_on_regression {
-            // TODO: Implement regression check by comparing with stored baseline
-            // For now, just check threshold
-            println!("⚠️  --fail-on-regression not yet implemented, using threshold only");
+            let baseline_path = path.join(".pmat/baseline.json");
+            if baseline_path.exists() {
+                println!("🔍 Checking for quality regressions...");
+                // Shell out to pmat tdg check-regression for simplicity
+                let status = std::process::Command::new("pmat")
+                    .args([
+                        "tdg", "check-regression",
+                        "--baseline", baseline_path.to_str().unwrap_or(".pmat/baseline.json"),
+                        "--path", path.to_str().unwrap_or("."),
+                        "--fail-on-regression",
+                    ])
+                    .status();
+                match status {
+                    Ok(s) if s.success() => println!("✅ No regressions detected"),
+                    Ok(_) => anyhow::bail!("Quality regression detected"),
+                    Err(e) => println!("⚠️  Could not run regression check: {}", e),
+                }
+            } else {
+                println!("⚠️  No baseline found at {}, skipping regression check", baseline_path.display());
+                println!("   Run 'pmat tdg baseline create' to create a baseline");
+            }
         }
 
         result

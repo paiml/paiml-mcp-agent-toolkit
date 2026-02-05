@@ -118,6 +118,95 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     print_output(&output);
 
+    // Demo 6: PageRank ranking (most important functions)
+    println!("\n----------------------------------------------------------------");
+    println!("  Demo 6: PageRank Ranking (most important functions)");
+    println!("----------------------------------------------------------------\n");
+    println!("Command: pmat query \"error\" --rank-by pagerank --limit 5\n");
+
+    let output = Command::new(&pmat)
+        .args([
+            "query",
+            "error",
+            "--rank-by",
+            "pagerank",
+            "--limit",
+            "5",
+        ])
+        .current_dir(&project_dir)
+        .output()?;
+
+    print_output(&output);
+
+    // Demo 7: InDegree ranking (most called functions)
+    println!("\n----------------------------------------------------------------");
+    println!("  Demo 7: InDegree Ranking (most called functions)");
+    println!("----------------------------------------------------------------\n");
+    println!("Command: pmat query \"format\" --rank-by indegree --limit 5\n");
+
+    let output = Command::new(&pmat)
+        .args([
+            "query",
+            "format",
+            "--rank-by",
+            "indegree",
+            "--limit",
+            "5",
+        ])
+        .current_dir(&project_dir)
+        .output()?;
+
+    print_output(&output);
+
+    // Demo 8: Centrality ranking (most connected functions)
+    println!("\n----------------------------------------------------------------");
+    println!("  Demo 8: Centrality Ranking (hub functions)");
+    println!("----------------------------------------------------------------\n");
+    println!("Command: pmat query \"parse\" --rank-by centrality --limit 5\n");
+
+    let output = Command::new(&pmat)
+        .args([
+            "query",
+            "parse",
+            "--rank-by",
+            "centrality",
+            "--limit",
+            "5",
+        ])
+        .current_dir(&project_dir)
+        .output()?;
+
+    print_output(&output);
+
+    // Demo 9: PageRank filter with JSON
+    println!("\n----------------------------------------------------------------");
+    println!("  Demo 9: PageRank Filter + JSON (find important MCP code)");
+    println!("----------------------------------------------------------------\n");
+    println!("Command: pmat query \"mcp\" --min-pagerank 0.0001 --format json --limit 3\n");
+
+    let output = Command::new(&pmat)
+        .args([
+            "query",
+            "mcp",
+            "--min-pagerank",
+            "0.0001",
+            "--format",
+            "json",
+            "--limit",
+            "3",
+        ])
+        .current_dir(&project_dir)
+        .output()?;
+
+    // Pretty-print JSON
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    for line in stdout.lines().take(50) {
+        println!("{}", line);
+    }
+    if stdout.lines().count() > 50 {
+        println!("... (output truncated)");
+    }
+
     // Summary: grep vs pmat query comparison
     println!("\n================================================================");
     println!("  Why pmat query > grep for agents");
@@ -132,7 +221,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("     - TDG grades and complexity scores");
     println!("     - Big-O estimates");
     println!("     - Documentation strings");
-    println!("     - Relevance scores\n");
+    println!("     - Relevance scores");
+    println!("     - Graph metrics (PageRank, in/out degree)\n");
+
+    println!("  Graph-aware ranking options:");
+    println!("  - --rank-by relevance  (default: semantic similarity)");
+    println!("  - --rank-by pagerank   (most important functions)");
+    println!("  - --rank-by indegree   (most called functions)");
+    println!("  - --rank-by centrality (hub functions)\n");
 
     println!("  Agent context is also available via MCP tools:");
     println!("  - pmat_query_code: Semantic search by intent");

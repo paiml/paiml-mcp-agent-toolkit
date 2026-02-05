@@ -104,6 +104,7 @@ impl std::str::FromStr for ChurnOutputFormat {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -248,6 +249,7 @@ mod tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod coverage_tests {
     //! EXTREME TDD coverage tests for churn analysis module
@@ -787,6 +789,7 @@ mod coverage_tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use super::*;

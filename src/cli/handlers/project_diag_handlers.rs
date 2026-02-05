@@ -1246,6 +1246,7 @@ fn format_andon(report: &DiagnosticReport) -> String {
     output
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

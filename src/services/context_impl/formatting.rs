@@ -435,6 +435,7 @@ fn count_ast_items(
 #[path = "context_tests.rs"]
 mod tests;
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod visitor_tests {
     use super::*;

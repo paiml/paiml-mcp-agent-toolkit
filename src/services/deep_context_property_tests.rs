@@ -164,6 +164,7 @@ async fn analyze_code_complexity(
     Ok(report.complexity_metrics)
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

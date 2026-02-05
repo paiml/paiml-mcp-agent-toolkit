@@ -388,6 +388,7 @@ impl Scorer for KnownDefectsScorer {
 unsafe impl Send for KnownDefectsScorer {}
 unsafe impl Sync for KnownDefectsScorer {}
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

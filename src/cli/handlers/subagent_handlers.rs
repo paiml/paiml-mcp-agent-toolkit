@@ -286,6 +286,7 @@ pub fn export_tool_mapping_json(output_path: &Path) -> Result<()> {
     Ok(())
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

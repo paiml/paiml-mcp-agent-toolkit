@@ -2,6 +2,7 @@
 // Tests Category D: Build and Test Automation (25 points)
 // All tests should FAIL until MakefileScorer is implemented
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod makefile_scorer_tests {
     use crate::tests::repo_score::test_utils::*;

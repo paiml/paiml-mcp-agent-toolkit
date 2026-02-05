@@ -278,6 +278,7 @@ pub fn find_undocumented_flags(
         .collect()
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

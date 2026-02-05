@@ -43,6 +43,7 @@ pub trait TreeSitterMutationOperator: Send + Sync {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -396,6 +396,7 @@ struct ParseContext<'a> {
     nodes_created: usize,
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;

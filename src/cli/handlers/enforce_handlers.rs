@@ -1252,6 +1252,7 @@ pub fn handle_complete_enforcement_state() -> Result<EnforcementResult> {
 #[path = "enforce_handlers_tests.rs"]
 mod enforce_tests_external;
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -109,6 +109,7 @@ fn calculate_priority(tdg_impact: f64) -> u8 {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

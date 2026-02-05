@@ -395,6 +395,7 @@ pub async fn run_performance_test_suite(config: PerformanceTestConfig) -> Result
     Ok(())
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

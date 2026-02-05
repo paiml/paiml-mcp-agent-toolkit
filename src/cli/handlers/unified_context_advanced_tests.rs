@@ -62,6 +62,7 @@ fn create_large_test_project(file_count: usize) -> std::path::PathBuf {
     std::path::PathBuf::from(format!("test_large_project_{}", file_count))
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod advanced_annotation_tests {
     use super::*;
@@ -226,6 +227,7 @@ mod advanced_annotation_tests {
 }
 
 // Property-based tests for advanced annotations
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use super::*;
@@ -288,6 +290,7 @@ mod property_tests {
 }
 
 // Integration tests for unified context with all annotations
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod integration_tests {
     use super::*;

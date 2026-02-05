@@ -572,6 +572,7 @@ impl TreeSitterMutationOperator for CppMemberAccessMutation {
 // UNIT TESTS
 // ============================================================
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

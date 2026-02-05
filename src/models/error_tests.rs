@@ -1,6 +1,7 @@
 // Error type tests extracted from error.rs for file health (CB-040).
 // This file is include!()'d into error.rs scope.
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -833,6 +834,7 @@ mod tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use super::*;
@@ -941,6 +943,7 @@ mod property_tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod coverage_tests {
     //! EXTREME TDD coverage tests for models/error.rs

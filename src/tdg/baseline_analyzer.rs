@@ -107,6 +107,7 @@ pub fn compare_with_baseline(file_path: &Path, baseline_ref: &str) -> Result<Bas
     })
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

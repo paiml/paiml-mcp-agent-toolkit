@@ -297,6 +297,7 @@ fn format_yaml(
     Ok(yaml)
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

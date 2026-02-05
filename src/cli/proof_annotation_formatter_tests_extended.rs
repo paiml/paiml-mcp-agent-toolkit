@@ -2,6 +2,7 @@
 //!
 //! This module contains additional coverage tests for proof annotations.
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod extended_coverage_tests {
     use super::super::{format_single_proof, generate_proof_sarif_rules, group_by_file};

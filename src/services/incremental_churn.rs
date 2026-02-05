@@ -432,6 +432,7 @@ fn calculate_churn_statistics(files: &[FileChurnMetrics]) -> (f64, f64, f64) {
     calculate_churn_statistics_scalar(files)
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -666,6 +667,7 @@ def456|Jane Smith|2024-01-02T12:00:00Z
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;

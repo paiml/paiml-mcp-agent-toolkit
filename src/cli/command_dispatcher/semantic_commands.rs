@@ -2,6 +2,9 @@
 //!
 //! Extracted from command_dispatcher mod.rs for file health compliance (CB-040).
 //! Contains semantic search and embedding command execution.
+//!
+//! NOTE: Uses pure Rust local embeddings via aprender/trueno-rag.
+//! NO external API keys or internet connection required.
 
 use super::CommandDispatcher;
 use crate::cli::commands::{EmbedCommands, SearchMode, SemanticCommands};
@@ -11,6 +14,8 @@ use crate::services::configuration_service::ConfigurationService;
 
 impl CommandDispatcher {
     /// Execute embed commands for semantic search (PMAT-SEARCH-011)
+    ///
+    /// Uses local TF-IDF embeddings - no API keys required.
     pub async fn execute_embed_command(embed_cmd: EmbedCommands) -> anyhow::Result<()> {
         // Load configuration with environment variable fallbacks
         let config_service = ConfigurationService::new(None);
@@ -20,18 +25,10 @@ impl CommandDispatcher {
         if !semantic_config.enabled {
             anyhow::bail!(
                 "Semantic search is not enabled.\n\
-                 To enable, set semantic.enabled = true in config file or provide OPENAI_API_KEY environment variable.\n\
-                 See: docs/sprints/SPRINT-32-IMPLEMENTATION-NOTES.md"
+                 To enable, set semantic.enabled = true in config file.\n\
+                 No API keys required - uses local embeddings."
             );
         }
-
-        // Get API key
-        let api_key = semantic_config.openai_api_key.ok_or_else(|| {
-            anyhow::anyhow!(
-                "OpenAI API key not configured.\n\
-                 Set OPENAI_API_KEY environment variable or semantic.openai_api_key in config file."
-            )
-        })?;
 
         // Get database path
         let db_path = semantic_config.vector_db_path.unwrap_or_else(|| {
@@ -50,8 +47,8 @@ impl CommandDispatcher {
             .workspace_path
             .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
 
-        // Initialize semantic CLI
-        let semantic_cli = SemanticCli::new(&db_path, &api_key, &workspace)
+        // Initialize semantic CLI (no API key needed)
+        let semantic_cli = SemanticCli::new(&db_path, &workspace)
             .await
             .map_err(|e| anyhow::anyhow!(e))?;
 
@@ -104,6 +101,8 @@ impl CommandDispatcher {
     }
 
     /// Execute semantic search commands (PMAT-SEARCH-011)
+    ///
+    /// Uses local TF-IDF embeddings - no API keys required.
     pub async fn execute_semantic_command(semantic_cmd: SemanticCommands) -> anyhow::Result<()> {
         // Load configuration with environment variable fallbacks
         let config_service = ConfigurationService::new(None);
@@ -113,18 +112,10 @@ impl CommandDispatcher {
         if !semantic_config.enabled {
             anyhow::bail!(
                 "Semantic search is not enabled.\n\
-                 To enable, set semantic.enabled = true in config file or provide OPENAI_API_KEY environment variable.\n\
-                 See: docs/sprints/SPRINT-32-IMPLEMENTATION-NOTES.md"
+                 To enable, set semantic.enabled = true in config file.\n\
+                 No API keys required - uses local embeddings."
             );
         }
-
-        // Get API key
-        let api_key = semantic_config.openai_api_key.ok_or_else(|| {
-            anyhow::anyhow!(
-                "OpenAI API key not configured.\n\
-                 Set OPENAI_API_KEY environment variable or semantic.openai_api_key in config file."
-            )
-        })?;
 
         // Get database path
         let db_path = semantic_config.vector_db_path.unwrap_or_else(|| {
@@ -143,8 +134,8 @@ impl CommandDispatcher {
             .workspace_path
             .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
 
-        // Initialize semantic CLI
-        let semantic_cli = SemanticCli::new(&db_path, &api_key, &workspace)
+        // Initialize semantic CLI (no API key needed)
+        let semantic_cli = SemanticCli::new(&db_path, &workspace)
             .await
             .map_err(|e| anyhow::anyhow!(e))?;
 

@@ -2,6 +2,7 @@
 //!
 //! End-to-end tests for ML-enhanced mutation testing pipeline
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod ml_integration_tests {
     use crate::services::mutation::{

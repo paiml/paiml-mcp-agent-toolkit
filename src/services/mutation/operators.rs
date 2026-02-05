@@ -630,6 +630,7 @@ impl MutationOperator for ExceptionHandlerRemoval {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

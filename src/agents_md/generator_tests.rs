@@ -1,5 +1,6 @@
 // Generator tests extracted from generator.rs for file health (CB-040).
 // This file is include!()'d into generator.rs scope.
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

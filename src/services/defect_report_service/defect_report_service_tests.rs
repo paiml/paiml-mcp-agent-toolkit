@@ -1,5 +1,6 @@
 //! Integration tests for the defect report service
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use crate::models::defect_report::{Defect, DefectCategory, Severity};

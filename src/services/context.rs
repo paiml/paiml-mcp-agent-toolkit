@@ -635,6 +635,7 @@ async fn analyze_file_by_toolchain_persistent(
 // Formatting functions split for file health compliance (CB-040)
 include!("context_impl/formatting.rs");
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod context_tests {
     use super::*;

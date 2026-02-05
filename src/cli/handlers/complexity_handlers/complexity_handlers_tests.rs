@@ -6,6 +6,7 @@
 use crate::services::complexity::{ComplexityMetrics, FileComplexityMetrics, FunctionComplexity};
 use proptest::prelude::*;
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -516,6 +516,7 @@ impl Scorer for TestingScorer {
 unsafe impl Send for TestingScorer {}
 unsafe impl Sync for TestingScorer {}
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -609,6 +610,7 @@ mod tests {
             r#"
 fn foo() {}
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     #[test]

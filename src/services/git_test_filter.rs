@@ -75,6 +75,7 @@ pub fn build_test_command(modules: &[String]) -> Option<Vec<String>> {
     Some(args)
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -1,3 +1,4 @@
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod complexity_config_additional_tests {
     use super::*;
@@ -46,6 +47,7 @@ mod complexity_config_additional_tests {
 
 // Extended Coverage Tests - Edge Cases
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod edge_case_tests {
     use super::*;
@@ -196,6 +198,7 @@ mod edge_case_tests {
 
 // Extended Property Tests
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod extended_property_tests {
     use super::*;

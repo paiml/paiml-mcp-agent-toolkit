@@ -1,5 +1,6 @@
 //! Comprehensive test suite for complexity module to achieve 80% code coverage
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::super::complexity::*;

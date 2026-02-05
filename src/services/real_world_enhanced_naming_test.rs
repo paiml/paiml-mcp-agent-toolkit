@@ -1,5 +1,6 @@
 //! Real-world test for enhanced naming with actual TypeScript React file
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod real_world_tests {
     use crate::services::context::AstItem;

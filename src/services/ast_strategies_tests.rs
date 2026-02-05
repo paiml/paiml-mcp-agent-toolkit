@@ -709,6 +709,7 @@ fn test_strategy_registry_whitespace() {
     assert!(registry.get_strategy(" rs ").is_none());
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use super::*;
@@ -823,6 +824,7 @@ mod property_tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod integration_tests {
     use super::*;

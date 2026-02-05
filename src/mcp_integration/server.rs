@@ -22,17 +22,18 @@ pub struct ServerConfig {
     pub enable_logging: bool,
 
     // Semantic search configuration (PMAT-SEARCH-012)
+    /// Enable semantic search (uses local embeddings, no API keys required)
     pub semantic_enabled: bool,
-    pub semantic_api_key: Option<String>,
     pub semantic_db_path: Option<String>,
     pub semantic_workspace: Option<std::path::PathBuf>,
 }
 
 impl Default for ServerConfig {
     fn default() -> Self {
-        // Load semantic config from environment variables if available
-        let semantic_enabled = std::env::var("OPENAI_API_KEY").is_ok();
-        let semantic_api_key = std::env::var("OPENAI_API_KEY").ok();
+        // Semantic search uses local embeddings - no API keys required
+        let semantic_enabled = std::env::var("PMAT_SEMANTIC_ENABLED")
+            .map(|v| v == "1" || v.to_lowercase() == "true")
+            .unwrap_or(false);
         let semantic_db_path = std::env::var("PMAT_VECTOR_DB_PATH").ok().or_else(|| {
             dirs::home_dir().map(|h| {
                 h.join(".pmat")
@@ -55,9 +56,8 @@ impl Default for ServerConfig {
             request_timeout: std::time::Duration::from_secs(30),
             enable_logging: true,
 
-            // Semantic search (PMAT-SEARCH-012)
+            // Semantic search (PMAT-SEARCH-012) - local embeddings, no API keys
             semantic_enabled,
-            semantic_api_key,
             semantic_db_path,
             semantic_workspace,
         }
@@ -129,7 +129,7 @@ impl McpServer {
         self.register_polyglot_tools().await?;
 
         // Register semantic search tools (PMAT-SEARCH-012)
-        // Only registers if OPENAI_API_KEY is set
+        // Uses local embeddings - no API keys required
         self.register_semantic_tools().await?;
 
         // Register default resources
@@ -362,26 +362,21 @@ impl McpServer {
     /// - 🔧 MCP integration requires adapter layer (estimated: 2-3 hours)
     ///
     /// Configuration is loaded from environment variables:
-    /// - OPENAI_API_KEY: OpenAI API key for embeddings
+    /// - PMAT_SEMANTIC_ENABLED: Enable semantic search (default: false)
     /// - PMAT_VECTOR_DB_PATH: Path to vector database (default: ~/.pmat/embeddings.db)
     /// - PMAT_WORKSPACE: Workspace path for code indexing (default: current directory)
+    ///
+    /// NOTE: No API keys required - uses local embeddings via aprender/trueno-rag
     async fn register_semantic_tools(&self) -> Result<(), Box<dyn std::error::Error>> {
         // Check if semantic search is enabled
         if !self.config.semantic_enabled {
-            tracing::info!("Semantic search is disabled (no OPENAI_API_KEY found)");
+            tracing::info!("Semantic search is disabled (set PMAT_SEMANTIC_ENABLED=true to enable)");
             return Ok(());
         }
 
         // Sprint 33 (PMAT-SEARCH-012 GREEN): Adapter layer implementation complete
         use crate::mcp_integration::tools::*;
         use crate::services::semantic::HybridSearchEngine;
-
-        // Get configuration
-        let api_key = self
-            .config
-            .semantic_api_key
-            .as_ref()
-            .ok_or("Semantic search enabled but API key not configured")?;
 
         let db_path = self.config.semantic_db_path.clone().unwrap_or_else(|| {
             dirs::home_dir()
@@ -400,14 +395,14 @@ impl McpServer {
             .clone()
             .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
 
-        // Initialize hybrid search engine
+        // Initialize hybrid search engine (no API key required - uses local embeddings)
         tracing::info!(
             "Initializing semantic search engine: db={}, workspace={}",
             db_path,
             workspace.display()
         );
 
-        let engine = match HybridSearchEngine::new(api_key, &db_path, &workspace).await {
+        let engine = match HybridSearchEngine::new(&db_path, &workspace).await {
             Ok(engine) => Arc::new(engine),
             Err(e) => {
                 tracing::warn!("Failed to initialize semantic search engine: {}", e);
@@ -836,6 +831,7 @@ impl McpTransport for StdioTransport {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -879,7 +875,6 @@ mod tests {
             request_timeout: std::time::Duration::from_secs(60),
             enable_logging: false,
             semantic_enabled: false,
-            semantic_api_key: None,
             semantic_db_path: None,
             semantic_workspace: None,
         };
@@ -893,8 +888,8 @@ mod tests {
     #[test]
     fn test_server_config_semantic_defaults() {
         let config = ServerConfig::default();
-        // Semantic is enabled if OPENAI_API_KEY exists
-        // Can be true or false depending on environment
+        // Semantic uses local embeddings - no API keys required
+        // Can be enabled via PMAT_SEMANTIC_ENABLED env var
         assert!(config.semantic_db_path.is_some() || config.semantic_db_path.is_none());
     }
 

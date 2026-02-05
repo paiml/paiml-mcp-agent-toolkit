@@ -8,6 +8,7 @@ pub mod supervisor;
 pub mod transformer_actor;
 pub mod validator_actor;
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod registry_tests;
 
@@ -106,6 +107,7 @@ pub fn init_agent_system() {
     // actix::System::new() returns SystemRunner which auto-runs
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

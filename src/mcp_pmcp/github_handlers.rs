@@ -35,6 +35,7 @@ impl GitHubMcpIntegration {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -106,6 +107,7 @@ mod tests {
         let _ = (service1, service2);
     }
 }
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;

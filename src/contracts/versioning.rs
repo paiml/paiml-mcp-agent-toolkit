@@ -397,6 +397,7 @@ pub fn initialize_registry() -> Result<ContractRegistry, ContractError> {
     Ok(registry)
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -460,6 +461,7 @@ mod tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;

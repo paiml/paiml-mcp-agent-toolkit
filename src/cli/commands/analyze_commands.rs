@@ -268,6 +268,11 @@ pub enum AnalyzeCommands {
         #[arg(long)]
         strict: bool,
 
+        /// Use extended mode - detect euphemisms like 'placeholder', 'stub', 'for now'
+        /// that hide technical debt (addresses issue #149)
+        #[arg(long)]
+        extended: bool,
+
         /// Track debt evolution over time (requires git history)
         #[arg(long)]
         evolution: bool,

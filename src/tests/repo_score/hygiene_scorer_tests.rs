@@ -2,6 +2,7 @@
 // Tests Category C: Repository Hygiene (10 points)
 // All tests should FAIL until HygieneScorer is implemented
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod hygiene_scorer_tests {
     use crate::tests::repo_score::test_utils::*;

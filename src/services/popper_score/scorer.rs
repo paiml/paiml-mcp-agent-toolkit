@@ -210,6 +210,7 @@ pub trait PopperScorer: Send + Sync {
     fn score(&self, project_path: &Path) -> PopperScorerResult<PopperCategoryScore>;
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

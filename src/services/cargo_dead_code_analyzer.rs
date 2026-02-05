@@ -648,6 +648,7 @@ pub async fn analyze_dead_code(project_path: impl AsRef<Path>) -> Result<Accurat
     analyzer.analyze().await
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -683,6 +684,7 @@ mod tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod suppression_tests {
     use super::*;
@@ -785,6 +787,7 @@ fn function_in_suppressed_module() {}
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod integration_tests {
     use super::*;
@@ -828,6 +831,7 @@ mod integration_tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;

@@ -460,6 +460,7 @@ fn parse_test_count(output: &str, status: &str) -> usize {
         .unwrap_or(0)
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

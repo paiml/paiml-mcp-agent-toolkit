@@ -13,6 +13,7 @@ pub mod mcp_simple;
 pub mod real_service;
 pub mod service;
 pub mod simple_service;
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests;
 pub mod uniform_cli_commands;
@@ -485,6 +486,7 @@ impl ContractValidation for RefactorAutoContract {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;

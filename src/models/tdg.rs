@@ -258,6 +258,7 @@ pub struct TDGBucket {
     pub percentage: f64,
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use super::*;
@@ -357,6 +358,7 @@ mod property_tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -405,6 +407,7 @@ pub enum SatdSeverity {
     Critical,
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod new_tests {
     use super::*;

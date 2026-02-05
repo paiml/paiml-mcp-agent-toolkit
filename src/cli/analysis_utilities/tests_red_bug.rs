@@ -1,3 +1,4 @@
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod red_tests_pmat_bug_002_003_004 {
     use super::*;

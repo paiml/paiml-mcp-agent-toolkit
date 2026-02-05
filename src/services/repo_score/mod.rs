@@ -13,6 +13,7 @@ pub mod scorers;
 pub use error::RepoScoreError;
 pub use models::*;
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod integration_tests {
     use super::*;

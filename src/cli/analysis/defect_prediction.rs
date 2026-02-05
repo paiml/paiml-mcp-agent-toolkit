@@ -530,6 +530,7 @@ fn format_defect_csv(predictions: &[(String, DefectScore)]) -> Result<String> {
     Ok(csv)
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod coverage_tests {
     use super::*;

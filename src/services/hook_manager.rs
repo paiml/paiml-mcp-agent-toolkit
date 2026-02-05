@@ -114,6 +114,7 @@ pub fn uninstall_commit_msg_hook(project_path: &PathBuf) -> Result<()> {
     Ok(())
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

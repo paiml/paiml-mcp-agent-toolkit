@@ -375,6 +375,7 @@ fn format_yaml(score: &BrickScore) -> Result<String> {
     serde_yaml::to_string(score).context("Failed to serialize to YAML")
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

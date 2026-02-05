@@ -27,6 +27,12 @@ pub struct QualityMetrics {
     pub satd_count: u32,
     /// Lines of code
     pub loc: u32,
+    /// Git commit count for the file (churn indicator)
+    #[serde(default)]
+    pub commit_count: u32,
+    /// Churn score (0.0-1.0, higher = more volatile)
+    #[serde(default)]
+    pub churn_score: f32,
 }
 
 /// A function entry in the index
@@ -76,7 +82,7 @@ pub struct IndexManifest {
     pub file_checksums: HashMap<String, String>,
 }
 
-/// Serialized payload for the index (v1.1.0+)
+/// Serialized payload for the index (v1.2.0+)
 #[derive(Serialize, Deserialize)]
 struct IndexPayload {
     functions: Vec<FunctionEntry>,
@@ -100,6 +106,19 @@ pub struct IndexStats {
     pub index_size_bytes: u64,
 }
 
+/// Graph metrics for ranking functions by importance
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
+pub struct GraphMetrics {
+    /// PageRank score (higher = more important, transitively called)
+    pub pagerank: f32,
+    /// Degree centrality (direct callers + callees)
+    pub centrality: f32,
+    /// In-degree (number of direct callers)
+    pub in_degree: u32,
+    /// Out-degree (number of direct callees)
+    pub out_degree: u32,
+}
+
 /// Agent Context Index - searchable function database
 #[derive(Clone)]
 pub struct AgentContextIndex {
@@ -119,6 +138,8 @@ pub struct AgentContextIndex {
     pub(crate) calls: HashMap<usize, Vec<usize>>,
     /// Callee graph: func_idx -> indices of functions that call it
     pub(crate) called_by: HashMap<usize, Vec<usize>>,
+    /// Graph metrics per function (PageRank, centrality)
+    pub(crate) graph_metrics: Vec<GraphMetrics>,
     /// Project root
     pub(crate) project_root: PathBuf,
     /// Manifest
@@ -233,6 +254,9 @@ impl AgentContextIndex {
         // Build call graph
         let (calls, called_by) = build_call_graph(&functions, &name_index);
 
+        // Compute graph metrics (PageRank, centrality)
+        let graph_metrics = compute_graph_metrics(functions.len(), &calls, &called_by);
+
         // Compute name frequency for generic name demotion
         let name_frequency = compute_name_frequency(&name_index, functions.len());
 
@@ -244,7 +268,7 @@ impl AgentContextIndex {
         };
 
         let manifest = IndexManifest {
-            version: "1.1.0".to_string(),
+            version: "1.2.0".to_string(), // Bump version for graph metrics
             built_at: chrono::Utc::now().to_rfc3339(),
             project_root: project_root.to_string_lossy().to_string(),
             function_count: functions.len(),
@@ -266,6 +290,7 @@ impl AgentContextIndex {
             name_frequency,
             calls,
             called_by,
+            graph_metrics,
             project_root,
             manifest,
         })
@@ -294,7 +319,11 @@ impl AgentContextIndex {
             by_language,
             by_grade,
             avg_complexity,
-            index_size_bytes: 0, // TODO: Calculate actual size
+            // Estimate index size: functions vec + name_index map + file_index map
+            index_size_bytes: (std::mem::size_of_val(&self.functions)
+                + self.functions.len() * std::mem::size_of::<FunctionEntry>()
+                + self.name_index.len() * 64  // Approximate string + vec overhead
+                + self.file_index.len() * 64) as u64,
         }
     }
 
@@ -542,7 +571,7 @@ impl AgentContextIndex {
         fs::write(index_path.join("manifest.json"), manifest_json)
             .map_err(|e| format!("Failed to write manifest: {e}"))?;
 
-        // Save payload (functions + corpus + call graph) using bincode v1.1.0+ format
+        // Save payload (functions + corpus + call graph) using bincode v1.2.0+ format
         let payload = IndexPayload {
             functions: self.functions.clone(),
             corpus: self.corpus.clone(),
@@ -574,7 +603,7 @@ impl AgentContextIndex {
         let decompressed = lz4_flex::decompress_size_prepended(&compressed)
             .map_err(|e| format!("Failed to decompress functions: {e}"))?;
 
-        // Try v1.1.0+ payload format first, fall back to legacy functions-only
+        // Try v1.2.0+ payload format first, fall back to legacy functions-only
         let is_v1_1 = manifest.version.starts_with("1.1");
         let (functions, corpus, calls, called_by) = if is_v1_1 {
             let payload: IndexPayload = bincode::deserialize(&decompressed)
@@ -598,6 +627,9 @@ impl AgentContextIndex {
             (calls, called_by)
         };
 
+        // Compute graph metrics (PageRank, centrality)
+        let graph_metrics = compute_graph_metrics(functions.len(), &calls, &called_by);
+
         // Compute name frequency and lowercase corpus
         let name_frequency = compute_name_frequency(&name_index, functions.len());
         let corpus_lower: Vec<String> = corpus.iter().map(|d| d.to_lowercase()).collect();
@@ -613,6 +645,7 @@ impl AgentContextIndex {
             name_frequency,
             calls,
             called_by,
+            graph_metrics,
             project_root,
             manifest,
         })
@@ -734,6 +767,7 @@ impl AgentContextIndex {
         // Build all derived data
         let (name_index, file_index, corpus) = build_indices(&functions);
         let (calls, called_by) = build_call_graph(&functions, &name_index);
+        let graph_metrics = compute_graph_metrics(functions.len(), &calls, &called_by);
         let name_frequency = compute_name_frequency(&name_index, functions.len());
         let corpus_lower: Vec<String> = corpus.iter().map(|d| d.to_lowercase()).collect();
 
@@ -749,7 +783,7 @@ impl AgentContextIndex {
         }
 
         let manifest = IndexManifest {
-            version: "1.1.0".to_string(),
+            version: "1.2.0".to_string(),
             built_at: chrono::Utc::now().to_rfc3339(),
             project_root: project_root.to_string_lossy().to_string(),
             function_count: functions.len(),
@@ -768,6 +802,7 @@ impl AgentContextIndex {
             name_frequency,
             calls,
             called_by,
+            graph_metrics,
             project_root,
             manifest,
         })
@@ -924,6 +959,87 @@ pub(crate) fn build_call_graph(
     (calls, called_by)
 }
 
+/// Compute graph metrics (PageRank, centrality) for each function.
+///
+/// Uses a simplified PageRank algorithm:
+/// - Damping factor: 0.85
+/// - Iterations: 20 (sufficient for convergence)
+/// - Initial score: 1/N for each node
+///
+/// PageRank represents "importance" - functions that are transitively called
+/// by many other functions will have higher scores.
+pub(crate) fn compute_graph_metrics(
+    num_functions: usize,
+    calls: &HashMap<usize, Vec<usize>>,
+    called_by: &HashMap<usize, Vec<usize>>,
+) -> Vec<GraphMetrics> {
+    if num_functions == 0 {
+        return Vec::new();
+    }
+
+    let damping = 0.85_f32;
+    let iterations = 20;
+    let initial_score = 1.0 / num_functions as f32;
+
+    // Initialize PageRank scores
+    let mut pagerank: Vec<f32> = vec![initial_score; num_functions];
+    let mut new_pagerank: Vec<f32> = vec![0.0; num_functions];
+
+    // Iterative PageRank computation
+    for _ in 0..iterations {
+        // Reset new scores with teleportation probability
+        for score in new_pagerank.iter_mut() {
+            *score = (1.0 - damping) / num_functions as f32;
+        }
+
+        // Distribute scores from callers to callees
+        for (caller_idx, callees) in calls {
+            if callees.is_empty() {
+                continue;
+            }
+            let contribution = damping * pagerank[*caller_idx] / callees.len() as f32;
+            for &callee_idx in callees {
+                if callee_idx < num_functions {
+                    new_pagerank[callee_idx] += contribution;
+                }
+            }
+        }
+
+        // Handle dangling nodes (functions that don't call anything)
+        // Their PageRank distributes evenly to all nodes
+        let mut dangling_sum = 0.0_f32;
+        for idx in 0..num_functions {
+            if !calls.contains_key(&idx) || calls.get(&idx).map_or(true, |c| c.is_empty()) {
+                dangling_sum += pagerank[idx];
+            }
+        }
+        let dangling_contribution = damping * dangling_sum / num_functions as f32;
+        for score in new_pagerank.iter_mut() {
+            *score += dangling_contribution;
+        }
+
+        // Swap for next iteration
+        std::mem::swap(&mut pagerank, &mut new_pagerank);
+    }
+
+    // Build GraphMetrics for each function
+    let mut metrics: Vec<GraphMetrics> = Vec::with_capacity(num_functions);
+    for idx in 0..num_functions {
+        let in_degree = called_by.get(&idx).map_or(0, |v| v.len()) as u32;
+        let out_degree = calls.get(&idx).map_or(0, |v| v.len()) as u32;
+        let centrality = (in_degree + out_degree) as f32 / (2.0 * num_functions as f32).max(1.0);
+
+        metrics.push(GraphMetrics {
+            pagerank: pagerank[idx],
+            centrality,
+            in_degree,
+            out_degree,
+        });
+    }
+
+    metrics
+}
+
 /// Check if directory should be ignored
 fn is_ignored_dir(path: &Path) -> bool {
     let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
@@ -992,6 +1108,8 @@ fn extract_quality_metrics(chunk: &CodeChunk, _full_content: &str) -> QualityMet
         big_o,
         satd_count,
         loc,
+        commit_count: 0,  // Populated later by churn enrichment
+        churn_score: 0.0, // Populated later by churn enrichment
     }
 }
 
@@ -1393,7 +1511,7 @@ mod tests {
         index.save(&index_path).unwrap();
 
         let loaded = AgentContextIndex::load(&index_path).unwrap();
-        assert_eq!(loaded.manifest.version, "1.1.0");
+        assert_eq!(loaded.manifest.version, "1.2.0");
         assert_eq!(loaded.functions.len(), index.functions.len());
         assert_eq!(loaded.corpus.len(), index.corpus.len());
         // Verify corpus is identical (not rebuilt from scratch)
@@ -1526,6 +1644,7 @@ mod tests {
         let (name_index, file_index, corpus) = build_indices(&functions);
         let corpus_lower: Vec<String> = corpus.iter().map(|c| c.to_lowercase()).collect();
         let (calls, called_by) = build_call_graph(&functions, &name_index);
+        let graph_metrics = compute_graph_metrics(functions.len(), &calls, &called_by);
 
         let index = AgentContextIndex {
             functions,
@@ -1536,9 +1655,10 @@ mod tests {
             name_frequency: HashMap::new(),
             calls,
             called_by,
+            graph_metrics,
             project_root: PathBuf::from("/test"),
             manifest: super::IndexManifest {
-                version: "1.1.0".to_string(),
+                version: "1.2.0".to_string(),
                 built_at: "2025-01-01T00:00:00Z".to_string(),
                 project_root: "/test".to_string(),
                 function_count: 2,
@@ -1589,9 +1709,10 @@ mod tests {
             name_frequency: HashMap::new(),
             calls: HashMap::new(),
             called_by: HashMap::new(),
+            graph_metrics: vec![GraphMetrics::default()],
             project_root: PathBuf::from("/test"),
             manifest: super::IndexManifest {
-                version: "1.1.0".to_string(),
+                version: "1.2.0".to_string(),
                 built_at: "2025-01-01T00:00:00Z".to_string(),
                 project_root: "/test".to_string(),
                 function_count: 1,
@@ -1693,7 +1814,7 @@ mod tests {
 
         let index = AgentContextIndex::build(project_path).unwrap();
         let manifest = index.manifest();
-        assert_eq!(manifest.version, "1.1.0");
+        assert_eq!(manifest.version, "1.2.0");
         assert!(manifest.function_count > 0);
         assert!(manifest.file_count > 0);
     }
@@ -1773,7 +1894,7 @@ mod tests {
         let index = AgentContextIndex::build(project_path).unwrap();
         assert!(index.functions.len() >= 2);
         assert!(index.manifest.file_count >= 2);
-        assert_eq!(index.manifest.version, "1.1.0");
+        assert_eq!(index.manifest.version, "1.2.0");
 
         // Verify quality metrics computed
         for func in &index.functions {

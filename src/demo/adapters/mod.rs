@@ -10,6 +10,7 @@ pub use mcp::{McpDemoAdapter, McpRequest, McpResponse};
 #[cfg(feature = "tui")]
 pub use tui::{TuiDemoAdapter, TuiRequest, TuiResponse};
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     // use super::*; // Unused in simple tests
@@ -21,6 +22,7 @@ mod tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;

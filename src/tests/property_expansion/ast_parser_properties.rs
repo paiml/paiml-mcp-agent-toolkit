@@ -327,6 +327,7 @@ mod typescript_properties {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_expansion_tests {
     use super::*;

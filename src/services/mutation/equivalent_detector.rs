@@ -577,6 +577,7 @@ fn levenshtein_distance(s1: &str, s2: &str) -> usize {
     prev_row[len2]
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

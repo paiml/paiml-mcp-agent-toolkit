@@ -328,6 +328,7 @@ pub struct ProfileComparison {
     pub is_stricter: Option<String>, // Name of stricter profile
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -464,6 +465,7 @@ mod tests {
         assert!(extreme_score > relaxed_score);
     }
 }
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;

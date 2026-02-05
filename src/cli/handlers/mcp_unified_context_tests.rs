@@ -7,6 +7,7 @@ use tempfile::TempDir;
 use std::fs;
 use tokio::process::Command;
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod mcp_integration_tests {
     use super::*;
@@ -277,6 +278,7 @@ function validate{}(input) {{
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod sub_agent_tdd_tests {
     use super::*;
@@ -379,6 +381,7 @@ function unused() {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_based_mcp_tests {
     use super::*;
@@ -407,6 +410,7 @@ mod property_based_mcp_tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod extreme_tdd_verification {
     use super::*;

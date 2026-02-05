@@ -342,6 +342,7 @@ fn insert_badge_after_title(content: &str, badge: &str) -> String {
 // Integration Tests (Phase 3: README Badge Maintenance)
 // ============================================================================
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

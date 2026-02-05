@@ -381,6 +381,7 @@ fn format_delta(delta: f32) -> String {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

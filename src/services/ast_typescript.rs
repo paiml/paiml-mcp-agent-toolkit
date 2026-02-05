@@ -73,6 +73,7 @@ pub async fn analyze_typescript_file_with_complexity_cached(
 // Keep any other types that were exported
 // (The rest of the original implementation is preserved in ast_typescript_compat.rs)
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;
@@ -92,6 +93,7 @@ mod property_tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod coverage_tests {
     use super::*;
@@ -379,6 +381,7 @@ mod coverage_tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod async_coverage_tests {
     use super::*;

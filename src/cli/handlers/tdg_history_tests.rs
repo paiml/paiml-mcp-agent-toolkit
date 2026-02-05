@@ -2,6 +2,7 @@
 //!
 //! Sprint 65 Phase 3: TDG History Commands
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use std::path::PathBuf;

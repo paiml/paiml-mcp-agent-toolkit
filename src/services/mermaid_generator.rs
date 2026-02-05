@@ -369,6 +369,7 @@ impl Default for MermaidGenerator {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1035,6 +1036,7 @@ mod tests {
     }
 
     /// Validation tests for real-world Mermaid parser compatibility
+    #[cfg_attr(coverage_nightly, coverage(off))]
     #[cfg(test)]
     mod validation_tests {
         use super::*;

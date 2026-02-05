@@ -2,6 +2,7 @@ use super::gate::SatdResult;
 use once_cell::sync::Lazy;
 use regex::Regex;
 
+/// Standard SATD patterns (traditional markers)
 static SATD_PATTERNS: Lazy<Vec<(&str, Regex)>> = Lazy::new(|| {
     vec![
         (
@@ -44,8 +45,61 @@ static SATD_PATTERNS: Lazy<Vec<(&str, Regex)>> = Lazy::new(|| {
     ]
 });
 
+/// Extended SATD patterns - euphemisms that hide technical debt (issue #149)
+/// These are commonly used by AI coding assistants to bypass SATD detection
+static EXTENDED_PATTERNS: Lazy<Vec<(&str, Regex)>> = Lazy::new(|| {
+    vec![
+        // Placeholder patterns - indicate incomplete implementation
+        (
+            "PLACEHOLDER",
+            Regex::new(r"(?i)\bplaceholder\b").expect("valid regex"),
+        ),
+        // Stub patterns - indicate missing implementation
+        (
+            "STUB",
+            Regex::new(r"(?i)\bstub\b").expect("valid regex"),
+        ),
+        // Simplified patterns - indicate corners were cut
+        (
+            "SIMPLIFIED",
+            Regex::new(r"(?i)\bsimplified\b").expect("valid regex"),
+        ),
+        // Demo patterns - indicate non-production code
+        (
+            "FOR_DEMO",
+            Regex::new(r"(?i)\b(for\s+)?demonstrat(e|ion)\b").expect("valid regex"),
+        ),
+        // Mock/dummy patterns - indicate fake implementations
+        (
+            "MOCK",
+            Regex::new(r"(?i)\b(mock|dummy|fake)\b").expect("valid regex"),
+        ),
+        // Hardcoded patterns - indicate missing configuration
+        (
+            "HARDCODED",
+            Regex::new(r"(?i)\bhardcoded\b").expect("valid regex"),
+        ),
+        // "For now" patterns - indicate temporary solutions
+        (
+            "FOR_NOW",
+            Regex::new(r"(?i)\bfor\s+now\b").expect("valid regex"),
+        ),
+        // WIP patterns - work in progress
+        (
+            "WIP",
+            Regex::new(r"\bWIP\b").expect("valid regex"),
+        ),
+        // Skip/bypass patterns - indicate missing validation
+        (
+            "SKIP",
+            Regex::new(r"(?i)\b(skip|bypass)\s+(for\s+now|this|validation)\b").expect("valid regex"),
+        ),
+    ]
+});
+
 pub struct SatdDetector {
     patterns: Vec<(&'static str, Regex)>,
+    extended: bool,
 }
 
 impl Default for SatdDetector {
@@ -58,7 +112,24 @@ impl SatdDetector {
     pub fn new() -> Self {
         Self {
             patterns: SATD_PATTERNS.clone(),
+            extended: false,
         }
+    }
+
+    /// Create a detector with extended patterns (euphemism detection)
+    /// This catches hidden technical debt like "placeholder", "stub", "for now"
+    pub fn with_extended() -> Self {
+        let mut patterns = SATD_PATTERNS.clone();
+        patterns.extend(EXTENDED_PATTERNS.clone());
+        Self {
+            patterns,
+            extended: true,
+        }
+    }
+
+    /// Check if extended mode is enabled
+    pub fn is_extended(&self) -> bool {
+        self.extended
     }
 
     pub fn detect(&self, source: &str) -> SatdResult {
@@ -126,6 +197,7 @@ impl SatdDetector {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

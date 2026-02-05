@@ -215,6 +215,7 @@ pub fn generate_issue_markdown(error: &CapturedError, title: Option<&str>) -> St
     format!("TITLE: {}\n---\n{}", title, md)
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

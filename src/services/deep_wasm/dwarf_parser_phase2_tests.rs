@@ -3,6 +3,7 @@
 //! Tests for enhanced DWARF v5 parsing with line program support.
 //! These tests MUST fail until implementation is complete.
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod dwarf_line_program_tests {
     use crate::services::deep_wasm::dwarf_parser::DwarfParser;
@@ -137,6 +138,7 @@ mod dwarf_line_program_tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod dwarf_enhanced_die_tests {
     use crate::services::deep_wasm::dwarf_parser::DwarfParser;
@@ -190,6 +192,7 @@ mod dwarf_enhanced_die_tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod dwarf_integration_tests {
     use crate::services::deep_wasm::dwarf_parser::DwarfParser;

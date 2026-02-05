@@ -42,33 +42,43 @@ pub mod typescript_tree_sitter_mutations;
 pub mod wasm_adapter;
 pub mod worker_monitor; // Sprint 70: cargo-mutants subprocess wrapper
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod typescript_adapter_tests;
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod python_adapter_tests;
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod go_adapter_tests;
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod cpp_adapter_tests;
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod advanced_operators_tests;
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod fuzzing_integration_tests;
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod ml_predictor_tests;
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod cross_validation_test;
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod equivalent_detector_tests;
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod ml_integration_tests;
 
@@ -107,6 +117,7 @@ pub use typescript_tree_sitter_mutations::*;
 pub use wasm_adapter::*;
 pub use worker_monitor::*;
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod coverage_tests {
     //! EXTREME TDD coverage tests for mutation testing module

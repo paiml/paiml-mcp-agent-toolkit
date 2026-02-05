@@ -294,6 +294,7 @@ fn set_config_value(config: &mut PmatConfig, key: &str, value: &str) -> Result<(
         "mcp" => set_mcp_value(&mut config.mcp, field, value),
         "roadmap" => set_roadmap_value(&mut config.roadmap, field, value),
         "telemetry" => set_telemetry_value(&mut config.telemetry, field, value),
+        "semantic" => set_semantic_value(&mut config.semantic, field, value),
         _ => Err(anyhow::anyhow!("Unknown section '{section}'")),
     }
 }
@@ -424,6 +425,31 @@ fn set_telemetry_value(
         "enable_export" => telemetry.enable_export = value.parse()?,
         "export_format" => telemetry.export_format = value.to_string(),
         _ => return Err(anyhow::anyhow!("Unknown telemetry field '{field}'")),
+    }
+    Ok(())
+}
+
+/// Set semantic configuration value
+fn set_semantic_value(
+    semantic: &mut crate::services::configuration_service::SemanticConfig,
+    field: &str,
+    value: &str,
+) -> Result<()> {
+    match field {
+        "enabled" => semantic.enabled = value.parse()?,
+        "vector_db_path" => semantic.vector_db_path = Some(value.to_string()),
+        "workspace_path" => semantic.workspace_path = Some(std::path::PathBuf::from(value)),
+        "embedding_model" => semantic.embedding_model = value.to_string(),
+        "embedding_dimensions" => semantic.embedding_dimensions = value.parse()?,
+        "default_search_mode" => semantic.default_search_mode = value.to_string(),
+        "default_limit" => semantic.default_limit = value.parse()?,
+        "auto_sync" => semantic.auto_sync = value.parse()?,
+        "sync_interval_seconds" => semantic.sync_interval_seconds = value.parse()?,
+        "max_chunk_tokens" => semantic.max_chunk_tokens = value.parse()?,
+        "enable_mcp_tools" => semantic.enable_mcp_tools = value.parse()?,
+        "enable_cache" => semantic.enable_cache = value.parse()?,
+        "cache_expiration_days" => semantic.cache_expiration_days = value.parse()?,
+        _ => return Err(anyhow::anyhow!("Unknown semantic field '{field}'")),
     }
     Ok(())
 }
@@ -613,6 +639,7 @@ async fn reset_configuration(config_service: &ConfigurationService) -> Result<()
     Ok(())
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -693,6 +720,7 @@ mod tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;

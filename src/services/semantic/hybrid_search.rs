@@ -59,19 +59,28 @@ pub struct HybridSearchEngine {
 }
 
 impl HybridSearchEngine {
-    /// Create new hybrid search engine
+    /// Create new hybrid search engine with local embeddings
     ///
     /// # Arguments
-    /// * `api_key` - OpenAI API key
     /// * `db_path` - Vector database path
     /// * `search_root` - Root directory for keyword search
-    pub async fn new(api_key: &str, db_path: &str, search_root: &Path) -> Result<Self, String> {
-        let semantic_engine = SemanticSearchEngine::new(api_key, db_path).await?;
+    ///
+    /// # Note
+    /// Uses pure Rust TF-IDF embeddings via aprender.
+    /// No external API keys or internet connection required.
+    pub async fn new(db_path: &str, search_root: &Path) -> Result<Self, String> {
+        let semantic_engine = SemanticSearchEngine::new(db_path).await?;
 
         Ok(Self {
             semantic_engine: Arc::new(semantic_engine),
             search_root: search_root.to_path_buf(),
         })
+    }
+
+    /// Create new hybrid search engine (backward compatible - ignores api_key)
+    #[deprecated(note = "Use new() without api_key - local embeddings don't require API keys")]
+    pub async fn new_with_key(_api_key: &str, db_path: &str, search_root: &Path) -> Result<Self, String> {
+        Self::new(db_path, search_root).await
     }
 
     /// Search using hybrid mode
@@ -507,6 +516,7 @@ impl Default for Bm25SearchEngine {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

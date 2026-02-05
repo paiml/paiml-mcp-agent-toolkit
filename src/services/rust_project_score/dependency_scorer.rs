@@ -325,6 +325,7 @@ impl Scorer for DependencyScorer {
 unsafe impl Send for DependencyScorer {}
 unsafe impl Sync for DependencyScorer {}
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

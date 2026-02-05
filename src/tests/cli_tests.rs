@@ -9,6 +9,7 @@ use std::sync::Arc;
 use tempfile::TempDir;
 use tokio::fs;
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod cli_args_tests {
     use super::*;
@@ -153,6 +154,7 @@ mod cli_args_tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod cli_integration_tests {
     use super::*;
@@ -260,6 +262,7 @@ version = "0.1.0"
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod cli_parsing_tests {
     use super::*;
@@ -307,6 +310,7 @@ mod cli_parsing_tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod cli_output_tests {
     use super::*;
@@ -408,6 +412,7 @@ mod cli_output_tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod cli_error_handling_tests {
     use super::*;
@@ -467,6 +472,7 @@ mod cli_error_handling_tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod cli_mode_detection_tests {
 

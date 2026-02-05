@@ -328,6 +328,7 @@ impl<'a> Visit<'_> for MutationVisitor<'a> {
         syn::visit::visit_expr(self, expr);
     }
 }
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

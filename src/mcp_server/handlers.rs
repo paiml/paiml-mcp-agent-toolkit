@@ -500,6 +500,7 @@ fn serialize_state(
     Ok(serde_json::to_value(state)?)
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;

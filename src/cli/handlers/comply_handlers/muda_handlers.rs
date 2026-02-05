@@ -342,6 +342,7 @@ fn measure_defects(project_path: &Path) -> f64 {
     score.clamp(0.0, 100.0)
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

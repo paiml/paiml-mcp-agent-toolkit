@@ -144,6 +144,7 @@ broken syntax here {{{ !!!
 }
 
 /// Test 6: Property-Based Test - Various File Sizes
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use super::*;

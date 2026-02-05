@@ -30,6 +30,7 @@ pub async fn handle_debug_timeline() -> anyhow::Result<()> {
     anyhow::bail!("Debug timeline command not yet implemented")
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod coverage_tests {
     use super::*;

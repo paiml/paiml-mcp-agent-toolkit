@@ -10,6 +10,7 @@
 
 use std::path::PathBuf;
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod red_phase_tests {
     use super::*;
@@ -215,6 +216,7 @@ fn test() {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use super::*;
@@ -315,6 +317,7 @@ mod property_tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod fuzz_test_compatibility {
     //! These test signatures are compatible with cargo-fuzz

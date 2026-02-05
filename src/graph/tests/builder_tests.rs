@@ -1,6 +1,7 @@
 // Tests for graph builder - will implement with builder
 // TDD approach - tests first
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     // Re-enabled Sprint 44: Verified passing (builder implemented)

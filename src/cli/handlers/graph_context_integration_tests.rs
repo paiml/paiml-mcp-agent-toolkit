@@ -2,6 +2,7 @@
 // ALL TESTS WRITTEN FIRST BEFORE IMPLEMENTATION
 // Zero SATD tolerance, all functions ≤10 complexity
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use crate::graph::{ContextAnnotation, GraphContextAnnotator};

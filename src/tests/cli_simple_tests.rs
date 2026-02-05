@@ -1,3 +1,4 @@
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use crate::cli::args::{expand_env_vars, validate_params};
@@ -32,6 +33,7 @@ mod tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod cli_command_enums {
     use crate::cli::{Commands, ContextFormat, OutputFormat};

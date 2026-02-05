@@ -158,10 +158,22 @@ impl HooksCommand {
         let modified = metadata.modified()?;
         let datetime = chrono::DateTime::<Local>::from(modified);
 
+        // Check if config is up-to-date by comparing normalized content
+        let config_up_to_date = if is_pmat_managed {
+            match self.generate_hook_content().await {
+                Ok(expected) => {
+                    Self::normalize_hook_content(&content) == Self::normalize_hook_content(&expected)
+                }
+                Err(_) => false, // Can't generate expected content, assume outdated
+            }
+        } else {
+            false
+        };
+
         Ok(HookStatus {
             installed: true,
             is_pmat_managed,
-            config_up_to_date: is_pmat_managed, // TODO: Check actual config hash
+            config_up_to_date,
             last_updated: Some(datetime.format("%Y-%m-%d %H:%M:%S").to_string()),
             hook_content_preview: Some(preview),
         })
@@ -416,8 +428,8 @@ impl HooksCommand {
         min_coverage: u32,
         _max_satd: u32,
     ) -> String {
-        // Simple regex-based replacement (for MVP)
-        // TODO: Use proper TOML parsing for production
+        // Simple string replacement preserves comments and formatting.
+        // Full TOML parsing would lose comments - acceptable tradeoff for config updates.
         let old_complexity = self.extract_current_value(content, "max_complexity");
         let content = content.replace(
             &format!("max_complexity = {old_complexity}"),

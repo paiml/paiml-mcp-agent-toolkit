@@ -465,6 +465,7 @@ pub const DEFAULT_EXCLUDE_PATTERNS: &[&str] = &[
 /// Default extensions for Rust projects
 pub const RUST_EXTENSIONS: &[&str] = &["rs"];
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

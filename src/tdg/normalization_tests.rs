@@ -3,6 +3,7 @@
 //! These tests enforce that TDG scores are properly normalized to 0-100 range
 //! regardless of component values, entropy contribution, or complexity analysis.
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod red_phase_tests {
     use crate::tdg::{Grade, TdgScore};
@@ -240,6 +241,7 @@ mod red_phase_tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use crate::tdg::TdgScore;

@@ -47,6 +47,7 @@ pub trait StepHandler: Send + Sync {
     fn execute(&self, params: &Value, context: &WorkflowContext) -> Result<Value, WorkflowError>;
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

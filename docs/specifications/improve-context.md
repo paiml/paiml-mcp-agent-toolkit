@@ -532,9 +532,143 @@ Use `all-MiniLM-L6-v2` via trueno-rag's FastEmbedder:
 - ~90MB model (downloaded on first use)
 - ~1ms per embedding
 
+## Phase 6: Graph Integration - IMPLEMENTED ✅
+
+**Goal**: Integrate call graph metrics (PageRank, centrality) into `pmat query` results.
+**Status**: Implemented in v2.216.0 (PMAT-471)
+**Index Version**: 1.2.0 (includes graph_metrics)
+
+### The Problem (Solved)
+
+Previously `pmat query` and `pmat analyze graph-metrics` were separate. Users couldn't combine semantic search with PageRank ranking.
+
+### Solution: Unified Query + Graph
+
+#### CLI Options (Implemented)
+
+```bash
+# Rank results by PageRank (most important functions first)
+pmat query "error handling" --rank-by pagerank
+
+# Rank by degree centrality (most connected functions)
+pmat query "validation" --rank-by centrality
+
+# Rank by in-degree (most called functions)
+pmat query "mcp" --rank-by indegree
+
+# Filter by minimum PageRank score
+pmat query "parser" --min-pagerank 0.0001
+
+# Default: rank by relevance (semantic similarity)
+pmat query "error handling"
+```
+
+#### Enhanced Output (Implemented)
+
+```
+Found 3 functions matching "mcp server":
+
+1. src/contracts/mcp_impl.rs:40 - error
+   Signature: /// Create an error result
+   TDG: A (0.1) | Complexity: 1 | Big-O: O(1)
+   Doc: Create an error result
+   Calls: error, result, message, success, data
+   Called by: main, categorize_error, initialize_agents, serve_mcp, ...
+   Graph: PageRank 0.000426 | In-Degree: 4649 | Out-Degree: 46
+   Relevance: 0.40
+```
+
+#### RankBy Options
+
+| Option | Description | Use Case |
+|--------|-------------|----------|
+| `relevance` | Default. Semantic similarity to query | Finding specific functionality |
+| `pagerank` | Function importance (called by important callers) | Finding critical code paths |
+| `centrality` | Total connections (in + out degree) | Finding hub functions |
+| `indegree` | Most called functions | Finding utility functions |
+
+#### JSON Output
+
+```json
+{
+  "function_name": "error",
+  "file_path": "src/contracts/mcp_impl.rs",
+  "pagerank": 0.000426,
+  "in_degree": 4649,
+  "out_degree": 46,
+  "relevance_score": 0.40
+}
+```
+
+#### MCP Tool Parameters (Implemented)
+
+```json
+{
+  "name": "pmat_query_code",
+  "inputSchema": {
+    "properties": {
+      "query": { "type": "string" },
+      "rank_by": {
+        "type": "string",
+        "enum": ["relevance", "pagerank", "centrality", "indegree"],
+        "default": "relevance"
+      },
+      "min_pagerank": {
+        "type": "number",
+        "description": "Minimum PageRank score (0-1)"
+      },
+      "caller_depth": {
+        "type": "integer",
+        "default": 1,
+        "description": "Depth of caller graph to include"
+      },
+      "callee_depth": {
+        "type": "integer",
+        "default": 1,
+        "description": "Depth of callee graph to include"
+      }
+    }
+  }
+}
+```
+
+### Implementation Plan
+
+1. **Extend AgentContextIndex** with graph data:
+   - Store call graph edges in index
+   - Pre-compute PageRank scores at index build time
+   - Cache centrality metrics
+
+2. **Add graph ranking to QueryEngine**:
+   - `--rank-by pagerank|betweenness|centrality`
+   - Hybrid scoring: `final_score = relevance * (1 + pagerank_boost)`
+
+3. **Expand caller/callee traversal**:
+   - `--caller-depth N` - traverse callers N levels
+   - `--callee-depth N` - traverse callees N levels
+   - Include call counts in output
+
+4. **Update MCP tools** with new parameters
+
+### Files to Modify
+
+- `src/services/agent_context/function_index.rs` - Add graph storage
+- `src/services/agent_context/query.rs` - Add rank_by logic
+- `src/cli/handlers/query_handler.rs` - Add CLI args
+- `src/mcp/tools/agent_context_tools.rs` - Add MCP params
+
+### Success Criteria
+
+1. `pmat query "X" --rank-by pagerank` returns PageRank-sorted results
+2. Graph metrics visible in query output
+3. Call graph depth traversal works (--caller-depth, --callee-depth)
+4. MCP tools support new parameters
+5. Index build time increases <20% with graph data
+
 ## References
 
 - [trueno-rag documentation](https://docs.rs/trueno-rag)
 - [TDG persistence](../server/src/tdg/storage_impl.rs)
 - [Existing semantic infrastructure](../server/src/services/semantic/)
 - [MCP specification](https://modelcontextprotocol.io/)
+- [trueno-graph PageRank](https://docs.rs/trueno-graph) - CSR graph with PageRank

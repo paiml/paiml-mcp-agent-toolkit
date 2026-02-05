@@ -130,6 +130,7 @@ pub async fn analyze_rust_file_with_classifier(
     })
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;

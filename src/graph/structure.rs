@@ -127,6 +127,7 @@ fn compute_reciprocity(graph: &DependencyGraph) -> f64 {
     reciprocal_count as f64 / total_edges as f64
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

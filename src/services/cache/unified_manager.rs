@@ -31,6 +31,7 @@ impl UnifiedCacheManager {
 /// Stub for `UnifiedCacheDiagnostics` (if needed)
 pub type UnifiedCacheDiagnostics = super::diagnostics::CacheDiagnostics;
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;
@@ -50,6 +51,7 @@ mod property_tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod coverage_tests {
     use super::*;

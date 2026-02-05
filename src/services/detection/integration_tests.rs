@@ -3,6 +3,7 @@
 // This test suite validates the end-to-end functionality of our unified detection
 // framework, ensuring all detectors work correctly through the common interface.
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod unified_detection_integration_tests {
     use super::super::{

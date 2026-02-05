@@ -257,6 +257,7 @@ pub async fn handle_deep_wasm(
     ))
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     #[test]

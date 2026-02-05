@@ -1,5 +1,6 @@
 //! Tests for C/C++ language strategies
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod coverage_tests {
     use super::c_cpp_strategy::{CStrategy, CppStrategy};

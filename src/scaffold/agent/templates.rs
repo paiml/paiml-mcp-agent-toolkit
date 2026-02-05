@@ -689,6 +689,7 @@ fn test_state_invariants() {
     .to_string()
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

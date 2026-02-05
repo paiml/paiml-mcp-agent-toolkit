@@ -79,6 +79,7 @@ pub fn get_node_text<'a>(node: Node, source: &'a str) -> &'a str {
     &source[node.byte_range()]
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -10,6 +10,7 @@ use parking_lot::Mutex;
 // Global mutex to ensure env var tests don't interfere across all modules
 static ENV_MUTEX: Mutex<()> = Mutex::new(());
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -294,6 +295,7 @@ mod tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod clap_derive_completeness_tests {
     use super::*;
@@ -366,6 +368,7 @@ mod clap_derive_completeness_tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod clap_output_validation_tests {
     use super::*;

@@ -2,6 +2,7 @@
 // Tests data structures before implementation
 // All tests should FAIL until models.rs is implemented
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod grade_tests {
     // Note: These imports will fail until we implement the models
@@ -134,6 +135,7 @@ mod grade_tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod category_score_tests {
     // use crate::services::repo_score::models::*;
@@ -206,6 +208,7 @@ mod category_score_tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod category_scores_tests {
     // use crate::services::repo_score::models::*;
@@ -254,6 +257,7 @@ mod category_scores_tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod bonus_scores_tests {
     // use crate::services::repo_score::models::*;
@@ -297,6 +301,7 @@ mod bonus_scores_tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod repo_score_tests {
     // use crate::services::repo_score::models::*;
@@ -352,6 +357,7 @@ mod repo_score_tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod severity_tests {
     // use crate::services::repo_score::models::Severity;
@@ -368,6 +374,7 @@ mod severity_tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod priority_tests {
     // use crate::services::repo_score::models::Priority;
@@ -383,6 +390,7 @@ mod priority_tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod finding_tests {
     // use crate::services::repo_score::models::*;
@@ -404,6 +412,7 @@ mod finding_tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod recommendation_tests {
     // use crate::services::repo_score::models::*;

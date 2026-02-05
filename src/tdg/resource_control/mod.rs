@@ -713,6 +713,7 @@ impl ResourceControllerFactory {
 #[path = "tests.rs"]
 mod resource_control_tests_external;
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

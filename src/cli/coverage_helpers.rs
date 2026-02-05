@@ -254,6 +254,7 @@ pub fn format_coverage_lcov(coverage_data: &CoverageUpdate) -> Result<String> {
     Ok(output)
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;
@@ -273,6 +274,7 @@ mod property_tests {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

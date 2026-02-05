@@ -49,6 +49,7 @@ impl AstStrategy for RustStrategy {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;

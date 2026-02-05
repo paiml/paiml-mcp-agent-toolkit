@@ -20,5 +20,6 @@ pub use pool::ResilientConnectionPool;
 pub use sandbox::BridgeSandbox;
 pub use transport::StdioTransport;
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests;

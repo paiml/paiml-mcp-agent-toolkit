@@ -197,6 +197,7 @@ impl CargoMutantsWrapper {
 // GREEN Phase: Minimal tests to verify implementation
 // More comprehensive tests are in tests/cargo_mutants_wrapper_tests.rs
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;
