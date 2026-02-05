@@ -1518,3 +1518,163 @@ roadmap:
   - query
   - graph
   notes: null
+- id: PMAT-472
+  github_issue: null
+  item_type: task
+  title: 'GH-RAG-001: Git commit parser with libgit2'
+  status: completed
+  priority: high
+  assigned_to: null
+  created: 2026-02-05T14:31:44Z
+  updated: 2026-02-05T15:12:34Z
+  spec: null
+  acceptance_criteria:
+  - Parse git history using git2 crate. Extract commit hash, message (subject+body), author, timestamp, changed files. Support incremental parsing from last known commit.
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - git-history-rag
+  - phase-1
+  - infrastructure
+  notes: null
+- id: PMAT-473
+  github_issue: null
+  item_type: task
+  title: 'GH-RAG-002: Commit message embedder'
+  status: completed
+  priority: high
+  assigned_to: null
+  created: 2026-02-05T14:31:46Z
+  updated: 2026-02-05T14:48:00Z
+  spec: null
+  acceptance_criteria:
+  - Embed commit messages using TF-IDF (aprender). Concatenate subject + body. Handle short messages gracefully. Store embeddings in git history index.
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - git-history-rag
+  - phase-1
+  - embeddings
+  notes: null
+- id: PMAT-474
+  github_issue: null
+  item_type: task
+  title: 'GH-RAG-003: Git history SQLite schema'
+  status: completed
+  priority: high
+  assigned_to: null
+  created: 2026-02-05T14:31:49Z
+  updated: 2026-02-05T14:48:00Z
+  spec: null
+  acceptance_criteria:
+  - 'Create .pmat/git-history.idx with tables: git_commits, commit_files, file_cochange. Include Poka-Yoke constraints per spec.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - git-history-rag
+  - phase-1
+  - database
+  notes: null
+- id: PMAT-475
+  github_issue: null
+  item_type: task
+  title: 'GH-RAG-004: Incremental git sync'
+  status: completed
+  priority: medium
+  assigned_to: null
+  created: 2026-02-05T14:31:50Z
+  updated: 2026-02-05T15:21:48Z
+  spec: null
+  acceptance_criteria:
+  - Sync only new commits since last index update. Track last_indexed_commit in metadata table. Support --full flag for complete rebuild.
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - git-history-rag
+  - phase-1
+  - sync
+  notes: null
+- id: PMAT-476
+  github_issue: null
+  item_type: task
+  title: 'GH-RAG-005: Git history search engine'
+  status: completed
+  priority: high
+  assigned_to: null
+  created: 2026-02-05T14:31:56Z
+  updated: 2026-02-05T15:24:50Z
+  spec: null
+  acceptance_criteria:
+  - Implement semantic search over commit messages. Query by intent, filter by author/date/type (fix/feat). Return ranked results with relevance scores.
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - git-history-rag
+  - phase-2
+  - search
+  notes: null
+- id: PMAT-477
+  github_issue: null
+  item_type: task
+  title: 'GH-RAG-006: RRF fusion implementation'
+  status: completed
+  priority: high
+  assigned_to: null
+  created: 2026-02-05T14:31:58Z
+  updated: 2026-02-05T15:34:43Z
+  spec: null
+  acceptance_criteria:
+  - Implement Reciprocal Rank Fusion to combine code index results with git history results. Configurable weights. Boost code results with matching commit context.
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - git-history-rag
+  - phase-2
+  - fusion
+  notes: null
+- id: PMAT-478
+  github_issue: null
+  item_type: task
+  title: 'GH-RAG-007: CLI --git-history flag'
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-02-05T14:32:01Z
+  updated: 2026-02-05T14:32:01Z
+  spec: null
+  acceptance_criteria:
+  - Add --git-history (-G, --gh) flag to pmat query. When enabled, search includes commit messages. Display related commits and co-changes in output.
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - git-history-rag
+  - phase-2
+  - cli
+  notes: null
+- id: PMAT-479
+  github_issue: null
+  item_type: task
+  title: 'GH-RAG-008: MCP tool git_history parameter'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-02-05T14:32:02Z
+  updated: 2026-02-05T14:32:02Z
+  spec: null
+  acceptance_criteria:
+  - Add git_history, git_author, git_since, show_cochanges parameters to pmat_query_code MCP tool. Update JSON schema.
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - git-history-rag
+  - phase-2
+  - mcp
+  notes: null
