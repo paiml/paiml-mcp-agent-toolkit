@@ -161,6 +161,14 @@ fn print_output(output: &std::process::Output) {
 }
 
 fn find_pmat_binary() -> Result<String, Box<dyn std::error::Error>> {
+    // Prefer installed pmat (has latest features) over local builds
+    if let Ok(output) = Command::new("pmat").arg("--version").output() {
+        if output.status.success() {
+            return Ok("pmat".to_string());
+        }
+    }
+
+    // Fall back to local builds
     let release_path = Path::new("target/release/pmat");
     if release_path.exists() {
         return Ok(release_path.to_string_lossy().to_string());
@@ -171,9 +179,5 @@ fn find_pmat_binary() -> Result<String, Box<dyn std::error::Error>> {
         return Ok(debug_path.to_string_lossy().to_string());
     }
 
-    if Command::new("pmat").arg("--version").output().is_ok() {
-        return Ok("pmat".to_string());
-    }
-
-    Err("pmat binary not found. Run 'cargo build --release' first.".into())
+    Err("pmat binary not found. Run 'cargo install --path .' first.".into())
 }

@@ -136,22 +136,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn find_pmat_binary() -> Result<String, Box<dyn std::error::Error>> {
-    // Try release binary first
+    // Prefer installed pmat (has latest features) over local builds
+    if let Ok(output) = Command::new("pmat").arg("--version").output() {
+        if output.status.success() {
+            return Ok("pmat".to_string());
+        }
+    }
+
+    // Fall back to local builds
     let release_path = Path::new("target/release/pmat");
     if release_path.exists() {
         return Ok(release_path.to_string_lossy().to_string());
     }
 
-    // Try debug binary
     let debug_path = Path::new("target/debug/pmat");
     if debug_path.exists() {
         return Ok(debug_path.to_string_lossy().to_string());
     }
 
-    // Try system PATH
-    if Command::new("pmat").arg("--version").output().is_ok() {
-        return Ok("pmat".to_string());
-    }
-
-    Err("pmat binary not found. Run 'cargo build --release' first.".into())
+    Err("pmat binary not found. Run 'cargo install --path .' first.".into())
 }
