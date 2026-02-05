@@ -126,12 +126,28 @@ impl SemanticCli {
             return Err(format!("File not found: {}", file.display()));
         }
 
-        // For now, return placeholder
-        Ok(format!(
-            "Finding {} similar files to: {}",
-            limit,
-            file.display()
-        ))
+        let file_path = file.to_string_lossy();
+        let results = self.search_engine.find_similar(&file_path, limit).await?;
+
+        if results.is_empty() {
+            return Ok(format!("No similar code found for: {}", file.display()));
+        }
+
+        let mut output = format!("Found {} similar code chunks to: {}\n\n", results.len(), file.display());
+        for (i, result) in results.iter().enumerate() {
+            output.push_str(&format!(
+                "{}. {} ({}:{}-{}) - similarity: {:.2}\n   {}\n\n",
+                i + 1,
+                result.file_path,
+                result.chunk_name,
+                result.start_line,
+                result.end_line,
+                result.similarity_score,
+                result.snippet
+            ));
+        }
+
+        Ok(output)
     }
 
     /// Cluster code
