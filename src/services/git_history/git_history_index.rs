@@ -68,6 +68,17 @@ impl CommitInfo {
     }
 }
 
+/// Result of incremental sync operation
+#[derive(Debug, Clone)]
+pub struct SyncResult {
+    /// Number of commits added to index
+    pub commits_added: usize,
+    /// Number of commits skipped (non-indexable or already present)
+    pub commits_skipped: usize,
+    /// Hash of the last indexed commit
+    pub last_commit: Option<String>,
+}
+
 /// Error type for git history operations
 #[derive(Debug, thiserror::Error)]
 pub enum GitHistoryError {
@@ -350,6 +361,155 @@ impl GitHistoryIndex {
         Ok(hashes)
     }
 
+    /// Sync new commits incrementally (GH-RAG-004)
+    /// Toyota Way: Heijunka - Level loading without blocking
+    ///
+    /// Returns number of new commits synced
+    pub fn sync_incremental(&mut self, new_commits: &[CommitInfo]) -> Result<SyncResult, GitHistoryError> {
+        let last_indexed = self.get_last_indexed_commit()?;
+        let start_count = self.commit_count()?;
+
+        // Filter to only commits newer than last indexed
+        let commits_to_add: Vec<&CommitInfo> = if let Some(ref last_hash) = last_indexed {
+            // Find commits not already in index
+            new_commits
+                .iter()
+                .filter(|c| c.hash != *last_hash && self.commit_exists(&c.hash).unwrap_or(false) == false)
+                .collect()
+        } else {
+            // No previous index, add all
+            new_commits.iter().collect()
+        };
+
+        if commits_to_add.is_empty() {
+            return Ok(SyncResult {
+                commits_added: 0,
+                commits_skipped: new_commits.len(),
+                last_commit: last_indexed,
+            });
+        }
+
+        // Insert in transaction
+        let tx = self.conn.transaction()?;
+        let mut skipped = 0;
+        let mut last_commit_hash: Option<String> = None;
+
+        for commit in &commits_to_add {
+            if commit.is_indexable() {
+                let issue_refs_json = serde_json::to_string(&commit.issue_refs).unwrap_or_default();
+
+                tx.execute(
+                    r#"
+                    INSERT OR IGNORE INTO git_commits
+                    (commit_hash, message_subject, message_body, author_name, author_email,
+                     timestamp, is_merge, is_fix, is_feat, issue_refs)
+                    VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)
+                    "#,
+                    params![
+                        commit.hash,
+                        commit.message_subject,
+                        commit.message_body,
+                        commit.author_name,
+                        commit.author_email,
+                        commit.timestamp,
+                        commit.is_merge as i32,
+                        commit.is_fix as i32,
+                        commit.is_feat as i32,
+                        issue_refs_json,
+                    ],
+                )?;
+
+                // Insert file changes
+                for file in &commit.files {
+                    tx.execute(
+                        r#"
+                        INSERT OR IGNORE INTO commit_files
+                        (commit_hash, file_path, change_type, lines_added, lines_deleted)
+                        VALUES (?1, ?2, ?3, ?4, ?5)
+                        "#,
+                        params![
+                            commit.hash,
+                            file.path,
+                            file.change_type.as_str(),
+                            file.lines_added,
+                            file.lines_deleted,
+                        ],
+                    )?;
+                }
+
+                last_commit_hash = Some(commit.hash.clone());
+            } else {
+                skipped += 1;
+            }
+        }
+
+        // Update last indexed commit
+        if let Some(ref hash) = last_commit_hash {
+            tx.execute(
+                "INSERT OR REPLACE INTO git_metadata (key, value) VALUES ('last_indexed_commit', ?1)",
+                [hash],
+            )?;
+        }
+
+        tx.commit()?;
+
+        let end_count = self.commit_count()?;
+
+        Ok(SyncResult {
+            commits_added: end_count - start_count,
+            commits_skipped: skipped,
+            last_commit: last_commit_hash.or(last_indexed),
+        })
+    }
+
+    /// Check if a commit exists in the index
+    pub fn commit_exists(&self, commit_hash: &str) -> Result<bool, GitHistoryError> {
+        let count: i64 = self.conn.query_row(
+            "SELECT COUNT(*) FROM git_commits WHERE commit_hash = ?1",
+            [commit_hash],
+            |row| row.get(0),
+        )?;
+        Ok(count > 0)
+    }
+
+    /// Get commits by timestamp range (for incremental queries)
+    pub fn get_commits_since(&self, timestamp: i64, limit: usize) -> Result<Vec<CommitInfo>, GitHistoryError> {
+        let mut stmt = self.conn.prepare(
+            r#"
+            SELECT commit_hash, message_subject, message_body, author_name, author_email,
+                   timestamp, is_merge, is_fix, is_feat, issue_refs
+            FROM git_commits
+            WHERE timestamp > ?1
+            ORDER BY timestamp ASC
+            LIMIT ?2
+            "#
+        )?;
+
+        let commits = stmt
+            .query_map(params![timestamp, limit], |row| {
+                let issue_refs_str: String = row.get::<_, String>(9).unwrap_or_default();
+                let issue_refs: Vec<String> = serde_json::from_str(&issue_refs_str).unwrap_or_default();
+
+                Ok(CommitInfo {
+                    hash: row.get(0)?,
+                    message_subject: row.get(1)?,
+                    message_body: row.get(2)?,
+                    author_name: row.get(3)?,
+                    author_email: row.get(4)?,
+                    timestamp: row.get(5)?,
+                    is_merge: row.get::<_, i32>(6)? != 0,
+                    is_fix: row.get::<_, i32>(7)? != 0,
+                    is_feat: row.get::<_, i32>(8)? != 0,
+                    issue_refs,
+                    files: vec![], // Files loaded separately if needed
+                })
+            })?
+            .filter_map(|r| r.ok())
+            .collect();
+
+        Ok(commits)
+    }
+
     /// Calculate checksum of index (for falsification test F1)
     pub fn checksum(&self) -> Result<String, GitHistoryError> {
         let count: i64 = self.conn.query_row(
@@ -504,6 +664,174 @@ mod tests {
         let checksum2 = index.checksum().unwrap();
 
         assert_ne!(checksum1, checksum2, "Checksum should change after insert");
+    }
+
+    // === Incremental Sync Tests (GH-RAG-004) ===
+
+    #[test]
+    fn test_sync_incremental_empty_index() {
+        let mut index = GitHistoryIndex::in_memory().unwrap();
+
+        let commits = vec![
+            create_test_commit(&"a".repeat(40), "First commit message"),
+            create_test_commit(&"b".repeat(40), "Second commit message"),
+        ];
+
+        let result = index.sync_incremental(&commits).unwrap();
+
+        assert_eq!(result.commits_added, 2);
+        assert_eq!(result.commits_skipped, 0);
+        assert!(result.last_commit.is_some());
+    }
+
+    #[test]
+    fn test_sync_incremental_adds_only_new() {
+        let mut index = GitHistoryIndex::in_memory().unwrap();
+
+        // Initial sync
+        let commits1 = vec![
+            create_test_commit(&"a".repeat(40), "First commit message"),
+        ];
+        index.sync_incremental(&commits1).unwrap();
+
+        // Second sync with existing + new
+        let commits2 = vec![
+            create_test_commit(&"a".repeat(40), "First commit message"), // existing
+            create_test_commit(&"b".repeat(40), "Second commit message"), // new
+        ];
+
+        let result = index.sync_incremental(&commits2).unwrap();
+
+        assert_eq!(result.commits_added, 1, "Should only add 1 new commit");
+        assert_eq!(index.commit_count().unwrap(), 2);
+    }
+
+    #[test]
+    fn test_sync_incremental_skips_non_indexable() {
+        let mut index = GitHistoryIndex::in_memory().unwrap();
+
+        let commits = vec![
+            create_test_commit(&"a".repeat(40), "Valid commit message"),
+            CommitInfo {
+                hash: "b".repeat(40),
+                message_subject: "wip".to_string(), // too short
+                message_body: None,
+                author_name: "Test".to_string(),
+                author_email: "test@example.com".to_string(),
+                timestamp: 1700000001,
+                is_merge: false,
+                is_fix: false,
+                is_feat: false,
+                issue_refs: vec![],
+                files: vec![],
+            },
+        ];
+
+        let result = index.sync_incremental(&commits).unwrap();
+
+        assert_eq!(result.commits_added, 1);
+        assert_eq!(result.commits_skipped, 1);
+    }
+
+    #[test]
+    fn test_sync_incremental_updates_last_indexed() {
+        let mut index = GitHistoryIndex::in_memory().unwrap();
+
+        assert!(index.get_last_indexed_commit().unwrap().is_none());
+
+        let commits = vec![
+            create_test_commit(&"a".repeat(40), "First commit message"),
+        ];
+
+        let result = index.sync_incremental(&commits).unwrap();
+
+        assert!(result.last_commit.is_some());
+        assert_eq!(
+            index.get_last_indexed_commit().unwrap(),
+            result.last_commit
+        );
+    }
+
+    #[test]
+    fn test_commit_exists() {
+        let mut index = GitHistoryIndex::in_memory().unwrap();
+
+        let hash = "a".repeat(40);
+        assert!(!index.commit_exists(&hash).unwrap());
+
+        let commits = vec![create_test_commit(&hash, "Test commit message")];
+        index.insert_commits(&commits).unwrap();
+
+        assert!(index.commit_exists(&hash).unwrap());
+    }
+
+    #[test]
+    fn test_get_commits_since() {
+        let mut index = GitHistoryIndex::in_memory().unwrap();
+
+        let commits = vec![
+            CommitInfo {
+                hash: "a".repeat(40),
+                message_subject: "Old commit message".to_string(),
+                message_body: None,
+                author_name: "Test".to_string(),
+                author_email: "test@example.com".to_string(),
+                timestamp: 1000000000,
+                is_merge: false,
+                is_fix: false,
+                is_feat: false,
+                issue_refs: vec![],
+                files: vec![],
+            },
+            CommitInfo {
+                hash: "b".repeat(40),
+                message_subject: "New commit message".to_string(),
+                message_body: None,
+                author_name: "Test".to_string(),
+                author_email: "test@example.com".to_string(),
+                timestamp: 2000000000,
+                is_merge: false,
+                is_fix: false,
+                is_feat: false,
+                issue_refs: vec![],
+                files: vec![],
+            },
+        ];
+
+        index.insert_commits(&commits).unwrap();
+
+        // Get commits since midpoint
+        let recent = index.get_commits_since(1500000000, 10).unwrap();
+        assert_eq!(recent.len(), 1);
+        assert_eq!(recent[0].message_subject, "New commit message");
+    }
+
+    #[test]
+    fn test_sync_empty_input() {
+        let mut index = GitHistoryIndex::in_memory().unwrap();
+
+        let result = index.sync_incremental(&[]).unwrap();
+
+        assert_eq!(result.commits_added, 0);
+        assert_eq!(result.commits_skipped, 0);
+    }
+
+    #[test]
+    fn test_sync_all_already_present() {
+        let mut index = GitHistoryIndex::in_memory().unwrap();
+
+        let commits = vec![
+            create_test_commit(&"a".repeat(40), "Test commit message"),
+        ];
+
+        // First sync
+        index.sync_incremental(&commits).unwrap();
+
+        // Second sync with same commits
+        let result = index.sync_incremental(&commits).unwrap();
+
+        assert_eq!(result.commits_added, 0);
+        assert_eq!(index.commit_count().unwrap(), 1);
     }
 
     // Falsification Test F1: Index Independence

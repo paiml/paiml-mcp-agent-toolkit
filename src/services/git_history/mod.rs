@@ -9,7 +9,7 @@ mod commit_embedder;
 
 // Always export from git_history_index (no git2 dependency)
 pub use git_history_index::{
-    ChangeType, CommitInfo, FileChange, GitHistoryError, GitHistoryIndex,
+    ChangeType, CommitInfo, FileChange, GitHistoryError, GitHistoryIndex, SyncResult,
 };
 pub use commit_embedder::CommitEmbedder;
 
