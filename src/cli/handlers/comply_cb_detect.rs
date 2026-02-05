@@ -1620,6 +1620,132 @@ pub struct DependencyTrend {
     pub previous_timestamp: String,
 }
 
+/// CB-081 Cache for O(1) dependency analysis (issue #148 fix)
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+struct DependencyCache {
+    /// Cargo.lock file mtime (unix timestamp)
+    cargo_lock_mtime: u64,
+    /// Cached transitive count
+    transitive_count: usize,
+    /// Cached duplicate crates
+    duplicate_crates: Vec<DuplicateCrate>,
+}
+
+impl DependencyCache {
+    /// Check if cache is valid (Cargo.lock unchanged)
+    fn is_valid(&self, cargo_lock_path: &Path) -> bool {
+        if let Ok(metadata) = fs::metadata(cargo_lock_path) {
+            if let Ok(modified) = metadata.modified() {
+                let mtime = modified
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .map(|d| d.as_secs())
+                    .unwrap_or(0);
+                return mtime == self.cargo_lock_mtime;
+            }
+        }
+        false
+    }
+
+    /// Load cache from .pmat/deps-cache.json
+    fn load(project_path: &Path) -> Option<Self> {
+        let cache_path = project_path.join(".pmat/deps-cache.json");
+        fs::read_to_string(&cache_path)
+            .ok()
+            .and_then(|s| serde_json::from_str(&s).ok())
+    }
+
+    /// Save cache to .pmat/deps-cache.json
+    fn save(&self, project_path: &Path) {
+        let cache_path = project_path.join(".pmat/deps-cache.json");
+        if let Some(parent) = cache_path.parent() {
+            let _ = fs::create_dir_all(parent);
+        }
+        if let Ok(json) = serde_json::to_string_pretty(self) {
+            let _ = fs::write(&cache_path, json);
+        }
+    }
+}
+
+/// Parse Cargo.lock once and return both transitive count and duplicates
+fn parse_cargo_lock(cargo_lock_path: &Path) -> (usize, Vec<DuplicateCrate>) {
+    let content = match fs::read_to_string(cargo_lock_path) {
+        Ok(c) => c,
+        Err(_) => return (0, Vec::new()),
+    };
+
+    let mut crate_versions: std::collections::HashMap<String, Vec<String>> =
+        std::collections::HashMap::new();
+    let mut current_name: Option<String> = None;
+    let mut current_version: Option<String> = None;
+    let mut package_count = 0;
+
+    for line in content.lines() {
+        let trimmed = line.trim();
+
+        if trimmed == "[[package]]" {
+            package_count += 1;
+            // Save previous package if complete
+            if let (Some(name), Some(version)) = (current_name.take(), current_version.take()) {
+                crate_versions.entry(name).or_default().push(version);
+            }
+        } else if let Some(name) = trimmed.strip_prefix("name = \"") {
+            current_name = name.strip_suffix('"').map(|s| s.to_string());
+        } else if let Some(version) = trimmed.strip_prefix("version = \"") {
+            current_version = version.strip_suffix('"').map(|s| s.to_string());
+        }
+    }
+
+    // Don't forget the last package
+    if let (Some(name), Some(version)) = (current_name, current_version) {
+        crate_versions.entry(name).or_default().push(version);
+    }
+
+    // Filter to only duplicates (>1 version)
+    let duplicates: Vec<DuplicateCrate> = crate_versions
+        .into_iter()
+        .filter(|(_, versions)| versions.len() > 1)
+        .map(|(name, mut versions)| {
+            versions.sort();
+            versions.dedup();
+            DuplicateCrate { name, versions }
+        })
+        .filter(|d| d.versions.len() > 1)
+        .collect();
+
+    (package_count, duplicates)
+}
+
+/// Get dependency analysis with O(1) caching (issue #148 fix)
+fn get_cached_dependency_analysis(
+    project_path: &Path,
+    cargo_lock_path: &Path,
+) -> (usize, Vec<DuplicateCrate>) {
+    // Try to use cached results first
+    if let Some(cache) = DependencyCache::load(project_path) {
+        if cache.is_valid(cargo_lock_path) {
+            return (cache.transitive_count, cache.duplicate_crates);
+        }
+    }
+
+    // Cache miss or invalid - parse Cargo.lock
+    let (transitive_count, duplicate_crates) = parse_cargo_lock(cargo_lock_path);
+
+    // Save to cache
+    let mtime = fs::metadata(cargo_lock_path)
+        .and_then(|m| m.modified())
+        .map(|t| t.duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0))
+        .unwrap_or(0);
+
+    let cache = DependencyCache {
+        cargo_lock_mtime: mtime,
+        transitive_count,
+        duplicate_crates: duplicate_crates.clone(),
+    };
+    cache.save(project_path);
+
+    (transitive_count, duplicate_crates)
+}
+
 /// CB-081: Detect excessive dependency counts (enhanced)
 /// Thresholds from rust-project-score-v1.1-update.md:
 /// - 5 points: ≤20 direct, ≤100 transitive
@@ -1637,11 +1763,9 @@ pub fn detect_cb081_dependency_count(project_path: &Path) -> DependencyCountRepo
     let (direct_count, feature_gated_count, sovereign_crates) =
         analyze_cargo_toml(&cargo_toml_path);
 
-    // CB-081-A: Count transitive dependencies from Cargo.lock
-    let transitive_count = count_transitive_dependencies(&cargo_lock_path);
-
-    // CB-081-B: Detect duplicate crates
-    let duplicate_crates = detect_duplicate_crates(&cargo_lock_path);
+    // CB-081-A & CB-081-B: Use O(1) cached analysis (issue #148 fix)
+    let (transitive_count, duplicate_crates) =
+        get_cached_dependency_analysis(project_path, &cargo_lock_path);
 
     // CB-081-C: Calculate feature gating percentage
     let feature_gated_pct = if direct_count > 0 {
@@ -1817,66 +1941,6 @@ fn analyze_cargo_toml(cargo_toml_path: &Path) -> (usize, usize, Vec<String>) {
     (direct_count, feature_gated_count, sovereign_found)
 }
 
-/// Count transitive dependencies from Cargo.lock
-fn count_transitive_dependencies(cargo_lock_path: &Path) -> usize {
-    let content = match fs::read_to_string(cargo_lock_path) {
-        Ok(c) => c,
-        Err(_) => return 0,
-    };
-
-    // Count [[package]] entries in Cargo.lock
-    content.matches("[[package]]").count()
-}
-
-/// CB-081-B: Detect duplicate crates in Cargo.lock
-fn detect_duplicate_crates(cargo_lock_path: &Path) -> Vec<DuplicateCrate> {
-    let content = match fs::read_to_string(cargo_lock_path) {
-        Ok(c) => c,
-        Err(_) => return Vec::new(),
-    };
-
-    let mut crate_versions: std::collections::HashMap<String, Vec<String>> =
-        std::collections::HashMap::new();
-
-    let mut current_name: Option<String> = None;
-    let mut current_version: Option<String> = None;
-
-    for line in content.lines() {
-        let trimmed = line.trim();
-
-        if trimmed == "[[package]]" {
-            // Save previous package if complete
-            if let (Some(name), Some(version)) = (current_name.take(), current_version.take()) {
-                crate_versions
-                    .entry(name)
-                    .or_default()
-                    .push(version);
-            }
-        } else if let Some(name) = trimmed.strip_prefix("name = \"") {
-            current_name = name.strip_suffix('"').map(|s| s.to_string());
-        } else if let Some(version) = trimmed.strip_prefix("version = \"") {
-            current_version = version.strip_suffix('"').map(|s| s.to_string());
-        }
-    }
-
-    // Don't forget the last package
-    if let (Some(name), Some(version)) = (current_name, current_version) {
-        crate_versions.entry(name).or_default().push(version);
-    }
-
-    // Filter to only duplicates (>1 version)
-    crate_versions
-        .into_iter()
-        .filter(|(_, versions)| versions.len() > 1)
-        .map(|(name, mut versions)| {
-            versions.sort();
-            versions.dedup();
-            DuplicateCrate { name, versions }
-        })
-        .filter(|d| d.versions.len() > 1)
-        .collect()
-}
-
 /// Calculate dependency health score (0-5 points)
 fn calculate_dependency_score(direct: usize, transitive: usize) -> u8 {
     if direct <= 20 && transitive <= 100 {
@@ -1990,7 +2054,39 @@ pub struct AgentContextReport {
     pub function_count: usize,
     /// Whether CLAUDE.md mentions pmat_query_code
     pub claude_md_configured: bool,
+    /// Required patterns missing from CLAUDE.md
+    pub missing_required_patterns: Vec<String>,
+    /// Forbidden patterns found in CLAUDE.md
+    pub forbidden_patterns_found: Vec<ForbiddenPatternMatch>,
 }
+
+/// A forbidden pattern match with location info
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ForbiddenPatternMatch {
+    /// The pattern that was found
+    pub pattern: String,
+    /// Line number where it was found
+    pub line: usize,
+    /// The actual line content (truncated)
+    pub context: String,
+}
+
+/// Required patterns that should be in CLAUDE.md for agent context adoption
+const REQUIRED_PATTERNS: &[&str] = &[
+    "pmat query",
+    "NEVER use grep",
+    "--faults",
+];
+
+/// Forbidden patterns that indicate agents might use grep instead of pmat query
+const FORBIDDEN_PATTERNS: &[&str] = &[
+    "grep -r",
+    "grep -rn",
+    "find . -name",
+    "find . -type f",
+    "rg \"",
+    "rg '",
+];
 
 /// CB-130: Detect agent context adoption issues
 ///
@@ -2033,19 +2129,51 @@ pub fn detect_cb130_agent_context_adoption(project_path: &Path) -> AgentContextR
         0
     };
 
-    // Check if CLAUDE.md mentions pmat_query_code
-    let claude_md_configured = {
-        let claude_md_path = project_path.join("CLAUDE.md");
+    // Check CLAUDE.md for required and forbidden patterns
+    let claude_md_path = project_path.join("CLAUDE.md");
+    let (claude_md_configured, missing_required_patterns, forbidden_patterns_found) =
         if claude_md_path.exists() {
-            fs::read_to_string(&claude_md_path)
-                .map(|content| {
-                    content.contains("pmat_query_code") || content.contains("pmat query")
-                })
-                .unwrap_or(false)
+            match fs::read_to_string(&claude_md_path) {
+                Ok(content) => {
+                    let configured =
+                        content.contains("pmat_query_code") || content.contains("pmat query");
+
+                    // Check for missing required patterns
+                    let missing: Vec<String> = REQUIRED_PATTERNS
+                        .iter()
+                        .filter(|&p| !content.to_lowercase().contains(&p.to_lowercase()))
+                        .map(|s| s.to_string())
+                        .collect();
+
+                    // Check for forbidden patterns with line numbers
+                    let mut forbidden: Vec<ForbiddenPatternMatch> = Vec::new();
+                    for (line_num, line) in content.lines().enumerate() {
+                        for &pattern in FORBIDDEN_PATTERNS {
+                            if line.contains(pattern) {
+                                // Skip if it's in a "DON'T DO THIS" example context
+                                let lower_line = line.to_lowercase();
+                                let is_negative_example = lower_line.contains("bad")
+                                    || lower_line.contains("don't")
+                                    || lower_line.contains("never")
+                                    || lower_line.contains("avoid");
+                                if !is_negative_example {
+                                    forbidden.push(ForbiddenPatternMatch {
+                                        pattern: pattern.to_string(),
+                                        line: line_num + 1,
+                                        context: line.chars().take(80).collect(),
+                                    });
+                                }
+                            }
+                        }
+                    }
+
+                    (configured, missing, forbidden)
+                }
+                Err(_) => (false, REQUIRED_PATTERNS.iter().map(|s| s.to_string()).collect(), vec![]),
+            }
         } else {
-            false
-        }
-    };
+            (false, REQUIRED_PATTERNS.iter().map(|s| s.to_string()).collect(), vec![])
+        };
 
     AgentContextReport {
         index_exists,
@@ -2053,6 +2181,8 @@ pub fn detect_cb130_agent_context_adoption(project_path: &Path) -> AgentContextR
         index_stale,
         function_count,
         claude_md_configured,
+        missing_required_patterns,
+        forbidden_patterns_found,
     }
 }
 
@@ -2131,6 +2261,64 @@ mod cb130_tests {
         assert!(report.index_exists);
         // function_count will be 0 because the index can't be loaded
         assert_eq!(report.function_count, 0);
+    }
+
+    #[test]
+    fn test_cb130_required_patterns_missing() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("CLAUDE.md"),
+            "# Instructions\n\nUse pmat query for search.\n",
+        )
+        .unwrap();
+
+        let report = detect_cb130_agent_context_adoption(temp.path());
+        // "pmat query" is present but "NEVER use grep" is missing
+        assert!(report.claude_md_configured);
+        assert!(report.missing_required_patterns.contains(&"NEVER use grep".to_string()));
+    }
+
+    #[test]
+    fn test_cb130_all_required_patterns_present() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("CLAUDE.md"),
+            "# Instructions\n\nNEVER use grep for code search.\nUse `pmat query` instead.\n",
+        )
+        .unwrap();
+
+        let report = detect_cb130_agent_context_adoption(temp.path());
+        assert!(report.claude_md_configured);
+        assert!(report.missing_required_patterns.is_empty());
+    }
+
+    #[test]
+    fn test_cb130_forbidden_pattern_detected() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("CLAUDE.md"),
+            "# Instructions\n\nSearch with: grep -r \"error\" src/\n",
+        )
+        .unwrap();
+
+        let report = detect_cb130_agent_context_adoption(temp.path());
+        assert!(!report.forbidden_patterns_found.is_empty());
+        assert_eq!(report.forbidden_patterns_found[0].pattern, "grep -r");
+        assert_eq!(report.forbidden_patterns_found[0].line, 3);
+    }
+
+    #[test]
+    fn test_cb130_forbidden_pattern_in_negative_example_allowed() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("CLAUDE.md"),
+            "# Instructions\n\n# BAD - Don't do this: grep -r \"error\" src/\n",
+        )
+        .unwrap();
+
+        let report = detect_cb130_agent_context_adoption(temp.path());
+        // Should not flag "grep -r" when it's in a negative example context
+        assert!(report.forbidden_patterns_found.is_empty());
     }
 }
 
