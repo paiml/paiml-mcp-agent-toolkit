@@ -11,7 +11,7 @@ license = "MIT OR Apache-2.0"
 readme = "README.md"
 keywords = ["mcp", "code-analysis", "refactoring", "quality", "ai"]
 categories = ["command-line-utilities", "development-tools", "development-tools::testing"]
-exclude = ["target/", "*.log", "*.profraw", ".pmat-cache", "proptest-regressions", ".pmat/", ".pmat-tickets/", "node_modules/", "*.pyc", "__pycache__/"]
+exclude = ["target/", "*.log", "*.profraw", ".pmat-cache", "proptest-regressions", ".pmat/", ".pmat-tickets/", ".pmat-work/", ".pmat-baseline.json", "node_modules/", "*.pyc", "__pycache__/", "quality-report.json", "bridge/package-lock.json"]
 # PERF: Disable autotest discovery - 193 .rs files = 193 binaries = slow coverage
 # Instead, use explicit [[test]] declarations for unified test binaries
 autotests = false
