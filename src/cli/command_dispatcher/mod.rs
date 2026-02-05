@@ -123,6 +123,7 @@ impl CommandDispatcher {
                 duplicates,
                 entropy,
                 faults,
+                code,
             } => {
                 handlers::handle_query(
                     query,
@@ -143,6 +144,7 @@ impl CommandDispatcher {
                     duplicates,
                     entropy,
                     faults,
+                    code,
                 )
                 .await
             }

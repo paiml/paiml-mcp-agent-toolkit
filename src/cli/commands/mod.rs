@@ -306,6 +306,10 @@ pub enum Commands {
         /// Enrich results with batuta fault pattern annotations (mutation targets, boundary conditions)
         #[arg(long)]
         faults: bool,
+
+        /// Show source code inline (agent-friendly output)
+        #[arg(long)]
+        code: bool,
     },
 
     /// Analyze code metrics and patterns

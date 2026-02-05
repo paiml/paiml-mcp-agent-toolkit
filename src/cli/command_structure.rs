@@ -249,6 +249,7 @@ impl CommandExecutor {
                 duplicates,
                 entropy,
                 faults,
+                code,
             } => {
                 crate::cli::handlers::handle_query(
                     query,
@@ -269,6 +270,7 @@ impl CommandExecutor {
                     duplicates,
                     entropy,
                     faults,
+                    code,
                 )
                 .await
             }

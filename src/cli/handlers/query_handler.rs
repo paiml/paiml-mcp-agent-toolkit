@@ -6,8 +6,8 @@
 use crate::cli::QueryOutputFormat;
 use crate::services::agent_context::{
     enrich_results_with_churn, enrich_results_with_duplicates, enrich_results_with_entropy,
-    enrich_results_with_faults, format_json, format_markdown, format_text, AgentContextIndex,
-    QueryOptions, RankBy,
+    enrich_results_with_faults, format_json, format_markdown, format_text, format_text_with_code,
+    AgentContextIndex, QueryOptions, RankBy,
 };
 use std::path::PathBuf;
 
@@ -31,6 +31,7 @@ use std::path::PathBuf;
 /// * `duplicates` - Enrich results with duplicate code detection
 /// * `entropy` - Enrich results with entropy/pattern diversity metrics
 /// * `faults` - Enrich results with batuta fault pattern annotations
+/// * `code` - Show source code inline (agent-friendly output)
 pub async fn handle_query(
     query: String,
     limit: usize,
@@ -50,6 +51,7 @@ pub async fn handle_query(
     duplicates: bool,
     entropy: bool,
     faults: bool,
+    code: bool,
 ) -> anyhow::Result<()> {
     // Check for existing index
     let index_path = project_path.join(".pmat/context.idx");
@@ -150,7 +152,7 @@ pub async fn handle_query(
         None => RankBy::default(),
     };
 
-    // Execute query
+    // Execute query (--code implies --include-source)
     let options = QueryOptions {
         limit,
         min_grade,
@@ -158,7 +160,7 @@ pub async fn handle_query(
         max_loc: None,
         language,
         path_pattern,
-        include_source,
+        include_source: include_source || code,
         rank_by: rank_by_enum,
         min_pagerank,
     };
@@ -233,7 +235,13 @@ pub async fn handle_query(
 
     // Format and output results
     let output = match format {
-        QueryOutputFormat::Text => format_text(&results),
+        QueryOutputFormat::Text => {
+            if code {
+                format_text_with_code(&results)
+            } else {
+                format_text(&results)
+            }
+        }
         QueryOutputFormat::Json => format_json(&results).map_err(|e| anyhow::anyhow!("{}", e))?,
         QueryOutputFormat::Markdown => format_markdown(&results),
     };
@@ -347,6 +355,7 @@ mod tests {
             false, // duplicates
             false, // entropy
             false, // faults
+            false, // code
         )
         .await;
 
@@ -395,6 +404,7 @@ fn main() {
             false, // duplicates
             false, // entropy
             false, // faults
+            false, // code
         )
         .await;
 

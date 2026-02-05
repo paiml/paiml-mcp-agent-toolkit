@@ -738,6 +738,38 @@ pub fn format_markdown(results: &[QueryResult]) -> String {
     output
 }
 
+/// Format results as text with inline source code (agent-friendly)
+pub fn format_text_with_code(results: &[QueryResult]) -> String {
+    let mut output = String::new();
+
+    for r in results.iter() {
+        // Header with location
+        output.push_str(&format!(
+            "// {}:{}-{} | {} | TDG: {} | {}\n",
+            r.file_path, r.start_line, r.end_line, r.function_name, r.tdg_grade, r.big_o
+        ));
+
+        // Fault annotations
+        for fault in &r.fault_annotations {
+            output.push_str(&format!("// ⚠️ {}\n", fault));
+        }
+
+        // Source code
+        if let Some(source) = &r.source {
+            output.push_str(source);
+            if !source.ends_with('\n') {
+                output.push('\n');
+            }
+        } else {
+            output.push_str("// (use --include-source to see code)\n");
+        }
+
+        output.push_str("\n");
+    }
+
+    output
+}
+
 /// Format results as text
 pub fn format_text(results: &[QueryResult]) -> String {
     let mut output = String::new();
