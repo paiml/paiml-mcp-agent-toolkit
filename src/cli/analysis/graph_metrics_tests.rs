@@ -57,7 +57,6 @@ mod property_tests {
 
 /// Comprehensive coverage tests for graph_metrics module
 /// EXTREME TDD approach - testing all code paths
-
 mod coverage_tests {
     use super::*;
     use crate::cli::{GraphMetricType, GraphMetricsOutputFormat};

@@ -1434,7 +1434,6 @@ mod coverage_tests {
 }
 
 /// Active unit tests for defect prediction module
-
 // Tests extracted to defect_prediction_tests.rs for file health compliance (CB-040)
 #[cfg(test)]
 #[path = "defect_prediction_tests.rs"]

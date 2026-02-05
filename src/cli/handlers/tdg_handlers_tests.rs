@@ -22,7 +22,6 @@ mod property_tests {
 }
 
 /// Active unit tests for tdg_handlers (not feature-gated)
-
 mod unit_tests {
     use super::*;
     use crate::tdg::Grade;

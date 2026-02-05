@@ -135,6 +135,14 @@ struct IndexPayload {
     name_frequency: HashMap<String, f32>,
 }
 
+/// Result of build_indices function
+#[derive(Debug, Clone, Default)]
+pub(crate) struct BuildIndicesResult {
+    pub name_index: HashMap<String, Vec<usize>>,
+    pub file_index: HashMap<String, Vec<usize>>,
+    pub corpus: Vec<String>,
+}
+
 /// Index statistics
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct IndexStats {
@@ -306,19 +314,19 @@ impl AgentContextIndex {
         }
 
         // Build indices and corpus
-        let (name_index, file_index, corpus) = build_indices(&functions);
+        let indices = build_indices(&functions);
 
         // Build call graph
-        let (calls, called_by) = build_call_graph(&functions, &name_index);
+        let (calls, called_by) = build_call_graph(&functions, &indices.name_index);
 
         // Compute graph metrics (PageRank, centrality)
         let graph_metrics = compute_graph_metrics(functions.len(), &calls, &called_by);
 
         // Compute name frequency for generic name demotion
-        let name_frequency = compute_name_frequency(&name_index, functions.len());
+        let name_frequency = compute_name_frequency(&indices.name_index, functions.len());
 
         // Populate cached annotations (churn, duplicates, entropy, faults)
-        populate_cached_annotations(&mut functions, &file_index, &project_root);
+        populate_cached_annotations(&mut functions, &indices.file_index, &project_root);
 
         // Calculate average TDG score
         let avg_tdg = if !functions.is_empty() {
@@ -340,13 +348,13 @@ impl AgentContextIndex {
         };
 
         // Pre-compute lowercase corpus (avoids per-query lowercasing of 42K+ docs)
-        let corpus_lower: Vec<String> = corpus.iter().map(|d| d.to_lowercase()).collect();
+        let corpus_lower: Vec<String> = indices.corpus.iter().map(|d| d.to_lowercase()).collect();
 
         Ok(Self {
             functions,
-            name_index,
-            file_index,
-            corpus,
+            name_index: indices.name_index,
+            file_index: indices.file_index,
+            corpus: indices.corpus,
             corpus_lower,
             name_frequency,
             calls,
@@ -601,13 +609,13 @@ impl AgentContextIndex {
         }
 
         // Rebuild all derived data from scratch after merge
-        let (name_index, file_index, corpus) = build_indices(&self.functions);
-        let (calls, called_by) = build_call_graph(&self.functions, &name_index);
-        let name_frequency = compute_name_frequency(&name_index, self.functions.len());
+        let indices = build_indices(&self.functions);
+        let (calls, called_by) = build_call_graph(&self.functions, &indices.name_index);
+        let name_frequency = compute_name_frequency(&indices.name_index, self.functions.len());
 
-        self.name_index = name_index;
-        self.file_index = file_index;
-        self.corpus = corpus;
+        self.name_index = indices.name_index;
+        self.file_index = indices.file_index;
+        self.corpus = indices.corpus;
         self.corpus_lower = self.corpus.iter().map(|d| d.to_lowercase()).collect();
         self.name_frequency = name_frequency;
         self.calls = calls;
@@ -694,11 +702,11 @@ impl AgentContextIndex {
         } else {
             // Slow path: rebuild indices for legacy formats (v1.0-v1.2)
             let is_legacy = manifest.version.starts_with("1.0") || manifest.version.starts_with("1.1");
-            let (name_index, file_index, _) = build_indices(&functions);
+            let indices = build_indices(&functions);
 
             // Rebuild call graph if loading legacy format
             let (calls_rebuilt, called_by_rebuilt) = if is_legacy && calls.is_empty() {
-                build_call_graph(&functions, &name_index)
+                build_call_graph(&functions, &indices.name_index)
             } else {
                 (calls.clone(), called_by.clone())
             };
@@ -707,10 +715,10 @@ impl AgentContextIndex {
             let graph_metrics = compute_graph_metrics(functions.len(), &calls_rebuilt, &called_by_rebuilt);
 
             // Compute name frequency and lowercase corpus
-            let name_frequency = compute_name_frequency(&name_index, functions.len());
+            let name_frequency = compute_name_frequency(&indices.name_index, functions.len());
             let corpus_lower: Vec<String> = corpus.iter().map(|d| d.to_lowercase()).collect();
 
-            (name_index, file_index, graph_metrics, corpus_lower, name_frequency)
+            (indices.name_index, indices.file_index, graph_metrics, corpus_lower, name_frequency)
         };
 
         let project_root = PathBuf::from(&manifest.project_root);
@@ -857,11 +865,11 @@ impl AgentContextIndex {
         );
 
         // Build all derived data
-        let (name_index, file_index, corpus) = build_indices(&functions);
-        let (calls, called_by) = build_call_graph(&functions, &name_index);
+        let indices = build_indices(&functions);
+        let (calls, called_by) = build_call_graph(&functions, &indices.name_index);
         let graph_metrics = compute_graph_metrics(functions.len(), &calls, &called_by);
-        let name_frequency = compute_name_frequency(&name_index, functions.len());
-        let corpus_lower: Vec<String> = corpus.iter().map(|d| d.to_lowercase()).collect();
+        let name_frequency = compute_name_frequency(&indices.name_index, functions.len());
+        let corpus_lower: Vec<String> = indices.corpus.iter().map(|d| d.to_lowercase()).collect();
 
         let avg_tdg = if !functions.is_empty() {
             functions.iter().map(|f| f.quality.tdg_score).sum::<f32>() / functions.len() as f32
@@ -888,9 +896,9 @@ impl AgentContextIndex {
 
         Ok(Self {
             functions,
-            name_index,
-            file_index,
-            corpus,
+            name_index: indices.name_index,
+            file_index: indices.file_index,
+            corpus: indices.corpus,
             corpus_lower,
             name_frequency,
             calls,
@@ -957,19 +965,21 @@ fn parse_workspace_siblings(content: &str) -> Vec<String> {
 }
 
 /// Build name_index, file_index, and corpus from functions.
-pub(crate) fn build_indices(
-    functions: &[FunctionEntry],
-) -> (HashMap<String, Vec<usize>>, HashMap<String, Vec<usize>>, Vec<String>) {
-    let mut name_index: HashMap<String, Vec<usize>> = HashMap::new();
-    let mut file_index: HashMap<String, Vec<usize>> = HashMap::new();
-    let mut corpus = Vec::with_capacity(functions.len());
+pub(crate) fn build_indices(functions: &[FunctionEntry]) -> BuildIndicesResult {
+    let mut result = BuildIndicesResult {
+        name_index: HashMap::new(),
+        file_index: HashMap::new(),
+        corpus: Vec::with_capacity(functions.len()),
+    };
 
     for (idx, func) in functions.iter().enumerate() {
-        name_index
+        result
+            .name_index
             .entry(func.function_name.clone())
             .or_default()
             .push(idx);
-        file_index
+        result
+            .file_index
             .entry(func.file_path.clone())
             .or_default()
             .push(idx);
@@ -982,10 +992,10 @@ pub(crate) fn build_indices(
             path = func.file_path,
             idents = extract_identifiers(&func.source)
         );
-        corpus.push(doc);
+        result.corpus.push(doc);
     }
 
-    (name_index, file_index, corpus)
+    result
 }
 
 /// Compute SHA256 hash of file content
@@ -1102,11 +1112,7 @@ fn get_file_commit_counts<'a>(
                 }
 
                 // Handle path migrations (e.g., server/src/foo.rs -> src/foo.rs)
-                let normalized = if line.starts_with("server/") {
-                    &line[7..] // Strip "server/" prefix
-                } else {
-                    line
-                };
+                let normalized = line.strip_prefix("server/").unwrap_or(line);
 
                 if files.contains(&normalized.to_string()) {
                     *result.entry(normalized.to_string()).or_insert(0) += 1;
@@ -1812,11 +1818,11 @@ mod tests {
                 fault_annotations: Vec::new(),
             },
         ];
-        let (name_idx, file_idx, corpus) = build_indices(&functions);
-        assert_eq!(name_idx["foo"], vec![0]);
-        assert_eq!(name_idx["bar"], vec![1]);
-        assert_eq!(file_idx["a.rs"], vec![0, 1]);
-        assert_eq!(corpus.len(), 2);
+        let indices = build_indices(&functions);
+        assert_eq!(indices.name_index["foo"], vec![0]);
+        assert_eq!(indices.name_index["bar"], vec![1]);
+        assert_eq!(indices.file_index["a.rs"], vec![0, 1]);
+        assert_eq!(indices.corpus.len(), 2);
     }
 
     #[test]
@@ -1860,8 +1866,8 @@ mod tests {
                 fault_annotations: Vec::new(),
             },
         ];
-        let (name_index, _, _) = build_indices(&functions);
-        let (calls, called_by) = build_call_graph(&functions, &name_index);
+        let indices = build_indices(&functions);
+        let (calls, called_by) = build_call_graph(&functions, &indices.name_index);
 
         // foo calls bar
         assert!(calls.get(&0).map_or(false, |v| v.contains(&1)));
@@ -2031,16 +2037,16 @@ mod tests {
             },
         ];
 
-        let (name_index, file_index, corpus) = build_indices(&functions);
-        let corpus_lower: Vec<String> = corpus.iter().map(|c| c.to_lowercase()).collect();
-        let (calls, called_by) = build_call_graph(&functions, &name_index);
+        let indices = build_indices(&functions);
+        let corpus_lower: Vec<String> = indices.corpus.iter().map(|c| c.to_lowercase()).collect();
+        let (calls, called_by) = build_call_graph(&functions, &indices.name_index);
         let graph_metrics = compute_graph_metrics(functions.len(), &calls, &called_by);
 
         let index = AgentContextIndex {
             functions,
-            name_index,
-            file_index,
-            corpus,
+            name_index: indices.name_index,
+            file_index: indices.file_index,
+            corpus: indices.corpus,
             corpus_lower,
             name_frequency: HashMap::new(),
             calls,
@@ -2094,14 +2100,14 @@ mod tests {
             },
         ];
 
-        let (name_index, file_index, corpus) = build_indices(&functions);
-        let corpus_lower: Vec<String> = corpus.iter().map(|c| c.to_lowercase()).collect();
+        let indices = build_indices(&functions);
+        let corpus_lower: Vec<String> = indices.corpus.iter().map(|c| c.to_lowercase()).collect();
 
         let index = AgentContextIndex {
             functions,
-            name_index,
-            file_index,
-            corpus,
+            name_index: indices.name_index,
+            file_index: indices.file_index,
+            corpus: indices.corpus,
             corpus_lower,
             name_frequency: HashMap::new(),
             calls: HashMap::new(),

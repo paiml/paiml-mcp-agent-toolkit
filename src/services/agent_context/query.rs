@@ -910,7 +910,7 @@ pub fn format_text_with_code(results: &[QueryResult]) -> String {
             output.push_str("\x1b[2m// (use --include-source to see code)\x1b[0m\n");
         }
 
-        output.push_str("\n");
+        output.push('\n');
     }
 
     output
@@ -1672,23 +1672,22 @@ mod tests {
             },
         ];
 
-        let (name_index, file_index, corpus) =
-            crate::services::agent_context::function_index::build_indices(&functions);
-        let corpus_lower: Vec<String> = corpus.iter().map(|c| c.to_lowercase()).collect();
+        let indices = crate::services::agent_context::function_index::build_indices(&functions);
+        let corpus_lower: Vec<String> = indices.corpus.iter().map(|c| c.to_lowercase()).collect();
         let name_frequency = crate::services::agent_context::function_index::compute_name_frequency(
-            &name_index,
+            &indices.name_index,
             functions.len(),
         );
         let (calls, called_by) =
-            crate::services::agent_context::function_index::build_call_graph(&functions, &name_index);
+            crate::services::agent_context::function_index::build_call_graph(&functions, &indices.name_index);
         let graph_metrics =
             crate::services::agent_context::function_index::compute_graph_metrics(functions.len(), &calls, &called_by);
 
         AgentContextIndex {
             functions,
-            name_index,
-            file_index,
-            corpus,
+            name_index: indices.name_index,
+            file_index: indices.file_index,
+            corpus: indices.corpus,
             corpus_lower,
             name_frequency,
             calls,

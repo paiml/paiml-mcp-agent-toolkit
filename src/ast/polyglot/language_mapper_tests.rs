@@ -92,7 +92,6 @@ mod tests {
 }
 
 /// Comprehensive coverage tests for language_mapper.rs
-
 mod coverage_tests {
     use super::*;
     use crate::services::context::AstItem;
@@ -1406,7 +1405,6 @@ mod coverage_tests {
 }
 
 /// Property-based tests for language mapper
-
 mod property_tests {
     use super::*;
     use proptest::prelude::*;

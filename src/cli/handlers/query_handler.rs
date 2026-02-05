@@ -33,6 +33,7 @@ use std::path::PathBuf;
 /// * `faults` - Enrich results with batuta fault pattern annotations
 /// * `definition_type` - Filter by definition type (fn, struct, enum, trait, type)
 /// * `code` - Show source code inline (default: true, use --summary to disable)
+#[allow(clippy::too_many_arguments)]
 pub async fn handle_query(
     query: String,
     limit: usize,

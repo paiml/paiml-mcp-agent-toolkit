@@ -79,7 +79,6 @@ mod property_tests {
 
 /// Comprehensive EXTREME TDD tests for ast/core module
 /// Tests all public structs, enums, and functions with edge cases
-
 mod coverage_tests {
     use super::*;
     use chrono::Utc;

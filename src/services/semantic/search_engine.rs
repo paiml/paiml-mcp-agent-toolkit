@@ -554,8 +554,11 @@ impl SemanticSearchEngine {
 
     /// Get total embedding count
     pub async fn embedding_count(&self) -> Result<usize, String> {
-        let embedder = self.embedder.read().map_err(|e| format!("Lock error: {e}"))?;
-        let dim = embedder.dimension();
+        // Get dimension without holding lock across await
+        let dim = {
+            let embedder = self.embedder.read().map_err(|e| format!("Lock error: {e}"))?;
+            embedder.dimension()
+        };
         let all = self
             .vector_db
             .similarity_search(&vec![0.0; dim], usize::MAX)

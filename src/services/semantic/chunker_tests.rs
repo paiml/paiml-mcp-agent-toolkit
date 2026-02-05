@@ -30,7 +30,6 @@ mod tests {
 }
 
 /// Comprehensive coverage tests for the semantic chunker module
-
 mod coverage_tests {
     use super::*;
 
