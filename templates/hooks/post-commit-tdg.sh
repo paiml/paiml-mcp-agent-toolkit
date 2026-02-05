@@ -36,7 +36,7 @@ fi
 echo -e "${BLUE}📊 PMAT TDG: Updating baseline...${NC}"
 
 # Update baseline with current project state
-if pmat tdg baseline update --output "${BASELINE_PATH}" --path . 2>/dev/null; then
+if pmat tdg baseline update --baseline "${BASELINE_PATH}" --path . 2>/dev/null; then
     echo -e "${GREEN}✅ Baseline updated: ${BASELINE_PATH}${NC}"
 
     # Add baseline to git if configured
