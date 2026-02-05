@@ -125,6 +125,7 @@ impl CommandDispatcher {
                 faults,
                 definition_type,
                 summary,
+                git_history,
             } => {
                 // Default is to show code; --summary disables it
                 let show_code = !summary;
@@ -149,6 +150,7 @@ impl CommandDispatcher {
                     faults,
                     definition_type,
                     show_code,
+                    git_history,
                 )
                 .await
             }

@@ -314,6 +314,10 @@ pub enum Commands {
         /// Show summary only (no source code) - by default, code is shown
         #[arg(long)]
         summary: bool,
+
+        /// Include git commit history in search (RAG fusion)
+        #[arg(long, short = 'G', visible_alias = "gh")]
+        git_history: bool,
     },
 
     /// Analyze code metrics and patterns

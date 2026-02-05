@@ -834,6 +834,93 @@ mod tests {
         assert_eq!(index.commit_count().unwrap(), 1);
     }
 
+    #[test]
+    fn test_get_commits_without_embeddings() {
+        let index = GitHistoryIndex::in_memory().unwrap();
+
+        let commit = create_test_commit(&"a".repeat(40), "Fix bug in parser");
+        index.insert_commit(&commit).unwrap();
+
+        let needs_embedding = index.get_commits_without_embeddings(10).unwrap();
+        assert_eq!(needs_embedding.len(), 1);
+        assert_eq!(needs_embedding[0], "a".repeat(40));
+
+        // After setting embedding, should not appear
+        index.update_embedding(&commit.hash, &[0.1, 0.2]).unwrap();
+        let needs_embedding = index.get_commits_without_embeddings(10).unwrap();
+        assert!(needs_embedding.is_empty());
+    }
+
+    #[test]
+    fn test_commit_info_full_message_no_body() {
+        let info = CommitInfo {
+            hash: "a".repeat(40),
+            message_subject: "Fix bug".to_string(),
+            message_body: None,
+            author_name: "Test".to_string(),
+            author_email: "test@example.com".to_string(),
+            timestamp: 1700000000,
+            is_merge: false,
+            is_fix: true,
+            is_feat: false,
+            issue_refs: vec![],
+            files: vec![],
+        };
+        assert_eq!(info.full_message(), "Fix bug");
+    }
+
+    #[test]
+    fn test_commit_info_full_message_empty_body() {
+        let info = CommitInfo {
+            hash: "a".repeat(40),
+            message_subject: "Fix bug".to_string(),
+            message_body: Some("".to_string()),
+            author_name: "Test".to_string(),
+            author_email: "test@example.com".to_string(),
+            timestamp: 1700000000,
+            is_merge: false,
+            is_fix: true,
+            is_feat: false,
+            issue_refs: vec![],
+            files: vec![],
+        };
+        assert_eq!(info.full_message(), "Fix bug");
+    }
+
+    #[test]
+    fn test_commit_info_is_indexable_merge_with_custom_message() {
+        let info = CommitInfo {
+            hash: "a".repeat(40),
+            message_subject: "Custom merge: integrate feature X".to_string(),
+            message_body: None,
+            author_name: "Test".to_string(),
+            author_email: "test@example.com".to_string(),
+            timestamp: 1700000000,
+            is_merge: true,
+            is_fix: false,
+            is_feat: false,
+            issue_refs: vec![],
+            files: vec![],
+        };
+        // Merge with custom message (not starting with "Merge ") IS indexable
+        assert!(info.is_indexable());
+    }
+
+    #[test]
+    fn test_change_type_as_str() {
+        assert_eq!(ChangeType::Added.as_str(), "A");
+        assert_eq!(ChangeType::Modified.as_str(), "M");
+        assert_eq!(ChangeType::Deleted.as_str(), "D");
+        assert_eq!(ChangeType::Renamed.as_str(), "R");
+    }
+
+    #[test]
+    fn test_checksum_empty_index() {
+        let index = GitHistoryIndex::in_memory().unwrap();
+        let checksum = index.checksum().unwrap();
+        assert_eq!(checksum, "0:");
+    }
+
     // Falsification Test F1: Index Independence
     #[test]
     fn falsify_git_index_isolation() {

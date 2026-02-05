@@ -521,6 +521,144 @@ mod tests {
         }
     }
 
+    #[test]
+    fn test_search_until_timestamp_filter() {
+        let index = create_test_index();
+        let mut engine = GitHistorySearchEngine::new(&index);
+
+        let options = GitSearchOptions {
+            until_timestamp: Some(1700100000),
+            ..Default::default()
+        };
+
+        let results = engine.search("fix", options).unwrap();
+
+        for r in &results {
+            assert!(r.commit.timestamp <= 1700100000);
+        }
+    }
+
+    #[test]
+    fn test_search_author_and_since_filter() {
+        let index = create_test_index();
+        let mut engine = GitHistorySearchEngine::new(&index);
+
+        let options = GitSearchOptions {
+            author_email: Some("alice@example.com".to_string()),
+            since_timestamp: Some(1700100000),
+            ..Default::default()
+        };
+
+        let results = engine.search("fix cache memory", options).unwrap();
+
+        for r in &results {
+            assert_eq!(r.commit.author_email, "alice@example.com");
+            assert!(r.commit.timestamp >= 1700100000);
+        }
+        // Verifies SQL filter worked; TF-IDF may or may not return results from tiny corpus
+    }
+
+    #[test]
+    fn test_search_author_and_until_filter() {
+        let index = create_test_index();
+        let mut engine = GitHistorySearchEngine::new(&index);
+
+        let options = GitSearchOptions {
+            author_email: Some("alice@example.com".to_string()),
+            until_timestamp: Some(1700050000),
+            ..Default::default()
+        };
+
+        let results = engine.search("fix null pointer", options).unwrap();
+
+        for r in &results {
+            assert_eq!(r.commit.author_email, "alice@example.com");
+            assert!(r.commit.timestamp <= 1700050000);
+        }
+        // Verifies SQL filter worked; TF-IDF may or may not return results from tiny corpus
+    }
+
+    #[test]
+    fn test_search_since_and_until_filter() {
+        let index = create_test_index();
+        let mut engine = GitHistorySearchEngine::new(&index);
+
+        let options = GitSearchOptions {
+            since_timestamp: Some(1700050000),
+            until_timestamp: Some(1700250000),
+            ..Default::default()
+        };
+
+        let results = engine.search("dark mode cache", options).unwrap();
+
+        for r in &results {
+            assert!(r.commit.timestamp >= 1700050000);
+            assert!(r.commit.timestamp <= 1700250000);
+        }
+        // Commits "b" (ts=1700100000) and "c" (ts=1700200000) should match
+    }
+
+    #[test]
+    fn test_search_all_three_filters() {
+        let index = create_test_index();
+        let mut engine = GitHistorySearchEngine::new(&index);
+
+        let options = GitSearchOptions {
+            author_email: Some("alice@example.com".to_string()),
+            since_timestamp: Some(1700050000),
+            until_timestamp: Some(1700250000),
+            ..Default::default()
+        };
+
+        let results = engine.search("fix cache memory", options).unwrap();
+
+        for r in &results {
+            assert_eq!(r.commit.author_email, "alice@example.com");
+            assert!(r.commit.timestamp >= 1700050000);
+            assert!(r.commit.timestamp <= 1700250000);
+        }
+        // Verifies all three SQL filters applied correctly
+    }
+
+    #[test]
+    fn test_search_file_path_filter() {
+        let index = create_test_index();
+        let mut engine = GitHistorySearchEngine::new(&index);
+
+        let options = GitSearchOptions {
+            file_path: Some("src/parser.rs".to_string()),
+            ..Default::default()
+        };
+
+        // file_path in GitSearchOptions isn't used in get_candidates SQL
+        // but search_by_file provides this functionality
+        let results = engine.search("error refactor", options).unwrap();
+        // Should still return results (file_path isn't filtered in get_candidates)
+        assert!(results.len() <= 4);
+    }
+
+    #[test]
+    fn test_cosine_similarity_zero_vectors() {
+        assert_eq!(cosine_similarity(&[0.0, 0.0], &[1.0, 2.0]), 0.0);
+        assert_eq!(cosine_similarity(&[1.0, 2.0], &[0.0, 0.0]), 0.0);
+        assert_eq!(cosine_similarity(&[0.0, 0.0], &[0.0, 0.0]), 0.0);
+    }
+
+    #[test]
+    fn test_cosine_similarity_identical() {
+        let v = vec![1.0, 2.0, 3.0];
+        let sim = cosine_similarity(&v, &v);
+        assert!((sim - 1.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_cosine_similarity_orthogonal() {
+        let a = vec![1.0, 0.0];
+        let b = vec![0.0, 1.0];
+        let sim = cosine_similarity(&a, &b);
+        assert!(sim.abs() < 1e-6);
+    }
+
     // Falsification Test F2 (partial): Semantic clustering
     #[test]
     fn test_fix_commits_cluster_together() {

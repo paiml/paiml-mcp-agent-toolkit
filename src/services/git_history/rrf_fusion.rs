@@ -459,6 +459,71 @@ mod tests {
     }
 
     #[test]
+    fn test_rrf_default_trait() {
+        let fusion = RrfFusion::default();
+        // default should use k=60
+        let results = fusion.fuse(
+            vec![("code", vec![make_doc("a", 0.9, "code")])],
+            10,
+        );
+        assert_eq!(results.len(), 1);
+    }
+
+    #[test]
+    fn test_improvement_zero_primary_mrr() {
+        let fusion = RrfFusion::new();
+
+        // Primary has no matching ground truth
+        let primary = vec![make_doc("other", 0.9, "code")];
+
+        // Fused has the target
+        let fused = fusion.fuse(
+            vec![
+                ("code", vec![make_doc("other", 0.9, "code")]),
+                ("git", vec![make_doc("target", 0.95, "git")]),
+            ],
+            10,
+        );
+
+        let ground_truth = vec!["target".to_string()];
+        let (improvement, primary_mrr, fused_mrr) = fusion.calculate_improvement(&fused, &primary, &ground_truth);
+
+        assert_eq!(primary_mrr, 0.0);
+        assert!(fused_mrr > 0.0);
+        assert_eq!(improvement, 1.0); // Infinite improvement case
+    }
+
+    #[test]
+    fn test_improvement_both_zero() {
+        let fusion = RrfFusion::new();
+
+        let primary = vec![make_doc("other", 0.9, "code")];
+        let fused = fusion.fuse(vec![("code", primary.clone())], 10);
+
+        let ground_truth = vec!["nonexistent".to_string()];
+        let (improvement, primary_mrr, fused_mrr) = fusion.calculate_improvement(&fused, &primary, &ground_truth);
+
+        assert_eq!(primary_mrr, 0.0);
+        assert_eq!(fused_mrr, 0.0);
+        assert_eq!(improvement, 0.0);
+    }
+
+    #[test]
+    fn test_mrr_empty_inputs() {
+        assert_eq!(RrfFusion::mean_reciprocal_rank(&[], &["a".to_string()]), 0.0);
+        assert_eq!(RrfFusion::mean_reciprocal_rank(&["a".to_string()], &[]), 0.0);
+    }
+
+    #[test]
+    fn test_mrr_multiple_ground_truth() {
+        let results = vec!["a".to_string(), "b".to_string(), "c".to_string()];
+        let truth = vec!["a".to_string(), "c".to_string()]; // at ranks 1 and 3
+        let mrr = RrfFusion::mean_reciprocal_rank(&results, &truth);
+        // (1/1 + 1/3) / 2 = 0.6667
+        assert!((mrr - 0.6667).abs() < 0.01);
+    }
+
+    #[test]
     fn test_primary_source_selection() {
         let fusion = RrfFusion::new();
 

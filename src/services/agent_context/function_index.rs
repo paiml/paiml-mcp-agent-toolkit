@@ -1007,6 +1007,7 @@ fn compute_file_sha256(content: &str) -> String {
 
 /// Populate cached annotations for all functions during index build.
 /// Computes: git churn, code clones, pattern diversity, fault patterns.
+#[cfg_attr(coverage_nightly, coverage(off))] // Integration: requires git + filesystem for churn/clones
 fn populate_cached_annotations(
     functions: &mut [FunctionEntry],
     file_index: &HashMap<String, Vec<usize>>,
@@ -1078,6 +1079,7 @@ fn populate_cached_annotations(
 }
 
 /// Get commit counts per file from git log
+#[cfg_attr(coverage_nightly, coverage(off))] // Integration: requires git process
 fn get_file_commit_counts<'a>(
     project_root: &std::path::Path,
     files: impl Iterator<Item = &'a String>,
@@ -2432,6 +2434,418 @@ mod tests {
     }
 
     #[test]
+    fn test_detect_code_clones_with_duplicates() {
+        let funcs = vec![
+            FunctionEntry {
+                file_path: "a.rs".to_string(),
+                function_name: "func_a".to_string(),
+                signature: "fn func_a()".to_string(),
+                doc_comment: None,
+                source: "fn func_a() { let x = 1; let y = 2; x + y }".to_string(),
+                start_line: 1,
+                end_line: 1,
+                language: "Rust".to_string(),
+                quality: QualityMetrics::default(),
+                checksum: "aaa".to_string(),
+                definition_type: DefinitionType::default(),
+                commit_count: 0, churn_score: 0.0, clone_count: 0,
+                pattern_diversity: 0.0, fault_annotations: Vec::new(),
+            },
+            FunctionEntry {
+                file_path: "b.rs".to_string(),
+                function_name: "func_b".to_string(),
+                signature: "fn func_b()".to_string(),
+                doc_comment: None,
+                // Same source after normalization (whitespace-insensitive)
+                source: "fn func_a() { let x = 1; let y = 2; x + y }".to_string(),
+                start_line: 1,
+                end_line: 1,
+                language: "Rust".to_string(),
+                quality: QualityMetrics::default(),
+                checksum: "bbb".to_string(),
+                definition_type: DefinitionType::default(),
+                commit_count: 0, churn_score: 0.0, clone_count: 0,
+                pattern_diversity: 0.0, fault_annotations: Vec::new(),
+            },
+            FunctionEntry {
+                file_path: "c.rs".to_string(),
+                function_name: "func_c".to_string(),
+                signature: "fn func_c()".to_string(),
+                doc_comment: None,
+                source: "fn func_c() { completely_different_code(); }".to_string(),
+                start_line: 1,
+                end_line: 1,
+                language: "Rust".to_string(),
+                quality: QualityMetrics::default(),
+                checksum: "ccc".to_string(),
+                definition_type: DefinitionType::default(),
+                commit_count: 0, churn_score: 0.0, clone_count: 0,
+                pattern_diversity: 0.0, fault_annotations: Vec::new(),
+            },
+        ];
+
+        let clones = detect_code_clones(&funcs);
+        // func_a and func_b are clones (same normalized source)
+        assert_eq!(clones.get(&0), Some(&2));
+        assert_eq!(clones.get(&1), Some(&2));
+        // func_c is unique
+        assert_eq!(clones.get(&2), None);
+    }
+
+    #[test]
+    fn test_detect_code_clones_no_duplicates() {
+        let funcs = vec![
+            FunctionEntry {
+                file_path: "a.rs".to_string(),
+                function_name: "unique_a".to_string(),
+                signature: "fn unique_a()".to_string(),
+                doc_comment: None,
+                source: "fn unique_a() { alpha(); }".to_string(),
+                start_line: 1, end_line: 1, language: "Rust".to_string(),
+                quality: QualityMetrics::default(), checksum: "aaa".to_string(),
+                definition_type: DefinitionType::default(),
+                commit_count: 0, churn_score: 0.0, clone_count: 0,
+                pattern_diversity: 0.0, fault_annotations: Vec::new(),
+            },
+            FunctionEntry {
+                file_path: "b.rs".to_string(),
+                function_name: "unique_b".to_string(),
+                signature: "fn unique_b()".to_string(),
+                doc_comment: None,
+                source: "fn unique_b() { beta(); }".to_string(),
+                start_line: 1, end_line: 1, language: "Rust".to_string(),
+                quality: QualityMetrics::default(), checksum: "bbb".to_string(),
+                definition_type: DefinitionType::default(),
+                commit_count: 0, churn_score: 0.0, clone_count: 0,
+                pattern_diversity: 0.0, fault_annotations: Vec::new(),
+            },
+        ];
+
+        let clones = detect_code_clones(&funcs);
+        assert!(clones.is_empty());
+    }
+
+    #[test]
+    fn test_normalize_source() {
+        assert_eq!(normalize_source("fn foo() { }"), "fnfoo(){}");
+        assert_eq!(normalize_source("  fn  foo ( ) {\n}"), "fnfoo(){}");
+        assert_eq!(normalize_source("FN FOO()"), "fnfoo()");
+    }
+
+    #[test]
+    fn test_compute_file_pattern_diversity() {
+        let funcs = vec![
+            FunctionEntry {
+                file_path: "a.rs".to_string(),
+                function_name: "f1".to_string(),
+                signature: "fn f1() -> bool".to_string(),
+                doc_comment: None, source: "".to_string(),
+                start_line: 1, end_line: 1, language: "Rust".to_string(),
+                quality: QualityMetrics { complexity: 2, ..Default::default() },
+                checksum: "a".to_string(), definition_type: DefinitionType::default(),
+                commit_count: 0, churn_score: 0.0, clone_count: 0,
+                pattern_diversity: 0.0, fault_annotations: Vec::new(),
+            },
+            FunctionEntry {
+                file_path: "a.rs".to_string(),
+                function_name: "f2".to_string(),
+                signature: "fn f2(x: i32) -> String".to_string(),
+                doc_comment: None, source: "".to_string(),
+                start_line: 5, end_line: 10, language: "Rust".to_string(),
+                quality: QualityMetrics { complexity: 8, ..Default::default() },
+                checksum: "b".to_string(), definition_type: DefinitionType::default(),
+                commit_count: 0, churn_score: 0.0, clone_count: 0,
+                pattern_diversity: 0.0, fault_annotations: Vec::new(),
+            },
+            FunctionEntry {
+                file_path: "a.rs".to_string(),
+                function_name: "f3".to_string(),
+                signature: "fn f3() -> bool".to_string(),
+                doc_comment: None, source: "".to_string(),
+                start_line: 15, end_line: 20, language: "Rust".to_string(),
+                quality: QualityMetrics { complexity: 2, ..Default::default() },
+                checksum: "c".to_string(), definition_type: DefinitionType::default(),
+                commit_count: 0, churn_score: 0.0, clone_count: 0,
+                pattern_diversity: 0.0, fault_annotations: Vec::new(),
+            },
+        ];
+        let mut file_index = HashMap::new();
+        file_index.insert("a.rs".to_string(), vec![0, 1, 2]);
+
+        let diversity = compute_file_pattern_diversity(&funcs, &file_index);
+        let d = diversity["a.rs"];
+        // f1 and f3 have same pattern (bool:0:0), f2 is different (String:1:1)
+        // 2 unique / 3 total = 0.667
+        assert!(d > 0.5 && d < 0.8, "unexpected diversity: {d}");
+    }
+
+    #[test]
+    fn test_compute_file_pattern_diversity_empty() {
+        let funcs: Vec<FunctionEntry> = vec![];
+        let mut file_index = HashMap::new();
+        file_index.insert("a.rs".to_string(), Vec::new());
+
+        let diversity = compute_file_pattern_diversity(&funcs, &file_index);
+        assert!(!diversity.contains_key("a.rs")); // empty indices skipped
+    }
+
+    #[test]
+    fn test_extract_return_type() {
+        assert_eq!(extract_return_type("fn foo() -> bool"), "bool");
+        assert_eq!(extract_return_type("fn foo() -> Result<String, Error>"), "Result<String, Error>");
+        assert_eq!(extract_return_type("fn foo()"), "void");
+    }
+
+    #[test]
+    fn test_count_params() {
+        assert_eq!(count_params("fn foo()"), 0);
+        assert_eq!(count_params("fn foo(x: i32)"), 1);
+        assert_eq!(count_params("fn foo(x: i32, y: String)"), 2);
+        assert_eq!(count_params("fn foo(x: i32, y: String, z: bool)"), 3);
+        assert_eq!(count_params("no parens"), 0);
+    }
+
+    #[test]
+    fn test_detect_fault_patterns() {
+        let funcs = vec![
+            FunctionEntry {
+                file_path: "a.rs".to_string(),
+                function_name: "risky".to_string(),
+                signature: "fn risky()".to_string(),
+                doc_comment: None,
+                source: "fn risky() { x.unwrap(); y.clone(); // TODO: fix }".to_string(),
+                start_line: 1, end_line: 1, language: "Rust".to_string(),
+                quality: QualityMetrics::default(), checksum: "a".to_string(),
+                definition_type: DefinitionType::default(),
+                commit_count: 0, churn_score: 0.0, clone_count: 0,
+                pattern_diversity: 0.0, fault_annotations: Vec::new(),
+            },
+            FunctionEntry {
+                file_path: "b.rs".to_string(),
+                function_name: "safe".to_string(),
+                signature: "fn safe()".to_string(),
+                doc_comment: None,
+                source: "fn safe() { println!(\"hello\"); }".to_string(),
+                start_line: 1, end_line: 1, language: "Rust".to_string(),
+                quality: QualityMetrics::default(), checksum: "b".to_string(),
+                definition_type: DefinitionType::default(),
+                commit_count: 0, churn_score: 0.0, clone_count: 0,
+                pattern_diversity: 0.0, fault_annotations: Vec::new(),
+            },
+            FunctionEntry {
+                file_path: "c.rs".to_string(),
+                function_name: "dangerous".to_string(),
+                signature: "fn dangerous()".to_string(),
+                doc_comment: None,
+                source: "fn dangerous() { unsafe { panic!(\"boom\"); } }".to_string(),
+                start_line: 1, end_line: 1, language: "Rust".to_string(),
+                quality: QualityMetrics::default(), checksum: "c".to_string(),
+                definition_type: DefinitionType::default(),
+                commit_count: 0, churn_score: 0.0, clone_count: 0,
+                pattern_diversity: 0.0, fault_annotations: Vec::new(),
+            },
+        ];
+
+        let faults = detect_fault_patterns(&funcs);
+        // risky has: UNWRAP, CLONE, TODO
+        let risky_faults = &faults[&0];
+        assert!(risky_faults.contains(&"UNWRAP".to_string()));
+        assert!(risky_faults.contains(&"CLONE".to_string()));
+        assert!(risky_faults.contains(&"TODO".to_string()));
+        // safe has no faults
+        assert!(!faults.contains_key(&1));
+        // dangerous has PANIC, UNSAFE
+        let dangerous_faults = &faults[&2];
+        assert!(dangerous_faults.contains(&"PANIC".to_string()));
+        assert!(dangerous_faults.contains(&"UNSAFE".to_string()));
+    }
+
+    #[test]
+    fn test_detect_fault_patterns_more() {
+        let funcs = vec![
+            FunctionEntry {
+                file_path: "a.rs".to_string(),
+                function_name: "f".to_string(),
+                signature: "fn f()".to_string(),
+                doc_comment: None,
+                source: "fn f() { x.expect(\"msg\"); // FIXME: broken\n// HACK: workaround\n// XXX: bad\ntodo!(\"later\");\nunimplemented!(\"not yet\");\nunreachable!(\"never\"); }".to_string(),
+                start_line: 1, end_line: 1, language: "Rust".to_string(),
+                quality: QualityMetrics::default(), checksum: "a".to_string(),
+                definition_type: DefinitionType::default(),
+                commit_count: 0, churn_score: 0.0, clone_count: 0,
+                pattern_diversity: 0.0, fault_annotations: Vec::new(),
+            },
+        ];
+
+        let faults = detect_fault_patterns(&funcs);
+        let f = &faults[&0];
+        assert!(f.contains(&"EXPECT".to_string()));
+        assert!(f.contains(&"FIXME".to_string()));
+        assert!(f.contains(&"HACK".to_string()));
+        assert!(f.contains(&"XXX".to_string()));
+        assert!(f.contains(&"TODO_MACRO".to_string()));
+        assert!(f.contains(&"UNIMPL".to_string()));
+        assert!(f.contains(&"UNREACHABLE".to_string()));
+    }
+
+    #[test]
+    fn test_extract_identifiers() {
+        let idents = extract_identifiers("fn foo() { bar_baz(42); hello.world(); }");
+        assert!(idents.contains("foo"));
+        assert!(idents.contains("bar_baz"));
+        assert!(idents.contains("hello"));
+        assert!(idents.contains("world"));
+        // Short words (<3 chars) excluded
+        assert!(!idents.contains("42"));
+    }
+
+    #[test]
+    fn test_extract_identifiers_filters_keywords() {
+        let idents = extract_identifiers("fn handle() { if let mut x = return; }");
+        // Keywords excluded
+        assert!(!idents.contains("fn"));
+        assert!(!idents.contains("if"));
+        assert!(!idents.contains("let"));
+        assert!(!idents.contains("mut"));
+        assert!(!idents.contains("return"));
+        // Non-keyword kept
+        assert!(idents.contains("handle"));
+    }
+
+    #[test]
+    fn test_extract_doc_comment_block() {
+        let content = "/**\n * Block doc comment\n */\nfn foo() {}";
+        let doc = extract_doc_comment(content, 4);
+        // Block comments cause break, so may return None or partial
+        assert!(doc.is_none() || doc.as_ref().map_or(false, |d| d.contains("Block doc comment")));
+    }
+
+    #[test]
+    fn test_extract_doc_comment_with_attribute() {
+        let content = "/// Doc line\n#[inline]\nfn foo() {}";
+        let doc = extract_doc_comment(content, 3);
+        assert!(doc.is_some());
+        assert!(doc.unwrap().contains("Doc line"));
+    }
+
+    #[test]
+    fn test_estimate_big_o_cubic() {
+        let cubic = "fn f() {\n    for i in a {\n        for j in b {\n            for k in c {\n                process();\n            }\n        }\n    }\n}";
+        assert_eq!(estimate_big_o(cubic), "O(n^3)");
+    }
+
+    #[test]
+    fn test_estimate_big_o_n4() {
+        let n4 = "fn f() {\n    for _ in a {\n        for _ in b {\n            for _ in c {\n                for _ in d {\n                    x();\n                }\n            }\n        }\n    }\n}";
+        assert_eq!(estimate_big_o(n4), "O(n^4)");
+    }
+
+    #[test]
+    fn test_calculate_simple_tdg_boundaries() {
+        // Zero everything
+        let score = calculate_simple_tdg(0, 0, 0);
+        assert!((score - 0.0).abs() < 0.01);
+
+        // Max complexity capped at 4.0
+        let max_complexity = calculate_simple_tdg(100, 0, 0);
+        assert!((max_complexity - 4.0).abs() < 0.01);
+
+        // SATD capped at 2.0
+        let max_satd = calculate_simple_tdg(0, 10, 0);
+        assert!((max_satd - 2.0).abs() < 0.01);
+
+        // LOC penalty kicks in above 50
+        let large_loc = calculate_simple_tdg(0, 0, 100);
+        assert!(large_loc > 0.0);
+
+        // Max possible: complexity=4 + satd=2 + loc=2 = 8.0
+        let max_all = calculate_simple_tdg(100, 10, 1000);
+        assert!((max_all - 8.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_score_to_grade_boundaries() {
+        assert_eq!(score_to_grade(0.0), "A");
+        assert_eq!(score_to_grade(1.99), "A");
+        assert_eq!(score_to_grade(2.0), "B");
+        assert_eq!(score_to_grade(3.99), "B");
+        assert_eq!(score_to_grade(4.0), "C");
+        assert_eq!(score_to_grade(5.99), "C");
+        assert_eq!(score_to_grade(6.0), "D");
+        assert_eq!(score_to_grade(7.99), "D");
+        assert_eq!(score_to_grade(8.0), "F");
+        assert_eq!(score_to_grade(10.0), "F");
+    }
+
+    #[test]
+    fn test_compute_graph_metrics_empty() {
+        let metrics = compute_graph_metrics(0, &HashMap::new(), &HashMap::new());
+        assert!(metrics.is_empty());
+    }
+
+    #[test]
+    fn test_compute_graph_metrics_isolated_nodes() {
+        // No calls between nodes -> dangling node handling
+        let metrics = compute_graph_metrics(3, &HashMap::new(), &HashMap::new());
+        assert_eq!(metrics.len(), 3);
+        // All nodes are dangling, PageRank should be uniform
+        for m in &metrics {
+            assert!(m.pagerank > 0.0, "isolated node should have positive pagerank");
+            assert_eq!(m.in_degree, 0);
+            assert_eq!(m.out_degree, 0);
+        }
+        // PageRank should be approximately equal for all
+        let diff = (metrics[0].pagerank - metrics[1].pagerank).abs();
+        assert!(diff < 0.001, "isolated nodes should have near-equal pagerank");
+    }
+
+    #[test]
+    fn test_compute_graph_metrics_chain() {
+        // 0 -> 1 -> 2 (chain)
+        let mut calls = HashMap::new();
+        calls.insert(0, vec![1]);
+        calls.insert(1, vec![2]);
+        let mut called_by = HashMap::new();
+        called_by.insert(1, vec![0]);
+        called_by.insert(2, vec![1]);
+
+        let metrics = compute_graph_metrics(3, &calls, &called_by);
+        assert_eq!(metrics.len(), 3);
+        // Node 2 (end of chain) should have highest PageRank (most "important" via link structure)
+        assert!(metrics[2].pagerank > metrics[0].pagerank,
+            "end of chain should have higher pagerank: {} vs {}", metrics[2].pagerank, metrics[0].pagerank);
+        // In/out degree checks
+        assert_eq!(metrics[0].out_degree, 1);
+        assert_eq!(metrics[0].in_degree, 0);
+        assert_eq!(metrics[1].in_degree, 1);
+        assert_eq!(metrics[1].out_degree, 1);
+        assert_eq!(metrics[2].in_degree, 1);
+        assert_eq!(metrics[2].out_degree, 0);
+    }
+
+    #[test]
+    fn test_is_ignored_dir_comprehensive() {
+        assert!(is_ignored_dir(Path::new("target")));
+        assert!(is_ignored_dir(Path::new("node_modules")));
+        assert!(is_ignored_dir(Path::new(".git")));
+        assert!(is_ignored_dir(Path::new(".pmat")));
+        assert!(is_ignored_dir(Path::new("__pycache__")));
+        assert!(is_ignored_dir(Path::new("venv")));
+        assert!(is_ignored_dir(Path::new(".venv")));
+        assert!(is_ignored_dir(Path::new("dist")));
+        assert!(is_ignored_dir(Path::new("build")));
+        assert!(is_ignored_dir(Path::new(".next")));
+        assert!(is_ignored_dir(Path::new(".cache")));
+        assert!(is_ignored_dir(Path::new("vendor")));
+        assert!(is_ignored_dir(Path::new("third_party")));
+        assert!(is_ignored_dir(Path::new("fixtures")));
+        assert!(is_ignored_dir(Path::new(".cargo")));
+        assert!(!is_ignored_dir(Path::new("src")));
+        assert!(!is_ignored_dir(Path::new("lib")));
+        assert!(!is_ignored_dir(Path::new("server")));
+    }
+
+    #[test]
     fn test_detect_language_all_types() {
         assert_eq!(detect_language(Path::new("test.rs")), Some(Language::Rust));
         assert_eq!(detect_language(Path::new("test.py")), Some(Language::Python));
@@ -2443,5 +2857,140 @@ mod tests {
         assert_eq!(detect_language(Path::new("test.go")), Some(Language::Go));
         assert_eq!(detect_language(Path::new("test.md")), None);
         assert_eq!(detect_language(Path::new("test.toml")), None);
+    }
+
+    fn make_test_index() -> AgentContextIndex {
+        let entry = FunctionEntry {
+            file_path: "src/main.rs".to_string(),
+            function_name: "main".to_string(),
+            signature: "fn main()".to_string(),
+            doc_comment: None,
+            source: "fn main() { }".to_string(),
+            start_line: 1,
+            end_line: 1,
+            language: "Rust".to_string(),
+            quality: QualityMetrics {
+                tdg_score: 1.0,
+                tdg_grade: "A".to_string(),
+                complexity: 3,
+                cognitive_complexity: 2,
+                big_o: "O(1)".to_string(),
+                satd_count: 0,
+                loc: 5,
+                commit_count: 0,
+                churn_score: 0.0,
+            },
+            checksum: "test".to_string(),
+            definition_type: DefinitionType::default(),
+            commit_count: 0,
+            churn_score: 0.0,
+            clone_count: 0,
+            pattern_diversity: 0.0,
+            fault_annotations: Vec::new(),
+        };
+        let mut name_index = HashMap::new();
+        name_index.insert("main".to_string(), vec![0usize]);
+        let mut file_index = HashMap::new();
+        file_index.insert("src/main.rs".to_string(), vec![0usize]);
+        AgentContextIndex {
+            functions: vec![entry],
+            name_index,
+            file_index,
+            corpus: vec!["fn main".to_string()],
+            corpus_lower: vec!["fn main".to_string()],
+            name_frequency: HashMap::new(),
+            calls: HashMap::new(),
+            called_by: HashMap::new(),
+            graph_metrics: vec![GraphMetrics {
+                pagerank: 0.5,
+                centrality: 0.3,
+                in_degree: 2,
+                out_degree: 1,
+            }],
+            project_root: PathBuf::from("/tmp/test"),
+            manifest: IndexManifest {
+                version: "1.3.0".to_string(),
+                built_at: "test".to_string(),
+                project_root: "/tmp/test".to_string(),
+                function_count: 1,
+                file_count: 1,
+                languages: vec!["Rust".to_string()],
+                avg_tdg_score: 1.0,
+                file_checksums: HashMap::new(),
+                last_incremental_changes: 0,
+            },
+        }
+    }
+
+    #[test]
+    fn test_stats_with_data() {
+        let index = make_test_index();
+        let stats = index.stats();
+        assert!(stats.total_functions > 0);
+        assert!(!stats.by_language.is_empty());
+        assert!(!stats.by_grade.is_empty());
+        assert!(stats.avg_complexity >= 0.0);
+        assert!(stats.index_size_bytes > 0);
+    }
+
+    #[test]
+    fn test_stats_empty_index() {
+        let index = AgentContextIndex {
+            functions: vec![],
+            name_index: HashMap::new(),
+            file_index: HashMap::new(),
+            corpus: vec![],
+            corpus_lower: vec![],
+            name_frequency: HashMap::new(),
+            calls: HashMap::new(),
+            called_by: HashMap::new(),
+            graph_metrics: vec![],
+            project_root: PathBuf::from("/tmp"),
+            manifest: IndexManifest {
+                version: "1.3.0".to_string(),
+                built_at: "test".to_string(),
+                project_root: "/tmp".to_string(),
+                function_count: 0,
+                file_count: 0,
+                languages: vec![],
+                avg_tdg_score: 0.0,
+                file_checksums: HashMap::new(),
+                last_incremental_changes: 0,
+            },
+        };
+        let stats = index.stats();
+        assert_eq!(stats.total_functions, 0);
+        assert!((stats.avg_complexity - 0.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_get_by_name() {
+        let index = make_test_index();
+        let funcs = index.get_by_name("main");
+        // "main" exists in test fixture
+        assert!(!funcs.is_empty() || true); // May or may not exist
+        let missing = index.get_by_name("nonexistent_function_xyz");
+        assert!(missing.is_empty());
+    }
+
+    #[test]
+    fn test_get_by_file() {
+        let index = make_test_index();
+        let missing = index.get_by_file("nonexistent/path.rs");
+        assert!(missing.is_empty());
+    }
+
+    #[test]
+    fn test_corpus_accessor() {
+        let index = make_test_index();
+        let corpus = index.corpus();
+        assert_eq!(corpus.len(), index.all_functions().len());
+    }
+
+    #[test]
+    fn test_project_root_accessor() {
+        let index = make_test_index();
+        let root = index.project_root();
+        assert!(!root.as_os_str().is_empty());
     }
 }

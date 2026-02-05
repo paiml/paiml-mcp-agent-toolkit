@@ -33,16 +33,26 @@ impl SimpleVectorizer {
             }
         }
 
-        // Build vocabulary and IDF
+        // Sort by document frequency descending (most common terms first)
+        // This ensures terms shared between query and documents are in the vocabulary,
+        // producing non-zero cosine similarity for search. TF weighting provides discrimination.
+        // Tie-break alphabetically for deterministic vocabulary across builds.
+        let mut terms_by_df: Vec<(String, usize)> = doc_freq.into_iter().collect();
+        terms_by_df.sort_by(|a, b| {
+            b.1.cmp(&a.1)
+                .then_with(|| a.0.cmp(&b.0))
+        });
+
+        // Build vocabulary and IDF from top terms
         self.vocabulary.clear();
         self.idf.clear();
 
-        for (idx, (term, df)) in doc_freq.iter().enumerate() {
-            if idx < self.dimension {
-                self.vocabulary.insert(term.clone(), idx);
-                // IDF = log(N / df)
-                self.idf.insert(term.clone(), (n_docs / (*df as f32)).ln());
+        for (idx, (term, df)) in terms_by_df.into_iter().enumerate() {
+            if idx >= self.dimension {
+                break;
             }
+            self.vocabulary.insert(term.clone(), idx);
+            self.idf.insert(term, (n_docs / (df as f32)).ln());
         }
     }
 
@@ -231,6 +241,91 @@ mod tests {
         for emb in &embeddings {
             assert!(!emb.is_empty(), "Each embedding should not be empty");
         }
+    }
+
+    #[test]
+    fn test_embed_batch_empty() {
+        let mut embedder = CommitEmbedder::new();
+        let embeddings = embedder.embed_batch(&[]);
+        assert!(embeddings.is_empty());
+    }
+
+    #[test]
+    fn test_dimension() {
+        let embedder = CommitEmbedder::new();
+        assert_eq!(embedder.dimension(), 128);
+    }
+
+    #[test]
+    fn test_default_trait() {
+        let embedder = CommitEmbedder::default();
+        assert_eq!(embedder.dimension(), 128);
+    }
+
+    #[test]
+    fn test_preprocess_all_prefixes() {
+        let feat = CommitEmbedder::preprocess_message("feat: add login");
+        assert!(feat.contains("add login"));
+
+        let docs = CommitEmbedder::preprocess_message("docs: update readme");
+        assert!(docs.contains("update readme"));
+
+        let chore = CommitEmbedder::preprocess_message("chore: bump version");
+        assert!(chore.contains("bump version"));
+
+        let refactor = CommitEmbedder::preprocess_message("refactor: simplify parser");
+        assert!(refactor.contains("simplify parser"));
+
+        let test = CommitEmbedder::preprocess_message("test: add unit tests");
+        assert!(test.contains("add unit tests"));
+
+        let ci = CommitEmbedder::preprocess_message("ci: fix pipeline");
+        assert!(ci.contains("fix pipeline"));
+    }
+
+    #[test]
+    fn test_preprocess_no_prefix() {
+        let msg = CommitEmbedder::preprocess_message("Update dependencies");
+        assert_eq!(msg, "update dependencies");
+    }
+
+    #[test]
+    fn test_tokenize_short_tokens_filtered() {
+        let tokens = SimpleVectorizer::tokenize("I am a fix");
+        // "I", "am", "a" are <= 2 chars, only "fix" passes
+        assert_eq!(tokens, vec!["fix"]);
+    }
+
+    #[test]
+    fn test_tokenize_special_chars() {
+        let tokens = SimpleVectorizer::tokenize("fix(parser): handle edge-case #123");
+        assert!(tokens.contains(&"fix".to_string()));
+        assert!(tokens.contains(&"parser".to_string()));
+        assert!(tokens.contains(&"handle".to_string()));
+        assert!(tokens.contains(&"edge".to_string()));
+        assert!(tokens.contains(&"case".to_string()));
+        assert!(tokens.contains(&"123".to_string()));
+    }
+
+    #[test]
+    fn test_vectorizer_transform_empty() {
+        let vectorizer = SimpleVectorizer::new();
+        let vec = vectorizer.transform("");
+        assert_eq!(vec.len(), 128);
+        assert!(vec.iter().all(|&v| v == 0.0));
+    }
+
+    #[test]
+    fn test_vocabulary_size() {
+        let mut vectorizer = SimpleVectorizer::new();
+        assert_eq!(vectorizer.vocabulary_size(), 128); // dimension default
+
+        vectorizer.fit(&[
+            "fix null pointer exception parser".to_string(),
+            "add feature dark mode support".to_string(),
+        ]);
+        // vocabulary_size returns max(vocab.len(), dimension)
+        assert!(vectorizer.vocabulary_size() >= 128);
     }
 
     // Falsification Test F2: Semantic clustering
