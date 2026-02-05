@@ -739,29 +739,72 @@ pub fn format_markdown(results: &[QueryResult]) -> String {
 }
 
 /// Format results as text with inline source code (agent-friendly)
+/// Uses syntect for rich syntax highlighting
 pub fn format_text_with_code(results: &[QueryResult]) -> String {
+    use syntect::easy::HighlightLines;
+    use syntect::highlighting::ThemeSet;
+    use syntect::parsing::SyntaxSet;
+    use syntect::util::{as_24_bit_terminal_escaped, LinesWithEndings};
+
     let mut output = String::new();
 
+    // Load syntax definitions and theme
+    let ps = SyntaxSet::load_defaults_newlines();
+    let ts = ThemeSet::load_defaults();
+    let theme = &ts.themes["base16-ocean.dark"];
+
     for r in results.iter() {
-        // Header with location
+        // Header with rich colors
+        // Cyan for file path, yellow for function name, green for TDG, magenta for Big-O
         output.push_str(&format!(
-            "// {}:{}-{} | {} | TDG: {} | {}\n",
+            "\x1b[36m{}\x1b[0m:\x1b[33m{}-{}\x1b[0m │ \x1b[1;37m{}\x1b[0m │ TDG: \x1b[32m{}\x1b[0m │ \x1b[35m{}\x1b[0m\n",
             r.file_path, r.start_line, r.end_line, r.function_name, r.tdg_grade, r.big_o
         ));
 
-        // Fault annotations
+        // Fault annotations with red/yellow warning colors
         for fault in &r.fault_annotations {
-            output.push_str(&format!("// ⚠️ {}\n", fault));
+            if fault.contains("Boundary") || fault.contains("condition") {
+                output.push_str(&format!("\x1b[1;33m⚠️  {}\x1b[0m\n", fault)); // Yellow for boundary
+            } else if fault.contains("Arithmetic") {
+                output.push_str(&format!("\x1b[1;31m⚠️  {}\x1b[0m\n", fault)); // Red for arithmetic
+            } else {
+                output.push_str(&format!("\x1b[1;35m⚠️  {}\x1b[0m\n", fault)); // Magenta for others
+            }
         }
 
-        // Source code
+        // Source code with syntax highlighting
         if let Some(source) = &r.source {
-            output.push_str(source);
+            // Detect language from file extension
+            let syntax = ps
+                .find_syntax_by_extension(
+                    r.file_path
+                        .rsplit('.')
+                        .next()
+                        .unwrap_or("rs"),
+                )
+                .unwrap_or_else(|| ps.find_syntax_plain_text());
+
+            let mut h = HighlightLines::new(syntax, theme);
+
+            for line in LinesWithEndings::from(source) {
+                match h.highlight_line(line, &ps) {
+                    Ok(ranges) => {
+                        let escaped = as_24_bit_terminal_escaped(&ranges[..], false);
+                        output.push_str(&escaped);
+                    }
+                    Err(_) => {
+                        output.push_str(line);
+                    }
+                }
+            }
+
             if !source.ends_with('\n') {
                 output.push('\n');
             }
+            // Reset colors after code block
+            output.push_str("\x1b[0m");
         } else {
-            output.push_str("// (use --include-source to see code)\n");
+            output.push_str("\x1b[2m// (use --include-source to see code)\x1b[0m\n");
         }
 
         output.push_str("\n");

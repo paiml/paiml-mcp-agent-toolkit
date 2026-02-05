@@ -128,6 +128,9 @@ git2 = { version = "0.20", default-features = false, features = ["https"], optio
 # indicatif = "0.18"  # REMOVED: Replaced with simple println (saves 6 transitive deps)
 url = "2.5"
 
+# Syntax highlighting for --code output
+syntect = { version = "5.2", default-features = false, features = ["default-fancy"] }
+
 # Storage
 # libsql = "0.9.24"  # REMOVED: Not used directly (migration to rusqlite complete)
 lz4_flex = "0.11"  # Keep for backward compat, trueno-zram-core adapter available
