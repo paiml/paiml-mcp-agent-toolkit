@@ -8,7 +8,7 @@
 [![Crates.io](https://img.shields.io/crates/v/pmat.svg)](https://crates.io/crates/pmat)
 [![Documentation](https://docs.rs/pmat/badge.svg)](https://docs.rs/pmat)
 [![Tests](https://img.shields.io/badge/tests-4600%2B%20passing-brightgreen)](https://github.com/paiml/paiml-mcp-agent-toolkit)
-[![Coverage](https://img.shields.io/badge/coverage-%3E85%25-brightgreen)](https://github.com/paiml/paiml-mcp-agent-toolkit)
+[![Coverage](https://img.shields.io/badge/coverage-95%25%2B-brightgreen)](https://github.com/paiml/paiml-mcp-agent-toolkit)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Rust](https://img.shields.io/badge/rust-1.83+-orange.svg)](https://www.rust-lang.org)
 [![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.PMAT-blue)](https://zenodo.org/records/pmat)
@@ -27,12 +27,22 @@
 - **Technical Debt Grading** - A+ through F scoring with 6 orthogonal metrics
 - **Mutation Testing** - Test suite quality validation (85%+ kill rate)
 - **Repository Scoring** - Quantitative health assessment (0-211 scale)
+- **Git History RAG** - Semantic search across commit history with RRF fusion
 - **Semantic Search** - Natural language code discovery
 - **MCP Integration** - 19 tools for Claude Code, Cline, and AI agents
 - **Quality Gates** - Pre-commit hooks, CI/CD integration
 - **17+ Languages** - Rust, TypeScript, Python, Go, Java, C/C++, and more
 
 Part of the [PAIML Stack](https://github.com/paiml), following Toyota Way quality principles (Jidoka, Genchi Genbutsu, Kaizen).
+
+### Annotated Code Search
+
+<div align="center">
+  <img src="docs/images/pmat-query-screenshot.png" alt="pmat query annotated output" width="800">
+  <p><em><code>pmat query "cache invalidation" --churn --duplicates --entropy --faults</code></em></p>
+</div>
+
+Every result includes TDG grade, Big-O complexity, git churn, code clones, pattern diversity, fault annotations, call graph, and syntax-highlighted source.
 
 ## Getting Started
 
@@ -135,6 +145,23 @@ pmat prompt debug                      # Five Whys analysis
 pmat prompt quality-enforcement        # All quality gates
 ```
 
+### Git History RAG
+
+Search git history by intent using TF-IDF semantic embeddings:
+
+```bash
+# Fuse git history into code search
+pmat query "fix memory leak" -G
+
+# Search with churn, clones, entropy, faults
+pmat query "error handling" --churn --duplicates --entropy --faults
+```
+
+```bash
+# Run the example
+cargo run --example git_history_demo
+```
+
 ### Git Hooks
 
 Automatic quality enforcement:
@@ -209,7 +236,7 @@ pmat/
 | Metric | Value |
 |--------|-------|
 | Tests | 4600+ passing |
-| Coverage | >85% |
+| Coverage | 95%+ |
 | Mutation Score | >80% |
 | Languages | 17+ supported |
 | MCP Tools | 19 available |
