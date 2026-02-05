@@ -116,6 +116,13 @@ impl CommandDispatcher {
                 include_source,
                 rebuild_index,
                 exclude_tests,
+                rank_by,
+                min_pagerank,
+                include_project,
+                churn,
+                duplicates,
+                entropy,
+                faults,
             } => {
                 handlers::handle_query(
                     query,
@@ -129,6 +136,13 @@ impl CommandDispatcher {
                     include_source,
                     rebuild_index,
                     exclude_tests,
+                    rank_by,
+                    min_pagerank,
+                    include_project,
+                    churn,
+                    duplicates,
+                    entropy,
+                    faults,
                 )
                 .await
             }

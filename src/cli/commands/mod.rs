@@ -278,6 +278,34 @@ pub enum Commands {
         /// Exclude test functions from results
         #[arg(long)]
         exclude_tests: bool,
+
+        /// Ranking strategy: relevance, pagerank, centrality, indegree
+        #[arg(long, value_name = "STRATEGY")]
+        rank_by: Option<String>,
+
+        /// Minimum PageRank score filter (0.0-1.0)
+        #[arg(long, value_name = "SCORE")]
+        min_pagerank: Option<f32>,
+
+        /// Additional project paths to include in search (can be specified multiple times)
+        #[arg(long, value_name = "PATH")]
+        include_project: Vec<PathBuf>,
+
+        /// Enrich results with git churn data (commit count, volatility)
+        #[arg(long)]
+        churn: bool,
+
+        /// Enrich results with duplicate code detection (clone count, similarity)
+        #[arg(long)]
+        duplicates: bool,
+
+        /// Enrich results with entropy/pattern diversity metrics
+        #[arg(long)]
+        entropy: bool,
+
+        /// Enrich results with batuta fault pattern annotations (mutation targets, boundary conditions)
+        #[arg(long)]
+        faults: bool,
     },
 
     /// Analyze code metrics and patterns

@@ -5,7 +5,9 @@
 
 use crate::cli::QueryOutputFormat;
 use crate::services::agent_context::{
-    format_json, format_markdown, format_text, AgentContextIndex, QueryOptions,
+    enrich_results_with_churn, enrich_results_with_duplicates, enrich_results_with_entropy,
+    enrich_results_with_faults, format_json, format_markdown, format_text, AgentContextIndex,
+    QueryOptions, RankBy,
 };
 use std::path::PathBuf;
 
@@ -22,6 +24,13 @@ use std::path::PathBuf;
 /// * `format` - Output format
 /// * `include_source` - Include full source code
 /// * `rebuild_index` - Force rebuild index
+/// * `rank_by` - Ranking strategy (relevance, pagerank, centrality, indegree)
+/// * `min_pagerank` - Minimum PageRank score filter
+/// * `include_project` - Additional project paths to include in search
+/// * `churn` - Enrich results with git churn data (commit count, volatility)
+/// * `duplicates` - Enrich results with duplicate code detection
+/// * `entropy` - Enrich results with entropy/pattern diversity metrics
+/// * `faults` - Enrich results with batuta fault pattern annotations
 pub async fn handle_query(
     query: String,
     limit: usize,
@@ -34,6 +43,13 @@ pub async fn handle_query(
     include_source: bool,
     rebuild_index: bool,
     exclude_tests: bool,
+    rank_by: Option<String>,
+    min_pagerank: Option<f32>,
+    include_project: Vec<PathBuf>,
+    churn: bool,
+    duplicates: bool,
+    entropy: bool,
+    faults: bool,
 ) -> anyhow::Result<()> {
     // Check for existing index
     let index_path = project_path.join(".pmat/context.idx");
@@ -77,7 +93,28 @@ pub async fn handle_query(
     };
 
     // Auto-discover sibling projects with indexes
-    let siblings = AgentContextIndex::discover_sibling_indexes(&project_path);
+    let mut siblings = AgentContextIndex::discover_sibling_indexes(&project_path);
+
+    // Add explicitly included projects (--include-project option)
+    for project in &include_project {
+        let idx_path = project.join(".pmat/context.idx");
+        if idx_path.exists() {
+            let name = project
+                .file_name()
+                .map(|s| s.to_string_lossy().to_string())
+                .unwrap_or_else(|| project.display().to_string());
+            // Avoid duplicates
+            if !siblings.iter().any(|(_, n)| n == &name) {
+                siblings.push((idx_path, name));
+            }
+        } else if !quiet {
+            eprintln!(
+                "Warning: No index at {:?}, run 'pmat query --rebuild-index' in that project first",
+                idx_path
+            );
+        }
+    }
+
     if !siblings.is_empty() {
         let workspace_idx = project_path.join(".pmat/workspace.idx");
         if !rebuild_index && is_workspace_cache_fresh(&workspace_idx, &siblings) {
@@ -107,6 +144,12 @@ pub async fn handle_query(
         );
     }
 
+    // Parse rank_by option
+    let rank_by_enum = match rank_by {
+        Some(ref s) => s.parse::<RankBy>().unwrap_or_default(),
+        None => RankBy::default(),
+    };
+
     // Execute query
     let options = QueryOptions {
         limit,
@@ -116,6 +159,8 @@ pub async fn handle_query(
         language,
         path_pattern,
         include_source,
+        rank_by: rank_by_enum,
+        min_pagerank,
     };
 
     let mut results = index
@@ -131,6 +176,54 @@ pub async fn handle_query(
                 && !r.file_path.contains("_tests.")
                 && !r.file_path.contains("_test.")
         });
+    }
+
+    // Enrich with git churn data if requested
+    if churn && !results.is_empty() {
+        if !quiet {
+            eprintln!("Computing git churn metrics...");
+        }
+        if let Err(e) = enrich_results_with_churn(&mut results, &project_path, 90).await {
+            if !quiet {
+                eprintln!("Warning: Could not compute churn: {}", e);
+            }
+        }
+    }
+
+    // Enrich with duplicate detection if requested
+    if duplicates && !results.is_empty() {
+        if !quiet {
+            eprintln!("Detecting code duplicates...");
+        }
+        if let Err(e) = enrich_results_with_duplicates(&mut results, &project_path).await {
+            if !quiet {
+                eprintln!("Warning: Could not detect duplicates: {}", e);
+            }
+        }
+    }
+
+    // Enrich with entropy/pattern diversity if requested
+    if entropy && !results.is_empty() {
+        if !quiet {
+            eprintln!("Computing pattern diversity...");
+        }
+        if let Err(e) = enrich_results_with_entropy(&mut results, &project_path).await {
+            if !quiet {
+                eprintln!("Warning: Could not compute entropy: {}", e);
+            }
+        }
+    }
+
+    // Enrich with batuta fault pattern annotations if requested
+    if faults && !results.is_empty() {
+        if !quiet {
+            eprintln!("Detecting fault patterns (batuta)...");
+        }
+        if let Err(e) = enrich_results_with_faults(&mut results, &project_path).await {
+            if !quiet {
+                eprintln!("Warning: Could not detect faults: {}", e);
+            }
+        }
     }
 
     if results.is_empty() {
@@ -247,6 +340,13 @@ mod tests {
             false,
             false,
             false,
+            None,  // rank_by
+            None,  // min_pagerank
+            vec![], // include_project
+            false, // churn
+            false, // duplicates
+            false, // entropy
+            false, // faults
         )
         .await;
 
@@ -288,6 +388,13 @@ fn main() {
             false,
             true, // Force rebuild
             false,
+            None,  // rank_by
+            None,  // min_pagerank
+            vec![], // include_project
+            false, // churn
+            false, // duplicates
+            false, // entropy
+            false, // faults
         )
         .await;
 

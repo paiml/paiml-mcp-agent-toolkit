@@ -3,8 +3,10 @@
 //! Provides semantic search with quality filtering over the function index.
 
 use super::{AgentContextIndex, FunctionEntry};
+use crate::models::churn::FileChurnMetrics;
 use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
+use std::path::Path;
 
 /// Deduplicate a list of strings while preserving first-seen order
 fn dedup_ordered(items: &[&str]) -> Vec<String> {
@@ -25,6 +27,34 @@ fn is_test_function(func: &FunctionEntry) -> bool {
         || func.file_path.contains("_test.")
 }
 
+/// Ranking strategy for query results
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+pub enum RankBy {
+    /// Rank by semantic relevance (default)
+    #[default]
+    Relevance,
+    /// Rank by PageRank (most important/called functions first)
+    PageRank,
+    /// Rank by degree centrality (most connected functions)
+    Centrality,
+    /// Rank by in-degree (most called by others)
+    InDegree,
+}
+
+impl std::str::FromStr for RankBy {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "relevance" | "rel" => Ok(RankBy::Relevance),
+            "pagerank" | "pr" | "importance" => Ok(RankBy::PageRank),
+            "centrality" | "degree" => Ok(RankBy::Centrality),
+            "indegree" | "callers" => Ok(RankBy::InDegree),
+            _ => Err(format!("Unknown rank-by: '{}'. Valid: relevance, pagerank, centrality, indegree", s)),
+        }
+    }
+}
+
 /// Query options for filtering results
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct QueryOptions {
@@ -42,6 +72,11 @@ pub struct QueryOptions {
     pub path_pattern: Option<String>,
     /// Include full source code in results
     pub include_source: bool,
+    /// Ranking strategy (default: relevance)
+    #[serde(default)]
+    pub rank_by: RankBy,
+    /// Minimum PageRank score filter
+    pub min_pagerank: Option<f32>,
 }
 
 /// A search result with relevance score
@@ -83,6 +118,33 @@ pub struct QueryResult {
     /// Function names that call this function
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub called_by: Vec<String>,
+    /// PageRank score (importance based on call graph)
+    #[serde(default)]
+    pub pagerank: f32,
+    /// In-degree (number of direct callers)
+    #[serde(default)]
+    pub in_degree: u32,
+    /// Out-degree (number of direct callees)
+    #[serde(default)]
+    pub out_degree: u32,
+    /// Git commit count for the file (churn indicator)
+    #[serde(default)]
+    pub commit_count: u32,
+    /// Churn score (0.0-1.0, higher = more volatile)
+    #[serde(default)]
+    pub churn_score: f32,
+    /// Number of code clones (duplicate instances)
+    #[serde(default)]
+    pub clone_count: u32,
+    /// Duplication score (0.0-1.0, higher = more duplicated)
+    #[serde(default)]
+    pub duplication_score: f32,
+    /// Pattern diversity (0.0-1.0, higher = more unique patterns, lower = more repetitive)
+    #[serde(default)]
+    pub pattern_diversity: f32,
+    /// Fault pattern annotations from batuta bug-hunter (mutation targets, boundary conditions)
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub fault_annotations: Vec<String>,
 }
 
 impl QueryResult {
@@ -110,10 +172,19 @@ impl QueryResult {
             },
             calls: Vec::new(),
             called_by: Vec::new(),
+            pagerank: 0.0,
+            in_degree: 0,
+            out_degree: 0,
+            commit_count: entry.quality.commit_count,
+            churn_score: entry.quality.churn_score,
+            clone_count: 0,
+            duplication_score: 0.0,
+            pattern_diversity: 0.0,
+            fault_annotations: Vec::new(),
         }
     }
 
-    /// Create from function entry with caller/callee context from the index
+    /// Create from function entry with caller/callee context and graph metrics
     pub fn from_entry_with_context(
         entry: &FunctionEntry,
         func_idx: usize,
@@ -122,6 +193,15 @@ impl QueryResult {
         include_source: bool,
     ) -> Self {
         let mut result = Self::from_entry(entry, relevance, include_source);
+
+        // Add graph metrics if available
+        if func_idx < index.graph_metrics.len() {
+            let metrics = &index.graph_metrics[func_idx];
+            result.pagerank = metrics.pagerank;
+            result.in_degree = metrics.in_degree;
+            result.out_degree = metrics.out_degree;
+        }
+
         // Deduplicate while preserving first-seen order
         result.calls = dedup_ordered(&index.get_calls(func_idx));
         // Separate production callers from test callers, cap display
@@ -304,8 +384,49 @@ impl AgentContextIndex {
             })
             .collect();
 
-        // Sort by combined score (descending)
-        ranked.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+        // Apply min_pagerank filter if specified
+        if let Some(min_pr) = options.min_pagerank {
+            ranked.retain(|(idx, _)| {
+                idx < &self.graph_metrics.len() && self.graph_metrics[*idx].pagerank >= min_pr
+            });
+        }
+
+        // Sort based on rank_by strategy
+        match options.rank_by {
+            RankBy::Relevance => {
+                // Default: sort by combined relevance score (descending)
+                ranked.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+            }
+            RankBy::PageRank => {
+                // Sort by PageRank (most important first), using relevance as tiebreaker
+                ranked.sort_by(|a, b| {
+                    let pr_a = self.graph_metrics.get(a.0).map_or(0.0, |m| m.pagerank);
+                    let pr_b = self.graph_metrics.get(b.0).map_or(0.0, |m| m.pagerank);
+                    pr_b.partial_cmp(&pr_a)
+                        .unwrap_or(std::cmp::Ordering::Equal)
+                        .then_with(|| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal))
+                });
+            }
+            RankBy::Centrality => {
+                // Sort by degree centrality (most connected first)
+                ranked.sort_by(|a, b| {
+                    let c_a = self.graph_metrics.get(a.0).map_or(0.0, |m| m.centrality);
+                    let c_b = self.graph_metrics.get(b.0).map_or(0.0, |m| m.centrality);
+                    c_b.partial_cmp(&c_a)
+                        .unwrap_or(std::cmp::Ordering::Equal)
+                        .then_with(|| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal))
+                });
+            }
+            RankBy::InDegree => {
+                // Sort by in-degree (most called functions first)
+                ranked.sort_by(|a, b| {
+                    let in_a = self.graph_metrics.get(a.0).map_or(0, |m| m.in_degree);
+                    let in_b = self.graph_metrics.get(b.0).map_or(0, |m| m.in_degree);
+                    in_b.cmp(&in_a)
+                        .then_with(|| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal))
+                });
+            }
+        }
 
         // Take top results with caller/callee context
         let results: Vec<QueryResult> = ranked
@@ -566,10 +687,30 @@ pub fn format_markdown(results: &[QueryResult]) -> String {
             r.file_path, r.start_line, r.loc
         ));
         output.push_str(&format!("**Signature:**\n```\n{}\n```\n\n", r.signature));
-        output.push_str(&format!(
-            "**Quality:** TDG {} ({:.1}) | Complexity: {} | Big-O: {}\n\n",
+        // Quality metrics with SATD warning
+        let mut quality = format!(
+            "**Quality:** TDG {} ({:.1}) | Complexity: {} | Big-O: {}",
             r.tdg_grade, r.tdg_score, r.complexity, r.big_o
-        ));
+        );
+        if r.satd_count > 0 {
+            quality.push_str(&format!(" | ⚠️ **SATD: {}**", r.satd_count));
+        }
+        // Add churn indicator for volatile files
+        if r.churn_score > 0.5 {
+            quality.push_str(&format!(" | 🔥 **Hot: {} commits ({:.0}%)**", r.commit_count, r.churn_score * 100.0));
+        } else if r.commit_count > 0 {
+            quality.push_str(&format!(" | Commits: {}", r.commit_count));
+        }
+        // Add duplication indicator
+        if r.clone_count > 0 {
+            quality.push_str(&format!(" | 📋 **Clones: {} ({:.0}%)**", r.clone_count, r.duplication_score * 100.0));
+        }
+        // Add entropy indicator for low pattern diversity
+        if r.pattern_diversity > 0.0 && r.pattern_diversity < 0.3 {
+            quality.push_str(&format!(" | 🔄 **Repetitive ({:.0}%)**", (1.0 - r.pattern_diversity) * 100.0));
+        }
+        output.push_str(&quality);
+        output.push_str("\n\n");
 
         if let Some(doc) = &r.doc_comment {
             output.push_str(&format!("**Documentation:** {}\n\n", doc));
@@ -580,6 +721,14 @@ pub fn format_markdown(results: &[QueryResult]) -> String {
         }
         if !r.called_by.is_empty() {
             output.push_str(&format!("**Called by:** {}\n\n", r.called_by.join(", ")));
+        }
+
+        // Show graph metrics if significant
+        if r.pagerank > 0.0 || r.in_degree > 0 || r.out_degree > 0 {
+            output.push_str(&format!(
+                "**Graph:** PageRank {:.6} | In-Degree: {} | Out-Degree: {}\n\n",
+                r.pagerank, r.in_degree, r.out_degree
+            ));
         }
 
         output.push_str(&format!("**Relevance:** {:.2}\n\n", r.relevance_score));
@@ -604,10 +753,48 @@ pub fn format_text(results: &[QueryResult]) -> String {
             r.function_name
         ));
         output.push_str(&format!("   Signature: {}\n", r.signature));
-        output.push_str(&format!(
-            "   TDG: {} ({:.1}) | Complexity: {} | Big-O: {}\n",
+        // Core metrics line
+        let mut metrics = format!(
+            "   TDG: {} ({:.1}) | Complexity: {} | Big-O: {}",
             r.tdg_grade, r.tdg_score, r.complexity, r.big_o
-        ));
+        );
+
+        // Add SATD warning if technical debt markers exist
+        if r.satd_count > 0 {
+            metrics.push_str(&format!(" | ⚠️ SATD: {}", r.satd_count));
+        }
+
+        // Add LOC for large functions
+        if r.loc > 50 {
+            metrics.push_str(&format!(" | LOC: {}", r.loc));
+        }
+
+        // Add churn indicator for volatile files
+        if r.churn_score > 0.5 {
+            metrics.push_str(&format!(" | 🔥 Hot: {} commits ({:.0}%)", r.commit_count, r.churn_score * 100.0));
+        } else if r.commit_count > 0 {
+            metrics.push_str(&format!(" | Commits: {}", r.commit_count));
+        }
+
+        // Add duplication indicator
+        if r.clone_count > 0 {
+            metrics.push_str(&format!(" | 📋 Clones: {} ({:.0}%)", r.clone_count, r.duplication_score * 100.0));
+        }
+
+        // Add entropy indicator for low pattern diversity
+        if r.pattern_diversity > 0.0 && r.pattern_diversity < 0.3 {
+            metrics.push_str(&format!(" | 🔄 Repetitive ({:.0}%)", (1.0 - r.pattern_diversity) * 100.0));
+        }
+
+        output.push_str(&metrics);
+        output.push('\n');
+
+        // Add fault annotations if present
+        if !r.fault_annotations.is_empty() {
+            for fault in &r.fault_annotations {
+                output.push_str(&format!("   ⚠️ {}\n", fault));
+            }
+        }
 
         if let Some(doc) = &r.doc_comment {
             output.push_str(&format!("   Doc: {}\n", doc));
@@ -620,10 +807,366 @@ pub fn format_text(results: &[QueryResult]) -> String {
             output.push_str(&format!("   Called by: {}\n", r.called_by.join(", ")));
         }
 
+        // Show graph metrics if significant
+        if r.pagerank > 0.0 || r.in_degree > 0 || r.out_degree > 0 {
+            output.push_str(&format!(
+                "   Graph: PageRank {:.6} | In-Degree: {} | Out-Degree: {}\n",
+                r.pagerank, r.in_degree, r.out_degree
+            ));
+        }
+
         output.push_str(&format!("   Relevance: {:.2}\n\n", r.relevance_score));
     }
 
     output
+}
+
+/// Enrich query results with churn metrics from pre-computed file churn data.
+///
+/// Maps file-level churn to function-level results. Since churn is computed
+/// per-file (not per-function), all functions in the same file share the
+/// same churn metrics.
+///
+/// # Arguments
+/// * `results` - Query results to enrich
+/// * `file_churn` - Map of relative file path -> churn metrics
+///
+/// # Example
+/// ```rust,no_run
+/// use pmat::services::agent_context::{enrich_with_churn, QueryResult};
+/// use std::collections::HashMap;
+///
+/// let mut results = vec![/* ... */];
+/// let churn_map: HashMap<String, (u32, f32)> = HashMap::new();
+/// enrich_with_churn(&mut results, &churn_map);
+/// ```
+pub fn enrich_with_churn(results: &mut [QueryResult], file_churn: &HashMap<String, (u32, f32)>) {
+    for result in results.iter_mut() {
+        if let Some((commit_count, churn_score)) = file_churn.get(&result.file_path) {
+            result.commit_count = *commit_count;
+            result.churn_score = *churn_score;
+        }
+    }
+}
+
+/// Build a churn lookup map from FileChurnMetrics.
+///
+/// Converts a slice of file churn metrics into a HashMap keyed by relative path
+/// for O(1) lookup during result enrichment.
+pub fn build_churn_map(metrics: &[FileChurnMetrics]) -> HashMap<String, (u32, f32)> {
+    metrics
+        .iter()
+        .map(|m| (m.relative_path.clone(), (m.commit_count as u32, m.churn_score)))
+        .collect()
+}
+
+/// Compute churn for files in query results.
+///
+/// Uses git log to compute churn metrics for files referenced in query results.
+/// This is a convenience function for on-demand churn enrichment.
+///
+/// # Arguments
+/// * `results` - Query results to enrich
+/// * `project_root` - Project root path for git operations
+/// * `period_days` - Number of days to look back in git history
+pub async fn enrich_results_with_churn(
+    results: &mut [QueryResult],
+    project_root: &Path,
+    period_days: u32,
+) -> Result<(), String> {
+    use crate::services::incremental_churn::IncrementalChurnAnalyzer;
+
+    if results.is_empty() {
+        return Ok(());
+    }
+
+    // Collect unique files from results
+    let files: Vec<std::path::PathBuf> = results
+        .iter()
+        .map(|r| project_root.join(&r.file_path))
+        .collect::<std::collections::HashSet<_>>()
+        .into_iter()
+        .collect();
+
+    // Analyze churn for these files
+    let analyzer = IncrementalChurnAnalyzer::new(project_root.to_path_buf());
+    let analysis = analyzer
+        .analyze_incremental(files, period_days)
+        .await
+        .map_err(|e| format!("Churn analysis failed: {e}"))?;
+
+    // Build lookup map
+    let churn_map = build_churn_map(&analysis.files);
+
+    // Enrich results
+    enrich_with_churn(results, &churn_map);
+
+    Ok(())
+}
+
+/// Enrich query results with duplicate detection data.
+///
+/// Detects code clones using MinHash + LSH for O(1) similarity matching.
+/// Results are enriched with clone_count and duplication_score.
+///
+/// # Arguments
+/// * `results` - Query results to enrich
+/// * `project_root` - Project root path for file access
+pub async fn enrich_results_with_duplicates(
+    results: &mut [QueryResult],
+    project_root: &Path,
+) -> Result<(), String> {
+    use crate::services::duplicate_detector::{DuplicateDetectionConfig, DuplicateDetectionEngine, Language};
+
+    if results.is_empty() {
+        return Ok(());
+    }
+
+    // Collect unique files and their content
+    let mut files_to_analyze = Vec::new();
+    let mut file_contents: HashMap<String, String> = HashMap::new();
+
+    for result in results.iter() {
+        if file_contents.contains_key(&result.file_path) {
+            continue;
+        }
+
+        let full_path = project_root.join(&result.file_path);
+        if let Ok(content) = std::fs::read_to_string(&full_path) {
+            file_contents.insert(result.file_path.clone(), content);
+        }
+    }
+
+    // Determine language and build file list
+    for (path, content) in &file_contents {
+        let lang = if path.ends_with(".rs") {
+            Language::Rust
+        } else if path.ends_with(".ts") || path.ends_with(".tsx") {
+            Language::TypeScript
+        } else if path.ends_with(".js") || path.ends_with(".jsx") {
+            Language::JavaScript
+        } else if path.ends_with(".py") {
+            Language::Python
+        } else if path.ends_with(".c") {
+            Language::C
+        } else if path.ends_with(".cpp") || path.ends_with(".cc") || path.ends_with(".cxx") {
+            Language::Cpp
+        } else if path.ends_with(".kt") {
+            Language::Kotlin
+        } else {
+            continue; // Skip unsupported languages
+        };
+
+        files_to_analyze.push((std::path::PathBuf::from(path), content.clone(), lang));
+    }
+
+    if files_to_analyze.is_empty() {
+        return Ok(());
+    }
+
+    // Run duplicate detection with relaxed settings for function-level analysis
+    let config = DuplicateDetectionConfig {
+        min_tokens: 20, // Lower threshold to catch function-level duplicates
+        similarity_threshold: 0.65,
+        ..Default::default()
+    };
+
+    let engine = DuplicateDetectionEngine::new(config);
+    let report = engine
+        .detect_duplicates(&files_to_analyze)
+        .map_err(|e| format!("Duplicate detection failed: {e}"))?;
+
+    // Build file -> duplication metrics map
+    let mut file_duplication: HashMap<String, (u32, f32)> = HashMap::new();
+    for group in &report.groups {
+        for fragment in &group.fragments {
+            let path_str = fragment.file.to_string_lossy().to_string();
+            let entry = file_duplication.entry(path_str).or_insert((0, 0.0));
+            entry.0 += 1; // clone count
+            entry.1 = entry.1.max(group.average_similarity as f32); // max similarity
+        }
+    }
+
+    // Enrich results
+    for result in results.iter_mut() {
+        if let Some((clone_count, dup_score)) = file_duplication.get(&result.file_path) {
+            result.clone_count = *clone_count;
+            result.duplication_score = *dup_score;
+        }
+    }
+
+    Ok(())
+}
+
+/// Enrich query results with entropy/pattern diversity metrics.
+///
+/// Analyzes code for repetitive patterns using AST-based pattern extraction.
+/// Low pattern diversity indicates code that could benefit from refactoring.
+///
+/// # Arguments
+/// * `results` - Query results to enrich
+/// * `project_root` - Project root path for analysis
+pub async fn enrich_results_with_entropy(
+    results: &mut [QueryResult],
+    project_root: &Path,
+) -> Result<(), String> {
+    use crate::entropy::{EntropyAnalyzer, EntropyConfig};
+
+    if results.is_empty() {
+        return Ok(());
+    }
+
+    // Run entropy analysis on the project
+    let config = EntropyConfig::default();
+    let analyzer = EntropyAnalyzer::with_config(config);
+    let report = analyzer
+        .analyze(project_root)
+        .await
+        .map_err(|e| format!("Entropy analysis failed: {e}"))?;
+
+    // Get overall pattern diversity
+    let overall_diversity = report.entropy_metrics.pattern_diversity as f32;
+
+    // Build file -> pattern count map from violations
+    let mut file_pattern_count: HashMap<String, usize> = HashMap::new();
+    for violation in &report.actionable_violations {
+        for file in &violation.affected_files {
+            let path_str = file
+                .strip_prefix(project_root)
+                .unwrap_or(file)
+                .to_string_lossy()
+                .to_string();
+            *file_pattern_count.entry(path_str).or_insert(0) += 1;
+        }
+    }
+
+    // Calculate per-file diversity (inverse of pattern repetition)
+    let max_patterns = file_pattern_count.values().max().copied().unwrap_or(1) as f32;
+
+    // Enrich results
+    for result in results.iter_mut() {
+        if let Some(&pattern_count) = file_pattern_count.get(&result.file_path) {
+            // Lower diversity = more repetitive patterns
+            result.pattern_diversity = 1.0 - (pattern_count as f32 / max_patterns).min(1.0);
+        } else {
+            // No violations = high diversity (good)
+            result.pattern_diversity = overall_diversity;
+        }
+    }
+
+    Ok(())
+}
+
+/// Enrich query results with batuta fault pattern annotations.
+///
+/// Runs batuta bug-hunter falsify to detect mutation targets and boundary conditions.
+/// Results are enriched with fault_annotations containing any detected issues.
+///
+/// # Arguments
+/// * `results` - Query results to enrich
+/// * `project_root` - Project root path for analysis
+pub async fn enrich_results_with_faults(
+    results: &mut [QueryResult],
+    project_root: &Path,
+) -> Result<(), String> {
+    use std::process::Command;
+
+    if results.is_empty() {
+        return Ok(());
+    }
+
+    // Run batuta bug-hunter falsify in JSON mode
+    let output = Command::new("batuta")
+        .args([
+            "bug-hunter",
+            "falsify",
+            "--format",
+            "json",
+            "--target",
+            ".",
+        ])
+        .current_dir(project_root)
+        .output()
+        .map_err(|e| format!("Failed to run batuta: {e}"))?;
+
+    if !output.status.success() {
+        // batuta returns exit code 2 for help/usage, which is fine
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        if !stderr.contains("Usage:") {
+            return Err(format!("batuta failed: {stderr}"));
+        }
+    }
+
+    // Parse JSON output
+    let stdout = String::from_utf8_lossy(&output.stdout);
+
+    // Try to find the JSON object in the output (batuta may print warnings first)
+    let json_start = stdout.find('{');
+    let json_str = match json_start {
+        Some(start) => &stdout[start..],
+        None => return Ok(()), // No JSON output, no findings
+    };
+
+    let parsed: serde_json::Value =
+        serde_json::from_str(json_str).map_err(|e| format!("Failed to parse batuta output: {e}"))?;
+
+    // Extract findings
+    let findings = match parsed.get("findings").and_then(|f| f.as_array()) {
+        Some(f) => f,
+        None => return Ok(()), // No findings
+    };
+
+    // Build file:line -> findings map
+    let mut fault_map: HashMap<String, Vec<String>> = HashMap::new();
+    for finding in findings {
+        let file = finding
+            .get("file")
+            .and_then(|f| f.as_str())
+            .unwrap_or("");
+        let line = finding.get("line").and_then(|l| l.as_u64()).unwrap_or(0);
+        let title = finding
+            .get("title")
+            .and_then(|t| t.as_str())
+            .unwrap_or("Unknown fault pattern");
+        let id = finding.get("id").and_then(|i| i.as_str()).unwrap_or("BH");
+
+        // Normalize path (remove leading ./)
+        let normalized_file = file.strip_prefix("./").unwrap_or(file);
+
+        let key = normalized_file.to_string();
+        let annotation = format!("{}: {} at line {}", id, title, line);
+
+        fault_map.entry(key).or_default().push(annotation);
+    }
+
+    // Enrich results with fault annotations
+    for result in results.iter_mut() {
+        if let Some(faults) = fault_map.get(&result.file_path) {
+            // Filter to faults within the function's line range
+            let func_start = result.start_line;
+            let func_end = result.start_line + result.loc as usize;
+
+            let relevant_faults: Vec<_> = faults
+                .iter()
+                .filter(|f| {
+                    // Extract line number from annotation and check if in function range
+                    if let Some(line_part) = f.split("at line ").last() {
+                        if let Ok(line) = line_part.parse::<usize>() {
+                            return line >= func_start && line <= func_end;
+                        }
+                    }
+                    false
+                })
+                .cloned()
+                .collect();
+
+            if !relevant_faults.is_empty() {
+                result.fault_annotations = relevant_faults;
+            }
+        }
+    }
+
+    Ok(())
 }
 
 #[cfg(test)]
@@ -654,6 +1197,8 @@ mod tests {
                 big_o: "O(1)".to_string(),
                 satd_count: 0,
                 loc: 10,
+                commit_count: 0,
+                churn_score: 0.0,
             },
             checksum: "abc123".to_string(),
         }
@@ -816,6 +1361,8 @@ mod tests {
                     big_o: "O(1)".to_string(),
                     satd_count: 0,
                     loc: 6,
+                    commit_count: 15,
+                    churn_score: 0.6,
                 },
                 checksum: "aaa".to_string(),
             },
@@ -837,6 +1384,8 @@ mod tests {
                     big_o: "O(n)".to_string(),
                     satd_count: 0,
                     loc: 11,
+                    commit_count: 25,
+                    churn_score: 0.8,
                 },
                 checksum: "bbb".to_string(),
             },
@@ -857,6 +1406,8 @@ mod tests {
                     big_o: "O(1)".to_string(),
                     satd_count: 0,
                     loc: 3,
+                    commit_count: 3,
+                    churn_score: 0.1,
                 },
                 checksum: "ccc".to_string(),
             },
@@ -877,6 +1428,8 @@ mod tests {
                     big_o: "O(1)".to_string(),
                     satd_count: 0,
                     loc: 5,
+                    commit_count: 5,
+                    churn_score: 0.2,
                 },
                 checksum: "ddd".to_string(),
             },
@@ -897,6 +1450,8 @@ mod tests {
                     big_o: "O(1)".to_string(),
                     satd_count: 0,
                     loc: 3,
+                    commit_count: 2,
+                    churn_score: 0.05,
                 },
                 checksum: "eee".to_string(),
             },
@@ -911,6 +1466,8 @@ mod tests {
         );
         let (calls, called_by) =
             crate::services::agent_context::function_index::build_call_graph(&functions, &name_index);
+        let graph_metrics =
+            crate::services::agent_context::function_index::compute_graph_metrics(functions.len(), &calls, &called_by);
 
         AgentContextIndex {
             functions,
@@ -921,9 +1478,10 @@ mod tests {
             name_frequency,
             calls,
             called_by,
+            graph_metrics,
             project_root: std::path::PathBuf::from("/test"),
             manifest: crate::services::agent_context::IndexManifest {
-                version: "1.1.0".to_string(),
+                version: "1.2.0".to_string(),
                 built_at: "2025-01-01T00:00:00Z".to_string(),
                 project_root: "/test".to_string(),
                 function_count: 5,
@@ -1273,9 +1831,10 @@ mod tests {
             name_frequency: HashMap::new(),
             calls: HashMap::new(),
             called_by: HashMap::new(),
+            graph_metrics: vec![],
             project_root: std::path::PathBuf::from("/test"),
             manifest: crate::services::agent_context::IndexManifest {
-                version: "1.1.0".to_string(),
+                version: "1.2.0".to_string(),
                 built_at: "2025-01-01T00:00:00Z".to_string(),
                 project_root: "/test".to_string(),
                 function_count: 0,
@@ -1410,5 +1969,121 @@ mod tests {
         assert!(result.called_by.iter().any(|s| s.contains("more)")));
         // Total entries should be 10 visible + 1 summary = 11
         assert!(result.called_by.len() <= 12);
+    }
+
+    #[test]
+    fn test_enrich_with_churn() {
+        use super::enrich_with_churn;
+
+        let entry = create_test_entry("test_func", 5, 1.5);
+        let mut results = vec![QueryResult::from_entry(&entry, 0.9, false)];
+
+        // Initially no churn data
+        assert_eq!(results[0].commit_count, 0);
+        assert!((results[0].churn_score - 0.0).abs() < 0.01);
+
+        // Build churn map
+        let mut churn_map = HashMap::new();
+        churn_map.insert("test.rs".to_string(), (42u32, 0.75f32));
+
+        // Enrich results
+        enrich_with_churn(&mut results, &churn_map);
+
+        // Verify churn data was applied
+        assert_eq!(results[0].commit_count, 42);
+        assert!((results[0].churn_score - 0.75).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_enrich_with_churn_no_match() {
+        use super::enrich_with_churn;
+
+        let entry = create_test_entry("test_func", 5, 1.5);
+        let mut results = vec![QueryResult::from_entry(&entry, 0.9, false)];
+
+        // Churn map with different file
+        let mut churn_map = HashMap::new();
+        churn_map.insert("other.rs".to_string(), (100u32, 0.9f32));
+
+        // Enrich results - should not match
+        enrich_with_churn(&mut results, &churn_map);
+
+        // Verify churn data was NOT changed (no match)
+        assert_eq!(results[0].commit_count, 0);
+        assert!((results[0].churn_score - 0.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_format_text_with_churn() {
+        let entry = create_test_entry("test_func", 5, 1.5);
+        let mut result = QueryResult::from_entry(&entry, 0.9, false);
+        result.commit_count = 25;
+        result.churn_score = 0.8;
+
+        let text = format_text(&[result]);
+        assert!(text.contains("🔥 Hot"));
+        assert!(text.contains("25 commits"));
+        assert!(text.contains("80%"));
+    }
+
+    #[test]
+    fn test_format_text_with_low_churn() {
+        let entry = create_test_entry("test_func", 5, 1.5);
+        let mut result = QueryResult::from_entry(&entry, 0.9, false);
+        result.commit_count = 5;
+        result.churn_score = 0.2; // Below 0.5 threshold
+
+        let text = format_text(&[result]);
+        assert!(!text.contains("🔥 Hot"));
+        assert!(text.contains("Commits: 5"));
+    }
+
+    #[test]
+    fn test_format_markdown_with_churn() {
+        let entry = create_test_entry("test_func", 5, 1.5);
+        let mut result = QueryResult::from_entry(&entry, 0.9, false);
+        result.commit_count = 30;
+        result.churn_score = 0.9;
+
+        let md = format_markdown(&[result]);
+        assert!(md.contains("🔥 **Hot"));
+        assert!(md.contains("30 commits"));
+        assert!(md.contains("90%"));
+    }
+
+    #[test]
+    fn test_build_churn_map() {
+        use super::build_churn_map;
+        use crate::models::churn::FileChurnMetrics;
+
+        let metrics = vec![
+            FileChurnMetrics {
+                path: std::path::PathBuf::from("src/foo.rs"),
+                relative_path: "src/foo.rs".to_string(),
+                commit_count: 10,
+                unique_authors: vec!["author1".to_string()],
+                additions: 100,
+                deletions: 50,
+                churn_score: 0.5,
+                last_modified: chrono::Utc::now(),
+                first_seen: chrono::Utc::now(),
+            },
+            FileChurnMetrics {
+                path: std::path::PathBuf::from("src/bar.rs"),
+                relative_path: "src/bar.rs".to_string(),
+                commit_count: 25,
+                unique_authors: vec!["author2".to_string()],
+                additions: 200,
+                deletions: 100,
+                churn_score: 0.8,
+                last_modified: chrono::Utc::now(),
+                first_seen: chrono::Utc::now(),
+            },
+        ];
+
+        let map = build_churn_map(&metrics);
+        assert_eq!(map.len(), 2);
+        assert_eq!(map.get("src/foo.rs"), Some(&(10, 0.5)));
+        assert_eq!(map.get("src/bar.rs"), Some(&(25, 0.8)));
     }
 }

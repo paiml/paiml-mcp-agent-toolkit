@@ -59,6 +59,10 @@ mod function_index;
 mod query;
 
 pub use function_index::{
-    AgentContextIndex, FunctionEntry, IndexManifest, IndexStats, QualityMetrics,
+    AgentContextIndex, FunctionEntry, GraphMetrics, IndexManifest, IndexStats, QualityMetrics,
 };
-pub use query::{format_json, format_markdown, format_text, QueryOptions, QueryResult};
+pub use query::{
+    build_churn_map, enrich_results_with_churn, enrich_results_with_duplicates,
+    enrich_results_with_entropy, enrich_results_with_faults, enrich_with_churn, format_json,
+    format_markdown, format_text, QueryOptions, QueryResult, RankBy,
+};

@@ -242,6 +242,13 @@ impl CommandExecutor {
                 include_source,
                 rebuild_index,
                 exclude_tests,
+                rank_by,
+                min_pagerank,
+                include_project,
+                churn,
+                duplicates,
+                entropy,
+                faults,
             } => {
                 crate::cli::handlers::handle_query(
                     query,
@@ -255,6 +262,13 @@ impl CommandExecutor {
                     include_source,
                     rebuild_index,
                     exclude_tests,
+                    rank_by,
+                    min_pagerank,
+                    include_project,
+                    churn,
+                    duplicates,
+                    entropy,
+                    faults,
                 )
                 .await
             }
