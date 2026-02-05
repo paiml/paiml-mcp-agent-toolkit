@@ -173,6 +173,7 @@ pub mod file_health; // File Health Score: max-lines enforcement and TLR analysi
 pub mod five_whys_analyzer;
 pub mod fixed_graph_builder;
 pub mod git_analysis;
+pub mod git_history; // GH-RAG: Git history RAG integration (separate index for commit messages)
 #[cfg(feature = "git-lib")]
 pub mod git_clone;
 pub mod git_test_filter; // Git-aware test filtering for targeted quality gates
