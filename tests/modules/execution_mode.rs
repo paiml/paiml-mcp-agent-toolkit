@@ -67,6 +67,7 @@ mod binary_main_tests {
     }
 
     #[test]
+    #[ignore = "Environment variable manipulation unsafe in parallel tests"]
     fn test_mcp_version_environment_variable() {
         // Test various MCP_VERSION values
         let test_values = vec!["1.0.0", "2.0.0", "latest", ""];

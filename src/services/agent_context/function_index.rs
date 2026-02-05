@@ -35,15 +35,29 @@ pub struct QualityMetrics {
     pub churn_score: f32,
 }
 
-/// A function entry in the index
+/// Definition type for indexed items (issue #150)
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub enum DefinitionType {
+    #[default]
+    Function,
+    Struct,
+    Enum,
+    Trait,
+    TypeAlias,
+}
+
+/// A function/type entry in the index
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FunctionEntry {
     /// File path relative to project root
     pub file_path: String,
-    /// Function name
+    /// Function/type name
     pub function_name: String,
-    /// Full function signature
+    /// Full signature/definition
     pub signature: String,
+    /// Type of definition (function, struct, enum, trait, type alias)
+    #[serde(default)]
+    pub definition_type: DefinitionType,
     /// Documentation comment (if any)
     pub doc_comment: Option<String>,
     /// Full function source code
@@ -58,6 +72,22 @@ pub struct FunctionEntry {
     pub quality: QualityMetrics,
     /// Content checksum for incremental updates
     pub checksum: String,
+    // === Cached annotations (computed at build time, not query time) ===
+    /// Git commit count for this file
+    #[serde(default)]
+    pub commit_count: u32,
+    /// Churn score 0.0-1.0 (higher = more volatile)
+    #[serde(default)]
+    pub churn_score: f32,
+    /// Number of code clones/duplicates
+    #[serde(default)]
+    pub clone_count: u32,
+    /// Pattern diversity 0.0-1.0 (lower = more repetitive)
+    #[serde(default)]
+    pub pattern_diversity: f32,
+    /// Fault pattern annotations from batuta
+    #[serde(default)]
+    pub fault_annotations: Vec<String>,
 }
 
 /// Index manifest with metadata
@@ -80,15 +110,29 @@ pub struct IndexManifest {
     /// SHA256 checksums for each source file (for incremental updates)
     #[serde(default)]
     pub file_checksums: HashMap<String, String>,
+    /// Number of files reparsed in last incremental update (0 = no changes)
+    #[serde(default)]
+    pub last_incremental_changes: usize,
 }
 
-/// Serialized payload for the index (v1.2.0+)
+/// Serialized payload for the index (v1.3.0+ with cached indices)
 #[derive(Serialize, Deserialize)]
 struct IndexPayload {
     functions: Vec<FunctionEntry>,
     corpus: Vec<String>,
     calls: HashMap<usize, Vec<usize>>,
     called_by: HashMap<usize, Vec<usize>>,
+    // v1.3.0: Cached indices to avoid rebuild on load
+    #[serde(default)]
+    name_index: HashMap<String, Vec<usize>>,
+    #[serde(default)]
+    file_index: HashMap<String, Vec<usize>>,
+    #[serde(default)]
+    graph_metrics: Vec<GraphMetrics>,
+    #[serde(default)]
+    corpus_lower: Vec<String>,
+    #[serde(default)]
+    name_frequency: HashMap<String, f32>,
 }
 
 /// Index statistics
@@ -210,15 +254,21 @@ impl AgentContextIndex {
             *languages_seen.entry(lang_str.clone()).or_insert(0) += 1;
 
             for chunk in chunks {
-                // Only index functions (not classes/modules for now)
-                if chunk.chunk_type != crate::services::semantic::ChunkType::Function {
-                    continue;
-                }
+                // Index functions, structs, enums, traits, type aliases (issue #150)
+                use crate::services::semantic::ChunkType;
+                let definition_type = match &chunk.chunk_type {
+                    ChunkType::Function => DefinitionType::Function,
+                    ChunkType::Struct => DefinitionType::Struct,
+                    ChunkType::Enum => DefinitionType::Enum,
+                    ChunkType::Trait => DefinitionType::Trait,
+                    ChunkType::TypeAlias => DefinitionType::TypeAlias,
+                    _ => continue, // Skip classes, modules, files, impl blocks
+                };
 
                 // Extract quality metrics
                 let quality = extract_quality_metrics(&chunk, &content);
 
-                // Extract signature (first line of function)
+                // Extract signature (first line of definition)
                 let signature = chunk
                     .content
                     .lines()
@@ -226,13 +276,14 @@ impl AgentContextIndex {
                     .unwrap_or(&chunk.chunk_name)
                     .to_string();
 
-                // Extract doc comment (lines starting with /// or /** before function)
+                // Extract doc comment (lines starting with /// or /** before definition)
                 let doc_comment = extract_doc_comment(&content, chunk.start_line);
 
                 let entry = FunctionEntry {
                     file_path: relative_path.clone(),
                     function_name: chunk.chunk_name.clone(),
                     signature,
+                    definition_type,
                     doc_comment,
                     source: chunk.content.clone(),
                     start_line: chunk.start_line,
@@ -240,6 +291,12 @@ impl AgentContextIndex {
                     language: lang_str.clone(),
                     quality,
                     checksum: chunk.content_checksum,
+                    // Annotations populated after all definitions collected
+                    commit_count: 0,
+                    churn_score: 0.0,
+                    clone_count: 0,
+                    pattern_diversity: 0.0,
+                    fault_annotations: Vec::new(),
                 };
 
                 functions.push(entry);
@@ -260,6 +317,9 @@ impl AgentContextIndex {
         // Compute name frequency for generic name demotion
         let name_frequency = compute_name_frequency(&name_index, functions.len());
 
+        // Populate cached annotations (churn, duplicates, entropy, faults)
+        populate_cached_annotations(&mut functions, &file_index, &project_root);
+
         // Calculate average TDG score
         let avg_tdg = if !functions.is_empty() {
             functions.iter().map(|f| f.quality.tdg_score).sum::<f32>() / functions.len() as f32
@@ -268,7 +328,7 @@ impl AgentContextIndex {
         };
 
         let manifest = IndexManifest {
-            version: "1.2.0".to_string(), // Bump version for graph metrics
+            version: "1.3.0".to_string(), // Bump version for graph metrics
             built_at: chrono::Utc::now().to_rfc3339(),
             project_root: project_root.to_string_lossy().to_string(),
             function_count: functions.len(),
@@ -276,6 +336,7 @@ impl AgentContextIndex {
             languages: languages_seen.keys().cloned().collect(),
             avg_tdg_score: avg_tdg,
             file_checksums,
+            last_incremental_changes: 0, // Full build, not incremental
         };
 
         // Pre-compute lowercase corpus (avoids per-query lowercasing of 42K+ docs)
@@ -571,12 +632,18 @@ impl AgentContextIndex {
         fs::write(index_path.join("manifest.json"), manifest_json)
             .map_err(|e| format!("Failed to write manifest: {e}"))?;
 
-        // Save payload (functions + corpus + call graph) using bincode v1.2.0+ format
+        // Save payload (functions + corpus + call graph + cached indices) v1.3.0 format
         let payload = IndexPayload {
             functions: self.functions.clone(),
             corpus: self.corpus.clone(),
             calls: self.calls.clone(),
             called_by: self.called_by.clone(),
+            // v1.3.0: Cache computed indices to avoid rebuild on load
+            name_index: self.name_index.clone(),
+            file_index: self.file_index.clone(),
+            graph_metrics: self.graph_metrics.clone(),
+            corpus_lower: self.corpus_lower.clone(),
+            name_frequency: self.name_frequency.clone(),
         };
         let payload_bin = bincode::serialize(&payload)
             .map_err(|e| format!("Failed to serialize payload: {e}"))?;
@@ -597,42 +664,54 @@ impl AgentContextIndex {
         let manifest: IndexManifest = serde_json::from_str(&manifest_str)
             .map_err(|e| format!("Failed to parse manifest: {e}"))?;
 
-        // Load compressed blob
+        // Load and decompress blob
         let compressed = fs::read(index_path.join("functions.lz4"))
             .map_err(|e| format!("Failed to read functions: {e}"))?;
         let decompressed = lz4_flex::decompress_size_prepended(&compressed)
             .map_err(|e| format!("Failed to decompress functions: {e}"))?;
 
-        // Try v1.2.0+ payload format first, fall back to legacy functions-only
-        let is_v1_1 = manifest.version.starts_with("1.1");
-        let (functions, corpus, calls, called_by) = if is_v1_1 {
-            let payload: IndexPayload = bincode::deserialize(&decompressed)
-                .map_err(|e| format!("Failed to parse payload: {e}"))?;
-            (payload.functions, payload.corpus, payload.calls, payload.called_by)
+        // Deserialize payload (v1.3.0+ has cached indices)
+        let payload: IndexPayload = bincode::deserialize(&decompressed)
+            .map_err(|e| format!("Failed to parse payload: {e}"))?;
+
+        let functions = payload.functions;
+        let corpus = payload.corpus;
+        let calls = payload.calls;
+        let called_by = payload.called_by;
+
+        // Check if we have cached indices (v1.3.0+) - avoids expensive PageRank recomputation
+        let has_cached_indices = !payload.name_index.is_empty();
+
+        let (name_index, file_index, graph_metrics, corpus_lower, name_frequency) = if has_cached_indices {
+            // Fast path: use cached indices directly (saves ~4s for 100k functions)
+            (
+                payload.name_index,
+                payload.file_index,
+                payload.graph_metrics,
+                payload.corpus_lower,
+                payload.name_frequency,
+            )
         } else {
-            // Legacy v1.0.0: only functions stored, rebuild corpus + call graph
-            let functions: Vec<FunctionEntry> = bincode::deserialize(&decompressed)
-                .map_err(|e| format!("Failed to parse functions: {e}"))?;
-            let (_, _, corpus) = build_indices(&functions);
-            (functions, corpus, HashMap::new(), HashMap::new())
+            // Slow path: rebuild indices for legacy formats (v1.0-v1.2)
+            let is_legacy = manifest.version.starts_with("1.0") || manifest.version.starts_with("1.1");
+            let (name_index, file_index, _) = build_indices(&functions);
+
+            // Rebuild call graph if loading legacy format
+            let (calls_rebuilt, called_by_rebuilt) = if is_legacy && calls.is_empty() {
+                build_call_graph(&functions, &name_index)
+            } else {
+                (calls.clone(), called_by.clone())
+            };
+
+            // Compute graph metrics (PageRank, centrality)
+            let graph_metrics = compute_graph_metrics(functions.len(), &calls_rebuilt, &called_by_rebuilt);
+
+            // Compute name frequency and lowercase corpus
+            let name_frequency = compute_name_frequency(&name_index, functions.len());
+            let corpus_lower: Vec<String> = corpus.iter().map(|d| d.to_lowercase()).collect();
+
+            (name_index, file_index, graph_metrics, corpus_lower, name_frequency)
         };
-
-        // Always rebuild HashMap indices (fast, O(n))
-        let (name_index, file_index, _) = build_indices(&functions);
-
-        // Rebuild call graph if loading legacy format
-        let (calls, called_by) = if !is_v1_1 {
-            build_call_graph(&functions, &name_index)
-        } else {
-            (calls, called_by)
-        };
-
-        // Compute graph metrics (PageRank, centrality)
-        let graph_metrics = compute_graph_metrics(functions.len(), &calls, &called_by);
-
-        // Compute name frequency and lowercase corpus
-        let name_frequency = compute_name_frequency(&name_index, functions.len());
-        let corpus_lower: Vec<String> = corpus.iter().map(|d| d.to_lowercase()).collect();
 
         let project_root = PathBuf::from(&manifest.project_root);
 
@@ -727,9 +806,16 @@ impl AgentContextIndex {
                 *languages_seen.entry(lang_str.clone()).or_insert(0) += 1;
 
                 for chunk in chunks {
-                    if chunk.chunk_type != crate::services::semantic::ChunkType::Function {
-                        continue;
-                    }
+                    // Index functions, structs, enums, traits, type aliases (issue #150)
+                    use crate::services::semantic::ChunkType;
+                    let definition_type = match &chunk.chunk_type {
+                        ChunkType::Function => DefinitionType::Function,
+                        ChunkType::Struct => DefinitionType::Struct,
+                        ChunkType::Enum => DefinitionType::Enum,
+                        ChunkType::Trait => DefinitionType::Trait,
+                        ChunkType::TypeAlias => DefinitionType::TypeAlias,
+                        _ => continue, // Skip classes, modules, files, impl blocks
+                    };
 
                     let quality = extract_quality_metrics(&chunk, &content);
                     let signature = chunk
@@ -751,6 +837,12 @@ impl AgentContextIndex {
                         language: lang_str.clone(),
                         quality,
                         checksum: chunk.content_checksum,
+                        definition_type,
+                        commit_count: 0,
+                        churn_score: 0.0,
+                        clone_count: 0,
+                        pattern_diversity: 0.0,
+                        fault_annotations: Vec::new(),
                     });
                 }
                 files_reparsed += 1;
@@ -783,7 +875,7 @@ impl AgentContextIndex {
         }
 
         let manifest = IndexManifest {
-            version: "1.2.0".to_string(),
+            version: "1.3.0".to_string(),
             built_at: chrono::Utc::now().to_rfc3339(),
             project_root: project_root.to_string_lossy().to_string(),
             function_count: functions.len(),
@@ -791,6 +883,7 @@ impl AgentContextIndex {
             languages: languages_seen.keys().cloned().collect(),
             avg_tdg_score: avg_tdg,
             file_checksums,
+            last_incremental_changes: files_reparsed,
         };
 
         Ok(Self {
@@ -900,6 +993,267 @@ fn compute_file_sha256(content: &str) -> String {
     let mut hasher = Sha256::new();
     hasher.update(content.as_bytes());
     format!("{:x}", hasher.finalize())
+}
+
+/// Populate cached annotations for all functions during index build.
+/// Computes: git churn, code clones, pattern diversity, fault patterns.
+fn populate_cached_annotations(
+    functions: &mut [FunctionEntry],
+    file_index: &HashMap<String, Vec<usize>>,
+    project_root: &std::path::Path,
+) {
+    eprintln!("Computing annotations for {} functions...", functions.len());
+
+    // 1. Git churn: get commit counts per file
+    let file_commits = get_file_commit_counts(project_root, file_index.keys());
+    let max_commits = file_commits.values().copied().max().unwrap_or(1) as f32;
+    eprintln!(
+        "  Git churn: {} files with commits (max={})",
+        file_commits.len(),
+        max_commits as u32
+    );
+
+    // 2. Detect duplicate/similar functions (by normalized source hash)
+    let clone_groups = detect_code_clones(functions);
+    eprintln!("  Clones: {} functions with duplicates", clone_groups.len());
+
+    // 3. Compute pattern diversity per file
+    let file_diversity = compute_file_pattern_diversity(functions, file_index);
+    eprintln!("  Diversity: {} files analyzed", file_diversity.len());
+
+    // 4. Detect fault patterns in source code
+    let fault_patterns = detect_fault_patterns(functions);
+    eprintln!(
+        "  Faults: {} functions with patterns",
+        fault_patterns.len()
+    );
+
+    // Apply annotations to functions
+    let mut churn_applied = 0;
+    let mut clone_applied = 0;
+    let mut diversity_applied = 0;
+    let mut fault_applied = 0;
+
+    for (i, func) in functions.iter_mut().enumerate() {
+        // Churn data
+        if let Some(&commits) = file_commits.get(&func.file_path) {
+            func.commit_count = commits;
+            func.churn_score = commits as f32 / max_commits;
+            churn_applied += 1;
+        }
+
+        // Clone count
+        if let Some(&count) = clone_groups.get(&i) {
+            func.clone_count = count;
+            clone_applied += 1;
+        }
+
+        // Pattern diversity (from file-level)
+        if let Some(&diversity) = file_diversity.get(&func.file_path) {
+            func.pattern_diversity = diversity;
+            diversity_applied += 1;
+        }
+
+        // Fault annotations
+        if let Some(faults) = fault_patterns.get(&i) {
+            func.fault_annotations = faults.clone();
+            fault_applied += 1;
+        }
+    }
+
+    eprintln!(
+        "  Applied: churn={}, clones={}, diversity={}, faults={}",
+        churn_applied, clone_applied, diversity_applied, fault_applied
+    );
+}
+
+/// Get commit counts per file from git log
+fn get_file_commit_counts<'a>(
+    project_root: &std::path::Path,
+    files: impl Iterator<Item = &'a String>,
+) -> HashMap<String, u32> {
+    let mut result = HashMap::new();
+
+    // Collect unique files
+    let files: std::collections::HashSet<_> = files.collect();
+    if files.is_empty() {
+        return result;
+    }
+
+    // Get all file changes from git log (fast batch operation)
+    let output = std::process::Command::new("git")
+        .args(["log", "--format=", "--name-only", "--since=1 year ago"])
+        .current_dir(project_root)
+        .output();
+
+    if let Ok(output) = output {
+        if output.status.success() {
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            for line in stdout.lines() {
+                let line = line.trim();
+                if line.is_empty() {
+                    continue;
+                }
+
+                // Try exact match first
+                if files.contains(&line.to_string()) {
+                    *result.entry(line.to_string()).or_insert(0) += 1;
+                    continue;
+                }
+
+                // Handle path migrations (e.g., server/src/foo.rs -> src/foo.rs)
+                let normalized = if line.starts_with("server/") {
+                    &line[7..] // Strip "server/" prefix
+                } else {
+                    line
+                };
+
+                if files.contains(&normalized.to_string()) {
+                    *result.entry(normalized.to_string()).or_insert(0) += 1;
+                }
+            }
+        }
+    }
+
+    result
+}
+
+/// Detect code clones by normalized source hash
+fn detect_code_clones(functions: &[FunctionEntry]) -> HashMap<usize, u32> {
+    use std::collections::hash_map::DefaultHasher;
+    use std::hash::{Hash, Hasher};
+
+    let mut result = HashMap::new();
+    let mut hash_to_indices: HashMap<u64, Vec<usize>> = HashMap::new();
+
+    for (i, func) in functions.iter().enumerate() {
+        // Normalize source: remove whitespace, lowercase identifiers
+        let normalized = normalize_source(&func.source);
+
+        let mut hasher = DefaultHasher::new();
+        normalized.hash(&mut hasher);
+        let hash = hasher.finish();
+
+        hash_to_indices.entry(hash).or_default().push(i);
+    }
+
+    // Mark functions that have clones (more than 1 with same hash)
+    for indices in hash_to_indices.values() {
+        if indices.len() > 1 {
+            let count = indices.len() as u32;
+            for &idx in indices {
+                result.insert(idx, count);
+            }
+        }
+    }
+
+    result
+}
+
+/// Normalize source code for clone detection
+fn normalize_source(source: &str) -> String {
+    source
+        .chars()
+        .filter(|c| !c.is_whitespace())
+        .collect::<String>()
+        .to_lowercase()
+}
+
+/// Compute pattern diversity per file (unique AST patterns / total patterns)
+fn compute_file_pattern_diversity(
+    functions: &[FunctionEntry],
+    file_index: &HashMap<String, Vec<usize>>,
+) -> HashMap<String, f32> {
+    let mut result = HashMap::new();
+
+    for (file_path, indices) in file_index {
+        if indices.is_empty() {
+            continue;
+        }
+
+        // Count unique patterns in file based on function signatures
+        let mut patterns = std::collections::HashSet::new();
+        for &idx in indices {
+            if let Some(func) = functions.get(idx) {
+                // Extract pattern: return type + param count + complexity bucket
+                let pattern = format!(
+                    "{}:{}:{}",
+                    extract_return_type(&func.signature),
+                    count_params(&func.signature),
+                    func.quality.complexity / 5 // bucket by 5
+                );
+                patterns.insert(pattern);
+            }
+        }
+
+        let diversity = patterns.len() as f32 / indices.len() as f32;
+        result.insert(file_path.clone(), diversity);
+    }
+
+    result
+}
+
+/// Extract return type from signature (simplified)
+fn extract_return_type(sig: &str) -> &str {
+    if sig.contains("->") {
+        sig.split("->").last().unwrap_or("void").trim()
+    } else {
+        "void"
+    }
+}
+
+/// Count parameters in signature
+fn count_params(sig: &str) -> usize {
+    if let Some(start) = sig.find('(') {
+        if let Some(end) = sig.find(')') {
+            let params = &sig[start + 1..end];
+            if params.trim().is_empty() {
+                return 0;
+            }
+            return params.split(',').count();
+        }
+    }
+    0
+}
+
+/// Detect fault patterns in function source
+fn detect_fault_patterns(functions: &[FunctionEntry]) -> HashMap<usize, Vec<String>> {
+    let mut result = HashMap::new();
+
+    let patterns = [
+        ("unwrap()", "UNWRAP"),
+        ("expect(", "EXPECT"),
+        ("panic!", "PANIC"),
+        ("unsafe {", "UNSAFE"),
+        ("unsafe{", "UNSAFE"),
+        (".clone()", "CLONE"),
+        ("// TODO", "TODO"),
+        ("// FIXME", "FIXME"),
+        ("// HACK", "HACK"),
+        ("// XXX", "XXX"),
+        ("unimplemented!", "UNIMPL"),
+        ("todo!", "TODO_MACRO"),
+        ("unreachable!", "UNREACHABLE"),
+    ];
+
+    for (i, func) in functions.iter().enumerate() {
+        let mut faults = Vec::new();
+        let src = &func.source;
+
+        for (pattern, label) in &patterns {
+            if src.contains(pattern) {
+                faults.push(label.to_string());
+            }
+        }
+
+        if !faults.is_empty() {
+            faults.sort();
+            faults.dedup();
+            result.insert(i, faults);
+        }
+    }
+
+    result
 }
 
 /// Compute name frequency for generic name demotion.
@@ -1432,6 +1786,12 @@ mod tests {
                 language: "Rust".to_string(),
                 quality: QualityMetrics::default(),
                 checksum: "abc".to_string(),
+                definition_type: DefinitionType::default(),
+                commit_count: 0,
+                churn_score: 0.0,
+                clone_count: 0,
+                pattern_diversity: 0.0,
+                fault_annotations: Vec::new(),
             },
             FunctionEntry {
                 file_path: "a.rs".to_string(),
@@ -1444,6 +1804,12 @@ mod tests {
                 language: "Rust".to_string(),
                 quality: QualityMetrics::default(),
                 checksum: "def".to_string(),
+                definition_type: DefinitionType::default(),
+                commit_count: 0,
+                churn_score: 0.0,
+                clone_count: 0,
+                pattern_diversity: 0.0,
+                fault_annotations: Vec::new(),
             },
         ];
         let (name_idx, file_idx, corpus) = build_indices(&functions);
@@ -1468,6 +1834,12 @@ mod tests {
                 language: "Rust".to_string(),
                 quality: QualityMetrics::default(),
                 checksum: "abc".to_string(),
+                definition_type: DefinitionType::default(),
+                commit_count: 0,
+                churn_score: 0.0,
+                clone_count: 0,
+                pattern_diversity: 0.0,
+                fault_annotations: Vec::new(),
             },
             FunctionEntry {
                 file_path: "a.rs".to_string(),
@@ -1480,6 +1852,12 @@ mod tests {
                 language: "Rust".to_string(),
                 quality: QualityMetrics::default(),
                 checksum: "def".to_string(),
+                definition_type: DefinitionType::default(),
+                commit_count: 0,
+                churn_score: 0.0,
+                clone_count: 0,
+                pattern_diversity: 0.0,
+                fault_annotations: Vec::new(),
             },
         ];
         let (name_index, _, _) = build_indices(&functions);
@@ -1511,7 +1889,7 @@ mod tests {
         index.save(&index_path).unwrap();
 
         let loaded = AgentContextIndex::load(&index_path).unwrap();
-        assert_eq!(loaded.manifest.version, "1.2.0");
+        assert_eq!(loaded.manifest.version, "1.3.0");
         assert_eq!(loaded.functions.len(), index.functions.len());
         assert_eq!(loaded.corpus.len(), index.corpus.len());
         // Verify corpus is identical (not rebuilt from scratch)
@@ -1626,6 +2004,12 @@ mod tests {
                 language: "Rust".to_string(),
                 quality: QualityMetrics::default(),
                 checksum: "aaa".to_string(),
+                definition_type: DefinitionType::default(),
+                commit_count: 0,
+                churn_score: 0.0,
+                clone_count: 0,
+                pattern_diversity: 0.0,
+                fault_annotations: Vec::new(),
             },
             FunctionEntry {
                 file_path: "a.rs".to_string(),
@@ -1638,6 +2022,12 @@ mod tests {
                 language: "Rust".to_string(),
                 quality: QualityMetrics::default(),
                 checksum: "bbb".to_string(),
+                definition_type: DefinitionType::default(),
+                commit_count: 0,
+                churn_score: 0.0,
+                clone_count: 0,
+                pattern_diversity: 0.0,
+                fault_annotations: Vec::new(),
             },
         ];
 
@@ -1658,7 +2048,7 @@ mod tests {
             graph_metrics,
             project_root: PathBuf::from("/test"),
             manifest: super::IndexManifest {
-                version: "1.2.0".to_string(),
+                version: "1.3.0".to_string(),
                 built_at: "2025-01-01T00:00:00Z".to_string(),
                 project_root: "/test".to_string(),
                 function_count: 2,
@@ -1666,6 +2056,7 @@ mod tests {
                 languages: vec!["Rust".to_string()],
                 avg_tdg_score: 0.0,
                 file_checksums: HashMap::new(),
+                last_incremental_changes: 0,
             },
         };
 
@@ -1694,6 +2085,12 @@ mod tests {
                 language: "Rust".to_string(),
                 quality: QualityMetrics::default(),
                 checksum: "aaa".to_string(),
+                definition_type: DefinitionType::default(),
+                commit_count: 0,
+                churn_score: 0.0,
+                clone_count: 0,
+                pattern_diversity: 0.0,
+                fault_annotations: Vec::new(),
             },
         ];
 
@@ -1712,7 +2109,7 @@ mod tests {
             graph_metrics: vec![GraphMetrics::default()],
             project_root: PathBuf::from("/test"),
             manifest: super::IndexManifest {
-                version: "1.2.0".to_string(),
+                version: "1.3.0".to_string(),
                 built_at: "2025-01-01T00:00:00Z".to_string(),
                 project_root: "/test".to_string(),
                 function_count: 1,
@@ -1720,6 +2117,7 @@ mod tests {
                 languages: vec!["Rust".to_string()],
                 avg_tdg_score: 0.0,
                 file_checksums: HashMap::new(),
+                last_incremental_changes: 0,
             },
         };
 
@@ -1814,7 +2212,7 @@ mod tests {
 
         let index = AgentContextIndex::build(project_path).unwrap();
         let manifest = index.manifest();
-        assert_eq!(manifest.version, "1.2.0");
+        assert_eq!(manifest.version, "1.3.0");
         assert!(manifest.function_count > 0);
         assert!(manifest.file_count > 0);
     }
@@ -1894,7 +2292,7 @@ mod tests {
         let index = AgentContextIndex::build(project_path).unwrap();
         assert!(index.functions.len() >= 2);
         assert!(index.manifest.file_count >= 2);
-        assert_eq!(index.manifest.version, "1.2.0");
+        assert_eq!(index.manifest.version, "1.3.0");
 
         // Verify quality metrics computed
         for func in &index.functions {

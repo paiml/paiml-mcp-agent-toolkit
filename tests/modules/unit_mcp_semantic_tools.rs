@@ -18,13 +18,10 @@ async fn setup_engine() -> (
     let temp_dir = TempDir::new().unwrap();
     let db_path = temp_dir.path().join("mcp_test.db");
 
-    let engine = pmat::services::semantic::HybridSearchEngine::new(
-        "sk-test-key-1234567890abcdefghijklmnop",
-        db_path.to_str().unwrap(),
-        temp_dir.path(),
-    )
-    .await
-    .unwrap();
+    let engine =
+        pmat::services::semantic::HybridSearchEngine::new(db_path.to_str().unwrap(), temp_dir.path())
+            .await
+            .unwrap();
 
     // Create test code
     std::fs::create_dir_all(temp_dir.path().join("src")).unwrap();

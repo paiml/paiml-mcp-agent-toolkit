@@ -88,6 +88,9 @@ pub struct QueryResult {
     pub function_name: String,
     /// Full function signature
     pub signature: String,
+    /// Type of definition (function, struct, enum, trait, type)
+    #[serde(default)]
+    pub definition_type: String,
     /// Documentation comment
     pub doc_comment: Option<String>,
     /// Starting line number
@@ -154,6 +157,7 @@ impl QueryResult {
             file_path: entry.file_path.clone(),
             function_name: entry.function_name.clone(),
             signature: entry.signature.clone(),
+            definition_type: format!("{:?}", entry.definition_type).to_lowercase(),
             doc_comment: entry.doc_comment.clone(),
             start_line: entry.start_line,
             end_line: entry.end_line,
@@ -175,12 +179,12 @@ impl QueryResult {
             pagerank: 0.0,
             in_degree: 0,
             out_degree: 0,
-            commit_count: entry.quality.commit_count,
-            churn_score: entry.quality.churn_score,
-            clone_count: 0,
-            duplication_score: 0.0,
-            pattern_diversity: 0.0,
-            fault_annotations: Vec::new(),
+            commit_count: entry.commit_count,
+            churn_score: entry.churn_score,
+            clone_count: entry.clone_count,
+            duplication_score: entry.clone_count as f32 / 10.0, // Normalize
+            pattern_diversity: entry.pattern_diversity,
+            fault_annotations: entry.fault_annotations.clone(),
         }
     }
 
@@ -761,6 +765,105 @@ pub fn format_text_with_code(results: &[QueryResult]) -> String {
             r.file_path, r.start_line, r.end_line, r.function_name, r.tdg_grade, r.big_o
         ));
 
+        // Metrics line - always show key metrics for agent decision-making
+        let mut metrics = Vec::new();
+
+        // Core metrics (always show)
+        metrics.push(format!("C:{}", r.complexity));
+        metrics.push(format!("L:{}", r.loc));
+
+        // PageRank - show importance score (higher = more central to codebase)
+        if r.pagerank > 0.0 {
+            let pr_scaled = r.pagerank * 10000.0;
+            if pr_scaled >= 10.0 {
+                metrics.push(format!("\x1b[1;36m★{:.0}\x1b[0m", pr_scaled));
+            } else if pr_scaled >= 1.0 {
+                metrics.push(format!("★{:.1}", pr_scaled));
+            }
+        }
+
+        // In-degree (callers) - shows how widely used
+        if r.in_degree >= 5 {
+            metrics.push(format!("\x1b[1;32m↓{}\x1b[0m", r.in_degree));
+        } else if r.in_degree > 0 {
+            metrics.push(format!("↓{}", r.in_degree));
+        }
+
+        // Churn - git volatility (commit count and churn score)
+        if r.commit_count > 0 {
+            if r.churn_score > 0.7 {
+                metrics.push(format!("\x1b[1;31m🔥{}c {:.0}%\x1b[0m", r.commit_count, r.churn_score * 100.0));
+            } else if r.churn_score > 0.3 {
+                metrics.push(format!("{}c {:.0}%", r.commit_count, r.churn_score * 100.0));
+            } else {
+                metrics.push(format!("{}c", r.commit_count));
+            }
+        }
+
+        // Pattern diversity / entropy (lower = more repetitive code patterns)
+        if r.pattern_diversity > 0.0 {
+            if r.pattern_diversity < 0.3 {
+                metrics.push(format!("\x1b[2m🔄{:.0}%\x1b[0m", r.pattern_diversity * 100.0));
+            } else if r.pattern_diversity > 0.8 {
+                metrics.push(format!("H:{:.0}%", r.pattern_diversity * 100.0));
+            }
+        }
+
+        // SATD (tech debt markers)
+        if r.satd_count > 0 {
+            metrics.push(format!("\x1b[1;33m⚠{}\x1b[0m", r.satd_count));
+        }
+
+        // Clone count (duplicates)
+        if r.clone_count > 0 {
+            metrics.push(format!("\x1b[1;35m📋{}\x1b[0m", r.clone_count));
+        }
+
+        // Fault annotations (Tarantula-style defect suspiciousness)
+        if !r.fault_annotations.is_empty() {
+            // Show count and first annotation type
+            let first = r.fault_annotations.first().map_or("", |s| {
+                s.split(':').next().unwrap_or(s)
+            });
+            metrics.push(format!("\x1b[1;91m🐛{}:{}\x1b[0m", r.fault_annotations.len(), first));
+        }
+
+        output.push_str(&format!("   \x1b[2m{}\x1b[0m\n", metrics.join(" │ ")));
+
+        // Doc comment (important context for understanding intent)
+        if let Some(doc) = &r.doc_comment {
+            // Truncate long docs, show first line
+            let first_line = doc.lines().next().unwrap_or(doc);
+            let truncated = if first_line.len() > 100 {
+                format!("{}...", &first_line[..97])
+            } else {
+                first_line.to_string()
+            };
+            output.push_str(&format!("   \x1b[3;37m/// {}\x1b[0m\n", truncated));
+        }
+
+        // Call graph (useful for navigation)
+        if !r.calls.is_empty() || !r.called_by.is_empty() {
+            let mut graph_parts = Vec::new();
+            if !r.calls.is_empty() {
+                let calls_str = if r.calls.len() <= 5 {
+                    r.calls.join(", ")
+                } else {
+                    format!("{}, (+{} more)", r.calls[..5].join(", "), r.calls.len() - 5)
+                };
+                graph_parts.push(format!("calls: {}", calls_str));
+            }
+            if !r.called_by.is_empty() {
+                let called_str = if r.called_by.len() <= 3 {
+                    r.called_by.join(", ")
+                } else {
+                    format!("{}, (+{} more)", r.called_by[..3].join(", "), r.called_by.len() - 3)
+                };
+                graph_parts.push(format!("← {}", called_str));
+            }
+            output.push_str(&format!("   \x1b[2;36m{}\x1b[0m\n", graph_parts.join(" │ ")));
+        }
+
         // Fault annotations with red/yellow warning colors
         for fault in &r.fault_annotations {
             if fault.contains("Boundary") || fault.contains("condition") {
@@ -1247,6 +1350,7 @@ pub async fn enrich_results_with_faults(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::services::agent_context::function_index::DefinitionType;
     use crate::services::agent_context::QualityMetrics;
     use std::collections::HashMap;
 
@@ -1276,6 +1380,12 @@ mod tests {
                 churn_score: 0.0,
             },
             checksum: "abc123".to_string(),
+            definition_type: DefinitionType::default(),
+            commit_count: 0,
+            churn_score: 0.0,
+            clone_count: 0,
+            pattern_diversity: 0.0,
+            fault_annotations: Vec::new(),
         }
     }
 
@@ -1440,6 +1550,12 @@ mod tests {
                     churn_score: 0.6,
                 },
                 checksum: "aaa".to_string(),
+                definition_type: DefinitionType::default(),
+                commit_count: 15,
+                churn_score: 0.6,
+                clone_count: 0,
+                pattern_diversity: 0.0,
+                fault_annotations: Vec::new(),
             },
             FunctionEntry {
                 file_path: "src/handler.rs".to_string(),
@@ -1463,6 +1579,12 @@ mod tests {
                     churn_score: 0.8,
                 },
                 checksum: "bbb".to_string(),
+                definition_type: DefinitionType::default(),
+                commit_count: 25,
+                churn_score: 0.8,
+                clone_count: 0,
+                pattern_diversity: 0.0,
+                fault_annotations: Vec::new(),
             },
             FunctionEntry {
                 file_path: "src/utils.rs".to_string(),
@@ -1485,6 +1607,12 @@ mod tests {
                     churn_score: 0.1,
                 },
                 checksum: "ccc".to_string(),
+                definition_type: DefinitionType::default(),
+                commit_count: 3,
+                churn_score: 0.1,
+                clone_count: 0,
+                pattern_diversity: 0.0,
+                fault_annotations: Vec::new(),
             },
             FunctionEntry {
                 file_path: "tests/test_handler.rs".to_string(),
@@ -1507,6 +1635,12 @@ mod tests {
                     churn_score: 0.2,
                 },
                 checksum: "ddd".to_string(),
+                definition_type: DefinitionType::default(),
+                commit_count: 5,
+                churn_score: 0.2,
+                clone_count: 0,
+                pattern_diversity: 0.0,
+                fault_annotations: Vec::new(),
             },
             FunctionEntry {
                 file_path: "src/utils.rs".to_string(),
@@ -1529,6 +1663,12 @@ mod tests {
                     churn_score: 0.05,
                 },
                 checksum: "eee".to_string(),
+                definition_type: DefinitionType::default(),
+                commit_count: 2,
+                churn_score: 0.05,
+                clone_count: 0,
+                pattern_diversity: 0.0,
+                fault_annotations: Vec::new(),
             },
         ];
 
@@ -1564,6 +1704,7 @@ mod tests {
                 languages: vec!["Rust".to_string()],
                 avg_tdg_score: 1.0,
                 file_checksums: HashMap::new(),
+                last_incremental_changes: 0,
             },
         }
     }
@@ -1917,6 +2058,7 @@ mod tests {
                 languages: vec![],
                 avg_tdg_score: 0.0,
                 file_checksums: HashMap::new(),
+                last_incremental_changes: 0,
             },
         };
         let results = index.calculate_relevance_scores("test").unwrap();
@@ -1984,6 +2126,12 @@ mod tests {
                 language: "Rust".to_string(),
                 quality: QualityMetrics::default(),
                 checksum: format!("t{i}"),
+                definition_type: DefinitionType::default(),
+                commit_count: 0,
+                churn_score: 0.0,
+                clone_count: 0,
+                pattern_diversity: 0.0,
+                fault_annotations: Vec::new(),
             });
             callers.push(index.functions.len() - 1);
         }
@@ -2023,6 +2171,12 @@ mod tests {
                 language: "Rust".to_string(),
                 quality: QualityMetrics::default(),
                 checksum: format!("c{i}"),
+                definition_type: DefinitionType::default(),
+                commit_count: 0,
+                churn_score: 0.0,
+                clone_count: 0,
+                pattern_diversity: 0.0,
+                fault_annotations: Vec::new(),
             });
             callers.push(index.functions.len() - 1);
             index
@@ -2099,6 +2253,39 @@ mod tests {
         assert!(text.contains("🔥 Hot"));
         assert!(text.contains("25 commits"));
         assert!(text.contains("80%"));
+    }
+
+    #[test]
+    fn test_format_text_with_code_shows_metrics() {
+        let entry = create_test_entry("test_func", 15, 3.5);
+        let mut result = QueryResult::from_entry(&entry, 0.9, true);
+        result.satd_count = 2;
+        result.commit_count = 30;
+        result.churn_score = 0.7;
+
+        let text = format_text_with_code(&[result]);
+        // Should show complexity (format: "C:15" without space)
+        assert!(text.contains("C:15"), "missing complexity");
+        // Should show SATD warning as "⚠2" (warning symbol + count)
+        assert!(text.contains("⚠2"), "missing SATD");
+        // Should show churn (high commit count shown as "🔥" indicator)
+        assert!(text.contains("🔥") || text.contains("30"), "missing churn indicator");
+        // Should show function name in header
+        assert!(text.contains("test_func"), "missing function name");
+    }
+
+    #[test]
+    fn test_format_text_with_code_minimal_metrics() {
+        let entry = create_test_entry("simple_func", 3, 1.0);
+        let result = QueryResult::from_entry(&entry, 0.9, true);
+
+        let text = format_text_with_code(&[result]);
+        // Should still show complexity (format: "C:3" without space)
+        assert!(text.contains("C:3"), "missing complexity");
+        // Should NOT show SATD (is 0)
+        assert!(!text.contains("SATD"), "should not show SATD when 0");
+        // Should NOT show churn (is 0)
+        assert!(!text.contains("commits"), "should not show churn when 0");
     }
 
     #[test]

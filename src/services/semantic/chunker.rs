@@ -18,12 +18,22 @@ pub enum Language {
 }
 
 /// Type of code chunk
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum ChunkType {
     Function,
     Class,
     Module,
     File,
+    /// Rust struct definition
+    Struct,
+    /// Rust enum definition
+    Enum,
+    /// Rust trait definition
+    Trait,
+    /// Rust type alias
+    TypeAlias,
+    /// Rust impl block
+    Impl,
 }
 
 /// A semantic code chunk with metadata
@@ -190,6 +200,82 @@ fn extract_rust_items(node: Node, source: &str, chunks: &mut Vec<CodeChunk>) {
             chunks.push(CodeChunk {
                 file_path: String::new(),
                 chunk_type: ChunkType::Module,
+                chunk_name: name,
+                language: "rust".to_string(),
+                start_line: node.start_position().row + 1,
+                end_line: node.end_position().row + 1,
+                content: content.clone(),
+                content_checksum: compute_checksum(&content),
+            });
+        }
+    }
+    // Check for struct definitions (issue #150)
+    else if node.kind() == "struct_item" {
+        if let Some(name_node) = node.child_by_field_name("name") {
+            let name = source[name_node.byte_range()].to_string();
+            let start_byte = find_doc_comment_start(node, source);
+            let content = source[start_byte..node.end_byte()].to_string();
+
+            chunks.push(CodeChunk {
+                file_path: String::new(),
+                chunk_type: ChunkType::Struct,
+                chunk_name: name,
+                language: "rust".to_string(),
+                start_line: node.start_position().row + 1,
+                end_line: node.end_position().row + 1,
+                content: content.clone(),
+                content_checksum: compute_checksum(&content),
+            });
+        }
+    }
+    // Check for enum definitions (issue #150)
+    else if node.kind() == "enum_item" {
+        if let Some(name_node) = node.child_by_field_name("name") {
+            let name = source[name_node.byte_range()].to_string();
+            let start_byte = find_doc_comment_start(node, source);
+            let content = source[start_byte..node.end_byte()].to_string();
+
+            chunks.push(CodeChunk {
+                file_path: String::new(),
+                chunk_type: ChunkType::Enum,
+                chunk_name: name,
+                language: "rust".to_string(),
+                start_line: node.start_position().row + 1,
+                end_line: node.end_position().row + 1,
+                content: content.clone(),
+                content_checksum: compute_checksum(&content),
+            });
+        }
+    }
+    // Check for trait definitions (issue #150)
+    else if node.kind() == "trait_item" {
+        if let Some(name_node) = node.child_by_field_name("name") {
+            let name = source[name_node.byte_range()].to_string();
+            let start_byte = find_doc_comment_start(node, source);
+            let content = source[start_byte..node.end_byte()].to_string();
+
+            chunks.push(CodeChunk {
+                file_path: String::new(),
+                chunk_type: ChunkType::Trait,
+                chunk_name: name,
+                language: "rust".to_string(),
+                start_line: node.start_position().row + 1,
+                end_line: node.end_position().row + 1,
+                content: content.clone(),
+                content_checksum: compute_checksum(&content),
+            });
+        }
+    }
+    // Check for type aliases (issue #150)
+    else if node.kind() == "type_item" {
+        if let Some(name_node) = node.child_by_field_name("name") {
+            let name = source[name_node.byte_range()].to_string();
+            let start_byte = find_doc_comment_start(node, source);
+            let content = source[start_byte..node.end_byte()].to_string();
+
+            chunks.push(CodeChunk {
+                file_path: String::new(),
+                chunk_type: ChunkType::TypeAlias,
                 chunk_name: name,
                 language: "rust".to_string(),
                 start_line: node.start_position().row + 1,

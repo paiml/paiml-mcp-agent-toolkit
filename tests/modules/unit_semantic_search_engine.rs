@@ -17,13 +17,9 @@ async fn setup_test_engine() -> (SemanticSearchEngine, TempDir) {
     let temp_dir = TempDir::new().unwrap();
     let db_path = temp_dir.path().join("test_search.db");
 
-    // Use mock API key for tests
-    let engine = SemanticSearchEngine::new(
-        "sk-test-key-1234567890abcdefghijklmnop",
-        db_path.to_str().unwrap(),
-    )
-    .await
-    .unwrap();
+    let engine = SemanticSearchEngine::new(db_path.to_str().unwrap())
+        .await
+        .unwrap();
 
     (engine, temp_dir)
 }

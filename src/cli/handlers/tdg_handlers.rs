@@ -209,14 +209,14 @@ async fn handle_compare_command(
 
 /// Query TDG history records based on command flags
 async fn query_history_records(
-    storage: &crate::tdg::storage::TdgStorage,
+    storage: &crate::tdg::TieredStore,
     commit: Option<String>,
     since: Option<String>,
     range: Option<String>,
     repo_path: &Path,
-) -> Result<Vec<crate::tdg::storage::FullTdgRecord>> {
+) -> Result<Vec<crate::tdg::FullTdgRecord>> {
     if let Some(commit_ref) = commit {
-        let found = storage.get_by_commit(&commit_ref).await?;
+        let found: Vec<crate::tdg::FullTdgRecord> = storage.get_by_commit(&commit_ref).await?;
         if found.is_empty() {
             return Err(anyhow!(
                 "No TDG data found for commit '{}'. Ensure TDG was run with --with-git-context.",
@@ -450,9 +450,7 @@ async fn create_baseline(
     output: &Path,
     with_git_context: bool,
 ) -> Result<()> {
-    use crate::tdg::{BaselineEntry, TdgBaseline};
-    use std::fs;
-    use walkdir::WalkDir;
+    use crate::tdg::TdgBaseline;
 
     println!("🔨 Creating TDG baseline...");
     println!("   Path: {}", path.display());

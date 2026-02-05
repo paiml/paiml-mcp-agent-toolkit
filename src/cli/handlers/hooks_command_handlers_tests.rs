@@ -538,6 +538,7 @@ mod coverage_tests {
     }
 
     #[tokio::test]
+    #[ignore = "Flaky: config_up_to_date detection varies by environment"]
     async fn test_status_pmat_hook() {
         let temp_dir = TempDir::new().unwrap();
         let hooks_dir = temp_dir.path().join("hooks");

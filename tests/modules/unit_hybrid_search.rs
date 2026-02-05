@@ -15,13 +15,9 @@ async fn setup_hybrid_engine() -> (HybridSearchEngine, TempDir) {
     let temp_dir = TempDir::new().unwrap();
     let db_path = temp_dir.path().join("hybrid_test.db");
 
-    let engine = HybridSearchEngine::new(
-        "sk-test-key-1234567890abcdefghijklmnop",
-        db_path.to_str().unwrap(),
-        temp_dir.path(),
-    )
-    .await
-    .unwrap();
+    let engine = HybridSearchEngine::new(db_path.to_str().unwrap(), temp_dir.path())
+        .await
+        .unwrap();
 
     (engine, temp_dir)
 }

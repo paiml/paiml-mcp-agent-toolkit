@@ -274,6 +274,11 @@ impl SemanticSearchEngine {
                         ChunkType::Class => "class",
                         ChunkType::Module => "module",
                         ChunkType::File => "file",
+                        ChunkType::Struct => "struct",
+                        ChunkType::Enum => "enum",
+                        ChunkType::Trait => "trait",
+                        ChunkType::TypeAlias => "type",
+                        ChunkType::Impl => "impl",
                     };
                     if r.chunk_type != chunk_type_str {
                         return false;

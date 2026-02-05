@@ -1032,10 +1032,10 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_run_satd_analysis_returns_not_implemented() {
+    async fn test_run_satd_analysis_works() {
         let temp = create_temp_project();
         let result = run_satd_analysis(temp.path()).await;
-        assert!(result.is_err());
+        assert!(result.is_ok());
     }
 
     // ============================================================================

@@ -307,9 +307,13 @@ pub enum Commands {
         #[arg(long)]
         faults: bool,
 
-        /// Show source code inline (agent-friendly output)
+        /// Filter by definition type (fn, struct, enum, trait, type)
+        #[arg(long = "type", value_name = "TYPE")]
+        definition_type: Option<String>,
+
+        /// Show summary only (no source code) - by default, code is shown
         #[arg(long)]
-        code: bool,
+        summary: bool,
     },
 
     /// Analyze code metrics and patterns
@@ -317,7 +321,7 @@ pub enum Commands {
     Analyze(AnalyzeCommands),
 
     /// Quality-Driven Development (QDD) tool for creating and refactoring code with guaranteed quality
-    #[command(subcommand, visible_aliases = &["q"])]
+    #[command(subcommand, visible_aliases = &["qd"])]
     Qdd(QddCommands),
 
     /// Run interactive demo of all capabilities

@@ -31,7 +31,8 @@ use std::path::PathBuf;
 /// * `duplicates` - Enrich results with duplicate code detection
 /// * `entropy` - Enrich results with entropy/pattern diversity metrics
 /// * `faults` - Enrich results with batuta fault pattern annotations
-/// * `code` - Show source code inline (agent-friendly output)
+/// * `definition_type` - Filter by definition type (fn, struct, enum, trait, type)
+/// * `code` - Show source code inline (default: true, use --summary to disable)
 pub async fn handle_query(
     query: String,
     limit: usize,
@@ -51,50 +52,17 @@ pub async fn handle_query(
     duplicates: bool,
     entropy: bool,
     faults: bool,
+    definition_type: Option<String>,
     code: bool,
 ) -> anyhow::Result<()> {
     // Check for existing index
     let index_path = project_path.join(".pmat/context.idx");
+    let workspace_idx = project_path.join(".pmat/workspace.idx");
 
     // Suppress status messages for JSON format (issue #145)
     let quiet = matches!(format, QueryOutputFormat::Json);
 
-    let mut index = if index_path.exists() && !rebuild_index {
-        if !quiet {
-            eprintln!("Loading index from {:?}...", index_path);
-        }
-        match AgentContextIndex::load(&index_path) {
-            Ok(existing) => {
-                // Try incremental update if checksums are available
-                if !existing.manifest().file_checksums.is_empty() {
-                    if !quiet {
-                        eprintln!("Checking for incremental updates...");
-                    }
-                    match AgentContextIndex::build_incremental(&project_path, &existing) {
-                        Ok(updated) => {
-                            // Save the updated index
-                            let _ = updated.save(&index_path);
-                            updated
-                        }
-                        Err(_) => existing, // Fall back to loaded index
-                    }
-                } else {
-                    existing
-                }
-            }
-            Err(e) => {
-                eprintln!("Failed to load index ({}), rebuilding...", e);
-                build_and_save_index(&project_path, &index_path)?
-            }
-        }
-    } else {
-        if !quiet {
-            eprintln!("Building index for {:?}...", project_path);
-        }
-        build_and_save_index(&project_path, &index_path)?
-    };
-
-    // Auto-discover sibling projects with indexes
+    // Auto-discover sibling projects with indexes (check early for workspace fast path)
     let mut siblings = AgentContextIndex::discover_sibling_indexes(&project_path);
 
     // Add explicitly included projects (--include-project option)
@@ -117,26 +85,39 @@ pub async fn handle_query(
         }
     }
 
-    if !siblings.is_empty() {
-        let workspace_idx = project_path.join(".pmat/workspace.idx");
-        if !rebuild_index && is_workspace_cache_fresh(&workspace_idx, &siblings) {
-            // Fast path: load cached merged index
-            if !quiet {
-                eprintln!("Loading cached workspace index...");
-            }
-            match AgentContextIndex::load(&workspace_idx) {
-                Ok(cached) => {
-                    index = cached;
-                }
-                Err(_) => {
-                    // Cache corrupted, fall through to merge
-                    merge_and_cache_workspace(&mut index, &siblings, &workspace_idx, quiet);
-                }
-            }
-        } else {
-            merge_and_cache_workspace(&mut index, &siblings, &workspace_idx, quiet);
+    // Fast path: if workspace cache is fresh, load directly without checking local index
+    let index = if !siblings.is_empty()
+        && !rebuild_index
+        && is_workspace_cache_fresh(&workspace_idx, &siblings, &index_path)
+    {
+        if !quiet {
+            eprintln!("Loading cached workspace index...");
         }
-    }
+        match AgentContextIndex::load(&workspace_idx) {
+            Ok(cached) => cached,
+            Err(_) => {
+                // Cache corrupted, fall back to normal path
+                load_and_merge_index(
+                    &project_path,
+                    &index_path,
+                    &workspace_idx,
+                    &siblings,
+                    rebuild_index,
+                    quiet,
+                )?
+            }
+        }
+    } else {
+        // Normal path: load local, incremental update, merge if needed
+        load_and_merge_index(
+            &project_path,
+            &index_path,
+            &workspace_idx,
+            &siblings,
+            rebuild_index,
+            quiet,
+        )?
+    };
 
     if !quiet {
         let manifest = index.manifest();
@@ -178,6 +159,20 @@ pub async fn handle_query(
                 && !r.file_path.contains("_tests.")
                 && !r.file_path.contains("_test.")
         });
+    }
+
+    // Filter by definition type if requested
+    if let Some(ref def_type) = definition_type {
+        let def_type_lower = def_type.to_lowercase();
+        let filter_type = match def_type_lower.as_str() {
+            "fn" | "func" | "function" => "function".to_string(),
+            "struct" | "structs" => "struct".to_string(),
+            "enum" | "enums" => "enum".to_string(),
+            "trait" | "traits" => "trait".to_string(),
+            "type" | "types" | "typealias" => "typealias".to_string(),
+            other => other.to_string(),
+        };
+        results.retain(|r| r.definition_type == filter_type);
     }
 
     // Enrich with git churn data if requested
@@ -251,15 +246,80 @@ pub async fn handle_query(
     Ok(())
 }
 
-/// Check if the cached workspace index is newer than all sibling indexes.
+/// Load local index, do incremental update if needed, and merge siblings.
+fn load_and_merge_index(
+    project_path: &PathBuf,
+    index_path: &PathBuf,
+    workspace_idx: &std::path::Path,
+    siblings: &[(PathBuf, String)],
+    rebuild_index: bool,
+    quiet: bool,
+) -> anyhow::Result<AgentContextIndex> {
+    let mut index = if index_path.exists() && !rebuild_index {
+        if !quiet {
+            eprintln!("Loading index from {:?}...", index_path);
+        }
+        match AgentContextIndex::load(index_path) {
+            Ok(existing) => {
+                // Try incremental update if checksums are available
+                if !existing.manifest().file_checksums.is_empty() {
+                    if !quiet {
+                        eprintln!("Checking for incremental updates...");
+                    }
+                    match AgentContextIndex::build_incremental(project_path, &existing) {
+                        Ok(updated) => {
+                            // Only save if there were actual changes
+                            if updated.manifest().last_incremental_changes > 0 {
+                                let _ = updated.save(index_path);
+                            }
+                            updated
+                        }
+                        Err(_) => existing,
+                    }
+                } else {
+                    existing
+                }
+            }
+            Err(e) => {
+                eprintln!("Failed to load index ({}), rebuilding...", e);
+                build_and_save_index(project_path, index_path)?
+            }
+        }
+    } else {
+        if !quiet {
+            eprintln!("Building index for {:?}...", project_path);
+        }
+        build_and_save_index(project_path, index_path)?
+    };
+
+    // Merge siblings if any
+    if !siblings.is_empty() {
+        merge_and_cache_workspace(&mut index, siblings, workspace_idx, quiet);
+    }
+
+    Ok(index)
+}
+
+/// Check if the cached workspace index is newer than all sibling indexes and local index.
 fn is_workspace_cache_fresh(
     workspace_idx: &std::path::Path,
     siblings: &[(PathBuf, String)],
+    local_idx: &std::path::Path,
 ) -> bool {
-    let cache_mtime = match std::fs::metadata(workspace_idx).and_then(|m| m.modified()) {
+    // Use manifest.json mtime (not directory mtime) for consistent comparison
+    let cache_manifest = workspace_idx.join("manifest.json");
+    let cache_mtime = match std::fs::metadata(&cache_manifest).and_then(|m| m.modified()) {
         Ok(t) => t,
         Err(_) => return false, // No cache
     };
+
+    // Check local index is not newer than cache
+    let local_manifest = local_idx.join("manifest.json");
+    if let Ok(local_mtime) = std::fs::metadata(&local_manifest).and_then(|m| m.modified()) {
+        if local_mtime > cache_mtime {
+            return false; // Local index updated since cache
+        }
+    }
 
     // Cache is fresh if it's newer than every sibling's index
     siblings.iter().all(|(idx_path, _)| {
@@ -355,6 +415,7 @@ mod tests {
             false, // duplicates
             false, // entropy
             false, // faults
+            None,  // definition_type
             false, // code
         )
         .await;
@@ -404,6 +465,7 @@ fn main() {
             false, // duplicates
             false, // entropy
             false, // faults
+            None,  // definition_type
             false, // code
         )
         .await;

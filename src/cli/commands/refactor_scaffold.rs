@@ -289,7 +289,7 @@ mod tests {
     /// Coverage: Stack overflow under 48-thread coverage instrumentation
     /// Run manually: cargo test test_cli_parse_empty -- --ignored --test-threads=1
     #[test]
-    // Re-enabled: test passes
+    #[ignore] // Stack overflow with large thread counts
     fn test_cli_parse_empty() {
         // Test that CLI can be parsed with minimal args
         let result = Cli::try_parse_from(["pmat", "list"]);

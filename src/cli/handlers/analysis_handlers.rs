@@ -5,7 +5,7 @@
 
 use crate::cli::{self, AnalyzeCommands};
 use anyhow::Result;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 /// Router for all analysis commands - central dispatch for CLI analyze subcommands.
 ///
@@ -1590,7 +1590,7 @@ fn index_workspace(
 
 /// Output clustering results in the requested format
 fn output_cluster_results(
-    result: &crate::services::local_semantic::ClusterResult,
+    result: &crate::services::local_semantic::LocalClusterResult,
     format: &crate::cli::enums::OutputFormat,
 ) -> Result<()> {
     match format {
@@ -1627,7 +1627,7 @@ fn output_cluster_results(
 
 /// Output topic extraction results in the requested format
 fn output_topic_results(
-    result: &crate::services::local_semantic::TopicResult,
+    result: &crate::services::local_semantic::LocalTopicResult,
     format: &crate::cli::enums::OutputFormat,
 ) -> Result<()> {
     match format {

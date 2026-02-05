@@ -249,8 +249,11 @@ impl CommandExecutor {
                 duplicates,
                 entropy,
                 faults,
-                code,
+                definition_type,
+                summary,
             } => {
+                // Default is to show code; --summary disables it
+                let show_code = !summary;
                 crate::cli::handlers::handle_query(
                     query,
                     limit,
@@ -270,7 +273,8 @@ impl CommandExecutor {
                     duplicates,
                     entropy,
                     faults,
-                    code,
+                    definition_type,
+                    show_code,
                 )
                 .await
             }
