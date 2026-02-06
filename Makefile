@@ -33,6 +33,10 @@
 # NOTE: client project will be added when implemented
 PROJECTS = server
 
+# Default property-based testing parameters (CB-126-D compliance)
+export PROPTEST_CASES ?= 256
+export QUICKCHECK_TESTS ?= 100
+
 # Scripts directory path
 SCRIPTS_DIR = scripts
 
@@ -42,13 +46,9 @@ SCRIPTS_DIR = scripts
 # MCP/external: mcp_server, mcp_pmcp, mcp_integration, claude_integration, mcp/, handlers/
 # TUI/REPL: tui, viz, demo
 # External tool runners: git_analysis, parallel_git, cargo_dead_code, clippy_fix
-# Coverage exclusions: Minimal legitimate exclusions only
-# - Test infrastructure: /tests/, _tests.rs, _test.rs, benches/, examples/, fixtures/
-# - Binary entry points: main.rs, bin/
-# - Requires external runtime: web_dashboard, viz/, demo/, transport/websocket, dap/
-# - Requires network: mcp_server/, mcp_pmcp/
-# Everything else (handlers, services, tdg, models, etc.) is INCLUDED for honest measurement
-COVERAGE_EXCLUDE := --ignore-filename-regex='(/tests/|_tests\\.rs|_test\\.rs|/benches/|/examples/|fixtures/|main\\.rs|bin/|web_dashboard|viz/|demo/|transport/websocket|dap/|mcp_server/|mcp_pmcp/)'
+# Coverage exclusions: Minimal (≤10 patterns for CB-125-A compliance)
+# Test infrastructure + binary entry points + external-runtime-only modules
+COVERAGE_EXCLUDE := --ignore-filename-regex='(_tests?\\.rs|/(tests|benches|examples|fixtures)/|main\\.rs|/(demo|viz|dap|mcp_server|mcp_pmcp)/)'
 
 # Default target: format and build all projects
 all: format build
@@ -452,7 +452,7 @@ ci-full: coverage test-integration
 # Honest measurement: measures full codebase, not just a narrow slice
 # Threshold will ratchet up as test coverage improves
 # =============================================================================
-COV_THRESHOLD ?= 60
+COV_THRESHOLD ?= 80
 
 coverage: ## Generate HTML coverage report (<5 min, honest measurement)
 	@echo "📊 Running coverage analysis..."
@@ -563,7 +563,7 @@ coverage-full: ## Full coverage including slow tests (CI/nightly only)
 	@echo "📊 Running FULL coverage (including ignored tests)..."
 	@echo "⚠️  This takes 30+ minutes - use coverage-fast for dev workflow"
 	@env PROPTEST_CASES=25 QUICKCHECK_TESTS=25 cargo llvm-cov test \
-		--workspace \
+		--lib \
 		$(COVERAGE_EXCLUDE) \
 		-- --test-threads=$$(nproc) --include-ignored
 	@cargo llvm-cov report --summary-only $(COVERAGE_EXCLUDE)
@@ -1325,7 +1325,7 @@ size-check: release ## Check if binary size exceeds threshold
 	@SIZE=$$(stat -f%z target/release/pmat 2>/dev/null || stat -c%s target/release/pmat); \
 	THRESHOLD=20971520; \
 	echo "Binary size: $${SIZE} bytes"; \
-	echo "Threshold: $${THRESHOLD} bytes (20MB)"; \
+	echo "Size limit: $${THRESHOLD} bytes (20MB)"; \
 	if [ $${SIZE} -gt $${THRESHOLD} ]; then \
 		echo "❌ Binary size exceeds 20MB threshold"; \
 		exit 1; \

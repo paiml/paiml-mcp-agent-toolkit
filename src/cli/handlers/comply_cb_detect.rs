@@ -96,8 +96,10 @@ pub fn compute_test_code_lines(lines: &[&str]) -> std::collections::HashSet<usiz
             mark_braced_block(lines, i, &mut test_lines);
         }
 
-        // Detect #[test] function (individual test functions)
-        if line.starts_with("#[test]") {
+        // Detect #[test] and #[tokio::test] functions
+        if line.starts_with("#[test]") || line.starts_with("#[tokio::test]")
+            || line.starts_with("#[actix_rt::test]") || line.starts_with("#[async_std::test]")
+        {
             test_lines.insert(i);
             if let Some(j) = find_line_within(lines, i + 1, 4, "fn ") {
                 mark_braced_block(lines, j, &mut test_lines);
@@ -173,6 +175,13 @@ pub fn walkdir_rs_files(dir: &Path) -> Result<Vec<std::path::PathBuf>, std::io::
         }
     }
     Ok(files)
+}
+
+/// Check if a file is entirely test code based on naming conventions.
+pub fn is_test_file(path: &Path) -> bool {
+    let name = path.file_stem().and_then(|s| s.to_str()).unwrap_or("");
+    name.ends_with("_tests") || name.ends_with("_test") || name == "tests"
+        || path.components().any(|c| c.as_os_str() == "tests")
 }
 
 /// Scan for CB-021 (SIMD intrinsics without #[target_feature])
@@ -529,73 +538,77 @@ pub fn extract_brick_name(content: &str, target_line: &str) -> String {
 /// Pattern: `partial_cmp(...).unwrap()` or `.expect(...)` which panic on NaN
 /// Safe alternatives: `total_cmp()`, `unwrap_or()`, `unwrap_or_else()`
 /// Source: OIP Tarantula analysis - 10 instances in ml.rs, imbalance.rs, classifier.rs
-pub fn detect_cb120_nan_unsafe_comparison(project_path: &Path) -> Vec<CbPatternViolation> {
+/// Common scanner: iterate non-test, non-comment lines in all .rs files under src/.
+/// The callback receives (trimmed_line, file_path, line_num) and may push violations.
+fn scan_rs_production_lines(
+    project_path: &Path,
+    skip_test_files: bool,
+    mut check: impl FnMut(&str, &str, usize, &mut Vec<CbPatternViolation>),
+) -> Vec<CbPatternViolation> {
     let mut violations = Vec::new();
-
     let src_dir = project_path.join("src");
     if !src_dir.exists() {
         return violations;
     }
+    let entries = match walkdir_rs_files(&src_dir) {
+        Ok(e) => e,
+        Err(_) => return violations,
+    };
+    for entry in entries {
+        if skip_test_files && is_test_file(&entry) {
+            continue;
+        }
+        let content = match fs::read_to_string(&entry) {
+            Ok(c) => c,
+            Err(_) => continue,
+        };
+        let lines: Vec<&str> = content.lines().collect();
+        let test_lines = compute_test_code_lines(&lines);
+        let file_path = entry.display().to_string();
 
-    if let Ok(entries) = walkdir_rs_files(&src_dir) {
-        for entry in entries {
-            if let Ok(content) = fs::read_to_string(&entry) {
-                let lines: Vec<&str> = content.lines().collect();
-                let test_lines = compute_test_code_lines(&lines);
-
-                for (line_num, line) in lines.iter().enumerate() {
-                    // Skip test code - NaN panics in tests are acceptable
-                    if test_lines.contains(&line_num) {
-                        continue;
-                    }
-
-                    let trimmed = line.trim();
-
-                    // Skip comment lines to avoid false positives from documentation
-                    if trimmed.starts_with("//") || trimmed.starts_with("/*") || trimmed.starts_with("*") {
-                        continue;
-                    }
-
-                    // Skip string literals containing the pattern (error messages, docs)
-                    // Heuristic: if odd number of quotes before "partial_cmp", it's inside a string
-                    if let Some(idx) = trimmed.find("partial_cmp") {
-                        let before = &trimmed[..idx];
-                        let quote_count = before.chars().filter(|&c| c == '"').count();
-                        if quote_count % 2 == 1 {
-                            continue;
-                        }
-                    }
-
-                    // Check for partial_cmp().unwrap() pattern
-                    if trimmed.contains("partial_cmp") && trimmed.contains(".unwrap()") {
-                        // Make sure it's not a safe variant
-                        if !trimmed.contains("unwrap_or") && !trimmed.contains("unwrap_or_else") {
-                            violations.push(CbPatternViolation {
-                                pattern_id: "CB-120".to_string(),
-                                file: entry.display().to_string(),
-                                line: line_num + 1,
-                                description: "NaN-unsafe: .partial_cmp().unwrap() panics on NaN. Use .total_cmp() or .unwrap_or()".to_string(),
-                                severity: Severity::Error,
-                            });
-                        }
-                    }
-
-                    // Check for partial_cmp().expect() pattern
-                    if trimmed.contains("partial_cmp") && trimmed.contains(".expect(") {
-                        violations.push(CbPatternViolation {
-                            pattern_id: "CB-120".to_string(),
-                            file: entry.display().to_string(),
-                            line: line_num + 1,
-                            description: "NaN-unsafe: .partial_cmp().expect() panics on NaN. Use .total_cmp() or .unwrap_or()".to_string(),
-                            severity: Severity::Error,
-                        });
-                    }
-                }
+        for (line_num, line) in lines.iter().enumerate() {
+            if test_lines.contains(&line_num) {
+                continue;
             }
+            let trimmed = line.trim();
+            if trimmed.starts_with("//") || trimmed.starts_with("/*") || trimmed.starts_with("*") {
+                continue;
+            }
+            check(trimmed, &file_path, line_num, &mut violations);
         }
     }
-
     violations
+}
+
+/// Check if a pattern is inside a string literal (odd number of quotes before it)
+fn is_in_string_literal(line: &str, pattern: &str) -> bool {
+    if let Some(idx) = line.find(pattern) {
+        let quote_count = line[..idx].chars().filter(|&c| c == '"').count();
+        quote_count % 2 == 1
+    } else {
+        false
+    }
+}
+
+pub fn detect_cb120_nan_unsafe_comparison(project_path: &Path) -> Vec<CbPatternViolation> {
+    scan_rs_production_lines(project_path, false, |trimmed, file_path, line_num, violations| {
+        if is_in_string_literal(trimmed, "partial_cmp") {
+            return;
+        }
+        if !trimmed.contains("partial_cmp") {
+            return;
+        }
+        let has_unwrap = trimmed.contains(".unwrap()") && !trimmed.contains("unwrap_or");
+        let has_expect = trimmed.contains(".expect(");
+        let suffix = if has_unwrap { "unwrap()" } else if has_expect { "expect()" } else { return };
+        violations.push(CbPatternViolation {
+            pattern_id: "CB-120".to_string(),
+            file: file_path.to_string(),
+            line: line_num + 1,
+            description: format!("NaN-unsafe: .partial_cmp().{suffix} panics on NaN. Use .total_cmp() or .unwrap_or()"),
+            severity: Severity::Error,
+        });
+    })
 }
 
 /// CB-121: Detect lock poisoning vulnerabilities
@@ -750,6 +763,10 @@ pub fn detect_cb122_serde_safety(project_path: &Path) -> Vec<CbPatternViolation>
     };
 
     for entry in entries {
+        // Skip test files entirely - serde unwrap in tests is acceptable
+        if is_test_file(&entry) {
+            continue;
+        }
         let content = match fs::read_to_string(&entry) {
             Ok(c) => c,
             Err(_) => continue,
@@ -777,52 +794,42 @@ pub fn detect_cb122_serde_safety(project_path: &Path) -> Vec<CbPatternViolation>
 /// Pattern: `#[ignore]` without a reason comment or attribute value
 /// Valid: `#[ignore = "reason"]`, `#[ignore] // reason`, `/// reason \n #[ignore]`
 /// Source: OIP Tarantula analysis - 6 undocumented #[ignore] tests
+fn has_ignore_documentation(lines: &[&str], line_num: usize, trimmed: &str) -> bool {
+    let has_inline_reason = trimmed.contains('=') && trimmed.contains('"');
+    let has_line_comment = trimmed.contains("//");
+    let has_preceding_comment = line_num > 0 && lines[line_num - 1].trim().starts_with("//");
+    has_inline_reason || has_line_comment || has_preceding_comment
+}
+
 pub fn detect_cb123_undocumented_ignore(project_path: &Path) -> Vec<CbPatternViolation> {
     let mut violations = Vec::new();
 
-    let src_dir = project_path.join("src");
-    let tests_dir = project_path.join("tests");
-
-    for dir in [src_dir, tests_dir] {
+    for dir in [project_path.join("src"), project_path.join("tests")] {
         if !dir.exists() {
             continue;
         }
+        let entries = match walkdir_rs_files(&dir) {
+            Ok(e) => e,
+            Err(_) => continue,
+        };
+        for entry in entries {
+            let content = match fs::read_to_string(&entry) {
+                Ok(c) => c,
+                Err(_) => continue,
+            };
+            let lines: Vec<&str> = content.lines().collect();
+            let file_path = entry.display().to_string();
 
-        if let Ok(entries) = walkdir_rs_files(&dir) {
-            for entry in entries {
-                if let Ok(content) = fs::read_to_string(&entry) {
-                    let lines: Vec<&str> = content.lines().collect();
-
-                    for (line_num, line) in lines.iter().enumerate() {
-                        let trimmed = line.trim();
-
-                        // Check for #[ignore] attribute
-                        if trimmed.starts_with("#[ignore]") {
-                            // Check if it has inline reason: #[ignore = "reason"]
-                            let has_inline_reason = trimmed.contains('=') && trimmed.contains('"');
-
-                            // Check if same line has comment: #[ignore] // reason
-                            let has_line_comment = trimmed.contains("//");
-
-                            // Check preceding line for doc comment: /// reason
-                            let has_doc_comment = line_num > 0
-                                && lines[line_num - 1].trim().starts_with("///");
-
-                            // Check preceding line for regular comment
-                            let has_preceding_comment = line_num > 0
-                                && lines[line_num - 1].trim().starts_with("//");
-
-                            if !has_inline_reason && !has_line_comment && !has_doc_comment && !has_preceding_comment {
-                                violations.push(CbPatternViolation {
-                                    pattern_id: "CB-123".to_string(),
-                                    file: entry.display().to_string(),
-                                    line: line_num + 1,
-                                    description: "Undocumented #[ignore]: Add reason with #[ignore = \"reason\"] or // reason comment".to_string(),
-                                    severity: Severity::Warning,
-                                });
-                            }
-                        }
-                    }
+            for (line_num, line) in lines.iter().enumerate() {
+                let trimmed = line.trim();
+                if trimmed.starts_with("#[ignore]") && !has_ignore_documentation(&lines, line_num, trimmed) {
+                    violations.push(CbPatternViolation {
+                        pattern_id: "CB-123".to_string(),
+                        file: file_path.clone(),
+                        line: line_num + 1,
+                        description: "Undocumented #[ignore]: Add reason with #[ignore = \"reason\"] or // reason comment".to_string(),
+                        severity: Severity::Warning,
+                    });
                 }
             }
         }
@@ -859,12 +866,12 @@ pub fn detect_cb124_coverage_threshold(project_path: &Path) -> Vec<CbPatternViol
             for (line_num, line) in content.lines().enumerate() {
                 let line_lower = line.to_lowercase();
 
-                // Patterns for coverage thresholds
+                // Patterns for coverage thresholds (specific to coverage context)
                 let threshold_patterns = [
                     ("fail_under", '='),
                     ("coverage_threshold", '='),
                     ("min_coverage", '='),
-                    ("threshold", ':'),
+                    ("cov_threshold", '='),
                     ("COVERAGE <", ' '),
                 ];
 
