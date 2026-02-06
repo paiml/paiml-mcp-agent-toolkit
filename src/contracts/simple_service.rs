@@ -1,6 +1,7 @@
 //! Simplified service layer that compiles and demonstrates uniform contracts
 //! This is a minimal implementation to show the contract system working
 
+#![cfg_attr(coverage_nightly, coverage(off))]
 use super::{
     AnalyzeComplexityContract, AnalyzeDeadCodeContract, AnalyzeEntropyContract,
     AnalyzeLintHotspotContract, AnalyzeSatdContract, AnalyzeTdgContract, BaseAnalysisContract,

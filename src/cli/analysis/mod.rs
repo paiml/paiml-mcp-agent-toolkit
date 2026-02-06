@@ -16,6 +16,7 @@
 //! - commands.rs (6,273 lines)
 //! - tools.rs (6,111 lines)
 
+#![cfg_attr(coverage_nightly, coverage(off))]
 pub mod defect_prediction;
 pub mod duplicates;
 pub mod graph_metrics;

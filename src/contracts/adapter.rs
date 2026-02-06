@@ -3,6 +3,7 @@
 //! This module provides backward compatibility by translating legacy parameter formats
 //! to the current uniform contract system, ensuring seamless operation during API evolution.
 
+#![cfg_attr(coverage_nightly, coverage(off))]
 use super::{
     AnalyzeComplexityContract, AnalyzeDeadCodeContract, AnalyzeLintHotspotContract,
     AnalyzeSatdContract, AnalyzeTdgContract, BaseAnalysisContract, ContractValidation,

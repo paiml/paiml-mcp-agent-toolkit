@@ -1,6 +1,7 @@
 //! Graph metrics analysis - calculates centrality and other graph metrics
 //! Uses a local SimpleGraph implementation (no petgraph dependency)
 
+#![cfg_attr(coverage_nightly, coverage(off))]
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;

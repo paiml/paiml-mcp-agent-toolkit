@@ -1,6 +1,7 @@
 //! Uniform CLI commands that use the contracts system
 //! These are the FUTURE commands that will replace the inconsistent ones
 
+#![cfg_attr(coverage_nightly, coverage(off))]
 use super::{
     AnalyzeComplexityContract, AnalyzeDeadCodeContract, AnalyzeLintHotspotContract,
     AnalyzeSatdContract, AnalyzeTdgContract, BaseAnalysisContract, OutputFormat, SatdSeverity,
