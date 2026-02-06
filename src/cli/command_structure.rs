@@ -253,6 +253,17 @@ impl CommandExecutor {
                 definition_type,
                 summary,
                 git_history,
+                regex,
+                literal,
+                case_sensitive,
+                ignore_case,
+                exclude,
+                exclude_file,
+                files_with_matches,
+                count,
+                after_context,
+                before_context,
+                context_lines,
             } => {
                 // Default is to show code; --summary disables it
                 let show_code = !summary;
@@ -278,6 +289,17 @@ impl CommandExecutor {
                     definition_type,
                     show_code,
                     git_history,
+                    regex,
+                    literal,
+                    case_sensitive,
+                    ignore_case,
+                    exclude,
+                    exclude_file,
+                    files_with_matches,
+                    count,
+                    after_context,
+                    before_context,
+                    context_lines,
                 )
                 .await
             }

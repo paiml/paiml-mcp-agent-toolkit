@@ -234,6 +234,7 @@ impl McpTool for QueryCodeTool {
             include_source,
             rank_by: Default::default(),
             min_pagerank: None,
+            ..Default::default()
         };
 
         // Execute query

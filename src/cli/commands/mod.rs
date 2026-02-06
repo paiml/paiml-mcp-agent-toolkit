@@ -319,6 +319,50 @@ pub enum Commands {
         /// Include git commit history in search (RAG fusion)
         #[arg(long, short = 'G', visible_alias = "gh")]
         git_history: bool,
+
+        /// Use regex pattern matching instead of semantic search (like rg -e)
+        #[arg(long)]
+        regex: bool,
+
+        /// Literal string match, no semantic ranking (like rg -F)
+        #[arg(long, visible_alias = "fixed-strings")]
+        literal: bool,
+
+        /// Case-sensitive search (default: smart-case)
+        #[arg(long)]
+        case_sensitive: bool,
+
+        /// Case-insensitive search (like rg -i)
+        #[arg(short = 'i', long)]
+        ignore_case: bool,
+
+        /// Exclude results matching this content pattern (like grep -v)
+        #[arg(long, value_name = "PATTERN")]
+        exclude: Option<String>,
+
+        /// Exclude results from files matching this glob (like rg --glob '!PATTERN')
+        #[arg(long, value_name = "GLOB")]
+        exclude_file: Option<String>,
+
+        /// Show only file paths with matches (like rg -l / grep -l)
+        #[arg(long)]
+        files_with_matches: bool,
+
+        /// Count matches per file (like rg -c / grep -c)
+        #[arg(long)]
+        count: bool,
+
+        /// Show N lines of context after each match (like rg -A)
+        #[arg(short = 'A', long = "after-context", value_name = "NUM")]
+        after_context: Option<usize>,
+
+        /// Show N lines of context before each match (like rg -B)
+        #[arg(short = 'B', long = "before-context", value_name = "NUM")]
+        before_context: Option<usize>,
+
+        /// Show N lines of context around each match (like rg -C)
+        #[arg(short = 'C', long = "context", value_name = "NUM")]
+        context_lines: Option<usize>,
     },
 
     /// Analyze code metrics and patterns

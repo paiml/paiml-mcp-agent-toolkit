@@ -8,7 +8,7 @@ use crate::cli::QueryOutputFormat;
 use crate::services::agent_context::{
     enrich_results_with_churn, enrich_results_with_duplicates, enrich_results_with_entropy,
     enrich_results_with_faults, format_json, format_markdown, format_text, format_text_with_code,
-    AgentContextIndex, QueryOptions, RankBy,
+    AgentContextIndex, CaseSensitivity, QueryOptions, RankBy, SearchMode,
 };
 use crate::services::git_history::{
     ChangeType, CommitInfo, FileChange, GitHistoryIndex, GitHistorySearchEngine, GitSearchOptions,
@@ -197,6 +197,17 @@ pub async fn handle_query(
     definition_type: Option<String>,
     code: bool,
     git_history: bool,
+    regex: bool,
+    literal: bool,
+    case_sensitive: bool,
+    ignore_case: bool,
+    exclude: Option<String>,
+    exclude_file: Option<String>,
+    files_with_matches: bool,
+    count: bool,
+    after_context: Option<usize>,
+    before_context: Option<usize>,
+    context_lines: Option<usize>,
 ) -> anyhow::Result<()> {
     // Check for existing index
     let index_path = project_path.join(".pmat/context.idx");
@@ -276,6 +287,24 @@ pub async fn handle_query(
         None => RankBy::default(),
     };
 
+    // Determine search mode
+    let search_mode = if regex {
+        SearchMode::Regex
+    } else if literal {
+        SearchMode::Literal
+    } else {
+        SearchMode::Semantic
+    };
+
+    // Determine case sensitivity
+    let case_sensitivity = if case_sensitive {
+        CaseSensitivity::Sensitive
+    } else if ignore_case {
+        CaseSensitivity::Insensitive
+    } else {
+        CaseSensitivity::Smart
+    };
+
     // Execute query (--code implies --include-source)
     let options = QueryOptions {
         limit,
@@ -287,6 +316,10 @@ pub async fn handle_query(
         include_source: include_source || code,
         rank_by: rank_by_enum,
         min_pagerank,
+        search_mode,
+        case_sensitivity,
+        exclude_pattern: exclude,
+        exclude_file_pattern: exclude_file,
     };
 
     let mut results = index
@@ -406,7 +439,71 @@ pub async fn handle_query(
         return Ok(());
     }
 
-    // Format and output results
+    // --files-with-matches mode: output unique file paths only (like rg -l)
+    if files_with_matches {
+        let mut seen = std::collections::HashSet::new();
+        for r in &results {
+            if seen.insert(&r.file_path) {
+                println!("{}", r.file_path);
+            }
+        }
+        return Ok(());
+    }
+
+    // --count mode: output match count per file (like rg -c)
+    if count {
+        let mut file_counts: std::collections::BTreeMap<&str, usize> =
+            std::collections::BTreeMap::new();
+        for r in &results {
+            *file_counts.entry(&r.file_path).or_insert(0) += 1;
+        }
+        for (file, cnt) in &file_counts {
+            println!("{}:{}", file, cnt);
+        }
+        return Ok(());
+    }
+
+    // Context lines mode: show source with surrounding context (like rg -A/-B/-C)
+    let ctx_after = context_lines.or(after_context).unwrap_or(0);
+    let ctx_before = context_lines.or(before_context).unwrap_or(0);
+    let has_context = ctx_after > 0 || ctx_before > 0;
+
+    if has_context {
+        for r in &results {
+            let start = if r.start_line > ctx_before {
+                r.start_line - ctx_before
+            } else {
+                1
+            };
+            let end = r.end_line + ctx_after;
+
+            // Read source lines from the file
+            let file_path = project_path.join(&r.file_path);
+            if let Ok(content) = std::fs::read_to_string(&file_path) {
+                let lines: Vec<&str> = content.lines().collect();
+                let end_clamped = end.min(lines.len());
+                println!(
+                    "{BOLD}{CYAN}{}{RESET}:{YELLOW}{}{RESET}-{YELLOW}{}{RESET}  {WHITE}{}{RESET}  TDG:{GREEN}{}{RESET}",
+                    r.file_path, start, end_clamped, r.function_name, r.tdg_grade
+                );
+                for (line_idx, line) in lines.iter().enumerate() {
+                    let line_num = line_idx + 1;
+                    if line_num >= start && line_num <= end_clamped {
+                        let in_function = line_num >= r.start_line && line_num <= r.end_line;
+                        if in_function {
+                            println!("{GREEN}{:>4}{RESET} {}", line_num, line);
+                        } else {
+                            println!("{DIM}{:>4} {}{RESET}", line_num, line);
+                        }
+                    }
+                }
+                println!();
+            }
+        }
+        return Ok(());
+    }
+
+    // Standard output formatting
     let output = match format {
         QueryOutputFormat::Text => {
             if code {
@@ -1523,6 +1620,17 @@ mod tests {
             None,  // definition_type
             false, // code
             false, // git_history
+            false, // regex
+            false, // literal
+            false, // case_sensitive
+            false, // ignore_case
+            None,  // exclude
+            None,  // exclude_file
+            false, // files_with_matches
+            false, // count
+            None,  // after_context
+            None,  // before_context
+            None,  // context_lines
         )
         .await;
 
@@ -1574,6 +1682,17 @@ fn main() {
             None,  // definition_type
             false, // code
             false, // git_history
+            false, // regex
+            false, // literal
+            false, // case_sensitive
+            false, // ignore_case
+            None,  // exclude
+            None,  // exclude_file
+            false, // files_with_matches
+            false, // count
+            None,  // after_context
+            None,  // before_context
+            None,  // context_lines
         )
         .await;
 

@@ -64,5 +64,6 @@ pub use function_index::{
 pub use query::{
     build_churn_map, enrich_results_with_churn, enrich_results_with_duplicates,
     enrich_results_with_entropy, enrich_results_with_faults, enrich_with_churn, format_json,
-    format_markdown, format_text, format_text_with_code, QueryOptions, QueryResult, RankBy,
+    format_markdown, format_text, format_text_with_code, CaseSensitivity, QueryOptions,
+    QueryResult, RankBy, SearchMode,
 };
