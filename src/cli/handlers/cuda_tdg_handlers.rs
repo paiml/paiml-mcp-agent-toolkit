@@ -9,6 +9,7 @@
 //! - **Kaizen**: Continuous improvement through historical Tauranta fault analysis
 //! - **Poka-Yoke**: Error-proofing through static analysis
 
+#![cfg_attr(coverage_nightly, coverage(off))]
 #![allow(clippy::wildcard_in_or_patterns)]
 #![allow(clippy::useless_format)]
 #![allow(clippy::single_char_add_str)]

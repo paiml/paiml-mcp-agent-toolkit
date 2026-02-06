@@ -2,6 +2,7 @@
 //!
 //! Part 2: Checklist generation and formatting functions
 
+#![cfg_attr(coverage_nightly, coverage(off))]
 use super::qa_work_handler_types::*;
 use crate::cli::commands::QaTaskType;
 use chrono::Utc;

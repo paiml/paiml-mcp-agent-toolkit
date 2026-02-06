@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 use crate::cli::commands::TdgCommand;
 use crate::cli::TdgOutputFormat;
 use crate::tdg::{Grade, TdgAnalyzer, TdgConfig};

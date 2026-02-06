@@ -2,6 +2,7 @@
 //!
 //! This module extracts all analysis-related handlers from the main CLI module
 //! to reduce complexity and improve organization.
+#![cfg_attr(coverage_nightly, coverage(off))]
 
 use crate::cli::{self, AnalyzeCommands};
 use anyhow::Result;

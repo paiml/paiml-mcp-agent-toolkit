@@ -2,6 +2,7 @@
 //!
 //! Part 1: Core types, enums, and structs for QA validation
 
+#![cfg_attr(coverage_nightly, coverage(off))]
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;

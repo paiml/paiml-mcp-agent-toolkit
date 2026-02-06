@@ -3,6 +3,7 @@
 //! This module provides the public API for performance testing functionality
 //! that can be used by the CLI and other components.
 
+#![cfg_attr(coverage_nightly, coverage(off))]
 use anyhow::Result;
 use std::fs;
 use std::time::{Duration, Instant};

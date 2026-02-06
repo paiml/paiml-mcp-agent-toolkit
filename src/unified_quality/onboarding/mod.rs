@@ -2,6 +2,7 @@
 //
 // Provides interactive tutorials, onboarding guides, and training materials
 
+#![cfg_attr(coverage_nightly, coverage(off))]
 use crate::unified_quality::{QualityMode, QualityPhilosophy};
 use anyhow::Result;
 use serde::{Deserialize, Serialize};

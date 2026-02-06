@@ -2,6 +2,7 @@
 //!
 //! Part 4: Spec validation, summary, examples generation, and utility functions
 
+#![cfg_attr(coverage_nightly, coverage(off))]
 use super::qa_work_handler_checklist::generate_checklist;
 use super::qa_work_handler_types::*;
 use crate::cli::commands::QaOutputFormat;

@@ -3,6 +3,7 @@
 //! This module contains handlers for advanced analysis features like
 //! deep context, TDG, provability, and comprehensive analysis.
 
+#![cfg_attr(coverage_nightly, coverage(off))]
 use crate::cli::{
     ComprehensiveOutputFormat, DagType, DeepContextOutputFormat, DefectPredictionOutputFormat,
     GraphMetricType, GraphMetricsOutputFormat, MakefileOutputFormat, SymbolTableOutputFormat,

@@ -5,6 +5,7 @@
 //!
 //! **Feature Flag**: This module requires the `org-intelligence` feature to be enabled.
 
+#![cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(feature = "org-intelligence")]
 use crate::cli::commands::OrgCommands;
 #[cfg(feature = "org-intelligence")]

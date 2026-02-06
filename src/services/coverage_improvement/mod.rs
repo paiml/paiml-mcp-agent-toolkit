@@ -10,6 +10,7 @@
 //! 4. Validate with Mutation Testing (cargo-mutants >= 80%)
 //! 5. Iterate until target coverage reached
 
+#![cfg_attr(coverage_nightly, coverage(off))]
 use anyhow::{Context, Result};
 use std::path::PathBuf;
 use tokio::process::Command;

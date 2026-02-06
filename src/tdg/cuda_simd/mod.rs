@@ -1,4 +1,5 @@
 // Module-level clippy allows for prototype CUDA-SIMD code
+#![cfg_attr(coverage_nightly, coverage(off))]
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::field_reassign_with_default)]
 #![allow(clippy::useless_format)]

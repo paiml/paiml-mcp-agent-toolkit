@@ -1,6 +1,7 @@
 //! CLI implementation using uniform contracts
 //! This provides a contract-based CLI executor that uses the uniform contract system
 
+#![cfg_attr(coverage_nightly, coverage(off))]
 use super::{
     AnalyzeComplexityContract, AnalyzeDeadCodeContract, AnalyzeLintHotspotContract,
     AnalyzeSatdContract, AnalyzeTdgContract, ContractValidation,

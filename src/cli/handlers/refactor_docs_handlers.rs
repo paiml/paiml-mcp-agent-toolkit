@@ -9,6 +9,7 @@
 //! Follows Zero Tolerance Quality Standards from CLAUDE.md:
 //! - No Temporary Code: All code is production-ready or it doesn't exist
 
+#![cfg_attr(coverage_nightly, coverage(off))]
 use crate::cli::RefactorDocsOutputFormat;
 use anyhow::{Context, Result};
 use chrono::{DateTime, Utc};

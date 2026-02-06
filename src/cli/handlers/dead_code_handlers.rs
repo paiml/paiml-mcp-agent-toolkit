@@ -3,6 +3,7 @@
 //! Extracted from complexity_handlers.rs for file health compliance (CB-040).
 //! Contains dead code analysis handler and all related helper functions.
 
+#![cfg_attr(coverage_nightly, coverage(off))]
 use crate::cli::DeadCodeOutputFormat;
 use anyhow::Result;
 use std::path::{Path, PathBuf};

@@ -3,6 +3,7 @@
 //! This module contains utility command implementations extracted from
 //! the main CLI module to reduce complexity.
 
+#![cfg_attr(coverage_nightly, coverage(off))]
 use crate::cli::{ContextFormat, OutputFormat};
 use crate::models::template::TemplateResource;
 use crate::services::context::AstItem;

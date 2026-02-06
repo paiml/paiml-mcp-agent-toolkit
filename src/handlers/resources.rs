@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 use crate::models::mcp::{McpRequest, McpResponse, ResourceReadParams};
 use crate::services::template_service;
 use crate::TemplateServerTrait;

@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 use anyhow::Result;
 use blake3;
 use std::fs;

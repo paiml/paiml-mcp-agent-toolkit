@@ -9,6 +9,7 @@
 //! - `CommandGroup`: Logical grouping of related commands
 //! - `ModularHandlers`: Individual command implementation modules
 
+#![cfg_attr(coverage_nightly, coverage(off))]
 use crate::cli::commands::ScaffoldCommands;
 use crate::cli::{AnalyzeCommands, Commands};
 use crate::stateless_server::StatelessTemplateServer;

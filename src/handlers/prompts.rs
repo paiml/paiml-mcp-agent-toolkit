@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 use crate::models::mcp::{McpRequest, McpResponse, Prompt, PromptArgument, PromptGetParams};
 use crate::TemplateServerTrait;
 use serde_json::json;

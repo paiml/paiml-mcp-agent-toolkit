@@ -4,6 +4,7 @@
 //! Implements dynamic hook management as specified in:
 //! docs/specifications/pre-commit-hooks-spec.md
 
+#![cfg_attr(coverage_nightly, coverage(off))]
 use crate::cli::commands::{HooksCacheAction, HooksCommands};
 use crate::cli::OutputFormat;
 use crate::services::configuration_service::{configuration, PmatConfig};

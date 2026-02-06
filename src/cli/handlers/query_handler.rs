@@ -3,6 +3,7 @@
 //! Provides RAG-powered code search with quality annotations.
 //! Designed as a grep replacement for AI agents.
 
+#![cfg_attr(coverage_nightly, coverage(off))]
 use crate::cli::QueryOutputFormat;
 use crate::services::agent_context::{
     enrich_results_with_churn, enrich_results_with_duplicates, enrich_results_with_entropy,

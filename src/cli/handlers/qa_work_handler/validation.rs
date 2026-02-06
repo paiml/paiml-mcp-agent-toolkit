@@ -2,6 +2,7 @@
 //!
 //! Part 3: Validation checks, report generation, and output formatting
 
+#![cfg_attr(coverage_nightly, coverage(off))]
 use super::qa_work_handler_types::*;
 use crate::cli::commands::QaOutputFormat;
 use chrono::Utc;

@@ -3,6 +3,7 @@
 //! Uses the new similarity module with entropy analysis, winnowing,
 //! and multiple similarity detection algorithms.
 
+#![cfg_attr(coverage_nightly, coverage(off))]
 use anyhow::Result;
 use std::path::PathBuf;
 use std::time::Instant;

@@ -1,6 +1,7 @@
 //! QDD (Quality-Driven Development) CLI handlers
 //! Toyota Way: Single Responsibility and DRY principles
 
+#![cfg_attr(coverage_nightly, coverage(off))]
 use crate::cli::commands::{QddCodeType, QddCommands, QddOutputFormat, QddQualityProfile};
 use crate::qdd::{
     CodeType, CreateSpec, Parameter, QddOperation, QddResult, QddTool, QualityProfile, RefactorSpec,

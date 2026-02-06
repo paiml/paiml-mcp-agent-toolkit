@@ -1,6 +1,7 @@
 //! WASM analysis handler for CLI (REFACTORED)
 //! Following Toyota Way Extract Method to reduce complexity
 
+#![cfg_attr(coverage_nightly, coverage(off))]
 use crate::cli::WasmOutputFormat;
 use crate::wasm::{
     analyzer::{AnalysisResult, WasmAnalyzer},

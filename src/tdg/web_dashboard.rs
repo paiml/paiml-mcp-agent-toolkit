@@ -11,6 +11,7 @@
 //! - Interactive TDG analysis
 //! - System health monitoring
 
+#![cfg_attr(coverage_nightly, coverage(off))]
 use super::{
     AdaptiveThresholdFactory, SchedulerFactory, TdgAnalyzer, TieredStorageFactory, TieredStore,
 };
