@@ -203,8 +203,8 @@
                     suggestion: "Fix it".to_string(),
                 };
 
-                let json = serde_json::to_string(&violation).unwrap();
-                let parsed: QualityViolation = serde_json::from_str(&json).unwrap();
+                let json = serde_json::to_string(&violation).map_err(|e| proptest::test_runner::TestCaseError::Fail(e.to_string().into()))?;
+                let parsed: QualityViolation = serde_json::from_str(&json).map_err(|e| proptest::test_runner::TestCaseError::Fail(e.to_string().into()))?;
 
                 prop_assert_eq!(parsed.violation_type, vtype);
                 prop_assert_eq!(parsed.severity, severity);
@@ -223,8 +223,8 @@
                     estimated_iterations: iterations,
                 };
 
-                let json = serde_json::to_string(&progress).unwrap();
-                let parsed: EnforcementProgress = serde_json::from_str(&json).unwrap();
+                let json = serde_json::to_string(&progress).map_err(|e| proptest::test_runner::TestCaseError::Fail(e.to_string().into()))?;
+                let parsed: EnforcementProgress = serde_json::from_str(&json).map_err(|e| proptest::test_runner::TestCaseError::Fail(e.to_string().into()))?;
 
                 prop_assert_eq!(parsed.files_completed, completed);
                 prop_assert_eq!(parsed.files_remaining, remaining);

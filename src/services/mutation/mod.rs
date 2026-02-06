@@ -1354,8 +1354,8 @@ mod coverage_tests {
                     status: MutantStatus::Pending,
                 };
 
-                let json = serde_json::to_string(&mutant).expect("Serialization failed");
-                let deserialized: Mutant = serde_json::from_str(&json).expect("Deserialization failed");
+                let json = serde_json::to_string(&mutant).map_err(|e| proptest::test_runner::TestCaseError::Fail(e.to_string().into()))?;
+                let deserialized: Mutant = serde_json::from_str(&json).map_err(|e| proptest::test_runner::TestCaseError::Fail(e.to_string().into()))?;
 
                 prop_assert_eq!(deserialized.id, id);
                 prop_assert_eq!(deserialized.hash, hash);

@@ -310,8 +310,8 @@ mod enhanced_property_tests {
                 distribution: vec![10, 20, 15, 10, 5],
             };
 
-            let json = serde_json::to_string(&analysis).unwrap();
-            let deserialized: ComplexityAnalysis = serde_json::from_str(&json).unwrap();
+            let json = serde_json::to_string(&analysis).map_err(|e| proptest::test_runner::TestCaseError::Fail(e.to_string().into()))?;
+            let deserialized: ComplexityAnalysis = serde_json::from_str(&json).map_err(|e| proptest::test_runner::TestCaseError::Fail(e.to_string().into()))?;
 
             prop_assert_eq!(analysis.total_cyclomatic, deserialized.total_cyclomatic);
             prop_assert_eq!(analysis.functions, deserialized.functions);

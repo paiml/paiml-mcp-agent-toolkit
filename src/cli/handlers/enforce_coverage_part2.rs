@@ -378,8 +378,8 @@
                     suggestion: "test suggestion".to_string(),
                 };
 
-                let json = serde_json::to_string(&violation).unwrap();
-                let parsed: QualityViolation = serde_json::from_str(&json).unwrap();
+                let json = serde_json::to_string(&violation).map_err(|e| proptest::test_runner::TestCaseError::Fail(e.to_string().into()))?;
+                let parsed: QualityViolation = serde_json::from_str(&json).map_err(|e| proptest::test_runner::TestCaseError::Fail(e.to_string().into()))?;
 
                 prop_assert!((parsed.current - current).abs() < 0.001);
                 prop_assert!((parsed.target - target).abs() < 0.001);
