@@ -60,6 +60,26 @@ Before adding ANY new dependency: check batuta stack first (`pmat query "YourFea
 | Find code clones | `pmat query "serialize" --duplicates` |
 | Find repetitive patterns | `pmat query "handler" --entropy` |
 | Full enrichment | `pmat query "dispatch" --churn --duplicates --entropy --faults -G` |
+| Regex search (like rg -e) | `pmat query --regex "fn\s+handle_\w+" --limit 10` |
+| Literal string search (like rg -F) | `pmat query --literal "unwrap()" --limit 10` |
+| Exclude pattern (like grep -v) | `pmat query "handler" --exclude "test"` |
+| Exclude files by glob | `pmat query "cache" --exclude-file "tests"` |
+| Case-insensitive search | `pmat query "Error" -i` |
+| Files with matches (like rg -l) | `pmat query "handler" --files-with-matches` |
+| Count matches per file (like rg -c) | `pmat query "unwrap" --count` |
+| Context lines (like grep -C) | `pmat query "panic" -A 3 -B 2` |
+
+### Search Mode Flags
+
+- **`--regex`** — Regex pattern matching against function name, signature, and source. Uses Rust regex syntax.
+- **`--literal`** — Exact literal string match (no semantic ranking). Like `rg -F`.
+- **`--case-sensitive`** — Force case-sensitive matching (default: smart-case like rg).
+- **`-i` / `--ignore-case`** — Force case-insensitive matching.
+- **`--exclude PATTERN`** — Exclude results matching content pattern (like `grep -v`).
+- **`--exclude-file GLOB`** — Exclude results from files matching glob pattern.
+- **`--files-with-matches`** — Output only unique file paths (like `rg -l`).
+- **`--count`** — Output match count per file (like `rg -c`).
+- **`-A N` / `-B N` / `-C N`** — Show N lines of context after/before/around matches.
 
 ### Enrichment Flags
 
@@ -70,9 +90,9 @@ Before adding ANY new dependency: check batuta stack first (`pmat query "YourFea
 - **`--faults`** — Batuta fault pattern annotations (unwrap, panic, unsafe, etc.).
 
 ### When grep IS acceptable
-- Searching for a specific string literal you know exactly (e.g., an error message)
 - Searching non-code files (TOML, YAML, Markdown)
 - Quick one-off during debugging when you need exact line matches
+- NOTE: `pmat query --literal` and `pmat query --regex` now cover most grep/rg use cases
 
 ### MCP Tools
 
