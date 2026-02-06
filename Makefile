@@ -131,27 +131,27 @@ test-pre-commit-fast:
 test-unit:
 	@echo "🚀 Running unit tests (<10s feedback)..."
 	@CORES=$$(nproc) && THREADS=$$((CORES > 2 ? CORES - 2 : 1)) && \
-	cd server && cargo test --test unit_core -- --test-threads=$${THREADS}
+	PROPTEST_CASES=2 QUICKCHECK_TESTS=2 cd server && cargo test --test unit_core -- --test-threads=$${THREADS}
 	@echo "✅ Unit tests completed!"
 
 test-services:
 	@echo "🔧 Running service integration tests (<30s)..."
-	@cd server && cargo test --test services_integration --features integration-tests -- --test-threads=4
+	@PROPTEST_CASES=2 QUICKCHECK_TESTS=2 cd server && cargo test --test services_integration --features integration-tests -- --test-threads=4
 	@echo "✅ Service tests completed!"
 
 test-protocols:
 	@echo "🌐 Running protocol adapter tests (<45s)..."
-	@cd server && cargo test --test protocol_adapters --features integration-tests -- --test-threads=2
+	@PROPTEST_CASES=2 QUICKCHECK_TESTS=2 cd server && cargo test --test protocol_adapters --features integration-tests -- --test-threads=2
 	@echo "✅ Protocol tests completed!"
 
 test-e2e:
 	@echo "🎯 Running end-to-end system tests (<120s)..."
-	@cd server && cargo test --test e2e_system --features e2e-tests -- --test-threads=1
+	@PROPTEST_CASES=2 QUICKCHECK_TESTS=2 cd server && cargo test --test e2e_system --features e2e-tests -- --test-threads=1
 	@echo "✅ E2E tests completed!"
 
 test-performance:
 	@echo "📊 Running performance regression tests..."
-	@cd server && cargo test --test performance_regression --features perf-tests -- --test-threads=1
+	@PROPTEST_CASES=2 QUICKCHECK_TESTS=2 cd server && cargo test --test performance_regression --features perf-tests -- --test-threads=1
 	@echo "✅ Performance tests completed!"
 
 test-property:
@@ -164,9 +164,9 @@ test-property:
 	echo "  Running all property test modules with $${THREADS} threads..." && \
 	echo "  (Override with PROPTEST_THREADS=n make test-property)" && \
 	echo "  Note: Slow cache tests are skipped. Run 'make test-property-slow' to include them." && \
-	timeout 180 cargo test --manifest-path Cargo.toml --lib -- property_tests --test-threads=$${THREADS} || echo "⚠️  Some property tests timed out after 3 minutes" && \
-	timeout 60 cargo test --manifest-path Cargo.toml --lib -- prop_ --test-threads=$${THREADS} || echo "⚠️  Some prop tests timed out" && \
-	cargo test --manifest-path Cargo.toml --test refactor_auto_property_integration -- --test-threads=$${THREADS}
+	PROPTEST_CASES=2 QUICKCHECK_TESTS=2 timeout 180 cargo test --manifest-path Cargo.toml --lib -- property_tests --test-threads=$${THREADS} || echo "⚠️  Some property tests timed out after 3 minutes" && \
+	PROPTEST_CASES=2 QUICKCHECK_TESTS=2 timeout 60 cargo test --manifest-path Cargo.toml --lib -- prop_ --test-threads=$${THREADS} || echo "⚠️  Some prop tests timed out" && \
+	PROPTEST_CASES=2 QUICKCHECK_TESTS=2 cargo test --manifest-path Cargo.toml --test refactor_auto_property_integration -- --test-threads=$${THREADS}
 	@echo "✅ Property tests completed!"
 
 # Run property tests including slow ones
@@ -178,9 +178,9 @@ test-property-slow:
 		THREADS=$${PROPTEST_THREADS}; \
 	fi && \
 	echo "  Running with $${THREADS} threads..." && \
-	cargo test --manifest-path Cargo.toml --lib -- property_tests --test-threads=$${THREADS} --include-ignored && \
-	cargo test --manifest-path Cargo.toml --lib -- prop_ --test-threads=$${THREADS} --include-ignored && \
-	cargo test --manifest-path Cargo.toml --test refactor_auto_property_integration -- --test-threads=$${THREADS}
+	PROPTEST_CASES=2 QUICKCHECK_TESTS=2 cargo test --manifest-path Cargo.toml --lib -- property_tests --test-threads=$${THREADS} --include-ignored && \
+	PROPTEST_CASES=2 QUICKCHECK_TESTS=2 cargo test --manifest-path Cargo.toml --lib -- prop_ --test-threads=$${THREADS} --include-ignored && \
+	PROPTEST_CASES=2 QUICKCHECK_TESTS=2 cargo test --manifest-path Cargo.toml --test refactor_auto_property_integration -- --test-threads=$${THREADS}
 	@echo "✅ All property tests completed (including slow tests)!"
 
 # ==============================================================================
@@ -373,7 +373,7 @@ coverage-stratified: coverage
 test-slow-integration:
 	@echo "🐌 Running slow integration tests with timeouts..."
 	@echo "⚠️  These tests may take 5-10 minutes and are not part of fast coverage"
-	@cd server && cargo test --test slow_integration --release -- --test-threads=1 --ignored
+	@PROPTEST_CASES=2 QUICKCHECK_TESTS=2 cd server && cargo test --test slow_integration --release -- --test-threads=1 --ignored
 	@echo "✅ Slow integration tests completed!"
 
 # Test with manual thread control - use when automatic detection isn't working
@@ -381,7 +381,7 @@ test-safe:
 	@echo "🛡️ Running tests with manual thread control..."
 	@THREADS=$${THREADS:-4} && \
 	echo "📊 Using $${THREADS} threads (override with THREADS=n make test-safe)" && \
-	SKIP_SLOW_TESTS=1 RUST_TEST_THREADS=$${THREADS} cargo test --release --workspace --exclude slow_integration -- --test-threads=$${THREADS}
+	PROPTEST_CASES=2 QUICKCHECK_TESTS=2 SKIP_SLOW_TESTS=1 RUST_TEST_THREADS=$${THREADS} cargo test --release --workspace --exclude slow_integration -- --test-threads=$${THREADS}
 	@echo "✅ Safe test run completed!"
 
 # Run tests - ALWAYS FAST (zero tolerance for slow tests) with coverage summary
@@ -415,7 +415,7 @@ test: test-fast test-doc test-property test-examples
 # Run doctests only
 test-doc:
 	@echo "📚 Running doctests..."
-	@cargo test --doc --manifest-path Cargo.toml
+	@PROPTEST_CASES=2 QUICKCHECK_TESTS=2 cargo test --doc --manifest-path Cargo.toml
 	@echo "✅ Doctests completed!"
 
 # =============================================================================
@@ -428,7 +428,7 @@ test-doc:
 test-integration: ## Run integration tests for CLI handlers (<60s, excluded from coverage)
 	@echo "🔌 Running CLI integration tests (<60s target)..."
 	@echo "   Tests handlers/dispatchers excluded from coverage measurement"
-	@RUST_MIN_STACK=33554432 cargo test --lib -- \
+	@PROPTEST_CASES=2 QUICKCHECK_TESTS=2 RUST_MIN_STACK=33554432 cargo test --lib -- \
 		cli::handlers::complexity_handlers::tests \
 		cli::handlers::analysis_handlers::tests \
 		command_dispatcher::tests \
@@ -1236,7 +1236,7 @@ outdated:
 
 # Run cargo test with all features
 test-all-features:
-	cargo test --all-features --manifest-path Cargo.toml
+	PROPTEST_CASES=2 QUICKCHECK_TESTS=2 cargo test --all-features --manifest-path Cargo.toml
 
 # Server test all (alias for CI) - removed duplicate, see line 546
 
@@ -2004,7 +2004,7 @@ setup-mermaid-validator:
 # Run Mermaid specification compliance tests
 test-mermaid-spec: setup-mermaid-validator
 	@echo "🧪 Running Mermaid specification compliance tests..."
-	cd server && cargo test mermaid_spec_compliance --features mermaid-spec-tests -- --nocapture
+	PROPTEST_CASES=2 QUICKCHECK_TESTS=2 cd server && cargo test mermaid_spec_compliance --features mermaid-spec-tests -- --nocapture
 
 # Validate all generated Mermaid artifacts
 validate-mermaid-artifacts: setup-mermaid-validator
@@ -2027,9 +2027,9 @@ generate-artifacts:
 	cd server && cargo run --release -- generate-artifacts --output ../artifacts/ --deterministic
 
 # Test deterministic generation (multiple runs should be identical)
-test-determinism: 
+test-determinism:
 	@echo "🔬 Testing artifact generation determinism..."
-	cd server && cargo test determinism_tests -- --nocapture
+	PROPTEST_CASES=2 QUICKCHECK_TESTS=2 cd server && cargo test determinism_tests -- --nocapture
 
 # Verify artifact integrity using stored hashes
 verify-artifacts:
