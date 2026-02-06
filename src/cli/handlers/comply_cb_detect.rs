@@ -56,71 +56,53 @@ pub struct ProfilerAnomaly {
 
 /// Compute line ranges that are inside test code (#[cfg(test)] mod tests { ... })
 /// Returns a HashSet of line indices that should be skipped for production code analysis.
+/// Mark all lines in a brace-delimited block starting at `start`.
+fn mark_braced_block(lines: &[&str], start: usize, result: &mut std::collections::HashSet<usize>) {
+    let mut depth = 0;
+    for k in start..lines.len() {
+        depth += lines[k].matches('{').count();
+        depth = depth.saturating_sub(lines[k].matches('}').count());
+        result.insert(k);
+        if depth == 0 && k > start {
+            break;
+        }
+    }
+}
+
+/// Find the next line containing `needle` within `start..start+window`, return its index.
+fn find_line_within(lines: &[&str], start: usize, window: usize, needle: &str) -> Option<usize> {
+    let end = std::cmp::min(start + window, lines.len());
+    (start..end).find(|&j| lines[j].contains(needle))
+}
+
 pub fn compute_test_code_lines(lines: &[&str]) -> std::collections::HashSet<usize> {
     let mut test_lines = std::collections::HashSet::new();
-    let mut i = 0;
 
-    while i < lines.len() {
+    for i in 0..lines.len() {
         let line = lines[i].trim();
 
         // Detect #[cfg(test)] followed by mod (within next 3 lines)
         if line.starts_with("#[cfg(test)]") {
-            // Find the mod line
-            for j in i..std::cmp::min(i + 4, lines.len()) {
-                if lines[j].contains("mod ") {
-                    // Found test module - track all lines until closing brace
-                    let mut depth = 0;
-                    for k in j..lines.len() {
-                        depth += lines[k].matches('{').count();
-                        depth = depth.saturating_sub(lines[k].matches('}').count());
-                        test_lines.insert(k);
-                        if depth == 0 && k > j && lines[k].contains('}') {
-                            break;
-                        }
-                    }
-                    // Also mark the #[cfg(test)] line
-                    test_lines.insert(i);
-                    break;
-                }
+            if let Some(j) = find_line_within(lines, i, 4, "mod ") {
+                mark_braced_block(lines, j, &mut test_lines);
+                test_lines.insert(i);
             }
         }
 
-        // Also detect standalone `mod tests {` without #[cfg(test)] (common pattern)
+        // Detect standalone `mod tests {` without #[cfg(test)]
         if (line.starts_with("mod tests") || line.starts_with("pub mod tests"))
             && line.contains('{')
         {
-            let mut depth = 0;
-            for k in i..lines.len() {
-                depth += lines[k].matches('{').count();
-                depth = depth.saturating_sub(lines[k].matches('}').count());
-                test_lines.insert(k);
-                if depth == 0 && k > i && lines[k].contains('}') {
-                    break;
-                }
-            }
+            mark_braced_block(lines, i, &mut test_lines);
         }
 
         // Detect #[test] function (individual test functions)
         if line.starts_with("#[test]") {
             test_lines.insert(i);
-            // Mark the function that follows
-            for j in i + 1..std::cmp::min(i + 4, lines.len()) {
-                if lines[j].contains("fn ") {
-                    let mut depth = 0;
-                    for k in j..lines.len() {
-                        depth += lines[k].matches('{').count();
-                        depth = depth.saturating_sub(lines[k].matches('}').count());
-                        test_lines.insert(k);
-                        if depth == 0 && k > j {
-                            break;
-                        }
-                    }
-                    break;
-                }
+            if let Some(j) = find_line_within(lines, i + 1, 4, "fn ") {
+                mark_braced_block(lines, j, &mut test_lines);
             }
         }
-
-        i += 1;
     }
 
     test_lines
@@ -195,6 +177,33 @@ pub fn walkdir_rs_files(dir: &Path) -> Result<Vec<std::path::PathBuf>, std::io::
 
 /// Scan for CB-021 (SIMD intrinsics without #[target_feature])
 /// NOTE: Skips test code (#[cfg(test)], mod tests, #[test]) - test code is exempt
+fn compute_target_feature_protected_lines(lines: &[&str]) -> std::collections::HashSet<usize> {
+    let mut protected = std::collections::HashSet::new();
+    for (i, line) in lines.iter().enumerate() {
+        let is_protected = line.trim().starts_with("#[target_feature")
+            || (line.contains("#[cfg(") && line.contains("target_feature"));
+        if !is_protected {
+            continue;
+        }
+        // Find the function this attribute applies to and mark its body
+        let mut depth = 0;
+        for j in i..lines.len() {
+            if lines[j].contains("fn ") && depth == 0 {
+                for k in j..lines.len() {
+                    depth += lines[k].matches('{').count();
+                    depth = depth.saturating_sub(lines[k].matches('}').count());
+                    protected.insert(k);
+                    if depth == 0 && k > j {
+                        break;
+                    }
+                }
+                break;
+            }
+        }
+    }
+    protected
+}
+
 pub fn detect_cb021_simd_without_target_feature(project_path: &Path) -> Vec<CbPatternViolation> {
     let mut violations = Vec::new();
 
@@ -203,98 +212,49 @@ pub fn detect_cb021_simd_without_target_feature(project_path: &Path) -> Vec<CbPa
         return violations;
     }
 
-    // Common SIMD intrinsic patterns - must be actual intrinsic calls
     // Use concat! to avoid self-matching when this file is scanned
-    let simd_patterns_needing_target_feature = [
-        concat!("_mm", "256_"),
-        concat!("_mm", "512_"), // x86 AVX/AVX-512 (not SSE which is baseline)
+    let intrinsic_patterns = [
+        (concat!("_mm", "256_"), "SIMD intrinsic"),
+        (concat!("_mm", "512_"), "SIMD intrinsic"),
     ];
-    // Portable SIMD - require :: suffix to distinguish from identifiers
-    // Use concat! to avoid self-matching when this file is scanned
-    let portable_simd_patterns = [
-        concat!("i8x", "16::"),
-        concat!("i16x", "8::"),
-        concat!("i32x", "4::"),
-        concat!("f32x", "4::"),
-        concat!("Simd", "::<"),
+    let portable_patterns = [
+        (concat!("i8x", "16::"), "Portable SIMD"),
+        (concat!("i16x", "8::"), "Portable SIMD"),
+        (concat!("i32x", "4::"), "Portable SIMD"),
+        (concat!("f32x", "4::"), "Portable SIMD"),
+        (concat!("Simd", "::<"), "Portable SIMD"),
     ];
 
-    if let Ok(entries) = walkdir_rs_files(&src_dir) {
-        for entry in entries {
-            if let Ok(content) = fs::read_to_string(&entry) {
-                let lines: Vec<&str> = content.lines().collect();
-                let test_lines = compute_test_code_lines(&lines);
+    let entries = match walkdir_rs_files(&src_dir) {
+        Ok(e) => e,
+        Err(_) => return violations,
+    };
 
-                // Find functions with #[target_feature] attribute
-                let mut protected_lines: std::collections::HashSet<usize> =
-                    std::collections::HashSet::new();
+    for entry in entries {
+        let content = match fs::read_to_string(&entry) {
+            Ok(c) => c,
+            Err(_) => continue,
+        };
+        let lines: Vec<&str> = content.lines().collect();
+        let test_lines = compute_test_code_lines(&lines);
+        let protected_lines = compute_target_feature_protected_lines(&lines);
+        let file_path = entry.display().to_string();
 
-                for (i, line) in lines.iter().enumerate() {
-                    // Both #[target_feature] and #[cfg(target_feature = "...")] protect SIMD code
-                    let is_protected = line.trim().starts_with("#[target_feature")
-                        || (line.contains("#[cfg(") && line.contains("target_feature"));
+        for (line_num, line) in lines.iter().enumerate() {
+            if test_lines.contains(&line_num) || protected_lines.contains(&line_num) {
+                continue;
+            }
 
-                    if is_protected {
-                        // Find the function this attribute applies to
-                        let mut depth = 0;
-                        for j in i..lines.len() {
-                            if lines[j].contains("fn ") && depth == 0 {
-                                // Mark all lines in this function as protected
-                                for k in j..lines.len() {
-                                    depth += lines[k].matches('{').count();
-                                    depth = depth.saturating_sub(lines[k].matches('}').count());
-                                    protected_lines.insert(k);
-                                    if depth == 0 && k > j {
-                                        break;
-                                    }
-                                }
-                                break;
-                            }
-                        }
-                    }
-                }
-
-                for (line_num, line) in lines.iter().enumerate() {
-                    // Skip test code
-                    if test_lines.contains(&line_num) {
-                        continue;
-                    }
-                    // Skip protected functions
-                    if protected_lines.contains(&line_num) {
-                        continue;
-                    }
-
-                    // Check for SIMD intrinsics that need target_feature
-                    for pattern in &simd_patterns_needing_target_feature {
-                        if line.contains(pattern) {
-                            violations.push(CbPatternViolation {
-                                pattern_id: "CB-021".to_string(),
-                                file: entry.display().to_string(),
-                                line: line_num + 1,
-                                description: format!(
-                                    "SIMD intrinsic {} without #[target_feature]",
-                                    pattern
-                                ),
-                                severity: Severity::Warning,
-                            });
-                        }
-                    }
-
-                    // Check portable SIMD patterns
-                    for pattern in &portable_simd_patterns {
-                        if line.contains(pattern) {
-                            violations.push(CbPatternViolation {
-                                pattern_id: "CB-021".to_string(),
-                                file: entry.display().to_string(),
-                                line: line_num + 1,
-                                description: format!(
-                                    "Portable SIMD {} without #[target_feature]",
-                                    pattern
-                                ),
-                                severity: Severity::Warning,
-                            });
-                        }
-                    }
+            let all_patterns = intrinsic_patterns.iter().chain(portable_patterns.iter());
+            for &(pattern, kind) in all_patterns {
+                if line.contains(pattern) {
+                    violations.push(CbPatternViolation {
+                        pattern_id: "CB-021".to_string(),
+                        file: file_path.clone(),
+                        line: line_num + 1,
+                        description: format!("{kind} {pattern} without #[target_feature]"),
+                        severity: Severity::Warning,
+                    });
                 }
             }
         }
@@ -642,6 +602,44 @@ pub fn detect_cb120_nan_unsafe_comparison(project_path: &Path) -> Vec<CbPatternV
 /// Pattern: `mutex.lock().unwrap()` or `rwlock.read/write().unwrap()`
 /// Safe alternatives: `unwrap_or_else(|e| e.into_inner())`, `parking_lot`
 /// Source: OIP Tarantula analysis - 10 instances in git.rs
+fn check_lock_poisoning_line(
+    trimmed: &str,
+    has_rwlock_import: bool,
+    file_path: &str,
+    line_num: usize,
+) -> Option<CbPatternViolation> {
+    let is_safe = trimmed.contains("unwrap_or_else") || trimmed.contains("into_inner");
+
+    // Check for mutex.lock().unwrap() pattern
+    if trimmed.contains(".lock()") && trimmed.contains(".unwrap()") && !is_safe {
+        return Some(CbPatternViolation {
+            pattern_id: "CB-121".to_string(),
+            file: file_path.to_string(),
+            line: line_num + 1,
+            description: "Lock poisoning: .lock().unwrap() panics if another thread panicked. Use unwrap_or_else(|e| e.into_inner()) or parking_lot".to_string(),
+            severity: Severity::Warning,
+        });
+    }
+
+    // Check for rwlock read/write unwrap patterns
+    let is_rwlock_op = (trimmed.contains(".read()") || trimmed.contains(".write()"))
+        && trimmed.contains(".unwrap()")
+        && !is_safe;
+
+    if is_rwlock_op && (trimmed.contains("RwLock") || has_rwlock_import) {
+        let op = if trimmed.contains(".read()") { "read" } else { "write" };
+        return Some(CbPatternViolation {
+            pattern_id: "CB-121".to_string(),
+            file: file_path.to_string(),
+            line: line_num + 1,
+            description: format!("Lock poisoning: .{op}().unwrap() panics if another thread panicked. Use unwrap_or_else(|e| e.into_inner())"),
+            severity: Severity::Warning,
+        });
+    }
+
+    None
+}
+
 pub fn detect_cb121_lock_poisoning(project_path: &Path) -> Vec<CbPatternViolation> {
     let mut violations = Vec::new();
 
@@ -650,79 +648,40 @@ pub fn detect_cb121_lock_poisoning(project_path: &Path) -> Vec<CbPatternViolatio
         return violations;
     }
 
-    if let Ok(entries) = walkdir_rs_files(&src_dir) {
-        for entry in entries {
-            if let Ok(content) = fs::read_to_string(&entry) {
-                let lines: Vec<&str> = content.lines().collect();
-                let test_lines = compute_test_code_lines(&lines);
+    let entries = match walkdir_rs_files(&src_dir) {
+        Ok(e) => e,
+        Err(_) => return violations,
+    };
 
-                for (line_num, line) in lines.iter().enumerate() {
-                    // Skip test code
-                    if test_lines.contains(&line_num) {
-                        continue;
-                    }
+    for entry in entries {
+        let content = match fs::read_to_string(&entry) {
+            Ok(c) => c,
+            Err(_) => continue,
+        };
+        let lines: Vec<&str> = content.lines().collect();
+        let test_lines = compute_test_code_lines(&lines);
+        let has_rwlock_import = content.contains("std::sync::RwLock");
+        let file_path = entry.display().to_string();
 
-                    let trimmed = line.trim();
+        for (line_num, line) in lines.iter().enumerate() {
+            if test_lines.contains(&line_num) {
+                continue;
+            }
+            let trimmed = line.trim();
 
-                    // Skip comment lines to avoid false positives from documentation
-                    if trimmed.starts_with("//") || trimmed.starts_with("/*") || trimmed.starts_with("*") {
-                        continue;
-                    }
-
-                    // Skip string literals containing the pattern (error messages, docs)
-                    if let Some(idx) = trimmed.find(".lock()") {
-                        let before = &trimmed[..idx];
-                        let quote_count = before.chars().filter(|&c| c == '"').count();
-                        if quote_count % 2 == 1 {
-                            continue;
-                        }
-                    }
-
-                    // Check for mutex.lock().unwrap() pattern
-                    if trimmed.contains(".lock()") && trimmed.contains(".unwrap()") {
-                        // Skip safe patterns
-                        if trimmed.contains("unwrap_or_else") || trimmed.contains("into_inner") {
-                            continue;
-                        }
-                        violations.push(CbPatternViolation {
-                            pattern_id: "CB-121".to_string(),
-                            file: entry.display().to_string(),
-                            line: line_num + 1,
-                            description: "Lock poisoning: .lock().unwrap() panics if another thread panicked. Use unwrap_or_else(|e| e.into_inner()) or parking_lot".to_string(),
-                            severity: Severity::Warning,
-                        });
-                    }
-
-                    // Check for rwlock.read().unwrap() pattern
-                    if trimmed.contains(".read()") && trimmed.contains(".unwrap()") {
-                        // Avoid false positives on file reads - check for lock context
-                        if (trimmed.contains("RwLock") || content.contains("std::sync::RwLock") || content.contains("use std::sync::RwLock"))
-                            && !trimmed.contains("unwrap_or_else") && !trimmed.contains("into_inner") {
-                                violations.push(CbPatternViolation {
-                                    pattern_id: "CB-121".to_string(),
-                                    file: entry.display().to_string(),
-                                    line: line_num + 1,
-                                    description: "Lock poisoning: .read().unwrap() panics if another thread panicked. Use unwrap_or_else(|e| e.into_inner())".to_string(),
-                                    severity: Severity::Warning,
-                                });
-                            }
-                    }
-
-                    // Check for rwlock.write().unwrap() pattern
-                    if trimmed.contains(".write()") && trimmed.contains(".unwrap()") {
-                        // Avoid false positives on file writes - check for lock context
-                        if (trimmed.contains("RwLock") || content.contains("std::sync::RwLock") || content.contains("use std::sync::RwLock"))
-                            && !trimmed.contains("unwrap_or_else") && !trimmed.contains("into_inner") {
-                                violations.push(CbPatternViolation {
-                                    pattern_id: "CB-121".to_string(),
-                                    file: entry.display().to_string(),
-                                    line: line_num + 1,
-                                    description: "Lock poisoning: .write().unwrap() panics if another thread panicked. Use unwrap_or_else(|e| e.into_inner())".to_string(),
-                                    severity: Severity::Warning,
-                                });
-                            }
-                    }
+            // Skip comments and string literals
+            if trimmed.starts_with("//") || trimmed.starts_with("/*") || trimmed.starts_with("*") {
+                continue;
+            }
+            if let Some(idx) = trimmed.find(".lock()") {
+                let quote_count = trimmed[..idx].chars().filter(|&c| c == '"').count();
+                if quote_count % 2 == 1 {
+                    continue;
                 }
+            }
+
+            if let Some(v) = check_lock_poisoning_line(trimmed, has_rwlock_import, &file_path, line_num) {
+                violations.push(v);
             }
         }
     }
@@ -734,6 +693,43 @@ pub fn detect_cb121_lock_poisoning(project_path: &Path) -> Vec<CbPatternViolatio
 /// Pattern: `serde_json::from_str().unwrap()` or `.expect()`
 /// Safe alternatives: `?` operator, `match`, `unwrap_or_default()`
 /// Source: OIP Tarantula analysis - 15+ instances in tarantula.rs, github.rs, citl.rs
+fn check_serde_line(
+    trimmed: &str,
+    serde_patterns: &[&str],
+    file_path: &str,
+    line_num: usize,
+    violations: &mut Vec<CbPatternViolation>,
+) {
+    for &pattern in serde_patterns {
+        if !trimmed.contains(pattern) {
+            continue;
+        }
+        // Skip if pattern is inside a string literal
+        if let Some(idx) = trimmed.find(pattern) {
+            let quote_count = trimmed[..idx].chars().filter(|&c| c == '"').count();
+            if quote_count % 2 == 1 {
+                continue;
+            }
+        }
+        let has_unwrap = trimmed.contains(".unwrap()") && !trimmed.contains("unwrap_or");
+        let has_expect = trimmed.contains(".expect(");
+        let suffix = if has_unwrap {
+            "unwrap()"
+        } else if has_expect {
+            "expect()"
+        } else {
+            continue;
+        };
+        violations.push(CbPatternViolation {
+            pattern_id: "CB-122".to_string(),
+            file: file_path.to_string(),
+            line: line_num + 1,
+            description: format!("Serde unsafe: {pattern}().{suffix} panics on malformed input. Use ? operator or proper error handling"),
+            severity: Severity::Error,
+        });
+    }
+}
+
 pub fn detect_cb122_serde_safety(project_path: &Path) -> Vec<CbPatternViolation> {
     let mut violations = Vec::new();
 
@@ -742,80 +738,35 @@ pub fn detect_cb122_serde_safety(project_path: &Path) -> Vec<CbPatternViolation>
         return violations;
     }
 
-    // Serde-related parsing functions to check
     let serde_patterns = [
-        "serde_json::from_str",
-        "serde_json::from_slice",
-        "serde_json::from_reader",
-        "serde_yaml::from_str",
-        "serde_yaml::from_slice",
-        "serde_yaml::from_reader",
-        "toml::from_str",
-        "toml::de::from_str",
-        "ron::from_str",
+        "serde_json::from_str", "serde_json::from_slice", "serde_json::from_reader",
+        "serde_yaml::from_str", "serde_yaml::from_slice", "serde_yaml::from_reader",
+        "toml::from_str", "toml::de::from_str", "ron::from_str",
     ];
 
-    if let Ok(entries) = walkdir_rs_files(&src_dir) {
-        for entry in entries {
-            if let Ok(content) = fs::read_to_string(&entry) {
-                let lines: Vec<&str> = content.lines().collect();
-                let test_lines = compute_test_code_lines(&lines);
+    let entries = match walkdir_rs_files(&src_dir) {
+        Ok(e) => e,
+        Err(_) => return violations,
+    };
 
-                for (line_num, line) in lines.iter().enumerate() {
-                    // Skip test code - panicking on bad input in tests is fine
-                    if test_lines.contains(&line_num) {
-                        continue;
-                    }
+    for entry in entries {
+        let content = match fs::read_to_string(&entry) {
+            Ok(c) => c,
+            Err(_) => continue,
+        };
+        let lines: Vec<&str> = content.lines().collect();
+        let test_lines = compute_test_code_lines(&lines);
+        let file_path = entry.display().to_string();
 
-                    let trimmed = line.trim();
-
-                    // Skip comment lines to avoid false positives from documentation
-                    if trimmed.starts_with("//") || trimmed.starts_with("/*") || trimmed.starts_with("*") {
-                        continue;
-                    }
-
-                    for pattern in &serde_patterns {
-                        // Skip if pattern is inside a string literal (error messages)
-                        if let Some(idx) = trimmed.find(pattern) {
-                            let before = &trimmed[..idx];
-                            let quote_count = before.chars().filter(|&c| c == '"').count();
-                            if quote_count % 2 == 1 {
-                                continue;
-                            }
-                        }
-
-                        if trimmed.contains(pattern) {
-                            // Check for unsafe unwrap patterns
-                            if trimmed.contains(".unwrap()") && !trimmed.contains("unwrap_or") {
-                                violations.push(CbPatternViolation {
-                                    pattern_id: "CB-122".to_string(),
-                                    file: entry.display().to_string(),
-                                    line: line_num + 1,
-                                    description: format!(
-                                        "Serde unsafe: {}().unwrap() panics on malformed input. Use ? operator or proper error handling",
-                                        pattern
-                                    ),
-                                    severity: Severity::Error,
-                                });
-                            }
-
-                            // Check for expect patterns
-                            if trimmed.contains(".expect(") {
-                                violations.push(CbPatternViolation {
-                                    pattern_id: "CB-122".to_string(),
-                                    file: entry.display().to_string(),
-                                    line: line_num + 1,
-                                    description: format!(
-                                        "Serde unsafe: {}().expect() panics on malformed input. Use ? operator or proper error handling",
-                                        pattern
-                                    ),
-                                    severity: Severity::Error,
-                                });
-                            }
-                        }
-                    }
-                }
+        for (line_num, line) in lines.iter().enumerate() {
+            if test_lines.contains(&line_num) {
+                continue;
             }
+            let trimmed = line.trim();
+            if trimmed.starts_with("//") || trimmed.starts_with("/*") || trimmed.starts_with("*") {
+                continue;
+            }
+            check_serde_line(trimmed, &serde_patterns, &file_path, line_num, &mut violations);
         }
     }
 
@@ -1099,6 +1050,7 @@ fn check_makefile_test_targets(project_path: &Path) -> Vec<CbPatternViolation> {
     let mut in_test_target = false;
     let mut test_target_line = 0;
     let mut has_proptest_cases = false;
+    let mut has_recipe_body = false;
     let file_path = makefile_path.display().to_string();
 
     for (line_num, line) in content.lines().enumerate() {
@@ -1106,14 +1058,21 @@ fn check_makefile_test_targets(project_path: &Path) -> Vec<CbPatternViolation> {
             in_test_target = true;
             test_target_line = line_num + 1;
             has_proptest_cases = false;
+            has_recipe_body = false;
         }
 
         if in_test_target {
             if line.contains("PROPTEST_CASES") || line.contains("QUICKCHECK_TESTS") {
                 has_proptest_cases = true;
             }
+            // Detect recipe body: lines starting with tab are recipe commands
+            if line.starts_with('\t') || line.starts_with("    @") {
+                has_recipe_body = true;
+            }
             if is_end_of_makefile_target_generic(line, "test") {
-                if !has_proptest_cases && test_target_line > 0 {
+                // Only flag targets that have recipe commands but no PROPTEST_CASES.
+                // Skip alias-only targets (e.g., "test-quick: test-fast" with no recipe body).
+                if !has_proptest_cases && test_target_line > 0 && has_recipe_body {
                     violations.push(CbPatternViolation {
                         pattern_id: "CB-126-D".to_string(),
                         file: file_path.clone(),
@@ -1590,7 +1549,10 @@ const SOVEREIGN_CRATES: &[&str] = &[
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct DependencyCountReport {
     pub direct_count: usize,
+    /// Total packages in Cargo.lock (includes dev-dep transitive)
     pub transitive_count: usize,
+    /// Production-only transitive count (excludes dev-dep transitive), used for scoring
+    pub prod_transitive_count: Option<usize>,
     pub score: u8,  // 0-5 points based on rust-project-score thresholds
     /// Crates with multiple versions in Cargo.lock
     pub duplicate_crates: Vec<DuplicateCrate>,
@@ -1625,8 +1587,11 @@ pub struct DependencyTrend {
 struct DependencyCache {
     /// Cargo.lock file mtime (unix timestamp)
     cargo_lock_mtime: u64,
-    /// Cached transitive count
+    /// Cached transitive count (all packages from Cargo.lock)
     transitive_count: usize,
+    /// Cached production-only transitive count (via cargo tree --no-dev)
+    #[serde(default)]
+    prod_transitive_count: Option<usize>,
     /// Cached duplicate crates
     duplicate_crates: Vec<DuplicateCrate>,
 }
@@ -1715,20 +1680,54 @@ fn parse_cargo_lock(cargo_lock_path: &Path) -> (usize, Vec<DuplicateCrate>) {
     (package_count, duplicates)
 }
 
+/// Count production-only transitive dependencies using `cargo tree -e no-dev`
+/// Returns None if cargo tree is unavailable or fails
+fn count_production_transitive(project_path: &Path) -> Option<usize> {
+    let output = std::process::Command::new("cargo")
+        .args(["tree", "-e", "no-dev", "--prefix=none"])
+        .current_dir(project_path)
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::null())
+        .output()
+        .ok()?;
+
+    if !output.status.success() {
+        return None;
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let mut unique_packages: std::collections::HashSet<String> =
+        std::collections::HashSet::new();
+    for line in stdout.lines() {
+        let trimmed = line.trim();
+        if !trimmed.is_empty() {
+            // cargo tree --prefix=none outputs "crate_name v1.2.3"
+            if let Some(name) = trimmed.split_whitespace().next() {
+                unique_packages.insert(name.to_string());
+            }
+        }
+    }
+
+    Some(unique_packages.len())
+}
+
 /// Get dependency analysis with O(1) caching (issue #148 fix)
 fn get_cached_dependency_analysis(
     project_path: &Path,
     cargo_lock_path: &Path,
-) -> (usize, Vec<DuplicateCrate>) {
+) -> (usize, Option<usize>, Vec<DuplicateCrate>) {
     // Try to use cached results first
     if let Some(cache) = DependencyCache::load(project_path) {
         if cache.is_valid(cargo_lock_path) {
-            return (cache.transitive_count, cache.duplicate_crates);
+            return (cache.transitive_count, cache.prod_transitive_count, cache.duplicate_crates);
         }
     }
 
     // Cache miss or invalid - parse Cargo.lock
     let (transitive_count, duplicate_crates) = parse_cargo_lock(cargo_lock_path);
+
+    // Get production-only count via cargo tree
+    let prod_transitive_count = count_production_transitive(project_path);
 
     // Save to cache
     let mtime = fs::metadata(cargo_lock_path)
@@ -1739,11 +1738,12 @@ fn get_cached_dependency_analysis(
     let cache = DependencyCache {
         cargo_lock_mtime: mtime,
         transitive_count,
+        prod_transitive_count,
         duplicate_crates: duplicate_crates.clone(),
     };
     cache.save(project_path);
 
-    (transitive_count, duplicate_crates)
+    (transitive_count, prod_transitive_count, duplicate_crates)
 }
 
 /// CB-081: Detect excessive dependency counts (enhanced)
@@ -1764,8 +1764,12 @@ pub fn detect_cb081_dependency_count(project_path: &Path) -> DependencyCountRepo
         analyze_cargo_toml(&cargo_toml_path);
 
     // CB-081-A & CB-081-B: Use O(1) cached analysis (issue #148 fix)
-    let (transitive_count, duplicate_crates) =
+    let (transitive_count, prod_transitive_count, duplicate_crates) =
         get_cached_dependency_analysis(project_path, &cargo_lock_path);
+
+    // Use production-only count for scoring (excludes dev-dep transitive)
+    // Fall back to total Cargo.lock count if cargo tree is unavailable
+    let effective_transitive = prod_transitive_count.unwrap_or(transitive_count);
 
     // CB-081-C: Calculate feature gating percentage
     let feature_gated_pct = if direct_count > 0 {
@@ -1780,35 +1784,35 @@ pub fn detect_cb081_dependency_count(project_path: &Path) -> DependencyCountRepo
     // CB-081-E: Load trend data
     let trend = load_dependency_trend(project_path);
 
-    // Calculate base score
-    let mut score = calculate_dependency_score(direct_count, transitive_count);
+    // Calculate base score using production-only transitive count
+    let mut score = calculate_dependency_score(direct_count, effective_transitive);
 
     // Apply bonuses (capped at 5 total)
     if feature_gated_pct >= 50.0 && score < 5 {
         score = std::cmp::min(score + 1, 5);
     }
 
-    // Generate violations based on severity
+    // Generate violations based on severity (using production-only transitive count)
     // CB-081-A: Count thresholds
-    if direct_count > 50 || transitive_count > 250 {
+    if direct_count > 50 || effective_transitive > 250 {
         violations.push(CbPatternViolation {
             pattern_id: "CB-081-A".to_string(),
             file: cargo_toml_path.display().to_string(),
             line: 0,
             description: format!(
-                "Critical: {} direct deps (max 50), {} transitive deps (max 250)",
-                direct_count, transitive_count
+                "Critical: {} direct deps (max 50), {} prod transitive deps (max 250)",
+                direct_count, effective_transitive
             ),
             severity: Severity::Error,
         });
-    } else if direct_count > 40 || transitive_count > 200 {
+    } else if direct_count > 40 || effective_transitive > 200 {
         violations.push(CbPatternViolation {
             pattern_id: "CB-081-A".to_string(),
             file: cargo_toml_path.display().to_string(),
             line: 0,
             description: format!(
-                "High: {} direct (threshold 40), {} transitive (threshold 200)",
-                direct_count, transitive_count
+                "High: {} direct (threshold 40), {} prod transitive (threshold 200)",
+                direct_count, effective_transitive
             ),
             severity: Severity::Warning,
         });
@@ -1865,12 +1869,13 @@ pub fn detect_cb081_dependency_count(project_path: &Path) -> DependencyCountRepo
         }
     }
 
-    // Save current metrics for future trend tracking
-    let _ = save_dependency_metrics(project_path, direct_count, transitive_count);
+    // Save current metrics for future trend tracking (use effective count)
+    let _ = save_dependency_metrics(project_path, direct_count, effective_transitive);
 
     DependencyCountReport {
         direct_count,
         transitive_count,
+        prod_transitive_count,
         score,
         duplicate_crates,
         feature_gated_count,

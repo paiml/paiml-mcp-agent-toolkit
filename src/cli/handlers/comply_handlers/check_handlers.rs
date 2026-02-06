@@ -1473,9 +1473,15 @@ pub(crate) fn check_dependency_count(project_path: &Path) -> ComplianceCheck {
     }
 
     // Build enhanced message with all metrics
+    // Show production-only transitive count (used for scoring), with total in parentheses
+    let transitive_display = if let Some(prod) = report.prod_transitive_count {
+        format!("{} prod transitive ({} total w/dev)", prod, report.transitive_count)
+    } else {
+        format!("{} transitive", report.transitive_count)
+    };
     let mut details = vec![format!(
-        "{} direct, {} transitive",
-        report.direct_count, report.transitive_count
+        "{} direct, {}",
+        report.direct_count, transitive_display
     )];
 
     // Add trend info if available

@@ -211,10 +211,43 @@ pub(crate) fn build_sovereign_result(issues: &[String], good_patterns: &[String]
 
 /// Check PAIML dependency workspace state (dirty/clean/version drift)
 /// Detects when local PAIML projects have uncommitted changes or version mismatches
-pub(crate) fn check_paiml_deps_workspace(project_path: &Path) -> ComplianceCheck {
-    use std::process::Command;
+fn make_paiml_check(status: CheckStatus, message: String, severity: Severity) -> ComplianceCheck {
+    ComplianceCheck {
+        name: "PAIML Deps Workspace".to_string(),
+        status,
+        message,
+        severity,
+    }
+}
 
-    // Known PAIML/Sovereign stack packages
+fn classify_local_deps(src_dir: &Path, paiml_deps: &[&str]) -> (Vec<String>, Vec<String>) {
+    use std::process::Command;
+    let mut dirty = Vec::new();
+    let mut clean = Vec::new();
+
+    for dep in paiml_deps {
+        let dep_path = src_dir.join(dep);
+        if !dep_path.exists() {
+            continue;
+        }
+        let Ok(out) = Command::new("git")
+            .args(["status", "--porcelain"])
+            .current_dir(&dep_path)
+            .output()
+        else {
+            continue;
+        };
+        let status = String::from_utf8_lossy(&out.stdout);
+        if status.trim().is_empty() {
+            clean.push(dep.to_string());
+        } else {
+            dirty.push(dep.to_string());
+        }
+    }
+    (dirty, clean)
+}
+
+pub(crate) fn check_paiml_deps_workspace(project_path: &Path) -> ComplianceCheck {
     const PAIML_PACKAGES: &[&str] = &[
         "trueno", "trueno-graph", "trueno-rag", "trueno-viz", "trueno-db",
         "trueno-zram-core", "trueno-ublk",
@@ -228,123 +261,34 @@ pub(crate) fn check_paiml_deps_workspace(project_path: &Path) -> ComplianceCheck
     ];
 
     let cargo_toml = project_path.join("Cargo.toml");
-    if !cargo_toml.exists() {
-        return ComplianceCheck {
-            name: "PAIML Deps Workspace".to_string(),
-            status: CheckStatus::Skip,
-            message: "No Cargo.toml found".to_string(),
-            severity: Severity::Info,
-        };
-    }
-
     let content = match fs::read_to_string(&cargo_toml) {
         Ok(c) => c,
-        Err(_) => {
-            return ComplianceCheck {
-                name: "PAIML Deps Workspace".to_string(),
-                status: CheckStatus::Skip,
-                message: "Could not read Cargo.toml".to_string(),
-                severity: Severity::Info,
-            };
-        }
+        Err(_) => return make_paiml_check(CheckStatus::Skip, "No Cargo.toml found".into(), Severity::Info),
     };
 
-    // Find PAIML dependencies in this project
-    let mut paiml_deps: Vec<&str> = Vec::new();
-    for pkg in PAIML_PACKAGES {
-        // Check for dependency lines like: trueno = "0.11" or trueno = { version = "0.11" }
-        if content.contains(&format!("{} = ", pkg)) || content.contains(&format!("\"{}\"", pkg)) {
-            paiml_deps.push(pkg);
-        }
-    }
+    let paiml_deps: Vec<&str> = PAIML_PACKAGES.iter()
+        .filter(|pkg| content.contains(&format!("{} = ", pkg)) || content.contains(&format!("\"{}\"", pkg)))
+        .copied()
+        .collect();
 
     if paiml_deps.is_empty() {
-        return ComplianceCheck {
-            name: "PAIML Deps Workspace".to_string(),
-            status: CheckStatus::Skip,
-            message: "No PAIML stack dependencies found".to_string(),
-            severity: Severity::Info,
-        };
+        return make_paiml_check(CheckStatus::Skip, "No PAIML stack dependencies found".into(), Severity::Info);
     }
 
-    // Check local workspace state for each PAIML dep
-    let home = match dirs::home_dir() {
-        Some(h) => h,
-        None => {
-            return ComplianceCheck {
-                name: "PAIML Deps Workspace".to_string(),
-                status: CheckStatus::Skip,
-                message: "Could not determine home directory".to_string(),
-                severity: Severity::Info,
-            };
-        }
+    let Some(home) = dirs::home_dir() else {
+        return make_paiml_check(CheckStatus::Skip, "Could not determine home directory".into(), Severity::Info);
     };
-    let src_dir = home.join("src");
 
-    let mut dirty_deps: Vec<String> = Vec::new();
-    let mut clean_deps: Vec<String> = Vec::new();
-
-    for dep in &paiml_deps {
-        let dep_path = src_dir.join(dep);
-        if !dep_path.exists() {
-            continue; // Not a local checkout
-        }
-
-        // Check git status
-        let output = Command::new("git")
-            .args(["status", "--porcelain"])
-            .current_dir(&dep_path)
-            .output();
-
-        match output {
-            Ok(out) => {
-                let status = String::from_utf8_lossy(&out.stdout);
-                if status.trim().is_empty() {
-                    clean_deps.push(dep.to_string());
-                } else {
-                    dirty_deps.push(dep.to_string());
-                }
-            }
-            Err(_) => {
-                // Not a git repo or git not available
-                continue;
-            }
-        }
-    }
-
+    let (dirty_deps, clean_deps) = classify_local_deps(&home.join("src"), &paiml_deps);
     let total_local = dirty_deps.len() + clean_deps.len();
 
     if total_local == 0 {
-        return ComplianceCheck {
-            name: "PAIML Deps Workspace".to_string(),
-            status: CheckStatus::Pass,
-            message: format!("{} PAIML deps (no local checkouts in ~/src)", paiml_deps.len()),
-            severity: Severity::Info,
-        };
+        return make_paiml_check(CheckStatus::Pass, format!("{} PAIML deps (no local checkouts in ~/src)", paiml_deps.len()), Severity::Info);
     }
-
     if dirty_deps.is_empty() {
-        ComplianceCheck {
-            name: "PAIML Deps Workspace".to_string(),
-            status: CheckStatus::Pass,
-            message: format!(
-                "{} PAIML deps, {} local checkouts (all clean)",
-                paiml_deps.len(),
-                total_local
-            ),
-            severity: Severity::Info,
-        }
+        make_paiml_check(CheckStatus::Pass, format!("{} PAIML deps, {} local checkouts (all clean)", paiml_deps.len(), total_local), Severity::Info)
     } else {
-        ComplianceCheck {
-            name: "PAIML Deps Workspace".to_string(),
-            status: CheckStatus::Warn,
-            message: format!(
-                "{} dirty: {} (using crates.io versions for safety)",
-                dirty_deps.len(),
-                dirty_deps.join(", ")
-            ),
-            severity: Severity::Warning,
-        }
+        make_paiml_check(CheckStatus::Warn, format!("{} dirty: {} (using crates.io versions for safety)", dirty_deps.len(), dirty_deps.join(", ")), Severity::Warning)
     }
 }
 
@@ -399,9 +343,21 @@ pub(crate) fn check_file_health(project_path: &Path) -> ComplianceCheck {
         let lines = content.lines().count();
 
         // Quick categorization without full analysis
-        if lines > 2000 {
+        // Test-only files (in tests/ dir or >80% test code) get higher thresholds
+        // since test files naturally grow large — penalizing them discourages testing
+        let is_test_file = file_path
+            .to_string_lossy()
+            .contains("/tests/")
+            || file_path
+                .file_name()
+                .map(|f| f.to_string_lossy().starts_with("test"))
+                .unwrap_or(false);
+        let critical_threshold = if is_test_file { 4000 } else { 2000 };
+        let problem_threshold = if is_test_file { 2000 } else { 1000 };
+
+        if lines > critical_threshold {
             critical_count += 1;
-        } else if lines > 1000 {
+        } else if lines > problem_threshold {
             problem_count += 1;
         }
         if lines > 500 {
@@ -504,50 +460,44 @@ pub(crate) fn estimate_test_lines(content: &str) -> usize {
 }
 
 /// Estimate average cyclomatic complexity by counting control flow statements
+fn count_line_complexity(trimmed: &str) -> u32 {
+    let flow_keywords: &[(&str, &str)] = &[
+        ("if ", " if "), ("else if ", "} else if "),
+        ("match ", " match "), ("for ", " for "),
+        ("while ", " while "), ("loop ", " loop "),
+    ];
+    let mut count = 0u32;
+    for &(prefix, infix) in flow_keywords {
+        if trimmed.starts_with(prefix) || trimmed.contains(infix) {
+            count += 1;
+        }
+    }
+    if trimmed.contains("&&") || trimmed.contains("||") {
+        count += 1;
+    }
+    if trimmed.contains('?') && !trimmed.contains("//") {
+        count += 1;
+    }
+    count
+}
+
 pub(crate) fn estimate_avg_complexity(content: &str) -> f32 {
-    let mut total_complexity = 1; // Base complexity
-    let mut function_count = 0;
+    let mut total_complexity = 1u32; // Base complexity
+    let mut function_count = 0u32;
 
     for line in content.lines() {
         let trimmed = line.trim();
-
-        // Count function definitions
-        if trimmed.starts_with("fn ") || trimmed.starts_with("pub fn ") ||
-           trimmed.starts_with("async fn ") || trimmed.starts_with("pub async fn ") {
+        if trimmed.starts_with("fn ") || trimmed.starts_with("pub fn ")
+            || trimmed.starts_with("async fn ") || trimmed.starts_with("pub async fn ")
+        {
             function_count += 1;
         }
-
-        // Count control flow statements (add to complexity)
-        if trimmed.starts_with("if ") || trimmed.contains(" if ") {
-            total_complexity += 1;
-        }
-        if trimmed.starts_with("else if ") || trimmed.contains("} else if ") {
-            total_complexity += 1;
-        }
-        if trimmed.starts_with("match ") || trimmed.contains(" match ") {
-            total_complexity += 1;
-        }
-        if trimmed.starts_with("for ") || trimmed.contains(" for ") {
-            total_complexity += 1;
-        }
-        if trimmed.starts_with("while ") || trimmed.contains(" while ") {
-            total_complexity += 1;
-        }
-        if trimmed.starts_with("loop ") || trimmed.contains(" loop ") {
-            total_complexity += 1;
-        }
-        if trimmed.contains("&&") || trimmed.contains("||") {
-            total_complexity += 1;
-        }
-        if trimmed.contains("?") && !trimmed.contains("//") {
-            total_complexity += 1; // Error propagation
-        }
+        total_complexity += count_line_complexity(trimmed);
     }
 
     if function_count == 0 {
         return total_complexity as f32;
     }
-
     total_complexity as f32 / function_count as f32
 }
 
@@ -562,10 +512,20 @@ pub(crate) fn calculate_versions_behind(project_version: &str) -> u32 {
         .collect();
 
     if current_parts.len() >= 2 && project_parts.len() >= 2 {
-        current_parts
-            .get(1)
-            .unwrap_or(&0)
-            .saturating_sub(*project_parts.get(1).unwrap_or(&0))
+        let cur_major = *current_parts.first().unwrap_or(&0);
+        let cur_minor = *current_parts.get(1).unwrap_or(&0);
+        let proj_major = *project_parts.first().unwrap_or(&0);
+        let proj_minor = *project_parts.get(1).unwrap_or(&0);
+
+        if cur_major > proj_major {
+            // Major version difference: each major version counts as 10 minor versions
+            (cur_major - proj_major) * 10 + cur_minor.saturating_sub(proj_minor)
+        } else if cur_major == proj_major {
+            cur_minor.saturating_sub(proj_minor)
+        } else {
+            // Project is ahead of current (shouldn't happen, treat as 0)
+            0
+        }
     } else {
         0
     }
@@ -666,43 +626,46 @@ pub(crate) async fn update_project_hooks(project_path: &Path, dry_run: bool) -> 
 
     let hooks_dir = project_path.join(".git/hooks");
     if !hooks_dir.exists() {
-        return Ok(false); // Not a git repo or no hooks dir
+        return Ok(false);
     }
 
     let hooks_cmd = HooksCommand::new(hooks_dir.clone(), project_path.join("pmat.toml"));
-
-    // Check current status
     let status = hooks_cmd.status().await?;
 
+    let action = determine_hook_action(&hooks_cmd, &status).await?;
+    if action == HookAction::UpToDate {
+        return Ok(false);
+    }
+    if dry_run {
+        return Ok(true);
+    }
+    match action {
+        HookAction::Install => { hooks_cmd.install(false, true, false).await?; },
+        HookAction::ForceReplace => { hooks_cmd.install(true, true, false).await?; },
+        HookAction::Refresh => { hooks_cmd.refresh().await?; },
+        HookAction::UpToDate => unreachable!(),
+    }
+    Ok(true)
+}
+
+#[derive(PartialEq)]
+enum HookAction { Install, ForceReplace, Refresh, UpToDate }
+
+async fn determine_hook_action(
+    hooks_cmd: &crate::cli::handlers::hooks_command_handlers::HooksCommand,
+    status: &crate::cli::handlers::hooks_command_handlers::HookStatus,
+) -> Result<HookAction> {
     if !status.installed {
-        // No hooks installed - install them
-        if dry_run {
-            return Ok(true); // Would install
-        }
-        hooks_cmd.install(false, true, false).await?;
-        return Ok(true);
+        return Ok(HookAction::Install);
     }
-
     if !status.is_pmat_managed {
-        // Hooks exist but not PMAT-managed - offer to replace
-        if dry_run {
-            return Ok(true); // Would replace
-        }
-        hooks_cmd.install(true, true, false).await?; // force + backup
-        return Ok(true);
+        return Ok(HookAction::ForceReplace);
     }
-
-    // PMAT-managed - check if up-to-date
     let verify = hooks_cmd.verify(false).await?;
     if verify.issues.iter().any(|i| i.contains("outdated")) {
-        if dry_run {
-            return Ok(true); // Would update
-        }
-        hooks_cmd.refresh().await?;
-        return Ok(true);
+        return Ok(HookAction::Refresh);
     }
-
-    Ok(false) // Already up-to-date
+    Ok(HookAction::UpToDate)
 }
 
 pub(crate) fn print_compliance_text(report: &ComplianceReport) {
@@ -765,162 +728,37 @@ pub(crate) fn print_compliance_markdown(report: &ComplianceReport) {
 
 /// Install git hooks for mandatory work tracking (W-006)
 /// Implements master-plan-pmat-work-system.md enforcement
-async fn handle_enforce(
-    project_path: &Path,
-    yes: bool,
-    disable: bool,
-    format: ComplyOutputFormat,
-) -> Result<()> {
-    let hooks_dir = project_path.join(".git").join("hooks");
-
-    if !hooks_dir.exists() {
-        anyhow::bail!("Not a git repository (no .git/hooks directory)");
-    }
-
-    if disable {
-        // Remove PMAT hooks
-        let pre_commit = hooks_dir.join("pre-commit");
-        if pre_commit.exists() {
-            if let Ok(content) = fs::read_to_string(&pre_commit) {
-                if content.contains("PMAT") {
-                    fs::remove_file(&pre_commit)?;
-                    println!("✅ Removed PMAT pre-commit hook");
-                } else {
-                    println!("⚠️  Pre-commit hook exists but is not PMAT - not removed");
-                }
-            }
-        }
-
-        // Also remove pre-push hook if it's PMAT's
-        let pre_push = hooks_dir.join("pre-push");
-        if pre_push.exists() {
-            if let Ok(content) = fs::read_to_string(&pre_push) {
-                if content.contains("PMAT") || content.contains("ComputeBrick") {
-                    fs::remove_file(&pre_push)?;
-                    println!("✅ Removed PMAT pre-push hook");
-                } else {
-                    println!("⚠️  Pre-push hook exists but is not PMAT - not removed");
-                }
-            }
-        }
+fn remove_pmat_hook(hook_path: &Path, markers: &[&str], hook_name: &str) -> Result<()> {
+    if !hook_path.exists() {
         return Ok(());
     }
-
-    // Prompt for confirmation if not -y
-    if !yes {
-        println!("This will install PMAT enforcement hooks:");
-        println!("  - pre-commit: Block commits without active work ticket");
-        println!("  - pre-push: Validate spec compliance before push");
-        println!("\nProceed? [y/N] ");
-
-        // For now, just proceed (interactive input not easily testable)
-        println!("(Auto-proceeding due to non-interactive mode)");
+    let content = fs::read_to_string(hook_path)?;
+    if markers.iter().any(|m| content.contains(m)) {
+        fs::remove_file(hook_path)?;
+        println!("Removed PMAT {hook_name} hook");
+    } else {
+        println!("{hook_name} hook exists but is not PMAT - not removed");
     }
+    Ok(())
+}
 
-    // Create pre-commit hook
-    let pre_commit_content = r#"#!/bin/sh
-# PMAT Work Enforcement Hook (master-plan-pmat-work-system.md W-001)
-# This hook blocks commits without an active work ticket.
-
-# Check for active work ticket
-if ! pmat work status --active >/dev/null 2>&1; then
-    echo "❌ COMPLIANCE VIOLATION"
-    echo ""
-    echo "Action blocked: git commit"
-    echo "Reason: No active work ticket"
-    echo ""
-    echo "To fix:"
-    echo "  1. Start work: pmat work start <ticket-id>"
-    echo "  2. Or create ticket: pmat work start \"description\" --spec <spec-file>"
-    echo ""
-    echo "Bypass (NOT RECOMMENDED):"
-    echo "  git commit --no-verify"
-    exit 1
-fi
-
-# Ensure commit message references ticket
-TICKET_ID=$(pmat work status --active --quiet 2>/dev/null)
-if [ -n "$TICKET_ID" ]; then
-    # Check commit message for ticket reference
-    if ! grep -qi "$TICKET_ID\|#[0-9]" "$1" 2>/dev/null; then
-        echo "⚠️  Commit message should reference ticket: $TICKET_ID"
-    fi
-fi
-
-exit 0
-"#;
-
-    let pre_commit_path = hooks_dir.join("pre-commit");
-    fs::write(&pre_commit_path, pre_commit_content)?;
-
-    // Create pre-push hook for ComputeBrick compliance (CB-IMPL-001-C)
-    let pre_push_content = r#"#!/bin/sh
-# PMAT ComputeBrick Pre-Push Enforcement (PROBAR-SPEC-009-P8)
-# This hook validates ComputeBrick compliance before push.
-
-set -e
-
-echo "🔍 Running ComputeBrick compliance checks..."
-
-# Check ComputeBrick compliance via pmat comply
-COMPLY_OUTPUT=$(pmat comply check --failures-only 2>&1) || true
-if echo "$COMPLY_OUTPUT" | grep -q "ComputeBrick Compliance.*critical"; then
-    echo "❌ COMPUTEBRICK COMPLIANCE FAILURE"
-    echo ""
-    echo "$COMPLY_OUTPUT" | grep -A5 "ComputeBrick"
-    echo ""
-    echo "Fix critical violations before pushing."
-    echo "Run 'pmat comply check' for full details."
-    echo ""
-    echo "Bypass (NOT RECOMMENDED):"
-    echo "  git push --no-verify"
-    exit 1
-fi
-
-# Check probar GUI coverage if available (PROBAR-SPEC-009)
-if command -v probador >/dev/null 2>&1; then
-    echo "📊 Checking probar GUI coverage..."
-    if ! probador playbook --validate --min-coverage 80 2>/dev/null; then
-        echo "⚠️  Probar GUI coverage below 80%"
-        echo "   Run 'probador playbook' to generate coverage report."
-    fi
-fi
-
-# Check for .pmat-gates.toml ComputeBrick config
-if [ -f "Cargo.toml" ]; then
-    if grep -q "trueno\|probar\|realizar" Cargo.toml 2>/dev/null; then
-        if [ ! -f ".pmat-gates.toml" ] || ! grep -q "\[compute-brick\]" .pmat-gates.toml 2>/dev/null; then
-            echo "⚠️  ComputeBrick project missing [compute-brick] in .pmat-gates.toml"
-            echo "   Add configuration per docs/specifications/compute-brick-support.md"
-        fi
-    fi
-fi
-
-echo "✅ ComputeBrick compliance: PASSED"
-exit 0
-"#;
-
-    let pre_push_path = hooks_dir.join("pre-push");
-    fs::write(&pre_push_path, pre_push_content)?;
-
-    // Make executable (Unix only)
+fn make_hook_executable(_path: &Path) -> Result<()> {
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
-        let mut perms = fs::metadata(&pre_commit_path)?.permissions();
+        let mut perms = fs::metadata(_path)?.permissions();
         perms.set_mode(0o755);
-        fs::set_permissions(&pre_commit_path, perms)?;
-
-        let mut perms = fs::metadata(&pre_push_path)?.permissions();
-        perms.set_mode(0o755);
-        fs::set_permissions(&pre_push_path, perms)?;
+        fs::set_permissions(_path, perms)?;
     }
+    Ok(())
+}
 
+fn print_enforce_result(format: &ComplyOutputFormat, hooks_dir: &Path) -> Result<()> {
     match format {
         ComplyOutputFormat::Text => {
-            println!("\n✅ PMAT enforcement hooks installed!");
-            println!("   Pre-commit hook: {}", pre_commit_path.display());
-            println!("   Pre-push hook:   {}", pre_push_path.display());
+            println!("\nPMAT enforcement hooks installed!");
+            println!("   Pre-commit hook: {}", hooks_dir.join("pre-commit").display());
+            println!("   Pre-push hook:   {}", hooks_dir.join("pre-push").display());
             println!("\nCommits will now require an active work ticket.");
             println!("Pushes will validate ComputeBrick compliance.");
             println!("Use 'pmat comply enforce --disable' to remove hooks.");
@@ -937,11 +775,52 @@ exit 0
             println!("# PMAT Enforcement Hooks Installed\n");
             println!("| Hook | Status |");
             println!("|------|--------|");
-            println!("| pre-commit | ✅ Installed |");
-            println!("| pre-push | ✅ Installed |");
+            println!("| pre-commit | Installed |");
+            println!("| pre-push | Installed |");
         }
     }
+    Ok(())
+}
 
+async fn handle_enforce(
+    project_path: &Path,
+    yes: bool,
+    disable: bool,
+    format: ComplyOutputFormat,
+) -> Result<()> {
+    let hooks_dir = project_path.join(".git").join("hooks");
+
+    if !hooks_dir.exists() {
+        anyhow::bail!("Not a git repository (no .git/hooks directory)");
+    }
+
+    if disable {
+        remove_pmat_hook(&hooks_dir.join("pre-commit"), &["PMAT"], "pre-commit")?;
+        remove_pmat_hook(&hooks_dir.join("pre-push"), &["PMAT", "ComputeBrick"], "pre-push")?;
+        return Ok(());
+    }
+
+    if !yes {
+        println!("This will install PMAT enforcement hooks:");
+        println!("  - pre-commit: Block commits without active work ticket");
+        println!("  - pre-push: Validate spec compliance before push");
+        println!("\nProceed? [y/N] ");
+        println!("(Auto-proceeding due to non-interactive mode)");
+    }
+
+    let pre_commit_content = include_str!("../../templates/pre_commit_hook.sh");
+    let pre_push_content = include_str!("../../templates/pre_push_hook.sh");
+
+    let pre_commit_path = hooks_dir.join("pre-commit");
+    let pre_push_path = hooks_dir.join("pre-push");
+
+    fs::write(&pre_commit_path, pre_commit_content)?;
+    fs::write(&pre_push_path, pre_push_content)?;
+
+    make_hook_executable(&pre_commit_path)?;
+    make_hook_executable(&pre_push_path)?;
+
+    print_enforce_result(&format, &hooks_dir)?;
     Ok(())
 }
 

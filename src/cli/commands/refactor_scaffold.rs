@@ -286,21 +286,22 @@ mod tests {
         assert_ne!(Mode::Cli, Mode::Mcp);
     }
 
-    /// Coverage: Stack overflow under 48-thread coverage instrumentation
-    /// Run manually: cargo test test_cli_parse_empty -- --ignored --test-threads=1
     #[test]
-    #[ignore] // Stack overflow with large thread counts
     fn test_cli_parse_empty() {
-        // Test that CLI can be parsed with minimal args
-        let result = Cli::try_parse_from(["pmat", "list"]);
-        match result {
-            Ok(_) => {
-                // Success case - don't try to debug print the large structure
-            }
-            Err(e) => {
-                panic!("CLI parsing failed: {}", e);
-            }
-        }
+        // Run on a thread with 8MB stack to avoid stack overflow from large Cli enum
+        let handle = std::thread::Builder::new()
+            .stack_size(8 * 1024 * 1024)
+            .spawn(|| {
+                let result = Cli::try_parse_from(["pmat", "list"]);
+                match result {
+                    Ok(_) => {}
+                    Err(e) => {
+                        panic!("CLI parsing failed: {}", e);
+                    }
+                }
+            })
+            .expect("Failed to spawn thread");
+        handle.join().expect("Thread panicked");
     }
 
     #[test]

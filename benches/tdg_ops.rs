@@ -6,7 +6,8 @@
 //! - SIMD should be 2-4x faster than scalar for variance calculations
 //! - Gini coefficient benefits from SIMD mul() + sum() operations
 
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
+use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
+use std::hint::black_box;
 
 /// Scalar implementation of variance
 fn variance_scalar(values: &[u32]) -> f64 {

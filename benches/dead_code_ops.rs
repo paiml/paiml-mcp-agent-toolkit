@@ -1,12 +1,12 @@
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{criterion_group, criterion_main, Criterion};
 use pmat::services::dead_code_analyzer::DeadCodeAnalyzer;
-use std::hint::black_box as hint_black_box;
+use std::hint::black_box;
 
 /// Benchmark dead code analysis with minimal setup (10K capacity)
 fn bench_dead_code_10k(c: &mut Criterion) {
     c.bench_function("dead_code_analysis_10k", |b| {
         b.iter(|| {
-            let analyzer = hint_black_box(DeadCodeAnalyzer::new(10_000));
+            let analyzer = black_box(DeadCodeAnalyzer::new(10_000));
             black_box(analyzer);
         });
     });
@@ -16,7 +16,7 @@ fn bench_dead_code_10k(c: &mut Criterion) {
 fn bench_dead_code_50k(c: &mut Criterion) {
     c.bench_function("dead_code_analysis_50k", |b| {
         b.iter(|| {
-            let analyzer = hint_black_box(DeadCodeAnalyzer::new(50_000));
+            let analyzer = black_box(DeadCodeAnalyzer::new(50_000));
             black_box(analyzer);
         });
     });
@@ -27,7 +27,7 @@ fn bench_dead_code_50k(c: &mut Criterion) {
 fn bench_dead_code_100k_simd(c: &mut Criterion) {
     c.bench_function("dead_code_analysis_100k_simd", |b| {
         b.iter(|| {
-            let analyzer = hint_black_box(DeadCodeAnalyzer::new(100_000));
+            let analyzer = black_box(DeadCodeAnalyzer::new(100_000));
             black_box(analyzer);
         });
     });

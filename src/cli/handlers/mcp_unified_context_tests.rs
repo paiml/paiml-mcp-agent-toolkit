@@ -384,28 +384,21 @@ function unused() {
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_based_mcp_tests {
-    use super::*;
-    use quickcheck::{quickcheck, TestResult};
+    use proptest::prelude::*;
 
-    quickcheck! {
-        fn prop_mcp_mode_preserves_function_count(function_names: Vec<String>) -> TestResult {
-            if function_names.is_empty() || function_names.len() > 50 {
-                return TestResult::discard();
-            }
-
+    proptest! {
+        #[test]
+        fn prop_mcp_mode_preserves_function_count(function_names in proptest::collection::vec(".*", 1..50)) {
             // Property: MCP mode should detect same number of functions as CLI mode
             // This is a specification test - actual implementation will make it pass
-            TestResult::passed()
+            prop_assert!(!function_names.is_empty());
         }
 
-        fn prop_mcp_output_has_required_sections(project_name: String) -> TestResult {
-            if project_name.is_empty() || project_name.len() > 100 {
-                return TestResult::discard();
-            }
-
+        #[test]
+        fn prop_mcp_output_has_required_sections(project_name in ".{1,100}") {
             // Property: MCP output must always contain core sections
             // Implementation should ensure all 9 annotation types are present
-            TestResult::passed()
+            prop_assert!(!project_name.is_empty());
         }
     }
 }

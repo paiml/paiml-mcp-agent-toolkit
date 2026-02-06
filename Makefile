@@ -42,19 +42,13 @@ SCRIPTS_DIR = scripts
 # MCP/external: mcp_server, mcp_pmcp, mcp_integration, claude_integration, mcp/, handlers/
 # TUI/REPL: tui, viz, demo
 # External tool runners: git_analysis, parallel_git, cargo_dead_code, clippy_fix
-# Coverage exclusions: ONLY binary entry points per CB-125 (Google TAP 20% rule)
-# Legitimate exclusions (non-library code):
-# - Test files: /tests/, _tests.rs, _test.rs (--lib flag covers most)
+# Coverage exclusions: Minimal legitimate exclusions only
+# - Test infrastructure: /tests/, _tests.rs, _test.rs, benches/, examples/, fixtures/
 # - Binary entry points: main.rs, bin/
-# - Benchmarks/examples: benches/, examples/, fixtures/
-# - Hard-to-test modules (following ruchy pattern):
-#   web_dashboard (requires HTTP), viz (requires terminal), command_dispatcher (requires CLI),
-#   demo (interactive), websocket (requires network), dap (requires debugger protocol),
-#   unified_quality (complex integration), ast/polyglot (FFI-like), mcp_server, agents_md,
-#   error_capture (filesystem I/O), project_meta_detector (async+timeout)
-# Comprehensive exclusion: CLI handlers are thin shims, services tested via integration
-# Pattern groups: tests, infrastructure, CLI layer, hard-to-test services
-COVERAGE_EXCLUDE := --ignore-filename-regex='(/tests/|_tests\\.rs|_test\\.rs|/benches/|/examples/|fixtures/|main\\.rs|bin/|cli/handlers/|cli/command_dispatcher/|cli/analysis_utilities/|cli/command_structure|cli/commands/|cli/progress|cli/defect_|cli/dead_code_formatter|cli/mod\\.rs|cli/language_analyzer|cli/analysis/|cli/help_generator|cli/drift_detector|cli/mcp_schema|cli/coverage_helpers|cli/error_context|cli/semantic_commands|cli/output\\.rs|cli/registry|cli/diagnose|cli/provability|cli/name_similarity|cli/enums|cli/unified_help|contracts/|handlers/tools|handlers/vectorized|roadmap/|proof_annotation|web_dashboard|viz/|demo/|transport/websocket|dap/|unified_quality/|mcp_server/|mcp_pmcp/|mcp/tools/|agents_md/|services/wasm/|services/deep_wasm/|services/cache/|services/canonical_query|services/quality_gate|services/ast_c|services/ast_cpp|services/ast/|services/polyglot_analyzer|services/code_intelligence|services/git_test_filter|services/deep_context/|services/semantic/|services/rust_project_score/|services/analysis_service|services/project_analyzer|services/context\\.rs|services/parsed_file|services/complexity_patterns|services/github_integration|services/coverage_improvement|services/dogfooding|services/dead_code|services/ast_python|services/ast_typescript|services/gaming_detector|services/service_communication|services/facades/|services/languages/|services/repo_score/|services/rich_reporter/|services/service_composition|services/dag_builder|services/enhanced_|services/analyzer/|services/popper_score/|services/memory_|services/service_lifecycle|services/context_impl/|services/incremental|services/rust_borrow|services/rust_wasm|services/mermaid_generator|services/pdmt_quality|services/defect|services/configuration_service|services/ranking_utils|services/tdg_calculator|services/clippy_fix|services/detection/|services/oracle/|services/doc_validator|services/language_override|services/ml_quality|services/artifact_writer|services/satd_detector|services/refactor_engine|services/ast_strategies|services/language_registry|services/language_analyzer|services/proof_annotator|services/brick_score|services/semantic_naming|services/metric_trends|services/commit_classifier|services/service_base|services/spec_parser|services/cargo_dead|services/simple_deep|services/makefile_|services/local_semantic|services/roadmap_service|services/changelog|services/service_registry|services/verified_complexity|services/fault_localization|services/template_service|services/recommendation_engine|services/hook_manager|services/file_discovery|services/lightweight_provability|services/quality_proxy|services/parallel_git|services/file_classifier|services/deterministic_mermaid|services/big_o_analyzer|services/hallucination_detector|services/readme_compressor|services/perfection_score|services/fixed_graph_builder|services/embedded_templates|services/error_capture|services/project_meta_detector|services/duplicate_detector|services/ranking\\.rs|services/complexity\\.rs|protocol/adapters|tdg/|qdd/|red_team/|protocol/operations|docs_enforcement/|scaffold/|quality/|test_performance|maintenance/|ast/languages/c_cpp|ast/polyglot/cross_language|graph/|models/complexity_bound|models/comply_config|models/deep_context_config|models/roadmap|models/git_context|models/tdg|models/error|models/refactor|models/project_metadata|state/|wasm/|entropy/pattern_extractor|utils/path_validator|lib\\.rs)'
+# - Requires external runtime: web_dashboard, viz/, demo/, transport/websocket, dap/
+# - Requires network: mcp_server/, mcp_pmcp/
+# Everything else (handlers, services, tdg, models, etc.) is INCLUDED for honest measurement
+COVERAGE_EXCLUDE := --ignore-filename-regex='(/tests/|_tests\\.rs|_test\\.rs|/benches/|/examples/|fixtures/|main\\.rs|bin/|web_dashboard|viz/|demo/|transport/websocket|dap/|mcp_server/|mcp_pmcp/)'
 
 # Default target: format and build all projects
 all: format build
@@ -455,9 +449,10 @@ ci-full: coverage test-integration
 # =============================================================================
 # Pattern: clean -> test -> report (simple, reliable)
 # Uses cargo test (1 profraw/binary) NOT nextest (1 profraw/test = slow merge)
-# Honest measurement: only excludes test infrastructure, not library code
+# Honest measurement: measures full codebase, not just a narrow slice
+# Threshold will ratchet up as test coverage improves
 # =============================================================================
-COV_THRESHOLD ?= 95
+COV_THRESHOLD ?= 60
 
 coverage: ## Generate HTML coverage report (<5 min, honest measurement)
 	@echo "📊 Running coverage analysis..."
@@ -474,17 +469,8 @@ coverage: ## Generate HTML coverage report (<5 min, honest measurement)
 		--features all-languages \
 		$(COVERAGE_EXCLUDE) \
 		-- --test-threads=$$(nproc) \
-		--skip test_handle_run_quality --skip test_handle_test_performance \
-		--skip test_handle_localize --skip libsql --skip resolve_repository_async \
-		--skip test_predict_quality_no_metric --skip test_get_canonical_path_none \
-		--skip test_handle_request_refactor_start --skip test_entry_point_detection_empty \
-		--skip test_merge_with_detected --skip test_save_and_load_from_file \
-		--skip test_detect_project_type \
-		--skip test_cargo_build_has_single_correct_binary --skip test_build_script_workspace_aware \
-		--skip test_cargo_lock_only_in_root --skip test_cli_context_generation \
-		--skip test_analyze_typescript_file_comprehensive --skip test_analyze_javascript_file \
-		--skip test_typescript_class_field_count --skip test_env_var_with_newlines \
-		--skip cli_integration_tests --skip test_empty_env_var \
+		--skip libsql \
+		--skip cli_integration_tests \
 		2>&1 | tail -10
 	@echo "📊 Generating reports..."
 	@cargo +nightly llvm-cov report --html --output-dir target/coverage/html $(COVERAGE_EXCLUDE)
@@ -544,8 +530,7 @@ coverage-fast: ## Fast coverage with cargo test (~2-3 min)
 		-- --test-threads=$$(nproc) \
 		--skip stress --skip fuzz --skip property --skip benchmark \
 		--skip slow --skip integration --skip e2e --skip comprehensive \
-		--skip libsql --skip test_handle_test_performance \
-		--skip test_handle_localize --skip test_handle_run_quality 2>&1 | tail -30
+		--skip libsql 2>&1 | tail -30
 	@echo "📊 Generating coverage report..."
 	@cargo llvm-cov report --summary-only $(COVERAGE_EXCLUDE)
 	@echo "⚡ Fast coverage complete"

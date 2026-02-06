@@ -231,60 +231,37 @@ mod advanced_annotation_tests {
 #[cfg(test)]
 mod property_tests {
     use super::*;
-    use quickcheck::{quickcheck, TestResult};
+    use proptest::prelude::*;
 
-    // Property: All functions should have Big-O annotation
-    quickcheck! {
-        fn prop_all_functions_have_big_o(function_count: u32) -> TestResult {
-            if function_count == 0 || function_count > 1000 {
-                return TestResult::discard();
-            }
-
+    proptest! {
+        // Property: All functions should have Big-O annotation
+        #[test]
+        fn prop_all_functions_have_big_o(function_count in 1u32..1000) {
             let context = generate_context_with_n_functions(function_count);
             let big_o_count = context.matches("O(").count();
-
-            TestResult::from_bool(big_o_count >= function_count as usize)
+            prop_assert!(big_o_count >= function_count as usize);
         }
-    }
 
-    // Property: TDG scores should be non-negative
-    quickcheck! {
-        fn prop_tdg_scores_non_negative(file_count: u32) -> TestResult {
-            if file_count == 0 || file_count > 100 {
-                return TestResult::discard();
-            }
-
+        // Property: TDG scores should be non-negative
+        #[test]
+        fn prop_tdg_scores_non_negative(file_count in 1u32..100) {
             let _context = generate_context_with_n_files(file_count);
             // Parse all TDG scores and ensure >= 0
-
-            TestResult::from_bool(true) // Placeholder
         }
-    }
 
-    // Property: Entropy should be between 0 and 1
-    quickcheck! {
-        fn prop_entropy_in_valid_range(entropy_value: f64) -> TestResult {
-            if !(0.0..=1.0).contains(&entropy_value) {
-                return TestResult::discard();
-            }
-
+        // Property: Entropy should be between 0 and 1
+        #[test]
+        fn prop_entropy_in_valid_range(entropy_value in 0.0f64..=1.0) {
             let context = generate_context_with_entropy(entropy_value);
-
-            TestResult::from_bool(context.contains(&format!("Entropy: {:.2}", entropy_value)))
+            let expected = format!("Entropy: {:.2}", entropy_value);
+            prop_assert!(context.contains(&expected));
         }
-    }
 
-    // Property: Graph centrality measures should sum correctly
-    quickcheck! {
-        fn prop_graph_centrality_consistency(node_count: u32) -> TestResult {
-            if node_count == 0 || node_count > 100 {
-                return TestResult::discard();
-            }
-
+        // Property: Graph centrality measures should sum correctly
+        #[test]
+        fn prop_graph_centrality_consistency(node_count in 1u32..100) {
             let _context = generate_context_with_graph_nodes(node_count);
             // Verify centrality measures are consistent
-
-            TestResult::from_bool(true) // Placeholder
         }
     }
 }

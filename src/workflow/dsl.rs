@@ -1,10 +1,4 @@
 use super::*;
-use pest_derive::Parser;
-
-// Workflow DSL parser
-#[derive(Parser)]
-#[grammar = "workflow/workflow.pest"]
-pub struct WorkflowParser;
 
 // DSL compiler
 pub struct DslCompiler;

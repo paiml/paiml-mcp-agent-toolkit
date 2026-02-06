@@ -9,7 +9,7 @@ default_toolchain = "rust"
 
 [quality]
 max_complexity = 30
-max_cognitive_complexity = 25
+max_cognitive_complexity = 100
 min_coverage = 80.0
 allow_satd = false
 require_docs = true

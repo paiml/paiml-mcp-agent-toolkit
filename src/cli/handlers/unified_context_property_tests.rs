@@ -253,26 +253,17 @@ class UserManager {
 #[cfg(test)]
 mod property_tests {
     use super::*;
-    use quickcheck::{quickcheck, TestResult};
+    use proptest::prelude::*;
 
-    #[test]
-    fn property_function_count_non_negative() {
-        fn prop(content: String) -> TestResult {
-            if content.is_empty() {
-                return TestResult::discard();
-            }
-
+    proptest! {
+        #[test]
+        fn property_function_count_non_negative(content in ".+") {
             let rt = tokio::runtime::Runtime::new().unwrap();
             rt.block_on(async {
-                let temp_dir = match TempDir::new() {
-                    Ok(dir) => dir,
-                    Err(_) => return TestResult::failed(),
-                };
+                let temp_dir = TempDir::new().unwrap();
 
                 let file_path = temp_dir.path().join("test.ts");
-                if fs::write(&file_path, &content).is_err() {
-                    return TestResult::failed();
-                }
+                fs::write(&file_path, &content).unwrap();
 
                 let analyzer = SimpleDeepContext::new();
                 let config = SimpleAnalysisConfig {
@@ -283,41 +274,24 @@ mod property_tests {
                     enable_verbose: false,
                 };
 
-                match analyzer.analyze(config).await {
-                    Ok(_result) => {
-                        // Property: function count should always be non-negative (usize is always >= 0)
-                        TestResult::passed()
-                    }
-                    Err(_) => TestResult::passed(), // Errors acceptable for invalid input
-                }
-            })
+                // Property: function count should always be non-negative (usize is always >= 0)
+                // Both Ok and Err results are acceptable for arbitrary input
+                let _ = analyzer.analyze(config).await;
+            });
         }
 
-        quickcheck(prop as fn(String) -> TestResult);
-    }
-
-    #[test]
-    fn property_analysis_deterministic() {
-        fn prop(valid_function: String) -> TestResult {
-            if valid_function.is_empty() {
-                return TestResult::discard();
-            }
-
+        #[test]
+        fn property_analysis_deterministic(valid_function in "[a-zA-Z][a-zA-Z0-9]{1,20}") {
             let rt = tokio::runtime::Runtime::new().unwrap();
             rt.block_on(async {
-                let temp_dir = match TempDir::new() {
-                    Ok(dir) => dir,
-                    Err(_) => return TestResult::failed(),
-                };
+                let temp_dir = TempDir::new().unwrap();
 
                 let content = format!(
                     "function {}() {{ return 42; }}",
-                    valid_function.replace(|c: char| !c.is_alphanumeric(), "_")
+                    valid_function
                 );
                 let file_path = temp_dir.path().join("test.ts");
-                if fs::write(&file_path, &content).is_err() {
-                    return TestResult::failed();
-                }
+                fs::write(&file_path, &content).unwrap();
 
                 let analyzer = SimpleDeepContext::new();
                 let config = SimpleAnalysisConfig {
@@ -328,22 +302,17 @@ mod property_tests {
                     enable_verbose: false,
                 };
 
-                match (
+                if let (Ok(result1), Ok(result2)) = (
                     analyzer.analyze(config.clone()).await,
                     analyzer.analyze(config).await,
                 ) {
-                    (Ok(result1), Ok(result2)) => {
-                        // Property: analysis should be deterministic
-                        TestResult::from_bool(
-                            result1.complexity_metrics.total_functions
-                                == result2.complexity_metrics.total_functions,
-                        )
-                    }
-                    _ => TestResult::passed(), // Errors are acceptable
+                    // Property: analysis should be deterministic
+                    assert_eq!(
+                        result1.complexity_metrics.total_functions,
+                        result2.complexity_metrics.total_functions,
+                    );
                 }
-            })
+            });
         }
-
-        quickcheck(prop as fn(String) -> TestResult);
     }
 }

@@ -6,8 +6,7 @@
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use pmat::tdg::{
     AnalysisMetadata, ComponentScores, FileIdentity, FullTdgRecord, Grade, InMemoryBackend,
-    Language, SemanticSignature, SledBackend, StorageBackend, TdgScore, TieredStorageFactory,
-    TieredStore,
+    Language, SemanticSignature, StorageBackend, TdgScore, TieredStorageFactory, TieredStore,
 };
 use std::collections::HashMap;
 use std::hint::black_box;
@@ -46,23 +45,6 @@ fn bench_put_operations(c: &mut Criterion) {
             });
         });
 
-        // Benchmark SledBackend
-        group.bench_with_input(BenchmarkId::new("Sled", size), &data, |b, data| {
-            b.iter_batched(
-                || {
-                    let temp_dir = TempDir::new().unwrap();
-                    (SledBackend::new(temp_dir.path()).unwrap(), temp_dir)
-                },
-                |(backend, _temp_dir)| {
-                    for (key, value) in data {
-                        backend.put(key, value).unwrap();
-                        black_box(());
-                    }
-                    backend.flush().unwrap();
-                },
-                criterion::BatchSize::LargeInput,
-            );
-        });
     }
 
     group.finish();
@@ -97,31 +79,6 @@ fn bench_get_operations(c: &mut Criterion) {
                     black_box(backend.get(key).unwrap());
                 }
             });
-        });
-
-        // Benchmark SledBackend
-        group.bench_with_input(BenchmarkId::new("Sled", size), &data, |b, data| {
-            b.iter_batched(
-                || {
-                    let temp_dir = TempDir::new().unwrap();
-                    let backend = SledBackend::new(temp_dir.path()).unwrap();
-
-                    // Pre-populate
-                    for (key, value) in data {
-                        backend.put(key, value).unwrap();
-                    }
-                    backend.flush().unwrap();
-
-                    let keys: Vec<_> = data.iter().map(|(k, _)| k).collect();
-                    (backend, keys, temp_dir)
-                },
-                |(backend, keys, _temp_dir)| {
-                    for key in &keys {
-                        black_box(backend.get(key).unwrap());
-                    }
-                },
-                criterion::BatchSize::LargeInput,
-            );
         });
     }
 
@@ -176,41 +133,6 @@ fn bench_mixed_workload(c: &mut Criterion) {
         });
     });
 
-    // Benchmark SledBackend
-    group.bench_function("Sled", |b| {
-        b.iter_batched(
-            || {
-                let temp_dir = TempDir::new().unwrap();
-                let backend = SledBackend::new(temp_dir.path()).unwrap();
-
-                // Pre-populate with some data
-                for i in 0..100 {
-                    let key = format!("key_{:06}", i).into_bytes();
-                    let value = format!("initial_value_{:06}", i).into_bytes();
-                    backend.put(&key, &value).unwrap();
-                }
-                backend.flush().unwrap();
-
-                (backend, temp_dir)
-            },
-            |(backend, _temp_dir)| {
-                // Execute mixed workload
-                for op in &ops {
-                    match op {
-                        Operation::Put(key, value) => {
-                            backend.put(key, value).unwrap();
-                            black_box(());
-                        }
-                        Operation::Get(key) => {
-                            black_box(backend.get(key).unwrap());
-                        }
-                    }
-                }
-            },
-            criterion::BatchSize::LargeInput,
-        );
-    });
-
     group.finish();
 }
 
@@ -255,36 +177,6 @@ fn bench_tiered_store(c: &mut Criterion) {
                 }
             });
         });
-    });
-
-    // Benchmark sled-based tiered store
-    group.bench_function("Sled", |b| {
-        b.iter_batched(
-            || TempDir::new().unwrap(),
-            |temp_dir| {
-                let rt = tokio::runtime::Runtime::new().unwrap();
-                rt.block_on(async {
-                    let storage = TieredStorageFactory::create_at_path(temp_dir.path()).unwrap();
-
-                    // Store all records
-                    for record in &records {
-                        storage.store(record.clone()).await.unwrap();
-                        black_box(());
-                    }
-
-                    // Retrieve all records
-                    for record in &records {
-                        black_box(
-                            storage
-                                .retrieve_full(&record.identity.content_hash)
-                                .await
-                                .unwrap(),
-                        );
-                    }
-                });
-            },
-            criterion::BatchSize::LargeInput,
-        );
     });
 
     group.finish();
@@ -403,6 +295,8 @@ fn create_test_record(path: &str, score: f32, grade: Grade) -> FullTdgRecord {
             language: Language::Rust,
             file_path: Some(PathBuf::from(path)),
             penalties_applied: Vec::new(),
+            critical_defects_count: 0,
+            has_critical_defects: false,
         },
         components: ComponentScores {
             complexity_breakdown: HashMap::new(),
@@ -426,6 +320,7 @@ fn create_test_record(path: &str, score: f32, grade: Grade) -> FullTdgRecord {
             analysis_timestamp: SystemTime::now(),
             cache_hit: hash.as_bytes()[2] % 3 == 0,
         },
+        git_context: None,
     }
 }
 

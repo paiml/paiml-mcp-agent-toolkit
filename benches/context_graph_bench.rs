@@ -1,7 +1,7 @@
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{criterion_group, criterion_main, Criterion};
 use pmat::services::context::AstItem;
 use pmat::services::context_graph::ProjectContextGraph;
-use std::hint::black_box as hint_black_box;
+use std::hint::black_box;
 
 fn bench_context_graph_operations(c: &mut Criterion) {
     c.bench_function("context_graph_add_1000_symbols", |b| {
@@ -18,7 +18,7 @@ fn bench_context_graph_operations(c: &mut Criterion) {
                     .add_item(format!("func_{}", i), item)
                     .expect("Failed to add item");
             }
-            hint_black_box(graph)
+            black_box(graph)
         });
     });
 
@@ -40,7 +40,7 @@ fn bench_context_graph_operations(c: &mut Criterion) {
         b.iter(|| {
             // Benchmark O(1) lookup
             let result = graph.get_item(black_box("func_500"));
-            hint_black_box(result)
+            black_box(result)
         });
     });
 
@@ -69,12 +69,12 @@ fn bench_context_graph_operations(c: &mut Criterion) {
         b.iter(|| {
             let mut graph_clone = graph.clone();
             graph_clone.update_hotness().expect("PageRank failed");
-            hint_black_box(graph_clone.hot_symbols())
+            black_box(graph_clone.hot_symbols())
         });
     });
 
     c.bench_function("context_graph_full_build_10_files", |b| {
-        use pmat::services::context::{analyze_project_with_cache, FileContext};
+        use pmat::services::context::analyze_project_with_cache;
         use std::path::PathBuf;
 
         let rt = tokio::runtime::Runtime::new().unwrap();
@@ -88,12 +88,12 @@ fn bench_context_graph_operations(c: &mut Criterion) {
                 if let Ok(context) = result {
                     // Verify graph was built
                     if let Some(graph) = context.graph {
-                        hint_black_box((graph.num_nodes(), graph.num_edges()))
+                        black_box((graph.num_nodes(), graph.num_edges()))
                     } else {
-                        hint_black_box((0, 0))
+                        black_box((0, 0))
                     }
                 } else {
-                    hint_black_box((0, 0))
+                    black_box((0, 0))
                 }
             })
         });

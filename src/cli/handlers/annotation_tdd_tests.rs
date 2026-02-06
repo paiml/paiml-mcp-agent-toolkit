@@ -452,15 +452,11 @@ mod green_phase_implementation {
 #[cfg(test)]
 mod refactor_phase_quality {
     use super::*;
-    use quickcheck::{quickcheck, TestResult};
+    use proptest::prelude::*;
 
-    #[test]
-    fn property_annotations_preserve_function_count() {
-        fn prop(file_count: u8, functions_per_file: u8) -> TestResult {
-            if file_count == 0 || functions_per_file == 0 {
-                return TestResult::discard();
-            }
-
+    proptest! {
+        #[test]
+        fn property_annotations_preserve_function_count(file_count in 1u8..=50, functions_per_file in 1u8..=10) {
             let total_functions = file_count as usize * functions_per_file as usize;
 
             // Create mock analysis report
@@ -494,25 +490,14 @@ mod refactor_phase_quality {
             );
 
             // Property: Output must mention the total function count
-            TestResult::from_bool(output.contains(&format!("Functions: {}", total_functions)))
+            let expected = format!("Functions: {}", total_functions);
+            prop_assert!(output.contains(&expected));
         }
 
-        quickcheck(prop as fn(u8, u8) -> TestResult);
-    }
-
-    #[test]
-    fn property_all_files_appear_in_output() {
-        fn prop(file_names: Vec<String>) -> TestResult {
-            if file_names.is_empty() {
-                return TestResult::discard();
-            }
-
+        #[test]
+        fn property_all_files_appear_in_output(file_names in proptest::collection::vec("[a-zA-Z][a-zA-Z0-9]{0,10}", 1..10)) {
             let mut file_details = Vec::new();
             for name in &file_names {
-                if name.is_empty() {
-                    return TestResult::discard();
-                }
-
                 file_details.push(crate::services::simple_deep_context::FileComplexityDetail {
                     file_path: format!("{}.js", name).into(),
                     function_count: 1,
@@ -542,20 +527,13 @@ mod refactor_phase_quality {
 
             // Property: All file names must appear in the output
             for name in &file_names {
-                if !output.contains(&format!("{}.js", name)) {
-                    return TestResult::failed();
-                }
+                let expected = format!("{}.js", name);
+                prop_assert!(output.contains(&expected));
             }
-
-            TestResult::passed()
         }
 
-        quickcheck(prop as fn(Vec<String>) -> TestResult);
-    }
-
-    #[test]
-    fn property_high_complexity_triggers_warning() {
-        fn prop(high_complexity_count: u8) -> TestResult {
+        #[test]
+        fn property_high_complexity_triggers_warning(high_complexity_count in 0u8..=10) {
             let has_high_complexity = high_complexity_count > 0;
 
             let report = crate::services::simple_deep_context::SimpleAnalysisReport {
@@ -590,16 +568,14 @@ mod refactor_phase_quality {
 
             // Property: High complexity must trigger warnings
             if has_high_complexity {
-                TestResult::from_bool(
+                prop_assert!(
                     output.contains("⚠")
                         || output.contains("High Complexity")
                         || output.contains("high complexity"),
-                )
+                );
             } else {
-                TestResult::from_bool(!output.contains("⚠"))
+                prop_assert!(!output.contains("⚠"));
             }
         }
-
-        quickcheck(prop as fn(u8) -> TestResult);
     }
 }
