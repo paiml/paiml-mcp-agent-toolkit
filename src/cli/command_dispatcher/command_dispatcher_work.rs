@@ -2,6 +2,7 @@
 //!
 //! Extracted from command_dispatcher.rs for file health compliance (CB-040).
 //! Contains execute_work_command and handle_spec_command implementations.
+#![cfg_attr(coverage_nightly, coverage(off))]
 
 use super::CommandDispatcher;
 

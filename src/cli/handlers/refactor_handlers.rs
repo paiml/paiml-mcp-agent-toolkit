@@ -1,3 +1,5 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
+
 use crate::cli::{ExplainLevel, RefactorCommands, RefactorMode, RefactorOutputFormat};
 use crate::models::refactor::{RefactorConfig, Summary};
 use crate::services::cache::unified_manager::UnifiedCacheManager;

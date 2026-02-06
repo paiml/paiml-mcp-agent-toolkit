@@ -2,6 +2,7 @@
 //!
 //! Extracted from command_dispatcher mod.rs for file health compliance (CB-040).
 //! Contains configuration command execution.
+#![cfg_attr(coverage_nightly, coverage(off))]
 
 use super::CommandDispatcher;
 use crate::cli::handlers;

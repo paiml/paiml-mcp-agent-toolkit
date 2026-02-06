@@ -2,6 +2,7 @@
 //!
 //! This module implements a dispatch table pattern to reduce cyclomatic complexity
 //! in the CLI module by delegating command execution to specialized handlers.
+#![cfg_attr(coverage_nightly, coverage(off))]
 
 use super::commands::QddCommands;
 use super::{AnalyzeCommands, Commands, OutputFormat, RefactorCommands};

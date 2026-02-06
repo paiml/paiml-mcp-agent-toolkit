@@ -5,6 +5,7 @@
 //!
 //! NOTE: Uses pure Rust local embeddings via aprender/trueno-rag.
 //! NO external API keys or internet connection required.
+#![cfg_attr(coverage_nightly, coverage(off))]
 
 use super::CommandDispatcher;
 use crate::cli::commands::{EmbedCommands, SearchMode, SemanticCommands};

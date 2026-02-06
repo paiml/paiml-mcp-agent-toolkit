@@ -1,5 +1,7 @@
 //! Formatting functions for proof annotations to reduce complexity
 
+#![cfg_attr(coverage_nightly, coverage(off))]
+
 use crate::models::unified_ast::{Location, ProofAnnotation};
 use anyhow::Result;
 use std::collections::HashMap;

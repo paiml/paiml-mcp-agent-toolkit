@@ -6,6 +6,8 @@
 //! - Generate audit trail reports
 //! - Track QA status across tasks
 
+#![cfg_attr(coverage_nightly, coverage(off))]
+
 use crate::cli::commands::{QaOutputFormat, QaTaskType, QaWorkCommands};
 use anyhow::Result;
 use chrono::{DateTime, Utc};

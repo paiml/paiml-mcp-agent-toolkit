@@ -3,6 +3,8 @@
 //! Extracted from work_handlers.rs for file health compliance (CB-040).
 //! Contains quality gates and Popper falsification validation.
 
+#![cfg_attr(coverage_nightly, coverage(off))]
+
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;

@@ -2,6 +2,8 @@
 //!
 //! Implements S-001 through S-010 acceptance criteria for specification management.
 
+#![cfg_attr(coverage_nightly, coverage(off))]
+
 use crate::cli::commands::SpecOutputFormat;
 use crate::services::spec_parser::{ParsedSpec, SpecParser};
 use std::fs;

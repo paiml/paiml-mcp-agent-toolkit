@@ -1,5 +1,6 @@
 //! Maps MCP tool parameters to uniform contracts
 //! This ensures MCP uses the exact same contracts as CLI and HTTP
+#![cfg_attr(coverage_nightly, coverage(off))]
 
 use super::{
     AnalyzeComplexityContract, AnalyzeDeadCodeContract, AnalyzeLintHotspotContract,

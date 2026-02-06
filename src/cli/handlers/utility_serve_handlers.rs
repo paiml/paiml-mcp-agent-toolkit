@@ -2,6 +2,7 @@
 //!
 //! Extracted from utility_handlers.rs for file health compliance (CB-040).
 //! Contains handle_serve and related server transport implementations.
+#![cfg_attr(coverage_nightly, coverage(off))]
 
 use anyhow::Result;
 

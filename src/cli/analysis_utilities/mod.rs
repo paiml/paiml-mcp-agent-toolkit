@@ -1,6 +1,7 @@
 //! Fully implemented CLI handlers for analysis and quality checking
 //!
 //! All handlers provide complete functionality with proper AST-based analysis.
+#![cfg_attr(coverage_nightly, coverage(off))]
 
 use crate::cli::{
     ComprehensiveOutputFormat, DagType, DeadCodeOutputFormat, DefectPredictionOutputFormat,

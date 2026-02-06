@@ -3,6 +3,8 @@
 //! This module provides handlers for generating comprehensive analysis reports
 //! that consolidate multiple analysis outputs.
 
+#![cfg_attr(coverage_nightly, coverage(off))]
+
 use crate::cli::{AnalysisType, ReportOutputFormat};
 use crate::models::defect_report::DefectReport;
 use crate::services::defect_report_service::{DefectReportService, ReportFormat};

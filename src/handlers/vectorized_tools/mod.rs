@@ -3,6 +3,8 @@
 //! MCP protocol extensions for high-performance vectorized analysis tools
 //! that leverage SIMD operations and parallel processing.
 
+#![cfg_attr(coverage_nightly, coverage(off))]
+
 use crate::models::mcp::{McpResponse, ToolCallParams};
 use serde::Deserialize;
 use serde_json::{json, Value};

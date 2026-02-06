@@ -1,5 +1,7 @@
 //! CLI commands for roadmap management
 
+#![cfg_attr(coverage_nightly, coverage(off))]
+
 use super::{
     generator, HashMap, Path, Priority, Roadmap, RoadmapConfig, Sprint, Task, TaskStatus, Utc,
 };

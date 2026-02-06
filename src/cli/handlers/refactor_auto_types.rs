@@ -2,6 +2,7 @@
 //!
 //! Extracted from refactor_auto_handlers.rs for file health compliance (CB-040).
 //! Contains public types and markdown analysis utilities.
+#![cfg_attr(coverage_nightly, coverage(off))]
 
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};

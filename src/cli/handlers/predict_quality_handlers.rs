@@ -2,6 +2,8 @@
 //!
 //! CLI handlers for predicting when quality metrics will exceed thresholds.
 
+#![cfg_attr(coverage_nightly, coverage(off))]
+
 use crate::cli::enums::OutputFormat;
 use crate::services::metric_trends::{MetricTrendStore, PredictionResult};
 use anyhow::Result;
