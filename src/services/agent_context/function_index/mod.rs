@@ -8,11 +8,14 @@ pub(crate) mod helpers;
 mod types;
 
 pub use types::{
-    AgentContextIndex, DefinitionType, FunctionEntry, GraphMetrics,
+    AgentContextIndex, FunctionEntry, GraphMetrics,
     IndexManifest, IndexStats, QualityMetrics,
 };
 
-// Re-export pub(crate) items used by sibling test modules
+// Re-export items used by sibling test modules (query/tests.rs)
+#[cfg(test)]
+pub(crate) use types::DefinitionType;
+#[cfg(test)]
 pub(crate) use helpers::{build_call_graph, build_indices, compute_graph_metrics, compute_name_frequency};
 
 #[cfg(test)]
