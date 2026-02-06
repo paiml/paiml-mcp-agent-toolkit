@@ -1,4 +1,3 @@
-#![cfg_attr(coverage_nightly, coverage(off))]
 //! Canonical query framework for standardized code analysis.
 //!
 //! This module provides a unified interface for executing various code analysis

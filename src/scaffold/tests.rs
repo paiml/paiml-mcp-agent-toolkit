@@ -1,4 +1,3 @@
-#![cfg_attr(coverage_nightly, coverage(off))]
 // Unit tests for ScaffoldEngine
 // Part of TICKET-PMAT-5001 - RED Phase
 

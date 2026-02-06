@@ -1,4 +1,3 @@
-#![cfg_attr(coverage_nightly, coverage(off))]
 //! DependencyScorer - Dependency Health Category (12 points)
 //!
 //! Analyzes Rust project dependency management:

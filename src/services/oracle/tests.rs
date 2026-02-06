@@ -1,4 +1,3 @@
-#![cfg_attr(coverage_nightly, coverage(off))]
 //! EXTREME TDD Tests for PMAT Oracle
 //!
 //! RED-GREEN-REFACTOR methodology following Toyota Way principles.

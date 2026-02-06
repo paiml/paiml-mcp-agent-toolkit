@@ -1,4 +1,3 @@
-#![cfg_attr(coverage_nightly, coverage(off))]
 //! Integration tests for Popper Falsifiability Score v1.1
 //!
 //! These tests verify the complete scoring workflow including:

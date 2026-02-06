@@ -1,4 +1,3 @@
-#![cfg_attr(coverage_nightly, coverage(off))]
 //! DocumentationScorer - Documentation Category (15 points)
 //!
 //! Analyzes Rust project documentation quality:

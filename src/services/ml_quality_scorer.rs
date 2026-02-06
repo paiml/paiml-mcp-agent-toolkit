@@ -1,4 +1,3 @@
-#![cfg_attr(coverage_nightly, coverage(off))]
 //! ML-Based Quality Scoring - GH-97 Implementation
 //!
 //! EXTREME TDD: RED PHASE - Replace heuristic calculations with ML-driven models

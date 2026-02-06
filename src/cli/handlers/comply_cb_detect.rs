@@ -954,14 +954,13 @@ pub fn detect_cb125_coverage_exclusion_gaming(project_path: &Path) -> Vec<CbPatt
             let mut exclusion_line = 0;
 
             for (line_num, line) in content.lines().enumerate() {
-                // Count exclusion patterns
-                if line.contains("--ignore-filename-regex")
-                    || line.contains("COVERAGE_EXCLUDE")
-                    || line.contains("--exclude")
-                {
+                // Only count regex alternatives in the actual exclusion definition
+                // (not in lines that merely reference $(COVERAGE_EXCLUDE) or use --exclude
+                // for non-coverage purposes like tokei)
+                if line.contains("--ignore-filename-regex") {
                     exclusion_line = line_num + 1;
 
-                    // Count pipe-separated patterns in regex
+                    // Count pipe-separated patterns in the regex value
                     if let Some(start) = line.find("'") {
                         if let Some(end) = line.rfind("'") {
                             if start < end {
@@ -1057,7 +1056,7 @@ fn check_makefile_test_targets(project_path: &Path) -> Vec<CbPatternViolation> {
     let mut in_test_target = false;
     let mut test_target_line = 0;
     let mut has_proptest_cases = false;
-    let mut has_recipe_body = false;
+    let mut has_cargo_test = false;
     let file_path = makefile_path.display().to_string();
 
     for (line_num, line) in content.lines().enumerate() {
@@ -1065,21 +1064,21 @@ fn check_makefile_test_targets(project_path: &Path) -> Vec<CbPatternViolation> {
             in_test_target = true;
             test_target_line = line_num + 1;
             has_proptest_cases = false;
-            has_recipe_body = false;
+            has_cargo_test = false;
         }
 
         if in_test_target {
             if line.contains("PROPTEST_CASES") || line.contains("QUICKCHECK_TESTS") {
                 has_proptest_cases = true;
             }
-            // Detect recipe body: lines starting with tab are recipe commands
-            if line.starts_with('\t') || line.starts_with("    @") {
-                has_recipe_body = true;
+            // Only flag targets that actually run cargo test (not phony aggregates,
+            // helper targets, or non-test commands)
+            if line.contains("cargo test") || line.contains("cargo +nightly llvm-cov test") {
+                has_cargo_test = true;
             }
             if is_end_of_makefile_target_generic(line, "test") {
-                // Only flag targets that have recipe commands but no PROPTEST_CASES.
-                // Skip alias-only targets (e.g., "test-quick: test-fast" with no recipe body).
-                if !has_proptest_cases && test_target_line > 0 && has_recipe_body {
+                // Only flag targets that run cargo test but lack PROPTEST_CASES
+                if !has_proptest_cases && test_target_line > 0 && has_cargo_test {
                     violations.push(CbPatternViolation {
                         pattern_id: "CB-126-D".to_string(),
                         file: file_path.clone(),

@@ -1,4 +1,3 @@
-#![cfg_attr(coverage_nightly, coverage(off))]
 //! Integration tests for deep WASM module
 
 #[cfg_attr(coverage_nightly, coverage(off))]

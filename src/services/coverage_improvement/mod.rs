@@ -1,4 +1,3 @@
-#![cfg_attr(coverage_nightly, coverage(off))]
 //! Coverage Improvement Service
 //!
 //! Autonomously improves test coverage to a target percentage using PMAT tools

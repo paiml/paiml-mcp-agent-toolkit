@@ -1,4 +1,3 @@
-#![cfg_attr(coverage_nightly, coverage(off))]
 //! Accurate dead code analyzer using cargo/rustc integration
 //!
 //! This module provides accurate dead code detection by leveraging

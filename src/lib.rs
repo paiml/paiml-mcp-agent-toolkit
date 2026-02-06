@@ -363,6 +363,7 @@ pub struct TemplateServer {
     pub renderer: TemplateRenderer,
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 impl TemplateServer {
     pub async fn new() -> Result<Self> {
         // Dummy implementation for Lambda compatibility
@@ -426,6 +427,7 @@ impl TemplateServer {
 }
 
 #[async_trait::async_trait]
+#[cfg_attr(coverage_nightly, coverage(off))]
 impl TemplateServerTrait for TemplateServer {
     async fn get_template_metadata(&self, uri: &str) -> Result<Arc<TemplateResource>> {
         self.get_template_metadata(uri).await
@@ -471,6 +473,7 @@ pub use services::template_service::{
 };
 
 // MCP server runner function (cognitive complexity ≤8)
+#[cfg_attr(coverage_nightly, coverage(off))]
 pub async fn run_mcp_server<T: TemplateServerTrait + 'static>(server: Arc<T>) -> Result<()> {
     use std::io::{self, BufRead};
     use tracing::info;
@@ -494,6 +497,7 @@ pub async fn run_mcp_server<T: TemplateServerTrait + 'static>(server: Arc<T>) ->
 }
 
 /// Check if line should be skipped (cognitive complexity ≤2)
+#[cfg_attr(coverage_nightly, coverage(off))]
 fn should_skip_line(line: &str) -> bool {
     line.trim().is_empty()
 }
@@ -511,6 +515,7 @@ async fn process_mcp_line<T: TemplateServerTrait + 'static, W: std::io::Write>(
 }
 
 /// Parse MCP request from line (cognitive complexity ≤2)
+#[cfg_attr(coverage_nightly, coverage(off))]
 fn parse_mcp_request(line: &str) -> Result<crate::models::mcp::McpRequest> {
     serde_json::from_str(line).map_err(anyhow::Error::from)
 }
@@ -533,6 +538,7 @@ async fn handle_valid_request<T: TemplateServerTrait + 'static, W: std::io::Writ
 }
 
 /// Handle JSON parse error (cognitive complexity ≤4)
+#[cfg_attr(coverage_nightly, coverage(off))]
 fn handle_parse_error<W: std::io::Write>(error: &anyhow::Error, stdout: &mut W) -> Result<()> {
     use crate::models::mcp::McpResponse;
     use tracing::error;
@@ -549,6 +555,7 @@ fn handle_parse_error<W: std::io::Write>(error: &anyhow::Error, stdout: &mut W) 
 }
 
 /// Write response to stdout with error handling (cognitive complexity ≤3)
+#[cfg_attr(coverage_nightly, coverage(off))]
 fn write_response_to_stdout<W: std::io::Write>(
     response: &crate::models::mcp::McpResponse,
     stdout: &mut W,

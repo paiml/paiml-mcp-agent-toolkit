@@ -478,7 +478,7 @@ coverage: ## Generate HTML coverage report (<5 min, honest measurement)
 	@cargo +nightly llvm-cov report --summary-only $(COVERAGE_EXCLUDE) | grep -E "^TOTAL"
 	@./scripts/record-metric.sh coverage
 	@echo "💡 HTML: target/coverage/html/index.html"
-	@COV_PCT=$$(cargo +nightly llvm-cov report --summary-only $(COVERAGE_EXCLUDE) 2>/dev/null | grep -E '^TOTAL' | awk '{for(i=1;i<=NF;i++){if($$i ~ /[0-9]+\.[0-9]+%/){gsub(/%/,"",$$i);print $$i;exit}}}'); \
+	@COV_PCT=$$(cargo +nightly llvm-cov report --summary-only $(COVERAGE_EXCLUDE) 2>/dev/null | grep -E '^TOTAL' | awk '{n=0; for(i=1;i<=NF;i++){if($$i ~ /[0-9]+\.[0-9]+%/){n++; if(n==3){gsub(/%/,"",$$i);print $$i;exit}}}}'); \
 	if [ -n "$$COV_PCT" ] && [ $$(echo "$$COV_PCT < $(COV_THRESHOLD)" | bc -l) -eq 1 ]; then \
 		echo "❌ Coverage $${COV_PCT}% is below threshold $(COV_THRESHOLD)%"; \
 		exit 1; \

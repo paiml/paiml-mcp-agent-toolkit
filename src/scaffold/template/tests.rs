@@ -1,4 +1,3 @@
-#![cfg_attr(coverage_nightly, coverage(off))]
 // Unit tests for Template system - TICKET-PMAT-5002
 
 use super::*;
