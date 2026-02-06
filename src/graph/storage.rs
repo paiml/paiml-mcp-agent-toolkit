@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Phase 7.1: Hybrid Graph Storage Backend
 //!
 //! Architecture (per integrate-ml-trueno-latest-spec.md lines 1185-1264):

@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! PDMT GitHub Issue Template Generation Service
 //!
 //! This module provides deterministic GitHub issue template generation using the

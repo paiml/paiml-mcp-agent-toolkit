@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Coverage boost tests for doc_validator module
 //! Comprehensive tests for extract_links, classify_link, Link, LinkType, ValidationStatus, etc.
 

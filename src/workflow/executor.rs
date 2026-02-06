@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 use super::*;
 use crate::agents::registry::AgentRegistry;
 use futures::future::join_all;

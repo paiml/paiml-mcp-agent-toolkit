@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! EXTREME TDD: Enhanced Annotated AST Tests
 //! Goal: Show AST structure with rich annotations, not raw code
 

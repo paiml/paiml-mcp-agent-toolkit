@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Temporary file management for distributed mutation testing
 //!
 //! Provides RAII-based temporary file handling for distributed mutation

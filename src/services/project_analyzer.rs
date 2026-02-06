@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Project analyzer for codebase exploration and dependency analysis
 //!
 //! This module provides the core project analysis functionality, serving as

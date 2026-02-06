@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Java Language Support for PMAT
 //!
 //! This module provides Java-specific analysis capabilities using tree-sitter-java parser

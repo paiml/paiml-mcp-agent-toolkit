@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Concrete implementations of defect analyzers for various quality issues.
 //!
 //! This module provides specific analyzers that implement the `DefectAnalyzer`

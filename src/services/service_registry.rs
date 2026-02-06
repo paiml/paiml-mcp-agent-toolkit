@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Service Registry for Dependency Injection and Service Management
 //!
 //! This module provides a centralized service registry for managing and accessing

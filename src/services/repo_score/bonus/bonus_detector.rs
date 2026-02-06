@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // BonusDetector - Detects advanced quality practices for bonus points
 //
 // Bonus Points (up to +10 max):

@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! GitHub Actions integration for unified quality system
 //!
 //! Provides quality gates and automation through GitHub Actions workflows

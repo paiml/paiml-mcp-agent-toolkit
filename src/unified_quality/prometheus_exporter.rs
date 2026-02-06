@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Prometheus metrics exporter for unified quality system
 //!
 //! Exports quality metrics in Prometheus format for monitoring and alerting

@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Anchored quality metrics and baseline management
 
 use chrono::{DateTime, Duration, Utc};

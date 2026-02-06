@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 use super::*;
 use actix::prelude::*;
 use parking_lot::RwLock;

@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 use handlebars::{
     Context, Handlebars, Helper, HelperResult, Output, RenderContext, RenderError,
     RenderErrorReason,

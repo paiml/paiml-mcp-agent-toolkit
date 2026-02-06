@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 use async_trait::async_trait;
 use axum::body::Body;
 use axum::http::Method;

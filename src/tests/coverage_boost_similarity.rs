@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Coverage boost tests for services/similarity module
 //! Tests for SimilarityDetector, Winnowing, and related types to achieve full coverage
 

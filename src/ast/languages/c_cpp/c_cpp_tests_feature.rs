@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Feature-gated tests for C/C++ language strategies
 
 #[cfg(test)]

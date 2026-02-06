@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Command Executor for AGENTS.md
 //!
 //! Safely executes commands from AGENTS.md with quality gate enforcement.

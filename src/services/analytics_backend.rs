@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Analytics Backend Abstraction (Issue #79, P0-3)
 //!
 //! Provides unified backend selection for GPU/SIMD/Scalar compute operations.

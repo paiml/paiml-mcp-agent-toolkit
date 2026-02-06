@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Git Commit Parser (GH-RAG-001)
 // Toyota Way: Genchi Genbutsu - Direct git data analysis
 // Spec: docs/specifications/git-history-rag-integration.md

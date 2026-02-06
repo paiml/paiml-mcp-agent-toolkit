@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Project metadata models for PMAT compliance system (GH-96)
 //!
 //! Tracks project's PMAT version, schema versions, and compliance state.

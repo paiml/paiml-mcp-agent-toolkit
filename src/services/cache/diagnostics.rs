@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 use crate::services::cache::base::CacheStats;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;

@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Template generation and rendering service.
 //!
 //! This module provides code generation capabilities through a flexible template

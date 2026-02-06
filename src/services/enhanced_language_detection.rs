@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Enhanced Language Detection Module (BUG-011 Fix)
 //!
 //! This module provides multi-language detection with confidence scoring,

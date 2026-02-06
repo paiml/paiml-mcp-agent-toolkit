@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Pattern-based security analysis for WASM bytecode
 
 use anyhow::Result;

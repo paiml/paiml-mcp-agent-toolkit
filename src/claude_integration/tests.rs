@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // RED PHASE TDD tests for Claude integration
 // These tests define the expected behavior before implementation
 

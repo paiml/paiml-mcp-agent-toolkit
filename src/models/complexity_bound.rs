@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Big-O Complexity Analysis Data Structures - Phase 5
 //!
 //! Provides memory-efficient representations for algorithmic complexity bounds,

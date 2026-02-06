@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Refactoring state machine and operation models.
 //!
 //! This module defines the state machine that orchestrates the automated

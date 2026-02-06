@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Entropy Calculation Module
 //!
 //! This module provides advanced entropy-based analysis for detecting repetitive patterns

@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! EXTREME TDD: Smart Bounds for Expensive Analyses
 //! Goal: Add intelligent bounds to expensive analyses to prevent infinite loops/timeouts
 //! while keeping all analysis types enabled

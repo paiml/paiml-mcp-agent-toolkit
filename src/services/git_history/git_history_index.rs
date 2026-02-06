@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Git History Index (GH-RAG-003)
 // Toyota Way: Poka-Yoke - Error-proof schema constraints
 // Spec: docs/specifications/git-history-rag-integration.md

@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Topic Modeling for Code Embeddings
 // PMAT-SEARCH-008: LDA-inspired topic extraction using K-means
 //

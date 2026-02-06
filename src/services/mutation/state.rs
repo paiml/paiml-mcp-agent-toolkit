@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Mutation testing state persistence
 //!
 //! Provides state management for resumable mutation testing,

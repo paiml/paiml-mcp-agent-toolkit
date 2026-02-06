@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! WebAssembly binary format analyzer
 //!
 //! This module provides analysis capabilities for compiled WebAssembly (.wasm) files.

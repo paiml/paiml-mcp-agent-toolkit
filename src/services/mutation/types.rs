@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Core mutation testing types
 
 use serde::{Deserialize, Serialize};

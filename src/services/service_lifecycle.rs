@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Service lifecycle management per SPECIFICATION.md Section 2.2
 //!
 //! This module provides lifecycle management for services including

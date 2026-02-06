@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Rust language adapter for mutation testing
 
 use super::language::{LanguageAdapter, TestRunResult};

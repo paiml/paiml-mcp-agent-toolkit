@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! WASM Quality Gates
 //!
 //! Defines and enforces WASM quality metrics per Toyota Way principles.

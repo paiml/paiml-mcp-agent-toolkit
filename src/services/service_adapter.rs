@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Adapters to help existing services implement the Service trait
 //!
 //! This module provides adapter patterns to integrate legacy services

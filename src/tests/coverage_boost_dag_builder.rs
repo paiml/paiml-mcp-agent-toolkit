@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Coverage boost tests for dag_builder module
 //! Target: Test pure functions for graph filtering and manipulation
 

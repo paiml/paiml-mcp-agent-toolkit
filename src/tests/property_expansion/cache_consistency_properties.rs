@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Property-based tests for cache consistency
 //! 
 //! This module verifies that the content-addressed cache maintains

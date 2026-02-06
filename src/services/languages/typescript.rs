@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! TypeScript language support module
 //!
 //! This module provides support for analyzing TypeScript code, including

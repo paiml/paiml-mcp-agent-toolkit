@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Coverage boost tests for cli/handlers/analyze_defects_handler.rs
 //! Tests: OutputFormat, DefectSummary, SeverityCount, DefectReport structs
 //! and report formatting functions

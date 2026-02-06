@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Gaming Detector: Anti-Gaming Detection for Coverage and Quality Metrics
 //!
 //! Detects attempts to game coverage metrics through:

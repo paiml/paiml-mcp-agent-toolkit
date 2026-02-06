@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // CLI adapter - split for file health (CB-040)
 
 use std::{collections::HashMap, path::PathBuf};

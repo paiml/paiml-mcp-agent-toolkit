@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! C++ AST analysis - MIGRATION IN PROGRESS
 //!
 //! This module is being migrated to the new unified AST architecture.

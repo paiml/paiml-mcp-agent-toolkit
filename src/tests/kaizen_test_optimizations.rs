@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Kaizen Test Performance Optimizations
 //!
 //! This module implements continuous improvement principles for test reliability,

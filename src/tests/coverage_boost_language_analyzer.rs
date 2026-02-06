@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Coverage boost tests for services/language_analyzer.rs
 //! Tests: LanguageAnalyzer::new, supported_languages, supports_analysis, analyze_file
 //! Also tests AnalysisOptions::default, struct construction, serde

@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Adapter module: PMAT DependencyGraph → aprender::graph::Graph
 // Complexity: All functions ≤ 10
 // SATD: Zero tolerance

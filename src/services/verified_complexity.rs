@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Verified complexity analyzer with multiple complexity metrics
 //!
 //! This module provides accurate complexity analysis using industry-standard

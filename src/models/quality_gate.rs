@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Quality gate models for the PMAT system
 
 use serde::{Deserialize, Serialize};

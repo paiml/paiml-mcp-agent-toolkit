@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! EXTREME TDD: Stack Overflow Fix Tests
 //! Goal: Fix stack overflow in deep context generation without --skip-expensive-metrics
 

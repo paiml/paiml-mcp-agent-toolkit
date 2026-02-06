@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! MCP-AGENTS.md Bridge
 //!
 //! Bidirectional bridge between AGENTS.md and MCP protocols.

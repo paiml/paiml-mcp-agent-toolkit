@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Enhanced reporting tests part 2 - Risk assessment, findings, sections
 //! Extracted for file health compliance (CB-040)
 

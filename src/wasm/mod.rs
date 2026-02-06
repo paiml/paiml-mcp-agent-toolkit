@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! WebAssembly analysis and quality assurance module
 //!
 //! Implements the WebAssembly Integration Specification v3 for

@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! REFACTOR Phase Implementation for PMAT-070-001: CargoMutantsWrapper
 //!
 //! Wrapper for cargo-mutants mutation testing tool.

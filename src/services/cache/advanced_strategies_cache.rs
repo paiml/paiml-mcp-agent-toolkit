@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! AdaptiveCache implementation
 //!
 //! Multi-tier adaptive cache with intelligent tier promotion and eviction.

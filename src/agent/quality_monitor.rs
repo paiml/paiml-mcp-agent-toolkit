@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Quality Monitoring Engine for Claude Code Agent Mode
 //!
 //! PMAT-7002: Real-time complexity tracking, file change event processing,

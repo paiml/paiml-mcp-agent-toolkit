@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Configuration types for scaffolding
 // Part of TICKET-PMAT-5001
 

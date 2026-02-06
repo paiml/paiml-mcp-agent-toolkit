@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Unified protocol implementation for PMAT.
 //!
 //! This module provides a protocol-agnostic service layer that supports multiple

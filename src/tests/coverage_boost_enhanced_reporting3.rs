@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Coverage boost tests for services/enhanced_reporting.rs
 //! Targets: EnhancedReportingService, generate_report, build_metadata,
 //! generate_executive_summary, calculate_health_score, extract_key_findings,

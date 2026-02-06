@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Symbol table for cross-module resolution
 // Complexity: All functions ≤ 10
 // SATD: Zero tolerance

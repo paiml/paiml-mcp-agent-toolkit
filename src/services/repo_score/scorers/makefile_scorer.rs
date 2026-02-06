@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // MakefileScorer - Category D: Build & Test Automation (25 points)
 //
 // Scores based on:

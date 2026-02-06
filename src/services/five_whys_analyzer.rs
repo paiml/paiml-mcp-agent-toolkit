@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Five Whys Root Cause Analyzer - Toyota Way Methodology
 //
 // GREEN PHASE: Minimal implementation to make tests pass

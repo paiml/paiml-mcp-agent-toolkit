@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Cache Strategy Orchestrator for PMAT
 //!
 //! This module provides a unified orchestrator that manages multiple caching strategies

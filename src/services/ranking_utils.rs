@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Ranking utilities for prioritizing analysis results
 //!
 //! This module provides utilities for ranking and prioritizing files based on

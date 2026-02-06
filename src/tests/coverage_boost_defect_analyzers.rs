@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Coverage boost tests for defect_analyzers module
 //! Tests for config structs and analyzer creation
 

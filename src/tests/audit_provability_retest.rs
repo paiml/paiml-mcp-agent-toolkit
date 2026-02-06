@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 ///! Popperian falsification audit retest - Vector 1.1 (Clone Army) and Vector 1.2 (Empty Shell)
 use crate::services::lightweight_provability_analyzer::{FunctionId, LightweightProvabilityAnalyzer};
 

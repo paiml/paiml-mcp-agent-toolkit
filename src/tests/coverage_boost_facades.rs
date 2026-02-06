@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Coverage boost tests for facade modules and MCP mapping
 //! Tests: SATD facade types, DefectPrediction types, MCP parameter parsing
 

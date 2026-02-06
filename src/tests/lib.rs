@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 use crate::{ContentCache, MetadataCache, S3Client, TemplateServer, TemplateServerTrait};
 use std::sync::Arc;
 use tokio::sync::RwLock;

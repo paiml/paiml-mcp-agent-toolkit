@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Agent scaffolding system for generating deterministic MCP agents.
 //!
 //! This module provides comprehensive scaffolding capabilities for creating

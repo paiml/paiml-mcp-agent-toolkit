@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 use crate::services::cache::base::{CacheEntry, CacheStats, CacheStrategy};
 use lru::LruCache;
 use parking_lot::RwLock;

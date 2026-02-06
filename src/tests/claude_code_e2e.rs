@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 use crate::handlers::tools::handle_tool_call;
 use crate::models::mcp::{McpRequest, ToolCallParams};
 use crate::stateless_server::StatelessTemplateServer;

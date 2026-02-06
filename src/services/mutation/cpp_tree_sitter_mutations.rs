@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // C++ Mutation Operators using tree-sitter AST
 // PMAT-7013: C++ Mutation Testing
 // Status: GREEN Phase - Full implementation

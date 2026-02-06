@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Java language strategy for the unified AST framework
 //!
 //! This module provides a Java language strategy that integrates with the

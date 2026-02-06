@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Test utilities for repo_score tests
 // Shared fixtures and helper functions
 

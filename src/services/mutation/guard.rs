@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! RAII-based mutant file restoration guard
 //!
 //! Provides a safe file backup and restoration mechanism for mutation testing,

@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 use super::ast::{
     AssignmentOp, MakefileAst, MakefileNode, MakefileNodeKind, NodeData, RecipeLine,
     RecipePrefixes, SourceSpan,

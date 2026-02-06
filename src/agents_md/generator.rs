@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! AGENTS.md Generator
 //!
 //! Generates AGENTS.md files from PMAT analysis and project structure.

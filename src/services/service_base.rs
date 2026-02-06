@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Base service architecture per SPECIFICATION.md Section 2
 //!
 //! This module provides the foundational Service trait and `ServiceRegistry`

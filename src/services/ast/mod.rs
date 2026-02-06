@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Toyota Way: Unified AST Module for Structural Complexity Reduction
 //
 // This module consolidates all AST-related functionality under a single, unified

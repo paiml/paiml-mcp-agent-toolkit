@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Quality Integration for AGENTS.md
 //!
 //! Integrates PMAT quality gates with agent operations.

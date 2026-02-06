@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Coverage boost tests for enhanced_reporting module
 //! Tests for ReportFormat, RiskLevel, SectionType, Trend, Severity, EffortLevel, Priority, VisualizationType
 

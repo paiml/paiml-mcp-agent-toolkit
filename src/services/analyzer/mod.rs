@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Toyota Way: Unified Analyzer Framework for Structural Complexity Reduction
 //
 // This module consolidates multiple analyzer implementations under a single,

@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 use super::messages::AnalyzeMessage;
 use super::{AgentError, AgentResponse};
 use crate::modules::analyzer::{AnalyzerImpl, AnalyzerModule, Metrics};

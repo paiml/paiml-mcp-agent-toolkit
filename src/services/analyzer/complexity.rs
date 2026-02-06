@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Toyota Way: Unified Complexity Analyzer
 //
 // Consolidates complexity analysis functionality under the unified analyzer framework

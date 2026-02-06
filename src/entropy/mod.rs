@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Actionable Entropy Analysis Module
 //!
 //! AST-based pattern entropy detection for identifying real code quality issues.

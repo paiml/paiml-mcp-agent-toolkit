@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Coverage boost tests for complexity_handlers.rs
 //!
 //! Tests the complexity analysis command handlers including:

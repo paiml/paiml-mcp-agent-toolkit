@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Language mapper interfaces for polyglot AST
 //!
 //! This module defines the interfaces and implementations for mapping

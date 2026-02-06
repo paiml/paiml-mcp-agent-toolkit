@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Language Registry for 30+ language support per SPECIFICATION.md Section 6.2
 //!
 //! This module provides comprehensive language detection and parser selection

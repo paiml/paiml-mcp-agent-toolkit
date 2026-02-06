@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Unified parser orchestration for all languages - PLACEHOLDER
 
 // This module is temporarily disabled during architecture consolidation

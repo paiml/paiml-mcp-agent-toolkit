@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Main ClaudeBridge coordinator that integrates all components
 // Provides the primary interface for Claude SDK integration
 

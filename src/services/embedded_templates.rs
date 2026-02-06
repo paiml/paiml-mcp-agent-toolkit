@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Embedded code generation templates for zero-dependency operation.
 //!
 //! This module provides a comprehensive set of code generation templates that are

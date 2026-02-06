@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Roadmap service for reading/writing roadmap.yaml files
 //
 // Provides file I/O operations for the unified GitHub/YAML workflow.

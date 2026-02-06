@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! WebAssembly parser traits and interfaces
 //!
 //! This module defines the core traits for WebAssembly parsing and analysis.

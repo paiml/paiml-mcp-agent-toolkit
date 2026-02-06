@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Unified Go Analyzer - Parse Once, Extract Twice
 //!
 //! This module eliminates the performance bottleneck of parsing Go files twice

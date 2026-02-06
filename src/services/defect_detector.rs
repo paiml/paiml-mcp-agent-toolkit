@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Shared Known Defects Detection Module
 //!
 //! Provides defect detection capabilities for:

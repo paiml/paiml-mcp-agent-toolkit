@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! WASM language adapter for mutation testing
 //!
 //! Provides mutation testing capabilities for WebAssembly (WAT text format).

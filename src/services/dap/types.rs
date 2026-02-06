@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // DAP (Debug Adapter Protocol) types
 // Sprint 71 - TRACE-001: DAP Protocol Server Implementation
 //

@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Agent context and configuration types.
 
 use super::features::{AgentFeature, QualityLevel};

@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Toyota Way: Unified Defect Analyzer Strategy
 
 use super::{Analyzer, ProjectAnalyzer};

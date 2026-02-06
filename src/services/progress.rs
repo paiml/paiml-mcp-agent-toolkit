@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Progress tracking for analysis operations
 //!
 //! This module provides progress bars and status tracking for long-running

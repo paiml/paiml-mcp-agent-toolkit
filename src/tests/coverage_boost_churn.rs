@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Coverage boost tests for cli/analysis_utilities/churn module
 //! Tests for churn analysis formatting functions
 

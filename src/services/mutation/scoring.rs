@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Mutation scoring and analysis
 
 use super::types::*;

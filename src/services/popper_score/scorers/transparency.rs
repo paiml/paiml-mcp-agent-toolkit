@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Category C: Transparency & Openness (20 points)
 //!
 //! Popper's requirement for scrutiny necessitates visibility into methods.

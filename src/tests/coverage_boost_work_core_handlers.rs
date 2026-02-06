@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Coverage boost tests for cli/handlers/work_handlers/core_handlers.rs
 //!
 //! Tests for core work handler functions including:

@@ -1,3 +1,4 @@
+
 fn build_gitignore(root_path: &Path) -> Result<ignore::gitignore::Gitignore, TemplateError> {
     let mut gitignore = GitignoreBuilder::new(root_path);
 

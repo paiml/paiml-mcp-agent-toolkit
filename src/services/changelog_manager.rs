@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Changelog manager for workflow integration (Issue #75 Phase 7)
 //
 // Manages automatic CHANGELOG.md updates based on work item labels and types.

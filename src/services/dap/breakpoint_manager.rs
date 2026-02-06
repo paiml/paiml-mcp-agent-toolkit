@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Breakpoint Management System
 // Sprint 71 - TRACE-002: Breakpoint Manager Implementation
 //

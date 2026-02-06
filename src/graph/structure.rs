@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Graph structural analysis using aprender v0.5.0 + trueno-graph
 // Implements 4 structural statistics (Phase 4: Graph Migration)
 

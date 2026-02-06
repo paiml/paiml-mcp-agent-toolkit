@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Coverage boost tests for services/mermaid_generator.rs
 //! Tests pure functions: sanitize_id, escape_mermaid_label, get_edge_arrow, get_complexity_color
 

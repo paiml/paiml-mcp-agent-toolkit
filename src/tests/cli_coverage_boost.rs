@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! CLI Enum Coverage Tests
 //!
 //! These tests exercise CLI enum code paths to boost coverage

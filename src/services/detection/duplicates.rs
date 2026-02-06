@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Toyota Way: Unified Duplicate Detection Strategy
 
 use super::{

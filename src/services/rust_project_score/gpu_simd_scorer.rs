@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! GPU/SIMD Scorer for Rust Project Score v2.2
 //!
 //! Integrates CUDA-SIMD TDG analysis into the Rust Project Score.

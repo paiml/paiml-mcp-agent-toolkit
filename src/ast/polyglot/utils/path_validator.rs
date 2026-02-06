@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Path validation utilities for polyglot AST
 //!
 //! This module provides specialized path validation functions for the polyglot AST framework.

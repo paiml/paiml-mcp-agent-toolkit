@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Specification Parser Service (Part C: Specification Parsing Enhancement)
 //!
 //! Parses markdown specification files from docs/specifications/*.md

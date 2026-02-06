@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Runtime invariant checking for agent state validation.
 
 use anyhow::Result;

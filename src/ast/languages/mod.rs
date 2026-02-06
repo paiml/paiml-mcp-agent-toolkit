@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Language-specific AST parsing strategies
 //!
 //! This module implements the strategy pattern for different programming languages,

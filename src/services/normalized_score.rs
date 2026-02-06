@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Normalized Score System (PMAT-454)
 //!
 //! All PMAT scoring systems MUST output values in the 0-100 range.

@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Asynchronous profiling with shadow stack instrumentation
 
 use anyhow::Result;

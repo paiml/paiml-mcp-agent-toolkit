@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Coverage boost tests for cli/handlers/work_handlers/ticket_handlers.rs
 //!
 //! Tests for ticket management handler functions including:

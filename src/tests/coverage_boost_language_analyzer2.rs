@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Coverage boost tests for language_analyzer module
 //! Tests: LanguageAnalysisRequest, AnalysisType, AnalysisOptions, OutputFormat, FileMetadata
 

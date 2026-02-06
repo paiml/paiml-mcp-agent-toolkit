@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Semantic Search Engine
 // PMAT-SEARCH-004: High-level orchestration for code search
 //

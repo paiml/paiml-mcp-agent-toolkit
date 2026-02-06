@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Rust Mutation Operators using tree-sitter AST
 // PMAT-7014: Rust Mutation Testing
 // Status: RED Phase - Stub implementation

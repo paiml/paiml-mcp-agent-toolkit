@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! SATD Detector Tests - Part 1: Core tests and debt classification
 //! Extracted for file health compliance (CB-040)
 

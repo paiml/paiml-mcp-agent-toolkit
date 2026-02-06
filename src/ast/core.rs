@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Unified AST representation for cross-language code analysis
 //!
 //! This module provides a language-agnostic AST representation that enables

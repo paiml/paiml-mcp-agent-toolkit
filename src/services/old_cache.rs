@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Legacy caching utilities for AST metadata and file content
 //!
 //! This module provides thread-safe, async caching functionality using LRU

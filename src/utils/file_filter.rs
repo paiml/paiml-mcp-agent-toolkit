@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! File filtering utilities for include/exclude patterns
 //!
 //! Provides glob-based filtering for analysis commands.

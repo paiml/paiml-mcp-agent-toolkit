@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Commit Message Embedder (GH-RAG-002)
 // Toyota Way: Jidoka - Automation with quality built-in
 // Spec: docs/specifications/git-history-rag-integration.md

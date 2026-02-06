@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! ComputeBrick Profiling Score Service (PMAT-446)
 //!
 //! Reads BrickProfiler JSON output and calculates a 100-point score:

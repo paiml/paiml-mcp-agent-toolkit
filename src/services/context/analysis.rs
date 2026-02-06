@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Project and file analysis functions.
 //!
 //! This module provides the core analysis functions for scanning and analyzing

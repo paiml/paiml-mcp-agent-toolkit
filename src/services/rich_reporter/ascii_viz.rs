@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! ASCII Visualization Primitives for PMAT-REPORT-V1
 //!
 //! Implements Toyota Way Mieruka (Visual Management) through:

@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Mutant test execution
 //!
 //! Executes tests on mutated code to empirically measure mutation score.

@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! WebAssembly Text Format (WAT) parser
 //!
 //! This module provides parsing for WebAssembly text format files.

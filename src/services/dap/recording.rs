@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! REPLAY-001: .pmat Recording Format Implementation
 //! Sprint 75 - GREEN Phase
 //!

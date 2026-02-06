@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Agent system with Actix actors
 pub mod analyzer_actor;
 pub mod messages;

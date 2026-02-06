@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! EXTREME TDD: Context should output ANNOTATED AST, not raw code
 //! The context should show the structure with function signatures, types, etc.
 //! but NOT the implementation details

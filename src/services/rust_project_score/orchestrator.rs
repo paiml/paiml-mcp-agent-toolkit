@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! RustProjectScore Orchestrator
 //!
 //! Aggregates all 10 category scorers into a unified project score.

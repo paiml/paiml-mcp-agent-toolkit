@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // stdio transport with length-prefixed framing protocol
 // Measured latency: 12-15μs RTT (Linux 5.15, epoll)
 

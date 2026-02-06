@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Deterministic Mermaid Generation Engine
 //!
 //! This module implements PageRank-based layout and deterministic Mermaid

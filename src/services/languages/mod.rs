@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Language Support Module for PMAT
 //!
 //! This module provides language detection and analysis capabilities

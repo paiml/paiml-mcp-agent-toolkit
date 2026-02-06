@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Template rendering engine for code generation.
 //!
 //! This module provides a flexible template rendering system based on Handlebars

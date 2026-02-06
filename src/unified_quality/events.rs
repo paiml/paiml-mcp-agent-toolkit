@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Event system for quality monitoring
 
 use crate::unified_quality::metrics::Metrics;

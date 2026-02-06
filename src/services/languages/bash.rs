@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Bash/Shell Script Analysis Support for PMAT
 //!
 //! This module provides Bash-specific analysis capabilities using lexical analysis

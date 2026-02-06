@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! AGENTS.md Discovery System
 //!
 //! Discovers and monitors AGENTS.md files in project hierarchies with caching.

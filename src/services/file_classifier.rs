@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! File classification and filtering for code analysis.
 //!
 //! This module provides intelligent file classification to determine which files

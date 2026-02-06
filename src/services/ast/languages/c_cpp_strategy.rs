@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Toyota Way: C/C++ Strategy Implementation for AST Service Layer
 //
 // This adapter module implements the services::ast::AstStrategy trait

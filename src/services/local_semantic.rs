@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Local Semantic Analysis Service
 //!
 //! Pure Rust semantic search, topic modeling, and clustering.

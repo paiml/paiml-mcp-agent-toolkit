@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Property-based tests for AST parsers
 //! 
 //! This module implements comprehensive property tests for Rust, TypeScript,

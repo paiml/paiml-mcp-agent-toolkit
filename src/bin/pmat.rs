@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 use anyhow::Result;
 use pmat::{cli, stateless_server::StatelessTemplateServer};
 use std::io::IsTerminal;

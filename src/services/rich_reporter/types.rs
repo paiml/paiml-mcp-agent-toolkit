@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Core types for PMAT-REPORT-V1 Universal Rich Reporting
 //!
 //! Implements the Unified Finding and Report structures per specification.

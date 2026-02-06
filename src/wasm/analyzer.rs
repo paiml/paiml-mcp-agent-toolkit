@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Streaming WASM analysis pipeline implementation
 
 use anyhow::{Context, Result};

@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Additional language strategies (Kotlin, Makefile, etc.)
 
 use anyhow::Result;

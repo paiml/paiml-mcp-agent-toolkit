@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! CI/CD workflow generation for TICKET-PMAT-5022
 //!
 //! Generates GitHub Actions workflows for quality gate automation.

@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Coverage boost tests for services/coverage_improvement/mod.rs
 //! Targets: parse_coverage_percentage, CoverageImprovementConfig, CoverageImprovementReport,
 //! IterationReport, extract_file_path_from_line, extract_files_from_json,

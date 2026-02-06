@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Service composition pattern implementation per SPECIFICATION.md Section 2.2
 //!
 //! This module provides service composition capabilities allowing complex

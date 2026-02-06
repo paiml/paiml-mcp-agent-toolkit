@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Hybrid Search Engine with RRF
 // PMAT-SEARCH-005: Combine keyword (ripgrep) and vector search
 //

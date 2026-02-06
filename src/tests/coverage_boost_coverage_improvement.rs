@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Coverage boost tests for services/coverage_improvement module
 //! Tests: config defaults, type construction, serialization
 

@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Compatibility stub for unified cache module
 //!
 //! This module provides type aliases and traits to fix compilation after cleanup

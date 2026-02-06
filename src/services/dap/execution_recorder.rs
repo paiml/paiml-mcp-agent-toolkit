@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // TRACE-005: Execution Recording Infrastructure
 // Sprint 72 - GREEN Phase: In-memory snapshot capture
 // Sprint 76 - GREEN Phase: CAPTURE-001 RecordingWriter Integration

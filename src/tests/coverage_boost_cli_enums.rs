@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Coverage boost tests for cli/enums.rs
 //! Tests all Display implementations and as_str methods
 

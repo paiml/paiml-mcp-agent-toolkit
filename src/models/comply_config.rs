@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! YAML-first configuration for pmat comply checks.
 //!
 //! Implements COMPLY-044 from improve-pmat-comply.md v2.8:

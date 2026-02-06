@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! DWARF v5 Parser
 //!
 //! Parses DWARF debugging information from WASM custom sections.

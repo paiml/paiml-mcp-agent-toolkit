@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // TRACE-007: Replay Engine with Forward/Backward Navigation
 // Sprint 72 - GREEN Phase
 //

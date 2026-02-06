@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Lightweight provability analysis using abstract interpretation
 //!
 //! This module provides fast, incremental provability analysis using abstract

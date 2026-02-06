@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Tests for deep context - Part 3: Coverage tests (language detection, extraction)
 //! Extracted for file health compliance (CB-040)
 

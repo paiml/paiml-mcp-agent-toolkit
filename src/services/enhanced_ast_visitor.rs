@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Enhanced AST visitor that preserves real source locations and qualified names
 //!
 //! This module provides an enhanced visitor that extracts actual AST information

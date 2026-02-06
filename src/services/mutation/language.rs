@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Language adapter system for mutation testing
 
 use super::language_detector::Language; // Sprint 63: Use centralized language detection

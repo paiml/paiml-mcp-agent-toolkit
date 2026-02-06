@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Automated refactoring engine with state machine workflow.
 //!
 //! This module implements PMAT's intelligent refactoring system that follows

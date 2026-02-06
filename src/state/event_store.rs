@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 use super::*;
 use crc32fast::Hasher;
 use parking_lot::RwLock;

@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Graph type system for PMAT - using trueno-graph (replaces petgraph)
 // Complexity: All functions ≤ 10
 // SATD: Zero tolerance

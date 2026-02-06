@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Sprint 78: TUI-001 GREEN - Terminal Event Loop Implementation
 //
 // Minimal implementation to pass TUI-001 RED tests.

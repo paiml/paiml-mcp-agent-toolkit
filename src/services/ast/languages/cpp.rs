@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! C++ Language Support for PMAT
 //!
 //! This module provides C++-specific analysis capabilities using tree-sitter-cpp parser

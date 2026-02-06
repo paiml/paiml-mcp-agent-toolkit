@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 use crate::services::renderer::{render_template, TemplateRenderer};
 use serde_json::json;
 

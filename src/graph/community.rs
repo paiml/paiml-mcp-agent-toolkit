@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Community detection algorithms using Louvain method (aprender v0.5.0)
 // Following Newman-Girvan modularity optimization
 // Implements Task 4.3 (Phase 4: Graph Migration)

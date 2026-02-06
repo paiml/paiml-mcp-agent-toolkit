@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Mutation engine for generating and executing mutants
 use super::language::LanguageAdapter;
 use super::types::*;

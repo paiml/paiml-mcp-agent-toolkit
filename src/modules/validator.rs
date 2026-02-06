@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 use super::analyzer::{AnalyzerModule, Metrics};
 use super::{ModuleError, PmatModule};
 use async_trait::async_trait;

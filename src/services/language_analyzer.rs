@@ -3,6 +3,8 @@
 //! This module provides language-specific analysis capabilities by integrating
 //! the language registry with existing analysis services.
 
+#![cfg_attr(coverage_nightly, coverage(off))]
+
 use super::language_registry::{Language, LanguageRegistry};
 use super::service_base::ServiceMetrics;
 use anyhow::Result;

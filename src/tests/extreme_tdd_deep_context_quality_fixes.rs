@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! EXTREME TDD: Deep Context Quality Fixes
 //! Implements user-requested improvements with failing tests first (RED-GREEN-REFACTOR)
 

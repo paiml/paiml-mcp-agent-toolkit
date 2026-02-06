@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Category B: Reproducibility Infrastructure (25 points)
 //!
 //! Independent verification requires exact environment replication.

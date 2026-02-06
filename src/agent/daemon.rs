@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Background Daemon for Claude Code Agent Mode
 //!
 //! Manages the lifecycle of the PMAT background agent service with graceful

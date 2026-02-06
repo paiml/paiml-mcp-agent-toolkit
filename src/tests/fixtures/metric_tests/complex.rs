@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Complex functions with high cyclomatic complexity
 fn complex_function(items: &[i32]) -> i32 {
     let mut sum = 0;

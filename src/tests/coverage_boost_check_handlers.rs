@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Coverage boost tests for check_handlers.rs
 //!
 //! Tests the PMAT compliance check handlers including:

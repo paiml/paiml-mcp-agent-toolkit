@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! AGENTS.md Integration Module
 //!
 //! Implements the AGENTS.md standard for AI agent guidance with PMAT quality enforcement.

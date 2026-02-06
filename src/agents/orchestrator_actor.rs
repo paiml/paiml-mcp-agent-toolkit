@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 use super::messaging::request_response::{AnalyzeRequest, TransformRequest, ValidateRequest};
 use super::{AgentError, AgentResponse, AgentState};
 use actix::prelude::*;

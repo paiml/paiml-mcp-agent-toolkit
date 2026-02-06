@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Kotlin language AST parser implementation
 //!
 //! This module provides Kotlin language parsing support using tree-sitter-kotlin.

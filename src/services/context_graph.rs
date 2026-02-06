@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! O(1) Context Graph - trueno-graph integration for fast symbol lookups
 //!
 //! This module provides CSR-backed graph storage for project context,

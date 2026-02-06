@@ -1,3 +1,4 @@
+
 struct RustVisitor {
     items: Vec<AstItem>,
     #[allow(dead_code)]

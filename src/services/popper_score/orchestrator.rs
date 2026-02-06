@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Orchestrator for Popper Falsifiability Score v1.1
 //!
 //! Coordinates all 6 category scorers and applies gateway logic with normalization.

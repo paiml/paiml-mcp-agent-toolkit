@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Coverage boost tests for unified_ast_types module - Part 2
 //! Tests: UnifiedAstNode, Location, Span, BytePos, QualifiedName, MacroKind,
 //! ProofAnnotation, PropertyType, ConfidenceLevel, VerificationMethod, EvidenceType,

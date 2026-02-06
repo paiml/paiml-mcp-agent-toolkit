@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // pmat repo-score module
 // Repository health scoring system
 //

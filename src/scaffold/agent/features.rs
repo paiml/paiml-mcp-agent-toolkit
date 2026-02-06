@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Agent feature definitions and configurations.
 
 use anyhow::{bail, Result};

@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Coverage boost tests for services/ranking.rs
 //! Tests: CompositeComplexityScore, ChurnScore, DuplicationScore,
 //! rank_files_vectorized, ComplexityRanker

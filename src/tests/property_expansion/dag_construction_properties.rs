@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Property-based tests for DAG construction
 //! 
 //! This module verifies that dependency graphs maintain acyclicity

@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Symbol table for location resolution and qualified name mapping
 //!
 //! This module provides efficient symbol resolution for proof annotation location mapping.

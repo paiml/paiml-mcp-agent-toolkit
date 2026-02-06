@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Command Suggestion System
 //!
 //! Provides "did you mean?" functionality for CLI commands using Levenshtein distance

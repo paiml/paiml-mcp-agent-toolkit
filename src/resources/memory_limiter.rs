@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 use super::*;
 use parking_lot::RwLock;
 use std::alloc::{GlobalAlloc, Layout, System};

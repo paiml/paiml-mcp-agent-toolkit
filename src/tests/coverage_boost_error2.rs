@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Coverage boost tests for error module - Part 2
 //! Comprehensive tests for error behavior, recovery, severity, and edge cases.
 //!

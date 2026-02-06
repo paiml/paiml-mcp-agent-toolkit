@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Git repository cloning and caching service
 //!
 //! This module provides efficient Git repository cloning with caching,

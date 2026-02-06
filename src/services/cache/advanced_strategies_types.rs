@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Advanced caching types and configurations
 //!
 //! This module defines types, enums, and configuration structures for advanced caching.

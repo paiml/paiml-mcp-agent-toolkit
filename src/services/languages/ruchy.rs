@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Ruchy Language Support for PMAT
 //!
 //! This module provides AST parsing and complexity analysis for the Ruchy programming language.

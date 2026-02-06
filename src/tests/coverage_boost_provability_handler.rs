@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Coverage boost tests for provability_handler and related modules
 //! Comprehensive tests for ProvabilityConfig, helpers, and lightweight analyzer
 //!

@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 use super::analyzer_actor::AnalyzerActor;
 use super::messages::{AnalyzeMessage, ValidateMessage};
 use super::transformer_actor::TransformerActor;

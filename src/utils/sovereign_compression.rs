@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Sovereign Stack Compression Adapter
 //!
 //! Wraps trueno-zram-core's PAGE_SIZE-based compression API with a variable-length

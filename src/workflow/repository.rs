@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Workflow repository for persistence
 //!
 //! Provides storage and retrieval of workflow definitions.

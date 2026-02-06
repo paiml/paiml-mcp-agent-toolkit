@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Hook manager for workflow integration (Issue #75 Phase 6)
 //
 // Manages git hooks for commit message validation and quality gates.

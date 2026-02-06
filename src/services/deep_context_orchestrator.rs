@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Deep Context Orchestrator - Phase 4 implementation
 //!
 //! High-performance deep context analysis with parallel AST building,

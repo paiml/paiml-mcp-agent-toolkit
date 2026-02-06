@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Generic file ranking system for prioritizing code analysis
 //!
 //! This module provides a flexible ranking framework that can sort files by

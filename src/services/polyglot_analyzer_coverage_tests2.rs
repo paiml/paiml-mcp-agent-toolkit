@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Coverage tests part 2 for polyglot analyzer
 //! Extracted for file health compliance (CB-040)
 

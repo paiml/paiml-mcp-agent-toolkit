@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Coverage boost tests for models/debug_analysis.rs
 //! Tests: DebugAnalysis, WhyIteration, Evidence, EvidenceSource, Recommendation,
 //! Priority, EvidenceSummary

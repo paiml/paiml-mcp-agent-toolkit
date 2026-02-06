@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Coverage boost tests for services - batch 1
 //! Tests for DeepContext configuration and related types
 

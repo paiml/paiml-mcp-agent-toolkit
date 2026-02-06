@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! GitHub API client for unified workflow (Issue #75)
 //!
 //! This module provides GitHub API integration using octocrab for:

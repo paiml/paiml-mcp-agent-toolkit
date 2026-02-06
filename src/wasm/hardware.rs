@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Capability-based hardware classification for performance normalization
 
 use std::fmt;

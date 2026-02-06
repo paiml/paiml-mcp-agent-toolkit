@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Output formatters for Five Whys analysis
 //
 // GREEN PHASE: Minimal implementation for test formats

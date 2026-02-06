@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Path Validation Utilities
 //!
 //! Provides centralized, standardized path validation functions to reduce code duplication

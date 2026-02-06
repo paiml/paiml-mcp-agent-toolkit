@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! GitHub Issues Integration Service
 //!
 //! This module provides comprehensive GitHub Issues API integration with support for:

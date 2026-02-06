@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Coverage boost tests for services/semantic/chunker module
 //! Comprehensive tests for chunk_code(), language parsers, doc comment preservation,
 //! error handling, and text chunking functionality

@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Coverage boost tests for services/metric_trends.rs
 //! Tests: MetricObservation, TrendAnalysis, TrendDirection, ForecastPoint,
 //! PredictionResult, MetricTrendStore

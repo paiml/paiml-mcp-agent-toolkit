@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 use super::*;
 use crate::state::event_store::{EventStore, EventStoreConfig};
 use crate::state::snapshot_store::{SnapshotConfig, SnapshotStore};

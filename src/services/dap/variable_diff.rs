@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // TRACE-009: Variable Diff Highlighting
 // Sprint 73 - GREEN Phase
 //

@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Coverage boost tests for services/defect_report_service/mod.rs
 //! Targets: compute_summary, format_json, format_csv, format_markdown, format_text,
 //! generate_filename, filter_by_pattern

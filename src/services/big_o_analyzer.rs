@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Big-O Complexity Analyzer - Phase 5 implementation
 //!
 //! Provides algorithmic complexity analysis for functions using

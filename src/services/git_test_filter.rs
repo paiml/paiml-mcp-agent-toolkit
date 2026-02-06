@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Git-aware test filtering for targeted quality gates
 //
 // Implements smart test selection based on git diff to avoid running

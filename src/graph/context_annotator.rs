@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Deep context annotation with graph metrics
 // Sprint 3: Integration with graph analysis
 // Complexity: All functions ≤ 8

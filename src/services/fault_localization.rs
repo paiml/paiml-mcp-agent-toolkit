@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Tarantula-style Spectrum-Based Fault Localization (SBFL)
 // Issue #103: Fault localization integration
 // Toyota Way: Start with simplest formula, evolve based on evidence

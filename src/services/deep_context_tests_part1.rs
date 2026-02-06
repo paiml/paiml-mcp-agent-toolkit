@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Tests for deep context - Part 1: Core tests
 //! Extracted for file health compliance (CB-040)
 

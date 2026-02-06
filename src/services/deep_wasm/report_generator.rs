@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Report Generator
 //!
 //! Generates comprehensive deep WASM context reports in markdown and HTML formats.

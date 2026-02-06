@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Advanced memory management optimization for PMAT
 //!
 //! This module provides comprehensive memory management optimizations including:

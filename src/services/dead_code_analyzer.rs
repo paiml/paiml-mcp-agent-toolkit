@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Dead code detection with cross-reference analysis
 //!
 //! This module provides advanced dead code detection capabilities through multi-level

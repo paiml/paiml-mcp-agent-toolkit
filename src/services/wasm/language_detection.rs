@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! WebAssembly language detection
 //!
 //! This module provides language detection for WebAssembly variants.

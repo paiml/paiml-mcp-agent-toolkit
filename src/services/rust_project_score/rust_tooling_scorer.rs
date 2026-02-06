@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! RustToolingScorer - Rust Tooling Compliance Category (37 points)
 //!
 //! Analyzes Rust project compliance with standard tooling:

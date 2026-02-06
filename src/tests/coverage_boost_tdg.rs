@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Coverage boost tests for models/tdg.rs
 //! Tests: TDGScore, TDGComponents, TDGSeverity, TDGConfig, TDGSummary,
 //! TDGHotspot, TDGAnalysis, TDGRecommendation, RecommendationType, TDGDistribution

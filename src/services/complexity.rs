@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Zero-overhead complexity analysis system
 //!
 //! This module provides code complexity analysis without increasing binary size

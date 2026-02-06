@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Coverage boost tests for comply_cb_detect.rs
 //!
 //! Tests the CB-050 and CB-060 detection logic including:

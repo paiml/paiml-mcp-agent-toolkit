@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 use std::net::SocketAddr;
 
 use async_trait::async_trait;

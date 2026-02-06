@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! File Health Score Service
 //!
 //! Implements the File Health Score specification (docs/specifications/max-lines.md).

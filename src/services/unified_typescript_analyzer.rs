@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Unified TypeScript/JavaScript Analyzer - Parse Once, Extract Twice
 //!
 //! This module eliminates the performance bottleneck of parsing TypeScript/JavaScript files twice

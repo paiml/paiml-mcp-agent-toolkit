@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Coverage boost tests for cli/handlers/enforce_handlers.rs
 //! Tests: type construction, serde, pure functions, state machine
 

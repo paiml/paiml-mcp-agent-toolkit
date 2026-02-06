@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Core types for AI-ready context generation.
 //!
 //! This module contains the fundamental data structures used for representing

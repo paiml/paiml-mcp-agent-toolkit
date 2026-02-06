@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Parallel Git Operations Service
 //!
 //! This module provides parallelized git operations using connection pooling

@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Coverage boost tests for services - batch 3
 //! Tests for defect_report models and enhanced_reporting
 

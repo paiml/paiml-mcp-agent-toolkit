@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Shrinking strategies for property-based testing
 //! 
 //! This module provides custom shrinking strategies to find minimal

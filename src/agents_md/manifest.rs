@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Agent Manifest and Capabilities
 //!
 //! Manages agent capabilities and registration.

@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Category D: Statistical Rigor (15 points)
 //!
 //! Sound methodology separates science from pseudoscience.

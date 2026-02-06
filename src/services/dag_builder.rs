@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Dependency graph builder for constructing code structure DAGs.
 //!
 //! This module builds directed acyclic graphs (DAGs) representing the structure

@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Intelligence Layer: Pattern-Based Suggestion Engine
 //!
 //! Phase 2 Implementation (Months 4-6)

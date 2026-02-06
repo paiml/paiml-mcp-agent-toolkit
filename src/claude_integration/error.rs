@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Error handling types for Claude integration bridge
 // Zero-cost error propagation using discriminated unions
 

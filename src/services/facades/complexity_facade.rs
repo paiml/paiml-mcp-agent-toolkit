@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Complexity Analysis Facade
 //!
 //! Provides a simplified interface for complexity analysis operations.

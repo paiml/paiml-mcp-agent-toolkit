@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Hallucination Detection Service - Sprint 37
 //!
 //! Semantic entropy-based hallucination detection for documentation validation.

@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Property-based tests for graph algorithms
 // Testing invariants with proptest
 

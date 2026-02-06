@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Coverage boost tests for cli/handlers/work_falsification.rs
 //! Tests: FalsificationReport methods (has_blocking_failures, blocking_failures, warning_failures)
 //! Also tests ClaimResult construction, FalsificationMethod, FalsificationResult

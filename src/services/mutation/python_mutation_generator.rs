@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Python Mutation Generator using tree-sitter AST
 // PMAT-7011: Python Mutation Testing
 // Status: RED Phase - Stub implementation

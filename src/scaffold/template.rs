@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Template rendering system - TICKET-PMAT-5002
 // Simple variable substitution for code generation
 

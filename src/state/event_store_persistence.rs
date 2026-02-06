@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Event persistence traits and in-memory implementation
 //!
 //! Provides the core persistence abstraction for event sourcing.

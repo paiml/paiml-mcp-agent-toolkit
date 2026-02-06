@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Mock transport implementation for testing.
 //!
 //! This module provides a deterministic mock transport for testing MCP

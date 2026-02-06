@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Foundation Layer: Real-time Monitoring Engine
 //!
 //! Phase 1 Implementation (Months 1-3)

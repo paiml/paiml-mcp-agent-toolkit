@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Coverage boost tests for services/ast_strategies_impl module
 //!
 //! Tests the StrategyRegistry pattern and language-specific AST strategies.

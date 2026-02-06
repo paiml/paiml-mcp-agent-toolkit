@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Coverage boost tests for services/oracle/signal_collector module
 //!
 //! Tests for SignalCollector trait implementations, AggregatedCollector,

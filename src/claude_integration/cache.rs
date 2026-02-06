@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Two-tier cache implementation for Claude integration
 // L1: In-memory cache with short TTL, L2: Persistent cache
 

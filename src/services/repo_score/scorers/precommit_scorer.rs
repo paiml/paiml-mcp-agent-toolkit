@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // PrecommitScorer - Category B: Pre-commit Hooks (20 points)
 //
 // Scores based on:

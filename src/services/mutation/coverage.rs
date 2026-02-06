@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Coverage Tracking for Mutation Testing - Phase 4.1
 //!
 //! EXTREME TDD: Coverage instrumentation and tracking

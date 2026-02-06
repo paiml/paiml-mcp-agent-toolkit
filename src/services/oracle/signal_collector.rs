@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Signal collectors for gathering quality signals from various sources
 //!
 //! Implements Genchi Genbutsu (Go and See) - evidence from actual tools.

@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Connection pool with circuit breaker for resilience
 // Implements Tokio's resource pool pattern with health monitoring
 

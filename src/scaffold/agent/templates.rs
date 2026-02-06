@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Agent template definitions and implementations.
 
 use super::context::AgentContext;

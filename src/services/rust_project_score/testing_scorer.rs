@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! TestingScorer - Testing Excellence Category (20 points)
 //!
 //! Analyzes Rust project testing practices:

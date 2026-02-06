@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Coverage boost tests for configuration_service module
 //! Target: Test pure functions and configuration defaults
 

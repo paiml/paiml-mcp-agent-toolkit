@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Coverage boost tests for cli/analysis_utilities/quality_gate.rs
 //! Tests pure functions: apply_satd_filters, get_severity_icon, and formatting functions
 

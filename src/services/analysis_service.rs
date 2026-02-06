@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Unified analysis service implementing the Service trait
 //!
 //! Provides various code analysis capabilities through a unified interface

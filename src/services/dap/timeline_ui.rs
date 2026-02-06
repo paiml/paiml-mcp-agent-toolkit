@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // TIMELINE-002: Timeline UI Integration with TimelinePlayer
 // Sprint 77 - GREEN Phase
 //

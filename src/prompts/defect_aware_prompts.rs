@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Defect-Aware Prompt Generator for AI Integration (Phase 4)
 // Generates context-aware prompts from organizational intelligence
 

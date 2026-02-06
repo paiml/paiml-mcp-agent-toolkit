@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Claude Code Agent Mode Implementation
 //!
 //! This module implements PMAT as a Claude Code background agent, providing:

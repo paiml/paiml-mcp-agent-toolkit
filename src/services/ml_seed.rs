@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! ML Reproducibility - Seed Management
 //!
 //! Provides deterministic random number generation for all ML operations.

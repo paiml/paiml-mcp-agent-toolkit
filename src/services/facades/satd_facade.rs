@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! SATD (Self-Admitted Technical Debt) Analysis Facade
 //!
 //! Provides a simplified interface for SATD detection and analysis.

@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! WebSocket transport implementation using pmcp 1.0.
 //!
 //! This module provides WebSocket transport for MCP communication,

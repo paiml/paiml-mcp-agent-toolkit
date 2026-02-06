@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! High-performance duplicate code detection using LSH and `MinHash`
 //!
 //! This module implements the duplicate code detection system as specified

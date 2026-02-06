@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Enhanced Kotlin Language Support for PMAT
 //!
 //! This module provides enhanced Kotlin-specific analysis capabilities using tree-sitter-kotlin parser

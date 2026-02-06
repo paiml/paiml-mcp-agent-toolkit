@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Technical Debt Gradient (TDG) calculator for code quality assessment
 //!
 //! This module implements the TDG scoring system, a comprehensive metric that

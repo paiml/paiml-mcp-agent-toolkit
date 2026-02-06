@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! EXTREME TDD: Fix Root Cause with Proper Concurrency
 //! Goal: Sub-second performance with ALL annotations using world-class architecture
 

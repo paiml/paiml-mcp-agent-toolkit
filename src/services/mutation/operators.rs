@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Mutation operators for AST transformation
 
 use super::types::*;

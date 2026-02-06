@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 use super::*;
 use flate2::read::GzDecoder;
 use flate2::write::GzEncoder;

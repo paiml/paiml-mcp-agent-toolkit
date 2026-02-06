@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Go Language Support for PMAT
 //!
 //! This module provides Go-specific analysis capabilities using tree-sitter-go parser

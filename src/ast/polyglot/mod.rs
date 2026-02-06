@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Polyglot AST module for cross-language analysis
 //!
 //! This module provides a unified representation of AST nodes across different

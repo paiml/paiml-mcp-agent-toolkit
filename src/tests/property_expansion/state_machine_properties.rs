@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Property-based tests for state machine verification
 //! 
 //! This module verifies that the refactor auto state machine maintains

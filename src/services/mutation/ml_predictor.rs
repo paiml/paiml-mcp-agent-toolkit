@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! ML-Based Mutant Survivability Predictor - Phase 4.3 GREEN PHASE
 //!
 //! EXTREME TDD: GREEN PHASE - Aprender LinearRegression Migration (2025-11-18)

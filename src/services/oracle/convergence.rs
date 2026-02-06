@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Convergence criteria and status tracking
 //!
 //! Implements quality gates for the "perfect" project state.

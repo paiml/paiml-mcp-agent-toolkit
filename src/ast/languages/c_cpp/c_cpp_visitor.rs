@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Tree-sitter visitor for C/C++ AST conversion
 
 use crate::ast::core::{

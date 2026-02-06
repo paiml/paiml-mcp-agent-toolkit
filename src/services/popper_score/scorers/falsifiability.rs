@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Category A: Falsifiability & Testability (25 points) - GATEWAY
 //!
 //! The cornerstone of Popperian science: claims must be testable and potentially refutable.

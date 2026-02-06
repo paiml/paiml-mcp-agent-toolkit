@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Test data generators for property-based testing
 //! 
 //! This module provides reusable generators for creating test data

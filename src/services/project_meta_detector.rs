@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Project metadata detection service
 //!
 //! This module automatically detects and processes important project metadata

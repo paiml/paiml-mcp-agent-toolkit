@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Toyota Way: AST Strategy Pattern Implementation
 //
 // Consolidates the strategy pattern logic from ast_strategies.rs

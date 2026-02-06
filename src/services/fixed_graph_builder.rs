@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Fixed-size graph builder with intelligent node selection
 //!
 //! This module creates optimally-sized dependency graphs that respect rendering

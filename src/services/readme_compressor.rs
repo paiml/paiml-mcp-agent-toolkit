@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! README file compression for efficient context generation
 //!
 //! This module intelligently compresses README files by identifying and

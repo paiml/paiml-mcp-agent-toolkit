@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 use crate::models::pdmt::{
     ImplementationSpecs, PdmtQualityConfig, PdmtTodo, PdmtTodoList, TodoPriority, TodoQualityGates,
     TodoStatus, ValidationCommands,

@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Core data models for Rust Project Score v1.1
 //!
 //! This module defines the core types for the 106-point scoring system

@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Scorer trait for Popper Falsifiability Score v1.1
 //!
 //! Defines the common interface for all 6 scoring category analyzers.

@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Coverage boost tests for models/dead_code.rs and cli/handlers/dead_code_handlers.rs
 //! Tests: type construction, serialization, calculate_score, format functions
 

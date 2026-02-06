@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Distributed mutation testing execution
 //!
 //! Provides parallel mutant execution with work queue distribution,

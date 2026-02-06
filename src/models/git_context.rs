@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Git context metadata for linking TDG analysis to git commits.
 //!
 //! This module provides git context extraction and management for correlating

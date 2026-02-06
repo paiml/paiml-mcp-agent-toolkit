@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Coverage boost tests for services/enhanced_reporting.rs
 //! Tests type instantiation, serialization, and Default implementations
 

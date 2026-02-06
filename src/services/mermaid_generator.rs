@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Mermaid diagram generator for dependency graphs
 //!
 //! This module generates Mermaid-compatible diagrams from dependency graphs,

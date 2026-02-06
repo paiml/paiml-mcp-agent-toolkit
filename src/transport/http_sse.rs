@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! HTTP Server-Sent Events (SSE) transport implementation using pmcp 1.0.
 //!
 //! This module provides HTTP/SSE transport for MCP communication,

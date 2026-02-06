@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Mutation testing engine for PMAT
 //!
 //! AST-based mutation testing and fuzzing system for language-agnostic

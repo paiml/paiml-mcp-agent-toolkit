@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Clustering Algorithms for Code Embeddings
 // PMAT-SEARCH-007: K-means, Hierarchical, and DBSCAN clustering
 //

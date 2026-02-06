@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! TypeScript/JavaScript mutation generator using tree-sitter AST visitor
 //!
 //! GREEN PHASE: AST traversal and mutation generation

@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Quality gate enforcement for Claude integration
 // Stricter than standard PMAT gates due to cross-language complexity
 

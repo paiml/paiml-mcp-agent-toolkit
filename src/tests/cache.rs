@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 use crate::cli::DagType;
 use crate::models::churn::{ChurnSummary, CodeChurnAnalysis};
 use crate::models::dag::DependencyGraph;

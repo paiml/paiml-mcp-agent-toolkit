@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! WASM Binary Inspector
 //!
 //! Parses WebAssembly binary format according to WebAssembly spec.

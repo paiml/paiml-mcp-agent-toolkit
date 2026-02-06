@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Rust WASM Analyzer Extension
 //!
 //! Extends the Rust analyzer to detect WASM-specific constructs.

@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 use crate::handlers::resources::{handle_resource_list, handle_resource_read};
 use crate::models::mcp::McpRequest;
 use crate::stateless_server::StatelessTemplateServer;

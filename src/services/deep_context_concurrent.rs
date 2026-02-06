@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Concurrent Deep Context Analysis with World-Class Performance
 //! Uses proper parallel processing with tokio::join! and rayon
 

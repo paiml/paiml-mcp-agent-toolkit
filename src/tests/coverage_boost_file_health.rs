@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Coverage boost tests for services/file_health.rs
 //! Tests pure functions: FileSizeClass, HealthGrade, FileHealthMetrics, FileHealthReport,
 //! FileHealthBaseline, RatchetViolation, analyze_file, count_lines, scan_directory

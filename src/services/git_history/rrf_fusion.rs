@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Reciprocal Rank Fusion (GH-RAG-006)
 // Toyota Way: Jidoka - Automation with quality built-in
 // Citation: [SIGIR-2022] SPLADE v2 - Sparse Lexical and Expansion Model

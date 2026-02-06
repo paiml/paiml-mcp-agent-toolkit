@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 

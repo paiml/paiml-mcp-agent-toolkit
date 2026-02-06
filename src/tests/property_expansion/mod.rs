@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Property-Based Testing Expansion Implementation
 //! 
 //! This module implements comprehensive property-based testing expansion

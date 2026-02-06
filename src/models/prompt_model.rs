@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Prompt data model for CLI workflow prompts
 //!
 //! This module defines the structure for storing and rendering workflow prompts

@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Incremental/Lazy Churn Analysis Service
 //!
 //! This module provides an incremental churn analysis implementation that

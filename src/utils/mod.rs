@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Utility functions and helpers for PMAT.
 //!
 //! This module contains shared utilities, helper functions, and common patterns

@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Claude Code sub-agent templates for PMAT.
 //!
 //! This module provides specialized sub-agent templates compatible with Claude Code's

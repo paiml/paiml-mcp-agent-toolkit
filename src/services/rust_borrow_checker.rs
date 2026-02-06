@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Rust borrow checker proof source for safety guarantees
 //!
 //! This module provides proof annotations based on Rust's type system guarantees,

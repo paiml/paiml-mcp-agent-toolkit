@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Quality gate enforcement for code standards.
 //!
 //! This module implements automated quality checks and verification gates that

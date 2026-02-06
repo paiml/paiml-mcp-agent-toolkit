@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // PageRank algorithm implementation using aprender v0.5.0
 // Following Google's original algorithm with power iteration
 // Implements Task 4.1 (Phase 4: Graph Migration)

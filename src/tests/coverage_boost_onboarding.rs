@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Coverage boost tests for unified_quality/onboarding module
 //! Tests for TeamOnboarding, TutorialLibrary, and related types
 

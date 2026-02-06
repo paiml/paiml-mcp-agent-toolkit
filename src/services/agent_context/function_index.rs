@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Function Index - RAG Index for Agent Context
 //!
 //! Builds a searchable index of all functions in a project with quality annotations.

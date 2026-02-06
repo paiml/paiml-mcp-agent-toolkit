@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Compatibility shim for `ast_python` module during migration to new AST architecture
 //!
 //! This module provides backward compatibility for services still using the old Python AST API.

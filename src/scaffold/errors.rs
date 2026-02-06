@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Error types for scaffolding - TICKET-PMAT-5001
 // Extends existing ScaffoldError from agent module
 

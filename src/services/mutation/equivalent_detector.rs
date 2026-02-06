@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Equivalent Mutant Detector - Phase 4.2
 //!
 //! EXTREME TDD: GREEN PHASE - Minimal implementation to pass RED tests

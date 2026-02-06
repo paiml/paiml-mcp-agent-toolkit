@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Unified WebAssembly Analyzer - Parse Once, Extract Twice
 //!
 //! This module eliminates the performance bottleneck of parsing WASM files twice

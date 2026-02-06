@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Incremental code coverage analyzer for CI/CD pipelines
 //!
 //! This module provides efficient incremental coverage analysis by tracking

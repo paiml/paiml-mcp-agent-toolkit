@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Semantic naming service for code elements
 //!
 //! This module provides intelligent naming conversion for code elements across

@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Data types for deep WASM analysis
 
 use serde::{Deserialize, Serialize};

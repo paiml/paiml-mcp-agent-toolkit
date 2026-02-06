@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! WebAssembly Analysis Support for PMAT
 //!
 //! This module provides WASM-specific analysis capabilities using wasmparser

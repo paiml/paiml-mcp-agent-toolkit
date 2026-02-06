@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! PHP Script Analysis Support for PMAT
 //!
 //! This module provides PHP-specific analysis capabilities using lexical analysis

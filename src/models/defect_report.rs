@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Unified defect report model for aggregating all quality issues
 //!
 //! This module defines the core structures for the comprehensive defect

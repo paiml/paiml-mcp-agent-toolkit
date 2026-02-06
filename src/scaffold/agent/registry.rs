@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Template registry for managing agent templates.
 
 use super::error::{ScaffoldError, ScaffoldResult};

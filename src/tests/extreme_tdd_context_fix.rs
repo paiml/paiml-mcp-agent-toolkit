@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! EXTREME TDD tests for fixing context to show actual code with proper AST annotations
 //! These tests follow RED-GREEN-REFACTOR cycle strictly
 

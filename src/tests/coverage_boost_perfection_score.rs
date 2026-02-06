@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Coverage boost tests for services/perfection_score module
 //! Tests for PerfectionScoreCalculator, CategoryScore, and related types
 

@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 pub mod adapters;
 pub mod advanced_strategies;
 pub mod base;

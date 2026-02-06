@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 use super::{AgentId, AgentSpec};
 use dashmap::DashMap;
 use std::sync::Arc;

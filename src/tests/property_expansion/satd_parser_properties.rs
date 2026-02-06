@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Property-based tests for SATD (Self-Admitted Technical Debt) parser
 //! 
 //! This module verifies that the SATD parser handles all comment formats

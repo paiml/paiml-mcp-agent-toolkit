@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Coupling analysis for measuring component dependencies and stability.
 //!
 //! This module analyzes coupling between software components to identify

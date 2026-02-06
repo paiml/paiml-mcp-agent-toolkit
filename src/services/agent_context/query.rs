@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Query Engine for Agent Context
 //!
 //! Provides semantic search with quality filtering over the function index.

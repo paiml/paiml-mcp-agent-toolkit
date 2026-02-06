@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 use super::*;
 use async_raft::raft::{Entry, EntryPayload, MembershipConfig};
 use async_raft::{AppData, AppDataResponse, Config as RaftConfig, Raft, RaftMetrics, RaftNetwork, RaftStorage};

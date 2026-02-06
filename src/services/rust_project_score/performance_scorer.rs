@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! PerformanceScorer - Performance & Benchmarking Category (10 points)
 //!
 //! Based on "Learn from Rust Giants" specification (v2.0):

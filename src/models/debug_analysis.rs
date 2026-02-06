@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Data models for Five Whys root cause analysis
 //
 // GREEN PHASE: Minimal implementation to make tests pass

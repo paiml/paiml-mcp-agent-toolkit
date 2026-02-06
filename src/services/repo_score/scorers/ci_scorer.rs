@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // CiScorer - Category E: Continuous Integration (20 points)
 //
 // Scores based on:

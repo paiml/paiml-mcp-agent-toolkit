@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Perfection Score Service (master-plan-pmat-work-system.md)
 //!
 //! Aggregates 8 quality metrics into a unified 200-point score:

@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Scala Language Support for PMAT
 //!
 //! This module provides Scala-specific analysis capabilities using tree-sitter-scala parser

@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Coverage boost tests for unified_quality/performance module
 //! Tests for PerformanceMonitor, benchmarks, and related types
 

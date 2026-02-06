@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 /// Language detection for mutation testing
 ///
 /// Detects programming language from file extensions to enable multi-language

@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! EventStore main implementation
 //!
 //! Append-only event log with strong ordering guarantees.

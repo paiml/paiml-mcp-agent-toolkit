@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Data Science Integration for PMAT-REPORT-V1
 //!
 //! Integrates existing algorithms:

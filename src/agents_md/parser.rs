@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! AGENTS.md Parser Implementation
 //!
 //! Parses markdown files following the AGENTS.md specification with quality validation.

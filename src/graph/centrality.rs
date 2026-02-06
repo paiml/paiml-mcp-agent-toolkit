@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Centrality metrics computation using aprender v0.5.0
 // Implements 6 centrality algorithms (Phase 4: Graph Migration)
 

@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Coverage boost tests for services/deep_context/analyzer_formatting.rs
 //!
 //! Tests the pure formatting methods of `DeepContextAnalyzer` which produce

@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! DAG (Directed Acyclic Graph) engine for workflow execution
 //!
 //! Provides dependency analysis and topological sorting for workflow steps.

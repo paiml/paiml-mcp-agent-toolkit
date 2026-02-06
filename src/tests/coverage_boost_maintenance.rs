@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Coverage boost tests for maintenance module (roadmap, ticket, validator)
 //! Tests: type construction, serde, parse_content, validation
 

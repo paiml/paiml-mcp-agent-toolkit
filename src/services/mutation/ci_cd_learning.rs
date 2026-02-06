@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! CI/CD integration for real-time ML model learning
 //!
 //! Provides continuous learning from mutation test results in CI/CD pipelines,

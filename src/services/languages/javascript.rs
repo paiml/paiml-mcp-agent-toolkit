@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! JavaScript language support module
 //!
 //! This module provides support for analyzing JavaScript code, including

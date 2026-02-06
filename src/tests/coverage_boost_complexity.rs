@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Coverage boost tests for complexity module
 //! Comprehensive tests for ComplexityMetrics, HalsteadMetrics, rules, and aggregation
 

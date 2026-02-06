@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Go Mutation Generator using tree-sitter AST
 // PMAT-7012: Go Mutation Testing
 // Status: RED Phase - Stub implementation

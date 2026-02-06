@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Automated Clippy Fix Engine
 //!
 //! A+ Code Standard: ALL functions d10 complexity

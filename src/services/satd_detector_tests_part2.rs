@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! SATD Detector Tests - Part 2: Extraction and analysis tests
 //! Extracted for file health compliance (CB-040)
 

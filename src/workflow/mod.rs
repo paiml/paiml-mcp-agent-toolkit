@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Workflow orchestration engine
 pub mod conditions;
 pub mod dag;

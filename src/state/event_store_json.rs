@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! JSON file persistence implementation
 //!
 //! Uses newline-delimited JSON (NDJSON) format with CRC32 checksums.

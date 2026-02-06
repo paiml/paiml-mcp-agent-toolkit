@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Worker monitoring system for distributed mutation testing
 //!
 //! Provides a worker state tracking and monitoring system that ensures

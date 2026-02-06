@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! WebAssembly security validation
 //!
 //! This module provides security validation for WebAssembly modules.

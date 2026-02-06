@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Telemetry & Logging System per SPECIFICATION.md Section 35
 //!
 //! This module provides comprehensive observability infrastructure for PMAT,

@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Pre-commit and post-commit hook generation and installation for scaffolded projects.
 //!
 //! # TICKET-PMAT-5005: Git Initialization and Pre-commit Hooks

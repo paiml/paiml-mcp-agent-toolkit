@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! `AssemblyScript` parser implementation
 //!
 //! This module provides `AssemblyScript` parsing using tree-sitter with

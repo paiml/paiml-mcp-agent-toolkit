@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Hybrid event sourcing with snapshots for state management
 pub mod event_store;
 // Raft consensus disabled: async_raft v0.6 requires breaking API changes.

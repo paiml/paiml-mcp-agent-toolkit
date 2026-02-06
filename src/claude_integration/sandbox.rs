@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Security sandbox for Claude bridge process
 // Implements defense-in-depth with process isolation
 

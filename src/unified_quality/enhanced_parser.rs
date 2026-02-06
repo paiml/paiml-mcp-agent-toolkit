@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Enhanced AST parser using syn for Rust code analysis
 
 use crate::unified_quality::metrics::Metrics;

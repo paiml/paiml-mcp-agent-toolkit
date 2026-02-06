@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! PMAT-REPORT-V1: Universal Rich Reporting with Data Science and ASCII Visualization
 //!
 //! This module provides a unified reporting framework for ALL PMAT commands,

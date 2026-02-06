@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! WASM Bytecode Analyzer
 //!
 //! Provides detailed function-level and instruction-level analysis of WASM bytecode.

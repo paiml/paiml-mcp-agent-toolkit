@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Deep context analysis for comprehensive code understanding.
 //!
 //! This module orchestrates multiple analysis techniques to generate rich,

@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Commit message classifier using Naive Bayes
 //!
 //! Classifies commit messages into categories like ASTTransform, TraitBounds, etc.

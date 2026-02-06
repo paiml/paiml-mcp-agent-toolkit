@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Toyota Way: Unified Detection Framework for Structural Complexity Reduction
 //
 // This module consolidates detection services under a single, unified

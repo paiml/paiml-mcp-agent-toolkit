@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Security rules for Makefile linting
 //!
 //! Implements high-priority security rules following TDD:

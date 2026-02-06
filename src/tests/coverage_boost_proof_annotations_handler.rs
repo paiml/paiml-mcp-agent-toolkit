@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Coverage boost tests for proof_annotations_handler.rs
 //!
 //! Tests the proof annotations handler including:

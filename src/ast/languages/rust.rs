@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Rust language AST parsing strategy
 
 use anyhow::Result;

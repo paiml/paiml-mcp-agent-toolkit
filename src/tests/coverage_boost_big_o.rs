@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Coverage boost tests for services/big_o_analyzer.rs and models/complexity_bound.rs
 //! Tests: BigOClass, ComplexityBound, BigOAnalyzer, ComplexityDistribution,
 //! FunctionComplexity, PatternMatch, BigOAnalysisConfig, BigOAnalysisReport

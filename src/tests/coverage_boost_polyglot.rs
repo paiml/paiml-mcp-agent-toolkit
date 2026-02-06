@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Coverage boost tests for services/polyglot_analyzer.rs
 //! Tests: LanguageInfo, PolyglotAnalysis, LanguageStats, CrossLanguageDependency,
 //! DependencyType, ArchitecturePattern, IntegrationPoint, IntegrationType, RiskLevel

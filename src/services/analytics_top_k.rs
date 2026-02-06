@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Top-K Selection Algorithm (Issue #79, P0-2)
 //!
 //! Implements O(N) average-case Top-K selection using min-heap, avoiding

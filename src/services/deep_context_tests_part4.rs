@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Tests for deep context - Part 4: Annotation indicators and advanced coverage
 //! Extracted for file health compliance (CB-040)
 

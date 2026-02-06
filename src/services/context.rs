@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! AI-ready context generation for code repositories.
 //!
 //! This module provides context extraction and generation capabilities that create

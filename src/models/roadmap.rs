@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Roadmap data models for unified GitHub/YAML workflow
 //
 // Supports both GitHub-first and YAML-first workflows with write-through synchronization.

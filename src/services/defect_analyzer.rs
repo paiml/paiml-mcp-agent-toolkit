@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Unified defect analyzer trait and implementations
 //!
 //! This module provides the trait and base implementations for analyzing

@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 use crate::handlers::prompts::{handle_prompt_get, handle_prompts_list};
 use crate::models::mcp::McpRequest;
 use crate::stateless_server::StatelessTemplateServer;

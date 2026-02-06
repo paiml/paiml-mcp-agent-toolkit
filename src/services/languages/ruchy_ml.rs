@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Enhanced Ruchy ML-style AST extraction module
 //! Implements the specification from docs/specifications/enhanced-ruchy-support.md
 

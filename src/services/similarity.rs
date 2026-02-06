@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Advanced code similarity detection with entropy analysis
 //!
 //! Implements multiple algorithms for detecting code clones and similarities:

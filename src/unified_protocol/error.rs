@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::Json;

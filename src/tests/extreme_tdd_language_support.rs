@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! EXTREME TDD: Language Support Integration for Deep Context
 //! RED-GREEN-REFACTOR implementation of TICKET-2001 through TICKET-2005
 

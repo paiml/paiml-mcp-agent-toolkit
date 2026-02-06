@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Variable Inspector using AST
 // Sprint 71 - TRACE-003: Variable Inspection with AST
 //

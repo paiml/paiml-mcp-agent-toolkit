@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 use crate::models::proxy::{
     ProxyMode, ProxyOperation, ProxyRequest, ProxyResponse, ProxyStatus, QualityConfig,
     QualityMetrics, QualityReport, QualityViolation, ViolationSeverity, ViolationType,

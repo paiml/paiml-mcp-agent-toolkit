@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Cross-language dependency detection and analysis
 //!
 //! This module provides functionality to detect and analyze dependencies

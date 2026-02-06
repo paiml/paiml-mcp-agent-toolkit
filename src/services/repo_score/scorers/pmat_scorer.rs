@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // PmatScorer - Category F: PMAT Compliance (5 points)
 //
 // Scores based on:

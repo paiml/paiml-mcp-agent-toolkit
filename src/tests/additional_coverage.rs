@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 use crate::cli::args::validate_params;
 use crate::models::churn::ChurnOutputFormat;
 use crate::models::template::{ParameterSpec, ParameterType};

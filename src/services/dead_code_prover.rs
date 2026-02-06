@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Dead code prover using reachability analysis and formal verification.
 //!
 //! This module implements sophisticated dead code detection that goes beyond

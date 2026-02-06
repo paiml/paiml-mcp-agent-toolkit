@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Rust Project Score v2.0 (Phase 3: Advanced Metadata)
 //!
 //! Comprehensive Rust project quality scoring extending repo-score

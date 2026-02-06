@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Data models for pmat repo-score
 //! Implements the scoring system defined in docs/specifications/repo-score-spec.md
 //!

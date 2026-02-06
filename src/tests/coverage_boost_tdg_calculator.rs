@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Coverage boost tests for services/tdg_calculator.rs
 //! Tests: ComplexityVariance, CouplingMetrics
 //! Additional coverage for TDGSeverity, TDGComponents, TDGConfig

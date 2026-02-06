@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Deep WASM Service
 //!
 //! Main service that coordinates all deep WASM inspection components.

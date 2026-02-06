@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Factory for creating language-specific mappers
 //!
 //! This module provides a factory for creating language-specific mappers

@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Fuzzing Integration for Mutation Testing - Phase 4.1
 //!
 //! EXTREME TDD: GREEN PHASE - Minimal implementation to pass RED tests

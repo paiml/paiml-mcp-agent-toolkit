@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Request Router for Agent Protocols
 //!
 //! Routes requests between different agent protocols.

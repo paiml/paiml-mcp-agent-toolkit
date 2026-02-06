@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! EXTREME TDD: Comprehensive Regression Prevention Tests
 //! Goal: Prevent any future regressions in performance, annotations, and language support
 

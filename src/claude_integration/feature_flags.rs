@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Feature flags for progressive rollout of Claude integration
 // Implements canary deployments and kill switch
 

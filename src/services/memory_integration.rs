@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Memory management integration utilities for existing PMAT services
 //!
 //! This module provides integration helpers to retrofit existing services with

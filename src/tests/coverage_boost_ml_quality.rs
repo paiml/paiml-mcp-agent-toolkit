@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Coverage boost tests for services/ml_quality_scorer.rs
 //! Tests: ComplexityFeatures, TDGFeatures, QualityTrainingSample,
 //! QualityPrediction, MLQualityScorer

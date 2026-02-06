@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Parallel WebAssembly analysis
 //!
 //! This module provides parallel processing capabilities for analyzing

@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Proof annotation collection service with parallel processing
 //!
 //! This service orchestrates the collection of proof annotations from multiple sources

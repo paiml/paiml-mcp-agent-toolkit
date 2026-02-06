@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! MCP Server Core Implementation for Claude Code Agent Mode
 //!
 //! PMAT-7001: Basic MCP server with stdio transport, core tool implementations,

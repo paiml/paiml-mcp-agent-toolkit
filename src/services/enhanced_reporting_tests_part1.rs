@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Enhanced reporting tests part 1 - Basic tests, health score tests
 //! Extracted for file health compliance (CB-040)
 

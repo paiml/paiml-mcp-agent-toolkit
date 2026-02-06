@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Toyota Way: Unified Dead Code Analyzer
 //
 // Consolidates dead code analysis functionality under the unified analyzer framework

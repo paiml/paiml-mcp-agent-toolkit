@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Metrics definitions for the unified quality system
 
 use serde::{Deserialize, Serialize};

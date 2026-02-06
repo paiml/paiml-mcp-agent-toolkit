@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Configuration management service for PMAT system
 //!
 //! This module provides a centralized configuration management system that

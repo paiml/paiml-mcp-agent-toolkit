@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 use clap::{Parser, Subcommand};
 use pmat::agents::analyzer_actor::AnalyzerActor;
 use pmat::agents::registry::AgentRegistry;

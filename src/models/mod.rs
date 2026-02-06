@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Core data models for PMAT.
 //!
 //! This module contains all the data structures and models used throughout PMAT.

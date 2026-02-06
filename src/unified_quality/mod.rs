@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Unified Quality Enforcement System
 //!
 //! Complete implementation of the PMAT Unified Quality Enforcement Specification

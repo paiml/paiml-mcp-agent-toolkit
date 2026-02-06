@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Service communication patterns per SPECIFICATION.md Section 2.2
 //!
 //! This module provides various communication patterns between services

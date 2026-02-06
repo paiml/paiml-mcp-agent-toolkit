@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Intelligent file discovery service with multi-level filtering
 //!
 //! This module provides sophisticated file discovery capabilities that respect

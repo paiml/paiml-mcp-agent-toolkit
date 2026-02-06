@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! WASM Disassembler
 //!
 //! Provides detailed disassembly of WASM functions with instruction-level details.

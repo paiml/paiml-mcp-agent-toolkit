@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! TypeScript/JavaScript tree-sitter based mutation operators
 //!
 //! EXTREME TDD: RED PHASE - Stub implementations, all tests will fail

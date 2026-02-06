@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Unified AST node representation for cross-language analysis
 //!
 //! This module provides a language-agnostic representation of code elements

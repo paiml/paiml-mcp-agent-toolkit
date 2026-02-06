@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Scala language strategy for the unified AST framework
 //!
 //! This module provides a Scala language strategy that integrates with the

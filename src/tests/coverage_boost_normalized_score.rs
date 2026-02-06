@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Coverage boost tests for services/normalized_score.rs
 //! Tests: Grade, SimpleScore, NormalizedScore trait
 

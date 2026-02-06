@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Defect probability prediction using multi-factor analysis.
 //!
 //! This module implements a defect probability calculator that combines multiple

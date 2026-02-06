@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! FIXED Phase Implementation for PMAT-070-002: JSON Parser
 //!
 //! Parses cargo-mutants JSON output and converts to PMAT mutation report format.

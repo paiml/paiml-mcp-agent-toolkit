@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! CLI Format Conversion Helper Functions
 //!
 //! Extracted from cli.rs for file health compliance (CB-040).

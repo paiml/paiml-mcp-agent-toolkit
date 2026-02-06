@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! High-level caching for parsed file results
 //!
 //! This module provides caching for `FileContext` and `FileComplexityMetrics`

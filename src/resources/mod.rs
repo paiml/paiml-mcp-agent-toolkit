@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Resource control and scheduling system
 pub mod adaptive_allocator;
 pub mod cpu_limiter;

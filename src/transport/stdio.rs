@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Stdio transport implementation using pmcp 1.0.
 //!
 //! This module provides stdio (stdin/stdout) transport for MCP communication,

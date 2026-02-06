@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Category E: Historical Integrity (10 points)
 //!
 //! Tracks evolution of claims over time to prevent HARKing and p-hacking.

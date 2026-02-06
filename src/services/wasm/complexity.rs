@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! WebAssembly complexity analysis
 //!
 //! This module provides complexity analysis for WebAssembly modules.

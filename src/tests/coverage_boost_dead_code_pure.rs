@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Coverage boost tests for dead_code_analyzer pure functions
 //! Target: Extract and test pure functions from dead_code_analyzer.rs
 

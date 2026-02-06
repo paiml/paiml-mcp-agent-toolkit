@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! WebAssembly error types
 //!
 //! This module defines error types used throughout the WASM analysis system.

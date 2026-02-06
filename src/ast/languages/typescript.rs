@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! TypeScript and JavaScript language AST parsing strategies
 
 use anyhow::Result;

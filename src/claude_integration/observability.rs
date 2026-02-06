@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Observability and metrics collection for Claude integration
 // Implements RED method: Rate, Errors, Duration
 

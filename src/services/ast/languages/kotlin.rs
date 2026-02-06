@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Kotlin AST Strategy for PMAT
 //!
 //! This module provides the Kotlin language strategy implementation for the unified

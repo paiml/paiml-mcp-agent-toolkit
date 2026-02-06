@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Binary size regression tests
 // Ensures binary size optimizations don't regress
 

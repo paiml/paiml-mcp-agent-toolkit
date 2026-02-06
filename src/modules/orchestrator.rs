@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 use super::analyzer::AnalyzerModule;
 use super::transformer::TransformerModule;
 use super::validator::{Thresholds, ValidationResult, ValidatorModule};

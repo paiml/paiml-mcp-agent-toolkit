@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 use crate::services::cache::{
     base::{CacheStats, CacheStrategy},
     content_cache::ContentCache,

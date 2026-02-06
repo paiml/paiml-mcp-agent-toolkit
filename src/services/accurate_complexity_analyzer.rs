@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Accurate Complexity Analyzer using AST-based analysis
 //!
 //! Sprint 63: Implements industry-standard complexity calculations

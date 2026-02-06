@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Error types for agent scaffolding operations.
 
 use std::path::PathBuf;

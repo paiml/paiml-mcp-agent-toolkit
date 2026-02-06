@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Core services for code analysis and refactoring.
 //!
 //! This module contains all the analysis engines, detectors, and services that power

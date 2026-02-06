@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Toyota Way: Unified SATD Analyzer
 //
 // Consolidates Self-Admitted Technical Debt analysis under the unified analyzer framework

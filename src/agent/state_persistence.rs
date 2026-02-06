@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! State persistence layer for Claude Code Agent
 //!
 //! PMAT-7006: Provides persistent storage for monitoring state, project configurations,

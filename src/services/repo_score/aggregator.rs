@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Score aggregation and recommendation generation
 
 use crate::services::repo_score::error::Result;

@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Makefile compression service for efficient context analysis
 //!
 //! This module intelligently compresses Makefiles by extracting and preserving

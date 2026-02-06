@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Coverage boost tests for services/brick_score.rs
 //! Tests: SimdWidth, GpuBackend, CpuCapability, GpuCapability, RooflineParams,
 //! ByteBudget, HardwareCapability, Bottleneck, scale_budgets_for_hardware

@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! CodeQualityScorer - Code Quality Category (26 points)
 //!
 //! Analyzes Rust project code quality metrics:

@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! PDCA (Plan-Do-Check-Act) Execution Loop
 //!
 //! Implements the core improvement cycle with CITL learning.

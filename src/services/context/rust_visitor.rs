@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Rust AST visitor for extracting code items.
 //!
 //! This module provides the visitor pattern implementation for extracting

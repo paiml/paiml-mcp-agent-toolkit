@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Transport layer abstractions for MCP communication.
 //!
 //! This module provides a unified transport abstraction that wraps pmcp 1.0's

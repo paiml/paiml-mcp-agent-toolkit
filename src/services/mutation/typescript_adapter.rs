@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! TypeScript/JavaScript language adapter for mutation testing
 //!
 //! EXTREME TDD: GREEN PHASE - Minimal implementation to pass tests

@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Markdown formatting functions for context output.
 //!
 //! This module provides functions to format project context and deep context

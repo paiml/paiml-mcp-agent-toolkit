@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Pattern helper utilities for include/exclude functionality
 //!
 //! Provides utilities to normalize and validate include/exclude patterns

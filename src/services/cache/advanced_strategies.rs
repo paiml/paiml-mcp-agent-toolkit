@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Advanced caching strategies for PMAT
 //!
 //! This module implements sophisticated caching strategies that go beyond the basic

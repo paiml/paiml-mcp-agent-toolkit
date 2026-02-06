@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Swift Source File Analysis Support for PMAT
 //!
 //! This module provides Swift-specific analysis capabilities using lexical analysis

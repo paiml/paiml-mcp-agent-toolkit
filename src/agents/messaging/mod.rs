@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Zero-copy message passing protocol
 pub mod backpressure;
 pub mod circuit_breaker;

@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(feature = "python-ast")]
 use crate::services::ast_python;
 #[cfg(feature = "typescript-ast")]

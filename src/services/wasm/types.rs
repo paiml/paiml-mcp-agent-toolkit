@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! WebAssembly type definitions and data structures
 //!
 //! This module contains all the core types used throughout the WebAssembly

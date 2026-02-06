@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Performance tests part 2 - Async and integration tests
 //! Extracted for file health compliance (CB-040)
 

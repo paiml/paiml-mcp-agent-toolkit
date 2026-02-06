@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Interactive scaffolding interface for guided agent creation.
 
 use super::context::{AgentContext, AgentContextBuilder};

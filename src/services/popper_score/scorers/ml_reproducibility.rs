@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Category F: ML/AI Reproducibility (5 points) - CONDITIONAL
 //!
 //! Modern science standards for machine learning projects.

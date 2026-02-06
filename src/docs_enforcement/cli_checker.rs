@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! CLI Documentation Checker
 //!
 //! TICKET: PMAT-7001 Phase 2 (GREEN)

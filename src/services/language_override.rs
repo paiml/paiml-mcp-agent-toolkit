@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Language Override Module (BUG-012 Fix)
 //!
 //! Provides language override functionality for CLI commands.

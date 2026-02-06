@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Dead Code Analysis Facade
 //!
 //! Provides a simplified interface for dead code detection and analysis.

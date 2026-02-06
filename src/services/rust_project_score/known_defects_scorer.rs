@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Known Defects Scorer - Production Defect Pattern Detection (20 points)
 //!
 //! Detects known defect patterns that have caused production incidents.

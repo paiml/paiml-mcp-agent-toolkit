@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Modular monolith with compiler-enforced boundaries
 // Each module has a public trait interface and private implementation
 

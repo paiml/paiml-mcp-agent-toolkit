@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Git repository analysis and code churn metrics.
 //!
 //! This module provides analysis of git repositories to extract code churn

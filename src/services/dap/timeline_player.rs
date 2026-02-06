@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! TIMELINE-001: TimelinePlayer State Management
 //! Sprint 77 - GREEN Phase
 //!

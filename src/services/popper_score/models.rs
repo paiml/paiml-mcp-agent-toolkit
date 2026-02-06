@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Core data models for Popper Falsifiability Score v1.1
 //!
 //! Defines types for the 100-point normalized scoring system

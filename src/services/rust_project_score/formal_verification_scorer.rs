@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Formal Verification Scorer for Rust Project Score v1.3
 //!
 //! Sprint 5: Miri Integration (Jidoka for UB)

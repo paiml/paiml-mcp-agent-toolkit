@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Command Runner with Timeout Support
 //!
 //! Executes external commands with configurable timeouts to prevent hangs.

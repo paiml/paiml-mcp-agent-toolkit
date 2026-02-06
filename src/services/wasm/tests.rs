@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Comprehensive test suite for WebAssembly support
 //!
 //! This module provides thorough testing of all WebAssembly functionality

@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // TIMELINE-003: Recording Comparison Mode
 // Sprint 77 - GREEN Phase
 //

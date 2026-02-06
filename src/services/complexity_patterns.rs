@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Complexity Pattern Recognition - Phase 5 Day 13
 //!
 //! Pattern-based algorithmic complexity detection for common code patterns

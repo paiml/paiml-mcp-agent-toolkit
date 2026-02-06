@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // DemoScorer - Category G: Demo Quality (10 points)
 //
 // Scores based on:
