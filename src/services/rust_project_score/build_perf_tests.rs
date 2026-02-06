@@ -602,25 +602,6 @@ codegen-units = 1
     }
 
     #[test]
-    #[ignore = "Agent-added test with incorrect assertion"]
-    fn test_codegen_units_explicit_non_optimal() {
-        let temp_dir = TempDir::new().unwrap();
-        let content = r#"
-[package]
-name = "test"
-
-[profile.release]
-codegen-units = 16
-"#;
-        create_cargo_toml(temp_dir.path(), content);
-
-        let scorer = BuildPerfScorer::new();
-        let result = scorer.score_codegen_units(temp_dir.path(), None);
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap(), 1.0); // Shows awareness
-    }
-
-    #[test]
     fn test_codegen_units_missing() {
         let temp_dir = TempDir::new().unwrap();
         let content = r#"
@@ -919,89 +900,6 @@ codegen-units = 1
 // ==========================================================================
 
 mod recommendations_tests {
-    use super::*;
-
-    #[test]
-    #[ignore = "Agent-added test with incorrect assertion"]
-    fn test_recommendations_all_missing() {
-        let temp_dir = TempDir::new().unwrap();
-        let content = "[package]\nname = \"test\"";
-        create_cargo_toml(temp_dir.path(), content);
-
-        let scorer = BuildPerfScorer::new();
-        let recommendations = scorer.recommendations(temp_dir.path());
-
-        // Should recommend: LTO, Cargo.lock, Config, Codegen units, Build system
-        assert!(recommendations.len() >= 4);
-        assert!(recommendations.iter().any(|r| r.contains("LTO")));
-        assert!(recommendations.iter().any(|r| r.contains("Cargo.lock")));
-        assert!(recommendations.iter().any(|r| r.contains("config.toml")));
-        assert!(recommendations.iter().any(|r| r.contains("codegen-units")));
-    }
-
-    #[test]
-    #[ignore = "Agent-added test with incorrect assertion"]
-    fn test_recommendations_some_configured() {
-        let temp_dir = TempDir::new().unwrap();
-        let content = r#"
-[package]
-name = "test"
-
-[profile.release]
-lto = true
-codegen-units = 1
-"#;
-        create_cargo_toml(temp_dir.path(), content);
-        std::fs::write(temp_dir.path().join("Cargo.lock"), "# lock").unwrap();
-        std::fs::write(temp_dir.path().join("Makefile"), "all:").unwrap();
-
-        let scorer = BuildPerfScorer::new();
-        let recommendations = scorer.recommendations(temp_dir.path());
-
-        // Should only recommend config.toml now
-        assert!(!recommendations.iter().any(|r| r.contains("LTO")));
-        assert!(!recommendations.iter().any(|r| r.contains("Cargo.lock")));
-        assert!(recommendations.iter().any(|r| r.contains("config.toml")));
-        assert!(!recommendations.iter().any(|r| r.contains("codegen-units")));
-        assert!(!recommendations.iter().any(|r| r.contains("Makefile")));
-    }
-
-    #[test]
-    #[ignore = "Agent-added test with incorrect assertion"]
-    fn test_recommendations_fully_configured() {
-        let temp_dir = TempDir::new().unwrap();
-        let content = r#"
-[package]
-name = "test"
-
-[profile.release]
-lto = true
-codegen-units = 1
-"#;
-        create_cargo_toml(temp_dir.path(), content);
-        std::fs::write(temp_dir.path().join("Cargo.lock"), "# lock").unwrap();
-        std::fs::write(temp_dir.path().join("Makefile"), "all:").unwrap();
-
-        let cargo_dir = temp_dir.path().join(".cargo");
-        std::fs::create_dir(&cargo_dir).unwrap();
-        std::fs::write(cargo_dir.join("config.toml"), "[build]\njobs = 4").unwrap();
-
-        let scorer = BuildPerfScorer::new();
-        let recommendations = scorer.recommendations(temp_dir.path());
-
-        // Should have no recommendations
-        assert!(recommendations.is_empty());
-    }
-
-    #[test]
-    #[ignore = "Agent-added test with incorrect assertion"]
-    fn test_recommendations_for_nonexistent_project() {
-        let scorer = BuildPerfScorer::new();
-        let recommendations = scorer.recommendations(Path::new("/nonexistent/path"));
-
-        // Should still return recommendations (default behavior)
-        assert!(recommendations.len() >= 4);
-    }
 }
 
 // ==========================================================================

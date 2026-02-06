@@ -159,18 +159,6 @@ mod tests {
     // Tests for build_config
 
     #[test]
-    #[ignore = "Agent-added test with incorrect assertion"]
-    fn test_build_config_exact() {
-        let config = build_config(DuplicateType::Exact, 0.8, 10, 100);
-        assert!(!config.enable_ast);
-        assert!(!config.enable_semantic);
-        assert!(!config.enable_entropy);
-        assert_eq!(config.min_lines, 10);
-        assert_eq!(config.min_tokens, 100);
-        assert!((config.similarity_threshold - 0.8).abs() < f64::EPSILON);
-    }
-
-    #[test]
     fn test_build_config_fuzzy() {
         let config = build_config(DuplicateType::Fuzzy, 0.7, 5, 50);
         assert!(config.enable_ast);
@@ -1364,26 +1352,6 @@ fn example_function() {
 
         let config = build_config(DuplicateType::Exact, 1.0, 1, 1);
         assert!((config.similarity_threshold - 1.0).abs() < f64::EPSILON);
-    }
-
-    #[test]
-    #[ignore = "Agent-added test with incorrect assertion"]
-    fn test_is_source_file_edge_cases() {
-        // Path with multiple dots
-        assert!(is_source_file(std::path::Path::new("a.b.c.d.rs")));
-        // Path with just extension
-        assert!(is_source_file(std::path::Path::new(".rs")));
-        // Empty path
-        assert!(!is_source_file(std::path::Path::new("")));
-    }
-
-    #[ignore = "Agent-added test with incorrect assertion"]
-    #[test]
-    fn test_should_include_file_empty_patterns() {
-        let path = std::path::Path::new("/project/src/main.rs");
-        // Empty string patterns
-        assert!(should_include_file(path, &Some("".to_string()), &None));
-        assert!(should_include_file(path, &None, &Some("".to_string())));
     }
 
     #[test]

@@ -989,20 +989,6 @@ mod tests {
         assert_eq!(stats.low_risk, 0);
     }
 
-    #[test]
-    #[ignore = "Agent-added test with incorrect assertion"]
-    fn test_confidence_values_in_output() {
-        let score = create_mock_defect_score(0.75, 0.95, RiskLevel::High);
-        let predictions = vec![("conf.rs".to_string(), score)];
-        let elapsed = Duration::from_millis(100);
-
-        let detailed = format_defect_detailed(&predictions, elapsed, true).unwrap();
-        assert!(detailed.contains("95.0%"));
-
-        let json = format_defect_json(&predictions, elapsed).unwrap();
-        assert!(json.contains("0.95"));
-    }
-
     // ==================== Additional format_defect_output tests ====================
 
     #[test]

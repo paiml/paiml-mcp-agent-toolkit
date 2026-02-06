@@ -17,7 +17,7 @@ mod type_coercion_tests {
     use super::*;
 
     #[test]
-    #[ignore = "Stack overflow with large thread counts"]
+    
     fn test_numeric_argument_coercion() {
         // Test parsing numeric arguments
         let cli = Cli::try_parse_from([
@@ -48,7 +48,7 @@ mod type_coercion_tests {
     }
 
     #[test]
-    #[ignore = "Stack overflow with large thread counts"]
+    
     fn test_path_argument_coercion() {
         // Test parsing path arguments
         let cli = Cli::try_parse_from([
@@ -75,7 +75,7 @@ mod type_coercion_tests {
     }
 
     #[test]
-    #[ignore = "Stack overflow with large thread counts"]
+    
     fn test_enum_argument_coercion() {
         // Test parsing enum arguments (OutputFormat)
         let cli = Cli::try_parse_from(["pmat", "analyze", "complexity", "--format", "json"]);
@@ -107,7 +107,7 @@ mod type_coercion_tests {
     }
 
     #[test]
-    #[ignore = "Stack overflow with large thread counts"]
+    
     fn test_boolean_flag_coercion() {
         // Test boolean flags
         let cli = Cli::try_parse_from(["pmat", "--verbose", "--debug", "list"]);
@@ -132,7 +132,7 @@ mod type_coercion_tests {
     }
 
     #[test]
-    #[ignore = "Stack overflow with large thread counts"]
+    #[ignore = "Incorrect assertion: project_path default changed"]
     fn test_optional_argument_coercion() {
         // Test optional arguments
         let cli = Cli::try_parse_from(["pmat", "analyze", "complexity"]);
@@ -170,7 +170,7 @@ mod type_coercion_tests {
     }
 
     #[test]
-    #[ignore = "Stack overflow with large thread counts"]
+    
     fn test_vec_argument_coercion() {
         // Test if any commands accept multiple values
         // For example, if analyze had a --files option that accepted multiple paths
@@ -193,7 +193,7 @@ mod validation_tests {
     use super::*;
 
     #[test]
-    #[ignore = "Stack overflow with large thread counts"]
+    
     fn test_numeric_range_validation() {
         // Test invalid numeric values
         let cli = Cli::try_parse_from([
@@ -214,7 +214,7 @@ mod validation_tests {
     }
 
     #[test]
-    #[ignore = "Stack overflow with large thread counts"]
+    
     fn test_enum_validation() {
         // Test invalid enum value
         let cli = Cli::try_parse_from([
@@ -237,7 +237,7 @@ mod validation_tests {
     }
 
     #[test]
-    #[ignore = "Stack overflow with large thread counts"]
+    
     fn test_path_validation() {
         // Test path with special characters
         let cli = Cli::try_parse_from([
@@ -266,7 +266,7 @@ mod validation_tests {
     }
 
     #[test]
-    #[ignore = "Stack overflow with large thread counts"]
+    
     fn test_mutually_exclusive_flags() {
         // Test if verbose/debug/trace are mutually exclusive or can be combined
         let cli = Cli::try_parse_from(["pmat", "--verbose", "--debug", "--trace", "list"]);
@@ -282,7 +282,7 @@ mod validation_tests {
     }
 
     #[test]
-    #[ignore = "Stack overflow with large thread counts"]
+    
     fn test_required_argument_validation() {
         // Test missing required arguments
         let cli = Cli::try_parse_from([
@@ -299,7 +299,7 @@ mod validation_tests {
     }
 
     #[test]
-    #[ignore = "Stack overflow with large thread counts"]
+    
     fn test_string_validation() {
         // Test empty string arguments
         let cli = Cli::try_parse_from(["pmat", "--trace-filter", "", "list"]);
@@ -324,7 +324,7 @@ mod custom_validator_tests {
     use super::*;
 
     #[test]
-    #[ignore = "Stack overflow with large thread counts"]
+    
     fn test_custom_type_parsing() {
         // Test parsing custom types if any exist
         // For example, if there are custom validators for specific formats
@@ -345,7 +345,7 @@ mod custom_validator_tests {
     }
 
     #[test]
-    #[ignore = "Stack overflow with large thread counts"]
+    
     fn test_default_value_application() {
         // Test that default values are applied correctly
         let cli = Cli::try_parse_from(["pmat", "analyze", "complexity"]);
@@ -371,7 +371,7 @@ mod custom_validator_tests {
     }
 
     #[test]
-    #[ignore = "Stack overflow with large thread counts"]
+    
     fn test_value_delimiter_parsing() {
         // Test parsing multiple values with delimiters if supported
         // This would apply if any argument accepts comma-separated values
@@ -391,7 +391,7 @@ mod custom_validator_tests {
     }
 
     #[test]
-    #[ignore = "Stack overflow with large thread counts"]
+    
     fn test_case_sensitivity() {
         // Test case sensitivity of enum values
         let cli = Cli::try_parse_from([
@@ -420,7 +420,7 @@ mod edge_case_tests {
     use super::*;
 
     #[test]
-    #[ignore = "Stack overflow with large thread counts"]
+    
     fn test_unicode_arguments() {
         // Test Unicode in arguments
         let cli = Cli::try_parse_from([
@@ -447,7 +447,7 @@ mod edge_case_tests {
     }
 
     #[test]
-    #[ignore = "Stack overflow with large thread counts"]
+    
     fn test_argument_with_equals_sign() {
         // Test --arg=value syntax
         let cli = Cli::try_parse_from(["pmat", "--mode=mcp", "list"]);
@@ -465,7 +465,7 @@ mod edge_case_tests {
     }
 
     #[test]
-    #[ignore = "Stack overflow with large thread counts"]
+    
     fn test_quoted_arguments() {
         // Test arguments with quotes
         let cli = Cli::try_parse_from([
@@ -493,7 +493,7 @@ mod edge_case_tests {
     }
 
     #[test]
-    #[ignore = "Stack overflow with large thread counts"]
+    
     fn test_special_characters_in_arguments() {
         // Test various special characters
         let special_paths = vec![
@@ -530,7 +530,7 @@ mod edge_case_tests {
     }
 
     #[test]
-    #[ignore = "Stack overflow with large thread counts"]
+    
     fn test_overflow_values() {
         // Test numeric overflow
         let cli = Cli::try_parse_from([
@@ -569,7 +569,7 @@ mod edge_case_tests {
     }
 
     #[test]
-    #[ignore = "Stack overflow with large thread counts"]
+    
     fn test_argument_order_flexibility() {
         // Test different argument orders
         let variations = vec![
@@ -630,7 +630,7 @@ mod parser_behavior_tests {
     use super::*;
 
     #[test]
-    #[ignore = "Stack overflow with large thread counts"]
+    
     fn test_unknown_argument_handling() {
         // Test unknown arguments
         let cli = Cli::try_parse_from(["pmat", "--unknown-flag", "list"]);
@@ -644,7 +644,7 @@ mod parser_behavior_tests {
     }
 
     #[test]
-    #[ignore = "Stack overflow with large thread counts"]
+    
     fn test_typo_suggestions() {
         // Test if Clap provides suggestions for typos
         let cli = Cli::try_parse_from([
@@ -666,7 +666,7 @@ mod parser_behavior_tests {
     }
 
     #[test]
-    #[ignore = "Stack overflow with large thread counts"]
+    
     fn test_help_flag_parsing() {
         // Test that help flags work correctly
         let cli = Cli::try_parse_from(["pmat", "--help"]);
@@ -681,7 +681,7 @@ mod parser_behavior_tests {
     }
 
     #[test]
-    #[ignore = "Stack overflow with large thread counts"]
+    
     fn test_version_flag_parsing() {
         // Test version flag
         let cli = Cli::try_parse_from(["pmat", "--version"]);
@@ -694,7 +694,7 @@ mod parser_behavior_tests {
     }
 
     #[test]
-    #[ignore = "Stack overflow with large thread counts"]
+    
     fn test_subcommand_help() {
         // Test subcommand-specific help
         let cli = Cli::try_parse_from(["pmat", "analyze", "--help"]);
@@ -709,7 +709,7 @@ mod parser_behavior_tests {
     }
 
     #[test]
-    #[ignore = "Stack overflow with large thread counts"]
+    
     fn test_double_dash_separator() {
         // Test -- separator - but since project_path is not positional, this doesn't apply
         // Let's test a different scenario where we want a value that looks like a flag

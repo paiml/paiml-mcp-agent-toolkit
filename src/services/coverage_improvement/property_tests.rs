@@ -185,32 +185,6 @@ TOTAL   241150  203105  15.78%  17533  14596  16.75%  173884  145810  16.15%  0 
             prop_assert_eq!(config.fast_mode, cloned.fast_mode);
         }
 
-        /// Property: IterationReport serializes and deserializes correctly
-        #[test]
-        #[ignore = "Agent-added test with incorrect assertion"]
-        fn test_iteration_report_serde_roundtrip(
-            iteration in 1usize..100,
-            tests_generated in 0usize..1000,
-            coverage_gain in -50.0f64..50.0,
-            mutation_score in 0.0f64..100.0
-        ) {
-            let report = IterationReport {
-                iteration,
-                files_targeted: vec![PathBuf::from("src/lib.rs"), PathBuf::from("src/main.rs")],
-                tests_generated,
-                coverage_gain,
-                mutation_score,
-            };
-
-            let json = serde_json::to_string(&report).unwrap();
-            let deserialized: IterationReport = serde_json::from_str(&json).unwrap();
-
-            prop_assert_eq!(deserialized.iteration, iteration);
-            prop_assert_eq!(deserialized.tests_generated, tests_generated);
-            prop_assert!((deserialized.coverage_gain - coverage_gain).abs() < f64::EPSILON);
-            prop_assert!((deserialized.mutation_score - mutation_score).abs() < f64::EPSILON);
-        }
-
         /// Property: CoverageImprovementReport success reflects coverage vs target
         #[test]
         fn test_report_success_consistency(

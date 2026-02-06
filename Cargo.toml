@@ -49,9 +49,6 @@ crossbeam = "0.8"
 sysinfo = "0.37"  # Updated for reduced duplicates
 libc = "0.2"
 
-# Property testing - moved to [dev-dependencies] only
-# proptest = "1.6"  # REMOVED: Only used in #[cfg(test)] modules
-
 # Text similarity - Now using aprender::text::similarity (edit_distance_similarity)
 # levenshtein = "1.0"  # REMOVED: Replaced by aprender sovereign stack
 
@@ -283,8 +280,6 @@ assert_cmd = "2.0"      # CLI testing for PMAT-7001
 predicates = "3.1"      # Assertion helpers for PMAT-7001
 criterion = { version = "0.6", features = ["html_reports"] }
 proptest = "1.6"
-# quickcheck = "1.0"  # REMOVED: Migrated to proptest (already in dev-deps)
-# quickcheck_macros = "1.0"  # REMOVED: Migrated to proptest
 serial_test = "3.2"
 futures-test = "0.3"
 env_logger = "0.11.8"

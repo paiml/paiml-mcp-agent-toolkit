@@ -963,37 +963,4 @@ fn foo() {
         assert!(result.earned <= result.max);
     }
 
-    #[test]
-    #[ignore = "Agent-added test with incorrect assertion"]
-    fn test_unsafe_partial_documentation() {
-        let temp_dir = TempDir::new().unwrap();
-        fs::create_dir_all(temp_dir.path().join("src")).unwrap();
-        fs::write(
-            temp_dir.path().join("Cargo.toml"),
-            "[package]\nname = \"test\"",
-        )
-        .unwrap();
-
-        // Create code with 1 documented and 1 undocumented unsafe block
-        fs::write(
-            temp_dir.path().join("src/lib.rs"),
-            r#"
-// SAFETY: documented
-unsafe {
-    thing1();
-}
-
-unsafe {
-    thing2();
-}
-"#,
-        )
-        .unwrap();
-
-        let scorer = CodeQualityScorer::new();
-        let result = scorer.score_unsafe(temp_dir.path(), None).unwrap();
-
-        // 50% documented = 5.0 points
-        assert_eq!(result, 5.0);
-    }
 }

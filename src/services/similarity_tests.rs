@@ -107,27 +107,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "Agent-added test with incorrect assertion"]
-    fn test_detect_exact_duplicates_with_duplicates() {
-        let config = SimilarityConfig {
-            min_lines: 2,
-            min_tokens: 3,
-            ..SimilarityConfig::default()
-        };
-        let detector = SimilarityDetector::new(config);
-        let duplicate_content = "fn duplicated() {\n    let x = 1;\n    let y = 2;\n}\n";
-        let files = vec![
-            (PathBuf::from("file1.rs"), duplicate_content.to_string()),
-            (PathBuf::from("file2.rs"), duplicate_content.to_string()),
-        ];
-        let duplicates = detector.detect_exact_duplicates(&files);
-        // May detect duplicates if content matches after normalization
-        // The exact count depends on how blocks are extracted
-        // At minimum, we verify no panic occurs
-        assert!(duplicates.len() <= 2);
-    }
-
-    #[test]
     fn test_detect_structural_similarity_empty() {
         let config = SimilarityConfig::default();
         let detector = SimilarityDetector::new(config);

@@ -570,24 +570,6 @@ pub fn undocumented_fn() {}
     }
 
     #[test]
-    #[ignore = "Agent-added test with incorrect assertion"]
-    fn test_readme_minimal() {
-        let temp_dir = TempDir::new().unwrap();
-        fs::write(
-            temp_dir.path().join("Cargo.toml"),
-            "[package]\nname = \"test\"",
-        )
-        .unwrap();
-        fs::write(temp_dir.path().join("README.md"), "# Project\n\nShort desc").unwrap();
-
-        let scorer = DocumentationScorer::new();
-        let result = scorer.score_readme(temp_dir.path(), None).unwrap();
-
-        // Minimal README
-        assert!(result >= 1.0);
-    }
-
-    #[test]
     fn test_readme_comprehensive() {
         let temp_dir = TempDir::new().unwrap();
         fs::write(
@@ -908,30 +890,6 @@ pub struct Foo;
 
         // Multiple versions = full points
         assert_eq!(result, 3.0);
-    }
-
-    #[test]
-    #[ignore = "Agent-added test with incorrect assertion"]
-    fn test_readme_section_detection() {
-        let temp_dir = TempDir::new().unwrap();
-        fs::write(
-            temp_dir.path().join("Cargo.toml"),
-            "[package]\nname = \"test\"",
-        )
-        .unwrap();
-
-        // Test with API section (different section name)
-        fs::write(
-            temp_dir.path().join("README.md"),
-            "# Proj\n\n## API\nThe API docs\n## Feature List\nFeatures here",
-        )
-        .unwrap();
-
-        let scorer = DocumentationScorer::new();
-        let result = scorer.score_readme(temp_dir.path(), None).unwrap();
-
-        // Has api and features = should get some points
-        assert!(result >= 2.0);
     }
 
     #[test]

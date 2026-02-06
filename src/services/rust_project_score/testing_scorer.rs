@@ -853,27 +853,6 @@ pub fn e() {}
     }
 
     #[test]
-    #[ignore = "Agent-added test with incorrect assertion"]
-    fn test_doc_tests_with_cache() {
-        let temp_dir = TempDir::new().unwrap();
-        fs::create_dir_all(temp_dir.path().join("src")).unwrap();
-
-        let mut cache = FileCache::new();
-        cache.insert(
-            temp_dir.path().join("src/lib.rs"),
-            "/// ```\n/// x\n/// ```\npub fn f() {}\n/// ```\n/// y\n/// ```\npub fn g() {}\n/// ```\n/// z\n/// ```\npub fn h() {}".to_string(),
-        );
-
-        let scorer = TestingScorer::new();
-        let result = scorer
-            .score_doc_tests(temp_dir.path(), Some(&cache))
-            .unwrap();
-
-        // 3 doc tests = 2 points
-        assert_eq!(result, 2.0);
-    }
-
-    #[test]
     fn test_parse_coverage_valid() {
         let scorer = TestingScorer::new();
 
@@ -1004,32 +983,6 @@ pub fn e() {}
         // Quick mode should produce valid scores
         assert!(result.earned >= 0.0);
         assert!(result.earned <= result.max);
-    }
-
-    #[test]
-    #[ignore = "Agent-added test with incorrect assertion"]
-    fn test_count_doc_tests_recursive() {
-        let temp_dir = TempDir::new().unwrap();
-        fs::create_dir_all(temp_dir.path().join("src/subdir")).unwrap();
-        fs::write(
-            temp_dir.path().join("src/lib.rs"),
-            "/// ```\n/// x\n/// ```\npub fn f() {}",
-        )
-        .unwrap();
-        fs::write(
-            temp_dir.path().join("src/subdir/mod.rs"),
-            "/// ```\n/// y\n/// ```\npub fn g() {}",
-        )
-        .unwrap();
-
-        let scorer = TestingScorer::new();
-        let mut count = 0;
-        scorer
-            .count_doc_tests(&temp_dir.path().join("src"), &mut count, None)
-            .unwrap();
-
-        // Should find doc tests in both files
-        assert_eq!(count, 2);
     }
 
     #[test]

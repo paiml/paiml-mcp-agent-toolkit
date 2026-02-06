@@ -1170,15 +1170,6 @@ mod tests {
         assert!(!output.contains("Pattern Matches:"));
     }
 
-    #[test]
-    #[ignore = "Agent-added test with incorrect assertion"]
-    fn test_format_big_o_detailed_empty_functions() {
-        let report = create_test_report_empty();
-        let output = format_big_o_detailed(&report);
-
-        assert!(!output.contains("High Complexity Functions:"));
-    }
-
     // ============================================
     // Tests for format_analysis_output
     // ============================================

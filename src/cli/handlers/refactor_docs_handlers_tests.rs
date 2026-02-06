@@ -1423,21 +1423,6 @@ mod tests {
         assert_eq!(summary.newest_file_days, 5);
     }
 
-    #[test]
-    #[ignore = "Agent-added test with incorrect assertion"]
-    fn test_merge_summary_newest_tracking() {
-        let mut main = CleanupSummary::default();
-        main.newest_file_days = 10;
-
-        let mut dir = CleanupSummary::default();
-        dir.newest_file_days = 0; // 0 means no files processed yet
-
-        merge_summary(&mut main, &dir);
-
-        // When merging with a summary that has 0 (unset), keep the main value
-        assert_eq!(main.newest_file_days, 10);
-    }
-
     // ========== Serialization Tests ==========
 
     #[test]

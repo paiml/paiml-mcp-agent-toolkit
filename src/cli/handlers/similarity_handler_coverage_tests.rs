@@ -136,18 +136,6 @@ fn create_populated_report() -> ComprehensiveReport {
 // Tests for build_config
 
 #[test]
-#[ignore = "Agent-added test with incorrect assertion"]
-fn test_build_config_exact() {
-    let config = build_config(DuplicateType::Exact, 0.8, 10, 100);
-    assert!(!config.enable_ast);
-    assert!(!config.enable_semantic);
-    assert!(!config.enable_entropy);
-    assert_eq!(config.min_lines, 10);
-    assert_eq!(config.min_tokens, 100);
-    assert!((config.similarity_threshold - 0.8).abs() < f64::EPSILON);
-}
-
-#[test]
 fn test_build_config_fuzzy() {
     let config = build_config(DuplicateType::Fuzzy, 0.7, 5, 50);
     assert!(config.enable_ast);

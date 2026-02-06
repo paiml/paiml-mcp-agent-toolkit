@@ -156,29 +156,6 @@ impl Default for SnapshotManager {
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::models::refactor::RefactorConfig;
-    use std::path::PathBuf;
-
-    #[test]
-    #[ignore = "Agent-added test with incorrect assertion"]
-    fn test_snapshot_roundtrip() {
-        let manager = SnapshotManager::new();
-        let state =
-            RefactorStateMachine::new(vec![PathBuf::from("test.rs")], RefactorConfig::default());
-
-        // Save snapshot
-        manager.save_snapshot(&state).unwrap();
-
-        // Load snapshot
-        let loaded_state = manager.load_snapshot().unwrap();
-
-        // Verify
-        assert_eq!(loaded_state.targets.len(), state.targets.len());
-
-        // Clean up
-        manager.remove_snapshot().unwrap();
-    }
 }
 
 #[cfg_attr(coverage_nightly, coverage(off))]

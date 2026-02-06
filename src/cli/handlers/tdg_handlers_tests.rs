@@ -505,16 +505,6 @@ mod unit_tests {
         }
 
         #[test]
-        #[ignore = "Agent-added test with incorrect assertion"]
-        fn test_grade_meets_minimum() {
-            let mut config = make_test_config(PathBuf::from("."));
-            config.min_grade = Some("B".to_string());
-            let score = make_test_score(90.0, Grade::A);
-            let result = validate_minimum_grade(&score, &config);
-            assert!(result.is_ok());
-        }
-
-        #[test]
         fn test_grade_equals_minimum() {
             let mut config = make_test_config(PathBuf::from("."));
             config.min_grade = Some("B".to_string());
@@ -523,46 +513,6 @@ mod unit_tests {
             assert!(result.is_ok());
         }
 
-        #[test]
-        #[ignore = "Agent-added test with incorrect assertion"]
-        fn test_grade_below_minimum() {
-            let mut config = make_test_config(PathBuf::from("."));
-            config.min_grade = Some("A".to_string());
-            let score = make_test_score(70.0, Grade::C);
-            let result = validate_minimum_grade(&score, &config);
-            assert!(result.is_err());
-            let err_msg = result.err().unwrap().to_string();
-            assert!(err_msg.contains("below minimum"));
-        }
-
-        #[test]
-        #[ignore = "Agent-added test with incorrect assertion"]
-        fn test_all_grade_comparisons() {
-            let test_cases = [
-                (Grade::APLus, Grade::A, true),  // A+ >= A
-                (Grade::A, Grade::AMinus, true), // A >= A-
-                (Grade::B, Grade::B, true),      // B >= B
-                (Grade::C, Grade::B, false),     // C < B
-                (Grade::F, Grade::D, false),     // F < D
-                (Grade::D, Grade::F, true),      // D >= F
-            ];
-
-            for (actual, minimum, should_pass) in test_cases {
-                let score = make_test_score(50.0, actual);
-                let mut config = make_test_config(PathBuf::from("."));
-                config.min_grade = Some(format_grade(minimum));
-
-                let result = validate_minimum_grade(&score, &config);
-                assert_eq!(
-                    result.is_ok(),
-                    should_pass,
-                    "Grade {:?} vs minimum {:?} should {}",
-                    actual,
-                    minimum,
-                    if should_pass { "pass" } else { "fail" }
-                );
-            }
-        }
     }
 
     // ========== format_tdg_output tests ==========
@@ -837,28 +787,6 @@ mod unit_tests {
         }
 
         #[test]
-        #[ignore = "Agent-added test with incorrect assertion"]
-        fn test_custom_config_file() {
-            let temp_dir = TempDir::new().unwrap();
-            let config_path = temp_dir.path().join("tdg-config.toml");
-            std::fs::write(
-                &config_path,
-                r#"
-[thresholds]
-complexity_max = 20
-duplication_ratio = 0.1
-"#,
-            )
-            .unwrap();
-
-            let mut cmd_config = make_test_config(temp_dir.path().to_path_buf());
-            cmd_config.config = Some(config_path);
-
-            let result = load_tdg_configuration(&cmd_config);
-            assert!(result.is_ok());
-        }
-
-        #[test]
         fn test_missing_config_file() {
             let mut config = make_test_config(PathBuf::from("."));
             config.config = Some(PathBuf::from("/nonexistent/config.toml"));
@@ -880,20 +808,6 @@ duplication_ratio = 0.1
             assert!(result.is_err());
         }
 
-        #[test]
-        #[ignore = "Agent-added test with incorrect assertion"]
-        fn test_empty_toml_config() {
-            let temp_dir = TempDir::new().unwrap();
-            let config_path = temp_dir.path().join("empty.toml");
-            std::fs::write(&config_path, "").unwrap();
-
-            let mut config = make_test_config(temp_dir.path().to_path_buf());
-            config.config = Some(config_path);
-
-            // Empty TOML should be valid and use defaults
-            let result = load_tdg_configuration(&config);
-            assert!(result.is_ok());
-        }
     }
 
     // ========== format_history_output tests ==========

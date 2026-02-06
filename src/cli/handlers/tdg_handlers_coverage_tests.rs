@@ -350,18 +350,6 @@ mod load_tdg_configuration_tests {
     }
 
     #[test]
-    #[ignore = "Agent-added test with incorrect assertion"]
-    fn test_custom_config_file() {
-        let temp_dir = TempDir::new().unwrap();
-        let config_path = create_test_config_file(&temp_dir);
-        let mut cmd_config = make_test_config(temp_dir.path().to_path_buf());
-        cmd_config.config = Some(config_path);
-
-        let result = load_tdg_configuration(&cmd_config);
-        assert!(result.is_ok());
-    }
-
-    #[test]
     fn test_missing_config_file() {
         let mut config = make_test_config(PathBuf::from("."));
         config.config = Some(PathBuf::from("/nonexistent/config.toml"));
@@ -403,16 +391,6 @@ mod validate_minimum_grade_tests {
     }
 
     #[test]
-    #[ignore = "Agent-added test with incorrect assertion"]
-    fn test_grade_meets_minimum() {
-        let mut config = make_test_config(PathBuf::from("."));
-        config.min_grade = Some("B".to_string());
-        let score = make_test_score(Grade::A, 90.0);
-        let result = validate_minimum_grade(&score, &config);
-        assert!(result.is_ok());
-    }
-
-    #[test]
     fn test_grade_equals_minimum() {
         let mut config = make_test_config(PathBuf::from("."));
         config.min_grade = Some("B".to_string());
@@ -421,17 +399,6 @@ mod validate_minimum_grade_tests {
         assert!(result.is_ok());
     }
 
-    #[test]
-    #[ignore = "Agent-added test with incorrect assertion"]
-    fn test_grade_below_minimum() {
-        let mut config = make_test_config(PathBuf::from("."));
-        config.min_grade = Some("A".to_string());
-        let score = make_test_score(Grade::C, 70.0);
-        let result = validate_minimum_grade(&score, &config);
-        assert!(result.is_err());
-        let err_msg = result.err().unwrap().to_string();
-        assert!(err_msg.contains("below minimum"));
-    }
 }
 
 mod format_tdg_output_tests {
