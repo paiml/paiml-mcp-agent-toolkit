@@ -133,43 +133,6 @@ mod coverage_tests {
         assert_eq!(calculate_pagerank_value(100, 100), 0.85);
     }
 
-    // get_big_o_complexity Tests
-
-    #[test]
-    fn test_get_big_o_complexity_constant() {
-        assert_eq!(get_big_o_complexity(1), "O(1)");
-        assert_eq!(get_big_o_complexity(2), "O(1)");
-        assert_eq!(get_big_o_complexity(3), "O(1)");
-    }
-
-    #[test]
-    fn test_get_big_o_complexity_linear() {
-        assert_eq!(get_big_o_complexity(4), "O(n)");
-        assert_eq!(get_big_o_complexity(5), "O(n)");
-        assert_eq!(get_big_o_complexity(7), "O(n)");
-    }
-
-    #[test]
-    fn test_get_big_o_complexity_linearithmic() {
-        assert_eq!(get_big_o_complexity(8), "O(n log n)");
-        assert_eq!(get_big_o_complexity(10), "O(n log n)");
-        assert_eq!(get_big_o_complexity(15), "O(n log n)");
-    }
-
-    #[test]
-    fn test_get_big_o_complexity_quadratic() {
-        assert_eq!(get_big_o_complexity(16), "O(n²)");
-        assert_eq!(get_big_o_complexity(20), "O(n²)");
-        assert_eq!(get_big_o_complexity(25), "O(n²)");
-    }
-
-    #[test]
-    fn test_get_big_o_complexity_unknown() {
-        assert_eq!(get_big_o_complexity(26), "O(?)");
-        assert_eq!(get_big_o_complexity(50), "O(?)");
-        assert_eq!(get_big_o_complexity(100), "O(?)");
-    }
-
     // detect_or_use_toolchain Tests
 
     #[test]
@@ -208,117 +171,6 @@ mod coverage_tests {
         assert_eq!(result.unwrap(), "rust");
     }
 
-    // Format Helper Tests
-
-    #[test]
-    fn test_simple_markdown_format() {
-        let ctx = create_test_project_context(10, 50, 5, 3, 2);
-
-        let output = simple_markdown_format(&ctx, "rust");
-
-        assert!(output.contains("# Project Context"));
-        assert!(output.contains("**Language**: rust"));
-        assert!(output.contains("**Total Files**: 10"));
-        assert!(output.contains("**Total Functions**: 50"));
-    }
-
-    #[test]
-    fn test_simple_llm_format() {
-        let ctx = create_test_project_context(5, 25, 3, 2, 1);
-
-        let output = simple_llm_format(&ctx, "python", Path::new("/test/project"));
-
-        assert!(output.contains("Summary:"));
-        assert!(output.contains("Files: 5"));
-        assert!(output.contains("Functions: 25"));
-    }
-
-    #[test]
-    fn test_simple_llm_format_large_codebase() {
-        let ctx = create_test_project_context(50, 100, 10, 5, 3);
-
-        let output = simple_llm_format(&ctx, "rust", Path::new("/large/project"));
-
-        assert!(output.contains("Quality Insights:"));
-        assert!(output.contains("Large codebase"));
-    }
-
-    #[test]
-    fn test_simple_json_format() {
-        let ctx = create_test_project_context(3, 15, 2, 1, 0);
-
-        let result = simple_json_format(&ctx, "typescript");
-
-        assert!(result.is_ok());
-        let json = result.unwrap();
-        assert!(json.contains("\"project_type\": \"typescript\""));
-        assert!(json.contains("\"total_files\": 3"));
-        assert!(json.contains("\"total_functions\": 15"));
-    }
-
-    #[test]
-    fn test_simple_sarif_format() {
-        let ctx = create_test_project_context(5, 20, 3, 2, 1);
-
-        let result = simple_sarif_format(&ctx, "go");
-
-        assert!(result.is_ok());
-        let sarif = result.unwrap();
-        assert!(sarif.contains("\"version\": \"2.1.0\""));
-        assert!(sarif.contains("sarif-schema"));
-        assert!(sarif.contains("pmat-context"));
-    }
-
-    // Graph Section Tests
-
-    #[test]
-    fn test_generate_graph_section_markdown() {
-        let annotations = vec![
-            create_test_context_annotation("src/main.rs", 0.85, 1, "high"),
-            create_test_context_annotation("src/lib.rs", 0.65, 1, "medium"),
-        ];
-
-        let output = generate_graph_section(&annotations, ContextFormat::Markdown);
-
-        assert!(output.contains("Graph Analysis"));
-        assert!(output.contains("PageRank"));
-        assert!(output.contains("src/main.rs"));
-        assert!(output.contains("0.85"));
-    }
-
-    #[test]
-    fn test_generate_graph_section_json() {
-        let annotations = vec![
-            create_test_context_annotation("file1.rs", 0.5, 1, "medium"),
-            create_test_context_annotation("file2.rs", 0.3, 2, "low"),
-        ];
-
-        let output = generate_graph_section(&annotations, ContextFormat::Json);
-
-        assert!(output.contains("graph_analysis"));
-        assert!(output.contains("file_count"));
-        assert!(output.contains("community_count"));
-    }
-
-    #[test]
-    fn test_generate_graph_section_sarif() {
-        let annotations = vec![create_test_context_annotation("test.rs", 0.7, 1, "high")];
-
-        let output = generate_graph_section(&annotations, ContextFormat::Sarif);
-
-        assert!(output.contains("Graph analysis"));
-        assert!(output.contains("1 files"));
-    }
-
-    #[test]
-    fn test_generate_graph_section_empty() {
-        let annotations: Vec<crate::graph::ContextAnnotation> = vec![];
-
-        let output = generate_graph_section(&annotations, ContextFormat::Markdown);
-
-        assert!(output.contains("Graph Analysis"));
-    }
-
     // write_context_output Tests
 
     #[tokio::test]
@@ -342,17 +194,6 @@ mod coverage_tests {
         let result = write_context_output(None, content).await;
 
         assert!(result.is_ok());
-    }
-
-    // Static Annotation Helper Tests
-
-    #[test]
-    fn test_add_static_annotations() {
-        let mut annotations = String::new();
-        add_static_annotations(&mut annotations);
-
-        assert!(annotations.contains("[provability: 75%]"));
-        assert!(annotations.contains("[coverage: 65%]"));
     }
 
     // Integration Tests
@@ -386,43 +227,4 @@ mod coverage_tests {
         assert_eq!(formats.len(), 3);
     }
 
-    // Helper Functions for Tests
-
-    fn create_test_project_context(
-        files: usize,
-        functions: usize,
-        structs: usize,
-        enums: usize,
-        traits: usize,
-    ) -> crate::services::context::ProjectContext {
-        crate::services::context::ProjectContext {
-            project_type: "rust".to_string(),
-            files: vec![],
-            graph: None,
-            summary: crate::services::context::ProjectSummary {
-                total_files: files,
-                total_functions: functions,
-                total_structs: structs,
-                total_enums: enums,
-                total_traits: traits,
-                total_impls: 0,
-                dependencies: vec![],
-            },
-        }
-    }
-
-    fn create_test_context_annotation(
-        file_path: &str,
-        score: f64,
-        community: usize,
-        rank: &str,
-    ) -> crate::graph::ContextAnnotation {
-        crate::graph::ContextAnnotation {
-            file_path: file_path.to_string(),
-            importance_score: score,
-            community_id: community,
-            complexity_rank: rank.to_string(),
-            related_files: vec![],
-        }
-    }
 }

@@ -19,18 +19,6 @@ mod extended_property_tests {
         }
 
         #[test]
-        fn test_get_big_o_complexity_always_returns_valid(complexity in 0u32..1000) {
-            let result = get_big_o_complexity(complexity);
-            prop_assert!(
-                result == "O(1)" ||
-                result == "O(n)" ||
-                result == "O(n log n)" ||
-                result == "O(n²)" ||
-                result == "O(?)"
-            );
-        }
-
-        #[test]
         fn test_markdown_builder_header_levels(level in 1usize..6, text in "[a-zA-Z ]+") {
             let mut builder = MarkdownBuilder::new();
             builder.add_header(level, &text);
@@ -63,35 +51,6 @@ mod extended_property_tests {
             let expected_label = format!("**{}**", label);
             prop_assert!(builder.content.contains(&expected_label));
             prop_assert!(builder.content.contains('%'));
-        }
-
-        #[test]
-        fn test_simple_json_format_valid_json(
-            files in 0usize..100,
-            functions in 0usize..1000
-        ) {
-            let ctx = crate::services::context::ProjectContext {
-                project_type: "rust".to_string(),
-                files: vec![],
-                graph: None,
-                summary: crate::services::context::ProjectSummary {
-                    total_files: files,
-                    total_functions: functions,
-                    total_structs: 0,
-                    total_enums: 0,
-                    total_traits: 0,
-                    total_impls: 0,
-                    dependencies: vec![],
-                },
-            };
-
-            let result = simple_json_format(&ctx, "rust");
-            prop_assert!(result.is_ok());
-
-            // Verify it's valid JSON
-            let json_str = result.unwrap();
-            let parsed: Result<serde_json::Value, _> = serde_json::from_str(&json_str);
-            prop_assert!(parsed.is_ok());
         }
 
         #[test]

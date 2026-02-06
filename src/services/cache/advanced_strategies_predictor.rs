@@ -84,13 +84,6 @@ where
         }
     }
 
-    /// Get access history for testing
-    #[cfg(test)]
-    pub fn access_history(&self) -> std::sync::RwLockReadGuard<'_, VecDeque<K>> {
-        // This is a workaround for parking_lot's read guard
-        unimplemented!("Use access_history_len for testing")
-    }
-
     /// Get access history length for testing
     #[cfg(test)]
     pub fn access_history_len(&self) -> usize {
