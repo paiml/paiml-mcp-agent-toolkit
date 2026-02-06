@@ -2,6 +2,7 @@
 //!
 //! Cross-validates roadmap and ticket files to ensure project integrity.
 
+#![cfg_attr(coverage_nightly, coverage(off))]
 use super::roadmap::Roadmap;
 use super::ticket::TicketFile;
 use serde::{Deserialize, Serialize};

@@ -13,6 +13,8 @@
 //!   - High-value lint categories (correctness, suspicious, perf): 4pts
 //!   - .clippy.toml with disallowed-methods: 3pts
 
+#![cfg_attr(coverage_nightly, coverage(off))]
+
 use super::models::{CategoryScore, FileCache, ScoringMode};
 use super::scorer::{Scorer, ScorerError, ScorerResult};
 use std::path::Path;

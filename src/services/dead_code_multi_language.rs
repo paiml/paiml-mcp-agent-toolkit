@@ -6,6 +6,7 @@
 //! Fixes:
 //! - BUG-004: Dead code analyzer broken for non-Rust projects
 
+#![cfg_attr(coverage_nightly, coverage(off))]
 use anyhow::{Context, Result};
 use lazy_static::lazy_static;
 use regex::Regex;

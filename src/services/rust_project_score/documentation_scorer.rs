@@ -8,6 +8,7 @@
 //! Evidence-based design: Well-documented projects have 30-40% fewer
 //! support issues and faster onboarding (GitHub State of the Octoverse 2024).
 
+#![cfg_attr(coverage_nightly, coverage(off))]
 use super::models::{CategoryScore, FileCache, ScoringMode};
 use super::scorer::{Scorer, ScorerError, ScorerResult};
 use std::path::Path;

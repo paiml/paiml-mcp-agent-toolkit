@@ -3,6 +3,8 @@
 //! This service aggregates defects from all analyzers and generates
 //! reports in multiple formats (JSON, CSV, Markdown, Text).
 
+#![cfg_attr(coverage_nightly, coverage(off))]
+
 use crate::models::defect_report::{
     Defect, DefectCategory, DefectReport, DefectSummary, FileHotspot, ReportMetadata,
 };

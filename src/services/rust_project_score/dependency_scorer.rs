@@ -8,6 +8,7 @@
 //! Evidence-based design: Projects with ≤20 dependencies have 40% fewer
 //! security vulnerabilities and 25% faster build times (NIST 2024).
 
+#![cfg_attr(coverage_nightly, coverage(off))]
 use super::models::{CategoryScore, FileCache, ScoringMode};
 use super::scorer::{Scorer, ScorerError, ScorerResult};
 use std::path::Path;

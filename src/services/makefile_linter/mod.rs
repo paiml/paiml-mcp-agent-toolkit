@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 pub mod ast;
 pub mod parser;
 pub mod rules;

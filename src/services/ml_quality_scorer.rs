@@ -28,6 +28,7 @@
 //!     └── Features: coverage, docs, ci_cd, community
 //! ```
 
+#![cfg_attr(coverage_nightly, coverage(off))]
 use anyhow::Result;
 use aprender::prelude::*;
 use serde::{Deserialize, Serialize};

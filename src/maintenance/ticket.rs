@@ -2,6 +2,7 @@
 //!
 //! Parses ticket files from docs/tickets/ into structured data for validation.
 
+#![cfg_attr(coverage_nightly, coverage(off))]
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 

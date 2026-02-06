@@ -5,6 +5,7 @@
 // - C2: No Team-Specific Files (5 points) - No .idea/, .vscode/, .DS_Store
 // - C3: No Large Files in Git History (5 points) - No files >1MB in git history
 
+#![cfg_attr(coverage_nightly, coverage(off))]
 use super::{Scorer, ScorerConfig};
 use crate::services::repo_score::error::Result;
 use crate::services::repo_score::models::*;

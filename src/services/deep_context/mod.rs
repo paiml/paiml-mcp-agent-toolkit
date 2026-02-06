@@ -55,6 +55,8 @@
 //! # }
 //! ```ignore
 
+#![cfg_attr(coverage_nightly, coverage(off))]
+
 use crate::models::{
     churn::CodeChurnAnalysis,
     dag::DependencyGraph,

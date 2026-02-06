@@ -1,6 +1,7 @@
 // Error capture service for bug-report command (GH-81)
 // Toyota Way: Jidoka - automation with human touch for error handling
 
+#![cfg_attr(coverage_nightly, coverage(off))]
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;

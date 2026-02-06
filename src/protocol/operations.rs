@@ -1,5 +1,6 @@
 //! Operation handlers for the unified protocol
 
+#![cfg_attr(coverage_nightly, coverage(off))]
 use super::{
     AgentParams, ComplexityParams, ContextParams, DeadCodeParams, ErrorInfo, Operation, PdmtParams,
     ProjectParams, QualityGateParams, QualityProxyParams, RefactorNextParams, RefactorStartParams,

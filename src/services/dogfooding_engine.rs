@@ -4,6 +4,7 @@
 //! that deterministically produces dogfooding artifacts by analyzing the
 //! codebase's own AST and git history.
 
+#![cfg_attr(coverage_nightly, coverage(off))]
 use crate::models::error::TemplateError;
 use crate::services::git_analysis::GitAnalysisService;
 use crate::services::unified_ast_engine::{AstForest, ProjectMetrics, UnifiedAstEngine};

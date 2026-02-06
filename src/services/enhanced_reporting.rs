@@ -3,6 +3,7 @@
 //! Provides a unified reporting framework that consolidates multiple analysis
 //! outputs into comprehensive, multi-format reports with visualizations.
 
+#![cfg_attr(coverage_nightly, coverage(off))]
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;

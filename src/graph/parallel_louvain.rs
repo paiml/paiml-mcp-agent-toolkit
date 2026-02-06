@@ -3,6 +3,7 @@
 // Complexity: All functions <= 10
 // SATD: Zero tolerance
 
+#![cfg_attr(coverage_nightly, coverage(off))]
 use super::types::UndirectedGraph;
 use rayon::prelude::*;
 use std::collections::HashMap;

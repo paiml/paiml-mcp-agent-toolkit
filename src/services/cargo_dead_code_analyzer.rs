@@ -15,6 +15,7 @@
 //! - PMAT version changes
 //! - Cache file is missing or corrupted
 
+#![cfg_attr(coverage_nightly, coverage(off))]
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;

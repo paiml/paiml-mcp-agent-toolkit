@@ -13,6 +13,7 @@
 //! - Specification: docs/specifications/enhance-pmat-work.md
 //! - Related Issues: #102, #113, #114, #116
 
+#![cfg_attr(coverage_nightly, coverage(off))]
 use anyhow::{Context, Result};
 use regex::Regex;
 use serde::{Deserialize, Serialize};

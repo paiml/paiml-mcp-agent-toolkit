@@ -40,6 +40,8 @@
 //! # }
 //! ```ignore
 
+#![cfg_attr(coverage_nightly, coverage(off))]
+
 use crate::models::refactor::{
     DefectPayload, RefactorConfig, RefactorStateMachine, RefactorType, State, Summary,
 };

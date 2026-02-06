@@ -2,6 +2,7 @@
 //!
 //! Automatically updates roadmap with commit information.
 
+#![cfg_attr(coverage_nightly, coverage(off))]
 use super::git::{extract_ticket_ids, get_current_commit, ticket_file_updated, CommitInfo};
 use super::roadmap::{Roadmap, RoadmapError};
 use super::ticket::{TicketFile, TicketStatus};

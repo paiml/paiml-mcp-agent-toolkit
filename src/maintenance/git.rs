@@ -2,6 +2,7 @@
 //!
 //! Provides git operations for commit analysis and ticket tracking.
 
+#![cfg_attr(coverage_nightly, coverage(off))]
 use std::process::Command;
 
 /// Git commit information

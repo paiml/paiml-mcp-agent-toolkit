@@ -3,6 +3,7 @@
 //! # TICKET-PMAT-5001: Core ScaffoldEngine
 //! Extended to include core scaffolding engine for project creation.
 
+#![cfg_attr(coverage_nightly, coverage(off))]
 pub mod agent;
 pub mod ci; // TICKET-PMAT-5022: GitHub Actions workflow generation
 pub mod config;

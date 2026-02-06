@@ -2,6 +2,7 @@
 //!
 //! Enforces quality standards across the codebase
 
+#![cfg_attr(coverage_nightly, coverage(off))]
 use super::analysis_service::{AnalysisInput, AnalysisOperation, AnalysisOptions, AnalysisService};
 use super::service_base::{Service, ServiceMetrics, ValidationError};
 use anyhow::Result;

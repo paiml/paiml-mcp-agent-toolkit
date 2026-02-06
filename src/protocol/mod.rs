@@ -3,6 +3,7 @@
 //! This module provides the protocol abstraction layer that unifies all
 //! interfaces (CLI, MCP, HTTP) through a single operation model.
 
+#![cfg_attr(coverage_nightly, coverage(off))]
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;

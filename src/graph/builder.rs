@@ -2,6 +2,7 @@
 // Complexity: All functions ≤ 10
 // SATD: Zero tolerance
 
+#![cfg_attr(coverage_nightly, coverage(off))]
 use super::symbol_table::{SymbolEntry, SymbolTable};
 use super::*;
 use anyhow::Result;

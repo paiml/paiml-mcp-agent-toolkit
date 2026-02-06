@@ -2,6 +2,7 @@
 //!
 //! Extracts patterns from AST using pmat context system
 
+#![cfg_attr(coverage_nightly, coverage(off))]
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;

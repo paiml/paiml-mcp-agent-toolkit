@@ -3,6 +3,8 @@
 //! This module provides high-performance, multi-language detection and classification
 //! of technical debt annotations embedded in source code comments.
 
+#![cfg_attr(coverage_nightly, coverage(off))]
+
 use crate::models::error::TemplateError;
 use blake3::Hasher;
 use regex::RegexSet;

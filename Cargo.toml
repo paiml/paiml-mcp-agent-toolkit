@@ -357,7 +357,9 @@ php-ast = []
 swift-ast = []
 skip-slow-tests = []
 internal_tests = []
-# Feature flag to disable broken tests during development
+# Feature flag for tests with broken syntax (split across include!() boundaries)
+# Empty feature: exists only so cfg(feature = "broken-tests") compiles without warnings
+# NEVER add to any feature bundle (default, full, all-languages, etc.)
 broken-tests = []
 # Feature flag for slow CLI integration tests (assert_cmd spawns binaries)
 # Disabled by default for fast coverage - enable with --features cli-integration

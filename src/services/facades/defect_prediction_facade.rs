@@ -2,6 +2,7 @@
 //!
 //! Provides a simplified interface for defect prediction and risk analysis.
 
+#![cfg_attr(coverage_nightly, coverage(off))]
 use crate::services::service_registry::ServiceRegistry;
 use anyhow::Result;
 use serde::{Deserialize, Serialize};

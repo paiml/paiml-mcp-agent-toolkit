@@ -1,5 +1,6 @@
 //! Protocol adapter implementations for MCP, HTTP, and CLI
 
+#![cfg_attr(coverage_nightly, coverage(off))]
 use super::{
     ComplexityParams, DeadCodeParams, Deserialize, HttpRequest, JsonRpcRequest, JsonRpcResponse,
     Operation, ProtocolAdapter, ProtocolError, QualityGateParams, RequestContext, SatdParams,

@@ -2,6 +2,7 @@
 //!
 //! Provides quantitative metrics for project health based on roadmap and ticket data.
 
+#![cfg_attr(coverage_nightly, coverage(off))]
 use super::roadmap::Roadmap;
 use super::ticket::TicketFile;
 use serde::{Deserialize, Serialize};

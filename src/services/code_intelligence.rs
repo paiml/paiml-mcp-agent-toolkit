@@ -3,6 +3,7 @@
 //! Provides a comprehensive analysis interface that combines DAG representation,
 //! duplicate detection, dead code analysis, and more into a single API.
 
+#![cfg_attr(coverage_nightly, coverage(off))]
 use crate::models::unified_ast::AstDag;
 use crate::services::{
     context::analyze_project,

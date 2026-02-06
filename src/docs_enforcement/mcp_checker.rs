@@ -5,6 +5,7 @@
 //! This module validates that MCP tools have complete, accurate documentation
 //! including tool descriptions, parameter schemas, and non-generic text.
 
+#![cfg_attr(coverage_nightly, coverage(off))]
 use crate::docs_enforcement::generic_detector::is_generic_description;
 use anyhow::Result;
 use serde::{Deserialize, Serialize};

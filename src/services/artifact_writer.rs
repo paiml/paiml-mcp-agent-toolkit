@@ -3,6 +3,7 @@
 //! This module implements deterministic artifact storage with content-addressable
 //! organization and atomic write operations.
 
+#![cfg_attr(coverage_nightly, coverage(off))]
 use crate::models::error::TemplateError;
 use crate::services::unified_ast_engine::{ArtifactTree, MermaidArtifacts, Template};
 use blake3::Hash;

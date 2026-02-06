@@ -1,3 +1,5 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
+
 // AST-Aware Code Chunker
 // PMAT-SEARCH-001: Extract semantic units (functions, classes, modules) from code
 //

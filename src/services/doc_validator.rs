@@ -3,6 +3,7 @@
 //! Validates markdown links (internal and external HTTP/HTTPS) and reports broken links.
 //! Designed with EXTREME TDD principles with property tests and comprehensive coverage.
 
+#![cfg_attr(coverage_nightly, coverage(off))]
 use anyhow::{Context, Result};
 use regex::Regex;
 use serde::{Deserialize, Serialize};

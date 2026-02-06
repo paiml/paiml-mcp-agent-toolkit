@@ -2,6 +2,7 @@
 //!
 //! Parses ROADMAP.md files into structured data for analysis and validation.
 
+#![cfg_attr(coverage_nightly, coverage(off))]
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 

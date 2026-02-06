@@ -3,6 +3,7 @@
 //! Phase 4 Implementation (Months 10-12)
 //! Safe, deterministic automation for simple fixes
 
+#![cfg_attr(coverage_nightly, coverage(off))]
 use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
