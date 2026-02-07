@@ -495,8 +495,65 @@ impl AgentContextIndex {
         Ok(())
     }
 
-    /// Load index from directory
+    /// Load index from directory.
+    ///
+    /// Prefers SQLite `context.db` when available (v2.0), falls back to
+    /// LZ4+bincode blob `context.idx/functions.lz4` (v1.x).
     pub fn load(index_path: &Path) -> Result<Self, String> {
+        // Try SQLite path first (v2.0)
+        let db_candidate = index_path.with_extension("db");
+        if db_candidate.exists() {
+            match Self::load_from_sqlite(&db_candidate) {
+                Ok(index) => return Ok(index),
+                Err(e) => {
+                    eprintln!("  Warning: SQLite load failed, falling back to blob: {e}");
+                }
+            }
+        }
+
+        Self::load_from_blob(index_path)
+    }
+
+    /// Load index from SQLite database (v2.0 fast path).
+    ///
+    /// Reads functions, call graph, metrics from `context.db`.
+    /// Rebuilds derived indices (name_index, file_index, corpus) in memory.
+    fn load_from_sqlite(db_path: &Path) -> Result<Self, String> {
+        use super::sqlite_backend::{
+            load_call_graph, load_functions, load_graph_metrics, load_metadata, open_db,
+        };
+
+        let conn = open_db(db_path)?;
+        let manifest = load_metadata(&conn)?;
+        let functions = load_functions(&conn)?;
+        let (calls, called_by) = load_call_graph(&conn)?;
+        let graph_metrics = load_graph_metrics(&conn)?;
+
+        // Rebuild derived indices from functions
+        let indices = build_indices(&functions);
+        let name_frequency = compute_name_frequency(&indices.name_index, functions.len());
+        let corpus_lower: Vec<String> = indices.corpus.iter().map(|d| d.to_lowercase()).collect();
+
+        let project_root = PathBuf::from(&manifest.project_root);
+
+        Ok(Self {
+            functions,
+            name_index: indices.name_index,
+            file_index: indices.file_index,
+            corpus: indices.corpus,
+            corpus_lower,
+            name_frequency,
+            calls,
+            called_by,
+            graph_metrics,
+            project_root,
+            manifest,
+            db_path: Some(db_path.to_path_buf()),
+        })
+    }
+
+    /// Load index from LZ4+bincode blob (v1.x legacy path).
+    fn load_from_blob(index_path: &Path) -> Result<Self, String> {
         // Load manifest
         let manifest_str = fs::read_to_string(index_path.join("manifest.json"))
             .map_err(|e| format!("Failed to read manifest: {e}"))?;
@@ -522,8 +579,6 @@ impl AgentContextIndex {
         let has_cached_indices = !payload.name_index.is_empty();
 
         let (name_index, file_index, graph_metrics, corpus_lower, name_frequency) = if has_cached_indices {
-            // Fast path: use cached indices directly (saves ~4s for 100k functions)
-            // v1.4.0: corpus_lower no longer persisted, compute lazily (~50ms for 50K functions)
             let corpus_lower = if payload.corpus_lower.is_empty() {
                 corpus.iter().map(|d| d.to_lowercase()).collect()
             } else {
@@ -541,17 +596,13 @@ impl AgentContextIndex {
             let is_legacy = manifest.version.starts_with("1.0") || manifest.version.starts_with("1.1");
             let indices = build_indices(&functions);
 
-            // Rebuild call graph if loading legacy format
             let (calls_rebuilt, called_by_rebuilt) = if is_legacy && calls.is_empty() {
                 build_call_graph(&functions, &indices.name_index)
             } else {
                 (calls.clone(), called_by.clone())
             };
 
-            // Compute graph metrics (PageRank, centrality)
             let graph_metrics = compute_graph_metrics(functions.len(), &calls_rebuilt, &called_by_rebuilt);
-
-            // Compute name frequency and lowercase corpus
             let name_frequency = compute_name_frequency(&indices.name_index, functions.len());
             let corpus_lower: Vec<String> = corpus.iter().map(|d| d.to_lowercase()).collect();
 

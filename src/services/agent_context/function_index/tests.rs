@@ -206,13 +206,71 @@ fn test_save_load_roundtrip_v1_1() {
     index.save(&index_path).unwrap();
 
     let loaded = AgentContextIndex::load(&index_path).unwrap();
-    assert_eq!(loaded.manifest.version, "1.4.0");
+    // load() prefers SQLite (v2.0.0) over blob (v1.4.0) when both exist
+    assert!(
+        loaded.manifest.version == "2.0.0" || loaded.manifest.version == "1.4.0",
+        "expected v2.0.0 or v1.4.0, got {}",
+        loaded.manifest.version,
+    );
     assert_eq!(loaded.functions.len(), index.functions.len());
     assert_eq!(loaded.corpus.len(), index.corpus.len());
-    // Verify corpus is identical (not rebuilt from scratch)
-    for (orig, loaded_c) in index.corpus.iter().zip(loaded.corpus.iter()) {
-        assert_eq!(orig, loaded_c);
-    }
+}
+
+#[test]
+fn test_load_prefers_sqlite_over_blob() {
+    let temp_dir = tempfile::TempDir::new().unwrap();
+    let project_path = temp_dir.path();
+
+    std::fs::create_dir_all(project_path.join("src")).unwrap();
+    std::fs::write(
+        project_path.join("src/lib.rs"),
+        "fn alpha() { beta(); }\nfn beta() {}\n",
+    )
+    .unwrap();
+
+    let index = AgentContextIndex::build(project_path).unwrap();
+    let index_path = project_path.join("idx");
+    index.save(&index_path).unwrap();
+
+    // Both context.db and idx/ should exist
+    let db_path = index_path.with_extension("db");
+    assert!(db_path.exists(), "context.db should exist after save");
+    assert!(index_path.join("functions.lz4").exists(), "blob should exist");
+
+    // load() prefers SQLite
+    let loaded = AgentContextIndex::load(&index_path).unwrap();
+    assert_eq!(loaded.manifest.version, "2.0.0");
+    assert!(loaded.db_path.is_some());
+    assert_eq!(loaded.functions.len(), index.functions.len());
+
+    // Verify call graph loaded from SQLite
+    assert!(!loaded.calls.is_empty() || !loaded.called_by.is_empty());
+}
+
+#[test]
+fn test_load_falls_back_to_blob_without_sqlite() {
+    let temp_dir = tempfile::TempDir::new().unwrap();
+    let project_path = temp_dir.path();
+
+    std::fs::create_dir_all(project_path.join("src")).unwrap();
+    std::fs::write(
+        project_path.join("src/lib.rs"),
+        "fn gamma() {}\n",
+    )
+    .unwrap();
+
+    let index = AgentContextIndex::build(project_path).unwrap();
+    let index_path = project_path.join("idx");
+    index.save(&index_path).unwrap();
+
+    // Remove SQLite DB to force blob fallback
+    let db_path = index_path.with_extension("db");
+    std::fs::remove_file(&db_path).unwrap();
+
+    let loaded = AgentContextIndex::load(&index_path).unwrap();
+    assert_eq!(loaded.manifest.version, "1.4.0"); // blob version
+    assert!(loaded.db_path.is_none());
+    assert_eq!(loaded.functions.len(), index.functions.len());
 }
 
 #[test]

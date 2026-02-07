@@ -393,6 +393,179 @@ fn tokenize_query_for_fts5(query: &str) -> String {
         .join(" ")
 }
 
+fn parse_definition_type(s: &str) -> DefinitionType {
+    match s {
+        "Struct" => DefinitionType::Struct,
+        "Enum" => DefinitionType::Enum,
+        "Trait" => DefinitionType::Trait,
+        "TypeAlias" => DefinitionType::TypeAlias,
+        _ => DefinitionType::Function,
+    }
+}
+
+fn read_quality_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<QualityMetrics> {
+    Ok(QualityMetrics {
+        tdg_score: row.get::<_, f64>(10)? as f32,
+        tdg_grade: row.get(11)?,
+        complexity: row.get::<_, i64>(12)? as u32,
+        cognitive_complexity: row.get::<_, i64>(13)? as u32,
+        big_o: row.get(14)?,
+        satd_count: row.get::<_, i64>(15)? as u32,
+        loc: row.get::<_, i64>(16)? as u32,
+        commit_count: row.get::<_, i64>(17)? as u32,
+        churn_score: row.get::<_, f64>(18)? as f32,
+    })
+}
+
+/// Load all functions from the SQLite database.
+pub(crate) fn load_functions(conn: &Connection) -> Result<Vec<FunctionEntry>, String> {
+    let mut stmt = conn
+        .prepare(
+            "SELECT file_path, function_name, signature, definition_type, doc_comment,
+                    source, start_line, end_line, language, checksum,
+                    tdg_score, tdg_grade, complexity, cognitive_complexity, big_o,
+                    satd_count, loc, commit_count, churn_score, clone_count,
+                    pattern_diversity, fault_annotations
+             FROM functions ORDER BY id",
+        )
+        .map_err(|e| format!("Failed to prepare load: {e}"))?;
+
+    let rows = stmt
+        .query_map([], |row| {
+            let def_type_str: String = row.get(3)?;
+            let faults_json: String = row.get(21)?;
+            let fault_annotations: Vec<String> =
+                serde_json::from_str(&faults_json).unwrap_or_default();
+
+            Ok(FunctionEntry {
+                file_path: row.get(0)?,
+                function_name: row.get(1)?,
+                signature: row.get(2)?,
+                definition_type: parse_definition_type(&def_type_str),
+                doc_comment: row.get(4)?,
+                source: row.get(5)?,
+                start_line: row.get::<_, i64>(6)? as usize,
+                end_line: row.get::<_, i64>(7)? as usize,
+                language: row.get(8)?,
+                quality: read_quality_from_row(row)?,
+                checksum: row.get(9)?,
+                commit_count: row.get::<_, i64>(17)? as u32,
+                churn_score: row.get::<_, f64>(18)? as f32,
+                clone_count: row.get::<_, i64>(19)? as u32,
+                pattern_diversity: row.get::<_, f64>(20)? as f32,
+                fault_annotations,
+            })
+        })
+        .map_err(|e| format!("Failed to query functions: {e}"))?;
+
+    rows.collect::<Result<Vec<_>, _>>()
+        .map_err(|e| format!("Failed to collect functions: {e}"))
+}
+
+/// Load call graph edges from the SQLite database.
+pub(crate) fn load_call_graph(
+    conn: &Connection,
+) -> Result<(HashMap<usize, Vec<usize>>, HashMap<usize, Vec<usize>>), String> {
+    let mut stmt = conn
+        .prepare("SELECT caller_id, callee_id FROM call_graph")
+        .map_err(|e| format!("Failed to prepare call_graph load: {e}"))?;
+
+    let mut calls: HashMap<usize, Vec<usize>> = HashMap::new();
+    let mut called_by: HashMap<usize, Vec<usize>> = HashMap::new();
+
+    let rows = stmt
+        .query_map([], |row| {
+            let caller: i64 = row.get(0)?;
+            let callee: i64 = row.get(1)?;
+            Ok(((caller - 1) as usize, (callee - 1) as usize))
+        })
+        .map_err(|e| format!("Failed to query call_graph: {e}"))?;
+
+    for row in rows {
+        let (caller, callee) = row.map_err(|e| format!("Bad call_graph row: {e}"))?;
+        calls.entry(caller).or_default().push(callee);
+        called_by.entry(callee).or_default().push(caller);
+    }
+
+    Ok((calls, called_by))
+}
+
+/// Load graph metrics from the SQLite database.
+pub(crate) fn load_graph_metrics(conn: &Connection) -> Result<Vec<GraphMetrics>, String> {
+    let count: i64 = conn
+        .query_row("SELECT count(*) FROM graph_metrics", [], |r| r.get(0))
+        .map_err(|e| format!("Failed to count metrics: {e}"))?;
+
+    let mut metrics = vec![GraphMetrics::default(); count as usize];
+
+    let mut stmt = conn
+        .prepare("SELECT function_id, pagerank, centrality, in_degree, out_degree FROM graph_metrics")
+        .map_err(|e| format!("Failed to prepare metrics load: {e}"))?;
+
+    let rows = stmt
+        .query_map([], |row| {
+            let id: i64 = row.get(0)?;
+            let pagerank: f64 = row.get(1)?;
+            let centrality: f64 = row.get(2)?;
+            let in_degree: i64 = row.get(3)?;
+            let out_degree: i64 = row.get(4)?;
+            Ok((id, pagerank, centrality, in_degree, out_degree))
+        })
+        .map_err(|e| format!("Failed to query metrics: {e}"))?;
+
+    for row in rows {
+        let (id, pr, cent, ind, outd) = row.map_err(|e| format!("Bad metric row: {e}"))?;
+        let idx = (id - 1) as usize;
+        if idx < metrics.len() {
+            metrics[idx] = GraphMetrics {
+                pagerank: pr as f32,
+                centrality: cent as f32,
+                in_degree: ind as u32,
+                out_degree: outd as u32,
+            };
+        }
+    }
+
+    Ok(metrics)
+}
+
+/// Load index metadata from the SQLite database.
+pub(crate) fn load_metadata(conn: &Connection) -> Result<IndexManifest, String> {
+    let get_val = |key: &str| -> Result<String, String> {
+        conn.query_row(
+            "SELECT value FROM metadata WHERE key = ?1",
+            params![key],
+            |r| r.get(0),
+        )
+        .map_err(|e| format!("Missing metadata key '{key}': {e}"))
+    };
+
+    let version = get_val("version")?;
+    let built_at = get_val("built_at")?;
+    let project_root = get_val("project_root")?;
+    let function_count: usize = get_val("function_count")?
+        .parse()
+        .map_err(|e| format!("Bad function_count: {e}"))?;
+    let file_count: usize = get_val("file_count")?
+        .parse()
+        .map_err(|e| format!("Bad file_count: {e}"))?;
+    let checksums_json = get_val("file_checksums").unwrap_or_else(|_| "{}".to_string());
+    let file_checksums: HashMap<String, String> =
+        serde_json::from_str(&checksums_json).unwrap_or_default();
+
+    Ok(IndexManifest {
+        version,
+        built_at,
+        project_root,
+        function_count,
+        file_count,
+        languages: Vec::new(), // Populated from functions
+        avg_tdg_score: 0.0,
+        file_checksums,
+        last_incremental_changes: 0,
+    })
+}
+
 fn humanize_bytes(bytes: u64) -> String {
     if bytes < 1024 {
         format!("{bytes} B")
