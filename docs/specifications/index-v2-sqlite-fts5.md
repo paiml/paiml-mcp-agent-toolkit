@@ -201,8 +201,9 @@ LIMIT ?;
 
 **Observed performance**:
 - Local 18K functions: 0.58s query (SQLite load + FTS5 search)
-- Workspace 90K functions: 1.2s cached, 10.8s uncached (9x improvement)
-- FTS5 search itself: <10ms (dominant cost is load + index rebuild)
+- Workspace 90K functions: 0.9s cached (was 1.2s before corpus skip), 10.8s uncached
+- FTS5 search itself: <10ms (dominant cost is SQLite I/O for 90K functions)
+- Corpus skip: saves ~36MB allocation + ~300ms for 90K functions
 - Disk savings: 18K functions → 52MB SQLite (was 47MB blob + 52MB SQLite dual-write)
 
 ## Peer-Reviewed Citations

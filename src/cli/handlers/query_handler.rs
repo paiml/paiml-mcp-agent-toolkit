@@ -1650,7 +1650,9 @@ fn try_incremental_update(
 fn load_or_build_index(
     project_path: &PathBuf, index_path: &PathBuf, rebuild_index: bool, quiet: bool,
 ) -> anyhow::Result<AgentContextIndex> {
-    if !index_path.exists() || rebuild_index {
+    // Check for either SQLite (.db) or blob (.idx/) index
+    let db_path = index_path.with_extension("db");
+    if (!index_path.exists() && !db_path.exists()) || rebuild_index {
         if !quiet { eprintln!("Building index for {:?}...", project_path); }
         return build_and_save_index(project_path, index_path);
     }

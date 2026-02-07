@@ -736,16 +736,19 @@ fn check_claude_md_patterns(
 /// CB-130: Detect agent context adoption issues
 ///
 /// Checks:
-/// 1. RAG index exists at .pmat/context.idx
+/// 1. RAG index exists at .pmat/context.idx or .pmat/context.db
 /// 2. Index is fresh (less than 24 hours old)
 /// 3. CLAUDE.md references pmat_query_code (optional)
 pub fn detect_cb130_agent_context_adoption(project_path: &Path) -> AgentContextReport {
     let index_path = project_path.join(".pmat/context.idx");
+    let db_path = project_path.join(".pmat/context.db");
 
-    let index_exists = index_path.exists();
+    let index_exists = index_path.exists() || db_path.exists();
 
+    // Check freshness: prefer .db mtime, fall back to .idx/
+    let age_check_path = if db_path.exists() { &db_path } else { &index_path };
     let (index_age_hours, index_stale) = if index_exists {
-        check_index_age(&index_path)
+        check_index_age(age_check_path)
     } else {
         (None, false)
     };

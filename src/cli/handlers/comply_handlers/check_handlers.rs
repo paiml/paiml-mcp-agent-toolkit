@@ -1655,7 +1655,7 @@ pub(crate) fn check_shell_makefile_quality(project_path: &Path) -> ComplianceChe
 ///
 /// Checks whether the project has a RAG-powered agent context index
 /// set up for intelligent code search. Validates:
-/// - Index exists at .pmat/context.idx
+/// - Index exists at .pmat/context.idx or .pmat/context.db
 /// - Index is fresh (less than 24 hours old)
 /// - CLAUDE.md references pmat_query_code (optional)
 pub(crate) fn check_agent_context_adoption(project_path: &Path) -> ComplianceCheck {
@@ -1665,7 +1665,7 @@ pub(crate) fn check_agent_context_adoption(project_path: &Path) -> ComplianceChe
     let mut warning_count = 0;
 
     if !report.index_exists {
-        issues.push("CB-130: No agent context index found at .pmat/context.idx".to_string());
+        issues.push("CB-130: No agent context index found at .pmat/context.idx or .pmat/context.db".to_string());
         issues.push("  Run 'pmat query \"test\" --rebuild-index' to build the index".to_string());
         warning_count += 1;
     } else {
