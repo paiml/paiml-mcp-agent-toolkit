@@ -164,7 +164,7 @@ pub fn format_text_with_code(results: &[QueryResult]) -> String {
             // Truncate long docs, show first line
             let first_line = doc.lines().next().unwrap_or(doc);
             let truncated = if first_line.len() > 100 {
-                format!("{}...", &first_line[..97])
+                format!("{}...", &first_line[..first_line.floor_char_boundary(97)])
             } else {
                 first_line.to_string()
             };
@@ -326,4 +326,68 @@ pub fn format_text(results: &[QueryResult]) -> String {
     }
 
     output
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn make_result(name: &str, doc: Option<&str>) -> QueryResult {
+        QueryResult {
+            function_name: name.to_string(),
+            file_path: "src/test.rs".to_string(),
+            signature: format!("fn {}()", name),
+            definition_type: "function".to_string(),
+            doc_comment: doc.map(|s| s.to_string()),
+            start_line: 1,
+            end_line: 10,
+            language: "Rust".to_string(),
+            tdg_score: 80.0,
+            tdg_grade: "A".to_string(),
+            complexity: 5,
+            big_o: "O(1)".to_string(),
+            satd_count: 0,
+            loc: 10,
+            relevance_score: 0.95,
+            source: None,
+            calls: Vec::new(),
+            called_by: Vec::new(),
+            pagerank: 0.0,
+            in_degree: 0,
+            out_degree: 0,
+            commit_count: 0,
+            churn_score: 0.0,
+            clone_count: 0,
+            duplication_score: 0.0,
+            pattern_diversity: 0.0,
+            fault_annotations: Vec::new(),
+            line_coverage_pct: 0.0,
+            lines_covered: 0,
+            lines_total: 0,
+            missed_lines: 0,
+            impact_score: 0.0,
+            coverage_status: String::new(),
+            coverage_diff: 0.0,
+        }
+    }
+
+    /// Regression test for #157: UTF-8 multi-byte char boundary panic
+    #[test]
+    fn test_format_text_with_code_multibyte_doc_comment() {
+        let result = make_result(
+            "verify_output",
+            Some("Verify output is correct: not empty, no garbage, contains expected answer (PMAT-QA-PROTOCOL-001 §7.5)  Order of checks is CRITICAL for safety"),
+        );
+        let output = format_text_with_code(&[result]);
+        assert!(output.contains("verify_output"));
+        assert!(output.contains("..."));
+    }
+
+    /// Ensure short docs are not truncated
+    #[test]
+    fn test_format_text_short_doc_no_truncation() {
+        let result = make_result("foo", Some("Short doc"));
+        let output = format_text_with_code(&[result]);
+        assert!(output.contains("Short doc"));
+    }
 }
