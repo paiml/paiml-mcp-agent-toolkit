@@ -229,6 +229,11 @@ impl AgentContextIndex {
                         .then_with(|| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal))
                 });
             }
+            super::types::RankBy::Impact => {
+                // Impact ranking is applied post-enrichment in query_handler.rs
+                // Fall back to relevance ordering here
+                ranked.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+            }
         }
 
         // Take top results with caller/callee context
@@ -522,15 +527,17 @@ impl AgentContextIndex {
                 continue;
             }
             let func = &self.functions[idx];
-            // Count matches across name, signature, and source
+            // Count matches across name, signature, source, and file path
             let name_matches = re.find_iter(&func.function_name).count();
             let sig_matches = re.find_iter(&func.signature).count();
             let source_matches = re.find_iter(&func.source).count();
-            let total = name_matches + sig_matches + source_matches;
+            let path_matches = re.find_iter(&func.file_path).count();
+            let total = name_matches + sig_matches + source_matches + path_matches;
             if total > 0 {
-                // Score: weight name matches highest, then signature, then source
+                // Score: weight name matches highest, then signature, then path, then source
                 let score = (name_matches as f32 * 3.0
                     + sig_matches as f32 * 2.0
+                    + path_matches as f32 * 1.5
                     + source_matches as f32)
                     / (1.0 + func.source.len() as f32 / 1000.0);
                 results.push((idx, score));
@@ -595,10 +602,17 @@ impl AgentContextIndex {
             let name_matches = name.matches(&needle_cmp).count();
             let sig_matches = sig.matches(&needle_cmp).count();
             let source_matches = source.matches(&needle_cmp).count();
-            let total = name_matches + sig_matches + source_matches;
+            let file_path_cmp = if case_insensitive {
+                func.file_path.to_lowercase()
+            } else {
+                func.file_path.clone()
+            };
+            let path_matches = file_path_cmp.matches(&needle_cmp).count();
+            let total = name_matches + sig_matches + source_matches + path_matches;
             if total > 0 {
                 let score = (name_matches as f32 * 3.0
                     + sig_matches as f32 * 2.0
+                    + path_matches as f32 * 1.5
                     + source_matches as f32)
                     / (1.0 + func.source.len() as f32 / 1000.0);
                 results.push((idx, score));

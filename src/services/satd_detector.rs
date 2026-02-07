@@ -1366,6 +1366,32 @@ impl SATDDetector {
         if trimmed.starts_with("//") {
             let comment_text = trimmed.trim_start_matches("//").trim().to_lowercase();
 
+            // Section headers with separators (=== or ---)
+            if comment_text.contains("===") || comment_text.contains("---")
+                || comment_text.contains("───") {
+                return true;
+            }
+
+            // Mathematical notation (e.g., "s^T × temp")
+            if comment_text.contains("×") || comment_text.contains("∑")
+                || comment_text.contains("^t ") || comment_text.contains("^t×") {
+                return true;
+            }
+
+            // Section header patterns (capitalized with parenthetical)
+            if comment_text.contains("mitigation")
+                || comment_text.contains("isolation")
+                || comment_text.starts_with("output ")
+                || comment_text.starts_with("input ")
+                || comment_text.starts_with("all ") {
+                return true;
+            }
+
+            // Phone/format patterns with XXX
+            if comment_text.contains("xxx-xxx") || comment_text.contains("xxx.xxx") {
+                return true;
+            }
+
             // Check for common functional description patterns
             comment_text.starts_with("check for")
                 || comment_text.starts_with("handle ")
@@ -1484,10 +1510,14 @@ impl SATDDetector {
     }
 
     fn is_technical_debt_documentation(&self, trimmed: &str) -> bool {
-        let mentions_td_concepts = trimmed.contains("Technical Debt")
+        let lower = trimmed.to_lowercase();
+        let mentions_td_concepts = lower.contains("technical debt")
             || trimmed.contains("TDG")
             || trimmed.contains("SATD")
-            || trimmed.contains("Self-Admitted");
+            || lower.contains("self-admitted")
+            || lower.contains("debt marker")
+            || lower.contains("debt detection")
+            || lower.contains("debt pattern");
         let is_comment =
             trimmed.starts_with("//") || trimmed.starts_with('*') || trimmed.starts_with('/');
         mentions_td_concepts && is_comment
@@ -1768,3 +1798,118 @@ impl SATDDetector {
 #[cfg(all(test, feature = "broken-tests"))]
 #[path = "satd_detector_tests.rs"]
 mod tests;
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod coverage_tests {
+    use super::*;
+
+    #[test]
+    fn test_new_extended_creates_valid_classifier() {
+        let classifier = DebtClassifier::new_extended();
+        // Should have 10 standard + 9 extended = 19 patterns
+        assert_eq!(classifier.patterns.len(), 19);
+        assert!(classifier.compiled_patterns.len() > 0);
+    }
+
+    #[test]
+    fn test_new_extended_matches_standard_patterns() {
+        let classifier = DebtClassifier::new_extended();
+        // Standard SATD markers
+        assert!(classifier.compiled_patterns.is_match("TODO: fix this"));
+        assert!(classifier.compiled_patterns.is_match("FIXME: broken"));
+        assert!(classifier.compiled_patterns.is_match("HACK workaround"));
+        assert!(classifier.compiled_patterns.is_match("security vulnerability"));
+        assert!(classifier.compiled_patterns.is_match("performance issue"));
+        assert!(classifier.compiled_patterns.is_match("technical debt"));
+        assert!(classifier.compiled_patterns.is_match("code smell"));
+        assert!(classifier.compiled_patterns.is_match("temporary fix"));
+        assert!(classifier.compiled_patterns.is_match("optimize this"));
+    }
+
+    #[test]
+    fn test_new_extended_matches_euphemism_patterns() {
+        let classifier = DebtClassifier::new_extended();
+        // AI euphemism patterns (issue #149)
+        assert!(classifier.compiled_patterns.is_match("placeholder value"));
+        assert!(classifier.compiled_patterns.is_match("stub implementation"));
+        assert!(classifier.compiled_patterns.is_match("simplified version"));
+        assert!(classifier.compiled_patterns.is_match("for demonstration"));
+        assert!(classifier.compiled_patterns.is_match("mock service"));
+        assert!(classifier.compiled_patterns.is_match("dummy data"));
+        assert!(classifier.compiled_patterns.is_match("fake response"));
+        assert!(classifier.compiled_patterns.is_match("hardcoded path"));
+        assert!(classifier.compiled_patterns.is_match("for now"));
+        assert!(classifier.compiled_patterns.is_match("WIP"));
+        assert!(classifier.compiled_patterns.is_match("skip validation"));
+        assert!(classifier.compiled_patterns.is_match("bypass this"));
+    }
+
+    #[test]
+    fn test_new_extended_does_not_match_normal_code() {
+        let classifier = DebtClassifier::new_extended();
+        assert!(!classifier.compiled_patterns.is_match("fn process_request()"));
+        assert!(!classifier.compiled_patterns.is_match("let result = compute()"));
+        assert!(!classifier.compiled_patterns.is_match("return Ok(value)"));
+    }
+
+    #[test]
+    fn test_new_extended_has_more_patterns_than_standard() {
+        let standard = DebtClassifier::new();
+        let extended = DebtClassifier::new_extended();
+        assert!(extended.patterns.len() > standard.patterns.len());
+    }
+
+    #[test]
+    fn test_new_extended_pattern_severities() {
+        let classifier = DebtClassifier::new_extended();
+        // Check that security patterns are Critical
+        let security_pattern = classifier
+            .patterns
+            .iter()
+            .find(|p| p.description == "Security concern")
+            .unwrap();
+        assert_eq!(security_pattern.severity, Severity::Critical);
+
+        // Check that skip/bypass is High severity
+        let skip_pattern = classifier
+            .patterns
+            .iter()
+            .find(|p| p.description.contains("Skip/bypass"))
+            .unwrap();
+        assert_eq!(skip_pattern.severity, Severity::High);
+    }
+
+    #[test]
+    fn test_new_extended_pattern_categories() {
+        let classifier = DebtClassifier::new_extended();
+        let categories: Vec<&DebtCategory> =
+            classifier.patterns.iter().map(|p| &p.category).collect();
+        // Should contain diverse categories
+        assert!(categories.contains(&&DebtCategory::Design));
+        assert!(categories.contains(&&DebtCategory::Defect));
+        assert!(categories.contains(&&DebtCategory::Requirement));
+        assert!(categories.contains(&&DebtCategory::Security));
+        assert!(categories.contains(&&DebtCategory::Performance));
+        assert!(categories.contains(&&DebtCategory::Test));
+    }
+
+    #[test]
+    fn test_new_strict_is_subset_of_extended() {
+        let strict = DebtClassifier::new_strict();
+        let extended = DebtClassifier::new_extended();
+        assert!(strict.patterns.len() < extended.patterns.len());
+    }
+
+    #[test]
+    fn test_classify_line_with_extended() {
+        let classifier = DebtClassifier::new_extended();
+        // Should classify euphemism patterns
+        let matches: Vec<_> = classifier
+            .compiled_patterns
+            .matches("// placeholder for now")
+            .into_iter()
+            .collect();
+        assert!(!matches.is_empty());
+    }
+}

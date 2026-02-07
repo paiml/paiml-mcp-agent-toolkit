@@ -238,6 +238,7 @@ pub enum Commands {
     #[command(visible_aliases = &["q", "search-code"])]
     Query {
         /// Natural language query (e.g., "error handling", "database connection")
+        #[arg(default_value = "")]
         query: String,
 
         /// Maximum number of results
@@ -308,6 +309,26 @@ pub enum Commands {
         #[arg(long)]
         faults: bool,
 
+        /// Enrich with test coverage data (line coverage, missed lines, ROI impact)
+        #[arg(long)]
+        coverage: bool,
+
+        /// Filter to only uncovered/partially-covered functions (requires --coverage)
+        #[arg(long)]
+        uncovered_only: bool,
+
+        /// Coverage baseline JSON file for delta comparison (shows coverage changes)
+        #[arg(long, value_name = "FILE")]
+        coverage_diff: Option<PathBuf>,
+
+        /// Path to pre-existing LLVM coverage JSON file (avoids re-running test suite)
+        #[arg(long, value_name = "FILE", env = "PMAT_COVERAGE_FILE")]
+        coverage_file: Option<PathBuf>,
+
+        /// Show top coverage gaps ranked by uncovered lines (no query string needed)
+        #[arg(long)]
+        coverage_gaps: bool,
+
         /// Filter by definition type (fn, struct, enum, trait, type)
         #[arg(long = "type", value_name = "TYPE")]
         definition_type: Option<String>,
@@ -327,6 +348,10 @@ pub enum Commands {
         /// Literal string match, no semantic ranking (like rg -F)
         #[arg(long, visible_alias = "fixed-strings")]
         literal: bool,
+
+        /// Raw file search only, skip index (like rg, searches all file types)
+        #[arg(long)]
+        raw: bool,
 
         /// Case-sensitive search (default: smart-case)
         #[arg(long)]

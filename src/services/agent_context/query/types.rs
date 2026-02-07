@@ -26,6 +26,8 @@ pub enum RankBy {
     Centrality,
     /// Rank by in-degree (most called by others)
     InDegree,
+    /// Rank by coverage impact ROI (missed_lines * pagerank * 1/complexity)
+    Impact,
 }
 
 impl std::str::FromStr for RankBy {
@@ -37,7 +39,8 @@ impl std::str::FromStr for RankBy {
             "pagerank" | "pr" | "importance" => Ok(RankBy::PageRank),
             "centrality" | "degree" => Ok(RankBy::Centrality),
             "indegree" | "callers" => Ok(RankBy::InDegree),
-            _ => Err(format!("Unknown rank-by: '{}'. Valid: relevance, pagerank, centrality, indegree", s)),
+            "impact" | "roi" | "coverage" => Ok(RankBy::Impact),
+            _ => Err(format!("Unknown rank-by: '{}'. Valid: relevance, pagerank, centrality, indegree, impact", s)),
         }
     }
 }
@@ -169,6 +172,31 @@ pub struct QueryResult {
     /// Fault pattern annotations from batuta bug-hunter (mutation targets, boundary conditions)
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub fault_annotations: Vec<String>,
+    /// Line coverage percentage (0.0-100.0)
+    #[serde(default)]
+    pub line_coverage_pct: f32,
+    /// Number of covered (instrumented + executed) lines
+    #[serde(default)]
+    pub lines_covered: u32,
+    /// Total instrumented lines in function
+    #[serde(default)]
+    pub lines_total: u32,
+    /// Number of uncovered (instrumented but not executed) lines
+    #[serde(default)]
+    pub missed_lines: u32,
+    /// ROI impact score: missed_lines * pagerank * (1/complexity)
+    #[serde(default)]
+    pub impact_score: f32,
+    /// Coverage status: "no_data", "uncovered", "partial", "full"
+    #[serde(default)]
+    pub coverage_status: String,
+    /// Coverage change vs baseline (positive = improved, negative = regressed)
+    #[serde(default, skip_serializing_if = "is_zero_f32")]
+    pub coverage_diff: f32,
+}
+
+fn is_zero_f32(v: &f32) -> bool {
+    *v == 0.0
 }
 
 impl QueryResult {
@@ -206,6 +234,13 @@ impl QueryResult {
             duplication_score: entry.clone_count as f32 / 10.0, // Normalize
             pattern_diversity: entry.pattern_diversity,
             fault_annotations: entry.fault_annotations.clone(),
+            line_coverage_pct: 0.0,
+            lines_covered: 0,
+            lines_total: 0,
+            missed_lines: 0,
+            impact_score: 0.0,
+            coverage_status: String::new(),
+            coverage_diff: 0.0,
         }
     }
 

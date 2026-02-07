@@ -89,6 +89,33 @@ Before adding ANY new dependency: check batuta stack first (`pmat query "YourFea
 - **`--entropy`** — Pattern diversity metrics. Low (<30%) = boilerplate; high (>80%) = unique.
 - **`--faults`** — Batuta fault pattern annotations (unwrap, panic, unsafe, etc.).
 
+### Coverage Gap Analysis
+
+**MANDATORY: Use `pmat query --coverage-gaps` for coverage work. NEVER use `make coverage` or raw `cargo llvm-cov` output.**
+
+```bash
+# Find top coverage gaps ranked by uncovered lines
+pmat query --coverage-gaps --limit 30 --exclude-tests
+
+# Find coverage gaps ranked by ROI (impact score)
+pmat query --coverage-gaps --rank-by impact --limit 20
+
+# Coverage-enriched semantic search
+pmat query "error handling" --coverage --limit 10
+
+# Find only uncovered functions
+pmat query "parse" --coverage --uncovered-only --limit 10
+```
+
+**Dogfooding workflow for improving coverage:**
+1. Run `pmat query --coverage-gaps --limit 30 --exclude-tests` to identify targets
+2. Pick functions with highest impact score (missed_lines * pagerank / complexity)
+3. Use `pmat query "function_name" --include-source --limit 1` to read the function
+4. Write tests targeting the uncovered lines
+5. Re-run `pmat query --coverage-gaps` to verify improvement
+
+**CRITICAL: When exploring code to write tests, use `pmat query` with `--include-source`, NOT `Read`/`cat`/`grep`.**
+
 ### When grep IS acceptable
 - Searching non-code files (TOML, YAML, Markdown)
 - Quick one-off during debugging when you need exact line matches

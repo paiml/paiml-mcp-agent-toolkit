@@ -2,7 +2,6 @@
 
 include!("unified_ast_types.rs");
 
-#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 include!("unified_ast_types_tests.rs");
 

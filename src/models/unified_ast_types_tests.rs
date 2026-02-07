@@ -1,4 +1,5 @@
 // Extracted from unified_ast_types.rs for file health (CB-040)
+#[cfg_attr(coverage_nightly, coverage(off))]
 mod unified_ast_types_tests {
     use super::*;
 

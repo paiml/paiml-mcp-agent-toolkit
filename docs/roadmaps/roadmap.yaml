@@ -1678,3 +1678,25 @@ roadmap:
   - phase-2
   - mcp
   notes: null
+- id: PMAT-480
+  github_issue: null
+  item_type: task
+  title: 'PMAT-480: pmat query raw search fallback (grep/rg replacement)'
+  status: inprogress
+  priority: high
+  assigned_to: null
+  created: 2026-02-07T12:20:24Z
+  updated: 2026-02-07T12:20:28.672881343+00:00
+  spec: null
+  acceptance_criteria:
+  - 'Add raw file search fallback to pmat query for --regex/--literal/--raw modes. Searches all files (not just indexed functions) using rg-compatible engine. Makes pmat query a superset of grep/rg for Claude Code. Spec: docs/specifications/pmat-query-raw-search-fallback.md'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - query
+  - search
+  - raw
+  - rg
+  - grep
+  notes: null

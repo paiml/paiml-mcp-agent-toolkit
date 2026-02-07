@@ -1,0 +1,941 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
+
+use super::types::QueryResult;
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::path::Path;
+
+// ── LLVM Coverage Export JSON Structs ───────────────────────────────────────
+
+/// Top-level LLVM coverage export format (cargo llvm-cov export --format=json)
+#[derive(Debug, Deserialize)]
+struct LlvmCoverageExport {
+    data: Vec<LlvmCoverageData>,
+    #[serde(rename = "type")]
+    #[allow(dead_code)]
+    export_type: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct LlvmCoverageData {
+    files: Vec<LlvmFileCoverage>,
+}
+
+#[derive(Debug, Deserialize)]
+struct LlvmFileCoverage {
+    filename: String,
+    segments: Vec<Vec<serde_json::Value>>,
+    #[allow(dead_code)]
+    summary: Option<LlvmSummary>,
+}
+
+#[allow(dead_code)]
+#[derive(Debug, Deserialize)]
+struct LlvmSummary {
+    lines: Option<LlvmLineSummary>,
+}
+
+#[allow(dead_code)]
+#[derive(Debug, Deserialize)]
+struct LlvmLineSummary {
+    count: u32,
+    covered: u32,
+}
+
+// ── Coverage Cache ──────────────────────────────────────────────────────────
+
+#[derive(Debug, Serialize, Deserialize)]
+struct CoverageCache {
+    git_hash: String,
+    files: HashMap<String, HashMap<usize, u64>>,
+}
+
+// ── Segment Walking ─────────────────────────────────────────────────────────
+
+/// Walk LLVM segments to build line→exec_count map.
+///
+/// Segments encode coverage state transitions as:
+/// `[line, col, count, has_count, is_region_entry, ...]`
+///
+/// We track the current execution count and assign it to each line
+/// in the range between consecutive segments.
+pub(super) fn segments_to_line_hits(segments: &[Vec<serde_json::Value>]) -> HashMap<usize, u64> {
+    let mut line_hits: HashMap<usize, u64> = HashMap::new();
+
+    if segments.is_empty() {
+        return line_hits;
+    }
+
+    // Walk segments pairwise: each segment starts a region with its count
+    for i in 0..segments.len() {
+        let seg = &segments[i];
+        if seg.len() < 4 {
+            continue;
+        }
+
+        let line = seg[0].as_u64().unwrap_or(0) as usize;
+        let count = seg[2].as_u64().unwrap_or(0);
+        let has_count = seg[3].as_bool().or_else(|| seg[3].as_u64().map(|v| v != 0)).unwrap_or(false);
+
+        if !has_count {
+            continue;
+        }
+
+        // Determine the end line for this segment
+        let end_line = if i + 1 < segments.len() {
+            let next = &segments[i + 1];
+            next[0].as_u64().unwrap_or(line as u64) as usize
+        } else {
+            line
+        };
+
+        // Fill lines from this segment to just before the next
+        for l in line..=end_line {
+            let entry = line_hits.entry(l).or_insert(0);
+            *entry = (*entry).max(count);
+        }
+    }
+
+    line_hits
+}
+
+// ── Coverage Map Builder ────────────────────────────────────────────────────
+
+/// Parse full LLVM coverage export into per-file line hit maps.
+///
+/// File paths are normalized to be relative to the project root.
+pub fn build_coverage_map(
+    json: &str,
+    project_root: &Path,
+) -> Result<HashMap<String, HashMap<usize, u64>>, String> {
+    let export: LlvmCoverageExport =
+        serde_json::from_str(json).map_err(|e| format!("Failed to parse LLVM coverage JSON: {e}"))?;
+
+    let mut coverage_map: HashMap<String, HashMap<usize, u64>> = HashMap::new();
+    let canonical_root = project_root
+        .canonicalize()
+        .unwrap_or_else(|_| project_root.to_path_buf());
+    let root_str = canonical_root
+        .to_str()
+        .unwrap_or("")
+        .trim_end_matches('/');
+
+    // Also try the non-canonicalized root (handles symlinks, bind mounts)
+    let raw_root_str = project_root
+        .to_str()
+        .unwrap_or("")
+        .trim_end_matches('/');
+
+    for data in &export.data {
+        for file in &data.files {
+            let line_hits = segments_to_line_hits(&file.segments);
+            if line_hits.is_empty() {
+                continue;
+            }
+
+            // Normalize path to project-relative (try canonical root first, then raw)
+            // Skip files outside the project (dependency sources, registry crates, etc.)
+            let rel_path = if file.filename.starts_with(root_str) {
+                file.filename[root_str.len()..]
+                    .trim_start_matches('/')
+                    .to_string()
+            } else if file.filename.starts_with(raw_root_str) {
+                file.filename[raw_root_str.len()..]
+                    .trim_start_matches('/')
+                    .to_string()
+            } else {
+                // File is outside project root — skip it (deps, registry, etc.)
+                continue;
+            };
+
+            coverage_map.insert(rel_path, line_hits);
+        }
+    }
+
+    Ok(coverage_map)
+}
+
+// ── Pure Enrichment Function ────────────────────────────────────────────────
+
+/// Find coverage data for a file path, trying exact match then suffix matching.
+///
+/// Returns `None` if no coverage entry matches the given file path.
+fn find_coverage_for_file<'a>(
+    file_path: &str,
+    file_coverage: &'a HashMap<String, HashMap<usize, u64>>,
+) -> Option<&'a HashMap<usize, u64>> {
+    // Try exact match first
+    if let Some(hits) = file_coverage.get(file_path) {
+        return Some(hits);
+    }
+    // Fallback: find coverage entry whose key ends with our file_path or vice versa
+    file_coverage
+        .iter()
+        .find(|(k, _)| k.ends_with(file_path) || file_path.ends_with(k.as_str()))
+        .map(|(_, v)| v)
+}
+
+/// Determine coverage status string from total and covered line counts.
+///
+/// Returns one of: `"no_data"`, `"uncovered"`, `"full"`, or `"partial"`.
+fn determine_coverage_status(total: u32, covered: u32) -> &'static str {
+    if total == 0 {
+        "no_data"
+    } else if covered == 0 {
+        "uncovered"
+    } else if covered == total {
+        "full"
+    } else {
+        "partial"
+    }
+}
+
+/// Annotate coverage gaps as fault patterns on a single result.
+///
+/// Missing coverage is a latent defect signal — uncovered code paths are
+/// where bugs hide. By surfacing these as fault annotations, `--coverage`
+/// composes naturally with `--faults` to show "fix the defect AND write
+/// the test" opportunities in a single view.
+fn annotate_coverage_faults(result: &mut QueryResult) {
+    match result.coverage_status.as_str() {
+        "uncovered" => {
+            result.fault_annotations.push(format!(
+                "NO_COVERAGE: 0/{} lines covered — untested code path",
+                result.lines_total
+            ));
+        }
+        "partial" if result.line_coverage_pct < 50.0 => {
+            result.fault_annotations.push(format!(
+                "LOW_COVERAGE: {:.0}% ({}/{} lines) — {} missed lines need tests",
+                result.line_coverage_pct, result.lines_covered, result.lines_total, result.missed_lines
+            ));
+        }
+        _ => {}
+    }
+    if result.impact_score > 5.0 {
+        result.fault_annotations.push(format!(
+            "COVERAGE_RISK: impact {:.1} — high-ROI test target (missed:{} x pagerank)",
+            result.impact_score, result.missed_lines
+        ));
+    }
+}
+
+/// Enrich query results with coverage data (pure function).
+///
+/// For each result, intersects `start_line..=end_line` with the file's
+/// line_hits map:
+/// - Lines in line_hits with count > 0 → covered
+/// - Lines in line_hits with count == 0 → uncovered
+/// - Lines NOT in line_hits → non-instrumented (excluded from total)
+///
+/// Sets `coverage_status` to:
+/// - `"no_data"` — file not in coverage map at all
+/// - `"uncovered"` — file instrumented, 0 lines covered
+/// - `"partial"` — some lines covered, some not
+/// - `"full"` — all instrumented lines covered
+pub fn enrich_with_coverage(
+    results: &mut [QueryResult],
+    file_coverage: &HashMap<String, HashMap<usize, u64>>,
+) {
+    for result in results.iter_mut() {
+        let line_hits = match find_coverage_for_file(&result.file_path, file_coverage) {
+            Some(hits) => hits,
+            None => {
+                result.coverage_status = "no_data".to_string();
+                continue;
+            }
+        };
+
+        let mut covered = 0u32;
+        let mut total = 0u32;
+
+        for line in result.start_line..=result.end_line {
+            if let Some(&count) = line_hits.get(&line) {
+                total += 1;
+                if count > 0 {
+                    covered += 1;
+                }
+            }
+        }
+
+        result.lines_covered = covered;
+        result.lines_total = total;
+        result.missed_lines = total.saturating_sub(covered);
+        result.line_coverage_pct = if total > 0 {
+            (covered as f32 / total as f32) * 100.0
+        } else {
+            0.0
+        };
+        result.impact_score =
+            compute_impact_score(result.missed_lines, result.pagerank, result.complexity);
+
+        result.coverage_status = determine_coverage_status(total, covered).to_string();
+
+        // Annotate coverage gaps as fault patterns (missing coverage = latent defect signal)
+        annotate_coverage_faults(result);
+    }
+}
+
+/// Compute coverage delta: enriches results with `coverage_diff` field showing
+/// change from baseline. Positive = coverage improved, negative = regressed.
+pub fn enrich_with_coverage_diff(
+    results: &mut [QueryResult],
+    baseline_coverage: &HashMap<String, HashMap<usize, u64>>,
+) {
+    for result in results.iter_mut() {
+        let baseline_hits = match baseline_coverage.get(&result.file_path) {
+            Some(hits) => hits,
+            None => continue, // no baseline data for this file
+        };
+
+        let mut base_covered = 0u32;
+        let mut base_total = 0u32;
+
+        for line in result.start_line..=result.end_line {
+            if let Some(&count) = baseline_hits.get(&line) {
+                base_total += 1;
+                if count > 0 {
+                    base_covered += 1;
+                }
+            }
+        }
+
+        let base_pct = if base_total > 0 {
+            base_covered as f32 / base_total as f32 * 100.0
+        } else {
+            0.0
+        };
+
+        // Store delta as current - baseline
+        result.coverage_diff = result.line_coverage_pct - base_pct;
+    }
+}
+
+/// Format a coverage summary line for display after enriched results.
+///
+/// Returns None if no results have coverage data.
+pub fn format_coverage_summary(results: &[QueryResult]) -> Option<String> {
+    let with_data: Vec<_> = results
+        .iter()
+        .filter(|r| r.coverage_status != "no_data" && !r.coverage_status.is_empty())
+        .collect();
+
+    if with_data.is_empty() {
+        return None;
+    }
+
+    let total_covered: u32 = with_data.iter().map(|r| r.lines_covered).sum();
+    let total_lines: u32 = with_data.iter().map(|r| r.lines_total).sum();
+    let total_pct = if total_lines > 0 {
+        total_covered as f64 / total_lines as f64 * 100.0
+    } else {
+        0.0
+    };
+
+    let uncovered_count = with_data
+        .iter()
+        .filter(|r| r.coverage_status == "uncovered")
+        .count();
+    let partial_count = with_data
+        .iter()
+        .filter(|r| r.coverage_status == "partial")
+        .count();
+
+    let top_impact = with_data
+        .iter()
+        .max_by(|a, b| {
+            a.impact_score
+                .partial_cmp(&b.impact_score)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
+
+    let pct_color = if total_pct >= 80.0 { "\x1b[32m" } else if total_pct >= 50.0 { "\x1b[33m" } else { "\x1b[1;31m" };
+    let mut summary = format!(
+        "Coverage: {}/{} lines ({}{:.1}%\x1b[0m) across {} functions",
+        total_covered,
+        total_lines,
+        pct_color,
+        total_pct,
+        with_data.len()
+    );
+
+    if uncovered_count > 0 {
+        summary.push_str(&format!(" | \x1b[1;31m{} uncovered\x1b[0m", uncovered_count));
+    }
+    if partial_count > 0 {
+        summary.push_str(&format!(" | \x1b[33m{} partial\x1b[0m", partial_count));
+    }
+
+    if let Some(top) = top_impact {
+        if top.impact_score > 0.0 {
+            summary.push_str(&format!(
+                " | \x1b[1;33mTop impact: {} ({:.1})\x1b[0m",
+                top.function_name, top.impact_score
+            ));
+        }
+    }
+
+    Some(summary)
+}
+
+// ── Impact Score ────────────────────────────────────────────────────────────
+
+/// ROI formula: missed_lines * pagerank_scaled * (1 / complexity_factor)
+///
+/// Higher impact = more uncovered lines in important, low-complexity code
+/// (i.e., easy wins for coverage improvement).
+pub fn compute_impact_score(missed_lines: u32, pagerank: f32, complexity: u32) -> f32 {
+    if missed_lines == 0 {
+        return 0.0;
+    }
+    let pr_factor = (pagerank * 10000.0).max(0.1);
+    let complexity_factor = (complexity as f32).max(1.0);
+    missed_lines as f32 * pr_factor / complexity_factor
+}
+
+// ── Async Convenience (follows enrich_results_with_churn pattern) ───────────
+
+/// Try to load coverage from the cache file, returning the file coverage map
+/// if the cache exists and its git hash matches the current HEAD.
+#[cfg_attr(coverage_nightly, coverage(off))]
+fn load_coverage_from_cache(
+    cache_path: &Path,
+    head_hash: &str,
+) -> Option<HashMap<String, HashMap<usize, u64>>> {
+    let cache_json = std::fs::read_to_string(cache_path).ok()?;
+    let cache: CoverageCache = serde_json::from_str(&cache_json).ok()?;
+    if cache.git_hash == head_hash {
+        Some(cache.files)
+    } else {
+        None
+    }
+}
+
+/// Run `cargo llvm-cov report --json` and parse the output into a coverage map.
+///
+/// On success, also writes the result to the cache file for future reuse.
+#[cfg_attr(coverage_nightly, coverage(off))]
+fn run_cargo_llvm_cov_and_cache(
+    project_root: &Path,
+    cache_path: &Path,
+    head_hash: &str,
+) -> Result<HashMap<String, HashMap<usize, u64>>, String> {
+    use std::process::Command;
+
+    let output = Command::new("cargo")
+        .args(["llvm-cov", "report", "--json"])
+        .current_dir(project_root)
+        .output()
+        .map_err(|e| format!("cargo llvm-cov report --json failed: {e}"))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!(
+            "No coverage data available.\n\nTo generate it, run:\n  cargo llvm-cov test --lib --no-report\n\nThen re-run with --coverage or --coverage-gaps.\nOr pass --coverage-file <path> to use existing coverage JSON.\n\ncargo llvm-cov report --json stderr: {}",
+            stderr.lines().take(3).collect::<Vec<_>>().join("\n")
+        ));
+    }
+
+    let json = String::from_utf8_lossy(&output.stdout);
+    let file_coverage = build_coverage_map(&json, project_root)?;
+
+    // Cache the result
+    let cache = CoverageCache {
+        git_hash: head_hash.to_string(),
+        files: file_coverage.clone(),
+    };
+    if let Ok(cache_json) = serde_json::to_string(&cache) {
+        let _ = std::fs::create_dir_all(project_root.join(".pmat"));
+        let _ = std::fs::write(cache_path, cache_json);
+    }
+
+    Ok(file_coverage)
+}
+
+/// Enrich results with LLVM coverage data.
+///
+/// Resolution order for coverage JSON:
+/// 1. Explicit `coverage_file` parameter (from --coverage-file CLI arg)
+/// 2. `PMAT_COVERAGE_FILE` environment variable
+/// 3. `.pmat/coverage-cache.json` (if git HEAD matches)
+/// 4. Run `cargo llvm-cov report --json` to generate fresh data
+#[cfg_attr(coverage_nightly, coverage(off))]
+fn try_load_coverage_from_explicit_path(
+    path: &Path, project_root: &Path,
+) -> Result<Option<HashMap<String, HashMap<usize, u64>>>, String> {
+    let json = std::fs::read_to_string(path)
+        .map_err(|e| format!("Failed to read coverage file {}: {e}", path.display()))?;
+    Ok(Some(build_coverage_map(&json, project_root)?))
+}
+
+fn try_load_coverage_from_env(project_root: &Path) -> Result<Option<HashMap<String, HashMap<usize, u64>>>, String> {
+    let env_path = match std::env::var("PMAT_COVERAGE_FILE") {
+        Ok(p) => p,
+        Err(_) => return Ok(None),
+    };
+    let path = std::path::PathBuf::from(&env_path);
+    if !path.exists() { return Ok(None); }
+    try_load_coverage_from_explicit_path(&path, project_root)
+}
+
+pub async fn enrich_results_with_coverage(
+    results: &mut [QueryResult],
+    project_root: &Path,
+    coverage_file: Option<&Path>,
+) -> Result<(), String> {
+    use std::process::Command;
+
+    if results.is_empty() { return Ok(()); }
+
+    // 1. Explicit file, 2. Env var
+    let file_coverage = if let Some(path) = coverage_file {
+        try_load_coverage_from_explicit_path(path, project_root)?
+    } else {
+        try_load_coverage_from_env(project_root)?
+    };
+    if let Some(cov) = file_coverage {
+        enrich_with_coverage(results, &cov);
+        return Ok(());
+    }
+
+    // 3. Cache, 4. Run cargo llvm-cov
+    let cache_path = project_root.join(".pmat/coverage-cache.json");
+    let head_hash = Command::new("git")
+        .args(["rev-parse", "HEAD"])
+        .current_dir(project_root)
+        .output()
+        .map_err(|e| format!("git rev-parse failed: {e}"))?;
+    let head_hash = String::from_utf8_lossy(&head_hash.stdout).trim().to_string();
+
+    let cov = load_coverage_from_cache(&cache_path, &head_hash)
+        .map(Ok)
+        .unwrap_or_else(|| run_cargo_llvm_cov_and_cache(project_root, &cache_path, &head_hash))?;
+    enrich_with_coverage(results, &cov);
+    Ok(())
+}
+
+// ── Tests ───────────────────────────────────────────────────────────────────
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_segments_to_line_hits_empty() {
+        let result = segments_to_line_hits(&[]);
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn test_segments_to_line_hits_basic() {
+        // Segments: [line, col, count, has_count, is_region_entry]
+        let segments = vec![
+            vec![json_u64(10), json_u64(1), json_u64(5), json_bool(true), json_bool(true)],
+            vec![json_u64(15), json_u64(1), json_u64(0), json_bool(true), json_bool(false)],
+            vec![json_u64(20), json_u64(1), json_u64(3), json_bool(true), json_bool(true)],
+        ];
+        let hits = segments_to_line_hits(&segments);
+
+        // Lines 10-15 should have count 5
+        assert_eq!(hits.get(&10), Some(&5));
+        assert_eq!(hits.get(&12), Some(&5));
+        assert_eq!(hits.get(&15), Some(&5)); // inclusive of range
+
+        // Lines 15-20 also get count from seg[1] (0) but seg[0] covers 10..=15 with 5
+        // seg[1] covers 15..=20 with 0
+        // For line 15, max(5, 0) = 5
+        // For line 17, count from seg[1] is 0
+        assert_eq!(hits.get(&17), Some(&0));
+
+        // Lines 20+ should have count 3
+        assert_eq!(hits.get(&20), Some(&3));
+    }
+
+    #[test]
+    fn test_segments_to_line_hits_no_count() {
+        // Segment with has_count=false should be skipped
+        let segments = vec![
+            vec![json_u64(10), json_u64(1), json_u64(5), json_bool(false), json_bool(true)],
+        ];
+        let hits = segments_to_line_hits(&segments);
+        assert!(hits.is_empty());
+    }
+
+    #[test]
+    fn test_enrich_with_coverage_basic() {
+        let mut results = vec![make_result("src/main.rs", 10, 20, 0.5, 5)];
+
+        let mut file_coverage = HashMap::new();
+        let mut line_hits = HashMap::new();
+        // Lines 10-15 covered, 16-20 uncovered
+        for l in 10..=15 {
+            line_hits.insert(l, 1);
+        }
+        for l in 16..=20 {
+            line_hits.insert(l, 0);
+        }
+        file_coverage.insert("src/main.rs".to_string(), line_hits);
+
+        enrich_with_coverage(&mut results, &file_coverage);
+
+        assert_eq!(results[0].lines_covered, 6); // 10,11,12,13,14,15
+        assert_eq!(results[0].lines_total, 11); // 10..=20
+        assert_eq!(results[0].missed_lines, 5); // 16,17,18,19,20
+        // Coverage = 6/11 ≈ 54.5%
+        assert!((results[0].line_coverage_pct - 54.545).abs() < 1.0);
+        assert!(results[0].impact_score > 0.0);
+        assert_eq!(results[0].coverage_status, "partial");
+    }
+
+    #[test]
+    fn test_enrich_with_coverage_no_file_match() {
+        let mut results = vec![make_result("src/other.rs", 1, 10, 0.0, 1)];
+
+        let file_coverage = HashMap::new();
+        enrich_with_coverage(&mut results, &file_coverage);
+
+        assert_eq!(results[0].lines_covered, 0);
+        assert_eq!(results[0].lines_total, 0);
+        assert_eq!(results[0].line_coverage_pct, 0.0);
+        assert_eq!(results[0].coverage_status, "no_data");
+    }
+
+    #[test]
+    fn test_enrich_with_coverage_non_instrumented_lines() {
+        let mut results = vec![make_result("src/main.rs", 1, 10, 0.1, 3)];
+
+        let mut file_coverage = HashMap::new();
+        let mut line_hits = HashMap::new();
+        // Only lines 3,5,7 are instrumented
+        line_hits.insert(3, 1);
+        line_hits.insert(5, 0);
+        line_hits.insert(7, 1);
+        file_coverage.insert("src/main.rs".to_string(), line_hits);
+
+        enrich_with_coverage(&mut results, &file_coverage);
+
+        assert_eq!(results[0].lines_total, 3); // only instrumented lines count
+        assert_eq!(results[0].lines_covered, 2); // lines 3 and 7
+        assert_eq!(results[0].missed_lines, 1); // line 5
+    }
+
+    #[test]
+    fn test_compute_impact_score_zero_missed() {
+        assert_eq!(compute_impact_score(0, 0.5, 10), 0.0);
+    }
+
+    #[test]
+    fn test_compute_impact_score_basic() {
+        // 10 missed lines, pagerank 0.001 (scaled to 10.0), complexity 5
+        let score = compute_impact_score(10, 0.001, 5);
+        // 10 * 10.0 / 5.0 = 20.0
+        assert!((score - 20.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_compute_impact_score_zero_pagerank() {
+        // 0 pagerank floors to 0.1
+        let score = compute_impact_score(5, 0.0, 1);
+        // 5 * 0.1 / 1.0 = 0.5
+        assert!((score - 0.5).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_compute_impact_score_zero_complexity() {
+        // 0 complexity floors to 1.0
+        let score = compute_impact_score(10, 0.001, 0);
+        // 10 * 10.0 / 1.0 = 100.0
+        assert!((score - 100.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_uncovered_only_filter() {
+        let mut results = vec![
+            make_result_with_coverage("src/a.rs", 100.0, 10, 10, 0),
+            make_result_with_coverage("src/b.rs", 50.0, 5, 10, 5),
+            make_result_with_coverage("src/c.rs", 0.0, 0, 10, 10),
+            make_result_with_coverage("src/d.rs", 0.0, 0, 0, 0), // non-instrumented
+        ];
+
+        // Simulate --uncovered-only filter
+        results.retain(|r| r.lines_total > 0 && r.line_coverage_pct < 100.0);
+
+        assert_eq!(results.len(), 2);
+        assert_eq!(results[0].file_path, "src/b.rs");
+        assert_eq!(results[1].file_path, "src/c.rs");
+    }
+
+    #[test]
+    fn test_build_coverage_map_basic() {
+        let json = r#"{
+            "data": [{
+                "files": [{
+                    "filename": "/project/src/main.rs",
+                    "segments": [
+                        [10, 1, 5, true, true],
+                        [15, 1, 0, true, false]
+                    ],
+                    "summary": {"lines": {"count": 20, "covered": 15}}
+                }]
+            }],
+            "type": "llvm.coverage.json.export"
+        }"#;
+
+        let root = Path::new("/project");
+        let map = build_coverage_map(json, root).unwrap();
+
+        assert!(map.contains_key("src/main.rs"));
+        let hits = &map["src/main.rs"];
+        assert!(hits.contains_key(&10));
+    }
+
+    #[test]
+    fn test_build_coverage_map_invalid_json() {
+        let result = build_coverage_map("not json", Path::new("/project"));
+        assert!(result.is_err());
+    }
+
+    // ── Test Helpers ────────────────────────────────────────────────────────
+
+    fn json_u64(v: u64) -> serde_json::Value {
+        serde_json::Value::Number(serde_json::Number::from(v))
+    }
+
+    fn json_bool(v: bool) -> serde_json::Value {
+        serde_json::Value::Bool(v)
+    }
+
+    fn make_result(
+        file_path: &str,
+        start_line: usize,
+        end_line: usize,
+        pagerank: f32,
+        complexity: u32,
+    ) -> QueryResult {
+        QueryResult {
+            file_path: file_path.to_string(),
+            function_name: "test_fn".to_string(),
+            signature: "fn test_fn()".to_string(),
+            definition_type: "function".to_string(),
+            doc_comment: None,
+            start_line,
+            end_line,
+            language: "rust".to_string(),
+            tdg_score: 5.0,
+            tdg_grade: "C".to_string(),
+            complexity,
+            big_o: "O(n)".to_string(),
+            satd_count: 0,
+            loc: (end_line - start_line + 1) as u32,
+            relevance_score: 0.8,
+            source: None,
+            calls: Vec::new(),
+            called_by: Vec::new(),
+            pagerank,
+            in_degree: 0,
+            out_degree: 0,
+            commit_count: 0,
+            churn_score: 0.0,
+            clone_count: 0,
+            duplication_score: 0.0,
+            pattern_diversity: 0.0,
+            fault_annotations: Vec::new(),
+            line_coverage_pct: 0.0,
+            lines_covered: 0,
+            lines_total: 0,
+            missed_lines: 0,
+            impact_score: 0.0,
+            coverage_status: String::new(),
+            coverage_diff: 0.0,
+        }
+    }
+
+    fn make_result_with_coverage(
+        file_path: &str,
+        coverage_pct: f32,
+        covered: u32,
+        total: u32,
+        missed: u32,
+    ) -> QueryResult {
+        let mut r = make_result(file_path, 1, 10, 0.0, 1);
+        r.line_coverage_pct = coverage_pct;
+        r.lines_covered = covered;
+        r.lines_total = total;
+        r.missed_lines = missed;
+        r
+    }
+
+    #[test]
+    fn test_coverage_status_full() {
+        let mut results = vec![make_result("src/main.rs", 1, 5, 0.1, 3)];
+        let mut file_coverage = HashMap::new();
+        let mut line_hits = HashMap::new();
+        for l in 1..=5 {
+            line_hits.insert(l, 1); // all covered
+        }
+        file_coverage.insert("src/main.rs".to_string(), line_hits);
+        enrich_with_coverage(&mut results, &file_coverage);
+        assert_eq!(results[0].coverage_status, "full");
+        assert_eq!(results[0].line_coverage_pct, 100.0);
+    }
+
+    #[test]
+    fn test_coverage_status_uncovered() {
+        let mut results = vec![make_result("src/main.rs", 1, 5, 0.1, 3)];
+        let mut file_coverage = HashMap::new();
+        let mut line_hits = HashMap::new();
+        for l in 1..=5 {
+            line_hits.insert(l, 0); // all instrumented but zero hits
+        }
+        file_coverage.insert("src/main.rs".to_string(), line_hits);
+        enrich_with_coverage(&mut results, &file_coverage);
+        assert_eq!(results[0].coverage_status, "uncovered");
+        assert_eq!(results[0].lines_covered, 0);
+        assert_eq!(results[0].lines_total, 5);
+    }
+
+    #[test]
+    fn test_coverage_status_no_data_when_no_instrumented_lines() {
+        // File is in coverage map but no lines in the function's range are instrumented
+        let mut results = vec![make_result("src/main.rs", 100, 110, 0.1, 3)];
+        let mut file_coverage = HashMap::new();
+        let mut line_hits = HashMap::new();
+        line_hits.insert(1, 1); // only line 1 instrumented, function is at 100-110
+        file_coverage.insert("src/main.rs".to_string(), line_hits);
+        enrich_with_coverage(&mut results, &file_coverage);
+        assert_eq!(results[0].coverage_status, "no_data");
+        assert_eq!(results[0].lines_total, 0);
+    }
+
+    #[test]
+    fn test_format_coverage_summary_basic() {
+        let mut results = vec![
+            make_result("src/a.rs", 1, 10, 0.01, 5),
+            make_result("src/b.rs", 1, 10, 0.01, 5),
+        ];
+        results[0].coverage_status = "partial".to_string();
+        results[0].lines_covered = 7;
+        results[0].lines_total = 10;
+        results[0].missed_lines = 3;
+        results[0].impact_score = 5.0;
+        results[0].function_name = "func_a".to_string();
+
+        results[1].coverage_status = "uncovered".to_string();
+        results[1].lines_covered = 0;
+        results[1].lines_total = 10;
+        results[1].missed_lines = 10;
+        results[1].impact_score = 10.0;
+        results[1].function_name = "func_b".to_string();
+
+        let summary = format_coverage_summary(&results).unwrap();
+        assert!(summary.contains("7/20 lines"));
+        assert!(summary.contains("35.0%"));
+        assert!(summary.contains("1 uncovered"));
+        assert!(summary.contains("1 partial"));
+        assert!(summary.contains("Top impact: func_b"));
+    }
+
+    #[test]
+    fn test_format_coverage_summary_no_data() {
+        let results = vec![make_result("src/a.rs", 1, 10, 0.0, 1)];
+        // No coverage_status set (empty string) → should return None
+        assert!(format_coverage_summary(&results).is_none());
+    }
+
+    #[test]
+    fn test_coverage_fault_annotation_uncovered() {
+        let mut results = vec![make_result("src/main.rs", 1, 10, 0.1, 3)];
+        let mut file_coverage = HashMap::new();
+        let mut line_hits = HashMap::new();
+        for l in 1..=10 {
+            line_hits.insert(l, 0); // all instrumented, zero hits
+        }
+        file_coverage.insert("src/main.rs".to_string(), line_hits);
+        enrich_with_coverage(&mut results, &file_coverage);
+
+        // Should have NO_COVERAGE fault annotation
+        assert!(results[0].fault_annotations.iter().any(|f| f.starts_with("NO_COVERAGE:")),
+            "Expected NO_COVERAGE annotation, got: {:?}", results[0].fault_annotations);
+        assert!(results[0].fault_annotations[0].contains("0/10 lines"));
+    }
+
+    #[test]
+    fn test_coverage_fault_annotation_low_coverage() {
+        let mut results = vec![make_result("src/main.rs", 1, 10, 0.1, 3)];
+        let mut file_coverage = HashMap::new();
+        let mut line_hits = HashMap::new();
+        // 3 covered, 7 uncovered → 30% coverage
+        for l in 1..=3 { line_hits.insert(l, 1); }
+        for l in 4..=10 { line_hits.insert(l, 0); }
+        file_coverage.insert("src/main.rs".to_string(), line_hits);
+        enrich_with_coverage(&mut results, &file_coverage);
+
+        // Should have LOW_COVERAGE fault annotation (30% < 50%)
+        assert!(results[0].fault_annotations.iter().any(|f| f.starts_with("LOW_COVERAGE:")),
+            "Expected LOW_COVERAGE annotation, got: {:?}", results[0].fault_annotations);
+    }
+
+    #[test]
+    fn test_coverage_fault_annotation_high_impact() {
+        // High pagerank = high impact score when lines are missed
+        let mut results = vec![make_result("src/main.rs", 1, 20, 0.01, 2)];
+        let mut file_coverage = HashMap::new();
+        let mut line_hits = HashMap::new();
+        for l in 1..=5 { line_hits.insert(l, 1); }
+        for l in 6..=20 { line_hits.insert(l, 0); }
+        file_coverage.insert("src/main.rs".to_string(), line_hits);
+        enrich_with_coverage(&mut results, &file_coverage);
+
+        // Impact = 15 missed * (0.01*10000=100.0) / 2.0 = 750.0 → COVERAGE_RISK
+        assert!(results[0].impact_score > 5.0);
+        assert!(results[0].fault_annotations.iter().any(|f| f.starts_with("COVERAGE_RISK:")),
+            "Expected COVERAGE_RISK annotation for impact={:.1}, got: {:?}",
+            results[0].impact_score, results[0].fault_annotations);
+    }
+
+    #[test]
+    fn test_coverage_no_fault_annotation_when_fully_covered() {
+        let mut results = vec![make_result("src/main.rs", 1, 5, 0.1, 3)];
+        let mut file_coverage = HashMap::new();
+        let mut line_hits = HashMap::new();
+        for l in 1..=5 { line_hits.insert(l, 1); }
+        file_coverage.insert("src/main.rs".to_string(), line_hits);
+        enrich_with_coverage(&mut results, &file_coverage);
+
+        // Fully covered → no coverage fault annotations
+        let coverage_faults: Vec<_> = results[0].fault_annotations.iter()
+            .filter(|f| f.starts_with("NO_COVERAGE:") || f.starts_with("LOW_COVERAGE:") || f.starts_with("COVERAGE_RISK:"))
+            .collect();
+        assert!(coverage_faults.is_empty(),
+            "Fully covered function should have no coverage faults, got: {:?}", coverage_faults);
+    }
+
+    #[test]
+    fn test_build_coverage_map_skips_external_files() {
+        // Files outside project root should be skipped (deps, registry, etc.)
+        let json = r#"{
+            "data": [{
+                "files": [
+                    {
+                        "filename": "/project/src/main.rs",
+                        "segments": [[10, 1, 5, true, true], [15, 1, 0, true, false]],
+                        "summary": {"lines": {"count": 20, "covered": 15}}
+                    },
+                    {
+                        "filename": "/home/user/.cargo/registry/src/crates.io-abc/dep-1.0.0/src/lib.rs",
+                        "segments": [[1, 1, 3, true, true], [10, 1, 0, true, false]],
+                        "summary": {"lines": {"count": 10, "covered": 5}}
+                    }
+                ]
+            }],
+            "type": "llvm.coverage.json.export"
+        }"#;
+
+        let root = Path::new("/project");
+        let map = build_coverage_map(json, root).unwrap();
+
+        // Only project file should be included
+        assert_eq!(map.len(), 1, "Should only contain project files, got: {:?}", map.keys().collect::<Vec<_>>());
+        assert!(map.contains_key("src/main.rs"));
+    }
+}

@@ -207,6 +207,142 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("... (output truncated)");
     }
 
+    // Demo 10: Coverage Gap Analysis (no query needed)
+    println!("\n----------------------------------------------------------------");
+    println!("  Demo 10: Coverage Gap Analysis (--coverage-gaps)");
+    println!("----------------------------------------------------------------\n");
+    println!("Command: pmat query --coverage-gaps --limit 10 --exclude-tests\n");
+
+    let output = Command::new(&pmat)
+        .args([
+            "query",
+            "--coverage-gaps",
+            "--limit",
+            "10",
+            "--exclude-tests",
+        ])
+        .current_dir(&project_dir)
+        .output()?;
+
+    print_output(&output);
+
+    // Demo 11: Coverage-enriched semantic search
+    println!("\n----------------------------------------------------------------");
+    println!("  Demo 11: Coverage-Enriched Search (--coverage)");
+    println!("----------------------------------------------------------------\n");
+    println!("Command: pmat query \"error handling\" --coverage --limit 5\n");
+
+    let output = Command::new(&pmat)
+        .args([
+            "query",
+            "error handling",
+            "--coverage",
+            "--limit",
+            "5",
+        ])
+        .current_dir(&project_dir)
+        .output()?;
+
+    print_output(&output);
+
+    // Demo 12: Regex search (rg-like)
+    println!("\n----------------------------------------------------------------");
+    println!("  Demo 12: Regex Search (--regex, like rg -e)");
+    println!("----------------------------------------------------------------\n");
+    println!("Command: pmat query --regex \"fn\\s+handle_\\w+\" --limit 5\n");
+
+    let output = Command::new(&pmat)
+        .args([
+            "query",
+            "--regex",
+            r"fn\s+handle_\w+",
+            "--limit",
+            "5",
+        ])
+        .current_dir(&project_dir)
+        .output()?;
+
+    print_output(&output);
+
+    // Demo 13: Literal search (rg -F like)
+    println!("\n----------------------------------------------------------------");
+    println!("  Demo 13: Literal Search (--literal, like rg -F)");
+    println!("----------------------------------------------------------------\n");
+    println!("Command: pmat query --literal \"unwrap()\" --exclude-tests --limit 5\n");
+
+    let output = Command::new(&pmat)
+        .args([
+            "query",
+            "--literal",
+            "unwrap()",
+            "--exclude-tests",
+            "--limit",
+            "5",
+        ])
+        .current_dir(&project_dir)
+        .output()?;
+
+    print_output(&output);
+
+    // Demo 14: Fault-enriched search
+    println!("\n----------------------------------------------------------------");
+    println!("  Demo 14: Fault Pattern Search (--faults)");
+    println!("----------------------------------------------------------------\n");
+    println!("Command: pmat query \"parse\" --faults --exclude-tests --limit 5\n");
+
+    let output = Command::new(&pmat)
+        .args([
+            "query",
+            "parse",
+            "--faults",
+            "--exclude-tests",
+            "--limit",
+            "5",
+        ])
+        .current_dir(&project_dir)
+        .output()?;
+
+    print_output(&output);
+
+    // Demo 15: Churn + Entropy enrichment
+    println!("\n----------------------------------------------------------------");
+    println!("  Demo 15: Multi-Enrichment (--churn --entropy)");
+    println!("----------------------------------------------------------------\n");
+    println!("Command: pmat query \"cache\" --churn --entropy --limit 5\n");
+
+    let output = Command::new(&pmat)
+        .args([
+            "query",
+            "cache",
+            "--churn",
+            "--entropy",
+            "--limit",
+            "5",
+        ])
+        .current_dir(&project_dir)
+        .output()?;
+
+    print_output(&output);
+
+    // Demo 16: Git history fusion
+    println!("\n----------------------------------------------------------------");
+    println!("  Demo 16: Git History Fusion (-G, search by commit intent)");
+    println!("----------------------------------------------------------------\n");
+    println!("Command: pmat query \"fix memory\" -G --limit 5\n");
+
+    let output = Command::new(&pmat)
+        .args([
+            "query",
+            "fix memory",
+            "-G",
+            "--limit",
+            "5",
+        ])
+        .current_dir(&project_dir)
+        .output()?;
+
+    print_output(&output);
+
     // Summary: grep vs pmat query comparison
     println!("\n================================================================");
     println!("  Why pmat query > grep for agents");
@@ -224,11 +360,29 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("     - Relevance scores");
     println!("     - Graph metrics (PageRank, in/out degree)\n");
 
+    println!("  Coverage gap analysis:");
+    println!("  - --coverage-gaps      (find uncovered code, no query needed)");
+    println!("  - --coverage           (enrich results with line coverage)");
+    println!("  - --uncovered-only     (filter to uncovered functions)\n");
+
+    println!("  Search modes (grep/rg replacement):");
+    println!("  - --regex PATTERN      (regex search, like rg -e)");
+    println!("  - --literal STRING     (exact match, like rg -F)");
+    println!("  - --raw                (file-level search, bypass AST index)\n");
+
+    println!("  Enrichment flags:");
+    println!("  - --churn              (git volatility metrics)");
+    println!("  - --duplicates         (code clone detection)");
+    println!("  - --entropy            (pattern diversity)");
+    println!("  - --faults             (fault pattern annotations)");
+    println!("  - -G / --git-history   (commit intent fusion)\n");
+
     println!("  Graph-aware ranking options:");
     println!("  - --rank-by relevance  (default: semantic similarity)");
     println!("  - --rank-by pagerank   (most important functions)");
     println!("  - --rank-by indegree   (most called functions)");
-    println!("  - --rank-by centrality (hub functions)\n");
+    println!("  - --rank-by centrality (hub functions)");
+    println!("  - --rank-by impact     (ROI: missed_lines * pagerank)\n");
 
     println!("  Agent context is also available via MCP tools:");
     println!("  - pmat_query_code: Semantic search by intent");

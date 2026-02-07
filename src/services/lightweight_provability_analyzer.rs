@@ -394,7 +394,7 @@ impl LightweightProvabilityAnalyzer {
             return String::new();
         };
         let lines: Vec<&str> = content.lines().collect();
-        let start = func_id.line_number.saturating_sub(1);
+        let start = func_id.line_number.saturating_sub(1).min(lines.len());
         let end = (start + 80).min(lines.len());
         // Extract until matching closing brace or limit
         let mut brace_depth = 0i32;

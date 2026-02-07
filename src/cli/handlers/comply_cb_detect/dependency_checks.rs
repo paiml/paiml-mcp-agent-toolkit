@@ -225,6 +225,134 @@ pub(super) fn get_cached_dependency_analysis(
     (transitive_count, prod_transitive_count, duplicate_crates)
 }
 
+/// Build a CB-081-A threshold violation if dependency counts exceed the given
+/// thresholds.  Returns `None` when both `direct` and `transitive` are within
+/// limits.  The description lists failing metrics first, with passing metrics
+/// shown in parentheses as context.
+fn build_threshold_violation(
+    cargo_toml: &str,
+    direct: usize,
+    transitive: usize,
+    direct_max: usize,
+    trans_max: usize,
+    severity: Severity,
+) -> Option<CbPatternViolation> {
+    if direct <= direct_max && transitive <= trans_max {
+        return None;
+    }
+
+    let mut parts = Vec::new();
+    let mut ok_parts = Vec::new();
+
+    if direct > direct_max {
+        parts.push(if matches!(severity, Severity::Error) {
+            format!("{} direct deps exceed max {}", direct, direct_max)
+        } else {
+            format!("{} direct deps (threshold {})", direct, direct_max)
+        });
+    } else {
+        ok_parts.push(format!("{} direct OK", direct));
+    }
+
+    if transitive > trans_max {
+        parts.push(if matches!(severity, Severity::Error) {
+            format!("{} prod transitive deps exceed max {}", transitive, trans_max)
+        } else {
+            format!("{} prod transitive deps (threshold {})", transitive, trans_max)
+        });
+    } else {
+        ok_parts.push(format!("{} transitive OK", transitive));
+    }
+
+    let description = if ok_parts.is_empty() {
+        parts.join(", ")
+    } else {
+        format!("{} ({})", parts.join(", "), ok_parts.join(", "))
+    };
+
+    Some(CbPatternViolation {
+        pattern_id: "CB-081-A".to_string(),
+        file: cargo_toml.to_string(),
+        line: 0,
+        description,
+        severity,
+    })
+}
+
+/// Generate all CB-081 violations (A through E) from pre-computed metrics.
+fn check_dependency_count_violations(
+    cargo_toml: &str,
+    cargo_lock: &str,
+    direct: usize,
+    effective_transitive: usize,
+    feature_gated_pct: f64,
+    duplicate_crates: &[DuplicateCrate],
+    trend: &Option<DependencyTrend>,
+    transitive_count: usize,
+) -> Vec<CbPatternViolation> {
+    let mut violations = Vec::new();
+
+    // CB-081-A: Count thresholds — check Error tier first, then Warning tier
+    if let Some(v) = build_threshold_violation(cargo_toml, direct, effective_transitive, 50, 250, Severity::Error) {
+        violations.push(v);
+    } else if let Some(v) = build_threshold_violation(cargo_toml, direct, effective_transitive, 40, 200, Severity::Warning) {
+        violations.push(v);
+    }
+
+    // CB-081-B: Duplicate crates
+    if !duplicate_crates.is_empty() {
+        let dup_names: Vec<_> = duplicate_crates.iter().map(|d| d.name.as_str()).collect();
+        violations.push(CbPatternViolation {
+            pattern_id: "CB-081-B".to_string(),
+            file: cargo_lock.to_string(),
+            line: 0,
+            description: format!(
+                "{} duplicate crates: {}. Run 'cargo tree --duplicates'",
+                duplicate_crates.len(),
+                dup_names.join(", ")
+            ),
+            severity: Severity::Warning,
+        });
+    }
+
+    // CB-081-C: Low feature gating (only warn if deps exceed excellent tier threshold)
+    if direct > 20 && feature_gated_pct < 30.0 {
+        violations.push(CbPatternViolation {
+            pattern_id: "CB-081-C".to_string(),
+            file: cargo_toml.to_string(),
+            line: 0,
+            description: format!(
+                "Only {:.0}% deps use default-features=false. Consider disabling unused features",
+                feature_gated_pct
+            ),
+            severity: Severity::Info,
+        });
+    }
+
+    // CB-081-E: Trend regression
+    if let Some(ref t) = trend {
+        let pct_increase = if t.transitive_delta > 0 {
+            (t.transitive_delta as f64 / (transitive_count as i32 - t.transitive_delta) as f64) * 100.0
+        } else {
+            0.0
+        };
+        if pct_increase > 10.0 {
+            violations.push(CbPatternViolation {
+                pattern_id: "CB-081-E".to_string(),
+                file: cargo_toml.to_string(),
+                line: 0,
+                description: format!(
+                    "Dependency creep: +{} transitive deps ({:.0}% increase) since {}",
+                    t.transitive_delta, pct_increase, t.previous_timestamp
+                ),
+                severity: Severity::Warning,
+            });
+        }
+    }
+
+    violations
+}
+
 /// CB-081: Detect excessive dependency counts (enhanced)
 /// Thresholds from rust-project-score-v1.1-update.md:
 /// - 5 points: ≤20 direct, ≤100 transitive
@@ -235,8 +363,6 @@ pub(super) fn get_cached_dependency_analysis(
 pub fn detect_cb081_dependency_count(project_path: &Path) -> DependencyCountReport {
     let cargo_toml_path = project_path.join("Cargo.toml");
     let cargo_lock_path = project_path.join("Cargo.lock");
-
-    let mut violations = Vec::new();
 
     // CB-081-A: Count direct dependencies from Cargo.toml
     let (direct_count, feature_gated_count, sovereign_crates) =
@@ -271,82 +397,17 @@ pub fn detect_cb081_dependency_count(project_path: &Path) -> DependencyCountRepo
         score = std::cmp::min(score + 1, 5);
     }
 
-    // Generate violations based on severity (using production-only transitive count)
-    // CB-081-A: Count thresholds
-    if direct_count > 50 || effective_transitive > 250 {
-        violations.push(CbPatternViolation {
-            pattern_id: "CB-081-A".to_string(),
-            file: cargo_toml_path.display().to_string(),
-            line: 0,
-            description: format!(
-                "Critical: {} direct deps (max 50), {} prod transitive deps (max 250)",
-                direct_count, effective_transitive
-            ),
-            severity: Severity::Error,
-        });
-    } else if direct_count > 40 || effective_transitive > 200 {
-        violations.push(CbPatternViolation {
-            pattern_id: "CB-081-A".to_string(),
-            file: cargo_toml_path.display().to_string(),
-            line: 0,
-            description: format!(
-                "High: {} direct (threshold 40), {} prod transitive (threshold 200)",
-                direct_count, effective_transitive
-            ),
-            severity: Severity::Warning,
-        });
-    }
-
-    // CB-081-B: Duplicate crates
-    if !duplicate_crates.is_empty() {
-        let dup_names: Vec<_> = duplicate_crates.iter().map(|d| d.name.as_str()).collect();
-        violations.push(CbPatternViolation {
-            pattern_id: "CB-081-B".to_string(),
-            file: cargo_lock_path.display().to_string(),
-            line: 0,
-            description: format!(
-                "{} duplicate crates: {}. Run 'cargo tree --duplicates'",
-                duplicate_crates.len(),
-                dup_names.join(", ")
-            ),
-            severity: Severity::Warning,
-        });
-    }
-
-    // CB-081-C: Low feature gating (only warn if deps exceed excellent tier threshold)
-    if direct_count > 20 && feature_gated_pct < 30.0 {
-        violations.push(CbPatternViolation {
-            pattern_id: "CB-081-C".to_string(),
-            file: cargo_toml_path.display().to_string(),
-            line: 0,
-            description: format!(
-                "Only {:.0}% deps use default-features=false. Consider disabling unused features",
-                feature_gated_pct
-            ),
-            severity: Severity::Info,
-        });
-    }
-
-    // CB-081-E: Trend regression
-    if let Some(ref t) = trend {
-        let pct_increase = if t.transitive_delta > 0 {
-            (t.transitive_delta as f64 / (transitive_count as i32 - t.transitive_delta) as f64) * 100.0
-        } else {
-            0.0
-        };
-        if pct_increase > 10.0 {
-            violations.push(CbPatternViolation {
-                pattern_id: "CB-081-E".to_string(),
-                file: cargo_toml_path.display().to_string(),
-                line: 0,
-                description: format!(
-                    "Dependency creep: +{} transitive deps ({:.0}% increase) since {}",
-                    t.transitive_delta, pct_increase, t.previous_timestamp
-                ),
-                severity: Severity::Warning,
-            });
-        }
-    }
+    // Generate all violations
+    let violations = check_dependency_count_violations(
+        &cargo_toml_path.display().to_string(),
+        &cargo_lock_path.display().to_string(),
+        direct_count,
+        effective_transitive,
+        feature_gated_pct,
+        &duplicate_crates,
+        &trend,
+        transitive_count,
+    );
 
     // Save current metrics for future trend tracking (use effective count)
     let _ = save_dependency_metrics(project_path, direct_count, effective_transitive);
@@ -364,6 +425,49 @@ pub fn detect_cb081_dependency_count(project_path: &Path) -> DependencyCountRepo
         trend,
         violations,
     }
+}
+
+/// Parse a TOML section header to determine which dependency section we're in.
+/// Returns (in_dependencies, in_dev_dependencies, in_build_dependencies).
+fn is_dependency_section(trimmed: &str) -> (bool, bool, bool) {
+    let in_dependencies = trimmed == "[dependencies]"
+        || trimmed.starts_with("[dependencies.")
+        || trimmed.starts_with("[target.");
+    let in_dev_dependencies = trimmed == "[dev-dependencies]"
+        || trimmed.starts_with("[dev-dependencies.");
+    let in_build_dependencies = trimmed == "[build-dependencies]"
+        || trimmed.starts_with("[build-dependencies.");
+    (in_dependencies, in_dev_dependencies, in_build_dependencies)
+}
+
+/// Return true when the line is a scoreable (non-dev, non-build) dependency.
+/// The line must be inside a `[dependencies]` section (not `[dev-dependencies]`
+/// or `[build-dependencies]`), contain `=`, and not be a comment.
+fn is_scoreable_dependency(in_deps: bool, in_dev: bool, in_build: bool, trimmed: &str) -> bool {
+    in_deps && !in_dev && !in_build && trimmed.contains('=') && !trimmed.starts_with('#')
+}
+
+/// Process a single dependency line to determine if it is a direct (non-optional)
+/// dependency and whether it uses feature gating (`default-features = false`).
+/// Also checks for sovereign crates, appending any found to `sovereign_found`.
+/// Returns (is_direct, is_feature_gated).
+fn process_dependency_line(trimmed: &str, sovereign_found: &mut Vec<String>) -> (bool, bool) {
+    let is_optional = trimmed.contains("optional") && trimmed.contains("true");
+    let is_direct = !is_optional;
+
+    let is_feature_gated =
+        trimmed.contains("default-features") && trimmed.contains("false");
+
+    for crate_name in SOVEREIGN_CRATES {
+        if trimmed.starts_with(crate_name)
+            && (trimmed.chars().nth(crate_name.len()) == Some(' ')
+                || trimmed.chars().nth(crate_name.len()) == Some('='))
+        {
+            sovereign_found.push(crate_name.to_string());
+        }
+    }
+
+    (is_direct, is_feature_gated)
 }
 
 /// Analyze Cargo.toml for dependencies, feature gating, and sovereign crates
@@ -385,39 +489,20 @@ pub(super) fn analyze_cargo_toml(cargo_toml_path: &Path) -> (usize, usize, Vec<S
 
         // Track section headers
         if trimmed.starts_with('[') {
-            in_dependencies = trimmed == "[dependencies]"
-                || trimmed.starts_with("[dependencies.")
-                || trimmed.starts_with("[target.");
-            in_dev_dependencies = trimmed == "[dev-dependencies]"
-                || trimmed.starts_with("[dev-dependencies.");
-            in_build_dependencies = trimmed == "[build-dependencies]"
-                || trimmed.starts_with("[build-dependencies.");
+            (in_dependencies, in_dev_dependencies, in_build_dependencies) =
+                is_dependency_section(trimmed);
             continue;
         }
 
         // Count dependencies (excluding dev, build, and optional deps for scoring)
-        if in_dependencies && !in_dev_dependencies && !in_build_dependencies
-            && trimmed.contains('=') && !trimmed.starts_with('#')
-        {
-            // Skip optional dependencies - they don't count toward direct count
-            let is_optional = trimmed.contains("optional") && trimmed.contains("true");
-            if !is_optional {
+        if is_scoreable_dependency(in_dependencies, in_dev_dependencies, in_build_dependencies, trimmed) {
+            let (is_direct, is_feature_gated) =
+                process_dependency_line(trimmed, &mut sovereign_found);
+            if is_direct {
                 direct_count += 1;
             }
-
-            // Check for default-features = false
-            if trimmed.contains("default-features") && trimmed.contains("false") {
+            if is_feature_gated {
                 feature_gated_count += 1;
-            }
-
-            // Check for sovereign crates
-            for crate_name in SOVEREIGN_CRATES {
-                if trimmed.starts_with(crate_name)
-                    && (trimmed.chars().nth(crate_name.len()) == Some(' ')
-                        || trimmed.chars().nth(crate_name.len()) == Some('='))
-                {
-                    sovereign_found.push(crate_name.to_string());
-                }
             }
         }
     }
@@ -572,6 +657,82 @@ const FORBIDDEN_PATTERNS: &[&str] = &[
     "rg '",
 ];
 
+/// Check the age of the RAG index by inspecting file metadata.
+/// Prefers manifest.json mtime over directory mtime (directories don't update
+/// when files inside are rewritten by --rebuild-index).
+/// Returns (age_hours, is_stale). `is_stale` is true when age exceeds 24 hours.
+fn check_index_age(index_path: &Path) -> (Option<f64>, bool) {
+    let manifest_path = index_path.join("manifest.json");
+    let check_path = if manifest_path.exists() { &manifest_path } else { index_path };
+    let metadata = match fs::metadata(check_path) {
+        Ok(m) => m,
+        Err(_) => return (None, false),
+    };
+    let modified = match metadata.modified() {
+        Ok(m) => m,
+        Err(_) => return (None, false),
+    };
+    let age = std::time::SystemTime::now()
+        .duration_since(modified)
+        .unwrap_or_default();
+    let hours = age.as_secs_f64() / 3600.0;
+    (Some(hours), hours > 24.0)
+}
+
+/// Check CLAUDE.md for required and forbidden patterns.
+/// Returns (configured, missing_required, forbidden_found).
+/// `configured` is true when the file contains "pmat_query_code" or "pmat query".
+fn is_negative_example(line: &str) -> bool {
+    let lower = line.to_lowercase();
+    lower.contains("bad") || lower.contains("don't") || lower.contains("never") || lower.contains("avoid")
+}
+
+fn find_forbidden_patterns(content: &str) -> Vec<ForbiddenPatternMatch> {
+    let mut forbidden = Vec::new();
+    for (line_num, line) in content.lines().enumerate() {
+        for &pattern in FORBIDDEN_PATTERNS {
+            if line.contains(pattern) && !is_negative_example(line) {
+                forbidden.push(ForbiddenPatternMatch {
+                    pattern: pattern.to_string(),
+                    line: line_num + 1,
+                    context: line.chars().take(80).collect(),
+                });
+            }
+        }
+    }
+    forbidden
+}
+
+fn check_claude_md_patterns(
+    project_path: &Path,
+) -> (bool, Vec<String>, Vec<ForbiddenPatternMatch>) {
+    let claude_md_path = project_path.join("CLAUDE.md");
+    let content = match fs::read_to_string(&claude_md_path) {
+        Ok(c) => c,
+        Err(_) => {
+            return (
+                false,
+                REQUIRED_PATTERNS.iter().map(|s| s.to_string()).collect(),
+                vec![],
+            );
+        }
+    };
+
+    let configured =
+        content.contains("pmat_query_code") || content.contains("pmat query");
+
+    // Check for missing required patterns
+    let missing: Vec<String> = REQUIRED_PATTERNS
+        .iter()
+        .filter(|&p| !content.to_lowercase().contains(&p.to_lowercase()))
+        .map(|s| s.to_string())
+        .collect();
+
+    let forbidden = find_forbidden_patterns(&content);
+
+    (configured, missing, forbidden)
+}
+
 /// CB-130: Detect agent context adoption issues
 ///
 /// Checks:
@@ -584,27 +745,13 @@ pub fn detect_cb130_agent_context_adoption(project_path: &Path) -> AgentContextR
     let index_exists = index_path.exists();
 
     let (index_age_hours, index_stale) = if index_exists {
-        match fs::metadata(&index_path) {
-            Ok(metadata) => {
-                if let Ok(modified) = metadata.modified() {
-                    let age = std::time::SystemTime::now()
-                        .duration_since(modified)
-                        .unwrap_or_default();
-                    let hours = age.as_secs_f64() / 3600.0;
-                    (Some(hours), hours > 24.0)
-                } else {
-                    (None, false)
-                }
-            }
-            Err(_) => (None, false),
-        }
+        check_index_age(&index_path)
     } else {
         (None, false)
     };
 
     // Try to get function count from index
     let function_count = if index_exists {
-        // Read index to get function count
         match crate::services::agent_context::AgentContextIndex::load(&index_path) {
             Ok(idx) => idx.manifest().function_count,
             Err(_) => 0,
@@ -614,50 +761,8 @@ pub fn detect_cb130_agent_context_adoption(project_path: &Path) -> AgentContextR
     };
 
     // Check CLAUDE.md for required and forbidden patterns
-    let claude_md_path = project_path.join("CLAUDE.md");
     let (claude_md_configured, missing_required_patterns, forbidden_patterns_found) =
-        if claude_md_path.exists() {
-            match fs::read_to_string(&claude_md_path) {
-                Ok(content) => {
-                    let configured =
-                        content.contains("pmat_query_code") || content.contains("pmat query");
-
-                    // Check for missing required patterns
-                    let missing: Vec<String> = REQUIRED_PATTERNS
-                        .iter()
-                        .filter(|&p| !content.to_lowercase().contains(&p.to_lowercase()))
-                        .map(|s| s.to_string())
-                        .collect();
-
-                    // Check for forbidden patterns with line numbers
-                    let mut forbidden: Vec<ForbiddenPatternMatch> = Vec::new();
-                    for (line_num, line) in content.lines().enumerate() {
-                        for &pattern in FORBIDDEN_PATTERNS {
-                            if line.contains(pattern) {
-                                // Skip if it's in a "DON'T DO THIS" example context
-                                let lower_line = line.to_lowercase();
-                                let is_negative_example = lower_line.contains("bad")
-                                    || lower_line.contains("don't")
-                                    || lower_line.contains("never")
-                                    || lower_line.contains("avoid");
-                                if !is_negative_example {
-                                    forbidden.push(ForbiddenPatternMatch {
-                                        pattern: pattern.to_string(),
-                                        line: line_num + 1,
-                                        context: line.chars().take(80).collect(),
-                                    });
-                                }
-                            }
-                        }
-                    }
-
-                    (configured, missing, forbidden)
-                }
-                Err(_) => (false, REQUIRED_PATTERNS.iter().map(|s| s.to_string()).collect(), vec![]),
-            }
-        } else {
-            (false, REQUIRED_PATTERNS.iter().map(|s| s.to_string()).collect(), vec![])
-        };
+        check_claude_md_patterns(project_path);
 
     AgentContextReport {
         index_exists,

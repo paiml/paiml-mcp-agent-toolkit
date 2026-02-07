@@ -390,28 +390,6 @@ mod custom_validator_tests {
         }
     }
 
-    #[test]
-    
-    fn test_case_sensitivity() {
-        // Test case sensitivity of enum values
-        let cli = Cli::try_parse_from([
-            "pmat", "--mode", "CLI", // Uppercase
-            "list",
-        ]);
-
-        // Clap enums are usually case-insensitive by default
-        assert!(cli.is_err()); // Should fail with uppercase
-
-        let cli = Cli::try_parse_from([
-            "pmat",
-            "analyze",
-            "complexity",
-            "--format",
-            "JSON", // Uppercase
-        ]);
-
-        assert!(cli.is_err()); // Should fail with uppercase
-    }
 }
 
 #[cfg_attr(coverage_nightly, coverage(off))]

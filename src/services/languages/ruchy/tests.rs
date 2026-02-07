@@ -690,7 +690,6 @@ mod ruchy_unit_tests {
 }
 
 mod property_tests {
-    use super::*;
     use proptest::prelude::*;
 
     proptest! {

@@ -43,30 +43,31 @@ fn format_coverage_diff_md(diff: f32, out: &mut String) {
 fn format_coverage_metrics_text(r: &QueryResult, out: &mut String) {
     match r.coverage_status.as_str() {
         "uncovered" => {
-            out.push_str(&format!(" | 🛡️ Uncovered (0/{})", r.lines_total));
+            out.push_str(&format!(" | \x1b[1;31m🛡️ Uncovered (0/{})\x1b[0m", r.lines_total));
         }
         "partial" => {
+            let cov_color = if r.line_coverage_pct < 50.0 { "\x1b[1;31m" } else if r.line_coverage_pct < 80.0 { "\x1b[33m" } else { "\x1b[32m" };
             out.push_str(&format!(
-                " | 🛡️ Cov: {:.0}% ({}/{})",
-                r.line_coverage_pct, r.lines_covered, r.lines_total
+                " | {}🛡️ Cov: {:.0}% ({}/{})\x1b[0m",
+                cov_color, r.line_coverage_pct, r.lines_covered, r.lines_total
             ));
         }
         "full" => {
-            out.push_str(&format!(" | 🛡️ Covered ({} lines)", r.lines_total));
+            out.push_str(&format!(" | \x1b[32m🛡️ Covered ({} lines)\x1b[0m", r.lines_total));
         }
         _ => {}
     }
     if r.impact_score > 1.0 {
-        out.push_str(&format!(" | 📈 Impact: {:.1}", r.impact_score));
+        out.push_str(&format!(" | \x1b[1;33m📈 Impact: {:.1}\x1b[0m", r.impact_score));
     }
     format_coverage_diff_text(r.coverage_diff, out);
 }
 
 fn format_coverage_diff_text(diff: f32, out: &mut String) {
     if diff > 0.0 {
-        out.push_str(&format!(" | ✅ +{:.1}% cov", diff));
+        out.push_str(&format!(" | \x1b[1;32m✅ +{:.1}% cov\x1b[0m", diff));
     } else if diff < 0.0 {
-        out.push_str(&format!(" | ❌ {:.1}% cov", diff));
+        out.push_str(&format!(" | \x1b[1;31m❌ {:.1}% cov\x1b[0m", diff));
     }
 }
 
@@ -406,12 +407,19 @@ pub fn format_text_with_code(results: &[QueryResult]) -> String {
 }
 
 fn build_text_metrics(r: &QueryResult) -> String {
+    let grade_color = match r.tdg_grade.as_str() {
+        "A" | "B" => "\x1b[32m",
+        "C" => "\x1b[33m",
+        "D" => "\x1b[31m",
+        "F" => "\x1b[1;31m",
+        _ => "\x1b[2m",
+    };
     let mut m = format!(
-        "   TDG: {} ({:.1}) | Complexity: {} | Big-O: {}",
-        r.tdg_grade, r.tdg_score, r.complexity, r.big_o
+        "   TDG: {}{} ({:.1})\x1b[0m | Complexity: {} | Big-O: \x1b[35m{}\x1b[0m",
+        grade_color, r.tdg_grade, r.tdg_score, r.complexity, r.big_o
     );
     if r.satd_count > 0 {
-        m.push_str(&format!(" | ⚠️ SATD: {}", r.satd_count));
+        m.push_str(&format!(" | \x1b[1;33m⚠️ SATD: {}\x1b[0m", r.satd_count));
     }
     if r.loc > 50 {
         m.push_str(&format!(" | LOC: {}", r.loc));
@@ -419,14 +427,14 @@ fn build_text_metrics(r: &QueryResult) -> String {
     push_churn_text(r, &mut m);
     if r.clone_count > 0 {
         m.push_str(&format!(
-            " | 📋 Clones: {} ({:.0}%)",
+            " | \x1b[1;35m📋 Clones: {} ({:.0}%)\x1b[0m",
             r.clone_count,
             r.duplication_score * 100.0
         ));
     }
     if r.pattern_diversity > 0.0 && r.pattern_diversity < 0.3 {
         m.push_str(&format!(
-            " | 🔄 Repetitive ({:.0}%)",
+            " | \x1b[2m🔄 Repetitive ({:.0}%)\x1b[0m",
             (1.0 - r.pattern_diversity) * 100.0
         ));
     }
@@ -437,56 +445,54 @@ fn build_text_metrics(r: &QueryResult) -> String {
 fn push_churn_text(r: &QueryResult, out: &mut String) {
     if r.churn_score > 0.5 {
         out.push_str(&format!(
-            " | 🔥 Hot: {} commits ({:.0}%)",
+            " | \x1b[1;31m🔥 Hot: {} commits ({:.0}%)\x1b[0m",
             r.commit_count,
             r.churn_score * 100.0
         ));
     } else if r.commit_count > 0 {
-        out.push_str(&format!(" | Commits: {}", r.commit_count));
+        out.push_str(&format!(" | \x1b[2m{}c\x1b[0m", r.commit_count));
     }
 }
 
 fn format_text_details(r: &QueryResult, output: &mut String) {
     if !r.fault_annotations.is_empty() {
         for fault in &r.fault_annotations {
-            output.push_str(&format!("   ⚠️ {}\n", fault));
+            output.push_str(&format!("   \x1b[1;35m⚠️ {}\x1b[0m\n", fault));
         }
     }
     if let Some(doc) = &r.doc_comment {
-        output.push_str(&format!("   Doc: {}\n", doc));
+        output.push_str(&format!("   \x1b[3;37mDoc: {}\x1b[0m\n", doc));
     }
     if !r.calls.is_empty() {
-        output.push_str(&format!("   Calls: {}\n", r.calls.join(", ")));
+        output.push_str(&format!("   \x1b[2;36mCalls: {}\x1b[0m\n", r.calls.join(", ")));
     }
     if !r.called_by.is_empty() {
-        output.push_str(&format!("   Called by: {}\n", r.called_by.join(", ")));
+        output.push_str(&format!("   \x1b[2;36mCalled by: {}\x1b[0m\n", r.called_by.join(", ")));
     }
     if r.pagerank > 0.0 || r.in_degree > 0 || r.out_degree > 0 {
         output.push_str(&format!(
-            "   Graph: PageRank {:.6} | In-Degree: {} | Out-Degree: {}\n",
+            "   \x1b[2mGraph: PageRank {:.6} | In-Degree: {} | Out-Degree: {}\x1b[0m\n",
             r.pagerank, r.in_degree, r.out_degree
         ));
     }
 }
 
-/// Format results as text
+/// Format results as text (colorized for terminal)
 pub fn format_text(results: &[QueryResult]) -> String {
     let mut output = String::new();
-    output.push_str(&format!("Found {} functions:\n\n", results.len()));
+    output.push_str(&format!("\x1b[1mFound {} functions:\x1b[0m\n\n", results.len()));
 
     for (i, r) in results.iter().enumerate() {
         output.push_str(&format!(
-            "{}. {}:{} - {}\n",
-            i + 1,
-            r.file_path,
-            r.start_line,
-            r.function_name
+            "\x1b[2m{}.\x1b[0m \x1b[36m{}\x1b[0m:\x1b[33m{}\x1b[0m \x1b[2m-\x1b[0m \x1b[1;37m{}\x1b[0m\n",
+            i + 1, r.file_path, r.start_line, r.function_name
         ));
-        output.push_str(&format!("   Signature: {}\n", r.signature));
+        output.push_str(&format!("   \x1b[2mSignature:\x1b[0m {}\n", r.signature));
         output.push_str(&build_text_metrics(r));
         output.push('\n');
         format_text_details(r, &mut output);
-        output.push_str(&format!("   Relevance: {:.2}\n\n", r.relevance_score));
+        let rel_color = if r.relevance_score > 0.7 { "\x1b[1;32m" } else if r.relevance_score > 0.3 { "\x1b[32m" } else { "\x1b[2m" };
+        output.push_str(&format!("   Relevance: {}{:.2}\x1b[0m\n\n", rel_color, r.relevance_score));
     }
 
     output

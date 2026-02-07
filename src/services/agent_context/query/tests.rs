@@ -948,7 +948,7 @@ fn test_format_text_with_low_churn() {
 
     let text = format_text(&[result]);
     assert!(!text.contains("🔥 Hot"));
-    assert!(text.contains("Commits: 5"));
+    assert!(text.contains("5c")); // low churn shows compact "5c" format
 }
 
 #[test]
@@ -1075,6 +1075,9 @@ fn test_rankby_from_str() {
     assert_eq!("degree".parse::<RankBy>().unwrap(), RankBy::Centrality);
     assert_eq!("indegree".parse::<RankBy>().unwrap(), RankBy::InDegree);
     assert_eq!("callers".parse::<RankBy>().unwrap(), RankBy::InDegree);
+    assert_eq!("impact".parse::<RankBy>().unwrap(), RankBy::Impact);
+    assert_eq!("roi".parse::<RankBy>().unwrap(), RankBy::Impact);
+    assert_eq!("coverage".parse::<RankBy>().unwrap(), RankBy::Impact);
     assert!("invalid".parse::<RankBy>().is_err());
 }
 
