@@ -213,7 +213,12 @@ fn test_save_load_roundtrip_v1_1() {
         loaded.manifest.version,
     );
     assert_eq!(loaded.functions.len(), index.functions.len());
-    assert_eq!(loaded.corpus.len(), index.corpus.len());
+    // SQLite path skips corpus (FTS5 handles search); blob path has corpus
+    if loaded.manifest.version == "2.0.0" {
+        assert!(loaded.corpus.is_empty(), "SQLite load should skip corpus");
+    } else {
+        assert_eq!(loaded.corpus.len(), index.corpus.len());
+    }
 }
 
 #[test]

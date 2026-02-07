@@ -27,12 +27,42 @@ pub(super) fn parse_workspace_siblings(content: &str) -> Vec<String> {
     Vec::new()
 }
 
+/// Build a corpus document string for a single function entry.
+///
+/// Used by find_similar() when corpus was not pre-built (SQLite load path).
+pub(crate) fn build_corpus_entry(func: &FunctionEntry) -> String {
+    format!(
+        "{name} {name} {sig} {sig} {doc} {doc} {path} {idents}",
+        name = func.function_name,
+        sig = func.signature,
+        doc = func.doc_comment.as_deref().unwrap_or(""),
+        path = func.file_path,
+        idents = extract_identifiers(&func.source)
+    )
+}
+
 /// Build name_index, file_index, and corpus from functions.
 pub(crate) fn build_indices(functions: &[FunctionEntry]) -> BuildIndicesResult {
+    build_indices_impl(functions, true)
+}
+
+/// Build name_index and file_index only (skip corpus construction).
+///
+/// Used by SQLite load path where FTS5 handles search, saving ~36MB
+/// of corpus string allocation for 90K functions.
+pub(crate) fn build_indices_without_corpus(functions: &[FunctionEntry]) -> BuildIndicesResult {
+    build_indices_impl(functions, false)
+}
+
+fn build_indices_impl(functions: &[FunctionEntry], include_corpus: bool) -> BuildIndicesResult {
     let mut result = BuildIndicesResult {
         name_index: HashMap::new(),
         file_index: HashMap::new(),
-        corpus: Vec::with_capacity(functions.len()),
+        corpus: if include_corpus {
+            Vec::with_capacity(functions.len())
+        } else {
+            Vec::new()
+        },
     };
 
     for (idx, func) in functions.iter().enumerate() {
@@ -51,15 +81,9 @@ pub(crate) fn build_indices(functions: &[FunctionEntry]) -> BuildIndicesResult {
             .or_default()
             .push(idx);
 
-        let doc = format!(
-            "{name} {name} {sig} {sig} {doc} {doc} {path} {idents}",
-            name = func.function_name,
-            sig = func.signature,
-            doc = func.doc_comment.as_deref().unwrap_or(""),
-            path = func.file_path,
-            idents = extract_identifiers(&func.source)
-        );
-        result.corpus.push(doc);
+        if include_corpus {
+            result.corpus.push(build_corpus_entry(func));
+        }
     }
 
     result

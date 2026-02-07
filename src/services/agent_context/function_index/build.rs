@@ -496,7 +496,8 @@ impl AgentContextIndex {
     /// Load index from SQLite database (v2.0 fast path).
     ///
     /// Reads functions, call graph, metrics from `context.db`.
-    /// Rebuilds derived indices (name_index, file_index, corpus) in memory.
+    /// Builds name_index + file_index in memory. Skips corpus construction
+    /// since FTS5 handles search (saves ~36MB for 90K functions).
     fn load_from_sqlite(db_path: &Path) -> Result<Self, String> {
         use super::sqlite_backend::{
             load_call_graph, load_functions, load_graph_metrics, load_metadata, open_db,
@@ -508,10 +509,9 @@ impl AgentContextIndex {
         let (calls, called_by) = load_call_graph(&conn)?;
         let graph_metrics = load_graph_metrics(&conn)?;
 
-        // Rebuild derived indices from functions
-        let indices = build_indices(&functions);
+        // Build name_index + file_index only (no corpus — FTS5 handles search)
+        let indices = build_indices_without_corpus(&functions);
         let name_frequency = compute_name_frequency(&indices.name_index, functions.len());
-        let corpus_lower: Vec<String> = indices.corpus.iter().map(|d| d.to_lowercase()).collect();
 
         let project_root = PathBuf::from(&manifest.project_root);
 
@@ -519,8 +519,8 @@ impl AgentContextIndex {
             functions,
             name_index: indices.name_index,
             file_index: indices.file_index,
-            corpus: indices.corpus,
-            corpus_lower,
+            corpus: Vec::new(),
+            corpus_lower: Vec::new(),
             name_frequency,
             calls,
             called_by,

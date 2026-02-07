@@ -270,6 +270,8 @@ impl AgentContextIndex {
         function_name: &str,
         limit: usize,
     ) -> Result<Vec<QueryResult>, String> {
+        use crate::services::agent_context::function_index::helpers::build_corpus_entry;
+
         // Find the reference function
         let ref_idx = self
             .functions
@@ -277,11 +279,15 @@ impl AgentContextIndex {
             .position(|f| f.file_path == file_path && f.function_name == function_name)
             .ok_or_else(|| format!("Function not found: {file_path}::{function_name}"))?;
 
-        // Get the reference document
-        let ref_doc = &self.corpus[ref_idx];
+        // Get reference document (build on-the-fly when corpus is empty, e.g. SQLite load)
+        let ref_doc = if ref_idx < self.corpus.len() {
+            self.corpus[ref_idx].clone()
+        } else {
+            build_corpus_entry(&self.functions[ref_idx])
+        };
 
         // Calculate similarity to all other functions
-        let scores = self.calculate_relevance_scores(ref_doc)?;
+        let scores = self.calculate_relevance_scores(&ref_doc)?;
 
         let mut ranked: Vec<(usize, f32)> = scores
             .into_iter()
