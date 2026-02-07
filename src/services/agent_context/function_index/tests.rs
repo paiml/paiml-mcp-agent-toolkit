@@ -375,6 +375,7 @@ fn test_get_calls_and_called_by() {
             file_checksums: HashMap::new(),
             last_incremental_changes: 0,
         },
+        db_path: None,
     };
 
     let calls_of_0 = index.get_calls(0);
@@ -436,6 +437,7 @@ fn test_find_function_index() {
             file_checksums: HashMap::new(),
             last_incremental_changes: 0,
         },
+        db_path: None,
     };
 
     assert_eq!(index.find_function_index("a.rs", "foo"), Some(0));
@@ -1227,6 +1229,7 @@ fn make_test_index() -> AgentContextIndex {
             file_checksums: HashMap::new(),
             last_incremental_changes: 0,
         },
+        db_path: None,
     }
 }
 
@@ -1265,6 +1268,7 @@ fn test_stats_empty_index() {
             file_checksums: HashMap::new(),
             last_incremental_changes: 0,
         },
+        db_path: None,
     };
     let stats = index.stats();
     assert_eq!(stats.total_functions, 0);

@@ -359,6 +359,7 @@ fn build_test_index() -> AgentContextIndex {
             file_checksums: HashMap::new(),
             last_incremental_changes: 0,
         },
+        db_path: None,
     }
 }
 
@@ -713,6 +714,7 @@ fn test_full_scoring_empty_corpus() {
             file_checksums: HashMap::new(),
             last_incremental_changes: 0,
         },
+        db_path: None,
     };
     let results = index.calculate_relevance_scores("test").unwrap();
     assert!(results.is_empty());
@@ -1826,6 +1828,7 @@ fn test_from_entry_with_context_basic() {
             file_checksums: HashMap::new(),
             last_incremental_changes: 0,
         },
+        db_path: None,
     };
 
     let result = QueryResult::from_entry_with_context(&entry, 0, &index, 0.9, false);
@@ -1864,6 +1867,7 @@ fn test_from_entry_with_context_out_of_bounds() {
             file_checksums: HashMap::new(),
             last_incremental_changes: 0,
         },
+        db_path: None,
     };
 
     let result = QueryResult::from_entry_with_context(&entry, 99, &index, 0.9, false);
@@ -1920,6 +1924,7 @@ fn test_from_entry_with_context_callers_capping() {
             file_checksums: HashMap::new(),
             last_incremental_changes: 0,
         },
+        db_path: None,
     };
 
     let result = QueryResult::from_entry_with_context(&entry, 0, &index, 0.9, false);

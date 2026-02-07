@@ -20,7 +20,7 @@ use std::path::Path;
 const SCHEMA_VERSION: &str = "2.0.0";
 
 /// Open or create a SQLite index database at the given path.
-pub(super) fn open_db(db_path: &Path) -> Result<Connection, String> {
+pub(crate) fn open_db(db_path: &Path) -> Result<Connection, String> {
     let conn = Connection::open_with_flags(
         db_path,
         OpenFlags::SQLITE_OPEN_READ_WRITE

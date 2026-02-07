@@ -177,6 +177,7 @@ impl AgentContextIndex {
             graph_metrics,
             project_root,
             manifest,
+            db_path: None, // Set after save()
         })
     }
 
@@ -559,6 +560,14 @@ impl AgentContextIndex {
 
         let project_root = PathBuf::from(&manifest.project_root);
 
+        // Detect SQLite FTS5 database alongside blob
+        let db_candidate = index_path.with_extension("db");
+        let db_path = if db_candidate.exists() {
+            Some(db_candidate)
+        } else {
+            None
+        };
+
         Ok(Self {
             functions,
             name_index,
@@ -571,6 +580,7 @@ impl AgentContextIndex {
             graph_metrics,
             project_root,
             manifest,
+            db_path,
         })
     }
 
@@ -747,6 +757,7 @@ impl AgentContextIndex {
             graph_metrics,
             project_root,
             manifest,
+            db_path: None,
         })
     }
 

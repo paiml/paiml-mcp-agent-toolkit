@@ -197,4 +197,6 @@ pub struct AgentContextIndex {
     pub(crate) project_root: PathBuf,
     /// Manifest
     pub(crate) manifest: IndexManifest,
+    /// Path to SQLite FTS5 database (if available)
+    pub(crate) db_path: Option<PathBuf>,
 }
