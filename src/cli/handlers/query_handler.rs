@@ -1682,16 +1682,15 @@ fn is_workspace_cache_fresh(
     siblings: &[(PathBuf, String)],
     local_idx: &std::path::Path,
 ) -> bool {
-    // Use manifest.json mtime (not directory mtime) for consistent comparison
-    let cache_manifest = workspace_idx.join("manifest.json");
-    let cache_mtime = match std::fs::metadata(&cache_manifest).and_then(|m| m.modified()) {
-        Ok(t) => t,
-        Err(_) => return false, // No cache
+    // Prefer workspace.db mtime, fall back to workspace.idx/manifest.json
+    let cache_mtime = newest_index_mtime(workspace_idx);
+    let cache_mtime = match cache_mtime {
+        Some(t) => t,
+        None => return false, // No cache
     };
 
     // Check local index is not newer than cache
-    let local_manifest = local_idx.join("manifest.json");
-    if let Ok(local_mtime) = std::fs::metadata(&local_manifest).and_then(|m| m.modified()) {
+    if let Some(local_mtime) = newest_index_mtime(local_idx) {
         if local_mtime > cache_mtime {
             return false; // Local index updated since cache
         }
@@ -1699,13 +1698,27 @@ fn is_workspace_cache_fresh(
 
     // Cache is fresh if it's newer than every sibling's index
     siblings.iter().all(|(idx_path, _)| {
-        // Check manifest.json mtime (always written on save)
-        let manifest = idx_path.join("manifest.json");
-        match std::fs::metadata(&manifest).and_then(|m| m.modified()) {
-            Ok(sibling_mtime) => cache_mtime > sibling_mtime,
-            Err(_) => true, // Sibling gone, cache still valid for others
+        match newest_index_mtime(idx_path) {
+            Some(sibling_mtime) => cache_mtime > sibling_mtime,
+            None => true, // Sibling gone, cache still valid for others
         }
     })
+}
+
+/// Get the newest mtime for an index (checks context.db and context.idx/manifest.json).
+fn newest_index_mtime(idx_path: &std::path::Path) -> Option<std::time::SystemTime> {
+    let db_path = idx_path.with_extension("db");
+    let manifest_path = idx_path.join("manifest.json");
+
+    let db_mtime = std::fs::metadata(&db_path).and_then(|m| m.modified()).ok();
+    let manifest_mtime = std::fs::metadata(&manifest_path).and_then(|m| m.modified()).ok();
+
+    match (db_mtime, manifest_mtime) {
+        (Some(a), Some(b)) => Some(a.max(b)),
+        (Some(a), None) => Some(a),
+        (None, Some(b)) => Some(b),
+        (None, None) => None,
+    }
 }
 
 /// Merge siblings into index and save the combined result as workspace cache.
