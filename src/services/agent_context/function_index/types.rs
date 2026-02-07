@@ -112,20 +112,24 @@ pub struct IndexManifest {
     pub last_incremental_changes: usize,
 }
 
-/// Serialized payload for the index (v1.3.0+ with cached indices)
+/// Serialized payload for the index (v1.4.0 with cached indices)
+///
+/// v1.3.0: Added cached indices (name_index, file_index, graph_metrics, corpus_lower, name_frequency)
+/// v1.4.0: corpus_lower no longer persisted (computed lazily on load, saves ~50MB)
 #[derive(Serialize, Deserialize)]
 pub(super) struct IndexPayload {
     pub(super) functions: Vec<FunctionEntry>,
     pub(super) corpus: Vec<String>,
     pub(super) calls: HashMap<usize, Vec<usize>>,
     pub(super) called_by: HashMap<usize, Vec<usize>>,
-    // v1.3.0: Cached indices to avoid rebuild on load
+    // v1.3.0+: Cached indices to avoid rebuild on load
     #[serde(default)]
     pub(super) name_index: HashMap<String, Vec<usize>>,
     #[serde(default)]
     pub(super) file_index: HashMap<String, Vec<usize>>,
     #[serde(default)]
     pub(super) graph_metrics: Vec<GraphMetrics>,
+    /// v1.4.0: Empty on save, computed lazily on load from `corpus`
     #[serde(default)]
     pub(super) corpus_lower: Vec<String>,
     #[serde(default)]

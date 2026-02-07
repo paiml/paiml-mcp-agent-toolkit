@@ -1700,3 +1700,58 @@ roadmap:
   - rg
   - grep
   notes: null
+- id: PMAT-481
+  github_issue: null
+  item_type: task
+  title: Achieve 95% overall test coverage for query formatters and handlers
+  status: inprogress
+  priority: high
+  assigned_to: null
+  created: 2026-02-07T17:22:03Z
+  updated: 2026-02-07T17:22:07.854030587+00:00
+  spec: null
+  acceptance_criteria:
+  - Systematically improve line coverage to 95%+ across query formatters and related modules using pmat query --coverage-gaps
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - coverage
+  - quality
+  notes: null
+- id: PMAT-482
+  github_issue: null
+  item_type: task
+  title: Smart coverage-gaps filtering + 95% coverage target
+  status: inprogress
+  priority: high
+  assigned_to: null
+  created: 2026-02-07T18:12:17Z
+  updated: 2026-02-07T18:12:22.065757979+00:00
+  spec: null
+  acceptance_criteria:
+  - 'Implement coverage exclusion classification, fix #158 cache staleness, reach 95% test coverage'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - coverage
+  - quality
+  notes: null
+- id: PMAT-483
+  github_issue: null
+  item_type: task
+  title: 'Index v2: SQLite FTS5 backend - fix 58GB bloat (#159)'
+  status: inprogress
+  priority: high
+  assigned_to: null
+  created: 2026-02-07T19:53:43Z
+  updated: 2026-02-07T19:53:48.114445626+00:00
+  spec: null
+  acceptance_criteria:
+  - 'Replace monolithic LZ4+bincode blob with SQLite+FTS5. Phase 0 (call graph fix) done. Phase 1: SQLite schema + FTS5 search. Spec: docs/specifications/index-v2-sqlite-fts5.md'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null

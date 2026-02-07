@@ -36,11 +36,15 @@ pub(crate) fn build_indices(functions: &[FunctionEntry]) -> BuildIndicesResult {
     };
 
     for (idx, func) in functions.iter().enumerate() {
-        result
+        // Cap name_index entries per name to prevent pathological sizes
+        // for common names like "new" (can have 10,000+ entries)
+        let name_entries = result
             .name_index
             .entry(func.function_name.clone())
-            .or_default()
-            .push(idx);
+            .or_default();
+        if name_entries.len() < 100 {
+            name_entries.push(idx);
+        }
         result
             .file_index
             .entry(func.file_path.clone())
@@ -141,51 +145,52 @@ pub(super) fn populate_cached_annotations(
     );
 }
 
+/// Match a git log file path against the known file set, handling path migrations.
+fn match_git_path(line: &str, files: &std::collections::HashSet<&String>) -> Option<String> {
+    let trimmed = line.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+    // Exact match
+    if files.contains(&trimmed.to_string()) {
+        return Some(trimmed.to_string());
+    }
+    // Handle path migrations (e.g., server/src/foo.rs -> src/foo.rs)
+    let normalized = trimmed.strip_prefix("server/").unwrap_or(trimmed);
+    if files.contains(&normalized.to_string()) {
+        return Some(normalized.to_string());
+    }
+    None
+}
+
 /// Get commit counts per file from git log
 #[cfg_attr(coverage_nightly, coverage(off))] // Integration: requires git process
 pub(super) fn get_file_commit_counts<'a>(
     project_root: &std::path::Path,
     files: impl Iterator<Item = &'a String>,
 ) -> HashMap<String, u32> {
-    let mut result = HashMap::new();
-
-    // Collect unique files
     let files: std::collections::HashSet<_> = files.collect();
     if files.is_empty() {
-        return result;
+        return HashMap::new();
     }
 
-    // Get all file changes from git log (fast batch operation)
     let output = std::process::Command::new("git")
         .args(["log", "--format=", "--name-only", "--since=1 year ago"])
         .current_dir(project_root)
         .output();
 
-    if let Ok(output) = output {
-        if output.status.success() {
-            let stdout = String::from_utf8_lossy(&output.stdout);
-            for line in stdout.lines() {
-                let line = line.trim();
-                if line.is_empty() {
-                    continue;
-                }
-
-                // Try exact match first
-                if files.contains(&line.to_string()) {
-                    *result.entry(line.to_string()).or_insert(0) += 1;
-                    continue;
-                }
-
-                // Handle path migrations (e.g., server/src/foo.rs -> src/foo.rs)
-                let normalized = line.strip_prefix("server/").unwrap_or(line);
-
-                if files.contains(&normalized.to_string()) {
-                    *result.entry(normalized.to_string()).or_insert(0) += 1;
-                }
-            }
-        }
+    let Ok(output) = output else { return HashMap::new() };
+    if !output.status.success() {
+        return HashMap::new();
     }
 
+    let mut result = HashMap::new();
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    for line in stdout.lines() {
+        if let Some(path) = match_git_path(line, &files) {
+            *result.entry(path).or_insert(0) += 1;
+        }
+    }
     result
 }
 
@@ -344,11 +349,81 @@ pub(crate) fn compute_name_frequency(
         .collect()
 }
 
+/// Check if a function name is too generic for meaningful call graph edges.
+///
+/// Common method names like `new`, `from`, `clone` appear in thousands of types,
+/// creating O(n^2) spurious edges. Excluding them reduces call graph size by ~99%
+/// for large repos (e.g., 58GB -> <100MB for 230K-function repos).
+pub(crate) fn is_generic_callee(name: &str) -> bool {
+    matches!(
+        name,
+        "new" | "from" | "into" | "default" | "clone" | "fmt"
+            | "len" | "push" | "pop" | "get" | "set" | "insert" | "remove"
+            | "unwrap" | "expect" | "map" | "and_then" | "or_else" | "ok" | "err"
+            | "to_string" | "to_owned" | "as_ref" | "as_mut" | "borrow"
+            | "iter" | "collect" | "filter" | "fold" | "next"
+            | "write" | "read" | "flush" | "close" | "open"
+            | "is_empty" | "contains" | "starts_with" | "ends_with"
+            | "display" | "debug" | "hash" | "cmp" | "partial_cmp"
+            | "serialize" | "deserialize" | "drop"
+            | "init" | "run" | "start" | "stop" | "build" | "parse" | "format"
+            | "test" | "setup" | "teardown" | "assert" | "verify" | "check"
+    )
+}
+
+/// Check if a code chunk is a test function or from a test file.
+///
+/// Used to exclude test code from the index at build time, reducing index size
+/// by 25-70% for test-heavy repos.
+pub(crate) fn is_test_chunk(chunk_name: &str, file_path: &str) -> bool {
+    // File-level: skip *_test.rs, *_tests.rs, tests/ directories
+    if file_path.contains("/tests/")
+        || file_path.ends_with("_test.rs")
+        || file_path.ends_with("_tests.rs")
+    {
+        return true;
+    }
+    // Function-level: skip test_ prefixed functions
+    if chunk_name.starts_with("test_") {
+        return true;
+    }
+    false
+}
+
 /// Build caller/callee graph by matching identifiers in source against function names.
 ///
 /// For each function, extracts identifiers from its source and checks if they match
 /// any known function name. If a match is found (and it's not a self-reference),
-/// records a call edge.
+/// records a call edge. Generic method names (new, clone, etc.) are excluded to
+/// prevent O(n^2) edge explosion.
+/// Extract meaningful identifiers from source code for call graph analysis.
+fn extract_call_identifiers(source: &str) -> Vec<&str> {
+    source
+        .split(|c: char| !c.is_alphanumeric() && c != '_')
+        .filter(|s| s.len() >= 3 && !is_keyword(s) && !is_generic_callee(s))
+        .collect()
+}
+
+/// Record call edges from a single caller to its callees.
+fn record_call_edges(
+    caller_idx: usize,
+    idents: &[&str],
+    name_index: &HashMap<String, Vec<usize>>,
+    calls: &mut HashMap<usize, Vec<usize>>,
+    called_by: &mut HashMap<usize, Vec<usize>>,
+) {
+    let mut seen: std::collections::HashSet<usize> = std::collections::HashSet::new();
+    for ident in idents {
+        let Some(callee_indices) = name_index.get(*ident) else { continue };
+        for &callee_idx in callee_indices {
+            if callee_idx != caller_idx && seen.insert(callee_idx) {
+                calls.entry(caller_idx).or_default().push(callee_idx);
+                called_by.entry(callee_idx).or_default().push(caller_idx);
+            }
+        }
+    }
+}
+
 pub(crate) fn build_call_graph(
     functions: &[FunctionEntry],
     name_index: &HashMap<String, Vec<usize>>,
@@ -357,28 +432,8 @@ pub(crate) fn build_call_graph(
     let mut called_by: HashMap<usize, Vec<usize>> = HashMap::new();
 
     for (caller_idx, func) in functions.iter().enumerate() {
-        // Extract identifiers from source
-        let idents: Vec<&str> = func
-            .source
-            .split(|c: char| !c.is_alphanumeric() && c != '_')
-            .filter(|s| s.len() >= 3 && !is_keyword(s))
-            .collect();
-
-        let mut seen_callees: std::collections::HashSet<usize> = std::collections::HashSet::new();
-
-        for ident in &idents {
-            if let Some(callee_indices) = name_index.get(*ident) {
-                for &callee_idx in callee_indices {
-                    // Skip self-references and duplicates
-                    if callee_idx == caller_idx || seen_callees.contains(&callee_idx) {
-                        continue;
-                    }
-                    seen_callees.insert(callee_idx);
-                    calls.entry(caller_idx).or_default().push(callee_idx);
-                    called_by.entry(callee_idx).or_default().push(caller_idx);
-                }
-            }
-        }
+        let idents = extract_call_identifiers(&func.source);
+        record_call_edges(caller_idx, &idents, name_index, &mut calls, &mut called_by);
     }
 
     (calls, called_by)
@@ -393,6 +448,38 @@ pub(crate) fn build_call_graph(
 ///
 /// PageRank represents "importance" - functions that are transitively called
 /// by many other functions will have higher scores.
+/// Run one iteration of PageRank: distribute scores from callers to callees.
+fn pagerank_iteration(
+    pagerank: &[f32],
+    new_pagerank: &mut [f32],
+    calls: &HashMap<usize, Vec<usize>>,
+    damping: f32,
+    num_functions: usize,
+) {
+    let teleport = (1.0 - damping) / num_functions as f32;
+    new_pagerank.iter_mut().for_each(|s| *s = teleport);
+
+    // Distribute scores along call edges
+    for (caller_idx, callees) in calls {
+        if !callees.is_empty() {
+            let contribution = damping * pagerank[*caller_idx] / callees.len() as f32;
+            for &callee_idx in callees {
+                if callee_idx < num_functions {
+                    new_pagerank[callee_idx] += contribution;
+                }
+            }
+        }
+    }
+
+    // Dangling nodes: distribute their rank evenly to all nodes
+    let dangling_sum: f32 = (0..num_functions)
+        .filter(|idx| calls.get(idx).map_or(true, |c| c.is_empty()))
+        .map(|idx| pagerank[idx])
+        .sum();
+    let dangling_contrib = damping * dangling_sum / num_functions as f32;
+    new_pagerank.iter_mut().for_each(|s| *s += dangling_contrib);
+}
+
 pub(crate) fn compute_graph_metrics(
     num_functions: usize,
     calls: &HashMap<usize, Vec<usize>>,
@@ -402,67 +489,23 @@ pub(crate) fn compute_graph_metrics(
         return Vec::new();
     }
 
-    let damping = 0.85_f32;
-    let iterations = 20;
-    let initial_score = 1.0 / num_functions as f32;
+    let mut pagerank = vec![1.0 / num_functions as f32; num_functions];
+    let mut new_pagerank = vec![0.0; num_functions];
 
-    // Initialize PageRank scores
-    let mut pagerank: Vec<f32> = vec![initial_score; num_functions];
-    let mut new_pagerank: Vec<f32> = vec![0.0; num_functions];
-
-    // Iterative PageRank computation
-    for _ in 0..iterations {
-        // Reset new scores with teleportation probability
-        for score in new_pagerank.iter_mut() {
-            *score = (1.0 - damping) / num_functions as f32;
-        }
-
-        // Distribute scores from callers to callees
-        for (caller_idx, callees) in calls {
-            if callees.is_empty() {
-                continue;
-            }
-            let contribution = damping * pagerank[*caller_idx] / callees.len() as f32;
-            for &callee_idx in callees {
-                if callee_idx < num_functions {
-                    new_pagerank[callee_idx] += contribution;
-                }
-            }
-        }
-
-        // Handle dangling nodes (functions that don't call anything)
-        // Their PageRank distributes evenly to all nodes
-        let mut dangling_sum = 0.0_f32;
-        for idx in 0..num_functions {
-            if !calls.contains_key(&idx) || calls.get(&idx).map_or(true, |c| c.is_empty()) {
-                dangling_sum += pagerank[idx];
-            }
-        }
-        let dangling_contribution = damping * dangling_sum / num_functions as f32;
-        for score in new_pagerank.iter_mut() {
-            *score += dangling_contribution;
-        }
-
-        // Swap for next iteration
+    for _ in 0..20 {
+        pagerank_iteration(&pagerank, &mut new_pagerank, calls, 0.85, num_functions);
         std::mem::swap(&mut pagerank, &mut new_pagerank);
     }
 
-    // Build GraphMetrics for each function
-    let mut metrics: Vec<GraphMetrics> = Vec::with_capacity(num_functions);
-    for idx in 0..num_functions {
-        let in_degree = called_by.get(&idx).map_or(0, |v| v.len()) as u32;
-        let out_degree = calls.get(&idx).map_or(0, |v| v.len()) as u32;
-        let centrality = (in_degree + out_degree) as f32 / (2.0 * num_functions as f32).max(1.0);
-
-        metrics.push(GraphMetrics {
-            pagerank: pagerank[idx],
-            centrality,
-            in_degree,
-            out_degree,
-        });
-    }
-
-    metrics
+    (0..num_functions)
+        .map(|idx| {
+            let in_degree = called_by.get(&idx).map_or(0, |v| v.len()) as u32;
+            let out_degree = calls.get(&idx).map_or(0, |v| v.len()) as u32;
+            let centrality =
+                (in_degree + out_degree) as f32 / (2.0 * num_functions as f32).max(1.0);
+            GraphMetrics { pagerank: pagerank[idx], centrality, in_degree, out_degree }
+        })
+        .collect()
 }
 
 /// Check if directory should be ignored
@@ -642,6 +685,29 @@ pub(super) fn score_to_grade(score: f32) -> String {
 }
 
 /// Extract doc comment from source
+/// Classify a line above a function definition for doc comment extraction.
+enum DocLineKind<'a> {
+    DocComment(&'a str),
+    BlockCommentStart,
+    BlockCommentBody(&'a str),
+    SkipLine, // empty, attribute, annotation
+    Other,
+}
+
+fn classify_doc_line(line: &str) -> DocLineKind<'_> {
+    if line.starts_with("///") || line.starts_with("//!") {
+        DocLineKind::DocComment(line.trim_start_matches("///").trim_start_matches("//!").trim())
+    } else if line.starts_with("/**") || line.starts_with("/*") {
+        DocLineKind::BlockCommentStart
+    } else if line.starts_with('*') {
+        DocLineKind::BlockCommentBody(line.trim_start_matches('*').trim())
+    } else if line.is_empty() || line.starts_with("#[") || line.starts_with('@') {
+        DocLineKind::SkipLine
+    } else {
+        DocLineKind::Other
+    }
+}
+
 pub(super) fn extract_doc_comment(content: &str, start_line: usize) -> Option<String> {
     if start_line <= 1 {
         return None;
@@ -650,32 +716,21 @@ pub(super) fn extract_doc_comment(content: &str, start_line: usize) -> Option<St
     let lines: Vec<&str> = content.lines().collect();
     let mut doc_lines = Vec::new();
 
-    // Look backwards from function start for doc comments
     for i in (0..start_line - 1).rev() {
         let line = lines.get(i)?.trim();
-
-        if line.starts_with("///") || line.starts_with("//!") {
-            doc_lines.push(line.trim_start_matches("///").trim_start_matches("//!").trim());
-        } else if line.starts_with("/**") || line.starts_with("/*") {
-            // Block comment
-            break;
-        } else if line.starts_with('*') {
-            // Inside block comment
-            doc_lines.push(line.trim_start_matches('*').trim());
-        } else if line.is_empty() || line.starts_with("#[") || line.starts_with('@') {
-            // Empty line or attribute - continue
-            continue;
-        } else {
-            break;
+        match classify_doc_line(line) {
+            DocLineKind::DocComment(text) => doc_lines.push(text),
+            DocLineKind::BlockCommentBody(text) => doc_lines.push(text),
+            DocLineKind::BlockCommentStart | DocLineKind::Other => break,
+            DocLineKind::SkipLine => continue,
         }
     }
 
     if doc_lines.is_empty() {
-        None
-    } else {
-        doc_lines.reverse();
-        Some(doc_lines.join(" "))
+        return None;
     }
+    doc_lines.reverse();
+    Some(doc_lines.join(" "))
 }
 
 /// Extract identifiers from source for better search

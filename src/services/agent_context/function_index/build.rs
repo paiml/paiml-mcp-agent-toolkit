@@ -83,6 +83,11 @@ impl AgentContextIndex {
                     _ => continue, // Skip classes, modules, files, impl blocks
                 };
 
+                // Skip test functions and test files (#159: reduce index bloat)
+                if is_test_chunk(&chunk.chunk_name, &relative_path) {
+                    continue;
+                }
+
                 // Extract quality metrics
                 let quality = extract_quality_metrics(&chunk, &content);
 
@@ -146,7 +151,7 @@ impl AgentContextIndex {
         };
 
         let manifest = IndexManifest {
-            version: "1.3.0".to_string(), // Bump version for graph metrics
+            version: "1.4.0".to_string(), // v1.4.0: call graph exclusion, test filtering, lazy corpus_lower
             built_at: chrono::Utc::now().to_rfc3339(),
             project_root: project_root.to_string_lossy().to_string(),
             function_count: functions.len(),
@@ -450,17 +455,18 @@ impl AgentContextIndex {
         fs::write(index_path.join("manifest.json"), manifest_json)
             .map_err(|e| format!("Failed to write manifest: {e}"))?;
 
-        // Save payload (functions + corpus + call graph + cached indices) v1.3.0 format
+        // Save payload (functions + corpus + call graph + cached indices) v1.4.0 format
         let payload = IndexPayload {
             functions: self.functions.clone(),
             corpus: self.corpus.clone(),
             calls: self.calls.clone(),
             called_by: self.called_by.clone(),
-            // v1.3.0: Cache computed indices to avoid rebuild on load
+            // v1.3.0+: Cache computed indices to avoid rebuild on load
             name_index: self.name_index.clone(),
             file_index: self.file_index.clone(),
             graph_metrics: self.graph_metrics.clone(),
-            corpus_lower: self.corpus_lower.clone(),
+            // v1.4.0: corpus_lower computed lazily on load (saves ~50MB)
+            corpus_lower: Vec::new(),
             name_frequency: self.name_frequency.clone(),
         };
         let payload_bin = bincode::serialize(&payload)
@@ -502,11 +508,17 @@ impl AgentContextIndex {
 
         let (name_index, file_index, graph_metrics, corpus_lower, name_frequency) = if has_cached_indices {
             // Fast path: use cached indices directly (saves ~4s for 100k functions)
+            // v1.4.0: corpus_lower no longer persisted, compute lazily (~50ms for 50K functions)
+            let corpus_lower = if payload.corpus_lower.is_empty() {
+                corpus.iter().map(|d| d.to_lowercase()).collect()
+            } else {
+                payload.corpus_lower
+            };
             (
                 payload.name_index,
                 payload.file_index,
                 payload.graph_metrics,
-                payload.corpus_lower,
+                corpus_lower,
                 payload.name_frequency,
             )
         } else {
@@ -635,6 +647,11 @@ impl AgentContextIndex {
                         _ => continue, // Skip classes, modules, files, impl blocks
                     };
 
+                    // Skip test functions and test files (#159: reduce index bloat)
+                    if is_test_chunk(&chunk.chunk_name, &relative_path) {
+                        continue;
+                    }
+
                     let quality = extract_quality_metrics(&chunk, &content);
                     let signature = chunk
                         .content
@@ -693,7 +710,7 @@ impl AgentContextIndex {
         }
 
         let manifest = IndexManifest {
-            version: "1.3.0".to_string(),
+            version: "1.4.0".to_string(),
             built_at: chrono::Utc::now().to_rfc3339(),
             project_root: project_root.to_string_lossy().to_string(),
             function_count: functions.len(),

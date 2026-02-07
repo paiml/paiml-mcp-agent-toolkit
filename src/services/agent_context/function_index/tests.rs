@@ -206,7 +206,7 @@ fn test_save_load_roundtrip_v1_1() {
     index.save(&index_path).unwrap();
 
     let loaded = AgentContextIndex::load(&index_path).unwrap();
-    assert_eq!(loaded.manifest.version, "1.3.0");
+    assert_eq!(loaded.manifest.version, "1.4.0");
     assert_eq!(loaded.functions.len(), index.functions.len());
     assert_eq!(loaded.corpus.len(), index.corpus.len());
     // Verify corpus is identical (not rebuilt from scratch)
@@ -529,7 +529,7 @@ fn test_manifest_accessor() {
 
     let index = AgentContextIndex::build(project_path).unwrap();
     let manifest = index.manifest();
-    assert_eq!(manifest.version, "1.3.0");
+    assert_eq!(manifest.version, "1.4.0");
     assert!(manifest.function_count > 0);
     assert!(manifest.file_count > 0);
 }
@@ -609,7 +609,7 @@ fn test_build_with_multiple_files() {
     let index = AgentContextIndex::build(project_path).unwrap();
     assert!(index.functions.len() >= 2);
     assert!(index.manifest.file_count >= 2);
-    assert_eq!(index.manifest.version, "1.3.0");
+    assert_eq!(index.manifest.version, "1.4.0");
 
     // Verify quality metrics computed
     for func in &index.functions {
@@ -1300,4 +1300,167 @@ fn test_project_root_accessor() {
     let index = make_test_index();
     let root = index.project_root();
     assert!(!root.as_os_str().is_empty());
+}
+
+#[test]
+fn test_is_generic_callee() {
+    // Common method names should be excluded
+    assert!(is_generic_callee("new"));
+    assert!(is_generic_callee("from"));
+    assert!(is_generic_callee("clone"));
+    assert!(is_generic_callee("default"));
+    assert!(is_generic_callee("unwrap"));
+    assert!(is_generic_callee("push"));
+    assert!(is_generic_callee("iter"));
+    assert!(is_generic_callee("collect"));
+    assert!(is_generic_callee("serialize"));
+    assert!(is_generic_callee("build"));
+    assert!(is_generic_callee("parse"));
+    assert!(is_generic_callee("test"));
+    // Domain-specific names should NOT be excluded
+    assert!(!is_generic_callee("handle_error"));
+    assert!(!is_generic_callee("process_request"));
+    assert!(!is_generic_callee("calculate_tdg"));
+    assert!(!is_generic_callee("dispatch_event"));
+}
+
+#[test]
+fn test_is_test_chunk() {
+    // Test files
+    assert!(is_test_chunk("foo", "src/tests/mod.rs"));
+    assert!(is_test_chunk("foo", "src/handler_test.rs"));
+    assert!(is_test_chunk("foo", "src/handler_tests.rs"));
+    // Test function names
+    assert!(is_test_chunk("test_handle_error", "src/handler.rs"));
+    assert!(is_test_chunk("test_parse", "src/lib.rs"));
+    // Non-test code
+    assert!(!is_test_chunk("handle_error", "src/handler.rs"));
+    assert!(!is_test_chunk("build", "src/lib.rs"));
+    assert!(!is_test_chunk("testing_utils", "src/utils.rs")); // "testing_" != "test_"
+}
+
+#[test]
+fn test_call_graph_excludes_generic_names() {
+    // Create functions where "new" appears in many sources
+    let functions = vec![
+        FunctionEntry {
+            file_path: "a.rs".to_string(),
+            function_name: "new".to_string(),
+            signature: "fn new()".to_string(),
+            doc_comment: None,
+            source: "fn new() { }".to_string(),
+            start_line: 1, end_line: 1, language: "Rust".to_string(),
+            quality: QualityMetrics::default(), checksum: "a".to_string(),
+            definition_type: DefinitionType::default(),
+            commit_count: 0, churn_score: 0.0, clone_count: 0,
+            pattern_diversity: 0.0, fault_annotations: Vec::new(),
+        },
+        FunctionEntry {
+            file_path: "b.rs".to_string(),
+            function_name: "process".to_string(),
+            signature: "fn process()".to_string(),
+            doc_comment: None,
+            // Source mentions "new" but it's a generic callee — should be excluded
+            source: "fn process() { let x = Foo::new(); }".to_string(),
+            start_line: 1, end_line: 1, language: "Rust".to_string(),
+            quality: QualityMetrics::default(), checksum: "b".to_string(),
+            definition_type: DefinitionType::default(),
+            commit_count: 0, churn_score: 0.0, clone_count: 0,
+            pattern_diversity: 0.0, fault_annotations: Vec::new(),
+        },
+        FunctionEntry {
+            file_path: "c.rs".to_string(),
+            function_name: "dispatch_event".to_string(),
+            signature: "fn dispatch_event()".to_string(),
+            doc_comment: None,
+            source: "fn dispatch_event() { process(); }".to_string(),
+            start_line: 1, end_line: 1, language: "Rust".to_string(),
+            quality: QualityMetrics::default(), checksum: "c".to_string(),
+            definition_type: DefinitionType::default(),
+            commit_count: 0, churn_score: 0.0, clone_count: 0,
+            pattern_diversity: 0.0, fault_annotations: Vec::new(),
+        },
+    ];
+
+    let indices = build_indices(&functions);
+    let (calls, called_by) = build_call_graph(&functions, &indices.name_index);
+
+    // "process" calling "new" should be EXCLUDED (generic callee)
+    let process_calls = calls.get(&1).cloned().unwrap_or_default();
+    assert!(!process_calls.contains(&0), "generic callee 'new' should be excluded from call graph");
+
+    // "dispatch_event" calling "process" should be INCLUDED (domain-specific)
+    let dispatch_calls = calls.get(&2).cloned().unwrap_or_default();
+    assert!(dispatch_calls.contains(&1), "domain-specific callee 'process' should be in call graph");
+
+    // "new" should have no callers (all filtered)
+    assert!(!called_by.contains_key(&0), "'new' should have no callers in call graph");
+}
+
+#[test]
+fn test_name_index_capped_at_100() {
+    // Create 150 functions all named "new"
+    let functions: Vec<FunctionEntry> = (0..150)
+        .map(|i| FunctionEntry {
+            file_path: format!("f{i}.rs"),
+            function_name: "new".to_string(),
+            signature: "fn new()".to_string(),
+            doc_comment: None,
+            source: format!("fn new() {{ /* variant {i} */ }}"),
+            start_line: 1, end_line: 1, language: "Rust".to_string(),
+            quality: QualityMetrics::default(),
+            checksum: format!("{i}"),
+            definition_type: DefinitionType::default(),
+            commit_count: 0, churn_score: 0.0, clone_count: 0,
+            pattern_diversity: 0.0, fault_annotations: Vec::new(),
+        })
+        .collect();
+
+    let indices = build_indices(&functions);
+    // name_index should be capped at 100 entries for "new"
+    assert_eq!(indices.name_index["new"].len(), 100);
+    // file_index should NOT be capped (all 150 files)
+    assert_eq!(indices.file_index.len(), 150);
+}
+
+#[test]
+fn test_build_filters_test_functions() {
+    let temp_dir = tempfile::TempDir::new().unwrap();
+    let project_path = temp_dir.path();
+
+    std::fs::create_dir_all(project_path.join("src")).unwrap();
+    std::fs::write(
+        project_path.join("src/lib.rs"),
+        "fn real_func() { }\nfn test_something() { }\n",
+    )
+    .unwrap();
+
+    let index = AgentContextIndex::build(project_path).unwrap();
+    let names: Vec<&str> = index.functions.iter().map(|f| f.function_name.as_str()).collect();
+    assert!(names.contains(&"real_func"), "non-test function should be indexed");
+    assert!(!names.contains(&"test_something"), "test_ function should be filtered");
+}
+
+#[test]
+fn test_save_load_roundtrip_corpus_lower_lazy() {
+    let temp_dir = tempfile::TempDir::new().unwrap();
+    let project_path = temp_dir.path();
+
+    std::fs::create_dir_all(project_path.join("src")).unwrap();
+    std::fs::write(
+        project_path.join("src/lib.rs"),
+        "fn hello_world() { }\nfn goodbye_world() { }\n",
+    )
+    .unwrap();
+
+    let index = AgentContextIndex::build(project_path).unwrap();
+    let idx_path = project_path.join("idx");
+    index.save(&idx_path).unwrap();
+
+    let loaded = AgentContextIndex::load(&idx_path).unwrap();
+    // corpus_lower should be lazily computed on load
+    assert_eq!(loaded.corpus_lower.len(), loaded.corpus.len());
+    for (orig, lower) in loaded.corpus.iter().zip(loaded.corpus_lower.iter()) {
+        assert_eq!(lower, &orig.to_lowercase());
+    }
 }
