@@ -232,10 +232,11 @@ fn test_load_prefers_sqlite_over_blob() {
     let index_path = project_path.join("idx");
     index.save(&index_path).unwrap();
 
-    // Both context.db and idx/ should exist
+    // Phase 3: only context.db and manifest written (no blob)
     let db_path = index_path.with_extension("db");
     assert!(db_path.exists(), "context.db should exist after save");
-    assert!(index_path.join("functions.lz4").exists(), "blob should exist");
+    assert!(index_path.join("manifest.json").exists(), "manifest should exist");
+    assert!(!index_path.join("functions.lz4").exists(), "blob should NOT be written in Phase 3");
 
     // load() prefers SQLite
     let loaded = AgentContextIndex::load(&index_path).unwrap();
@@ -248,7 +249,7 @@ fn test_load_prefers_sqlite_over_blob() {
 }
 
 #[test]
-fn test_load_falls_back_to_blob_without_sqlite() {
+fn test_load_fails_without_sqlite_or_blob() {
     let temp_dir = tempfile::TempDir::new().unwrap();
     let project_path = temp_dir.path();
 
@@ -263,14 +264,13 @@ fn test_load_falls_back_to_blob_without_sqlite() {
     let index_path = project_path.join("idx");
     index.save(&index_path).unwrap();
 
-    // Remove SQLite DB to force blob fallback
+    // Remove SQLite DB — no blob either (Phase 3 doesn't write blobs)
     let db_path = index_path.with_extension("db");
     std::fs::remove_file(&db_path).unwrap();
 
-    let loaded = AgentContextIndex::load(&index_path).unwrap();
-    assert_eq!(loaded.manifest.version, "1.4.0"); // blob version
-    assert!(loaded.db_path.is_none());
-    assert_eq!(loaded.functions.len(), index.functions.len());
+    // Should fail: no SQLite, no blob
+    let result = AgentContextIndex::load(&index_path);
+    assert!(result.is_err());
 }
 
 #[test]

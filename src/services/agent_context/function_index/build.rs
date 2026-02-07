@@ -311,7 +311,8 @@ impl AgentContextIndex {
     /// ```
     ///
     /// Returns `(index_path, project_name)` pairs for siblings that have
-    /// a `.pmat/context.idx`. Silently skips siblings without an index.
+    /// a `.pmat/context.idx` or `.pmat/context.db`. Silently skips siblings
+    /// without an index.
     pub fn discover_sibling_indexes(project_path: &Path) -> Vec<(PathBuf, String)> {
         let workspace_config = project_path.join(".pmat/workspace.toml");
         let config_str = match fs::read_to_string(&workspace_config) {
@@ -335,8 +336,11 @@ impl AgentContextIndex {
                 .unwrap_or("unknown")
                 .to_string();
 
+            // Check for SQLite index first (v2.0), then blob directory (v1.x)
+            let db_path = resolved.join(".pmat/context.db");
             let idx_path = resolved.join(".pmat/context.idx");
-            if idx_path.exists() {
+            if db_path.exists() || idx_path.exists() {
+                // Pass the blob directory path; load() will detect .db alongside it
                 siblings.push((idx_path, project_name));
             }
         }
@@ -456,41 +460,16 @@ impl AgentContextIndex {
         fs::write(index_path.join("manifest.json"), manifest_json)
             .map_err(|e| format!("Failed to write manifest: {e}"))?;
 
-        // Save payload (functions + corpus + call graph + cached indices) v1.4.0 format
-        let payload = IndexPayload {
-            functions: self.functions.clone(),
-            corpus: self.corpus.clone(),
-            calls: self.calls.clone(),
-            called_by: self.called_by.clone(),
-            // v1.3.0+: Cache computed indices to avoid rebuild on load
-            name_index: self.name_index.clone(),
-            file_index: self.file_index.clone(),
-            graph_metrics: self.graph_metrics.clone(),
-            // v1.4.0: corpus_lower computed lazily on load (saves ~50MB)
-            corpus_lower: Vec::new(),
-            name_frequency: self.name_frequency.clone(),
-        };
-        let payload_bin = bincode::serialize(&payload)
-            .map_err(|e| format!("Failed to serialize payload: {e}"))?;
-
-        // Compress with LZ4
-        let compressed = lz4_flex::compress_prepend_size(&payload_bin);
-        fs::write(index_path.join("functions.lz4"), compressed)
-            .map_err(|e| format!("Failed to write functions: {e}"))?;
-
-        // Dual-write: also save SQLite + FTS5 index (Phase 1, #159)
+        // Phase 3 (#159): Write only SQLite + FTS5 index (no more LZ4 blob)
         // context.db lives alongside context.idx directory
         let db_path = index_path.with_extension("db");
-        if let Err(e) = super::sqlite_backend::save_to_sqlite(
+        super::sqlite_backend::save_to_sqlite(
             &db_path,
             &self.functions,
             &self.calls,
             &self.graph_metrics,
             &self.manifest,
-        ) {
-            eprintln!("  Warning: SQLite index save failed: {e}");
-            // Non-fatal: blob is the primary format in Phase 1
-        }
+        )?;
 
         Ok(())
     }

@@ -194,14 +194,16 @@ LIMIT ?;
 - [x] WAL mode for concurrent read/write (set in `open_db()` pragmas)
 - [x] Prepared statement caching (`prepare_cached()` used throughout)
 - [x] Workspace cache freshness: `newest_index_mtime()` checks both `.db` and `.idx/manifest.json`
+- [x] Stop writing blob format: `save()` writes only SQLite + manifest (no `functions.lz4`)
+- [x] `discover_sibling_indexes()` checks for both `.pmat/context.db` and `.pmat/context.idx`
 - [ ] File-level incremental updates via `checksum` column
 - [ ] Benchmark: <100ms p95 query latency on 230K function index
-- [ ] Stop writing blob format (remove `functions.lz4` from `save()`)
 
 **Observed performance**:
 - Local 18K functions: 0.58s query (SQLite load + FTS5 search)
 - Workspace 90K functions: 1.2s cached, 10.8s uncached (9x improvement)
 - FTS5 search itself: <10ms (dominant cost is load + index rebuild)
+- Disk savings: 18K functions → 52MB SQLite (was 47MB blob + 52MB SQLite dual-write)
 
 ## Peer-Reviewed Citations
 
@@ -255,3 +257,4 @@ LIMIT ?;
 | 1.0.0 | 2026-02-07 | Initial spec: Phase 0 complete, Phase 1-3 defined |
 | 1.1.0 | 2026-02-07 | Phase 1 complete: SQLite backend, FTS5 BM25 search, dual-write, TF fallback |
 | 1.2.0 | 2026-02-07 | Phase 2 complete: SQLite-first load, blob fallback. Phase 3 started: cache freshness |
+| 1.3.0 | 2026-02-07 | Phase 3: Stop writing blob, SQLite-only save, sibling discovery updated |
