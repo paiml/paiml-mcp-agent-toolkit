@@ -269,8 +269,8 @@ pub enum Commands {
         #[arg(short, long, value_enum, default_value = "text")]
         format: QueryOutputFormat,
 
-        /// Include full source code in results
-        #[arg(long)]
+        /// Include full source code in results (source is shown by default; kept for backward compat)
+        #[arg(long, hide = true)]
         include_source: bool,
 
         /// Build/rebuild the index before querying
@@ -333,7 +333,7 @@ pub enum Commands {
         #[arg(long = "type", value_name = "TYPE")]
         definition_type: Option<String>,
 
-        /// Show summary only (no source code) - by default, code is shown
+        /// Show compact results without source code (source is shown by default)
         #[arg(long)]
         summary: bool,
 

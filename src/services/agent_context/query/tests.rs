@@ -914,7 +914,7 @@ fn test_format_text_with_code_shows_metrics() {
     result.commit_count = 30;
     result.churn_score = 0.7;
 
-    let text = format_text_with_code(&[result]);
+    let text = format_text_with_code(&[result], None);
     // Should show complexity (format: "C:15" without space)
     assert!(text.contains("C:15"), "missing complexity");
     // Should show SATD warning as "⚠2" (warning symbol + count)
@@ -930,7 +930,7 @@ fn test_format_text_with_code_minimal_metrics() {
     let entry = create_test_entry("simple_func", 3, 1.0);
     let result = QueryResult::from_entry(&entry, 0.9, true);
 
-    let text = format_text_with_code(&[result]);
+    let text = format_text_with_code(&[result], None);
     // Should still show complexity (format: "C:3" without space)
     assert!(text.contains("C:3"), "missing complexity");
     // Should NOT show SATD (is 0)
@@ -1182,7 +1182,7 @@ fn test_format_text_with_code_clones_and_faults() {
         "BH003: Other pattern at line 20".to_string(),
     ];
 
-    let text = format_text_with_code(&[result]);
+    let text = format_text_with_code(&[result], None);
     assert!(text.contains("📋"), "missing clone indicator");
     assert!(text.contains("🐛"), "missing fault indicator");
 }
@@ -1196,7 +1196,7 @@ fn test_format_text_with_code_call_graph_truncation() {
     // More than 3 called_by -> should truncate
     result.called_by = (0..6).map(|i| format!("caller_{i}")).collect();
 
-    let text = format_text_with_code(&[result]);
+    let text = format_text_with_code(&[result], None);
     assert!(text.contains("(+3 more)"), "calls not truncated at 5");
     assert!(text.contains("(+3 more)"), "called_by not truncated at 3");
 }
@@ -1207,7 +1207,7 @@ fn test_format_text_with_code_doc_truncation() {
     let mut result = QueryResult::from_entry(&entry, 0.9, true);
     result.doc_comment = Some("A".repeat(150)); // >100 chars
 
-    let text = format_text_with_code(&[result]);
+    let text = format_text_with_code(&[result], None);
     assert!(text.contains("..."), "long doc comment not truncated");
 }
 
@@ -1216,8 +1216,8 @@ fn test_format_text_with_code_no_source() {
     let entry = create_test_entry("test_func", 5, 1.5);
     let result = QueryResult::from_entry(&entry, 0.9, false);
 
-    let text = format_text_with_code(&[result]);
-    assert!(text.contains("--include-source"), "missing hint for no source");
+    let text = format_text_with_code(&[result], None);
+    assert!(text.contains("source hidden"), "missing hint for no source");
 }
 
 #[test]
@@ -1226,7 +1226,7 @@ fn test_format_text_with_code_high_pagerank() {
     let mut result = QueryResult::from_entry(&entry, 0.9, true);
     result.pagerank = 0.005; // scaled: 50 -> >= 10 threshold
 
-    let text = format_text_with_code(&[result]);
+    let text = format_text_with_code(&[result], None);
     assert!(text.contains("★"), "missing high pagerank star");
 }
 
@@ -1236,7 +1236,7 @@ fn test_format_text_with_code_medium_pagerank() {
     let mut result = QueryResult::from_entry(&entry, 0.9, true);
     result.pagerank = 0.0005; // scaled: 5 -> >= 1 threshold
 
-    let text = format_text_with_code(&[result]);
+    let text = format_text_with_code(&[result], None);
     assert!(text.contains("★"), "missing medium pagerank star");
 }
 
@@ -1246,7 +1246,7 @@ fn test_format_text_with_code_high_indegree() {
     let mut result = QueryResult::from_entry(&entry, 0.9, true);
     result.in_degree = 10;
 
-    let text = format_text_with_code(&[result]);
+    let text = format_text_with_code(&[result], None);
     assert!(text.contains("↓10"), "missing high in-degree");
 }
 
@@ -1256,7 +1256,7 @@ fn test_format_text_with_code_low_indegree() {
     let mut result = QueryResult::from_entry(&entry, 0.9, true);
     result.in_degree = 2;
 
-    let text = format_text_with_code(&[result]);
+    let text = format_text_with_code(&[result], None);
     assert!(text.contains("↓2"), "missing low in-degree");
 }
 
@@ -1267,7 +1267,7 @@ fn test_format_text_with_code_medium_churn() {
     result.commit_count = 15;
     result.churn_score = 0.4;
 
-    let text = format_text_with_code(&[result]);
+    let text = format_text_with_code(&[result], None);
     assert!(text.contains("15c"), "missing medium churn");
     assert!(text.contains("40%"), "missing churn percentage");
 }
@@ -1279,7 +1279,7 @@ fn test_format_text_with_code_low_churn() {
     result.commit_count = 3;
     result.churn_score = 0.1;
 
-    let text = format_text_with_code(&[result]);
+    let text = format_text_with_code(&[result], None);
     assert!(text.contains("3c"), "missing low churn");
 }
 
@@ -1289,7 +1289,7 @@ fn test_format_text_with_code_high_entropy() {
     let mut result = QueryResult::from_entry(&entry, 0.9, true);
     result.pattern_diversity = 0.9;
 
-    let text = format_text_with_code(&[result]);
+    let text = format_text_with_code(&[result], None);
     assert!(text.contains("H:90%"), "missing high entropy indicator");
 }
 
@@ -1299,7 +1299,7 @@ fn test_format_text_with_code_low_entropy() {
     let mut result = QueryResult::from_entry(&entry, 0.9, true);
     result.pattern_diversity = 0.2;
 
-    let text = format_text_with_code(&[result]);
+    let text = format_text_with_code(&[result], None);
     assert!(text.contains("🔄"), "missing low entropy indicator");
 }
 
@@ -1323,7 +1323,7 @@ fn test_format_text_empty() {
 
 #[test]
 fn test_format_text_with_code_empty() {
-    let text = format_text_with_code(&[]);
+    let text = format_text_with_code(&[], None);
     assert!(text.is_empty());
 }
 

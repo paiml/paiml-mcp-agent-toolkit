@@ -253,32 +253,87 @@ fn format_fault_lines(faults: &[String], output: &mut String) {
     }
 }
 
-fn highlight_source(source: &str, file_path: &str, output: &mut String) {
-    use syntect::easy::HighlightLines;
-    use syntect::highlighting::ThemeSet;
-    use syntect::parsing::SyntaxSet;
-    use syntect::util::{as_24_bit_terminal_escaped, LinesWithEndings};
+/// Highlight matching text in a single line for grep-like output.
+/// For literal mode (`is_regex=false`), does case-insensitive substring matching.
+/// For regex mode (`is_regex=true`), uses regex pattern matching.
+fn highlight_matches_in_line(line: &str, pattern: &str, is_regex: bool) -> String {
+    const HL_START: &str = "\x1b[1;43m"; // Bold + yellow background
+    const HL_END: &str = "\x1b[0m";
 
-    let ps = SyntaxSet::load_defaults_newlines();
-    let ts = ThemeSet::load_defaults();
-    let theme = &ts.themes["base16-ocean.dark"];
-
-    let ext = file_path.rsplit('.').next().unwrap_or("rs");
-    let syntax = ps
-        .find_syntax_by_extension(ext)
-        .unwrap_or_else(|| ps.find_syntax_plain_text());
-    let mut h = HighlightLines::new(syntax, theme);
-
-    for line in LinesWithEndings::from(source) {
-        match h.highlight_line(line, &ps) {
-            Ok(ranges) => output.push_str(&as_24_bit_terminal_escaped(&ranges[..], false)),
-            Err(_) => output.push_str(line),
+    if is_regex {
+        if let Ok(re) = regex::Regex::new(pattern) {
+            let mut result = String::new();
+            let mut last = 0;
+            for m in re.find_iter(line) {
+                result.push_str(&line[last..m.start()]);
+                result.push_str(HL_START);
+                result.push_str(m.as_str());
+                result.push_str(HL_END);
+                last = m.end();
+            }
+            result.push_str(&line[last..]);
+            result
+        } else {
+            line.to_string()
         }
+    } else {
+        // Case-insensitive literal replacement preserving original case
+        let lower_line = line.to_lowercase();
+        let lower_pattern = pattern.to_lowercase();
+        if lower_pattern.is_empty() {
+            return line.to_string();
+        }
+        let mut result = String::new();
+        let mut pos = 0;
+        while let Some(idx) = lower_line[pos..].find(&lower_pattern) {
+            let abs_idx = pos + idx;
+            result.push_str(&line[pos..abs_idx]);
+            result.push_str(HL_START);
+            result.push_str(&line[abs_idx..abs_idx + pattern.len()]);
+            result.push_str(HL_END);
+            pos = abs_idx + pattern.len();
+        }
+        result.push_str(&line[pos..]);
+        result
     }
-    if !source.ends_with('\n') {
-        output.push('\n');
+}
+
+fn highlight_source(source: &str, file_path: &str, output: &mut String, start_line: usize, highlight: Option<(&str, bool)>) {
+    if let Some((pattern, is_regex)) = highlight {
+        // Match highlighting mode: line numbers + yellow highlight on matches
+        for (i, line) in source.lines().enumerate() {
+            let line_num = start_line + i;
+            let highlighted = highlight_matches_in_line(line, pattern, is_regex);
+            output.push_str(&format!("\x1b[2m{:>4}\x1b[0m\u{2502} {}\n", line_num, highlighted));
+        }
+    } else {
+        // Syntect syntax highlighting mode
+        use syntect::easy::HighlightLines;
+        use syntect::highlighting::ThemeSet;
+        use syntect::parsing::SyntaxSet;
+        use syntect::util::{as_24_bit_terminal_escaped, LinesWithEndings};
+
+        let ps = SyntaxSet::load_defaults_newlines();
+        let ts = ThemeSet::load_defaults();
+        let theme = &ts.themes["base16-ocean.dark"];
+
+        let ext = file_path.rsplit('.').next().unwrap_or("rs");
+        let syntax = ps
+            .find_syntax_by_extension(ext)
+            .unwrap_or_else(|| ps.find_syntax_plain_text());
+        let mut h = HighlightLines::new(syntax, theme);
+
+        for line in LinesWithEndings::from(source) {
+            match h.highlight_line(line, &ps) {
+                Ok(ranges) => output.push_str(&as_24_bit_terminal_escaped(&ranges[..], false)),
+                Err(_) => output.push_str(line),
+            }
+        }
+        if !source.ends_with('\n') {
+            output.push('\n');
+        }
+        output.push_str("\x1b[0m");
     }
-    output.push_str("\x1b[0m");
 }
 
 // ─── Public formatters ───
@@ -365,8 +420,9 @@ pub fn format_markdown(results: &[QueryResult]) -> String {
 }
 
 /// Format results as text with inline source code (agent-friendly)
-/// Uses syntect for rich syntax highlighting
-pub fn format_text_with_code(results: &[QueryResult]) -> String {
+/// Uses syntect for rich syntax highlighting, or match highlighting for literal/regex modes.
+/// `highlight`: `Some((pattern, is_regex))` for grep-like match highlighting, `None` for syntect.
+pub fn format_text_with_code(results: &[QueryResult], highlight: Option<(&str, bool)>) -> String {
     let mut output = String::new();
 
     for r in results.iter() {
@@ -395,9 +451,9 @@ pub fn format_text_with_code(results: &[QueryResult]) -> String {
 
         // Source code
         if let Some(source) = &r.source {
-            highlight_source(source, &r.file_path, &mut output);
+            highlight_source(source, &r.file_path, &mut output, r.start_line, highlight);
         } else {
-            output.push_str("\x1b[2m// (use --include-source to see code)\x1b[0m\n");
+            output.push_str("\x1b[2m// (source hidden; omit --summary to show)\x1b[0m\n");
         }
 
         output.push('\n');
@@ -548,7 +604,7 @@ mod tests {
             "verify_output",
             Some("Verify output is correct: not empty, no garbage, contains expected answer (PMAT-QA-PROTOCOL-001 §7.5)  Order of checks is CRITICAL for safety"),
         );
-        let output = format_text_with_code(&[result]);
+        let output = format_text_with_code(&[result], None);
         assert!(output.contains("verify_output"));
         assert!(output.contains("..."));
     }
@@ -556,7 +612,57 @@ mod tests {
     #[test]
     fn test_format_text_short_doc_no_truncation() {
         let result = make_result("foo", Some("Short doc"));
-        let output = format_text_with_code(&[result]);
+        let output = format_text_with_code(&[result], None);
         assert!(output.contains("Short doc"));
+    }
+
+    #[test]
+    fn test_highlight_matches_literal() {
+        let line = "let result = unwrap();";
+        let out = highlight_matches_in_line(line, "unwrap()", false);
+        assert!(out.contains("\x1b[1;43m"), "missing highlight start");
+        assert!(out.contains("unwrap()"), "missing matched text");
+        assert!(out.contains("\x1b[0m"), "missing highlight end");
+    }
+
+    #[test]
+    fn test_highlight_matches_literal_case_insensitive() {
+        let line = "fn HandleRequest() {}";
+        let out = highlight_matches_in_line(line, "handlerequest", false);
+        // Should highlight preserving original case
+        assert!(out.contains("HandleRequest"));
+        assert!(out.contains("\x1b[1;43m"));
+    }
+
+    #[test]
+    fn test_highlight_matches_regex() {
+        let line = "fn handle_request(ctx: Context) {}";
+        let out = highlight_matches_in_line(line, r"fn\s+handle_\w+", true);
+        assert!(out.contains("\x1b[1;43m"));
+        assert!(out.contains("fn handle_request"));
+    }
+
+    #[test]
+    fn test_highlight_matches_no_match() {
+        let line = "let x = 42;";
+        let out = highlight_matches_in_line(line, "nonexistent", false);
+        assert_eq!(out, line);
+    }
+
+    #[test]
+    fn test_highlight_matches_invalid_regex() {
+        let line = "some text here";
+        let out = highlight_matches_in_line(line, "[invalid", true);
+        assert_eq!(out, line);
+    }
+
+    #[test]
+    fn test_format_text_with_code_literal_highlight() {
+        let mut result = make_result("test_fn", None);
+        result.source = Some("fn test_fn() {\n    unwrap();\n}".to_string());
+        let output = format_text_with_code(&[result], Some(("unwrap()", false)));
+        assert!(output.contains("\x1b[1;43m"), "missing highlight in output");
+        // Should have line numbers in highlight mode
+        assert!(output.contains("\u{2502}"), "missing line number separator");
     }
 }

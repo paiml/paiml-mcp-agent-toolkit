@@ -248,9 +248,11 @@ pub async fn handle_query(
     }
 
     // ── Execute semantic query ──────
+    // literal/regex modes always show source (grep parity)
+    let effective_include_source = include_source || code || literal || regex;
     let options = build_query_options(
         limit, min_grade, max_complexity, language, path_pattern,
-        include_source || code, &rank_by, min_pagerank,
+        effective_include_source, &rank_by, min_pagerank,
         regex, literal, case_sensitive, ignore_case, exclude, exclude_file,
     );
     let mut results = index
@@ -291,7 +293,8 @@ pub async fn handle_query(
     }
 
     // ── Standard output ──────
-    print_query_output(&results, &format, code, coverage, &git_data, &project_path, &index);
+    let highlight = if literal || regex { Some((query.as_str(), regex)) } else { None };
+    print_query_output(&results, &format, effective_include_source, coverage, &git_data, &project_path, &index, highlight);
 
     Ok(())
 }
@@ -675,10 +678,11 @@ fn print_query_output(
     results: &[QueryResult], format: &QueryOutputFormat, code: bool, coverage: bool,
     git_data: &Option<(Vec<GitSearchResult>, Vec<CommitInfo>)>,
     project_path: &std::path::Path, index: &AgentContextIndex,
+    highlight: Option<(&str, bool)>,
 ) {
     let output = match format {
         QueryOutputFormat::Text => {
-            if code { format_text_with_code(results) } else { format_text(results) }
+            if code { format_text_with_code(results, highlight) } else { format_text(results) }
         }
         QueryOutputFormat::Json => format_json(results).unwrap_or_else(|e| format!("Error: {}", e)),
         QueryOutputFormat::Markdown => format_markdown(results),
