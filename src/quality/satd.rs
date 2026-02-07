@@ -346,4 +346,73 @@ mod tests {
         assert!(result.patterns.contains(&"FIXME".to_string()));
         assert!(result.patterns.contains(&"HACK".to_string()));
     }
+
+    #[test]
+    fn test_extract_comments_line_comments() {
+        let detector = SatdDetector::new();
+        let source = "fn foo() {\n    let x = 1; // inline comment\n    // full line comment\n    bar();\n}";
+        let comments = detector.extract_comments(source);
+        assert!(comments.contains("// inline comment"));
+        assert!(comments.contains("// full line comment"));
+        assert!(!comments.contains("fn foo"));
+        assert!(!comments.contains("bar()"));
+    }
+
+    #[test]
+    fn test_extract_comments_block_comments() {
+        let detector = SatdDetector::new();
+        let source = "/* multi-line\n   block comment */\nfn foo() {}\n/* single line block */";
+        let comments = detector.extract_comments(source);
+        assert!(comments.contains("multi-line"));
+        assert!(comments.contains("block comment"));
+        assert!(comments.contains("single line block"));
+        assert!(!comments.contains("fn foo"));
+    }
+
+    #[test]
+    fn test_extract_comments_mixed() {
+        let detector = SatdDetector::new();
+        let source = "// line comment\n/* block */\ncode();\n// another line\n/* start\nmiddle\nend */";
+        let comments = detector.extract_comments(source);
+        assert!(comments.contains("// line comment"));
+        assert!(comments.contains("/* block */"));
+        assert!(comments.contains("// another line"));
+        assert!(comments.contains("middle"));
+        assert!(!comments.contains("code()"));
+    }
+
+    #[test]
+    fn test_extract_comments_no_comments() {
+        let detector = SatdDetector::new();
+        let source = "fn main() {\n    println!(\"hello\");\n}";
+        let comments = detector.extract_comments(source);
+        assert!(comments.is_empty());
+    }
+
+    #[test]
+    fn test_detect_in_comments_only() {
+        let detector = SatdDetector::new();
+        let source = "let msg = \"TODO: not a comment\";\n// FIXME: real comment";
+        let result = detector.detect_in_comments(source);
+        assert_eq!(result.count, 1);
+        assert!(result.patterns.contains(&"FIXME".to_string()));
+    }
+
+    #[test]
+    fn test_detect_in_comments_block_with_satd() {
+        let detector = SatdDetector::new();
+        let source = "fn foo() {}\n/* HACK: temporary workaround\n   TODO: fix later */\nfn bar() {}";
+        let result = detector.detect_in_comments(source);
+        assert_eq!(result.count, 2);
+        assert!(result.patterns.contains(&"HACK".to_string()));
+        assert!(result.patterns.contains(&"TODO".to_string()));
+    }
+
+    #[test]
+    fn test_extract_comments_block_single_line_with_close() {
+        let detector = SatdDetector::new();
+        let source = "/* closed on same line */ code();";
+        let comments = detector.extract_comments(source);
+        assert!(comments.contains("closed on same line"));
+    }
 }
