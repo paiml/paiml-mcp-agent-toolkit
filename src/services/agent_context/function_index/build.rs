@@ -477,6 +477,20 @@ impl AgentContextIndex {
         fs::write(index_path.join("functions.lz4"), compressed)
             .map_err(|e| format!("Failed to write functions: {e}"))?;
 
+        // Dual-write: also save SQLite + FTS5 index (Phase 1, #159)
+        // context.db lives alongside context.idx directory
+        let db_path = index_path.with_extension("db");
+        if let Err(e) = super::sqlite_backend::save_to_sqlite(
+            &db_path,
+            &self.functions,
+            &self.calls,
+            &self.graph_metrics,
+            &self.manifest,
+        ) {
+            eprintln!("  Warning: SQLite index save failed: {e}");
+            // Non-fatal: blob is the primary format in Phase 1
+        }
+
         Ok(())
     }
 

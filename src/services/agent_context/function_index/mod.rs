@@ -5,6 +5,7 @@
 
 mod build;
 pub(crate) mod helpers;
+pub(crate) mod sqlite_backend;
 mod types;
 
 pub use types::{
