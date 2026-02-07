@@ -462,7 +462,11 @@ pub(crate) fn load_functions(conn: &Connection) -> Result<Vec<FunctionEntry>, St
         .map_err(|e| format!("Failed to collect functions: {e}"))
 }
 
-/// Load call graph edges from the SQLite database.
+/// Load all call graph edges from the SQLite database.
+///
+/// Kept for backward compat and tests. Normal load path uses on-demand
+/// `query_callees()`/`query_callers()` instead.
+#[allow(dead_code)]
 pub(crate) fn load_call_graph(
     conn: &Connection,
 ) -> Result<(HashMap<usize, Vec<usize>>, HashMap<usize, Vec<usize>>), String> {
@@ -564,6 +568,42 @@ pub(crate) fn load_metadata(conn: &Connection) -> Result<IndexManifest, String> 
         file_checksums,
         last_incremental_changes: 0,
     })
+}
+
+/// Query call graph for a single function from SQLite (on-demand).
+///
+/// Returns 0-based callee indices for `get_calls()`.
+pub(crate) fn query_callees(conn: &Connection, func_idx: usize) -> Result<Vec<usize>, String> {
+    let caller_id = (func_idx + 1) as i64;
+    let mut stmt = conn
+        .prepare_cached("SELECT callee_id FROM call_graph WHERE caller_id = ?1")
+        .map_err(|e| format!("Failed to prepare callees query: {e}"))?;
+    let rows = stmt
+        .query_map(params![caller_id], |row| {
+            let id: i64 = row.get(0)?;
+            Ok((id - 1) as usize)
+        })
+        .map_err(|e| format!("Failed to query callees: {e}"))?;
+    rows.collect::<Result<Vec<_>, _>>()
+        .map_err(|e| format!("Bad callee row: {e}"))
+}
+
+/// Query call graph for a single function from SQLite (on-demand).
+///
+/// Returns 0-based caller indices for `get_called_by()`.
+pub(crate) fn query_callers(conn: &Connection, func_idx: usize) -> Result<Vec<usize>, String> {
+    let callee_id = (func_idx + 1) as i64;
+    let mut stmt = conn
+        .prepare_cached("SELECT caller_id FROM call_graph WHERE callee_id = ?1")
+        .map_err(|e| format!("Failed to prepare callers query: {e}"))?;
+    let rows = stmt
+        .query_map(params![callee_id], |row| {
+            let id: i64 = row.get(0)?;
+            Ok((id - 1) as usize)
+        })
+        .map_err(|e| format!("Failed to query callers: {e}"))?;
+    rows.collect::<Result<Vec<_>, _>>()
+        .map_err(|e| format!("Bad caller row: {e}"))
 }
 
 fn humanize_bytes(bytes: u64) -> String {

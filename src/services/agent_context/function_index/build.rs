@@ -495,19 +495,17 @@ impl AgentContextIndex {
 
     /// Load index from SQLite database (v2.0 fast path).
     ///
-    /// Reads functions, call graph, metrics from `context.db`.
-    /// Builds name_index + file_index in memory. Skips corpus construction
-    /// since FTS5 handles search (saves ~36MB for 90K functions).
+    /// Reads functions and graph metrics from `context.db`.
+    /// Skips corpus (FTS5 handles search) and call graph (queried on-demand).
+    /// Saves ~86MB of memory and ~600ms of load time for 90K functions.
     fn load_from_sqlite(db_path: &Path) -> Result<Self, String> {
-        use super::sqlite_backend::{
-            load_call_graph, load_functions, load_graph_metrics, load_metadata, open_db,
-        };
+        use super::sqlite_backend::{load_functions, load_graph_metrics, load_metadata, open_db};
 
         let conn = open_db(db_path)?;
         let manifest = load_metadata(&conn)?;
         let functions = load_functions(&conn)?;
-        let (calls, called_by) = load_call_graph(&conn)?;
         let graph_metrics = load_graph_metrics(&conn)?;
+        // Call graph loaded on-demand via get_calls()/get_called_by() → SQLite query
 
         // Build name_index + file_index only (no corpus — FTS5 handles search)
         let indices = build_indices_without_corpus(&functions);
@@ -522,8 +520,8 @@ impl AgentContextIndex {
             corpus: Vec::new(),
             corpus_lower: Vec::new(),
             name_frequency,
-            calls,
-            called_by,
+            calls: HashMap::new(),
+            called_by: HashMap::new(),
             graph_metrics,
             project_root,
             manifest,
@@ -791,30 +789,56 @@ impl AgentContextIndex {
         })
     }
 
-    /// Get caller functions for a given function index
+    /// Get callees for a given function index.
+    ///
+    /// Uses in-memory HashMap when available (blob load), falls back to
+    /// on-demand SQLite query (SQLite load — avoids loading 3.8M edges upfront).
     pub fn get_calls(&self, func_idx: usize) -> Vec<&str> {
-        self.calls
-            .get(&func_idx)
-            .map(|indices| {
-                indices
-                    .iter()
-                    .map(|&i| self.functions[i].function_name.as_str())
-                    .collect()
-            })
-            .unwrap_or_default()
+        if let Some(indices) = self.calls.get(&func_idx) {
+            return indices
+                .iter()
+                .map(|&i| self.functions[i].function_name.as_str())
+                .collect();
+        }
+        // On-demand SQLite query when call graph not loaded in memory
+        if let Some(ref db_path) = self.db_path {
+            if let Ok(conn) = super::sqlite_backend::open_db(db_path) {
+                if let Ok(indices) = super::sqlite_backend::query_callees(&conn, func_idx) {
+                    return indices
+                        .iter()
+                        .filter(|&&i| i < self.functions.len())
+                        .map(|&i| self.functions[i].function_name.as_str())
+                        .collect();
+                }
+            }
+        }
+        Vec::new()
     }
 
-    /// Get functions that call a given function
+    /// Get callers for a given function index.
+    ///
+    /// Uses in-memory HashMap when available (blob load), falls back to
+    /// on-demand SQLite query (SQLite load — avoids loading 3.8M edges upfront).
     pub fn get_called_by(&self, func_idx: usize) -> Vec<&str> {
-        self.called_by
-            .get(&func_idx)
-            .map(|indices| {
-                indices
-                    .iter()
-                    .map(|&i| self.functions[i].function_name.as_str())
-                    .collect()
-            })
-            .unwrap_or_default()
+        if let Some(indices) = self.called_by.get(&func_idx) {
+            return indices
+                .iter()
+                .map(|&i| self.functions[i].function_name.as_str())
+                .collect();
+        }
+        // On-demand SQLite query when call graph not loaded in memory
+        if let Some(ref db_path) = self.db_path {
+            if let Ok(conn) = super::sqlite_backend::open_db(db_path) {
+                if let Ok(indices) = super::sqlite_backend::query_callers(&conn, func_idx) {
+                    return indices
+                        .iter()
+                        .filter(|&&i| i < self.functions.len())
+                        .map(|&i| self.functions[i].function_name.as_str())
+                        .collect();
+                }
+            }
+        }
+        Vec::new()
     }
 
     /// Find function index by file path and name

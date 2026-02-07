@@ -206,6 +206,9 @@ LIMIT ?;
 - [x] `find_similar()` builds corpus entry on-the-fly via `build_corpus_entry()`
 - [x] `load_or_build_index()` accepts either `.db` or `.idx` paths
 - [x] CB-130 compliance checks accept `.pmat/context.db` as valid index
+- [x] Lazy call graph: skip loading 3.8M edges into memory on SQLite load. `get_calls()`
+  and `get_called_by()` query SQLite on-demand per function via `query_callees()`/`query_callers()`.
+  Saves ~50MB memory + ~300ms load time for 90K functions.
 - [~] File-level incremental SQLite updates: **deferred** — `build_incremental()` already
   handles file-level diffing via SHA256 checksums at the application layer. `try_incremental_update()`
   skips `save()` when no changes detected. True SQLite-level row upserts would require
@@ -214,11 +217,13 @@ LIMIT ?;
 - [ ] Benchmark: <100ms p95 query latency on depyler 230K function index (requires Mac SSH)
 
 **Observed performance**:
-- Local 18K functions: 0.58s query (SQLite load + FTS5 search)
-- Workspace 90K functions: 0.9s cached (was 1.2s before corpus skip), 10.8s uncached
-- FTS5 search itself: <10ms (dominant cost is SQLite I/O for 90K functions)
+- Local 18K functions: 0.4s cached query (was 0.58s before lazy call graph)
+- Workspace 90K functions: 0.37s cached (was 0.9s → 1.2s earlier), 7.8s uncached
+- FTS5 search itself: <10ms
+- Lazy call graph: saves ~50MB memory + ~300ms for 90K functions
 - Corpus skip: saves ~36MB allocation + ~300ms for 90K functions
-- Disk: 18K → 52MB SQLite, 90K → 252MB SQLite (was 47MB blob + 52MB dual-write)
+- Combined memory savings: ~86MB less for 90K function index
+- Disk: 18K → 52MB SQLite, 90K → 252MB SQLite
 
 ## Peer-Reviewed Citations
 
@@ -275,9 +280,10 @@ LIMIT ?;
 |--------|-------------|---------------|--------|--------|
 | Index size (18K) | 47MB blob | <100MB | 52MB | SQLite |
 | Index size (90K) | OOM/58GB | <300MB | 252MB | Call graph fix + SQLite |
-| Query latency (cached) | 60s+ | <1s | 0.9s | FTS5 + corpus skip |
-| FTS5 search | N/A | <10ms | <10ms | Inverted index |
-| Memory (load) | OOM | <50MB | ~50MB | No corpus on SQLite path |
+| Query latency (18K) | 60s+ | <1s | 0.4s | FTS5 + lazy call graph |
+| Query latency (90K) | OOM | <1s | 0.37s | Corpus skip + lazy call graph |
+| FTS5 search | N/A | <10ms | <10ms | Inverted index [5] |
+| Memory savings | OOM | — | ~86MB less | No corpus + no call graph HashMap |
 | Build time (18K) | N/A | <30s | ~15s | SQLite batch insert |
 
 ## Backward Compatibility
@@ -297,3 +303,4 @@ LIMIT ?;
 | 1.2.0 | 2026-02-07 | Phase 2 complete: SQLite-first load, blob fallback. Phase 3 started |
 | 1.3.0 | 2026-02-07 | Phase 3: Stop writing blob, SQLite-only save, sibling discovery updated |
 | 2.0.0 | 2026-02-07 | Major update: corpus skip, CB-130 acceptance, .db path discovery, perf numbers, citations [8-10] |
+| 2.1.0 | 2026-02-07 | Lazy call graph: on-demand SQLite query, 0.37s cached query for 90K functions |

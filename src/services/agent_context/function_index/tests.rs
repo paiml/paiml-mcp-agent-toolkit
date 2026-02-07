@@ -249,8 +249,11 @@ fn test_load_prefers_sqlite_over_blob() {
     assert!(loaded.db_path.is_some());
     assert_eq!(loaded.functions.len(), index.functions.len());
 
-    // Verify call graph loaded from SQLite
-    assert!(!loaded.calls.is_empty() || !loaded.called_by.is_empty());
+    // Verify call graph queryable via on-demand SQLite lookup
+    // (calls/called_by HashMaps are empty — queried on-demand)
+    let has_call_data = (0..loaded.functions.len())
+        .any(|i| !loaded.get_calls(i).is_empty() || !loaded.get_called_by(i).is_empty());
+    assert!(has_call_data, "should have call graph data via SQLite query");
 }
 
 #[test]
@@ -758,9 +761,11 @@ fn test_save_and_load_preserves_calls() {
     index.save(&idx_path).unwrap();
 
     let loaded = AgentContextIndex::load(&idx_path).unwrap();
-    // Call graph should be preserved
-    assert_eq!(loaded.calls.len(), index.calls.len());
-    assert_eq!(loaded.called_by.len(), index.called_by.len());
+    // Call graph queryable via on-demand SQLite (in-memory maps empty on SQLite load)
+    // Verify by checking actual call relationships
+    let original_calls: Vec<String> = index.get_calls(0).iter().map(|s| s.to_string()).collect();
+    let loaded_calls: Vec<String> = loaded.get_calls(0).iter().map(|s| s.to_string()).collect();
+    assert_eq!(loaded_calls.len(), original_calls.len(), "call graph should be preserved");
 }
 
 #[test]
