@@ -445,3 +445,444 @@ name = "test_library"
         total_dead_items: usize,
     }
 }
+
+/// Unit tests for `analyze_project_context` (public method on DeadCodeAnalyzer)
+#[cfg(test)]
+mod analyze_project_context_tests {
+    use crate::services::context::{AstItem, FileContext, ProjectContext, ProjectSummary};
+    use crate::services::dead_code_analyzer::DeadCodeAnalyzer;
+    use std::fs;
+    use tempfile::TempDir;
+
+    fn make_project_context(files: Vec<FileContext>) -> ProjectContext {
+        let total_functions = files
+            .iter()
+            .flat_map(|f| &f.items)
+            .filter(|i| matches!(i, AstItem::Function { .. }))
+            .count();
+        ProjectContext {
+            project_type: "rust".to_string(),
+            files,
+            summary: ProjectSummary {
+                total_files: 0,
+                total_functions,
+                total_structs: 0,
+                total_enums: 0,
+                total_traits: 0,
+                total_impls: 0,
+                dependencies: vec![],
+            },
+            graph: None,
+        }
+    }
+
+    #[test]
+    fn test_analyze_project_context_single_unused_function() {
+        let temp_dir = TempDir::new().unwrap();
+        let file_path = temp_dir.path().join("lib.rs");
+        fs::write(
+            &file_path,
+            "fn main() {\n    println!(\"hello\");\n}\n\nfn unused_helper() -> i32 {\n    42\n}\n",
+        )
+        .unwrap();
+
+        let ctx = make_project_context(vec![FileContext {
+            path: file_path.to_string_lossy().to_string(),
+            language: "rust".to_string(),
+            items: vec![
+                AstItem::Function {
+                    name: "main".to_string(),
+                    visibility: "pub".to_string(),
+                    is_async: false,
+                    line: 1,
+                },
+                AstItem::Function {
+                    name: "unused_helper".to_string(),
+                    visibility: "".to_string(),
+                    is_async: false,
+                    line: 5,
+                },
+            ],
+            complexity_metrics: None,
+        }]);
+
+        let mut analyzer = DeadCodeAnalyzer::new(100);
+        let report = analyzer.analyze_project_context(&ctx).unwrap();
+
+        let dead_names: Vec<&str> = report
+            .dead_functions
+            .iter()
+            .map(|d| d.name.as_str())
+            .collect();
+        assert!(
+            dead_names.contains(&"unused_helper"),
+            "unused_helper should be dead, got: {:?}",
+            dead_names
+        );
+        assert!(
+            !dead_names.contains(&"main"),
+            "main should not be marked dead"
+        );
+    }
+
+    #[test]
+    fn test_analyze_project_context_all_reachable() {
+        let temp_dir = TempDir::new().unwrap();
+        let file_path = temp_dir.path().join("lib.rs");
+        fs::write(
+            &file_path,
+            "fn main() {\n    let x = helper();\n    println!(\"{}\", x);\n}\n\nfn helper() -> i32 {\n    42\n}\n",
+        )
+        .unwrap();
+
+        let ctx = make_project_context(vec![FileContext {
+            path: file_path.to_string_lossy().to_string(),
+            language: "rust".to_string(),
+            items: vec![
+                AstItem::Function {
+                    name: "main".to_string(),
+                    visibility: "pub".to_string(),
+                    is_async: false,
+                    line: 1,
+                },
+                AstItem::Function {
+                    name: "helper".to_string(),
+                    visibility: "".to_string(),
+                    is_async: false,
+                    line: 6,
+                },
+            ],
+            complexity_metrics: None,
+        }]);
+
+        let mut analyzer = DeadCodeAnalyzer::new(100);
+        let report = analyzer.analyze_project_context(&ctx).unwrap();
+
+        assert!(
+            report.dead_functions.is_empty(),
+            "All functions should be reachable, but got dead: {:?}",
+            report
+                .dead_functions
+                .iter()
+                .map(|d| &d.name)
+                .collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn test_analyze_project_context_no_functions() {
+        let ctx = make_project_context(vec![FileContext {
+            path: "/nonexistent/empty.rs".to_string(),
+            language: "rust".to_string(),
+            items: vec![],
+            complexity_metrics: None,
+        }]);
+
+        let mut analyzer = DeadCodeAnalyzer::new(100);
+        let report = analyzer.analyze_project_context(&ctx).unwrap();
+
+        assert!(report.dead_functions.is_empty());
+        assert_eq!(report.summary.percentage_dead, 0.0);
+    }
+
+    #[test]
+    fn test_analyze_project_context_pub_entry_point() {
+        let temp_dir = TempDir::new().unwrap();
+        let file_path = temp_dir.path().join("lib.rs");
+        fs::write(
+            &file_path,
+            "pub fn public_api() -> i32 {\n    internal_helper()\n}\n\nfn internal_helper() -> i32 {\n    42\n}\n\nfn orphan_func() -> bool {\n    true\n}\n",
+        )
+        .unwrap();
+
+        let ctx = make_project_context(vec![FileContext {
+            path: file_path.to_string_lossy().to_string(),
+            language: "rust".to_string(),
+            items: vec![
+                AstItem::Function {
+                    name: "pub public_api".to_string(),
+                    visibility: "pub".to_string(),
+                    is_async: false,
+                    line: 1,
+                },
+                AstItem::Function {
+                    name: "internal_helper".to_string(),
+                    visibility: "".to_string(),
+                    is_async: false,
+                    line: 5,
+                },
+                AstItem::Function {
+                    name: "orphan_func".to_string(),
+                    visibility: "".to_string(),
+                    is_async: false,
+                    line: 9,
+                },
+            ],
+            complexity_metrics: None,
+        }]);
+
+        let mut analyzer = DeadCodeAnalyzer::new(100);
+        let report = analyzer.analyze_project_context(&ctx).unwrap();
+
+        let dead_names: Vec<&str> = report
+            .dead_functions
+            .iter()
+            .map(|d| d.name.as_str())
+            .collect();
+        assert!(
+            dead_names.contains(&"orphan_func"),
+            "orphan_func should be dead, got: {:?}",
+            dead_names
+        );
+    }
+
+    #[test]
+    fn test_analyze_project_context_multiple_files() {
+        let temp_dir = TempDir::new().unwrap();
+        let file_a = temp_dir.path().join("a.rs");
+        let file_b = temp_dir.path().join("b.rs");
+
+        fs::write(
+            &file_a,
+            "fn main() {\n    let x = compute();\n    println!(\"{}\", x);\n}\n",
+        )
+        .unwrap();
+        fs::write(
+            &file_b,
+            "fn compute() -> i32 {\n    42\n}\n\nfn dead_in_b() -> bool {\n    false\n}\n",
+        )
+        .unwrap();
+
+        let ctx = make_project_context(vec![
+            FileContext {
+                path: file_a.to_string_lossy().to_string(),
+                language: "rust".to_string(),
+                items: vec![AstItem::Function {
+                    name: "main".to_string(),
+                    visibility: "pub".to_string(),
+                    is_async: false,
+                    line: 1,
+                }],
+                complexity_metrics: None,
+            },
+            FileContext {
+                path: file_b.to_string_lossy().to_string(),
+                language: "rust".to_string(),
+                items: vec![
+                    AstItem::Function {
+                        name: "compute".to_string(),
+                        visibility: "".to_string(),
+                        is_async: false,
+                        line: 1,
+                    },
+                    AstItem::Function {
+                        name: "dead_in_b".to_string(),
+                        visibility: "".to_string(),
+                        is_async: false,
+                        line: 5,
+                    },
+                ],
+                complexity_metrics: None,
+            },
+        ]);
+
+        let mut analyzer = DeadCodeAnalyzer::new(100);
+        let report = analyzer.analyze_project_context(&ctx).unwrap();
+
+        let dead_names: Vec<&str> = report
+            .dead_functions
+            .iter()
+            .map(|d| d.name.as_str())
+            .collect();
+        assert!(
+            dead_names.contains(&"dead_in_b"),
+            "dead_in_b should be detected as dead, got: {:?}",
+            dead_names
+        );
+    }
+
+    #[test]
+    fn test_analyze_project_context_transitive_reachability() {
+        let temp_dir = TempDir::new().unwrap();
+        let file_path = temp_dir.path().join("chain.rs");
+        fs::write(
+            &file_path,
+            "fn main() {\n    step_one();\n}\n\nfn step_one() {\n    step_two();\n}\n\nfn step_two() {\n    step_three();\n}\n\nfn step_three() -> i32 {\n    42\n}\n",
+        )
+        .unwrap();
+
+        let ctx = make_project_context(vec![FileContext {
+            path: file_path.to_string_lossy().to_string(),
+            language: "rust".to_string(),
+            items: vec![
+                AstItem::Function {
+                    name: "main".to_string(),
+                    visibility: "pub".to_string(),
+                    is_async: false,
+                    line: 1,
+                },
+                AstItem::Function {
+                    name: "step_one".to_string(),
+                    visibility: "".to_string(),
+                    is_async: false,
+                    line: 5,
+                },
+                AstItem::Function {
+                    name: "step_two".to_string(),
+                    visibility: "".to_string(),
+                    is_async: false,
+                    line: 9,
+                },
+                AstItem::Function {
+                    name: "step_three".to_string(),
+                    visibility: "".to_string(),
+                    is_async: false,
+                    line: 13,
+                },
+            ],
+            complexity_metrics: None,
+        }]);
+
+        let mut analyzer = DeadCodeAnalyzer::new(100);
+        let report = analyzer.analyze_project_context(&ctx).unwrap();
+
+        assert!(
+            report.dead_functions.is_empty(),
+            "All functions transitively reachable from main, got dead: {:?}",
+            report
+                .dead_functions
+                .iter()
+                .map(|d| &d.name)
+                .collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn test_analyze_project_context_file_not_readable() {
+        let ctx = make_project_context(vec![FileContext {
+            path: "/nonexistent/path/missing.rs".to_string(),
+            language: "rust".to_string(),
+            items: vec![
+                AstItem::Function {
+                    name: "main".to_string(),
+                    visibility: "pub".to_string(),
+                    is_async: false,
+                    line: 1,
+                },
+                AstItem::Function {
+                    name: "unreachable_fn".to_string(),
+                    visibility: "".to_string(),
+                    is_async: false,
+                    line: 5,
+                },
+            ],
+            complexity_metrics: None,
+        }]);
+
+        let mut analyzer = DeadCodeAnalyzer::new(100);
+        let report = analyzer.analyze_project_context(&ctx).unwrap();
+
+        let dead_names: Vec<&str> = report
+            .dead_functions
+            .iter()
+            .map(|d| d.name.as_str())
+            .collect();
+        assert!(
+            dead_names.contains(&"unreachable_fn"),
+            "unreachable_fn should be dead when file is not readable"
+        );
+    }
+
+    #[test]
+    fn test_analyze_project_context_percentage_calculation() {
+        let temp_dir = TempDir::new().unwrap();
+        let file_path = temp_dir.path().join("pct.rs");
+        fs::write(&file_path, "fn main() {}\nfn dead_a() {}\nfn dead_b() {}\nfn dead_c() {}\n")
+            .unwrap();
+
+        let ctx = make_project_context(vec![FileContext {
+            path: file_path.to_string_lossy().to_string(),
+            language: "rust".to_string(),
+            items: vec![
+                AstItem::Function {
+                    name: "main".to_string(),
+                    visibility: "pub".to_string(),
+                    is_async: false,
+                    line: 1,
+                },
+                AstItem::Function {
+                    name: "dead_a".to_string(),
+                    visibility: "".to_string(),
+                    is_async: false,
+                    line: 2,
+                },
+                AstItem::Function {
+                    name: "dead_b".to_string(),
+                    visibility: "".to_string(),
+                    is_async: false,
+                    line: 3,
+                },
+                AstItem::Function {
+                    name: "dead_c".to_string(),
+                    visibility: "".to_string(),
+                    is_async: false,
+                    line: 4,
+                },
+            ],
+            complexity_metrics: None,
+        }]);
+
+        let mut analyzer = DeadCodeAnalyzer::new(100);
+        let report = analyzer.analyze_project_context(&ctx).unwrap();
+
+        assert_eq!(report.dead_functions.len(), 3);
+        assert!(report.summary.percentage_dead > 50.0);
+    }
+
+    #[test]
+    fn test_analyze_project_context_empty_files_list() {
+        let ctx = make_project_context(vec![]);
+
+        let mut analyzer = DeadCodeAnalyzer::new(100);
+        let report = analyzer.analyze_project_context(&ctx).unwrap();
+
+        assert!(report.dead_functions.is_empty());
+        assert!(report.dead_classes.is_empty());
+        assert!(report.dead_variables.is_empty());
+        assert_eq!(report.summary.percentage_dead, 0.0);
+    }
+
+    #[test]
+    fn test_analyze_project_context_non_function_items_ignored() {
+        let ctx = make_project_context(vec![FileContext {
+            path: "/nonexistent/structs.rs".to_string(),
+            language: "rust".to_string(),
+            items: vec![
+                AstItem::Struct {
+                    name: "MyStruct".to_string(),
+                    visibility: "pub".to_string(),
+                    fields_count: 3,
+                    derives: vec!["Debug".to_string()],
+                    line: 1,
+                },
+                AstItem::Enum {
+                    name: "MyEnum".to_string(),
+                    visibility: "pub".to_string(),
+                    variants_count: 2,
+                    line: 5,
+                },
+                AstItem::Trait {
+                    name: "MyTrait".to_string(),
+                    visibility: "pub".to_string(),
+                    line: 10,
+                },
+            ],
+            complexity_metrics: None,
+        }]);
+
+        let mut analyzer = DeadCodeAnalyzer::new(100);
+        let report = analyzer.analyze_project_context(&ctx).unwrap();
+
+        assert!(report.dead_functions.is_empty());
+    }
+}
