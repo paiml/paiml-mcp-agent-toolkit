@@ -67,11 +67,19 @@ Current (v1.x):                     Target (v2.0):
 - `name_index` capped at 100 entries per name
 - Index version bumped to 1.4.0
 
-### Phase 1: SQLite Backend + FTS5 Search
+### Phase 1: SQLite Backend + FTS5 Search (DONE)
 
 **Ticket**: PMAT-159-P1
+**Status**: Complete
 
-Replace `functions.lz4` blob with `context.db` SQLite database.
+Dual-write `context.db` alongside `functions.lz4`. Query engine uses FTS5 BM25 when available, falls back to TF scan.
+
+- `sqlite_backend.rs`: schema creation, insert, FTS5 BM25 search (11 tests)
+- `save()` dual-writes blob + SQLite
+- `load()` detects `context.db`, sets `db_path` on index
+- `calculate_relevance_scores()` uses FTS5 when `db_path` available
+- Standalone FTS5 (no content-sync) for simplicity
+- Verified: 18K functions → 52MB, 90K workspace → 275MB
 
 **Schema:**
 ```sql
@@ -104,15 +112,13 @@ CREATE TABLE functions (
     fault_annotations TEXT NOT NULL DEFAULT '[]'
 );
 
--- FTS5 virtual table for BM25 search [1][2]
+-- FTS5 virtual table for BM25 search [1][2] (standalone, not content-synced)
 CREATE VIRTUAL TABLE functions_fts USING fts5(
     function_name,
     signature,
     doc_comment,
     file_path,
-    identifiers,          -- extracted identifiers from source
-    content=functions,
-    content_rowid=id,
+    identifiers,          -- extracted identifiers from source (not in functions table)
     tokenize='porter unicode61 remove_diacritics 2'  -- [3] stemming + unicode
 );
 
@@ -240,3 +246,4 @@ LIMIT ?;
 | Version | Date | Changes |
 |---------|------|---------|
 | 1.0.0 | 2026-02-07 | Initial spec: Phase 0 complete, Phase 1-3 defined |
+| 1.1.0 | 2026-02-07 | Phase 1 complete: SQLite backend, FTS5 BM25 search, dual-write, TF fallback |
