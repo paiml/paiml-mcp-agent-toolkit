@@ -68,6 +68,9 @@ pub use query::{
     enrich_with_coverage_diff, format_coverage_summary, format_json, format_markdown, format_text,
     format_text_with_code, CaseSensitivity, QueryOptions, QueryResult, RankBy, SearchMode,
 };
+pub use query::coverage_exclusion::{
+    classify_exclusions, CoverageExclusion, ExclusionSummary,
+};
 pub use query::raw_search::{
     raw_search, is_within_indexed_function, FileMatchCount, RawSearchOptions, RawSearchOutput,
     RawSearchResult,

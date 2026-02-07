@@ -329,6 +329,10 @@ pub enum Commands {
         #[arg(long)]
         coverage_gaps: bool,
 
+        /// Include coverage(off) / dead-code / excluded functions in --coverage-gaps results
+        #[arg(long)]
+        include_excluded: bool,
+
         /// Filter by definition type (fn, struct, enum, trait, type)
         #[arg(long = "type", value_name = "TYPE")]
         definition_type: Option<String>,

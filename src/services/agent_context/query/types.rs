@@ -1,5 +1,6 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
 
+use super::coverage_exclusion::CoverageExclusion;
 use crate::services::agent_context::{AgentContextIndex, FunctionEntry};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
@@ -193,6 +194,12 @@ pub struct QueryResult {
     /// Coverage change vs baseline (positive = improved, negative = regressed)
     #[serde(default, skip_serializing_if = "is_zero_f32")]
     pub coverage_diff: f32,
+    /// Why this function is excluded from coverage tracking (if any)
+    #[serde(default, skip_serializing_if = "CoverageExclusion::is_none")]
+    pub coverage_exclusion: CoverageExclusion,
+    /// Whether this result was filtered out by coverage exclusion detection
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub coverage_excluded: bool,
 }
 
 fn is_zero_f32(v: &f32) -> bool {
@@ -241,6 +248,8 @@ impl QueryResult {
             impact_score: 0.0,
             coverage_status: String::new(),
             coverage_diff: 0.0,
+            coverage_exclusion: CoverageExclusion::None,
+            coverage_excluded: false,
         }
     }
 

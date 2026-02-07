@@ -47,6 +47,9 @@ struct LlvmLineSummary {
 #[derive(Debug, Serialize, Deserialize)]
 struct CoverageCache {
     git_hash: String,
+    /// mtime (seconds since epoch) of profdata source when cache was built
+    #[serde(default)]
+    coverage_mtime: Option<u64>,
     files: HashMap<String, HashMap<usize, u64>>,
 }
 
@@ -396,19 +399,61 @@ pub fn compute_impact_score(missed_lines: u32, pagerank: f32, complexity: u32) -
 // ── Async Convenience (follows enrich_results_with_churn pattern) ───────────
 
 /// Try to load coverage from the cache file, returning the file coverage map
-/// if the cache exists and its git hash matches the current HEAD.
+/// if the cache exists, its git hash matches, and profdata hasn't been regenerated.
+///
+/// Fix for #158: also validates that the profdata files haven't been updated
+/// since the cache was built (handles re-runs without new commits).
 #[cfg_attr(coverage_nightly, coverage(off))]
 fn load_coverage_from_cache(
     cache_path: &Path,
     head_hash: &str,
+    project_root: &Path,
 ) -> Option<HashMap<String, HashMap<usize, u64>>> {
     let cache_json = std::fs::read_to_string(cache_path).ok()?;
     let cache: CoverageCache = serde_json::from_str(&cache_json).ok()?;
-    if cache.git_hash == head_hash {
-        Some(cache.files)
-    } else {
-        None
+    if cache.git_hash != head_hash {
+        return None;
     }
+
+    // Fix #158: Check if profdata is newer than cached mtime
+    if let Some(cached_mtime) = cache.coverage_mtime {
+        if let Some(current_mtime) = get_profdata_mtime(project_root) {
+            if current_mtime > cached_mtime {
+                return None; // profdata was regenerated since cache
+            }
+        }
+    }
+
+    Some(cache.files)
+}
+
+/// Get the latest mtime (as seconds since epoch) from the llvm-cov target directory.
+///
+/// Looks for `target/llvm-cov-target/` or `target/llvm-cov/` directories and
+/// returns the most recent modification time of any `.profraw` or `.profdata` file.
+#[cfg_attr(coverage_nightly, coverage(off))]
+fn get_profdata_mtime(project_root: &Path) -> Option<u64> {
+    let candidates = [
+        project_root.join("target/llvm-cov-target"),
+        project_root.join("target/llvm-cov"),
+    ];
+
+    let mut latest: Option<u64> = None;
+
+    for dir in &candidates {
+        if !dir.is_dir() { continue; }
+        // Check directory mtime itself (often updated when profdata written)
+        if let Ok(meta) = std::fs::metadata(dir) {
+            if let Ok(mtime) = meta.modified() {
+                if let Ok(secs) = mtime.duration_since(std::time::UNIX_EPOCH) {
+                    let t = secs.as_secs();
+                    latest = Some(latest.map_or(t, |l: u64| l.max(t)));
+                }
+            }
+        }
+    }
+
+    latest
 }
 
 /// Run `cargo llvm-cov report --json` and parse the output into a coverage map.
@@ -439,9 +484,10 @@ fn run_cargo_llvm_cov_and_cache(
     let json = String::from_utf8_lossy(&output.stdout);
     let file_coverage = build_coverage_map(&json, project_root)?;
 
-    // Cache the result
+    // Cache the result with current profdata mtime
     let cache = CoverageCache {
         git_hash: head_hash.to_string(),
+        coverage_mtime: get_profdata_mtime(project_root),
         files: file_coverage.clone(),
     };
     if let Ok(cache_json) = serde_json::to_string(&cache) {
@@ -507,7 +553,7 @@ pub async fn enrich_results_with_coverage(
         .map_err(|e| format!("git rev-parse failed: {e}"))?;
     let head_hash = String::from_utf8_lossy(&head_hash.stdout).trim().to_string();
 
-    let cov = load_coverage_from_cache(&cache_path, &head_hash)
+    let cov = load_coverage_from_cache(&cache_path, &head_hash, project_root)
         .map(Ok)
         .unwrap_or_else(|| run_cargo_llvm_cov_and_cache(project_root, &cache_path, &head_hash))?;
     enrich_with_coverage(results, &cov);
@@ -747,6 +793,8 @@ mod tests {
             impact_score: 0.0,
             coverage_status: String::new(),
             coverage_diff: 0.0,
+            coverage_exclusion: Default::default(),
+            coverage_excluded: false,
         }
     }
 

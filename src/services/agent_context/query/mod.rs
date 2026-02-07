@@ -4,6 +4,7 @@
 //! Provides semantic search with quality filtering over the function index.
 
 mod coverage;
+pub(crate) mod coverage_exclusion;
 mod engine;
 mod enrichment;
 mod formatters;
@@ -14,6 +15,7 @@ pub use coverage::{
     build_coverage_map, compute_impact_score, enrich_results_with_coverage,
     enrich_with_coverage, enrich_with_coverage_diff, format_coverage_summary,
 };
+// coverage_exclusion types are used via crate::services::agent_context::query::coverage_exclusion
 pub use enrichment::{
     build_churn_map, enrich_results_with_churn, enrich_results_with_duplicates,
     enrich_results_with_entropy, enrich_results_with_faults, enrich_with_churn,

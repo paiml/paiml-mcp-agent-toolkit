@@ -594,6 +594,8 @@ mod tests {
             impact_score: 0.0,
             coverage_status: String::new(),
             coverage_diff: 0.0,
+            coverage_exclusion: Default::default(),
+            coverage_excluded: false,
         }
     }
 
