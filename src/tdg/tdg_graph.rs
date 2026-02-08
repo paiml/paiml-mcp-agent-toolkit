@@ -467,6 +467,23 @@ mod tests {
         }
 
         #[test]
+        fn test_tdg_graph_vis_edge_count() {
+            let mut graph = TdgGraph::new();
+            graph.add_function("a".to_string()).unwrap();
+            graph.add_function("b".to_string()).unwrap();
+            graph.add_function("c".to_string()).unwrap();
+            graph.add_edge("a", "b").unwrap();
+            graph.add_edge("b", "c").unwrap();
+            graph.add_edge("a", "c").unwrap();
+            graph.update_criticality().unwrap();
+
+            let vis = graph.to_vis_graph();
+            assert_eq!(vis.node_count(), 3);
+            // Verify edges were copied from the CSR graph
+            assert_eq!(vis.edges.len(), 3);
+        }
+
+        #[test]
         fn test_tdg_graph_vis_with_criticality() {
             let mut graph = TdgGraph::new();
 

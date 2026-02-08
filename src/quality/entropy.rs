@@ -286,6 +286,14 @@ mod coverage_tests {
 
     // Tokenize tests
     #[test]
+    fn test_calculate_ast_diversity_empty_file() {
+        let calculator = EntropyCalculator::new();
+        let empty_file: syn::File = syn::parse_str("").unwrap();
+        let diversity = calculator.calculate_ast_diversity(&empty_file);
+        assert_eq!(diversity, 0.0);
+    }
+
+    #[test]
     fn test_tokenize_empty() {
         let calculator = EntropyCalculator::new();
         let tokens = calculator.tokenize("");

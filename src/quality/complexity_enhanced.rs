@@ -473,6 +473,13 @@ mod tests {
         assert!((0.0..=100.0).contains(&mi));
     }
 
+    #[test]
+    fn test_kosaraju_scc_empty_graph() {
+        let graph: SimpleDiGraph<&str, &str> = SimpleDiGraph::new();
+        let sccs = graph.kosaraju_scc();
+        assert!(sccs.is_empty());
+    }
+
     // === CfgNode Tests ===
 
     #[test]

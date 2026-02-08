@@ -1263,6 +1263,36 @@ mod extended_coverage_tests {
     }
 
     #[tokio::test]
+    async fn test_no_adjustment_moderate_performance() {
+        // Exercise the Ok(None) return path in calculate_adjustment:
+        // Performance is moderate (not slow enough for ScaleUp, not excellent enough for Maintain),
+        // and resource usage is within limits (no ScaleDown/MoreCompression needed).
+        let config = AdaptiveConfig {
+            target_analysis_time_ms: 100,
+            max_memory_mb: 512.0,
+            max_cpu_utilization: 0.8,
+            sample_window_size: 20,
+            ..Default::default()
+        };
+        let manager = AdaptiveThresholdManager::new(config);
+
+        // duration=80: NOT > 150 (target*1.5), so skip first block
+        // memory=100 <= 512 and cpu=0.3 <= 0.8, so skip resource block
+        // duration=80: NOT < 50 (target*0.5), so skip Maintain block
+        // Result: Ok(None) -- no adjustment
+        for _ in 0..15 {
+            let sample = create_sample_full(80, 0.7, 100.0, 0.3, 2);
+            manager.record_sample(sample).await.unwrap();
+        }
+
+        let thresholds = manager.get_current_thresholds().await;
+        // Should remain at defaults since no adjustment was triggered
+        assert_eq!(thresholds.hot_cache_size, 1000);
+        assert_eq!(thresholds.compression_level, 4);
+        assert_eq!(thresholds.high_priority_permits, 10);
+    }
+
+    #[tokio::test]
     async fn test_compression_level_bounds() {
         let config = AdaptiveConfig {
             target_analysis_time_ms: 10, // Very aggressive
