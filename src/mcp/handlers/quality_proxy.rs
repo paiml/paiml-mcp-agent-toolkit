@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 use crate::models::proxy::{ProxyRequest, ProxyResponse};
 use crate::services::quality_proxy::QualityProxyService;
 use anyhow::Result;

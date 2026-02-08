@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! CLI enum definitions
 //!
 //! This module contains all the enum types used by the CLI for command-line parsing

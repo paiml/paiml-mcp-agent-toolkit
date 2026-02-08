@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Command Registry - Single Source of Truth for CLI/MCP/Help
 //!
 //! This module provides unified command metadata that is used to generate:

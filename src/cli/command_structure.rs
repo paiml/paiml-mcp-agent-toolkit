@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Command Structure - Comprehensive CLI decomposition architecture
 //!
 //! This module provides the complete command structure decomposition to reduce
@@ -8,8 +9,6 @@
 //! - `CommandRegistry`: Registry of all available commands  
 //! - `CommandGroup`: Logical grouping of related commands
 //! - `ModularHandlers`: Individual command implementation modules
-
-#![cfg_attr(coverage_nightly, coverage(off))]
 use crate::cli::commands::ScaffoldCommands;
 use crate::cli::{AnalyzeCommands, Commands};
 use crate::stateless_server::StatelessTemplateServer;

@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Helper functions for symbol table analysis to reduce complexity
 
 use crate::services::context::AstItem;

@@ -54,7 +54,6 @@
 //! }
 //! ```
 
-#![cfg_attr(coverage_nightly, coverage(off))]
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 use rustc_hash::FxHashMap;

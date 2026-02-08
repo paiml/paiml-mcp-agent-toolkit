@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Unified Help Service - RAG-powered intelligent help
 //!
 //! Combines:

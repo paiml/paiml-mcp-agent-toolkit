@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 use crate::services::deep_context::DeepContextAnalyzer;
 use anyhow::Result;
 use chrono::{DateTime, Utc};

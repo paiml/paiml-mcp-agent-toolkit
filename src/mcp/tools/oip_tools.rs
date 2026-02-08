@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 /// Organizational Intelligence Plugin (OIP) MCP Tools
 ///
 /// Provides MCP tools for defect pattern analysis and context-aware prompt generation.

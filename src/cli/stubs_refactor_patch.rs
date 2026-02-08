@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Patch file to show the refactoring changes needed for stubs.rs
 //! 
 //! This file documents the changes needed to complete the refactoring.

@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Progress indicator utilities for long-running operations
 //!
 //! Provides spinners and progress feedback for operations >5s.

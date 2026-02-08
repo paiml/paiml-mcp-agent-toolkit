@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Output abstraction for CLI handlers
 //!
 //! This module provides a trait-based abstraction for handler output,

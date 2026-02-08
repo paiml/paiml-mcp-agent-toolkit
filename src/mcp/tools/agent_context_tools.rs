@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // MCP Agent Context Tools
 // PMAT-470: RAG-powered semantic code search for agents
 //

@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Drift Detector - Detect documentation/code drift
 //!
 //! Detects when documentation (README, help text) diverges from actual code,

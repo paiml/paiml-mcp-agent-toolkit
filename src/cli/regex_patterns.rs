@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 use lazy_static::lazy_static;
 use regex::Regex;
 

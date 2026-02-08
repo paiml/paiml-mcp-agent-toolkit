@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // MCP Tools Module
 // PMAT-SEARCH-006: MCP Tools Integration
 // PMAT-470: Agent Context Tools

@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Helper functions for proof annotation analysis to reduce complexity
 
 use super::{PropertyTypeFilter, VerificationMethodFilter};

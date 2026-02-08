@@ -4,7 +4,6 @@
 //! This module contains all the command structures used by the CLI for parsing
 //! and executing commands. It's separated from the main CLI module to reduce complexity.
 
-#![cfg_attr(coverage_nightly, coverage(off))]
 use crate::cli::diagnose::DiagnoseArgs;
 use crate::cli::handlers::cache::CacheCommand;
 use crate::cli::handlers::coverage_improve_handler::CoverageImproveOutputFormat;

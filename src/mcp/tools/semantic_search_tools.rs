@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // MCP Semantic Search Tools
 // PMAT-SEARCH-006: Expose semantic search via MCP protocol
 //

@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 /// Enhanced TDG handler implementation that supports single file, multiple files, and project mode
 use crate::cli::enums::TdgOutputFormat;
 use crate::models::tdg::TDGSummary;

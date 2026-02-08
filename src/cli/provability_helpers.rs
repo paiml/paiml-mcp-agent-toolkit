@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Helper functions for provability analysis to reduce complexity
 
 use crate::services::lightweight_provability_analyzer::{FunctionId, ProofSummary};

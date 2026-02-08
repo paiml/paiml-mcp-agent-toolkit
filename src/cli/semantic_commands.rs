@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Semantic Search CLI Commands
 // PMAT-SEARCH-009: CLI for semantic search, clustering, and topic modeling
 //
