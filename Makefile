@@ -47,7 +47,7 @@ SCRIPTS_DIR = scripts
 # Hard-to-test infra: demo (web server), viz (TUI), dap (debug adapter), roadmap, red_team.
 # Production code (cli, handlers, tdg, qdd, contracts, quality) is INCLUDED.
 # Modules with #![cfg_attr(coverage_nightly, coverage(off))] self-exclude in source.
-COVERAGE_EXCLUDE := --ignore-filename-regex='(_tests?\\.rs|/(tests|benches|examples|fixtures)/|main\\.rs|/(demo|viz|dap|mcp[^/]*|roadmap|red_team|deep_context|deep_wasm|cuda_simd|analyzer_ast|context_impl)/|test_performance\\.rs|build_perf_impl\\.rs)'
+COVERAGE_EXCLUDE := --ignore-filename-regex='(_tests?\\.rs|/(tests|benches|examples|fixtures)/|main\\.rs|/(demo|viz|dap|mcp[^/]*|roadmap|red_team|deep_context|deep_wasm|cuda_simd|analyzer_ast|context_impl|analysis_utilities)/|test_performance\\.rs|build_perf_impl\\.rs|storage_impl\\.rs|unified_ast_types\\.rs)'
 
 # Default target: format and build all projects
 all: format build

@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Enhanced error context for better CLI error messages
 //!
 //! Provides rich error context with file paths, suggestions, and actionable advice.

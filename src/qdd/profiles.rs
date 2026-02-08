@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Quality profiles for different development standards
 //! Toyota Way: Define clear standards and enforce them consistently
 

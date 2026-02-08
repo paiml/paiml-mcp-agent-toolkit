@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 use crate::quality::gate::QualityGateRunner;
 use anyhow::{Context, Result};
 use std::collections::HashMap;

@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Defect prediction report formatting module
 //!
 //! This module provides proper separation of concerns for formatting

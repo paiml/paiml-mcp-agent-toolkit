@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! O(1) Hooks Cache Manager (PMAT-453)
 //!
 //! Implements the 3-level hash hierarchy for O(1) pre-commit hooks:

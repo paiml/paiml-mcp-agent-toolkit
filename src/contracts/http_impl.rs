@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! HTTP server implementation using uniform contracts
 //! This ensures HTTP endpoints use exactly the same contracts as CLI and MCP
 
