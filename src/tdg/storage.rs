@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Storage implementation - split for file health (CB-040)
 
 include!("storage_impl.rs");

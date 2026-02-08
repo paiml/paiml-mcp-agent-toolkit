@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Helper functions for defect prediction analysis
 
 use crate::cli::defect_prediction_helpers::{

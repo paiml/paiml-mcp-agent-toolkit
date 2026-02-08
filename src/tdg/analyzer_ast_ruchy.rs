@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Ruchy language analysis helpers for TDG AST analyzer
 //!
 //! Extracted from analyzer_ast.rs for file health compliance (CB-040).

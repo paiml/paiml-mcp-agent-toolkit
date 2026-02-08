@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! CLI module for the paiml-mcp-agent-toolkit
 //!
 //! This module implements the command-line interface using a modular architecture

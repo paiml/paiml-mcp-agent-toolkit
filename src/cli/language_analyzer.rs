@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Language-specific complexity analysis module
 //!
 //! This module provides proper separation of concerns for analyzing

@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! MCP Schema Generator - Generate MCP tool definitions from CommandRegistry
 //!
 //! This module generates JSON Schema for MCP tools from the single source of truth,

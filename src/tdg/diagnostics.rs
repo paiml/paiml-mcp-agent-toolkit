@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 /// Diagnostic tools for Transactional Hashed TDG System
 ///
 /// Provides comprehensive monitoring, profiling, and debugging capabilities

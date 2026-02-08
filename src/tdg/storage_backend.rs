@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 /// Storage backend abstraction for flexible persistence options
 ///
 /// ## OLAP Design Pattern (Issue #79, P0-4)

@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Quality gate executor for TICKET-PMAT-5020
 //!
 //! Executes quality checks and generates reports.

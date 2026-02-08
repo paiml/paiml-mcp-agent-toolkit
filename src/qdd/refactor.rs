@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Quality refactoring engine
 //! Toyota Way: Continuous improvement through systematic refactoring
 

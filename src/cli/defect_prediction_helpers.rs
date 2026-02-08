@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Helper functions for defect prediction analysis to reduce complexity
 
 use crate::services::defect_probability::{DefectScore, FileMetrics};

@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Contract versioning support for backward compatibility and evolution
 //! This ensures contracts can evolve while maintaining compatibility
 

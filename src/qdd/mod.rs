@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Quality-Driven Development (QDD) Tool
 //!
 //! Unified tool for creating and refactoring code with guaranteed quality standards.

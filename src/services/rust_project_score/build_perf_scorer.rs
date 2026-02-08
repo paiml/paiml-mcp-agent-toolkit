@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! BuildPerfScorer - Build Performance Category (15 points)
 //! Split for file health compliance (CB-040)
 

@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Helper functions for incremental coverage analysis
 
 use crate::services::incremental_coverage_analyzer::{

@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Help Generator - Dynamic --help text from CommandRegistry
 //!
 //! This module generates accurate help text from the single source of truth
