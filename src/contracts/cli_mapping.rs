@@ -15,12 +15,40 @@ pub fn map_analyze_command(cmd: &AnalyzeCommands) -> Result<Box<dyn ContractVali
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use std::path::PathBuf;
 
     #[test]
-    fn test_cli_to_contract_mapping() {
-        // Test that CLI arguments map correctly to contracts
-        // This ensures the uniform contract requirement is met
-        // Placeholder test - CLI arguments map correctly to contracts
+    fn test_map_analyze_command_tdg_variant() {
+        let cmd = AnalyzeCommands::Tdg {
+            path: PathBuf::from("."),
+            threshold: 1.5,
+            top_files: 10,
+            format: crate::cli::TdgOutputFormat::Table,
+            include_components: false,
+            output: None,
+            critical_only: false,
+            verbose: false,
+            ml: false,
+        };
+        let result = map_analyze_command(&cmd);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_map_analyze_command_unsupported_variant() {
+        // Churn is not handled by the adapter, hits the _ => bail!() arm
+        let cmd = AnalyzeCommands::Churn {
+            project_path: PathBuf::from("."),
+            days: 30,
+            format: crate::models::churn::ChurnOutputFormat::Summary,
+            output: None,
+            top_files: 10,
+            include: vec![],
+            exclude: vec![],
+        };
+        let result = map_analyze_command(&cmd);
+        assert!(result.is_err());
     }
 }
 

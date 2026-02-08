@@ -1265,6 +1265,27 @@ mod tests {
         );
     }
 
+    // ========== recompute_summary empty files branch ==========
+
+    #[test]
+    fn test_recompute_summary_empty_files() {
+        let mut baseline = TdgBaseline::new(None);
+        // Add an entry so summary has non-zero values
+        baseline.add_entry(
+            PathBuf::from("test.rs"),
+            create_test_entry(90.0, Grade::A),
+        );
+        assert_eq!(baseline.summary.total_files, 1);
+        assert!((baseline.summary.avg_score - 90.0).abs() < 0.01);
+
+        // Clear files directly (pub field) and call recompute
+        baseline.files.clear();
+        baseline.recompute_summary();
+
+        assert_eq!(baseline.summary.total_files, 0);
+        assert_eq!(baseline.summary.avg_score, 0.0);
+    }
+
     // ========== All Grade Distribution Tests ==========
 
     #[test]

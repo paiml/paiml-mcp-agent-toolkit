@@ -385,6 +385,27 @@ mod tests {
     }
 
     #[test]
+    fn test_add_edge_nonexistent_node_returns_ok() {
+        let mut graph = TdgGraph::new();
+        graph.add_function("existing".to_string()).unwrap();
+
+        // Edge with non-existent "to" node silently succeeds
+        let result = graph.add_edge("existing", "nonexistent");
+        assert!(result.is_ok());
+        assert_eq!(graph.num_edges(), 0);
+
+        // Edge with non-existent "from" node silently succeeds
+        let result = graph.add_edge("nonexistent", "existing");
+        assert!(result.is_ok());
+        assert_eq!(graph.num_edges(), 0);
+
+        // Edge with both non-existent nodes silently succeeds
+        let result = graph.add_edge("no_a", "no_b");
+        assert!(result.is_ok());
+        assert_eq!(graph.num_edges(), 0);
+    }
+
+    #[test]
     fn test_empty_graph_pagerank() {
         let mut graph = TdgGraph::new();
         // Empty graph should not panic
