@@ -118,16 +118,12 @@ pub fn build_coverage_map(
     let canonical_root = project_root
         .canonicalize()
         .unwrap_or_else(|_| project_root.to_path_buf());
-    let root_str = canonical_root
-        .to_str()
-        .unwrap_or("")
-        .trim_end_matches('/');
+    let root_lossy = canonical_root.to_string_lossy();
+    let root_str = root_lossy.trim_end_matches('/');
 
     // Also try the non-canonicalized root (handles symlinks, bind mounts)
-    let raw_root_str = project_root
-        .to_str()
-        .unwrap_or("")
-        .trim_end_matches('/');
+    let raw_lossy = project_root.to_string_lossy();
+    let raw_root_str = raw_lossy.trim_end_matches('/');
 
     for data in &export.data {
         for file in &data.files {
@@ -489,7 +485,11 @@ fn parse_lcov_to_coverage_map(
 ) -> HashMap<String, HashMap<usize, u64>> {
     let mut result: HashMap<String, HashMap<usize, u64>> = HashMap::new();
     let mut current_file: Option<String> = None;
-    let project_root_str = project_root.to_string_lossy();
+    // Canonicalize project_root so strip_prefix works on absolute SF: paths
+    let canonical_root = project_root
+        .canonicalize()
+        .unwrap_or_else(|_| project_root.to_path_buf());
+    let project_root_str = canonical_root.to_string_lossy();
 
     for line in content.lines() {
         if let Some(path) = line.strip_prefix("SF:") {
