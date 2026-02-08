@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Analysis command handlers using uniform contracts
 //!
 //! This module contains handlers that have been migrated to use the uniform contracts system

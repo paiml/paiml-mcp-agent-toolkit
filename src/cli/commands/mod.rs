@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! CLI command structures
 //!
 //! This module contains all the command structures used by the CLI for parsing

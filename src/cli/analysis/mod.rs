@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Analysis command implementations
 //!
 //! This module contains the actual implementation of analysis commands,

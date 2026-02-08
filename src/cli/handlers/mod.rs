@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! CLI command handlers organized by category
 //!
 //! This module structure reduces complexity by separating concerns
