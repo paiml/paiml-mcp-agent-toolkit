@@ -482,11 +482,22 @@ impl AgentContextIndex {
         // Try SQLite path first (v2.0)
         let db_candidate = index_path.with_extension("db");
         if db_candidate.exists() {
-            match Self::load_from_sqlite(&db_candidate) {
-                Ok(index) => return Ok(index),
-                Err(e) => {
-                    eprintln!("  Warning: SQLite load failed, falling back to blob: {e}");
+            // Validate schema before attempting full load — stale DBs from older
+            // versions may lack required tables, producing confusing warnings.
+            let schema_ok = super::sqlite_backend::open_db(&db_candidate)
+                .map(|conn| super::sqlite_backend::has_valid_schema(&conn))
+                .unwrap_or(false);
+
+            if schema_ok {
+                match Self::load_from_sqlite(&db_candidate) {
+                    Ok(index) => return Ok(index),
+                    Err(e) => {
+                        eprintln!("  Warning: SQLite load failed, falling back to blob: {e}");
+                    }
                 }
+            } else {
+                // Delete broken/stale DB so next save() regenerates it
+                let _ = std::fs::remove_file(&db_candidate);
             }
         }
 

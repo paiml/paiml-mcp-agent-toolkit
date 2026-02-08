@@ -606,6 +606,18 @@ pub(crate) fn query_callers(conn: &Connection, func_idx: usize) -> Result<Vec<us
         .map_err(|e| format!("Bad caller row: {e}"))
 }
 
+/// Check if the database has a valid v2.0 schema (all required tables exist).
+pub(crate) fn has_valid_schema(conn: &Connection) -> bool {
+    let count: i64 = conn
+        .query_row(
+            "SELECT count(*) FROM sqlite_master WHERE type='table' AND name IN ('functions', 'metadata', 'call_graph', 'graph_metrics')",
+            [],
+            |r| r.get(0),
+        )
+        .unwrap_or(0);
+    count == 4
+}
+
 fn humanize_bytes(bytes: u64) -> String {
     if bytes < 1024 {
         format!("{bytes} B")
@@ -854,5 +866,26 @@ mod tests {
         assert_eq!(humanize_bytes(500), "500 B");
         assert_eq!(humanize_bytes(2048), "2.0 KB");
         assert_eq!(humanize_bytes(5_242_880), "5.0 MB");
+    }
+
+    #[test]
+    fn test_has_valid_schema_with_tables() {
+        let conn = Connection::open_in_memory().expect("open in-memory");
+        create_schema(&conn).expect("create schema");
+        assert!(has_valid_schema(&conn));
+    }
+
+    #[test]
+    fn test_has_valid_schema_empty_db() {
+        let conn = Connection::open_in_memory().expect("open in-memory");
+        assert!(!has_valid_schema(&conn));
+    }
+
+    #[test]
+    fn test_has_valid_schema_partial_tables() {
+        let conn = Connection::open_in_memory().expect("open in-memory");
+        conn.execute_batch("CREATE TABLE functions (id INTEGER PRIMARY KEY)")
+            .expect("create partial");
+        assert!(!has_valid_schema(&conn));
     }
 }
