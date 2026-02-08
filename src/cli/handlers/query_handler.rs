@@ -279,6 +279,7 @@ pub async fn handle_query(
             &query, limit, &format, quiet, literal, ignore_case,
             &language, &exclude_file, &exclude, files_with_matches,
             count, context_lines, after_context, before_context, &project_path,
+            exclude_tests,
         );
     }
 
@@ -403,14 +404,22 @@ fn handle_raw_search_mode(
     files_with_matches: bool, count: bool,
     context_lines: Option<usize>, after_context: Option<usize>,
     before_context: Option<usize>, project_path: &std::path::Path,
+    exclude_tests: bool,
 ) -> anyhow::Result<()> {
     let ctx_after = context_lines.or(after_context).unwrap_or(0);
     let ctx_before = context_lines.or(before_context).unwrap_or(0);
+    // When --exclude-tests is set in raw mode, filter test file paths
+    let effective_exclude_file = if exclude_tests && exclude_file.is_none() {
+        Some("test".to_string())
+    } else {
+        None
+    };
+    let excl_file_ref = effective_exclude_file.as_deref().or(exclude_file.as_deref());
     let raw_opts = RawSearchOptions {
         pattern: query, literal, case_insensitive: ignore_case,
         before_context: ctx_before, after_context: ctx_after, limit,
         language_filter: language.as_deref(),
-        exclude_file_pattern: exclude_file.as_deref(),
+        exclude_file_pattern: excl_file_ref,
         exclude_pattern: exclude.as_deref(),
         files_with_matches, count_mode: count,
     };
@@ -1051,7 +1060,17 @@ fn handle_count_mode(
 fn print_context_for_result(r: &QueryResult, project_path: &std::path::Path, ctx_before: usize, ctx_after: usize) {
     let start = r.start_line.saturating_sub(ctx_before).max(1);
     let file_path = project_path.join(&r.file_path);
-    let content = match std::fs::read_to_string(&file_path) { Ok(c) => c, Err(_) => return };
+    let content = match std::fs::read_to_string(&file_path) {
+        Ok(c) => c,
+        Err(_) => {
+            // Workspace paths (e.g. "trueno/src/...") are siblings, try parent dir
+            let parent_path = project_path.join("..").join(&r.file_path);
+            match std::fs::read_to_string(&parent_path) {
+                Ok(c) => c,
+                Err(_) => return,
+            }
+        }
+    };
     let lines: Vec<&str> = content.lines().collect();
     let end = (r.end_line + ctx_after).min(lines.len());
     println!("{BOLD}{CYAN}{}{RESET}:{YELLOW}{}{RESET}-{YELLOW}{}{RESET}  {WHITE}{}{RESET}  TDG:{GREEN}{}{RESET}",
