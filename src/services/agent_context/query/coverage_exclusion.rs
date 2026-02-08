@@ -206,8 +206,13 @@ fn parse_makefile_coverage_exclude(project_path: &Path) -> Option<regex::Regex> 
         if let Some(start) = line.find("--ignore-filename-regex='") {
             let after = &line[start + "--ignore-filename-regex='".len()..];
             if let Some(end) = after.find('\'') {
-                let pattern = &after[..end];
-                return regex::Regex::new(pattern).ok();
+                let raw_pattern = &after[..end];
+                // Normalize escaping: Makefile uses `\\.` (backslash-backslash-dot) which
+                // cargo-llvm-cov interprets as literal dot. But Rust regex sees `\\` as
+                // literal backslash + `.` as any char. Replace `\\.` with `\.` so Rust
+                // regex correctly matches literal dots in file paths.
+                let pattern = raw_pattern.replace("\\\\.", "\\.");
+                return regex::Regex::new(&pattern).ok();
             }
         }
     }
@@ -487,6 +492,28 @@ mod tests {
         assert!(re.is_match("src/tests/bar.rs"));
         assert!(re.is_match("main.rs"));
         assert!(!re.is_match("src/services/core.rs"));
+    }
+
+    #[test]
+    fn test_parse_makefile_double_backslash_dot() {
+        // Real Makefiles use `\\.` (double-backslash-dot) which cargo-llvm-cov
+        // interprets as literal dot. Verify our normalization handles this.
+        let temp = tempfile::TempDir::new().unwrap();
+        // Write raw bytes with double-backslash (0x5C 0x5C) + dot (0x2E)
+        let content = b"COVERAGE_EXCLUDE := --ignore-filename-regex='(build_perf_impl\\\\.rs|storage_impl\\\\.rs)'\n";
+        std::fs::write(temp.path().join("Makefile"), content).unwrap();
+
+        let re = parse_makefile_coverage_exclude(temp.path());
+        assert!(re.is_some(), "Should parse double-backslash regex");
+        let re = re.unwrap();
+        // Must match actual file paths (without backslashes)
+        assert!(re.is_match("src/services/build_perf_impl.rs"),
+            "Should match build_perf_impl.rs with literal dot");
+        assert!(re.is_match("src/tdg/storage_impl.rs"),
+            "Should match storage_impl.rs with literal dot");
+        // Must NOT match paths without the exact filename
+        assert!(!re.is_match("src/services/core.rs"),
+            "Should not match unrelated files");
     }
 
     #[test]
