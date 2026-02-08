@@ -50,6 +50,9 @@ struct CoverageCache {
     /// mtime (seconds since epoch) of profdata source when cache was built
     #[serde(default)]
     coverage_mtime: Option<u64>,
+    /// Path to the llvm-cov-target directory used when cache was built
+    #[serde(default)]
+    profdata_dir: Option<String>,
     files: HashMap<String, HashMap<usize, u64>>,
 }
 
@@ -394,11 +397,12 @@ pub fn compute_impact_score(missed_lines: u32, pagerank: f32, complexity: u32) -
 
 // ── Async Convenience (follows enrich_results_with_churn pattern) ───────────
 
-/// Try to load coverage from the cache file, returning the file coverage map
-/// if the cache exists, its git hash matches, and profdata hasn't been regenerated.
+/// Try to load coverage from the cache file.
 ///
-/// Fix for #158: also validates that the profdata files haven't been updated
-/// since the cache was built (handles re-runs without new commits).
+/// Invalidation strategy (profdata-mtime-primary):
+/// 1. If profdata dir found and mtime matches cached mtime → VALID (regardless of git hash)
+/// 2. If profdata dir found but mtime differs → INVALID (profdata was regenerated)
+/// 3. If no profdata dir found → fall back to git hash comparison
 #[cfg_attr(coverage_nightly, coverage(off))]
 fn load_coverage_from_cache(
     cache_path: &Path,
@@ -407,49 +411,188 @@ fn load_coverage_from_cache(
 ) -> Option<HashMap<String, HashMap<usize, u64>>> {
     let cache_json = std::fs::read_to_string(cache_path).ok()?;
     let cache: CoverageCache = serde_json::from_str(&cache_json).ok()?;
-    if cache.git_hash != head_hash {
-        return None;
+
+    // Primary: profdata mtime comparison (handles custom target dirs, symlinks)
+    if let Some(cached_mtime) = cache.coverage_mtime {
+        if let Some((current_mtime, _)) =
+            get_profdata_mtime_and_dir(project_root, cache.profdata_dir.as_deref())
+        {
+            if current_mtime <= cached_mtime {
+                return Some(cache.files); // profdata unchanged → cache valid
+            }
+            return None; // profdata was regenerated
+        }
     }
 
-    // Fix #158: Check if profdata is newer than cached mtime
-    if let Some(cached_mtime) = cache.coverage_mtime {
-        if let Some(current_mtime) = get_profdata_mtime(project_root) {
-            if current_mtime > cached_mtime {
-                return None; // profdata was regenerated since cache
-            }
-        }
+    // Fallback: git hash (only when profdata mtime unavailable)
+    if cache.git_hash != head_hash {
+        return None;
     }
 
     Some(cache.files)
 }
 
-/// Get the latest mtime (as seconds since epoch) from the llvm-cov target directory.
-///
-/// Looks for `target/llvm-cov-target/` or `target/llvm-cov/` directories and
-/// returns the most recent modification time of any `.profraw` or `.profdata` file.
+/// Get the mtime (seconds since epoch) of a specific directory.
 #[cfg_attr(coverage_nightly, coverage(off))]
-fn get_profdata_mtime(project_root: &Path) -> Option<u64> {
-    let candidates = [
-        project_root.join("target/llvm-cov-target"),
-        project_root.join("target/llvm-cov"),
-    ];
+fn dir_mtime(dir: &Path) -> Option<u64> {
+    std::fs::metadata(dir)
+        .ok()
+        .and_then(|m| m.modified().ok())
+        .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+        .map(|d| d.as_secs())
+}
 
-    let mut latest: Option<u64> = None;
-
-    for dir in &candidates {
-        if !dir.is_dir() { continue; }
-        // Check directory mtime itself (often updated when profdata written)
-        if let Ok(meta) = std::fs::metadata(dir) {
-            if let Ok(mtime) = meta.modified() {
-                if let Ok(secs) = mtime.duration_since(std::time::UNIX_EPOCH) {
-                    let t = secs.as_secs();
-                    latest = Some(latest.map_or(t, |l: u64| l.max(t)));
-                }
+/// Extract target-dir from a cargo config TOML file (simple line-based parsing).
+#[cfg_attr(coverage_nightly, coverage(off))]
+fn target_dir_from_cargo_config(config_path: &Path, project_root: &Path) -> Vec<std::path::PathBuf> {
+    let content = match std::fs::read_to_string(config_path) {
+        Ok(c) => c,
+        Err(_) => return vec![],
+    };
+    content
+        .lines()
+        .filter_map(|line| {
+            let trimmed = line.trim();
+            if !trimmed.starts_with("target-dir") {
+                return None;
             }
+            let val = trimmed.split('=').nth(1)?;
+            let dir = val.trim().trim_matches('"').trim_matches('\'');
+            let target_path = if std::path::Path::new(dir).is_absolute() {
+                std::path::PathBuf::from(dir)
+            } else {
+                project_root.join(dir)
+            };
+            Some(target_path.join("llvm-cov-target"))
+        })
+        .collect()
+}
+
+/// Scan /mnt/*/targets/{project_name}/llvm-cov-target for NVMe/RAID overrides.
+///
+/// Shell functions that wrap `cargo` may set CARGO_TARGET_DIR to NVMe paths,
+/// but Command::new("cargo") bypasses shell functions. This heuristic finds
+/// those directories directly.
+#[cfg_attr(coverage_nightly, coverage(off))]
+fn mnt_target_candidates(project_root: &Path) -> Vec<std::path::PathBuf> {
+    let canonical = project_root
+        .canonicalize()
+        .unwrap_or_else(|_| project_root.to_path_buf());
+    let project_name = match canonical.file_name().and_then(|n| n.to_str()) {
+        Some(n) => n,
+        None => return vec![],
+    };
+    let entries = match std::fs::read_dir("/mnt") {
+        Ok(e) => e,
+        Err(_) => return vec![],
+    };
+    entries
+        .flatten()
+        .map(|e| e.path().join("targets").join(project_name).join("llvm-cov-target"))
+        .collect()
+}
+
+/// Try `cargo metadata` to discover target_directory (slow — subprocess spawn).
+#[cfg_attr(coverage_nightly, coverage(off))]
+fn cargo_metadata_target_dir(project_root: &Path) -> Vec<std::path::PathBuf> {
+    let mut result = Vec::new();
+    for toolchain_arg in &["+nightly", "+stable"] {
+        let output = match std::process::Command::new("cargo")
+            .args([toolchain_arg, "metadata", "--no-deps", "--format-version=1"])
+            .current_dir(project_root)
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::null())
+            .output()
+        {
+            Ok(o) if o.status.success() => o,
+            _ => continue,
+        };
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        if let Some(dir) = extract_target_directory(&stdout) {
+            result.push(std::path::PathBuf::from(dir).join("llvm-cov-target"));
+        }
+    }
+    result
+}
+
+/// Extract "target_directory" value from cargo metadata JSON output.
+fn extract_target_directory(json: &str) -> Option<&str> {
+    let idx = json.find("\"target_directory\":\"")?;
+    let rest = &json[idx + 20..];
+    let end = rest.find('"')?;
+    Some(&rest[..end])
+}
+
+/// Resolve the cargo target directory, then find llvm-cov-target underneath.
+///
+/// Resolution order:
+/// 1. `stored_path` from previous cache (fastest — skip all resolution)
+/// 2. `CARGO_TARGET_DIR` env var
+/// 3. `.cargo/config.toml` → `[build] target-dir` (project-local, then global)
+/// 4. `/mnt/*/targets/{project_name}/` (NVMe/RAID overrides from shell functions)
+/// 5. `project_root/target` (default, follows symlinks)
+/// 6. `cargo metadata` target_directory (slow last resort)
+///
+/// Returns `(mtime, profdata_dir_path)` if found.
+#[cfg_attr(coverage_nightly, coverage(off))]
+fn get_profdata_mtime_and_dir(
+    project_root: &Path,
+    stored_path: Option<&str>,
+) -> Option<(u64, String)> {
+    // Fast path: check previously stored directory first
+    if let Some(p) = stored_path {
+        if let Some(mtime) = dir_mtime(std::path::Path::new(p)) {
+            return Some((mtime, p.to_string()));
         }
     }
 
-    latest
+    let mut candidates: Vec<std::path::PathBuf> = Vec::with_capacity(8);
+
+    // 1. CARGO_TARGET_DIR env var
+    if let Ok(target_dir) = std::env::var("CARGO_TARGET_DIR") {
+        candidates.push(std::path::PathBuf::from(&target_dir).join("llvm-cov-target"));
+    }
+
+    // 2. .cargo/config.toml (project-local, then global)
+    candidates.extend(target_dir_from_cargo_config(
+        &project_root.join(".cargo/config.toml"),
+        project_root,
+    ));
+    let cargo_home = std::env::var("CARGO_HOME").unwrap_or_else(|_| {
+        std::env::var("HOME")
+            .map(|h| format!("{h}/.cargo"))
+            .unwrap_or_default()
+    });
+    if !cargo_home.is_empty() {
+        let global_config = std::path::PathBuf::from(&cargo_home).join("config.toml");
+        candidates.extend(target_dir_from_cargo_config(&global_config, project_root));
+    }
+
+    // 3. NVMe/RAID mount scan
+    candidates.extend(mnt_target_candidates(project_root));
+
+    // 4. Default target dir (follows symlinks via canonicalize)
+    let default_target = project_root.join("target");
+    if let Ok(canonical) = default_target.canonicalize() {
+        candidates.push(canonical.join("llvm-cov-target"));
+    }
+    candidates.push(default_target.join("llvm-cov-target"));
+
+    // Check fast candidates first, fall back to cargo metadata
+    for dir in &candidates {
+        if let Some(mtime) = dir_mtime(dir) {
+            return Some((mtime, dir.to_string_lossy().to_string()));
+        }
+    }
+
+    // 5. cargo metadata (slow — spawns subprocess)
+    for dir in cargo_metadata_target_dir(project_root) {
+        if let Some(mtime) = dir_mtime(&dir) {
+            return Some((mtime, dir.to_string_lossy().to_string()));
+        }
+    }
+
+    None
 }
 
 /// Try loading coverage from an lcov.info file before running cargo llvm-cov.
@@ -546,9 +689,13 @@ fn write_coverage_cache(
     cache_path: &Path, head_hash: &str,
     project_root: &Path, files: &HashMap<String, HashMap<usize, u64>>,
 ) {
+    let (mtime, dir) = get_profdata_mtime_and_dir(project_root, None)
+        .map(|(m, d)| (Some(m), Some(d)))
+        .unwrap_or((None, None));
     let cache = CoverageCache {
         git_hash: head_hash.to_string(),
-        coverage_mtime: get_profdata_mtime(project_root),
+        coverage_mtime: mtime,
+        profdata_dir: dir,
         files: files.clone(),
     };
     if let Ok(cache_json) = serde_json::to_string(&cache) {
