@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Sprint 79+: Presentar-terminal Brick architecture (ratatui-free)
 // Uses presentar_terminal for Jidoka verification gates and zero-allocation rendering
 

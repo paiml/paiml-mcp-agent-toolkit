@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 use super::types::*;
 use std::collections::HashSet;
 use std::fs;

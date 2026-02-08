@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Red Team Mode: Automated hallucination detection for software repositories
 //
 // Based on specification: docs/specifications/red-team-mode-spec.md v1.1

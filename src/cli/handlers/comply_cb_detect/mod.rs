@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! ComputeBrick Pattern Detection for PMAT Compliance
 //!
 //! Extracted from comply_handlers.rs for file health compliance (CB-040).

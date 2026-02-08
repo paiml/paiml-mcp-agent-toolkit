@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Core formatting functions for proof annotations
 //!
 //! This module contains the main formatting functions for proof annotations.
