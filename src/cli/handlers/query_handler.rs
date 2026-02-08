@@ -9,8 +9,9 @@ use crate::services::agent_context::{
     build_coverage_map, enrich_results_with_churn, enrich_results_with_coverage,
     enrich_results_with_duplicates, enrich_results_with_entropy, enrich_results_with_faults,
     enrich_with_coverage_diff, format_coverage_summary, format_json, format_markdown, format_text,
-    format_text_with_code, raw_search, AgentContextIndex, CaseSensitivity, QueryOptions, RankBy,
-    QueryResult, RawSearchOptions, RawSearchOutput, SearchMode,
+    format_text_with_code, is_within_indexed_function, raw_search, AgentContextIndex,
+    CaseSensitivity, QueryOptions, RankBy, QueryResult, RawSearchOptions, RawSearchOutput,
+    RawSearchResult, SearchMode,
 };
 use crate::services::git_history::{
     ChangeType, CommitInfo, FileChange, GitHistoryIndex, GitHistorySearchEngine, GitSearchOptions,
@@ -249,9 +250,14 @@ pub async fn handle_query(
         ).await;
     }
 
-    // ── Execute semantic query ──────
-    // literal/regex modes always show source (grep parity)
-    let effective_include_source = include_source || code || literal || regex;
+    // ── Execute semantic query + enrich + output ──────
+    let is_regex_literal = regex || literal;
+    let effective_include_source = include_source || code || is_regex_literal;
+    // Clone values needed for raw merge (originals moved into build_query_options)
+    let merge_language = if is_regex_literal { language.clone() } else { None };
+    let merge_exclude_file = if is_regex_literal { exclude_file.clone() } else { None };
+    let merge_exclude = if is_regex_literal { exclude.clone() } else { None };
+
     let options = build_query_options(
         limit, min_grade, max_complexity, language, path_pattern,
         effective_include_source, &rank_by, min_pagerank,
@@ -261,44 +267,33 @@ pub async fn handle_query(
         .query(&query, options)
         .map_err(|e| anyhow::anyhow!("{}", e))?;
 
-    // ── Apply filters ──────
     apply_result_filters(&mut results, exclude_tests, &definition_type);
-
-    // ── Apply enrichments ──────
     apply_all_enrichments(
         &mut results, &project_path, quiet,
         churn, duplicates, entropy, faults,
         coverage, uncovered_only, &coverage_file, &coverage_diff,
     ).await;
-
-    // ── Git history ──────
-    let git_data = if git_history {
-        fetch_git_history_results(&project_path, &query, limit, &index, quiet)?
-    } else {
-        None
-    };
-
-    // ── Post-enrichment ranking ──────
     apply_post_enrichment_sort(&mut results, &rank_by);
 
-    if results.is_empty() && git_data.as_ref().map_or(true, |(hits, _)| hits.is_empty()) {
-        eprintln!("No matching functions found for: {}", query);
-        return Ok(());
-    }
+    let git_data = fetch_git_data(git_history, &project_path, &query, limit, &index, quiet)?;
 
-    // ── Special output modes ──────
-    if try_special_output_modes(
-        &results, &project_path, files_with_matches, count,
-        context_lines, after_context, before_context,
-    )? {
-        return Ok(());
-    }
+    let merge_ctx = MergeContext {
+        query: &query, literal, ignore_case,
+        language: &merge_language, exclude_file: &merge_exclude_file,
+        exclude: &merge_exclude, project_path: &project_path,
+        is_regex_or_literal: is_regex_literal,
+    };
+    let raw_results = merge_raw_results(
+        is_regex_literal, quiet, &query, limit, &merge_ctx,
+        context_lines, after_context, before_context, &results,
+    );
 
-    // ── Standard output ──────
-    let highlight = if literal || regex { Some((query.as_str(), regex)) } else { None };
-    print_query_output(&results, &format, effective_include_source, coverage, &git_data, &project_path, &index, highlight);
-
-    Ok(())
+    emit_query_output(
+        &results, &raw_results, &git_data, &query,
+        &format, effective_include_source, coverage,
+        files_with_matches, count, context_lines, after_context, before_context,
+        &merge_ctx, &project_path, &index,
+    )
 }
 
 fn build_query_options(
@@ -377,6 +372,92 @@ fn handle_raw_search_mode(
         }
     }
     Ok(())
+}
+
+/// Run raw search and return non-overlapping results for merge with index results.
+/// Used when `--regex` or `--literal` is active (without `--raw`).
+#[allow(clippy::too_many_arguments)]
+fn run_raw_search_for_merge(
+    query: &str, limit: usize, literal: bool, ignore_case: bool,
+    language: &Option<String>, exclude_file: &Option<String>,
+    exclude: &Option<String>, context_lines: Option<usize>,
+    after_context: Option<usize>, before_context: Option<usize>,
+    project_path: &std::path::Path, indexed_results: &[QueryResult],
+) -> Vec<RawSearchResult> {
+    let remaining = limit.saturating_sub(indexed_results.len());
+    if remaining == 0 {
+        return Vec::new();
+    }
+
+    let ctx_after = context_lines.or(after_context).unwrap_or(0);
+    let ctx_before = context_lines.or(before_context).unwrap_or(0);
+    let raw_opts = RawSearchOptions {
+        pattern: query, literal, case_insensitive: ignore_case,
+        before_context: ctx_before, after_context: ctx_after,
+        limit: remaining + indexed_results.len(), // over-fetch to account for dedup
+        language_filter: language.as_deref(),
+        exclude_file_pattern: exclude_file.as_deref(),
+        exclude_pattern: exclude.as_deref(),
+        files_with_matches: false, count_mode: false,
+    };
+
+    let output = match raw_search(project_path, &raw_opts) {
+        Ok(o) => o,
+        Err(_) => return Vec::new(),
+    };
+
+    let lines = match output {
+        RawSearchOutput::Lines(l) => l,
+        _ => return Vec::new(),
+    };
+
+    // Filter out matches that overlap with indexed function results
+    lines.into_iter()
+        .filter(|r| !is_within_indexed_function(&r.file_path, r.line_number, indexed_results))
+        .take(remaining)
+        .collect()
+}
+
+/// Run raw search and return file paths for merge with --files-with-matches mode.
+#[allow(clippy::too_many_arguments)]
+fn run_raw_files_for_merge(
+    query: &str, literal: bool, ignore_case: bool,
+    language: &Option<String>, exclude_file: &Option<String>,
+    exclude: &Option<String>, project_path: &std::path::Path,
+) -> Vec<String> {
+    let raw_opts = RawSearchOptions {
+        pattern: query, literal, case_insensitive: ignore_case,
+        before_context: 0, after_context: 0, limit: 0,
+        language_filter: language.as_deref(),
+        exclude_file_pattern: exclude_file.as_deref(),
+        exclude_pattern: exclude.as_deref(),
+        files_with_matches: true, count_mode: false,
+    };
+    match raw_search(project_path, &raw_opts) {
+        Ok(RawSearchOutput::Files(f)) => f,
+        _ => Vec::new(),
+    }
+}
+
+/// Run raw search and return per-file counts for merge with --count mode.
+#[allow(clippy::too_many_arguments)]
+fn run_raw_counts_for_merge(
+    query: &str, literal: bool, ignore_case: bool,
+    language: &Option<String>, exclude_file: &Option<String>,
+    exclude: &Option<String>, project_path: &std::path::Path,
+) -> Vec<crate::services::agent_context::FileMatchCount> {
+    let raw_opts = RawSearchOptions {
+        pattern: query, literal, case_insensitive: ignore_case,
+        before_context: 0, after_context: 0, limit: 0,
+        language_filter: language.as_deref(),
+        exclude_file_pattern: exclude_file.as_deref(),
+        exclude_pattern: exclude.as_deref(),
+        files_with_matches: false, count_mode: true,
+    };
+    match raw_search(project_path, &raw_opts) {
+        Ok(RawSearchOutput::Counts(c)) => c,
+        _ => Vec::new(),
+    }
 }
 
 /// Load the function index with workspace support
@@ -711,32 +792,154 @@ fn apply_post_enrichment_sort(results: &mut [QueryResult], rank_by: &Option<Stri
     }
 }
 
-/// Handle special output modes. Returns Ok(true) if handled, Ok(false) for standard output.
-fn try_special_output_modes(
-    results: &[QueryResult], project_path: &std::path::Path,
+/// Handle special output modes with merged raw results for regex/literal modes.
+/// Context for raw+indexed merge operations.
+struct MergeContext<'a> {
+    query: &'a str,
+    literal: bool,
+    ignore_case: bool,
+    language: &'a Option<String>,
+    exclude_file: &'a Option<String>,
+    exclude: &'a Option<String>,
+    project_path: &'a std::path::Path,
+    is_regex_or_literal: bool,
+}
+
+type GitData = Option<(Vec<GitSearchResult>, Vec<CommitInfo>)>;
+
+fn fetch_git_data(
+    git_history: bool, project_path: &std::path::Path,
+    query: &str, limit: usize,
+    index: &AgentContextIndex, quiet: bool,
+) -> anyhow::Result<GitData> {
+    if git_history {
+        fetch_git_history_results(project_path, query, limit, index, quiet)
+    } else {
+        Ok(None)
+    }
+}
+
+fn merge_raw_results(
+    is_regex_literal: bool, quiet: bool, query: &str, limit: usize,
+    ctx: &MergeContext, context_lines: Option<usize>,
+    after_context: Option<usize>, before_context: Option<usize>,
+    results: &[QueryResult],
+) -> Vec<RawSearchResult> {
+    if !is_regex_literal { return Vec::new(); }
+    if !quiet { eprintln!("Searching raw files for non-indexed matches..."); }
+    run_raw_search_for_merge(
+        query, limit, ctx.literal, ctx.ignore_case,
+        ctx.language, ctx.exclude_file, ctx.exclude,
+        context_lines, after_context, before_context,
+        ctx.project_path, results,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn emit_query_output(
+    results: &[QueryResult], raw_results: &[RawSearchResult],
+    git_data: &GitData, query: &str,
+    format: &QueryOutputFormat, include_source: bool, coverage: bool,
     files_with_matches: bool, count: bool,
     context_lines: Option<usize>, after_context: Option<usize>, before_context: Option<usize>,
+    merge_ctx: &MergeContext,
+    project_path: &std::path::Path,
+    index: &AgentContextIndex,
+) -> anyhow::Result<()> {
+    if results.is_empty() && raw_results.is_empty()
+        && git_data.as_ref().map_or(true, |(hits, _)| hits.is_empty())
+    {
+        eprintln!("No matching functions found for: {}", query);
+        return Ok(());
+    }
+
+    if try_special_output_modes_merged(
+        results, raw_results, files_with_matches, count,
+        context_lines, after_context, before_context, merge_ctx,
+    )? {
+        return Ok(());
+    }
+
+    let highlight = if merge_ctx.is_regex_or_literal { Some((query, merge_ctx.literal)) } else { None };
+    print_query_output(results, format, include_source, coverage, git_data, project_path, index, highlight);
+    print_raw_results(raw_results, format);
+    Ok(())
+}
+
+/// Print raw file matches (non-indexed).
+fn print_raw_results(raw_results: &[RawSearchResult], format: &QueryOutputFormat) {
+    if raw_results.is_empty() { return; }
+    if matches!(format, QueryOutputFormat::Json) {
+        let json = serde_json::to_string_pretty(&raw_results).unwrap_or_default();
+        eprintln!("\n{{\"raw_matches\": {}}}", json);
+    } else {
+        eprintln!("\n{DIM}── Raw file matches ({} non-indexed) ──{RESET}", raw_results.len());
+        for r in raw_results {
+            print_raw_match_context(&r.file_path, r.line_number, &r.line_content,
+                &r.context_before, &r.context_after);
+        }
+    }
+}
+
+/// Returns Ok(true) if handled, Ok(false) for standard output.
+fn try_special_output_modes_merged(
+    results: &[QueryResult], raw_results: &[RawSearchResult],
+    files_with_matches: bool, count: bool,
+    context_lines: Option<usize>, after_context: Option<usize>, before_context: Option<usize>,
+    ctx: &MergeContext,
 ) -> anyhow::Result<bool> {
-    if files_with_matches { print_files_with_matches(results); return Ok(true); }
-    if count { print_match_counts(results); return Ok(true); }
+    if files_with_matches {
+        return handle_files_with_matches(results, raw_results, ctx);
+    }
+    if count {
+        return handle_count_mode(results, ctx);
+    }
     let ctx_after = context_lines.or(after_context).unwrap_or(0);
     let ctx_before = context_lines.or(before_context).unwrap_or(0);
     if ctx_after > 0 || ctx_before > 0 {
-        print_context_lines(results, project_path, ctx_before, ctx_after);
+        print_context_lines(results, ctx.project_path, ctx_before, ctx_after);
+        print_raw_results(raw_results, &QueryOutputFormat::Text);
         return Ok(true);
     }
     Ok(false)
 }
 
-fn print_files_with_matches(results: &[QueryResult]) {
+fn handle_files_with_matches(
+    results: &[QueryResult], raw_results: &[RawSearchResult], ctx: &MergeContext,
+) -> anyhow::Result<bool> {
     let mut seen = std::collections::HashSet::new();
-    for r in results { if seen.insert(&r.file_path) { println!("{CYAN}{}{RESET}", r.file_path); } }
+    for r in results { seen.insert(r.file_path.clone()); }
+    for r in raw_results { seen.insert(r.file_path.clone()); }
+    if ctx.is_regex_or_literal {
+        let raw_files = run_raw_files_for_merge(
+            ctx.query, ctx.literal, ctx.ignore_case,
+            ctx.language, ctx.exclude_file, ctx.exclude, ctx.project_path,
+        );
+        for f in raw_files { seen.insert(f); }
+    }
+    let mut sorted: Vec<String> = seen.into_iter().collect();
+    sorted.sort();
+    for f in &sorted { println!("{CYAN}{}{RESET}", f); }
+    Ok(true)
 }
 
-fn print_match_counts(results: &[QueryResult]) {
-    let mut file_counts: std::collections::BTreeMap<&str, usize> = std::collections::BTreeMap::new();
-    for r in results { *file_counts.entry(&r.file_path).or_insert(0) += 1; }
+fn handle_count_mode(
+    results: &[QueryResult], ctx: &MergeContext,
+) -> anyhow::Result<bool> {
+    let mut file_counts: std::collections::BTreeMap<String, usize> = std::collections::BTreeMap::new();
+    for r in results { *file_counts.entry(r.file_path.clone()).or_insert(0) += 1; }
+    if ctx.is_regex_or_literal {
+        let raw_counts = run_raw_counts_for_merge(
+            ctx.query, ctx.literal, ctx.ignore_case,
+            ctx.language, ctx.exclude_file, ctx.exclude, ctx.project_path,
+        );
+        for c in raw_counts {
+            let entry = file_counts.entry(c.file_path).or_insert(0);
+            *entry = (*entry).max(c.count);
+        }
+    }
     for (file, cnt) in &file_counts { println!("{CYAN}{}{RESET}:{YELLOW}{}{RESET}", file, cnt); }
+    Ok(true)
 }
 
 fn print_context_for_result(r: &QueryResult, project_path: &std::path::Path, ctx_before: usize, ctx_after: usize) {

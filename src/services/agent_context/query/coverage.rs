@@ -456,46 +456,182 @@ fn get_profdata_mtime(project_root: &Path) -> Option<u64> {
     latest
 }
 
+/// Try loading coverage from an lcov.info file before running cargo llvm-cov.
+///
+/// Searches standard locations: `target/coverage/lcov.info`, `target/llvm-cov-target/lcov.info`.
+#[cfg_attr(coverage_nightly, coverage(off))]
+fn try_load_lcov_info(
+    project_root: &Path,
+) -> Option<HashMap<String, HashMap<usize, u64>>> {
+    let candidates = [
+        project_root.join("target/coverage/lcov.info"),
+        project_root.join("target/llvm-cov-target/lcov.info"),
+    ];
+    for path in &candidates {
+        if path.exists() {
+            if let Ok(content) = std::fs::read_to_string(path) {
+                let map = parse_lcov_to_coverage_map(&content, project_root);
+                if !map.is_empty() {
+                    return Some(map);
+                }
+            }
+        }
+    }
+    None
+}
+
+/// Parse lcov.info format into our coverage map.
+///
+/// Format: SF:<filename>, DA:<line>,<count>, end_of_record
+fn parse_lcov_to_coverage_map(
+    content: &str,
+    project_root: &Path,
+) -> HashMap<String, HashMap<usize, u64>> {
+    let mut result: HashMap<String, HashMap<usize, u64>> = HashMap::new();
+    let mut current_file: Option<String> = None;
+    let project_root_str = project_root.to_string_lossy();
+
+    for line in content.lines() {
+        if let Some(path) = line.strip_prefix("SF:") {
+            // Normalize to relative path
+            let rel = path
+                .strip_prefix(project_root_str.as_ref())
+                .or_else(|| path.strip_prefix('/'))
+                .unwrap_or(path)
+                .trim_start_matches('/');
+            current_file = Some(rel.to_string());
+        } else if let Some(da) = line.strip_prefix("DA:") {
+            if let Some(ref file) = current_file {
+                let parts: Vec<&str> = da.splitn(2, ',').collect();
+                if parts.len() == 2 {
+                    if let (Ok(line_no), Ok(count)) = (parts[0].parse::<usize>(), parts[1].parse::<u64>()) {
+                        result.entry(file.clone()).or_default().insert(line_no, count);
+                    }
+                }
+            }
+        } else if line == "end_of_record" {
+            current_file = None;
+        }
+    }
+
+    result
+}
+
 /// Run `cargo llvm-cov report --json` and parse the output into a coverage map.
 ///
 /// On success, also writes the result to the cache file for future reuse.
+/// Uses a 30-second timeout to prevent hanging on broken profdata.
 #[cfg_attr(coverage_nightly, coverage(off))]
 fn run_cargo_llvm_cov_and_cache(
     project_root: &Path,
     cache_path: &Path,
     head_hash: &str,
 ) -> Result<HashMap<String, HashMap<usize, u64>>, String> {
-    use std::process::Command;
-
-    let output = Command::new("cargo")
-        .args(["llvm-cov", "report", "--json"])
-        .current_dir(project_root)
-        .output()
-        .map_err(|e| format!("cargo llvm-cov report --json failed: {e}"))?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!(
-            "No coverage data available.\n\nTo generate it, run:\n  cargo llvm-cov test --lib --no-report\n\nThen re-run with --coverage or --coverage-gaps.\nOr pass --coverage-file <path> to use existing coverage JSON.\n\ncargo llvm-cov report --json stderr: {}",
-            stderr.lines().take(3).collect::<Vec<_>>().join("\n")
-        ));
+    // Try lcov.info fallback first (no subprocess needed)
+    if let Some(cov) = try_load_lcov_info(project_root) {
+        write_coverage_cache(cache_path, head_hash, project_root, &cov);
+        return Ok(cov);
     }
 
+    let output = run_llvm_cov_subprocess(project_root)?;
     let json = String::from_utf8_lossy(&output.stdout);
     let file_coverage = build_coverage_map(&json, project_root)?;
 
-    // Cache the result with current profdata mtime
+    write_coverage_cache(cache_path, head_hash, project_root, &file_coverage);
+    Ok(file_coverage)
+}
+
+/// Write coverage data to the cache file.
+fn write_coverage_cache(
+    cache_path: &Path, head_hash: &str,
+    project_root: &Path, files: &HashMap<String, HashMap<usize, u64>>,
+) {
     let cache = CoverageCache {
         git_hash: head_hash.to_string(),
         coverage_mtime: get_profdata_mtime(project_root),
-        files: file_coverage.clone(),
+        files: files.clone(),
     };
     if let Ok(cache_json) = serde_json::to_string(&cache) {
         let _ = std::fs::create_dir_all(project_root.join(".pmat"));
         let _ = std::fs::write(cache_path, cache_json);
     }
+}
 
-    Ok(file_coverage)
+/// Spawn `cargo llvm-cov report --json` with timeout and pipe-safe I/O.
+fn run_llvm_cov_subprocess(project_root: &Path) -> Result<std::process::Output, String> {
+    use std::process::{Command, Stdio};
+
+    let mut child = Command::new("cargo")
+        .args(["llvm-cov", "report", "--json"])
+        .current_dir(project_root)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|e| format!("cargo llvm-cov report --json failed to spawn: {e}"))?;
+
+    let mut stdout_handle = child.stdout.take()
+        .ok_or_else(|| "Failed to capture stdout from cargo llvm-cov".to_string())?;
+    let mut stderr_handle = child.stderr.take()
+        .ok_or_else(|| "Failed to capture stderr from cargo llvm-cov".to_string())?;
+
+    let stdout_thread = std::thread::spawn(move || -> Vec<u8> {
+        use std::io::Read;
+        let mut buf = Vec::new();
+        let _ = stdout_handle.read_to_end(&mut buf);
+        buf
+    });
+    let stderr_thread = std::thread::spawn(move || -> Vec<u8> {
+        use std::io::Read;
+        let mut buf = Vec::new();
+        let _ = stderr_handle.read_to_end(&mut buf);
+        buf
+    });
+
+    wait_with_timeout(&mut child, std::time::Duration::from_secs(30))?;
+
+    let status = child.wait().map_err(|e| format!("Failed to wait on cargo llvm-cov: {e}"))?;
+    let stdout = stdout_thread.join().map_err(|_| "stdout reader thread panicked".to_string())?;
+    let stderr = stderr_thread.join().map_err(|_| "stderr reader thread panicked".to_string())?;
+    let output = std::process::Output { status, stdout, stderr };
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!(
+            "No coverage data available.\n\nTo generate it, run:\n  \
+            cargo llvm-cov test --lib --no-report\n\nThen re-run with --coverage or --coverage-gaps.\n\
+            Or pass --coverage-file <path> to use existing coverage JSON.\n\n\
+            cargo llvm-cov report --json stderr: {}",
+            stderr.lines().take(3).collect::<Vec<_>>().join("\n")
+        ));
+    }
+
+    Ok(output)
+}
+
+/// Poll child process with timeout, killing if exceeded.
+fn wait_with_timeout(child: &mut std::process::Child, timeout: std::time::Duration) -> Result<(), String> {
+    let start = std::time::Instant::now();
+    loop {
+        match child.try_wait() {
+            Ok(Some(_)) => return Ok(()),
+            Ok(None) if start.elapsed() > timeout => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return Err(
+                    "No coverage data available.\n\n\
+                    cargo llvm-cov report --json timed out after 30s.\n\
+                    This usually means corrupted profdata. Try:\n  \
+                    cargo llvm-cov clean\n  \
+                    cargo llvm-cov test --lib --no-report\n\n\
+                    Then re-run with --coverage or --coverage-gaps.\n\
+                    Or pass --coverage-file <path> to use existing coverage JSON."
+                        .to_string(),
+                );
+            }
+            Ok(None) => std::thread::sleep(std::time::Duration::from_millis(50)),
+            Err(e) => return Err(format!("Failed to wait on cargo llvm-cov: {e}")),
+        }
+    }
 }
 
 /// Enrich results with LLVM coverage data.
@@ -985,5 +1121,71 @@ mod tests {
         // Only project file should be included
         assert_eq!(map.len(), 1, "Should only contain project files, got: {:?}", map.keys().collect::<Vec<_>>());
         assert!(map.contains_key("src/main.rs"));
+    }
+
+    #[test]
+    fn test_parse_lcov_basic() {
+        let lcov = "\
+SF:/project/src/lib.rs
+DA:1,5
+DA:2,3
+DA:3,0
+end_of_record
+SF:/project/src/main.rs
+DA:10,1
+end_of_record
+";
+        let root = Path::new("/project");
+        let map = parse_lcov_to_coverage_map(lcov, root);
+        assert_eq!(map.len(), 2);
+        let lib = map.get("src/lib.rs").unwrap();
+        assert_eq!(lib.get(&1), Some(&5));
+        assert_eq!(lib.get(&2), Some(&3));
+        assert_eq!(lib.get(&3), Some(&0));
+        let main = map.get("src/main.rs").unwrap();
+        assert_eq!(main.get(&10), Some(&1));
+    }
+
+    #[test]
+    fn test_parse_lcov_empty() {
+        let map = parse_lcov_to_coverage_map("", Path::new("/project"));
+        assert!(map.is_empty());
+    }
+
+    #[test]
+    fn test_parse_lcov_relative_paths() {
+        let lcov = "\
+SF:src/foo.rs
+DA:1,10
+end_of_record
+";
+        let root = Path::new("/project");
+        let map = parse_lcov_to_coverage_map(lcov, root);
+        assert_eq!(map.len(), 1);
+        assert!(map.contains_key("src/foo.rs"));
+    }
+
+    #[test]
+    fn test_try_load_lcov_info() {
+        let temp = tempfile::TempDir::new().unwrap();
+        let cov_dir = temp.path().join("target/coverage");
+        std::fs::create_dir_all(&cov_dir).unwrap();
+        std::fs::write(
+            cov_dir.join("lcov.info"),
+            format!("SF:{}/src/lib.rs\nDA:1,5\nend_of_record\n", temp.path().display()),
+        ).unwrap();
+
+        let result = try_load_lcov_info(temp.path());
+        assert!(result.is_some());
+        let map = result.unwrap();
+        assert_eq!(map.len(), 1);
+        assert!(map.contains_key("src/lib.rs"));
+    }
+
+    #[test]
+    fn test_try_load_lcov_info_missing() {
+        let temp = tempfile::TempDir::new().unwrap();
+        let result = try_load_lcov_info(temp.path());
+        assert!(result.is_none());
     }
 }

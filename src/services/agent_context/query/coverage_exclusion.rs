@@ -45,6 +45,9 @@ impl CoverageExclusion {
 pub(crate) struct ExclusionContext {
     /// Files that have module-level `coverage(off)` annotation
     coverage_off_files: HashSet<String>,
+    /// Files already checked for coverage(off) — prevents redundant re-reads
+    /// for files that do NOT have the annotation (negative cache).
+    checked_files: HashSet<String>,
     /// Compiled regex from Makefile COVERAGE_EXCLUDE (if found)
     makefile_regex: Option<regex::Regex>,
     /// Dead function keys: "file_path::function_name"
@@ -58,6 +61,7 @@ impl ExclusionContext {
         let dead_functions = load_dead_code_functions(project_path);
         Self {
             coverage_off_files: HashSet::new(),
+            checked_files: HashSet::new(),
             makefile_regex,
             dead_functions,
         }
@@ -89,11 +93,17 @@ impl ExclusionContext {
     }
 
     /// Check if a file has module-level `cfg_attr(coverage_nightly, coverage(off))`.
-    /// Caches results per file path.
+    /// Caches both positive and negative results per file path to avoid redundant I/O.
     fn is_coverage_off_file(&mut self, file_path: &str, project_path: &Path) -> bool {
         if self.coverage_off_files.contains(file_path) {
             return true;
         }
+        // Negative cache: already checked this file and it didn't have coverage(off)
+        if self.checked_files.contains(file_path) {
+            return false;
+        }
+
+        self.checked_files.insert(file_path.to_string());
 
         let full_path = project_path.join(file_path);
         if let Ok(content) = std::fs::read_to_string(&full_path) {
@@ -327,6 +337,7 @@ mod tests {
 
         let mut ctx = ExclusionContext {
             coverage_off_files: HashSet::new(),
+            checked_files: HashSet::new(),
             makefile_regex: None,
             dead_functions: HashSet::new(),
         };
@@ -347,6 +358,7 @@ mod tests {
 
         let mut ctx = ExclusionContext {
             coverage_off_files: HashSet::new(),
+            checked_files: HashSet::new(),
             makefile_regex: None,
             dead_functions: dead,
         };
@@ -368,6 +380,7 @@ mod tests {
         let re = regex::Regex::new(r"/(cli|mcp[^/]*)/" ).unwrap();
         let mut ctx = ExclusionContext {
             coverage_off_files: HashSet::new(),
+            checked_files: HashSet::new(),
             makefile_regex: Some(re),
             dead_functions: HashSet::new(),
         };
@@ -388,6 +401,7 @@ mod tests {
 
         let mut ctx = ExclusionContext {
             coverage_off_files: HashSet::new(),
+            checked_files: HashSet::new(),
             makefile_regex: None,
             dead_functions: HashSet::new(),
         };
@@ -547,6 +561,7 @@ mod tests {
 
         let mut ctx = ExclusionContext {
             coverage_off_files: HashSet::new(),
+            checked_files: HashSet::new(),
             makefile_regex: None,
             dead_functions: dead,
         };
@@ -568,6 +583,7 @@ mod tests {
 
         let mut ctx = ExclusionContext {
             coverage_off_files: HashSet::new(),
+            checked_files: HashSet::new(),
             makefile_regex: None,
             dead_functions: HashSet::new(),
         };

@@ -15,6 +15,11 @@ exclude = ["target/", "*.log", "*.profraw", ".pmat-cache", "proptest-regressions
 # PERF: Disable autotest discovery - 193 .rs files = 193 binaries = slow coverage
 # Instead, use explicit [[test]] declarations for unified test binaries
 autotests = false
+autobenches = false
+
+[[bench]]
+name = "coverage_gaps_bench"
+harness = false
 
 [[bin]]
 name = "pmat-agent"

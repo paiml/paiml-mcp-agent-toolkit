@@ -21,3 +21,5 @@ pub(crate) use helpers::{build_call_graph, build_indices, compute_graph_metrics,
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod sqlite_falsification_tests;
