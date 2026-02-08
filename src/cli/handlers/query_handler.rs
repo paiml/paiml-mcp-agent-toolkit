@@ -246,7 +246,7 @@ pub async fn handle_query(
         return handle_coverage_gaps_mode(
             &index, &project_path, &format, &coverage_file,
             &language, &path_pattern, exclude_tests, limit, quiet,
-            include_excluded,
+            include_excluded, files_with_matches, count,
         ).await;
     }
 
@@ -596,6 +596,30 @@ fn print_excluded_results(excluded: &[&QueryResult]) {
     println!();
 }
 
+/// Output coverage gaps aggregated by file (for --files-with-matches / --count).
+///
+/// `--files-with-matches`: prints file paths sorted by total uncovered lines desc.
+/// `--count`: prints `file_path: N uncovered lines (M functions)` sorted desc.
+fn output_coverage_gaps_by_file(results: &[QueryResult], files_only: bool) -> anyhow::Result<()> {
+    use std::collections::BTreeMap;
+    let mut by_file: BTreeMap<&str, (usize, usize)> = BTreeMap::new(); // (uncov_lines, func_count)
+    for r in results {
+        let entry = by_file.entry(&r.file_path).or_insert((0, 0));
+        entry.0 += r.missed_lines as usize;
+        entry.1 += 1;
+    }
+    let mut sorted: Vec<_> = by_file.into_iter().collect();
+    sorted.sort_by(|a, b| b.1 .0.cmp(&a.1 .0));
+    for (file, (uncov, funcs)) in &sorted {
+        if files_only {
+            println!("{file}");
+        } else {
+            println!("{file}: {uncov} uncovered lines ({funcs} functions)");
+        }
+    }
+    Ok(())
+}
+
 /// Output coverage gap results in the requested format
 fn output_coverage_gaps(
     format: &QueryOutputFormat, testable: Vec<QueryResult>, excluded: Vec<QueryResult>,
@@ -649,7 +673,7 @@ async fn handle_coverage_gaps_mode(
     format: &QueryOutputFormat, coverage_file: &Option<PathBuf>,
     language: &Option<String>, path_pattern: &Option<String>,
     exclude_tests: bool, limit: usize, quiet: bool,
-    include_excluded: bool,
+    include_excluded: bool, files_with_matches: bool, count_mode: bool,
 ) -> anyhow::Result<()> {
     if !quiet { eprintln!("Loading coverage data..."); }
 
@@ -680,6 +704,11 @@ async fn handle_coverage_gaps_mode(
     if testable.is_empty() && excluded.is_empty() {
         eprintln!("No coverage gaps found (100% coverage or no data).");
         return Ok(());
+    }
+
+    // ── File-level aggregation modes ──────
+    if files_with_matches || count_mode {
+        return output_coverage_gaps_by_file(&testable, files_with_matches);
     }
 
     output_coverage_gaps(format, testable, excluded, include_excluded)
