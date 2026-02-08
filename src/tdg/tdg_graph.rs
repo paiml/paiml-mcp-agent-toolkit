@@ -287,6 +287,13 @@ mod tests {
     }
 
     #[test]
+    fn test_tdg_graph_default() {
+        let graph = TdgGraph::default();
+        assert_eq!(graph.num_nodes(), 0);
+        assert_eq!(graph.num_edges(), 0);
+    }
+
+    #[test]
     fn test_add_function_o1_lookup() {
         let mut graph = TdgGraph::new();
 

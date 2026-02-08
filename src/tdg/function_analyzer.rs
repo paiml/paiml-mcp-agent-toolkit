@@ -232,6 +232,14 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_function_analyzer_default() {
+        let mut analyzer = FunctionAnalyzer::default();
+        // Default should successfully create an analyzer
+        let functions = analyzer.analyze_source("fn foo() {}").unwrap();
+        assert_eq!(functions.len(), 1);
+    }
+
+    #[test]
     fn test_analyze_simple_function() {
         let source = r#"
             fn simple_function() -> i32 {
