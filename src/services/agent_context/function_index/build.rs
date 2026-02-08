@@ -12,10 +12,13 @@ use std::path::{Path, PathBuf};
 ///
 /// Checks first 5 lines for the annotation (it's always at the top).
 fn has_coverage_off(content: &str) -> bool {
-    content.lines().take(5).any(|line| {
+    // Module-level inner attributes (#![...]) can appear anywhere before the first
+    // code item, often after long doc comments (line 6-200+). Scan all #! lines.
+    content.lines().any(|line| {
         let t = line.trim();
-        t.contains("cfg_attr(coverage_nightly, coverage(off))")
-            || t.contains("cfg_attr(coverage_nightly,coverage(off))")
+        t.starts_with("#!")
+            && (t.contains("cfg_attr(coverage_nightly, coverage(off))")
+                || t.contains("cfg_attr(coverage_nightly,coverage(off))"))
     })
 }
 
