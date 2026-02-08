@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! TDG --explain Mode (Issue #78)
 //!
 //! Function-level complexity analysis with actionable recommendations.

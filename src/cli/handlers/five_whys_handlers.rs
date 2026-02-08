@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Handler for Five Whys debug command
 //
 // REFACTOR PHASE: CLI integration

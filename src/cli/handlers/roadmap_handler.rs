@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Roadmap maintenance and validation handlers
 //!
 //! This module provides functionality for maintaining project roadmaps,

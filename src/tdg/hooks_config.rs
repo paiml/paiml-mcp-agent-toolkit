@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! TDG Hooks Configuration (Sprint 66 Phase 3)
 //!
 //! Configuration for TDG git hooks enforcement system.

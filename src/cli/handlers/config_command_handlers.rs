@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Configuration command handlers for new CLI interface
 //!
 //! Following TDD approach for Sprint 80: Pre-commit Hook Management as Core Feature

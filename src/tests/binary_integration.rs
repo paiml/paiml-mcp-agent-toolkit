@@ -1,5 +1,4 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
-#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod binary_integration_tests {
     use std::process::{Command, Stdio};

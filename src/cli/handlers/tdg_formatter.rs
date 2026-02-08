@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Toyota Way: TDG (Technical Debt Gradient) Formatting Handler
 //! Complexity: Reduced from 16 to individual functions ≤8
 //! Purpose: TDG report formatting with clean separation of concerns

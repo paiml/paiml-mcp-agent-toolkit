@@ -2,7 +2,6 @@
 // Property-based tests for graph algorithms
 // Testing invariants with proptest
 
-#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::super::super::*;

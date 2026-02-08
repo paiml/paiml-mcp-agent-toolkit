@@ -1,5 +1,4 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
-#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod metric_accuracy_tests {
     use tempfile::TempDir;

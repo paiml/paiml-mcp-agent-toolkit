@@ -1,9 +1,8 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Sprint 31 Week 2 - Alert System with Configurable Thresholds
 //!
 //! Provides real-time alerting capabilities with configurable thresholds,
 //! notification channels, and alert management features.
-
-#![cfg_attr(coverage_nightly, coverage(off))]
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};

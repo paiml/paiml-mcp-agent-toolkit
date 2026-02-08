@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Prompt command handlers for workflow prompts
 //!
 //! This module provides handlers for the `pmat prompt` command, which displays

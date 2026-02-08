@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! CLI handler for `pmat brick-score` command (PMAT-446)
 //!
 //! Calculates ComputeBrick Profiling Score (0-100 scale) for
@@ -110,17 +111,21 @@ pub async fn handle_brick_score(
 /// Format score as human-readable text
 fn format_text(score: &BrickScore, verbose: bool, failures_only: bool) -> String {
     let mut output = String::new();
+    format_text_header(score, &mut output);
+    format_text_categories(score, verbose, failures_only, &mut output);
+    if verbose && !failures_only {
+        format_text_brick_timing(score, &mut output);
+    }
+    format_text_recommendations(score, &mut output);
+    format_text_grading_scale(&mut output);
+    output
+}
 
-    // Header
+fn format_text_header(score: &BrickScore, output: &mut String) {
     output.push_str("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
-    output.push_str(&format!(
-        "🧱  ComputeBrick Score v{}\n",
-        score.metadata.version
-    ));
+    output.push_str(&format!("🧱  ComputeBrick Score v{}\n", score.metadata.version));
     output.push_str("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
     output.push('\n');
-
-    // Summary
     output.push_str("📌  Summary\n");
     output.push_str(&format!("  Score: {:.1}/100\n", score.total_score));
     output.push_str(&format!("  Grade: {}\n", score.grade));
@@ -135,147 +140,104 @@ fn format_text(score: &BrickScore, verbose: bool, failures_only: bool) -> String
         score.metadata.total_bricks, score.metadata.total_samples
     ));
     output.push('\n');
+}
 
-    // Categories
+fn format_text_categories(score: &BrickScore, verbose: bool, failures_only: bool, output: &mut String) {
     output.push_str("📂  Categories\n");
-
     let categories = [
         (&score.performance, "A. Performance"),
         (&score.efficiency, "B. Efficiency"),
         (&score.correctness, "C. Correctness"),
         (&score.stability, "D. Stability"),
     ];
-
     for (category, name) in categories {
-        let percentage = category.percentage();
-        let icon = if percentage >= 80.0 {
-            "✅"
-        } else if percentage >= 60.0 {
-            "⚠️"
-        } else {
-            "❌"
-        };
-
-        output.push_str(&format!(
-            "  {} {}: {:.1}/{:.0} ({:.0}%)\n",
-            icon, name, category.earned, category.max_points, percentage
-        ));
-
-        if verbose {
-            for check in &category.checks {
-                if failures_only && check.passed {
-                    continue;
-                }
-
-                let check_icon = if check.passed { "✓" } else { "✗" };
-                output.push_str(&format!(
-                    "      {} {}: {:.2} {} (threshold: {:.2} {})\n",
-                    check_icon, check.name, check.actual, check.unit, check.threshold, check.unit
-                ));
-
-                if let Some(rec) = &check.recommendation {
-                    output.push_str(&format!("        → {}\n", rec));
-                }
-            }
-        }
+        format_single_category(category, name, verbose, failures_only, output);
     }
     output.push('\n');
+}
 
-    // Brick timing table
-    if verbose && !failures_only {
-        output.push_str("📊  Per-Brick Timing\n");
-        output.push_str("  ┌───────────────────┬──────────┬──────────┬─────────┬───────────┐\n");
-        output.push_str("  │ Brick             │ Mean µs  │ Budget   │ CV %    │ Throughput│\n");
-        output.push_str("  ├───────────────────┼──────────┼──────────┼─────────┼───────────┤\n");
-
-        for brick in &score.brick_reports {
-            let status = if brick.over_budget { "❌" } else { "✅" };
-            let budget_str = brick
-                .budget_us
-                .map(|b| format!("{:.1}", b))
-                .unwrap_or_else(|| "-".to_string());
-
-            output.push_str(&format!(
-                "  │ {:<17} │ {:>7.1} │ {:>7} {} │ {:>6.1} │ {:>9.0} │\n",
-                &brick.name[..brick.name.len().min(17)],
-                brick.mean_us,
-                budget_str,
-                status,
-                brick.cv_percent,
-                brick.throughput / 1000.0, // K elem/s
-            ));
-        }
-
-        output.push_str("  └───────────────────┴──────────┴──────────┴─────────┴───────────┘\n");
-        output.push('\n');
-
-        // PMAT-449: Roofline analysis section
-        if score.brick_reports.iter().any(|b| b.bottleneck.is_some()) {
-            output.push_str("📈  Roofline Analysis\n");
-            output.push_str("  ┌───────────────────┬────────┬────────────┐\n");
-            output.push_str("  │ Brick             │ AI     │ Bottleneck │\n");
-            output.push_str("  ├───────────────────┼────────┼────────────┤\n");
-
-            for brick in &score.brick_reports {
-                let ai_str = brick
-                    .arithmetic_intensity
-                    .map(|ai| format!("{:.2}", ai))
-                    .unwrap_or_else(|| "-".to_string());
-                let bottleneck_str = brick
-                    .bottleneck
-                    .map(|b| match b {
-                        crate::services::brick_score::Bottleneck::Memory => "🔴 Memory",
-                        crate::services::brick_score::Bottleneck::Compute => "🟢 Compute",
-                    })
-                    .unwrap_or("-");
-
-                output.push_str(&format!(
-                    "  │ {:<17} │ {:>6} │ {:>10} │\n",
-                    &brick.name[..brick.name.len().min(17)],
-                    ai_str,
-                    bottleneck_str
-                ));
-            }
-
-            output.push_str("  └───────────────────┴────────┴────────────┘\n");
-            output.push_str("  AI = Arithmetic Intensity (FLOP/byte)\n");
-            output.push_str("  🔴 Memory-bound: Optimize memory access patterns\n");
-            output.push_str("  🟢 Compute-bound: Optimize SIMD/GPU utilization\n");
-            output.push('\n');
+fn format_single_category(category: &crate::services::brick_score::CategoryScore, name: &str, verbose: bool, failures_only: bool, output: &mut String) {
+    let percentage = category.percentage();
+    let icon = if percentage >= 80.0 { "✅" } else if percentage >= 60.0 { "⚠️" } else { "❌" };
+    output.push_str(&format!("  {} {}: {:.1}/{:.0} ({:.0}%)\n", icon, name, category.earned, category.max_points, percentage));
+    if !verbose { return; }
+    for check in &category.checks {
+        if failures_only && check.passed { continue; }
+        let check_icon = if check.passed { "✓" } else { "✗" };
+        output.push_str(&format!(
+            "      {} {}: {:.2} {} (threshold: {:.2} {})\n",
+            check_icon, check.name, check.actual, check.unit, check.threshold, check.unit
+        ));
+        if let Some(rec) = &check.recommendation {
+            output.push_str(&format!("        → {}\n", rec));
         }
     }
+}
 
-    // Recommendations
-    let recommendations: Vec<_> = [
-        &score.performance.checks,
-        &score.efficiency.checks,
-        &score.stability.checks,
-    ]
-    .iter()
-    .flat_map(|checks| checks.iter())
-    .filter_map(|c| c.recommendation.as_ref())
-    .collect();
-
-    if !recommendations.is_empty() {
-        output.push_str("💡  Recommendations\n");
-        for (i, rec) in recommendations.iter().take(5).enumerate() {
-            output.push_str(&format!("  {}. {}\n", i + 1, rec));
-        }
-        if recommendations.len() > 5 {
-            output.push_str(&format!("  ... and {} more\n", recommendations.len() - 5));
-        }
-        output.push('\n');
+fn format_text_brick_timing(score: &BrickScore, output: &mut String) {
+    output.push_str("📊  Per-Brick Timing\n");
+    output.push_str("  ┌───────────────────┬──────────┬──────────┬─────────┬───────────┐\n");
+    output.push_str("  │ Brick             │ Mean µs  │ Budget   │ CV %    │ Throughput│\n");
+    output.push_str("  ├───────────────────┼──────────┼──────────┼─────────┼───────────┤\n");
+    for brick in &score.brick_reports {
+        let status = if brick.over_budget { "❌" } else { "✅" };
+        let budget_str = brick.budget_us.map(|b| format!("{:.1}", b)).unwrap_or_else(|| "-".to_string());
+        output.push_str(&format!(
+            "  │ {:<17} │ {:>7.1} │ {:>7} {} │ {:>6.1} │ {:>9.0} │\n",
+            &brick.name[..brick.name.len().min(17)], brick.mean_us, budget_str, status,
+            brick.cv_percent, brick.throughput / 1000.0,
+        ));
     }
+    output.push_str("  └───────────────────┴──────────┴──────────┴─────────┴───────────┘\n");
+    output.push('\n');
+    format_text_roofline(score, output);
+}
 
-    // Grade explanation
+fn format_text_roofline(score: &BrickScore, output: &mut String) {
+    if !score.brick_reports.iter().any(|b| b.bottleneck.is_some()) { return; }
+    output.push_str("📈  Roofline Analysis\n");
+    output.push_str("  ┌───────────────────┬────────┬────────────┐\n");
+    output.push_str("  │ Brick             │ AI     │ Bottleneck │\n");
+    output.push_str("  ├───────────────────┼────────┼────────────┤\n");
+    for brick in &score.brick_reports {
+        let ai_str = brick.arithmetic_intensity.map(|ai| format!("{:.2}", ai)).unwrap_or_else(|| "-".to_string());
+        let bottleneck_str = brick.bottleneck.map(|b| match b {
+            crate::services::brick_score::Bottleneck::Memory => "🔴 Memory",
+            crate::services::brick_score::Bottleneck::Compute => "🟢 Compute",
+        }).unwrap_or("-");
+        output.push_str(&format!(
+            "  │ {:<17} │ {:>6} │ {:>10} │\n",
+            &brick.name[..brick.name.len().min(17)], ai_str, bottleneck_str
+        ));
+    }
+    output.push_str("  └───────────────────┴────────┴────────────┘\n");
+    output.push_str("  AI = Arithmetic Intensity (FLOP/byte)\n");
+    output.push_str("  🔴 Memory-bound: Optimize memory access patterns\n");
+    output.push_str("  🟢 Compute-bound: Optimize SIMD/GPU utilization\n");
+    output.push('\n');
+}
+
+fn format_text_recommendations(score: &BrickScore, output: &mut String) {
+    let recommendations: Vec<_> = [&score.performance.checks, &score.efficiency.checks, &score.stability.checks]
+        .iter().flat_map(|checks| checks.iter()).filter_map(|c| c.recommendation.as_ref()).collect();
+    if recommendations.is_empty() { return; }
+    output.push_str("💡  Recommendations\n");
+    for (i, rec) in recommendations.iter().take(5).enumerate() {
+        output.push_str(&format!("  {}. {}\n", i + 1, rec));
+    }
+    if recommendations.len() > 5 {
+        output.push_str(&format!("  ... and {} more\n", recommendations.len() - 5));
+    }
+    output.push('\n');
+}
+
+fn format_text_grading_scale(output: &mut String) {
     output.push_str("📋  Grading Scale\n");
     output.push_str("  A (90-100): Production Ready\n");
     output.push_str("  B (80-89):  Optimization Needed\n");
     output.push_str("  C (70-79):  Functional but Slow\n");
     output.push_str("  D (60-69):  Unstable/Inefficient\n");
     output.push_str("  F (<60):    Do Not Merge\n");
-
-    output
 }
 
 /// Format score as JSON
@@ -286,10 +248,16 @@ fn format_json(score: &BrickScore) -> Result<String> {
 /// Format score as Markdown
 fn format_markdown(score: &BrickScore, verbose: bool, failures_only: bool) -> String {
     let mut output = String::new();
-
     output.push_str("# ComputeBrick Score Report\n\n");
+    format_md_summary(score, &mut output);
+    format_md_categories(score, &mut output);
+    if verbose {
+        format_md_brick_details(score, failures_only, &mut output);
+    }
+    output
+}
 
-    // Summary table
+fn format_md_summary(score: &BrickScore, output: &mut String) {
     output.push_str("## Summary\n\n");
     output.push_str("| Metric | Value |\n");
     output.push_str("|--------|-------|\n");
@@ -303,71 +271,37 @@ fn format_markdown(score: &BrickScore, verbose: bool, failures_only: bool) -> St
         score.metadata.total_bricks, score.metadata.total_samples
     ));
     output.push('\n');
+}
 
-    // Categories
+fn format_md_categories(score: &BrickScore, output: &mut String) {
+
     output.push_str("## Categories\n\n");
     output.push_str("| Category | Score | Max | % |\n");
     output.push_str("|----------|-------|-----|---|\n");
-
     let categories = [
         (&score.performance, "Performance"),
         (&score.efficiency, "Efficiency"),
         (&score.correctness, "Correctness"),
         (&score.stability, "Stability"),
     ];
-
     for (cat, name) in categories {
-        let status = if cat.percentage() >= 80.0 {
-            "✅"
-        } else if cat.percentage() >= 60.0 {
-            "⚠️"
-        } else {
-            "❌"
-        };
-        output.push_str(&format!(
-            "| {} {} | {:.1} | {:.0} | {:.0}% |\n",
-            status,
-            name,
-            cat.earned,
-            cat.max_points,
-            cat.percentage()
-        ));
+        let status = if cat.percentage() >= 80.0 { "✅" } else if cat.percentage() >= 60.0 { "⚠️" } else { "❌" };
+        output.push_str(&format!("| {} {} | {:.1} | {:.0} | {:.0}% |\n", status, name, cat.earned, cat.max_points, cat.percentage()));
     }
     output.push('\n');
+}
 
-    // Brick details
-    if verbose {
-        output.push_str("## Per-Brick Details\n\n");
-        output.push_str("| Brick | Mean µs | Budget µs | CV % | Status |\n");
-        output.push_str("|-------|---------|-----------|------|--------|\n");
-
-        for brick in &score.brick_reports {
-            if failures_only && !brick.over_budget && brick.cv_percent < 15.0 {
-                continue;
-            }
-
-            let status = if brick.over_budget {
-                "❌ Over budget"
-            } else if brick.cv_percent >= 15.0 {
-                "⚠️ Unstable"
-            } else {
-                "✅ OK"
-            };
-
-            let budget_str = brick
-                .budget_us
-                .map(|b| format!("{:.1}", b))
-                .unwrap_or_else(|| "-".to_string());
-
-            output.push_str(&format!(
-                "| {} | {:.1} | {} | {:.1} | {} |\n",
-                brick.name, brick.mean_us, budget_str, brick.cv_percent, status
-            ));
-        }
-        output.push('\n');
+fn format_md_brick_details(score: &BrickScore, failures_only: bool, output: &mut String) {
+    output.push_str("## Per-Brick Details\n\n");
+    output.push_str("| Brick | Mean µs | Budget µs | CV % | Status |\n");
+    output.push_str("|-------|---------|-----------|------|--------|\n");
+    for brick in &score.brick_reports {
+        if failures_only && !brick.over_budget && brick.cv_percent < 15.0 { continue; }
+        let status = if brick.over_budget { "❌ Over budget" } else if brick.cv_percent >= 15.0 { "⚠️ Unstable" } else { "✅ OK" };
+        let budget_str = brick.budget_us.map(|b| format!("{:.1}", b)).unwrap_or_else(|| "-".to_string());
+        output.push_str(&format!("| {} | {:.1} | {} | {:.1} | {} |\n", brick.name, brick.mean_us, budget_str, brick.cv_percent, status));
     }
-
-    output
+    output.push('\n');
 }
 
 /// Format score as YAML

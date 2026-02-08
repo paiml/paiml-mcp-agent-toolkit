@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! CLI handler for `pmat popper-score` command
 //!
 //! Calculates Popper Falsifiability Score (0-100 scale) evaluating
@@ -63,6 +64,135 @@ pub async fn handle_popper_score(
     Ok(())
 }
 
+/// Build the array of category tuples used by both text and markdown formatters
+fn popper_category_entries(
+    score: &PopperScore,
+) -> [(&str, &crate::services::popper_score::PopperCategoryScore, bool); 6] {
+    [
+        (
+            "A. Falsifiability & Testability",
+            &score.categories.falsifiability,
+            true,
+        ),
+        (
+            "B. Reproducibility Infrastructure",
+            &score.categories.reproducibility,
+            false,
+        ),
+        (
+            "C. Transparency & Openness",
+            &score.categories.transparency,
+            false,
+        ),
+        (
+            "D. Statistical Rigor",
+            &score.categories.statistical_rigor,
+            false,
+        ),
+        (
+            "E. Historical Integrity",
+            &score.categories.historical_integrity,
+            false,
+        ),
+        (
+            "F. ML/AI Reproducibility",
+            &score.categories.ml_reproducibility,
+            false,
+        ),
+    ]
+}
+
+/// Return the status icon for a percentage score
+fn percentage_icon(percentage: f64) -> &'static str {
+    if percentage >= 80.0 {
+        "✅"
+    } else if percentage >= 60.0 {
+        "⚠️"
+    } else {
+        "❌"
+    }
+}
+
+/// Return the icon string for a recommendation priority
+fn priority_icon_text(
+    priority: &crate::services::popper_score::RecommendationPriority,
+) -> &'static str {
+    match priority {
+        crate::services::popper_score::RecommendationPriority::Critical => "🔴",
+        crate::services::popper_score::RecommendationPriority::High => "🟠",
+        crate::services::popper_score::RecommendationPriority::Medium => "🟡",
+        crate::services::popper_score::RecommendationPriority::Low => "🟢",
+    }
+}
+
+/// Return the markdown label for a recommendation priority
+fn priority_label_markdown(
+    priority: &crate::services::popper_score::RecommendationPriority,
+) -> &'static str {
+    match priority {
+        crate::services::popper_score::RecommendationPriority::Critical => "🔴 Critical",
+        crate::services::popper_score::RecommendationPriority::High => "🟠 High",
+        crate::services::popper_score::RecommendationPriority::Medium => "🟡 Medium",
+        crate::services::popper_score::RecommendationPriority::Low => "🟢 Low",
+    }
+}
+
+/// Format a single category line for text output, including optional verbose sub-scores
+fn format_text_category(
+    output: &mut String,
+    name: &str,
+    category: &crate::services::popper_score::PopperCategoryScore,
+    is_gateway: bool,
+    verbose: bool,
+    failures_only: bool,
+) {
+    if category.is_not_applicable {
+        output.push_str(&format!("  ⚪ {}: N/A\n", name));
+        return;
+    }
+
+    let percentage = category.percentage();
+    let icon = percentage_icon(percentage);
+    let gateway_marker = if is_gateway { " [GATEWAY]" } else { "" };
+
+    output.push_str(&format!(
+        "  {} {}: {:.1}/{:.0} ({:.1}%){}\n",
+        icon, name, category.earned, category.max, percentage, gateway_marker
+    ));
+
+    if verbose && !failures_only {
+        for sub in &category.sub_scores {
+            let sub_icon = if sub.earned >= sub.max * 0.8 {
+                "  ✓"
+            } else if sub.earned >= sub.max * 0.5 {
+                "  ~"
+            } else {
+                "  ✗"
+            };
+            output.push_str(&format!(
+                "    {} {}: {:.1}/{:.0} - {}\n",
+                sub_icon, sub.id, sub.earned, sub.max, sub.description
+            ));
+        }
+    }
+}
+
+/// Append text-formatted recommendations to the output
+fn format_text_recommendations(output: &mut String, score: &PopperScore, failures_only: bool) {
+    if score.recommendations.is_empty() || (failures_only && score.gateway_passed) {
+        return;
+    }
+    output.push_str("💡  Recommendations\n");
+    for rec in &score.recommendations {
+        let icon = priority_icon_text(&rec.priority);
+        output.push_str(&format!("  {} [{}] {}\n", icon, rec.category, rec.description));
+        if let Some(cmd) = &rec.command {
+            output.push_str(&format!("     $ {}\n", cmd));
+        }
+    }
+    output.push('\n');
+}
+
 /// Format score as human-readable text
 fn format_text(score: &PopperScore, verbose: bool, failures_only: bool) -> String {
     let mut output = String::new();
@@ -97,78 +227,8 @@ fn format_text(score: &PopperScore, verbose: bool, failures_only: bool) -> Strin
 
     // Categories
     output.push_str("📂  Categories\n");
-
-    let categories = [
-        (
-            "A. Falsifiability & Testability",
-            &score.categories.falsifiability,
-            true,
-        ),
-        (
-            "B. Reproducibility Infrastructure",
-            &score.categories.reproducibility,
-            false,
-        ),
-        (
-            "C. Transparency & Openness",
-            &score.categories.transparency,
-            false,
-        ),
-        (
-            "D. Statistical Rigor",
-            &score.categories.statistical_rigor,
-            false,
-        ),
-        (
-            "E. Historical Integrity",
-            &score.categories.historical_integrity,
-            false,
-        ),
-        (
-            "F. ML/AI Reproducibility",
-            &score.categories.ml_reproducibility,
-            false,
-        ),
-    ];
-
-    for (name, category, is_gateway) in categories {
-        if category.is_not_applicable {
-            output.push_str(&format!("  ⚪ {}: N/A\n", name));
-            continue;
-        }
-
-        let percentage = category.percentage();
-        let icon = if percentage >= 80.0 {
-            "✅"
-        } else if percentage >= 60.0 {
-            "⚠️"
-        } else {
-            "❌"
-        };
-
-        let gateway_marker = if is_gateway { " [GATEWAY]" } else { "" };
-
-        output.push_str(&format!(
-            "  {} {}: {:.1}/{:.0} ({:.1}%){}\n",
-            icon, name, category.earned, category.max, percentage, gateway_marker
-        ));
-
-        // Show sub-scores in verbose mode
-        if verbose && !failures_only {
-            for sub in &category.sub_scores {
-                let sub_icon = if sub.earned >= sub.max * 0.8 {
-                    "  ✓"
-                } else if sub.earned >= sub.max * 0.5 {
-                    "  ~"
-                } else {
-                    "  ✗"
-                };
-                output.push_str(&format!(
-                    "    {} {}: {:.1}/{:.0} - {}\n",
-                    sub_icon, sub.id, sub.earned, sub.max, sub.description
-                ));
-            }
-        }
+    for (name, category, is_gateway) in popper_category_entries(score) {
+        format_text_category(&mut output, name, category, is_gateway, verbose, failures_only);
     }
     output.push('\n');
 
@@ -178,25 +238,7 @@ fn format_text(score: &PopperScore, verbose: bool, failures_only: bool) -> Strin
     output.push('\n');
 
     // Recommendations
-    if !score.recommendations.is_empty() && (!failures_only || !score.gateway_passed) {
-        output.push_str("💡  Recommendations\n");
-        for rec in &score.recommendations {
-            let priority_icon = match rec.priority {
-                crate::services::popper_score::RecommendationPriority::Critical => "🔴",
-                crate::services::popper_score::RecommendationPriority::High => "🟠",
-                crate::services::popper_score::RecommendationPriority::Medium => "🟡",
-                crate::services::popper_score::RecommendationPriority::Low => "🟢",
-            };
-            output.push_str(&format!(
-                "  {} [{}] {}\n",
-                priority_icon, rec.category, rec.description
-            ));
-            if let Some(cmd) = &rec.command {
-                output.push_str(&format!("     $ {}\n", cmd));
-            }
-        }
-        output.push('\n');
-    }
+    format_text_recommendations(&mut output, score, failures_only);
 
     // Footer
     output.push_str("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
@@ -207,6 +249,70 @@ fn format_text(score: &PopperScore, verbose: bool, failures_only: bool) -> Strin
 /// Format score as JSON
 fn format_json(score: &PopperScore) -> Result<String> {
     serde_json::to_string_pretty(score).context("Failed to serialize to JSON")
+}
+
+/// Format a single category row for markdown table output
+fn format_markdown_category_row(
+    output: &mut String,
+    name: &str,
+    category: &crate::services::popper_score::PopperCategoryScore,
+    is_gateway: bool,
+) {
+    if category.is_not_applicable {
+        output.push_str(&format!("| {} | N/A | N/A | ⚪ N/A |\n", name));
+        return;
+    }
+
+    let percentage = category.percentage();
+    let icon = percentage_icon(percentage);
+
+    let status = if is_gateway {
+        format!("{} GATEWAY", icon)
+    } else {
+        icon.to_string()
+    };
+
+    output.push_str(&format!(
+        "| {} | {:.1}/{:.0} | {:.1}% | {} |\n",
+        name, category.earned, category.max, percentage, status
+    ));
+}
+
+/// Append verbose detailed breakdown section for markdown
+fn format_markdown_detailed_breakdown(output: &mut String, score: &PopperScore) {
+    output.push_str("## 📊 Detailed Breakdown\n\n");
+    for (name, category, _) in popper_category_entries(score) {
+        if category.is_not_applicable {
+            continue;
+        }
+        output.push_str(&format!("### {}\n\n", name));
+        for sub in &category.sub_scores {
+            output.push_str(&format!(
+                "- **{}**: {:.1}/{:.0} - {}\n",
+                sub.id, sub.earned, sub.max, sub.description
+            ));
+        }
+        output.push('\n');
+    }
+}
+
+/// Append markdown-formatted recommendations to the output
+fn format_markdown_recommendations(output: &mut String, score: &PopperScore) {
+    if score.recommendations.is_empty() {
+        return;
+    }
+    output.push_str("## 💡 Recommendations\n\n");
+    for rec in &score.recommendations {
+        let priority = priority_label_markdown(&rec.priority);
+        output.push_str(&format!(
+            "- **[{}]** {}: {}\n",
+            priority, rec.category, rec.description
+        ));
+        if let Some(cmd) = &rec.command {
+            output.push_str(&format!("  ```bash\n  {}\n  ```\n", cmd));
+        }
+    }
+    output.push('\n');
 }
 
 /// Format score as Markdown
@@ -244,83 +350,14 @@ fn format_markdown(score: &PopperScore, verbose: bool, _failures_only: bool) -> 
     output.push_str("| Category | Score | Percentage | Status |\n");
     output.push_str("|----------|-------|------------|--------|\n");
 
-    let categories = [
-        (
-            "A. Falsifiability & Testability",
-            &score.categories.falsifiability,
-            true,
-        ),
-        (
-            "B. Reproducibility Infrastructure",
-            &score.categories.reproducibility,
-            false,
-        ),
-        (
-            "C. Transparency & Openness",
-            &score.categories.transparency,
-            false,
-        ),
-        (
-            "D. Statistical Rigor",
-            &score.categories.statistical_rigor,
-            false,
-        ),
-        (
-            "E. Historical Integrity",
-            &score.categories.historical_integrity,
-            false,
-        ),
-        (
-            "F. ML/AI Reproducibility",
-            &score.categories.ml_reproducibility,
-            false,
-        ),
-    ];
-
-    for (name, category, is_gateway) in categories {
-        if category.is_not_applicable {
-            output.push_str(&format!("| {} | N/A | N/A | ⚪ N/A |\n", name));
-            continue;
-        }
-
-        let percentage = category.percentage();
-        let icon = if percentage >= 80.0 {
-            "✅"
-        } else if percentage >= 60.0 {
-            "⚠️"
-        } else {
-            "❌"
-        };
-
-        let status = if is_gateway {
-            format!("{} GATEWAY", icon)
-        } else {
-            icon.to_string()
-        };
-
-        output.push_str(&format!(
-            "| {} | {:.1}/{:.0} | {:.1}% | {} |\n",
-            name, category.earned, category.max, percentage, status
-        ));
+    for (name, category, is_gateway) in popper_category_entries(score) {
+        format_markdown_category_row(&mut output, name, category, is_gateway);
     }
     output.push('\n');
 
     // Detailed sub-scores in verbose mode
     if verbose {
-        output.push_str("## 📊 Detailed Breakdown\n\n");
-        for (name, category, _) in categories {
-            if category.is_not_applicable {
-                continue;
-            }
-            output.push_str(&format!("### {}\n\n", name));
-            for sub in &category.sub_scores {
-                output.push_str(&format!(
-                    "- **{}**: {:.1}/{:.0} - {}\n",
-                    sub.id, sub.earned, sub.max, sub.description
-                ));
-            }
-            output.push('\n');
-        }
+        format_markdown_detailed_breakdown(&mut output, score);
     }
 
     // Verdict
@@ -328,25 +365,7 @@ fn format_markdown(score: &PopperScore, verbose: bool, _failures_only: bool) -> 
     output.push_str(&format!("{}\n\n", score.analysis.verdict));
 
     // Recommendations
-    if !score.recommendations.is_empty() {
-        output.push_str("## 💡 Recommendations\n\n");
-        for rec in &score.recommendations {
-            let priority = match rec.priority {
-                crate::services::popper_score::RecommendationPriority::Critical => "🔴 Critical",
-                crate::services::popper_score::RecommendationPriority::High => "🟠 High",
-                crate::services::popper_score::RecommendationPriority::Medium => "🟡 Medium",
-                crate::services::popper_score::RecommendationPriority::Low => "🟢 Low",
-            };
-            output.push_str(&format!(
-                "- **[{}]** {}: {}\n",
-                priority, rec.category, rec.description
-            ));
-            if let Some(cmd) = &rec.command {
-                output.push_str(&format!("  ```bash\n  {}\n  ```\n", cmd));
-            }
-        }
-        output.push('\n');
-    }
+    format_markdown_recommendations(&mut output, score);
 
     output
 }

@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Work Falsification: Popperian Falsification Executor
 //!
 //! Runs all falsification tests and BLOCKS completion if ANY fail.

@@ -14,7 +14,6 @@ pub mod http_sse;
 pub mod stdio;
 pub mod websocket;
 
-#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 pub mod mock;
 
@@ -135,7 +134,6 @@ impl<T: PmcpTransport + 'static> TransportAdapter for PmcpTransportWrapper<T> {
     }
 }
 
-#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;

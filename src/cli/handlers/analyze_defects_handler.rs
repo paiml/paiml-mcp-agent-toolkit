@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! CLI handler for `pmat analyze defects` command
 //!
 //! Scans projects for known defect patterns with text, JSON, and JUnit output formats

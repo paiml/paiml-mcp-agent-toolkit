@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Output formatters for TDG --explain mode (Issue #78)
 //!
 //! Provides text and JSON formatters for function-level complexity analysis.

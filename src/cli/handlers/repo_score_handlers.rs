@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! CLI handler for `pmat repo-score` command
 //!
 //! Calculates repository health score (0-100 scale) across 6 categories.

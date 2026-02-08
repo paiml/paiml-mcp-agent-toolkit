@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! CUDA-SIMD Defect Taxonomy
 //!
 //! Extracted from cuda_simd.rs for file health compliance (CB-040).

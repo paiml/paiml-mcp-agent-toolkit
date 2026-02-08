@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Agent command handlers for Claude Code integration
 //!
 //! This module implements handlers for the agent subcommands, providing

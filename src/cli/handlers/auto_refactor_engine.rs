@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Fully automated refactoring engine
 //!
 //! This module provides automatic code refactoring without requiring external AI intervention

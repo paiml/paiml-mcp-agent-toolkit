@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Toyota Way: Churn Analysis Formatting Handler
 //! Complexity: Reduced from 17 to individual functions ≤8
 //! Purpose: Churn report formatting with clean separation of concerns

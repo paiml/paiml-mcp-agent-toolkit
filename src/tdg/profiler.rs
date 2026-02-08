@@ -1,9 +1,8 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Sprint 31 Week 2 - Performance Profiling Tools
 //!
 //! Advanced profiling capabilities for the TDG system including flame graphs,
 //! call traces, memory profiling, and bottleneck detection.
-
-#![cfg_attr(coverage_nightly, coverage(off))]
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;

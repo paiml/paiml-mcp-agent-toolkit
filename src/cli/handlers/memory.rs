@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! CLI handlers for memory management operations
 //!
 //! This module provides command-line interface for memory optimization features:

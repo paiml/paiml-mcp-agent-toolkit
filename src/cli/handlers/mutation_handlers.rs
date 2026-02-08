@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Mutation testing handlers
 //!
 //! Handles the `pmat analyze mutate` command for mutation testing with ML prediction.

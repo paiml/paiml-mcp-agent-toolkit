@@ -7,7 +7,6 @@ use std::fs;
 // Tests for CB-130 Agent Context Adoption
 // =============================================================================
 
-#[cfg_attr(coverage_nightly, coverage(off))]
 mod cb130_tests {
     use super::*;
     use tempfile::TempDir;
@@ -142,7 +141,6 @@ mod cb130_tests {
 // Tests for OIP Tarantula Pattern Detection
 // =============================================================================
 
-#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod oip_tarantula_tests {
     use super::*;
@@ -199,7 +197,6 @@ fn sort_floats(vec: &mut Vec<f64>) {
         fs::write(
             src.join("lib.rs"),
             r#"
-#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     #[test]
@@ -309,7 +306,6 @@ fn load(s: &str) -> Settings {
         fs::write(
             src.join("lib.rs"),
             r#"
-#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     #[test]
@@ -444,7 +440,6 @@ fail_under = 95.0
 // Tests for CB-081 Dependency Count Detection
 // =============================================================================
 
-#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod cb081_dependency_tests {
     use super::*;

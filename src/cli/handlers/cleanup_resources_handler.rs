@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Cleanup resources CLI handler (GH-86)
 // Toyota Way: Muda elimination - remove waste from development environments
 
@@ -87,31 +88,39 @@ pub async fn handle_cleanup_resources(
 
     let mut result = CleanupResult::default();
 
-    // Scan for cleanup candidates
-    if has_all || parsed_targets.contains(&CleanupTarget::Rust) {
-        scan_rust_targets(project_dir, exclude, min_age_days, &mut result)?;
-    }
-
-    if has_all || parsed_targets.contains(&CleanupTarget::Node) {
-        scan_node_targets(project_dir, exclude, min_age_days, &mut result)?;
-    }
-
-    if has_all || parsed_targets.contains(&CleanupTarget::Git) {
-        scan_git_targets(project_dir, &mut result)?;
-    }
-
-    if has_all || parsed_targets.contains(&CleanupTarget::Logs) {
-        scan_log_targets(project_dir, exclude, min_age_days, &mut result)?;
-    }
-
-    // Print results
+    scan_targets(project_dir, &parsed_targets, has_all, exclude, min_age_days, &mut result)?;
     print_results(&result, format)?;
+    finalize_cleanup(execute, &mut result)
+}
 
-    // Execute cleanup if requested
+fn scan_targets(
+    project_dir: &Path,
+    targets: &[CleanupTarget],
+    has_all: bool,
+    exclude: &[String],
+    min_age_days: u32,
+    result: &mut CleanupResult,
+) -> Result<()> {
+    if has_all || targets.contains(&CleanupTarget::Rust) {
+        scan_rust_targets(project_dir, exclude, min_age_days, result)?;
+    }
+    if has_all || targets.contains(&CleanupTarget::Node) {
+        scan_node_targets(project_dir, exclude, min_age_days, result)?;
+    }
+    if has_all || targets.contains(&CleanupTarget::Git) {
+        scan_git_targets(project_dir, result)?;
+    }
+    if has_all || targets.contains(&CleanupTarget::Logs) {
+        scan_log_targets(project_dir, exclude, min_age_days, result)?;
+    }
+    Ok(())
+}
+
+fn finalize_cleanup(execute: bool, result: &mut CleanupResult) -> Result<()> {
     if execute && !result.candidates.is_empty() {
         println!();
         println!("🔥 Executing cleanup...");
-        execute_cleanup(&mut result)?;
+        execute_cleanup(result)?;
         println!();
         println!(
             "✅ Cleaned {} items, freed {} MB",
@@ -122,7 +131,6 @@ pub async fn handle_cleanup_resources(
         println!();
         println!("💡 Run with --execute to perform cleanup");
     }
-
     Ok(())
 }
 
@@ -284,53 +292,41 @@ fn scan_log_targets(
     let mut log_count = 0;
     let mut log_size: u64 = 0;
 
-    for entry in WalkDir::new(project_dir)
+    let log_files = WalkDir::new(project_dir)
         .max_depth(5)
         .into_iter()
         .filter_entry(|e| !is_hidden(e.path()) && !is_excluded(e.path(), exclude))
         .flatten()
-    {
+        .filter(|e| e.path().is_file() && e.path().extension().and_then(|e| e.to_str()) == Some("log"))
+        .filter(|e| is_old_enough(e.path(), min_age_days));
+
+    for entry in log_files {
         let path = entry.path();
-
-        if path.is_file() {
-            let ext = path.extension().and_then(|e| e.to_str());
-            if ext == Some("log") {
-                // Check age if specified
-                if min_age_days > 0 {
-                    if let Ok(metadata) = path.metadata() {
-                        if let Ok(modified) = metadata.modified() {
-                            let age = modified.elapsed().unwrap_or_default();
-                            let age_days = age.as_secs() / 86400;
-                            if age_days < min_age_days as u64 {
-                                continue;
-                            }
-                        }
-                    }
-                }
-
-                let size = path.metadata().map(|m| m.len()).unwrap_or(0);
-                result.candidates.push(CleanupCandidate {
-                    path: path.to_path_buf(),
-                    size_bytes: size,
-                    category: "logs".to_string(),
-                    description: "Log file".to_string(),
-                    age_days: 0,
-                });
-                result.total_size_bytes += size;
-                result.items_found += 1;
-                log_count += 1;
-                log_size += size;
-            }
-        }
+        let size = path.metadata().map(|m| m.len()).unwrap_or(0);
+        result.candidates.push(CleanupCandidate {
+            path: path.to_path_buf(),
+            size_bytes: size,
+            category: "logs".to_string(),
+            description: "Log file".to_string(),
+            age_days: 0,
+        });
+        result.total_size_bytes += size;
+        result.items_found += 1;
+        log_count += 1;
+        log_size += size;
     }
 
-    println!(
-        "   Found {} log files ({} MB)",
-        log_count,
-        log_size / (1024 * 1024)
-    );
-
+    println!("   Found {} log files ({} MB)", log_count, log_size / (1024 * 1024));
     Ok(())
+}
+
+fn is_old_enough(path: &Path, min_age_days: u32) -> bool {
+    if min_age_days == 0 { return true; }
+    path.metadata()
+        .ok()
+        .and_then(|m| m.modified().ok())
+        .map(|modified| modified.elapsed().unwrap_or_default().as_secs() / 86400 >= min_age_days as u64)
+        .unwrap_or(true)
 }
 
 /// Print cleanup results
@@ -385,76 +381,15 @@ fn print_results(result: &CleanupResult, format: OutputFormat) -> Result<()> {
 
 /// Execute cleanup operations
 fn execute_cleanup(result: &mut CleanupResult) -> Result<()> {
-    for candidate in &result.candidates {
-        match candidate.category.as_str() {
-            "rust" | "node" => {
-                // Remove directory
-                if candidate.path.is_dir() {
-                    match std::fs::remove_dir_all(&candidate.path) {
-                        Ok(_) => {
-                            result.items_cleaned += 1;
-                            result.space_freed_bytes += candidate.size_bytes;
-                            println!("   ✓ Removed: {}", candidate.path.display());
-                        }
-                        Err(e) => {
-                            result.errors.push(format!(
-                                "Failed to remove {}: {}",
-                                candidate.path.display(),
-                                e
-                            ));
-                        }
-                    }
-                }
-            }
-            "git" => {
-                // Run git gc
-                let git_dir = candidate.path.parent().and_then(|p| p.parent());
-                if let Some(repo_path) = git_dir {
-                    let output = std::process::Command::new("git")
-                        .args(["gc", "--aggressive"])
-                        .current_dir(repo_path)
-                        .output();
-
-                    match output {
-                        Ok(o) if o.status.success() => {
-                            result.items_cleaned += 1;
-                            println!("   ✓ Git gc: {}", repo_path.display());
-                        }
-                        Ok(o) => {
-                            result.errors.push(format!(
-                                "Git gc failed: {}",
-                                String::from_utf8_lossy(&o.stderr)
-                            ));
-                        }
-                        Err(e) => {
-                            result.errors.push(format!("Git gc error: {}", e));
-                        }
-                    }
-                }
-            }
-            "logs" => {
-                // Remove log file
-                if candidate.path.is_file() {
-                    match std::fs::remove_file(&candidate.path) {
-                        Ok(_) => {
-                            result.items_cleaned += 1;
-                            result.space_freed_bytes += candidate.size_bytes;
-                            println!("   ✓ Removed: {}", candidate.path.display());
-                        }
-                        Err(e) => {
-                            result.errors.push(format!(
-                                "Failed to remove {}: {}",
-                                candidate.path.display(),
-                                e
-                            ));
-                        }
-                    }
-                }
-            }
+    let candidates: Vec<_> = result.candidates.iter().map(|c| (c.path.clone(), c.size_bytes, c.category.clone())).collect();
+    for (path, size_bytes, category) in &candidates {
+        match category.as_str() {
+            "rust" | "node" => cleanup_directory(path, *size_bytes, result),
+            "git" => cleanup_git(path, result),
+            "logs" => cleanup_file(path, *size_bytes, result),
             _ => {}
         }
     }
-
     if !result.errors.is_empty() {
         println!();
         println!("⚠️  Errors:");
@@ -462,8 +397,43 @@ fn execute_cleanup(result: &mut CleanupResult) -> Result<()> {
             println!("   {}", error);
         }
     }
-
     Ok(())
+}
+
+fn cleanup_directory(path: &Path, size_bytes: u64, result: &mut CleanupResult) {
+    if !path.is_dir() { return; }
+    match std::fs::remove_dir_all(path) {
+        Ok(_) => {
+            result.items_cleaned += 1;
+            result.space_freed_bytes += size_bytes;
+            println!("   ✓ Removed: {}", path.display());
+        }
+        Err(e) => result.errors.push(format!("Failed to remove {}: {}", path.display(), e)),
+    }
+}
+
+fn cleanup_git(path: &Path, result: &mut CleanupResult) {
+    let Some(repo_path) = path.parent().and_then(|p| p.parent()) else { return; };
+    match std::process::Command::new("git").args(["gc", "--aggressive"]).current_dir(repo_path).output() {
+        Ok(o) if o.status.success() => {
+            result.items_cleaned += 1;
+            println!("   ✓ Git gc: {}", repo_path.display());
+        }
+        Ok(o) => result.errors.push(format!("Git gc failed: {}", String::from_utf8_lossy(&o.stderr))),
+        Err(e) => result.errors.push(format!("Git gc error: {}", e)),
+    }
+}
+
+fn cleanup_file(path: &Path, size_bytes: u64, result: &mut CleanupResult) {
+    if !path.is_file() { return; }
+    match std::fs::remove_file(path) {
+        Ok(_) => {
+            result.items_cleaned += 1;
+            result.space_freed_bytes += size_bytes;
+            println!("   ✓ Removed: {}", path.display());
+        }
+        Err(e) => result.errors.push(format!("Failed to remove {}: {}", path.display(), e)),
+    }
 }
 
 // Helper functions

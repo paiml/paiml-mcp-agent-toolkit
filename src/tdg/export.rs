@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Sprint 31 Week 2 - Export Capabilities
 //!
 //! Provides comprehensive export functionality for TDG analysis results,

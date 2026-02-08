@@ -1,5 +1,4 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
-#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod error_handling_tests {
     use crate::models::error::TemplateError;

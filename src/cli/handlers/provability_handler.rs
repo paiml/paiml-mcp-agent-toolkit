@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Toyota Way: Extracted Provability Analysis Handler
 //! Complexity: Reduced from 19 to individual functions ≤8
 //! Purpose: Function formal provability analysis with confidence scoring

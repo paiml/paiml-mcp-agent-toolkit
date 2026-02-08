@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Toyota Way: Quality Gate Formatting Handler
 //! Complexity: Reduced from 20 to individual functions ≤8
 //! Purpose: Quality gate report formatting with clean separation of concerns

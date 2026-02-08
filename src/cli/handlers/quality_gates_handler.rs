@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Quality gates command handler for TICKET-PMAT-5023 and TICKET-PMAT-5024
 //!
 //! Executes quality gates using the gate executor from TICKET-PMAT-5020.

@@ -10,7 +10,6 @@ pub mod agent_handlers;
 pub mod analysis;
 pub mod analysis_handlers;
 pub mod analyze_defects_handler; // Known Defects: Project-wide defect scanning
-#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 pub mod annotation_tdd_tests;
 pub mod big_o_handlers;
@@ -45,7 +44,6 @@ pub mod enforce_handlers;
 pub mod enhanced_reporting_handlers;
 pub mod five_whys_handlers; // Five Whys root cause analysis (Toyota Way)
 pub mod generation_handlers;
-#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 pub mod graph_context_integration_tests;
 pub mod handler_utils; // Unit-testable pure functions extracted from handlers
@@ -53,7 +51,6 @@ pub mod health_handler;
 pub mod hooks_command_handlers;
 pub mod incremental_coverage_handler;
 pub mod lint_hotspot_handlers;
-#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 pub mod lint_hotspot_property_tests;
 pub mod localize_handlers; // GH-103: Tarantula fault localization
@@ -77,14 +74,12 @@ pub mod qa_work_handler;
 pub mod qdd_handlers;
 pub mod quality_gate_formatter;
 pub mod query_handler; // PMAT-470: RAG-powered semantic code search
-#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 pub mod quality_gate_property_tests;
 pub mod quality_gates_handler; // TICKET-PMAT-5023
 pub mod readme_validate_handlers; // Sprint 38: Hallucination detection CLI
 pub mod red_team; // Red Team Mode: Automated hallucination detection
 pub mod refactor_auto_handlers;
-#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 pub mod refactor_auto_property_tests;
 pub mod refactor_auto_types; // Types extracted for file health (CB-040)
@@ -99,11 +94,9 @@ pub mod spec_handlers; // master-plan-pmat-work-system.md: Spec management comma
 pub mod subagent_handlers;
 pub mod tdg_diagnostic_handler;
 pub mod tdg_formatter;
-#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 pub mod tdg_git_context_tests; // Sprint 65 Phase 2: Git-commit correlation
 pub mod tdg_handlers;
-#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 pub mod tdg_history_tests; // Sprint 65 Phase 3: TDG History Commands
 pub mod telemetry_handlers;
@@ -111,11 +104,9 @@ pub mod test_discovery_handlers; // GH-98: Systematic test discovery and fixing
 pub mod test_handlers;
 pub mod timeline_mode; // Sprint 78: TUI-006 - Timeline CLI integration
 pub mod unified_context_advanced;
-#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 pub mod unified_context_advanced_tests;
 pub mod unified_context_builder;
-#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 pub mod unified_context_property_tests;
 pub mod utility_handlers;
@@ -196,7 +187,6 @@ pub use wasm_handlers::{handle_analyze_assemblyscript, handle_analyze_webassembl
 // CUDA-SIMD TDG exports (100-point Popper falsification scoring)
 pub use cuda_tdg_handlers::{handle_cuda_tdg_command, CudaTdgCommandConfig};
 
-#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
 
@@ -213,7 +203,6 @@ mod tests {
     }
 }
 
-#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;

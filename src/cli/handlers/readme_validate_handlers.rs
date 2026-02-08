@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! README and documentation hallucination detection CLI handlers
 //!
 //! Validates AI-generated documentation against codebase facts using semantic

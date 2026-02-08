@@ -4,7 +4,6 @@
 
 use super::*;
 
-#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod extraction_tests {
     use super::*;
@@ -78,7 +77,6 @@ fn main() {{
     // {}: production bug
 }}
 
-#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {{
     // {}: this should be ignored

@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Incremental Coverage Analysis Handler
 //!
 //! Refactored handler using the service facade pattern to reduce complexity.

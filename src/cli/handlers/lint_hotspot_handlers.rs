@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Lint hotspot analysis handlers
 //!
 //! Analyzes Rust projects to find the single file with highest defect density

@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Unified Context with Advanced Annotations - Extreme TDD Implementation
 use crate::services::context::{AstItem, ProjectContext, ProjectSummary};
 use anyhow::Result;

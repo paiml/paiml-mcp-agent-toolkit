@@ -1,5 +1,4 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
-#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use crate::models::unified_ast::{AstDag, AstKind, FunctionKind, Language, UnifiedAstNode};

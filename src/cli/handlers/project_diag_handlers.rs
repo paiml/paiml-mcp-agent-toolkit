@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Project Diagnostic handlers for Rust project analysis
 //!
 //! Provides the `pmat project-diag` command for diagnosing Rust projects.

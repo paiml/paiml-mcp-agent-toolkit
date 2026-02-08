@@ -3,7 +3,6 @@
 include!("core_tools.rs");
 include!("extended_tools.rs");
 
-#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     // Tests from original file

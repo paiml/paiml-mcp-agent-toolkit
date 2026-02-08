@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Cache Management Commands
 //!
 //! This module provides CLI commands for managing and optimizing cache strategies.

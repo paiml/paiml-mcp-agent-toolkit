@@ -1,5 +1,4 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
-#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -72,7 +71,6 @@ mod tests {
 #[path = "defect_report_service_tests.rs"]
 mod integration_tests;
 
-#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;
@@ -93,7 +91,6 @@ mod property_tests {
 }
 
 /// Comprehensive EXTREME TDD coverage tests for defect report service
-#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod coverage_tests {
     use super::*;

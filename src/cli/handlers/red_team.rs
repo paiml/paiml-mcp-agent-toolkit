@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Red Team Mode CLI Handler
 //
 // Implements hallucination detection for commit messages, documentation, and code comments

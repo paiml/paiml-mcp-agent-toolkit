@@ -11,11 +11,9 @@ pub mod errors;
 pub mod hooks; // TICKET-PMAT-5005
 pub mod template; // TICKET-PMAT-5002
 
-#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests;
 
-#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests;
 

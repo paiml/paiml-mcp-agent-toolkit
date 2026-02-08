@@ -1,10 +1,8 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Simplified Deep Context Analysis - Phase 4 implementation
 //!
 //! A streamlined deep context analysis implementation that focuses on
 //! integrating with existing services without complex dependencies.
-
-#![cfg_attr(coverage_nightly, coverage(off))]
-
 use anyhow::Result;
 use std::{
     path::{Path, PathBuf},

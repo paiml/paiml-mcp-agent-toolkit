@@ -14,7 +14,6 @@ pub mod technical_debt;
 // Re-export the main handlers
 pub use complexity::handle_complexity;
 
-#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;

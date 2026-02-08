@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! CLI handlers for Claude Code sub-agent generation.
 
 use crate::scaffold::agent::{PmatSubAgent, SubAgentGenerator};

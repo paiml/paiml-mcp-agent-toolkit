@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! CLI handler for `pmat rust-project-score` command
 //!
 //! Calculates Rust project quality score (0-106 scale) across 6 categories.

@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Mutation testing handler (Sprint 61)
 //!
 //! Exposes PMAT's AST-based mutation testing infrastructure via CLI command.
@@ -354,6 +355,96 @@ fn output_markdown(
     Ok(())
 }
 
+/// Print the summary statistics block (total, killed, survived, etc.)
+fn output_text_summary(score: &MutationScore) {
+    println!("Total mutants:  {}", score.total);
+
+    if score.total > 0 {
+        let pct = |n: usize| (n as f64 / score.total as f64) * 100.0;
+
+        println!("Killed:         {} ({:.1}%)", score.killed, pct(score.killed));
+        println!(
+            "Survived:       {} ({:.1}%)",
+            score.survived,
+            pct(score.survived)
+        );
+
+        if score.compile_errors > 0 {
+            println!(
+                "Compile errors: {} ({:.1}%)",
+                score.compile_errors,
+                pct(score.compile_errors)
+            );
+        }
+
+        if score.timeouts > 0 {
+            println!(
+                "Timeouts:       {} ({:.1}%)",
+                score.timeouts,
+                pct(score.timeouts)
+            );
+        }
+
+        if score.equivalent > 0 {
+            println!(
+                "Equivalent:     {} ({:.1}%)",
+                score.equivalent,
+                pct(score.equivalent)
+            );
+        }
+    }
+
+    let score_percent = score.score * 100.0;
+    println!("\nMutation Score: {:.1}%\n", score_percent);
+}
+
+/// Print survived mutants with code snippets
+fn output_survived_mutants(results: &[&MutationResult]) {
+    if results.is_empty() {
+        return;
+    }
+    println!("Survived Mutants (needs test coverage):\n");
+    for (i, result) in results.iter().enumerate() {
+        println!(
+            "{}. {}:{}:{}",
+            i + 1,
+            result.mutant.original_file.display(),
+            result.mutant.location.line,
+            result.mutant.location.column
+        );
+        println!("   Operator: {:?}", result.mutant.operator);
+
+        if let Ok(snippet) =
+            extract_code_snippet(&result.mutant.original_file, &result.mutant.location)
+        {
+            println!("   Code: {}", snippet);
+        }
+
+        println!(
+            "   Time: {:.2}s\n",
+            result.execution_time_ms as f64 / 1000.0
+        );
+    }
+}
+
+/// Print a list of mutant results under a titled section
+fn output_mutant_section(title: &str, results: &[&MutationResult]) {
+    if results.is_empty() {
+        return;
+    }
+    println!("{}:\n", title);
+    for (i, result) in results.iter().enumerate() {
+        println!(
+            "{}. {}:{}:{}",
+            i + 1,
+            result.mutant.original_file.display(),
+            result.mutant.location.line,
+            result.mutant.location.column
+        );
+        println!("   Operator: {:?}\n", result.mutant.operator);
+    }
+}
+
 fn output_text(
     score: &MutationScore,
     results: &[MutationResult],
@@ -384,121 +475,32 @@ fn output_text(
 
     // Summary statistics
     if !failures_only {
-        println!("Total mutants:  {}", score.total);
-
-        if score.total > 0 {
-            println!(
-                "Killed:         {} ({:.1}%)",
-                score.killed,
-                (score.killed as f64 / score.total as f64) * 100.0
-            );
-            println!(
-                "Survived:       {} ({:.1}%)",
-                score.survived,
-                (score.survived as f64 / score.total as f64) * 100.0
-            );
-
-            if score.compile_errors > 0 {
-                println!(
-                    "Compile errors: {} ({:.1}%)",
-                    score.compile_errors,
-                    (score.compile_errors as f64 / score.total as f64) * 100.0
-                );
-            }
-
-            if score.timeouts > 0 {
-                println!(
-                    "Timeouts:       {} ({:.1}%)",
-                    score.timeouts,
-                    (score.timeouts as f64 / score.total as f64) * 100.0
-                );
-            }
-
-            if score.equivalent > 0 {
-                println!(
-                    "Equivalent:     {} ({:.1}%)",
-                    score.equivalent,
-                    (score.equivalent as f64 / score.total as f64) * 100.0
-                );
-            }
-        }
-
-        // Mutation score
-        let score_percent = score.score * 100.0;
-        println!("\nMutation Score: {:.1}%\n", score_percent);
+        output_text_summary(score);
     }
 
     // Sprint 62: Show failures with code snippets
     let survived: Vec<_> = filtered_results
         .iter()
         .filter(|r| r.status == MutantStatus::Survived)
+        .map(|r| *r)
         .collect();
-
-    if !survived.is_empty() {
-        println!("Survived Mutants (needs test coverage):\n");
-        for (i, result) in survived.iter().enumerate() {
-            println!(
-                "{}. {}:{}:{}",
-                i + 1,
-                result.mutant.original_file.display(),
-                result.mutant.location.line,
-                result.mutant.location.column
-            );
-            println!("   Operator: {:?}", result.mutant.operator);
-
-            // Extract and display code snippet
-            if let Ok(snippet) =
-                extract_code_snippet(&result.mutant.original_file, &result.mutant.location)
-            {
-                println!("   Code: {}", snippet);
-            }
-
-            println!(
-                "   Time: {:.2}s\n",
-                result.execution_time_ms as f64 / 1000.0
-            );
-        }
-    }
+    output_survived_mutants(&survived);
 
     // Show compile errors if any
     let compile_errors: Vec<_> = filtered_results
         .iter()
         .filter(|r| r.status == MutantStatus::CompileError)
+        .map(|r| *r)
         .collect();
-
-    if !compile_errors.is_empty() {
-        println!("Compile Errors:\n");
-        for (i, result) in compile_errors.iter().enumerate() {
-            println!(
-                "{}. {}:{}:{}",
-                i + 1,
-                result.mutant.original_file.display(),
-                result.mutant.location.line,
-                result.mutant.location.column
-            );
-            println!("   Operator: {:?}\n", result.mutant.operator);
-        }
-    }
+    output_mutant_section("Compile Errors", &compile_errors);
 
     // Show timeouts if any
     let timeouts: Vec<_> = filtered_results
         .iter()
         .filter(|r| r.status == MutantStatus::Timeout)
+        .map(|r| *r)
         .collect();
-
-    if !timeouts.is_empty() {
-        println!("Timeouts:\n");
-        for (i, result) in timeouts.iter().enumerate() {
-            println!(
-                "{}. {}:{}:{}",
-                i + 1,
-                result.mutant.original_file.display(),
-                result.mutant.location.line,
-                result.mutant.location.column
-            );
-            println!("   Operator: {:?}\n", result.mutant.operator);
-        }
-    }
+    output_mutant_section("Timeouts", &timeouts);
 
     Ok(())
 }

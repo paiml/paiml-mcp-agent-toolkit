@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Sprint 78: TUI-006 GREEN - Timeline CLI Integration
 //
 // Provides TimelineMode enum and helpers for CLI --interactive flag

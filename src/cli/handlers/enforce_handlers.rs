@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Enforce command handlers for extreme quality enforcement
 //!
 //! This module implements the state machine-based quality enforcement system

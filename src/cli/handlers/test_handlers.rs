@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Test command handlers for property-based testing
 //!
 //! This module handles the Test command for running property-based

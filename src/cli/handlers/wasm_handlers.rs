@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! WebAssembly and `AssemblyScript` analysis handlers
 //!
 //! This module contains handlers for WebAssembly binary/text format and

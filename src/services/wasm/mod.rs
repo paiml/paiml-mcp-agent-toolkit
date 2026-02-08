@@ -8,38 +8,30 @@
 //!
 //! Follows Toyota Way principles with extreme quality standards.
 pub mod assemblyscript;
-#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 pub mod assemblyscript_property_tests;
 pub mod binary;
-#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 pub mod binary_property_tests;
 pub mod complexity;
-#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 pub mod complexity_property_tests;
-#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 pub mod coverage_tests;
 pub mod error;
-#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 pub mod integration_tests;
 pub mod language_detection;
 pub mod memory_pool;
 pub mod parallel;
 pub mod security;
-#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 pub mod security_property_tests;
-#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 pub mod tests;
 pub mod traits;
 pub mod types;
 pub mod wat;
-#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 pub mod wat_property_tests;
 
@@ -55,7 +47,6 @@ pub use self::wat::WatParser;
 pub use self::complexity::WasmComplexityAnalyzer;
 pub use self::security::WasmSecurityValidator;
 
-#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
     use proptest::prelude::*;

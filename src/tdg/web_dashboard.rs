@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! TDG Web Dashboard - Sprint 31 Week 1
 //!
 //! Provides a real-time web dashboard for monitoring and managing the Transactional
@@ -10,8 +11,6 @@
 //! - Performance metrics visualization
 //! - Interactive TDG analysis
 //! - System health monitoring
-
-#![cfg_attr(coverage_nightly, coverage(off))]
 use super::{
     AdaptiveThresholdFactory, SchedulerFactory, TdgAnalyzer, TieredStorageFactory, TieredStore,
 };

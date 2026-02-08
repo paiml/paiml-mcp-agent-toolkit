@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Recommendation engine for TDG --explain mode (Issue #78)
 //!
 //! Generates actionable refactoring recommendations based on function complexity analysis.
