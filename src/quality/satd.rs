@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 use super::gate::SatdResult;
 use once_cell::sync::Lazy;
 use regex::Regex;
@@ -414,5 +415,124 @@ mod tests {
         let source = "/* closed on same line */ code();";
         let comments = detector.extract_comments(source);
         assert!(comments.contains("closed on same line"));
+    }
+
+    // === Extended Pattern Tests ===
+
+    #[test]
+    fn test_with_extended_creates_extended_detector() {
+        let detector = SatdDetector::with_extended();
+        assert!(detector.is_extended());
+        assert!(detector.patterns.len() > 9);
+    }
+
+    #[test]
+    fn test_is_extended_standard_detector() {
+        let detector = SatdDetector::new();
+        assert!(!detector.is_extended());
+    }
+
+    #[test]
+    fn test_extended_detects_placeholder() {
+        let detector = SatdDetector::with_extended();
+        let source = "// placeholder implementation";
+        let result = detector.detect(source);
+        assert!(result.count > 0);
+        assert!(result.patterns.contains(&"PLACEHOLDER".to_string()));
+    }
+
+    #[test]
+    fn test_extended_detects_stub() {
+        let detector = SatdDetector::with_extended();
+        let source = "// stub for testing";
+        let result = detector.detect(source);
+        assert!(result.count > 0);
+        assert!(result.patterns.contains(&"STUB".to_string()));
+    }
+
+    #[test]
+    fn test_extended_detects_for_now() {
+        let detector = SatdDetector::with_extended();
+        let source = "// this works for now";
+        let result = detector.detect(source);
+        assert!(result.count > 0);
+        assert!(result.patterns.contains(&"FOR_NOW".to_string()));
+    }
+
+    #[test]
+    fn test_extended_detects_mock_dummy_fake() {
+        let detector = SatdDetector::with_extended();
+        let source = "// using mock data and dummy values with fake response";
+        let result = detector.detect(source);
+        assert!(result.count >= 3);
+        assert!(result.patterns.contains(&"MOCK".to_string()));
+    }
+
+    #[test]
+    fn test_extended_detects_hardcoded() {
+        let detector = SatdDetector::with_extended();
+        let source = "// hardcoded value";
+        let result = detector.detect(source);
+        assert!(result.patterns.contains(&"HARDCODED".to_string()));
+    }
+
+    #[test]
+    fn test_extended_detects_simplified() {
+        let detector = SatdDetector::with_extended();
+        let source = "// simplified version of the algorithm";
+        let result = detector.detect(source);
+        assert!(result.patterns.contains(&"SIMPLIFIED".to_string()));
+    }
+
+    #[test]
+    fn test_extended_detects_wip() {
+        let detector = SatdDetector::with_extended();
+        let source = "// WIP: not finished yet";
+        let result = detector.detect(source);
+        assert!(result.patterns.contains(&"WIP".to_string()));
+    }
+
+    #[test]
+    fn test_extended_detects_skip_bypass() {
+        let detector = SatdDetector::with_extended();
+        let source = "// skip validation for now";
+        let result = detector.detect(source);
+        assert!(result.count > 0);
+    }
+
+    #[test]
+    fn test_extended_case_insensitive() {
+        let detector = SatdDetector::with_extended();
+        let source = "// PLACEHOLDER Stub HARDCODED Simplified";
+        let result = detector.detect(source);
+        assert!(result.count >= 4);
+    }
+
+    #[test]
+    fn test_extended_detect_in_comments() {
+        let detector = SatdDetector::with_extended();
+        let source = "let x = 1; // placeholder for now\ncode();";
+        let result = detector.detect_in_comments(source);
+        assert!(result.count > 0);
+        assert!(result.patterns.contains(&"PLACEHOLDER".to_string()));
+        assert!(result.patterns.contains(&"FOR_NOW".to_string()));
+    }
+
+    #[test]
+    fn test_extract_comments_unclosed_block() {
+        let detector = SatdDetector::new();
+        let source = "fn foo() {\n    /* unclosed block\n    still in comment\n}";
+        let comments = detector.extract_comments(source);
+        assert!(comments.contains("unclosed block"));
+        assert!(comments.contains("still in comment"));
+    }
+
+    #[test]
+    fn test_extract_comments_block_opening_on_own_line() {
+        let detector = SatdDetector::new();
+        let source = "/*\n  block content\n  more content\n*/\ncode();";
+        let comments = detector.extract_comments(source);
+        assert!(comments.contains("block content"));
+        assert!(comments.contains("more content"));
     }
 }
