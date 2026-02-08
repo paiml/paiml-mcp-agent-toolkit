@@ -214,3 +214,34 @@ pub enum EnforceCommands {
         clear_cache: bool,
     },
 }
+
+#[cfg(test)]
+mod quality_commands_tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_parameter_valid() {
+        let (ty, name) = parse_parameter("String:user_id").unwrap();
+        assert_eq!(ty, "String");
+        assert_eq!(name, "user_id");
+    }
+
+    #[test]
+    fn test_parse_parameter_no_colon() {
+        let err = parse_parameter("no_colon").unwrap_err();
+        assert!(err.contains("type:name"));
+    }
+
+    #[test]
+    fn test_parse_parameter_too_many_colons() {
+        let err = parse_parameter("a:b:c").unwrap_err();
+        assert!(err.contains("type:name"));
+    }
+
+    #[test]
+    fn test_parse_parameter_empty_parts() {
+        let (ty, name) = parse_parameter(":").unwrap();
+        assert_eq!(ty, "");
+        assert_eq!(name, "");
+    }
+}

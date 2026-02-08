@@ -565,3 +565,29 @@ pub enum TestDiscoveryFormat {
     Markdown,
     Text,
 }
+
+#[cfg(test)]
+mod work_commands_tests {
+    use super::*;
+    use crate::models::roadmap::Priority;
+
+    #[test]
+    fn test_to_roadmap_priority_low() {
+        assert!(matches!(WorkPriority::Low.to_roadmap_priority(), Priority::Low));
+    }
+
+    #[test]
+    fn test_to_roadmap_priority_medium() {
+        assert!(matches!(WorkPriority::Medium.to_roadmap_priority(), Priority::Medium));
+    }
+
+    #[test]
+    fn test_to_roadmap_priority_high() {
+        assert!(matches!(WorkPriority::High.to_roadmap_priority(), Priority::High));
+    }
+
+    #[test]
+    fn test_to_roadmap_priority_critical() {
+        assert!(matches!(WorkPriority::Critical.to_roadmap_priority(), Priority::Critical));
+    }
+}
