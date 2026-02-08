@@ -1,7 +1,7 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
 
 use super::coverage_exclusion::CoverageExclusion;
-use crate::services::agent_context::{AgentContextIndex, FunctionEntry};
+use crate::services::agent_context::{AgentContextIndex, FunctionEntry, GraphMetrics};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 
@@ -251,6 +251,26 @@ impl QueryResult {
             coverage_exclusion: CoverageExclusion::None,
             coverage_excluded: false,
         }
+    }
+
+    /// Create from function entry with graph metrics but NO call graph.
+    ///
+    /// Used by coverage-gaps mode where call graph data is not displayed.
+    /// Avoids 71K × 2 HashMap lookups + Vec clones for unused data.
+    pub fn from_entry_with_metrics(
+        entry: &FunctionEntry,
+        func_idx: usize,
+        graph_metrics: &[GraphMetrics],
+        relevance: f32,
+    ) -> Self {
+        let mut result = Self::from_entry(entry, relevance, false);
+        if func_idx < graph_metrics.len() {
+            let metrics = &graph_metrics[func_idx];
+            result.pagerank = metrics.pagerank;
+            result.in_degree = metrics.in_degree;
+            result.out_degree = metrics.out_degree;
+        }
+        result
     }
 
     /// Create from function entry with caller/callee context and graph metrics

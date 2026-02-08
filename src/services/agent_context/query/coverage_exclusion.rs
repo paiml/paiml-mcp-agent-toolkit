@@ -52,24 +52,33 @@ pub(crate) struct ExclusionContext {
     makefile_regex: Option<regex::Regex>,
     /// Dead function keys: "file_path::function_name"
     dead_functions: HashSet<String>,
+    /// Whether coverage_off_files was pre-populated from index cache (skip file I/O)
+    use_cached: bool,
 }
 
 impl ExclusionContext {
     /// Build exclusion context from project state.
-    pub(crate) fn build(project_path: &Path) -> Self {
+    ///
+    /// When `cached_coverage_off` is provided (from SQLite index), skips all file I/O
+    /// for coverage(off) detection — O(1) per file instead of O(file_size).
+    pub(crate) fn build(project_path: &Path, cached_coverage_off: Option<&HashSet<String>>) -> Self {
         let makefile_regex = parse_makefile_coverage_exclude(project_path);
         let dead_functions = load_dead_code_functions(project_path);
+        let coverage_off_files = cached_coverage_off.cloned().unwrap_or_default();
+        let use_cached = cached_coverage_off.is_some();
         Self {
-            coverage_off_files: HashSet::new(),
+            coverage_off_files,
             checked_files: HashSet::new(),
             makefile_regex,
             dead_functions,
+            use_cached,
         }
     }
 
     /// Classify a single result's exclusion reason.
     ///
     /// Checks in priority order: dead code > coverage(off) > Makefile pattern.
+    /// With cached data, this is pure HashSet lookups — no file I/O.
     pub(crate) fn classify(&mut self, result: &QueryResult, project_path: &Path) -> CoverageExclusion {
         // 1. Dead code check (function-level, highest signal)
         let dead_key = format!("{}::{}", result.file_path, result.function_name);
@@ -77,7 +86,7 @@ impl ExclusionContext {
             return CoverageExclusion::DeadCode;
         }
 
-        // 2. Module-level coverage(off) check (cached per file)
+        // 2. Module-level coverage(off) check
         if self.is_coverage_off_file(&result.file_path, project_path) {
             return CoverageExclusion::CoverageOff;
         }
@@ -93,10 +102,16 @@ impl ExclusionContext {
     }
 
     /// Check if a file has module-level `cfg_attr(coverage_nightly, coverage(off))`.
-    /// Caches both positive and negative results per file path to avoid redundant I/O.
+    ///
+    /// With cached data (from index build), this is a pure HashSet lookup.
+    /// Falls back to lazy file I/O only when no cached data is available.
     fn is_coverage_off_file(&mut self, file_path: &str, project_path: &Path) -> bool {
         if self.coverage_off_files.contains(file_path) {
             return true;
+        }
+        // If we have cached data, trust it — no need for file I/O fallback
+        if self.use_cached {
+            return false;
         }
         // Negative cache: already checked this file and it didn't have coverage(off)
         if self.checked_files.contains(file_path) {
@@ -128,9 +143,15 @@ impl ExclusionContext {
 
 /// Classify coverage exclusions for a batch of results.
 ///
+/// When `cached_coverage_off` is provided (from index build), coverage(off)
+/// detection is O(1) HashSet lookup with zero file I/O.
 /// Mutates results in-place, setting `coverage_exclusion` and `coverage_excluded`.
-pub fn classify_exclusions(results: &mut [QueryResult], project_path: &Path) {
-    let mut ctx = ExclusionContext::build(project_path);
+pub fn classify_exclusions(
+    results: &mut [QueryResult],
+    project_path: &Path,
+    cached_coverage_off: Option<&HashSet<String>>,
+) {
+    let mut ctx = ExclusionContext::build(project_path, cached_coverage_off);
     for result in results.iter_mut() {
         let exclusion = ctx.classify(result, project_path);
         result.coverage_excluded = !exclusion.is_none();
@@ -345,6 +366,7 @@ mod tests {
             checked_files: HashSet::new(),
             makefile_regex: None,
             dead_functions: HashSet::new(),
+            use_cached: false,
         };
 
         let r = make_result("src/cli/handler.rs", "foo");
@@ -366,6 +388,7 @@ mod tests {
             checked_files: HashSet::new(),
             makefile_regex: None,
             dead_functions: dead,
+            use_cached: false,
         };
 
         let r = make_result("src/lib.rs", "dead_fn");
@@ -388,6 +411,7 @@ mod tests {
             checked_files: HashSet::new(),
             makefile_regex: Some(re),
             dead_functions: HashSet::new(),
+            use_cached: false,
         };
 
         let r = make_result("src/cli/handlers/foo.rs", "bar");
@@ -409,6 +433,7 @@ mod tests {
             checked_files: HashSet::new(),
             makefile_regex: None,
             dead_functions: HashSet::new(),
+            use_cached: false,
         };
 
         let r = make_result("src/services/core.rs", "important");
@@ -436,7 +461,7 @@ mod tests {
             make_result("src/cli/handler.rs", "excluded"),
         ];
 
-        classify_exclusions(&mut results, temp.path());
+        classify_exclusions(&mut results, temp.path(), None);
 
         assert_eq!(results[0].coverage_exclusion, CoverageExclusion::None);
         assert!(!results[0].coverage_excluded);
@@ -591,6 +616,7 @@ mod tests {
             checked_files: HashSet::new(),
             makefile_regex: None,
             dead_functions: dead,
+            use_cached: false,
         };
 
         let r = make_result("src/mixed.rs", "dead_fn");
@@ -613,6 +639,7 @@ mod tests {
             checked_files: HashSet::new(),
             makefile_regex: None,
             dead_functions: HashSet::new(),
+            use_cached: false,
         };
 
         // First check reads file

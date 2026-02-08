@@ -4,7 +4,7 @@
 //! Contains all struct and enum definitions used by the agent context index.
 
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 
 /// Quality metrics for a function
@@ -199,4 +199,6 @@ pub struct AgentContextIndex {
     pub(crate) manifest: IndexManifest,
     /// Path to SQLite FTS5 database (if available)
     pub(crate) db_path: Option<PathBuf>,
+    /// Files with module-level `coverage(off)` annotation (cached from index build)
+    pub(crate) coverage_off_files: HashSet<String>,
 }

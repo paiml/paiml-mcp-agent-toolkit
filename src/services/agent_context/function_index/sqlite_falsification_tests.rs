@@ -11,7 +11,7 @@ mod tests {
     use crate::services::agent_context::function_index::sqlite_backend::*;
     use crate::services::agent_context::function_index::types::*;
     use rusqlite::Connection;
-    use std::collections::HashMap;
+    use std::collections::{HashMap, HashSet};
 
     // ═══════════════════════════════════════════════════════════════════
     //  Test data factories
@@ -1253,7 +1253,7 @@ mod tests {
         let tmp = tempfile::TempDir::new().unwrap();
         let db_path = tmp.path().join("test.db");
         let funcs = vec![entry("f", "fn f() {}", "a.rs")];
-        save_to_sqlite(&db_path, &funcs, &HashMap::new(), &[], &manifest(1, 1)).unwrap();
+        save_to_sqlite(&db_path, &funcs, &HashMap::new(), &[], &manifest(1, 1), &HashSet::new()).unwrap();
         assert!(db_path.exists());
     }
 
@@ -1263,9 +1263,9 @@ mod tests {
         let tmp = tempfile::TempDir::new().unwrap();
         let db_path = tmp.path().join("test.db");
         // First save
-        save_to_sqlite(&db_path, &[entry("old", "fn old() {}", "a.rs")], &HashMap::new(), &[], &manifest(1, 1)).unwrap();
+        save_to_sqlite(&db_path, &[entry("old", "fn old() {}", "a.rs")], &HashMap::new(), &[], &manifest(1, 1), &HashSet::new()).unwrap();
         // Second save (should replace)
-        save_to_sqlite(&db_path, &[entry("new", "fn new() {}", "b.rs")], &HashMap::new(), &[], &manifest(1, 1)).unwrap();
+        save_to_sqlite(&db_path, &[entry("new", "fn new() {}", "b.rs")], &HashMap::new(), &[], &manifest(1, 1), &HashSet::new()).unwrap();
 
         let conn = open_db(&db_path).unwrap();
         let loaded = load_functions(&conn).unwrap();
@@ -1286,7 +1286,7 @@ mod tests {
             GraphMetrics { pagerank: 0.8, ..Default::default() },
         ];
         let m = manifest(2, 2);
-        save_to_sqlite(&db_path, &funcs, &calls, &metrics, &m).unwrap();
+        save_to_sqlite(&db_path, &funcs, &calls, &metrics, &m, &HashSet::new()).unwrap();
 
         let conn = open_db(&db_path).unwrap();
         assert_eq!(count(&conn, "functions"), 2);
@@ -1509,7 +1509,7 @@ mod tests {
     fn f096_small_db_file_size() {
         let tmp = tempfile::TempDir::new().unwrap();
         let db_path = tmp.path().join("test.db");
-        save_to_sqlite(&db_path, &[entry("f", "fn f() {}", "a.rs")], &HashMap::new(), &[], &manifest(1, 1)).unwrap();
+        save_to_sqlite(&db_path, &[entry("f", "fn f() {}", "a.rs")], &HashMap::new(), &[], &manifest(1, 1), &HashSet::new()).unwrap();
         let size = db_path.metadata().unwrap().len();
         assert!(size < 100_000, "single-function DB should be < 100KB, got {size}");
         assert!(size > 0, "DB should not be empty");
@@ -1525,8 +1525,8 @@ mod tests {
         let small_funcs: Vec<_> = (0..10).map(|i| entry(&format!("f{i}"), &format!("fn f{i}() {{}}"), &format!("f{i}.rs"))).collect();
         let large_funcs: Vec<_> = (0..100).map(|i| entry(&format!("f{i}"), &format!("fn f{i}() {{}}"), &format!("f{i}.rs"))).collect();
 
-        save_to_sqlite(&small_path, &small_funcs, &HashMap::new(), &[], &manifest(10, 10)).unwrap();
-        save_to_sqlite(&large_path, &large_funcs, &HashMap::new(), &[], &manifest(100, 100)).unwrap();
+        save_to_sqlite(&small_path, &small_funcs, &HashMap::new(), &[], &manifest(10, 10), &HashSet::new()).unwrap();
+        save_to_sqlite(&large_path, &large_funcs, &HashMap::new(), &[], &manifest(100, 100), &HashSet::new()).unwrap();
 
         let small_size = small_path.metadata().unwrap().len() as f64;
         let large_size = large_path.metadata().unwrap().len() as f64;
@@ -1539,7 +1539,7 @@ mod tests {
     fn f098_db_file_valid_sqlite() {
         let tmp = tempfile::TempDir::new().unwrap();
         let db_path = tmp.path().join("test.db");
-        save_to_sqlite(&db_path, &[entry("f", "fn f() {}", "a.rs")], &HashMap::new(), &[], &manifest(1, 1)).unwrap();
+        save_to_sqlite(&db_path, &[entry("f", "fn f() {}", "a.rs")], &HashMap::new(), &[], &manifest(1, 1), &HashSet::new()).unwrap();
         // Re-open and verify
         let conn = open_db(&db_path).unwrap();
         let loaded = load_functions(&conn).unwrap();

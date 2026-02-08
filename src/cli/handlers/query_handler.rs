@@ -39,6 +39,57 @@ const DIM_CYAN: &str = "\x1b[2;36m";
 
 // ── Data structures ─────────────────────────────────────────────────────────
 
+/// Query performance profile — Toyota Way Andon cord instrumentation.
+///
+/// All query phases are timed. If any phase exceeds its threshold,
+/// a warning is printed (Andon cord: make problems visible).
+struct QueryProfile {
+    phases: Vec<(&'static str, std::time::Duration)>,
+    start: Instant,
+}
+
+/// Andon cord threshold: any single phase exceeding this triggers a warning.
+const ANDON_THRESHOLD_MS: u128 = 500;
+
+impl QueryProfile {
+    fn new() -> Self {
+        Self { phases: Vec::new(), start: Instant::now() }
+    }
+
+    fn phase(&mut self, name: &'static str) {
+        self.phases.push((name, self.start.elapsed()));
+    }
+
+    fn emit(&self, quiet: bool) {
+        if quiet { return; }
+        let total = self.start.elapsed();
+        let mut prev = std::time::Duration::ZERO;
+        let mut violations = Vec::new();
+        for (name, cumulative) in &self.phases {
+            let delta = *cumulative - prev;
+            let delta_ms = delta.as_millis();
+            if delta_ms > ANDON_THRESHOLD_MS {
+                violations.push((*name, delta_ms));
+            }
+            prev = *cumulative;
+        }
+        if !violations.is_empty() {
+            eprintln!("{DIM}query profile: {:.0}ms total{RESET}", total.as_secs_f64() * 1000.0);
+            for (name, cumulative) in &self.phases {
+                let delta = if self.phases.first().map(|f| f.0) == Some(*name) {
+                    *cumulative
+                } else {
+                    let idx = self.phases.iter().position(|p| p.0 == *name).unwrap();
+                    *cumulative - self.phases[idx - 1].1
+                };
+                let delta_ms = delta.as_millis();
+                let marker = if delta_ms > ANDON_THRESHOLD_MS { &format!(" {BRIGHT_RED}ANDON{RESET}") } else { "" };
+                eprintln!("  {DIM}{name}: {delta_ms}ms{marker}{RESET}");
+            }
+        }
+    }
+}
+
 /// Timing breakdown for git history search phases
 struct GitHistoryProfile {
     git_log_ms: u128,
@@ -220,6 +271,7 @@ pub async fn handle_query(
     context_lines: Option<usize>,
 ) -> anyhow::Result<()> {
     let quiet = matches!(format, QueryOutputFormat::Json);
+    let mut profile = QueryProfile::new();
 
     // ── Raw search mode: skip index entirely ──────
     if raw {
@@ -232,6 +284,7 @@ pub async fn handle_query(
 
     // ── Load index ──────
     let index = load_query_index(&project_path, rebuild_index, &include_project, quiet)?;
+    profile.phase("load_index");
 
     if !quiet {
         let manifest = index.manifest();
@@ -266,6 +319,7 @@ pub async fn handle_query(
     let mut results = index
         .query(&query, options)
         .map_err(|e| anyhow::anyhow!("{}", e))?;
+    profile.phase("query");
 
     apply_result_filters(&mut results, exclude_tests, &definition_type);
     apply_all_enrichments(
@@ -273,9 +327,11 @@ pub async fn handle_query(
         churn, duplicates, entropy, faults,
         coverage, uncovered_only, &coverage_file, &coverage_diff,
     ).await;
+    profile.phase("enrich");
     apply_post_enrichment_sort(&mut results, &rank_by);
 
     let git_data = fetch_git_data(git_history, &project_path, &query, limit, &index, quiet)?;
+    profile.phase("git_history");
 
     let merge_ctx = MergeContext {
         query: &query, literal, ignore_case,
@@ -293,7 +349,10 @@ pub async fn handle_query(
         &format, effective_include_source, coverage,
         files_with_matches, count, context_lines, after_context, before_context,
         &merge_ctx, &project_path, &index,
-    )
+    )?;
+    profile.phase("output");
+    profile.emit(quiet);
+    Ok(())
 }
 
 fn build_query_options(
@@ -675,22 +734,32 @@ async fn handle_coverage_gaps_mode(
     exclude_tests: bool, limit: usize, quiet: bool,
     include_excluded: bool, files_with_matches: bool, count_mode: bool,
 ) -> anyhow::Result<()> {
-    if !quiet { eprintln!("Loading coverage data..."); }
+    let mut profile = QueryProfile::new();
 
+    // Lightweight: graph metrics only, skip call graph (not displayed in coverage-gaps)
     let mut results: Vec<QueryResult> = index.functions.iter().enumerate()
-        .map(|(i, entry)| QueryResult::from_entry_with_context(entry, i, index, 0.0, false))
+        .map(|(i, entry)| QueryResult::from_entry_with_metrics(entry, i, &index.graph_metrics, 0.0))
         .collect();
+    profile.phase("build_results");
 
     apply_result_filters_coverage(&mut results, language, path_pattern, exclude_tests);
+    profile.phase("filter");
 
-    if !quiet { eprintln!("Classifying coverage exclusions..."); }
-    crate::services::agent_context::classify_exclusions(&mut results, project_path);
+    // Use cached coverage_off_files from index for O(1) lookup (no file I/O)
+    let cached_cov_off = if index.coverage_off_files.is_empty() {
+        None
+    } else {
+        Some(&index.coverage_off_files)
+    };
+    crate::services::agent_context::classify_exclusions(&mut results, project_path, cached_cov_off);
+    profile.phase("classify_exclusions");
 
     let cov_path = coverage_file.as_deref();
     if let Err(e) = enrich_results_with_coverage(&mut results, project_path, cov_path).await {
         eprintln!("Error: {}", e);
         return Ok(());
     }
+    profile.phase("enrich_coverage");
 
     results.retain(|r| r.lines_total > 0 && r.line_coverage_pct < 100.0);
 
@@ -706,12 +775,20 @@ async fn handle_coverage_gaps_mode(
         return Ok(());
     }
 
+    profile.phase("sort_partition");
+
     // ── File-level aggregation modes ──────
     if files_with_matches || count_mode {
-        return output_coverage_gaps_by_file(&testable, files_with_matches);
+        let r = output_coverage_gaps_by_file(&testable, files_with_matches);
+        profile.phase("output");
+        profile.emit(quiet);
+        return r;
     }
 
-    output_coverage_gaps(format, testable, excluded, include_excluded)
+    let r = output_coverage_gaps(format, testable, excluded, include_excluded);
+    profile.phase("output");
+    profile.emit(quiet);
+    r
 }
 
 /// Apply all enrichments (churn, duplicates, entropy, faults, coverage, coverage-diff)

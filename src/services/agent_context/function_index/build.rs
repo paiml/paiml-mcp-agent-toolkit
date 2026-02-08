@@ -4,9 +4,32 @@ use super::helpers::*;
 use super::types::*;
 use crate::services::semantic::chunk_code;
 use ignore::WalkBuilder;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
+
+/// Check if file content has module-level `coverage(off)` annotation.
+///
+/// Checks first 5 lines for the annotation (it's always at the top).
+fn has_coverage_off(content: &str) -> bool {
+    content.lines().take(5).any(|line| {
+        let t = line.trim();
+        t.contains("cfg_attr(coverage_nightly, coverage(off))")
+            || t.contains("cfg_attr(coverage_nightly,coverage(off))")
+    })
+}
+
+/// Load cached coverage_off_files from SQLite metadata.
+fn load_coverage_off_files(conn: &rusqlite::Connection) -> HashSet<String> {
+    let json: String = conn
+        .query_row(
+            "SELECT value FROM metadata WHERE key = 'coverage_off_files'",
+            [],
+            |r| r.get(0),
+        )
+        .unwrap_or_default();
+    serde_json::from_str(&json).unwrap_or_default()
+}
 
 impl AgentContextIndex {
     /// Build index from project directory
@@ -25,6 +48,7 @@ impl AgentContextIndex {
         let mut file_count = 0;
         let mut languages_seen = HashMap::new();
         let mut file_checksums: HashMap<String, String> = HashMap::new();
+        let mut coverage_off_files = HashSet::new();
 
         // Walk the project directory respecting .gitignore (fixes issue #146)
         for entry in WalkBuilder::new(&project_root)
@@ -61,6 +85,11 @@ impl AgentContextIndex {
             // Compute SHA256 checksum for incremental updates
             let checksum = compute_file_sha256(&content);
             file_checksums.insert(relative_path.clone(), checksum);
+
+            // Detect module-level coverage(off) — cached for O(1) query-time lookup
+            if has_coverage_off(&content) {
+                coverage_off_files.insert(relative_path.clone());
+            }
 
             // Extract functions using AST chunker
             let chunks = match chunk_code(&content, language) {
@@ -178,6 +207,7 @@ impl AgentContextIndex {
             project_root,
             manifest,
             db_path: None, // Set after save()
+            coverage_off_files,
         })
     }
 
@@ -469,6 +499,7 @@ impl AgentContextIndex {
             &self.calls,
             &self.graph_metrics,
             &self.manifest,
+            &self.coverage_off_files,
         )?;
 
         Ok(())
@@ -516,13 +547,17 @@ impl AgentContextIndex {
         let manifest = load_metadata(&conn)?;
         let functions = load_functions(&conn)?;
         let graph_metrics = load_graph_metrics(&conn)?;
-        // Call graph loaded on-demand via get_calls()/get_called_by() → SQLite query
+        // Load call graph eagerly — avoids 71K individual SQLite queries at query time
+        let (calls, called_by) = super::sqlite_backend::load_call_graph(&conn)?;
 
         // Build name_index + file_index only (no corpus — FTS5 handles search)
         let indices = build_indices_without_corpus(&functions);
         let name_frequency = compute_name_frequency(&indices.name_index, functions.len());
 
         let project_root = PathBuf::from(&manifest.project_root);
+
+        // Load cached coverage_off_files from SQLite metadata
+        let coverage_off_files = load_coverage_off_files(&conn);
 
         Ok(Self {
             functions,
@@ -531,12 +566,13 @@ impl AgentContextIndex {
             corpus: Vec::new(),
             corpus_lower: Vec::new(),
             name_frequency,
-            calls: HashMap::new(),
-            called_by: HashMap::new(),
+            calls,
+            called_by,
             graph_metrics,
             project_root,
             manifest,
             db_path: Some(db_path.to_path_buf()),
+            coverage_off_files,
         })
     }
 
@@ -620,6 +656,7 @@ impl AgentContextIndex {
             project_root,
             manifest,
             db_path,
+            coverage_off_files: HashSet::new(), // Legacy blob path — no cached data
         })
     }
 
@@ -638,6 +675,7 @@ impl AgentContextIndex {
         let mut file_checksums: HashMap<String, String> = HashMap::new();
         let mut files_reused = 0usize;
         let mut files_reparsed = 0usize;
+        let mut coverage_off_files = HashSet::new();
 
         // Walk the project directory
         for entry in WalkBuilder::new(&project_root)
@@ -671,6 +709,11 @@ impl AgentContextIndex {
 
             let checksum = compute_file_sha256(&content);
             file_checksums.insert(relative_path.clone(), checksum.clone());
+
+            // Detect module-level coverage(off) — cached for O(1) query-time lookup
+            if has_coverage_off(&content) {
+                coverage_off_files.insert(relative_path.clone());
+            }
 
             // Check if file is unchanged
             let unchanged = existing
@@ -797,6 +840,7 @@ impl AgentContextIndex {
             project_root,
             manifest,
             db_path: None,
+            coverage_off_files,
         })
     }
 

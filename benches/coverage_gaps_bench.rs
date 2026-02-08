@@ -116,7 +116,7 @@ fn bench_classify_exclusions(c: &mut Criterion) {
             |b, _| {
                 b.iter(|| {
                     let mut results = template_results.clone();
-                    classify_exclusions(black_box(&mut results), temp.path());
+                    classify_exclusions(black_box(&mut results), temp.path(), None);
                     black_box(&results);
                 });
             },

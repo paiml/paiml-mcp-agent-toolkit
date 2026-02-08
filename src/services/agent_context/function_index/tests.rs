@@ -3,7 +3,7 @@
 use super::helpers::*;
 use super::types::*;
 use crate::services::semantic::{chunk_code, Language};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
 #[test]
@@ -442,6 +442,7 @@ fn test_get_calls_and_called_by() {
             last_incremental_changes: 0,
         },
         db_path: None,
+        coverage_off_files: HashSet::new(),
     };
 
     let calls_of_0 = index.get_calls(0);
@@ -504,6 +505,7 @@ fn test_find_function_index() {
             last_incremental_changes: 0,
         },
         db_path: None,
+        coverage_off_files: HashSet::new(),
     };
 
     assert_eq!(index.find_function_index("a.rs", "foo"), Some(0));
@@ -1298,6 +1300,7 @@ fn make_test_index() -> AgentContextIndex {
             last_incremental_changes: 0,
         },
         db_path: None,
+        coverage_off_files: HashSet::new(),
     }
 }
 
@@ -1337,6 +1340,7 @@ fn test_stats_empty_index() {
             last_incremental_changes: 0,
         },
         db_path: None,
+        coverage_off_files: HashSet::new(),
     };
     let stats = index.stats();
     assert_eq!(stats.total_functions, 0);

@@ -6,7 +6,7 @@ use super::types::{
 };
 use crate::services::agent_context::function_index::DefinitionType;
 use crate::services::agent_context::{AgentContextIndex, FunctionEntry, QualityMetrics};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 fn create_test_entry(name: &str, complexity: u32, tdg_score: f32) -> FunctionEntry {
     FunctionEntry {
@@ -360,6 +360,7 @@ fn build_test_index() -> AgentContextIndex {
             last_incremental_changes: 0,
         },
         db_path: None,
+        coverage_off_files: HashSet::new(),
     }
 }
 
@@ -715,6 +716,7 @@ fn test_full_scoring_empty_corpus() {
             last_incremental_changes: 0,
         },
         db_path: None,
+        coverage_off_files: HashSet::new(),
     };
     let results = index.calculate_relevance_scores("test").unwrap();
     assert!(results.is_empty());
@@ -1829,6 +1831,7 @@ fn test_from_entry_with_context_basic() {
             last_incremental_changes: 0,
         },
         db_path: None,
+        coverage_off_files: HashSet::new(),
     };
 
     let result = QueryResult::from_entry_with_context(&entry, 0, &index, 0.9, false);
@@ -1868,6 +1871,7 @@ fn test_from_entry_with_context_out_of_bounds() {
             last_incremental_changes: 0,
         },
         db_path: None,
+        coverage_off_files: HashSet::new(),
     };
 
     let result = QueryResult::from_entry_with_context(&entry, 99, &index, 0.9, false);
@@ -1925,6 +1929,7 @@ fn test_from_entry_with_context_callers_capping() {
             last_incremental_changes: 0,
         },
         db_path: None,
+        coverage_off_files: HashSet::new(),
     };
 
     let result = QueryResult::from_entry_with_context(&entry, 0, &index, 0.9, false);

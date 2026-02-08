@@ -13,7 +13,7 @@
 use super::helpers::{extract_identifiers, is_keyword};
 use super::types::*;
 use rusqlite::{params, Connection, OpenFlags};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::Path;
 
 /// Database schema version for migration tracking
@@ -301,6 +301,17 @@ pub(super) fn insert_metadata(
     Ok(())
 }
 
+/// Store coverage_off_files set as JSON in metadata for O(1) query-time lookup.
+fn insert_coverage_off_files(conn: &Connection, files: &HashSet<String>) -> Result<(), String> {
+    let json = serde_json::to_string(files).unwrap_or_else(|_| "[]".to_string());
+    conn.execute(
+        "INSERT OR REPLACE INTO metadata (key, value) VALUES ('coverage_off_files', ?1)",
+        params![json],
+    )
+    .map_err(|e| format!("Failed to insert coverage_off_files: {e}"))?;
+    Ok(())
+}
+
 /// Save the full index to a SQLite database.
 pub(crate) fn save_to_sqlite(
     db_path: &Path,
@@ -308,6 +319,7 @@ pub(crate) fn save_to_sqlite(
     calls: &HashMap<usize, Vec<usize>>,
     graph_metrics: &[GraphMetrics],
     manifest: &IndexManifest,
+    coverage_off_files: &HashSet<String>,
 ) -> Result<(), String> {
     // Remove existing DB to avoid stale data
     if db_path.exists() {
@@ -320,6 +332,7 @@ pub(crate) fn save_to_sqlite(
     insert_call_graph(&conn, calls)?;
     insert_graph_metrics(&conn, graph_metrics)?;
     insert_metadata(&conn, manifest)?;
+    insert_coverage_off_files(&conn, coverage_off_files)?;
 
     eprintln!(
         "  SQLite index saved: {} functions, {} call edges, {}",
@@ -835,7 +848,7 @@ mod tests {
             last_incremental_changes: 0,
         };
 
-        save_to_sqlite(&db_path, &functions, &calls, &metrics, &manifest).unwrap();
+        save_to_sqlite(&db_path, &functions, &calls, &metrics, &manifest, &HashSet::new()).unwrap();
 
         // Verify file exists and has reasonable size
         assert!(db_path.exists());
