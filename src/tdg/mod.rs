@@ -1297,6 +1297,27 @@ mod tests {
         assert_eq!(deserialized.delta, 0.0);
     }
 
+    #[test]
+    fn test_comparison_missing_branches() {
+        // Covers: semantic regression, duplication regression, doc improvement
+        let source1 = TdgScore {
+            semantic_complexity: 20.0,
+            duplication_ratio: 15.0,
+            doc_coverage: 5.0,
+            ..TdgScore::default()
+        };
+        let source2 = TdgScore {
+            semantic_complexity: 10.0,
+            duplication_ratio: 8.0,
+            doc_coverage: 12.0,
+            ..TdgScore::default()
+        };
+        let comparison = Comparison::new(source1, source2);
+        assert!(comparison.regressions.iter().any(|s| s.contains("Semantic")));
+        assert!(comparison.regressions.iter().any(|s| s.contains("duplication")));
+        assert!(comparison.improvements.iter().any(|s| s.contains("Documentation")));
+    }
+
     // ============ PenaltyTracker Tests ============
 
     #[test]
