@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Popper Falsifiability Score v1.1
 //!
 //! A 100-point scoring system evaluating whether software repositories

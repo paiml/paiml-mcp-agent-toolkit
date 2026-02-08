@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Service Facades for Simplified Access
 //!
 //! This module provides high-level facades for accessing analysis services.

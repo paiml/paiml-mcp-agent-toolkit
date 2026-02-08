@@ -1089,4 +1089,237 @@ mod simd_equivalence_tests {
             gini
         );
     }
+
+    // ============ generate_recommendations Tests ============
+    use crate::models::tdg::{RecommendationType, TDGComponents, TDGScore, TDGSeverity};
+    use crate::services::tdg_calculator::TDGCalculator;
+
+    /// Helper to build a TDGScore with specified component values.
+    fn make_tdg_score(complexity: f64, churn: f64, coupling: f64, duplication: f64) -> TDGScore {
+        TDGScore {
+            value: complexity + churn + coupling + duplication,
+            components: TDGComponents {
+                complexity,
+                churn,
+                coupling,
+                domain_risk: 0.0,
+                duplication,
+                dead_code: 0.0,
+            },
+            severity: TDGSeverity::Normal,
+            percentile: 50.0,
+            confidence: 1.0,
+        }
+    }
+
+    #[tokio::test]
+    async fn test_generate_recommendations_all_below_thresholds() {
+        let calc = TDGCalculator::new();
+        let score = make_tdg_score(2.0, 2.0, 2.0, 1.0);
+        let path = std::path::Path::new("test.rs");
+
+        let recs = calc.generate_recommendations(&score, path).await.unwrap();
+        assert!(
+            recs.is_empty(),
+            "Expected no recommendations when all components below thresholds, got {}",
+            recs.len()
+        );
+    }
+
+    #[tokio::test]
+    async fn test_generate_recommendations_only_complexity_above() {
+        let calc = TDGCalculator::new();
+        let score = make_tdg_score(4.0, 1.0, 1.0, 0.5);
+        let path = std::path::Path::new("test.rs");
+
+        let recs = calc.generate_recommendations(&score, path).await.unwrap();
+        assert_eq!(recs.len(), 1);
+        assert_eq!(
+            recs[0].recommendation_type,
+            RecommendationType::ReduceComplexity
+        );
+        assert_eq!(recs[0].priority, 5);
+        assert_eq!(recs[0].estimated_hours, 4.0);
+        // expected_reduction = 4.0 * 0.3 * 0.25 (default complexity_weight)
+        let expected = 4.0 * 0.3 * 0.25;
+        assert!(
+            (recs[0].expected_reduction - expected).abs() < 1e-10,
+            "Expected reduction {}, got {}",
+            expected,
+            recs[0].expected_reduction
+        );
+    }
+
+    #[tokio::test]
+    async fn test_generate_recommendations_all_above_thresholds() {
+        let calc = TDGCalculator::new();
+        // complexity > 3.0, churn > 3.0, coupling > 3.0, duplication > 2.0
+        let score = make_tdg_score(4.5, 3.5, 3.2, 2.5);
+        let path = std::path::Path::new("test.rs");
+
+        let recs = calc.generate_recommendations(&score, path).await.unwrap();
+        assert_eq!(recs.len(), 4, "Expected 4 recommendations, got {}", recs.len());
+
+        // Verify sorted by priority descending: 5, 4, 3, 2
+        assert_eq!(recs[0].priority, 5);
+        assert_eq!(recs[1].priority, 4);
+        assert_eq!(recs[2].priority, 3);
+        assert_eq!(recs[3].priority, 2);
+
+        // Verify recommendation types in priority order
+        assert_eq!(
+            recs[0].recommendation_type,
+            RecommendationType::ReduceComplexity
+        );
+        assert_eq!(
+            recs[1].recommendation_type,
+            RecommendationType::StabilizeChurn
+        );
+        assert_eq!(
+            recs[2].recommendation_type,
+            RecommendationType::ReduceCoupling
+        );
+        assert_eq!(
+            recs[3].recommendation_type,
+            RecommendationType::RemoveDuplication
+        );
+    }
+
+    #[tokio::test]
+    async fn test_generate_recommendations_complexity_and_duplication_only() {
+        let calc = TDGCalculator::new();
+        // complexity > 3.0, duplication > 2.0, others below
+        let score = make_tdg_score(3.5, 2.0, 2.5, 3.0);
+        let path = std::path::Path::new("test.rs");
+
+        let recs = calc.generate_recommendations(&score, path).await.unwrap();
+        assert_eq!(recs.len(), 2, "Expected 2 recommendations, got {}", recs.len());
+
+        // priority 5 (complexity) comes before priority 2 (duplication)
+        assert_eq!(recs[0].priority, 5);
+        assert_eq!(
+            recs[0].recommendation_type,
+            RecommendationType::ReduceComplexity
+        );
+        assert_eq!(recs[1].priority, 2);
+        assert_eq!(
+            recs[1].recommendation_type,
+            RecommendationType::RemoveDuplication
+        );
+    }
+
+    #[tokio::test]
+    async fn test_generate_recommendations_at_exact_thresholds() {
+        let calc = TDGCalculator::new();
+        // All at exact threshold boundaries (not above)
+        let score = make_tdg_score(3.0, 3.0, 3.0, 2.0);
+        let path = std::path::Path::new("test.rs");
+
+        let recs = calc.generate_recommendations(&score, path).await.unwrap();
+        assert!(
+            recs.is_empty(),
+            "Expected no recommendations at exact thresholds (not >), got {}",
+            recs.len()
+        );
+    }
+
+    #[tokio::test]
+    async fn test_generate_recommendations_churn_reduction_calculation() {
+        let calc = TDGCalculator::new();
+        let score = make_tdg_score(1.0, 4.0, 1.0, 0.5);
+        let path = std::path::Path::new("test.rs");
+
+        let recs = calc.generate_recommendations(&score, path).await.unwrap();
+        assert_eq!(recs.len(), 1);
+        assert_eq!(
+            recs[0].recommendation_type,
+            RecommendationType::StabilizeChurn
+        );
+        assert_eq!(recs[0].priority, 4);
+        assert_eq!(recs[0].estimated_hours, 8.0);
+        // expected_reduction = 4.0 * 0.4 * 0.20 (default churn_weight)
+        let expected = 4.0 * 0.4 * 0.20;
+        assert!(
+            (recs[0].expected_reduction - expected).abs() < 1e-10,
+            "Expected reduction {}, got {}",
+            expected,
+            recs[0].expected_reduction
+        );
+    }
+
+    #[tokio::test]
+    async fn test_generate_recommendations_coupling_reduction_calculation() {
+        let calc = TDGCalculator::new();
+        let score = make_tdg_score(1.0, 1.0, 4.0, 0.5);
+        let path = std::path::Path::new("test.rs");
+
+        let recs = calc.generate_recommendations(&score, path).await.unwrap();
+        assert_eq!(recs.len(), 1);
+        assert_eq!(
+            recs[0].recommendation_type,
+            RecommendationType::ReduceCoupling
+        );
+        assert_eq!(recs[0].priority, 3);
+        assert_eq!(recs[0].estimated_hours, 6.0);
+        // expected_reduction = 4.0 * 0.35 * 0.15 (default coupling_weight)
+        let expected = 4.0 * 0.35 * 0.15;
+        assert!(
+            (recs[0].expected_reduction - expected).abs() < 1e-10,
+            "Expected reduction {}, got {}",
+            expected,
+            recs[0].expected_reduction
+        );
+    }
+
+    #[tokio::test]
+    async fn test_generate_recommendations_duplication_reduction_calculation() {
+        let calc = TDGCalculator::new();
+        let score = make_tdg_score(1.0, 1.0, 1.0, 3.0);
+        let path = std::path::Path::new("test.rs");
+
+        let recs = calc.generate_recommendations(&score, path).await.unwrap();
+        assert_eq!(recs.len(), 1);
+        assert_eq!(
+            recs[0].recommendation_type,
+            RecommendationType::RemoveDuplication
+        );
+        assert_eq!(recs[0].priority, 2);
+        assert_eq!(recs[0].estimated_hours, 3.0);
+        // expected_reduction = 3.0 * 0.5 * 0.10 (default duplication_weight)
+        let expected = 3.0 * 0.5 * 0.10;
+        assert!(
+            (recs[0].expected_reduction - expected).abs() < 1e-10,
+            "Expected reduction {}, got {}",
+            expected,
+            recs[0].expected_reduction
+        );
+    }
+
+    #[tokio::test]
+    async fn test_generate_recommendations_action_strings() {
+        let calc = TDGCalculator::new();
+        let score = make_tdg_score(4.0, 4.0, 4.0, 3.0);
+        let path = std::path::Path::new("test.rs");
+
+        let recs = calc.generate_recommendations(&score, path).await.unwrap();
+        assert_eq!(recs.len(), 4);
+
+        // Verify action text for each recommendation type
+        assert_eq!(
+            recs[0].action,
+            "Extract complex logic into smaller, focused functions"
+        );
+        assert_eq!(
+            recs[1].action,
+            "Add comprehensive tests to stabilize frequently changing code"
+        );
+        assert_eq!(
+            recs[2].action,
+            "Introduce abstractions to reduce direct dependencies"
+        );
+        assert_eq!(
+            recs[3].action,
+            "Extract duplicated code into shared utilities"
+        );
+    }
 }

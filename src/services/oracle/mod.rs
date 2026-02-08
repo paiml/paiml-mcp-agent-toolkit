@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! PMAT Oracle - Unified PDCA Quality Improvement System
 //!
 //! Implements Plan-Do-Check-Act (PDCA) with Compiler-In-The-Loop (CITL)

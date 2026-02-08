@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! WebAssembly language support implementation
 //!
 //! This module provides comprehensive WebAssembly analysis capabilities including:

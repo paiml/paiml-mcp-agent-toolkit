@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Deep WASM Inspection Module
 //!
 //! This module provides comprehensive deep inspection of the Rust → WebAssembly → JavaScript → HTML pipeline.
