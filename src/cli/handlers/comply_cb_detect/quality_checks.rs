@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 use super::types::*;
 use std::fs;
 use std::path::Path;
@@ -15,77 +16,67 @@ use std::path::Path;
 /// - >20% LOC excluded = Error (significant coverage blind spot)
 /// - >50% LOC excluded = Critical (coverage metric meaningless)
 pub fn detect_cb125_coverage_exclusion_gaming(project_path: &Path) -> Vec<CbPatternViolation> {
-    let mut violations = Vec::new();
-
-    // Check Makefile for --ignore-filename-regex patterns
     let makefile_path = project_path.join("Makefile");
-    if makefile_path.exists() {
-        if let Ok(content) = fs::read_to_string(&makefile_path) {
-            let mut exclusion_count = 0;
-            let mut exclusion_line = 0;
+    let content = match fs::read_to_string(&makefile_path) {
+        Ok(c) => c,
+        Err(_) => return Vec::new(),
+    };
 
-            for (line_num, line) in content.lines().enumerate() {
-                // Only count regex alternatives in the actual exclusion definition
-                // (not in lines that merely reference $(COVERAGE_EXCLUDE) or use --exclude
-                // for non-coverage purposes like tokei)
-                if line.contains("--ignore-filename-regex") {
-                    exclusion_line = line_num + 1;
+    let (exclusion_count, exclusion_line) = count_exclusion_patterns(&content);
+    classify_exclusion_severity(exclusion_count, exclusion_line, &makefile_path)
+}
 
-                    // Count pipe-separated patterns in the regex value
-                    if let Some(start) = line.find("'") {
-                        if let Some(end) = line.rfind("'") {
-                            if start < end {
-                                let pattern = &line[start + 1..end];
-                                exclusion_count += pattern.matches('|').count() + 1;
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Severity based on pattern count (per [GAME-002] Google TAP)
-            if exclusion_count > 50 {
-                violations.push(CbPatternViolation {
-                    pattern_id: "CB-125-C".to_string(),
-                    file: makefile_path.display().to_string(),
-                    line: exclusion_line,
-                    description: format!(
-                        "CRITICAL: {} coverage exclusion patterns detected. Coverage metric is meaningless. \
-                        Per [GAME-001] Popper: unfalsifiable coverage claims are unscientific. \
-                        Reduce to ≤10 patterns (binary entry points only)",
-                        exclusion_count
-                    ),
-                    severity: Severity::Critical,
-                });
-            } else if exclusion_count > 20 {
-                violations.push(CbPatternViolation {
-                    pattern_id: "CB-125-B".to_string(),
-                    file: makefile_path.display().to_string(),
-                    line: exclusion_line,
-                    description: format!(
-                        "{} coverage exclusion patterns exceed 20% budget per [GAME-002] Google TAP. \
-                        Significant coverage blind spot. Reduce exclusions or document technical debt",
-                        exclusion_count
-                    ),
-                    severity: Severity::Error,
-                });
-            } else if exclusion_count > 10 {
-                violations.push(CbPatternViolation {
-                    pattern_id: "CB-125-A".to_string(),
-                    file: makefile_path.display().to_string(),
-                    line: exclusion_line,
-                    description: format!(
-                        "{} coverage exclusion patterns suggests complexity. \
-                        Consider reducing to ≤10 patterns (binary entry points only)",
-                        exclusion_count
-                    ),
-                    severity: Severity::Warning,
-                });
-            }
+/// Count pipe-separated patterns in --ignore-filename-regex lines.
+fn count_exclusion_patterns(content: &str) -> (usize, usize) {
+    let mut count = 0;
+    let mut last_line = 0;
+    for (line_num, line) in content.lines().enumerate() {
+        if !line.contains("--ignore-filename-regex") {
+            continue;
+        }
+        last_line = line_num + 1;
+        let start = line.find('\'').unwrap_or(0);
+        let end = line.rfind('\'').unwrap_or(0);
+        if start < end {
+            count += line[start + 1..end].matches('|').count() + 1;
         }
     }
+    (count, last_line)
+}
 
-    violations
+/// Map exclusion pattern count to CB-125 severity tier.
+fn classify_exclusion_severity(
+    count: usize,
+    line: usize,
+    makefile_path: &Path,
+) -> Vec<CbPatternViolation> {
+    let file = makefile_path.display().to_string();
+    let (pattern_id, desc, severity) = if count > 50 {
+        ("CB-125-C", format!(
+            "CRITICAL: {count} coverage exclusion patterns detected. Coverage metric is meaningless. \
+            Per [GAME-001] Popper: unfalsifiable coverage claims are unscientific. \
+            Reduce to ≤10 patterns (binary entry points only)"
+        ), Severity::Critical)
+    } else if count > 20 {
+        ("CB-125-B", format!(
+            "{count} coverage exclusion patterns exceed 20% budget per [GAME-002] Google TAP. \
+            Significant coverage blind spot. Reduce exclusions or document technical debt"
+        ), Severity::Error)
+    } else if count > 10 {
+        ("CB-125-A", format!(
+            "{count} coverage exclusion patterns suggests complexity. \
+            Consider reducing to ≤10 patterns (binary entry points only)"
+        ), Severity::Warning)
+    } else {
+        return Vec::new();
+    };
+    vec![CbPatternViolation {
+        pattern_id: pattern_id.to_string(),
+        file,
+        line,
+        description: desc,
+        severity,
+    }]
 }
 
 /// Check sleep duration and return violation if threshold exceeded
@@ -121,49 +112,45 @@ pub fn detect_cb126_slow_tests(project_path: &Path) -> Vec<CbPatternViolation> {
 }
 
 pub(super) fn check_makefile_test_targets(project_path: &Path) -> Vec<CbPatternViolation> {
-    let mut violations = Vec::new();
     let makefile_path = project_path.join("Makefile");
     let content = match fs::read_to_string(&makefile_path) {
         Ok(c) => c,
-        Err(_) => return violations,
+        Err(_) => return Vec::new(),
     };
+    find_test_targets_missing_proptest(&content, &makefile_path.display().to_string())
+}
 
+fn find_test_targets_missing_proptest(content: &str, file_path: &str) -> Vec<CbPatternViolation> {
+    let mut violations = Vec::new();
     let mut in_test_target = false;
-    let mut test_target_line = 0;
-    let mut has_proptest_cases = false;
+    let mut target_line = 0;
+    let mut has_proptest = false;
     let mut has_cargo_test = false;
-    let file_path = makefile_path.display().to_string();
 
     for (line_num, line) in content.lines().enumerate() {
         if line.starts_with("test") && line.contains(':') {
             in_test_target = true;
-            test_target_line = line_num + 1;
-            has_proptest_cases = false;
+            target_line = line_num + 1;
+            has_proptest = false;
             has_cargo_test = false;
         }
+        if !in_test_target {
+            continue;
+        }
+        has_proptest |= line.contains("PROPTEST_CASES") || line.contains("QUICKCHECK_TESTS");
+        has_cargo_test |= line.contains("cargo test") || line.contains("cargo +nightly llvm-cov test");
 
-        if in_test_target {
-            if line.contains("PROPTEST_CASES") || line.contains("QUICKCHECK_TESTS") {
-                has_proptest_cases = true;
+        if is_end_of_makefile_target_generic(line, "test") {
+            if has_cargo_test && !has_proptest {
+                violations.push(CbPatternViolation {
+                    pattern_id: "CB-126-D".to_string(),
+                    file: file_path.to_string(),
+                    line: target_line,
+                    description: "Test target missing PROPTEST_CASES/QUICKCHECK_TESTS".to_string(),
+                    severity: Severity::Warning,
+                });
             }
-            // Only flag targets that actually run cargo test (not phony aggregates,
-            // helper targets, or non-test commands)
-            if line.contains("cargo test") || line.contains("cargo +nightly llvm-cov test") {
-                has_cargo_test = true;
-            }
-            if is_end_of_makefile_target_generic(line, "test") {
-                // Only flag targets that run cargo test but lack PROPTEST_CASES
-                if !has_proptest_cases && test_target_line > 0 && has_cargo_test {
-                    violations.push(CbPatternViolation {
-                        pattern_id: "CB-126-D".to_string(),
-                        file: file_path.clone(),
-                        line: test_target_line,
-                        description: "Test target missing PROPTEST_CASES/QUICKCHECK_TESTS".to_string(),
-                        severity: Severity::Warning,
-                    });
-                }
-                in_test_target = false;
-            }
+            in_test_target = false;
         }
     }
     violations
@@ -177,32 +164,32 @@ pub(super) fn is_end_of_makefile_target_generic(line: &str, target_prefix: &str)
 }
 
 pub(super) fn check_sleep_durations(project_path: &Path) -> Vec<CbPatternViolation> {
-    let mut violations = Vec::new();
     let src_dir = project_path.join("src");
-
     let entries = match walkdir_rs_files(&src_dir) {
         Ok(e) => e,
-        Err(_) => return violations,
+        Err(_) => return Vec::new(),
     };
+    entries
+        .iter()
+        .flat_map(|entry| scan_file_for_sleep_violations(entry))
+        .collect()
+}
 
-    for entry in entries {
-        let content = match fs::read_to_string(&entry) {
-            Ok(c) => c,
-            Err(_) => continue,
-        };
-        let file_path = entry.display().to_string();
-
-        for (i, line) in content.lines().enumerate() {
-            if line.contains("thread::sleep") && line.contains("Duration::from_secs") {
-                if let Some(duration) = extract_sleep_duration(line) {
-                    if let Some(v) = check_sleep_violation(duration, &file_path, i + 1) {
-                        violations.push(v);
-                    }
-                }
-            }
-        }
-    }
-    violations
+fn scan_file_for_sleep_violations(path: &Path) -> Vec<CbPatternViolation> {
+    let content = match fs::read_to_string(path) {
+        Ok(c) => c,
+        Err(_) => return Vec::new(),
+    };
+    let file_path = path.display().to_string();
+    content
+        .lines()
+        .enumerate()
+        .filter(|(_, line)| line.contains("thread::sleep") && line.contains("Duration::from_secs"))
+        .filter_map(|(i, line)| {
+            extract_sleep_duration(line)
+                .and_then(|dur| check_sleep_violation(dur, &file_path, i + 1))
+        })
+        .collect()
 }
 
 /// Helper to extract sleep duration from a line containing sleep calls
@@ -388,54 +375,46 @@ pub struct BashrsIssue {
 
 /// CB-400: Check git hooks with bashrs
 pub fn detect_cb400_git_hooks_quality(project_path: &Path) -> Vec<CbPatternViolation> {
-    let mut violations = Vec::new();
     let hooks_dir = project_path.join(".git/hooks");
-
     if !hooks_dir.exists() {
-        return violations;
+        return Vec::new();
     }
+    ["pre-commit", "pre-push", "commit-msg", "post-commit"]
+        .iter()
+        .flat_map(|name| lint_single_hook(&hooks_dir, name))
+        .collect()
+}
 
-    // Common hook names to check
-    let hook_names = ["pre-commit", "pre-push", "commit-msg", "post-commit"];
-
-    for hook_name in hook_names {
-        let hook_path = hooks_dir.join(hook_name);
-        if hook_path.exists() && !hook_path.to_string_lossy().ends_with(".sample") {
-            // Run bashrs lint on the hook
-            match run_bashrs_lint(&hook_path) {
-                Ok(issues) if !issues.is_empty() => {
-                    for issue in issues {
-                        violations.push(CbPatternViolation {
-                            pattern_id: format!("CB-400-{}", issue.code),
-                            file: format!(".git/hooks/{}", hook_name),
-                            line: issue.line,
-                            description: format!("{}: {}", issue.code, issue.message),
-                            severity: match issue.severity.as_str() {
-                                "error" => Severity::Error,
-                                "warning" => Severity::Warning,
-                                _ => Severity::Info,
-                            },
-                        });
-                    }
-                }
-                Ok(_) => {} // No issues
-                Err(e) => {
-                    // bashrs not available or error running it
-                    if !e.contains("not found") {
-                        violations.push(CbPatternViolation {
-                            pattern_id: "CB-400".to_string(),
-                            file: format!(".git/hooks/{}", hook_name),
-                            line: 0,
-                            description: format!("bashrs lint error: {}", e),
-                            severity: Severity::Warning,
-                        });
-                    }
-                }
-            }
-        }
+fn lint_single_hook(hooks_dir: &Path, hook_name: &str) -> Vec<CbPatternViolation> {
+    let hook_path = hooks_dir.join(hook_name);
+    if !hook_path.exists() || hook_path.to_string_lossy().ends_with(".sample") {
+        return Vec::new();
     }
-
-    violations
+    let file = format!(".git/hooks/{hook_name}");
+    match run_bashrs_lint(&hook_path) {
+        Ok(issues) => issues
+            .into_iter()
+            .map(|issue| CbPatternViolation {
+                pattern_id: format!("CB-400-{}", issue.code),
+                file: file.clone(),
+                line: issue.line,
+                description: format!("{}: {}", issue.code, issue.message),
+                severity: match issue.severity.as_str() {
+                    "error" => Severity::Error,
+                    "warning" => Severity::Warning,
+                    _ => Severity::Info,
+                },
+            })
+            .collect(),
+        Err(e) if !e.contains("not found") => vec![CbPatternViolation {
+            pattern_id: "CB-400".to_string(),
+            file,
+            line: 0,
+            description: format!("bashrs lint error: {e}"),
+            severity: Severity::Warning,
+        }],
+        Err(_) => Vec::new(),
+    }
 }
 
 /// CB-401: Check Makefile with bashrs

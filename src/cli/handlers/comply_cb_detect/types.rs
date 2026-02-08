@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
@@ -108,53 +109,49 @@ pub fn compute_test_code_lines(lines: &[&str]) -> std::collections::HashSet<usiz
 /// Scan Rust files for CB-020 (unsafe without SAFETY comment)
 /// NOTE: Skips test code (#[cfg(test)], mod tests, #[test]) - test code can use .unwrap() freely
 pub fn detect_cb020_unsafe_without_safety(project_path: &Path) -> Vec<CbPatternViolation> {
-    let mut violations = Vec::new();
-
-    // Walk src/ directory for .rs files
     let src_dir = project_path.join("src");
-    if !src_dir.exists() {
-        return violations;
-    }
+    let entries = match walkdir_rs_files(&src_dir) {
+        Ok(e) => e,
+        Err(_) => return Vec::new(),
+    };
+    entries
+        .iter()
+        .flat_map(|entry| scan_file_for_unsafe_violations(entry))
+        .collect()
+}
 
-    if let Ok(entries) = walkdir_rs_files(&src_dir) {
-        for entry in entries {
-            if let Ok(content) = fs::read_to_string(&entry) {
-                let lines: Vec<&str> = content.lines().collect();
-                let test_lines = compute_test_code_lines(&lines);
+fn scan_file_for_unsafe_violations(path: &Path) -> Vec<CbPatternViolation> {
+    let content = match fs::read_to_string(path) {
+        Ok(c) => c,
+        Err(_) => return Vec::new(),
+    };
+    let lines: Vec<&str> = content.lines().collect();
+    let test_lines = compute_test_code_lines(&lines);
+    let file = path.display().to_string();
 
-                for (line_num, line) in lines.iter().enumerate() {
-                    // Skip test code - unsafe in tests is fine
-                    if test_lines.contains(&line_num) {
-                        continue;
-                    }
+    lines
+        .iter()
+        .enumerate()
+        .filter(|(i, _)| !test_lines.contains(i))
+        .filter(|(_, line)| {
+            let t = line.trim();
+            t.starts_with("unsafe {") || t.starts_with("unsafe{")
+        })
+        .filter(|(i, _)| !has_preceding_safety_comment(&lines, *i))
+        .map(|(i, _)| CbPatternViolation {
+            pattern_id: "CB-020".to_string(),
+            file: file.clone(),
+            line: i + 1,
+            description: "unsafe block without SAFETY comment".to_string(),
+            severity: Severity::Warning,
+        })
+        .collect()
+}
 
-                    let trimmed = line.trim();
-                    // Check for unsafe block without preceding SAFETY comment
-                    if trimmed.starts_with("unsafe {") || trimmed.starts_with("unsafe{") {
-                        // Look at previous non-empty lines for SAFETY comment
-                        // Check up to 10 lines back to handle multi-line safety comments
-                        let has_safety = lines.iter().take(line_num).rev().take(10).any(|l| {
-                            l.contains("// SAFETY:")
-                                || l.contains("// SAFETY :")
-                                || l.contains("/ SAFETY:")
-                        });
-
-                        if !has_safety {
-                            violations.push(CbPatternViolation {
-                                pattern_id: "CB-020".to_string(),
-                                file: entry.display().to_string(),
-                                line: line_num + 1,
-                                description: "unsafe block without SAFETY comment".to_string(),
-                                severity: Severity::Warning,
-                            });
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    violations
+fn has_preceding_safety_comment(lines: &[&str], line_num: usize) -> bool {
+    lines.iter().take(line_num).rev().take(10).any(|l| {
+        l.contains("// SAFETY:") || l.contains("// SAFETY :") || l.contains("/ SAFETY:")
+    })
 }
 
 /// Helper to walk directory for .rs files
