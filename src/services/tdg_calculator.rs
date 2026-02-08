@@ -52,8 +52,6 @@
 //! # }
 //! ```ignore
 
-#![cfg_attr(coverage_nightly, coverage(off))]
-
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
