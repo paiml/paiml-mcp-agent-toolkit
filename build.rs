@@ -21,6 +21,11 @@ fn main() {
     println!("cargo:rustc-check-cfg=cfg(cargo_publish)");
     println!("cargo:rustc-check-cfg=cfg(coverage)");
 
+    // Enable coverage(off) source-level exclusions during coverage builds
+    if env::var("CARGO_LLVM_COV").is_ok() {
+        println!("cargo:rustc-cfg=coverage_nightly");
+    }
+
     // Fast build mode for development - skip heavy operations but generate stubs
     if env::var("PMAT_FAST_BUILD").is_ok() {
         println!("cargo:warning=Fast build mode enabled - skipping heavy build operations");
