@@ -366,6 +366,7 @@ pub async fn handle_query(
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 fn build_query_options(
     limit: usize, min_grade: Option<String>, max_complexity: Option<u32>,
     language: Option<String>, path_pattern: Option<String>,
@@ -932,6 +933,7 @@ async fn apply_coverage_enrichment(
     if uncovered_only { results.retain(|r| r.lines_total > 0 && r.line_coverage_pct < 100.0); }
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn apply_all_enrichments(
     results: &mut Vec<QueryResult>, project_path: &std::path::Path, quiet: bool,
     churn: bool, duplicates: bool, entropy: bool, faults: bool,
@@ -1030,6 +1032,7 @@ fn fetch_git_data(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn merge_raw_results(
     is_regex_literal: bool, quiet: bool, query: &str, limit: usize,
     ctx: &MergeContext, context_lines: Option<usize>,
@@ -1093,6 +1096,7 @@ fn print_raw_results(raw_results: &[RawSearchResult], format: &QueryOutputFormat
 }
 
 /// Returns Ok(true) if handled, Ok(false) for standard output.
+#[allow(clippy::too_many_arguments)]
 fn try_special_output_modes_merged(
     results: &[QueryResult], raw_results: &[RawSearchResult],
     files_with_matches: bool, count: bool,
@@ -1189,6 +1193,7 @@ fn print_context_lines(results: &[QueryResult], project_path: &std::path::Path, 
 }
 
 /// Print standard query output (text/json/markdown + coverage footer + git history)
+#[allow(clippy::too_many_arguments)]
 fn print_query_output(
     results: &[QueryResult], format: &QueryOutputFormat, code: bool, coverage: bool,
     git_data: &Option<(Vec<GitSearchResult>, Vec<CommitInfo>)>,

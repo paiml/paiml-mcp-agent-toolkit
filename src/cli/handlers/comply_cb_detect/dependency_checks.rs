@@ -281,6 +281,7 @@ fn build_threshold_violation(
 }
 
 /// Generate all CB-081 violations (A through E) from pre-computed metrics.
+#[allow(clippy::too_many_arguments)]
 fn check_dependency_count_violations(
     cargo_toml: &str,
     cargo_lock: &str,

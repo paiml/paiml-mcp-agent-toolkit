@@ -56,7 +56,7 @@ pub(super) fn glob_matches(pattern: &str, path: &str) -> bool {
             .replace("\x00GLOBSTAR\x00", "(.*/)?")
             .replace("\x00GLOBSTAR2\x00", ".*");
         Regex::new(&format!("^{regex_str}$"))
-            .map_or(false, |re| re.is_match(path))
+            .is_ok_and(|re| re.is_match(path))
     } else {
         path.contains(pattern)
     }

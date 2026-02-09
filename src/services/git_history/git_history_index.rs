@@ -375,7 +375,7 @@ impl GitHistoryIndex {
             // Find commits not already in index
             new_commits
                 .iter()
-                .filter(|c| c.hash != *last_hash && self.commit_exists(&c.hash).unwrap_or(false) == false)
+                .filter(|c| c.hash != *last_hash && !self.commit_exists(&c.hash).unwrap_or(false))
                 .collect()
         } else {
             // No previous index, add all

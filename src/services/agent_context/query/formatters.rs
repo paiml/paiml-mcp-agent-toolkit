@@ -71,6 +71,7 @@ fn format_coverage_diff_text(diff: f32, out: &mut String) {
     }
 }
 
+#[allow(clippy::incompatible_msrv)]
 fn truncate_doc(doc: &str) -> String {
     let first_line = doc.lines().next().unwrap_or(doc);
     if first_line.len() > 100 {

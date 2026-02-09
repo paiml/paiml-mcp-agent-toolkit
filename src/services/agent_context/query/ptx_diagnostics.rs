@@ -57,7 +57,7 @@ pub struct PtxDiagnosticResult {
 
 /// Count distinct register names in PTX source (e.g., %r1, %f2, %p0)
 fn count_registers(source: &str) -> u32 {
-    let re = Regex::new(r"%[rfpb]\d+").unwrap_or_else(|_| Regex::new(r"___impossible___").unwrap());
+    let re = Regex::new(r"%[rfpb]\d+").expect("static regex must compile");
     let mut seen = std::collections::HashSet::new();
     for cap in re.find_iter(source) {
         seen.insert(cap.as_str());
@@ -95,7 +95,7 @@ fn compute_branch_density(source: &str) -> f32 {
 /// Count total shared memory bytes declared
 fn count_shared_memory(source: &str) -> u32 {
     let re = Regex::new(r"\.shared\s+\.\w+\s+\w+\[(\d+)\]")
-        .unwrap_or_else(|_| Regex::new(r"___impossible___").unwrap());
+        .expect("static regex must compile");
     let mut total = 0u32;
     for cap in re.captures_iter(source) {
         if let Some(size) = cap.get(1) {

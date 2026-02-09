@@ -815,6 +815,7 @@ fn wait_with_timeout(child: &mut std::process::Child, timeout: std::time::Durati
 /// 3. `.pmat/coverage-cache.json` (if git HEAD matches)
 /// 4. Run `cargo llvm-cov report --json` to generate fresh data
 #[cfg_attr(coverage_nightly, coverage(off))]
+#[allow(clippy::type_complexity)]
 fn try_load_coverage_from_explicit_path(
     path: &Path, project_root: &Path,
 ) -> Result<Option<HashMap<String, HashMap<usize, u64>>>, String> {
@@ -823,6 +824,7 @@ fn try_load_coverage_from_explicit_path(
     Ok(Some(build_coverage_map(&json, project_root)?))
 }
 
+#[allow(clippy::type_complexity)]
 fn try_load_coverage_from_env(project_root: &Path) -> Result<Option<HashMap<String, HashMap<usize, u64>>>, String> {
     let env_path = match std::env::var("PMAT_COVERAGE_FILE") {
         Ok(p) => p,

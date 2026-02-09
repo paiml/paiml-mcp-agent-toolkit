@@ -70,7 +70,7 @@ impl<'a> GitHistorySearchEngine<'a> {
         corpus.push(query.to_string());
 
         let embeddings = self.embedder.embed_batch(&corpus);
-        let query_embedding = embeddings.last().unwrap();
+        let query_embedding = embeddings.last().expect("embeddings must contain query");
 
         // Score candidates by similarity to query
         let mut scored: Vec<(usize, f32)> = embeddings[..candidates.len()]
@@ -158,49 +158,24 @@ impl<'a> GitHistorySearchEngine<'a> {
 
         sql.push_str(" ORDER BY timestamp DESC LIMIT 1000"); // Cap for performance
 
-        // Build params dynamically
+        // Build params dynamically — extract Options once to avoid unwrap in each branch
         let conn = self.get_connection()?;
         let mut stmt = conn.prepare(&sql)?;
 
-        // This is a bit verbose due to dynamic params
-        let commits: Vec<CommitInfo> = if options.author_email.is_some() && options.since_timestamp.is_some() && options.until_timestamp.is_some() {
-            stmt.query_map(
-                params![options.author_email.as_ref().unwrap(), options.since_timestamp.unwrap(), options.until_timestamp.unwrap()],
-                Self::row_to_commit,
-            )?.filter_map(|r| r.ok()).collect()
-        } else if options.author_email.is_some() && options.since_timestamp.is_some() {
-            stmt.query_map(
-                params![options.author_email.as_ref().unwrap(), options.since_timestamp.unwrap()],
-                Self::row_to_commit,
-            )?.filter_map(|r| r.ok()).collect()
-        } else if options.author_email.is_some() && options.until_timestamp.is_some() {
-            stmt.query_map(
-                params![options.author_email.as_ref().unwrap(), options.until_timestamp.unwrap()],
-                Self::row_to_commit,
-            )?.filter_map(|r| r.ok()).collect()
-        } else if options.since_timestamp.is_some() && options.until_timestamp.is_some() {
-            stmt.query_map(
-                params![options.since_timestamp.unwrap(), options.until_timestamp.unwrap()],
-                Self::row_to_commit,
-            )?.filter_map(|r| r.ok()).collect()
-        } else if options.author_email.is_some() {
-            stmt.query_map(
-                params![options.author_email.as_ref().unwrap()],
-                Self::row_to_commit,
-            )?.filter_map(|r| r.ok()).collect()
-        } else if options.since_timestamp.is_some() {
-            stmt.query_map(
-                params![options.since_timestamp.unwrap()],
-                Self::row_to_commit,
-            )?.filter_map(|r| r.ok()).collect()
-        } else if options.until_timestamp.is_some() {
-            stmt.query_map(
-                params![options.until_timestamp.unwrap()],
-                Self::row_to_commit,
-            )?.filter_map(|r| r.ok()).collect()
-        } else {
-            stmt.query_map([], Self::row_to_commit)?.filter_map(|r| r.ok()).collect()
-        };
+        let author = options.author_email.as_deref();
+        let since = options.since_timestamp;
+        let until = options.until_timestamp;
+
+        let commits: Vec<CommitInfo> = match (author, since, until) {
+            (Some(a), Some(s), Some(u)) => stmt.query_map(params![a, s, u], Self::row_to_commit),
+            (Some(a), Some(s), None) => stmt.query_map(params![a, s], Self::row_to_commit),
+            (Some(a), None, Some(u)) => stmt.query_map(params![a, u], Self::row_to_commit),
+            (None, Some(s), Some(u)) => stmt.query_map(params![s, u], Self::row_to_commit),
+            (Some(a), None, None) => stmt.query_map(params![a], Self::row_to_commit),
+            (None, Some(s), None) => stmt.query_map(params![s], Self::row_to_commit),
+            (None, None, Some(u)) => stmt.query_map(params![u], Self::row_to_commit),
+            (None, None, None) => stmt.query_map([], Self::row_to_commit),
+        }?.filter_map(|r| r.ok()).collect();
 
         Ok(commits)
     }

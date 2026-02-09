@@ -597,7 +597,7 @@ pub(crate) fn load_source_by_location(
 ///
 /// Kept for backward compat and tests. Normal load path uses on-demand
 /// `query_callees()`/`query_callers()` instead.
-#[allow(dead_code)]
+#[allow(dead_code, clippy::type_complexity)]
 pub(crate) fn load_call_graph(
     conn: &Connection,
 ) -> Result<(HashMap<usize, Vec<usize>>, HashMap<usize, Vec<usize>>), String> {
