@@ -61,7 +61,9 @@ echo ""
 
 # ─── G1: load_index < 500ms for semantic queries ───────────────────────
 echo "── G1: load_index < 500ms ANDON threshold ──"
-# Run 3 warm-cache trials
+# Warm-up run to populate OS page cache (52MB SQLite cold-read is ~3s)
+$PMAT query "warmup" --limit 1 --quiet 2>/dev/null || true
+# Measured run on warm cache
 PROFILE=$($PMAT query "error handling" --limit 5 2>&1)
 LOAD_MS=$(echo "$PROFILE" | grep -oP 'load_index: \K[0-9]+' || echo "0")
 if [ "$LOAD_MS" -eq 0 ]; then
