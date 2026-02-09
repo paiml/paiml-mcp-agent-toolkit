@@ -44,6 +44,7 @@ fn make_result(file_path: &str, function_name: &str) -> QueryResult {
         coverage_diff: 0.0,
         coverage_exclusion: CoverageExclusion::None,
         coverage_excluded: false,
+        cross_project_callers: 0,
     }
 }
 

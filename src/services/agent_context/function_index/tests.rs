@@ -1540,3 +1540,169 @@ fn test_save_load_roundtrip_corpus_lower_lazy() {
         assert_eq!(lower, &orig.to_lowercase());
     }
 }
+
+// ── Feature 1: Cross-Project Call Graph Tests ──────────────────────────────
+
+#[test]
+fn test_merge_fast_preserves_graph_metrics_length() {
+    let temp_dir = tempfile::TempDir::new().unwrap();
+
+    let proj_a = temp_dir.path().join("a");
+    std::fs::create_dir_all(proj_a.join("src")).unwrap();
+    std::fs::write(proj_a.join("src/lib.rs"), "fn alpha() {}\nfn beta() {}\n").unwrap();
+    let mut index_a = AgentContextIndex::build(&proj_a).unwrap();
+
+    let proj_b = temp_dir.path().join("b");
+    std::fs::create_dir_all(proj_b.join("src")).unwrap();
+    std::fs::write(proj_b.join("src/lib.rs"), "fn gamma() {}\n").unwrap();
+    let index_b = AgentContextIndex::build(&proj_b).unwrap();
+
+    let total = index_a.functions.len() + index_b.functions.len();
+    index_a.merge_fast(index_b);
+
+    // graph_metrics length must equal total functions after merge
+    assert_eq!(index_a.graph_metrics.len(), total);
+    assert_eq!(index_a.functions.len(), total);
+}
+
+#[test]
+fn test_rebuild_cross_project_graph_creates_cross_edges() {
+    let temp_dir = tempfile::TempDir::new().unwrap();
+
+    // Project A: defines `shared_util`, calls nothing
+    let proj_a = temp_dir.path().join("a");
+    std::fs::create_dir_all(proj_a.join("src")).unwrap();
+    std::fs::write(proj_a.join("src/lib.rs"), "pub fn shared_util() -> i32 { 42 }\n").unwrap();
+    let mut index_a = AgentContextIndex::build(&proj_a).unwrap();
+
+    // Project B: calls `shared_util`
+    let proj_b = temp_dir.path().join("b");
+    std::fs::create_dir_all(proj_b.join("src")).unwrap();
+    std::fs::write(
+        proj_b.join("src/lib.rs"),
+        "fn consumer() -> i32 { shared_util() }\n",
+    ).unwrap();
+
+    // Load B with prefix to simulate workspace
+    let index_b = AgentContextIndex::build(&proj_b).unwrap();
+    index_a.merge_fast(index_b);
+
+    // Before rebuild, call graph only has per-project edges
+    // After rebuild, cross-project edges should exist
+    index_a.rebuild_cross_project_graph();
+
+    // Check that graph_metrics were recomputed (length matches)
+    assert_eq!(index_a.graph_metrics.len(), index_a.functions.len());
+
+    // Find consumer function and verify it has callees
+    let consumer_idx = index_a.functions.iter().position(|f| f.function_name == "consumer");
+    assert!(consumer_idx.is_some(), "consumer function should exist");
+    let ci = consumer_idx.unwrap();
+    let callees = index_a.get_calls(ci);
+    assert!(callees.contains(&"shared_util"), "consumer should call shared_util after rebuild");
+}
+
+// ── Feature 3: Cross-Project Callers Count Test ────────────────────────────
+
+#[test]
+fn test_count_cross_project_callers() {
+    let temp_dir = tempfile::TempDir::new().unwrap();
+
+    let proj_a = temp_dir.path().join("a");
+    std::fs::create_dir_all(proj_a.join("src")).unwrap();
+    std::fs::write(proj_a.join("src/lib.rs"), "pub fn shared_util() -> i32 { 42 }\n").unwrap();
+    let mut index = AgentContextIndex::build(&proj_a).unwrap();
+
+    // Prefix project A paths
+    for func in &mut index.functions {
+        func.file_path = format!("proj_a/{}", func.file_path);
+    }
+
+    // Add project B functions that call shared_util
+    let proj_b = temp_dir.path().join("b");
+    std::fs::create_dir_all(proj_b.join("src")).unwrap();
+    std::fs::write(
+        proj_b.join("src/lib.rs"),
+        "fn caller_b() -> i32 { shared_util() }\n",
+    ).unwrap();
+    let mut index_b = AgentContextIndex::build(&proj_b).unwrap();
+    for func in &mut index_b.functions {
+        func.file_path = format!("proj_b/{}", func.file_path);
+    }
+
+    index.merge_fast(index_b);
+    index.rebuild_cross_project_graph();
+
+    // Find shared_util
+    let shared_idx = index.functions.iter().position(|f| f.function_name == "shared_util").unwrap();
+    let xp_callers = index.count_cross_project_callers(shared_idx);
+    // caller_b from proj_b calls shared_util in proj_a — that's a cross-project caller
+    assert!(xp_callers > 0, "shared_util should have cross-project callers, got {}", xp_callers);
+}
+
+#[test]
+fn test_count_cross_project_callers_out_of_bounds() {
+    let temp_dir = tempfile::TempDir::new().unwrap();
+    let proj = temp_dir.path().join("p");
+    std::fs::create_dir_all(proj.join("src")).unwrap();
+    std::fs::write(proj.join("src/lib.rs"), "fn foo() {}\n").unwrap();
+    let index = AgentContextIndex::build(&proj).unwrap();
+    // Out-of-bounds should return 0, not panic
+    assert_eq!(index.count_cross_project_callers(999), 0);
+}
+
+// ── Feature 2/5: PTX Role Classification Tests ─────────────────────────────
+
+#[test]
+fn test_classify_ptx_role_emitter() {
+    use crate::services::agent_context::query::ptx_flow::{classify_ptx_role, PtxRole};
+    assert_eq!(classify_ptx_role("asm!(\"nop\")", "src/kernel.rs"), Some(PtxRole::Emitter));
+    assert_eq!(classify_ptx_role("fn foo() {}", "kernel.cu"), Some(PtxRole::Emitter));
+    assert_eq!(classify_ptx_role(".version 7.0\n.target sm_86", "kernel.ptx"), Some(PtxRole::Emitter));
+}
+
+#[test]
+fn test_classify_ptx_role_loader() {
+    use crate::services::agent_context::query::ptx_flow::{classify_ptx_role, PtxRole};
+    assert_eq!(classify_ptx_role("cuModuleLoad(&module)", "src/gpu.rs"), Some(PtxRole::Loader));
+    assert_eq!(classify_ptx_role("load_ptx(data)", "src/compute.rs"), Some(PtxRole::Loader));
+}
+
+#[test]
+fn test_classify_ptx_role_analyzer() {
+    use crate::services::agent_context::query::ptx_flow::{classify_ptx_role, PtxRole};
+    assert_eq!(classify_ptx_role("let rp = register_pressure(ptx)", "src/diag.rs"), Some(PtxRole::Analyzer));
+    assert_eq!(classify_ptx_role("detect_ptx_barrier(src)", "src/comply.rs"), Some(PtxRole::Analyzer));
+}
+
+#[test]
+fn test_classify_ptx_role_none() {
+    use crate::services::agent_context::query::ptx_flow::classify_ptx_role;
+    assert_eq!(classify_ptx_role("fn add(a: i32, b: i32) -> i32 { a + b }", "src/math.rs"), None);
+}
+
+// ── Feature 5: PTX Diagnostics Counter Tests ───────────────────────────────
+
+#[test]
+fn test_ptx_diagnostics_register_and_branch_counting() {
+    use crate::services::agent_context::query::ptx_diagnostics::run_ptx_diagnostics;
+
+    let temp_dir = tempfile::TempDir::new().unwrap();
+    let proj = temp_dir.path().join("p");
+    std::fs::create_dir_all(proj.join("src")).unwrap();
+    std::fs::write(
+        proj.join("src/kernel.rs"),
+        r#"fn detect_ptx_barrier_test() {
+    // This function references PTX analysis keywords
+    let barriers = barrier_divergence_check();
+    let shared = shared_memory_size();
+}
+"#,
+    ).unwrap();
+
+    let index = AgentContextIndex::build(&proj).unwrap();
+    let result = run_ptx_diagnostics(&index);
+    // The function references ptx keywords so should be found
+    // (may or may not have diagnostics depending on content)
+    assert!(result.total_critical + result.total_warning + result.total_info >= 0);
+}

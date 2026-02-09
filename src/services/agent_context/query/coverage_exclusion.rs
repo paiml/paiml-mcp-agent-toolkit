@@ -325,6 +325,7 @@ mod tests {
             coverage_diff: 0.0,
             coverage_exclusion: CoverageExclusion::None,
             coverage_excluded: false,
+            cross_project_callers: 0,
         }
     }
 

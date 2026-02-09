@@ -1082,6 +1082,9 @@ fn test_rankby_from_str() {
     assert_eq!("impact".parse::<RankBy>().unwrap(), RankBy::Impact);
     assert_eq!("roi".parse::<RankBy>().unwrap(), RankBy::Impact);
     assert_eq!("coverage".parse::<RankBy>().unwrap(), RankBy::Impact);
+    assert_eq!("cross-project".parse::<RankBy>().unwrap(), RankBy::CrossProject);
+    assert_eq!("crossproject".parse::<RankBy>().unwrap(), RankBy::CrossProject);
+    assert_eq!("xproject".parse::<RankBy>().unwrap(), RankBy::CrossProject);
     assert!("invalid".parse::<RankBy>().is_err());
 }
 
@@ -2757,4 +2760,66 @@ fn test_fault_enrichment_all_faults_out_of_range() {
     }
 
     assert!(results[0].fault_annotations.is_empty());
+}
+
+#[test]
+fn test_load_workspace_coverage_merges_siblings() {
+    use super::coverage::load_workspace_coverage;
+
+    let tmp1 = tempfile::TempDir::new().unwrap();
+    let tmp2 = tempfile::TempDir::new().unwrap();
+
+    let pmat1 = tmp1.path().join(".pmat");
+    let pmat2 = tmp2.path().join(".pmat");
+    std::fs::create_dir_all(&pmat1).unwrap();
+    std::fs::create_dir_all(&pmat2).unwrap();
+
+    let cache1 = serde_json::json!({
+        "git_hash": "abc123",
+        "coverage_mtime": 0,
+        "files": {
+            "src/lib.rs": {"1": 5, "2": 0, "3": 10}
+        }
+    });
+    std::fs::write(pmat1.join("coverage-cache.json"), cache1.to_string()).unwrap();
+
+    let cache2 = serde_json::json!({
+        "git_hash": "def456",
+        "coverage_mtime": 0,
+        "files": {
+            "src/main.rs": {"1": 1, "5": 3}
+        }
+    });
+    std::fs::write(pmat2.join("coverage-cache.json"), cache2.to_string()).unwrap();
+
+    let siblings = vec![
+        (pmat1.join("context.db"), "trueno".to_string()),
+        (pmat2.join("context.db"), "realizar".to_string()),
+    ];
+
+    let merged = load_workspace_coverage(&siblings);
+
+    assert!(merged.contains_key("trueno/src/lib.rs"));
+    assert!(merged.contains_key("realizar/src/main.rs"));
+    assert_eq!(merged.len(), 2);
+
+    let trueno_lib = &merged["trueno/src/lib.rs"];
+    assert_eq!(trueno_lib.get(&1), Some(&5));
+    assert_eq!(trueno_lib.get(&2), Some(&0));
+}
+
+#[test]
+fn test_load_workspace_coverage_skips_missing() {
+    use super::coverage::load_workspace_coverage;
+
+    let tmp = tempfile::TempDir::new().unwrap();
+    let pmat = tmp.path().join(".pmat");
+    std::fs::create_dir_all(&pmat).unwrap();
+
+    let siblings = vec![
+        (pmat.join("context.db"), "missing_project".to_string()),
+    ];
+
+    let merged = load_workspace_coverage(&siblings);
+    assert!(merged.is_empty());
 }

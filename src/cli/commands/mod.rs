@@ -392,6 +392,14 @@ pub enum Commands {
         /// Show N lines of context around each match (like rg -C)
         #[arg(short = 'C', long = "context", value_name = "NUM")]
         context_lines: Option<usize>,
+
+        /// Trace PTX dataflow across projects (emitter → loader → consumer)
+        #[arg(long)]
+        ptx_flow: bool,
+
+        /// Run PTX quality diagnostics (register pressure, branch density, barriers)
+        #[arg(long)]
+        ptx_diagnostics: bool,
     },
 
     /// Analyze code metrics and patterns

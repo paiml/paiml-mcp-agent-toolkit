@@ -8,12 +8,15 @@ pub(crate) mod coverage_exclusion;
 mod engine;
 mod enrichment;
 mod formatters;
+pub(crate) mod ptx_diagnostics;
+pub(crate) mod ptx_flow;
 pub(crate) mod raw_search;
 mod types;
 
 pub use coverage::{
     build_coverage_map, compute_impact_score, enrich_results_with_coverage,
     enrich_with_coverage, enrich_with_coverage_diff, format_coverage_summary,
+    load_workspace_coverage,
 };
 // coverage_exclusion types are used via crate::services::agent_context::query::coverage_exclusion
 pub use enrichment::{

@@ -388,6 +388,10 @@ impl AgentContextIndex {
     /// corpus, name_index, file_index, and call graph are offset-adjusted
     /// and appended in O(n) time.
     ///
+    /// After all siblings are merged, rebuilds the unified call graph so that
+    /// cross-project call edges are resolved and PageRank reflects cross-project
+    /// importance.
+    ///
     /// Each sibling's `.pmat/context.idx` is never modified.
     pub fn merge_siblings(&mut self, siblings: &[(PathBuf, String)]) {
         for (idx_path, project_name) in siblings {
@@ -402,6 +406,25 @@ impl AgentContextIndex {
                 }
             }
         }
+        // Rebuild unified call graph + PageRank across all projects
+        if !siblings.is_empty() {
+            self.rebuild_cross_project_graph();
+        }
+    }
+
+    /// Rebuild call graph and graph metrics on the merged index.
+    ///
+    /// After `merge_fast()` appends per-project call graphs with offset-adjusted
+    /// indices, cross-project calls are not yet resolved (e.g., a function in
+    /// aprender calling a trueno function). This method rebuilds the entire call
+    /// graph from scratch using the unified `name_index`, then recomputes
+    /// PageRank and centrality so cross-project importance is reflected.
+    pub fn rebuild_cross_project_graph(&mut self) {
+        let (calls, called_by) = build_call_graph(&self.functions, &self.name_index);
+        let graph_metrics = compute_graph_metrics(self.functions.len(), &calls, &called_by);
+        self.calls = calls;
+        self.called_by = called_by;
+        self.graph_metrics = graph_metrics;
     }
 
     /// Fast merge: concatenate pre-built data with index offset adjustment.
@@ -445,6 +468,9 @@ impl AgentContextIndex {
                 callers.iter().map(|i| i + offset).collect(),
             );
         }
+
+        // Append graph_metrics (per-function values, no offset needed)
+        self.graph_metrics.extend(other.graph_metrics);
 
         // Merge name_frequency (recompute — cheap, just HashMap iteration)
         self.name_frequency =
@@ -899,10 +925,53 @@ impl AgentContextIndex {
         Vec::new()
     }
 
+    /// Get raw caller indices for a function (O(1) from in-memory map).
+    /// Returns None if call graph is not loaded in memory (SQLite-only mode).
+    pub fn called_by_indices(&self, func_idx: usize) -> Option<&[usize]> {
+        self.called_by.get(&func_idx).map(|v| v.as_slice())
+    }
+
+    /// Get raw callee indices for a function (O(1) from in-memory map).
+    /// Returns None if call graph is not loaded in memory (SQLite-only mode).
+    pub fn calls_indices(&self, func_idx: usize) -> Option<&[usize]> {
+        self.calls.get(&func_idx).map(|v| v.as_slice())
+    }
+
     /// Find function index by file path and name
     pub fn find_function_index(&self, file_path: &str, function_name: &str) -> Option<usize> {
         self.functions
             .iter()
             .position(|f| f.file_path == file_path && f.function_name == function_name)
     }
+
+    /// Count callers from different projects for a given function.
+    ///
+    /// In a workspace index, file paths are prefixed with the project name
+    /// (e.g., `aprender/src/lib.rs`). A cross-project caller is one whose
+    /// project prefix differs from the callee's prefix.
+    pub fn count_cross_project_callers(&self, func_idx: usize) -> u32 {
+        if func_idx >= self.functions.len() {
+            return 0;
+        }
+        let callee_project = project_prefix(&self.functions[func_idx].file_path);
+        let caller_indices = match self.called_by.get(&func_idx) {
+            Some(indices) => indices,
+            None => return 0,
+        };
+        caller_indices
+            .iter()
+            .filter(|&&i| {
+                i < self.functions.len()
+                    && project_prefix(&self.functions[i].file_path) != callee_project
+            })
+            .count() as u32
+    }
+}
+
+/// Extract the project prefix from a file path (everything before the first `/`).
+///
+/// For workspace-merged paths like `aprender/src/lib.rs`, returns `aprender`.
+/// For local paths like `src/lib.rs`, returns `src`.
+fn project_prefix(path: &str) -> &str {
+    path.split('/').next().unwrap_or(path)
 }

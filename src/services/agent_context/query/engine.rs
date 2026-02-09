@@ -234,6 +234,18 @@ impl AgentContextIndex {
                 // Fall back to relevance ordering here
                 ranked.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
             }
+            super::types::RankBy::CrossProject => {
+                // Score = PageRank * (1 + 0.5 * cross_project_caller_count)
+                ranked.sort_by(|a, b| {
+                    let score_a = self.graph_metrics.get(a.0).map_or(0.0, |m| m.pagerank)
+                        * (1.0 + 0.5 * self.count_cross_project_callers(a.0) as f32);
+                    let score_b = self.graph_metrics.get(b.0).map_or(0.0, |m| m.pagerank)
+                        * (1.0 + 0.5 * self.count_cross_project_callers(b.0) as f32);
+                    score_b.partial_cmp(&score_a)
+                        .unwrap_or(std::cmp::Ordering::Equal)
+                        .then_with(|| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal))
+                });
+            }
         }
 
         // Take top results with caller/callee context

@@ -269,6 +269,8 @@ pub async fn handle_query(
     after_context: Option<usize>,
     before_context: Option<usize>,
     context_lines: Option<usize>,
+    ptx_flow: bool,
+    ptx_diagnostics: bool,
 ) -> anyhow::Result<()> {
     let quiet = matches!(format, QueryOutputFormat::Json);
     let mut profile = QueryProfile::new();
@@ -297,11 +299,27 @@ pub async fn handle_query(
 
     // ── Coverage-gaps mode ──────
     if coverage_gaps {
+        // Discover siblings for workspace coverage merging
+        let mut siblings = AgentContextIndex::discover_sibling_indexes(&project_path);
+        for project in &include_project {
+            let idx_path = project.join(".pmat/context.idx");
+            let name = project.file_name().map(|s| s.to_string_lossy().to_string())
+                .unwrap_or_else(|| project.display().to_string());
+            if !siblings.iter().any(|(_, n)| n == &name) {
+                siblings.push((idx_path, name));
+            }
+        }
         return handle_coverage_gaps_mode(
             &index, &project_path, &format, &coverage_file,
             &language, &path_pattern, exclude_tests, limit, quiet,
-            include_excluded, files_with_matches, count,
+            include_excluded, files_with_matches, count, &siblings,
         ).await;
+    }
+
+    // ── PTX modes (flow / diagnostics) ──────
+    if let Some(output) = handle_ptx_modes(ptx_flow, ptx_diagnostics, &index, &format) {
+        print!("{output}");
+        return Ok(());
     }
 
     // ── Execute semantic query + enrich + output ──────
@@ -742,6 +760,7 @@ async fn handle_coverage_gaps_mode(
     language: &Option<String>, path_pattern: &Option<String>,
     exclude_tests: bool, limit: usize, quiet: bool,
     include_excluded: bool, files_with_matches: bool, count_mode: bool,
+    siblings: &[(PathBuf, String)],
 ) -> anyhow::Result<()> {
     let mut profile = QueryProfile::new();
 
@@ -767,6 +786,17 @@ async fn handle_coverage_gaps_mode(
     if let Err(e) = enrich_results_with_coverage(&mut results, project_path, cov_path).await {
         eprintln!("Error: {}", e);
         return Ok(());
+    }
+
+    // Merge sibling coverage caches for workspace-level coverage gaps
+    if !siblings.is_empty() {
+        let workspace_cov = crate::services::agent_context::load_workspace_coverage(siblings);
+        if !workspace_cov.is_empty() {
+            if !quiet {
+                eprintln!("Merging coverage from {} sibling(s) ({} files)", siblings.len(), workspace_cov.len());
+            }
+            crate::services::agent_context::enrich_with_coverage(&mut results, &workspace_cov);
+        }
     }
     profile.phase("enrich_coverage");
 
@@ -903,6 +933,13 @@ fn apply_post_enrichment_sort(results: &mut [QueryResult], rank_by: &Option<Stri
         let r = rank_str.to_lowercase();
         if r == "impact" || r == "roi" || r == "coverage" {
             results.sort_by(|a, b| b.impact_score.partial_cmp(&a.impact_score).unwrap_or(std::cmp::Ordering::Equal));
+        } else if r == "cross-project" || r == "crossproject" || r == "xproject" {
+            // Secondary sort: boost by cross_project_callers (already set by engine)
+            results.sort_by(|a, b| {
+                let score_a = a.pagerank * (1.0 + 0.5 * a.cross_project_callers as f32);
+                let score_b = b.pagerank * (1.0 + 0.5 * b.cross_project_callers as f32);
+                score_b.partial_cmp(&score_a).unwrap_or(std::cmp::Ordering::Equal)
+            });
         }
     }
 }
@@ -2104,6 +2141,33 @@ fn build_and_save_index(
     Ok(index)
 }
 
+/// Handle PTX-specific modes (--ptx-flow, --ptx-diagnostics).
+/// Returns Some(output) if a PTX mode was active, None otherwise.
+fn handle_ptx_modes(
+    ptx_flow: bool,
+    ptx_diagnostics: bool,
+    index: &crate::services::agent_context::AgentContextIndex,
+    format: &QueryOutputFormat,
+) -> Option<String> {
+    if ptx_flow {
+        let result = crate::services::agent_context::trace_ptx_dataflow(index);
+        return Some(if matches!(format, QueryOutputFormat::Json) {
+            crate::services::agent_context::format_ptx_flow_json(&result)
+        } else {
+            crate::services::agent_context::format_ptx_flow_text(&result)
+        });
+    }
+    if ptx_diagnostics {
+        let result = crate::services::agent_context::run_ptx_diagnostics(index);
+        return Some(if matches!(format, QueryOutputFormat::Json) {
+            crate::services::agent_context::format_ptx_diagnostics_json(&result)
+        } else {
+            crate::services::agent_context::format_ptx_diagnostics_text(&result)
+        });
+    }
+    None
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -2158,6 +2222,8 @@ mod tests {
             None,  // after_context
             None,  // before_context
             None,  // context_lines
+            false, // ptx_flow
+            false, // ptx_diagnostics
         )
         .await;
 
@@ -2227,6 +2293,8 @@ fn main() {
             None,  // after_context
             None,  // before_context
             None,  // context_lines
+            false, // ptx_flow
+            false, // ptx_diagnostics
         )
         .await;
 

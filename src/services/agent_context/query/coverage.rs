@@ -869,6 +869,38 @@ pub async fn enrich_results_with_coverage(
     Ok(())
 }
 
+/// Load and merge coverage caches from sibling projects for workspace-level coverage gaps.
+///
+/// Each sibling's `.pmat/coverage-cache.json` is loaded independently.
+/// File paths are prefixed with the project name (matching `load_with_prefix()`).
+/// Siblings without a cache are silently skipped.
+pub fn load_workspace_coverage(
+    siblings: &[(std::path::PathBuf, String)],
+) -> HashMap<String, HashMap<usize, u64>> {
+    let mut merged: HashMap<String, HashMap<usize, u64>> = HashMap::new();
+
+    for (idx_path, project_name) in siblings {
+        // idx_path points to .pmat/context.idx; coverage cache is at .pmat/coverage-cache.json
+        let pmat_dir = idx_path.parent().unwrap_or(Path::new("."));
+        let cache_path = pmat_dir.join("coverage-cache.json");
+        let cache_json = match std::fs::read_to_string(&cache_path) {
+            Ok(j) => j,
+            Err(_) => continue, // No cache for this sibling
+        };
+        let cache: CoverageCache = match serde_json::from_str(&cache_json) {
+            Ok(c) => c,
+            Err(_) => continue,
+        };
+        // Prefix file paths with project name
+        for (file_path, line_hits) in cache.files {
+            let prefixed = format!("{}/{}", project_name, file_path);
+            merged.insert(prefixed, line_hits);
+        }
+    }
+
+    merged
+}
+
 // ── Tests ───────────────────────────────────────────────────────────────────
 
 #[cfg(test)]
@@ -1104,6 +1136,7 @@ mod tests {
             coverage_diff: 0.0,
             coverage_exclusion: Default::default(),
             coverage_excluded: false,
+            cross_project_callers: 0,
         }
     }
 

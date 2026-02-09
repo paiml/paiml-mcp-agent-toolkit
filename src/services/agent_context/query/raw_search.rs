@@ -683,6 +683,7 @@ mod tests {
             coverage_diff: 0.0,
             coverage_exclusion: Default::default(),
             coverage_excluded: false,
+            cross_project_callers: 0,
         }];
 
         // Line 6 is within the function (5-7)

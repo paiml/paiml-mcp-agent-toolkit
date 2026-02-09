@@ -29,6 +29,8 @@ pub enum RankBy {
     InDegree,
     /// Rank by coverage impact ROI (missed_lines * pagerank * 1/complexity)
     Impact,
+    /// Rank by cross-project importance (PageRank boosted by cross-project callers)
+    CrossProject,
 }
 
 impl std::str::FromStr for RankBy {
@@ -41,7 +43,8 @@ impl std::str::FromStr for RankBy {
             "centrality" | "degree" => Ok(RankBy::Centrality),
             "indegree" | "callers" => Ok(RankBy::InDegree),
             "impact" | "roi" | "coverage" => Ok(RankBy::Impact),
-            _ => Err(format!("Unknown rank-by: '{}'. Valid: relevance, pagerank, centrality, indegree, impact", s)),
+            "cross-project" | "crossproject" | "xproject" => Ok(RankBy::CrossProject),
+            _ => Err(format!("Unknown rank-by: '{}'. Valid: relevance, pagerank, centrality, indegree, impact, cross-project", s)),
         }
     }
 }
@@ -200,10 +203,17 @@ pub struct QueryResult {
     /// Whether this result was filtered out by coverage exclusion detection
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub coverage_excluded: bool,
+    /// Number of callers from different projects (workspace cross-project search)
+    #[serde(default, skip_serializing_if = "is_zero_u32")]
+    pub cross_project_callers: u32,
 }
 
 fn is_zero_f32(v: &f32) -> bool {
     *v == 0.0
+}
+
+fn is_zero_u32(v: &u32) -> bool {
+    *v == 0
 }
 
 impl QueryResult {
@@ -250,6 +260,7 @@ impl QueryResult {
             coverage_diff: 0.0,
             coverage_exclusion: CoverageExclusion::None,
             coverage_excluded: false,
+            cross_project_callers: 0,
         }
     }
 
@@ -290,6 +301,9 @@ impl QueryResult {
             result.in_degree = metrics.in_degree;
             result.out_degree = metrics.out_degree;
         }
+
+        // Cross-project caller count (non-zero only in workspace mode)
+        result.cross_project_callers = index.count_cross_project_callers(func_idx);
 
         // Deduplicate while preserving first-seen order
         result.calls = dedup_ordered(&index.get_calls(func_idx));
