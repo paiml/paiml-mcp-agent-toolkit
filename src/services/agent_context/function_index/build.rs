@@ -322,6 +322,13 @@ impl AgentContextIndex {
     pub fn load_with_prefix(index_path: &Path, prefix: &str) -> Result<Self, String> {
         let mut index = Self::load(index_path)?;
 
+        // Backfill source and call graph for workspace construction.
+        // load_from_sqlite() uses lightweight loading (no source, empty call graph)
+        // for fast query startup, but workspace builds need full data to persist
+        // correctly into workspace.db.
+        index.load_all_source();
+        index.ensure_call_graph();
+
         // Prefix file paths in functions
         for func in &mut index.functions {
             func.file_path = format!("{prefix}/{}", func.file_path);
@@ -572,18 +579,19 @@ impl AgentContextIndex {
 
     /// Load index from SQLite database (v2.0 fast path).
     ///
-    /// Reads functions and graph metrics from `context.db`.
-    /// Skips corpus (FTS5 handles search) and call graph (queried on-demand).
-    /// Saves ~86MB of memory and ~600ms of load time for 90K functions.
+    /// Reads functions (without source) and graph metrics from `context.db`.
+    /// Skips corpus (FTS5 handles search), call graph (queried on-demand),
+    /// and source code (loaded on-demand for display or regex/literal search).
     fn load_from_sqlite(db_path: &Path) -> Result<Self, String> {
-        use super::sqlite_backend::{load_functions, load_graph_metrics, load_metadata, open_db};
+        use super::sqlite_backend::{load_functions_lightweight, load_graph_metrics, load_metadata, open_db};
 
         let conn = open_db(db_path)?;
         let manifest = load_metadata(&conn)?;
-        let functions = load_functions(&conn)?;
+        let functions = load_functions_lightweight(&conn)?;
         let graph_metrics = load_graph_metrics(&conn)?;
-        // Load call graph eagerly — avoids 71K individual SQLite queries at query time
-        let (calls, called_by) = super::sqlite_backend::load_call_graph(&conn)?;
+        // Call graph loaded on-demand via get_calls()/get_called_by() SQLite fallback
+        let calls = HashMap::new();
+        let called_by = HashMap::new();
 
         // Build name_index + file_index only (no corpus — FTS5 handles search)
         let indices = build_indices_without_corpus(&functions);
@@ -955,22 +963,119 @@ impl AgentContextIndex {
     /// In a workspace index, file paths are prefixed with the project name
     /// (e.g., `aprender/src/lib.rs`). A cross-project caller is one whose
     /// project prefix differs from the callee's prefix.
+    ///
+    /// Falls back to on-demand SQLite query when call graph is not loaded in memory.
     pub fn count_cross_project_callers(&self, func_idx: usize) -> u32 {
         if func_idx >= self.functions.len() {
             return 0;
         }
         let callee_project = project_prefix(&self.functions[func_idx].file_path);
-        let caller_indices = match self.called_by.get(&func_idx) {
-            Some(indices) => indices,
-            None => return 0,
-        };
-        caller_indices
-            .iter()
-            .filter(|&&i| {
-                i < self.functions.len()
-                    && project_prefix(&self.functions[i].file_path) != callee_project
-            })
-            .count() as u32
+
+        // In-memory path (eager-loaded call graph from blob or rebuild)
+        if let Some(caller_indices) = self.called_by.get(&func_idx) {
+            return caller_indices
+                .iter()
+                .filter(|&&i| {
+                    i < self.functions.len()
+                        && project_prefix(&self.functions[i].file_path) != callee_project
+                })
+                .count() as u32;
+        }
+
+        // SQLite fallback when call graph not eagerly loaded
+        if let Some(ref db_path) = self.db_path {
+            if let Ok(conn) = super::sqlite_backend::open_db(db_path) {
+                if let Ok(indices) = super::sqlite_backend::query_callers(&conn, func_idx) {
+                    return indices
+                        .iter()
+                        .filter(|&&i| {
+                            i < self.functions.len()
+                                && project_prefix(&self.functions[i].file_path) != callee_project
+                        })
+                        .count() as u32;
+                }
+            }
+        }
+        0
+    }
+
+    /// Load all source code from SQLite into the functions vec.
+    ///
+    /// Used when regex/literal search mode needs full source for pattern matching.
+    /// No-op if db_path is not set (blob-loaded indexes already have source).
+    pub fn load_all_source(&mut self) {
+        if let Some(ref db_path) = self.db_path {
+            if let Ok(conn) = super::sqlite_backend::open_db(db_path) {
+                let _ = super::sqlite_backend::load_source_into(&conn, &mut self.functions);
+            }
+        }
+    }
+
+    /// Eagerly load the call graph from SQLite into memory.
+    ///
+    /// Used when PTX flow or cross-project ranking needs full in-memory call graph
+    /// for `called_by_indices()`/`calls_indices()` access. No-op if call graph
+    /// is already loaded (non-empty) or db_path is not set.
+    pub fn ensure_call_graph(&mut self) {
+        if !self.calls.is_empty() {
+            return; // Already loaded
+        }
+        if let Some(ref db_path) = self.db_path {
+            if let Ok(conn) = super::sqlite_backend::open_db(db_path) {
+                if let Ok((calls, called_by)) = super::sqlite_backend::load_call_graph(&conn) {
+                    self.calls = calls;
+                    self.called_by = called_by;
+                }
+            }
+        }
+    }
+
+    /// Get the SQLite database path (if available).
+    pub fn db_path(&self) -> Option<&Path> {
+        self.db_path.as_deref()
+    }
+
+    /// Load source code for a single function by file path and start line.
+    ///
+    /// Returns the source from in-memory, SQLite, or filesystem (in that order).
+    /// Falls back to reading the file directly when both in-memory and SQLite
+    /// source are empty (e.g., lightweight-loaded index with stale DB).
+    pub fn load_source_for(&self, file_path: &str, start_line: usize) -> String {
+        // Look up end_line from the in-memory index for filesystem fallback
+        let mut end_line = 0usize;
+        // Check if any function in memory already has source
+        if let Some(indices) = self.file_index.get(file_path) {
+            for &idx in indices {
+                if self.functions[idx].start_line == start_line {
+                    end_line = self.functions[idx].end_line;
+                    if !self.functions[idx].source.is_empty() {
+                        return self.functions[idx].source.clone();
+                    }
+                }
+            }
+        }
+        // Fall back to SQLite
+        if let Some(ref db_path) = self.db_path {
+            if let Ok(conn) = super::sqlite_backend::open_db(db_path) {
+                if let Ok(src) = super::sqlite_backend::load_source_by_location(&conn, file_path, start_line) {
+                    if !src.is_empty() {
+                        return src;
+                    }
+                }
+            }
+        }
+        // Final fallback: read from filesystem
+        if end_line > 0 && start_line > 0 {
+            if let Ok(content) = std::fs::read_to_string(file_path) {
+                let lines: Vec<&str> = content.lines().collect();
+                let start = start_line.saturating_sub(1);
+                let end = end_line.min(lines.len());
+                if start < end {
+                    return lines[start..end].join("\n");
+                }
+            }
+        }
+        String::new()
     }
 }
 

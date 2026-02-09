@@ -286,29 +286,19 @@ pub async fn handle_query(
     }
 
     // ── Load index ──────
-    let index = load_query_index(&project_path, rebuild_index, &include_project, quiet)?;
+    let mut index = load_query_index(&project_path, rebuild_index, &include_project, quiet)?;
     profile.phase("load_index");
 
-    if !quiet {
-        let manifest = index.manifest();
-        eprintln!(
-            "Index: {} functions in {} files (avg TDG: {:.1})",
-            manifest.function_count, manifest.file_count, manifest.avg_tdg_score
-        );
-    }
+    let is_regex_or_literal = regex || literal;
+    let is_ptx = ptx_flow || ptx_diagnostics;
+    prepare_index_for_mode(&mut index, is_regex_or_literal, is_ptx, &rank_by);
+    profile.phase("source_load");
+
+    emit_index_stats(&index, quiet);
 
     // ── Coverage-gaps mode ──────
     if coverage_gaps {
-        // Discover siblings for workspace coverage merging
-        let mut siblings = AgentContextIndex::discover_sibling_indexes(&project_path);
-        for project in &include_project {
-            let idx_path = project.join(".pmat/context.idx");
-            let name = project.file_name().map(|s| s.to_string_lossy().to_string())
-                .unwrap_or_else(|| project.display().to_string());
-            if !siblings.iter().any(|(_, n)| n == &name) {
-                siblings.push((idx_path, name));
-            }
-        }
+        let siblings = collect_siblings(&project_path, &include_project);
         return handle_coverage_gaps_mode(
             &index, &project_path, &format, &coverage_file,
             &language, &path_pattern, exclude_tests, limit, quiet,
@@ -323,12 +313,10 @@ pub async fn handle_query(
     }
 
     // ── Execute semantic query + enrich + output ──────
-    let is_regex_literal = regex || literal;
-    let effective_include_source = include_source || code || is_regex_literal;
-    // Clone values needed for raw merge (originals moved into build_query_options)
-    let merge_language = if is_regex_literal { language.clone() } else { None };
-    let merge_exclude_file = if is_regex_literal { exclude_file.clone() } else { None };
-    let merge_exclude = if is_regex_literal { exclude.clone() } else { None };
+    let effective_include_source = include_source || code || is_regex_or_literal;
+    let merge_language = if is_regex_or_literal { language.clone() } else { None };
+    let merge_exclude_file = if is_regex_or_literal { exclude_file.clone() } else { None };
+    let merge_exclude = if is_regex_or_literal { exclude.clone() } else { None };
 
     let options = build_query_options(
         limit, min_grade, max_complexity, language, path_pattern,
@@ -352,14 +340,18 @@ pub async fn handle_query(
     let git_data = fetch_git_data(git_history, &project_path, &query, limit, &index, quiet)?;
     profile.phase("git_history");
 
+    if !is_regex_or_literal {
+        backfill_results_source(&mut results, &index);
+    }
+
     let merge_ctx = MergeContext {
         query: &query, literal, ignore_case,
         language: &merge_language, exclude_file: &merge_exclude_file,
         exclude: &merge_exclude, project_path: &project_path,
-        is_regex_or_literal: is_regex_literal,
+        is_regex_or_literal: is_regex_or_literal,
     };
     let raw_results = merge_raw_results(
-        is_regex_literal, quiet, &query, limit, &merge_ctx,
+        is_regex_or_literal, quiet, &query, limit, &merge_ctx,
         context_lines, after_context, before_context, &results,
     );
 
@@ -395,6 +387,48 @@ fn build_query_options(
 // ── handle_query extracted helpers ──────────────────────────────────────────
 
 /// Print a single raw search match with surrounding context lines
+/// Pre-load source and call graph into the index based on the query mode.
+fn prepare_index_for_mode(
+    index: &mut AgentContextIndex, is_regex_or_literal: bool, is_ptx: bool,
+    rank_by: &Option<String>,
+) {
+    if is_regex_or_literal || is_ptx {
+        index.load_all_source();
+    }
+    let needs_call_graph = is_ptx
+        || rank_by.as_deref() == Some("cross-project")
+        || rank_by.as_deref() == Some("crossproject")
+        || rank_by.as_deref() == Some("xproject");
+    if needs_call_graph {
+        index.ensure_call_graph();
+    }
+}
+
+/// Print index stats to stderr (unless in quiet/JSON mode).
+fn emit_index_stats(index: &AgentContextIndex, quiet: bool) {
+    if !quiet {
+        let manifest = index.manifest();
+        eprintln!(
+            "Index: {} functions in {} files (avg TDG: {:.1})",
+            manifest.function_count, manifest.file_count, manifest.avg_tdg_score
+        );
+    }
+}
+
+/// Collect sibling project indexes for workspace coverage merging.
+fn collect_siblings(project_path: &std::path::Path, include_project: &[PathBuf]) -> Vec<(PathBuf, String)> {
+    let mut siblings = AgentContextIndex::discover_sibling_indexes(project_path);
+    for project in include_project {
+        let idx_path = project.join(".pmat/context.idx");
+        let name = project.file_name().map(|s| s.to_string_lossy().to_string())
+            .unwrap_or_else(|| project.display().to_string());
+        if !siblings.iter().any(|(_, n)| n == &name) {
+            siblings.push((idx_path, name));
+        }
+    }
+    siblings
+}
+
 fn print_raw_match_context(
     file_path: &str, line_number: usize, line_content: &str,
     context_before: &[String], context_after: &[String],
@@ -575,6 +609,31 @@ fn load_query_index(
     }
 
     load_and_merge_index(project_path, &index_path, &workspace_idx, &siblings, rebuild_index, quiet)
+}
+
+/// Backfill source code for query results from SQLite.
+///
+/// In deferred-source mode, `QueryResult.source` is `Some("")` (empty) for
+/// semantic queries. This fetches source on-demand for the top N results
+/// that need it for display (--include-source, --code, context lines).
+fn backfill_results_source(results: &mut [QueryResult], index: &AgentContextIndex) {
+    if index.db_path().is_none() {
+        return; // Blob-loaded index already has source
+    }
+    for r in results.iter_mut() {
+        // Skip results that already have non-empty source
+        if r.source.as_ref().is_some_and(|s| !s.is_empty()) {
+            continue;
+        }
+        // Only backfill if source was requested (Some(""))
+        if r.source.is_none() {
+            continue;
+        }
+        let src = index.load_source_for(&r.file_path, r.start_line);
+        if !src.is_empty() {
+            r.source = Some(src);
+        }
+    }
 }
 
 /// Check if a result looks like a test function
@@ -1167,7 +1226,7 @@ fn search_git_history_profiled(
     project_path: &std::path::Path,
     query: &str,
     limit: usize,
-    index: &AgentContextIndex,
+    _index: &AgentContextIndex,
     _quiet: bool,
 ) -> anyhow::Result<(Vec<GitSearchResult>, GitHistoryProfile, Vec<CommitInfo>)> {
     let total_start = Instant::now();
@@ -1237,11 +1296,8 @@ fn search_git_history_profiled(
         .map_err(|e| anyhow::anyhow!("Git history search failed: {}", e))?;
     let search_ms = search_start.elapsed().as_millis();
 
-    // Phase 5: annotate (we just time the annotation prep here; actual formatting is separate)
-    let annotate_start = Instant::now();
-    // Pre-warm: verify index lookups work for changed files
-    let _ = build_file_annotations(index, project_path, &commits);
-    let annotate_ms = annotate_start.elapsed().as_millis();
+    // Phase 5: annotate — deferred to formatting phase (no pre-warm needed)
+    let annotate_ms = 0u128;
 
     let profile = GitHistoryProfile {
         git_log_ms,

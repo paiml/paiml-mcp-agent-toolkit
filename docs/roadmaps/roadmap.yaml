@@ -1742,14 +1742,48 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'Index v2: SQLite FTS5 backend - fix 58GB bloat (#159)'
-  status: inprogress
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-02-07T19:53:43Z
-  updated: 2026-02-07T19:53:48.114445626+00:00
+  updated: 2026-02-07T22:08:31Z
   spec: null
   acceptance_criteria:
   - 'Replace monolithic LZ4+bincode blob with SQLite+FTS5. Phase 0 (call graph fix) done. Phase 1: SQLite schema + FTS5 search. Spec: docs/specifications/index-v2-sqlite-fts5.md'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-484
+  github_issue: null
+  item_type: task
+  title: Reach 95% make coverage - expand scope and fill gaps
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-02-08T11:55:18Z
+  updated: 2026-02-08T11:55:18Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - coverage
+  - kaizen
+  notes: null
+- id: PMAT-485
+  github_issue: null
+  item_type: task
+  title: 'PMAT-PERF: Falsify all 25 pmat query performance goals, KAIZEN until convergence'
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2026-02-09T11:23:05Z
+  updated: 2026-02-09T11:23:09.244099782+00:00
+  spec: null
+  acceptance_criteria: []
   phases: []
   subtasks: []
   estimated_effort: null
