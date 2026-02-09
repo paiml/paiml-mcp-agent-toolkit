@@ -1321,7 +1321,6 @@ fn aggregate_hotspots(
     let mut hotspots: HashMap<String, FileHotspot> = HashMap::new();
     let mut cochange_counts: HashMap<(String, String), usize> = HashMap::new();
     for commit in commits {
-        let file_paths: Vec<&str> = commit.files.iter().map(|f| f.path.as_str()).collect();
         for fc in &commit.files {
             let entry = hotspots.entry(fc.path.clone()).or_default();
             entry.commit_count += 1;
@@ -1331,14 +1330,19 @@ fn aggregate_hotspots(
             entry.lines_deleted += fc.lines_deleted as u64;
             *entry.authors.entry(commit.author_name.clone()).or_insert(0) += 1;
         }
-        for i in 0..file_paths.len() {
-            for j in (i + 1)..file_paths.len() {
-                let (a, b) = if file_paths[i] < file_paths[j] {
-                    (file_paths[i].to_string(), file_paths[j].to_string())
-                } else {
-                    (file_paths[j].to_string(), file_paths[i].to_string())
-                };
-                *cochange_counts.entry((a, b)).or_insert(0) += 1;
+        // Skip co-change for commits touching >15 files (merges/refactors are noise)
+        let n = commit.files.len();
+        if n > 1 && n <= 15 {
+            let file_paths: Vec<&str> = commit.files.iter().map(|f| f.path.as_str()).collect();
+            for i in 0..n {
+                for j in (i + 1)..n {
+                    let (a, b) = if file_paths[i] < file_paths[j] {
+                        (file_paths[i], file_paths[j])
+                    } else {
+                        (file_paths[j], file_paths[i])
+                    };
+                    *cochange_counts.entry((a.to_string(), b.to_string())).or_insert(0) += 1;
+                }
             }
         }
     }
@@ -1421,13 +1425,19 @@ fn load_dead_code_annotations(
 fn aggregate_bug_hunter_faults(bug_hunter_dir: &std::path::Path) -> HashMap<String, usize> {
     let mut counts: HashMap<String, usize> = HashMap::new();
     let entries = match std::fs::read_dir(bug_hunter_dir) { Ok(e) => e, Err(_) => return counts };
-    for entry in entries.flatten() {
-        if !entry.path().extension().map_or(false, |e| e == "json") { continue; }
-        let data = match std::fs::read_to_string(entry.path()) { Ok(d) => d, Err(_) => continue };
-        let cache: BugHunterCache = match serde_json::from_str(&data) { Ok(c) => c, Err(_) => continue };
-        for finding in &cache.findings {
-            *counts.entry(finding.file.clone()).or_insert(0) += 1;
-        }
+    // Only read the most recent cache file (by mtime) to avoid parsing multiple large JSONs
+    let newest = entries
+        .flatten()
+        .filter(|e| e.path().extension().map_or(false, |ext| ext == "json"))
+        .max_by_key(|e| e.metadata().and_then(|m| m.modified()).unwrap_or(std::time::SystemTime::UNIX_EPOCH));
+    let entry = match newest {
+        Some(e) => e,
+        None => return counts,
+    };
+    let data = match std::fs::read_to_string(entry.path()) { Ok(d) => d, Err(_) => return counts };
+    let cache: BugHunterCache = match serde_json::from_str(&data) { Ok(c) => c, Err(_) => return counts };
+    for finding in &cache.findings {
+        *counts.entry(finding.file.clone()).or_insert(0) += 1;
     }
     counts
 }
