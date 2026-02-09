@@ -2017,6 +2017,16 @@ fn load_or_build_index(
 ) -> anyhow::Result<AgentContextIndex> {
     // Check for either SQLite (.db) or blob (.idx/) index
     let db_path = index_path.with_extension("db");
+
+    // Fail-fast: detect partial/corrupt index (manifest exists but data missing)
+    let manifest_exists = index_path.join("manifest.json").exists();
+    let blob_exists = index_path.join("functions.lz4").exists();
+    if !db_path.exists() && manifest_exists && !blob_exists {
+        eprintln!("Detected partial index (manifest without data), rebuilding...");
+        let _ = std::fs::remove_dir_all(index_path);
+        return build_and_save_index(project_path, index_path);
+    }
+
     if (!index_path.exists() && !db_path.exists()) || rebuild_index {
         if !quiet { eprintln!("Building index for {:?}...", project_path); }
         return build_and_save_index(project_path, index_path);
@@ -2026,6 +2036,7 @@ fn load_or_build_index(
         Ok(existing) => Ok(try_incremental_update(project_path, index_path, existing, quiet)),
         Err(e) => {
             eprintln!("Failed to load index ({}), rebuilding...", e);
+            eprintln!("  Hint: for large repos, run 'pmat index' explicitly for faster rebuilds");
             build_and_save_index(project_path, index_path)
         }
     }
@@ -2124,8 +2135,14 @@ fn build_and_save_index(
     project_path: &PathBuf,
     index_path: &PathBuf,
 ) -> anyhow::Result<AgentContextIndex> {
+    let start = std::time::Instant::now();
     let index = AgentContextIndex::build(project_path)
         .map_err(|e| anyhow::anyhow!("Failed to build index: {}", e))?;
+    eprintln!(
+        "  Index built: {} functions in {:.1}s",
+        index.all_functions().len(),
+        start.elapsed().as_secs_f32()
+    );
 
     // Create .pmat directory if needed
     if let Some(parent) = index_path.parent() {

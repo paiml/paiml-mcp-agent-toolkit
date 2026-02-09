@@ -158,6 +158,12 @@ impl AgentContextIndex {
             }
 
             file_count += 1;
+            if file_count % 500 == 0 {
+                eprint!("\r  Indexing... {} files", file_count);
+            }
+        }
+        if file_count >= 500 {
+            eprintln!("\r  Indexed {} files", file_count);
         }
 
         // Build indices and corpus
