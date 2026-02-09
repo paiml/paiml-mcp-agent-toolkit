@@ -1009,6 +1009,26 @@ impl AgentContextIndex {
                 let _ = super::sqlite_backend::load_source_into(&conn, &mut self.functions);
             }
         }
+        // Filesystem fallback: read source for functions still missing it
+        // Groups by file to avoid re-reading the same file multiple times
+        let mut files_to_read: HashMap<String, Vec<usize>> = HashMap::new();
+        for (idx, func) in self.functions.iter().enumerate() {
+            if func.source.is_empty() && func.end_line > 0 {
+                files_to_read.entry(func.file_path.clone()).or_default().push(idx);
+            }
+        }
+        for (file_path, indices) in &files_to_read {
+            if let Ok(content) = std::fs::read_to_string(file_path) {
+                let lines: Vec<&str> = content.lines().collect();
+                for &idx in indices {
+                    let start = self.functions[idx].start_line.saturating_sub(1);
+                    let end = self.functions[idx].end_line.min(lines.len());
+                    if start < end {
+                        self.functions[idx].source = lines[start..end].join("\n");
+                    }
+                }
+            }
+        }
     }
 
     /// Eagerly load the call graph from SQLite into memory.

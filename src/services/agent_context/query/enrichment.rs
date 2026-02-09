@@ -65,6 +65,13 @@ pub async fn enrich_results_with_churn(
         return Ok(());
     }
 
+    // Skip if most results already have cached churn data from index build.
+    // Struct/type definitions legitimately have zero churn, so use majority check.
+    let cached = results.iter().filter(|r| r.commit_count > 0 || r.churn_score > 0.0).count();
+    if cached * 2 > results.len() {
+        return Ok(());
+    }
+
     // Collect unique files from results
     let files: Vec<std::path::PathBuf> = results
         .iter()
@@ -89,70 +96,74 @@ pub async fn enrich_results_with_churn(
     Ok(())
 }
 
+/// Detect language from file extension for duplicate detection.
+fn detect_language_for_duplication(path: &str) -> Option<crate::services::duplicate_detector::Language> {
+    use crate::services::duplicate_detector::Language;
+    let ext_langs: &[(&[&str], Language)] = &[
+        (&[".rs"], Language::Rust),
+        (&[".ts", ".tsx"], Language::TypeScript),
+        (&[".js", ".jsx"], Language::JavaScript),
+        (&[".py"], Language::Python),
+        (&[".c"], Language::C),
+        (&[".cpp", ".cc", ".cxx"], Language::Cpp),
+        (&[".kt"], Language::Kotlin),
+    ];
+    ext_langs
+        .iter()
+        .find(|(exts, _)| exts.iter().any(|ext| path.ends_with(ext)))
+        .map(|(_, lang)| *lang)
+}
+
+/// Collect unique file contents from query results for analysis.
+fn collect_file_contents(
+    results: &[QueryResult],
+    project_root: &Path,
+) -> HashMap<String, String> {
+    let mut contents: HashMap<String, String> = HashMap::new();
+    for result in results {
+        if contents.contains_key(&result.file_path) {
+            continue;
+        }
+        let full_path = project_root.join(&result.file_path);
+        if let Ok(content) = std::fs::read_to_string(&full_path) {
+            contents.insert(result.file_path.clone(), content);
+        }
+    }
+    contents
+}
+
 /// Enrich query results with duplicate detection data.
 ///
 /// Detects code clones using MinHash + LSH for O(1) similarity matching.
 /// Results are enriched with clone_count and duplication_score.
-///
-/// # Arguments
-/// * `results` - Query results to enrich
-/// * `project_root` - Project root path for file access
 #[cfg_attr(coverage_nightly, coverage(off))] // Integration: requires filesystem + DuplicateDetectionEngine
 pub async fn enrich_results_with_duplicates(
     results: &mut [QueryResult],
     project_root: &Path,
 ) -> Result<(), String> {
-    use crate::services::duplicate_detector::{DuplicateDetectionConfig, DuplicateDetectionEngine, Language};
+    use crate::services::duplicate_detector::{DuplicateDetectionConfig, DuplicateDetectionEngine};
 
     if results.is_empty() {
         return Ok(());
     }
 
-    // Collect unique files and their content
-    let mut files_to_analyze = Vec::new();
-    let mut file_contents: HashMap<String, String> = HashMap::new();
+    let file_contents = collect_file_contents(results, project_root);
 
-    for result in results.iter() {
-        if file_contents.contains_key(&result.file_path) {
-            continue;
-        }
-
-        let full_path = project_root.join(&result.file_path);
-        if let Ok(content) = std::fs::read_to_string(&full_path) {
-            file_contents.insert(result.file_path.clone(), content);
-        }
-    }
-
-    // Determine language and build file list
-    for (path, content) in &file_contents {
-        let lang = if path.ends_with(".rs") {
-            Language::Rust
-        } else if path.ends_with(".ts") || path.ends_with(".tsx") {
-            Language::TypeScript
-        } else if path.ends_with(".js") || path.ends_with(".jsx") {
-            Language::JavaScript
-        } else if path.ends_with(".py") {
-            Language::Python
-        } else if path.ends_with(".c") {
-            Language::C
-        } else if path.ends_with(".cpp") || path.ends_with(".cc") || path.ends_with(".cxx") {
-            Language::Cpp
-        } else if path.ends_with(".kt") {
-            Language::Kotlin
-        } else {
-            continue; // Skip unsupported languages
-        };
-
-        files_to_analyze.push((std::path::PathBuf::from(path), content.clone(), lang));
-    }
+    // Build file list with detected languages
+    let files_to_analyze: Vec<_> = file_contents
+        .iter()
+        .filter_map(|(path, content)| {
+            detect_language_for_duplication(path)
+                .map(|lang| (std::path::PathBuf::from(path), content.clone(), lang))
+        })
+        .collect();
 
     if files_to_analyze.is_empty() {
         return Ok(());
     }
 
-    // Run duplicate detection with relaxed settings for function-level analysis
     let config = DuplicateDetectionConfig {
-        min_tokens: 20, // Lower threshold to catch function-level duplicates
+        min_tokens: 20,
         similarity_threshold: 0.65,
         ..Default::default()
     };
@@ -162,18 +173,17 @@ pub async fn enrich_results_with_duplicates(
         .detect_duplicates(&files_to_analyze)
         .map_err(|e| format!("Duplicate detection failed: {e}"))?;
 
-    // Build file -> duplication metrics map
+    // Build file -> (clone_count, max_similarity) map
     let mut file_duplication: HashMap<String, (u32, f32)> = HashMap::new();
     for group in &report.groups {
         for fragment in &group.fragments {
             let path_str = fragment.file.to_string_lossy().to_string();
             let entry = file_duplication.entry(path_str).or_insert((0, 0.0));
-            entry.0 += 1; // clone count
-            entry.1 = entry.1.max(group.average_similarity as f32); // max similarity
+            entry.0 += 1;
+            entry.1 = entry.1.max(group.average_similarity as f32);
         }
     }
 
-    // Enrich results
     for result in results.iter_mut() {
         if let Some((clone_count, dup_score)) = file_duplication.get(&result.file_path) {
             result.clone_count = *clone_count;
@@ -200,6 +210,12 @@ pub async fn enrich_results_with_entropy(
     use crate::entropy::{EntropyAnalyzer, EntropyConfig};
 
     if results.is_empty() {
+        return Ok(());
+    }
+
+    // Skip if most results already have cached pattern diversity from index build
+    let cached = results.iter().filter(|r| r.pattern_diversity > 0.0).count();
+    if cached * 2 > results.len() {
         return Ok(());
     }
 
@@ -244,112 +260,94 @@ pub async fn enrich_results_with_entropy(
     Ok(())
 }
 
-/// Enrich query results with batuta fault pattern annotations.
-///
-/// Runs batuta bug-hunter falsify to detect mutation targets and boundary conditions.
-/// Results are enriched with fault_annotations containing any detected issues.
-///
-/// # Arguments
-/// * `results` - Query results to enrich
-/// * `project_root` - Project root path for analysis
-#[cfg_attr(coverage_nightly, coverage(off))] // Integration: requires pmat subprocess
-pub async fn enrich_results_with_faults(
-    results: &mut [QueryResult],
-    project_root: &Path,
-) -> Result<(), String> {
+/// Run batuta bug-hunter and parse findings into a file->annotations map.
+fn run_batuta_and_parse(project_root: &Path) -> Result<HashMap<String, Vec<String>>, String> {
     use std::process::Command;
 
-    if results.is_empty() {
-        return Ok(());
-    }
-
-    // Run batuta bug-hunter falsify in JSON mode
     let output = Command::new("batuta")
-        .args([
-            "bug-hunter",
-            "falsify",
-            "--format",
-            "json",
-            "--target",
-            ".",
-        ])
+        .args(["bug-hunter", "falsify", "--format", "json", "--target", "."])
         .current_dir(project_root)
         .output()
         .map_err(|e| format!("Failed to run batuta: {e}"))?;
 
     if !output.status.success() {
-        // batuta returns exit code 2 for help/usage, which is fine
         let stderr = String::from_utf8_lossy(&output.stderr);
         if !stderr.contains("Usage:") {
             return Err(format!("batuta failed: {stderr}"));
         }
     }
 
-    // Parse JSON output
     let stdout = String::from_utf8_lossy(&output.stdout);
-
-    // Try to find the JSON object in the output (batuta may print warnings first)
-    let json_start = stdout.find('{');
-    let json_str = match json_start {
-        Some(start) => &stdout[start..],
-        None => return Ok(()), // No JSON output, no findings
+    let json_start = match stdout.find('{') {
+        Some(s) => s,
+        None => return Ok(HashMap::new()),
     };
 
-    let parsed: serde_json::Value =
-        serde_json::from_str(json_str).map_err(|e| format!("Failed to parse batuta output: {e}"))?;
+    let parsed: serde_json::Value = serde_json::from_str(&stdout[json_start..])
+        .map_err(|e| format!("Failed to parse batuta output: {e}"))?;
 
-    // Extract findings
     let findings = match parsed.get("findings").and_then(|f| f.as_array()) {
         Some(f) => f,
-        None => return Ok(()), // No findings
+        None => return Ok(HashMap::new()),
     };
 
-    // Build file:line -> findings map
     let mut fault_map: HashMap<String, Vec<String>> = HashMap::new();
     for finding in findings {
-        let file = finding
-            .get("file")
-            .and_then(|f| f.as_str())
-            .unwrap_or("");
+        let file = finding.get("file").and_then(|f| f.as_str()).unwrap_or("");
         let line = finding.get("line").and_then(|l| l.as_u64()).unwrap_or(0);
-        let title = finding
-            .get("title")
-            .and_then(|t| t.as_str())
-            .unwrap_or("Unknown fault pattern");
+        let title = finding.get("title").and_then(|t| t.as_str()).unwrap_or("Unknown fault pattern");
         let id = finding.get("id").and_then(|i| i.as_str()).unwrap_or("BH");
-
-        // Normalize path (remove leading ./)
-        let normalized_file = file.strip_prefix("./").unwrap_or(file);
-
-        let key = normalized_file.to_string();
-        let annotation = format!("{}: {} at line {}", id, title, line);
-
-        fault_map.entry(key).or_default().push(annotation);
+        let normalized = file.strip_prefix("./").unwrap_or(file);
+        fault_map
+            .entry(normalized.to_string())
+            .or_default()
+            .push(format!("{id}: {title} at line {line}"));
     }
 
-    // Enrich results with fault annotations
+    Ok(fault_map)
+}
+
+/// Filter fault annotations to those within a function's line range.
+fn faults_in_range(faults: &[String], start_line: usize, end_line: usize) -> Vec<String> {
+    faults
+        .iter()
+        .filter(|f| {
+            f.split("at line ")
+                .last()
+                .and_then(|s| s.parse::<usize>().ok())
+                .is_some_and(|line| line >= start_line && line <= end_line)
+        })
+        .cloned()
+        .collect()
+}
+
+/// Enrich query results with batuta fault pattern annotations.
+///
+/// Runs batuta bug-hunter falsify to detect mutation targets and boundary conditions.
+/// Results are enriched with fault_annotations containing any detected issues.
+#[cfg_attr(coverage_nightly, coverage(off))] // Integration: requires pmat subprocess
+pub async fn enrich_results_with_faults(
+    results: &mut [QueryResult],
+    project_root: &Path,
+) -> Result<(), String> {
+    if results.is_empty() {
+        return Ok(());
+    }
+
+    // Skip if most results already have cached fault annotations from index build
+    let cached = results.iter().filter(|r| !r.fault_annotations.is_empty()).count();
+    if cached * 2 > results.len() {
+        return Ok(());
+    }
+
+    let fault_map = run_batuta_and_parse(project_root)?;
+
     for result in results.iter_mut() {
         if let Some(faults) = fault_map.get(&result.file_path) {
-            // Filter to faults within the function's line range
-            let func_start = result.start_line;
             let func_end = result.start_line + result.loc as usize;
-
-            let relevant_faults: Vec<_> = faults
-                .iter()
-                .filter(|f| {
-                    // Extract line number from annotation and check if in function range
-                    if let Some(line_part) = f.split("at line ").last() {
-                        if let Ok(line) = line_part.parse::<usize>() {
-                            return line >= func_start && line <= func_end;
-                        }
-                    }
-                    false
-                })
-                .cloned()
-                .collect();
-
-            if !relevant_faults.is_empty() {
-                result.fault_annotations = relevant_faults;
+            let relevant = faults_in_range(faults, result.start_line, func_end);
+            if !relevant.is_empty() {
+                result.fault_annotations = relevant;
             }
         }
     }
