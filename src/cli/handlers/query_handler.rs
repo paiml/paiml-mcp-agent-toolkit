@@ -79,7 +79,7 @@ impl QueryProfile {
                 let delta = if self.phases.first().map(|f| f.0) == Some(*name) {
                     *cumulative
                 } else {
-                    let idx = self.phases.iter().position(|p| p.0 == *name).unwrap();
+                    let idx = self.phases.iter().position(|p| p.0 == *name).expect("phase must exist");
                     *cumulative - self.phases[idx - 1].1
                 };
                 let delta_ms = delta.as_millis();
@@ -348,7 +348,7 @@ pub async fn handle_query(
         query: &query, literal, ignore_case,
         language: &merge_language, exclude_file: &merge_exclude_file,
         exclude: &merge_exclude, project_path: &project_path,
-        is_regex_or_literal: is_regex_or_literal,
+        is_regex_or_literal,
     };
     let raw_results = merge_raw_results(
         is_regex_or_literal, quiet, &query, limit, &merge_ctx,
@@ -1363,6 +1363,7 @@ fn build_code_annotations(
     file_annots
 }
 
+#[allow(clippy::field_reassign_with_default)]
 fn annotate_file_functions(
     index: &AgentContextIndex,
     file_path: &str,
@@ -1428,7 +1429,7 @@ fn aggregate_bug_hunter_faults(bug_hunter_dir: &std::path::Path) -> HashMap<Stri
     // Only read the most recent cache file (by mtime) to avoid parsing multiple large JSONs
     let newest = entries
         .flatten()
-        .filter(|e| e.path().extension().map_or(false, |ext| ext == "json"))
+        .filter(|e| e.path().extension().is_some_and(|ext| ext == "json"))
         .max_by_key(|e| e.metadata().and_then(|m| m.modified()).unwrap_or(std::time::SystemTime::UNIX_EPOCH));
     let entry = match newest {
         Some(e) => e,
@@ -1530,7 +1531,7 @@ fn load_work_ticket(project_path: &std::path::Path, issue_ref: &str) -> Option<W
             c.get("result")
                 .and_then(|r| r.get("falsified"))
                 .and_then(|f| f.as_bool())
-                .map_or(false, |f| !f) // passed = not falsified
+                .is_some_and(|f| !f) // passed = not falsified
         })
         .count();
 
@@ -1684,7 +1685,8 @@ fn format_commit_entry(
     if let Some(ref body) = commit.message_body {
         if !body.is_empty() {
             let truncated = if body.len() > 120 {
-                format!("{}...", &body[..body.floor_char_boundary(120)])
+                #[allow(clippy::incompatible_msrv)]
+                { format!("{}...", &body[..body.floor_char_boundary(120)]) }
             } else {
                 body.clone()
             };
