@@ -2078,7 +2078,11 @@ fn merge_and_cache_workspace(
     }
 }
 
-/// Build index and save to disk
+/// Build index and save to disk.
+///
+/// Save failures are non-fatal: the in-memory index is returned so the query
+/// can still proceed. This prevents "database is locked" errors from killing
+/// the entire query (#161).
 fn build_and_save_index(
     project_path: &PathBuf,
     index_path: &PathBuf,
@@ -2088,15 +2092,14 @@ fn build_and_save_index(
 
     // Create .pmat directory if needed
     if let Some(parent) = index_path.parent() {
-        std::fs::create_dir_all(parent)?;
+        let _ = std::fs::create_dir_all(parent);
     }
 
-    // Save index
-    index
-        .save(index_path)
-        .map_err(|e| anyhow::anyhow!("Failed to save index: {}", e))?;
-
-    eprintln!("Index saved to {:?}", index_path);
+    // Save index — non-fatal on failure (index is still usable in memory)
+    match index.save(index_path) {
+        Ok(()) => eprintln!("Index saved to {:?}", index_path),
+        Err(e) => eprintln!("Warning: Failed to save index ({}), using in-memory index", e),
+    }
 
     Ok(index)
 }

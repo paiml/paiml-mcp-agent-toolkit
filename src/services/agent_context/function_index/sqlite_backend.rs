@@ -29,10 +29,11 @@ pub(crate) fn open_db(db_path: &Path) -> Result<Connection, String> {
     )
     .map_err(|e| format!("Failed to open index DB: {e}"))?;
 
-    // Performance pragmas
+    // Performance + concurrency pragmas
     conn.execute_batch(
         "PRAGMA journal_mode = WAL;
          PRAGMA synchronous = NORMAL;
+         PRAGMA busy_timeout = 5000;
          PRAGMA cache_size = -64000;
          PRAGMA mmap_size = 268435456;
          PRAGMA temp_store = MEMORY;",
@@ -313,6 +314,9 @@ fn insert_coverage_off_files(conn: &Connection, files: &HashSet<String>) -> Resu
 }
 
 /// Save the full index to a SQLite database.
+///
+/// Uses atomic write: builds a temporary DB, then renames into place.
+/// This prevents concurrent readers from seeing a partial/empty file.
 pub(crate) fn save_to_sqlite(
     db_path: &Path,
     functions: &[FunctionEntry],
@@ -321,18 +325,29 @@ pub(crate) fn save_to_sqlite(
     manifest: &IndexManifest,
     coverage_off_files: &HashSet<String>,
 ) -> Result<(), String> {
-    // Remove existing DB to avoid stale data
-    if db_path.exists() {
-        std::fs::remove_file(db_path).map_err(|e| format!("Failed to remove old DB: {e}"))?;
-    }
+    let tmp_path = db_path.with_extension("db.tmp");
 
-    let conn = open_db(db_path)?;
+    // Remove stale temp file from a previous interrupted save
+    let _ = std::fs::remove_file(&tmp_path);
+
+    let conn = open_db(&tmp_path)?;
     create_schema(&conn)?;
     insert_functions(&conn, functions)?;
     insert_call_graph(&conn, calls)?;
     insert_graph_metrics(&conn, graph_metrics)?;
     insert_metadata(&conn, manifest)?;
     insert_coverage_off_files(&conn, coverage_off_files)?;
+
+    // Close connection before rename
+    drop(conn);
+
+    // Atomic rename into place (same filesystem, so this is atomic on POSIX)
+    std::fs::rename(&tmp_path, db_path)
+        .map_err(|e| format!("Failed to rename temp DB into place: {e}"))?;
+
+    // Clean up stale WAL/SHM files from the old DB (rename doesn't move them)
+    let _ = std::fs::remove_file(db_path.with_extension("db-wal"));
+    let _ = std::fs::remove_file(db_path.with_extension("db-shm"));
 
     eprintln!(
         "  SQLite index saved: {} functions, {} call edges, {}",

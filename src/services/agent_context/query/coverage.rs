@@ -676,6 +676,19 @@ fn run_cargo_llvm_cov_and_cache(
         return Ok(cov);
     }
 
+    // Fast pre-check: verify profdata directory exists before spawning subprocess.
+    // Without this, `cargo llvm-cov report` hangs for 30s then fails.
+    if get_profdata_mtime_and_dir(project_root, None).is_none() {
+        return Err(
+            "No coverage data available.\n\n\
+            To generate it, run:\n  \
+            cargo llvm-cov test --lib --no-report\n\n\
+            Then re-run with --coverage-gaps.\n\
+            Or pass --coverage-file <path> to use existing coverage JSON."
+                .to_string(),
+        );
+    }
+
     let output = run_llvm_cov_subprocess(project_root)?;
     let json = String::from_utf8_lossy(&output.stdout);
     let file_coverage = build_coverage_map(&json, project_root)?;
