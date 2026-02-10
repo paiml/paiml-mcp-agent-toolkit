@@ -45,6 +45,7 @@ pub async fn analyze_file_by_language(
         // Scripting languages
         "bash" => analyze_bash_language(file_path).await,
         "ruby" => analyze_ruby_language(file_path).await,
+        "lua" => analyze_lua_language(file_path).await,
 
         // Functional languages
         "elixir" => analyze_elixir_language(file_path).await,
@@ -278,6 +279,59 @@ pub async fn analyze_ruby_language(
     analyze_ruby_file(file_path).await
 }
 
+/// Toyota Way Single Responsibility: Handle Lua file analysis (tree-sitter)
+#[cfg(feature = "lua-ast")]
+pub async fn analyze_lua_language(
+    file_path: &std::path::Path,
+) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
+    use crate::ast::languages::lua::LuaStrategy;
+    use crate::ast::languages::LanguageStrategy;
+    use crate::services::context::AstItem;
+
+    let content = tokio::fs::read_to_string(file_path).await?;
+    let strategy = LuaStrategy::new();
+
+    match strategy.parse_file(file_path, &content).await {
+        Ok(ast) => {
+            let mut items = Vec::new();
+
+            // Extract functions
+            for func in strategy.extract_functions(&ast) {
+                items.push(AstItem::Function {
+                    name: format!("lua_fn_{}", items.len()),
+                    visibility: "public".to_string(),
+                    is_async: false,
+                    line: func.source_range.start as usize,
+                });
+            }
+
+            // Extract imports (require calls)
+            for (i, _import) in strategy.extract_imports(&ast).iter().enumerate() {
+                items.push(AstItem::Import {
+                    module: format!("require_{i}"),
+                    items: vec![],
+                    alias: None,
+                    line: 0,
+                });
+            }
+
+            tracing::debug!("Lua analysis returned {} items", items.len());
+            Ok(items)
+        }
+        Err(e) => {
+            tracing::debug!("Lua AST parse failed: {e}, returning empty");
+            Ok(Vec::new())
+        }
+    }
+}
+
+#[cfg(not(feature = "lua-ast"))]
+pub async fn analyze_lua_language(
+    _file_path: &std::path::Path,
+) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
+    Ok(Vec::new())
+}
+
 /// Toyota Way Single Responsibility: Handle Swift file analysis
 pub async fn analyze_swift_language(
     file_path: &std::path::Path,
@@ -366,6 +420,7 @@ fn detect_language(path: &std::path::Path) -> String {
             // Scripting languages
             "sh" | "bash" => "bash".to_string(),
             "rb" => "ruby".to_string(),
+            "lua" => "lua".to_string(),
 
             // Functional languages
             "ex" | "exs" => "elixir".to_string(),
@@ -784,6 +839,57 @@ async fn analyze_single_file_complexity(
             // OPTIMIZATION: Check Bash unified cache first (from analyze_bash_language)
             // This avoids the second parse - TICKET-3006
             BASH_UNIFIED_CACHE.with(|cache| cache.borrow().get(file_path).cloned())
+        }
+        "lua" => {
+            // Lua: Use tree-sitter AST for complexity analysis (no cache, fast enough)
+            #[cfg(feature = "lua-ast")]
+            {
+                use crate::ast::languages::lua::LuaStrategy;
+                use crate::ast::languages::LanguageStrategy;
+                use crate::services::complexity::{
+                    ComplexityMetrics as CMetrics, FileComplexityMetrics as FCMetrics,
+                    FunctionComplexity as FComp,
+                };
+
+                let content = tokio::fs::read_to_string(file_path).await.ok()?;
+                let strategy = LuaStrategy::new();
+                let ast = strategy.parse_file(file_path, &content).await.ok()?;
+                let functions = strategy.extract_functions(&ast);
+                let (cyclomatic, cognitive) = strategy.calculate_complexity(&ast);
+                let func_count = functions.len().max(1) as u32;
+
+                let func_complexities: Vec<FComp> = functions
+                    .iter()
+                    .enumerate()
+                    .map(|(i, f)| FComp {
+                        name: format!("lua_fn_{i}"),
+                        line_start: f.source_range.start,
+                        line_end: f.source_range.end,
+                        metrics: CMetrics {
+                            cyclomatic: (cyclomatic / func_count) as u16,
+                            cognitive: (cognitive / func_count) as u16,
+                            nesting_max: 0,
+                            lines: 0,
+                            halstead: None,
+                        },
+                    })
+                    .collect();
+
+                Some(FCMetrics {
+                    path: file_path.to_string_lossy().to_string(),
+                    total_complexity: CMetrics {
+                        cyclomatic: cyclomatic as u16,
+                        cognitive: cognitive as u16,
+                        nesting_max: 0,
+                        lines: content.lines().count() as u16,
+                        halstead: None,
+                    },
+                    functions: func_complexities,
+                    classes: vec![],
+                })
+            }
+            #[cfg(not(feature = "lua-ast"))]
+            None
         }
         _ => None,
     }
