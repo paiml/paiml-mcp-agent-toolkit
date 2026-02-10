@@ -182,6 +182,7 @@ tree-sitter-go = { version = "0.23", optional = true }
 tree-sitter-javascript = { version = "0.23", optional = true }
 tree-sitter-typescript = { version = "0.23", optional = true }
 tree-sitter-python = { version = "0.23", optional = true }
+tree-sitter-lua = { version = "0.2.0", optional = true }
 tree-sitter-kotlin-ng = { version = "1.1", optional = true }
 tree-sitter-rust = { version = "0.23", optional = true }
 # Sprint 46 Phase 6: Removed unused tree-sitter parsers (0 references - cargo-machete verified)
@@ -309,7 +310,7 @@ default = ["core-languages", "viz"]
 
 # Convenience bundles
 core-languages = ["rust-ast", "typescript-ast", "javascript-ast"]  # Most common: Rust + JS/TS
-extended-languages = ["python-ast", "go-ast", "c-ast", "cpp-ast", "shell-ast", "php-ast", "swift-ast"]  # Additional languages
+extended-languages = ["python-ast", "go-ast", "c-ast", "cpp-ast", "shell-ast", "php-ast", "swift-ast", "lua-ast"]  # Additional languages
 advanced-analysis = ["analytics-simd", "mutation-testing", "tdg-explain", "demo"]  # Heavy features
 full = ["all-languages", "polyglot-ast", "advanced-analysis"]  # Equivalent to old defaults
 
@@ -319,7 +320,7 @@ full = ["all-languages", "polyglot-ast", "advanced-analysis"]  # Equivalent to o
 # - Reduces build time and dependency count
 # - org-intelligence now opt-in via --features org-intelligence
 org-intelligence = ["organizational-intelligence-plugin"]
-all-languages = ["rust-ast", "typescript-ast", "python-ast", "c-ast", "cpp-ast", "ruchy-ast", "go-ast", "wasm-ast", "deep-wasm", "shell-ast", "php-ast", "swift-ast"]
+all-languages = ["rust-ast", "typescript-ast", "python-ast", "c-ast", "cpp-ast", "ruchy-ast", "go-ast", "wasm-ast", "deep-wasm", "shell-ast", "php-ast", "swift-ast", "lua-ast"]
 most-languages = ["rust-ast", "typescript-ast", "python-ast", "c-ast", "cpp-ast", "go-ast", "shell-ast"]
 # Sprint 46 Phase 6: Removed java-ast, csharp-ast, ruby-ast, scala-ast (0 references)
 # Note: go-ast and shell-ast kept in most-languages (unified_go_analyzer.rs now has proper feature gates)
@@ -375,6 +376,7 @@ agent-daemon = []  # Claude Code Agent Mode (daemon, MCP server, quality monitor
 rust-ast = ["quote", "proc-macro2", "tree-sitter", "tree-sitter-rust"]
 typescript-ast = ["rust-ast", "swc_ecma_parser", "swc_common", "swc_ecma_ast", "swc_ecma_visit", "tree-sitter", "tree-sitter-typescript", "tree-sitter-javascript", "polyglot-typescript"]
 python-ast = ["rust-ast", "tree-sitter", "tree-sitter-python"]
+lua-ast = ["tree-sitter", "tree-sitter-lua"]
 # ✅ Migration complete! All 5 files migrated from rustpython-parser to tree-sitter-python:
 #   - tdg/analyzer_ast.rs (Phase 4)
 #   - services/mutation/python_adapter.rs (Phase 5a)

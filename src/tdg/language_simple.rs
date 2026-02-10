@@ -16,6 +16,7 @@ pub enum Language {
     Swift,
     Kotlin,
     Ruchy,
+    Lua,
     Unknown,
 }
 
@@ -35,6 +36,7 @@ impl Language {
             Some("swift") => Language::Swift,
             Some("kt" | "kts") => Language::Kotlin,
             Some("ruchy" | "rh") => Language::Ruchy,
+            Some("lua") => Language::Lua,
             _ => Language::Unknown,
         }
     }
@@ -54,6 +56,7 @@ impl Language {
             Language::Swift => 0.85,
             Language::Kotlin => 0.85,
             Language::Ruchy => 0.95,
+            Language::Lua => 0.90,
             Language::Unknown => 0.5,
         }
     }
@@ -74,6 +77,7 @@ impl std::fmt::Display for Language {
             Language::Swift => write!(f, "Swift"),
             Language::Kotlin => write!(f, "Kotlin"),
             Language::Ruchy => write!(f, "Ruchy"),
+            Language::Lua => write!(f, "Lua"),
             Language::Unknown => write!(f, "Unknown"),
         }
     }
@@ -136,6 +140,7 @@ impl LanguageRules {
             Language::TypeScript => Self::typescript_rules(),
             Language::Go => Self::go_rules(),
             Language::Ruchy => Self::ruchy_rules(),
+            Language::Lua => Self::lua_rules(),
             _ => Self::rust_rules(), // Default
         }
     }
@@ -203,6 +208,17 @@ impl LanguageRules {
             type_style: NamingStyle::PascalCase,    // struct Point, enum Color
             constant_style: NamingStyle::ScreamingSnakeCase, // const MAX_SIZE
             variable_style: NamingStyle::SnakeCase, // let my_variable
+        }
+    }
+
+    #[must_use]
+    pub fn lua_rules() -> Self {
+        LanguageRules {
+            language: Language::Lua,
+            function_style: NamingStyle::SnakeCase,
+            type_style: NamingStyle::PascalCase,
+            constant_style: NamingStyle::ScreamingSnakeCase,
+            variable_style: NamingStyle::SnakeCase,
         }
     }
 }

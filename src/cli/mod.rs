@@ -314,6 +314,7 @@ fn count_extension(ext: &str, lang_counts: &mut std::collections::HashMap<&'stat
         "cpp" | "cc" | "cxx" | "hpp" | "hxx" => *lang_counts.entry("cpp").or_insert(0) += 1, // PMAT-BUG-004 fix
         "kt" | "kts" => *lang_counts.entry("kotlin").or_insert(0) += 1,
         "sh" | "bash" => *lang_counts.entry("bash").or_insert(0) += 1,
+        "lua" => *lang_counts.entry("lua").or_insert(0) += 1,
         _ => {}
     }
 }
@@ -422,6 +423,7 @@ fn count_files_by_extension(path: &Path) -> Option<(String, f64)> {
                     "py" => Some("python-uv"),
                     "kt" | "kts" => Some("kotlin"),
                     "sh" | "bash" => Some("bash"),
+                    "lua" => Some("lua"),
                     _ => None,
                 };
 

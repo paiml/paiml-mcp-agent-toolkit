@@ -18,6 +18,7 @@ pub enum Language {
     Ruby,
     Swift,
     Kotlin,
+    Lua,
     Unknown,
 }
 
@@ -35,6 +36,7 @@ impl Language {
             Some("rb") => Language::Ruby,
             Some("swift") => Language::Swift,
             Some("kt") | Some("kts") => Language::Kotlin,
+            Some("lua") => Language::Lua,
             _ => Language::Unknown,
         }
     }
@@ -52,6 +54,7 @@ impl Language {
             Language::Ruby => 0.85,
             Language::Swift => 0.85,
             Language::Kotlin => 0.85,
+            Language::Lua => 0.90,
             Language::Unknown => 0.5,
         }
     }
@@ -71,6 +74,7 @@ impl std::fmt::Display for Language {
             Language::Ruby => write!(f, "Ruby"),
             Language::Swift => write!(f, "Swift"),
             Language::Kotlin => write!(f, "Kotlin"),
+            Language::Lua => write!(f, "Lua"),
             Language::Unknown => write!(f, "Unknown"),
         }
     }
@@ -389,6 +393,16 @@ impl LanguageRules {
             type_style: NamingStyle::PascalCase,
             constant_style: NamingStyle::PascalCase,
             variable_style: NamingStyle::CamelCase,
+        }
+    }
+
+    pub fn lua_rules() -> Self {
+        LanguageRules {
+            language: Language::Lua,
+            function_style: NamingStyle::SnakeCase,
+            type_style: NamingStyle::PascalCase,
+            constant_style: NamingStyle::ScreamingSnakeCase,
+            variable_style: NamingStyle::SnakeCase,
         }
     }
 }

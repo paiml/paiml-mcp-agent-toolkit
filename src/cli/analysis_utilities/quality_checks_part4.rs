@@ -214,12 +214,13 @@ pub fn get_file_extensions(toolchain: Option<&str>) -> Vec<&'static str> {
         Some("swift") => vec!["swift"],
         Some("csharp" | "cs") => vec!["cs"],
         Some("bash") => vec!["sh", "bash"],
+        Some("lua") => vec!["lua"],
         Some(_) => vec!["rs"], // unknown toolchain defaults to rust
         None => {
             // Issue #42 fix: When no toolchain detected, analyze ALL supported languages
             vec![
                 "rs", "py", "ts", "tsx", "js", "jsx", "go", "java", "kt", "kts", "c", "cpp", "cc",
-                "cxx", "rb", "php", "swift", "cs",
+                "cxx", "rb", "php", "swift", "cs", "lua",
             ]
         }
     }

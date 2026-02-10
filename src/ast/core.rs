@@ -40,6 +40,7 @@ pub enum Language {
     Kotlin = 13,
     AssemblyScript = 14,
     WebAssembly = 15,
+    Lua = 16,
 }
 
 /// Node flags for quick filtering and AST node categorization

@@ -26,6 +26,7 @@ pub enum Language {
     PHP,
     Swift,
     CSharp,
+    Lua,
     Unknown,
 }
 
@@ -48,6 +49,7 @@ impl Language {
             Some("php") => Language::PHP,
             Some("swift") => Language::Swift,
             Some("cs") => Language::CSharp,
+            Some("lua") => Language::Lua,
             _ => Language::Unknown,
         }
     }
@@ -638,6 +640,170 @@ impl PythonAnalyzer {
     }
 }
 
+/// Lua language analyzer
+///
+/// Lua uses `function name() ... end` and `local function name() ... end` syntax.
+/// Block termination is via `end` keyword matching.
+pub struct LuaAnalyzer;
+
+impl LanguageAnalyzer for LuaAnalyzer {
+    fn extract_functions(&self, content: &str) -> Vec<FunctionInfo> {
+        let mut functions = Vec::new();
+        let lines: Vec<&str> = content.lines().collect();
+
+        for (line_num, line) in lines.iter().enumerate() {
+            let trimmed = line.trim();
+
+            if self.is_function_declaration(trimmed) {
+                if let Some(name) = self.extract_function_name(trimmed) {
+                    let line_end = self.find_function_end(&lines, line_num);
+                    functions.push(FunctionInfo {
+                        name,
+                        line_start: line_num,
+                        line_end,
+                    });
+                }
+            }
+        }
+
+        functions
+    }
+
+    fn estimate_complexity(&self, content: &str, function: &FunctionInfo) -> ComplexityMetrics {
+        let lines: Vec<&str> = content.lines().collect();
+        let end = function.line_end.min(lines.len() - 1);
+        let function_lines = &lines[function.line_start..=end];
+
+        let mut cyclomatic: u16 = 1;
+        let mut cognitive: u16 = 0;
+        let mut nesting: u8 = 0;
+        let mut max_nesting: u8 = 0;
+
+        for line in function_lines {
+            let trimmed = line.trim();
+
+            // Control flow keywords that increase cyclomatic complexity
+            if trimmed.starts_with("if ")
+                || trimmed.starts_with("elseif ")
+                || trimmed.starts_with("while ")
+                || trimmed.starts_with("for ")
+                || trimmed.starts_with("repeat")
+            {
+                cyclomatic += 1;
+                cognitive += 1 + u16::from(nesting);
+            }
+
+            // Logical operators
+            if trimmed.contains(" and ") || trimmed.contains(" or ") {
+                cyclomatic += 1;
+                cognitive += 1;
+            }
+
+            // Track nesting (function/if/for/while/do/repeat open blocks)
+            if trimmed.starts_with("function ")
+                || trimmed.starts_with("local function ")
+                || trimmed.starts_with("if ")
+                || trimmed.starts_with("for ")
+                || trimmed.starts_with("while ")
+                || trimmed.starts_with("do")
+                || trimmed.starts_with("repeat")
+            {
+                nesting += 1;
+                max_nesting = max_nesting.max(nesting);
+            }
+
+            if trimmed == "end" || trimmed.starts_with("end)") || trimmed.starts_with("end,") {
+                nesting = nesting.saturating_sub(1);
+            }
+            if trimmed.starts_with("until ") {
+                nesting = nesting.saturating_sub(1);
+            }
+        }
+
+        ComplexityMetrics {
+            cyclomatic: cyclomatic.min(255),
+            cognitive: cognitive.min(255),
+            nesting_max: max_nesting,
+            lines: function_lines.len() as u16,
+            halstead: None,
+        }
+    }
+}
+
+impl LuaAnalyzer {
+    fn is_function_declaration(&self, line: &str) -> bool {
+        // Match: function name(...) or local function name(...)
+        (line.starts_with("function ") || line.starts_with("local function "))
+            && line.contains('(')
+    }
+
+    fn extract_function_name(&self, line: &str) -> Option<String> {
+        let after = if let Some(rest) = line.strip_prefix("local function ") {
+            rest
+        } else if let Some(rest) = line.strip_prefix("function ") {
+            rest
+        } else {
+            return None;
+        };
+
+        let paren_pos = after.find('(')?;
+        let name = after[..paren_pos].trim();
+        if name.is_empty() {
+            return None;
+        }
+        Some(name.to_string())
+    }
+
+    fn find_function_end(&self, lines: &[&str], start: usize) -> usize {
+        // Track block depth: each function/if/for/while/do/repeat opens, each end/until closes
+        let mut depth: i32 = 0;
+        let mut found_first = false;
+
+        for (i, line) in lines.iter().enumerate().skip(start) {
+            let trimmed = line.trim();
+
+            // Skip comments
+            if trimmed.starts_with("--") {
+                continue;
+            }
+
+            // Block openers
+            if trimmed.starts_with("function ")
+                || trimmed.starts_with("local function ")
+                || trimmed.starts_with("if ")
+                || trimmed.starts_with("for ")
+                || trimmed.starts_with("while ")
+                || trimmed == "do"
+                || trimmed.starts_with("do ")
+                || trimmed.starts_with("repeat")
+            {
+                depth += 1;
+                found_first = true;
+            }
+
+            // Block closers
+            if trimmed == "end"
+                || trimmed.starts_with("end)")
+                || trimmed.starts_with("end,")
+                || trimmed.starts_with("end ")
+            {
+                depth -= 1;
+                if found_first && depth <= 0 {
+                    return i;
+                }
+            }
+            if trimmed.starts_with("until ") {
+                depth -= 1;
+                if found_first && depth <= 0 {
+                    return i;
+                }
+            }
+        }
+
+        lines.len() - 1
+    }
+}
+
 /// Complexity visitor for analyzing code metrics
 struct ComplexityVisitor {
     cyclomatic: u16,
@@ -790,6 +956,8 @@ fn create_analyzer(language: Language) -> Box<dyn LanguageAnalyzer> {
         Language::Swift => Box::new(CAnalyzer),
         // C# method syntax: public Type Name(params) { } - similar to C
         Language::CSharp => Box::new(CAnalyzer),
+        // Lua function syntax: function name(params) ... end
+        Language::Lua => Box::new(LuaAnalyzer),
         Language::Unknown => unreachable!("Unknown language should be handled earlier"),
     }
 }

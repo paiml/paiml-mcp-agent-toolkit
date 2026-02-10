@@ -12,6 +12,8 @@ use std::sync::Arc;
 use crate::ast::core::{AstDag, Language, UnifiedAstNode};
 
 pub mod c_cpp;
+#[cfg(feature = "lua-ast")]
+pub mod lua;
 pub mod others;
 pub mod python;
 pub mod rust;
@@ -51,7 +53,7 @@ impl LanguageRegistry {
     /// Create a new registry with all default strategies
     #[must_use]
     pub fn new() -> Self {
-        let strategies: Vec<Arc<dyn LanguageStrategy>> = vec![
+        let mut strategies: Vec<Arc<dyn LanguageStrategy>> = vec![
             Arc::new(rust::RustStrategy::new()),
             Arc::new(python::PythonStrategy::new()),
             Arc::new(typescript::TypeScriptStrategy::new()),
@@ -59,6 +61,9 @@ impl LanguageRegistry {
             Arc::new(c_cpp::CStrategy::new()),
             Arc::new(c_cpp::CppStrategy::new()),
         ];
+
+        #[cfg(feature = "lua-ast")]
+        strategies.push(Arc::new(lua::LuaStrategy::new()));
 
         Self { strategies }
     }
@@ -101,14 +106,17 @@ mod coverage_tests {
     #[test]
     fn test_registry_new() {
         let registry = LanguageRegistry::new();
-        // Should have 6 default strategies: Rust, Python, TypeScript, JavaScript, C, C++
-        assert_eq!(registry.strategies.len(), 6);
+        // 6 default strategies: Rust, Python, TypeScript, JavaScript, C, C++
+        // +1 when lua-ast feature is enabled
+        let expected = if cfg!(feature = "lua-ast") { 7 } else { 6 };
+        assert_eq!(registry.strategies.len(), expected);
     }
 
     #[test]
     fn test_registry_default() {
         let registry = LanguageRegistry::default();
-        assert_eq!(registry.strategies.len(), 6);
+        let expected = if cfg!(feature = "lua-ast") { 7 } else { 6 };
+        assert_eq!(registry.strategies.len(), expected);
     }
 
     #[test]

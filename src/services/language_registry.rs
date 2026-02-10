@@ -561,7 +561,8 @@ impl Language {
             | Language::Ruby
             | Language::PHP
             | Language::Bash
-            | Language::SQL => true,
+            | Language::SQL
+            | Language::Lua => true,
 
             // Configuration and markup languages (structure parsing)
             Language::JSON
@@ -606,7 +607,8 @@ impl Language {
             | Language::PowerShell
             | Language::R
             | Language::Julia
-            | Language::Matlab => true,
+            | Language::Matlab
+            | Language::Lua => true,
 
             // Markup, config, and data languages don't have complexity
             _ => false,
