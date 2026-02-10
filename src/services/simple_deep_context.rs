@@ -135,26 +135,40 @@ impl SimpleDeepContext {
     }
 
     /// Discover source files in the project
+    /// Check if a path matches any include pattern
+    fn matches_include_patterns(path: &Path, ext: &str, patterns: &[String]) -> bool {
+        let path_str = path.to_string_lossy();
+        patterns.iter().any(|pattern| {
+            // Glob pattern: extract extension from "**/*.rs"
+            if let Some(ext_from_pattern) = pattern
+                .strip_prefix("**/")
+                .and_then(|p| p.strip_prefix("*."))
+            {
+                return ext == ext_from_pattern;
+            }
+            // Simple pattern: check if filename or path contains the pattern
+            path.file_name()
+                .and_then(|n| n.to_str())
+                .is_some_and(|name| name.contains(pattern) || path_str.contains(pattern))
+        })
+    }
+
     async fn discover_source_files(&self, config: &SimpleAnalysisConfig) -> Result<Vec<PathBuf>> {
         use walkdir::WalkDir;
 
         let source_extensions = [
             "rs", "js", "ts", "jsx", "tsx", "py", "cpp", "c", "h", "wasm", "wat", "rb", "ruchy",
-            "go", "java", "cs", "kt", "sh", "bash", "php", "swift",
+            "go", "java", "cs", "kt", "sh", "bash", "php", "swift", "lua",
         ];
         let exclude_dirs = ["target", "node_modules", ".git", "build", "dist"];
 
-        let mut files = Vec::new();
-
-        // Resolve the project path to an absolute path
         let abs_project_path = if config.project_path.is_absolute() {
             config.project_path.clone()
         } else {
             std::env::current_dir()?.join(&config.project_path)
         };
 
-        info!("🔍 Searching for files in: {}", abs_project_path.display());
-
+        let mut files = Vec::new();
         for entry in WalkDir::new(&abs_project_path)
             .follow_links(false)
             .into_iter()
@@ -162,76 +176,31 @@ impl SimpleDeepContext {
             .filter(|e| e.file_type().is_file())
         {
             let path = entry.path();
-            info!("🔍 Found file: {}", path.display());
 
-            // Check exclusions
             let should_exclude = path.components().any(|comp| {
-                if let Some(name) = comp.as_os_str().to_str() {
-                    exclude_dirs.contains(&name)
-                } else {
-                    false
-                }
+                comp.as_os_str()
+                    .to_str()
+                    .is_some_and(|name| exclude_dirs.contains(&name))
             });
-
             if should_exclude {
-                info!("🚫 Excluding file: {}", path.display());
                 continue;
             }
 
-            // Check extensions
-            if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
-                info!("🔍 File {} has extension: {}", path.display(), ext);
-                if source_extensions.contains(&ext) {
-                    info!("✅ Extension {} is valid", ext);
-                    // Apply include patterns if specified
-                    if config.include_patterns.is_empty() {
-                        // No include patterns specified, include all files with valid extensions
-                        files.push(path.to_path_buf());
-                    } else {
-                        let path_str = path.to_string_lossy();
-                        let matches_include = config.include_patterns.iter().any(|pattern| {
-                            // Pattern matching for glob patterns
-                            if pattern.contains("**/*") || pattern.starts_with("**/*.") {
-                                // Extract extension from glob pattern like "**/*.rs"
-                                if let Some(ext_from_pattern) = pattern
-                                    .strip_prefix("**/")
-                                    .and_then(|p| p.strip_prefix("*."))
-                                {
-                                    return ext == ext_from_pattern;
-                                }
-                            }
-                            // Simple pattern matching - check if filename contains the pattern
-                            if let Some(file_name) = path.file_name().and_then(|n| n.to_str()) {
-                                file_name.contains(pattern) || path_str.contains(pattern)
-                            } else {
-                                false
-                            }
-                        });
-                        if matches_include {
-                            files.push(path.to_path_buf());
-                        }
-                    }
-                }
+            let Some(ext) = path.extension().and_then(|e| e.to_str()) else {
+                continue;
+            };
+            if !source_extensions.contains(&ext) {
+                continue;
+            }
+
+            if config.include_patterns.is_empty()
+                || Self::matches_include_patterns(path, ext, &config.include_patterns)
+            {
+                files.push(path.to_path_buf());
             }
         }
 
         files.sort();
-        info!("📁 Found {} source files after filtering", files.len());
-        if files.is_empty() {
-            info!("⚠️  No source files found. Check if:");
-            info!(
-                "   - The project path is correct: {}",
-                abs_project_path.display()
-            );
-            info!(
-                "   - Source files exist with extensions: {:?}",
-                source_extensions
-            );
-            info!(
-                "   - Files are not in excluded directories: {:?}",
-                exclude_dirs
-            );
-        }
         Ok(files)
     }
 
@@ -302,10 +271,6 @@ impl SimpleDeepContext {
     /// # });
     /// ```
     async fn analyze_file_complexity(&self, file_path: &Path) -> Result<FileComplexityMetrics> {
-        // Use the same AST analysis pathway as the complexity command (Toyota Way: ONE implementation)
-        use crate::services::ast_rust::analyze_rust_file_with_complexity;
-
-        // Detect the file type based on extension
         let extension = file_path.extension().and_then(|e| e.to_str()).unwrap_or("");
         info!(
             "🔍 Analyzing file: {} with extension: {}",
@@ -313,957 +278,65 @@ impl SimpleDeepContext {
             extension
         );
 
-        let (function_count, high_complexity_functions, avg_complexity) = if extension == "rs" {
-            // Use proper AST complexity analysis for Rust files
-            match analyze_rust_file_with_complexity(file_path).await {
-                Ok(file_complexity_metrics) => {
-                    let functions = &file_complexity_metrics.functions;
-                    let function_count = functions.len();
-
-                    if function_count == 0 {
-                        (0, 0, 0.0)
-                    } else {
-                        let high_complexity_functions = functions
-                            .iter()
-                            .filter(|f| f.metrics.cyclomatic > 10)
-                            .count();
-
-                        let total_cyclomatic: u32 = functions
-                            .iter()
-                            .map(|f| u32::from(f.metrics.cyclomatic))
-                            .sum();
-
-                        let avg_complexity = f64::from(total_cyclomatic) / function_count as f64;
-
-                        (function_count, high_complexity_functions, avg_complexity)
-                    }
-                }
-                Err(_) => {
-                    // Return zeros for files that can't be analyzed
-                    (0, 0, 0.0)
-                }
+        // Dispatch complexity analysis to per-language helpers
+        let (function_count, high_complexity_functions, avg_complexity) = match extension {
+            "rs" => self.complexity_for_rust(file_path).await,
+            "ts" | "tsx" | "js" | "jsx" => {
+                self.complexity_for_typescript(file_path, extension).await
             }
-        } else if matches!(extension, "ts" | "tsx" | "js" | "jsx") {
-            info!(
-                "🚀 Using enhanced TypeScript/JavaScript AST analysis for {}",
-                file_path.display()
-            );
-            // Use enhanced TypeScript/JavaScript AST analysis
-            use tokio::fs;
-
-            match fs::read_to_string(file_path).await {
-                Ok(content) => {
-                    #[cfg(feature = "typescript-ast")]
-                    {
-                        use crate::services::enhanced_typescript_visitor::EnhancedTypeScriptVisitor;
-                        use std::sync::Arc;
-                        use swc_common::{FileName, SourceMap};
-                        use swc_ecma_parser::{
-                            lexer::Lexer, Parser, StringInput, Syntax, TsSyntax,
-                        };
-
-                        // Parse TypeScript/JavaScript with SWC to get real AST
-                        let source_map = Arc::new(SourceMap::default());
-                        let _source_file = source_map.new_source_file(
-                            FileName::Custom(file_path.display().to_string()).into(),
-                            content.clone(),
-                        );
-
-                        let syntax = if extension == "tsx" {
-                            Syntax::Typescript(TsSyntax {
-                                tsx: true,
-                                decorators: true,
-                                dts: false,
-                                no_early_errors: true,
-                                disallow_ambiguous_jsx_like: true,
-                            })
-                        } else if extension == "jsx" {
-                            Syntax::Es(swc_ecma_parser::EsSyntax {
-                                jsx: true,
-                                ..Default::default()
-                            })
-                        } else if extension == "ts" {
-                            Syntax::Typescript(TsSyntax {
-                                tsx: false,
-                                decorators: true,
-                                dts: false,
-                                no_early_errors: true,
-                                disallow_ambiguous_jsx_like: true,
-                            })
-                        } else {
-                            Syntax::Es(Default::default())
-                        };
-
-                        let lexer = Lexer::new(
-                            syntax,
-                            Default::default(),
-                            StringInput::new(&content, Default::default(), Default::default()),
-                            None,
-                        );
-
-                        let mut parser = Parser::new_from(lexer);
-
-                        match parser.parse_module() {
-                            Ok(module) => {
-                                info!(
-                                    "🎯 Successfully parsed TypeScript module for {}",
-                                    file_path.display()
-                                );
-                                let visitor = EnhancedTypeScriptVisitor::new(file_path);
-                                let items = visitor.extract_items(&module);
-
-                                info!("🔍 Extracted {} AST items from module", items.len());
-                                for (i, item) in items.iter().enumerate() {
-                                    match item {
-                                        crate::services::context::AstItem::Function {
-                                            name,
-                                            ..
-                                        } => {
-                                            info!("  🔧 Function {}: {}", i, name);
-                                        }
-                                        crate::services::context::AstItem::Struct {
-                                            name, ..
-                                        } => {
-                                            info!("  🏗️ Struct {}: {}", i, name);
-                                        }
-                                        crate::services::context::AstItem::Import {
-                                            module,
-                                            ..
-                                        } => {
-                                            info!("  📦 Import {}: {}", i, module);
-                                        }
-                                        _ => {
-                                            info!("  ❓ Other item {}: {:?}", i, item);
-                                        }
-                                    }
-                                }
-
-                                // Count functions from the items
-                                let function_count = items
-                                    .iter()
-                                    .filter(|item| {
-                                        matches!(
-                                            item,
-                                            crate::services::context::AstItem::Function { .. }
-                                        )
-                                    })
-                                    .count();
-                                info!("📊 Found {} functions total", function_count);
-
-                                if function_count == 0 {
-                                    (0, 0, 0.0)
-                                } else {
-                                    // Simple complexity heuristic for TypeScript/JavaScript
-                                    let high_complexity_functions = function_count / 4; // Assume 25% are high complexity
-                                    let avg_complexity = 2.5; // Simple average for now
-                                    (function_count, high_complexity_functions, avg_complexity)
-                                }
-                            }
-                            Err(err) => {
-                                info!(
-                                    "❌ Failed to parse TypeScript module for {}: {:?}",
-                                    file_path.display(),
-                                    err
-                                );
-                                (0, 0, 0.0)
-                            }
-                        }
-                    }
-                    #[cfg(not(feature = "typescript-ast"))]
-                    {
-                        // Fallback to heuristic analysis if typescript-ast feature is not enabled
-                        match self
-                            .analyze_file_complexity_heuristic(file_path, extension)
-                            .await
-                        {
-                            Ok((count, high, avg)) => (count, high, avg),
-                            Err(_) => (0, 0, 0.0),
-                        }
-                    }
-                }
-                Err(_) => (0, 0, 0.0),
+            "wasm" | "wat" => self.complexity_for_wasm(file_path, extension).await,
+            "rb" | "ruchy" => {
+                self.complexity_heuristic_fallback(file_path, extension)
+                    .await
             }
-        } else if matches!(extension, "wasm" | "wat") {
-            info!("🚀 Using WASM AST analysis for {}", file_path.display());
-            // Use WASM analysis
-            use tokio::fs;
-
-            // Try to read as text first, then as binary for WASM files
-            #[allow(unused_variables)]
-            let content = if extension == "wasm" {
-                // Binary WASM - read as bytes then convert
-                match fs::read(file_path).await {
-                    Ok(bytes) => String::from_utf8_lossy(&bytes).into_owned(),
-                    Err(_) => {
-                        return Ok(FileComplexityMetrics {
-                            function_count: 0,
-                            high_complexity_functions: 0,
-                            avg_complexity: 0.0,
-                            function_names: vec![],
-                        });
-                    }
-                }
-            } else {
-                // WAT text file
-                match fs::read_to_string(file_path).await {
-                    Ok(text) => text,
-                    Err(_) => {
-                        return Ok(FileComplexityMetrics {
-                            function_count: 0,
-                            high_complexity_functions: 0,
-                            avg_complexity: 0.0,
-                            function_names: vec![],
-                        });
-                    }
-                }
-            };
-
-            {
-                #[cfg(feature = "wasm-ast")]
-                {
-                    use crate::services::languages::wasm::WasmModuleAnalyzer;
-
-                    let analyzer = WasmModuleAnalyzer::new(file_path);
-                    let items = if extension == "wasm" {
-                        // Binary WASM file
-                        match std::fs::read(file_path) {
-                            Ok(wasm_bytes) => analyzer.analyze_wasm_binary(&wasm_bytes),
-                            Err(_) => Err("Failed to read WASM binary".to_string()),
-                        }
-                    } else {
-                        // WAT text file
-                        analyzer.analyze_wat_text(&content)
-                    };
-
-                    match items {
-                        Ok(ast_items) => {
-                            let function_count = ast_items
-                                .iter()
-                                .filter(|item| {
-                                    matches!(
-                                        item,
-                                        crate::services::context::AstItem::Function { .. }
-                                    )
-                                })
-                                .count();
-                            info!("📊 Found {} WASM functions", function_count);
-                            if function_count == 0 {
-                                (0, 0, 0.0)
-                            } else {
-                                // Simple complexity for WASM
-                                let high_complexity_functions = function_count / 5; // Assume 20% are high complexity
-                                let avg_complexity = 3.0; // WASM tends to be more complex
-                                (function_count, high_complexity_functions, avg_complexity)
-                            }
-                        }
-                        Err(err) => {
-                            info!(
-                                "❌ Failed to analyze WASM file {}: {}",
-                                file_path.display(),
-                                err
-                            );
-                            (0, 0, 0.0)
-                        }
-                    }
-                }
-                #[cfg(not(feature = "wasm-ast"))]
-                {
-                    // Fallback to heuristic analysis if wasm-ast feature is not enabled
-                    match self
-                        .analyze_file_complexity_heuristic(file_path, extension)
-                        .await
-                    {
-                        Ok((count, high, avg)) => (count, high, avg),
-                        Err(_) => (0, 0, 0.0),
-                    }
-                }
-            }
-        } else if matches!(extension, "rb" | "ruchy") {
-            info!(
-                "🚀 Using Ruby/Ruchy heuristic analysis for {}",
-                file_path.display()
-            );
-            // For Ruby files, use enhanced heuristic analysis until full AST support is added
-            match self
-                .analyze_file_complexity_heuristic(file_path, extension)
-                .await
-            {
-                Ok((count, high, avg)) => (count, high, avg),
-                Err(_) => (0, 0, 0.0),
-            }
-        } else if extension == "go" {
-            info!("🚀 Using Go AST analysis for {}", file_path.display());
-            // Use Go AST analysis
-            use tokio::fs;
-            match fs::read_to_string(file_path).await {
-                #[allow(unused_variables)]
-                Ok(content) => {
-                    #[cfg(feature = "go-ast")]
-                    {
-                        use crate::services::context::AstItem;
-                        use crate::services::languages::go::{GoAstVisitor, GoComplexityAnalyzer};
-
-                        let visitor = GoAstVisitor::new(file_path);
-                        match visitor.analyze_go_source(&content) {
-                            Ok(items) => {
-                                // Count functions
-                                let functions: Vec<_> = items
-                                    .iter()
-                                    .filter(|item| matches!(item, AstItem::Function { .. }))
-                                    .collect();
-
-                                let function_count = functions.len();
-
-                                if function_count == 0 {
-                                    (0, 0, 0.0)
-                                } else {
-                                    // Analyze complexity
-                                    let mut analyzer = GoComplexityAnalyzer::new();
-                                    let (cyclomatic, _cognitive) =
-                                        analyzer.analyze_complexity(&content).unwrap_or((1, 1));
-
-                                    // Estimate high complexity functions
-                                    let high_complexity_functions =
-                                        if cyclomatic > 10 { 1 } else { 0 };
-                                    let avg_complexity =
-                                        cyclomatic as f64 / function_count.max(1) as f64;
-
-                                    (function_count, high_complexity_functions, avg_complexity)
-                                }
-                            }
-                            Err(_) => {
-                                // Fall back to heuristic analysis for Go
-                                match self
-                                    .analyze_file_complexity_heuristic(file_path, extension)
-                                    .await
-                                {
-                                    Ok((count, high, avg)) => (count, high, avg),
-                                    Err(_) => (0, 0, 0.0),
-                                }
-                            }
-                        }
-                    }
-
-                    #[cfg(not(feature = "go-ast"))]
-                    {
-                        // Fall back to heuristic analysis when Go AST feature is not enabled
-                        match self
-                            .analyze_file_complexity_heuristic(file_path, extension)
-                            .await
-                        {
-                            Ok((count, high, avg)) => (count, high, avg),
-                            Err(_) => (0, 0, 0.0),
-                        }
-                    }
-                }
-                Err(_) => (0, 0, 0.0),
-            }
-        } else if extension == "cs" {
-            info!("🚀 Using C# AST analysis for {}", file_path.display());
-            // Use C# AST analysis
-            use tokio::fs;
-
-            #[allow(unused_variables)] // content only used in feature-gated blocks
-            match fs::read_to_string(file_path).await {
-                Ok(content) => {
-                    #[cfg(feature = "csharp-ast")]
-                    {
-                        use crate::services::context::AstItem;
-                        use crate::services::languages::csharp::{
-                            CSharpAstVisitor, CSharpComplexityAnalyzer,
-                        };
-
-                        let visitor = CSharpAstVisitor::new(file_path);
-                        match visitor.analyze_csharp_source(&content) {
-                            Ok(items) => {
-                                // Count functions (methods)
-                                let functions: Vec<_> = items
-                                    .iter()
-                                    .filter(|item| matches!(item, AstItem::Function { .. }))
-                                    .collect();
-
-                                let function_count = functions.len();
-
-                                if function_count == 0 {
-                                    (0, 0, 0.0)
-                                } else {
-                                    // Analyze complexity
-                                    let mut analyzer = CSharpComplexityAnalyzer::new();
-                                    let (cyclomatic, _cognitive) =
-                                        analyzer.analyze_complexity(&content).unwrap_or((1, 1));
-
-                                    // Estimate high complexity functions
-                                    let high_complexity_functions =
-                                        if cyclomatic > 10 { 1 } else { 0 };
-                                    let avg_complexity =
-                                        cyclomatic as f64 / function_count.max(1) as f64;
-
-                                    (function_count, high_complexity_functions, avg_complexity)
-                                }
-                            }
-                            Err(_) => {
-                                // Fall back to heuristic analysis for C#
-                                match self
-                                    .analyze_file_complexity_heuristic(file_path, extension)
-                                    .await
-                                {
-                                    Ok((count, high, avg)) => (count, high, avg),
-                                    Err(_) => (0, 0, 0.0),
-                                }
-                            }
-                        }
-                    }
-
-                    #[cfg(not(feature = "csharp-ast"))]
-                    {
-                        // Fall back to heuristic analysis when C# AST feature is not enabled
-                        match self
-                            .analyze_file_complexity_heuristic(file_path, extension)
-                            .await
-                        {
-                            Ok((count, high, avg)) => (count, high, avg),
-                            Err(_) => (0, 0, 0.0),
-                        }
-                    }
-                }
-                Err(_) => (0, 0, 0.0),
-            }
-        } else if extension == "kt" {
-            info!("🚀 Using Kotlin AST analysis for {}", file_path.display());
-            // Use Kotlin AST analysis
-            use tokio::fs;
-            match fs::read_to_string(file_path).await {
-                #[cfg_attr(not(feature = "kotlin-ast"), allow(unused_variables))]
-                Ok(content) => {
-                    #[cfg(feature = "kotlin-ast")]
-                    {
-                        use crate::services::context::AstItem;
-                        use crate::services::languages::kotlin::{
-                            KotlinAstVisitor, KotlinComplexityAnalyzer,
-                        };
-
-                        let visitor = KotlinAstVisitor::new(file_path);
-                        match visitor.analyze_kotlin_source(&content) {
-                            Ok(items) => {
-                                // Count functions
-                                let functions: Vec<_> = items
-                                    .iter()
-                                    .filter(|item| matches!(item, AstItem::Function { .. }))
-                                    .collect();
-
-                                let function_count = functions.len();
-
-                                if function_count == 0 {
-                                    (0, 0, 0.0)
-                                } else {
-                                    // Analyze complexity
-                                    let mut analyzer = KotlinComplexityAnalyzer::new();
-                                    let (cyclomatic, _cognitive) =
-                                        analyzer.analyze_complexity(&content).unwrap_or((1, 1));
-
-                                    // Estimate high complexity functions
-                                    let high_complexity_functions =
-                                        if cyclomatic > 10 { 1 } else { 0 };
-                                    let avg_complexity =
-                                        cyclomatic as f64 / function_count.max(1) as f64;
-
-                                    (function_count, high_complexity_functions, avg_complexity)
-                                }
-                            }
-                            Err(_) => {
-                                // Fall back to heuristic analysis for Kotlin
-                                match self
-                                    .analyze_file_complexity_heuristic(file_path, extension)
-                                    .await
-                                {
-                                    Ok((count, high, avg)) => (count, high, avg),
-                                    Err(_) => (0, 0, 0.0),
-                                }
-                            }
-                        }
-                    }
-
-                    #[cfg(not(feature = "kotlin-ast"))]
-                    {
-                        // Fall back to heuristic analysis when Kotlin AST feature is not enabled
-                        match self
-                            .analyze_file_complexity_heuristic(file_path, extension)
-                            .await
-                        {
-                            Ok((count, high, avg)) => (count, high, avg),
-                            Err(_) => (0, 0, 0.0),
-                        }
-                    }
-                }
-                Err(_) => (0, 0, 0.0),
-            }
-        } else if matches!(extension, "sh" | "bash") {
-            info!("🚀 Using Bash AST analysis for {}", file_path.display());
-            // Use Bash AST analysis
-            use tokio::fs;
-            match fs::read_to_string(file_path).await {
-                #[allow(unused_variables)]
-                Ok(content) => {
-                    #[cfg(feature = "shell-ast")]
-                    {
-                        use crate::services::context::AstItem;
-                        use crate::services::languages::bash::BashScriptAnalyzer;
-
-                        let analyzer = BashScriptAnalyzer::new(file_path);
-                        match analyzer.analyze_bash_script(&content) {
-                            Ok(items) => {
-                                info!("🔍 Extracted {} AST items from Bash script", items.len());
-
-                                // Count functions from the items
-                                let function_count = items
-                                    .iter()
-                                    .filter(|item| matches!(item, AstItem::Function { .. }))
-                                    .count();
-
-                                info!("📊 Found {} functions in Bash script", function_count);
-
-                                if function_count == 0 {
-                                    (0, 0, 0.0)
-                                } else {
-                                    // For Bash, estimate complexity as 2.0 average (simple scripts)
-                                    // This will be improved when full complexity analysis is added
-                                    let avg_complexity = 2.0;
-                                    let high_complexity_functions = 0; // Conservative estimate
-
-                                    (function_count, high_complexity_functions, avg_complexity)
-                                }
-                            }
-                            Err(_) => {
-                                // Fall back to heuristic analysis for Bash
-                                match self
-                                    .analyze_file_complexity_heuristic(file_path, extension)
-                                    .await
-                                {
-                                    Ok((count, high, avg)) => (count, high, avg),
-                                    Err(_) => (0, 0, 0.0),
-                                }
-                            }
-                        }
-                    }
-                    #[cfg(not(feature = "shell-ast"))]
-                    {
-                        // Fall back to heuristic analysis when shell-ast feature is not enabled
-                        match self
-                            .analyze_file_complexity_heuristic(file_path, extension)
-                            .await
-                        {
-                            Ok((count, high, avg)) => (count, high, avg),
-                            Err(_) => (0, 0, 0.0),
-                        }
-                    }
-                }
-                Err(_) => (0, 0, 0.0),
-            }
-        } else if extension == "php" {
-            info!("🚀 Using PHP AST analysis for {}", file_path.display());
-            // Use PHP AST analysis
-            use tokio::fs;
-            match fs::read_to_string(file_path).await {
-                #[allow(unused_variables)]
-                Ok(content) => {
-                    #[cfg(feature = "php-ast")]
-                    {
-                        use crate::services::context::AstItem;
-                        use crate::services::languages::php::PhpScriptAnalyzer;
-
-                        let analyzer = PhpScriptAnalyzer::new(file_path);
-                        match analyzer.analyze_php_script(&content) {
-                            Ok(items) => {
-                                info!("🔍 Extracted {} AST items from PHP script", items.len());
-
-                                // Count functions from the items
-                                let function_count = items
-                                    .iter()
-                                    .filter(|item| matches!(item, AstItem::Function { .. }))
-                                    .count();
-
-                                info!("📊 Found {} functions in PHP script", function_count);
-
-                                if function_count == 0 {
-                                    (0, 0, 0.0)
-                                } else {
-                                    // For PHP, estimate complexity as 2.5 average
-                                    // This will be improved when full complexity analysis is added
-                                    let avg_complexity = 2.5;
-                                    let high_complexity_functions = 0; // Conservative estimate
-
-                                    (function_count, high_complexity_functions, avg_complexity)
-                                }
-                            }
-                            Err(_) => {
-                                // Fall back to heuristic analysis for PHP
-                                match self
-                                    .analyze_file_complexity_heuristic(file_path, extension)
-                                    .await
-                                {
-                                    Ok((count, high, avg)) => (count, high, avg),
-                                    Err(_) => (0, 0, 0.0),
-                                }
-                            }
-                        }
-                    }
-                    #[cfg(not(feature = "php-ast"))]
-                    {
-                        // Fall back to heuristic analysis when php-ast feature is not enabled
-                        match self
-                            .analyze_file_complexity_heuristic(file_path, extension)
-                            .await
-                        {
-                            Ok((count, high, avg)) => (count, high, avg),
-                            Err(_) => (0, 0, 0.0),
-                        }
-                    }
-                }
-                Err(_) => (0, 0, 0.0),
-            }
-        } else if extension == "swift" {
-            info!("🚀 Using Swift AST analysis for {}", file_path.display());
-            // Use Swift AST analysis
-            use tokio::fs;
-            match fs::read_to_string(file_path).await {
-                #[allow(unused_variables)]
-                Ok(content) => {
-                    #[cfg(feature = "swift-ast")]
-                    {
-                        use crate::services::context::AstItem;
-                        use crate::services::languages::swift::SwiftSourceAnalyzer;
-
-                        let analyzer = SwiftSourceAnalyzer::new(file_path);
-                        match analyzer.analyze_swift_source(&content) {
-                            Ok(items) => {
-                                info!("🔍 Extracted {} AST items from Swift source", items.len());
-
-                                // Count functions from the items
-                                let function_count = items
-                                    .iter()
-                                    .filter(|item| matches!(item, AstItem::Function { .. }))
-                                    .count();
-
-                                info!("📊 Found {} functions in Swift source", function_count);
-
-                                if function_count == 0 {
-                                    (0, 0, 0.0)
-                                } else {
-                                    // For Swift, estimate complexity as 2.5 average
-                                    // This will be improved when full complexity analysis is added
-                                    let avg_complexity = 2.5;
-                                    let high_complexity_functions = 0; // Conservative estimate
-
-                                    (function_count, high_complexity_functions, avg_complexity)
-                                }
-                            }
-                            Err(_) => {
-                                // Fall back to heuristic analysis for Swift
-                                match self
-                                    .analyze_file_complexity_heuristic(file_path, extension)
-                                    .await
-                                {
-                                    Ok((count, high, avg)) => (count, high, avg),
-                                    Err(_) => (0, 0, 0.0),
-                                }
-                            }
-                        }
-                    }
-                    #[cfg(not(feature = "swift-ast"))]
-                    {
-                        // Fall back to heuristic analysis when swift-ast feature is not enabled
-                        match self
-                            .analyze_file_complexity_heuristic(file_path, extension)
-                            .await
-                        {
-                            Ok((count, high, avg)) => (count, high, avg),
-                            Err(_) => (0, 0, 0.0),
-                        }
-                    }
-                }
-                Err(_) => (0, 0, 0.0),
-            }
-        } else {
-            // For other non-Rust files, use heuristic-based analysis
-            // This provides basic metrics until full AST support is added for each language
-            match self
-                .analyze_file_complexity_heuristic(file_path, extension)
-                .await
-            {
-                Ok((count, high, avg)) => (count, high, avg),
-                Err(_) => (0, 0, 0.0),
+            "go" => self.complexity_for_go(file_path).await,
+            "cs" => self.complexity_for_csharp(file_path).await,
+            "kt" => self.complexity_for_kotlin(file_path).await,
+            "sh" | "bash" => self.complexity_for_bash(file_path).await,
+            "php" => self.complexity_for_php(file_path).await,
+            "swift" => self.complexity_for_swift(file_path).await,
+            "lua" => self.complexity_for_lua(file_path).await,
+            _ => {
+                self.complexity_heuristic_fallback(file_path, extension)
+                    .await
             }
         };
 
-        // Extract actual function names from AST
-        let function_names = if extension == "rs" {
-            // Extract from Rust AST analysis
-            match analyze_rust_file_with_complexity(file_path).await {
-                Ok(file_complexity_metrics) => file_complexity_metrics
-                    .functions
-                    .iter()
-                    .map(|f| f.name.clone())
-                    .collect(),
-                Err(_) => vec![],
-            }
-        } else if matches!(extension, "ts" | "tsx" | "js" | "jsx") {
-            // For now, always use heuristic parsing for TypeScript/JavaScript to ensure it works
-            info!(
-                "Using heuristic parsing for TypeScript/JavaScript file: {}",
-                file_path.display()
-            );
-            self.extract_function_names_heuristic(file_path, extension)
+        // Dispatch function name extraction to per-language helpers
+        let function_names = match extension {
+            "rs" => self.function_names_for_rust(file_path).await,
+            "ts" | "tsx" | "js" | "jsx" => self
+                .extract_function_names_heuristic(file_path, extension)
                 .await
-                .unwrap_or_default()
-        } else if matches!(extension, "wasm" | "wat") {
-            #[cfg(feature = "wasm-ast")]
-            {
-                use crate::services::languages::wasm::WasmModuleAnalyzer;
-                use tokio::fs;
-
-                let analyzer = WasmModuleAnalyzer::new(file_path);
-                let items = if extension == "wasm" {
-                    match std::fs::read(file_path) {
-                        Ok(wasm_bytes) => analyzer.analyze_wasm_binary(&wasm_bytes),
-                        Err(_) => Err("Failed to read WASM binary".to_string()),
-                    }
-                } else {
-                    match fs::read_to_string(file_path).await {
-                        Ok(content) => analyzer.analyze_wat_text(&content),
-                        Err(_) => Err("Failed to read WAT file".to_string()),
-                    }
-                };
-
-                match items {
-                    Ok(ast_items) => ast_items
-                        .iter()
-                        .filter_map(|item| match item {
-                            crate::services::context::AstItem::Function { name, .. } => {
-                                Some(name.clone())
-                            }
-                            _ => None,
-                        })
-                        .collect(),
-                    Err(_) => vec![],
-                }
-            }
-            #[cfg(not(feature = "wasm-ast"))]
-            vec![]
-        } else if extension == "go" {
-            // For Go files, extract function names from AST
-            #[cfg(feature = "go-ast")]
-            {
-                use crate::services::context::AstItem;
-                use crate::services::languages::go::GoAstVisitor;
-                use tokio::fs;
-
-                match fs::read_to_string(file_path).await {
-                    Ok(content) => {
-                        let visitor = GoAstVisitor::new(file_path);
-                        match visitor.analyze_go_source(&content) {
-                            Ok(items) => items
-                                .iter()
-                                .filter_map(|item| match item {
-                                    AstItem::Function { name, .. } => Some(name.clone()),
-                                    _ => None,
-                                })
-                                .collect(),
-                            Err(_) => {
-                                // Fallback to regex extraction
-                                self.extract_function_names_heuristic(file_path, extension)
-                                    .await
-                                    .unwrap_or_default()
-                            }
-                        }
-                    }
-                    Err(_) => vec![],
-                }
-            }
-            #[cfg(not(feature = "go-ast"))]
-            {
-                self.extract_function_names_heuristic(file_path, extension)
-                    .await
-                    .unwrap_or_default()
-            }
-        } else if extension == "cs" {
-            // For C# files, extract function names from AST
-            #[cfg(feature = "csharp-ast")]
-            {
-                use crate::services::context::AstItem;
-                use crate::services::languages::csharp::CSharpAstVisitor;
-                use tokio::fs;
-
-                match fs::read_to_string(file_path).await {
-                    Ok(content) => {
-                        let visitor = CSharpAstVisitor::new(file_path);
-                        match visitor.analyze_csharp_source(&content) {
-                            Ok(items) => items
-                                .iter()
-                                .filter_map(|item| match item {
-                                    AstItem::Function { name, .. } => Some(name.clone()),
-                                    _ => None,
-                                })
-                                .collect(),
-                            Err(_) => {
-                                // Fallback to regex extraction
-                                self.extract_function_names_heuristic(file_path, extension)
-                                    .await
-                                    .unwrap_or_default()
-                            }
-                        }
-                    }
-                    Err(_) => vec![],
-                }
-            }
-            #[cfg(not(feature = "csharp-ast"))]
-            {
-                self.extract_function_names_heuristic(file_path, extension)
-                    .await
-                    .unwrap_or_default()
-            }
-        } else if extension == "kt" {
-            // For Kotlin files, extract function names from AST
-            #[cfg(feature = "kotlin-ast")]
-            {
-                use crate::services::context::AstItem;
-                use crate::services::languages::kotlin::KotlinAstVisitor;
-                use tokio::fs;
-
-                match fs::read_to_string(file_path).await {
-                    Ok(content) => {
-                        let visitor = KotlinAstVisitor::new(file_path);
-                        match visitor.analyze_kotlin_source(&content) {
-                            Ok(items) => items
-                                .iter()
-                                .filter_map(|item| match item {
-                                    AstItem::Function { name, .. } => Some(name.clone()),
-                                    _ => None,
-                                })
-                                .collect(),
-                            Err(_) => {
-                                // Fallback to regex extraction
-                                self.extract_function_names_heuristic(file_path, extension)
-                                    .await
-                                    .unwrap_or_default()
-                            }
-                        }
-                    }
-                    Err(_) => vec![],
-                }
-            }
-            #[cfg(not(feature = "kotlin-ast"))]
-            {
-                self.extract_function_names_heuristic(file_path, extension)
-                    .await
-                    .unwrap_or_default()
-            }
-        } else if matches!(extension, "sh" | "bash") {
-            // For Bash files, extract function names from AST
-            #[cfg(feature = "shell-ast")]
-            {
-                use crate::services::context::AstItem;
-                use crate::services::languages::bash::BashScriptAnalyzer;
-                use tokio::fs;
-
-                match fs::read_to_string(file_path).await {
-                    Ok(content) => {
-                        let analyzer = BashScriptAnalyzer::new(file_path);
-                        match analyzer.analyze_bash_script(&content) {
-                            Ok(items) => items
-                                .iter()
-                                .filter_map(|item| match item {
-                                    AstItem::Function { name, .. } => Some(name.clone()),
-                                    _ => None,
-                                })
-                                .collect(),
-                            Err(_) => vec![],
-                        }
-                    }
-                    Err(_) => vec![],
-                }
-            }
-            #[cfg(not(feature = "shell-ast"))]
-            vec![]
-        } else if extension == "php" {
-            // For PHP files, extract function names from AST
-            #[cfg(feature = "php-ast")]
-            {
-                use crate::services::context::AstItem;
-                use crate::services::languages::php::PhpScriptAnalyzer;
-                use tokio::fs;
-
-                match fs::read_to_string(file_path).await {
-                    Ok(content) => {
-                        let analyzer = PhpScriptAnalyzer::new(file_path);
-                        match analyzer.analyze_php_script(&content) {
-                            Ok(items) => items
-                                .iter()
-                                .filter_map(|item| match item {
-                                    AstItem::Function { name, .. } => Some(name.clone()),
-                                    _ => None,
-                                })
-                                .collect(),
-                            Err(_) => vec![],
-                        }
-                    }
-                    Err(_) => vec![],
-                }
-            }
-            #[cfg(not(feature = "php-ast"))]
-            vec![]
-        } else if extension == "swift" {
-            // For Swift files, extract function names from AST
-            #[cfg(feature = "swift-ast")]
-            {
-                use crate::services::context::AstItem;
-                use crate::services::languages::swift::SwiftSourceAnalyzer;
-                use tokio::fs;
-
-                match fs::read_to_string(file_path).await {
-                    Ok(content) => {
-                        let analyzer = SwiftSourceAnalyzer::new(file_path);
-                        match analyzer.analyze_swift_source(&content) {
-                            Ok(items) => items
-                                .iter()
-                                .filter_map(|item| match item {
-                                    AstItem::Function { name, .. } => Some(name.clone()),
-                                    _ => None,
-                                })
-                                .collect(),
-                            Err(_) => vec![],
-                        }
-                    }
-                    Err(_) => vec![],
-                }
-            }
-            #[cfg(not(feature = "swift-ast"))]
-            vec![]
-        } else {
-            // For other languages, extract function names using regex patterns
-            self.extract_function_names_heuristic(file_path, extension)
+                .unwrap_or_default(),
+            "wasm" | "wat" => self.function_names_for_wasm(file_path, extension).await,
+            "go" => self.function_names_for_go(file_path).await,
+            "cs" => self.function_names_for_csharp(file_path).await,
+            "kt" => self.function_names_for_kotlin(file_path).await,
+            "sh" | "bash" => self.function_names_for_bash(file_path).await,
+            "php" => self.function_names_for_php(file_path).await,
+            "swift" => self.function_names_for_swift(file_path).await,
+            "lua" => self.function_names_for_lua(file_path).await,
+            _ => self
+                .extract_function_names_heuristic(file_path, extension)
                 .await
-                .unwrap_or_default()
+                .unwrap_or_default(),
         };
 
-        // Ensure function_count matches the actual function names found
+        // Adjust counts based on actual function names found
         let actual_function_count = function_names.len();
         let adjusted_function_count = if actual_function_count > 0 {
             actual_function_count
         } else {
             function_count
         };
-
-        // Recalculate high complexity based on actual function count
         let adjusted_high_complexity = if actual_function_count > 0 {
-            // Simple heuristic: assume 25% are high complexity
             actual_function_count / 4
         } else {
             high_complexity_functions
         };
-
-        // Adjust average complexity
         let adjusted_avg_complexity = if actual_function_count > 0 && avg_complexity == 0.0 {
-            2.5 // Default reasonable complexity
+            2.5
         } else {
             avg_complexity
         };
@@ -1274,298 +347,6 @@ impl SimpleDeepContext {
             avg_complexity: adjusted_avg_complexity,
             function_names,
         })
-    }
-
-    /// Extract function names using heuristic regex patterns
-    async fn extract_function_names_heuristic(
-        &self,
-        file_path: &Path,
-        extension: &str,
-    ) -> Result<Vec<String>> {
-        use tokio::fs;
-
-        let content = fs::read_to_string(file_path).await?;
-        let mut function_names = Vec::new();
-
-        info!(
-            "Extract function names heuristic: extension={}, content_len={}",
-            extension,
-            content.len()
-        );
-
-        match extension {
-            "py" => {
-                // Python: def function_name( or async def function_name(
-                if let Ok(re) = regex::Regex::new(r"(?m)^\s*(?:async\s+)?def\s+(\w+)\s*\(") {
-                    for cap in re.captures_iter(&content) {
-                        if let Some(name) = cap.get(1) {
-                            function_names.push(name.as_str().to_string());
-                        }
-                    }
-                }
-            }
-            "js" | "ts" => {
-                // JavaScript/TypeScript: comprehensive patterns
-                let patterns = vec![
-                    r"function\s+(\w+)\s*\(", // function declaration
-                    r"(?m)^\s*(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s+)?\([^)]*\)\s*=>", // arrow functions
-                    r"(?m)^\s*(?:async\s+)?(\w+)\s*\([^)]*\)\s*\{", // methods in classes/objects
-                    r"(?m)^\s*(?:static\s+)?(\w+)\s*\([^)]*\)\s*\{", // static methods in classes
-                    r"(\w+)\s*:\s*function\s*\([^)]*\)",            // object method: function()
-                    r"(\w+)\s*\([^)]*\)\s*\{",                      // object method shorthand
-                    r"(?m)^\s*(?:async\s+)?(\w+)\s*\([^)]*\)\s*:",  // TypeScript method signatures
-                ];
-                info!(
-                    "Using comprehensive TypeScript/JavaScript regex patterns for {}",
-                    file_path.display()
-                );
-
-                for pattern in patterns {
-                    if let Ok(re) = regex::Regex::new(pattern) {
-                        let matches: Vec<_> = re.captures_iter(&content).collect();
-                        info!("Pattern '{}' found {} matches", pattern, matches.len());
-                        for cap in matches {
-                            if let Some(name) = cap.get(1) {
-                                let name_str = name.as_str();
-                                info!("Found function name: '{}'", name_str);
-                                if !function_names.contains(&name_str.to_string()) {
-                                    function_names.push(name_str.to_string());
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            "java" => {
-                // Java: public/private/protected modifier + return_type + method_name
-                if let Ok(re) = regex::Regex::new(
-                    r"(?:public|private|protected)\s+(?:static\s+)?(?:\w+(?:<[^>]*>)?\s+)+(\w+)\s*\([^)]*\)\s*\{",
-                ) {
-                    for cap in re.captures_iter(&content) {
-                        if let Some(name) = cap.get(1) {
-                            function_names.push(name.as_str().to_string());
-                        }
-                    }
-                }
-            }
-            "go" => {
-                // Go: func functionName( or func (receiver) functionName(
-                if let Ok(re) = regex::Regex::new(r"(?m)^func\s+(?:\([^)]*\)\s+)?(\w+)\s*\(") {
-                    for cap in re.captures_iter(&content) {
-                        if let Some(name) = cap.get(1) {
-                            function_names.push(name.as_str().to_string());
-                        }
-                    }
-                }
-            }
-            "c" | "cpp" | "cc" | "cxx" => {
-                // C/C++: return_type function_name( - matches both top-level and class methods
-                if let Ok(re) =
-                    regex::Regex::new(r"(?m)^\s*\w+(?:\s*\**)?\s+(\w+)\s*\([^)]*\)\s*\{")
-                {
-                    for cap in re.captures_iter(&content) {
-                        if let Some(name) = cap.get(1) {
-                            let name_str = name.as_str();
-                            // Filter out C++ keywords that look like functions
-                            if name_str != "if"
-                                && name_str != "for"
-                                && name_str != "while"
-                                && name_str != "switch"
-                                && name_str != "catch"
-                            {
-                                function_names.push(name_str.to_string());
-                            }
-                        }
-                    }
-                }
-            }
-            "rb" | "ruchy" => {
-                // Ruby: def method_name
-                if let Ok(re) = regex::Regex::new(r"(?m)^\s*def\s+(\w+)") {
-                    for cap in re.captures_iter(&content) {
-                        if let Some(name) = cap.get(1) {
-                            function_names.push(name.as_str().to_string());
-                        }
-                    }
-                }
-            }
-            "kt" => {
-                // Kotlin: fun function_name
-                if let Ok(re) = regex::Regex::new(r"(?m)^\s*(?:suspend\s+)?fun\s+(\w+)\s*\(") {
-                    for cap in re.captures_iter(&content) {
-                        if let Some(name) = cap.get(1) {
-                            function_names.push(name.as_str().to_string());
-                        }
-                    }
-                }
-            }
-            "cs" => {
-                // C#: public/private/protected/internal modifier + return_type + method_name
-                if let Ok(re) = regex::Regex::new(
-                    r"(?:public|private|protected|internal)?\s*(?:static|async)?\s*\w+\s+(\w+)\s*\([^)]*\)",
-                ) {
-                    for cap in re.captures_iter(&content) {
-                        if let Some(name) = cap.get(1) {
-                            let name_str = name.as_str();
-                            // Filter out known keywords
-                            if !["if", "while", "for", "foreach", "switch"].contains(&name_str) {
-                                function_names.push(name_str.to_string());
-                            }
-                        }
-                    }
-                }
-            }
-            _ => {
-                // For unknown extensions, return empty list
-            }
-        }
-
-        Ok(function_names)
-    }
-
-    /// Analyze file complexity using heuristics for non-Rust languages
-    async fn analyze_file_complexity_heuristic(
-        &self,
-        file_path: &Path,
-        extension: &str,
-    ) -> Result<(usize, usize, f64)> {
-        use tokio::fs;
-
-        // Read file content
-        let content = fs::read_to_string(file_path).await?;
-
-        // Function detection patterns based on language
-        let function_patterns = match extension {
-            "py" => vec![r"(?m)^\s*def\s+\w+", r"(?m)^\s*async\s+def\s+\w+"],
-            "js" | "ts" => vec![
-                r"function\s+\w+",
-                r"(?m)^\s*const\s+\w+\s*=.*=>",
-                r"(?m)^\s*\w+\s*\([^)]*\)\s*\{",
-            ],
-            "java" => vec![r"(public|private|protected)\s+\w+\s+\w+\s*\("],
-            "go" => vec![r"(?m)^func\s+(\(\w+\s+\*?\w+\)\s+)?\w+\s*\("],
-            "c" | "cpp" | "cc" | "cxx" => vec![r"(?m)^\w+\s+\w+\s*\([^)]*\)\s*\{"],
-            "cs" => {
-                vec![r"(public|private|protected|internal)?\s*(static|async)?\s*\w+\s+\w+\s*\("]
-            }
-            "kt" => vec![r"(?m)^\s*(?:suspend\s+)?fun\s+\w+\s*\("],
-            _ => vec![],
-        };
-
-        if function_patterns.is_empty() {
-            return Ok((0, 0, 0.0));
-        }
-
-        // Count functions using regex
-        let mut function_count = 0;
-        let mut complexity_sum = 0;
-        let mut high_complexity_count = 0;
-
-        for pattern in function_patterns {
-            if let Ok(re) = regex::Regex::new(pattern) {
-                for cap in re.captures_iter(&content) {
-                    function_count += 1;
-
-                    // Simple heuristic for complexity: count control flow keywords
-                    if let Some(func_match) = cap.get(0) {
-                        let start = func_match.start();
-                        let func_end = self.find_function_end(&content[start..], extension);
-                        if let Some(end) = func_end {
-                            let func_body = &content[start..start + end];
-                            let complexity = self.estimate_complexity(func_body, extension);
-                            complexity_sum += complexity;
-                            if complexity > 10 {
-                                high_complexity_count += 1;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        let avg_complexity = if function_count > 0 {
-            complexity_sum as f64 / function_count as f64
-        } else {
-            0.0
-        };
-
-        Ok((function_count, high_complexity_count, avg_complexity))
-    }
-
-    /// Find the end of a function body
-    fn find_function_end(&self, content: &str, extension: &str) -> Option<usize> {
-        if extension == "py" {
-            // Python: find next line with same or lower indentation
-            let lines: Vec<&str> = content.lines().collect();
-            if lines.is_empty() {
-                return None;
-            }
-
-            let first_indent = lines[0].len() - lines[0].trim_start().len();
-            for (i, line) in lines.iter().enumerate().skip(1) {
-                if !line.trim().is_empty() {
-                    let indent = line.len() - line.trim_start().len();
-                    if indent <= first_indent {
-                        return Some(lines[..i].join("\n").len());
-                    }
-                }
-            }
-            Some(content.len())
-        } else {
-            // For C-like languages, count braces
-            let mut brace_count = 0;
-            let mut in_string = false;
-            let mut escape = false;
-
-            for (i, ch) in content.chars().enumerate() {
-                if escape {
-                    escape = false;
-                    continue;
-                }
-
-                match ch {
-                    '\\' => escape = true,
-                    '"' if !in_string => in_string = true,
-                    '"' if in_string => in_string = false,
-                    '{' if !in_string => brace_count += 1,
-                    '}' if !in_string => {
-                        brace_count -= 1;
-                        if brace_count == 0 {
-                            return Some(i + 1);
-                        }
-                    }
-                    _ => {}
-                }
-            }
-            None
-        }
-    }
-
-    /// Estimate complexity based on control flow keywords
-    fn estimate_complexity(&self, func_body: &str, extension: &str) -> usize {
-        let control_flow_keywords = match extension {
-            "py" => vec![
-                "if ", "elif ", "else:", "for ", "while ", "try:", "except:", "finally:",
-            ],
-            "js" | "ts" => vec![
-                "if ", "else ", "for ", "while ", "do ", "switch ", "case ", "catch ", "finally ",
-            ],
-            "java" | "c" | "cpp" | "go" => vec![
-                "if ", "else ", "for ", "while ", "do ", "switch ", "case ", "catch ", "finally ",
-            ],
-            _ => vec![],
-        };
-
-        let mut complexity = 1; // Base complexity
-        for keyword in control_flow_keywords {
-            complexity += func_body.matches(keyword).count();
-        }
-
-        // Add complexity for logical operators
-        complexity += func_body.matches("&&").count();
-        complexity += func_body.matches("||").count();
-
-        complexity
     }
 
     /// Generate recommendations based on analysis
@@ -1733,6 +514,944 @@ impl SimpleDeepContext {
         }
 
         markdown
+    }
+
+    /// Heuristic fallback for complexity analysis
+    async fn complexity_heuristic_fallback(
+        &self,
+        file_path: &Path,
+        extension: &str,
+    ) -> (usize, usize, f64) {
+        match self
+            .analyze_file_complexity_heuristic(file_path, extension)
+            .await
+        {
+            Ok((count, high, avg)) => (count, high, avg),
+            Err(_) => (0, 0, 0.0),
+        }
+    }
+
+    /// Rust complexity via AST
+    async fn complexity_for_rust(&self, file_path: &Path) -> (usize, usize, f64) {
+        use crate::services::ast_rust::analyze_rust_file_with_complexity;
+        match analyze_rust_file_with_complexity(file_path).await {
+            Ok(file_complexity_metrics) => {
+                let functions = &file_complexity_metrics.functions;
+                let function_count = functions.len();
+                if function_count == 0 {
+                    (0, 0, 0.0)
+                } else {
+                    let high_complexity_functions = functions
+                        .iter()
+                        .filter(|f| f.metrics.cyclomatic > 10)
+                        .count();
+                    let total_cyclomatic: u32 = functions
+                        .iter()
+                        .map(|f| u32::from(f.metrics.cyclomatic))
+                        .sum();
+                    let avg_complexity = f64::from(total_cyclomatic) / function_count as f64;
+                    (function_count, high_complexity_functions, avg_complexity)
+                }
+            }
+            Err(_) => (0, 0, 0.0),
+        }
+    }
+
+    /// TypeScript/JavaScript complexity via SWC AST
+    async fn complexity_for_typescript(
+        &self,
+        file_path: &Path,
+        extension: &str,
+    ) -> (usize, usize, f64) {
+        use tokio::fs;
+        match fs::read_to_string(file_path).await {
+            Ok(content) => {
+                #[cfg(feature = "typescript-ast")]
+                {
+                    self.complexity_typescript_ast(file_path, extension, &content)
+                }
+                #[cfg(not(feature = "typescript-ast"))]
+                {
+                    let _ = (extension, &content);
+                    self.complexity_heuristic_fallback(file_path, extension)
+                        .await
+                }
+            }
+            Err(_) => (0, 0, 0.0),
+        }
+    }
+
+    /// Inner TypeScript AST analysis (cfg-gated)
+    #[cfg(feature = "typescript-ast")]
+    fn complexity_typescript_ast(
+        &self,
+        file_path: &Path,
+        extension: &str,
+        content: &str,
+    ) -> (usize, usize, f64) {
+        use crate::services::enhanced_typescript_visitor::EnhancedTypeScriptVisitor;
+        use std::sync::Arc;
+        use swc_common::{FileName, SourceMap};
+        use swc_ecma_parser::{lexer::Lexer, Parser, StringInput, Syntax, TsSyntax};
+
+        let source_map = Arc::new(SourceMap::default());
+        let _source_file = source_map.new_source_file(
+            FileName::Custom(file_path.display().to_string()).into(),
+            content.to_owned(),
+        );
+
+        let syntax = match extension {
+            "tsx" => Syntax::Typescript(TsSyntax {
+                tsx: true,
+                decorators: true,
+                dts: false,
+                no_early_errors: true,
+                disallow_ambiguous_jsx_like: true,
+            }),
+            "jsx" => Syntax::Es(swc_ecma_parser::EsSyntax {
+                jsx: true,
+                ..Default::default()
+            }),
+            "ts" => Syntax::Typescript(TsSyntax {
+                tsx: false,
+                decorators: true,
+                dts: false,
+                no_early_errors: true,
+                disallow_ambiguous_jsx_like: true,
+            }),
+            _ => Syntax::Es(Default::default()),
+        };
+
+        let lexer = Lexer::new(
+            syntax,
+            Default::default(),
+            StringInput::new(content, Default::default(), Default::default()),
+            None,
+        );
+
+        let mut parser = Parser::new_from(lexer);
+        match parser.parse_module() {
+            Ok(module) => {
+                let visitor = EnhancedTypeScriptVisitor::new(file_path);
+                let items = visitor.extract_items(&module);
+                let function_count = items
+                    .iter()
+                    .filter(|item| {
+                        matches!(item, crate::services::context::AstItem::Function { .. })
+                    })
+                    .count();
+                if function_count == 0 {
+                    (0, 0, 0.0)
+                } else {
+                    let high_complexity_functions = function_count / 4;
+                    let avg_complexity = 2.5;
+                    (function_count, high_complexity_functions, avg_complexity)
+                }
+            }
+            Err(_) => (0, 0, 0.0),
+        }
+    }
+
+    /// WASM/WAT complexity analysis
+    async fn complexity_for_wasm(&self, file_path: &Path, extension: &str) -> (usize, usize, f64) {
+        use tokio::fs;
+        let content = if extension == "wasm" {
+            match fs::read(file_path).await {
+                Ok(bytes) => String::from_utf8_lossy(&bytes).into_owned(),
+                Err(_) => return (0, 0, 0.0),
+            }
+        } else {
+            match fs::read_to_string(file_path).await {
+                Ok(text) => text,
+                Err(_) => return (0, 0, 0.0),
+            }
+        };
+
+        #[cfg(feature = "wasm-ast")]
+        {
+            use crate::services::languages::wasm::WasmModuleAnalyzer;
+            let analyzer = WasmModuleAnalyzer::new(file_path);
+            let items = if extension == "wasm" {
+                match std::fs::read(file_path) {
+                    Ok(wasm_bytes) => analyzer.analyze_wasm_binary(&wasm_bytes),
+                    Err(_) => Err("Failed to read WASM binary".to_string()),
+                }
+            } else {
+                analyzer.analyze_wat_text(&content)
+            };
+            match items {
+                Ok(ast_items) => {
+                    let function_count = ast_items
+                        .iter()
+                        .filter(|item| {
+                            matches!(item, crate::services::context::AstItem::Function { .. })
+                        })
+                        .count();
+                    if function_count == 0 {
+                        (0, 0, 0.0)
+                    } else {
+                        let high_complexity_functions = function_count / 5;
+                        let avg_complexity = 3.0;
+                        (function_count, high_complexity_functions, avg_complexity)
+                    }
+                }
+                Err(_) => (0, 0, 0.0),
+            }
+        }
+        #[cfg(not(feature = "wasm-ast"))]
+        {
+            let _ = content;
+            self.complexity_heuristic_fallback(file_path, extension)
+                .await
+        }
+    }
+
+    /// Go complexity via AST
+    async fn complexity_for_go(&self, file_path: &Path) -> (usize, usize, f64) {
+        use tokio::fs;
+        match fs::read_to_string(file_path).await {
+            #[allow(unused_variables)]
+            Ok(content) => {
+                #[cfg(feature = "go-ast")]
+                {
+                    use crate::services::context::AstItem;
+                    use crate::services::languages::go::{GoAstVisitor, GoComplexityAnalyzer};
+                    let visitor = GoAstVisitor::new(file_path);
+                    match visitor.analyze_go_source(&content) {
+                        Ok(items) => {
+                            let function_count = items
+                                .iter()
+                                .filter(|item| matches!(item, AstItem::Function { .. }))
+                                .count();
+                            if function_count == 0 {
+                                return (0, 0, 0.0);
+                            }
+                            let mut analyzer = GoComplexityAnalyzer::new();
+                            let (cyclomatic, _cognitive) =
+                                analyzer.analyze_complexity(&content).unwrap_or((1, 1));
+                            let high = if cyclomatic > 10 { 1 } else { 0 };
+                            let avg = cyclomatic as f64 / function_count.max(1) as f64;
+                            (function_count, high, avg)
+                        }
+                        Err(_) => self.complexity_heuristic_fallback(file_path, "go").await,
+                    }
+                }
+                #[cfg(not(feature = "go-ast"))]
+                self.complexity_heuristic_fallback(file_path, "go").await
+            }
+            Err(_) => (0, 0, 0.0),
+        }
+    }
+
+    /// C# complexity via AST
+    async fn complexity_for_csharp(&self, file_path: &Path) -> (usize, usize, f64) {
+        use tokio::fs;
+        #[allow(unused_variables)]
+        match fs::read_to_string(file_path).await {
+            Ok(content) => {
+                #[cfg(feature = "csharp-ast")]
+                {
+                    use crate::services::context::AstItem;
+                    use crate::services::languages::csharp::{
+                        CSharpAstVisitor, CSharpComplexityAnalyzer,
+                    };
+                    let visitor = CSharpAstVisitor::new(file_path);
+                    match visitor.analyze_csharp_source(&content) {
+                        Ok(items) => {
+                            let function_count = items
+                                .iter()
+                                .filter(|item| matches!(item, AstItem::Function { .. }))
+                                .count();
+                            if function_count == 0 {
+                                return (0, 0, 0.0);
+                            }
+                            let mut analyzer = CSharpComplexityAnalyzer::new();
+                            let (cyclomatic, _cognitive) =
+                                analyzer.analyze_complexity(&content).unwrap_or((1, 1));
+                            let high = if cyclomatic > 10 { 1 } else { 0 };
+                            let avg = cyclomatic as f64 / function_count.max(1) as f64;
+                            (function_count, high, avg)
+                        }
+                        Err(_) => self.complexity_heuristic_fallback(file_path, "cs").await,
+                    }
+                }
+                #[cfg(not(feature = "csharp-ast"))]
+                self.complexity_heuristic_fallback(file_path, "cs").await
+            }
+            Err(_) => (0, 0, 0.0),
+        }
+    }
+
+    /// Kotlin complexity via AST
+    async fn complexity_for_kotlin(&self, file_path: &Path) -> (usize, usize, f64) {
+        use tokio::fs;
+        match fs::read_to_string(file_path).await {
+            #[cfg_attr(not(feature = "kotlin-ast"), allow(unused_variables))]
+            Ok(content) => {
+                #[cfg(feature = "kotlin-ast")]
+                {
+                    use crate::services::context::AstItem;
+                    use crate::services::languages::kotlin::{
+                        KotlinAstVisitor, KotlinComplexityAnalyzer,
+                    };
+                    let visitor = KotlinAstVisitor::new(file_path);
+                    match visitor.analyze_kotlin_source(&content) {
+                        Ok(items) => {
+                            let function_count = items
+                                .iter()
+                                .filter(|item| matches!(item, AstItem::Function { .. }))
+                                .count();
+                            if function_count == 0 {
+                                return (0, 0, 0.0);
+                            }
+                            let mut analyzer = KotlinComplexityAnalyzer::new();
+                            let (cyclomatic, _cognitive) =
+                                analyzer.analyze_complexity(&content).unwrap_or((1, 1));
+                            let high = if cyclomatic > 10 { 1 } else { 0 };
+                            let avg = cyclomatic as f64 / function_count.max(1) as f64;
+                            (function_count, high, avg)
+                        }
+                        Err(_) => self.complexity_heuristic_fallback(file_path, "kt").await,
+                    }
+                }
+                #[cfg(not(feature = "kotlin-ast"))]
+                self.complexity_heuristic_fallback(file_path, "kt").await
+            }
+            Err(_) => (0, 0, 0.0),
+        }
+    }
+
+    /// Bash complexity via AST (function count estimation)
+    async fn complexity_for_bash(&self, file_path: &Path) -> (usize, usize, f64) {
+        use tokio::fs;
+        match fs::read_to_string(file_path).await {
+            #[allow(unused_variables)]
+            Ok(content) => {
+                #[cfg(feature = "shell-ast")]
+                {
+                    use crate::services::context::AstItem;
+                    use crate::services::languages::bash::BashScriptAnalyzer;
+                    let analyzer = BashScriptAnalyzer::new(file_path);
+                    match analyzer.analyze_bash_script(&content) {
+                        Ok(items) => {
+                            let function_count = items
+                                .iter()
+                                .filter(|item| matches!(item, AstItem::Function { .. }))
+                                .count();
+                            if function_count == 0 {
+                                (0, 0, 0.0)
+                            } else {
+                                (function_count, 0, 2.0)
+                            }
+                        }
+                        Err(_) => self.complexity_heuristic_fallback(file_path, "sh").await,
+                    }
+                }
+                #[cfg(not(feature = "shell-ast"))]
+                self.complexity_heuristic_fallback(file_path, "sh").await
+            }
+            Err(_) => (0, 0, 0.0),
+        }
+    }
+
+    /// PHP complexity via AST (function count estimation)
+    async fn complexity_for_php(&self, file_path: &Path) -> (usize, usize, f64) {
+        use tokio::fs;
+        match fs::read_to_string(file_path).await {
+            #[allow(unused_variables)]
+            Ok(content) => {
+                #[cfg(feature = "php-ast")]
+                {
+                    use crate::services::context::AstItem;
+                    use crate::services::languages::php::PhpScriptAnalyzer;
+                    let analyzer = PhpScriptAnalyzer::new(file_path);
+                    match analyzer.analyze_php_script(&content) {
+                        Ok(items) => {
+                            let function_count = items
+                                .iter()
+                                .filter(|item| matches!(item, AstItem::Function { .. }))
+                                .count();
+                            if function_count == 0 {
+                                (0, 0, 0.0)
+                            } else {
+                                (function_count, 0, 2.5)
+                            }
+                        }
+                        Err(_) => self.complexity_heuristic_fallback(file_path, "php").await,
+                    }
+                }
+                #[cfg(not(feature = "php-ast"))]
+                self.complexity_heuristic_fallback(file_path, "php").await
+            }
+            Err(_) => (0, 0, 0.0),
+        }
+    }
+
+    /// Swift complexity via AST (function count estimation)
+    async fn complexity_for_swift(&self, file_path: &Path) -> (usize, usize, f64) {
+        use tokio::fs;
+        match fs::read_to_string(file_path).await {
+            #[allow(unused_variables)]
+            Ok(content) => {
+                #[cfg(feature = "swift-ast")]
+                {
+                    use crate::services::context::AstItem;
+                    use crate::services::languages::swift::SwiftSourceAnalyzer;
+                    let analyzer = SwiftSourceAnalyzer::new(file_path);
+                    match analyzer.analyze_swift_source(&content) {
+                        Ok(items) => {
+                            let function_count = items
+                                .iter()
+                                .filter(|item| matches!(item, AstItem::Function { .. }))
+                                .count();
+                            if function_count == 0 {
+                                (0, 0, 0.0)
+                            } else {
+                                (function_count, 0, 2.5)
+                            }
+                        }
+                        Err(_) => self.complexity_heuristic_fallback(file_path, "swift").await,
+                    }
+                }
+                #[cfg(not(feature = "swift-ast"))]
+                self.complexity_heuristic_fallback(file_path, "swift").await
+            }
+            Err(_) => (0, 0, 0.0),
+        }
+    }
+
+    /// Lua complexity via tree-sitter AST
+    async fn complexity_for_lua(&self, file_path: &Path) -> (usize, usize, f64) {
+        use tokio::fs;
+        match fs::read_to_string(file_path).await {
+            #[allow(unused_variables)]
+            Ok(content) => {
+                #[cfg(feature = "lua-ast")]
+                {
+                    use crate::ast::languages::lua::LuaStrategy;
+                    use crate::ast::languages::LanguageStrategy;
+                    let strategy = LuaStrategy::new();
+                    match strategy.parse_file(file_path, &content).await {
+                        Ok(ast) => {
+                            let functions = strategy.extract_functions(&ast);
+                            let function_count = functions.len();
+                            if function_count == 0 {
+                                (0, 0, 0.0)
+                            } else {
+                                let (cyclomatic, _cognitive) = strategy.calculate_complexity(&ast);
+                                let high = if cyclomatic > 10 { 1 } else { 0 };
+                                let avg = cyclomatic as f64 / function_count.max(1) as f64;
+                                (function_count, high, avg)
+                            }
+                        }
+                        Err(_) => self.complexity_heuristic_fallback(file_path, "lua").await,
+                    }
+                }
+                #[cfg(not(feature = "lua-ast"))]
+                self.complexity_heuristic_fallback(file_path, "lua").await
+            }
+            Err(_) => (0, 0, 0.0),
+        }
+    }
+
+    // ---- Function name extraction helpers ----
+
+    /// Extract function names from Rust AST
+    async fn function_names_for_rust(&self, file_path: &Path) -> Vec<String> {
+        use crate::services::ast_rust::analyze_rust_file_with_complexity;
+        match analyze_rust_file_with_complexity(file_path).await {
+            Ok(metrics) => metrics.functions.iter().map(|f| f.name.clone()).collect(),
+            Err(_) => vec![],
+        }
+    }
+
+    /// Extract function names from WASM/WAT AST
+    #[allow(unused_variables)]
+    async fn function_names_for_wasm(&self, file_path: &Path, extension: &str) -> Vec<String> {
+        #[cfg(feature = "wasm-ast")]
+        {
+            use crate::services::context::AstItem;
+            use crate::services::languages::wasm::WasmModuleAnalyzer;
+            use tokio::fs;
+
+            let analyzer = WasmModuleAnalyzer::new(file_path);
+            let items = if extension == "wasm" {
+                match std::fs::read(file_path) {
+                    Ok(wasm_bytes) => analyzer.analyze_wasm_binary(&wasm_bytes),
+                    Err(_) => return vec![],
+                }
+            } else {
+                match fs::read_to_string(file_path).await {
+                    Ok(content) => analyzer.analyze_wat_text(&content),
+                    Err(_) => return vec![],
+                }
+            };
+            match items {
+                Ok(ast_items) => ast_items
+                    .iter()
+                    .filter_map(|item| match item {
+                        AstItem::Function { name, .. } => Some(name.clone()),
+                        _ => None,
+                    })
+                    .collect(),
+                Err(_) => vec![],
+            }
+        }
+        #[cfg(not(feature = "wasm-ast"))]
+        {
+            let _ = extension;
+            vec![]
+        }
+    }
+
+    /// Extract function names using language-specific AST analyzer
+    #[allow(dead_code)]
+    async fn function_names_via_ast<F, E>(&self, file_path: &Path, analyze_fn: F) -> Vec<String>
+    where
+        F: FnOnce(&str) -> std::result::Result<Vec<crate::services::context::AstItem>, E>,
+    {
+        use crate::services::context::AstItem;
+        use tokio::fs;
+
+        match fs::read_to_string(file_path).await {
+            Ok(content) => match analyze_fn(&content) {
+                Ok(items) => items
+                    .iter()
+                    .filter_map(|item| match item {
+                        AstItem::Function { name, .. } => Some(name.clone()),
+                        _ => None,
+                    })
+                    .collect(),
+                Err(_) => vec![],
+            },
+            Err(_) => vec![],
+        }
+    }
+
+    /// Extract function names from Go AST
+    async fn function_names_for_go(&self, file_path: &Path) -> Vec<String> {
+        #[cfg(feature = "go-ast")]
+        {
+            use crate::services::languages::go::GoAstVisitor;
+            let fp = file_path.to_path_buf();
+            self.function_names_via_ast(file_path, move |content| {
+                let visitor = GoAstVisitor::new(&fp);
+                visitor.analyze_go_source(content)
+            })
+            .await
+        }
+        #[cfg(not(feature = "go-ast"))]
+        {
+            self.extract_function_names_heuristic(file_path, "go")
+                .await
+                .unwrap_or_default()
+        }
+    }
+
+    /// Extract function names from C# AST
+    async fn function_names_for_csharp(&self, file_path: &Path) -> Vec<String> {
+        #[cfg(feature = "csharp-ast")]
+        {
+            use crate::services::languages::csharp::CSharpAstVisitor;
+            let fp = file_path.to_path_buf();
+            self.function_names_via_ast(file_path, move |content| {
+                let visitor = CSharpAstVisitor::new(&fp);
+                visitor.analyze_csharp_source(content)
+            })
+            .await
+        }
+        #[cfg(not(feature = "csharp-ast"))]
+        {
+            self.extract_function_names_heuristic(file_path, "cs")
+                .await
+                .unwrap_or_default()
+        }
+    }
+
+    /// Extract function names from Kotlin AST
+    async fn function_names_for_kotlin(&self, file_path: &Path) -> Vec<String> {
+        #[cfg(feature = "kotlin-ast")]
+        {
+            use crate::services::languages::kotlin::KotlinAstVisitor;
+            let fp = file_path.to_path_buf();
+            self.function_names_via_ast(file_path, move |content| {
+                let visitor = KotlinAstVisitor::new(&fp);
+                visitor.analyze_kotlin_source(content)
+            })
+            .await
+        }
+        #[cfg(not(feature = "kotlin-ast"))]
+        {
+            self.extract_function_names_heuristic(file_path, "kt")
+                .await
+                .unwrap_or_default()
+        }
+    }
+
+    /// Extract function names from Bash AST
+    #[allow(unused_variables)]
+    async fn function_names_for_bash(&self, file_path: &Path) -> Vec<String> {
+        #[cfg(feature = "shell-ast")]
+        {
+            use crate::services::languages::bash::BashScriptAnalyzer;
+            let fp = file_path.to_path_buf();
+            self.function_names_via_ast(file_path, move |content| {
+                let analyzer = BashScriptAnalyzer::new(&fp);
+                analyzer
+                    .analyze_bash_script(content)
+                    .map_err(|e| e.to_string())
+            })
+            .await
+        }
+        #[cfg(not(feature = "shell-ast"))]
+        vec![]
+    }
+
+    /// Extract function names from PHP AST
+    #[allow(unused_variables)]
+    async fn function_names_for_php(&self, file_path: &Path) -> Vec<String> {
+        #[cfg(feature = "php-ast")]
+        {
+            use crate::services::languages::php::PhpScriptAnalyzer;
+            let fp = file_path.to_path_buf();
+            self.function_names_via_ast(file_path, move |content| {
+                let analyzer = PhpScriptAnalyzer::new(&fp);
+                analyzer
+                    .analyze_php_script(content)
+                    .map_err(|e| e.to_string())
+            })
+            .await
+        }
+        #[cfg(not(feature = "php-ast"))]
+        vec![]
+    }
+
+    /// Extract function names from Swift AST
+    #[allow(unused_variables)]
+    async fn function_names_for_swift(&self, file_path: &Path) -> Vec<String> {
+        #[cfg(feature = "swift-ast")]
+        {
+            use crate::services::languages::swift::SwiftSourceAnalyzer;
+            let fp = file_path.to_path_buf();
+            self.function_names_via_ast(file_path, move |content| {
+                let analyzer = SwiftSourceAnalyzer::new(&fp);
+                analyzer
+                    .analyze_swift_source(content)
+                    .map_err(|e| e.to_string())
+            })
+            .await
+        }
+        #[cfg(not(feature = "swift-ast"))]
+        vec![]
+    }
+
+    /// Extract function names from Lua AST
+    #[allow(unused_variables)]
+    async fn function_names_for_lua(&self, file_path: &Path) -> Vec<String> {
+        #[cfg(feature = "lua-ast")]
+        {
+            use crate::ast::languages::lua::LuaStrategy;
+            use crate::ast::languages::LanguageStrategy;
+            use tokio::fs;
+
+            match fs::read_to_string(file_path).await {
+                Ok(content) => {
+                    let strategy = LuaStrategy::new();
+                    match strategy.parse_file(file_path, &content).await {
+                        Ok(ast) => strategy
+                            .extract_functions(&ast)
+                            .iter()
+                            .enumerate()
+                            .map(|(i, _f)| format!("lua_fn_{i}"))
+                            .collect(),
+                        Err(_) => vec![],
+                    }
+                }
+                Err(_) => vec![],
+            }
+        }
+        #[cfg(not(feature = "lua-ast"))]
+        vec![]
+    }
+
+    /// Extract function names using regex patterns (shared implementation)
+    fn extract_names_by_regex(content: &str, patterns: &[&str]) -> Vec<String> {
+        let mut names = Vec::new();
+        for pattern in patterns {
+            if let Ok(re) = regex::Regex::new(pattern) {
+                for cap in re.captures_iter(content) {
+                    if let Some(name) = cap.get(1) {
+                        names.push(name.as_str().to_string());
+                    }
+                }
+            }
+        }
+        names
+    }
+
+    /// JS/TS function name extraction with multi-pattern dedup
+    fn extract_js_ts_function_names(content: &str, file_path: &Path) -> Vec<String> {
+        let patterns = [
+            r"function\s+(\w+)\s*\(",
+            r"(?m)^\s*(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s+)?\([^)]*\)\s*=>",
+            r"(?m)^\s*(?:async\s+)?(\w+)\s*\([^)]*\)\s*\{",
+            r"(?m)^\s*(?:static\s+)?(\w+)\s*\([^)]*\)\s*\{",
+            r"(\w+)\s*:\s*function\s*\([^)]*\)",
+            r"(\w+)\s*\([^)]*\)\s*\{",
+            r"(?m)^\s*(?:async\s+)?(\w+)\s*\([^)]*\)\s*:",
+        ];
+        info!(
+            "Using comprehensive TypeScript/JavaScript regex patterns for {}",
+            file_path.display()
+        );
+        let mut function_names = Vec::new();
+        for pattern in &patterns {
+            if let Ok(re) = regex::Regex::new(pattern) {
+                for cap in re.captures_iter(content) {
+                    if let Some(name) = cap.get(1) {
+                        let name_str = name.as_str().to_string();
+                        if !function_names.contains(&name_str) {
+                            function_names.push(name_str);
+                        }
+                    }
+                }
+            }
+        }
+        function_names
+    }
+
+    // ---- Heuristic analysis functions (moved here for complexity gate compliance) ----
+
+    /// Extract function names using heuristic regex patterns
+    async fn extract_function_names_heuristic(
+        &self,
+        file_path: &Path,
+        extension: &str,
+    ) -> anyhow::Result<Vec<String>> {
+        use tokio::fs;
+        let content = fs::read_to_string(file_path).await?;
+
+        // JS/TS has special multi-pattern dedup logic
+        if matches!(extension, "js" | "ts") {
+            return Ok(Self::extract_js_ts_function_names(&content, file_path));
+        }
+
+        // All other languages use simple regex patterns
+        let patterns: &[&str] = match extension {
+            "py" => &[r"(?m)^\s*(?:async\s+)?def\s+(\w+)\s*\("],
+            "java" => &[
+                r"(?:public|private|protected)\s+(?:static\s+)?(?:\w+(?:<[^>]*>)?\s+)+(\w+)\s*\([^)]*\)\s*\{",
+            ],
+            "go" => &[r"(?m)^func\s+(?:\([^)]*\)\s+)?(\w+)\s*\("],
+            "c" | "cpp" | "cc" | "cxx" => &[r"(?m)^\s*\w+(?:\s*\**)?\s+(\w+)\s*\([^)]*\)\s*\{"],
+            "rb" | "ruchy" => &[r"(?m)^\s*def\s+(\w+)"],
+            "kt" => &[r"(?m)^\s*(?:suspend\s+)?fun\s+(\w+)\s*\("],
+            "cs" => &[
+                r"(?:public|private|protected|internal)?\s*(?:static|async)?\s*\w+\s+(\w+)\s*\([^)]*\)",
+            ],
+            "lua" => &[
+                r"(?m)^\s*function\s+(\w+(?:[.:]\w+)*)\s*\(",
+                r"(?m)^\s*local\s+function\s+(\w+)\s*\(",
+            ],
+            _ => return Ok(vec![]),
+        };
+
+        let mut names = Self::extract_names_by_regex(&content, patterns);
+
+        // Filter language-specific keywords
+        let keywords: &[&str] = match extension {
+            "c" | "cpp" | "cc" | "cxx" => &["if", "for", "while", "switch", "catch"],
+            "cs" => &["if", "while", "for", "foreach", "switch"],
+            _ => &[],
+        };
+        if !keywords.is_empty() {
+            names.retain(|n| !keywords.contains(&n.as_str()));
+        }
+        Ok(names)
+    }
+
+    /// Analyze file complexity using heuristics for non-Rust languages
+    async fn analyze_file_complexity_heuristic(
+        &self,
+        file_path: &Path,
+        extension: &str,
+    ) -> anyhow::Result<(usize, usize, f64)> {
+        use tokio::fs;
+        let content = fs::read_to_string(file_path).await?;
+
+        let function_patterns = match extension {
+            "py" => vec![r"(?m)^\s*def\s+\w+", r"(?m)^\s*async\s+def\s+\w+"],
+            "js" | "ts" => vec![
+                r"function\s+\w+",
+                r"(?m)^\s*const\s+\w+\s*=.*=>",
+                r"(?m)^\s*\w+\s*\([^)]*\)\s*\{",
+            ],
+            "java" => vec![r"(public|private|protected)\s+\w+\s+\w+\s*\("],
+            "go" => vec![r"(?m)^func\s+(\(\w+\s+\*?\w+\)\s+)?\w+\s*\("],
+            "c" | "cpp" | "cc" | "cxx" => vec![r"(?m)^\w+\s+\w+\s*\([^)]*\)\s*\{"],
+            "cs" => {
+                vec![r"(public|private|protected|internal)?\s*(static|async)?\s*\w+\s+\w+\s*\("]
+            }
+            "kt" => vec![r"(?m)^\s*(?:suspend\s+)?fun\s+\w+\s*\("],
+            "lua" => vec![r"(?m)^\s*function\s+\w+", r"(?m)^\s*local\s+function\s+\w+"],
+            _ => vec![],
+        };
+
+        if function_patterns.is_empty() {
+            return Ok((0, 0, 0.0));
+        }
+
+        let mut function_count = 0;
+        let mut complexity_sum = 0;
+        let mut high_complexity_count = 0;
+
+        for pattern in function_patterns {
+            if let Ok(re) = regex::Regex::new(pattern) {
+                for cap in re.captures_iter(&content) {
+                    function_count += 1;
+                    if let Some(func_match) = cap.get(0) {
+                        let start = func_match.start();
+                        let func_end = self.find_function_end(&content[start..], extension);
+                        if let Some(end) = func_end {
+                            let func_body = &content[start..start + end];
+                            let complexity = self.estimate_complexity(func_body, extension);
+                            complexity_sum += complexity;
+                            if complexity > 10 {
+                                high_complexity_count += 1;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        let avg_complexity = if function_count > 0 {
+            complexity_sum as f64 / function_count as f64
+        } else {
+            0.0
+        };
+
+        Ok((function_count, high_complexity_count, avg_complexity))
+    }
+
+    /// Find the end of a function body (dispatches to per-language helpers)
+    fn find_function_end(&self, content: &str, extension: &str) -> Option<usize> {
+        match extension {
+            "py" => Self::find_function_end_python(content),
+            "lua" => Self::find_function_end_lua(content),
+            _ => Self::find_function_end_brace(content),
+        }
+    }
+
+    /// Python: indentation-based function end detection
+    fn find_function_end_python(content: &str) -> Option<usize> {
+        let lines: Vec<&str> = content.lines().collect();
+        if lines.is_empty() {
+            return None;
+        }
+        let first_indent = lines[0].len() - lines[0].trim_start().len();
+        for (i, line) in lines.iter().enumerate().skip(1) {
+            if !line.trim().is_empty() {
+                let indent = line.len() - line.trim_start().len();
+                if indent <= first_indent {
+                    return Some(lines[..i].join("\n").len());
+                }
+            }
+        }
+        Some(content.len())
+    }
+
+    /// Lua: end-keyword depth tracking
+    fn find_function_end_lua(content: &str) -> Option<usize> {
+        let mut depth = 0;
+        for (i, line) in content.lines().enumerate() {
+            let trimmed = line.trim();
+            if trimmed.starts_with("function ")
+                || trimmed.starts_with("local function ")
+                || trimmed.starts_with("if ")
+                || trimmed.starts_with("for ")
+                || trimmed.starts_with("while ")
+                || trimmed == "do"
+                || trimmed.starts_with("do ")
+            {
+                depth += 1;
+            }
+            if trimmed == "end" || trimmed.starts_with("end ") || trimmed.starts_with("end,") {
+                depth -= 1;
+                if depth <= 0 {
+                    let byte_offset: usize =
+                        content.lines().take(i + 1).map(|l| l.len() + 1).sum();
+                    return Some(byte_offset);
+                }
+            }
+        }
+        Some(content.len())
+    }
+
+    /// C-like languages: string-aware brace counting
+    fn find_function_end_brace(content: &str) -> Option<usize> {
+        let mut depth = 0i32;
+        let mut in_string = false;
+        let mut escape = false;
+        for (i, ch) in content.chars().enumerate() {
+            if escape {
+                escape = false;
+                continue;
+            }
+            if ch == '\\' && in_string {
+                escape = true;
+                continue;
+            }
+            if ch == '"' {
+                in_string = !in_string;
+                continue;
+            }
+            if in_string {
+                continue;
+            }
+            if ch == '{' {
+                depth += 1;
+            }
+            if ch == '}' {
+                depth -= 1;
+                if depth == 0 {
+                    return Some(i + 1);
+                }
+            }
+        }
+        None
+    }
+
+    /// Estimate complexity based on control flow keywords
+    fn estimate_complexity(&self, func_body: &str, extension: &str) -> usize {
+        let control_flow_keywords = match extension {
+            "py" => vec![
+                "if ", "elif ", "else:", "for ", "while ", "try:", "except:", "finally:",
+            ],
+            "js" | "ts" => vec![
+                "if ", "else ", "for ", "while ", "do ", "switch ", "case ", "catch ", "finally ",
+            ],
+            "java" | "c" | "cpp" | "go" => vec![
+                "if ", "else ", "for ", "while ", "do ", "switch ", "case ", "catch ", "finally ",
+            ],
+            "lua" => vec![
+                "if ", "elseif ", "else", "for ", "while ", "repeat", "until ",
+            ],
+            _ => vec![],
+        };
+
+        let mut complexity = 1;
+        for keyword in control_flow_keywords {
+            complexity += func_body.matches(keyword).count();
+        }
+        complexity += func_body.matches("&&").count();
+        complexity += func_body.matches("||").count();
+        // Lua uses "and"/"or" instead of &&/||
+        if extension == "lua" {
+            complexity += func_body.matches(" and ").count();
+            complexity += func_body.matches(" or ").count();
+        }
+        complexity
     }
 }
 

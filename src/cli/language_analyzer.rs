@@ -9,6 +9,144 @@ use crate::services::complexity::{ComplexityMetrics, FileComplexityMetrics, Func
 use anyhow::Result;
 use std::path::Path;
 
+/// State machine for string-aware brace counting.
+/// Handles string literals, char literals, line/block comments, and Rust raw strings.
+struct BraceState {
+    brace_count: i32,
+    found_first_brace: bool,
+    in_string: bool,
+    in_block_comment: bool,
+    in_raw_string: bool,
+    raw_hashes: usize,
+    escape_next: bool,
+}
+
+impl BraceState {
+    fn new() -> Self {
+        Self {
+            brace_count: 0,
+            found_first_brace: false,
+            in_string: false,
+            in_block_comment: false,
+            in_raw_string: false,
+            raw_hashes: 0,
+            escape_next: false,
+        }
+    }
+
+    /// Process one line of source. Returns true when braces reach balance.
+    fn process_line(&mut self, chars: &[char], handle_raw_strings: bool) -> bool {
+        let len = chars.len();
+        let mut j = 0;
+        while j < len {
+            if self.escape_next {
+                self.escape_next = false;
+                j += 1;
+                continue;
+            }
+            if self.in_block_comment || self.in_string || self.in_raw_string {
+                j = self.advance_literal(chars, j);
+                continue;
+            }
+            j = self.advance_normal(chars, j, handle_raw_strings);
+            if self.found_first_brace && self.brace_count == 0 {
+                return true;
+            }
+        }
+        false
+    }
+
+    /// Advance through one character inside a literal (string, raw string, block comment).
+    fn advance_literal(&mut self, chars: &[char], j: usize) -> usize {
+        let len = chars.len();
+        let ch = chars[j];
+        if self.in_block_comment {
+            if ch == '*' && j + 1 < len && chars[j + 1] == '/' {
+                self.in_block_comment = false;
+                return j + 2;
+            }
+            return j + 1;
+        }
+        if self.in_string {
+            if ch == '\\' {
+                self.escape_next = true;
+            } else if ch == '"' {
+                self.in_string = false;
+            }
+            return j + 1;
+        }
+        // in_raw_string
+        if ch == '"' {
+            let h = chars[j + 1..].iter().take_while(|&&c| c == '#').count();
+            if h >= self.raw_hashes {
+                self.in_raw_string = false;
+                return j + 1 + self.raw_hashes;
+            }
+        }
+        j + 1
+    }
+
+    /// Process one character in normal state. Returns next position.
+    fn advance_normal(&mut self, chars: &[char], j: usize, handle_raw_strings: bool) -> usize {
+        let len = chars.len();
+        let ch = chars[j];
+        // Line comment: skip to end
+        if ch == '/' && j + 1 < len && chars[j + 1] == '/' {
+            return len;
+        }
+        // Block comment
+        if ch == '/' && j + 1 < len && chars[j + 1] == '*' {
+            self.in_block_comment = true;
+            return j + 2;
+        }
+        // Char literal: 'x' or '\x'
+        if ch == '\'' && j + 2 < len {
+            if chars[j + 1] == '\\' && j + 3 < len && chars[j + 3] == '\'' {
+                return j + 4;
+            }
+            if chars[j + 2] == '\'' {
+                return j + 3;
+            }
+        }
+        // Raw string
+        if handle_raw_strings && ch == 'r' {
+            let h = chars[j + 1..].iter().take_while(|&&c| c == '#').count();
+            let qp = j + 1 + h;
+            if qp < len && chars[qp] == '"' {
+                self.in_raw_string = true;
+                self.raw_hashes = h;
+                return qp + 1;
+            }
+        }
+        // Regular string
+        if ch == '"' {
+            self.in_string = true;
+            return j + 1;
+        }
+        // Braces
+        if ch == '{' {
+            self.brace_count += 1;
+            self.found_first_brace = true;
+        } else if ch == '}' {
+            self.brace_count -= 1;
+        }
+        j + 1
+    }
+}
+
+/// String-aware brace counting for C-like languages.
+/// Prevents false positive complexity violations from `{` inside string literals.
+fn find_brace_balanced_end(lines: &[&str], start: usize, handle_raw_strings: bool) -> usize {
+    let mut state = BraceState::new();
+    for (i, line) in lines.iter().enumerate().skip(start) {
+        let chars: Vec<char> = line.chars().collect();
+        if state.process_line(&chars, handle_raw_strings) {
+            return i;
+        }
+    }
+    lines.len() - 1
+}
+
 /// Supported programming languages for complexity analysis
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Language {
@@ -133,28 +271,7 @@ impl RustAnalyzer {
     }
 
     fn find_function_end(&self, lines: &[&str], start: usize) -> usize {
-        let mut brace_count = 0;
-        let mut found_first_brace = false;
-
-        for (i, line) in lines.iter().enumerate().skip(start) {
-            for ch in line.chars() {
-                match ch {
-                    '{' => {
-                        brace_count += 1;
-                        found_first_brace = true;
-                    }
-                    '}' => {
-                        brace_count -= 1;
-                        if found_first_brace && brace_count == 0 {
-                            return i;
-                        }
-                    }
-                    _ => {}
-                }
-            }
-        }
-
-        lines.len() - 1
+        find_brace_balanced_end(lines, start, true)
     }
 }
 
@@ -379,28 +496,7 @@ impl JavaScriptAnalyzer {
     }
 
     fn find_function_end(&self, lines: &[&str], start: usize) -> usize {
-        let mut brace_count = 0;
-        let mut found_first_brace = false;
-
-        for (i, line) in lines.iter().enumerate().skip(start) {
-            for ch in line.chars() {
-                match ch {
-                    '{' => {
-                        brace_count += 1;
-                        found_first_brace = true;
-                    }
-                    '}' => {
-                        brace_count -= 1;
-                        if found_first_brace && brace_count == 0 {
-                            return i;
-                        }
-                    }
-                    _ => {}
-                }
-            }
-        }
-
-        lines.len() - 1
+        find_brace_balanced_end(lines, start, false)
     }
 }
 
@@ -544,28 +640,7 @@ impl CAnalyzer {
 
     /// Find the closing brace of a function
     fn find_function_end(&self, lines: &[&str], start: usize) -> usize {
-        let mut brace_count = 0;
-        let mut found_first_brace = false;
-
-        for (i, line) in lines.iter().enumerate().skip(start) {
-            for ch in line.chars() {
-                match ch {
-                    '{' => {
-                        brace_count += 1;
-                        found_first_brace = true;
-                    }
-                    '}' => {
-                        brace_count -= 1;
-                        if found_first_brace && brace_count == 0 {
-                            return i;
-                        }
-                    }
-                    _ => {}
-                }
-            }
-        }
-
-        lines.len() - 1
+        find_brace_balanced_end(lines, start, false)
     }
 }
 

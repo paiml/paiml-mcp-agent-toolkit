@@ -177,9 +177,9 @@ local config = {
     println!("=== Lua Analysis Complete ===");
     println!();
     println!("Try analyzing your own Lua projects:");
-    println!("  pmat context --language lua /path/to/lua/project");
+    println!("  pmat context --project-path /path/to/lua/project");
+    println!("  pmat analyze complexity /path/to/lua/project");
     println!("  pmat query \"function_name\" --include-source");
-    println!("  pmat tdg /path/to/lua/project");
 
     Ok(())
 }
