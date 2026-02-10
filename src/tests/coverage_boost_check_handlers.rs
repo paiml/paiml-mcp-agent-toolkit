@@ -595,6 +595,12 @@ fn test_check_compute_brick_with_trueno() {
 #[test]
 fn test_check_cargo_lock_present() {
     let temp_dir = TempDir::new().unwrap();
+    // check_cargo_lock requires Cargo.toml to exist (otherwise Skip)
+    std::fs::write(
+        temp_dir.path().join("Cargo.toml"),
+        "[package]\nname = \"test\"\nversion = \"0.1.0\"",
+    )
+    .unwrap();
     std::fs::write(temp_dir.path().join("Cargo.lock"), "").unwrap();
 
     let check = crate::cli::handlers::comply_handlers::check_cargo_lock(temp_dir.path());
@@ -605,6 +611,12 @@ fn test_check_cargo_lock_present() {
 #[test]
 fn test_check_cargo_lock_missing() {
     let temp_dir = TempDir::new().unwrap();
+    // check_cargo_lock requires Cargo.toml to exist (otherwise Skip)
+    std::fs::write(
+        temp_dir.path().join("Cargo.toml"),
+        "[package]\nname = \"test\"\nversion = \"0.1.0\"",
+    )
+    .unwrap();
 
     let check = crate::cli::handlers::comply_handlers::check_cargo_lock(temp_dir.path());
     assert_eq!(check.status, CheckStatus::Fail);

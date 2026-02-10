@@ -142,6 +142,9 @@ fn determine_level(
 /// Returns true if a lockfile exists OR if the project has no package manager
 /// (zero-dependency projects like pure Lua have nothing to lock).
 fn check_lockfile(project_path: &Path) -> bool {
+    if !project_path.exists() {
+        return false;
+    }
     // Check for lockfiles across ecosystems
     let has_lockfile = project_path.join("Cargo.lock").exists()
         || project_path.join("package-lock.json").exists()
@@ -167,7 +170,11 @@ fn check_lockfile(project_path: &Path) -> bool {
         || project_path.join("build.gradle.kts").exists();
 
     // No manifest = no external deps = nothing to lock = effectively pinned
-    !has_manifest
+    // But only if the directory has actual content (empty dirs aren't projects)
+    let has_content = std::fs::read_dir(project_path)
+        .map(|mut entries| entries.next().is_some())
+        .unwrap_or(false);
+    !has_manifest && has_content
 }
 
 /// Check for Dockerfile or container configuration

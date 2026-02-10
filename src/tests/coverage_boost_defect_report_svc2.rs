@@ -181,6 +181,7 @@ fn test_format_json_empty_report() {
 
 // ==================== format_csv ====================
 
+#[cfg(feature = "reporting")]
 #[test]
 fn test_format_csv_valid() {
     let svc = DefectReportService::new();
@@ -193,6 +194,7 @@ fn test_format_csv_valid() {
     assert!(csv_str.contains("src/main.rs"));
 }
 
+#[cfg(feature = "reporting")]
 #[test]
 fn test_format_csv_empty() {
     let svc = DefectReportService::new();
@@ -200,6 +202,14 @@ fn test_format_csv_empty() {
     let csv_str = svc.format_csv(&report).unwrap();
     // Should still have header
     assert!(csv_str.contains("id,severity"));
+}
+
+#[cfg(not(feature = "reporting"))]
+#[test]
+fn test_format_csv_requires_feature() {
+    let svc = DefectReportService::new();
+    let report = make_report(sample_defects());
+    assert!(svc.format_csv(&report).is_err());
 }
 
 // ==================== format_markdown ====================
@@ -404,15 +414,24 @@ fn test_all_formats_contain_defect_data() {
     let report = make_report(sample_defects());
 
     let json = svc.format_json(&report).unwrap();
-    let csv = svc.format_csv(&report).unwrap();
     let md = svc.format_markdown(&report).unwrap();
     let txt = svc.format_text(&report).unwrap();
 
     // All formats should reference the defects
     assert!(json.contains("D001"));
-    assert!(csv.contains("D001"));
     assert!(md.contains("src/main.rs"));
     assert!(txt.contains("src/main.rs"));
+
+    // CSV requires the 'reporting' feature
+    #[cfg(feature = "reporting")]
+    {
+        let csv = svc.format_csv(&report).unwrap();
+        assert!(csv.contains("D001"));
+    }
+    #[cfg(not(feature = "reporting"))]
+    {
+        assert!(svc.format_csv(&report).is_err());
+    }
 }
 
 // ==================== Edge cases ====================
@@ -426,9 +445,14 @@ fn test_defect_without_fix_suggestion() {
 
     // All format methods should handle None fix_suggestion
     let _ = svc.format_json(&report).unwrap();
-    let _ = svc.format_csv(&report).unwrap();
     let _ = svc.format_markdown(&report).unwrap();
     let _ = svc.format_text(&report).unwrap();
+
+    // CSV requires the 'reporting' feature
+    #[cfg(feature = "reporting")]
+    {
+        let _ = svc.format_csv(&report).unwrap();
+    }
 }
 
 #[test]
