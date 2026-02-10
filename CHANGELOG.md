@@ -887,3 +887,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Unused mut**: Removed unused `mut` keyword from java_base variable
   - Files: `server/tests/polyglot_integration.rs`, `server/src/cli/language_analyzer.rs`, `server/src/services/complexity_file_extraction_tests.rs`, `server/src/services/mutation/state.rs`
   - Commit: f5694f5d
+- Wire Lua into all pmat pipelines (language detection, index, function names, complexity)
