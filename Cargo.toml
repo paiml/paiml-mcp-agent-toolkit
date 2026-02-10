@@ -657,6 +657,11 @@ required-features = ["claude-integration"]
 name = "agent_context_query_demo"
 path = "examples/agent_context_query_demo.rs"
 
+[[example]]
+name = "lua_analysis"
+path = "examples/lua_analysis.rs"
+required-features = ["lua-ast"]
+
 # Profile configuration moved to workspace root
 
 [package.metadata.docs.rs]
