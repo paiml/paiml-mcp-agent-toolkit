@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.0.4] - 2026-02-10
+
+### Added
+- **Full Lua Language Support (PMAT-486)**: Complete Lua analysis across all pipelines
+  - tree-sitter-lua 0.2.0 AST parsing: functions, require() imports, table constructors, control flow
+  - Language detection, indexing, function naming conventions (snake_case)
+  - Context generation, simple_deep_context, complexity analysis
+  - Lua analysis example: `cargo run --example lua_analysis`
+  - pmat-book Chapter 13 updated with Lua documentation
+- **CB-081 Sovereign Threshold Compliance**: Full `pmat comply` compliance achieved
+
+### Fixed
+- **23 Test Failures Resolved**: Zero failures across 20,485 tests
+  - Reproducibility handler: `check_lockfile()` empty directory false positive (Bronze vs None)
+  - Cargo lock tests: Missing Cargo.toml in temp dirs caused Skip instead of Pass/Fail
+  - CSV defect report tests: Added `#[cfg(feature = "reporting")]` feature gates (16 tests)
+- **Gaming Detector False Positives**: Fixed coverage gaming heuristic triggering on legitimate test files
+- **Brace-Counting False Positives**: Fixed language_analyzer for Lua/non-Rust `include!()` files
+- **Gitignore Cleanup**: Untracked `.pmat/` cache files, baseline.json, work dirs
+
+### Improved
+- **Coverage**: 99.66% line coverage (threshold: 95%)
+- **Compliance**: Full `pmat comply check` COMPLIANT status
+
 ## [2.213.15] - 2026-01-22
 
 ### Fixed
