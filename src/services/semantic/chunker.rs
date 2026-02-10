@@ -17,6 +17,7 @@ pub enum Language {
     C,
     Cpp,
     Go,
+    Lua,
 }
 
 /// Type of code chunk
@@ -80,6 +81,7 @@ pub fn chunk_code(source: &str, language: Language) -> Result<Vec<CodeChunk>, St
         Language::C => chunk_c_file(source),
         Language::Cpp => chunk_cpp_file(source),
         Language::Go => chunk_go_file(source),
+        Language::Lua => chunk_lua_file(source),
     }
 }
 
@@ -152,132 +154,36 @@ fn find_doc_comment_start(node: Node, source: &str) -> usize {
     start_byte
 }
 
+/// Map Rust AST node kind to chunk type and name field
+fn rust_node_to_chunk(kind: &str) -> Option<(ChunkType, &'static str, bool)> {
+    // Returns (chunk_type, name_field, include_doc_comments)
+    match kind {
+        "function_item" => Some((ChunkType::Function, "name", true)),
+        "impl_item" => Some((ChunkType::Class, "type", false)),
+        "mod_item" => Some((ChunkType::Module, "name", false)),
+        "struct_item" => Some((ChunkType::Struct, "name", true)),
+        "enum_item" => Some((ChunkType::Enum, "name", true)),
+        "trait_item" => Some((ChunkType::Trait, "name", true)),
+        "type_item" => Some((ChunkType::TypeAlias, "name", true)),
+        _ => None,
+    }
+}
+
 /// Extract items (functions, impl blocks, modules) from Rust AST
 fn extract_rust_items(node: Node, source: &str, chunks: &mut Vec<CodeChunk>) {
-    // Check if this node is a function
-    if node.kind() == "function_item" {
-        if let Some(name_node) = node.child_by_field_name("name") {
+    if let Some((chunk_type, name_field, include_docs)) = rust_node_to_chunk(node.kind()) {
+        if let Some(name_node) = node.child_by_field_name(name_field) {
             let name = source[name_node.byte_range()].to_string();
-
-            // Include preceding doc comments
-            let start_byte = find_doc_comment_start(node, source);
+            let start_byte = if include_docs {
+                find_doc_comment_start(node, source)
+            } else {
+                node.start_byte()
+            };
             let content = source[start_byte..node.end_byte()].to_string();
 
             chunks.push(CodeChunk {
                 file_path: String::new(),
-                chunk_type: ChunkType::Function,
-                chunk_name: name,
-                language: "rust".to_string(),
-                start_line: node.start_position().row + 1,
-                end_line: node.end_position().row + 1,
-                content: content.clone(),
-                content_checksum: compute_checksum(&content),
-            });
-        }
-    }
-    // Check for impl blocks (treat as class-like)
-    else if node.kind() == "impl_item" {
-        if let Some(type_node) = node.child_by_field_name("type") {
-            let name = source[type_node.byte_range()].to_string();
-            let content = source[node.byte_range()].to_string();
-
-            chunks.push(CodeChunk {
-                file_path: String::new(),
-                chunk_type: ChunkType::Class,
-                chunk_name: name,
-                language: "rust".to_string(),
-                start_line: node.start_position().row + 1,
-                end_line: node.end_position().row + 1,
-                content: content.clone(),
-                content_checksum: compute_checksum(&content),
-            });
-        }
-    }
-    // Check for modules
-    else if node.kind() == "mod_item" {
-        if let Some(name_node) = node.child_by_field_name("name") {
-            let name = source[name_node.byte_range()].to_string();
-            let content = source[node.byte_range()].to_string();
-
-            chunks.push(CodeChunk {
-                file_path: String::new(),
-                chunk_type: ChunkType::Module,
-                chunk_name: name,
-                language: "rust".to_string(),
-                start_line: node.start_position().row + 1,
-                end_line: node.end_position().row + 1,
-                content: content.clone(),
-                content_checksum: compute_checksum(&content),
-            });
-        }
-    }
-    // Check for struct definitions (issue #150)
-    else if node.kind() == "struct_item" {
-        if let Some(name_node) = node.child_by_field_name("name") {
-            let name = source[name_node.byte_range()].to_string();
-            let start_byte = find_doc_comment_start(node, source);
-            let content = source[start_byte..node.end_byte()].to_string();
-
-            chunks.push(CodeChunk {
-                file_path: String::new(),
-                chunk_type: ChunkType::Struct,
-                chunk_name: name,
-                language: "rust".to_string(),
-                start_line: node.start_position().row + 1,
-                end_line: node.end_position().row + 1,
-                content: content.clone(),
-                content_checksum: compute_checksum(&content),
-            });
-        }
-    }
-    // Check for enum definitions (issue #150)
-    else if node.kind() == "enum_item" {
-        if let Some(name_node) = node.child_by_field_name("name") {
-            let name = source[name_node.byte_range()].to_string();
-            let start_byte = find_doc_comment_start(node, source);
-            let content = source[start_byte..node.end_byte()].to_string();
-
-            chunks.push(CodeChunk {
-                file_path: String::new(),
-                chunk_type: ChunkType::Enum,
-                chunk_name: name,
-                language: "rust".to_string(),
-                start_line: node.start_position().row + 1,
-                end_line: node.end_position().row + 1,
-                content: content.clone(),
-                content_checksum: compute_checksum(&content),
-            });
-        }
-    }
-    // Check for trait definitions (issue #150)
-    else if node.kind() == "trait_item" {
-        if let Some(name_node) = node.child_by_field_name("name") {
-            let name = source[name_node.byte_range()].to_string();
-            let start_byte = find_doc_comment_start(node, source);
-            let content = source[start_byte..node.end_byte()].to_string();
-
-            chunks.push(CodeChunk {
-                file_path: String::new(),
-                chunk_type: ChunkType::Trait,
-                chunk_name: name,
-                language: "rust".to_string(),
-                start_line: node.start_position().row + 1,
-                end_line: node.end_position().row + 1,
-                content: content.clone(),
-                content_checksum: compute_checksum(&content),
-            });
-        }
-    }
-    // Check for type aliases (issue #150)
-    else if node.kind() == "type_item" {
-        if let Some(name_node) = node.child_by_field_name("name") {
-            let name = source[name_node.byte_range()].to_string();
-            let start_byte = find_doc_comment_start(node, source);
-            let content = source[start_byte..node.end_byte()].to_string();
-
-            chunks.push(CodeChunk {
-                file_path: String::new(),
-                chunk_type: ChunkType::TypeAlias,
+                chunk_type,
                 chunk_name: name,
                 language: "rust".to_string(),
                 start_line: node.start_position().row + 1,
@@ -375,32 +281,30 @@ fn extract_ts_function(node: Node, source: &str, chunks: &mut Vec<CodeChunk>) {
     }
 }
 
+/// Check if a variable_declarator contains an arrow function and extract it
+fn try_extract_arrow_function(decl: Node, source: &str, chunks: &mut Vec<CodeChunk>) {
+    let name_node = match decl.child_by_field_name("name") {
+        Some(n) => n,
+        None => return,
+    };
+    let value_node = match decl.child_by_field_name("value") {
+        Some(n) => n,
+        None => return,
+    };
+    if value_node.kind() != "arrow_function" {
+        return;
+    }
+    let name = source[name_node.byte_range()].to_string();
+    let content = source[decl.byte_range()].to_string();
+    push_chunk(chunks, ChunkType::Function, name, "typescript", decl, content);
+}
+
 /// Extract TypeScript arrow function from variable declaration
 fn extract_ts_arrow_function(node: Node, source: &str, chunks: &mut Vec<CodeChunk>) {
-    // Look for arrow function patterns: const foo = () => {}
-    for i in 0..node.child_count() {
-        if let Some(child) = node.child(i) {
-            if child.kind() == "variable_declarator" {
-                if let Some(name_node) = child.child_by_field_name("name") {
-                    if let Some(value_node) = child.child_by_field_name("value") {
-                        if value_node.kind() == "arrow_function" {
-                            let name = source[name_node.byte_range()].to_string();
-                            let content = source[child.byte_range()].to_string();
-
-                            chunks.push(CodeChunk {
-                                file_path: String::new(),
-                                chunk_type: ChunkType::Function,
-                                chunk_name: name,
-                                language: "typescript".to_string(),
-                                start_line: child.start_position().row + 1,
-                                end_line: child.end_position().row + 1,
-                                content: content.clone(),
-                                content_checksum: compute_checksum(&content),
-                            });
-                        }
-                    }
-                }
-            }
+    let mut cursor = node.walk();
+    for child in node.children(&mut cursor) {
+        if child.kind() == "variable_declarator" {
+            try_extract_arrow_function(child, source, chunks);
         }
     }
 }
@@ -604,80 +508,71 @@ fn parse_cpp(_source: &str) -> Result<Tree, String> {
     Err("cpp-ast feature is disabled".to_string())
 }
 
+/// Push a code chunk with standard fields
+fn push_chunk(
+    chunks: &mut Vec<CodeChunk>,
+    chunk_type: ChunkType,
+    name: String,
+    language: &str,
+    node: Node,
+    content: String,
+) {
+    chunks.push(CodeChunk {
+        file_path: String::new(),
+        chunk_type,
+        chunk_name: name,
+        language: language.to_string(),
+        start_line: node.start_position().row + 1,
+        end_line: node.end_position().row + 1,
+        content: content.clone(),
+        content_checksum: compute_checksum(&content),
+    });
+}
+
+/// Extract C++ function name from a declarator node
+fn extract_cpp_function_name<'a>(node: Node<'a>, source: &str) -> Option<String> {
+    let declarator = node.child_by_field_name("declarator")?;
+    let name_node = find_function_declarator_name(declarator, source)?;
+    Some(source[name_node.byte_range()].to_string())
+}
+
+/// Extract function definitions from a C++ template declaration
+fn extract_cpp_template_functions(node: Node, source: &str, chunks: &mut Vec<CodeChunk>) {
+    let mut cursor = node.walk();
+    for child in node.children(&mut cursor) {
+        if child.kind() != "function_definition" {
+            continue;
+        }
+        if let Some(name) = extract_cpp_function_name(child, source) {
+            let start_byte = find_doc_comment_start(node, source);
+            let content = source[start_byte..node.end_byte()].to_string();
+            push_chunk(chunks, ChunkType::Function, name, "cpp", node, content);
+        }
+    }
+}
+
 /// Extract items from C++ AST
 fn extract_cpp_items(node: Node, source: &str, chunks: &mut Vec<CodeChunk>) {
-    // Check for class declaration
-    if node.kind() == "class_specifier" {
-        if let Some(name_node) = node.child_by_field_name("name") {
-            let name = source[name_node.byte_range()].to_string();
-            let content = source[node.byte_range()].to_string();
-
-            chunks.push(CodeChunk {
-                file_path: String::new(),
-                chunk_type: ChunkType::Class,
-                chunk_name: name,
-                language: "cpp".to_string(),
-                start_line: node.start_position().row + 1,
-                end_line: node.end_position().row + 1,
-                content: content.clone(),
-                content_checksum: compute_checksum(&content),
-            });
-        }
-    }
-    // Check for function definition
-    else if node.kind() == "function_definition" {
-        if let Some(declarator) = node.child_by_field_name("declarator") {
-            if let Some(name_node) = find_function_declarator_name(declarator, source) {
+    match node.kind() {
+        "class_specifier" => {
+            if let Some(name_node) = node.child_by_field_name("name") {
                 let name = source[name_node.byte_range()].to_string();
-
-                // Include preceding doc comments
+                let content = source[node.byte_range()].to_string();
+                push_chunk(chunks, ChunkType::Class, name, "cpp", node, content);
+            }
+        }
+        "function_definition" => {
+            if let Some(name) = extract_cpp_function_name(node, source) {
                 let start_byte = find_doc_comment_start(node, source);
                 let content = source[start_byte..node.end_byte()].to_string();
-
-                chunks.push(CodeChunk {
-                    file_path: String::new(),
-                    chunk_type: ChunkType::Function,
-                    chunk_name: name,
-                    language: "cpp".to_string(),
-                    start_line: node.start_position().row + 1,
-                    end_line: node.end_position().row + 1,
-                    content: content.clone(),
-                    content_checksum: compute_checksum(&content),
-                });
+                push_chunk(chunks, ChunkType::Function, name, "cpp", node, content);
             }
         }
-    }
-    // Check for template declaration
-    else if node.kind() == "template_declaration" {
-        // Extract the template body
-        for i in 0..node.child_count() {
-            if let Some(child) = node.child(i) {
-                if child.kind() == "function_definition" {
-                    if let Some(declarator) = child.child_by_field_name("declarator") {
-                        if let Some(name_node) = find_function_declarator_name(declarator, source) {
-                            let name = source[name_node.byte_range()].to_string();
-
-                            // Include preceding doc comments and whole template
-                            let start_byte = find_doc_comment_start(node, source);
-                            let content = source[start_byte..node.end_byte()].to_string();
-
-                            chunks.push(CodeChunk {
-                                file_path: String::new(),
-                                chunk_type: ChunkType::Function,
-                                chunk_name: name,
-                                language: "cpp".to_string(),
-                                start_line: node.start_position().row + 1,
-                                end_line: node.end_position().row + 1,
-                                content: content.clone(),
-                                content_checksum: compute_checksum(&content),
-                            });
-                        }
-                    }
-                }
-            }
+        "template_declaration" => {
+            extract_cpp_template_functions(node, source, chunks);
+            return; // Don't recurse - template extracted as whole
         }
-        // Don't recurse into template children - template is extracted as a whole
-        return;
+        _ => {}
     }
 
     // Recursively process children
@@ -715,14 +610,88 @@ fn parse_go(_source: &str) -> Result<Tree, String> {
     Err("go-ast feature is disabled".to_string())
 }
 
+/// Extract a Go type name from the first type_spec child of a type_declaration
+fn extract_go_type_name(node: Node, source: &str) -> Option<String> {
+    let mut cursor = node.walk();
+    for child in node.children(&mut cursor) {
+        if child.kind() == "type_spec" {
+            if let Some(name_node) = child.child_by_field_name("name") {
+                return Some(source[name_node.byte_range()].to_string());
+            }
+        }
+    }
+    None
+}
+
 /// Extract items from Go AST
 fn extract_go_items(node: Node, source: &str, chunks: &mut Vec<CodeChunk>) {
-    // Check for function declaration
-    if node.kind() == "function_declaration" {
-        if let Some(name_node) = node.child_by_field_name("name") {
-            let name = source[name_node.byte_range()].to_string();
+    match node.kind() {
+        "function_declaration" => {
+            if let Some(name_node) = node.child_by_field_name("name") {
+                let name = source[name_node.byte_range()].to_string();
+                let start_byte = find_doc_comment_start(node, source);
+                let content = source[start_byte..node.end_byte()].to_string();
+                push_chunk(chunks, ChunkType::Function, name, "go", node, content);
+            }
+        }
+        "method_declaration" => {
+            if let Some(name_node) = node.child_by_field_name("name") {
+                let name = source[name_node.byte_range()].to_string();
+                let content = source[node.byte_range()].to_string();
+                push_chunk(chunks, ChunkType::Function, name, "go", node, content);
+            }
+        }
+        "type_declaration" => {
+            if let Some(name) = extract_go_type_name(node, source) {
+                let start_byte = find_doc_comment_start(node, source);
+                let content = source[start_byte..node.end_byte()].to_string();
+                push_chunk(chunks, ChunkType::Class, name, "go", node, content);
+            }
+            return; // Don't recurse into type declaration children
+        }
+        _ => {}
+    }
 
-            // Include preceding doc comments
+    // Recursively process children
+    let mut cursor = node.walk();
+    for child in node.children(&mut cursor) {
+        extract_go_items(child, source, chunks);
+    }
+}
+
+/// Extract chunks from Lua code
+fn chunk_lua_file(source: &str) -> Result<Vec<CodeChunk>, String> {
+    let tree = parse_lua(source)?;
+    let root = tree.root_node();
+    let mut chunks = Vec::new();
+
+    extract_lua_items(root, source, &mut chunks);
+
+    Ok(chunks)
+}
+
+/// Parse Lua source code
+#[cfg(feature = "lua-ast")]
+fn parse_lua(source: &str) -> Result<Tree, String> {
+    let mut parser = Parser::new();
+    parser
+        .set_language(&tree_sitter_lua::LANGUAGE.into())
+        .map_err(|e| format!("Failed to set Lua language: {e}"))?;
+    parser
+        .parse(source, None)
+        .ok_or_else(|| "Failed to parse Lua source".to_string())
+}
+
+#[cfg(not(feature = "lua-ast"))]
+fn parse_lua(_source: &str) -> Result<Tree, String> {
+    Err("lua-ast feature is disabled".to_string())
+}
+
+/// Extract items from Lua AST
+fn extract_lua_items(node: Node, source: &str, chunks: &mut Vec<CodeChunk>) {
+    // function_declaration: `function foo()` or `function M.foo()` or `function M:foo()`
+    if node.kind() == "function_declaration" {
+        if let Some(name) = extract_lua_function_name(&node, source) {
             let start_byte = find_doc_comment_start(node, source);
             let content = source[start_byte..node.end_byte()].to_string();
 
@@ -730,7 +699,7 @@ fn extract_go_items(node: Node, source: &str, chunks: &mut Vec<CodeChunk>) {
                 file_path: String::new(),
                 chunk_type: ChunkType::Function,
                 chunk_name: name,
-                language: "go".to_string(),
+                language: "lua".to_string(),
                 start_line: node.start_position().row + 1,
                 end_line: node.end_position().row + 1,
                 content: content.clone(),
@@ -738,17 +707,18 @@ fn extract_go_items(node: Node, source: &str, chunks: &mut Vec<CodeChunk>) {
             });
         }
     }
-    // Check for method declaration
-    else if node.kind() == "method_declaration" {
+    // local_function_declaration: `local function foo()`
+    else if node.kind() == "local_function_declaration" {
         if let Some(name_node) = node.child_by_field_name("name") {
             let name = source[name_node.byte_range()].to_string();
-            let content = source[node.byte_range()].to_string();
+            let start_byte = find_doc_comment_start(node, source);
+            let content = source[start_byte..node.end_byte()].to_string();
 
             chunks.push(CodeChunk {
                 file_path: String::new(),
                 chunk_type: ChunkType::Function,
                 chunk_name: name,
-                language: "go".to_string(),
+                language: "lua".to_string(),
                 start_line: node.start_position().row + 1,
                 end_line: node.end_position().row + 1,
                 content: content.clone(),
@@ -756,42 +726,77 @@ fn extract_go_items(node: Node, source: &str, chunks: &mut Vec<CodeChunk>) {
             });
         }
     }
-    // Check for type declaration (struct, interface)
-    else if node.kind() == "type_declaration" {
-        // Go type_declaration has a type_spec child
-        let mut cursor = node.walk();
-        for child in node.children(&mut cursor) {
-            if child.kind() == "type_spec" {
-                // type_spec has name and type fields
-                if let Some(name_node) = child.child_by_field_name("name") {
-                    let name = source[name_node.byte_range()].to_string();
-
-                    // Include preceding doc comments
-                    let start_byte = find_doc_comment_start(node, source);
-                    let content = source[start_byte..node.end_byte()].to_string();
-
-                    chunks.push(CodeChunk {
-                        file_path: String::new(),
-                        chunk_type: ChunkType::Class, // Treat struct/interface as class-like
-                        chunk_name: name,
-                        language: "go".to_string(),
-                        start_line: node.start_position().row + 1,
-                        end_line: node.end_position().row + 1,
-                        content: content.clone(),
-                        content_checksum: compute_checksum(&content),
-                    });
-                    break; // Only extract the first type_spec
-                }
-            }
-        }
-        // Don't recurse into type declaration children
-        return;
+    // variable_declaration with function_definition: `local f = function()`
+    else if node.kind() == "variable_declaration" {
+        extract_lua_variable_function(node, source, chunks);
     }
 
     // Recursively process children
     let mut cursor = node.walk();
     for child in node.children(&mut cursor) {
-        extract_go_items(child, source, chunks);
+        extract_lua_items(child, source, chunks);
+    }
+}
+
+/// Extract function name from Lua function_declaration node
+/// Handles: `function foo()`, `function M.foo()`, `function M:foo()`
+fn extract_lua_function_name(node: &Node, source: &str) -> Option<String> {
+    // Try named field "name" first
+    if let Some(name_node) = node.child_by_field_name("name") {
+        return Some(source[name_node.byte_range()].to_string());
+    }
+    // Fallback: walk children looking for identifier or dot/method index
+    let mut cursor = node.walk();
+    for child in node.children(&mut cursor) {
+        match child.kind() {
+            "identifier" | "dot_index_expression" | "method_index_expression" => {
+                return Some(source[child.byte_range()].to_string());
+            }
+            _ => {}
+        }
+    }
+    None
+}
+
+/// Find the first identifier child in a Lua variable_list or assignment node
+fn find_lua_var_name(node: Node, source: &str) -> Option<String> {
+    let mut cursor = node.walk();
+    for child in node.children(&mut cursor) {
+        if child.kind() == "identifier" {
+            return Some(source[child.byte_range()].to_string());
+        }
+    }
+    None
+}
+
+/// Check if a node or its children contain a function_definition
+fn has_function_definition(node: Node) -> bool {
+    if node.kind() == "function_definition" {
+        return true;
+    }
+    let mut cursor = node.walk();
+    let found = node
+        .children(&mut cursor)
+        .any(|c| c.kind() == "function_definition");
+    found
+}
+
+/// Extract function from variable assignment: `local f = function() ... end`
+fn extract_lua_variable_function(node: Node, source: &str, chunks: &mut Vec<CodeChunk>) {
+    let mut cursor = node.walk();
+    let mut var_name = None;
+    for child in node.children(&mut cursor) {
+        if child.kind() == "assignment_statement" || child.kind() == "variable_list" {
+            var_name = var_name.or_else(|| find_lua_var_name(child, source));
+        }
+        if !has_function_definition(child) {
+            continue;
+        }
+        if let Some(name) = &var_name {
+            let content = source[node.byte_range()].to_string();
+            push_chunk(chunks, ChunkType::Function, name.clone(), "lua", node, content);
+            return; // Only extract one function per variable_declaration
+        }
     }
 }
 

@@ -293,6 +293,7 @@ fn extension_to_language(ext: &str) -> Option<&'static str> {
         "swift" => Some("swift"),
         "cs" => Some("csharp"),
         "sh" | "bash" => Some("bash"),
+        "lua" => Some("lua"),
         _ => None,
     }
 }

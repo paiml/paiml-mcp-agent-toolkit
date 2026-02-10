@@ -279,50 +279,54 @@ pub async fn analyze_ruby_language(
     analyze_ruby_file(file_path).await
 }
 
-/// Toyota Way Single Responsibility: Handle Lua file analysis (tree-sitter)
+/// Toyota Way Single Responsibility: Handle Lua file analysis (regex + tree-sitter)
 #[cfg(feature = "lua-ast")]
 pub async fn analyze_lua_language(
     file_path: &std::path::Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
-    use crate::ast::languages::lua::LuaStrategy;
-    use crate::ast::languages::LanguageStrategy;
     use crate::services::context::AstItem;
 
     let content = tokio::fs::read_to_string(file_path).await?;
-    let strategy = LuaStrategy::new();
+    let mut items = Vec::new();
 
-    match strategy.parse_file(file_path, &content).await {
-        Ok(ast) => {
-            let mut items = Vec::new();
-
-            // Extract functions
-            for func in strategy.extract_functions(&ast) {
-                items.push(AstItem::Function {
-                    name: format!("lua_fn_{}", items.len()),
-                    visibility: "public".to_string(),
-                    is_async: false,
-                    line: func.source_range.start as usize,
-                });
+    // Extract function names using proven regex patterns (same as simple_deep_context)
+    let patterns = [
+        r"(?m)^\s*function\s+(\w+(?:[.:]\w+)*)\s*\(",
+        r"(?m)^\s*local\s+function\s+(\w+)\s*\(",
+    ];
+    for pat in &patterns {
+        if let Ok(re) = regex::Regex::new(pat) {
+            for cap in re.captures_iter(&content) {
+                if let Some(name_match) = cap.get(1) {
+                    let line = content[..name_match.start()].lines().count();
+                    items.push(AstItem::Function {
+                        name: name_match.as_str().to_string(),
+                        visibility: "public".to_string(),
+                        is_async: false,
+                        line,
+                    });
+                }
             }
-
-            // Extract imports (require calls)
-            for (i, _import) in strategy.extract_imports(&ast).iter().enumerate() {
-                items.push(AstItem::Import {
-                    module: format!("require_{i}"),
-                    items: vec![],
-                    alias: None,
-                    line: 0,
-                });
-            }
-
-            tracing::debug!("Lua analysis returned {} items", items.len());
-            Ok(items)
-        }
-        Err(e) => {
-            tracing::debug!("Lua AST parse failed: {e}, returning empty");
-            Ok(Vec::new())
         }
     }
+
+    // Extract imports (require calls)
+    if let Ok(re) = regex::Regex::new(r#"(?m)require\s*\(\s*["']([^"']+)["']\s*\)"#) {
+        for cap in re.captures_iter(&content) {
+            if let Some(module_match) = cap.get(1) {
+                let line = content[..module_match.start()].lines().count();
+                items.push(AstItem::Import {
+                    module: module_match.as_str().to_string(),
+                    items: vec![],
+                    alias: None,
+                    line,
+                });
+            }
+        }
+    }
+
+    tracing::debug!("Lua analysis returned {} items", items.len());
+    Ok(items)
 }
 
 #[cfg(not(feature = "lua-ast"))]
@@ -840,59 +844,89 @@ async fn analyze_single_file_complexity(
             // This avoids the second parse - TICKET-3006
             BASH_UNIFIED_CACHE.with(|cache| cache.borrow().get(file_path).cloned())
         }
-        "lua" => {
-            // Lua: Use tree-sitter AST for complexity analysis (no cache, fast enough)
-            #[cfg(feature = "lua-ast")]
-            {
-                use crate::ast::languages::lua::LuaStrategy;
-                use crate::ast::languages::LanguageStrategy;
-                use crate::services::complexity::{
-                    ComplexityMetrics as CMetrics, FileComplexityMetrics as FCMetrics,
-                    FunctionComplexity as FComp,
-                };
+        "lua" => analyze_lua_complexity_metrics(file_path).await,
+        _ => None,
+    }
+}
 
-                let content = tokio::fs::read_to_string(file_path).await.ok()?;
-                let strategy = LuaStrategy::new();
-                let ast = strategy.parse_file(file_path, &content).await.ok()?;
-                let functions = strategy.extract_functions(&ast);
-                let (cyclomatic, cognitive) = strategy.calculate_complexity(&ast);
-                let func_count = functions.len().max(1) as u32;
+/// Lua complexity metrics: tree-sitter for totals, regex for function names
+#[cfg(feature = "lua-ast")]
+async fn analyze_lua_complexity_metrics(
+    file_path: &std::path::Path,
+) -> Option<crate::services::complexity::FileComplexityMetrics> {
+    use crate::ast::languages::lua::LuaStrategy;
+    use crate::ast::languages::LanguageStrategy;
+    use crate::services::complexity::{
+        ComplexityMetrics as CMetrics, FileComplexityMetrics as FCMetrics,
+    };
 
-                let func_complexities: Vec<FComp> = functions
-                    .iter()
-                    .enumerate()
-                    .map(|(i, f)| FComp {
-                        name: format!("lua_fn_{i}"),
-                        line_start: f.source_range.start,
-                        line_end: f.source_range.end,
+    let content = tokio::fs::read_to_string(file_path).await.ok()?;
+    let strategy = LuaStrategy::new();
+    let ast = strategy.parse_file(file_path, &content).await.ok()?;
+    let (cyclomatic, cognitive) = strategy.calculate_complexity(&ast);
+
+    let mut func_complexities = extract_lua_function_complexities(&content);
+    let func_count = func_complexities.len().max(1) as u32;
+    for fc in &mut func_complexities {
+        fc.metrics.cyclomatic = (cyclomatic / func_count) as u16;
+        fc.metrics.cognitive = (cognitive / func_count) as u16;
+    }
+
+    Some(FCMetrics {
+        path: file_path.to_string_lossy().to_string(),
+        total_complexity: CMetrics {
+            cyclomatic: cyclomatic as u16,
+            cognitive: cognitive as u16,
+            nesting_max: 0,
+            lines: content.lines().count() as u16,
+            halstead: None,
+        },
+        functions: func_complexities,
+        classes: vec![],
+    })
+}
+
+#[cfg(not(feature = "lua-ast"))]
+async fn analyze_lua_complexity_metrics(
+    _file_path: &std::path::Path,
+) -> Option<crate::services::complexity::FileComplexityMetrics> {
+    None
+}
+
+/// Extract Lua function names and line numbers using regex patterns
+fn extract_lua_function_complexities(
+    content: &str,
+) -> Vec<crate::services::complexity::FunctionComplexity> {
+    use crate::services::complexity::{ComplexityMetrics as CMetrics, FunctionComplexity as FComp};
+
+    let patterns = [
+        r"(?m)^\s*function\s+(\w+(?:[.:]\w+)*)\s*\(",
+        r"(?m)^\s*local\s+function\s+(\w+)\s*\(",
+    ];
+    let mut funcs = Vec::new();
+    for pat in &patterns {
+        if let Ok(re) = regex::Regex::new(pat) {
+            for cap in re.captures_iter(content) {
+                if let Some(m) = cap.get(1) {
+                    let line = content[..m.start()].lines().count() as u32;
+                    funcs.push(FComp {
+                        name: m.as_str().to_string(),
+                        line_start: line,
+                        line_end: 0,
                         metrics: CMetrics {
-                            cyclomatic: (cyclomatic / func_count) as u16,
-                            cognitive: (cognitive / func_count) as u16,
+                            cyclomatic: 0,
+                            cognitive: 0,
                             nesting_max: 0,
                             lines: 0,
                             halstead: None,
                         },
-                    })
-                    .collect();
-
-                Some(FCMetrics {
-                    path: file_path.to_string_lossy().to_string(),
-                    total_complexity: CMetrics {
-                        cyclomatic: cyclomatic as u16,
-                        cognitive: cognitive as u16,
-                        nesting_max: 0,
-                        lines: content.lines().count() as u16,
-                        halstead: None,
-                    },
-                    functions: func_complexities,
-                    classes: vec![],
-                })
+                    });
+                }
             }
-            #[cfg(not(feature = "lua-ast"))]
-            None
         }
-        _ => None,
     }
+    funcs.sort_by_key(|f| f.line_start);
+    funcs
 }
 
 pub async fn analyze_churn(path: &std::path::Path, days: u32) -> anyhow::Result<CodeChurnAnalysis> {

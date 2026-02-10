@@ -1148,30 +1148,9 @@ impl SimpleDeepContext {
     /// Extract function names from Lua AST
     #[allow(unused_variables)]
     async fn function_names_for_lua(&self, file_path: &Path) -> Vec<String> {
-        #[cfg(feature = "lua-ast")]
-        {
-            use crate::ast::languages::lua::LuaStrategy;
-            use crate::ast::languages::LanguageStrategy;
-            use tokio::fs;
-
-            match fs::read_to_string(file_path).await {
-                Ok(content) => {
-                    let strategy = LuaStrategy::new();
-                    match strategy.parse_file(file_path, &content).await {
-                        Ok(ast) => strategy
-                            .extract_functions(&ast)
-                            .iter()
-                            .enumerate()
-                            .map(|(i, _f)| format!("lua_fn_{i}"))
-                            .collect(),
-                        Err(_) => vec![],
-                    }
-                }
-                Err(_) => vec![],
-            }
-        }
-        #[cfg(not(feature = "lua-ast"))]
-        vec![]
+        self.extract_function_names_heuristic(file_path, "lua")
+            .await
+            .unwrap_or_default()
     }
 
     /// Extract function names using regex patterns (shared implementation)

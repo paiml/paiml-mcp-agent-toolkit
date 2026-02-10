@@ -1469,6 +1469,7 @@ pub(crate) fn check_edd_compliance(project_path: &Path) -> ComplianceCheck {
 /// - CB-081-C: Feature flag hygiene analysis
 /// - CB-081-D: Sovereign stack bonus (+1-3 points)
 /// - CB-081-E: Trend tracking (delta from last check)
+///
 /// Format the CB-081 dependency health summary message
 fn format_dependency_message(report: &DependencyCountReport) -> String {
     let transitive_display = if let Some(prod) = report.prod_transitive_count {
