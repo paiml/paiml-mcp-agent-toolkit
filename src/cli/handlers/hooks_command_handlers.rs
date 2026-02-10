@@ -560,19 +560,20 @@ fi
 
 echo "📊 Running quality gate checks..."
 
-# 1. Complexity analysis (only staged .rs files, not entire project)
-STAGED_RS=$(git diff --cached --name-only --diff-filter=ACMR -- '*.rs' | head -20)
-if [ -n "$STAGED_RS" ]; then
+# 1. Complexity analysis (only staged source files, not entire project)
+# Supports: Rust, Python, TypeScript, JavaScript, Go, C, C++, Lua, PHP, Swift
+STAGED_SRC=$(git diff --cached --name-only --diff-filter=ACMR -- '*.rs' '*.py' '*.ts' '*.tsx' '*.js' '*.jsx' '*.go' '*.c' '*.cpp' '*.lua' '*.php' '*.swift' 2>/dev/null | head -20)
+if [ -n "$STAGED_SRC" ]; then
     echo -n "  Complexity check... "
     COMPLEXITY_FAILED=0
     COMPLEXITY_DETAILS=""
-    for RS_FILE in $STAGED_RS; do
-        if [ -f "$RS_FILE" ]; then
-            FILE_OUTPUT=$(pmat analyze complexity --path "$RS_FILE" --max-cyclomatic $PMAT_MAX_CYCLOMATIC_COMPLEXITY --max-cognitive $PMAT_MAX_COGNITIVE_COMPLEXITY 2>&1)
+    for SRC_FILE in $STAGED_SRC; do
+        if [ -f "$SRC_FILE" ]; then
+            FILE_OUTPUT=$(pmat analyze complexity --file "$SRC_FILE" --max-cyclomatic $PMAT_MAX_CYCLOMATIC_COMPLEXITY --max-cognitive $PMAT_MAX_COGNITIVE_COMPLEXITY 2>&1)
             if echo "$FILE_OUTPUT" | grep -q 'Errors.*: [1-9]'; then
                 COMPLEXITY_FAILED=1
                 # Extract the offending file and functions
-                COMPLEXITY_DETAILS="${COMPLEXITY_DETAILS}  ${RS_FILE}:"$'\n'
+                COMPLEXITY_DETAILS="${COMPLEXITY_DETAILS}  ${SRC_FILE}:"$'\n'
                 FILE_VIOLATIONS=$(echo "$FILE_OUTPUT" | grep -E '^[0-9]+\. ' | grep -E 'Cyclomatic|Cognitive' | head -3)
                 COMPLEXITY_DETAILS="${COMPLEXITY_DETAILS}${FILE_VIOLATIONS}"$'\n'
             fi
@@ -588,7 +589,7 @@ if [ -n "$STAGED_RS" ]; then
         exit 1
     fi
 else
-    echo "  Complexity check... ⏭️  (no .rs files staged)"
+    echo "  Complexity check... ⏭️  (no source files staged)"
 fi
 
 # 2. SATD (Self-Admitted Quality Issues) check - informational only

@@ -308,32 +308,44 @@ fn highlight_source(source: &str, file_path: &str, output: &mut String, start_li
             output.push_str(&format!("\x1b[2m{:>4}\x1b[0m\u{2502} {}\n", line_num, highlighted));
         }
     } else {
-        // Syntect syntax highlighting mode
-        use syntect::easy::HighlightLines;
-        use syntect::highlighting::ThemeSet;
-        use syntect::parsing::SyntaxSet;
-        use syntect::util::{as_24_bit_terminal_escaped, LinesWithEndings};
+        #[cfg(feature = "syntax-highlighting")]
+        {
+            // Syntect syntax highlighting mode
+            use syntect::easy::HighlightLines;
+            use syntect::highlighting::ThemeSet;
+            use syntect::parsing::SyntaxSet;
+            use syntect::util::{as_24_bit_terminal_escaped, LinesWithEndings};
 
-        let ps = SyntaxSet::load_defaults_newlines();
-        let ts = ThemeSet::load_defaults();
-        let theme = &ts.themes["base16-ocean.dark"];
+            let ps = SyntaxSet::load_defaults_newlines();
+            let ts = ThemeSet::load_defaults();
+            let theme = &ts.themes["base16-ocean.dark"];
 
-        let ext = file_path.rsplit('.').next().unwrap_or("rs");
-        let syntax = ps
-            .find_syntax_by_extension(ext)
-            .unwrap_or_else(|| ps.find_syntax_plain_text());
-        let mut h = HighlightLines::new(syntax, theme);
+            let ext = file_path.rsplit('.').next().unwrap_or("rs");
+            let syntax = ps
+                .find_syntax_by_extension(ext)
+                .unwrap_or_else(|| ps.find_syntax_plain_text());
+            let mut h = HighlightLines::new(syntax, theme);
 
-        for line in LinesWithEndings::from(source) {
-            match h.highlight_line(line, &ps) {
-                Ok(ranges) => output.push_str(&as_24_bit_terminal_escaped(&ranges[..], false)),
-                Err(_) => output.push_str(line),
+            for line in LinesWithEndings::from(source) {
+                match h.highlight_line(line, &ps) {
+                    Ok(ranges) => output.push_str(&as_24_bit_terminal_escaped(&ranges[..], false)),
+                    Err(_) => output.push_str(line),
+                }
+            }
+            if !source.ends_with('\n') {
+                output.push('\n');
+            }
+            output.push_str("\x1b[0m");
+        }
+        #[cfg(not(feature = "syntax-highlighting"))]
+        {
+            // Plain text fallback when syntect is not available
+            let _ = file_path; // Used only by syntax-highlighting feature
+            for (i, line) in source.lines().enumerate() {
+                let line_num = start_line + i;
+                output.push_str(&format!("\x1b[2m{:>4}\x1b[0m\u{2502} {}\n", line_num, line));
             }
         }
-        if !source.ends_with('\n') {
-            output.push('\n');
-        }
-        output.push_str("\x1b[0m");
     }
 }
 

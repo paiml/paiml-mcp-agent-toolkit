@@ -129,7 +129,12 @@ impl EnvironmentSnapshot {
             os: std::env::consts::OS.to_string(),
             arch: std::env::consts::ARCH.to_string(),
             cpu_count: num_cpus::get(),
-            memory_mb: sys_info::mem_info().map(|m| m.total / 1024).unwrap_or(0),
+            memory_mb: {
+                #[cfg(feature = "diagnostics")]
+                { sys_info::mem_info().map(|m| m.total / 1024).unwrap_or(0) }
+                #[cfg(not(feature = "diagnostics"))]
+                { 0 }
+            },
             cwd: std::env::current_dir()
                 .map(|p| p.display().to_string())
                 .unwrap_or_default(),

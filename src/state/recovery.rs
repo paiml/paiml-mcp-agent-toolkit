@@ -429,7 +429,7 @@ mod tests {
     use super::*;
     use tempfile::TempDir;
 
-    #[actix_rt::test]
+    #[tokio::test]
     async fn test_recovery_manager() {
         let temp_dir = TempDir::new().expect("internal error");
         let path = temp_dir.path().to_str().expect("internal error");
@@ -490,7 +490,7 @@ mod tests {
         assert!(new_config.min_events > 500); // Should increase threshold
     }
 
-    #[actix_rt::test]
+    #[tokio::test]
     async fn test_parallel_recovery() {
         let temp_dir = TempDir::new().expect("internal error");
         let path = temp_dir.path().to_str().expect("internal error");
@@ -774,7 +774,7 @@ mod tests {
 
     // ============ ParallelRecovery Tests ============
 
-    #[actix_rt::test]
+    #[tokio::test]
     async fn test_parallel_recovery_merge_empty() {
         let temp_dir = TempDir::new().expect("internal error");
         let path = temp_dir.path().to_str().expect("internal error");
@@ -800,7 +800,7 @@ mod tests {
         }
     }
 
-    #[actix_rt::test]
+    #[tokio::test]
     async fn test_recovery_manager_save_snapshot() {
         let temp_dir = TempDir::new().expect("internal error");
         let path = temp_dir.path().to_str().expect("internal error");
@@ -835,7 +835,7 @@ mod tests {
         assert!(restored.events_to_replay == 0 || snapshot_id != Uuid::nil());
     }
 
-    #[actix_rt::test]
+    #[tokio::test]
     async fn test_recovery_manager_should_snapshot() {
         let temp_dir = TempDir::new().expect("internal error");
         let path = temp_dir.path().to_str().expect("internal error");
@@ -858,7 +858,7 @@ mod tests {
         assert!(!should || should); // Just verify no panic
     }
 
-    #[actix_rt::test]
+    #[tokio::test]
     async fn test_recovery_manager_get_stats() {
         let temp_dir = TempDir::new().expect("internal error");
         let path = temp_dir.path().to_str().expect("internal error");
@@ -877,7 +877,7 @@ mod tests {
         assert_eq!(stats.total_snapshots, 0);
     }
 
-    #[actix_rt::test]
+    #[tokio::test]
     async fn test_recovery_manager_cleanup() {
         let temp_dir = TempDir::new().expect("internal error");
         let path = temp_dir.path().to_str().expect("internal error");
@@ -899,7 +899,7 @@ mod tests {
         assert_eq!(cleaned, 0); // No orphans to clean
     }
 
-    #[actix_rt::test]
+    #[tokio::test]
     async fn test_recovery_manager_compact() {
         let temp_dir = TempDir::new().expect("internal error");
         let path = temp_dir.path().to_str().expect("internal error");

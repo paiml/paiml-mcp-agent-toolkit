@@ -5,9 +5,12 @@
 
 use crate::cli::{ComplexityOutputFormat, DagType, SatdOutputFormat, SatdSeverity};
 use anyhow::{Context, Result};
+#[cfg(feature = "watch")]
 use notify::{Config, Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use std::path::{Path, PathBuf};
+#[cfg(feature = "watch")]
 use std::sync::mpsc::channel;
+#[cfg(feature = "watch")]
 use std::time::Duration;
 
 #[cfg_attr(coverage_nightly, coverage(off))]
@@ -494,17 +497,24 @@ pub async fn handle_analyze_complexity(
     use crate::services::complexity::aggregate_results_with_thresholds;
 
     if watch {
-        return handle_watch_mode(
-            &project_path,
-            toolchain.as_deref(),
-            max_cyclomatic,
-            max_cognitive,
-            include,
-            timeout,
-            top_files,
-            format,
-            output.as_deref(),
-        );
+        #[cfg(feature = "watch")]
+        {
+            return handle_watch_mode(
+                &project_path,
+                toolchain.as_deref(),
+                max_cyclomatic,
+                max_cognitive,
+                include,
+                timeout,
+                top_files,
+                format,
+                output.as_deref(),
+            );
+        }
+        #[cfg(not(feature = "watch"))]
+        {
+            anyhow::bail!("Watch mode requires the 'watch' feature. Rebuild with: cargo build --features watch");
+        }
     }
 
     // Create configuration and analyze files
@@ -696,6 +706,7 @@ fn write_critical_items_section(
     }
 }
 
+#[cfg(feature = "watch")]
 /// Handle watch mode for continuous complexity analysis
 #[allow(clippy::too_many_arguments)]
 fn handle_watch_mode(
@@ -731,6 +742,7 @@ fn handle_watch_mode(
     watch_for_file_changes(rx, &config, &include, &mut watcher)
 }
 
+#[cfg(feature = "watch")]
 /// Print watch mode introduction messages
 fn print_watch_mode_intro(path: &Path) {
     eprintln!("👁️  Starting watch mode for complexity analysis...");
@@ -738,6 +750,7 @@ fn print_watch_mode_intro(path: &Path) {
     eprintln!("🔄 Press Ctrl+C to stop watching\n");
 }
 
+#[cfg(feature = "watch")]
 /// Create file system watcher
 fn create_file_watcher(
     path: &Path,
@@ -759,6 +772,7 @@ fn create_file_watcher(
     Ok((watcher, rx))
 }
 
+#[cfg(feature = "watch")]
 /// Create synchronous analysis configuration
 #[allow(clippy::too_many_arguments)]
 fn create_sync_config<'a>(
@@ -785,12 +799,14 @@ fn create_sync_config<'a>(
     }
 }
 
+#[cfg(feature = "watch")]
 /// Run initial complexity analysis
 fn run_initial_analysis(config: &SyncAnalysisConfig) -> Result<()> {
     eprintln!("📊 Running initial complexity analysis...\n");
     run_complexity_analysis_sync(config.clone())
 }
 
+#[cfg(feature = "watch")]
 /// Watch for file changes and reanalyze when needed
 fn watch_for_file_changes(
     rx: std::sync::mpsc::Receiver<Event>,
@@ -814,6 +830,7 @@ fn watch_for_file_changes(
     Ok(())
 }
 
+#[cfg(feature = "watch")]
 /// Handle a file change event by reanalyzing
 fn handle_file_change_event(event: &Event, config: &SyncAnalysisConfig) -> Result<()> {
     eprintln!("\n🔄 File change detected, reanalyzing...");
@@ -832,6 +849,7 @@ fn handle_file_change_event(event: &Event, config: &SyncAnalysisConfig) -> Resul
     Ok(())
 }
 
+#[cfg(feature = "watch")]
 /// Check if we should reanalyze based on the event type
 fn should_reanalyze(event: &Event, include_patterns: &[String]) -> bool {
     match event.kind {
@@ -843,6 +861,7 @@ fn should_reanalyze(event: &Event, include_patterns: &[String]) -> bool {
     }
 }
 
+#[cfg(feature = "watch")]
 /// Check if a specific path should be analyzed
 fn should_analyze_path(path: &std::path::Path, include_patterns: &[String]) -> bool {
     let Some(path_str) = path.to_str() else {
@@ -856,6 +875,7 @@ fn should_analyze_path(path: &std::path::Path, include_patterns: &[String]) -> b
     should_include_file(path_str, include_patterns)
 }
 
+#[cfg(feature = "watch")]
 /// Check if file is a source code file
 fn is_source_code_file(path_str: &str) -> bool {
     path_str.ends_with(".rs")
@@ -870,6 +890,7 @@ fn is_source_code_file(path_str: &str) -> bool {
         || path_str.ends_with(".hpp")
 }
 
+#[cfg(feature = "watch")]
 /// Check if file should be included based on patterns
 fn should_include_file(path_str: &str, include_patterns: &[String]) -> bool {
     if include_patterns.is_empty() {
@@ -881,6 +902,7 @@ fn should_include_file(path_str: &str, include_patterns: &[String]) -> bool {
         .any(|pattern| path_str.contains(pattern))
 }
 
+#[cfg(feature = "watch")]
 /// Get the paths that changed from an event
 fn get_changed_paths(event: &Event) -> Option<&Vec<PathBuf>> {
     if event.paths.is_empty() {
@@ -890,6 +912,7 @@ fn get_changed_paths(event: &Event) -> Option<&Vec<PathBuf>> {
     }
 }
 
+#[cfg(feature = "watch")]
 /// Format and output complexity results in watch mode
 async fn format_and_output_watch_results(
     summary: crate::services::complexity::ComplexityReport,
@@ -925,6 +948,7 @@ async fn format_and_output_watch_results(
     Ok(())
 }
 
+#[cfg(feature = "watch")]
 /// Configuration for synchronous complexity analysis
 #[derive(Debug, Clone)]
 struct SyncAnalysisConfig<'a> {
@@ -939,6 +963,7 @@ struct SyncAnalysisConfig<'a> {
     output: Option<&'a Path>,
 }
 
+#[cfg(feature = "watch")]
 /// Synchronous wrapper for complexity analysis in watch mode
 fn run_complexity_analysis_sync(config: SyncAnalysisConfig) -> Result<()> {
     // Create a runtime for the async operation

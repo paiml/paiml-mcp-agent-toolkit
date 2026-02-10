@@ -9,6 +9,7 @@ use crate::models::defect_report::{
 use crate::services::defect_analyzer::DefectAnalyzer;
 use anyhow::Result;
 use chrono::Utc;
+#[cfg(feature = "reporting")]
 use csv::Writer;
 use serde_json;
 use std::collections::{BTreeMap, HashMap};
@@ -287,6 +288,7 @@ impl DefectReportService {
     }
 
     /// Format report as CSV
+    #[cfg(feature = "reporting")]
     pub fn format_csv(&self, report: &DefectReport) -> Result<String> {
         let mut wtr = Writer::from_writer(vec![]);
 
@@ -330,6 +332,12 @@ impl DefectReportService {
 
         let data = wtr.into_inner()?;
         Ok(String::from_utf8(data)?)
+    }
+
+    /// Format report as CSV (stub when reporting feature disabled)
+    #[cfg(not(feature = "reporting"))]
+    pub fn format_csv(&self, _report: &DefectReport) -> Result<String> {
+        anyhow::bail!("CSV reporting requires the 'reporting' feature")
     }
 
     /// Format report as Markdown

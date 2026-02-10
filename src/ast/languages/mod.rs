@@ -53,6 +53,7 @@ impl LanguageRegistry {
     /// Create a new registry with all default strategies
     #[must_use]
     pub fn new() -> Self {
+        #[allow(unused_mut)]
         let mut strategies: Vec<Arc<dyn LanguageStrategy>> = vec![
             Arc::new(rust::RustStrategy::new()),
             Arc::new(python::PythonStrategy::new()),

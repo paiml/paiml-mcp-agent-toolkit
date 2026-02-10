@@ -466,7 +466,7 @@ mod tests {
         assert_eq!(manager.get_next_version(), 6);
     }
 
-    #[actix_rt::test]
+    #[tokio::test]
     async fn test_collect_training_data() {
         let config = create_test_config();
         let mut manager = CiCdLearningManager::new(config);

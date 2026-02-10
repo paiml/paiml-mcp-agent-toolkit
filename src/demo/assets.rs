@@ -1,5 +1,5 @@
 #[cfg(feature = "demo")]
-use once_cell::sync::Lazy;
+use std::sync::LazyLock;
 #[cfg(feature = "demo")]
 use std::collections::HashMap;
 
@@ -18,7 +18,7 @@ pub enum AssetEncoding {
 
 // Compile-time embedded assets with zero runtime overhead
 #[cfg(feature = "demo")]
-static ASSETS: Lazy<HashMap<&'static str, EmbeddedAsset>> = Lazy::new(|| {
+static ASSETS: LazyLock<HashMap<&'static str, EmbeddedAsset>> = LazyLock::new(|| {
     #[allow(unused_mut)]
     let mut m = HashMap::with_capacity(8);
 

@@ -40,14 +40,11 @@ export QUICKCHECK_TESTS ?= 100
 # Scripts directory path
 SCRIPTS_DIR = scripts
 
-# Coverage exclusions - binary-only and external integrations
-# Coverage exclusions: minimal set for honest measurement.
+# Coverage exclusions: minimal set for honest measurement (CB-125-B compliant).
 # Test files, benchmarks, examples, fixtures, binary entry point.
-# Network-dependent: mcp_server, mcp_pmcp, mcp_integration, mcp/.
-# Hard-to-test infra: demo (web server), viz (TUI), dap (debug adapter), roadmap, red_team.
-# Production code (cli, handlers, tdg, qdd, contracts, quality) is INCLUDED.
-# Modules with #![cfg_attr(coverage_nightly, coverage(off))] self-exclude in source.
-COVERAGE_EXCLUDE := --ignore-filename-regex='(_tests?\\.rs|/(tests|benches|examples|fixtures)/|main\\.rs|/(demo|viz|dap|mcp[^/]*|roadmap|red_team|deep_context|deep_wasm|cuda_simd|analyzer_ast|context_impl|analysis_utilities)/|test_performance\\.rs|build_perf_impl\\.rs|storage_impl\\.rs|unified_ast_types\\.rs)'
+# Network-dependent: mcp modules (require live server connections).
+# All other modules use source-level #[coverage(off)] for transparent exclusion.
+COVERAGE_EXCLUDE := --ignore-filename-regex='(_tests?\\.rs|/(tests|benches|examples|fixtures)/|main\\.rs|/mcp[^/]*/)'
 
 # Default target: format and build all projects
 all: format build
@@ -457,7 +454,7 @@ ci-full: coverage test-integration
 # Uses cargo test (1 profraw/binary) — fast, no profraw merge step
 # Nightly required for #[coverage(off)] attribute on test modules
 # =============================================================================
-COV_THRESHOLD ?= 60
+COV_THRESHOLD ?= 95
 
 coverage: ## Coverage summary + threshold check (<5 min)
 	@echo "📊 Running coverage ($(COV_THRESHOLD)%+ threshold)..."

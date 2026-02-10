@@ -413,7 +413,7 @@ mod tests {
     use super::*;
     use tempfile::TempDir;
 
-    #[actix_rt::test]
+    #[tokio::test]
     async fn test_save_and_load_snapshot() {
         let temp_dir = TempDir::new().unwrap();
         let path = temp_dir.path().to_str().unwrap();
@@ -429,7 +429,7 @@ mod tests {
         assert_eq!(loaded.last_event_id, state.last_event_id);
     }
 
-    #[actix_rt::test]
+    #[tokio::test]
     async fn test_compression() {
         let temp_dir = TempDir::new().unwrap();
         let path = temp_dir.path().to_str().unwrap();
@@ -456,7 +456,7 @@ mod tests {
         assert_eq!(loaded.data.len(), state.data.len());
     }
 
-    #[actix_rt::test]
+    #[tokio::test]
     async fn test_retention_policy() {
         let temp_dir = TempDir::new().unwrap();
         let path = temp_dir.path().to_str().unwrap();
@@ -487,7 +487,7 @@ mod tests {
         assert_eq!(event_ids, vec![3, 4, 5]);
     }
 
-    #[actix_rt::test]
+    #[tokio::test]
     async fn test_find_latest_snapshot_before() {
         let temp_dir = TempDir::new().unwrap();
         let path = temp_dir.path().to_str().unwrap();
@@ -511,7 +511,7 @@ mod tests {
         assert!(store.find_latest_snapshot_before(5).is_none());
     }
 
-    #[actix_rt::test]
+    #[tokio::test]
     async fn test_partition_snapshots() {
         let temp_dir = TempDir::new().unwrap();
         let path = temp_dir.path().to_str().unwrap();
@@ -712,7 +712,7 @@ mod tests {
 
     // ============ SnapshotStore Additional Tests ============
 
-    #[actix_rt::test]
+    #[tokio::test]
     async fn test_find_latest_snapshot() {
         let temp_dir = TempDir::new().unwrap();
         let path = temp_dir.path().to_str().unwrap();
@@ -733,7 +733,7 @@ mod tests {
         assert_eq!(latest.event_id, 20);
     }
 
-    #[actix_rt::test]
+    #[tokio::test]
     async fn test_delete_snapshot() {
         let temp_dir = TempDir::new().unwrap();
         let path = temp_dir.path().to_str().unwrap();
@@ -755,7 +755,7 @@ mod tests {
         assert!(store.find_latest_snapshot().is_none());
     }
 
-    #[actix_rt::test]
+    #[tokio::test]
     async fn test_load_nonexistent_snapshot() {
         let temp_dir = TempDir::new().unwrap();
         let path = temp_dir.path().to_str().unwrap();
@@ -775,7 +775,7 @@ mod tests {
         }
     }
 
-    #[actix_rt::test]
+    #[tokio::test]
     async fn test_get_statistics_empty() {
         let temp_dir = TempDir::new().unwrap();
         let path = temp_dir.path().to_str().unwrap();
@@ -792,7 +792,7 @@ mod tests {
         assert!(stats.newest_snapshot.is_none());
     }
 
-    #[actix_rt::test]
+    #[tokio::test]
     async fn test_get_statistics_with_snapshots() {
         let temp_dir = TempDir::new().unwrap();
         let path = temp_dir.path().to_str().unwrap();
@@ -812,7 +812,7 @@ mod tests {
         assert!(stats.newest_snapshot.is_some());
     }
 
-    #[actix_rt::test]
+    #[tokio::test]
     async fn test_cleanup_orphaned_files() {
         let temp_dir = TempDir::new().unwrap();
         let path = temp_dir.path().to_str().unwrap();
@@ -839,7 +839,7 @@ mod tests {
         assert!(store.find_latest_snapshot().is_some());
     }
 
-    #[actix_rt::test]
+    #[tokio::test]
     async fn test_no_verify_config() {
         let temp_dir = TempDir::new().unwrap();
         let path = temp_dir.path().to_str().unwrap();
@@ -857,7 +857,7 @@ mod tests {
         let _loaded: ExampleState = store.load_snapshot(&snapshot_id).await.unwrap();
     }
 
-    #[actix_rt::test]
+    #[tokio::test]
     async fn test_find_partition_snapshots_empty() {
         let temp_dir = TempDir::new().unwrap();
         let path = temp_dir.path().to_str().unwrap();
@@ -870,7 +870,7 @@ mod tests {
         assert!(snapshots.is_empty());
     }
 
-    #[actix_rt::test]
+    #[tokio::test]
     async fn test_snapshot_with_state_data() {
         let temp_dir = TempDir::new().unwrap();
         let path = temp_dir.path().to_str().unwrap();

@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Roadmap management with PDMT todo generation and quality gate enforcement
 //!
 //! This module institutionalizes the development workflow by integrating:

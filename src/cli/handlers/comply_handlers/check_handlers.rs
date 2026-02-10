@@ -33,7 +33,7 @@ use super::comply_cb_detect::{
     detect_cb125_coverage_exclusion_gaming, detect_cb126_slow_tests,
     detect_cb127_slow_coverage,
     // Dependency Health (CB-081) - rust-project-score-v1.1 integration
-    detect_cb081_dependency_count,
+    detect_cb081_dependency_count, DependencyCountReport,
     // Agent Context Adoption (CB-130) - PMAT-470
     detect_cb130_agent_context_adoption,
 };
@@ -1112,9 +1112,19 @@ pub(crate) fn check_coverage_quality_patterns(project_path: &Path) -> Compliance
 }
 
 /// Check Cargo.lock presence (reproducible builds)
+/// Skips for non-Rust projects (no Cargo.toml).
 pub(crate) fn check_cargo_lock(project_path: &Path) -> ComplianceCheck {
-    let cargo_lock = project_path.join("Cargo.lock");
+    let cargo_toml = project_path.join("Cargo.toml");
+    if !cargo_toml.exists() {
+        return ComplianceCheck {
+            name: "Cargo.lock Present".to_string(),
+            status: CheckStatus::Skip,
+            message: "Not a Rust project (no Cargo.toml)".to_string(),
+            severity: Severity::Info,
+        };
+    }
 
+    let cargo_lock = project_path.join("Cargo.lock");
     if cargo_lock.exists() {
         ComplianceCheck {
             name: "Cargo.lock Present".to_string(),
@@ -1459,71 +1469,53 @@ pub(crate) fn check_edd_compliance(project_path: &Path) -> ComplianceCheck {
 /// - CB-081-C: Feature flag hygiene analysis
 /// - CB-081-D: Sovereign stack bonus (+1-3 points)
 /// - CB-081-E: Trend tracking (delta from last check)
-pub(crate) fn check_dependency_count(project_path: &Path) -> ComplianceCheck {
-    let report = detect_cb081_dependency_count(project_path);
-
-    let cargo_toml = project_path.join("Cargo.toml");
-    if !cargo_toml.exists() {
-        return ComplianceCheck {
-            name: "CB-081: Dependency Health".to_string(),
-            status: CheckStatus::Skip,
-            message: "No Cargo.toml found".to_string(),
-            severity: Severity::Info,
-        };
-    }
-
-    // Build enhanced message with all metrics
-    // Show production-only transitive count (used for scoring), with total in parentheses
+/// Format the CB-081 dependency health summary message
+fn format_dependency_message(report: &DependencyCountReport) -> String {
     let transitive_display = if let Some(prod) = report.prod_transitive_count {
         format!("{} prod transitive ({} total w/dev)", prod, report.transitive_count)
     } else {
         format!("{} transitive", report.transitive_count)
     };
-    let mut details = vec![format!(
-        "{} direct, {}",
-        report.direct_count, transitive_display
-    )];
+    let mut details = vec![format!("{} direct, {}", report.direct_count, transitive_display)];
 
-    // Add trend info if available
     if let Some(ref trend) = report.trend {
         if trend.direct_delta != 0 || trend.transitive_delta != 0 {
-            details.push(format!(
-                "Δ {:+}/{:+} since last",
-                trend.direct_delta, trend.transitive_delta
-            ));
+            details.push(format!("Δ {:+}/{:+} since last", trend.direct_delta, trend.transitive_delta));
         }
     }
-
-    // Add duplicate crate count
     if !report.duplicate_crates.is_empty() {
         details.push(format!("{} duplicates", report.duplicate_crates.len()));
     }
-
-    // Add feature gating percentage
     details.push(format!("{:.0}% feature-gated", report.feature_gated_pct));
-
-    // Add sovereign bonus if any
     if report.sovereign_bonus > 0 {
-        details.push(format!(
-            "+{} sovereign ({})",
-            report.sovereign_bonus,
-            report.sovereign_crates.join(", ")
-        ));
+        details.push(format!("+{} sovereign ({})", report.sovereign_bonus, report.sovereign_crates.join(", ")));
+    }
+    format!("Score: {}/5 | {}", report.score, details.join(" | "))
+}
+
+/// Append violation details to a message string
+fn append_violation_details(msg: &mut String, report: &DependencyCountReport, limit: usize) {
+    for v in report.violations.iter().take(limit) {
+        let icon = if v.severity == super::comply_cb_detect::Severity::Error { "✗" } else { "⚠" };
+        msg.push_str(&format!("\n    {} {}", icon, v.description));
+    }
+}
+
+pub(crate) fn check_dependency_count(project_path: &Path) -> ComplianceCheck {
+    let cargo_toml = project_path.join("Cargo.toml");
+    if !cargo_toml.exists() {
+        return ComplianceCheck {
+            name: "CB-081: Dependency Health".to_string(),
+            status: CheckStatus::Skip,
+            message: "Not a Rust project (no Cargo.toml)".to_string(),
+            severity: Severity::Info,
+        };
     }
 
-    let message = format!(
-        "Score: {}/5 | {}",
-        report.score,
-        details.join(" | ")
-    );
+    let report = detect_cb081_dependency_count(project_path);
+    let message = format_dependency_message(&report);
 
-    // Determine status based on score and violations
-    let has_critical = report.violations.iter().any(|v| {
-        v.severity == super::comply_cb_detect::Severity::Error
-    });
-    let has_warnings = report.violations.iter().any(|v| {
-        v.severity == super::comply_cb_detect::Severity::Warning
-    });
+    let has_critical = report.violations.iter().any(|v| v.severity == super::comply_cb_detect::Severity::Error);
 
     if report.score >= 4 && !has_critical {
         ComplianceCheck {
@@ -1534,14 +1526,7 @@ pub(crate) fn check_dependency_count(project_path: &Path) -> ComplianceCheck {
         }
     } else if report.score >= 2 && !has_critical {
         let mut msg = message;
-        if has_warnings {
-            // Add first warning violation as detail
-            if let Some(v) = report.violations.iter().find(|v| {
-                v.severity == super::comply_cb_detect::Severity::Warning
-            }) {
-                msg = format!("{}\n    ⚠ {}", msg, v.description);
-            }
-        }
+        append_violation_details(&mut msg, &report, 1);
         ComplianceCheck {
             name: "CB-081: Dependency Health".to_string(),
             status: CheckStatus::Warn,
@@ -1550,13 +1535,7 @@ pub(crate) fn check_dependency_count(project_path: &Path) -> ComplianceCheck {
         }
     } else {
         let mut msg = message;
-        // Add violations as details
-        for v in report.violations.iter().take(3) {
-            msg = format!("{}\n    {} {}", msg,
-                if v.severity == super::comply_cb_detect::Severity::Error { "✗" } else { "⚠" },
-                v.description
-            );
-        }
+        append_violation_details(&mut msg, &report, 3);
         ComplianceCheck {
             name: "CB-081: Dependency Health".to_string(),
             status: CheckStatus::Fail,

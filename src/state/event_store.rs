@@ -642,7 +642,7 @@ mod tests {
         assert!(usage2 > 0);
     }
 
-    #[actix_rt::test]
+    #[tokio::test]
     async fn test_event_append_and_retrieve() {
         let config = EventStoreConfig {
             persistence_enabled: false,
@@ -664,7 +664,7 @@ mod tests {
         assert_eq!(retrieved.event_type, "test_event");
     }
 
-    #[actix_rt::test]
+    #[tokio::test]
     async fn test_batch_append() {
         let config = EventStoreConfig {
             persistence_enabled: false,
@@ -688,7 +688,7 @@ mod tests {
         assert_eq!(p2_events.len(), 1);
     }
 
-    #[actix_rt::test]
+    #[tokio::test]
     async fn test_get_events_since() {
         let config = EventStoreConfig {
             persistence_enabled: false,
@@ -712,7 +712,7 @@ mod tests {
         assert_eq!(events[2].event_type, "event_7");
     }
 
-    #[actix_rt::test]
+    #[tokio::test]
     async fn test_memory_limit_enforcement() {
         let config = EventStoreConfig {
             max_events_in_memory: 5,
@@ -735,7 +735,7 @@ mod tests {
         assert_eq!(stats.next_event_id, 11); // But ID counter continues
     }
 
-    #[actix_rt::test]
+    #[tokio::test]
     async fn test_get_latest_event_id() {
         let config = EventStoreConfig {
             persistence_enabled: false,
@@ -761,7 +761,7 @@ mod tests {
         assert_eq!(latest_id, 5);
     }
 
-    #[actix_rt::test]
+    #[tokio::test]
     async fn test_get_partition_events_with_since() {
         let config = EventStoreConfig {
             persistence_enabled: false,
@@ -783,7 +783,7 @@ mod tests {
         assert_eq!(events.len(), 3); // IDs 3, 4, 5
     }
 
-    #[actix_rt::test]
+    #[tokio::test]
     async fn test_get_partition_events_nonexistent_partition() {
         let config = EventStoreConfig {
             persistence_enabled: false,
@@ -795,7 +795,7 @@ mod tests {
         assert!(events.is_empty());
     }
 
-    #[actix_rt::test]
+    #[tokio::test]
     async fn test_get_event_nonexistent() {
         let config = EventStoreConfig {
             persistence_enabled: false,
@@ -807,7 +807,7 @@ mod tests {
         assert!(event.is_none());
     }
 
-    #[actix_rt::test]
+    #[tokio::test]
     async fn test_get_events_since_no_limit() {
         let config = EventStoreConfig {
             persistence_enabled: false,
@@ -825,7 +825,7 @@ mod tests {
         assert_eq!(events.len(), 3); // IDs 3, 4, 5
     }
 
-    #[actix_rt::test]
+    #[tokio::test]
     async fn test_compact_no_persistence() {
         let config = EventStoreConfig {
             persistence_enabled: false,
@@ -838,7 +838,7 @@ mod tests {
         assert_eq!(result.events_after, 0);
     }
 
-    #[actix_rt::test]
+    #[tokio::test]
     async fn test_batch_append_memory_limit() {
         let config = EventStoreConfig {
             max_events_in_memory: 3,
@@ -858,7 +858,7 @@ mod tests {
         assert_eq!(stats.total_events, 3); // Only 3 events retained
     }
 
-    #[actix_rt::test]
+    #[tokio::test]
     async fn test_get_statistics() {
         let config = EventStoreConfig {
             persistence_enabled: false,
@@ -908,7 +908,7 @@ mod tests {
         assert_eq!(persistence.len(), 0);
     }
 
-    #[actix_rt::test]
+    #[tokio::test]
     async fn test_in_memory_persistence_append_event() {
         let persistence = InMemoryPersistence::new();
 
@@ -923,7 +923,7 @@ mod tests {
         assert_eq!(persistence.len(), 1);
     }
 
-    #[actix_rt::test]
+    #[tokio::test]
     async fn test_in_memory_persistence_append_batch() {
         let persistence = InMemoryPersistence::new();
 
@@ -942,7 +942,7 @@ mod tests {
         assert_eq!(persistence.len(), 5);
     }
 
-    #[actix_rt::test]
+    #[tokio::test]
     async fn test_in_memory_persistence_load_all() {
         let persistence = InMemoryPersistence::new();
 
@@ -964,7 +964,7 @@ mod tests {
         assert_eq!(loaded[2].event_type, "event_2");
     }
 
-    #[actix_rt::test]
+    #[tokio::test]
     async fn test_in_memory_persistence_compact() {
         let persistence = InMemoryPersistence::new();
 
@@ -990,7 +990,7 @@ mod tests {
         assert_eq!(loaded.len(), 5);
     }
 
-    #[actix_rt::test]
+    #[tokio::test]
     async fn test_in_memory_persistence_clear() {
         let persistence = InMemoryPersistence::new();
 
@@ -1006,7 +1006,7 @@ mod tests {
 
     // ===== JsonFilePersistence Tests (Now work with serde_json!) =====
 
-    #[actix_rt::test]
+    #[tokio::test]
     async fn test_json_file_persistence_new() {
         let temp_dir = tempfile::TempDir::new().unwrap();
         let file_path = temp_dir.path().join("test_events.log");
@@ -1014,7 +1014,7 @@ mod tests {
         assert!(persistence.is_ok());
     }
 
-    #[actix_rt::test]
+    #[tokio::test]
     async fn test_json_file_persistence_append_event() {
         let temp_dir = tempfile::TempDir::new().unwrap();
         let file_path = temp_dir.path().join("test_events.log");
@@ -1036,7 +1036,7 @@ mod tests {
         assert!(metadata.len() > 0);
     }
 
-    #[actix_rt::test]
+    #[tokio::test]
     async fn test_json_file_persistence_append_batch() {
         let temp_dir = tempfile::TempDir::new().unwrap();
         let file_path = temp_dir.path().join("test_batch.log");
@@ -1062,7 +1062,7 @@ mod tests {
         assert_eq!(loaded.len(), 5);
     }
 
-    #[actix_rt::test]
+    #[tokio::test]
     async fn test_json_file_persistence_load_all() {
         let temp_dir = tempfile::TempDir::new().unwrap();
         let file_path = temp_dir.path().join("test_load.log");
@@ -1088,7 +1088,7 @@ mod tests {
         assert_eq!(loaded[2].event_type, "event_2");
     }
 
-    #[actix_rt::test]
+    #[tokio::test]
     async fn test_json_file_persistence_load_empty_file() {
         let temp_dir = tempfile::TempDir::new().unwrap();
         let file_path = temp_dir.path().join("empty.log");
@@ -1100,7 +1100,7 @@ mod tests {
         assert!(loaded.is_empty());
     }
 
-    #[actix_rt::test]
+    #[tokio::test]
     async fn test_json_file_persistence_compact() {
         let temp_dir = tempfile::TempDir::new().unwrap();
         let file_path = temp_dir.path().join("compact.log");
@@ -1130,7 +1130,7 @@ mod tests {
         assert_eq!(loaded.len(), 5);
     }
 
-    #[actix_rt::test]
+    #[tokio::test]
     async fn test_json_file_serialize_deserialize_roundtrip() {
         let temp_dir = tempfile::TempDir::new().unwrap();
         let file_path = temp_dir.path().join("roundtrip.log");
@@ -1164,7 +1164,7 @@ mod tests {
 
     // ===== EventStore with InMemoryPersistence Tests =====
 
-    #[actix_rt::test]
+    #[tokio::test]
     async fn test_event_store_with_in_memory_persistence() {
         let persistence = Arc::new(InMemoryPersistence::new());
         let config = EventStoreConfig {
@@ -1188,7 +1188,7 @@ mod tests {
         assert_eq!(persistence.len(), 3);
     }
 
-    #[actix_rt::test]
+    #[tokio::test]
     async fn test_event_store_batch_with_in_memory_persistence() {
         let persistence = Arc::new(InMemoryPersistence::new());
         let config = EventStoreConfig {
@@ -1206,7 +1206,7 @@ mod tests {
         assert_eq!(persistence.len(), 5);
     }
 
-    #[actix_rt::test]
+    #[tokio::test]
     async fn test_event_store_compact_with_in_memory_persistence() {
         let persistence = Arc::new(InMemoryPersistence::new());
         let config = EventStoreConfig {
@@ -1231,7 +1231,7 @@ mod tests {
         assert_eq!(result.events_after, 10);
     }
 
-    #[actix_rt::test]
+    #[tokio::test]
     async fn test_event_store_recovery_with_in_memory_persistence() {
         let persistence = Arc::new(InMemoryPersistence::new());
 
@@ -1308,7 +1308,7 @@ mod tests {
 
     // ===== Additional Comprehensive Tests =====
 
-    #[actix_rt::test]
+    #[tokio::test]
     async fn test_event_store_no_persistence_backend() {
         let config = EventStoreConfig {
             persistence_enabled: false,
@@ -1329,7 +1329,7 @@ mod tests {
         assert_eq!(stats.total_events, 1);
     }
 
-    #[actix_rt::test]
+    #[tokio::test]
     async fn test_event_store_get_events_since() {
         let persistence = Arc::new(InMemoryPersistence::new());
         let config = EventStoreConfig::default();
@@ -1350,7 +1350,7 @@ mod tests {
         assert_eq!(events_limited.len(), 2);
     }
 
-    #[actix_rt::test]
+    #[tokio::test]
     async fn test_event_store_get_partition_events() {
         let persistence = Arc::new(InMemoryPersistence::new());
         let config = EventStoreConfig::default();
@@ -1383,7 +1383,7 @@ mod tests {
         assert_eq!(events_since.len(), 2); // only events with id > 2
     }
 
-    #[actix_rt::test]
+    #[tokio::test]
     async fn test_event_store_get_event() {
         let persistence = Arc::new(InMemoryPersistence::new());
         let config = EventStoreConfig::default();
@@ -1406,7 +1406,7 @@ mod tests {
         assert!(missing.is_none());
     }
 
-    #[actix_rt::test]
+    #[tokio::test]
     async fn test_event_store_get_latest_event_id() {
         let persistence = Arc::new(InMemoryPersistence::new());
         let config = EventStoreConfig::default();
@@ -1424,7 +1424,7 @@ mod tests {
         assert_eq!(store.get_latest_event_id(), 5);
     }
 
-    #[actix_rt::test]
+    #[tokio::test]
     async fn test_event_store_memory_limit_enforcement() {
         let persistence = Arc::new(InMemoryPersistence::new());
         let config = EventStoreConfig {
@@ -1448,7 +1448,7 @@ mod tests {
         assert!(store.get_event(6).is_some());
     }
 
-    #[actix_rt::test]
+    #[tokio::test]
     async fn test_event_store_batch_memory_limit_enforcement() {
         let persistence = Arc::new(InMemoryPersistence::new());
         let config = EventStoreConfig {
@@ -1468,7 +1468,7 @@ mod tests {
         assert_eq!(stats.total_events, 3);
     }
 
-    #[actix_rt::test]
+    #[tokio::test]
     async fn test_event_store_compact_without_persistence() {
         let config = EventStoreConfig {
             persistence_enabled: false,
@@ -1503,7 +1503,7 @@ mod tests {
         assert!(format!("{:?}", not_found_err).contains("EventNotFound"));
     }
 
-    #[actix_rt::test]
+    #[tokio::test]
     async fn test_json_file_persistence_serialize_event() {
         let temp_dir = tempfile::TempDir::new().unwrap();
         let file_path = temp_dir.path().join("serialize.log");
@@ -1524,7 +1524,7 @@ mod tests {
         assert!(serialized.ends_with('\n')); // Newline at end
     }
 
-    #[actix_rt::test]
+    #[tokio::test]
     async fn test_event_store_statistics_multiple_partitions() {
         let persistence = Arc::new(InMemoryPersistence::new());
         let config = EventStoreConfig::default();
@@ -1547,7 +1547,7 @@ mod tests {
         assert!(stats.memory_usage_bytes > 0);
     }
 
-    #[actix_rt::test]
+    #[tokio::test]
     async fn test_json_file_persistence_handles_corrupt_line() {
         let temp_dir = tempfile::TempDir::new().unwrap();
         let file_path = temp_dir.path().join("corrupt.log");
@@ -1567,7 +1567,7 @@ mod tests {
         }
     }
 
-    #[actix_rt::test]
+    #[tokio::test]
     async fn test_json_file_persistence_handles_checksum_mismatch() {
         let temp_dir = tempfile::TempDir::new().unwrap();
         let file_path = temp_dir.path().join("bad_checksum.log");

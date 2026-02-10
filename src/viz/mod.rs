@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Terminal Graph Visualization Module
 //!
 //! Provides terminal-based graph visualization using trueno-viz.

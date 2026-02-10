@@ -36,9 +36,9 @@ organizational-intelligence-plugin = { version = "0.3.1", optional = true }
 tokio = { version = "1.48", features = ["rt-multi-thread", "macros", "net", "io-util", "fs", "sync", "time"] }
 async-trait = "0.1"
 
-# Actor framework
-actix = "0.13"
-actix-rt = "2.10"
+# Actor framework (only used by mcp-integration feature)
+actix = { version = "0.13", optional = true }
+actix-rt = { version = "2.10", optional = true }
 
 # State management
 # crdt = "0.5" # Too old, will implement our own
@@ -46,13 +46,13 @@ actix-rt = "2.10"
 # Consensus (opt-in - raft_consensus module currently disabled)
 async-raft = { version = "0.6", optional = true }
 
-# Message passing
+# Message passing (only used by mcp-integration feature: agents/messaging)
 # bytes = "1.10" # Already defined below
-crossbeam = "0.8"
+crossbeam = { version = "0.8", optional = true }
 
-# Resource management
-sysinfo = "0.37"  # Updated for reduced duplicates
-libc = "0.2"
+# Resource management (only used by mcp-integration feature: resources/)
+sysinfo = { version = "0.37", optional = true }  # Updated for reduced duplicates
+libc = { version = "0.2", optional = true }
 
 # Text similarity - Now using aprender::text::similarity (edit_distance_similarity)
 # levenshtein = "1.0"  # REMOVED: Replaced by aprender sovereign stack
@@ -107,14 +107,14 @@ tracing-subscriber = { version = "0.3", default-features = false, features = ["e
 
 # Utilities
 sha2 = "0.10"
-once_cell = "1.21"
+# once_cell removed: migrated to std::sync::LazyLock/OnceLock (Rust 1.80+)
 lazy_static = "1.5"
 semver = { version = "1.0", features = ["serde"] }
 regex = { version = "1.11", features = ["perf"] }
 chrono = { version = "=0.4.38", features = ["serde"] }  # Pinned for arrow v53.4 compatibility
 globset = "0.4"
-csv = "1.3"
-hex = "0.4"
+csv = { version = "1.3", optional = true }
+# hex removed from [dependencies]: replaced with inline format!("{:02x}") (CB-081)
 uuid = { version = "1.17", features = ["v4", "serde"] }
 parking_lot = "0.12"
 dirs = "6.0"
@@ -130,8 +130,8 @@ git2 = { version = "0.20", default-features = false, features = ["https"], optio
 # indicatif = "0.18"  # REMOVED: Replaced with simple println (saves 6 transitive deps)
 url = "2.5"
 
-# Syntax highlighting for --code output
-syntect = { version = "5.2", default-features = false, features = ["default-fancy"] }
+# Syntax highlighting for --code output (feature-gated: syntax-highlighting)
+syntect = { version = "5.2", default-features = false, features = ["default-fancy"], optional = true }
 
 # Storage
 # libsql = "0.9.24"  # REMOVED: Not used directly (migration to rusqlite complete)
@@ -149,8 +149,8 @@ futures = "0.3"
 # Optional: saves 255 transitive deps when disabled - falls back to `gh` CLI
 octocrab = { version = "0.48", optional = true }
 
-# File watching for configuration hot-reload
-notify = "8.0"
+# File watching for configuration hot-reload (feature-gated: watch)
+notify = { version = "8.0", optional = true }
 
 # CLI support
 clap = { version = "4.5", default-features = false, features = ["std", "derive", "help", "env"] }
@@ -166,7 +166,7 @@ ignore = "0.4"
 glob = "0.3"
 toml = "0.8.23"
 crossbeam-channel = "0.5"
-which = "6.0"  # Sprint 70: Find cargo-mutants in PATH
+which = { version = "6.0", optional = true }  # Sprint 70: Find cargo-mutants in PATH
 # For TypeScript/JavaScript parsing (conditional) - use compatible versions
 swc_ecma_parser = { version = "24.0", optional = true }
 swc_common = { version = "14.0", optional = true }
@@ -217,24 +217,24 @@ xxhash-rust = { version = "0.8", features = ["xxh64"] }
 
 # Demo/reporting mode dependencies (included by default)
 # webbrowser = "1.0"  # REMOVED: Replaced with platform-specific shell commands (saves 77 transitive deps)
-bytes = "1.10"
-http = "1.3"
+bytes = { version = "1.10", optional = true }
+http = { version = "1.3", optional = true }
 # httparse = "1.10"  # REMOVED: cargo-machete verified unused (hyper handles HTTP parsing)
 dashmap = "6.1"
 flate2 = "1.1"
 # smallvec = "1.15.0"  # REMOVED: cargo-machete verified unused
 
-# Unified protocol support
-axum = { version = "0.8", default-features = false, features = ["json", "tokio", "http1", "query"] }
+# Unified protocol support (feature-gated: http-server)
+axum = { version = "0.8", default-features = false, features = ["json", "tokio", "http1", "query"], optional = true }
 # capnp = "0.20" # REMOVED: Unused Cap'n Proto serialization (0 references)
 # capnpc = "0.20" # REMOVED: Unused Cap'n Proto compiler (0 references)
-tower = { version = "0.5", default-features = false, features = ["util", "timeout"] }
+tower = { version = "0.5", default-features = false, features = ["util", "timeout"], optional = true }
 # Sprint 46 Phase 4: Removed "fs" feature (no ServeDir/ServeFile usage, saves 40-70 KB)
-tower-http = { version = "0.6", default-features = false, features = ["trace", "compression-gzip", "timeout", "cors"] }
+tower-http = { version = "0.6", default-features = false, features = ["trace", "compression-gzip", "timeout", "cors"], optional = true }
 # Sprint 46 Phase 4: Removed "client" feature (reqwest provides HTTP client, saves 80-120 KB)
-hyper = { version = "1.6", default-features = false, features = ["http1", "server"] }
-hyper-util = { version = "0.1", default-features = false, features = ["tokio", "server", "client"] }
-http-body-util = "0.1"
+hyper = { version = "1.6", default-features = false, features = ["http1", "server"], optional = true }
+hyper-util = { version = "0.1", default-features = false, features = ["tokio", "server", "client"], optional = true }
+http-body-util = { version = "0.1", optional = true }
 
 # Graph analysis (trueno-graph replaces petgraph)
 # nalgebra-sparse removed - using simple Vec-based sparse matrices (Sovereign AI Stack)
@@ -259,11 +259,11 @@ warp = { version = "0.3", optional = true }
 presentar-core = { version = "0.3", optional = true }
 # crossterm 0.28 matches presentar-terminal's version (ratatui REMOVED)
 crossterm = { version = "0.28", optional = true }
-sys-info = "0.9.1"
+sys-info = { version = "0.9.1", optional = true }
 
 # Storage backends (sled/rocksdb REMOVED - migrated to libsql/trueno-db)
 wasmparser = { version = "0.239.0", optional = true }
-shell-words = "1.1.0"
+shell-words = { version = "1.1.0", optional = true }
 crc32fast = "1.5.0"
 # pest = "2.8.2"  # REMOVED: WorkflowParser never instantiated, DslCompiler uses serde
 # pest_derive = "2.8.2"  # REMOVED: Dead code (pest grammar unused)
@@ -274,7 +274,7 @@ crc32fast = "1.5.0"
 # object = "0.37"  # REMOVED: cargo-machete verified unused
 sourcemap = { version = "9.0", optional = true }  # Only needed for deep-wasm source map support
 # ahash = "0.8"  # REMOVED: cargo-machete verified unused
-prettyplease = "0.2.37"
+prettyplease = { version = "0.2.37", optional = true }
 fs2 = "0.4.3"
 
 [dev-dependencies]
@@ -296,7 +296,7 @@ ureq = "3.0"
 flate2 = "1.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-hex = "0.4"
+# hex removed: generated code now uses inline hex_decode_templates() (CB-081)
 sha2 = "0.10"  # For O(1) build artifact hash caching
 # capnpc = "0.20" # REMOVED: Unused Cap'n Proto compiler
 
@@ -309,8 +309,8 @@ sha2 = "0.10"  # For O(1) build artifact hash caching
 default = ["core-languages", "viz"]
 
 # Convenience bundles
-core-languages = ["rust-ast", "typescript-ast", "javascript-ast"]  # Most common: Rust + JS/TS
-extended-languages = ["python-ast", "go-ast", "c-ast", "cpp-ast", "shell-ast", "php-ast", "swift-ast", "lua-ast"]  # Additional languages
+core-languages = ["rust-ast", "typescript-ast", "javascript-ast", "python-ast", "lua-ast"]  # Most common: Rust + JS/TS + Python + Lua
+extended-languages = ["go-ast", "c-ast", "cpp-ast", "shell-ast", "php-ast", "swift-ast"]  # Additional languages
 advanced-analysis = ["analytics-simd", "mutation-testing", "tdg-explain", "demo"]  # Heavy features
 full = ["all-languages", "polyglot-ast", "advanced-analysis"]  # Equivalent to old defaults
 
@@ -366,13 +366,13 @@ broken-tests = []
 # Disabled by default for fast coverage - enable with --features cli-integration
 cli-integration = []
 # Claude Agent SDK integration (not ready for production - 0% test coverage)
-claude-integration = []
+claude-integration = ["bytes", "libc"]
 # Experimental modules (not production-ready, 0% test coverage)
 # These are feature-gated to exclude from default coverage measurement
-agents-md = []  # AGENTS.md integration for AI agent guidance
-mcp-integration = []  # MCP protocol integration experiments
-unified-protocol = []  # Unified protocol layer experiments
-agent-daemon = []  # Claude Code Agent Mode (daemon, MCP server, quality monitor)
+agents-md = ["shell-words"]  # AGENTS.md integration for AI agent guidance
+mcp-integration = ["actix", "actix-rt", "crossbeam", "sysinfo", "bytes", "libc"]  # MCP protocol integration experiments
+unified-protocol = ["http-server"]  # Unified protocol layer experiments
+agent-daemon = ["notify"]  # Claude Code Agent Mode (daemon, MCP server, quality monitor)
 rust-ast = ["quote", "proc-macro2", "tree-sitter", "tree-sitter-rust"]
 typescript-ast = ["rust-ast", "swc_ecma_parser", "swc_common", "swc_ecma_ast", "swc_ecma_visit", "tree-sitter", "tree-sitter-typescript", "tree-sitter-javascript", "polyglot-typescript"]
 python-ast = ["rust-ast", "tree-sitter", "tree-sitter-python"]
@@ -386,7 +386,23 @@ lua-ast = ["tree-sitter", "tree-sitter-lua"]
 c-ast = ["tree-sitter", "tree-sitter-c", "fixedbitset"]
 cpp-ast = ["c-ast", "tree-sitter-cpp", "cpp_demangle", "gimli", "goblin"]
 # Feature to exclude demo/reporting functionality for minimal builds
-demo = []
+demo = ["http-server", "bytes", "http"]
+
+# HTTP server stack (axum, tower, hyper) - for web dashboards and HTTP APIs
+http-server = ["axum", "tower", "tower-http", "hyper", "hyper-util", "http-body-util"]
+
+# Syntax highlighting for pmat query --code output
+syntax-highlighting = ["syntect"]
+
+# CSV reporting (defect reports)
+reporting = ["csv"]
+
+# File watching (complexity --watch, TDG dashboard, config hot-reload)
+watch = ["notify"]
+
+# System diagnostics (pmat diagnose)
+diagnostics = ["sys-info"]
+
 # DAP (Debug Adapter Protocol) for time-travel debugging
 # Requires rmp-serde for MessagePack serialization (13 transitive deps)
 dap = ["rmp-serde"]
@@ -434,7 +450,7 @@ tdg-explain = ["rust-ast"]
 # Mutation testing (Phase 2 - Optional)
 # Enables multi-language mutation testing with tree-sitter parsers
 # Depends on all language ASTs used by mutation generators
-mutation-testing = ["rust-ast", "python-ast", "typescript-ast", "cpp-ast", "go-ast"]
+mutation-testing = ["rust-ast", "python-ast", "typescript-ast", "cpp-ast", "go-ast", "prettyplease", "which"]
 
 # Raft consensus (Optional - currently disabled)
 # Enables distributed consensus using async-raft

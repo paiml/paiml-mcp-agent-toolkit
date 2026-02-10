@@ -439,19 +439,26 @@ fn generate_template_code(hex: &str, count: usize) -> String {
     format!(
         r#"// Auto-generated compressed templates
 use std::collections::HashMap;
-use once_cell::sync::Lazy;
+use std::sync::LazyLock;
 
 const COMPRESSED_TEMPLATES: &str = "{hex}";
 
-pub static TEMPLATES: Lazy<HashMap<String, String>> = Lazy::new(|| {{
+fn hex_decode_templates(s: &str) -> Vec<u8> {{
+    (0..s.len())
+        .step_by(2)
+        .filter_map(|i| u8::from_str_radix(&s[i..i + 2], 16).ok())
+        .collect()
+}}
+
+pub static TEMPLATES: LazyLock<HashMap<String, String>> = LazyLock::new(|| {{
     use flate2::read::GzDecoder;
     use std::io::Read;
-    
-    let compressed = hex::decode(COMPRESSED_TEMPLATES).expect("Valid hex");
+
+    let compressed = hex_decode_templates(COMPRESSED_TEMPLATES);
     let mut decoder = GzDecoder::new(&compressed[..]);
     let mut decompressed = String::new();
     decoder.read_to_string(&mut decompressed).expect("Decompression failed");
-    
+
     serde_json::from_str(&decompressed).expect("Valid JSON")
 }});
 
@@ -855,7 +862,7 @@ fn generate_tool_registry(out_dir: &str) {
              pub description: &'static str,\n\
              pub keywords: &'static [&'static str],\n\
          }\n\n\
-         pub static TOOL_REGISTRY: once_cell::sync::Lazy<std::collections::HashMap<&'static str, ToolMeta>> = once_cell::sync::Lazy::new(|| {\n\
+         pub static TOOL_REGISTRY: std::sync::LazyLock<std::collections::HashMap<&'static str, ToolMeta>> = std::sync::LazyLock::new(|| {\n\
              let mut m = std::collections::HashMap::new();\n"
     );
 
@@ -1080,7 +1087,7 @@ fn generate_alias_table(out_dir: &str) {
 
     let mut alias_code = String::from(
         "// Auto-generated alias table for MCP tool discovery\n\n\
-         pub static ALIAS_TABLE: once_cell::sync::Lazy<std::collections::HashMap<&'static str, Vec<&'static str>>> = once_cell::sync::Lazy::new(|| {\n\
+         pub static ALIAS_TABLE: std::sync::LazyLock<std::collections::HashMap<&'static str, Vec<&'static str>>> = std::sync::LazyLock::new(|| {\n\
              let mut m = std::collections::HashMap::new();\n"
     );
 
@@ -1190,11 +1197,25 @@ fn write_if_changed(path: &Path, content: &str) -> Result<(), std::io::Error> {
     fs::write(path, content)
 }
 
+fn write_stub(out_dir: &str, filename: &str, content: &str) {
+    let dest = Path::new(out_dir).join(filename);
+    if let Err(e) = write_if_changed(&dest, content) {
+        println!("cargo:warning=Failed to write {filename} stub: {e}");
+    }
+}
+
 fn generate_stub_files(out_dir: &str) {
-    // Generate functional stub for tool_registry.rs with test data
+    generate_stub_tool_registry(out_dir);
+    generate_stub_alias_table(out_dir);
+    generate_stub_trigram_index(out_dir);
+    generate_stub_compressed_templates(out_dir);
+}
+
+fn generate_stub_tool_registry(out_dir: &str) {
     let tool_registry = r#"
 // Functional tool registry for coverage builds
 use std::collections::HashMap;
+use std::sync::LazyLock;
 
 pub struct ToolMeta {
     pub name: &'static str,
@@ -1202,8 +1223,8 @@ pub struct ToolMeta {
     pub keywords: &'static [&'static str],
 }
 
-pub static TOOL_REGISTRY: once_cell::sync::Lazy<HashMap<&'static str, ToolMeta>> =
-    once_cell::sync::Lazy::new(|| {
+pub static TOOL_REGISTRY: LazyLock<HashMap<&'static str, ToolMeta>> =
+    LazyLock::new(|| {
         let mut m = HashMap::new();
         m.insert("analyze_complexity", ToolMeta {
             name: "analyze_complexity",
@@ -1284,16 +1305,14 @@ pub static TOOL_REGISTRY: once_cell::sync::Lazy<HashMap<&'static str, ToolMeta>>
     });
 "#;
 
-    let dest = Path::new(out_dir).join("tool_registry.rs");
-    if let Err(e) = write_if_changed(&dest, tool_registry) {
-        println!("cargo:warning=Failed to write tool registry stub: {e}");
-    }
+    write_stub(out_dir, "tool_registry.rs", tool_registry);
+}
 
-    // Generate functional stub for alias_table.rs with test data
+fn generate_stub_alias_table(out_dir: &str) {
     let alias_table = r#"
 // Functional alias table for coverage builds
-pub static ALIAS_TABLE: once_cell::sync::Lazy<std::collections::HashMap<&'static str, Vec<&'static str>>> =
-    once_cell::sync::Lazy::new(|| {
+pub static ALIAS_TABLE: std::sync::LazyLock<std::collections::HashMap<&'static str, Vec<&'static str>>> =
+    std::sync::LazyLock::new(|| {
         let mut m = std::collections::HashMap::new();
         m.insert("analyze_complexity", vec!["complexity", "analyze", "metrics", "complxity", "complx"]);
         m.insert("analyze_satd", vec!["debt", "technical debt", "todo", "fixme"]);
@@ -1307,13 +1326,14 @@ pub static ALIAS_TABLE: once_cell::sync::Lazy<std::collections::HashMap<&'static
     });
 "#;
 
-    let dest = Path::new(out_dir).join("alias_table.rs");
-    if let Err(e) = write_if_changed(&dest, alias_table) {
-        println!("cargo:warning=Failed to write alias table stub: {e}");
-    }
+    write_stub(out_dir, "alias_table.rs", alias_table);
+}
 
-    // Generate functional stub for trigram_index.rs with test functionality
-    let trigram_index = r#"
+fn generate_stub_trigram_index(out_dir: &str) {
+    write_stub(out_dir, "trigram_index.rs", TRIGRAM_INDEX_STUB);
+}
+
+const TRIGRAM_INDEX_STUB: &str = r#"
 // Functional trigram index for coverage builds
 pub struct TrigramIndex;
 
@@ -1324,98 +1344,58 @@ impl TrigramIndex {
         (s[0] as u32) | ((s[1] as u32) << 8) | ((s[2] as u32) << 16)
     }
 
+    fn collect_trigrams(bytes: &[u8]) -> Vec<u32> {
+        (0..bytes.len().saturating_sub(2))
+            .map(|i| Self::pack_trigram(&bytes[i..i+3]))
+            .collect()
+    }
+
+    fn jaccard_trigram_score(q: &[u32], c: &[u32]) -> f32 {
+        let matches = q.iter().filter(|t| c.contains(t)).count();
+        let union = q.len() + c.len() - matches;
+        if union == 0 { 0.0 } else { matches as f32 / union as f32 }
+    }
+
     pub fn similarity_score(&self, query: &str, candidate: &str) -> f32 {
-        let q_bytes = query.to_lowercase().into_bytes();
-        let c_bytes = candidate.to_lowercase().into_bytes();
-
-        if q_bytes.len() < 3 || c_bytes.len() < 3 {
-            return if query.to_lowercase() == candidate.to_lowercase() { 1.0 } else { 0.0 };
-        }
-
-        // Exact match check
-        if query.to_lowercase() == candidate.to_lowercase() {
-            return 1.0;
-        }
-
-        // Simple substring matching for tests
-        if candidate.to_lowercase().contains(&query.to_lowercase()) {
-            return 0.8;
-        }
-
-        // Collect query trigrams
-        let mut q_trigrams = Vec::with_capacity(q_bytes.len().saturating_sub(2));
-        for i in 0..q_bytes.len().saturating_sub(2) {
-            q_trigrams.push(Self::pack_trigram(&q_bytes[i..i+3]));
-        }
-
-        // Collect candidate trigrams
-        let mut c_trigrams = Vec::with_capacity(c_bytes.len().saturating_sub(2));
-        for i in 0..c_bytes.len().saturating_sub(2) {
-            c_trigrams.push(Self::pack_trigram(&c_bytes[i..i+3]));
-        }
-
-        // Count matches
-        let mut matches = 0;
-        for q_tri in &q_trigrams {
-            if c_trigrams.contains(q_tri) {
-                matches += 1;
-            }
-        }
-
-        // Jaccard similarity coefficient
-        let union_size = q_trigrams.len() + c_trigrams.len() - matches;
-        if union_size == 0 { return 0.0; }
-
-        matches as f32 / union_size as f32
+        let q_lower = query.to_lowercase();
+        let c_lower = candidate.to_lowercase();
+        if q_lower == c_lower { return 1.0; }
+        if c_lower.contains(&q_lower) { return 0.8; }
+        let q_bytes = q_lower.into_bytes();
+        let c_bytes = c_lower.into_bytes();
+        if q_bytes.len() < 3 || c_bytes.len() < 3 { return 0.0; }
+        Self::jaccard_trigram_score(&Self::collect_trigrams(&q_bytes), &Self::collect_trigrams(&c_bytes))
     }
 
     pub fn find_best_match<'a>(&self, query: &str, candidates: &[(&'a str, &str)]) -> Option<(&'a str, f32)> {
-        let mut best_match = ("", 0.0f32);
-
-        for (name, description) in candidates {
-            // Check both name and description
-            let name_score = self.similarity_score(query, name);
-            let desc_score = self.similarity_score(query, description) * 0.7; // Weight description lower
-            let combined = name_score.max(desc_score);
-
-            if combined > best_match.1 {
-                best_match = (name, combined);
-            }
-        }
-
-        if best_match.1 > 0.4 {  // Empirically determined threshold
-            Some(best_match)
-        } else {
-            None
-        }
+        candidates.iter()
+            .map(|(name, desc)| {
+                let score = self.similarity_score(query, name)
+                    .max(self.similarity_score(query, desc) * 0.7);
+                (*name, score)
+            })
+            .filter(|(_, s)| *s > 0.4)
+            .max_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal))
     }
 }
 "#;
 
-    let dest = Path::new(out_dir).join("trigram_index.rs");
-    if let Err(e) = write_if_changed(&dest, trigram_index) {
-        println!("cargo:warning=Failed to write trigram index stub: {e}");
-    }
-
-    // Generate stub for compressed_templates.rs (used by binary_size tests)
+fn generate_stub_compressed_templates(out_dir: &str) {
     let compressed_templates = r#"
 // Stub compressed templates for fast/coverage builds
 // Real compression happens in full build mode via compress_templates()
 
-use once_cell::sync::Lazy;
+use std::sync::LazyLock;
 use std::collections::HashMap;
 
-pub static COMPRESSED_TEMPLATES: Lazy<HashMap<&'static str, Vec<u8>>> = Lazy::new(|| {
+pub static COMPRESSED_TEMPLATES: LazyLock<HashMap<&'static str, Vec<u8>>> = LazyLock::new(|| {
     let mut m = HashMap::new();
-    // Stub template data - uses hex::decode pattern expected by tests
-    m.insert("context.md.tera", hex::decode("7374756220746573742064617461").unwrap_or_default());
-    m.insert("satd.md.tera", hex::decode("7374756220746573742064617461").unwrap_or_default());
+    // Stub template data - "stub test data" as raw bytes
+    m.insert("context.md.tera", b"stub test data".to_vec());
+    m.insert("satd.md.tera", b"stub test data".to_vec());
     m
 });
 "#;
 
-    let dest = Path::new(out_dir).join("compressed_templates.rs");
-    if let Err(e) = write_if_changed(&dest, compressed_templates) {
-        println!("cargo:warning=Failed to write compressed templates stub: {e}");
-    }
+    write_stub(out_dir, "compressed_templates.rs", compressed_templates);
 }

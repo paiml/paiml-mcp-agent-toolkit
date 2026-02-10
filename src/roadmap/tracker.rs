@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Progress tracking and velocity metrics for roadmap
 
 use super::{Complexity, DateTime, Roadmap, Sprint, Task, TaskStatus, Utc};

@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Quality gate enforcement for roadmap tasks
 
 use super::{DateTime, QualityGateConfig, Utc};

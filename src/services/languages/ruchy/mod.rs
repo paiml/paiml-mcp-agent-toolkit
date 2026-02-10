@@ -27,7 +27,7 @@ use crate::services::complexity::{
     ComplexityMetrics, FileComplexityMetrics, FunctionComplexity, HalsteadMetrics,
 };
 use anyhow::Result;
-use once_cell::sync::Lazy;
+use std::sync::LazyLock;
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
 
@@ -139,7 +139,7 @@ pub enum RuchyToken {
 }
 
 // Static maps for O(1) keyword and token lookups
-static KEYWORD_MAP: Lazy<HashMap<&'static str, RuchyToken>> = Lazy::new(|| {
+static KEYWORD_MAP: LazyLock<HashMap<&'static str, RuchyToken>> = LazyLock::new(|| {
     use RuchyToken::{
         Actor, As, Async, Await, Break, Class, Const, Continue, Else, Enum, Export, False, For,
         From, Fun, If, Impl, Import, In, Let, Match, Mod, Pub, Receive, Return, Send, Spawn,
@@ -184,7 +184,7 @@ static KEYWORD_MAP: Lazy<HashMap<&'static str, RuchyToken>> = Lazy::new(|| {
     map
 });
 
-static SINGLE_CHAR_TOKEN_MAP: Lazy<HashMap<char, RuchyToken>> = Lazy::new(|| {
+static SINGLE_CHAR_TOKEN_MAP: LazyLock<HashMap<char, RuchyToken>> = LazyLock::new(|| {
     use RuchyToken::{
         Caret, Comma, Hash, LeftBrace, LeftBracket, LeftParen, Percent, Plus, Question, RightBrace,
         RightBracket, RightParen, Semicolon, Star, Tilde,

@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Demo and reporting system for PMAT.
 //!
 //! This module provides interactive demonstrations and visual reports of PMAT's

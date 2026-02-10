@@ -139,13 +139,35 @@ fn determine_level(
 }
 
 /// Check for dependency lockfiles (Cargo.lock, package-lock.json, etc.)
+/// Returns true if a lockfile exists OR if the project has no package manager
+/// (zero-dependency projects like pure Lua have nothing to lock).
 fn check_lockfile(project_path: &Path) -> bool {
-    project_path.join("Cargo.lock").exists()
+    // Check for lockfiles across ecosystems
+    let has_lockfile = project_path.join("Cargo.lock").exists()
         || project_path.join("package-lock.json").exists()
         || project_path.join("yarn.lock").exists()
         || project_path.join("poetry.lock").exists()
         || project_path.join("Pipfile.lock").exists()
-        || project_path.join("go.sum").exists()
+        || project_path.join("go.sum").exists();
+    if has_lockfile {
+        return true;
+    }
+
+    // If no package manager manifest exists, there are no deps to lock.
+    // Treat as "pinned" since there's nothing to pin.
+    let has_manifest = project_path.join("Cargo.toml").exists()
+        || project_path.join("package.json").exists()
+        || project_path.join("pyproject.toml").exists()
+        || project_path.join("setup.py").exists()
+        || project_path.join("Pipfile").exists()
+        || project_path.join("go.mod").exists()
+        || project_path.join("Gemfile").exists()
+        || project_path.join("pom.xml").exists()
+        || project_path.join("build.gradle").exists()
+        || project_path.join("build.gradle.kts").exists();
+
+    // No manifest = no external deps = nothing to lock = effectively pinned
+    !has_manifest
 }
 
 /// Check for Dockerfile or container configuration

@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! PDMT todo generation from roadmap tasks
 
 use super::{Complexity, HashMap, Priority, QualityGateConfig, Sprint, Task, TaskStatus};

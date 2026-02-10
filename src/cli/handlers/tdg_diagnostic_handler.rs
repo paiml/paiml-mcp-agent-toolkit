@@ -4,6 +4,7 @@ use anyhow::Result;
 use serde_json::json;
 use std::path::PathBuf;
 
+#[cfg(feature = "http-server")]
 /// Open URL in default browser using platform-specific command
 /// Replaces webbrowser crate to reduce transitive dependencies
 fn open_browser(url: &str) -> std::io::Result<()> {
@@ -56,12 +57,17 @@ pub async fn handle_tdg_diagnostics(command: &TdgCommand, base_path: &PathBuf) -
             // These are handled elsewhere in the existing TDG handler
             Ok(())
         }
+        #[cfg(feature = "http-server")]
         TdgCommand::Dashboard {
             port,
             host,
             open,
             update_interval,
         } => handle_dashboard_command(*port, host.clone(), *open, *update_interval).await,
+        #[cfg(not(feature = "http-server"))]
+        TdgCommand::Dashboard { .. } => {
+            anyhow::bail!("Dashboard requires the 'http-server' feature. Rebuild with: cargo build --features http-server")
+        }
         TdgCommand::Config(config_cmd) => {
             super::config_command_handlers::handle_config_command(config_cmd).await
         }
@@ -303,6 +309,7 @@ fn handle_flush(storage: &TieredStore) -> Result<()> {
     Ok(())
 }
 
+#[cfg(feature = "http-server")]
 /// Handle dashboard command - start web dashboard server
 async fn handle_dashboard_command(
     port: u16,

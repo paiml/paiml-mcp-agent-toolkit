@@ -94,7 +94,7 @@ pub fn compute_test_code_lines(lines: &[&str]) -> std::collections::HashSet<usiz
 
         // Detect #[test] and #[tokio::test] functions
         if line.starts_with("#[test]") || line.starts_with("#[tokio::test]")
-            || line.starts_with("#[actix_rt::test]") || line.starts_with("#[async_std::test]")
+            || line.starts_with("#[tokio::test]") || line.starts_with("#[async_std::test]")
         {
             test_lines.insert(i);
             if let Some(j) = find_line_within(lines, i + 1, 4, "fn ") {

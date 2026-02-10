@@ -291,13 +291,21 @@ fn check_dependency_count_violations(
     duplicate_crates: &[DuplicateCrate],
     trend: &Option<DependencyTrend>,
     transitive_count: usize,
+    sovereign_count: usize,
 ) -> Vec<CbPatternViolation> {
     let mut violations = Vec::new();
 
-    // CB-081-A: Count thresholds — check Error tier first, then Warning tier
-    if let Some(v) = build_threshold_violation(cargo_toml, direct, effective_transitive, 50, 250, Severity::Error) {
+    // CB-081-A: Count thresholds — sovereign stack adjustment
+    // Projects using 3+ sovereign crates get higher transitive thresholds because
+    // each sovereign crate (trueno-graph, trueno-rag, aprender, etc.) brings its
+    // own ecosystem (arrow, wgpu, etc.) that cannot be eliminated.
+    let sovereign_allowance = sovereign_count.min(3) * 50;
+    let trans_error_max = 250 + sovereign_allowance;
+    let trans_warn_max = 200 + sovereign_allowance;
+
+    if let Some(v) = build_threshold_violation(cargo_toml, direct, effective_transitive, 50, trans_error_max, Severity::Error) {
         violations.push(v);
-    } else if let Some(v) = build_threshold_violation(cargo_toml, direct, effective_transitive, 40, 200, Severity::Warning) {
+    } else if let Some(v) = build_threshold_violation(cargo_toml, direct, effective_transitive, 40, trans_warn_max, Severity::Warning) {
         violations.push(v);
     }
 
@@ -391,8 +399,8 @@ pub fn detect_cb081_dependency_count(project_path: &Path) -> DependencyCountRepo
     // CB-081-E: Load trend data
     let trend = load_dependency_trend(project_path);
 
-    // Calculate base score using production-only transitive count
-    let mut score = calculate_dependency_score(direct_count, effective_transitive);
+    // Calculate base score using production-only transitive count (sovereign-adjusted)
+    let mut score = calculate_dependency_score(direct_count, effective_transitive, sovereign_crates.len());
 
     // Apply bonuses (capped at 5 total)
     if feature_gated_pct >= 50.0 && score < 5 {
@@ -409,6 +417,7 @@ pub fn detect_cb081_dependency_count(project_path: &Path) -> DependencyCountRepo
         &duplicate_crates,
         &trend,
         transitive_count,
+        sovereign_crates.len(),
     );
 
     // Save current metrics for future trend tracking (use effective count)
@@ -513,14 +522,17 @@ pub(super) fn analyze_cargo_toml(cargo_toml_path: &Path) -> (usize, usize, Vec<S
 }
 
 /// Calculate dependency health score (0-5 points)
-pub(super) fn calculate_dependency_score(direct: usize, transitive: usize) -> u8 {
-    if direct <= 20 && transitive <= 100 {
+/// Sovereign stack projects get adjusted thresholds (each sovereign crate brings
+/// its own ecosystem, e.g. trueno-graph → arrow/wgpu, trueno-rag → vector search).
+pub(super) fn calculate_dependency_score(direct: usize, transitive: usize, sovereign_count: usize) -> u8 {
+    let bonus = sovereign_count.min(3) * 50;
+    if direct <= 20 && transitive <= 100 + bonus {
         5
-    } else if direct <= 30 && transitive <= 150 {
+    } else if direct <= 30 && transitive <= 150 + bonus {
         4
-    } else if direct <= 40 && transitive <= 200 {
+    } else if direct <= 40 && transitive <= 200 + bonus {
         3
-    } else if direct <= 50 && transitive <= 250 {
+    } else if direct <= 50 && transitive <= 250 + bonus {
         2
     } else {
         0

@@ -6,6 +6,7 @@
 pub mod adapter;
 pub mod cli_impl;
 pub mod cli_mapping;
+#[cfg(feature = "http-server")]
 pub mod http_impl;
 // pub mod mcp_impl; // Disabled due to pmcp dependency issues
 pub mod mcp_mapping;

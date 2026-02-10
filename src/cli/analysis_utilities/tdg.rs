@@ -105,6 +105,7 @@
 /// pmat analyze tdg /path/to/project --include-components --verbose \
 ///   --format json --output tdg-detailed.json
 /// ```ignore
+#[cfg(feature = "watch")]
 /// Helper function to perform TDG analysis without watch mode
 #[allow(clippy::too_many_arguments)]
 async fn perform_tdg_analysis(
@@ -160,17 +161,24 @@ pub async fn handle_analyze_tdg(
     use crate::services::tdg_calculator::TDGCalculator;
 
     if watch {
-        return run_tdg_watch_mode(
-            path,
-            threshold,
-            top,
-            format,
-            _include_components,
-            output,
-            _critical_only,
-            _verbose,
-        )
-        .await;
+        #[cfg(feature = "watch")]
+        {
+            return run_tdg_watch_mode(
+                path,
+                threshold,
+                top,
+                format,
+                _include_components,
+                output,
+                _critical_only,
+                _verbose,
+            )
+            .await;
+        }
+        #[cfg(not(feature = "watch"))]
+        {
+            anyhow::bail!("Watch mode requires the 'watch' feature. Rebuild with: cargo build --features watch");
+        }
     }
 
     eprintln!("🔍 Analyzing Technical Debt Gradient...");
@@ -201,6 +209,7 @@ pub async fn handle_analyze_tdg(
     Ok(())
 }
 
+#[cfg(feature = "watch")]
 /// Run TDG analysis in watch mode
 #[allow(clippy::too_many_arguments)]
 async fn run_tdg_watch_mode(

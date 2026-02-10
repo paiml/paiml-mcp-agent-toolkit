@@ -6,6 +6,7 @@
 
 use anyhow::Result;
 use crossbeam_channel;
+#[cfg(feature = "watch")]
 use notify::{Config, Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use parking_lot::RwLock as ParkingLotRwLock;
 use serde::{Deserialize, Serialize};
@@ -19,10 +20,17 @@ use crate::unified_quality::enhanced_parser::EnhancedParser;
 use crate::unified_quality::events::QualityEvent;
 use crate::unified_quality::metrics::Metrics;
 
+/// Opaque watcher type - only holds a real watcher when the watch feature is enabled
+#[cfg(feature = "watch")]
+type WatcherType = RecommendedWatcher;
+#[cfg(not(feature = "watch"))]
+type WatcherType = ();
+
 /// Practical monitoring using proven technologies
+#[allow(dead_code)]
 pub struct QualityMonitor {
     /// FSEvents/inotify for cross-platform file watching
-    watcher: Arc<ParkingLotRwLock<Option<RecommendedWatcher>>>,
+    watcher: Arc<ParkingLotRwLock<Option<WatcherType>>>,
 
     /// Tree-sitter for incremental parsing (5-10ms latency)
     parser: Arc<std::sync::Mutex<EnhancedParser>>,
@@ -105,6 +113,7 @@ impl QualityMonitor {
     }
 
     /// Start monitoring a directory
+    #[cfg(feature = "watch")]
     pub async fn start_monitoring(&mut self, path: PathBuf) -> Result<()> {
         info!("Starting quality monitoring for: {:?}", path);
 
@@ -138,6 +147,14 @@ impl QualityMonitor {
         Ok(())
     }
 
+    /// Start monitoring a directory (stub when watch feature disabled)
+    #[cfg(not(feature = "watch"))]
+    pub async fn start_monitoring(&mut self, path: PathBuf) -> Result<()> {
+        info!("Starting quality monitoring for: {:?} (watch disabled)", path);
+        self.analyze_directory(&path).await?;
+        Ok(())
+    }
+
     /// Analyze incremental changes with O(log n) complexity
     pub fn analyze_incremental(&self, change: FileChange) -> Result<Metrics> {
         // Use real tree-sitter incremental parsing
@@ -168,6 +185,7 @@ impl QualityMonitor {
     }
 
     /// Handle file system events
+    #[cfg(feature = "watch")]
     fn handle_fs_event(
         event: Event,
         events: &crossbeam_channel::Sender<QualityEvent>,
@@ -189,7 +207,7 @@ impl QualityMonitor {
 
                             if let Ok(mut parser_lock) = parser.lock() {
                                 if let Ok(new_metrics) =
-                                    parser_lock.parse_incremental(&path, &content)
+                                    parser_lock.parse_incremental(&path.to_path_buf(), &content)
                                 {
                                     let old_metrics =
                                         metrics.insert(path.clone(), new_metrics.clone());

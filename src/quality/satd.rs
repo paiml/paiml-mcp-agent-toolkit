@@ -1,10 +1,10 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
 use super::gate::SatdResult;
-use once_cell::sync::Lazy;
+use std::sync::LazyLock;
 use regex::Regex;
 
 /// Standard SATD patterns (traditional markers)
-static SATD_PATTERNS: Lazy<Vec<(&str, Regex)>> = Lazy::new(|| {
+static SATD_PATTERNS: LazyLock<Vec<(&str, Regex)>> = LazyLock::new(|| {
     vec![
         (
             "TODO",
@@ -48,7 +48,7 @@ static SATD_PATTERNS: Lazy<Vec<(&str, Regex)>> = Lazy::new(|| {
 
 /// Extended SATD patterns - euphemisms that hide technical debt (issue #149)
 /// These are commonly used by AI coding assistants to bypass SATD detection
-static EXTENDED_PATTERNS: Lazy<Vec<(&str, Regex)>> = Lazy::new(|| {
+static EXTENDED_PATTERNS: LazyLock<Vec<(&str, Regex)>> = LazyLock::new(|| {
     vec![
         // Placeholder patterns - indicate incomplete implementation
         (

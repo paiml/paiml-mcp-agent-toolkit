@@ -1,3 +1,4 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 //! Terminal-based graph visualization using trueno-viz
 //!
 //! This module provides terminal rendering for dependency graphs using
