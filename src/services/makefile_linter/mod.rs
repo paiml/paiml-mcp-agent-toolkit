@@ -4,7 +4,6 @@ pub mod parser;
 pub mod rules;
 
 #[cfg(test)]
-#[cfg(not(coverage))]
 mod property_tests;
 
 use crate::models::error::AnalysisError;

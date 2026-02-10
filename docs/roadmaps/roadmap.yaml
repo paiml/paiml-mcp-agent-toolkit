@@ -1777,15 +1777,35 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'PMAT-PERF: Falsify all 25 pmat query performance goals, KAIZEN until convergence'
-  status: inprogress
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-02-09T11:23:05Z
-  updated: 2026-02-09T11:23:09.244099782+00:00
+  updated: 2026-02-09T13:34:02.071025612+00:00
   spec: null
   acceptance_criteria: []
   phases: []
   subtasks: []
   estimated_effort: null
   labels: []
+  notes: null
+- id: PMAT-486
+  github_issue: null
+  item_type: task
+  title: Wire Lua into all pmat pipelines (language detection, index, function names, complexity)
+  status: inprogress
+  priority: high
+  assigned_to: null
+  created: 2026-02-10T16:02:39Z
+  updated: 2026-02-10T16:02:44.155628231+00:00
+  spec: null
+  acceptance_criteria:
+  - 'Four interconnected gaps prevent pmat from fully supporting Lua projects: (1) enhanced_language_detection.rs missing lua extension mapping, (2) function_index/helpers.rs detect_language() missing lua, (3) simple_deep_context.rs uses lua_fn_N placeholders instead of real names, (4) context_generation.rs falls back to hardcoded complexity when names don''t match. Fix all four so pmat query, pmat context, and pmat analyze work on Lua-dominant projects like resolve-pipeline.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - lua
+  - language-support
+  - bug
   notes: null

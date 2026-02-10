@@ -154,10 +154,9 @@ mod bench {
                                 let cache = Arc::clone(&cache);
                                 let handle = tokio::spawn(async move {
                                     cache
-                                        .get_with_loader(
-                                            &format!("key_{}", i % 10),
-                                            || async { AnalysisResult::default() },
-                                        )
+                                        .get_with_loader(&format!("key_{}", i % 10), || async {
+                                            AnalysisResult::default()
+                                        })
                                         .await;
                                 });
                                 handles.push(handle);

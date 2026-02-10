@@ -1,7 +1,5 @@
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
-use pmat::services::agent_context::{
-    classify_exclusions, CoverageExclusion, QueryResult,
-};
+use pmat::services::agent_context::{classify_exclusions, CoverageExclusion, QueryResult};
 use std::hint::black_box;
 use tempfile::TempDir;
 

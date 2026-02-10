@@ -1453,5 +1453,4 @@ mod tests {
 // Include property-based tests
 #[cfg(test)]
 #[path = "mermaid_property_tests.rs"]
-#[cfg(not(coverage))]
 mod property_tests;

@@ -22,20 +22,20 @@ async fn main() -> Result<()> {
     let config = SatdAnalysisConfig {
         path: PathBuf::from("."),
         format: SatdOutputFormat::Summary,
-        severity: None,        // All severities
-        critical_only: false,  // Not critical only
-        include_tests: false,  // Exclude tests
-        strict: false,         // Not strict mode
-        evolution: false,      // No evolution tracking
-        days: 30,              // 30 days for evolution
-        metrics: true,         // Include metrics
-        output: None,          // Output to stdout
-        top_files: 10,         // Top 10 files
+        severity: None,           // All severities
+        critical_only: false,     // Not critical only
+        include_tests: false,     // Exclude tests
+        strict: false,            // Not strict mode
+        evolution: false,         // No evolution tracking
+        days: 30,                 // 30 days for evolution
+        metrics: true,            // Include metrics
+        output: None,             // Output to stdout
+        top_files: 10,            // Top 10 files
         fail_on_violation: false, // Don't fail on violation
-        timeout: 60,           // Timeout in seconds
-        include: vec![],       // No include patterns
-        exclude: vec![],       // No exclude patterns
-        extended: false,       // Standard detection only
+        timeout: 60,              // Timeout in seconds
+        include: vec![],          // No include patterns
+        exclude: vec![],          // No exclude patterns
+        extended: false,          // Standard detection only
     };
 
     match handle_analyze_satd(config).await {
@@ -90,7 +90,7 @@ async fn main() -> Result<()> {
         days: 30,
         metrics: true,
         output: None,
-        top_files: 0, // Check all files
+        top_files: 0,             // Check all files
         fail_on_violation: false, // Don't fail in example
         timeout: 60,
         include: vec![],
@@ -182,7 +182,7 @@ async fn main() -> Result<()> {
         timeout: 60,
         include: vec!["src/**/*.rs".to_string()], // Only Rust source files
         exclude: vec!["**/tests/**".to_string()], // Exclude test directories
-        extended: true,                            // Use extended detection
+        extended: true,                           // Use extended detection
     };
 
     match handle_analyze_satd(report_config).await {

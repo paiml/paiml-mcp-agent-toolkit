@@ -40,7 +40,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("\n----------------------------------------------------------------");
     println!("  Demo 2: Quality-Filtered Search (TDG grade + complexity)");
     println!("----------------------------------------------------------------\n");
-    println!("Command: pmat query \"complexity analysis\" --min-grade A --max-complexity 10 --limit 5\n");
+    println!(
+        "Command: pmat query \"complexity analysis\" --min-grade A --max-complexity 10 --limit 5\n"
+    );
 
     let output = Command::new(&pmat)
         .args([
@@ -105,14 +107,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Command: pmat query \"validation\" --language rust --limit 5\n");
 
     let output = Command::new(&pmat)
-        .args([
-            "query",
-            "validation",
-            "--language",
-            "rust",
-            "--limit",
-            "5",
-        ])
+        .args(["query", "validation", "--language", "rust", "--limit", "5"])
         .current_dir(&project_dir)
         .output()?;
 
@@ -125,14 +120,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Command: pmat query \"error\" --rank-by pagerank --limit 5\n");
 
     let output = Command::new(&pmat)
-        .args([
-            "query",
-            "error",
-            "--rank-by",
-            "pagerank",
-            "--limit",
-            "5",
-        ])
+        .args(["query", "error", "--rank-by", "pagerank", "--limit", "5"])
         .current_dir(&project_dir)
         .output()?;
 
@@ -145,14 +133,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Command: pmat query \"format\" --rank-by indegree --limit 5\n");
 
     let output = Command::new(&pmat)
-        .args([
-            "query",
-            "format",
-            "--rank-by",
-            "indegree",
-            "--limit",
-            "5",
-        ])
+        .args(["query", "format", "--rank-by", "indegree", "--limit", "5"])
         .current_dir(&project_dir)
         .output()?;
 
@@ -165,14 +146,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Command: pmat query \"parse\" --rank-by centrality --limit 5\n");
 
     let output = Command::new(&pmat)
-        .args([
-            "query",
-            "parse",
-            "--rank-by",
-            "centrality",
-            "--limit",
-            "5",
-        ])
+        .args(["query", "parse", "--rank-by", "centrality", "--limit", "5"])
         .current_dir(&project_dir)
         .output()?;
 
@@ -233,13 +207,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Command: pmat query \"error handling\" --coverage --limit 5\n");
 
     let output = Command::new(&pmat)
-        .args([
-            "query",
-            "error handling",
-            "--coverage",
-            "--limit",
-            "5",
-        ])
+        .args(["query", "error handling", "--coverage", "--limit", "5"])
         .current_dir(&project_dir)
         .output()?;
 
@@ -252,13 +220,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Command: pmat query --regex \"fn\\s+handle_\\w+\" --limit 5\n");
 
     let output = Command::new(&pmat)
-        .args([
-            "query",
-            "--regex",
-            r"fn\s+handle_\w+",
-            "--limit",
-            "5",
-        ])
+        .args(["query", "--regex", r"fn\s+handle_\w+", "--limit", "5"])
         .current_dir(&project_dir)
         .output()?;
 
@@ -311,14 +273,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Command: pmat query \"cache\" --churn --entropy --limit 5\n");
 
     let output = Command::new(&pmat)
-        .args([
-            "query",
-            "cache",
-            "--churn",
-            "--entropy",
-            "--limit",
-            "5",
-        ])
+        .args(["query", "cache", "--churn", "--entropy", "--limit", "5"])
         .current_dir(&project_dir)
         .output()?;
 
@@ -331,13 +286,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Command: pmat query \"fix memory\" -G --limit 5\n");
 
     let output = Command::new(&pmat)
-        .args([
-            "query",
-            "fix memory",
-            "-G",
-            "--limit",
-            "5",
-        ])
+        .args(["query", "fix memory", "-G", "--limit", "5"])
         .current_dir(&project_dir)
         .output()?;
 

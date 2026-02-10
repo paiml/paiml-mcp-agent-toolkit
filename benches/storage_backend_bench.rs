@@ -44,7 +44,6 @@ fn bench_put_operations(c: &mut Criterion) {
                 }
             });
         });
-
     }
 
     group.finish();

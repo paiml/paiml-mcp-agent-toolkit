@@ -157,9 +157,36 @@ fn check_cfg_patterns(path: &Path, content: &str, violations: &mut Vec<GamingVio
         ("cfg(not(tarpaulin_include))", GamingPattern::CfgNotTarpaulin),
     ];
 
+    // Track raw string literal blocks (r#"..."#)
+    let mut in_raw_string = false;
+
     for (line_num, line) in content.lines().enumerate() {
+        let trimmed = line.trim();
+
+        // Track raw string literal boundaries
+        if !in_raw_string && trimmed.contains("r#\"") {
+            in_raw_string = true;
+            if trimmed.contains("\"#") && trimmed.rfind("\"#") > trimmed.find("r#\"") {
+                in_raw_string = false; // Single-line raw string
+            }
+            continue;
+        }
+        if in_raw_string {
+            if trimmed.contains("\"#") {
+                in_raw_string = false;
+            }
+            continue;
+        }
+
+        // Skip comments and doc comments
+        if trimmed.starts_with("//") || trimmed.starts_with("/*") || trimmed.starts_with('*') {
+            continue;
+        }
+        // Skip lines where the pattern appears inside a string literal
+        if trimmed.contains('"') && !trimmed.starts_with("#[") && !trimmed.starts_with("#!") {
+            continue;
+        }
         for (pattern, gaming_type) in &patterns {
-            // Check for the pattern in various forms
             if line.contains(pattern)
                 || line.contains(&pattern.replace("(", " ("))
                 || line.contains(&format!("#[{}]", pattern))
@@ -196,6 +223,12 @@ fn check_exclusion_comments(path: &Path, content: &str, violations: &mut Vec<Gam
     ];
 
     for (line_num, line) in content.lines().enumerate() {
+        let trimmed = line.trim();
+        // Skip conditional cfg_attr coverage attributes — these are legitimate
+        // Rust patterns that only activate under specific feature flags
+        if trimmed.contains("cfg_attr(") && trimmed.contains("coverage(off)") {
+            continue;
+        }
         for pattern in &comment_patterns {
             if line.contains(pattern) {
                 violations.push(GamingViolation {

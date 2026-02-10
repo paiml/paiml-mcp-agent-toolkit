@@ -258,5 +258,19 @@ algorithm-competition-corpus/
 
 # Agent Context (machine-generated, auto-rebuilt)
 .pmat/context.idx/
+.pmat/context.db
 .pmat/workspace.idx/
+.pmat/workspace.db
 .pmat/deps-cache.json
+.pmat/bug-hunter-cache/
+.pmat/hooks-cache/
+.pmat/metrics/
+.pmat/project.toml
+
+# PMAT Work (ephemeral tickets)
+.pmat-work/
+.pmat-baseline.json
+
+# Generated reports
+satd-report.json
+golden_traces/

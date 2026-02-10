@@ -2,8 +2,8 @@
 //! Run with: cargo run --example git_history_demo
 
 use pmat::services::git_history::{
-    ChangeType, CommitInfo, FileChange, GitHistoryIndex,
-    GitHistorySearchEngine, GitSearchOptions, RrfFusion, RankedDocument, DocumentMetadata,
+    ChangeType, CommitInfo, DocumentMetadata, FileChange, GitHistoryIndex, GitHistorySearchEngine,
+    GitSearchOptions, RankedDocument, RrfFusion,
 };
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -101,8 +101,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("--- Search: \"fix bug error\" ---");
     let results = engine.search("fix bug error", GitSearchOptions::default())?;
     for (i, r) in results.iter().take(3).enumerate() {
-        println!("  {}. {} (score: {:.3})", i + 1, r.commit.message_subject, r.relevance_score);
-        println!("     Author: {}, Files: {:?}", r.commit.author_name, r.files);
+        println!(
+            "  {}. {} (score: {:.3})",
+            i + 1,
+            r.commit.message_subject,
+            r.relevance_score
+        );
+        println!(
+            "     Author: {}, Files: {:?}",
+            r.commit.author_name, r.files
+        );
     }
 
     // 6. Search with filter: only fixes
@@ -113,7 +121,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
     let results = engine.search("memory", options)?;
     for r in &results {
-        println!("  • {} (is_fix: {})", r.commit.message_subject, r.commit.is_fix);
+        println!(
+            "  • {} (is_fix: {})",
+            r.commit.message_subject, r.commit.is_fix
+        );
     }
 
     // 7. Demonstrate RRF Fusion
@@ -137,9 +148,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     ];
 
     // Git results (from our search above)
-    let git_results: Vec<RankedDocument> = results.iter().map(|r| {
-        RankedDocument {
-            id: format!("{}:{}", r.commit.hash[..7].to_string(), r.commit.message_subject),
+    let git_results: Vec<RankedDocument> = results
+        .iter()
+        .map(|r| RankedDocument {
+            id: format!(
+                "{}:{}",
+                r.commit.hash[..7].to_string(),
+                r.commit.message_subject
+            ),
             original_score: r.relevance_score,
             source: "git".to_string(),
             metadata: DocumentMetadata {
@@ -148,17 +164,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 line_or_timestamp: r.commit.timestamp,
                 related_commits: vec![r.commit.hash.clone()],
             },
-        }
-    }).collect();
+        })
+        .collect();
 
-    let fused = fusion.fuse(
-        vec![("code", code_results), ("git", git_results)],
-        5,
-    );
+    let fused = fusion.fuse(vec![("code", code_results), ("git", git_results)], 5);
 
     println!("  Fused results (code + git):");
     for (i, r) in fused.iter().enumerate() {
-        println!("    {}. {} (RRF: {:.4}, source: {})",
+        println!(
+            "    {}. {} (RRF: {:.4}, source: {})",
             i + 1,
             r.id.chars().take(50).collect::<String>(),
             r.rrf_score,
