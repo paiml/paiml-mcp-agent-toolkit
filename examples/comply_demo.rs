@@ -13,6 +13,7 @@
 //! 4. Quality threshold checks
 //! 5. Build performance compliance (Cargo.lock, MSRV, CI)
 //! 6. CB-081 Dependency Health (duplicates, feature flags, sovereign stack)
+//! 7. CB-600 Lua Best Practices (implicit globals, nil safety, pcall, dangerous APIs)
 //!
 //! # Compliance Checks (9 total)
 //!
@@ -80,6 +81,11 @@ fn main() {
     println!("\nExample 6: CB-081 Dependency Health");
     println!("{}", "-".repeat(40));
     demonstrate_dependency_health();
+
+    // Example 7: CB-600 Lua Best Practices
+    println!("\nExample 7: CB-600 Lua Best Practices");
+    println!("{}", "-".repeat(40));
+    demonstrate_lua_best_practices();
 
     println!("\n{}", "=".repeat(60));
     println!("Compliance demo completed!");
@@ -404,6 +410,139 @@ health, providing a score from 0-5 points plus sovereign stack bonus.
 
   # Fail if dependency score < 3
   pmat comply check --format json | jq '.cb081.score >= 3' | grep true
+"
+    );
+}
+
+/// Demonstrate CB-600 Lua Best Practices checks
+fn demonstrate_lua_best_practices() {
+    println!(
+        "
+CB-600: Lua Best Practices (CB-600 to CB-607)
+
+The CB-600 series detects Lua-specific defect patterns based on
+luacheck, LuaTaint, FLuaScan, and Luau type system research.
+
+## Checks (8 total)
+
+  CB-600: Implicit Globals
+    Assignment without `local` keyword (luacheck W111/W113).
+    Tracks function params, loop vars, and local declarations to
+    avoid false positives. Brace depth tracking excludes table
+    constructor fields.
+
+    -- Bad:
+    count = 0               -- implicit global
+
+    -- Good:
+    local count = 0         -- explicit local
+
+  CB-601: Nil-Unsafe Access
+    Chained calls on function returns (`):` / `).`) or deep field
+    access chains (3+ levels like `a.b.c.d`).
+
+    -- Bad:
+    get_player():set_health(100)  -- nil if get_player() returns nil
+
+    -- Good:
+    local player = get_player()
+    if player then player:set_health(100) end
+
+  CB-602: pcall Error Handling
+    Uncaptured or unchecked pcall/xpcall return values.
+
+    -- Bad:
+    pcall(dangerous_fn)     -- error silently swallowed
+
+    -- Good:
+    local ok, err = pcall(dangerous_fn)
+    if not ok then log(err) end
+
+  CB-603: Deprecated/Dangerous API
+    os.execute(), io.popen(), loadstring(), setfenv() — command
+    injection and sandbox escape vectors.
+
+    -- Bad:
+    os.execute('rm -rf ' .. user_input)
+
+    -- Good:
+    -- Use restricted API or sanitized subprocess library
+
+  CB-604: Unused Variables
+    `local var = ...` where var is never referenced again
+    (luacheck W211). Prefix with `_` if intentional.
+
+    -- Bad:
+    local result = compute()  -- never used
+
+    -- Good:
+    local _result = compute() -- intentionally unused
+
+  CB-605: String Concat in Loop
+    `..` operator inside for/while/repeat creates O(n^2) behavior.
+
+    -- Bad:
+    local s = ''
+    for i = 1, 1000 do
+        s = s .. tostring(i)  -- O(n^2)
+    end
+
+    -- Good:
+    local parts = {{}}
+    for i = 1, 1000 do
+        parts[#parts + 1] = tostring(i)
+    end
+    local s = table.concat(parts)
+
+  CB-606: Missing Module Return
+    `local M = {{}}` pattern without final `return M`.
+
+    -- Bad:
+    local M = {{}}
+    function M.init() end
+    -- forgot return M
+
+    -- Good:
+    local M = {{}}
+    function M.init() end
+    return M
+
+  CB-607: Colon/Dot Confusion
+    Mixed `:` and `.` method calls on same table — indicates
+    inconsistent self parameter handling.
+
+    -- Bad:
+    obj.method1()   -- no self
+    obj:method2()   -- with self (inconsistent)
+
+    -- Good:
+    obj:method1()   -- consistent colon syntax
+    obj:method2()
+
+## Severity Tiers
+
+  Error   : >10 implicit globals per file (CB-600)
+  Warning : Implicit globals, nil-unsafe, pcall, dangerous APIs
+  Info    : Unused vars, string concat, module return, colon/dot
+
+## False Positive Avoidance
+
+  - Function parameters tracked as known locals (CB-600)
+  - For-loop variables tracked as known locals (CB-600)
+  - Table constructor fields excluded via brace depth (CB-600)
+  - String literal contents excluded from pattern matching
+  - Test files (test_*.lua, *_test.lua, spec/) excluded
+
+## Example Output
+
+  $ pmat comply check
+
+  CB-600: Lua Best Practices (CB-600 to CB-607): [Advisory] 0 errors, 3 warnings, 2 info:
+  CB-600: Implicit global `count` — missing `local` keyword (src/main.lua:15)
+  CB-601: Nil-unsafe: chained access on function return value (src/init.lua:42)
+  CB-603: Dangerous API `os.execute()` (src/deploy.lua:8)
+  CB-604: Unused variable `tmp` — prefix with `_` if intentional (src/util.lua:23)
+  CB-605: String concatenation (`..`) in loop — O(n^2), use table.concat() (src/render.lua:67)
 "
     );
 }
