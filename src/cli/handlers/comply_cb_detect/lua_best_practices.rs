@@ -467,3 +467,153 @@ fn check_dangerous_apis(trimmed: &str, rel: &str, line_num: usize, violations: &
         }
     }
 }
+
+/// CB-604: Unused Variables — `local var = ...` where var is never referenced again.
+/// Based on luacheck W211.
+pub fn detect_cb604_unused_variables(project_path: &Path) -> Vec<CbPatternViolation> {
+    let files = walkdir_lua_files(project_path);
+    let mut violations = Vec::new();
+
+    for file_path in &files {
+        if is_lua_test_file(file_path) {
+            continue;
+        }
+        let content = match fs::read_to_string(file_path) {
+            Ok(c) => c,
+            Err(_) => continue,
+        };
+        let prod_lines = compute_lua_production_lines(&content);
+        let rel = file_path
+            .strip_prefix(project_path)
+            .unwrap_or(file_path)
+            .display()
+            .to_string();
+
+        let declarations = collect_local_declarations(&prod_lines);
+
+        for (line_num, var_name) in &declarations {
+            let count = prod_lines
+                .iter()
+                .filter(|(_, l)| contains_identifier(l, var_name))
+                .count();
+            if count <= 1 {
+                violations.push(CbPatternViolation {
+                    pattern_id: "CB-604".to_string(),
+                    file: rel.clone(),
+                    line: *line_num,
+                    description: format!("Unused variable `{var_name}` — prefix with `_` if intentional"),
+                    severity: Severity::Info,
+                });
+            }
+        }
+    }
+
+    violations
+}
+
+/// Collect `local var = ...` declarations, excluding `local function` and `_`-prefixed vars.
+fn collect_local_declarations(prod_lines: &[(usize, String)]) -> Vec<(usize, String)> {
+    let mut declarations = Vec::new();
+    for (line_num, trimmed) in prod_lines {
+        if !trimmed.starts_with("local ") {
+            continue;
+        }
+        let after_local = &trimmed[6..];
+        if after_local.starts_with("function ") {
+            continue;
+        }
+        let var_name: String = after_local
+            .chars()
+            .take_while(|c| c.is_alphanumeric() || *c == '_')
+            .collect();
+        if !var_name.is_empty() && !var_name.starts_with('_') {
+            declarations.push((*line_num, var_name));
+        }
+    }
+    declarations
+}
+
+/// Check if `line` contains `name` as a whole identifier (not substring).
+fn contains_identifier(line: &str, name: &str) -> bool {
+    let mut start = 0;
+    while let Some(pos) = line[start..].find(name) {
+        let abs_pos = start + pos;
+        let before_ok = abs_pos == 0
+            || !is_ident_cont(line.as_bytes()[abs_pos - 1]);
+        let after_pos = abs_pos + name.len();
+        let after_ok = after_pos >= line.len()
+            || !is_ident_cont(line.as_bytes()[after_pos]);
+        if before_ok && after_ok {
+            return true;
+        }
+        start = abs_pos + 1;
+    }
+    false
+}
+
+/// CB-605: String Concat in Loop — `..` operator inside for/while/repeat (O(n²)).
+pub fn detect_cb605_string_concat_in_loop(project_path: &Path) -> Vec<CbPatternViolation> {
+    let files = walkdir_lua_files(project_path);
+    let mut violations = Vec::new();
+
+    for file_path in &files {
+        if is_lua_test_file(file_path) {
+            continue;
+        }
+        let content = match fs::read_to_string(file_path) {
+            Ok(c) => c,
+            Err(_) => continue,
+        };
+        let prod_lines = compute_lua_production_lines(&content);
+        let rel = file_path
+            .strip_prefix(project_path)
+            .unwrap_or(file_path)
+            .display()
+            .to_string();
+
+        let mut loop_depth: i32 = 0;
+
+        for (line_num, trimmed) in &prod_lines {
+            if trimmed.starts_with("for ")
+                || trimmed.starts_with("while ")
+                || trimmed.starts_with("repeat")
+            {
+                loop_depth += 1;
+            }
+
+            if loop_depth > 0 && contains_concat_operator(trimmed) && !is_in_lua_string(trimmed, "..") {
+                violations.push(CbPatternViolation {
+                    pattern_id: "CB-605".to_string(),
+                    file: rel.clone(),
+                    line: *line_num,
+                    description: "String concatenation (`..`) in loop — O(n²), use table.concat()"
+                        .to_string(),
+                    severity: Severity::Info,
+                });
+            }
+
+            if trimmed == "end" || trimmed.starts_with("end ") || trimmed.starts_with("until ") {
+                loop_depth = (loop_depth - 1).max(0);
+            }
+        }
+    }
+
+    violations
+}
+
+/// Check if a line contains the `..` concat operator but not `...` (varargs).
+fn contains_concat_operator(line: &str) -> bool {
+    let bytes = line.as_bytes();
+    let mut i = 0;
+    while i + 1 < bytes.len() {
+        if bytes[i] == b'.' && bytes[i + 1] == b'.' {
+            if i + 2 < bytes.len() && bytes[i + 2] == b'.' {
+                i += 3;
+                continue;
+            }
+            return true;
+        }
+        i += 1;
+    }
+    false
+}

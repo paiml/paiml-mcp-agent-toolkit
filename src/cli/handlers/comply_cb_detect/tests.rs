@@ -885,4 +885,66 @@ mod cb600_lua_tests {
         let violations = detect_cb603_deprecated_dangerous_api(temp.path());
         assert!(violations.is_empty());
     }
+
+    // =========================================================================
+    // CB-604: Unused Variables
+    // =========================================================================
+
+    #[test]
+    fn test_cb604_detects_unused_var() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("app.lua"),
+            "local unused = compute()\nlocal used = 1\nprint(used)\n",
+        )
+        .unwrap();
+        let violations = detect_cb604_unused_variables(temp.path());
+        assert_eq!(violations.len(), 1);
+        assert!(violations[0].description.contains("unused"));
+    }
+
+    #[test]
+    fn test_cb604_underscore_prefix_skipped() {
+        let temp = TempDir::new().unwrap();
+        fs::write(temp.path().join("app.lua"), "local _ignored = compute()\n").unwrap();
+        let violations = detect_cb604_unused_variables(temp.path());
+        assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn test_cb604_used_var_passes() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("app.lua"),
+            "local name = get_name()\nprint(name)\n",
+        )
+        .unwrap();
+        let violations = detect_cb604_unused_variables(temp.path());
+        assert!(violations.is_empty());
+    }
+
+    // =========================================================================
+    // CB-605: String Concat in Loop
+    // =========================================================================
+
+    #[test]
+    fn test_cb605_detects_concat_in_loop() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("app.lua"),
+            "for i = 1, 10 do\n  result = result .. item\nend\n",
+        )
+        .unwrap();
+        let violations = detect_cb605_string_concat_in_loop(temp.path());
+        assert_eq!(violations.len(), 1);
+        assert!(violations[0].description.contains("concatenation"));
+    }
+
+    #[test]
+    fn test_cb605_concat_outside_loop_passes() {
+        let temp = TempDir::new().unwrap();
+        fs::write(temp.path().join("app.lua"), "local msg = greeting .. name\n").unwrap();
+        let violations = detect_cb605_string_concat_in_loop(temp.path());
+        assert!(violations.is_empty());
+    }
 }
