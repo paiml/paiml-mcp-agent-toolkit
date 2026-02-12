@@ -343,14 +343,14 @@ impl ReadmeCompressor {
         }
 
         // Try to break at sentence boundary
-        let truncated = &text[..max_len];
+        let truncated = text.get(..max_len).unwrap_or(text);
         if let Some(pos) = truncated.rfind(". ") {
-            return text[..=pos].to_string(); // Include the period
+            return text.get(..=pos).unwrap_or(text).to_string(); // Include the period
         }
 
         // Fall back to word boundary
         if let Some(pos) = truncated.rfind(' ') {
-            let word_truncated = &text[..pos];
+            let word_truncated = text.get(..pos).unwrap_or(text);
             if word_truncated.len() + 3 <= max_len {
                 return format!("{word_truncated}...");
             }
@@ -358,7 +358,7 @@ impl ReadmeCompressor {
 
         // Hard truncation with ellipsis
         let truncate_len = max_len.saturating_sub(3);
-        format!("{}...", &text[..truncate_len])
+        format!("{}...", text.get(..truncate_len).unwrap_or(text))
     }
 
     fn extract_project_description(&self, content: &str) -> Option<String> {

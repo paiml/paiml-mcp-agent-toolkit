@@ -587,8 +587,8 @@ impl McpTool for IndexStatsTool {
 fn parse_function_id(function_id: &str) -> Result<(String, String), String> {
     // Find the last "::" separator
     if let Some(pos) = function_id.rfind("::") {
-        let file_path = &function_id[..pos];
-        let function_name = &function_id[pos + 2..];
+        let file_path = function_id.get(..pos).unwrap_or_default();
+        let function_name = function_id.get(pos + 2..).unwrap_or_default();
         if file_path.is_empty() || function_name.is_empty() {
             return Err(format!(
                 "Invalid function_id format. Expected 'file_path::function_name', got: {}",

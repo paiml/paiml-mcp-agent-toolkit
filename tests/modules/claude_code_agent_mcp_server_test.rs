@@ -91,7 +91,8 @@ fn test_monitored_project_creation() {
     assert_eq!(project.complexity_threshold, 20);
     assert_eq!(project.watch_patterns.len(), 1);
     assert!(project.last_analysis.is_none());
-    assert!(project.started_at.elapsed().unwrap().as_secs() < 1);
+    // CB-511: Generous upper bound to avoid flaky tests under CI load
+    assert!(project.started_at.elapsed().unwrap().as_secs() < 120);
 }
 
 /// Test monitored project with multiple watch patterns

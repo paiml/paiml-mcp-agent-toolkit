@@ -56,8 +56,8 @@ impl Template {
         if result.contains("{{") && result.contains("}}") {
             // Extract unreplaced variable for error message
             if let Some(start) = result.find("{{") {
-                if let Some(end) = result[start..].find("}}") {
-                    let var_name = &result[start + 2..start + end];
+                if let Some(end) = result.get(start..).unwrap_or_default().find("}}") {
+                    let var_name = result.get(start + 2..start + end).unwrap_or_default();
                     return Err(ScaffoldError::InvalidProjectName(format!(
                         "Unreplaced template variable: {}",
                         var_name

@@ -224,7 +224,7 @@ impl ClippyFixEngine {
             "{}:{}:{}",
             diagnostic.code,
             diagnostic.line_start,
-            &source[..source.len().min(100)]
+            source.get(..source.len().min(100)).unwrap_or(source)
         )
     }
 

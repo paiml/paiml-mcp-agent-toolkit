@@ -1290,9 +1290,9 @@ impl SimpleDeepContext {
                     function_count += 1;
                     if let Some(func_match) = cap.get(0) {
                         let start = func_match.start();
-                        let func_end = self.find_function_end(&content[start..], extension);
+                        let func_end = self.find_function_end(content.get(start..).unwrap_or_default(), extension);
                         if let Some(end) = func_end {
-                            let func_body = &content[start..start + end];
+                            let func_body = content.get(start..start + end).unwrap_or_default();
                             let complexity = self.estimate_complexity(func_body, extension);
                             complexity_sum += complexity;
                             if complexity > 10 {

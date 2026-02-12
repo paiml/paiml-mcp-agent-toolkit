@@ -33,9 +33,9 @@ use std::time::{Duration, UNIX_EPOCH};
 /// use std::fs;
 ///
 /// let strategy = AstCacheStrategy;
-/// let dir = tempdir().unwrap();
+/// let dir = tempdir().expect("tempdir");
 /// let file_path = dir.path().join("test.rs");
-/// fs::write(&file_path, "fn main() {}").unwrap();
+/// fs::write(&file_path, "fn main() {}").expect("write");
 ///
 /// // Generate cache key
 /// let key = strategy.cache_key(&file_path);
@@ -54,7 +54,7 @@ use std::time::{Duration, UNIX_EPOCH};
 /// assert!(strategy.validate(&file_path, &file_context));
 ///
 /// // TTL should be 5 minutes
-/// assert_eq!(strategy.ttl().unwrap().as_secs(), 300);
+/// assert_eq!(strategy.ttl().expect("has ttl").as_secs(), 300);
 /// assert_eq!(strategy.max_size(), 100);
 /// ```
 #[derive(Clone)]
@@ -157,7 +157,7 @@ impl CacheStrategy for AstCacheStrategy {
 ///     parameters: vec![],
 ///     s3_object_key: "test".to_string(),
 ///     content_hash: "test".to_string(),
-///     semantic_version: semver::Version::parse("1.0.0").unwrap(),
+///     semantic_version: semver::Version::parse("1.0.0").expect("valid semver"),
 ///     dependency_graph: vec![],
 /// };
 ///
@@ -165,7 +165,7 @@ impl CacheStrategy for AstCacheStrategy {
 /// assert!(strategy.validate(&template_uri, &template));
 ///
 /// // TTL should be 10 minutes
-/// assert_eq!(strategy.ttl().unwrap().as_secs(), 600);
+/// assert_eq!(strategy.ttl().expect("has ttl").as_secs(), 600);
 /// assert_eq!(strategy.max_size(), 50);
 /// ```
 #[derive(Clone)]
@@ -218,7 +218,7 @@ impl CacheStrategy for TemplateCacheStrategy {
 /// use tempfile::tempdir;
 ///
 /// let strategy = DagCacheStrategy;
-/// let dir = tempdir().unwrap();
+/// let dir = tempdir().expect("tempdir");
 /// let key = (dir.path().to_path_buf(), DagType::CallGraph);
 ///
 /// // Generate cache key
@@ -237,7 +237,7 @@ impl CacheStrategy for TemplateCacheStrategy {
 /// // Result depends on actual file system state
 ///
 /// // TTL should be 3 minutes
-/// assert_eq!(strategy.ttl().unwrap().as_secs(), 180);
+/// assert_eq!(strategy.ttl().expect("has ttl").as_secs(), 180);
 /// assert_eq!(strategy.max_size(), 20);
 /// ```
 #[derive(Clone)]
@@ -315,7 +315,7 @@ impl CacheStrategy for DagCacheStrategy {
 /// use tempfile::tempdir;
 ///
 /// let strategy = ChurnCacheStrategy;
-/// let repo_dir = tempdir().unwrap();
+/// let repo_dir = tempdir().expect("tempdir");
 /// let key = (repo_dir.path().to_path_buf(), 30); // 30 days
 ///
 /// // Generate cache key (includes Git HEAD)
@@ -342,7 +342,7 @@ impl CacheStrategy for DagCacheStrategy {
 /// // let is_valid = strategy.validate(&key, &churn);
 ///
 /// // TTL should be 30 minutes
-/// assert_eq!(strategy.ttl().unwrap().as_secs(), 1800);
+/// assert_eq!(strategy.ttl().expect("has ttl").as_secs(), 1800);
 /// assert_eq!(strategy.max_size(), 20);
 /// ```
 #[derive(Clone)]
@@ -410,7 +410,7 @@ impl ChurnCacheStrategy {
 /// use tempfile::tempdir;
 ///
 /// let strategy = GitStatsCacheStrategy;
-/// let repo_dir = tempdir().unwrap();
+/// let repo_dir = tempdir().expect("tempdir");
 ///
 /// // Generate cache key
 /// let cache_key = strategy.cache_key(&repo_dir.path().to_path_buf());
@@ -428,7 +428,7 @@ impl ChurnCacheStrategy {
 /// // let is_valid = strategy.validate(&repo_dir.path().to_path_buf(), &stats);
 ///
 /// // TTL should be 15 minutes
-/// assert_eq!(strategy.ttl().unwrap().as_secs(), 900);
+/// assert_eq!(strategy.ttl().expect("has ttl").as_secs(), 900);
 /// assert_eq!(strategy.max_size(), 10);
 /// ```
 #[derive(Clone)]

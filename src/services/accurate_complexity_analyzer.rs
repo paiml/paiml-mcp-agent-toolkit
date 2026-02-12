@@ -350,15 +350,15 @@ fn build_function_line_map(content: &str) -> std::collections::HashMap<String, u
 /// Returns None for comments and non-function lines.
 fn extract_fn_name(trimmed: &str) -> Option<String> {
     let fn_pos = trimmed.find("fn ")?;
-    let before = &trimmed[..fn_pos];
+    let before = trimmed.get(..fn_pos).unwrap_or_default();
     if before.contains("//") || before.contains("/*") {
         return None;
     }
-    let after = &trimmed[fn_pos + 3..];
+    let after = trimmed.get(fn_pos + 3..).unwrap_or_default();
     let name_end = after
         .find(|c: char| c == '(' || c == '<' || c.is_whitespace())
         .unwrap_or(after.len());
-    let name = after[..name_end].trim();
+    let name = after.get(..name_end).unwrap_or_default().trim();
     if !name.is_empty() && name.chars().all(|c| c.is_alphanumeric() || c == '_') {
         Some(name.to_string())
     } else {

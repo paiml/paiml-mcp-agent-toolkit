@@ -289,7 +289,7 @@ impl PatternExtractor {
             let mut locations = Vec::new();
 
             for (i, m) in matches.iter().enumerate() {
-                let line_num = content[..m.start()].lines().count() + 1;
+                let line_num = content.get(..m.start()).unwrap_or_default().lines().count() + 1;
                 locations.push(Location {
                     file: file_path.to_owned(),
                     line: line_num,
@@ -310,7 +310,7 @@ impl PatternExtractor {
                 variation_score: self.calculate_variation_score(&matches, content),
                 example_code: matches
                     .first()
-                    .map(|m| content[m.start()..m.end().min(m.start() + 100)].to_string())
+                    .map(|m| content.get(m.start()..m.end().min(m.start() + 100)).unwrap_or_default().to_string())
                     .unwrap_or_default(),
                 estimated_loc: matches.len() * 5, // Estimate 5 lines per match
             };
@@ -342,7 +342,7 @@ impl PatternExtractor {
             let mut locations = Vec::new();
 
             for (i, m) in matches.iter().enumerate() {
-                let line_num = content[..m.start()].lines().count() + 1;
+                let line_num = content.get(..m.start()).unwrap_or_default().lines().count() + 1;
                 locations.push(Location {
                     file: file_path.to_owned(),
                     line: line_num,
@@ -362,7 +362,7 @@ impl PatternExtractor {
                 variation_score: self.calculate_variation_score(&matches, content),
                 example_code: matches
                     .first()
-                    .map(|m| content[m.start()..m.end().min(m.start() + 80)].to_string())
+                    .map(|m| content.get(m.start()..m.end().min(m.start() + 80)).unwrap_or_default().to_string())
                     .unwrap_or_default(),
                 estimated_loc: matches.len() * 3,
             };
@@ -392,7 +392,7 @@ impl PatternExtractor {
             let mut locations = Vec::new();
 
             for (i, m) in matches.iter().enumerate() {
-                let line_num = content[..m.start()].lines().count() + 1;
+                let line_num = content.get(..m.start()).unwrap_or_default().lines().count() + 1;
                 locations.push(Location {
                     file: file_path.to_owned(),
                     line: line_num,
@@ -412,7 +412,7 @@ impl PatternExtractor {
                 variation_score: self.calculate_variation_score(&matches, content),
                 example_code: matches
                     .first()
-                    .map(|m| content[m.start()..m.end().min(m.start() + 60)].to_string())
+                    .map(|m| content.get(m.start()..m.end().min(m.start() + 60)).unwrap_or_default().to_string())
                     .unwrap_or_default(),
                 estimated_loc: matches.len() * 4,
             };
@@ -442,7 +442,7 @@ impl PatternExtractor {
             let mut locations = Vec::new();
 
             for (i, m) in matches.iter().enumerate() {
-                let line_num = content[..m.start()].lines().count() + 1;
+                let line_num = content.get(..m.start()).unwrap_or_default().lines().count() + 1;
                 locations.push(Location {
                     file: file_path.to_owned(),
                     line: line_num,
@@ -489,7 +489,7 @@ impl PatternExtractor {
             let mut locations = Vec::new();
 
             for (i, m) in matches.iter().enumerate() {
-                let line_num = content[..m.start()].lines().count() + 1;
+                let line_num = content.get(..m.start()).unwrap_or_default().lines().count() + 1;
                 locations.push(Location {
                     file: file_path.to_owned(),
                     line: line_num,
@@ -537,7 +537,7 @@ impl PatternExtractor {
             let mut locations = Vec::new();
 
             for (i, m) in matches.iter().enumerate() {
-                let line_num = content[..m.start()].lines().count() + 1;
+                let line_num = content.get(..m.start()).unwrap_or_default().lines().count() + 1;
                 locations.push(Location {
                     file: file_path.to_owned(),
                     line: line_num,
@@ -557,7 +557,7 @@ impl PatternExtractor {
                 variation_score: self.calculate_variation_score(&matches, content),
                 example_code: matches
                     .first()
-                    .map(|m| content[m.start()..m.end().min(m.start() + 50)].to_string())
+                    .map(|m| content.get(m.start()..m.end().min(m.start() + 50)).unwrap_or_default().to_string())
                     .unwrap_or_default(),
                 estimated_loc: matches.len() * 3,
             };
@@ -593,7 +593,7 @@ impl PatternExtractor {
                     .find(|(i, _)| *i <= end)
                     .map_or(end, |(i, c)| i + c.len_utf8());
 
-                content[start_char..end_char].to_string()
+                content.get(start_char..end_char).unwrap_or_default().to_string()
             })
             .collect();
 
@@ -679,7 +679,7 @@ impl PatternExtractor {
             let mut locations = Vec::new();
 
             for (i, m) in actor_matches.iter().enumerate() {
-                let line_num = content[..m.start()].lines().count() + 1;
+                let line_num = content.get(..m.start()).unwrap_or_default().lines().count() + 1;
                 locations.push(Location {
                     file: file_path.to_owned(),
                     line: line_num,
@@ -703,7 +703,7 @@ impl PatternExtractor {
                 ),
                 example_code: actor_matches
                     .first()
-                    .map(|m| content[m.start()..m.end().min(m.start() + 200)].to_string())
+                    .map(|m| content.get(m.start()..m.end().min(m.start() + 200)).unwrap_or_default().to_string())
                     .unwrap_or_default(),
                 estimated_loc: actor_matches.len() * 8 + receive_matches.len() * 4,
             };
@@ -735,7 +735,7 @@ impl PatternExtractor {
             let mut locations = Vec::new();
 
             for (i, m) in matches.iter().enumerate() {
-                let line_num = content[..m.start()].lines().count() + 1;
+                let line_num = content.get(..m.start()).unwrap_or_default().lines().count() + 1;
                 locations.push(Location {
                     file: file_path.to_owned(),
                     line: line_num,
@@ -758,7 +758,7 @@ impl PatternExtractor {
                     .map(|m| {
                         let start = m.start().saturating_sub(20);
                         let end = m.end().min(m.start() + 100);
-                        content[start..end].to_string()
+                        content.get(start..end).unwrap_or_default().to_string()
                     })
                     .unwrap_or_default(),
                 estimated_loc: matches.len() * 2, // Each pipeline operation is ~2 lines
@@ -799,7 +799,7 @@ impl PatternExtractor {
             let mut locations = Vec::new();
 
             for (i, m) in send_matches.iter().chain(query_matches.iter()).enumerate() {
-                let line_num = content[..m.start()].lines().count() + 1;
+                let line_num = content.get(..m.start()).unwrap_or_default().lines().count() + 1;
                 locations.push(Location {
                     file: file_path.to_owned(),
                     line: line_num,
@@ -824,7 +824,7 @@ impl PatternExtractor {
                 example_code: send_matches
                     .first()
                     .or(query_matches.first())
-                    .map(|m| content[m.start()..m.end().min(m.start() + 80)].to_string())
+                    .map(|m| content.get(m.start()..m.end().min(m.start() + 80)).unwrap_or_default().to_string())
                     .unwrap_or_default(),
                 estimated_loc: total_messages * 2 + spawn_matches.len() * 3,
             };
@@ -855,7 +855,7 @@ impl PatternExtractor {
             let mut locations = Vec::new();
 
             for (i, m) in matches.iter().enumerate() {
-                let line_num = content[..m.start()].lines().count() + 1;
+                let line_num = content.get(..m.start()).unwrap_or_default().lines().count() + 1;
                 locations.push(Location {
                     file: file_path.to_owned(),
                     line: line_num,
@@ -875,7 +875,7 @@ impl PatternExtractor {
                 variation_score: self.calculate_variation_score(&matches, content),
                 example_code: matches
                     .first()
-                    .map(|m| content[m.start()..m.end().min(m.start() + 120)].to_string())
+                    .map(|m| content.get(m.start()..m.end().min(m.start() + 120)).unwrap_or_default().to_string())
                     .unwrap_or_default(),
                 estimated_loc: matches.len() * 6, // Error handling typically 6 lines
             };
@@ -914,7 +914,7 @@ impl PatternExtractor {
             let mut locations = Vec::new();
 
             for (i, m) in match_matches.iter().enumerate() {
-                let line_num = content[..m.start()].lines().count() + 1;
+                let line_num = content.get(..m.start()).unwrap_or_default().lines().count() + 1;
                 locations.push(Location {
                     file: file_path.to_owned(),
                     line: line_num,
@@ -939,7 +939,7 @@ impl PatternExtractor {
                 ),
                 example_code: match_matches
                     .first()
-                    .map(|m| content[m.start()..m.end().min(m.start() + 150)].to_string())
+                    .map(|m| content.get(m.start()..m.end().min(m.start() + 150)).unwrap_or_default().to_string())
                     .unwrap_or_default(),
                 estimated_loc: match_matches.len() * 5 + arrow_matches.len(),
             };
@@ -966,7 +966,7 @@ impl PatternExtractor {
         let mut unique_patterns = std::collections::HashSet::new();
 
         for m in actor_matches {
-            if let Some(actor_line) = content.lines().nth(content[..m.start()].lines().count()) {
+            if let Some(actor_line) = content.lines().nth(content.get(..m.start()).unwrap_or_default().lines().count()) {
                 unique_patterns.insert(actor_line.trim().to_string());
             }
         }

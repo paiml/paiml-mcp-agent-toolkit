@@ -135,6 +135,7 @@ impl AdaptiveThresholdManager {
     }
 
     /// Calculate recommended threshold adjustment based on performance
+    #[allow(clippy::cast_possible_truncation)]
     async fn calculate_adjustment(
         &self,
         history: &VecDeque<PerformanceSample>,
@@ -208,6 +209,7 @@ impl AdaptiveThresholdManager {
     }
 
     /// Apply threshold adjustment to current configuration
+    #[allow(clippy::cast_possible_truncation)]
     async fn apply_adjustment(&self, adjustment: ThresholdAdjustment) -> Result<()> {
         let mut thresholds = self.current_thresholds.write().await;
         let mut adjustments = self.adjustment_history.write().await;
@@ -263,6 +265,7 @@ impl AdaptiveThresholdManager {
     }
 
     /// Get recent performance statistics
+    #[allow(clippy::cast_possible_truncation)]
     pub async fn get_performance_stats(&self) -> PerformanceStatistics {
         let history = self.performance_history.read().await;
         let adjustments = self.adjustment_history.read().await;
@@ -298,6 +301,7 @@ impl AdaptiveThresholdManager {
     }
 
     /// Calculate performance trend from recent samples
+    #[allow(clippy::cast_possible_truncation)]
     fn calculate_trend(&self, history: &VecDeque<PerformanceSample>) -> PerformanceTrend {
         if history.len() < 10 {
             return PerformanceTrend::Stable;
@@ -349,6 +353,7 @@ impl AdaptiveThresholdManager {
     }
 
     /// Get current memory usage (simplified implementation)
+    #[allow(clippy::cast_possible_truncation)]
     async fn get_memory_usage(&self) -> f32 {
         // In a full implementation, this would use system APIs
         // For now, estimate based on cache size and active operations
@@ -358,6 +363,7 @@ impl AdaptiveThresholdManager {
     }
 
     /// Get current CPU utilization (simplified implementation)
+    #[allow(clippy::cast_possible_truncation)]
     async fn get_cpu_usage(&self) -> f32 {
         // In a full implementation, this would use system APIs
         // For now, estimate based on active operations

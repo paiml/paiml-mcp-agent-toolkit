@@ -111,6 +111,7 @@ impl UnifiedWasmAnalyzer {
     ///
     /// GREEN PHASE: Minimal implementation using pattern matching.
     /// This will be enhanced in REFACTOR phase with proper WASM instruction analysis.
+    #[allow(clippy::cast_possible_truncation)]
     fn extract_complexity_metrics(&self, content: &str) -> FileComplexityMetrics {
         let mut functions = Vec::new();
         let lines = content.lines().count();
@@ -193,9 +194,9 @@ impl UnifiedWasmAnalyzer {
     fn extract_function_name(&self, line: &str) -> Option<String> {
         // Pattern: (func $name ...
         if let Some(start) = line.find("$") {
-            let rest = &line[start + 1..];
+            let rest = line.get(start + 1..).unwrap_or_default();
             if let Some(end) = rest.find(|c: char| c.is_whitespace() || c == ')') {
-                return Some(format!("${}", &rest[..end]));
+                return Some(format!("${}", rest.get(..end).unwrap_or_default()));
             }
         }
         // Unnamed function

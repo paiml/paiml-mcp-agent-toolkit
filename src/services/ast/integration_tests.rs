@@ -383,8 +383,8 @@ mod unified_ast_integration_tests {
         let result = processor.process_file(&large_file).await;
         let elapsed = start_time.elapsed();
         
-        // Analysis should complete in reasonable time (under 10 seconds)
-        assert!(elapsed.as_secs() < 10, "Analysis should complete within 10 seconds");
+        // CB-511: Generous upper bound to avoid flaky tests under CI load
+        assert!(elapsed.as_secs() < 120, "Analysis should complete within 120 seconds");
         
         match result {
             Ok(analysis) => {

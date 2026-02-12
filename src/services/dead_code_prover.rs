@@ -268,9 +268,9 @@ impl FFIReferenceTracker {
     fn extract_function_name_from_line(&self, line: &str) -> Option<String> {
         // Extract function name from "pub fn name(" or "fn name("
         if let Some(fn_pos) = line.find("fn ") {
-            let after_fn = &line[fn_pos + 3..];
+            let after_fn = line.get(fn_pos + 3..).unwrap_or_default();
             if let Some(paren_pos) = after_fn.find('(') {
-                let name = after_fn[..paren_pos].trim();
+                let name = after_fn.get(..paren_pos).unwrap_or_default().trim();
                 if !name.is_empty() {
                     return Some(name.to_string());
                 }
@@ -283,8 +283,8 @@ impl FFIReferenceTracker {
         // Extract name from #[export_name = "custom_name"]
         if line.starts_with("#[export_name") {
             if let Some(start) = line.find('"') {
-                if let Some(end) = line[start + 1..].find('"') {
-                    return Some(line[start + 1..start + 1 + end].to_string());
+                if let Some(end) = line.get(start + 1..).unwrap_or_default().find('"') {
+                    return Some(line.get(start + 1..start + 1 + end).unwrap_or_default().to_string());
                 }
             }
         }

@@ -138,11 +138,11 @@ pub fn build_coverage_map(
             // Normalize path to project-relative (try canonical root first, then raw)
             // Skip files outside the project (dependency sources, registry crates, etc.)
             let rel_path = if file.filename.starts_with(root_str) {
-                file.filename[root_str.len()..]
+                file.filename.get(root_str.len()..).unwrap_or_default()
                     .trim_start_matches('/')
                     .to_string()
             } else if file.filename.starts_with(raw_root_str) {
-                file.filename[raw_root_str.len()..]
+                file.filename.get(raw_root_str.len()..).unwrap_or_default()
                     .trim_start_matches('/')
                     .to_string()
             } else {
@@ -518,9 +518,9 @@ fn cargo_metadata_target_dir(project_root: &Path) -> Vec<std::path::PathBuf> {
 /// Extract "target_directory" value from cargo metadata JSON output.
 fn extract_target_directory(json: &str) -> Option<&str> {
     let idx = json.find("\"target_directory\":\"")?;
-    let rest = &json[idx + 20..];
+    let rest = json.get(idx + 20..)?;
     let end = rest.find('"')?;
-    Some(&rest[..end])
+    rest.get(..end)
 }
 
 /// Resolve the cargo target directory, then find llvm-cov-target underneath.

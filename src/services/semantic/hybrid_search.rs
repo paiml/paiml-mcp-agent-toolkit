@@ -408,7 +408,7 @@ impl HybridSearchEngine {
         if s.len() <= max_len {
             s.to_string()
         } else {
-            format!("{}...", &s[..max_len])
+            format!("{}...", s.get(..max_len).unwrap_or(s))
         }
     }
 }

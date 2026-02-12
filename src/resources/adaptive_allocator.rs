@@ -103,6 +103,7 @@ impl AdaptiveAllocator {
         self.update_predictions(&history);
     }
 
+    #[allow(clippy::cast_possible_truncation)]
     fn update_predictions(&self, history: &ResourceHistory) {
         if history.samples.len() < 10 {
             return; // Not enough data
@@ -188,6 +189,7 @@ impl AdaptiveAllocator {
         }
     }
 
+    #[allow(clippy::cast_possible_truncation)]
     pub fn suggest_adjustment(&self, current_limits: &ResourceLimits) -> Option<ResourceLimits> {
         let predictor = self.predictor.read();
         let mut adjusted = current_limits.clone();
@@ -239,6 +241,7 @@ impl AdaptiveAllocator {
         }
     }
 
+    #[allow(clippy::cast_possible_truncation)]
     pub fn get_performance_stats(&self) -> PerformanceStats {
         let history = self.history.read();
 
@@ -333,6 +336,7 @@ impl AutoScaler {
         }
     }
 
+    #[allow(clippy::cast_possible_truncation)]
     pub async fn run(&self) {
         if !self.config.enabled {
             return;

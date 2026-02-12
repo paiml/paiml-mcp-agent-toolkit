@@ -75,22 +75,22 @@ impl HelpNlpProcessor {
         let word = word.to_lowercase();
         // Simple suffix removal rules
         if word.ends_with("ing") && word.len() > 5 {
-            return word[..word.len() - 3].to_string();
+            return word.get(..word.len() - 3).unwrap_or_default().to_string();
         }
         if word.ends_with("ed") && word.len() > 4 {
-            return word[..word.len() - 2].to_string();
+            return word.get(..word.len() - 2).unwrap_or_default().to_string();
         }
         if word.ends_with("ies") && word.len() > 4 {
-            return format!("{}y", &word[..word.len() - 3]);
+            return format!("{}y", word.get(..word.len() - 3).unwrap_or_default());
         }
         if word.ends_with("es") && word.len() > 4 {
-            return word[..word.len() - 2].to_string();
+            return word.get(..word.len() - 2).unwrap_or_default().to_string();
         }
         if word.ends_with("s") && word.len() > 3 && !word.ends_with("ss") {
-            return word[..word.len() - 1].to_string();
+            return word.get(..word.len() - 1).unwrap_or_default().to_string();
         }
         if word.ends_with("ly") && word.len() > 4 {
-            return word[..word.len() - 2].to_string();
+            return word.get(..word.len() - 2).unwrap_or_default().to_string();
         }
         word
     }
@@ -471,7 +471,7 @@ impl UnifiedHelpService {
         if doc.len() <= 100 {
             doc.to_string()
         } else {
-            format!("{}...", &doc[..100])
+            format!("{}...", doc.get(..100).unwrap_or(doc))
         }
     }
 

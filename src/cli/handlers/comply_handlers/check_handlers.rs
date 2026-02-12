@@ -36,6 +36,15 @@ use super::comply_cb_detect::{
     detect_cb081_dependency_count, DependencyCountReport,
     // Agent Context Adoption (CB-130) - PMAT-470
     detect_cb130_agent_context_adoption,
+    // CB-500 series: Rust Best Practices
+    detect_cb500_publish_hygiene, detect_cb501_unwrap_density,
+    detect_cb502_expect_quality, detect_cb503_clippy_config,
+    detect_cb504_deny_config, detect_cb505_workspace_lint_hygiene,
+    detect_cb506_string_byte_indexing, detect_cb507_panic_macros,
+    detect_cb508_lossy_numeric_casts, detect_cb509_feature_gate_coverage,
+    detect_cb510_include_macro_hygiene, detect_cb511_flaky_timing_tests,
+    detect_cb512_error_propagation_gap,
+    CbPatternViolation,
 };
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -278,6 +287,8 @@ async fn handle_check(
         filter_check_by_config(check_shell_makefile_quality(project_path), "cb-400", comply_config),
         // CB-130: Agent Context Adoption (PMAT-470)
         filter_check_by_config(check_agent_context_adoption(project_path), "cb-130", comply_config),
+        // CB-500: Rust Best Practices (defect detection improvement)
+        filter_check_by_config(check_rust_best_practices(project_path), "cb-500", comply_config),
     ];
 
     // Calculate compliance
@@ -1722,6 +1733,76 @@ pub(crate) fn check_agent_context_adoption(project_path: &Path) -> ComplianceChe
                     .join("\n"),
             ),
             severity: Severity::Warning,
+        }
+    }
+}
+
+/// Rust Best Practices Detection (CB-500 through CB-512)
+pub(crate) fn check_rust_best_practices(project_path: &Path) -> ComplianceCheck {
+    let mut all_issues: Vec<String> = Vec::new();
+    let mut error_count = 0;
+    let mut warning_count = 0;
+    let mut info_count = 0;
+
+    let detectors: Vec<(&str, Vec<CbPatternViolation>)> = vec![
+        ("CB-500", detect_cb500_publish_hygiene(project_path)),
+        ("CB-501", detect_cb501_unwrap_density(project_path)),
+        ("CB-502", detect_cb502_expect_quality(project_path)),
+        ("CB-503", detect_cb503_clippy_config(project_path)),
+        ("CB-504", detect_cb504_deny_config(project_path)),
+        ("CB-505", detect_cb505_workspace_lint_hygiene(project_path)),
+        ("CB-506", detect_cb506_string_byte_indexing(project_path)),
+        ("CB-507", detect_cb507_panic_macros(project_path)),
+        ("CB-508", detect_cb508_lossy_numeric_casts(project_path)),
+        ("CB-509", detect_cb509_feature_gate_coverage(project_path)),
+        ("CB-510", detect_cb510_include_macro_hygiene(project_path)),
+        ("CB-511", detect_cb511_flaky_timing_tests(project_path)),
+        ("CB-512", detect_cb512_error_propagation_gap(project_path)),
+    ];
+
+    for (_id, violations) in &detectors {
+        for v in violations {
+            all_issues.push(format!(
+                "{}: {} ({}:{})",
+                v.pattern_id, v.description, v.file, v.line
+            ));
+            match v.severity {
+                super::comply_cb_detect::Severity::Error => error_count += 1,
+                super::comply_cb_detect::Severity::Warning => warning_count += 1,
+                _ => info_count += 1,
+            }
+        }
+    }
+
+    let total = error_count + warning_count + info_count;
+
+    if total > 0 {
+        let display_issues = if all_issues.len() > 20 {
+            let mut truncated: Vec<String> = all_issues.iter().take(20).cloned().collect();
+            truncated.push(format!("    ... and {} more", all_issues.len() - 20));
+            truncated
+        } else {
+            all_issues.clone()
+        };
+
+        ComplianceCheck {
+            name: "CB-500: Rust Best Practices (CB-500 to CB-512)".to_string(),
+            status: CheckStatus::Warn,
+            message: format!(
+                "[Advisory] {} errors, {} warnings, {} info:\n{}",
+                error_count,
+                warning_count,
+                info_count,
+                display_issues.join("\n"),
+            ),
+            severity: Severity::Warning,
+        }
+    } else {
+        ComplianceCheck {
+            name: "CB-500: Rust Best Practices (CB-500 to CB-512)".to_string(),
+            status: CheckStatus::Pass,
+            message: "No Rust best practice violations detected".to_string(),
+            severity: Severity::Info,
         }
     }
 }

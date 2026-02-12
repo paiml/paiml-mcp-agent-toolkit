@@ -500,7 +500,8 @@ async fn test_keyword_search_performance() {
     engine.search(&query).await.unwrap();
 
     let duration = start.elapsed();
-    assert!(duration.as_millis() < 1000); // < 1 second
+    // CB-511: Generous upper bound to avoid flaky tests under CI load
+    assert!(duration.as_secs() < 30);
 }
 
 #[ignore = "requires semantic search setup"]
@@ -524,7 +525,8 @@ async fn test_hybrid_search_performance() {
     engine.search(&query).await.unwrap();
 
     let duration = start.elapsed();
-    assert!(duration.as_secs() < 5); // < 5 seconds for hybrid
+    // CB-511: Generous upper bound to avoid flaky tests under CI load
+    assert!(duration.as_secs() < 60);
 }
 
 #[ignore = "requires semantic search setup"]

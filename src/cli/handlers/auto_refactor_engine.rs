@@ -238,9 +238,9 @@ fn replace_function(
     
     // Replace
     let mut new_content = String::new();
-    new_content.push_str(&content[..start_pos]);
+    new_content.push_str(content.get(..start_pos).unwrap_or_default());
     new_content.push_str(&refactored_function);
-    new_content.push_str(&content[end_pos..]);
+    new_content.push_str(content.get(end_pos..).unwrap_or_default());
     
     Ok(new_content)
 }
@@ -251,7 +251,7 @@ fn replace_function(
     ///
     /// Returns an error if the operation fails
 fn find_function_end(content: &str, start: usize) -> Result<usize> {
-    let content_after = &content[start..];
+    let content_after = content.get(start..).unwrap_or_default();
     let mut brace_count = 0;
     let mut in_function = false;
     let mut pos = 0;
@@ -289,7 +289,7 @@ fn extract_function(content: &str, function_name: &str) -> Result<String> {
     
     let end = find_function_end(content, start)?;
     
-    Ok(content[start..end].to_string())
+    Ok(content.get(start..end).unwrap_or_default().to_string())
 }
 
 /// Apply format_output refactoring

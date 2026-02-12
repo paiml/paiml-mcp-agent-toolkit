@@ -992,14 +992,40 @@ async fn execute_sections_check(
     .await
 }
 
+/// Default provability threshold when no config is found
+const DEFAULT_PROVABILITY_THRESHOLD: f64 = 0.70;
+
+/// Load the provability threshold from `.pmat-metrics.toml`.
+///
+/// Looks for `provability_min` under the `[thresholds]` section.
+/// Falls back to `DEFAULT_PROVABILITY_THRESHOLD` (0.70) if the file
+/// is missing, unreadable, or does not contain the key.
+fn load_provability_threshold(project_path: &Path) -> f64 {
+    let config_path = project_path.join(".pmat-metrics.toml");
+    let content = match std::fs::read_to_string(&config_path) {
+        Ok(c) => c,
+        Err(_) => return DEFAULT_PROVABILITY_THRESHOLD,
+    };
+    let table: toml::Table = match content.parse() {
+        Ok(t) => t,
+        Err(_) => return DEFAULT_PROVABILITY_THRESHOLD,
+    };
+    table
+        .get("thresholds")
+        .and_then(|t| t.get("provability_min"))
+        .and_then(|v| v.as_float())
+        .unwrap_or(DEFAULT_PROVABILITY_THRESHOLD)
+}
+
 /// Helper for provability check execution
 async fn execute_provability_check(
     project_path: &Path,
     violations: &mut Vec<QualityViolation>,
     results: &mut QualityGateResults,
 ) -> Result<()> {
+    let threshold = load_provability_threshold(project_path);
     execute_quality_check_template(
-        check_provability(project_path, 0.7),
+        check_provability(project_path, threshold),
         |count| results.provability_violations = count,
         violations,
     )
@@ -1085,9 +1111,10 @@ async fn run_all_project_checks(
         check_sections(project_path),
         section_violations
     );
+    let provability_threshold = load_provability_threshold(project_path);
     run_check!(
         "provability",
-        check_provability(project_path, 0.7),
+        check_provability(project_path, provability_threshold),
         provability_violations
     );
 
@@ -1868,6 +1895,84 @@ mod quality_gate_unit_tests {
         let file = Path::new("src/main.rs");
         let result = resolve_absolute_file_path(project, file);
         assert_eq!(result, PathBuf::from("/home/user/project/src/main.rs"));
+    }
+
+    // ===================
+    // load_provability_threshold Tests (GH-172)
+    // ===================
+
+    #[test]
+    fn test_load_provability_threshold_no_file() {
+        let temp_dir = tempfile::TempDir::new().unwrap();
+        let threshold = load_provability_threshold(temp_dir.path());
+        assert!(
+            (threshold - DEFAULT_PROVABILITY_THRESHOLD).abs() < f64::EPSILON,
+            "Should fall back to default when file is missing"
+        );
+    }
+
+    #[test]
+    fn test_load_provability_threshold_from_config() {
+        let temp_dir = tempfile::TempDir::new().unwrap();
+        let config_content = r#"
+[thresholds]
+provability_min = 0.60
+"#;
+        std::fs::write(temp_dir.path().join(".pmat-metrics.toml"), config_content).unwrap();
+
+        let threshold = load_provability_threshold(temp_dir.path());
+        assert!(
+            (threshold - 0.60).abs() < f64::EPSILON,
+            "Should read provability_min from config, got {threshold}"
+        );
+    }
+
+    #[test]
+    fn test_load_provability_threshold_missing_key() {
+        let temp_dir = tempfile::TempDir::new().unwrap();
+        let config_content = r#"
+[thresholds]
+lint_max_ms = 150000
+"#;
+        std::fs::write(temp_dir.path().join(".pmat-metrics.toml"), config_content).unwrap();
+
+        let threshold = load_provability_threshold(temp_dir.path());
+        assert!(
+            (threshold - DEFAULT_PROVABILITY_THRESHOLD).abs() < f64::EPSILON,
+            "Should fall back to default when key is missing"
+        );
+    }
+
+    #[test]
+    fn test_load_provability_threshold_invalid_toml() {
+        let temp_dir = tempfile::TempDir::new().unwrap();
+        std::fs::write(
+            temp_dir.path().join(".pmat-metrics.toml"),
+            "this is not valid toml {{{{",
+        )
+        .unwrap();
+
+        let threshold = load_provability_threshold(temp_dir.path());
+        assert!(
+            (threshold - DEFAULT_PROVABILITY_THRESHOLD).abs() < f64::EPSILON,
+            "Should fall back to default when TOML is invalid"
+        );
+    }
+
+    #[test]
+    fn test_load_provability_threshold_no_thresholds_section() {
+        let temp_dir = tempfile::TempDir::new().unwrap();
+        let config_content = r#"
+[quality_gates]
+min_coverage_pct = 85.0
+"#;
+        std::fs::write(temp_dir.path().join(".pmat-metrics.toml"), config_content).unwrap();
+
+        let threshold = load_provability_threshold(temp_dir.path());
+        assert!(
+            (threshold - DEFAULT_PROVABILITY_THRESHOLD).abs() < f64::EPSILON,
+            "Should fall back to default when [thresholds] section is missing"
+        );
     }
 }
 

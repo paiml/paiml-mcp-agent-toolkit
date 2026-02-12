@@ -233,8 +233,8 @@ fn has_math_notation(doc: &str) -> bool {
     while i < bytes.len() {
         if bytes[i] == b'$' && (i + 2 < bytes.len()) {
             // Find closing $
-            if let Some(end) = doc[i + 1..].find('$') {
-                let inner = &doc[i + 1..i + 1 + end];
+            if let Some(end) = doc.get(i + 1..).unwrap_or_default().find('$') {
+                let inner = doc.get(i + 1..i + 1 + end).unwrap_or_default();
                 if !inner.trim().is_empty() {
                     return true;
                 }

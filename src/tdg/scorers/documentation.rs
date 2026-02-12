@@ -34,7 +34,7 @@ impl DocumentationScorer {
                 if text.starts_with("///") {
                     docs.add_doc_comment(text.to_string());
                 } else if text.starts_with("//!") {
-                    docs.module_doc = Some(text[3..].trim().to_string());
+                    docs.module_doc = Some(text.get(3..).unwrap_or_default().trim().to_string());
                 }
             }
             "block_comment" => {
@@ -42,7 +42,7 @@ impl DocumentationScorer {
                 if text.starts_with("/**") {
                     docs.add_doc_comment(text.to_string());
                 } else if text.starts_with("/*!") {
-                    docs.module_doc = Some(text[3..text.len()-2].trim().to_string());
+                    docs.module_doc = Some(text.get(3..text.len().saturating_sub(2)).unwrap_or_default().trim().to_string());
                 }
             }
             _ => {}

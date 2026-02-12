@@ -369,12 +369,12 @@ impl BigOAnalyzer {
         for cap in regex.captures_iter(&content) {
             if let Some(name_match) = cap.get(cap.len() - 1) {
                 let function_name = name_match.as_str().to_string();
-                let line_number = content[..name_match.start()].lines().count();
+                let line_number = content.get(..name_match.start()).unwrap_or_default().lines().count();
 
                 // Analyze function complexity
                 let complexity = self.analyze_function_complexity(
                     &function_name,
-                    &content[name_match.start()..],
+                    content.get(name_match.start()..).unwrap_or_default(),
                     lang,
                 );
 

@@ -278,7 +278,7 @@ impl<'a> Visit<'_> for MutationVisitor<'a> {
                         end_column: 0,
                     };
                     let mutant = Mutant {
-                        id: format!("{}_{}", operator.name(), &hash[..8]),
+                        id: format!("{}_{}", operator.name(), hash.get(..8).unwrap_or(&hash)),
                         original_file: self.file_path.clone(),
                         mutated_source,
                         location,
@@ -313,7 +313,7 @@ impl<'a> Visit<'_> for MutationVisitor<'a> {
                         hasher.update(&expr_str);
                         let hash = format!("{:x}", hasher.finalize());
                         let mutant = Mutant {
-                            id: format!("{}_{}", operator.name(), &hash[..8]),
+                            id: format!("{}_{}", operator.name(), hash.get(..8).unwrap_or(&hash)),
                             original_file: self.file_path.clone(),
                             mutated_source,
                             location: location.clone(),

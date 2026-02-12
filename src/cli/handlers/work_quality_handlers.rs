@@ -25,7 +25,7 @@ fn run_changed_module_tests(project_path: &PathBuf) -> Result<bool> {
 
     let module_list = modules.join(", ");
     let display = if module_list.len() > 60 {
-        format!("{}...", &module_list[..60])
+        format!("{}...", module_list.get(..60).unwrap_or(&module_list))
     } else {
         module_list
     };

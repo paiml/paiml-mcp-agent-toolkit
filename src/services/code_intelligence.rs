@@ -228,7 +228,7 @@ impl UnifiedCache {
     /// // Cache hit returns the report
     /// let retrieved = cache.get("test_key").await;
     /// assert!(retrieved.is_some());
-    /// assert_eq!(retrieved.unwrap().timestamp, report.timestamp);
+    /// assert_eq!(retrieved.expect("cache hit").timestamp, report.timestamp);
     /// # });
     /// ```
     pub async fn get(&self, key: &str) -> Option<AnalysisReport> {
@@ -367,9 +367,9 @@ impl CodeIntelligence {
     ///
     /// # tokio_test::block_on(async {
     /// // Create a temporary Rust project
-    /// let dir = tempdir().unwrap();
+    /// let dir = tempdir().expect("tempdir");
     /// let main_rs = dir.path().join("main.rs");
-    /// fs::write(&main_rs, "fn main() { println!(\"Hello, world!\"); }").unwrap();
+    /// fs::write(&main_rs, "fn main() { println!(\"Hello, world!\"); }").expect("write");
     ///
     /// let intelligence = CodeIntelligence::new();
     /// let request = AnalysisRequest {
@@ -384,7 +384,7 @@ impl CodeIntelligence {
     /// let result = intelligence.analyze_comprehensive(request.clone()).await;
     /// assert!(result.is_ok());
     ///
-    /// let report = result.unwrap();
+    /// let report = result.expect("analysis succeeded");
     /// assert!(report.dependency_graph.is_some());
     ///
     /// // Second call should hit cache (much faster)
@@ -702,9 +702,9 @@ impl CodeIntelligence {
 ///
 /// # tokio_test::block_on(async {
 /// // Create a simple Rust project
-/// let dir = tempdir().unwrap();
+/// let dir = tempdir().expect("tempdir");
 /// let main_rs = dir.path().join("main.rs");
-/// fs::write(&main_rs, "fn main() { println!(\"Hello!\"); }").unwrap();
+/// fs::write(&main_rs, "fn main() { println!(\"Hello!\"); }").expect("write");
 ///
 /// let result = analyze_dag_enhanced(
 ///     &dir.path().to_string_lossy(),
@@ -717,7 +717,7 @@ impl CodeIntelligence {
 /// ).await;
 ///
 /// assert!(result.is_ok());
-/// let output = result.unwrap();
+/// let output = result.expect("analysis succeeded");
 ///
 /// // Should contain graph statistics
 /// assert!(output.contains("Graph Statistics:"));

@@ -189,7 +189,7 @@ impl SatdDetector {
 
             // Line comment handling
             if let Some(comment_start) = line.find("//") {
-                comments.push_str(&line[comment_start..]);
+                comments.push_str(line.get(comment_start..).unwrap_or_default());
                 comments.push('\n');
             }
         }

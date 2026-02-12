@@ -62,6 +62,7 @@ fn build_code_annotations(
 }
 
 #[allow(clippy::field_reassign_with_default)]
+#[allow(clippy::cast_possible_truncation)]
 fn annotate_file_functions(
     index: &AgentContextIndex,
     file_path: &str,
@@ -155,6 +156,7 @@ fn load_bug_hunter_annotations(
     }
 }
 
+#[allow(clippy::cast_possible_truncation)]
 fn compute_cochange_pairs(
     cochange_counts: HashMap<(String, String), usize>,
     hotspots: &HashMap<String, FileHotspot>,
@@ -251,7 +253,7 @@ fn load_commit_quality(
     project_path: &std::path::Path,
     commit_hash: &str,
 ) -> Option<CommitQualityMeta> {
-    let short_hash = &commit_hash[..7.min(commit_hash.len())];
+    let short_hash = commit_hash.get(..7.min(commit_hash.len())).unwrap_or(commit_hash);
     let meta_path = project_path
         .join(".pmat-metrics")
         .join(format!("commit-{}-meta.json", short_hash));
@@ -266,6 +268,7 @@ fn load_commit_quality(
 
 /// Compute code decay score for a file
 /// decay = (1 - TDG_normalized) x churn_ratio x fix_ratio x (1 + dead_code_fraction)
+#[allow(clippy::cast_possible_truncation)]
 fn compute_decay_score(hotspot: &FileHotspot, total_commits: usize) -> f32 {
     let tdg_score = hotspot
         .annotation
@@ -300,6 +303,7 @@ fn compute_decay_score(hotspot: &FileHotspot, total_commits: usize) -> f32 {
 
 /// Compute impact x risk score
 /// impact_risk = pagerank x churn_ratio x (1 + fault_density)
+#[allow(clippy::cast_possible_truncation)]
 fn compute_impact_risk(hotspot: &FileHotspot, total_commits: usize) -> f32 {
     let pagerank = hotspot.annotation.max_pagerank.unwrap_or(0.0);
     let churn_ratio = if total_commits > 0 {
@@ -359,7 +363,7 @@ fn format_commit_entry(
     total_commits: usize,
 ) {
     let commit = &hit.commit;
-    let short_hash = &commit.hash[..7.min(commit.hash.len())];
+    let short_hash = commit.hash.get(..7.min(commit.hash.len())).unwrap_or(&commit.hash);
     let (type_color, type_tag) = classify_commit_type(&commit.message_subject);
     let score_color = if hit.relevance_score > 0.7 {
         BRIGHT_GREEN
@@ -384,7 +388,7 @@ fn format_commit_entry(
         if !body.is_empty() {
             let truncated = if body.len() > 120 {
                 #[allow(clippy::incompatible_msrv)]
-                { format!("{}...", &body[..body.floor_char_boundary(120)]) }
+                { format!("{}...", body.get(..body.floor_char_boundary(120)).unwrap_or(body)) }
             } else {
                 body.clone()
             };
@@ -450,6 +454,7 @@ fn format_commit_files(
 }
 
 /// Format a single file path with quality annotations from hotspot data
+#[allow(clippy::cast_possible_truncation)]
 fn format_annotated_file(out: &mut String, file_path: &str, hotspot: &FileHotspot, total_commits: usize) {
     let grade = hotspot.annotation.tdg_grade.as_deref().unwrap_or("?");
     let grade_color = grade_to_color(grade);
@@ -493,6 +498,7 @@ fn format_hotspot_section(out: &mut String, hotspots: &HashMap<String, FileHotsp
 }
 
 /// Format a single hotspot entry
+#[allow(clippy::cast_possible_truncation)]
 fn format_hotspot_entry(out: &mut String, path: &str, hotspot: &FileHotspot, total_commits: usize) {
     let pct = if total_commits > 0 { hotspot.commit_count as f32 / total_commits as f32 * 100.0 } else { 0.0 };
     let churn_color = if pct > 30.0 { BRIGHT_RED } else if pct > 15.0 { RED } else if pct > 5.0 { YELLOW } else { DIM };
@@ -512,6 +518,7 @@ fn format_hotspot_entry(out: &mut String, path: &str, hotspot: &FileHotspot, tot
     ));
 }
 
+#[allow(clippy::cast_possible_truncation)]
 fn format_fix_indicator(hotspot: &FileHotspot) -> String {
     let fix_ratio = if hotspot.commit_count > 0 { hotspot.fix_count as f32 / hotspot.commit_count as f32 } else { 0.0 };
     if fix_ratio > 0.5 { format!(" {BRIGHT_RED}!!{} fixes{RESET}", hotspot.fix_count) }
@@ -531,6 +538,7 @@ fn format_risk_indicator(impact_risk: f32) -> String {
     else { String::new() }
 }
 
+#[allow(clippy::cast_possible_truncation)]
 fn format_top_author(hotspot: &FileHotspot) -> String {
     hotspot.authors.iter().max_by_key(|(_, count)| *count)
         .map(|(name, count)| {
@@ -556,7 +564,7 @@ fn format_defect_introductions(out: &mut String, all_commits: &[CommitInfo]) {
             .count();
         if fix_count > 0 {
             let files_str = feat.files.iter().take(3).map(|f| f.path.clone()).collect::<Vec<_>>().join(", ");
-            defect_introductions.push((feat.hash[..7].to_string(), files_str, fix_count));
+            defect_introductions.push((feat.hash.get(..7).unwrap_or(&feat.hash).to_string(), files_str, fix_count));
         }
     }
 
@@ -575,6 +583,7 @@ fn format_defect_introductions(out: &mut String, all_commits: &[CommitInfo]) {
 }
 
 /// Format churn velocity section
+#[allow(clippy::cast_possible_truncation)]
 fn format_churn_velocity(out: &mut String, sorted_hotspots: &[(&String, &FileHotspot)], all_commits: &[CommitInfo]) {
     let (newest, oldest) = match (
         all_commits.iter().map(|c| c.timestamp).max(),

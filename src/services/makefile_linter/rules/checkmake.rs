@@ -360,10 +360,10 @@ impl<'a> VariableScanner<'a> {
             return None;
         }
 
-        let remaining = &self.text[content_start..];
+        let remaining = self.text.get(content_start..).unwrap_or_default();
 
         if let Some(end) = remaining.find(')') {
-            let var_content = &remaining[..end];
+            let var_content = remaining.get(..end).unwrap_or_default();
             let var_name = extract_var_name(var_content);
 
             self.position = content_start + end + 1;
@@ -384,10 +384,10 @@ impl<'a> VariableScanner<'a> {
             return None;
         }
 
-        let remaining = &self.text[content_start..];
+        let remaining = self.text.get(content_start..).unwrap_or_default();
 
         if let Some(end) = remaining.find('}') {
-            let var_name = remaining[..end].to_string();
+            let var_name = remaining.get(..end).unwrap_or_default().to_string();
 
             self.position = content_start + end + 1;
 
@@ -464,7 +464,7 @@ impl Iterator for VariableScanner<'_> {
 fn extract_from_default_value(var_content: &str) -> Option<String> {
     if var_content.contains(":-") {
         if let Some(pos) = var_content.find(":-") {
-            return Some(var_content[..pos].trim().to_string());
+            return Some(var_content.get(..pos).unwrap_or_default().trim().to_string());
         }
     }
     None
@@ -474,7 +474,7 @@ fn extract_from_default_value(var_content: &str) -> Option<String> {
 fn extract_from_alternative_value(var_content: &str) -> Option<String> {
     if var_content.contains(":+") {
         if let Some(pos) = var_content.find(":+") {
-            return Some(var_content[..pos].trim().to_string());
+            return Some(var_content.get(..pos).unwrap_or_default().trim().to_string());
         }
     }
     None
@@ -484,7 +484,7 @@ fn extract_from_alternative_value(var_content: &str) -> Option<String> {
 fn extract_from_pattern_substitution(var_content: &str) -> Option<String> {
     if let Some(colon_pos) = var_content.find(':') {
         // But not if it's part of a shell command with spaces
-        let before_colon = &var_content[..colon_pos];
+        let before_colon = var_content.get(..colon_pos).unwrap_or_default();
         if !contains_shell_indicators(before_colon) {
             return Some(before_colon.trim().to_string());
         }

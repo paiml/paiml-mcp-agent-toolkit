@@ -390,9 +390,9 @@ fn extract_pattern(reason: &str) -> String {
     if reason.contains("panicked at") {
         // Extract panic message
         if let Some(start) = reason.find("panicked at") {
-            let rest = &reason[start..];
+            let rest = reason.get(start..).unwrap_or_default();
             if let Some(end) = rest.find('\n') {
-                return rest[..end].to_string();
+                return rest.get(..end).unwrap_or_default().to_string();
             }
             return rest.chars().take(80).collect();
         }
@@ -847,7 +847,7 @@ fn build_test_file_map(project_path: &Path) -> Result<std::collections::HashMap<
                     // Extract function name
                     let trimmed = line.trim().strip_prefix("fn ").unwrap_or(line);
                     if let Some(name_end) = trimmed.find('(') {
-                        let fn_name = &trimmed[..name_end];
+                        let fn_name = trimmed.get(..name_end).unwrap_or_default();
                         map.insert(fn_name.to_string(), path.to_path_buf());
                     }
                 }
@@ -910,7 +910,7 @@ fn parse_test_summary(stdout: &str, stderr: &str) -> (usize, usize, usize) {
 fn extract_number(line: &str, keyword: &str) -> Option<usize> {
     if let Some(pos) = line.find(keyword) {
         // Look backwards for the number
-        let before = &line[..pos];
+        let before = line.get(..pos).unwrap_or_default();
         let parts: Vec<&str> = before.split_whitespace().collect();
         if let Some(num_str) = parts.last() {
             return num_str.parse().ok();

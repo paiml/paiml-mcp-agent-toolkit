@@ -75,7 +75,7 @@ fn format_coverage_diff_text(diff: f32, out: &mut String) {
 fn truncate_doc(doc: &str) -> String {
     let first_line = doc.lines().next().unwrap_or(doc);
     if first_line.len() > 100 {
-        format!("{}...", &first_line[..first_line.floor_char_boundary(97)])
+        format!("{}...", first_line.get(..first_line.floor_char_boundary(97)).unwrap_or(first_line))
     } else {
         first_line.to_string()
     }
@@ -266,13 +266,13 @@ fn highlight_matches_in_line(line: &str, pattern: &str, is_regex: bool) -> Strin
             let mut result = String::new();
             let mut last = 0;
             for m in re.find_iter(line) {
-                result.push_str(&line[last..m.start()]);
+                result.push_str(line.get(last..m.start()).unwrap_or_default());
                 result.push_str(HL_START);
                 result.push_str(m.as_str());
                 result.push_str(HL_END);
                 last = m.end();
             }
-            result.push_str(&line[last..]);
+            result.push_str(line.get(last..).unwrap_or_default());
             result
         } else {
             line.to_string()
@@ -286,15 +286,15 @@ fn highlight_matches_in_line(line: &str, pattern: &str, is_regex: bool) -> Strin
         }
         let mut result = String::new();
         let mut pos = 0;
-        while let Some(idx) = lower_line[pos..].find(&lower_pattern) {
+        while let Some(idx) = lower_line.get(pos..).unwrap_or_default().find(&lower_pattern) {
             let abs_idx = pos + idx;
-            result.push_str(&line[pos..abs_idx]);
+            result.push_str(line.get(pos..abs_idx).unwrap_or_default());
             result.push_str(HL_START);
-            result.push_str(&line[abs_idx..abs_idx + pattern.len()]);
+            result.push_str(line.get(abs_idx..abs_idx + pattern.len()).unwrap_or_default());
             result.push_str(HL_END);
             pos = abs_idx + pattern.len();
         }
-        result.push_str(&line[pos..]);
+        result.push_str(line.get(pos..).unwrap_or_default());
         result
     }
 }

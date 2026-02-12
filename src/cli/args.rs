@@ -81,8 +81,8 @@ pub fn parse_key_val(s: &str) -> Result<(String, Value), String> {
         .find('=')
         .ok_or_else(|| format!("invalid KEY=value: no `=` found in `{s}`"))?;
 
-    let key = &s[..pos];
-    let val = &s[pos + 1..];
+    let key = s.get(..pos).unwrap_or_default();
+    let val = s.get(pos + 1..).unwrap_or_default();
 
     // Type inference with fast paths
     let value = if val.is_empty() {

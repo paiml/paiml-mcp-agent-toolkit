@@ -111,6 +111,7 @@ pub struct MutantFeatures {
 impl MutantFeatures {
     /// Extract features from a mutant
     /// Enhanced extraction (v2) - extracts 18 features
+    #[allow(clippy::cast_possible_truncation)]
     pub fn from_mutant(mutant: &Mutant) -> Self {
         let source_line = mutant.location.line;
         let source = &mutant.mutated_source;
@@ -327,6 +328,7 @@ impl SurvivabilityPredictor {
 
     /// Train the predictor on historical data using LinearRegression
     /// Phase 4.3 GREEN - Aprender migration (0 dependencies vs linfa's 50+)
+    #[allow(clippy::cast_possible_truncation)]
     pub fn train(&mut self, training_data: &[TrainingData]) -> Result<()> {
         if training_data.is_empty() {
             anyhow::bail!("Training data cannot be empty");
@@ -549,6 +551,7 @@ impl SurvivabilityPredictor {
 
     /// Predict kill probability for a mutant using trained LinearRegression
     /// Phase 4.3 GREEN - Uses aprender LinearRegression with 18 features
+    #[allow(clippy::cast_possible_truncation)]
     pub fn predict(&self, mutant: &Mutant) -> Result<PredictionResult> {
         if !self.trained {
             anyhow::bail!("Model not trained");
@@ -758,11 +761,12 @@ fn estimate_nesting_depth(source: &str) -> u32 {
 }
 
 /// Helper: Count function parameters
+#[allow(clippy::cast_possible_truncation)]
 fn count_parameters(source: &str) -> u32 {
     // Simple heuristic: count commas in first parentheses
     if let Some(start) = source.find('(') {
-        if let Some(end) = source[start..].find(')') {
-            let params = &source[start..start + end];
+        if let Some(end) = source.get(start..).unwrap_or_default().find(')') {
+            let params = source.get(start..start + end).unwrap_or_default();
             if params.trim() == "()" {
                 return 0;
             }
@@ -773,6 +777,7 @@ fn count_parameters(source: &str) -> u32 {
 }
 
 /// Helper: Count unique variable identifiers (simple heuristic)
+#[allow(clippy::cast_possible_truncation)]
 fn count_unique_variables(source: &str) -> u32 {
     use std::collections::HashSet;
     let mut variables = HashSet::new();

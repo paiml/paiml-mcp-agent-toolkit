@@ -283,7 +283,7 @@ fn run_batuta_and_parse(project_root: &Path) -> Result<HashMap<String, Vec<Strin
         None => return Ok(HashMap::new()),
     };
 
-    let parsed: serde_json::Value = serde_json::from_str(&stdout[json_start..])
+    let parsed: serde_json::Value = serde_json::from_str(stdout.get(json_start..).unwrap_or_default())
         .map_err(|e| format!("Failed to parse batuta output: {e}"))?;
 
     let findings = match parsed.get("findings").and_then(|f| f.as_array()) {

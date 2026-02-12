@@ -38,7 +38,7 @@ fn count_exclusion_patterns(content: &str) -> (usize, usize) {
         let start = line.find('\'').unwrap_or(0);
         let end = line.rfind('\'').unwrap_or(0);
         if start < end {
-            count += line[start + 1..end].matches('|').count() + 1;
+            count += line.get(start + 1..end).unwrap_or_default().matches('|').count() + 1;
         }
     }
     (count, last_line)
@@ -195,16 +195,16 @@ fn scan_file_for_sleep_violations(path: &Path) -> Vec<CbPatternViolation> {
 /// Helper to extract sleep duration from a line containing sleep calls
 pub(super) fn extract_sleep_duration(line: &str) -> Option<f64> {
     if let Some(start) = line.find("from_secs(") {
-        let after = &line[start + 10..];
+        let after = line.get(start + 10..).unwrap_or_default();
         if let Some(end) = after.find(')') {
-            let num_str = &after[..end];
+            let num_str = after.get(..end).unwrap_or_default();
             return num_str.trim().parse::<f64>().ok();
         }
     }
     if let Some(start) = line.find("from_millis(") {
-        let after = &line[start + 12..];
+        let after = line.get(start + 12..).unwrap_or_default();
         if let Some(end) = after.find(')') {
-            let num_str = &after[..end];
+            let num_str = after.get(..end).unwrap_or_default();
             if let Ok(millis) = num_str.trim().parse::<f64>() {
                 return Some(millis / 1000.0);
             }

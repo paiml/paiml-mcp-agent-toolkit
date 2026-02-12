@@ -184,7 +184,7 @@ fn format_text_brick_timing(score: &BrickScore, output: &mut String) {
         let budget_str = brick.budget_us.map(|b| format!("{:.1}", b)).unwrap_or_else(|| "-".to_string());
         output.push_str(&format!(
             "  │ {:<17} │ {:>7.1} │ {:>7} {} │ {:>6.1} │ {:>9.0} │\n",
-            &brick.name[..brick.name.len().min(17)], brick.mean_us, budget_str, status,
+            brick.name.get(..brick.name.len().min(17)).unwrap_or(&brick.name), brick.mean_us, budget_str, status,
             brick.cv_percent, brick.throughput / 1000.0,
         ));
     }
@@ -207,7 +207,7 @@ fn format_text_roofline(score: &BrickScore, output: &mut String) {
         }).unwrap_or("-");
         output.push_str(&format!(
             "  │ {:<17} │ {:>6} │ {:>10} │\n",
-            &brick.name[..brick.name.len().min(17)], ai_str, bottleneck_str
+            brick.name.get(..brick.name.len().min(17)).unwrap_or(&brick.name), ai_str, bottleneck_str
         ));
     }
     output.push_str("  └───────────────────┴────────┴────────────┘\n");

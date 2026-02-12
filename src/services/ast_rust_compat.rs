@@ -24,6 +24,7 @@ pub async fn analyze_rust_file_with_complexity(
 }
 
 /// Analyze a Rust file with optional classifier (compatibility function)
+#[allow(clippy::cast_possible_truncation)]
 pub async fn analyze_rust_file_with_complexity_and_classifier(
     path: &Path,
     _classifier: Option<&FileClassifier>,

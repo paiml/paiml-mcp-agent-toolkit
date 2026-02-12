@@ -469,7 +469,7 @@ fn truncate_str(s: &str, max_len: usize) -> String {
     if s.len() <= max_len {
         s.to_string()
     } else {
-        format!("{}...", &s[..max_len - 3])
+        format!("{}...", s.get(..max_len - 3).unwrap_or(s))
     }
 }
 

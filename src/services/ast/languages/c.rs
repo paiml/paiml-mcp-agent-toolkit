@@ -237,6 +237,7 @@ impl CAstVisitor {
     }
 
     /// Extracts global variables (complexity ≤10)
+    #[allow(clippy::cast_possible_truncation)]
     fn extract_global_variables(&mut self, source: &str) -> Result<(), String> {
         let mut in_function = false;
         let mut brace_depth = 0;
@@ -497,6 +498,7 @@ impl CComplexityAnalyzer {
 
 /// Public async function to analyze a C file and return FileContext
 #[cfg(feature = "c-ast")]
+#[allow(clippy::cast_possible_truncation)]
 pub async fn analyze_c_file(
     path: &Path,
 ) -> Result<crate::services::context::FileContext, crate::models::error::TemplateError> {

@@ -320,7 +320,7 @@ impl CudaSimdAnalyzer {
 
         for pattern in &patterns {
             if let Some(pos) = content.find(pattern) {
-                let after = &content[pos + pattern.len()..];
+                let after = content.get(pos + pattern.len()..).unwrap_or_default();
                 let value_str: String = after.chars().take_while(|c| c.is_ascii_digit()).collect();
                 if let Ok(value) = value_str.parse() {
                     return Some(value);

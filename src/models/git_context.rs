@@ -270,7 +270,7 @@ impl GitContext {
         use chrono::TimeZone;
 
         let commit_sha = commit.id().to_string();
-        let commit_sha_short = commit_sha[..7].to_string();
+        let commit_sha_short = commit_sha.get(..7).unwrap_or(&commit_sha).to_string();
 
         let author = commit.author();
         let author_name = author.name().unwrap_or("Unknown").to_string();

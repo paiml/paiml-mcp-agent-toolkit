@@ -8,6 +8,7 @@ use super::analyzer_ast::TdgAnalyzerAst;
 
 impl TdgAnalyzerAst {
     #[cfg(feature = "ruchy-ast")]
+    #[allow(clippy::cast_possible_truncation)]
     pub(crate) fn calculate_ruchy_semantic_complexity(&self, source: &str) -> f32 {
         let mut complexity_score = self.config.weights.semantic_complexity;
 
@@ -33,6 +34,7 @@ impl TdgAnalyzerAst {
     }
 
     #[cfg(feature = "ruchy-ast")]
+    #[allow(clippy::cast_possible_truncation)]
     pub(crate) fn count_ruchy_imports(&self, source: &str) -> u32 {
         // Count Ruchy-style import statements
         source.matches("import ").count() as u32
@@ -41,6 +43,7 @@ impl TdgAnalyzerAst {
     }
 
     #[cfg(feature = "ruchy-ast")]
+    #[allow(clippy::cast_possible_truncation)]
     pub(crate) fn count_ruchy_dependencies(&self, source: &str) -> u32 {
         // Count actor message dependencies and external calls
         source.matches(" <- ").count() as u32 +  // Message sends
@@ -49,6 +52,7 @@ impl TdgAnalyzerAst {
     }
 
     #[cfg(feature = "ruchy-ast")]
+    #[allow(clippy::cast_possible_truncation)]
     pub(crate) fn calculate_ruchy_doc_coverage(&self, source: &str) -> f32 {
         let line_count = source.lines().count() as f32;
         if line_count == 0.0 {
@@ -65,6 +69,7 @@ impl TdgAnalyzerAst {
     }
 
     #[cfg(feature = "ruchy-ast")]
+    #[allow(clippy::cast_possible_truncation)]
     pub(crate) fn calculate_ruchy_consistency(&self, source: &str) -> f32 {
         let mut consistency_score = self.config.weights.consistency;
 

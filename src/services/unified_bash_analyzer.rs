@@ -218,6 +218,7 @@ impl UnifiedBashAnalyzer {
     }
 
     /// Calculate script-level complexity (for scripts without functions)
+    #[allow(clippy::cast_possible_truncation)]
     fn calculate_script_complexity(&self, content: &str) -> u32 {
         let mut complexity = 1; // Base complexity
 

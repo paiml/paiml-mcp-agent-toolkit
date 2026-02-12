@@ -259,9 +259,9 @@ impl RustAnalyzer {
     fn extract_function_name(&self, line: &str) -> Option<String> {
         let line = line.trim();
         if let Some(fn_pos) = line.find("fn ") {
-            let after_fn = &line[fn_pos + 3..];
+            let after_fn = line.get(fn_pos + 3..).unwrap_or_default();
             if let Some(paren_pos) = after_fn.find('(') {
-                let name = after_fn[..paren_pos].trim();
+                let name = after_fn.get(..paren_pos).unwrap_or_default().trim();
                 if !name.is_empty() {
                     return Some(name.to_string());
                 }
@@ -361,10 +361,10 @@ impl JavaScriptAnalyzer {
 
         for pattern in &patterns {
             if let Some(pos) = line.find(pattern) {
-                let after = &line[pos + pattern.len()..];
+                let after = line.get(pos + pattern.len()..).unwrap_or_default();
                 // Extract until space or {
                 if let Some(end) = after.find(|c: char| c.is_whitespace() || c == '{') {
-                    let name = after[..end].trim();
+                    let name = after.get(..end).unwrap_or_default().trim();
                     if !name.is_empty() {
                         return Some(name.to_string());
                     }
@@ -429,10 +429,10 @@ impl JavaScriptAnalyzer {
     /// Extract simple method name from pattern: `methodName(params)`
     fn extract_simple_method_name(&self, text: &str) -> Option<String> {
         if let Some(paren_pos) = text.find('(') {
-            let before_paren = &text[..paren_pos].trim();
+            let before_paren = &text.get(..paren_pos).unwrap_or_default().trim();
             // Extract last word before '('
             if let Some(last_word_start) = before_paren.rfind(|c: char| c.is_whitespace()) {
-                let name = before_paren[last_word_start..].trim();
+                let name = before_paren.get(last_word_start..).unwrap_or_default().trim();
                 if !name.is_empty()
                     && name
                         .chars()
@@ -471,9 +471,9 @@ impl JavaScriptAnalyzer {
     fn extract_function_name(&self, line: &str) -> Option<String> {
         // Handle: function name(
         if let Some(pos) = line.find("function ") {
-            let after = &line[pos + 9..];
+            let after = line.get(pos + 9..).unwrap_or_default();
             if let Some(paren_pos) = after.find('(') {
-                let name = after[..paren_pos].trim();
+                let name = after.get(..paren_pos).unwrap_or_default().trim();
                 if !name.is_empty() {
                     return Some(name.to_string());
                 }
@@ -483,9 +483,9 @@ impl JavaScriptAnalyzer {
         // Handle: const/let/var name =
         for keyword in &["const ", "let ", "var "] {
             if let Some(pos) = line.find(keyword) {
-                let after = &line[pos + keyword.len()..];
+                let after = line.get(pos + keyword.len()..).unwrap_or_default();
                 if let Some(eq_pos) = after.find(" = ") {
-                    let name = after[..eq_pos].trim();
+                    let name = after.get(..eq_pos).unwrap_or_default().trim();
                     return Some(name.to_string());
                 }
             }
@@ -598,7 +598,7 @@ impl CAnalyzer {
         let paren_pos = cleaned.find('(')?;
 
         // Work backwards from '(' to find the function name
-        let before_paren = &cleaned[..paren_pos];
+        let before_paren = cleaned.get(..paren_pos).unwrap_or_default();
 
         // Split by whitespace and get the last token (the function name)
         let tokens: Vec<&str> = before_paren.split_whitespace().collect();
@@ -684,9 +684,9 @@ impl PythonAnalyzer {
     fn extract_function_name(&self, line: &str) -> Option<String> {
         let line = line.trim();
         if let Some(pos) = line.find("def ") {
-            let after = &line[pos + 4..];
+            let after = line.get(pos + 4..).unwrap_or_default();
             if let Some(paren_pos) = after.find('(') {
-                let name = after[..paren_pos].trim();
+                let name = after.get(..paren_pos).unwrap_or_default().trim();
                 return Some(name.to_string());
             }
         }
@@ -822,7 +822,7 @@ impl LuaAnalyzer {
         };
 
         let paren_pos = after.find('(')?;
-        let name = after[..paren_pos].trim();
+        let name = after.get(..paren_pos).unwrap_or_default().trim();
         if name.is_empty() {
             return None;
         }

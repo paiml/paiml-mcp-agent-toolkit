@@ -691,11 +691,11 @@ fn print_pareto_report(entries: &[ParetoEntry]) {
 
         println!(
             "│ {:<19} │ {:>9} │ {:>6} │ {:>6.1} │ {:<21} {:>5} │",
-            &entry.name[..entry.name.len().min(19)],
+            entry.name.get(..entry.name.len().min(19)).unwrap_or(&entry.name),
             entry.transitive_deps,
             entry.effort.label(),
             entry.roi,
-            &entry.reason[..entry.reason.len().min(21)],
+            entry.reason.get(..entry.reason.len().min(21)).unwrap_or(&entry.reason),
             marker
         );
     }
@@ -1014,7 +1014,7 @@ fn print_text_report(report: &DepsAuditReport) {
         println!("  │ Dependency          │ Score    │");
         println!("  ├─────────────────────┼──────────┤");
         for (name, score) in report.top_critical.iter().take(5) {
-            println!("  │ {:<19} │ {:.6} │", &name[..name.len().min(19)], score);
+            println!("  │ {:<19} │ {:.6} │", name.get(..name.len().min(19)).unwrap_or(name), score);
         }
         println!("  └─────────────────────┴──────────┘");
         println!("  (Higher = more deps depend on it, harder to remove)");
@@ -1051,8 +1051,8 @@ fn print_text_report(report: &DepsAuditReport) {
         for dep in &removable {
             println!(
                 "  │ {:<19} │ {:<38} │",
-                &dep.name[..dep.name.len().min(19)],
-                &dep.reason[..dep.reason.len().min(38)]
+                dep.name.get(..dep.name.len().min(19)).unwrap_or(&dep.name),
+                dep.reason.get(..dep.reason.len().min(38)).unwrap_or(&dep.reason)
             );
         }
         println!("  └─────────────────────┴────────────────────────────────────────┘");
@@ -1067,9 +1067,9 @@ fn print_text_report(report: &DepsAuditReport) {
         for dep in &heavy {
             println!(
                 "  │ {:<19} │ {:>8} │ {:<27} │",
-                &dep.name[..dep.name.len().min(19)],
+                dep.name.get(..dep.name.len().min(19)).unwrap_or(&dep.name),
                 dep.estimated_size_kb,
-                &dep.reason[..dep.reason.len().min(27)]
+                dep.reason.get(..dep.reason.len().min(27)).unwrap_or(&dep.reason)
             );
         }
         println!("  └─────────────────────┴──────────┴─────────────────────────────┘");
@@ -1085,9 +1085,9 @@ fn print_text_report(report: &DepsAuditReport) {
             let replacement = dep.replacement.as_deref().unwrap_or("-");
             println!(
                 "  │ {:<19} │ {:<19} │ {:<17} │",
-                &dep.name[..dep.name.len().min(19)],
-                &replacement[..replacement.len().min(19)],
-                &dep.reason[..dep.reason.len().min(17)]
+                dep.name.get(..dep.name.len().min(19)).unwrap_or(&dep.name),
+                replacement.get(..replacement.len().min(19)).unwrap_or(replacement),
+                dep.reason.get(..dep.reason.len().min(17)).unwrap_or(&dep.reason)
             );
         }
         println!("  └─────────────────────┴─────────────────────┴───────────────────┘");

@@ -260,9 +260,9 @@ fn parse_coverage_percentage(output: &str) -> Option<f64> {
     for line in output.lines() {
         if line.contains("Coverage:") {
             if let Some(pos) = line.find(':') {
-                let rest = &line[pos + 1..].trim();
+                let rest = &line.get(pos + 1..).unwrap_or_default().trim();
                 if let Some(percent_pos) = rest.find('%') {
-                    let num_str = &rest[..percent_pos].trim();
+                    let num_str = &rest.get(..percent_pos).unwrap_or_default().trim();
                     return num_str.parse().ok();
                 }
             }
@@ -429,14 +429,14 @@ fn extract_coverage_from_output(output: &str) -> Option<u8> {
 /// Extracts coverage percentage from text with a given prefix
 fn extract_coverage_with_prefix(text: &str, prefix: &str, skip_len: usize) -> Option<u8> {
     let idx = text.find(prefix)?;
-    let rest = text[idx + skip_len..].trim();
+    let rest = text.get(idx + skip_len..).unwrap_or_default().trim();
     extract_percentage_value(rest)
 }
 
 /// Extracts percentage value from text ending with '%'
 fn extract_percentage_value(text: &str) -> Option<u8> {
     let percent_pos = text.find('%')?;
-    let num_str = text[..percent_pos].trim();
+    let num_str = text.get(..percent_pos).unwrap_or_default().trim();
     // Parse as f64 first to handle decimals, then truncate to u8
     num_str.parse::<f64>().ok().map(|val| val as u8)
 }

@@ -124,6 +124,7 @@ pub struct FaultLocalizationResult {
 /// Formula: (failed/totalFailed) / ((passed/totalPassed) + (failed/totalFailed))
 ///
 /// Reference: Jones, J.A., Harrold, M.J. (2005). ASE '05
+#[allow(clippy::cast_possible_truncation)]
 pub fn tarantula(failed: usize, passed: usize, total_failed: usize, total_passed: usize) -> f32 {
     let failed_ratio = if total_failed > 0 {
         failed as f32 / total_failed as f32
@@ -150,6 +151,7 @@ pub fn tarantula(failed: usize, passed: usize, total_failed: usize, total_passed
 /// Formula: failed / sqrt(totalFailed * (failed + passed))
 ///
 /// Reference: Abreu et al. (2009). JSS 82(11)
+#[allow(clippy::cast_possible_truncation)]
 pub fn ochiai(failed: usize, passed: usize, total_failed: usize) -> f32 {
     let denominator = ((total_failed * (failed + passed)) as f32).sqrt();
     if denominator == 0.0 {
@@ -164,6 +166,7 @@ pub fn ochiai(failed: usize, passed: usize, total_failed: usize) -> f32 {
 /// Formula: failed^* / (passed + (totalFailed - failed))
 ///
 /// Reference: Wong et al. (2014). IEEE TSE 40(1)
+#[allow(clippy::cast_possible_truncation)]
 pub fn dstar(failed: usize, passed: usize, total_failed: usize, star: u32) -> f32 {
     let numerator = (failed as f32).powi(star as i32);
     let not_failed = total_failed.saturating_sub(failed);
@@ -332,6 +335,7 @@ impl SbflLocalizer {
         }
     }
 
+    #[allow(clippy::cast_possible_truncation)]
     fn generate_explanation(
         &self,
         failed: usize,
@@ -359,6 +363,7 @@ impl SbflLocalizer {
         )
     }
 
+    #[allow(clippy::cast_possible_truncation)]
     fn calculate_confidence(
         &self,
         statement_count: usize,
@@ -576,7 +581,7 @@ impl FaultLocalizer {
             // Truncate file path for display
             let file_display = ranking.statement.file.display().to_string();
             let file_short = if file_display.len() > 30 {
-                format!("...{}", &file_display[file_display.len() - 27..])
+                format!("...{}", file_display.get(file_display.len() - 27..).unwrap_or(&file_display))
             } else {
                 file_display
             };

@@ -120,6 +120,7 @@ impl DataScienceAnalyzer {
     }
 
     /// Convert a finding to a feature vector
+    #[allow(clippy::cast_possible_truncation)]
     fn finding_to_features(&self, finding: &Finding) -> Vec<f32> {
         let mut features = vec![0.0f32; 6];
 
@@ -199,6 +200,7 @@ impl DataScienceAnalyzer {
     /// Calculate PageRank centrality for findings based on file dependencies
     ///
     /// Higher PageRank = finding is in a more "central" file that many others depend on
+    #[allow(clippy::cast_possible_truncation)]
     pub fn calculate_pagerank(&self, findings: &mut [Finding], dependencies: &[(String, String)]) {
         if findings.is_empty() || dependencies.is_empty() {
             return;
@@ -432,6 +434,7 @@ impl DataScienceAnalyzer {
     ///
     /// Uses Z-score based outlier detection (simpler than Isolation Forest)
     /// Anomalies are findings that deviate significantly from the norm
+    #[allow(clippy::cast_possible_truncation)]
     pub fn detect_anomalies(&self, findings: &mut [Finding]) -> Vec<AnomalyPoint> {
         if findings.len() < 5 {
             // Not enough data for meaningful anomaly detection
@@ -629,6 +632,7 @@ impl DataScienceAnalyzer {
     }
 
     /// Convert values to sparkline indices (0-7)
+    #[allow(clippy::cast_possible_truncation)]
     fn values_to_sparkline(&self, values: &[f64]) -> Vec<u8> {
         if values.is_empty() {
             return Vec::new();

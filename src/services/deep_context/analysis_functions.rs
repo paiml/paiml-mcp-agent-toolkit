@@ -298,7 +298,7 @@ pub async fn analyze_lua_language(
         if let Ok(re) = regex::Regex::new(pat) {
             for cap in re.captures_iter(&content) {
                 if let Some(name_match) = cap.get(1) {
-                    let line = content[..name_match.start()].lines().count();
+                    let line = content.get(..name_match.start()).unwrap_or_default().lines().count();
                     items.push(AstItem::Function {
                         name: name_match.as_str().to_string(),
                         visibility: "public".to_string(),
@@ -314,7 +314,7 @@ pub async fn analyze_lua_language(
     if let Ok(re) = regex::Regex::new(r#"(?m)require\s*\(\s*["']([^"']+)["']\s*\)"#) {
         for cap in re.captures_iter(&content) {
             if let Some(module_match) = cap.get(1) {
-                let line = content[..module_match.start()].lines().count();
+                let line = content.get(..module_match.start()).unwrap_or_default().lines().count();
                 items.push(AstItem::Import {
                     module: module_match.as_str().to_string(),
                     items: vec![],
@@ -851,6 +851,7 @@ async fn analyze_single_file_complexity(
 
 /// Lua complexity metrics: tree-sitter for totals, regex for function names
 #[cfg(feature = "lua-ast")]
+#[allow(clippy::cast_possible_truncation)]
 async fn analyze_lua_complexity_metrics(
     file_path: &std::path::Path,
 ) -> Option<crate::services::complexity::FileComplexityMetrics> {
@@ -894,6 +895,7 @@ async fn analyze_lua_complexity_metrics(
 }
 
 /// Extract Lua function names and line numbers using regex patterns
+#[allow(clippy::cast_possible_truncation)]
 fn extract_lua_function_complexities(
     content: &str,
 ) -> Vec<crate::services::complexity::FunctionComplexity> {
@@ -908,7 +910,7 @@ fn extract_lua_function_complexities(
         if let Ok(re) = regex::Regex::new(pat) {
             for cap in re.captures_iter(content) {
                 if let Some(m) = cap.get(1) {
-                    let line = content[..m.start()].lines().count() as u32;
+                    let line = content.get(..m.start()).unwrap_or_default().lines().count() as u32;
                     funcs.push(FComp {
                         name: m.as_str().to_string(),
                         line_start: line,
@@ -975,6 +977,7 @@ pub async fn analyze_churn(path: &std::path::Path, days: u32) -> anyhow::Result<
     }
 }
 
+#[allow(clippy::cast_possible_truncation)]
 async fn analyze_dead_code(
     path: &std::path::Path,
 ) -> anyhow::Result<crate::models::dead_code::DeadCodeRankingResult> {
@@ -1055,6 +1058,7 @@ async fn analyze_dead_code(
     })
 }
 
+#[allow(clippy::cast_possible_truncation)]
 fn analyze_file_for_dead_code(
     file_path: &std::path::Path,
     content: &str,
@@ -1139,6 +1143,7 @@ fn analyze_rust_dead_code(
 }
 
 /// Analyze dead functions in Rust code
+#[allow(clippy::cast_possible_truncation)]
 fn analyze_rust_dead_functions(
     lines: &[&str],
     dead_functions: &mut usize,
@@ -1164,6 +1169,7 @@ fn analyze_rust_dead_functions(
 }
 
 /// Analyze dead structs in Rust code
+#[allow(clippy::cast_possible_truncation)]
 fn analyze_rust_dead_structs(
     lines: &[&str],
     dead_classes: &mut usize,
@@ -1219,6 +1225,7 @@ fn analyze_typescript_dead_code(
 }
 
 /// Analyze dead functions in TypeScript code
+#[allow(clippy::cast_possible_truncation)]
 fn analyze_typescript_dead_functions(
     lines: &[&str],
     dead_functions: &mut usize,
@@ -1244,6 +1251,7 @@ fn analyze_typescript_dead_functions(
 }
 
 /// Analyze dead classes in TypeScript code
+#[allow(clippy::cast_possible_truncation)]
 fn analyze_typescript_dead_classes(
     lines: &[&str],
     dead_classes: &mut usize,
@@ -1299,6 +1307,7 @@ fn analyze_python_dead_code(
 }
 
 /// Analyze dead functions in Python code
+#[allow(clippy::cast_possible_truncation)]
 fn analyze_python_dead_functions(
     lines: &[&str],
     dead_functions: &mut usize,
@@ -1324,6 +1333,7 @@ fn analyze_python_dead_functions(
 }
 
 /// Analyze dead classes in Python code
+#[allow(clippy::cast_possible_truncation)]
 fn analyze_python_dead_classes(
     lines: &[&str],
     dead_classes: &mut usize,
@@ -1370,9 +1380,9 @@ fn extract_python_class_name_if_unused(lines: &[&str], trimmed: &str) -> Option<
 
 fn extract_function_name(line: &str) -> String {
     if let Some(start) = line.find("fn ") {
-        let after_fn = &line[start + 3..];
+        let after_fn = line.get(start + 3..).unwrap_or_default();
         if let Some(paren_pos) = after_fn.find('(') {
-            after_fn[..paren_pos].trim().to_string()
+            after_fn.get(..paren_pos).unwrap_or_default().trim().to_string()
         } else {
             String::with_capacity(1024)
         }
@@ -1383,7 +1393,7 @@ fn extract_function_name(line: &str) -> String {
 
 fn extract_struct_name(line: &str) -> String {
     if let Some(start) = line.find("struct ") {
-        let after_struct = &line[start + 7..];
+        let after_struct = line.get(start + 7..).unwrap_or_default();
         after_struct
             .split_whitespace()
             .next()
@@ -1396,9 +1406,9 @@ fn extract_struct_name(line: &str) -> String {
 
 fn extract_js_function_name(line: &str) -> String {
     if let Some(start) = line.find("function ") {
-        let after_fn = &line[start + 9..];
+        let after_fn = line.get(start + 9..).unwrap_or_default();
         if let Some(paren_pos) = after_fn.find('(') {
-            after_fn[..paren_pos].trim().to_string()
+            after_fn.get(..paren_pos).unwrap_or_default().trim().to_string()
         } else {
             String::with_capacity(1024)
         }
@@ -1409,7 +1419,7 @@ fn extract_js_function_name(line: &str) -> String {
 
 fn extract_class_name(line: &str) -> String {
     if let Some(start) = line.find("class ") {
-        let after_class = &line[start + 6..];
+        let after_class = line.get(start + 6..).unwrap_or_default();
         after_class
             .split_whitespace()
             .next()
@@ -1422,9 +1432,9 @@ fn extract_class_name(line: &str) -> String {
 
 fn extract_python_function_name(line: &str) -> String {
     if let Some(start) = line.find("def ") {
-        let after_def = &line[start + 4..];
+        let after_def = line.get(start + 4..).unwrap_or_default();
         if let Some(paren_pos) = after_def.find('(') {
-            after_def[..paren_pos].trim().to_string()
+            after_def.get(..paren_pos).unwrap_or_default().trim().to_string()
         } else {
             String::with_capacity(1024)
         }
@@ -1435,9 +1445,9 @@ fn extract_python_function_name(line: &str) -> String {
 
 fn extract_python_class_name(line: &str) -> String {
     if let Some(start) = line.find("class ") {
-        let after_class = &line[start + 6..];
+        let after_class = line.get(start + 6..).unwrap_or_default();
         if let Some(colon_pos) = after_class.find(':') {
-            after_class[..colon_pos]
+            after_class.get(..colon_pos).unwrap_or_default()
                 .trim()
                 .split('(')
                 .next()

@@ -807,9 +807,9 @@ impl RustToolingScorer {
         // Check 4: panic = "abort" in dev profile (+2pts)
         if has_dev_profile {
             if let Some(dev_start) = cargo_toml_content.find("[profile.dev]") {
-                let dev_section = &cargo_toml_content[dev_start..];
+                let dev_section = cargo_toml_content.get(dev_start..).unwrap_or_default();
                 let dev_end = dev_section.find("\n[").unwrap_or(dev_section.len());
-                let dev_content = &dev_section[..dev_end];
+                let dev_content = dev_section.get(..dev_end).unwrap_or_default();
 
                 if dev_content.contains("panic = \"abort\"")
                     || dev_content.contains("panic = 'abort'")

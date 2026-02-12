@@ -233,7 +233,7 @@ impl AgentQualityGate {
             for pattern in &satd_patterns {
                 if let Some(pos) = modified_line.find(pattern) {
                     // Keep the comment marker but remove the SATD pattern and everything after it on that line
-                    modified_line = modified_line[..pos].to_string() + "//";
+                    modified_line = modified_line.get(..pos).unwrap_or_default().to_string() + "//";
                     break;
                 }
             }

@@ -119,7 +119,7 @@ impl HttpAdapter {
     /// use pmat::unified_protocol::adapters::http::HttpAdapter;
     /// use std::net::{SocketAddr, IpAddr, Ipv4Addr};
     ///
-    /// # tokio::runtime::Runtime::new().unwrap().block_on(async {
+    /// # tokio::runtime::Runtime::new().expect("runtime").block_on(async {
     /// // Create and bind HTTP adapter
     /// let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 0); // OS assigns port
     /// let mut adapter = HttpAdapter::new(addr);
@@ -554,7 +554,7 @@ where
 ///         "name": "Alice"
 ///     },
 ///     "timestamp": "2024-01-15T10:30:00Z"
-/// })).unwrap();
+/// })).expect("valid json");
 /// assert_eq!(api_response.status, axum::http::StatusCode::OK);
 /// assert!(api_response.headers.contains_key("content-type"));
 ///
@@ -588,7 +588,7 @@ where
 ///     "email": "alice@example.com",
 ///     "role": "admin"
 /// });
-/// let response = HttpResponseBuilder::json(&user_data).unwrap();
+/// let response = HttpResponseBuilder::json(&user_data).expect("valid json");
 ///
 /// // GET /api/users/999 - Not Found
 /// let not_found = HttpResponseBuilder::not_found();
@@ -599,14 +599,14 @@ where
 ///     "name": "Bob Johnson",
 ///     "created_at": "2024-01-15T10:30:00Z"
 /// });
-/// let created_response = HttpResponseBuilder::json(&created_user).unwrap();
+/// let created_response = HttpResponseBuilder::json(&created_user).expect("valid json");
 ///
 /// // GET /health - Health Check
 /// let health_response = HttpResponseBuilder::json(&json!({
 ///     "status": "healthy",
 ///     "version": "1.0.0",
 ///     "uptime": "2d 5h 23m"
-/// })).unwrap();
+/// })).expect("valid json");
 /// ```ignore
 pub struct HttpResponseBuilder;
 
@@ -696,7 +696,7 @@ impl HttpResponseBuilder {
     /// let response = HttpResponseBuilder::json(&json!({
     ///     "message": "Hello, World!",
     ///     "status": "success"
-    /// })).unwrap();
+    /// })).expect("valid json");
     ///
     /// assert_eq!(response.status, StatusCode::OK);
     /// assert!(response.headers.contains_key("content-type"));
@@ -707,7 +707,7 @@ impl HttpResponseBuilder {
     ///     "name": "Alice",
     ///     "email": "alice@example.com"
     /// });
-    /// let user_response = HttpResponseBuilder::json(&user_data).unwrap();
+    /// let user_response = HttpResponseBuilder::json(&user_data).expect("valid json");
     /// ```
     pub fn json<T: Serialize>(data: &T) -> Result<UnifiedResponse, serde_json::Error> {
         UnifiedResponse::ok().with_json(data)

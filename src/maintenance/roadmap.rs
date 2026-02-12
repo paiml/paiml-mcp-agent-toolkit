@@ -275,7 +275,7 @@ fn parse_sprint_status(text: &str) -> SprintStatus {
 fn extract_duration(text: &str) -> String {
     if let Some(start) = text.find('(') {
         if let Some(end) = text.find(')') {
-            return text[start + 1..end].to_string();
+            return text.get(start + 1..end).unwrap_or_default().to_string();
         }
     }
     "unknown".to_string()
@@ -320,8 +320,8 @@ fn parse_ticket_line(line: &str) -> Option<Ticket> {
 
     // Extract commit if present
     let commit = if let Some(commit_start) = content.find("(commit: ") {
-        let commit_end = content[commit_start..].find(')')?;
-        Some(content[commit_start + 9..commit_start + commit_end].to_string())
+        let commit_end = content.get(commit_start..)?.find(')')?;
+        Some(content.get(commit_start + 9..commit_start + commit_end).unwrap_or_default().to_string())
     } else {
         None
     };

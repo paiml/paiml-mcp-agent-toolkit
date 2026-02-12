@@ -75,6 +75,7 @@ impl AgentContextIndex {
     ///
     /// # Returns
     /// Ranked list of matching functions
+    #[allow(clippy::cast_possible_truncation)]
     pub fn query(&self, query: &str, options: QueryOptions) -> Result<Vec<QueryResult>, String> {
         if query.trim().is_empty() {
             return Err("Query cannot be empty".to_string());
@@ -364,6 +365,7 @@ impl AgentContextIndex {
     /// Legacy TF-only scoring via O(n) corpus scan.
     ///
     /// Used as fallback when no SQLite FTS5 index is available.
+    #[allow(clippy::cast_possible_truncation)]
     fn calculate_relevance_scores_tf(&self, query: &str) -> Result<Vec<(usize, f32)>, String> {
         if self.corpus.is_empty() {
             return Ok(Vec::new());
@@ -417,6 +419,7 @@ impl AgentContextIndex {
     /// Calculate relevance scores for a scoped subset of documents.
     ///
     /// Only scores the candidate indices instead of the full 42K corpus.
+    #[allow(clippy::cast_possible_truncation)]
     pub(crate) fn calculate_relevance_scores_scoped(
         &self,
         query: &str,
@@ -550,6 +553,7 @@ impl AgentContextIndex {
     }
 
     /// Regex-based scoring: match pattern against source/signature/name
+    #[allow(clippy::cast_possible_truncation)]
     fn calculate_regex_scores(
         &self,
         pattern: &str,
@@ -607,6 +611,7 @@ impl AgentContextIndex {
     }
 
     /// Literal string scoring: exact match against source/signature/name
+    #[allow(clippy::cast_possible_truncation)]
     fn calculate_literal_scores(
         &self,
         needle: &str,

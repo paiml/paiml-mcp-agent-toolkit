@@ -99,6 +99,7 @@ pub(super) fn compute_file_sha256(content: &str) -> String {
 /// Populate cached annotations for all functions during index build.
 /// Computes: git churn, code clones, pattern diversity, fault patterns.
 #[cfg_attr(coverage_nightly, coverage(off))] // Integration: requires git + filesystem for churn/clones
+#[allow(clippy::cast_possible_truncation)]
 pub(super) fn populate_cached_annotations(
     functions: &mut [FunctionEntry],
     file_index: &HashMap<String, Vec<usize>>,
@@ -219,6 +220,7 @@ pub(super) fn get_file_commit_counts<'a>(
 }
 
 /// Detect code clones by normalized source hash
+#[allow(clippy::cast_possible_truncation)]
 pub(super) fn detect_code_clones(functions: &[FunctionEntry]) -> HashMap<usize, u32> {
     use std::collections::hash_map::DefaultHasher;
     use std::hash::{Hash, Hasher};
@@ -260,6 +262,7 @@ pub(super) fn normalize_source(source: &str) -> String {
 }
 
 /// Compute pattern diversity per file (unique AST patterns / total patterns)
+#[allow(clippy::cast_possible_truncation)]
 pub(super) fn compute_file_pattern_diversity(
     functions: &[FunctionEntry],
     file_index: &HashMap<String, Vec<usize>>,
@@ -360,6 +363,7 @@ pub(super) fn detect_fault_patterns(functions: &[FunctionEntry]) -> HashMap<usiz
 ///
 /// Returns a map of function_name -> fraction of total functions with that name.
 /// High-frequency names like `new`, `default`, `from` get demoted in search results.
+#[allow(clippy::cast_possible_truncation)]
 pub(crate) fn compute_name_frequency(
     name_index: &HashMap<String, Vec<usize>>,
     total: usize,
@@ -473,6 +477,7 @@ pub(crate) fn build_call_graph(
 /// PageRank represents "importance" - functions that are transitively called
 /// by many other functions will have higher scores.
 /// Run one iteration of PageRank: distribute scores from callers to callees.
+#[allow(clippy::cast_possible_truncation)]
 fn pagerank_iteration(
     pagerank: &[f32],
     new_pagerank: &mut [f32],
@@ -504,6 +509,7 @@ fn pagerank_iteration(
     new_pagerank.iter_mut().for_each(|s| *s += dangling_contrib);
 }
 
+#[allow(clippy::cast_possible_truncation)]
 pub(crate) fn compute_graph_metrics(
     num_functions: usize,
     calls: &HashMap<usize, Vec<usize>>,
@@ -577,6 +583,7 @@ pub(super) fn detect_language(path: &Path) -> Option<Language> {
 }
 
 /// Extract quality metrics from a code chunk
+#[allow(clippy::cast_possible_truncation)]
 pub(super) fn extract_quality_metrics(chunk: &CodeChunk, _full_content: &str) -> QualityMetrics {
     let loc = chunk.content.lines().count() as u32;
 
@@ -639,6 +646,7 @@ pub(super) fn count_complexity(source: &str) -> u32 {
 }
 
 /// Count SATD markers
+#[allow(clippy::cast_possible_truncation)]
 pub(super) fn count_satd_markers(source: &str) -> u32 {
     let upper = source.to_uppercase();
     let mut count = 0;
@@ -681,6 +689,7 @@ pub(super) fn estimate_big_o(source: &str) -> String {
 }
 
 /// Calculate simplified TDG score
+#[allow(clippy::cast_possible_truncation)]
 pub(super) fn calculate_simple_tdg(complexity: u32, satd_count: u32, loc: u32) -> f32 {
     let mut score = 0.0f32;
 

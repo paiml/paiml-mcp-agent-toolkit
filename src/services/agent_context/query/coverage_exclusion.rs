@@ -225,9 +225,9 @@ fn parse_makefile_coverage_exclude(project_path: &Path) -> Option<regex::Regex> 
         }
         // Extract regex between single quotes after --ignore-filename-regex=
         if let Some(start) = line.find("--ignore-filename-regex='") {
-            let after = &line[start + "--ignore-filename-regex='".len()..];
+            let after = line.get(start + "--ignore-filename-regex='".len()..).unwrap_or_default();
             if let Some(end) = after.find('\'') {
-                let raw_pattern = &after[..end];
+                let raw_pattern = after.get(..end).unwrap_or_default();
                 // Normalize escaping: Makefile uses `\\.` (backslash-backslash-dot) which
                 // cargo-llvm-cov interprets as literal dot. But Rust regex sees `\\` as
                 // literal backslash + `.` as any char. Replace `\\.` with `\.` so Rust

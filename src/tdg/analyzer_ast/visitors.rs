@@ -24,6 +24,7 @@ impl RustComplexityVisitor {
 
 #[cfg(feature = "rust-ast")]
 impl<'ast> syn::visit::Visit<'ast> for RustComplexityVisitor {
+    #[allow(clippy::cast_possible_truncation)]
     fn visit_expr_if(&mut self, node: &'ast syn::ExprIf) {
         self.cyclomatic_complexity += 1;
         self.cognitive_complexity += 1 + self.current_depth as u32;
@@ -33,6 +34,7 @@ impl<'ast> syn::visit::Visit<'ast> for RustComplexityVisitor {
         self.current_depth -= 1;
     }
 
+    #[allow(clippy::cast_possible_truncation)]
     fn visit_expr_while(&mut self, node: &'ast syn::ExprWhile) {
         self.cyclomatic_complexity += 1;
         self.cognitive_complexity += 1 + self.current_depth as u32;
@@ -42,6 +44,7 @@ impl<'ast> syn::visit::Visit<'ast> for RustComplexityVisitor {
         self.current_depth -= 1;
     }
 
+    #[allow(clippy::cast_possible_truncation)]
     fn visit_expr_for_loop(&mut self, node: &'ast syn::ExprForLoop) {
         self.cyclomatic_complexity += 1;
         self.cognitive_complexity += 1 + self.current_depth as u32;
@@ -51,6 +54,7 @@ impl<'ast> syn::visit::Visit<'ast> for RustComplexityVisitor {
         self.current_depth -= 1;
     }
 
+    #[allow(clippy::cast_possible_truncation)]
     fn visit_expr_match(&mut self, node: &'ast syn::ExprMatch) {
         self.cyclomatic_complexity += node.arms.len() as u32;
         self.cognitive_complexity += 1 + self.current_depth as u32;
@@ -60,6 +64,7 @@ impl<'ast> syn::visit::Visit<'ast> for RustComplexityVisitor {
         self.current_depth -= 1;
     }
 
+    #[allow(clippy::cast_possible_truncation)]
     fn visit_item_fn(&mut self, node: &'ast syn::ItemFn) {
         // Count parameters
         let param_count = node.sig.inputs.len();
@@ -119,6 +124,7 @@ struct PythonComplexityVisitor<'a> {
 
 #[cfg(feature = "python-ast")]
 impl<'a> PythonComplexityVisitor<'a> {
+    #[allow(clippy::cast_possible_truncation)]
     fn new(source: &'a str) -> Self {
         Self {
             source,
@@ -144,6 +150,7 @@ impl<'a> PythonComplexityVisitor<'a> {
         self.visit_node(&root);
     }
 
+    #[allow(clippy::cast_possible_truncation)]
     fn visit_node(&mut self, node: &tree_sitter::Node) {
         match node.kind() {
             "function_definition" => {
@@ -331,6 +338,7 @@ impl swc_ecma_visit::Visit for JavaScriptComplexityVisitor {
         // In swc 15.x, visit methods automatically recurse - no need to call explicitly
     }
 
+    #[allow(clippy::cast_possible_truncation)]
     fn visit_switch_stmt(&mut self, node: &swc_ecma_ast::SwitchStmt) {
         self.cyclomatic_complexity += node.cases.len() as u32;
         self.cognitive_complexity += 1;

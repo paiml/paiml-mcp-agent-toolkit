@@ -476,15 +476,15 @@ fn extract_function_name(line: &str) -> Option<String> {
     // Simplified function name extraction
     if let Some(pos) = line.find("function ") {
         let start = pos + 9;
-        if let Some(end) = line[start..].find('(') {
-            return Some(line[start..start + end].trim().to_string());
+        if let Some(end) = line.get(start..).unwrap_or_default().find('(') {
+            return Some(line.get(start..start + end).unwrap_or_default().trim().to_string());
         }
     }
 
     if let Some(pos) = line.find("const ") {
         let start = pos + 6;
-        if let Some(eq) = line[start..].find(" =") {
-            return Some(line[start..start + eq].trim().to_string());
+        if let Some(eq) = line.get(start..).unwrap_or_default().find(" =") {
+            return Some(line.get(start..start + eq).unwrap_or_default().trim().to_string());
         }
     }
 

@@ -391,13 +391,13 @@ impl DependencyGraphBuilder {
             if trimmed.starts_with("import ") {
                 if let Some(end) = trimmed.rfind(" from ") {
                     let module =
-                        trimmed[end + 6..].trim_matches(|c| c == '\'' || c == '"' || c == ';');
+                        trimmed.get(end + 6..).unwrap_or_default().trim_matches(|c| c == '\'' || c == '"' || c == ';');
                     imports.push(module.to_string());
                 }
             } else if trimmed.starts_with("const ") && trimmed.contains(" = require(") {
                 if let Some(start) = trimmed.find("require('") {
-                    if let Some(end) = trimmed[start + 9..].find('\'') {
-                        let module = &trimmed[start + 9..start + 9 + end];
+                    if let Some(end) = trimmed.get(start + 9..).unwrap_or_default().find('\'') {
+                        let module = trimmed.get(start + 9..start + 9 + end).unwrap_or_default();
                         imports.push(module.to_string());
                     }
                 }

@@ -255,7 +255,7 @@ impl AgentsMdExecutor {
                 let stdout = if stdout.len() > self.config.max_output_size {
                     format!(
                         "{}... (truncated, {} bytes total)",
-                        &stdout[..self.config.max_output_size],
+                        stdout.get(..self.config.max_output_size).unwrap_or(&stdout),
                         stdout.len()
                     )
                 } else {
@@ -265,7 +265,7 @@ impl AgentsMdExecutor {
                 let stderr = if stderr.len() > self.config.max_output_size {
                     format!(
                         "{}... (truncated, {} bytes total)",
-                        &stderr[..self.config.max_output_size],
+                        stderr.get(..self.config.max_output_size).unwrap_or(&stderr),
                         stderr.len()
                     )
                 } else {

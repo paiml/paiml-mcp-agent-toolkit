@@ -108,6 +108,7 @@ impl TdgAnalyzerAst {
         Ok(())
     }
 
+    #[allow(clippy::cast_possible_truncation)]
     fn score_structural_complexity(
         &self,
         cyclomatic: u32,
@@ -180,6 +181,7 @@ impl TdgAnalyzerAst {
         points.max(0.0)
     }
 
+    #[allow(clippy::cast_possible_truncation)]
     fn score_semantic_complexity(
         &self,
         max_params: usize,
@@ -234,6 +236,7 @@ impl TdgAnalyzerAst {
         points.max(0.0)
     }
 
+    #[allow(clippy::cast_possible_truncation)]
     fn analyze_duplication_ast(
         &self,
         source: &str,
@@ -282,6 +285,7 @@ impl TdgAnalyzerAst {
         points.max(0.0)
     }
 
+    #[allow(clippy::cast_possible_truncation)]
     fn score_coupling(
         &self,
         import_count: u32,
@@ -322,6 +326,7 @@ impl TdgAnalyzerAst {
         points.max(0.0)
     }
 
+    #[allow(clippy::cast_possible_truncation)]
     fn score_documentation(
         &self,
         documented_items: u32,
@@ -352,6 +357,7 @@ impl TdgAnalyzerAst {
     }
 
     #[allow(dead_code)]
+    #[allow(clippy::cast_possible_truncation)]
     fn score_consistency_python(&self, source: &str, _tracker: &mut PenaltyTracker) -> f32 {
         // Check PEP 8 compliance
         let mut points = self.config.weights.consistency;
@@ -383,6 +389,7 @@ impl TdgAnalyzerAst {
         points
     }
 
+    #[allow(clippy::cast_possible_truncation)]
     fn score_consistency_javascript(&self, source: &str, tracker: &mut PenaltyTracker) -> f32 {
         // Check JavaScript/TypeScript style consistency
         let mut score = 100.0f32;
@@ -445,6 +452,7 @@ impl TdgAnalyzerAst {
     }
 
     /// Score entropy analysis - pattern repetition and violation detection
+    #[allow(clippy::cast_possible_truncation)]
     fn score_entropy_analysis(
         &self,
         source: &str,

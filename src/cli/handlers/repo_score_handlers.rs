@@ -297,12 +297,12 @@ fn replace_badge_section(content: &str, new_badge: &str) -> String {
     let end_marker = "<!-- PMAT-REPO-SCORE:END -->";
 
     if let Some(start) = content.find(start_marker) {
-        if let Some(end) = content[start..].find(end_marker) {
+        if let Some(end) = content.get(start..).unwrap_or_default().find(end_marker) {
             let end_pos = start + end + end_marker.len();
             let mut result = String::with_capacity(content.len());
-            result.push_str(&content[..start]);
+            result.push_str(content.get(..start).unwrap_or_default());
             result.push_str(new_badge);
-            result.push_str(&content[end_pos..]);
+            result.push_str(content.get(end_pos..).unwrap_or_default());
             return result;
         }
     }

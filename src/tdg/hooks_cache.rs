@@ -728,7 +728,7 @@ impl std::fmt::Display for CacheMissReason {
         match self {
             CacheMissReason::NoCacheFile => write!(f, "No cache file exists"),
             CacheMissReason::TreeHashChanged { old, new } => {
-                write!(f, "Tree hash changed: {} → {}", &old[..8], &new[..8])
+                write!(f, "Tree hash changed: {} → {}", old.get(..8).unwrap_or(old), new.get(..8).unwrap_or(new))
             }
             CacheMissReason::ConfigHashChanged => write!(f, "Config file changed"),
             CacheMissReason::CacheStale { age_hours } => {

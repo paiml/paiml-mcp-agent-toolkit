@@ -362,6 +362,7 @@ pub(crate) fn save_to_sqlite(
 /// Execute a BM25 search query using FTS5.
 ///
 /// Returns (function_id (0-based), bm25_score) pairs sorted by relevance.
+#[allow(clippy::cast_possible_truncation)]
 pub(crate) fn fts5_search(
     conn: &Connection,
     query: &str,
@@ -431,6 +432,7 @@ fn parse_definition_type(s: &str) -> DefinitionType {
     }
 }
 
+#[allow(clippy::cast_possible_truncation)]
 fn read_quality_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<QualityMetrics> {
     Ok(QualityMetrics {
         tdg_score: row.get::<_, f64>(10)? as f32,
@@ -447,6 +449,7 @@ fn read_quality_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<QualityMet
 
 /// Load all functions from the SQLite database.
 #[allow(dead_code)]
+#[allow(clippy::cast_possible_truncation)]
 pub(crate) fn load_functions(conn: &Connection) -> Result<Vec<FunctionEntry>, String> {
     let mut stmt = conn
         .prepare(
@@ -495,6 +498,7 @@ pub(crate) fn load_functions(conn: &Connection) -> Result<Vec<FunctionEntry>, St
 ///
 /// Saves ~200ms by skipping deserialization of 70K source strings (~35MB).
 /// Source is loaded on-demand via `load_source_by_location()` or `load_source_into()`.
+#[allow(clippy::cast_possible_truncation)]
 pub(crate) fn load_functions_lightweight(conn: &Connection) -> Result<Vec<FunctionEntry>, String> {
     let mut stmt = conn
         .prepare(
@@ -626,6 +630,7 @@ pub(crate) fn load_call_graph(
 }
 
 /// Load graph metrics from the SQLite database.
+#[allow(clippy::cast_possible_truncation)]
 pub(crate) fn load_graph_metrics(conn: &Connection) -> Result<Vec<GraphMetrics>, String> {
     let count: i64 = conn
         .query_row("SELECT count(*) FROM graph_metrics", [], |r| r.get(0))

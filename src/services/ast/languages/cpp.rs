@@ -58,6 +58,7 @@ impl CppAstVisitor {
     }
 
     /// Extracts namespace declarations (complexity ≤10)
+    #[allow(clippy::cast_possible_truncation)]
     fn extract_namespace_declarations(&mut self, source: &str) -> Result<(), String> {
         let mut in_namespace = false;
         let mut brace_depth = 0;
@@ -91,6 +92,7 @@ impl CppAstVisitor {
     }
 
     /// Extracts class declarations (complexity ≤10)
+    #[allow(clippy::cast_possible_truncation)]
     fn extract_class_declarations(&mut self, source: &str) -> Result<(), String> {
         let mut in_class = false;
         let mut brace_depth = 0;
@@ -186,6 +188,7 @@ impl CppAstVisitor {
     }
 
     /// Extracts function declarations (complexity ≤10)
+    #[allow(clippy::cast_possible_truncation)]
     fn extract_function_declarations(&mut self, source: &str) -> Result<(), String> {
         // Track namespace context while parsing
         let mut namespace_stack: Vec<String> = Vec::new();
@@ -286,6 +289,7 @@ impl CppAstVisitor {
     }
 
     /// Extracts class method declarations (complexity ≤10)
+    #[allow(clippy::cast_possible_truncation)]
     fn extract_method_declarations(&mut self, source: &str) -> Result<(), String> {
         let mut in_class = false;
         let mut current_class_name = String::new();
@@ -380,6 +384,7 @@ impl CppAstVisitor {
     }
 
     /// Extracts enum declarations (complexity ≤10)
+    #[allow(clippy::cast_possible_truncation)]
     fn extract_enum_declarations(&mut self, source: &str) -> Result<(), String> {
         // Track namespace context while parsing
         let mut namespace_stack: Vec<String> = Vec::new();
@@ -515,6 +520,7 @@ impl CppAstVisitor {
     }
 
     /// Counts enum variants (complexity ≤10)
+    #[allow(clippy::cast_possible_truncation)]
     fn count_enum_variants(&self, source: &str, enum_start_line: usize) -> usize {
         let mut in_enum = false;
         let mut brace_depth = 0;
@@ -885,6 +891,7 @@ impl CppComplexityAnalyzer {
 
 /// Public async function to analyze a C++ file and return FileContext
 #[cfg(feature = "cpp-ast")]
+#[allow(clippy::cast_possible_truncation)]
 pub async fn analyze_cpp_file(
     path: &Path,
 ) -> Result<crate::services::context::FileContext, crate::models::error::TemplateError> {

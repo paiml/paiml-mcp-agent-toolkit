@@ -74,7 +74,7 @@ use tracing::debug;
 /// let result = handle_refactor_start(&state_manager, params).await;
 /// assert!(result.is_ok());
 ///
-/// let response = result.unwrap();
+/// let response = result.expect("start succeeded");
 /// assert!(response.get("session_id").is_some());
 /// assert!(response.get("state").is_some());
 /// # });
@@ -140,13 +140,13 @@ pub async fn handle_refactor_start(
 ///     "targets": ["/tmp/test.rs"],
 ///     "config": {"target_complexity": 10}
 /// });
-/// let _start_result = handle_refactor_start(&state_manager, params).await.unwrap();
+/// let _start_result = handle_refactor_start(&state_manager, params).await.expect("start");
 ///
 /// // Advance to next iteration
 /// let result = handle_refactor_next_iteration(&state_manager).await;
 /// assert!(result.is_ok());
 ///
-/// let new_state = result.unwrap();
+/// let new_state = result.expect("advance succeeded");
 /// assert!(new_state.is_object());
 /// # });
 /// ```
@@ -203,13 +203,13 @@ pub async fn handle_refactor_next_iteration(
 ///     "targets": ["/tmp/test.rs"],
 ///     "config": {"target_complexity": 10}
 /// });
-/// let _start_result = handle_refactor_start(&state_manager, params).await.unwrap();
+/// let _start_result = handle_refactor_start(&state_manager, params).await.expect("start");
 ///
 /// // Get current state
 /// let result = handle_refactor_get_state(&state_manager).await;
 /// assert!(result.is_ok());
 ///
-/// let state = result.unwrap();
+/// let state = result.expect("get state succeeded");
 /// assert!(state.is_object());
 /// # });
 /// ```
@@ -264,13 +264,13 @@ pub async fn handle_refactor_get_state(
 ///     "targets": ["/tmp/test.rs"],
 ///     "config": {"target_complexity": 10}
 /// });
-/// let _start_result = handle_refactor_start(&state_manager, params).await.unwrap();
+/// let _start_result = handle_refactor_start(&state_manager, params).await.expect("start");
 ///
 /// // Stop the session
 /// let result = handle_refactor_stop(&state_manager).await;
 /// assert!(result.is_ok());
 ///
-/// let response = result.unwrap();
+/// let response = result.expect("stop succeeded");
 /// assert_eq!(response["message"], "Refactoring session stopped successfully");
 /// # });
 /// ```
@@ -321,9 +321,9 @@ pub async fn handle_refactor_stop(
 ///
 /// // This function is used internally by the MCP server
 /// // to parse target file paths from JSON parameters
-/// let targets = params.get("targets").unwrap().as_array().unwrap();
+/// let targets = params.get("targets").expect("targets key").as_array().expect("array");
 /// let paths: Vec<PathBuf> = targets.iter()
-///     .map(|v| PathBuf::from(v.as_str().unwrap()))
+///     .map(|v| PathBuf::from(v.as_str().expect("string")))
 ///     .collect();
 /// assert_eq!(paths.len(), 2);
 /// assert_eq!(paths[0].to_string_lossy(), "/tmp/test1.rs");
@@ -487,7 +487,7 @@ fn parse_config(params: &Value) -> Result<RefactorConfig, Box<dyn std::error::Er
 ///
 /// // This function is used internally by the MCP server
 /// // to serialize state machines to JSON
-/// let json_state: Value = serde_json::to_value(&state_machine).unwrap();
+/// let json_state: Value = serde_json::to_value(&state_machine).expect("serializable");
 /// assert!(json_state.is_object());
 /// assert!(json_state.get("current").is_some());
 /// assert!(json_state.get("targets").is_some());

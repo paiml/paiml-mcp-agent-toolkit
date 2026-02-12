@@ -92,6 +92,7 @@ impl StructuralComplexityScorer {
     }
 
     /// Fallback to file-level analysis when no functions are detected
+    #[allow(clippy::cast_possible_truncation)]
     fn score_file_level(&self, root: Node, config: &TdgConfig, tracker: &mut PenaltyTracker, mut points: f32) -> Result<f32> {
         let cyclomatic = self.calculate_cyclomatic_complexity(root);
         if cyclomatic > config.thresholds.max_cyclomatic_complexity {
@@ -141,6 +142,7 @@ impl StructuralComplexityScorer {
 }
 
 impl Scorer for StructuralComplexityScorer {
+    #[allow(clippy::cast_possible_truncation)]
     fn score(&self, tree: &Tree, _source: &str, _language: Language, config: &TdgConfig, tracker: &mut PenaltyTracker) -> Result<f32> {
         let mut points = config.weights.structural_complexity;
         let root = tree.root_node();
@@ -233,10 +235,12 @@ impl SemanticComplexityScorer {
         Self
     }
     
+    #[allow(clippy::cast_possible_truncation)]
     fn calculate_cognitive_complexity(&self, root: Node) -> u32 {
         let mut complexity = 0;
         let mut nesting_stack = Vec::new();
         
+        #[allow(clippy::cast_possible_truncation)]
         fn process_node(node: Node, complexity: &mut u32, nesting_stack: &mut Vec<&str>) {
             let nesting_level = nesting_stack.len() as u32;
             
@@ -292,6 +296,7 @@ impl SemanticComplexityScorer {
         complexity
     }
     
+    #[allow(clippy::cast_possible_truncation)]
     fn analyze_type_complexity(&self, root: Node) -> f32 {
         let mut complexity = 0.0;
         
@@ -333,6 +338,7 @@ impl SemanticComplexityScorer {
         max_child_depth + 1
     }
     
+    #[allow(clippy::cast_possible_truncation)]
     fn analyze_expression_complexity(&self, root: Node) -> f32 {
         let mut complexity = 0.0;
         
@@ -389,6 +395,7 @@ impl SemanticComplexityScorer {
 }
 
 impl Scorer for SemanticComplexityScorer {
+    #[allow(clippy::cast_possible_truncation)]
     fn score(&self, tree: &Tree, _source: &str, _language: Language, config: &TdgConfig, tracker: &mut PenaltyTracker) -> Result<f32> {
         let mut points = config.weights.semantic_complexity;
         let root = tree.root_node();

@@ -95,20 +95,20 @@ impl WasmModuleAnalyzer {
 
     /// Extracts function information from WASM (complexity ≤10)
     fn _extract_wasm_functions(&mut self, _parser: &Parser) -> Result<(), String> {
-        // TO BE IMPLEMENTED
-        todo!("Extract function information from WASM module")
+        // Not yet implemented - WASM function extraction requires wasmparser iteration
+        Err("WASM function extraction not yet implemented".to_string())
     }
 
     /// Extracts import/export information (complexity ≤10)
     fn _extract_imports_exports(&mut self, _parser: &Parser) -> Result<(), String> {
-        // TO BE IMPLEMENTED
-        todo!("Extract import/export information from WASM")
+        // Not yet implemented - WASM import/export extraction requires section parsing
+        Err("WASM import/export extraction not yet implemented".to_string())
     }
 
     /// Calculates WASM-specific complexity metrics (complexity ≤10)
     fn _calculate_wasm_complexity(&self, _function_body: &[u8]) -> Result<(u32, u32), String> {
-        // TO BE IMPLEMENTED
-        todo!("Calculate cyclomatic and cognitive complexity for WASM function")
+        // Not yet implemented - WASM complexity analysis requires instruction counting
+        Err("WASM complexity calculation not yet implemented".to_string())
     }
 
     /// Extracts function name from WAT line (complexity ≤10)

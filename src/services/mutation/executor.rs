@@ -604,7 +604,7 @@ impl MutantExecutor {
             // Find the crate name boundary (e.g., "pforge-config/src/validator.rs")
             if let Some(src_index) = after_crates.find("/src/") {
                 // Get everything after "/src/" (e.g., "validator.rs")
-                &after_crates[src_index + 5..]
+                after_crates.get(src_index + 5..).unwrap_or_default()
             } else {
                 after_crates
             }

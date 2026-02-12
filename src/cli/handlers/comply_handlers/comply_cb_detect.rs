@@ -6,8 +6,7 @@
 // - False positives falsify our precision hypothesis
 // - False negatives falsify our detection hypothesis
 
-// Allow unwrap on Regex::new() for compile-time constant patterns that cannot fail
-#![allow(clippy::unwrap_used)]
+// Regex::new() on compile-time constant patterns cannot fail; use .expect("valid regex")
 
 use regex::Regex;
 use std::collections::HashMap;
@@ -284,31 +283,31 @@ static CB050_PATTERNS: LazyLock<Vec<(Regex, &'static str, &'static str)>> = Lazy
     vec![
         // CB-050-A: todo!() macro - handles spacing variations
         (
-            Regex::new(r"todo\s*!\s*\(").unwrap(),
+            Regex::new(r"todo\s*!\s*\(").expect("valid regex"),
             "CB-050-A",
             "todo!() macro - will panic at runtime",
         ),
         // CB-050-B: unimplemented!() macro
         (
-            Regex::new(r"unimplemented\s*!\s*\(").unwrap(),
+            Regex::new(r"unimplemented\s*!\s*\(").expect("valid regex"),
             "CB-050-B",
             "unimplemented!() macro - will panic at runtime",
         ),
         // CB-050-C: panic! with "not implemented" message
         (
-            Regex::new(r#"panic\s*!\s*\(\s*"[^"]*not\s+implemented[^"]*""#).unwrap(),
+            Regex::new(r#"panic\s*!\s*\(\s*"[^"]*not\s+implemented[^"]*""#).expect("valid regex"),
             "CB-050-C",
             "panic!() with 'not implemented' message",
         ),
         // CB-050-E: Python NotImplementedError
         (
-            Regex::new(r"raise\s+NotImplementedError").unwrap(),
+            Regex::new(r"raise\s+NotImplementedError").expect("valid regex"),
             "CB-050-E",
             "Python NotImplementedError - will raise at runtime",
         ),
         // CB-050-F: Python pass with stub/todo/fixme comment
         (
-            Regex::new(r"pass\s*#\s*(?i:stub|todo|fixme)").unwrap(),
+            Regex::new(r"pass\s*#\s*(?i:stub|todo|fixme)").expect("valid regex"),
             "CB-050-F",
             "Python pass with stub comment",
         ),
@@ -320,31 +319,31 @@ static CB050_PATTERNS: LazyLock<Vec<(Regex, &'static str, &'static str)>> = Lazy
 static EMPTY_BODY_PATTERN: LazyLock<Regex> = LazyLock::new(|| {
     // Match: fn name(...) { } or fn name(...) -> Type { }
     // Allows for whitespace and newlines inside braces
-    Regex::new(r"fn\s+(\w+)\s*\([^)]*\)\s*(?:->\s*[^{]+)?\s*\{\s*\}").unwrap()
+    Regex::new(r"fn\s+(\w+)\s*\([^)]*\)\s*(?:->\s*[^{]+)?\s*\{\s*\}").expect("valid regex")
 });
 
 /// Pattern to detect if we're inside a trait block
 static TRAIT_BLOCK_PATTERN: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"trait\s+\w+[^{]*\{").unwrap());
+    LazyLock::new(|| Regex::new(r"trait\s+\w+[^{]*\{").expect("valid regex"));
 
 /// Pattern to detect if line is inside a string literal
 #[allow(dead_code)] // Reserved for future string literal detection
 static STRING_LITERAL_PATTERN: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r#"^\s*(?:let\s+\w+\s*=\s*)?"[^"]*$|^\s*r#*""#).unwrap());
+    LazyLock::new(|| Regex::new(r#"^\s*(?:let\s+\w+\s*=\s*)?"[^"]*$|^\s*r#*""#).expect("valid regex"));
 
 /// Pattern to detect comment lines
 /// Note: Cannot use negative lookahead (?!\[) - regex crate doesn't support it
 /// Instead we check for # not followed by [ in the detection logic
 static COMMENT_PATTERN: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"^\s*(?://|/\*|\*|///|//!)").unwrap());
+    LazyLock::new(|| Regex::new(r"^\s*(?://|/\*|\*|///|//!)").expect("valid regex"));
 
 /// Pattern to detect Python comments (# not followed by [)
 static PYTHON_COMMENT_PATTERN: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"^\s*#[^\[]").unwrap());
+    LazyLock::new(|| Regex::new(r"^\s*#[^\[]").expect("valid regex"));
 
 /// Pattern to detect doc test blocks (``` in doc comments)
 static DOC_TEST_PATTERN: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"^\s*///.*```").unwrap());
+    LazyLock::new(|| Regex::new(r"^\s*///.*```").expect("valid regex"));
 
 // =============================================================================
 // CB-050 DETECTION FUNCTIONS
@@ -411,11 +410,11 @@ pub fn detect_cb050_code_stubs_in_str_with_path(
     // Check for empty function bodies (CB-050-D)
     // This needs multi-line matching since the body might span lines
     for cap in EMPTY_BODY_PATTERN.captures_iter(code) {
-        let match_start = cap.get(0).unwrap().start();
+        let match_start = cap.get(0).expect("capture group 0 always exists").start();
         let fn_name = cap.get(1).map(|m| m.as_str()).unwrap_or("");
 
         // Find the line number for this match
-        let line_num = code[..match_start].matches('\n').count() as u32 + 1;
+        let line_num = code.get(..match_start).unwrap_or_default().matches('\n').count() as u32 + 1;
 
         // Skip if in a trait block (trait default methods are intentionally empty)
         if trait_lines.contains(&(line_num as usize)) {
@@ -538,7 +537,7 @@ fn compute_trait_block_lines(lines: &[&str]) -> std::collections::HashSet<usize>
 fn is_in_string_literal(line: &str, pattern: &Regex) -> bool {
     // Find where the pattern matches
     if let Some(m) = pattern.find(line) {
-        let before = &line[..m.start()];
+        let before = line.get(..m.start()).unwrap_or_default();
         // Count unescaped quotes before the match
         let quote_count = before
             .chars()
@@ -586,67 +585,67 @@ fn is_marker_function(name: &str) -> bool {
 
 /// Pattern to detect PTX branch instructions (predicated jumps)
 static PTX_BRANCH_PATTERN: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"@%p\d+\s+bra\s+\w+").unwrap());
+    LazyLock::new(|| Regex::new(r"@%p\d+\s+bra\s+\w+").expect("valid regex"));
 
 /// Pattern to detect PTX barrier sync
 static PTX_BARRIER_PATTERN: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"bar\.sync\s+\d+").unwrap());
+    LazyLock::new(|| Regex::new(r"bar\.sync\s+\d+").expect("valid regex"));
 
 /// Pattern to detect PTX shared memory load (destination, then source)
 static PTX_SHARED_LOAD_PATTERN: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"ld\.shared\.\w+\s+[^,]+,\s*\[([^\]]+)\]").unwrap());
+    LazyLock::new(|| Regex::new(r"ld\.shared\.\w+\s+[^,]+,\s*\[([^\]]+)\]").expect("valid regex"));
 
 /// Pattern to detect PTX shared memory store (address first, then source)
 static PTX_SHARED_STORE_PATTERN: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"st\.shared\.\w+\s+\[([^\]]+)\],").unwrap());
+    LazyLock::new(|| Regex::new(r"st\.shared\.\w+\s+\[([^\]]+)\],").expect("valid regex"));
 
 /// Pattern to detect PTX predicated shared memory access (safe)
 static PTX_PREDICATED_SHARED_PATTERN: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"@%p\d+\s+(ld|st)\.shared").unwrap());
+    LazyLock::new(|| Regex::new(r"@%p\d+\s+(ld|st)\.shared").expect("valid regex"));
 
 /// Pattern to detect PTX bounds check (setp.lt)
 static PTX_BOUNDS_CHECK_PATTERN: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"setp\.lt\.\w+\s+%p\d+").unwrap());
+    LazyLock::new(|| Regex::new(r"setp\.lt\.\w+\s+%p\d+").expect("valid regex"));
 
 /// Pattern to detect constant offset shared access (safe)
 static PTX_CONSTANT_OFFSET_PATTERN: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"(ld|st)\.shared\.\w+\s+[^,]+,\s*\[\w+\s*\+\s*\d+\]").unwrap());
+    LazyLock::new(|| Regex::new(r"(ld|st)\.shared\.\w+\s+[^,]+,\s*\[\w+\s*\+\s*\d+\]").expect("valid regex"));
 
 /// Pattern to detect WGSL workgroup barrier
 static WGSL_BARRIER_PATTERN: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"workgroupBarrier\s*\(\s*\)").unwrap());
+    LazyLock::new(|| Regex::new(r"workgroupBarrier\s*\(\s*\)").expect("valid regex"));
 
 /// Pattern to detect WGSL if statement start
 static WGSL_IF_PATTERN: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"\bif\s*\([^)]+\)\s*\{").unwrap());
+    LazyLock::new(|| Regex::new(r"\bif\s*\([^)]+\)\s*\{").expect("valid regex"));
 
 /// Pattern to detect WGSL else block
 static WGSL_ELSE_PATTERN: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"\}\s*else\s*\{").unwrap());
+    LazyLock::new(|| Regex::new(r"\}\s*else\s*\{").expect("valid regex"));
 
 /// Pattern to detect WGSL for loop with thread-dependent bounds (divergent)
 static WGSL_DIVERGENT_LOOP_PATTERN: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"for\s*\([^)]*<\s*(?:local_id|global_id)\.\w+[^)]*\)").unwrap());
+    LazyLock::new(|| Regex::new(r"for\s*\([^)]*<\s*(?:local_id|global_id)\.\w+[^)]*\)").expect("valid regex"));
 
 /// Pattern to detect matrix store without bounds (tiled kernel)
 static TILED_STORE_PATTERN: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"\bc\s*\[\s*row\s*\*\s*n\s*\+\s*col\s*\]").unwrap());
+    LazyLock::new(|| Regex::new(r"\bc\s*\[\s*row\s*\*\s*n\s*\+\s*col\s*\]").expect("valid regex"));
 
 /// Pattern to detect proper bounds check (row < m && col < n)
 static TILED_BOUNDS_CHECK_PATTERN: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"(?:row|global_id\.y)\s*<\s*(?:m|\w+).*(?:col|global_id\.x)\s*<\s*(?:n|\w+)").unwrap());
+    LazyLock::new(|| Regex::new(r"(?:row|global_id\.y)\s*<\s*(?:m|\w+).*(?:col|global_id\.x)\s*<\s*(?:n|\w+)").expect("valid regex"));
 
 /// Pattern to detect complex but valid bounds expressions
 static TILED_COMPLEX_BOUNDS_PATTERN: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"\([^)]*row[^)]*\)\s*<\s*\([^)]*m[^)]*\).*col\s*<\s*n").unwrap());
+    LazyLock::new(|| Regex::new(r"\([^)]*row[^)]*\)\s*<\s*\([^)]*m[^)]*\).*col\s*<\s*n").expect("valid regex"));
 
 /// Pattern to detect PTX early exit pattern before tile loop
 static PTX_EARLY_EXIT_PATTERN: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"@%p\d+\s+bra\s+exit[\s\S]{0,200}(?:tile|loop|ld\.shared)").unwrap());
+    LazyLock::new(|| Regex::new(r"@%p\d+\s+bra\s+exit[\s\S]{0,200}(?:tile|loop|ld\.shared)").expect("valid regex"));
 
 /// Pattern to detect WGSL tiled kernel store
 static WGSL_TILED_STORE_PATTERN: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"\ba\s*\[\s*(?:global_id|local_id)\.\w+\s*\*").unwrap());
+    LazyLock::new(|| Regex::new(r"\ba\s*\[\s*(?:global_id|local_id)\.\w+\s*\*").expect("valid regex"));
 
 /// Detect PTX barrier divergence patterns
 /// Returns list of (line_number, pattern_id, description)
@@ -904,6 +903,17 @@ pub fn detect_tiled_kernel_no_bounds_in_str(code: &str) -> Vec<(u32, &'static st
     }
 
     // Look for tiled stores
+    check_tiled_stores(&lines, has_proper_bounds, bounds_check_line, &mut violations);
+
+    violations
+}
+
+fn check_tiled_stores(
+    lines: &[&str],
+    has_proper_bounds: bool,
+    bounds_check_line: Option<usize>,
+    violations: &mut Vec<(u32, &'static str, String)>,
+) {
     for (line_idx, line) in lines.iter().enumerate() {
         let line_num = (line_idx + 1) as u32;
         let trimmed = line.trim();
@@ -918,7 +928,6 @@ pub fn detect_tiled_kernel_no_bounds_in_str(code: &str) -> Vec<(u32, &'static st
 
         // Check for tiled store pattern
         if TILED_STORE_PATTERN.is_match(line) {
-            // Verify bounds check exists BEFORE the store
             if !has_proper_bounds {
                 violations.push((
                     line_num,
@@ -927,7 +936,6 @@ pub fn detect_tiled_kernel_no_bounds_in_str(code: &str) -> Vec<(u32, &'static st
                 ));
             } else if let Some(bounds_line) = bounds_check_line {
                 if bounds_line > line_idx {
-                    // Bounds check AFTER store - useless
                     violations.push((
                         line_num,
                         "CB-060-C",
@@ -946,8 +954,6 @@ pub fn detect_tiled_kernel_no_bounds_in_str(code: &str) -> Vec<(u32, &'static st
             ));
         }
     }
-
-    violations
 }
 
 // =============================================================================
