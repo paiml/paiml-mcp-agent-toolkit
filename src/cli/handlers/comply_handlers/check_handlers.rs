@@ -289,6 +289,8 @@ async fn handle_check(
         filter_check_by_config(check_agent_context_adoption(project_path), "cb-130", comply_config),
         // CB-500: Rust Best Practices (defect detection improvement)
         filter_check_by_config(check_rust_best_practices(project_path), "cb-500", comply_config),
+        // CB-600: Lua Best Practices (PMAT-487: LuaTaint, FLuaScan, luacheck research)
+        filter_check_by_config(check_lua_best_practices(project_path), "cb-600", comply_config),
     ];
 
     // Calculate compliance
@@ -1802,6 +1804,76 @@ pub(crate) fn check_rust_best_practices(project_path: &Path) -> ComplianceCheck 
             name: "CB-500: Rust Best Practices (CB-500 to CB-512)".to_string(),
             status: CheckStatus::Pass,
             message: "No Rust best practice violations detected".to_string(),
+            severity: Severity::Info,
+        }
+    }
+}
+
+/// Lua Best Practices Detection (CB-600 through CB-607)
+pub(crate) fn check_lua_best_practices(project_path: &Path) -> ComplianceCheck {
+    // Quick exit: no .lua files means not a Lua project
+    let lua_files = super::comply_cb_detect::walkdir_lua_files(project_path);
+    if lua_files.is_empty() {
+        return ComplianceCheck {
+            name: "CB-600: Lua Best Practices (CB-600 to CB-607)".to_string(),
+            status: CheckStatus::Pass,
+            message: "Not a Lua project (no .lua files found)".to_string(),
+            severity: Severity::Info,
+        };
+    }
+
+    let mut all_issues: Vec<String> = Vec::new();
+    let mut error_count = 0;
+    let mut warning_count = 0;
+    let mut info_count = 0;
+
+    let detectors: Vec<(&str, Vec<CbPatternViolation>)> = vec![
+        ("CB-600", super::comply_cb_detect::detect_cb600_implicit_globals(project_path)),
+        ("CB-601", super::comply_cb_detect::detect_cb601_nil_unsafe_access(project_path)),
+    ];
+
+    for (_id, violations) in &detectors {
+        for v in violations {
+            all_issues.push(format!(
+                "{}: {} ({}:{})",
+                v.pattern_id, v.description, v.file, v.line
+            ));
+            match v.severity {
+                super::comply_cb_detect::Severity::Error => error_count += 1,
+                super::comply_cb_detect::Severity::Warning => warning_count += 1,
+                _ => info_count += 1,
+            }
+        }
+    }
+
+    let total = error_count + warning_count + info_count;
+
+    if total > 0 {
+        let display_issues = if all_issues.len() > 20 {
+            let mut truncated: Vec<String> = all_issues.iter().take(20).cloned().collect();
+            truncated.push(format!("    ... and {} more", all_issues.len() - 20));
+            truncated
+        } else {
+            all_issues.clone()
+        };
+
+        ComplianceCheck {
+            name: "CB-600: Lua Best Practices (CB-600 to CB-607)".to_string(),
+            status: CheckStatus::Warn,
+            message: format!(
+                "[Advisory] {} errors, {} warnings, {} info:\n{}",
+                error_count,
+                warning_count,
+                info_count,
+                display_issues.join("\n"),
+            ),
+            severity: Severity::Warning,
+        }
+    } else {
+        ComplianceCheck {
+            name: "CB-600: Lua Best Practices (CB-600 to CB-607)".to_string(),
+            status: CheckStatus::Pass,
+            message: "No Lua best practice violations detected".to_string(),
             severity: Severity::Info,
         }
     }

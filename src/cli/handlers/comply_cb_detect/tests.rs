@@ -658,3 +658,159 @@ tokio-test = "0.4"
         assert_eq!(result[2].code, "SC2116");
     }
 }
+
+// =============================================================================
+// Tests for CB-600 Lua Best Practices Detection (PMAT-487)
+// =============================================================================
+
+#[cfg(test)]
+mod cb600_lua_tests {
+    use super::*;
+    use std::fs;
+    use tempfile::TempDir;
+
+    // =========================================================================
+    // Helper function tests
+    // =========================================================================
+
+    #[test]
+    fn test_is_lua_test_file() {
+        assert!(is_lua_test_file(std::path::Path::new("foo_test.lua")));
+        assert!(is_lua_test_file(std::path::Path::new("bar_spec.lua")));
+        assert!(is_lua_test_file(std::path::Path::new("test_baz.lua")));
+        assert!(is_lua_test_file(std::path::Path::new("tests/util.lua")));
+        assert!(is_lua_test_file(std::path::Path::new("spec/helper.lua")));
+        assert!(!is_lua_test_file(std::path::Path::new("app.lua")));
+        assert!(!is_lua_test_file(std::path::Path::new("module.lua")));
+    }
+
+    #[test]
+    fn test_compute_lua_production_lines_filters_comments() {
+        let content = "-- comment\nlocal x = 1\n--[[ block\ncomment ]]\nlocal y = 2\n";
+        let lines = compute_lua_production_lines(content);
+        assert_eq!(lines.len(), 2);
+        assert_eq!(lines[0].1, "local x = 1");
+        assert_eq!(lines[1].1, "local y = 2");
+    }
+
+    #[test]
+    fn test_walkdir_lua_files_skips_git() {
+        let temp = TempDir::new().unwrap();
+        let git_dir = temp.path().join(".git");
+        fs::create_dir_all(&git_dir).unwrap();
+        fs::write(git_dir.join("hook.lua"), "local x = 1").unwrap();
+        fs::write(temp.path().join("app.lua"), "local y = 2").unwrap();
+        let files = walkdir_lua_files(temp.path());
+        assert_eq!(files.len(), 1);
+        assert!(files[0].file_name().unwrap() == "app.lua");
+    }
+
+    // =========================================================================
+    // CB-600: Implicit Globals
+    // =========================================================================
+
+    #[test]
+    fn test_cb600_detects_implicit_global() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("app.lua"),
+            "counter = 0\nlocal x = 1\n",
+        )
+        .unwrap();
+        let violations = detect_cb600_implicit_globals(temp.path());
+        assert_eq!(violations.len(), 1);
+        assert_eq!(violations[0].pattern_id, "CB-600");
+        assert!(violations[0].description.contains("counter"));
+    }
+
+    #[test]
+    fn test_cb600_skips_local_vars() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("app.lua"),
+            "local counter = 0\nlocal name = 'test'\n",
+        )
+        .unwrap();
+        let violations = detect_cb600_implicit_globals(temp.path());
+        assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn test_cb600_skips_std_globals() {
+        let temp = TempDir::new().unwrap();
+        fs::write(temp.path().join("app.lua"), "print = custom_print\n").unwrap();
+        let violations = detect_cb600_implicit_globals(temp.path());
+        assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn test_cb600_skips_table_field_assignment() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("app.lua"),
+            "M.name = 'test'\nself.value = 42\ntbl[key] = true\n",
+        )
+        .unwrap();
+        let violations = detect_cb600_implicit_globals(temp.path());
+        assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn test_cb600_skips_test_files() {
+        let temp = TempDir::new().unwrap();
+        fs::write(temp.path().join("app_test.lua"), "counter = 0\n").unwrap();
+        let violations = detect_cb600_implicit_globals(temp.path());
+        assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn test_cb600_no_lua_files_empty() {
+        let temp = TempDir::new().unwrap();
+        fs::write(temp.path().join("app.rs"), "fn main() {}").unwrap();
+        let violations = detect_cb600_implicit_globals(temp.path());
+        assert!(violations.is_empty());
+    }
+
+    // =========================================================================
+    // CB-601: Nil-Unsafe Access
+    // =========================================================================
+
+    #[test]
+    fn test_cb601_detects_chained_call() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("app.lua"),
+            "local name = get_user().name\n",
+        )
+        .unwrap();
+        let violations = detect_cb601_nil_unsafe_access(temp.path());
+        assert_eq!(violations.len(), 1);
+        assert_eq!(violations[0].pattern_id, "CB-601");
+        assert!(violations[0].description.contains("chained"));
+    }
+
+    #[test]
+    fn test_cb601_detects_deep_chain() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("app.lua"),
+            "local x = config.server.host.port\n",
+        )
+        .unwrap();
+        let violations = detect_cb601_nil_unsafe_access(temp.path());
+        assert_eq!(violations.len(), 1);
+        assert!(violations[0].description.contains("deep field"));
+    }
+
+    #[test]
+    fn test_cb601_shallow_access_passes() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("app.lua"),
+            "local x = config.host\nlocal y = tbl.key\n",
+        )
+        .unwrap();
+        let violations = detect_cb601_nil_unsafe_access(temp.path());
+        assert!(violations.is_empty());
+    }
+}
