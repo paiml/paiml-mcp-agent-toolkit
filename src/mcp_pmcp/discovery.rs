@@ -34,6 +34,11 @@ impl DiscoveryService {
     pub fn resolve_tool(&self, query: &str) -> Option<&'static str> {
         let normalized = query.to_lowercase();
 
+        // Short-circuit: empty or single-char queries cannot meaningfully match
+        if normalized.len() < 2 {
+            return None;
+        }
+
         // Phase 1: Exact match
         if let Some(tool) = TOOL_REGISTRY.get(normalized.as_str()) {
             return Some(tool.name);
@@ -85,46 +90,42 @@ impl DiscoveryService {
         if candidates.is_empty() {
             return "";
         }
-
         if candidates.len() == 1 {
             return candidates[0];
         }
 
         // Rule 1: File extension affinity
-        if let Some(ctx) = context {
-            if let Some(ext) = &ctx.file_extension {
-                match ext.as_str() {
-                    "rs" => {
-                        if candidates.contains(&"analyze_complexity") {
-                            return "analyze_complexity";
-                        }
-                    }
-                    "ts" | "js" => {
-                        if candidates.contains(&"analyze_dag") {
-                            return "analyze_dag";
-                        }
-                    }
-                    _ => {}
-                }
-            }
+        if let Some(result) = Self::match_by_extension(&candidates, context) {
+            return result;
         }
 
         // Rule 2: Category priority (Generate > Analyze > List > Validate)
+        Self::pick_by_category_priority(candidates)
+    }
+
+    fn match_by_extension<'a>(candidates: &[&'a str], context: Option<&Context>) -> Option<&'a str> {
+        let ext = context.and_then(|ctx| ctx.file_extension.as_deref())?;
+        match ext {
+            "rs" if candidates.contains(&"analyze_complexity") => Some("analyze_complexity"),
+            "ts" | "js" if candidates.contains(&"analyze_dag") => Some("analyze_dag"),
+            _ => None,
+        }
+    }
+
+    fn pick_by_category_priority(candidates: Vec<&str>) -> &str {
         let mut prioritized: Vec<_> = candidates
             .into_iter()
-            .map(|name| {
-                let priority = match name {
-                    n if n.starts_with("generate") || n.starts_with("scaffold") => 0,
-                    n if n.starts_with("analyze") => 1,
-                    n if n.starts_with("refactor") => 2,
-                    _ => 3,
-                };
-                (name, priority)
-            })
+            .map(|name| (name, Self::category_priority(name)))
             .collect();
-
-        prioritized.sort_by_key(|(_, priority)| *priority);
+        prioritized.sort_by_key(|(_, p)| *p);
         prioritized[0].0
+    }
+
+    fn category_priority(name: &str) -> u8 {
+        if name.starts_with("generate") || name.starts_with("scaffold") { return 0; }
+        if name.starts_with("analyze") { return 1; }
+        if name.starts_with("refactor") { return 2; }
+        3
     }
 }
 
