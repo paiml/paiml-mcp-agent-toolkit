@@ -234,6 +234,27 @@ fn extract_implicit_global(trimmed: &str) -> Option<&str> {
     }
 }
 
+/// Count unbalanced braces on a line (outside strings), returning (opens, closes).
+fn count_braces(line: &str) -> (i32, i32) {
+    let mut opens = 0i32;
+    let mut closes = 0i32;
+    let mut in_dq = false;
+    let mut in_sq = false;
+    let bytes = line.as_bytes();
+    let mut i = 0;
+    while i < bytes.len() {
+        match bytes[i] {
+            b'"' if !in_sq => in_dq = !in_dq,
+            b'\'' if !in_dq => in_sq = !in_sq,
+            b'{' if !in_dq && !in_sq => opens += 1,
+            b'}' if !in_dq && !in_sq => closes += 1,
+            _ => {}
+        }
+        i += 1;
+    }
+    (opens, closes)
+}
+
 /// CB-600: Implicit Globals — assignment without `local` keyword.
 /// Based on luacheck W111/W113.
 pub fn detect_cb600_implicit_globals(project_path: &Path) -> Vec<CbPatternViolation> {
@@ -255,21 +276,32 @@ pub fn detect_cb600_implicit_globals(project_path: &Path) -> Vec<CbPatternViolat
             .display()
             .to_string();
 
+        // Track brace depth: assignments inside { } are table constructor fields, not globals
+        let mut brace_depth: i32 = 0;
+
         for (line_num, trimmed) in &prod_lines {
-            if starts_with_lua_keyword(trimmed) {
-                continue;
+            let (opens, closes) = count_braces(trimmed);
+            // Apply opens before checking (a line like `{ key = val }` starts inside)
+            brace_depth += opens;
+
+            if brace_depth <= 0 {
+                if !starts_with_lua_keyword(trimmed) {
+                    if let Some(lhs) = extract_implicit_global(trimmed) {
+                        violations.push(CbPatternViolation {
+                            pattern_id: "CB-600".to_string(),
+                            file: rel.clone(),
+                            line: *line_num,
+                            description: format!(
+                                "Implicit global `{lhs}` — missing `local` keyword"
+                            ),
+                            severity: Severity::Warning,
+                        });
+                    }
+                }
             }
-            if let Some(lhs) = extract_implicit_global(trimmed) {
-                violations.push(CbPatternViolation {
-                    pattern_id: "CB-600".to_string(),
-                    file: rel.clone(),
-                    line: *line_num,
-                    description: format!(
-                        "Implicit global `{lhs}` — missing `local` keyword"
-                    ),
-                    severity: Severity::Warning,
-                });
-            }
+
+            brace_depth -= closes;
+            brace_depth = brace_depth.max(0);
         }
     }
 

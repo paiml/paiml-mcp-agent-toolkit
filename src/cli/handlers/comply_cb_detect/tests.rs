@@ -756,6 +756,30 @@ mod cb600_lua_tests {
     }
 
     #[test]
+    fn test_cb600_skips_table_constructor_fields() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("app.lua"),
+            "local t = {\n  id = id,\n  name = name,\n  score = 100,\n}\n",
+        )
+        .unwrap();
+        let violations = detect_cb600_implicit_globals(temp.path());
+        assert!(violations.is_empty(), "table constructor fields are not globals: {:?}", violations);
+    }
+
+    #[test]
+    fn test_cb600_skips_inline_table_constructor() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("app.lua"),
+            "local t = { id = id, name = name }\n",
+        )
+        .unwrap();
+        let violations = detect_cb600_implicit_globals(temp.path());
+        assert!(violations.is_empty(), "inline table constructor fields are not globals: {:?}", violations);
+    }
+
+    #[test]
     fn test_cb600_skips_test_files() {
         let temp = TempDir::new().unwrap();
         fs::write(temp.path().join("app_test.lua"), "counter = 0\n").unwrap();
