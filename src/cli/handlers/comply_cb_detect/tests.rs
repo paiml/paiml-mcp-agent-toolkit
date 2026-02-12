@@ -947,4 +947,74 @@ mod cb600_lua_tests {
         let violations = detect_cb605_string_concat_in_loop(temp.path());
         assert!(violations.is_empty());
     }
+
+    // =========================================================================
+    // CB-606: Missing Module Return
+    // =========================================================================
+
+    #[test]
+    fn test_cb606_detects_missing_return() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("module.lua"),
+            "local M = {}\nfunction M.hello()\n  print('hi')\nend\n",
+        )
+        .unwrap();
+        let violations = detect_cb606_missing_module_return(temp.path());
+        assert_eq!(violations.len(), 1);
+        assert!(violations[0].description.contains("return M"));
+    }
+
+    #[test]
+    fn test_cb606_return_present_passes() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("module.lua"),
+            "local M = {}\nfunction M.hello()\n  print('hi')\nend\nreturn M\n",
+        )
+        .unwrap();
+        let violations = detect_cb606_missing_module_return(temp.path());
+        assert!(violations.is_empty());
+    }
+
+    // =========================================================================
+    // CB-607: Colon/Dot Confusion
+    // =========================================================================
+
+    #[test]
+    fn test_cb607_detects_mixed_style() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("app.lua"),
+            "player:move()\nplayer.jump()\n",
+        )
+        .unwrap();
+        let violations = detect_cb607_colon_dot_confusion(temp.path());
+        assert_eq!(violations.len(), 1);
+        assert!(violations[0].description.contains("player"));
+    }
+
+    #[test]
+    fn test_cb607_consistent_usage_passes() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("app.lua"),
+            "player:move()\nplayer:jump()\n",
+        )
+        .unwrap();
+        let violations = detect_cb607_colon_dot_confusion(temp.path());
+        assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn test_cb607_std_library_skipped() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("app.lua"),
+            "math.floor(x)\nmath.ceil(y)\nstring.format('hi')\n",
+        )
+        .unwrap();
+        let violations = detect_cb607_colon_dot_confusion(temp.path());
+        assert!(violations.is_empty());
+    }
 }

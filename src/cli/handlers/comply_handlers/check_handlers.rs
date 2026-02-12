@@ -1834,6 +1834,8 @@ pub(crate) fn check_lua_best_practices(project_path: &Path) -> ComplianceCheck {
         ("CB-603", super::comply_cb_detect::detect_cb603_deprecated_dangerous_api(project_path)),
         ("CB-604", super::comply_cb_detect::detect_cb604_unused_variables(project_path)),
         ("CB-605", super::comply_cb_detect::detect_cb605_string_concat_in_loop(project_path)),
+        ("CB-606", super::comply_cb_detect::detect_cb606_missing_module_return(project_path)),
+        ("CB-607", super::comply_cb_detect::detect_cb607_colon_dot_confusion(project_path)),
     ];
 
     for (_id, violations) in &detectors {
