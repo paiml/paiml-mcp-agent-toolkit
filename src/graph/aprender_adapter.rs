@@ -5,6 +5,7 @@
 
 use super::types::{DependencyGraph, EdgeData, UndirectedGraph};
 use aprender::graph::Graph as AprenderGraph;
+use aprender::graph::GraphCentrality;
 
 /// Convert PMAT's DependencyGraph to aprender's Graph format.
 ///

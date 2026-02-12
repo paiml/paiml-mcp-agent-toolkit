@@ -4,6 +4,7 @@
 
 use super::aprender_adapter::to_aprender_graph;
 use super::*;
+use aprender::graph::GraphCentrality;
 use serde::Serialize;
 use std::collections::HashMap;
 

@@ -1809,3 +1809,19 @@ roadmap:
   - language-support
   - bug
   notes: null
+- id: GH-168
+  github_issue: 168
+  item_type: task
+  title: The installation of pmat fails due to missing trait imports in the codebase (GraphCentrality for the aprender crate).
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2026-02-12T10:46:15.317500303+00:00
+  updated: 2026-02-12T10:46:15.317500303+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null

@@ -271,9 +271,9 @@ dependencies = [
 
 [[package]]
 name = "aprender"
-version = "0.25.1"
+version = "0.25.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f3c85734a8105872bdc276d1271b93eadf2954e5d9016d92e7c8421292f0a5f6"
+checksum = "4948b57e0e9843efb8a85b4e0b29470d8afc9a617488f7fb6edcd5f243e9c893"
 dependencies = [
  "bincode",
  "dirs 6.0.0",
@@ -290,7 +290,8 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2",
- "trueno 0.14.4",
+ "trueno 0.14.5",
+ "trueno-quant",
  "ureq 2.12.1",
 ]
 
@@ -1505,7 +1506,7 @@ checksum = "fe6d2e5af09e8c8ad56c969f2157a3d4238cebc7c55f0a517728c38f7b200f81"
 dependencies = [
  "serde",
  "termcolor",
- "unicode-width 0.2.2",
+ "unicode-width 0.1.14",
 ]
 
 [[package]]
@@ -1526,7 +1527,7 @@ version = "3.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "faf9468729b8cbcea668e36183cb69d317348c2e08e994829fb56ebfdfbaac34"
 dependencies = [
- "windows-sys 0.61.2",
+ "windows-sys 0.48.0",
 ]
 
 [[package]]
@@ -2096,7 +2097,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3e3d747f100290a1ca24b752186f61f6637e1deffe3bf6320de6fcb29510a307"
 dependencies = [
  "bitflags 2.10.0",
- "libloading 0.8.9",
+ "libloading 0.7.4",
  "winapi",
 ]
 
@@ -2107,7 +2108,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bdbd1f579714e3c809ebd822c81ef148b1ceaeb3d535352afc73fd0c4c6a0017"
 dependencies = [
  "bitflags 2.10.0",
- "libloading 0.8.9",
+ "libloading 0.7.4",
  "winapi",
 ]
 
@@ -3443,7 +3444,7 @@ dependencies = [
  "bitflags 2.10.0",
  "com",
  "libc",
- "libloading 0.8.9",
+ "libloading 0.7.4",
  "thiserror 1.0.69",
  "widestring",
  "winapi",
@@ -3790,7 +3791,7 @@ dependencies = [
  "libc",
  "percent-encoding",
  "pin-project-lite",
- "socket2 0.6.2",
+ "socket2 0.5.10",
  "system-configuration",
  "tokio",
  "tower-layer",
@@ -3811,7 +3812,7 @@ dependencies = [
  "js-sys",
  "log",
  "wasm-bindgen",
- "windows-core 0.62.2",
+ "windows-core 0.61.2",
 ]
 
 [[package]]
@@ -5636,15 +5637,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ordered-float"
-version = "5.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7f4779c6901a562440c3786d08192c6fbda7c1c2060edd10006b05ee35d10f2d"
-dependencies = [
- "num-traits",
-]
-
-[[package]]
 name = "organizational-intelligence-plugin"
 version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5672,7 +5664,7 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-subscriber",
- "trueno 0.14.4",
+ "trueno 0.14.5",
  "trueno-db",
  "trueno-graph",
  "trueno-rag",
@@ -6021,7 +6013,7 @@ dependencies = [
  "actix",
  "actix-rt",
  "anyhow",
- "aprender 0.25.1",
+ "aprender 0.25.4",
  "arrow 53.4.1",
  "assert_cmd",
  "async-raft",
@@ -6124,7 +6116,7 @@ dependencies = [
  "tree-sitter-python",
  "tree-sitter-rust",
  "tree-sitter-typescript",
- "trueno 0.14.4",
+ "trueno 0.14.5",
  "trueno-db",
  "trueno-graph",
  "trueno-rag",
@@ -6350,7 +6342,7 @@ dependencies = [
  "jugar-probar",
  "serde",
  "serde_json",
- "trueno 0.14.4",
+ "trueno 0.14.5",
 ]
 
 [[package]]
@@ -6640,7 +6632,7 @@ dependencies = [
  "quinn-udp",
  "rustc-hash 2.1.1",
  "rustls 0.23.36",
- "socket2 0.6.2",
+ "socket2 0.5.10",
  "thiserror 2.0.18",
  "tokio",
  "tracing",
@@ -6677,7 +6669,7 @@ dependencies = [
  "cfg_aliases 0.2.1",
  "libc",
  "once_cell",
- "socket2 0.6.2",
+ "socket2 0.5.10",
  "tracing",
  "windows-sys 0.60.2",
 ]
@@ -7169,7 +7161,7 @@ checksum = "58189219dd98840455fcd3555bc2eda3a032282d8a00ca332ce05857c50523e0"
 dependencies = [
  "alimentar",
  "anyhow",
- "aprender 0.25.1",
+ "aprender 0.25.4",
  "axum",
  "chrono",
  "clap",
@@ -7216,7 +7208,7 @@ dependencies = [
  "tower 0.4.13",
  "tower-http 0.5.2",
  "tracing",
- "trueno 0.14.4",
+ "trueno 0.14.5",
  "trueno-viz",
  "uuid",
  "walkdir",
@@ -9072,9 +9064,9 @@ dependencies = [
 
 [[package]]
 name = "trueno"
-version = "0.14.4"
+version = "0.14.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "35d2c230ebde5da651c4dc89c32bfe0d277f4e36750a5849d2e69af50b646211"
+checksum = "7c598ae0375527e44f4124008380a6c806f807f7d9b406d0ac8874071702311b"
 dependencies = [
  "anyhow",
  "bytemuck",
@@ -9115,7 +9107,7 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-subscriber",
- "trueno 0.14.4",
+ "trueno 0.14.5",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
@@ -9129,13 +9121,22 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "876ef5b716188ef2e381fba444a52dd06f0e5ac3ebb53603bcc7bea0931a05a9"
 dependencies = [
  "anyhow",
- "aprender 0.25.1",
+ "aprender 0.25.4",
  "arrow 54.2.1",
  "parquet",
  "thiserror 2.0.18",
  "tokio",
- "trueno 0.14.4",
+ "trueno 0.14.5",
  "trueno-db",
+]
+
+[[package]]
+name = "trueno-quant"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5da5ac788b596e45d1d3fa0991c04b0e1bac63ffe4ae2faf6ae7c0d9fdfc00eb"
+dependencies = [
+ "half",
 ]
 
 [[package]]
@@ -9149,7 +9150,7 @@ dependencies = [
  "serde_json",
  "thiserror 2.0.18",
  "tokio",
- "trueno 0.14.4",
+ "trueno 0.14.5",
  "trueno-db",
  "uuid",
 ]
@@ -9164,7 +9165,7 @@ dependencies = [
  "libc",
  "png 0.17.16",
  "thiserror 2.0.18",
- "trueno 0.14.4",
+ "trueno 0.14.5",
  "trueno-graph",
 ]
 
@@ -10260,7 +10261,7 @@ dependencies = [
  "js-sys",
  "khronos-egl",
  "libc",
- "libloading 0.8.9",
+ "libloading 0.7.4",
  "log",
  "metal 0.27.0",
  "naga 0.19.2",
@@ -10305,7 +10306,7 @@ dependencies = [
  "js-sys",
  "khronos-egl",
  "libc",
- "libloading 0.8.9",
+ "libloading 0.7.4",
  "log",
  "metal 0.29.0",
  "naga 22.1.0",
@@ -10404,7 +10405,7 @@ dependencies = [
  "ndk-sys 0.6.0+11769913",
  "objc",
  "once_cell",
- "ordered-float 5.1.0",
+ "ordered-float 4.6.0",
  "parking_lot",
  "portable-atomic",
  "portable-atomic-util",
@@ -10509,7 +10510,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.61.2",
+ "windows-sys 0.48.0",
 ]
 
 [[package]]
@@ -10613,19 +10614,6 @@ dependencies = [
  "windows-link 0.1.3",
  "windows-result 0.3.4",
  "windows-strings 0.4.2",
-]
-
-[[package]]
-name = "windows-core"
-version = "0.62.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b8e83a14d34d0623b51dce9581199302a221863196a1dde71a7663a4c2be9deb"
-dependencies = [
- "windows-implement 0.60.2",
- "windows-interface 0.59.3",
- "windows-link 0.2.1",
- "windows-result 0.4.1",
- "windows-strings 0.5.1",
 ]
 
 [[package]]
