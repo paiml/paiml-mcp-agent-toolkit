@@ -717,7 +717,7 @@ fn extract_files_from_labels(labels: &[String], project_path: &Path) -> Vec<Path
         .iter()
         .filter(|label| label.ends_with(".rs") || label.ends_with(".ts"))
         .filter(|label| project_path.join(label).exists())
-        .map(|label| PathBuf::from(label))
+        .map(PathBuf::from)
         .collect()
 }
 
