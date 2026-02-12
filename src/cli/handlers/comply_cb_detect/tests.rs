@@ -795,6 +795,67 @@ mod cb600_lua_tests {
         assert!(violations.is_empty());
     }
 
+    #[test]
+    fn test_cb600_skips_function_params() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("app.lua"),
+            "function M.levenshtein(a, b)\n  a = a or \"\"\n  b = b or \"\"\nend\n",
+        )
+        .unwrap();
+        let violations = detect_cb600_implicit_globals(temp.path());
+        assert!(violations.is_empty(), "function params should not be flagged: {:?}", violations);
+    }
+
+    #[test]
+    fn test_cb600_skips_for_loop_vars() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("app.lua"),
+            "for i = 1, 10 do\n  i = i + 1\nend\nfor k, v in pairs(t) do\n  k = tostring(k)\nend\n",
+        )
+        .unwrap();
+        let violations = detect_cb600_implicit_globals(temp.path());
+        assert!(violations.is_empty(), "for-loop vars should not be flagged: {:?}", violations);
+    }
+
+    #[test]
+    fn test_cb600_skips_local_decl_reassignment() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("app.lua"),
+            "local result = 0\nresult = result + 1\n",
+        )
+        .unwrap();
+        let violations = detect_cb600_implicit_globals(temp.path());
+        assert!(violations.is_empty(), "local var reassignment should not be flagged: {:?}", violations);
+    }
+
+    #[test]
+    fn test_cb600_skips_multi_local_decl() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("app.lua"),
+            "local a, b = 1, 2\na = a + 1\nb = b + 1\n",
+        )
+        .unwrap();
+        let violations = detect_cb600_implicit_globals(temp.path());
+        assert!(violations.is_empty(), "multi-local reassignment should not be flagged: {:?}", violations);
+    }
+
+    #[test]
+    fn test_cb600_still_detects_true_globals() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("app.lua"),
+            "function foo(x)\n  x = x + 1\nend\nglobal_thing = 42\n",
+        )
+        .unwrap();
+        let violations = detect_cb600_implicit_globals(temp.path());
+        assert_eq!(violations.len(), 1, "true global should still be caught");
+        assert!(violations[0].description.contains("global_thing"));
+    }
+
     // =========================================================================
     // CB-601: Nil-Unsafe Access
     // =========================================================================

@@ -255,6 +255,99 @@ fn count_braces(line: &str) -> (i32, i32) {
     (opens, closes)
 }
 
+/// Extract comma-separated identifiers from a parameter/variable list string.
+/// E.g., "a, b, c" -> ["a", "b", "c"]; "k, v" -> ["k", "v"]
+fn extract_comma_separated_idents(s: &str) -> Vec<String> {
+    s.split(',')
+        .map(|part| part.trim())
+        .filter(|part| !part.is_empty())
+        .map(|part| {
+            part.chars()
+                .take_while(|c| c.is_alphanumeric() || *c == '_')
+                .collect::<String>()
+        })
+        .filter(|name| !name.is_empty())
+        .collect()
+}
+
+/// Collect all known local identifiers from a Lua file's production lines.
+/// This includes: function parameters, for-loop variables, and local declarations.
+fn collect_known_locals(prod_lines: &[(usize, String)]) -> std::collections::HashSet<String> {
+    use std::collections::HashSet;
+    let mut locals = HashSet::new();
+
+    for (_, trimmed) in prod_lines {
+        collect_function_params(trimmed, &mut locals);
+        collect_for_loop_vars(trimmed, &mut locals);
+        collect_local_decl_vars(trimmed, &mut locals);
+    }
+
+    locals
+}
+
+/// Extract function parameter names from lines like `function foo(a, b, c)`.
+fn collect_function_params(trimmed: &str, locals: &mut std::collections::HashSet<String>) {
+    // Match both `function name(...)` and `function M.name(...)` and `function M:name(...)`
+    if let Some(open) = trimmed.find('(') {
+        let prefix = &trimmed[..open];
+        if prefix.contains("function") || prefix.trim_start().starts_with("function") {
+            if let Some(close) = trimmed[open..].find(')') {
+                let params = &trimmed[open + 1..open + close];
+                for name in extract_comma_separated_idents(params) {
+                    if name != "..." && name != "self" {
+                        locals.insert(name);
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// Extract for-loop variable names from `for i = ...` and `for k, v in ...`.
+fn collect_for_loop_vars(trimmed: &str, locals: &mut std::collections::HashSet<String>) {
+    let rest = match trimmed.strip_prefix("for ") {
+        Some(r) => r,
+        None => return,
+    };
+    // Numeric for: `for i = 1, 10 do`
+    // Generic for: `for k, v in pairs(t) do`
+    // Find the delimiter: `=` for numeric, `in` for generic
+    let var_part = if let Some(eq_pos) = rest.find('=') {
+        let in_pos = rest.find(" in ");
+        match in_pos {
+            Some(ip) if ip < eq_pos => &rest[..ip],
+            _ => &rest[..eq_pos],
+        }
+    } else if let Some(in_pos) = rest.find(" in ") {
+        &rest[..in_pos]
+    } else {
+        return;
+    };
+
+    for name in extract_comma_separated_idents(var_part) {
+        locals.insert(name);
+    }
+}
+
+/// Extract variable names from `local x = ...` and `local a, b = ...` declarations.
+fn collect_local_decl_vars(trimmed: &str, locals: &mut std::collections::HashSet<String>) {
+    let after = match trimmed.strip_prefix("local ") {
+        Some(a) => a,
+        None => return,
+    };
+    if after.starts_with("function ") {
+        return;
+    }
+    // Take everything before `=` (or the whole thing if no `=`)
+    let var_part = match after.find('=') {
+        Some(pos) => &after[..pos],
+        None => after,
+    };
+    for name in extract_comma_separated_idents(var_part) {
+        locals.insert(name);
+    }
+}
+
 /// CB-600: Implicit Globals — assignment without `local` keyword.
 /// Based on luacheck W111/W113.
 pub fn detect_cb600_implicit_globals(project_path: &Path) -> Vec<CbPatternViolation> {
@@ -276,6 +369,9 @@ pub fn detect_cb600_implicit_globals(project_path: &Path) -> Vec<CbPatternViolat
             .display()
             .to_string();
 
+        // Collect all known local identifiers: function params, for-loop vars, local decls
+        let known_locals = collect_known_locals(&prod_lines);
+
         // Track brace depth: assignments inside { } are table constructor fields, not globals
         let mut brace_depth: i32 = 0;
 
@@ -287,15 +383,18 @@ pub fn detect_cb600_implicit_globals(project_path: &Path) -> Vec<CbPatternViolat
             if brace_depth <= 0 {
                 if !starts_with_lua_keyword(trimmed) {
                     if let Some(lhs) = extract_implicit_global(trimmed) {
-                        violations.push(CbPatternViolation {
-                            pattern_id: "CB-600".to_string(),
-                            file: rel.clone(),
-                            line: *line_num,
-                            description: format!(
-                                "Implicit global `{lhs}` — missing `local` keyword"
-                            ),
-                            severity: Severity::Warning,
-                        });
+                        // Skip identifiers known to be local (params, loop vars, local decls)
+                        if !known_locals.contains(lhs) {
+                            violations.push(CbPatternViolation {
+                                pattern_id: "CB-600".to_string(),
+                                file: rel.clone(),
+                                line: *line_num,
+                                description: format!(
+                                    "Implicit global `{lhs}` — missing `local` keyword"
+                                ),
+                                severity: Severity::Warning,
+                            });
+                        }
                     }
                 }
             }
