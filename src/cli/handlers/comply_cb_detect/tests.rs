@@ -813,4 +813,76 @@ mod cb600_lua_tests {
         let violations = detect_cb601_nil_unsafe_access(temp.path());
         assert!(violations.is_empty());
     }
+
+    // =========================================================================
+    // CB-602: pcall Error Handling
+    // =========================================================================
+
+    #[test]
+    fn test_cb602_uncaptured_pcall() {
+        let temp = TempDir::new().unwrap();
+        fs::write(temp.path().join("app.lua"), "pcall(dangerous_fn)\n").unwrap();
+        let violations = detect_cb602_pcall_error_handling(temp.path());
+        assert_eq!(violations.len(), 1);
+        assert!(violations[0].description.contains("not captured"));
+    }
+
+    #[test]
+    fn test_cb602_unchecked_status() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("app.lua"),
+            "local ok, result = pcall(fn_call)\nlocal x = result\n",
+        )
+        .unwrap();
+        let violations = detect_cb602_pcall_error_handling(temp.path());
+        assert_eq!(violations.len(), 1);
+        assert!(violations[0].description.contains("not checked"));
+    }
+
+    #[test]
+    fn test_cb602_checked_pcall_passes() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("app.lua"),
+            "local ok, result = pcall(fn_call)\nif not ok then\n  error(result)\nend\n",
+        )
+        .unwrap();
+        let violations = detect_cb602_pcall_error_handling(temp.path());
+        assert!(violations.is_empty());
+    }
+
+    // =========================================================================
+    // CB-603: Deprecated/Dangerous API
+    // =========================================================================
+
+    #[test]
+    fn test_cb603_detects_loadstring() {
+        let temp = TempDir::new().unwrap();
+        fs::write(temp.path().join("app.lua"), "local fn = loadstring(code)\n").unwrap();
+        let violations = detect_cb603_deprecated_dangerous_api(temp.path());
+        assert_eq!(violations.len(), 1);
+        assert!(violations[0].description.contains("loadstring"));
+    }
+
+    #[test]
+    fn test_cb603_detects_os_execute() {
+        let temp = TempDir::new().unwrap();
+        fs::write(temp.path().join("app.lua"), "os.execute(cmd)\n").unwrap();
+        let violations = detect_cb603_deprecated_dangerous_api(temp.path());
+        assert_eq!(violations.len(), 1);
+        assert!(violations[0].description.contains("os.execute"));
+    }
+
+    #[test]
+    fn test_cb603_skips_comments() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("app.lua"),
+            "-- loadstring(code)\nlocal x = 1\n",
+        )
+        .unwrap();
+        let violations = detect_cb603_deprecated_dangerous_api(temp.path());
+        assert!(violations.is_empty());
+    }
 }

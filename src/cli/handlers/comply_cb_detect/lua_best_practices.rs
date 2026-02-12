@@ -330,3 +330,140 @@ pub fn detect_cb601_nil_unsafe_access(project_path: &Path) -> Vec<CbPatternViola
 
     violations
 }
+
+/// CB-602: pcall Error Handling — uncaptured or unchecked pcall/xpcall.
+/// Based on FLuaScan progressive taint analysis.
+pub fn detect_cb602_pcall_error_handling(project_path: &Path) -> Vec<CbPatternViolation> {
+    let files = walkdir_lua_files(project_path);
+    let mut violations = Vec::new();
+
+    for file_path in &files {
+        if is_lua_test_file(file_path) {
+            continue;
+        }
+        let content = match fs::read_to_string(file_path) {
+            Ok(c) => c,
+            Err(_) => continue,
+        };
+        let prod_lines = compute_lua_production_lines(&content);
+        let rel = file_path
+            .strip_prefix(project_path)
+            .unwrap_or(file_path)
+            .display()
+            .to_string();
+
+        for (idx, (line_num, trimmed)) in prod_lines.iter().enumerate() {
+            let has_pcall = trimmed.contains("pcall(") || trimmed.contains("xpcall(");
+            if !has_pcall || is_in_lua_string(trimmed, "pcall") {
+                continue;
+            }
+
+            // Case 1: pcall without capturing return value (no `=` before pcall)
+            if !trimmed.contains('=') {
+                violations.push(CbPatternViolation {
+                    pattern_id: "CB-602".to_string(),
+                    file: rel.clone(),
+                    line: *line_num,
+                    description: "pcall/xpcall return value not captured".to_string(),
+                    severity: Severity::Warning,
+                });
+                continue;
+            }
+
+            // Case 2: captured but status not checked within next 5 lines
+            if !has_status_check(&prod_lines, idx) {
+                violations.push(CbPatternViolation {
+                    pattern_id: "CB-602".to_string(),
+                    file: rel.clone(),
+                    line: *line_num,
+                    description: "pcall/xpcall status not checked within 5 lines"
+                        .to_string(),
+                    severity: Severity::Warning,
+                });
+            }
+        }
+    }
+
+    violations
+}
+
+/// Check if pcall status variable is checked within 5 lines after index `idx`.
+fn has_status_check(prod_lines: &[(usize, String)], idx: usize) -> bool {
+    let lookahead_end = std::cmp::min(idx + 6, prod_lines.len());
+    prod_lines[idx + 1..lookahead_end].iter().any(|(_, l)| {
+        l.contains("if ok") || l.contains("if not ok")
+            || l.contains("if success") || l.contains("if not success")
+            || l.contains("if status") || l.contains("if not status")
+            || l.contains("assert(ok") || l.contains("assert(success")
+    })
+}
+
+/// Deprecated Lua APIs that have modern replacements.
+const LUA_DEPRECATED_APIS: &[&str] = &["loadstring(", "setfenv(", "getfenv(", "module("];
+
+/// Dangerous Lua APIs that enable command injection.
+const LUA_DANGEROUS_APIS: &[&str] = &["os.execute(", "io.popen("];
+
+/// CB-603: Deprecated/Dangerous API usage.
+/// Based on LuaTaint and FLuaScan — os.execute(), io.popen(), loadstring(), setfenv().
+pub fn detect_cb603_deprecated_dangerous_api(project_path: &Path) -> Vec<CbPatternViolation> {
+    let files = walkdir_lua_files(project_path);
+    let mut violations = Vec::new();
+
+    for file_path in &files {
+        if is_lua_test_file(file_path) {
+            continue;
+        }
+        let content = match fs::read_to_string(file_path) {
+            Ok(c) => c,
+            Err(_) => continue,
+        };
+        let prod_lines = compute_lua_production_lines(&content);
+        let rel = file_path
+            .strip_prefix(project_path)
+            .unwrap_or(file_path)
+            .display()
+            .to_string();
+
+        for (line_num, trimmed) in &prod_lines {
+            check_deprecated_apis(trimmed, &rel, *line_num, &mut violations);
+            check_dangerous_apis(trimmed, &rel, *line_num, &mut violations);
+        }
+    }
+
+    violations
+}
+
+fn check_deprecated_apis(trimmed: &str, rel: &str, line_num: usize, violations: &mut Vec<CbPatternViolation>) {
+    for api in LUA_DEPRECATED_APIS {
+        if trimmed.contains(api) && !is_in_lua_string(trimmed, api) {
+            violations.push(CbPatternViolation {
+                pattern_id: "CB-603".to_string(),
+                file: rel.to_string(),
+                line: line_num,
+                description: format!(
+                    "Deprecated API: `{}` — use `load()` or modern equivalent",
+                    api.trim_end_matches('(')
+                ),
+                severity: Severity::Warning,
+            });
+        }
+    }
+}
+
+fn check_dangerous_apis(trimmed: &str, rel: &str, line_num: usize, violations: &mut Vec<CbPatternViolation>) {
+    for api in LUA_DANGEROUS_APIS {
+        if trimmed.contains(api) && !is_in_lua_string(trimmed, api) {
+            violations.push(CbPatternViolation {
+                pattern_id: "CB-603".to_string(),
+                file: rel.to_string(),
+                line: line_num,
+                description: format!(
+                    "Dangerous API: `{}` — potential command injection",
+                    api.trim_end_matches('(')
+                ),
+                severity: Severity::Warning,
+            });
+        }
+    }
+}

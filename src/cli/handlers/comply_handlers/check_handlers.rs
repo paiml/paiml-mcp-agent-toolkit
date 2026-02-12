@@ -1830,6 +1830,8 @@ pub(crate) fn check_lua_best_practices(project_path: &Path) -> ComplianceCheck {
     let detectors: Vec<(&str, Vec<CbPatternViolation>)> = vec![
         ("CB-600", super::comply_cb_detect::detect_cb600_implicit_globals(project_path)),
         ("CB-601", super::comply_cb_detect::detect_cb601_nil_unsafe_access(project_path)),
+        ("CB-602", super::comply_cb_detect::detect_cb602_pcall_error_handling(project_path)),
+        ("CB-603", super::comply_cb_detect::detect_cb603_deprecated_dangerous_api(project_path)),
     ];
 
     for (_id, violations) in &detectors {
