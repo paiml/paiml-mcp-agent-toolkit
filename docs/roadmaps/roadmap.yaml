@@ -1829,11 +1829,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'CB-600: Lua Best Practices Detection for pmat comply'
-  status: inprogress
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-02-12T16:45:38Z
-  updated: 2026-02-12T16:45:41.756193670+00:00
+  updated: 2026-02-12T17:20:16Z
   spec: null
   acceptance_criteria:
   - 8 detection functions (CB-600 through CB-607) based on LuaTaint, FLuaScan, luacheck, Luau type system research
