@@ -342,6 +342,7 @@ PMAT is built on the PAIML Sovereign Stack - pure-Rust, SIMD-accelerated librari
 - [API Reference](https://docs.rs/pmat) - Rust API docs
 - [MCP Tools](docs/mcp/TOOLS.md) - MCP integration guide
 - [Specifications](docs/specifications/) - Technical specs
+- 🤖 [Coursera Hugging Face AI Development Specialization](https://www.coursera.org/specializations/hugging-face-ai-development) - Build Production AI systems with Hugging Face in Pure Rust
 
 ## License
 
