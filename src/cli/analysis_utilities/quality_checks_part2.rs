@@ -306,8 +306,7 @@ async fn check_provability(
 ) -> Result<Vec<QualityViolation>> {
     let mut violations = Vec::new();
 
-    // Simulated provability check
-    let current_provability = 0.65; // Simulated value
+    let current_provability = calculate_provability_score(project_path).await?;
     if current_provability < min_provability {
         violations.push(QualityViolation {
             check_type: "provability".to_string(),
