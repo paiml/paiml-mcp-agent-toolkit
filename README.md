@@ -7,8 +7,8 @@
 
 [![Crates.io](https://img.shields.io/crates/v/pmat.svg)](https://crates.io/crates/pmat)
 [![Documentation](https://docs.rs/pmat/badge.svg)](https://docs.rs/pmat)
-[![Tests](https://img.shields.io/badge/tests-4600%2B%20passing-brightgreen)](https://github.com/paiml/paiml-mcp-agent-toolkit)
-[![Coverage](https://img.shields.io/badge/coverage-95%25%2B-brightgreen)](https://github.com/paiml/paiml-mcp-agent-toolkit)
+[![Tests](https://img.shields.io/badge/tests-21400%2B%20passing-brightgreen)](https://github.com/paiml/paiml-mcp-agent-toolkit)
+[![Coverage](https://img.shields.io/badge/coverage-99.66%25-brightgreen)](https://github.com/paiml/paiml-mcp-agent-toolkit)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Rust](https://img.shields.io/badge/rust-1.83+-orange.svg)](https://www.rust-lang.org)
 [![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.PMAT-blue)](https://zenodo.org/records/pmat)
@@ -29,9 +29,10 @@
 - **Repository Scoring** - Quantitative health assessment (0-211 scale)
 - **Git History RAG** - Semantic search across commit history with RRF fusion
 - **Semantic Search** - Natural language code discovery
+- **Compliance Checks** - CB-500 Rust and CB-600 Lua best practices detection
 - **MCP Integration** - 19 tools for Claude Code, Cline, and AI agents
 - **Quality Gates** - Pre-commit hooks, CI/CD integration
-- **17+ Languages** - Rust, TypeScript, Python, Go, Java, C/C++, and more
+- **18+ Languages** - Rust, TypeScript, Python, Go, Java, C/C++, Lua, and more
 
 Part of the [PAIML Stack](https://github.com/paiml), following Toyota Way quality principles (Jidoka, Genchi Genbutsu, Kaizen).
 
@@ -235,10 +236,10 @@ pmat/
 
 | Metric | Value |
 |--------|-------|
-| Tests | 4600+ passing |
-| Coverage | 95%+ |
+| Tests | 21,400+ passing |
+| Coverage | 99.66% |
 | Mutation Score | >80% |
-| Languages | 17+ supported |
+| Languages | 18+ supported |
 | MCP Tools | 19 available |
 
 ### Falsifiable Quality Commitments
@@ -254,7 +255,7 @@ Per [Popper's demarcation criterion](https://en.wikipedia.org/wiki/Demarcation_p
 | **Build Time** | < 3 minutes incremental | `cargo build --timings` |
 | **CI Pipeline** | < 15 minutes total | GitHub Actions workflow timing |
 | **Binary Size** | < 50 MB release binary | `ls -lh target/release/pmat` |
-| **Language Parsers** | All 17 languages parse without panic | Fuzz testing in CI |
+| **Language Parsers** | All 18 languages parse without panic | Fuzz testing in CI |
 
 **How to Verify:**
 
@@ -322,14 +323,14 @@ PMAT is built on the PAIML Sovereign Stack - pure-Rust, SIMD-accelerated librari
 
 | Library | Purpose | Version |
 |---------|---------|---------|
-| [aprender](https://crates.io/crates/aprender) | ML library (text similarity, clustering, topic modeling) | 0.24.0 |
-| [trueno](https://crates.io/crates/trueno) | SIMD compute library for matrix operations | 0.11.0 |
-| [trueno-graph](https://crates.io/crates/trueno-graph) | GPU-first graph database (PageRank, Louvain, CSR) | 0.1.7 |
-| [trueno-rag](https://crates.io/crates/trueno-rag) | RAG pipeline with VectorStore | 0.1.8 |
-| [trueno-db](https://crates.io/crates/trueno-db) | Embedded analytics database | 0.3.10 |
-| [trueno-viz](https://crates.io/crates/trueno-viz) | Terminal graph visualization | 0.1.17 |
+| [aprender](https://crates.io/crates/aprender) | ML library (text similarity, clustering, topic modeling) | 0.25.4 |
+| [trueno](https://crates.io/crates/trueno) | SIMD compute library for matrix operations | 0.14.5 |
+| [trueno-graph](https://crates.io/crates/trueno-graph) | GPU-first graph database (PageRank, Louvain, CSR) | 0.1.14 |
+| [trueno-rag](https://crates.io/crates/trueno-rag) | RAG pipeline with VectorStore | 0.1.12 |
+| [trueno-db](https://crates.io/crates/trueno-db) | Embedded analytics database | 0.3.13 |
+| [trueno-viz](https://crates.io/crates/trueno-viz) | Terminal graph visualization | 0.1.23 |
 | [trueno-zram-core](https://crates.io/crates/trueno-zram-core) | SIMD LZ4/ZSTD compression (optional) | 0.3.0 |
-| **pmat** | Code analysis toolkit | 2.213.4 |
+| **pmat** | Code analysis toolkit | 3.0.5 |
 
 **Key Benefits:**
 - Pure Rust (no C dependencies, no FFI)
