@@ -7,7 +7,7 @@
 
 [![Crates.io](https://img.shields.io/crates/v/pmat.svg)](https://crates.io/crates/pmat)
 [![Documentation](https://docs.rs/pmat/badge.svg)](https://docs.rs/pmat)
-[![Tests](https://img.shields.io/badge/tests-21400%2B%20passing-brightgreen)](https://github.com/paiml/paiml-mcp-agent-toolkit)
+[![Tests](https://img.shields.io/badge/tests-20700%2B%20passing-brightgreen)](https://github.com/paiml/paiml-mcp-agent-toolkit)
 [![Coverage](https://img.shields.io/badge/coverage-99.66%25-brightgreen)](https://github.com/paiml/paiml-mcp-agent-toolkit)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Rust](https://img.shields.io/badge/rust-1.83+-orange.svg)](https://www.rust-lang.org)
@@ -236,7 +236,7 @@ pmat/
 
 | Metric | Value |
 |--------|-------|
-| Tests | 21,400+ passing |
+| Tests | 20,700+ passing |
 | Coverage | 99.66% |
 | Mutation Score | >80% |
 | Languages | 18+ supported |
@@ -330,7 +330,7 @@ PMAT is built on the PAIML Sovereign Stack - pure-Rust, SIMD-accelerated librari
 | [trueno-db](https://crates.io/crates/trueno-db) | Embedded analytics database | 0.3.13 |
 | [trueno-viz](https://crates.io/crates/trueno-viz) | Terminal graph visualization | 0.1.23 |
 | [trueno-zram-core](https://crates.io/crates/trueno-zram-core) | SIMD LZ4/ZSTD compression (optional) | 0.3.0 |
-| **pmat** | Code analysis toolkit | 3.0.5 |
+| **pmat** | Code analysis toolkit | 3.0.7 |
 
 **Key Benefits:**
 - Pure Rust (no C dependencies, no FFI)
