@@ -92,8 +92,8 @@ pub fn compute_lua_production_lines(content: &str) -> Vec<(usize, String)> {
             continue;
         }
 
-        if trimmed.starts_with("--[[") {
-            if trimmed[4..].contains("]]") {
+        if let Some(rest) = trimmed.strip_prefix("--[[") {
+            if rest.contains("]]") {
                 continue;
             }
             in_block_comment = true;
