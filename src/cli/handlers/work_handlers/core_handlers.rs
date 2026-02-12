@@ -106,6 +106,150 @@ pub async fn handle_work_init(
     Ok(())
 }
 
+/// Resolve a GitHub issue into a RoadmapItem (helper for handle_work_start)
+async fn resolve_github_issue(
+    roadmap: &crate::models::roadmap::Roadmap,
+    issue_num: u64,
+) -> RoadmapItem {
+    println!("📋 Type: GitHub issue #{}", issue_num);
+
+    let mut item = if let Some(ref repo) = roadmap.github_repo {
+        match fetch_github_issue(repo, issue_num).await {
+            Ok(gh_issue) => {
+                println!("   ✅ Fetched from GitHub: {}", gh_issue.title);
+                let mut item = RoadmapItem::from_github_issue(issue_num, gh_issue.title.clone());
+                item.labels = gh_issue.labels.clone();
+                if let Some(body) = &gh_issue.body {
+                    item.acceptance_criteria = parse_acceptance_criteria(body);
+                }
+                item
+            }
+            Err(e) => {
+                println!("   ⚠️  Failed to fetch from GitHub: {}", e);
+                println!("   Creating placeholder (will sync later)");
+                RoadmapItem::from_github_issue(issue_num, format!("Issue #{}", issue_num))
+            }
+        }
+    } else {
+        println!("   ℹ️  GitHub not configured, creating placeholder");
+        RoadmapItem::from_github_issue(issue_num, format!("Issue #{}", issue_num))
+    };
+
+    item.status = ItemStatus::InProgress;
+    item
+}
+
+/// Resolve or create a YAML ticket (helper for handle_work_start)
+async fn resolve_yaml_ticket(
+    service: &RoadmapService,
+    id: &str,
+    roadmap: &crate::models::roadmap::Roadmap,
+    create_github: bool,
+) -> Result<RoadmapItem> {
+    println!("📋 Type: YAML ticket {}", id);
+
+    if let Some(existing) = service.find_item(id)? {
+        println!("   Found existing ticket");
+        let mut item = existing;
+        item.status = ItemStatus::InProgress;
+        item.updated = chrono::Utc::now().to_rfc3339();
+        return Ok(item);
+    }
+
+    let mut item = RoadmapItem::new(id.to_string(), format!("New task: {}", id));
+    item.status = ItemStatus::InProgress;
+    item.priority = Priority::Medium;
+
+    if create_github {
+        try_create_github_issue(roadmap, &mut item).await;
+    }
+
+    Ok(item)
+}
+
+/// Try to create a GitHub issue for a new YAML ticket (helper for resolve_yaml_ticket)
+async fn try_create_github_issue(
+    roadmap: &crate::models::roadmap::Roadmap,
+    item: &mut RoadmapItem,
+) {
+    if let Some(ref repo) = roadmap.github_repo {
+        println!("   🔄 Creating GitHub issue...");
+        match create_github_issue_from_item(repo, item).await {
+            Ok(gh_issue) => {
+                println!("   ✅ Created GitHub issue #{}", gh_issue.number);
+                item.github_issue = Some(gh_issue.number);
+                item.id = format!("GH-{}", gh_issue.number);
+            }
+            Err(e) => {
+                println!("   ⚠️  Failed to create GitHub issue: {}", e);
+                println!("   Continuing with YAML-only ticket");
+            }
+        }
+    } else {
+        println!("   ⚠️  GitHub not configured, skipping issue creation");
+    }
+}
+
+/// Create a work contract with baseline metrics (helper for handle_work_start)
+async fn create_work_contract(project_path: &Path, item_id: &str) {
+    println!();
+    println!("📋 Creating Work Contract (Popperian Falsification)...");
+
+    let baseline_commit = std::process::Command::new("git")
+        .args(["rev-parse", "HEAD"])
+        .current_dir(project_path)
+        .output()
+        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+        .unwrap_or_else(|_| "unknown".to_string());
+
+    let mut contract = WorkContract::new(item_id.to_string(), baseline_commit);
+
+    match capture_baseline(project_path).await {
+        Ok((tdg, coverage, rust_score)) => {
+            contract.baseline_tdg = tdg;
+            contract.baseline_coverage = coverage;
+            contract.baseline_rust_score = rust_score;
+        }
+        Err(e) => {
+            println!("   ⚠️  Could not capture baseline metrics: {}", e);
+        }
+    }
+
+    build_and_attach_manifest(project_path, &mut contract);
+    save_contract(project_path, &contract);
+}
+
+/// Build file manifest and attach to contract (helper for create_work_contract)
+fn build_and_attach_manifest(project_path: &Path, contract: &mut WorkContract) {
+    println!("   📂 Building file manifest...");
+    match FileManifest::build(project_path) {
+        Ok(manifest) => {
+            let file_count = manifest.files.len();
+            let protected_count = manifest.coverage_required.len();
+            contract.baseline_file_manifest = manifest;
+            println!(
+                "      ✅ {} files tracked, {} protected from exclusion",
+                file_count, protected_count
+            );
+        }
+        Err(e) => {
+            println!("   ⚠️  Could not build file manifest: {}", e);
+        }
+    }
+}
+
+/// Save contract to disk (helper for create_work_contract)
+fn save_contract(project_path: &Path, contract: &WorkContract) {
+    match contract.save(project_path) {
+        Ok(contract_path) => {
+            println!("   ✅ Contract saved: {}", contract_path.display());
+        }
+        Err(e) => {
+            println!("   ⚠️  Could not save contract: {}", e);
+        }
+    }
+}
+
 /// Handle work start command
 pub async fn handle_work_start(
     id: String,
@@ -121,172 +265,63 @@ pub async fn handle_work_start(
     println!("🚀 Starting work on: {}", id);
     println!();
 
-    // Load roadmap
     let mut roadmap = service.load()?;
-
-    // Determine if this is a GitHub issue or YAML ticket
     let is_github_issue = id.parse::<u64>().is_ok();
 
     let mut item = if is_github_issue {
         let issue_num: u64 = id.parse()?;
-        println!("📋 Type: GitHub issue #{}", issue_num);
-
-        // Fetch from GitHub API if repo is configured
-        let mut item = if let Some(ref repo) = roadmap.github_repo {
-            match fetch_github_issue(repo, issue_num).await {
-                Ok(gh_issue) => {
-                    println!("   ✅ Fetched from GitHub: {}", gh_issue.title);
-
-                    let mut item =
-                        RoadmapItem::from_github_issue(issue_num, gh_issue.title.clone());
-                    item.labels = gh_issue.labels.clone();
-
-                    // Parse acceptance criteria from issue body if present
-                    if let Some(body) = &gh_issue.body {
-                        item.acceptance_criteria = parse_acceptance_criteria(body);
-                    }
-
-                    item
-                }
-                Err(e) => {
-                    println!("   ⚠️  Failed to fetch from GitHub: {}", e);
-                    println!("   Creating placeholder (will sync later)");
-                    RoadmapItem::from_github_issue(issue_num, format!("Issue #{}", issue_num))
-                }
-            }
-        } else {
-            println!("   ℹ️  GitHub not configured, creating placeholder");
-            RoadmapItem::from_github_issue(issue_num, format!("Issue #{}", issue_num))
-        };
-
-        item.status = ItemStatus::InProgress;
-        item
+        resolve_github_issue(&roadmap, issue_num).await
     } else {
-        println!("📋 Type: YAML ticket {}", id);
-
-        // Check if already exists
-        if let Some(existing) = service.find_item(&id)? {
-            println!("   Found existing ticket");
-            let mut item = existing;
-            item.status = ItemStatus::InProgress;
-            item.updated = chrono::Utc::now().to_rfc3339();
-            item
-        } else {
-            // Create new YAML ticket
-            let mut item = RoadmapItem::new(id.clone(), format!("New task: {}", id));
-            item.status = ItemStatus::InProgress;
-            item.priority = Priority::Medium;
-
-            if create_github {
-                if let Some(ref repo) = roadmap.github_repo {
-                    println!("   🔄 Creating GitHub issue...");
-                    match create_github_issue_from_item(repo, &item).await {
-                        Ok(gh_issue) => {
-                            println!("   ✅ Created GitHub issue #{}", gh_issue.number);
-                            item.github_issue = Some(gh_issue.number);
-                            item.id = format!("GH-{}", gh_issue.number);
-                        }
-                        Err(e) => {
-                            println!("   ⚠️  Failed to create GitHub issue: {}", e);
-                            println!("   Continuing with YAML-only ticket");
-                        }
-                    }
-                } else {
-                    println!("   ⚠️  GitHub not configured, skipping issue creation");
-                }
-            }
-
-            item
-        }
+        resolve_yaml_ticket(&service, &id, &roadmap, create_github).await?
     };
 
-    // Set as epic if --epic flag is used
     if epic {
         item.item_type = crate::models::roadmap::ItemType::Epic;
         println!("📦 Created as epic: {}", item.title);
         println!("   Add subtasks manually to roadmap.yaml or use future commands");
     }
 
-    // Update roadmap
     roadmap.upsert_item(item.clone());
     service.save(&roadmap)?;
-
     println!("✅ Updated roadmap: {}", roadmap_path.display());
 
-    // === WORK CONTRACT: Capture immutable baseline ===
-    println!();
-    println!("📋 Creating Work Contract (Popperian Falsification)...");
+    create_work_contract(&project_path, &item.id).await;
 
-    // Get current git commit as baseline
-    let baseline_commit = std::process::Command::new("git")
-        .args(["rev-parse", "HEAD"])
-        .current_dir(&project_path)
-        .output()
-        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
-        .unwrap_or_else(|_| "unknown".to_string());
-
-    // Create work contract
-    let mut contract = WorkContract::new(item.id.clone(), baseline_commit.clone());
-
-    // Capture baseline metrics
-    match capture_baseline(&project_path).await {
-        Ok((tdg, coverage, rust_score)) => {
-            contract.baseline_tdg = tdg;
-            contract.baseline_coverage = coverage;
-            contract.baseline_rust_score = rust_score;
-        }
-        Err(e) => {
-            println!("   ⚠️  Could not capture baseline metrics: {}", e);
-        }
-    }
-
-    // Build file manifest for anti-gaming detection
-    println!("   📂 Building file manifest...");
-    match FileManifest::build(&project_path) {
-        Ok(manifest) => {
-            let file_count = manifest.files.len();
-            let protected_count = manifest.coverage_required.len();
-            contract.baseline_file_manifest = manifest;
-            println!(
-                "      ✅ {} files tracked, {} protected from exclusion",
-                file_count, protected_count
-            );
-        }
-        Err(e) => {
-            println!("   ⚠️  Could not build file manifest: {}", e);
-        }
-    }
-
-    // Save contract
-    match contract.save(&project_path) {
-        Ok(contract_path) => {
-            println!("   ✅ Contract saved: {}", contract_path.display());
-        }
-        Err(e) => {
-            println!("   ⚠️  Could not save contract: {}", e);
-        }
-    }
-
-    // Create specification if requested
     if with_spec {
-        let spec_path = if is_github_issue {
-            project_path.join(format!(
-                "docs/specifications/{:03}-spec.md",
-                item.github_issue.expect("internal error")
-            ))
-        } else {
-            project_path.join(format!("docs/specifications/{}-spec.md", id.to_lowercase()))
-        };
-
-        if !spec_path.exists() {
-            create_specification_template(&spec_path, &item)?;
-            println!("✅ Created specification: {}", spec_path.display());
-        } else {
-            println!("   Specification exists: {}", spec_path.display());
-        }
+        create_spec_if_needed(&project_path, &item, &id, is_github_issue)?;
     }
 
-    // Show next steps
+    print_work_start_next_steps(&id);
+    Ok(())
+}
+
+/// Create specification file if it does not exist (helper for handle_work_start)
+fn create_spec_if_needed(
+    project_path: &Path,
+    item: &RoadmapItem,
+    id: &str,
+    is_github_issue: bool,
+) -> Result<()> {
+    let spec_path = if is_github_issue {
+        project_path.join(format!(
+            "docs/specifications/{:03}-spec.md",
+            item.github_issue.expect("internal error")
+        ))
+    } else {
+        project_path.join(format!("docs/specifications/{}-spec.md", id.to_lowercase()))
+    };
+
+    if !spec_path.exists() {
+        create_specification_template(&spec_path.to_path_buf(), item)?;
+        println!("✅ Created specification: {}", spec_path.display());
+    } else {
+        println!("   Specification exists: {}", spec_path.display());
+    }
+    Ok(())
+}
+
+/// Print next steps after work start (helper for handle_work_start)
+fn print_work_start_next_steps(id: &str) {
     println!();
     println!("🎯 Next steps:");
     println!("   1. Review specification (if created)");
@@ -296,8 +331,6 @@ pub async fn handle_work_start(
     println!("   5. Continue: pmat work continue {}", id);
     println!("   6. Complete: pmat work complete {}", id);
     println!();
-
-    Ok(())
 }
 
 /// Handle work continue command
@@ -599,6 +632,159 @@ fn print_blocked_result(report: &FalsificationReport, unoverrideable: &[&ClaimRe
     println!("  2. pmat work complete {} --override-claims coverage,complexity --ticket DEBT-XXX", id);
 }
 
+/// Validate that override claims have an associated ticket (Popperian accountability)
+fn validate_override_accountability(
+    override_claims: &Option<Vec<String>>,
+    ticket: &Option<String>,
+    id: &str,
+) -> Result<()> {
+    if override_claims.is_some() && ticket.is_none() {
+        anyhow::bail!(
+            "Error: --ticket is mandatory for overrides.\n\n\
+             Popperian Principle: Every override must be accountable.\n\
+             Create a debt ticket first:\n\
+             1. pmat comply upgrade --target popperian\n\
+             2. Or manually create .pmat-tickets/DEBT-XXX.yaml\n\n\
+             Then retry with: pmat work complete {} --override-claims <claims> --ticket <TICKET-ID>",
+            id
+        );
+    }
+    Ok(())
+}
+
+/// Run quality gates and report results (helper for handle_work_complete)
+async fn run_quality_check(project_path: &PathBuf, skip_quality: bool) -> Result<()> {
+    if skip_quality {
+        println!("⚠️  Quality gates SKIPPED (--skip-quality)");
+        println!();
+        return Ok(());
+    }
+
+    println!("🔍 Running quality gates...");
+    println!();
+
+    match run_quality_gates(project_path).await {
+        Ok(passed) => {
+            if passed {
+                println!("✅ All quality gates passed");
+                println!();
+            } else {
+                anyhow::bail!(
+                    "Quality gates failed. Fix issues or use --skip-quality to bypass."
+                );
+            }
+        }
+        Err(e) => {
+            println!("⚠️  Quality gates error: {}", e);
+            println!("   Continuing (use strict mode to block on errors)");
+            println!();
+        }
+    }
+    Ok(())
+}
+
+/// Run contract-based or legacy falsification (helper for handle_work_complete)
+async fn run_contract_falsification(
+    project_path: &Path,
+    item_id: &str,
+    override_claims: &Option<Vec<String>>,
+    ticket: &Option<String>,
+    id: &str,
+) -> Result<()> {
+    if !WorkContract::exists(project_path, item_id) {
+        println!("ℹ️  No work contract found (legacy mode)");
+        println!("   Run 'pmat work start {}' to create a contract for future work", id);
+        println!();
+        return run_legacy_falsification(&project_path.to_path_buf()).await;
+    }
+
+    println!("📜 Loading Work Contract...");
+    match WorkContract::load(project_path, item_id) {
+        Ok(contract) => {
+            println!(
+                "   Baseline: {} (TDG: {:.1}, Coverage: {:.1}%)",
+                contract.baseline_commit.get(..8.min(contract.baseline_commit.len())).unwrap_or(&contract.baseline_commit),
+                contract.baseline_tdg,
+                contract.baseline_coverage
+            );
+            run_contract_tests(project_path, &contract, override_claims, ticket, id).await
+        }
+        Err(e) => {
+            println!("⚠️  Could not load contract: {}", e);
+            println!("   Falling back to legacy validation...");
+            println!();
+            run_legacy_falsification(&project_path.to_path_buf()).await
+        }
+    }
+}
+
+/// Run falsification tests against a loaded contract (helper for run_contract_falsification)
+async fn run_contract_tests(
+    project_path: &Path,
+    contract: &WorkContract,
+    override_claims: &Option<Vec<String>>,
+    ticket: &Option<String>,
+    id: &str,
+) -> Result<()> {
+    match run_falsification_tests(project_path, contract).await {
+        Ok(report) => {
+            process_falsification_report(&report, override_claims.as_ref(), ticket.as_ref(), id)
+        }
+        Err(e) => {
+            println!("⚠️  Falsification error: {}", e);
+            println!("   Continuing with legacy validation...");
+            println!();
+            run_legacy_falsification(&project_path.to_path_buf()).await
+        }
+    }
+}
+
+/// Update changelog from item labels (helper for handle_work_complete)
+fn update_changelog(project_path: &PathBuf, item: &RoadmapItem) {
+    if item.labels.is_empty() {
+        return;
+    }
+
+    if let Some(category) = ChangeCategory::from_labels(&item.labels) {
+        let entry = ChangelogEntry::new(category, item.title.clone(), item.github_issue);
+        match crate::services::changelog_manager::add_to_changelog(project_path, entry) {
+            Ok(()) => println!("✅ Updated CHANGELOG.md"),
+            Err(e) => {
+                println!("⚠️  Failed to update CHANGELOG.md: {}", e);
+                println!("   You may need to update it manually");
+            }
+        }
+    } else {
+        println!("ℹ️  No changelog category inferred from labels");
+    }
+}
+
+/// Print completion next steps with commit metadata (helper for handle_work_complete)
+fn print_complete_next_steps(item: &RoadmapItem, id: &str, metadata: &CommitMetadata) {
+    println!("🎯 Next steps:");
+    let rust_score_line = metadata
+        .rust_project_score
+        .map(|s| format!("Rust-Score: {:.1}/134\n", s))
+        .unwrap_or_default();
+    let commit_msg = format!(
+        "feat: {} (Refs {})\n\nWork-Item: {}\nTDG-Score: {:.1}/100\nRepo-Score: {:.1}/100\n{}Metrics: .pmat-metrics/commit-*-meta.json",
+        item.title, id, item.id, metadata.tdg_score, metadata.repo_score, rust_score_line
+    );
+
+    println!("   1. git commit -m \"$(cat <<'EOF'");
+    println!("{}", commit_msg);
+    println!("EOF");
+    println!(")\"");
+
+    if item.is_github_synced() {
+        println!(
+            "   2. Close GitHub issue: gh issue close {}",
+            item.github_issue.expect("internal error")
+        );
+    }
+    println!();
+}
+
 /// Handle work complete command
 ///
 /// Popperian Falsification Protocol:
@@ -616,111 +802,22 @@ pub async fn handle_work_complete(
     let roadmap_path = project_path.join("docs/roadmaps/roadmap.yaml");
     let service = RoadmapService::new(&roadmap_path);
 
-    // === POPPERIAN ACCOUNTABILITY: Validate override has ticket ===
-    if override_claims.is_some() && ticket.is_none() {
-        anyhow::bail!(
-            "Error: --ticket is mandatory for overrides.\n\n\
-             Popperian Principle: Every override must be accountable.\n\
-             Create a debt ticket first:\n\
-             1. pmat comply upgrade --target popperian\n\
-             2. Or manually create .pmat-tickets/DEBT-XXX.yaml\n\n\
-             Then retry with: pmat work complete {} --override-claims <claims> --ticket <TICKET-ID>",
-            id
-        );
-    }
+    validate_override_accountability(&override_claims, &ticket, &id)?;
 
     println!("✅ Completing work on: {}", id);
     println!();
 
-    // Find item
     let mut item = service
         .find_item(&id)?
         .with_context(|| format!("Item not found: {}", id))?;
 
-    // Run quality gates unless skipped
-    if !skip_quality {
-        println!("🔍 Running quality gates...");
-        println!();
-
-        match run_quality_gates(&project_path).await {
-            Ok(passed) => {
-                if passed {
-                    println!("✅ All quality gates passed");
-                    println!();
-                } else {
-                    anyhow::bail!(
-                        "Quality gates failed. Fix issues or use --skip-quality to bypass."
-                    );
-                }
-            }
-            Err(e) => {
-                println!("⚠️  Quality gates error: {}", e);
-                println!("   Continuing (use strict mode to block on errors)");
-                println!();
-            }
-        }
-    } else {
-        println!("⚠️  Quality gates SKIPPED (--skip-quality)");
-        println!();
-    }
-
-    // === WORK CONTRACT: Run Popperian Falsification (ALWAYS RUNS - CANNOT BE SKIPPED) ===
-    if WorkContract::exists(&project_path, &item.id) {
-        println!("📜 Loading Work Contract...");
-
-        match WorkContract::load(&project_path, &item.id) {
-            Ok(contract) => {
-                println!(
-                    "   Baseline: {} (TDG: {:.1}, Coverage: {:.1}%)",
-                    &contract.baseline_commit[..8.min(contract.baseline_commit.len())],
-                    contract.baseline_tdg,
-                    contract.baseline_coverage
-                );
-
-                // Run ALL falsification tests
-                match run_falsification_tests(&project_path, &contract).await {
-                    Ok(report) => {
-                        // Use helper function (CB-040 complexity refactor)
-                        process_falsification_report(
-                            &report,
-                            override_claims.as_ref(),
-                            ticket.as_ref(),
-                            &id,
-                        )?;
-                    }
-                    Err(e) => {
-                        println!("⚠️  Falsification error: {}", e);
-                        println!("   Continuing with legacy validation...");
-                        println!();
-
-                        // Fall back to legacy validation
-                        run_legacy_falsification(&project_path).await?;
-                    }
-                }
-            }
-            Err(e) => {
-                println!("⚠️  Could not load contract: {}", e);
-                println!("   Falling back to legacy validation...");
-                println!();
-
-                // Fall back to legacy validation
-                run_legacy_falsification(&project_path).await?;
-            }
-        }
-    } else {
-        println!("ℹ️  No work contract found (legacy mode)");
-        println!("   Run 'pmat work start {}' to create a contract for future work", id);
-        println!();
-
-        // Fall back to legacy validation
-        run_legacy_falsification(&project_path).await?;
-    }
+    run_quality_check(&project_path, skip_quality).await?;
+    run_contract_falsification(&project_path, &item.id, &override_claims, &ticket, &id).await?;
 
     // Mark as completed
     item.status = ItemStatus::Completed;
     item.updated = chrono::Utc::now().to_rfc3339();
 
-    // Update roadmap
     let mut roadmap = service.load()?;
     roadmap.upsert_item(item.clone());
     service.save(&roadmap)?;
@@ -728,7 +825,7 @@ pub async fn handle_work_complete(
     println!("✅ Marked as complete: {}", item.title);
     println!("✅ Updated roadmap: {}", roadmap_path.display());
 
-    // Capture commit metadata (O(1) from cache)
+    // Capture commit metadata
     println!();
     println!("   📊 Capturing commit metadata...");
     let metadata = capture_commit_metadata(&project_path, &item).await?;
@@ -737,60 +834,13 @@ pub async fn handle_work_complete(
     if let Some(rust_score) = metadata.rust_project_score {
         println!("      ✅ Rust Project Score: {:.1}/134", rust_score);
     }
-    let meta_file = project_path
-        .join(".pmat-metrics")
-        .join("commit-*-meta.json");
+    let meta_file = project_path.join(".pmat-metrics").join("commit-*-meta.json");
     println!("✅ Commit metadata: {}", meta_file.display());
 
-    // Update CHANGELOG.md if labels are available
-    if !item.labels.is_empty() {
-        if let Some(category) = ChangeCategory::from_labels(&item.labels) {
-            let entry = ChangelogEntry::new(category, item.title.clone(), item.github_issue);
-
-            match crate::services::changelog_manager::add_to_changelog(&project_path, entry) {
-                Ok(()) => {
-                    println!("✅ Updated CHANGELOG.md");
-                }
-                Err(e) => {
-                    println!("⚠️  Failed to update CHANGELOG.md: {}", e);
-                    println!("   You may need to update it manually");
-                }
-            }
-        } else {
-            println!("ℹ️  No changelog category inferred from labels");
-        }
-    }
+    update_changelog(&project_path, &item);
 
     println!();
-
-    // Next steps with commit metadata
-    println!("🎯 Next steps:");
-    let commit_msg = format!(
-        "feat: {} (Refs {})\n\nWork-Item: {}\nTDG-Score: {:.1}/100\nRepo-Score: {:.1}/100\n{}Metrics: .pmat-metrics/commit-*-meta.json",
-        item.title,
-        id,
-        item.id,
-        metadata.tdg_score,
-        metadata.repo_score,
-        if let Some(rust_score) = metadata.rust_project_score {
-            format!("Rust-Score: {:.1}/134\n", rust_score)
-        } else {
-            String::new()
-        }
-    );
-
-    println!("   1. git commit -m \"$(cat <<'EOF'");
-    println!("{}", commit_msg);
-    println!("EOF");
-    println!(")\"");
-
-    if item.is_github_synced() {
-        println!(
-            "   2. Close GitHub issue: gh issue close {}",
-            item.github_issue.expect("internal error")
-        );
-    }
-    println!();
+    print_complete_next_steps(&item, &id, &metadata);
 
     Ok(())
 }
@@ -1157,14 +1207,14 @@ fn detect_github_repo(project_path: &PathBuf) -> Result<Option<String>> {
 fn parse_github_url(url: &str) -> Option<String> {
     // HTTPS: https://github.com/owner/repo.git
     if let Some(start) = url.find("github.com/") {
-        let rest = &url[start + 11..];
+        let rest = url.get(start + 11..).unwrap_or_default();
         let repo = rest.trim_end_matches(".git");
         return Some(repo.to_string());
     }
 
     // SSH: git@github.com:owner/repo.git
     if let Some(start) = url.find("github.com:") {
-        let rest = &url[start + 11..];
+        let rest = url.get(start + 11..).unwrap_or_default();
         let repo = rest.trim_end_matches(".git");
         return Some(repo.to_string());
     }

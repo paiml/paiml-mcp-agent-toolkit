@@ -607,6 +607,33 @@ fn test_file_size_regression(
     }
 }
 
+/// Parse spec score from pmat output (format: "Score: XX/100")
+fn parse_spec_score(stdout: &str) -> Option<u32> {
+    let score_line = stdout.lines().find(|l| l.contains("Score:"))?;
+    let score_str = score_line.split('/').next()?;
+    score_str
+        .chars()
+        .filter(|c| c.is_ascii_digit())
+        .collect::<String>()
+        .parse::<u32>()
+        .ok()
+}
+
+/// Evaluate parsed spec score against threshold
+fn evaluate_spec_score(score: u32, min_score: u32) -> FalsificationResult {
+    if score >= min_score {
+        FalsificationResult::passed(format!("{}/100 >= {}/100", score, min_score))
+    } else {
+        FalsificationResult::failed(
+            format!("{}/100 < {}/100 threshold", score, min_score),
+            EvidenceType::NumericComparison {
+                actual: score as f64,
+                threshold: min_score as f64,
+            },
+        )
+    }
+}
+
 /// Test spec quality: spec score must meet threshold
 fn test_spec_quality(
     project_path: &Path,
@@ -641,35 +668,12 @@ fn test_spec_quality(
     match output {
         Ok(output) if output.status.success() => {
             let stdout = String::from_utf8_lossy(&output.stdout);
-            // Parse score from output (format: "Score: XX/100")
-            if let Some(score_line) = stdout.lines().find(|l| l.contains("Score:")) {
-                if let Some(score_str) = score_line.split('/').next() {
-                    if let Ok(score) = score_str
-                        .chars()
-                        .filter(|c| c.is_ascii_digit())
-                        .collect::<String>()
-                        .parse::<u32>()
-                    {
-                        if score >= min_score {
-                            return Ok(FalsificationResult::passed(format!(
-                                "{}/100 >= {}/100",
-                                score, min_score
-                            )));
-                        } else {
-                            return Ok(FalsificationResult::failed(
-                                format!("{}/100 < {}/100 threshold", score, min_score),
-                                EvidenceType::NumericComparison {
-                                    actual: score as f64,
-                                    threshold: min_score as f64,
-                                },
-                            ));
-                        }
-                    }
-                }
-            }
-            Ok(FalsificationResult::passed(
-                "Spec score check completed".to_string(),
-            ))
+            let result = parse_spec_score(&stdout)
+                .map(|score| evaluate_spec_score(score, min_score))
+                .unwrap_or_else(|| {
+                    FalsificationResult::passed("Spec score check completed".to_string())
+                });
+            Ok(result)
         }
         _ => Ok(FalsificationResult::passed(
             "Spec scorer not available".to_string(),
@@ -741,7 +745,7 @@ fn test_github_sync(project_path: &Path) -> Result<FalsificationResult> {
             .next()
             .and_then(|l| {
                 l.find("ahead")
-                    .map(|i| &l[i..])
+                    .and_then(|i| l.get(i..))
                     .and_then(|s| s.split_whitespace().nth(1))
                     .and_then(|n| n.trim_end_matches(']').parse::<usize>().ok())
             })
@@ -1470,7 +1474,7 @@ mod tests {
                 .next()
                 .and_then(|l| {
                     l.find("ahead")
-                        .map(|i| &l[i..])
+                        .and_then(|i| l.get(i..))
                         .and_then(|s| s.split_whitespace().nth(1))
                         .and_then(|n| n.trim_end_matches(']').parse::<usize>().ok())
                 })

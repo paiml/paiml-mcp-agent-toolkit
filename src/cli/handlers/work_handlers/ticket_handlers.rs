@@ -1,4 +1,96 @@
 
+/// Collect semantic warnings for roadmap items (helper for handle_work_validate)
+fn collect_semantic_warnings(roadmap: &crate::models::roadmap::Roadmap) -> Vec<String> {
+    let mut warnings = Vec::new();
+    for item in &roadmap.roadmap {
+        if item.acceptance_criteria.is_empty()
+            && !matches!(item.status, ItemStatus::Cancelled)
+        {
+            warnings.push(format!("⚠️  {} has no acceptance criteria", item.id));
+        }
+        if item.id.chars().count() > 50 {
+            let truncated: String = item.id.chars().take(30).collect();
+            warnings.push(format!(
+                "⚠️  {} has a long ID ({} chars) - consider using shorter IDs",
+                truncated,
+                item.id.chars().count()
+            ));
+        }
+    }
+    warnings
+}
+
+/// Print valid roadmap with semantic validation (helper for handle_work_validate)
+fn print_valid_roadmap(
+    roadmap: &crate::models::roadmap::Roadmap,
+    verbose: bool,
+    fix: bool,
+) {
+    println!("✅ Syntax valid");
+    println!("   Version: {}", roadmap.roadmap_version);
+    println!("   Items: {}", roadmap.roadmap.len());
+    println!(
+        "   GitHub: {}",
+        if roadmap.github_enabled {
+            roadmap.github_repo.as_deref().unwrap_or("not configured")
+        } else {
+            "disabled"
+        }
+    );
+    println!();
+
+    let warnings = collect_semantic_warnings(roadmap);
+    if !warnings.is_empty() {
+        println!("Warnings ({}):", warnings.len());
+        for warning in &warnings {
+            println!("   {}", warning);
+        }
+        println!();
+    }
+
+    if verbose {
+        println!("📋 Items:");
+        for item in &roadmap.roadmap {
+            println!("   {} [{:?}] - {}", item.id, item.status, item.title);
+        }
+    }
+
+    if fix && !warnings.is_empty() {
+        println!("💡 Tip: Use `pmat work migrate` to auto-fix issues");
+    }
+
+    println!("✅ Validation passed");
+}
+
+/// Print YAML parse error with context and suggestions (helper for handle_work_validate)
+fn print_yaml_error_context(error_msg: &str, content: &str) {
+    println!("❌ Validation failed\n");
+    println!("Error: {}", error_msg);
+    println!();
+
+    if let Some(line) = extract_line_from_yaml_error(error_msg) {
+        let lines: Vec<&str> = content.lines().collect();
+        if line > 0 && line <= lines.len() {
+            println!("Context (around line {}):", line);
+            let start = line.saturating_sub(3);
+            let end = std::cmp::min(line + 2, lines.len());
+            for (i, l) in lines[start..end].iter().enumerate() {
+                let line_num = start + i + 1;
+                let marker = if line_num == line { ">>>" } else { "   " };
+                println!("{} {:4}: {}", marker, line_num, l);
+            }
+            println!();
+        }
+    }
+
+    println!("💡 Common fixes:");
+    println!("   - Use valid status values: completed, done, wip, planned, blocked, review");
+    println!("   - Quote strings with special characters: `:`, `<`, `>`");
+    println!("   - Use proper YAML indentation (2 spaces)");
+    println!();
+    println!("Run `pmat work status --list` to see all valid status values.");
+}
+
 /// Handle work validate command (Part B: UX Improvements)
 ///
 /// Validates roadmap.yaml syntax and content with actionable error messages.
@@ -16,105 +108,15 @@ pub async fn handle_work_validate(path: Option<PathBuf>, verbose: bool, fix: boo
         );
     }
 
-    // Read raw content for better error reporting
     let content = std::fs::read_to_string(&roadmap_path).context("Failed to read roadmap file")?;
 
-    // Try to parse
     match serde_yaml::from_str::<crate::models::roadmap::Roadmap>(&content) {
         Ok(roadmap) => {
-            println!("✅ Syntax valid");
-            println!("   Version: {}", roadmap.roadmap_version);
-            println!("   Items: {}", roadmap.roadmap.len());
-            println!(
-                "   GitHub: {}",
-                if roadmap.github_enabled {
-                    roadmap.github_repo.as_deref().unwrap_or("not configured")
-                } else {
-                    "disabled"
-                }
-            );
-            println!();
-
-            // Semantic validation
-            let mut warnings = Vec::new();
-
-            for item in &roadmap.roadmap {
-                // Check for missing acceptance criteria on features
-                if item.acceptance_criteria.is_empty()
-                    && !matches!(item.status, ItemStatus::Cancelled)
-                {
-                    warnings.push(format!("⚠️  {} has no acceptance criteria", item.id));
-                }
-
-                // Check for long IDs (UX issue from spec)
-                // Use chars().count() to handle Unicode correctly (issue #128)
-                if item.id.chars().count() > 50 {
-                    let truncated: String = item.id.chars().take(30).collect();
-                    warnings.push(format!(
-                        "⚠️  {} has a long ID ({} chars) - consider using shorter IDs",
-                        truncated,
-                        item.id.chars().count()
-                    ));
-                }
-            }
-
-            if !warnings.is_empty() {
-                println!("Warnings ({}):", warnings.len());
-                for warning in &warnings {
-                    println!("   {}", warning);
-                }
-                println!();
-            }
-
-            if verbose {
-                println!("📋 Items:");
-                for item in &roadmap.roadmap {
-                    println!("   {} [{:?}] - {}", item.id, item.status, item.title);
-                }
-            }
-
-            if fix && !warnings.is_empty() {
-                println!("💡 Tip: Use `pmat work migrate` to auto-fix issues");
-            }
-
-            println!("✅ Validation passed");
+            print_valid_roadmap(&roadmap, verbose, fix);
             Ok(())
         }
         Err(e) => {
-            // Provide actionable error message with line info
-            let error_msg = format!("{}", e);
-
-            println!("❌ Validation failed\n");
-            println!("Error: {}", error_msg);
-            println!();
-
-            // Try to extract line number from error
-            if let Some(line) = extract_line_from_yaml_error(&error_msg) {
-                // Show context around the error
-                let lines: Vec<&str> = content.lines().collect();
-                if line > 0 && line <= lines.len() {
-                    println!("Context (around line {}):", line);
-                    let start = line.saturating_sub(3);
-                    let end = std::cmp::min(line + 2, lines.len());
-                    for (i, l) in lines[start..end].iter().enumerate() {
-                        let line_num = start + i + 1;
-                        let marker = if line_num == line { ">>>" } else { "   " };
-                        println!("{} {:4}: {}", marker, line_num, l);
-                    }
-                    println!();
-                }
-            }
-
-            // Provide suggestions
-            println!("💡 Common fixes:");
-            println!(
-                "   - Use valid status values: completed, done, wip, planned, blocked, review"
-            );
-            println!("   - Quote strings with special characters: `:`, `<`, `>`");
-            println!("   - Use proper YAML indentation (2 spaces)");
-            println!();
-            println!("Run `pmat work status --list` to see all valid status values.");
-
+            print_yaml_error_context(&format!("{}", e), &content);
             anyhow::bail!("Roadmap validation failed")
         }
     }
@@ -407,7 +409,7 @@ pub async fn handle_work_list(
         let status_str = format!("{:?}", item.status).to_lowercase();
         let priority_str = format!("{:?}", item.priority).to_lowercase();
         let title_truncated = if item.title.len() > 40 {
-            format!("{}...", &item.title[..37])
+            format!("{}...", item.title.get(..37).unwrap_or(&item.title))
         } else {
             item.title.clone()
         };
@@ -691,44 +693,48 @@ fn calculate_spec_score_simple(spec: &crate::services::spec_parser::ParsedSpec) 
     score.min(100.0)
 }
 
+/// Extract file paths mentioned in a spec file (helper for find_related_files)
+fn extract_files_from_spec(spec_path: &Path, project_path: &Path) -> Vec<PathBuf> {
+    let full_path = project_path.join(spec_path);
+    let content = match std::fs::read_to_string(&full_path) {
+        Ok(c) => c,
+        Err(_) => return Vec::new(),
+    };
+    let re = match regex::Regex::new(r"`([\w/._-]+\.(?:rs|ts|py|go|js))`") {
+        Ok(r) => r,
+        Err(_) => return Vec::new(),
+    };
+    re.captures_iter(&content)
+        .filter_map(|cap| cap.get(1))
+        .filter(|m| project_path.join(m.as_str()).exists())
+        .map(|m| PathBuf::from(m.as_str()))
+        .collect()
+}
+
+/// Extract file paths from item labels (helper for find_related_files)
+fn extract_files_from_labels(labels: &[String], project_path: &Path) -> Vec<PathBuf> {
+    labels
+        .iter()
+        .filter(|label| label.ends_with(".rs") || label.ends_with(".ts"))
+        .filter(|label| project_path.join(label).exists())
+        .map(|label| PathBuf::from(label))
+        .collect()
+}
+
 fn find_related_files(
     item: &crate::models::roadmap::RoadmapItem,
     project_path: &Path,
 ) -> Vec<PathBuf> {
     let mut files = Vec::new();
 
-    // Check if spec mentions files
     if let Some(ref spec_path) = item.spec {
-        let full_path = project_path.join(spec_path);
-        if full_path.exists() {
-            if let Ok(content) = std::fs::read_to_string(&full_path) {
-                // Extract file paths from spec (e.g., `server/src/foo.rs`)
-                let re = regex::Regex::new(r"`([\w/._-]+\.(?:rs|ts|py|go|js))`").ok();
-                if let Some(re) = re {
-                    for cap in re.captures_iter(&content) {
-                        if let Some(m) = cap.get(1) {
-                            let file_path = project_path.join(m.as_str());
-                            if file_path.exists() {
-                                files.push(PathBuf::from(m.as_str()));
-                            }
-                        }
-                    }
-                }
-            }
+        if project_path.join(spec_path).exists() {
+            files.extend(extract_files_from_spec(spec_path, project_path));
         }
     }
 
-    // Also check labels for file hints
-    for label in &item.labels {
-        if label.ends_with(".rs") || label.ends_with(".ts") {
-            let file_path = project_path.join(label);
-            if file_path.exists() {
-                files.push(PathBuf::from(label));
-            }
-        }
-    }
+    files.extend(extract_files_from_labels(&item.labels, project_path));
 
-    // Deduplicate and limit to 10 files
     files.sort();
     files.dedup();
     files.into_iter().take(10).collect()
@@ -842,15 +848,8 @@ fn detect_coverage_percent(project_path: &Path) -> Option<f64> {
     }
 }
 
-fn print_annotations_text(ann: &TicketAnnotations) {
-    println!("📊 Quality Annotations for {}\n", ann.ticket_id);
-    println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    println!("Title:    {}", ann.title);
-    println!("Status:   {}", ann.status);
-    println!("Priority: {}", ann.priority);
-    println!();
-
-    // Spec section
+/// Print specification section of text annotations (helper for print_annotations_text)
+fn print_text_spec_section(ann: &TicketAnnotations) {
     println!("📋 SPECIFICATION");
     if let Some(ref spec) = ann.spec_path {
         println!("   Path:  {}", spec.display());
@@ -862,50 +861,39 @@ fn print_annotations_text(ann: &TicketAnnotations) {
         println!("   ⚠️  No specification linked");
     }
     println!();
+}
 
-    // Files section
-    println!("📁 RELATED FILES ({})", ann.files.len());
-    if ann.files.is_empty() {
-        println!("   No files detected");
-    } else {
-        for f in &ann.files {
-            println!("   • {}", f.display());
-        }
-    }
-    println!();
-
-    // TDG section
+/// Print TDG section of text annotations (helper for print_annotations_text)
+fn print_text_tdg_section(ann: &TicketAnnotations) {
     println!("📈 TDG (Technical Debt Gradient)");
     if let Some(tdg) = ann.avg_tdg {
         let severity = tdg_severity_label(tdg);
         println!("   Avg Score: {:.2}/5.0 ({})", tdg, severity);
-        if !ann.file_tdg_scores.is_empty() {
-            println!("   Per-file:");
-            for ft in &ann.file_tdg_scores {
-                println!("     {:.2} [{}] {}", ft.score, ft.severity, ft.file);
-            }
+        for ft in &ann.file_tdg_scores {
+            println!("     {:.2} [{}] {}", ft.score, ft.severity, ft.file);
         }
     } else {
         println!("   Not calculated (no files)");
     }
     println!();
+}
 
-    // Churn section
+/// Print churn section of text annotations (helper for print_annotations_text)
+fn print_text_churn_section(ann: &TicketAnnotations) {
     println!("🔄 CHURN ANALYSIS");
     if let Some(churn) = ann.total_churn {
         println!("   Total Commits: {}", churn);
-        if !ann.churn_hotspots.is_empty() {
-            println!("   Hotspots:");
-            for h in &ann.churn_hotspots {
-                println!("     ⚠️  {}", h);
-            }
+        for h in &ann.churn_hotspots {
+            println!("     ⚠️  {}", h);
         }
     } else {
         println!("   Run with --with-churn to analyze");
     }
     println!();
+}
 
-    // Tarantula section
+/// Print tarantula and coverage sections (helper for print_annotations_text)
+fn print_text_fault_coverage_section(ann: &TicketAnnotations) {
     println!("🔴 TARANTULA FAULT DETECTION");
     if ann.repeated_fixes.is_empty() {
         println!("   ✅ No repeated fix patterns detected");
@@ -916,7 +904,6 @@ fn print_annotations_text(ann: &TicketAnnotations) {
     }
     println!();
 
-    // Coverage section
     println!("📊 COVERAGE");
     if let Some(cov) = ann.coverage_percent {
         let status = if cov >= 95.0 { "✅" } else { "❌" };
@@ -924,6 +911,31 @@ fn print_annotations_text(ann: &TicketAnnotations) {
     } else {
         println!("   Not available (run coverage analysis)");
     }
+}
+
+fn print_annotations_text(ann: &TicketAnnotations) {
+    println!("📊 Quality Annotations for {}\n", ann.ticket_id);
+    println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    println!("Title:    {}", ann.title);
+    println!("Status:   {}", ann.status);
+    println!("Priority: {}", ann.priority);
+    println!();
+
+    print_text_spec_section(ann);
+
+    println!("📁 RELATED FILES ({})", ann.files.len());
+    if ann.files.is_empty() {
+        println!("   No files detected");
+    } else {
+        for f in &ann.files {
+            println!("   • {}", f.display());
+        }
+    }
+    println!();
+
+    print_text_tdg_section(ann);
+    print_text_churn_section(ann);
+    print_text_fault_coverage_section(ann);
 }
 
 fn print_annotations_json(ann: &TicketAnnotations) -> Result<()> {
@@ -1044,9 +1056,9 @@ fn find_item_fuzzy(
 fn extract_line_from_yaml_error(error: &str) -> Option<usize> {
     // serde_yaml errors often contain "at line X column Y"
     if let Some(pos) = error.find("at line ") {
-        let rest = &error[pos + 8..];
+        let rest = error.get(pos + 8..).unwrap_or_default();
         if let Some(end) = rest.find(' ') {
-            return rest[..end].parse().ok();
+            return rest.get(..end).unwrap_or_default().parse().ok();
         }
     }
     None

@@ -6,7 +6,7 @@
 //! relationships such as inheritance, implementation, and usage across
 //! language boundaries.
 
-use crate::ast::polyglot::unified_node::ReferenceKind;
+use crate::ast::polyglot::unified_node::{NodeReference, ReferenceKind};
 use crate::ast::polyglot::{Language, NodeKind, UnifiedNode};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
@@ -152,35 +152,44 @@ impl CrossLanguageDependencies {
     ) -> Vec<CrossLanguageDependency> {
         let mut dependencies = Vec::new();
 
-        // For each node in first language
         for id1 in node_ids1 {
-            if let Some(source) = self.nodes.get(id1) {
-                // For each reference in the node
-                for reference in &source.references {
-                    // For each node in second language
-                    for id2 in node_ids2 {
-                        if let Some(target) = self.nodes.get(id2) {
-                            // Check if reference matches target
-                            if self.is_reference_match(source, reference, target, lang1, lang2) {
-                                // Create a dependency (without modifying self)
-                                let dependency = CrossLanguageDependency {
-                                    source_id: source.id.clone(),
-                                    target_id: target.id.clone(),
-                                    source_language: lang1,
-                                    target_language: lang2,
-                                    kind: reference.kind,
-                                    confidence: 1.0,
-                                    metadata: HashMap::new(),
-                                };
-                                dependencies.push(dependency);
-                            }
-                        }
-                    }
-                }
+            let Some(source) = self.nodes.get(id1) else {
+                continue;
+            };
+            for reference in &source.references {
+                self.find_matching_targets(source, reference, node_ids2, lang1, lang2, &mut dependencies);
             }
         }
 
         dependencies
+    }
+
+    /// Check each target node for a reference match and collect dependencies
+    fn find_matching_targets(
+        &self,
+        source: &UnifiedNode,
+        reference: &NodeReference,
+        node_ids2: &[String],
+        lang1: Language,
+        lang2: Language,
+        dependencies: &mut Vec<CrossLanguageDependency>,
+    ) {
+        for id2 in node_ids2 {
+            let Some(target) = self.nodes.get(id2) else {
+                continue;
+            };
+            if self.is_reference_match(source, reference, target, lang1, lang2) {
+                dependencies.push(CrossLanguageDependency {
+                    source_id: source.id.clone(),
+                    target_id: target.id.clone(),
+                    source_language: lang1,
+                    target_language: lang2,
+                    kind: reference.kind,
+                    confidence: 1.0,
+                    metadata: HashMap::new(),
+                });
+            }
+        }
     }
 
     /// Detect dependencies between nodes of two specific languages
@@ -260,30 +269,34 @@ impl CrossLanguageDependencies {
 
     /// Resolve unresolved references
     fn resolve_references(&mut self) {
-        // First collect all unresolved references we need to process
-        let mut to_resolve = Vec::new();
+        let name_map = self.build_name_map();
+        let to_resolve = self.collect_unresolved_references();
+        let new_dependencies = Self::resolve_against_name_map(&self.nodes, &name_map, &to_resolve);
+        self.dependencies.extend(new_dependencies);
+    }
 
-        // Collect nodes by name for faster lookup (using String keys instead of refs)
+    /// Build a lookup map from node names and FQNs to node IDs
+    fn build_name_map(&self) -> HashMap<String, Vec<String>> {
         let mut name_map: HashMap<String, Vec<String>> = HashMap::new();
-
-        // Build the name map
         for (id, node) in &self.nodes {
             name_map
                 .entry(node.name.clone())
                 .or_default()
                 .push(id.clone());
-
             name_map
                 .entry(node.fqn.clone())
                 .or_default()
                 .push(id.clone());
         }
+        name_map
+    }
 
-        // Collect references that need resolution
+    /// Collect all unresolved references (empty target_id) from nodes
+    fn collect_unresolved_references(&self) -> Vec<(String, String, ReferenceKind)> {
+        let mut to_resolve = Vec::new();
         for (source_id, source) in &self.nodes {
             for reference in &source.references {
                 if reference.target_id.is_empty() {
-                    // Store info about unresolved reference
                     to_resolve.push((
                         source_id.clone(),
                         reference.target_name.clone(),
@@ -292,37 +305,41 @@ impl CrossLanguageDependencies {
                 }
             }
         }
+        to_resolve
+    }
 
-        // Process all unresolved references
+    /// Match unresolved references against the name map, producing cross-language dependencies
+    fn resolve_against_name_map(
+        nodes: &HashMap<String, UnifiedNode>,
+        name_map: &HashMap<String, Vec<String>>,
+        to_resolve: &[(String, String, ReferenceKind)],
+    ) -> Vec<CrossLanguageDependency> {
         let mut new_dependencies = Vec::new();
         for (source_id, target_name, kind) in to_resolve {
-            // Get the source node
-            if let Some(source) = self.nodes.get(&source_id) {
-                // Look for candidate targets by name
-                if let Some(target_ids) = name_map.get(&target_name) {
-                    for target_id in target_ids {
-                        if let Some(target) = self.nodes.get(target_id) {
-                            // Check if this is a cross-language reference
-                            if source.language != target.language {
-                                let dependency = CrossLanguageDependency {
-                                    source_id: source_id.clone(),
-                                    target_id: target_id.clone(),
-                                    source_language: source.language,
-                                    target_language: target.language,
-                                    kind,
-                                    confidence: 0.8, // Lower confidence for name-based resolution
-                                    metadata: HashMap::new(),
-                                };
-                                new_dependencies.push(dependency);
-                            }
-                        }
-                    }
+            let Some(source) = nodes.get(source_id) else {
+                continue;
+            };
+            let Some(target_ids) = name_map.get(target_name) else {
+                continue;
+            };
+            for target_id in target_ids {
+                let Some(target) = nodes.get(target_id) else {
+                    continue;
+                };
+                if source.language != target.language {
+                    new_dependencies.push(CrossLanguageDependency {
+                        source_id: source_id.clone(),
+                        target_id: target_id.clone(),
+                        source_language: source.language,
+                        target_language: target.language,
+                        kind: *kind,
+                        confidence: 0.8, // Lower confidence for name-based resolution
+                        metadata: HashMap::new(),
+                    });
                 }
             }
         }
-
-        // Add all new dependencies
-        self.dependencies.extend(new_dependencies);
+        new_dependencies
     }
 
     /// Get all dependencies
@@ -573,7 +590,7 @@ impl NameResolver for TypeScriptJavaResolver {
             && reference.target_name.starts_with('I')
             && reference.target_name.len() > 1
         {
-            let name_without_i = &reference.target_name[1..];
+            let name_without_i = reference.target_name.get(1..).unwrap_or_default();
             if name_without_i == target.name {
                 return true;
             }

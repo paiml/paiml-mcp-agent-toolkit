@@ -99,6 +99,18 @@ pub enum WarningSeverity {
     High,
 }
 
+/// Mutable state accumulated during markdown parsing
+#[derive(Default)]
+struct ParseState {
+    current_section: Option<Section>,
+    current_heading_level: u8,
+    in_code_block: bool,
+    code_block_content: String,
+    code_block_lang: String,
+    in_list: bool,
+    list_item_content: String,
+}
+
 impl Default for AgentsMdParser {
     fn default() -> Self {
         Self::new()
@@ -153,131 +165,16 @@ impl AgentsMdParser {
             quality_rules: None,
         };
 
+        let mut state = ParseState::default();
+
         // Parse markdown
         let parser = MarkdownParser::new(content);
-        let mut current_section: Option<Section> = None;
-        let mut current_heading_level = 0;
-        let mut in_code_block = false;
-        let mut code_block_content = String::new();
-        let mut code_block_lang = String::new();
-        let mut in_list = false;
-        let mut list_item_content = String::new();
-
         for event in parser {
-            match event {
-                Event::Start(Tag::Heading { level, .. }) => {
-                    current_heading_level = match level {
-                        HeadingLevel::H1 => 1,
-                        HeadingLevel::H2 => 2,
-                        HeadingLevel::H3 => 3,
-                        HeadingLevel::H4 => 4,
-                        HeadingLevel::H5 => 5,
-                        HeadingLevel::H6 => 6,
-                    };
-                }
-                Event::Text(text) => {
-                    if in_code_block {
-                        code_block_content.push_str(&text);
-                    } else if in_list {
-                        // Capture list item text
-                        list_item_content.push_str(&text);
-                    } else if current_heading_level > 0 {
-                        // Start new section
-                        if let Some(section) = current_section.take() {
-                            document.sections.push(section);
-                        }
-
-                        let section_type = Self::detect_section_type(&text);
-                        current_section = Some(Section {
-                            section_type,
-                            title: text.to_string(),
-                            content: String::new(),
-                            subsections: Vec::new(),
-                        });
-                        current_heading_level = 0;
-                    } else if let Some(ref mut section) = current_section {
-                        section.content.push_str(&text);
-                        section.content.push('\n');
-
-                        // Extract commands from content
-                        self.extract_commands(&text, &mut document.commands);
-
-                        // Extract guidelines
-                        self.extract_guidelines(
-                            &text,
-                            &section.section_type,
-                            &mut document.guidelines,
-                        );
-                    }
-                }
-                Event::Start(Tag::CodeBlock(kind)) => {
-                    in_code_block = true;
-                    if let pulldown_cmark::CodeBlockKind::Fenced(lang) = kind {
-                        code_block_lang = lang.to_string();
-                    }
-                }
-                Event::End(TagEnd::CodeBlock) => {
-                    if in_code_block {
-                        if code_block_lang == "bash"
-                            || code_block_lang == "sh"
-                            || code_block_lang == "shell"
-                        {
-                            // Extract command from code block
-                            for line in code_block_content.lines() {
-                                if !line.trim().is_empty() && !line.trim().starts_with('#') {
-                                    document.commands.push(Command {
-                                        name: format!(
-                                            "Command from {}",
-                                            current_section
-                                                .as_ref()
-                                                .map_or(&"Unknown".to_string(), |s| &s.title)
-                                        ),
-                                        command: line.trim().to_string(),
-                                        working_dir: None,
-                                        env: Vec::new(),
-                                        timeout: Some(60),
-                                        safe: self.is_command_safe(line),
-                                    });
-                                }
-                            }
-                        }
-
-                        // Add code block to current section content
-                        if let Some(ref mut section) = current_section {
-                            section.content.push_str(&format!(
-                                "```{code_block_lang}\n{code_block_content}\n```\n"
-                            ));
-                        }
-
-                        in_code_block = false;
-                        code_block_content.clear();
-                        code_block_lang.clear();
-                    }
-                }
-                Event::Start(Tag::List(_)) => {
-                    in_list = true;
-                }
-                Event::End(TagEnd::List(_)) => {
-                    in_list = false;
-                }
-                Event::Start(Tag::Item) => {
-                    list_item_content.clear();
-                }
-                Event::End(TagEnd::Item) => {
-                    if let Some(ref mut section) = current_section {
-                        // Add list item with bullet point prefix
-                        section.content.push_str("- ");
-                        section.content.push_str(&list_item_content);
-                        section.content.push('\n');
-                    }
-                    list_item_content.clear();
-                }
-                _ => {}
-            }
+            self.process_event(event, &mut state, &mut document);
         }
 
         // Add final section
-        if let Some(section) = current_section {
+        if let Some(section) = state.current_section {
             document.sections.push(section);
         }
 
@@ -297,6 +194,159 @@ impl AgentsMdParser {
         self.extract_metadata(&document.sections, &mut document.metadata);
 
         Ok(document)
+    }
+
+    /// Process a single markdown event during parsing
+    fn process_event(
+        &self,
+        event: Event,
+        state: &mut ParseState,
+        document: &mut AgentsMdDocument,
+    ) {
+        match event {
+            Event::Start(Tag::Heading { level, .. }) => {
+                state.current_heading_level = Self::heading_level_to_u8(level);
+            }
+            Event::Text(text) => {
+                self.process_text_event(&text, state, document);
+            }
+            Event::Start(Tag::CodeBlock(kind)) => {
+                state.in_code_block = true;
+                if let pulldown_cmark::CodeBlockKind::Fenced(lang) = kind {
+                    state.code_block_lang = lang.to_string();
+                }
+            }
+            Event::End(TagEnd::CodeBlock) => {
+                self.process_code_block_end(state, document);
+            }
+            Event::Start(Tag::List(_)) => {
+                state.in_list = true;
+            }
+            Event::End(TagEnd::List(_)) => {
+                state.in_list = false;
+            }
+            Event::Start(Tag::Item) => {
+                state.list_item_content.clear();
+            }
+            Event::End(TagEnd::Item) => {
+                Self::process_list_item_end(state);
+            }
+            _ => {}
+        }
+    }
+
+    /// Convert heading level enum to u8
+    fn heading_level_to_u8(level: HeadingLevel) -> u8 {
+        match level {
+            HeadingLevel::H1 => 1,
+            HeadingLevel::H2 => 2,
+            HeadingLevel::H3 => 3,
+            HeadingLevel::H4 => 4,
+            HeadingLevel::H5 => 5,
+            HeadingLevel::H6 => 6,
+        }
+    }
+
+    /// Process a text event based on current parse state
+    fn process_text_event(
+        &self,
+        text: &str,
+        state: &mut ParseState,
+        document: &mut AgentsMdDocument,
+    ) {
+        if state.in_code_block {
+            state.code_block_content.push_str(text);
+        } else if state.in_list {
+            state.list_item_content.push_str(text);
+        } else if state.current_heading_level > 0 {
+            Self::start_new_section(text, state, document);
+        } else if let Some(ref mut section) = state.current_section {
+            section.content.push_str(text);
+            section.content.push('\n');
+            self.extract_commands(text, &mut document.commands);
+            self.extract_guidelines(text, &section.section_type, &mut document.guidelines);
+        }
+    }
+
+    /// Start a new section when a heading text is encountered
+    fn start_new_section(
+        text: &str,
+        state: &mut ParseState,
+        document: &mut AgentsMdDocument,
+    ) {
+        if let Some(section) = state.current_section.take() {
+            document.sections.push(section);
+        }
+        let section_type = Self::detect_section_type(text);
+        state.current_section = Some(Section {
+            section_type,
+            title: text.to_string(),
+            content: String::new(),
+            subsections: Vec::new(),
+        });
+        state.current_heading_level = 0;
+    }
+
+    /// Process end of a code block
+    fn process_code_block_end(
+        &self,
+        state: &mut ParseState,
+        document: &mut AgentsMdDocument,
+    ) {
+        if !state.in_code_block {
+            return;
+        }
+        let is_shell = matches!(
+            state.code_block_lang.as_str(),
+            "bash" | "sh" | "shell"
+        );
+        if is_shell {
+            self.extract_shell_commands(state, document);
+        }
+        if let Some(ref mut section) = state.current_section {
+            section.content.push_str(&format!(
+                "```{}\n{}\n```\n",
+                state.code_block_lang, state.code_block_content
+            ));
+        }
+        state.in_code_block = false;
+        state.code_block_content.clear();
+        state.code_block_lang.clear();
+    }
+
+    /// Extract shell commands from a completed code block
+    fn extract_shell_commands(
+        &self,
+        state: &ParseState,
+        document: &mut AgentsMdDocument,
+    ) {
+        let section_title = state
+            .current_section
+            .as_ref()
+            .map_or("Unknown", |s| &s.title);
+        for line in state.code_block_content.lines() {
+            let trimmed = line.trim();
+            if !trimmed.is_empty() && !trimmed.starts_with('#') {
+                document.commands.push(Command {
+                    name: format!("Command from {section_title}"),
+                    command: trimmed.to_string(),
+                    working_dir: None,
+                    env: Vec::new(),
+                    timeout: Some(60),
+                    safe: self.is_command_safe(line),
+                });
+            }
+        }
+    }
+
+    /// Process end of a list item
+    fn process_list_item_end(state: &mut ParseState) {
+        if let Some(ref mut section) = state.current_section {
+            section.content.push_str("- ");
+            section.content.push_str(&state.list_item_content);
+            section.content.push('\n');
+        }
+        state.list_item_content.clear();
     }
 
     /// Validate parsed document
@@ -425,7 +475,7 @@ impl AgentsMdParser {
         for line in text.lines() {
             let trimmed = line.trim();
             if trimmed.starts_with("- ") || trimmed.starts_with("* ") {
-                let content = &trimmed[2..];
+                let content = trimmed.get(2..).unwrap_or_default();
                 let priority = self.detect_priority(content);
 
                 guidelines.push(Guideline {
