@@ -47,6 +47,34 @@ lazy_static! {
 
     // Rust fn definition check regex
     static ref RUST_FN_DEF_REGEX: Regex = Regex::new(r"^\s*(?:pub\s+)?(?:async\s+)?fn\s+\w+").expect("Invalid regex");
+
+    // Lua local function definition: local function name(...)
+    static ref LUA_LOCAL_FUNC_REGEX: Regex = Regex::new(
+        r"(?m)^\s*local\s+function\s+(\w+)\s*\("
+    ).expect("Invalid regex");
+
+    // Lua global function definition: function name(...)
+    static ref LUA_GLOBAL_FUNC_REGEX: Regex = Regex::new(
+        r"(?m)^\s*function\s+(\w+)\s*\("
+    ).expect("Invalid regex");
+
+    // Lua module function: function M.name(...) or function M:name(...)
+    static ref LUA_MODULE_FUNC_NAME_REGEX: Regex = Regex::new(
+        r"(?m)^\s*function\s+(\w+)[.:](\w+)\s*\("
+    ).expect("Invalid regex");
+
+    // Lua function call regex
+    static ref LUA_CALL_REGEX: Regex = Regex::new(r"\b(\w+)\s*\(").expect("Invalid regex");
+
+    // Lua module return: return M (last non-empty line)
+    static ref LUA_RETURN_MODULE_REGEX: Regex = Regex::new(
+        r"^\s*return\s+(\w+)\s*$"
+    ).expect("Invalid regex");
+
+    // Lua table field function: M.name = function(...)
+    static ref LUA_TABLE_FUNC_REGEX: Regex = Regex::new(
+        r"(?m)^\s*(\w+)\.(\w+)\s*=\s*function\s*\("
+    ).expect("Invalid regex");
 }
 
 /// Dead code analysis result
@@ -94,9 +122,10 @@ pub fn analyze_dead_code_multi_language(path: &Path) -> Result<DeadCodeResult> {
         "c" => Box::new(CDeadCodeStrategy),
         "cpp" => Box::new(CppDeadCodeStrategy),
         "python" => Box::new(PythonDeadCodeStrategy),
+        "lua" => Box::new(LuaDeadCodeStrategy),
         _ => {
             return Err(anyhow::anyhow!(
-                "Dead code analysis not supported for language: {}. Supported: rust, c, cpp, python",
+                "Dead code analysis not supported for language: {}. Supported: rust, c, cpp, python, lua",
                 detection.language
             ));
         }
@@ -262,6 +291,42 @@ impl DeadCodeStrategy for PythonDeadCodeStrategy {
 }
 
 // =============================================================================
+// Lua Dead Code Strategy (with module export awareness)
+// =============================================================================
+
+struct LuaDeadCodeStrategy;
+
+impl DeadCodeStrategy for LuaDeadCodeStrategy {
+    fn language(&self) -> &str {
+        "lua"
+    }
+
+    fn analyze(&self, path: &Path) -> Result<DeadCodeResult> {
+        debug!("Running Lua dead code analysis (module-export-aware)");
+
+        let lua_files = find_files_by_extension(path, &["lua"]);
+        let (defined_functions, called_functions) = analyze_lua_files(&lua_files)?;
+
+        // Find dead functions (defined but never called AND not exported)
+        let dead_functions = find_uncalled_functions(&defined_functions, &called_functions);
+
+        let total_functions = defined_functions.len();
+        let dead_percentage = if total_functions > 0 {
+            (dead_functions.len() as f64 / total_functions as f64) * 100.0
+        } else {
+            0.0
+        };
+
+        Ok(DeadCodeResult {
+            language: "lua".to_string(),
+            dead_functions,
+            total_functions,
+            dead_code_percentage: dead_percentage,
+        })
+    }
+}
+
+// =============================================================================
 // Helper Functions
 // =============================================================================
 
@@ -298,83 +363,10 @@ fn analyze_c_files(files: &[std::path::PathBuf]) -> Result<(Vec<FunctionInfo>, H
     for file in files {
         let content = std::fs::read_to_string(file)
             .with_context(|| format!("Failed to read file: {:?}", file))?;
+        let file_str = file.display().to_string();
 
-        // Find function definitions - supports multiline with opening brace on next line
-        // Matches: void function_name() { or void function_name()\n{
-        let lines: Vec<&str> = content.lines().collect();
-        let mut skip_next_line = false;
-        for (line_idx, line) in lines.iter().enumerate() {
-            // Skip if this line was part of a multiline match
-            if skip_next_line {
-                skip_next_line = false;
-                continue;
-            }
-
-            // Check current line
-            if let Some(cap) = C_DEF_REGEX.captures(line) {
-                if let Some(func_name_match) = cap.get(1) {
-                    let func_name = func_name_match.as_str().to_string();
-
-                    // Skip main and common library functions
-                    if func_name != "main" && !func_name.starts_with("_") {
-                        defined_functions.push(FunctionInfo {
-                            name: func_name,
-                            file: file.display().to_string(),
-                            line: line_idx + 1,
-                        });
-                    }
-                }
-            } else if line_idx + 1 < lines.len() {
-                // Check if next line has opening brace (multiline function definition)
-                let combined = format!("{} {}", line, lines[line_idx + 1].trim());
-                if let Some(cap) = C_DEF_REGEX.captures(&combined) {
-                    if let Some(func_name_match) = cap.get(1) {
-                        let func_name = func_name_match.as_str().to_string();
-                        if func_name != "main" && !func_name.starts_with("_") {
-                            // Add function at the NEXT line (where the actual definition is)
-                            defined_functions.push(FunctionInfo {
-                                name: func_name,
-                                file: file.display().to_string(),
-                                line: line_idx + 2, // Next line, not current
-                            });
-                            // Skip processing the next line since we've already handled it
-                            skip_next_line = true;
-                        }
-                    }
-                }
-            }
-        }
-
-        // Find function calls: function_name(
-        for line in content.lines() {
-            // For lines with inline bodies like: int main() { used_function(); }
-            // Extract the part after the opening brace FIRST (before skipping declarations)
-            let code_to_scan = if let Some(brace_pos) = line.find('{') {
-                &line[brace_pos + 1..] // Scan content after the '{'
-            } else {
-                // Skip function declarations (lines that start with return type and have no body)
-                if C_DECLARATION_REGEX.is_match(line) {
-                    continue;
-                }
-                line // Scan entire line
-            };
-
-            // Find all function calls
-            for cap in C_CALL_REGEX.captures_iter(code_to_scan) {
-                if let Some(func_name_match) = cap.get(1) {
-                    let func_name = func_name_match.as_str().to_string();
-                    // Filter out common keywords that look like function calls
-                    if ![
-                        "if", "while", "for", "switch", "sizeof", "return", "printf", "include",
-                        "define",
-                    ]
-                    .contains(&func_name.as_str())
-                    {
-                        called_functions.insert(func_name);
-                    }
-                }
-            }
-        }
+        extract_c_function_definitions(&content, &file_str, &mut defined_functions);
+        extract_c_function_calls(&content, &mut called_functions);
     }
 
     debug!(
@@ -384,6 +376,67 @@ fn analyze_c_files(files: &[std::path::PathBuf]) -> Result<(Vec<FunctionInfo>, H
     );
 
     Ok((defined_functions, called_functions))
+}
+
+/// Extract C function definitions, handling multiline signatures
+fn extract_c_function_definitions(content: &str, file_str: &str, out: &mut Vec<FunctionInfo>) {
+    let lines: Vec<&str> = content.lines().collect();
+    let mut skip_next_line = false;
+
+    for (line_idx, line) in lines.iter().enumerate() {
+        if skip_next_line {
+            skip_next_line = false;
+            continue;
+        }
+
+        if let Some(name) = try_extract_c_func_name(line) {
+            out.push(FunctionInfo { name, file: file_str.to_string(), line: line_idx + 1 });
+        } else if line_idx + 1 < lines.len() {
+            let combined = format!("{} {}", line, lines[line_idx + 1].trim());
+            if let Some(name) = try_extract_c_func_name(&combined) {
+                out.push(FunctionInfo { name, file: file_str.to_string(), line: line_idx + 2 });
+                skip_next_line = true;
+            }
+        }
+    }
+}
+
+/// Try to extract a C function name from a line, filtering main and _ prefixed
+fn try_extract_c_func_name(line: &str) -> Option<String> {
+    let cap = C_DEF_REGEX.captures(line)?;
+    let func_name = cap.get(1)?.as_str();
+    if func_name != "main" && !func_name.starts_with('_') {
+        Some(func_name.to_string())
+    } else {
+        None
+    }
+}
+
+/// C keywords to exclude from call tracking
+const C_KEYWORDS: &[&str] = &[
+    "if", "while", "for", "switch", "sizeof", "return", "printf", "include", "define",
+];
+
+/// Extract C function calls from source content
+fn extract_c_function_calls(content: &str, calls: &mut HashSet<String>) {
+    for line in content.lines() {
+        let code_to_scan = if let Some(brace_pos) = line.find('{') {
+            &line[brace_pos + 1..]
+        } else if C_DECLARATION_REGEX.is_match(line) {
+            continue;
+        } else {
+            line
+        };
+
+        for cap in C_CALL_REGEX.captures_iter(code_to_scan) {
+            if let Some(m) = cap.get(1) {
+                let name = m.as_str();
+                if !C_KEYWORDS.contains(&name) {
+                    calls.insert(name.to_string());
+                }
+            }
+        }
+    }
 }
 
 /// Analyze C++ files (similar to C)
@@ -469,6 +522,187 @@ fn find_uncalled_functions(
             reason: "Function is defined but never called".to_string(),
         })
         .collect()
+}
+
+/// Analyze Lua files with module export awareness
+///
+/// Handles Lua module patterns:
+/// - `local function name()` — local, dead if uncalled
+/// - `function name()` — global, lower confidence (may be called externally)
+/// - `function M.name()` / `M.name = function()` — exported if `return M` present
+fn analyze_lua_files(
+    files: &[std::path::PathBuf],
+) -> Result<(Vec<FunctionInfo>, HashSet<String>)> {
+    let mut defined_functions = Vec::new();
+    let mut called_functions = HashSet::new();
+
+    // Lua keywords and builtins to exclude from call tracking
+    let lua_keywords: HashSet<&str> = [
+        "if", "then", "else", "elseif", "end", "do", "while", "for", "repeat", "until",
+        "function", "local", "return", "break", "goto", "in", "and", "or", "not", "nil",
+        "true", "false", "require", "print", "pairs", "ipairs", "type", "error", "pcall",
+        "xpcall", "select", "rawget", "rawset", "rawlen", "tostring", "tonumber",
+        "setmetatable", "getmetatable", "table", "string", "math", "coroutine", "unpack",
+        "assert", "next", "io", "os", "debug", "dofile", "loadfile", "loadstring",
+    ]
+    .iter()
+    .copied()
+    .collect();
+
+    for file in files {
+        let content = std::fs::read_to_string(file)
+            .with_context(|| format!("Failed to read Lua file: {:?}", file))?;
+
+        // Skip test files
+        let file_str = file.display().to_string();
+        if file_str.contains("/tests/")
+            || file_str.contains("/test/")
+            || file_str.contains("/spec/")
+            || file_str.ends_with("_test.lua")
+            || file_str.ends_with("_spec.lua")
+        {
+            // Still collect calls from test files (they exercise production code)
+            collect_lua_calls(&content, &lua_keywords, &mut called_functions);
+            continue;
+        }
+
+        // Detect module return pattern: last non-empty, non-comment line is `return X`
+        let returned_module = detect_lua_module_return(&content);
+
+        // Extract function definitions
+        for (line_idx, line) in content.lines().enumerate() {
+            // Module functions: function M.name(...) or function M:name(...)
+            if let Some(cap) = LUA_MODULE_FUNC_NAME_REGEX.captures(line) {
+                let module_name = cap.get(1).map(|m| m.as_str()).unwrap_or("");
+                let func_name = cap.get(2).map(|m| m.as_str()).unwrap_or("");
+
+                // If the module table is returned, this function is exported
+                let is_exported = returned_module
+                    .as_ref()
+                    .map(|m| m == module_name)
+                    .unwrap_or(false);
+
+                if is_exported {
+                    // Mark exported functions as "called" so they're not flagged dead
+                    called_functions.insert(func_name.to_string());
+                }
+
+                defined_functions.push(FunctionInfo {
+                    name: func_name.to_string(),
+                    file: file_str.clone(),
+                    line: line_idx + 1,
+                });
+                continue;
+            }
+
+            // Table field functions: M.name = function(...)
+            if let Some(cap) = LUA_TABLE_FUNC_REGEX.captures(line) {
+                let module_name = cap.get(1).map(|m| m.as_str()).unwrap_or("");
+                let func_name = cap.get(2).map(|m| m.as_str()).unwrap_or("");
+
+                let is_exported = returned_module
+                    .as_ref()
+                    .map(|m| m == module_name)
+                    .unwrap_or(false);
+
+                if is_exported {
+                    called_functions.insert(func_name.to_string());
+                }
+
+                defined_functions.push(FunctionInfo {
+                    name: func_name.to_string(),
+                    file: file_str.clone(),
+                    line: line_idx + 1,
+                });
+                continue;
+            }
+
+            // Local functions: local function name(...)
+            if let Some(cap) = LUA_LOCAL_FUNC_REGEX.captures(line) {
+                if let Some(name_match) = cap.get(1) {
+                    let func_name = name_match.as_str();
+                    if func_name != "main" {
+                        defined_functions.push(FunctionInfo {
+                            name: func_name.to_string(),
+                            file: file_str.clone(),
+                            line: line_idx + 1,
+                        });
+                    }
+                }
+                continue;
+            }
+
+            // Global functions: function name(...) — but not module funcs (handled above)
+            if let Some(cap) = LUA_GLOBAL_FUNC_REGEX.captures(line) {
+                if let Some(name_match) = cap.get(1) {
+                    let func_name = name_match.as_str();
+                    if func_name != "main" && !lua_keywords.contains(func_name) {
+                        // Global functions may be called from other files
+                        defined_functions.push(FunctionInfo {
+                            name: func_name.to_string(),
+                            file: file_str.clone(),
+                            line: line_idx + 1,
+                        });
+                    }
+                }
+            }
+        }
+
+        // Collect function calls
+        collect_lua_calls(&content, &lua_keywords, &mut called_functions);
+    }
+
+    debug!(
+        "Found {} defined Lua functions, {} unique calls",
+        defined_functions.len(),
+        called_functions.len()
+    );
+
+    Ok((defined_functions, called_functions))
+}
+
+/// Detect if a Lua file returns a module table (e.g., `return M`)
+fn detect_lua_module_return(content: &str) -> Option<String> {
+    // Find last non-empty, non-comment line
+    for line in content.lines().rev() {
+        let trimmed = line.trim();
+        if trimmed.is_empty() || trimmed.starts_with("--") {
+            continue;
+        }
+        if let Some(cap) = LUA_RETURN_MODULE_REGEX.captures(trimmed) {
+            return cap.get(1).map(|m| m.as_str().to_string());
+        }
+        // Last meaningful line is not a module return
+        return None;
+    }
+    None
+}
+
+/// Collect function calls from Lua source
+fn collect_lua_calls(content: &str, keywords: &HashSet<&str>, calls: &mut HashSet<String>) {
+    for line in content.lines() {
+        let trimmed = line.trim();
+        // Skip comments and function definitions
+        if trimmed.starts_with("--")
+            || trimmed.starts_with("local function ")
+            || trimmed.starts_with("function ")
+        {
+            continue;
+        }
+
+        for cap in LUA_CALL_REGEX.captures_iter(line) {
+            if let Some(name_match) = cap.get(1) {
+                let func_name = name_match.as_str();
+                if !keywords.contains(func_name) {
+                    calls.insert(func_name.to_string());
+                }
+            }
+        }
+
+        // Also track method-style calls: obj:method() and obj.method()
+        // These appear as the part after : or . before (
+        // We already capture the identifier before (, which gets the method name
+    }
 }
 
 // =============================================================================
@@ -611,5 +845,199 @@ mod tests {
         )
         .unwrap();
         temp
+    }
+
+    #[test]
+    fn test_lua_dead_code_detection_basic() {
+        let temp = TempDir::new().unwrap();
+        // Create a Lua project with used and unused functions
+        std::fs::write(
+            temp.path().join("main.lua"),
+            concat!(
+                "local function used_helper()\n",
+                "    return 42\n",
+                "end\n",
+                "\n",
+                "local function dead_helper()\n",
+                "    return 99\n",
+                "end\n",
+                "\n",
+                "function run()\n",
+                "    local x = used_helper()\n",
+                "    return x\n",
+                "end\n",
+            ),
+        )
+        .unwrap();
+
+        let lua_files = find_files_by_extension(temp.path(), &["lua"]);
+        let (defined, called) = analyze_lua_files(&lua_files).unwrap();
+
+        assert_eq!(defined.len(), 3, "Should find 3 functions");
+        assert!(called.contains("used_helper"), "used_helper should be in calls");
+        assert!(!called.contains("dead_helper"), "dead_helper should NOT be in calls");
+
+        let dead = find_uncalled_functions(&defined, &called);
+        let dead_names: Vec<&str> = dead.iter().map(|d| d.name.as_str()).collect();
+        assert!(dead_names.contains(&"dead_helper"), "dead_helper should be dead");
+        assert!(!dead_names.contains(&"used_helper"), "used_helper should not be dead");
+    }
+
+    #[test]
+    fn test_lua_module_export_awareness() {
+        let temp = TempDir::new().unwrap();
+        // Module pattern: functions on M are exported via `return M`
+        std::fs::write(
+            temp.path().join("mymodule.lua"),
+            concat!(
+                "local M = {}\n",
+                "\n",
+                "function M.public_api()\n",
+                "    return M.internal_calc()\n",
+                "end\n",
+                "\n",
+                "function M.internal_calc()\n",
+                "    return 42\n",
+                "end\n",
+                "\n",
+                "local function truly_dead()\n",
+                "    return 0\n",
+                "end\n",
+                "\n",
+                "return M\n",
+            ),
+        )
+        .unwrap();
+
+        let lua_files = find_files_by_extension(temp.path(), &["lua"]);
+        let (defined, called) = analyze_lua_files(&lua_files).unwrap();
+
+        // Module functions should be treated as exported (called)
+        assert!(called.contains("public_api"), "M.public_api should be marked as exported");
+        assert!(called.contains("internal_calc"), "M.internal_calc should be marked as exported");
+
+        let dead = find_uncalled_functions(&defined, &called);
+        let dead_names: Vec<&str> = dead.iter().map(|d| d.name.as_str()).collect();
+        assert!(dead_names.contains(&"truly_dead"), "truly_dead should be dead");
+        assert!(!dead_names.contains(&"public_api"), "exported funcs should not be dead");
+        assert!(!dead_names.contains(&"internal_calc"), "exported funcs should not be dead");
+    }
+
+    #[test]
+    fn test_lua_table_field_function_export() {
+        let temp = TempDir::new().unwrap();
+        // Alternative module pattern: M.name = function(...)
+        std::fs::write(
+            temp.path().join("alt_module.lua"),
+            concat!(
+                "local M = {}\n",
+                "\n",
+                "M.handler = function(req)\n",
+                "    return req\n",
+                "end\n",
+                "\n",
+                "M.middleware = function(ctx)\n",
+                "    return ctx\n",
+                "end\n",
+                "\n",
+                "local function orphan()\n",
+                "    return nil\n",
+                "end\n",
+                "\n",
+                "return M\n",
+            ),
+        )
+        .unwrap();
+
+        let lua_files = find_files_by_extension(temp.path(), &["lua"]);
+        let (defined, called) = analyze_lua_files(&lua_files).unwrap();
+
+        assert!(called.contains("handler"), "M.handler should be exported");
+        assert!(called.contains("middleware"), "M.middleware should be exported");
+
+        let dead = find_uncalled_functions(&defined, &called);
+        let dead_names: Vec<&str> = dead.iter().map(|d| d.name.as_str()).collect();
+        assert!(dead_names.contains(&"orphan"), "orphan should be dead");
+        assert_eq!(dead.len(), 1, "Only orphan should be dead");
+    }
+
+    #[test]
+    fn test_lua_no_module_return_no_exports() {
+        let temp = TempDir::new().unwrap();
+        // File without module return - no export awareness
+        std::fs::write(
+            temp.path().join("script.lua"),
+            concat!(
+                "local M = {}\n",
+                "\n",
+                "function M.something()\n",
+                "    return 1\n",
+                "end\n",
+                "\n",
+                "-- no return M at end\n",
+                "print(\"hello\")\n",
+            ),
+        )
+        .unwrap();
+
+        let lua_files = find_files_by_extension(temp.path(), &["lua"]);
+        let (defined, called) = analyze_lua_files(&lua_files).unwrap();
+
+        // Without `return M`, M.something is NOT auto-exported
+        assert!(!called.contains("something"), "Without module return, not auto-exported");
+        let dead = find_uncalled_functions(&defined, &called);
+        assert_eq!(dead.len(), 1);
+        assert_eq!(dead[0].name, "something");
+    }
+
+    #[test]
+    fn test_lua_detect_module_return() {
+        assert_eq!(detect_lua_module_return("return M\n"), Some("M".to_string()));
+        assert_eq!(detect_lua_module_return("return MyModule\n"), Some("MyModule".to_string()));
+        assert_eq!(detect_lua_module_return("x = 1\nreturn M\n"), Some("M".to_string()));
+        assert_eq!(detect_lua_module_return("return M\n-- trailing comment\n"), Some("M".to_string()));
+        assert_eq!(detect_lua_module_return("print('done')\n"), None);
+        assert_eq!(detect_lua_module_return("return 1, 2, 3\n"), None);
+        assert_eq!(detect_lua_module_return(""), None);
+    }
+
+    #[test]
+    fn test_lua_test_files_excluded_from_definitions() {
+        let temp = TempDir::new().unwrap();
+        std::fs::create_dir_all(temp.path().join("tests")).unwrap();
+        std::fs::write(
+            temp.path().join("tests/test_main.lua"),
+            concat!(
+                "local function test_helper()\n",
+                "    return true\n",
+                "end\n",
+                "\n",
+                "function test_run()\n",
+                "    used_in_prod()\n",
+                "end\n",
+            ),
+        )
+        .unwrap();
+        std::fs::write(
+            temp.path().join("main.lua"),
+            concat!(
+                "local function used_in_prod()\n",
+                "    return 1\n",
+                "end\n",
+            ),
+        )
+        .unwrap();
+
+        let lua_files = find_files_by_extension(temp.path(), &["lua"]);
+        let (defined, called) = analyze_lua_files(&lua_files).unwrap();
+
+        // Test file functions should NOT be in defined list
+        let def_names: Vec<&str> = defined.iter().map(|d| d.name.as_str()).collect();
+        assert!(!def_names.contains(&"test_helper"), "Test functions excluded");
+        assert!(!def_names.contains(&"test_run"), "Test functions excluded");
+        assert!(def_names.contains(&"used_in_prod"), "Prod functions included");
+
+        // But calls FROM test files should still be tracked
+        assert!(called.contains("used_in_prod"), "Calls from tests should be tracked");
     }
 }

@@ -103,13 +103,22 @@ async fn run_dead_code_analysis_with_filters(
     filters: DeadCodeAnalysisFilters,
 ) -> Result<crate::models::dead_code::DeadCodeResult> {
     use crate::models::dead_code::DeadCodeAnalysisConfig;
-    use crate::services::cargo_dead_code_analyzer::CargoDeadCodeAnalyzer;
     use crate::utils::file_filter::FileFilter;
+
+    // Detect project language to choose the right analyzer
+    let detection =
+        crate::services::enhanced_language_detection::detect_project_language_enhanced(path);
+
+    // For non-Rust projects, use the multi-language analyzer
+    if detection.language != "rust" {
+        return run_multi_language_dead_code(path, &filters, &detection.language);
+    }
 
     // Create file filter
     let filter = FileFilter::new(filters.include, filters.exclude)?;
 
-    // Use the accurate cargo-based analyzer instead of the heuristic one
+    // Use the accurate cargo-based analyzer for Rust projects
+    use crate::services::cargo_dead_code_analyzer::CargoDeadCodeAnalyzer;
     let cargo_analyzer = if filters.include_tests {
         CargoDeadCodeAnalyzer::new(path)
             .include_tests()
@@ -166,6 +175,69 @@ async fn run_dead_code_analysis_with_filters(
         files: analysis_result.ranked_files,
         total_files: analysis_result.summary.total_files_analyzed,
         analyzed_files: analysis_result.summary.total_files_analyzed,
+    })
+}
+
+/// Run multi-language dead code analysis for non-Rust projects
+fn run_multi_language_dead_code(
+    path: &Path,
+    filters: &DeadCodeAnalysisFilters,
+    language: &str,
+) -> Result<crate::models::dead_code::DeadCodeResult> {
+    use crate::models::dead_code::{
+        ConfidenceLevel, DeadCodeItem, DeadCodeSummary, DeadCodeType, FileDeadCodeMetrics,
+    };
+    use crate::services::dead_code_multi_language::analyze_dead_code_multi_language;
+
+    eprintln!("🌐 Using multi-language analyzer for {language}");
+
+    let ml_result = analyze_dead_code_multi_language(path)?;
+
+    // Group dead functions by file for FileDeadCodeMetrics
+    let mut file_map: std::collections::HashMap<String, Vec<&crate::services::dead_code_multi_language::DeadFunction>> =
+        std::collections::HashMap::new();
+    for dead_fn in &ml_result.dead_functions {
+        file_map.entry(dead_fn.file.clone()).or_default().push(dead_fn);
+    }
+
+    let mut files: Vec<FileDeadCodeMetrics> = file_map
+        .into_iter()
+        .map(|(file_path, dead_fns)| {
+            let mut metrics = FileDeadCodeMetrics::new(file_path);
+            metrics.total_lines = 100; // Estimate
+            for dead_fn in &dead_fns {
+                metrics.add_item(DeadCodeItem {
+                    item_type: DeadCodeType::Function,
+                    name: dead_fn.name.clone(),
+                    line: dead_fn.line as u32,
+                    reason: dead_fn.reason.clone(),
+                });
+            }
+            // Lua has dynamic dispatch, so Medium confidence for non-local functions
+            metrics.confidence = ConfidenceLevel::Medium;
+            metrics.update_percentage();
+            metrics.calculate_score();
+            metrics
+        })
+        .filter(|f| f.dead_lines >= filters.min_dead_lines || f.dead_functions > 0)
+        .collect();
+
+    // Sort by score descending
+    files.sort_by(|a, b| b.dead_score.partial_cmp(&a.dead_score).unwrap_or(std::cmp::Ordering::Equal));
+
+    if let Some(limit) = filters.top_files {
+        if limit > 0 && files.len() > limit {
+            files.truncate(limit);
+        }
+    }
+
+    let summary = DeadCodeSummary::from_files(&files);
+
+    Ok(crate::models::dead_code::DeadCodeResult {
+        summary,
+        total_files: ml_result.total_functions.max(1),
+        analyzed_files: ml_result.total_functions.max(1),
+        files,
     })
 }
 
