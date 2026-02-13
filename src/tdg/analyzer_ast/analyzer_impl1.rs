@@ -440,6 +440,12 @@ impl TdgAnalyzerAst {
             Language::C | Language::Cpp => self.analyze_c_ast(source, &mut score, &mut tracker)?,
             Language::Ruchy => self.analyze_ruchy_ast(source, &mut score, &mut tracker)?,
             Language::Lua => self.analyze_lua_ast(source, &mut score, &mut tracker)?,
+            Language::Sql => self.analyze_sql_heuristic(source, &mut score, &mut tracker)?,
+            Language::Scala => self.analyze_scala_heuristic(source, &mut score, &mut tracker)?,
+            Language::Yaml => self.analyze_yaml_heuristic(source, &mut score, &mut tracker)?,
+            Language::Markdown => {
+                self.analyze_markdown_heuristic(source, &mut score, &mut tracker)?;
+            }
             _ => {
                 // Fallback to heuristics for unsupported languages
                 // but with reduced confidence

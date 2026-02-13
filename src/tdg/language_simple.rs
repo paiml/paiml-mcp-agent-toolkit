@@ -17,6 +17,10 @@ pub enum Language {
     Kotlin,
     Ruchy,
     Lua,
+    Sql,
+    Scala,
+    Yaml,
+    Markdown,
     Unknown,
 }
 
@@ -37,6 +41,10 @@ impl Language {
             Some("kt" | "kts") => Language::Kotlin,
             Some("ruchy" | "rh") => Language::Ruchy,
             Some("lua") => Language::Lua,
+            Some("sql" | "ddl" | "dml") => Language::Sql,
+            Some("scala" | "sc") => Language::Scala,
+            Some("yaml" | "yml") => Language::Yaml,
+            Some("md" | "mdx" | "markdown") => Language::Markdown,
             _ => Language::Unknown,
         }
     }
@@ -57,6 +65,10 @@ impl Language {
             Language::Kotlin => 0.85,
             Language::Ruchy => 0.95,
             Language::Lua => 0.90,
+            Language::Sql => 0.80,
+            Language::Scala => 0.85,
+            Language::Yaml => 0.75,
+            Language::Markdown => 0.70,
             Language::Unknown => 0.5,
         }
     }
@@ -78,6 +90,10 @@ impl std::fmt::Display for Language {
             Language::Kotlin => write!(f, "Kotlin"),
             Language::Ruchy => write!(f, "Ruchy"),
             Language::Lua => write!(f, "Lua"),
+            Language::Sql => write!(f, "SQL"),
+            Language::Scala => write!(f, "Scala"),
+            Language::Yaml => write!(f, "YAML"),
+            Language::Markdown => write!(f, "Markdown"),
             Language::Unknown => write!(f, "Unknown"),
         }
     }
@@ -141,6 +157,10 @@ impl LanguageRules {
             Language::Go => Self::go_rules(),
             Language::Ruchy => Self::ruchy_rules(),
             Language::Lua => Self::lua_rules(),
+            Language::Sql => Self::sql_rules(),
+            Language::Scala => Self::scala_rules(),
+            Language::Yaml => Self::yaml_rules(),
+            Language::Markdown => Self::markdown_rules(),
             _ => Self::rust_rules(), // Default
         }
     }
@@ -216,6 +236,50 @@ impl LanguageRules {
         LanguageRules {
             language: Language::Lua,
             function_style: NamingStyle::SnakeCase,
+            type_style: NamingStyle::PascalCase,
+            constant_style: NamingStyle::ScreamingSnakeCase,
+            variable_style: NamingStyle::SnakeCase,
+        }
+    }
+
+    #[must_use]
+    pub fn sql_rules() -> Self {
+        LanguageRules {
+            language: Language::Sql,
+            function_style: NamingStyle::SnakeCase,
+            type_style: NamingStyle::SnakeCase,
+            constant_style: NamingStyle::ScreamingSnakeCase,
+            variable_style: NamingStyle::SnakeCase,
+        }
+    }
+
+    #[must_use]
+    pub fn scala_rules() -> Self {
+        LanguageRules {
+            language: Language::Scala,
+            function_style: NamingStyle::CamelCase,
+            type_style: NamingStyle::PascalCase,
+            constant_style: NamingStyle::PascalCase,
+            variable_style: NamingStyle::CamelCase,
+        }
+    }
+
+    #[must_use]
+    pub fn yaml_rules() -> Self {
+        LanguageRules {
+            language: Language::Yaml,
+            function_style: NamingStyle::KebabCase,
+            type_style: NamingStyle::KebabCase,
+            constant_style: NamingStyle::ScreamingSnakeCase,
+            variable_style: NamingStyle::KebabCase,
+        }
+    }
+
+    #[must_use]
+    pub fn markdown_rules() -> Self {
+        LanguageRules {
+            language: Language::Markdown,
+            function_style: NamingStyle::KebabCase,
             type_style: NamingStyle::PascalCase,
             constant_style: NamingStyle::ScreamingSnakeCase,
             variable_style: NamingStyle::SnakeCase,
