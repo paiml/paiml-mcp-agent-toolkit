@@ -165,6 +165,10 @@ pub enum Language {
     Swift,
     CSharp,
     Lua,
+    Sql,
+    Scala,
+    Yaml,
+    Markdown,
     Unknown,
 }
 
@@ -188,6 +192,10 @@ impl Language {
             Some("swift") => Language::Swift,
             Some("cs") => Language::CSharp,
             Some("lua") => Language::Lua,
+            Some("sql" | "ddl" | "dml") => Language::Sql,
+            Some("scala" | "sc") => Language::Scala,
+            Some("yaml" | "yml") => Language::Yaml,
+            Some("md" | "mdx" | "markdown") => Language::Markdown,
             _ => Language::Unknown,
         }
     }
@@ -1043,6 +1051,272 @@ impl LuaAnalyzer {
     }
 }
 
+/// SQL language analyzer — extracts CREATE FUNCTION/VIEW/TRIGGER/PROCEDURE and CTEs
+pub struct SqlAnalyzer;
+
+impl LanguageAnalyzer for SqlAnalyzer {
+    fn extract_functions(&self, content: &str) -> Vec<FunctionInfo> {
+        let mut functions = Vec::new();
+        let upper = content.to_uppercase();
+        let upper_lines: Vec<&str> = upper.lines().collect();
+
+        for (line_num, uline) in upper_lines.iter().enumerate() {
+            let trimmed = uline.trim();
+            if let Some(name) = Self::extract_sql_object_name(trimmed) {
+                let line_end = Self::find_sql_block_end(&upper_lines, line_num);
+                functions.push(FunctionInfo {
+                    name,
+                    line_start: line_num,
+                    line_end,
+                });
+            }
+        }
+
+        // Extract CTEs (WITH name AS (...))
+        for (line_num, uline) in upper_lines.iter().enumerate() {
+            let trimmed = uline.trim();
+            if let Some(rest) = trimmed.strip_prefix("WITH ") {
+                for cte_name in Self::extract_cte_names(rest, &upper_lines, line_num) {
+                    functions.push(FunctionInfo {
+                        name: cte_name.to_lowercase(),
+                        line_start: line_num,
+                        line_end: line_num,
+                    });
+                }
+            }
+        }
+
+        functions
+    }
+
+    fn estimate_complexity(&self, content: &str, function: &FunctionInfo) -> ComplexityMetrics {
+        let lines: Vec<&str> = content.lines().collect();
+        let end = function.line_end.min(lines.len().saturating_sub(1));
+        let func_lines = &lines[function.line_start..=end];
+
+        let mut cyclomatic: u16 = 1;
+        let mut cognitive: u16 = 0;
+        let mut nesting: u8 = 0;
+        let mut max_nesting: u8 = 0;
+
+        for line in func_lines {
+            let upper = line.trim().to_uppercase();
+            // Control flow keywords
+            for kw in &["IF ", "ELSIF ", "ELSEIF ", "WHEN ", "LOOP", "WHILE ", "FOR "] {
+                if upper.starts_with(kw) || upper.contains(&format!(" {kw}")) {
+                    cyclomatic += 1;
+                    cognitive += 1 + u16::from(nesting);
+                }
+            }
+            if upper.contains(" AND ") || upper.contains(" OR ") {
+                cyclomatic += 1;
+                cognitive += 1;
+            }
+            if upper.starts_with("BEGIN") || upper.starts_with("LOOP") || upper.starts_with("IF ") {
+                nesting += 1;
+                max_nesting = max_nesting.max(nesting);
+            }
+            if upper.starts_with("END") {
+                nesting = nesting.saturating_sub(1);
+            }
+        }
+
+        ComplexityMetrics {
+            cyclomatic: cyclomatic.min(255),
+            cognitive: cognitive.min(255),
+            nesting_max: max_nesting,
+            lines: func_lines.len() as u16,
+            halstead: None,
+        }
+    }
+}
+
+impl SqlAnalyzer {
+    /// Extract name from CREATE FUNCTION/VIEW/TRIGGER/PROCEDURE statements
+    fn extract_sql_object_name(trimmed_upper: &str) -> Option<String> {
+        // Pattern: CREATE [OR REPLACE] (FUNCTION|PROCEDURE|VIEW|TRIGGER) name
+        let rest = if let Some(r) = trimmed_upper.strip_prefix("CREATE OR REPLACE ") {
+            r
+        } else if let Some(r) = trimmed_upper.strip_prefix("CREATE ") {
+            r
+        } else {
+            return None;
+        };
+
+        let (kind_prefix, after_kind) =
+            if let Some(a) = rest.strip_prefix("FUNCTION ") {
+                ("fn:", a)
+            } else if let Some(a) = rest.strip_prefix("PROCEDURE ") {
+                ("proc:", a)
+            } else if let Some(a) = rest.strip_prefix("VIEW ") {
+                ("view:", a)
+            } else if let Some(a) = rest.strip_prefix("TRIGGER ") {
+                ("trigger:", a)
+            } else {
+                return None;
+            };
+
+        let name = after_kind
+            .split(|c: char| !c.is_alphanumeric() && c != '_' && c != '.')
+            .next()
+            .unwrap_or("");
+
+        if name.is_empty() {
+            return None;
+        }
+        Some(format!("{kind_prefix}{}", name.to_lowercase()))
+    }
+
+    /// Find the end of a SQL block (delimited by ; or $$ or END;)
+    fn find_sql_block_end(upper_lines: &[&str], start: usize) -> usize {
+        let mut depth: i32 = 0;
+        for (i, line) in upper_lines.iter().enumerate().skip(start) {
+            let trimmed = line.trim();
+            if trimmed.contains("BEGIN") {
+                depth += 1;
+            }
+            if trimmed.starts_with("END") && (trimmed.contains(';') || trimmed == "END") {
+                depth -= 1;
+                if depth <= 0 {
+                    return i;
+                }
+            }
+            if depth == 0 && i > start && trimmed.ends_with(';') {
+                return i;
+            }
+            if trimmed.contains("$$") && i > start {
+                return i;
+            }
+        }
+        upper_lines.len().saturating_sub(1)
+    }
+
+    /// Extract CTE names from a WITH clause
+    fn extract_cte_names(first_rest: &str, _lines: &[&str], _start: usize) -> Vec<String> {
+        let mut names = Vec::new();
+        // First CTE: WITH name AS
+        let name = first_rest
+            .split(|c: char| !c.is_alphanumeric() && c != '_')
+            .next()
+            .unwrap_or("");
+        if !name.is_empty() && name != "RECURSIVE" {
+            names.push(name.to_string());
+        }
+        names
+    }
+}
+
+/// Scala language analyzer — extracts def/val/class/object/trait
+pub struct ScalaAnalyzer;
+
+impl LanguageAnalyzer for ScalaAnalyzer {
+    fn extract_functions(&self, content: &str) -> Vec<FunctionInfo> {
+        let mut functions = Vec::new();
+        let lines: Vec<&str> = content.lines().collect();
+
+        for (line_num, line) in lines.iter().enumerate() {
+            let trimmed = line.trim();
+            if let Some(name) = Self::extract_scala_name(trimmed) {
+                let line_end = if trimmed.contains('{') {
+                    find_brace_balanced_end(&lines, line_num, false)
+                } else {
+                    // Single-expression def: find next blank or next def
+                    Self::find_expression_end(&lines, line_num)
+                };
+                functions.push(FunctionInfo {
+                    name,
+                    line_start: line_num,
+                    line_end,
+                });
+            }
+        }
+        functions
+    }
+
+    fn estimate_complexity(&self, content: &str, function: &FunctionInfo) -> ComplexityMetrics {
+        let lines: Vec<&str> = content.lines().collect();
+        let end = function.line_end.min(lines.len().saturating_sub(1));
+        let func_lines = &lines[function.line_start..=end];
+
+        let mut cyclomatic: u16 = 1;
+        let mut cognitive: u16 = 0;
+        let mut nesting: u8 = 0;
+        let mut max_nesting: u8 = 0;
+
+        for line in func_lines {
+            let trimmed = line.trim();
+            if trimmed.starts_with("if ")
+                || trimmed.starts_with("if(")
+                || trimmed.contains(" if ")
+                || trimmed.starts_with("case ")
+                || trimmed.starts_with("while ")
+                || trimmed.starts_with("for ")
+                || trimmed.starts_with("for(")
+                || trimmed.contains("catch ")
+            {
+                cyclomatic += 1;
+                cognitive += 1 + u16::from(nesting);
+            }
+            if trimmed.contains(" && ") || trimmed.contains(" || ") {
+                cyclomatic += 1;
+                cognitive += 1;
+            }
+            nesting += trimmed.matches('{').count() as u8;
+            nesting = nesting.saturating_sub(trimmed.matches('}').count() as u8);
+            max_nesting = max_nesting.max(nesting);
+        }
+
+        ComplexityMetrics {
+            cyclomatic: cyclomatic.min(255),
+            cognitive: cognitive.min(255),
+            nesting_max: max_nesting,
+            lines: func_lines.len() as u16,
+            halstead: None,
+        }
+    }
+}
+
+impl ScalaAnalyzer {
+    fn extract_scala_name(trimmed: &str) -> Option<String> {
+        // Match: def name, class name, object name, trait name
+        let prefixes = [
+            "def ", "override def ", "private def ", "protected def ",
+            "class ", "case class ", "abstract class ",
+            "object ", "trait ",
+        ];
+        for prefix in &prefixes {
+            if let Some(rest) = trimmed.strip_prefix(prefix) {
+                let name = rest
+                    .split(|c: char| !c.is_alphanumeric() && c != '_')
+                    .next()
+                    .unwrap_or("");
+                if !name.is_empty() {
+                    return Some(name.to_string());
+                }
+            }
+        }
+        None
+    }
+
+    fn find_expression_end(lines: &[&str], start: usize) -> usize {
+        for i in (start + 1)..lines.len() {
+            let trimmed = lines[i].trim();
+            if trimmed.is_empty()
+                || trimmed.starts_with("def ")
+                || trimmed.starts_with("class ")
+                || trimmed.starts_with("object ")
+                || trimmed.starts_with("trait ")
+                || trimmed.starts_with("val ")
+                || trimmed.starts_with("var ")
+                || trimmed.starts_with("}")
+            {
+                return i.saturating_sub(1).max(start);
+            }
+        }
+        lines.len().saturating_sub(1)
+    }
+}
+
 /// Complexity visitor for analyzing code metrics
 struct ComplexityVisitor {
     cyclomatic: u16,
@@ -1197,6 +1471,9 @@ fn create_analyzer(language: Language) -> Box<dyn LanguageAnalyzer> {
         Language::CSharp => Box::new(CAnalyzer),
         // Lua function syntax: function name(params) ... end
         Language::Lua => Box::new(LuaAnalyzer),
+        Language::Sql => Box::new(SqlAnalyzer),
+        Language::Scala => Box::new(ScalaAnalyzer),
+        Language::Yaml | Language::Markdown => Box::new(PythonAnalyzer), // structural analysis only
         Language::Unknown => unreachable!("Unknown language should be handled earlier"),
     }
 }

@@ -1712,6 +1712,9 @@ async fn route_model_analysis(cmd: AnalyzeCommands) -> Result<()> {
             return Ok(());
         }
 
+        // Detect Git LFS patterns
+        let lfs_patterns = detect_lfs_patterns(&project_path);
+
         // Collect metadata for each model file
         let mut entries: Vec<ModelInventoryEntry> = Vec::new();
         let mut total_size: u64 = 0;
@@ -1733,10 +1736,16 @@ async fn route_model_analysis(cmd: AnalyzeCommands) -> Result<()> {
                 .display()
                 .to_string();
 
+            let filename = file_path
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("");
+
             entries.push(ModelInventoryEntry {
                 file: rel,
                 format: format_name.to_string(),
                 size_bytes: file_size,
+                lfs_tracked: is_lfs_tracked(filename, &lfs_patterns),
             });
         }
 
@@ -1777,6 +1786,7 @@ struct ModelInventoryEntry {
     file: String,
     format: String,
     size_bytes: u64,
+    lfs_tracked: bool,
 }
 
 fn format_size(bytes: u64) -> String {
@@ -1792,30 +1802,51 @@ fn format_size(bytes: u64) -> String {
 }
 
 fn print_model_inventory_table(entries: &[ModelInventoryEntry], total_size: u64) {
+    let has_lfs = entries.iter().any(|e| e.lfs_tracked);
+    let width = if has_lfs { 78 } else { 72 };
+
     println!(
         "Model Inventory ({} files, {} total)",
         entries.len(),
         format_size(total_size)
     );
-    println!("{}", "─".repeat(72));
-    println!(
-        "{:<40} {:<12} {:>12}",
-        "File", "Format", "Size"
-    );
-    println!("{}", "─".repeat(72));
-    for entry in entries {
+    println!("{}", "─".repeat(width));
+    if has_lfs {
+        println!(
+            "{:<40} {:<12} {:>12} {:>6}",
+            "File", "Format", "Size", "LFS"
+        );
+    } else {
         println!(
             "{:<40} {:<12} {:>12}",
-            if entry.file.len() > 38 {
-                format!("...{}", &entry.file[entry.file.len() - 35..])
-            } else {
-                entry.file.clone()
-            },
-            entry.format,
-            format_size(entry.size_bytes)
+            "File", "Format", "Size"
         );
     }
-    println!("{}", "─".repeat(72));
+    println!("{}", "─".repeat(width));
+    for entry in entries {
+        let display_file = if entry.file.len() > 38 {
+            format!("...{}", &entry.file[entry.file.len() - 35..])
+        } else {
+            entry.file.clone()
+        };
+        if has_lfs {
+            println!(
+                "{:<40} {:<12} {:>12} {:>6}",
+                display_file,
+                entry.format,
+                format_size(entry.size_bytes),
+                if entry.lfs_tracked { "Yes" } else { "-" }
+            );
+        } else {
+            println!(
+                "{:<40} {:<12} {:>12}",
+                display_file,
+                entry.format,
+                format_size(entry.size_bytes)
+            );
+        }
+    }
+    println!("{}", "─".repeat(width));
 }
 
 fn print_model_inventory_json(entries: &[ModelInventoryEntry], total_size: u64) -> Result<()> {
@@ -1827,6 +1858,7 @@ fn print_model_inventory_json(entries: &[ModelInventoryEntry], total_size: u64) 
                 "format": e.format,
                 "size_bytes": e.size_bytes,
                 "size_human": format_size(e.size_bytes),
+                "lfs_tracked": e.lfs_tracked,
             })
         })
         .collect();
@@ -1840,6 +1872,44 @@ fn print_model_inventory_json(entries: &[ModelInventoryEntry], total_size: u64) 
 
     println!("{}", serde_json::to_string_pretty(&output)?);
     Ok(())
+}
+
+/// Parse .gitattributes files to find LFS-tracked patterns
+fn detect_lfs_patterns(project_path: &std::path::Path) -> Vec<String> {
+    let mut patterns = Vec::new();
+    let gitattr_path = project_path.join(".gitattributes");
+    if let Ok(content) = std::fs::read_to_string(&gitattr_path) {
+        for line in content.lines() {
+            let trimmed = line.trim();
+            if trimmed.is_empty() || trimmed.starts_with('#') {
+                continue;
+            }
+            if trimmed.contains("filter=lfs") {
+                // Extract the pattern (first whitespace-separated token)
+                if let Some(pattern) = trimmed.split_whitespace().next() {
+                    patterns.push(pattern.to_string());
+                }
+            }
+        }
+    }
+    patterns
+}
+
+/// Check if a filename matches any LFS glob pattern
+fn is_lfs_tracked(filename: &str, lfs_patterns: &[String]) -> bool {
+    for pattern in lfs_patterns {
+        // Simple glob matching: *.ext
+        if let Some(ext_pattern) = pattern.strip_prefix("*.") {
+            if let Some(file_ext) = filename.rsplit('.').next() {
+                if file_ext.eq_ignore_ascii_case(ext_pattern) {
+                    return true;
+                }
+            }
+        } else if pattern == filename {
+            return true;
+        }
+    }
+    false
 }
 
 fn collect_model_violations(
