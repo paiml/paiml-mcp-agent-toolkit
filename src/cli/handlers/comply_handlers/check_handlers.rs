@@ -291,6 +291,14 @@ async fn handle_check(
         filter_check_by_config(check_rust_best_practices(project_path), "cb-500", comply_config),
         // CB-600: Lua Best Practices (PMAT-487: LuaTaint, FLuaScan, luacheck research)
         filter_check_by_config(check_lua_best_practices(project_path), "cb-600", comply_config),
+        // CB-700: SQL Best Practices (PMAT-500)
+        filter_check_by_config(check_sql_best_practices(project_path), "cb-700", comply_config),
+        // CB-900: Markdown Best Practices (PMAT-500)
+        filter_check_by_config(check_markdown_best_practices(project_path), "cb-900", comply_config),
+        // CB-950: YAML Best Practices (PMAT-500)
+        filter_check_by_config(check_yaml_best_practices(project_path), "cb-950", comply_config),
+        // CB-1000: MLOps Model Quality (PMAT-500: GGUF, APR, SafeTensors)
+        filter_check_by_config(check_model_quality(project_path), "cb-1000", comply_config),
     ];
 
     // Calculate compliance
@@ -1880,6 +1888,293 @@ pub(crate) fn check_lua_best_practices(project_path: &Path) -> ComplianceCheck {
             name: "CB-600: Lua Best Practices (CB-600 to CB-607)".to_string(),
             status: CheckStatus::Pass,
             message: "No Lua best practice violations detected".to_string(),
+            severity: Severity::Info,
+        }
+    }
+}
+
+pub(crate) fn check_sql_best_practices(project_path: &Path) -> ComplianceCheck {
+    let sql_files = super::comply_cb_detect::walkdir_sql_files(project_path);
+    if sql_files.is_empty() {
+        return ComplianceCheck {
+            name: "CB-700: SQL Best Practices (CB-700 to CB-704)".to_string(),
+            status: CheckStatus::Pass,
+            message: "Not a SQL project (no .sql files found)".to_string(),
+            severity: Severity::Info,
+        };
+    }
+
+    let mut all_issues: Vec<String> = Vec::new();
+    let mut error_count = 0;
+    let mut warning_count = 0;
+    let mut info_count = 0;
+
+    let detectors: Vec<(&str, Vec<CbPatternViolation>)> = vec![
+        ("CB-700", super::comply_cb_detect::detect_cb700_select_star(project_path)),
+        ("CB-701", super::comply_cb_detect::detect_cb701_missing_where(project_path)),
+        ("CB-702", super::comply_cb_detect::detect_cb702_implicit_join(project_path)),
+        ("CB-703", super::comply_cb_detect::detect_cb703_sql_injection(project_path)),
+        ("CB-704", super::comply_cb_detect::detect_cb704_missing_index_hint(project_path)),
+    ];
+
+    for (_id, violations) in &detectors {
+        for v in violations {
+            all_issues.push(format!(
+                "{}: {} ({}:{})",
+                v.pattern_id, v.description, v.file, v.line
+            ));
+            match v.severity {
+                super::comply_cb_detect::Severity::Error => error_count += 1,
+                super::comply_cb_detect::Severity::Warning => warning_count += 1,
+                _ => info_count += 1,
+            }
+        }
+    }
+
+    let total = error_count + warning_count + info_count;
+    if total > 0 {
+        let display_issues = if all_issues.len() > 20 {
+            let mut truncated: Vec<String> = all_issues.iter().take(20).cloned().collect();
+            truncated.push(format!("    ... and {} more", all_issues.len() - 20));
+            truncated
+        } else {
+            all_issues.clone()
+        };
+
+        ComplianceCheck {
+            name: "CB-700: SQL Best Practices (CB-700 to CB-704)".to_string(),
+            status: if error_count > 0 {
+                CheckStatus::Fail
+            } else {
+                CheckStatus::Warn
+            },
+            message: format!(
+                "[Advisory] {} errors, {} warnings, {} info:\n{}",
+                error_count, warning_count, info_count,
+                display_issues.join("\n"),
+            ),
+            severity: Severity::Warning,
+        }
+    } else {
+        ComplianceCheck {
+            name: "CB-700: SQL Best Practices (CB-700 to CB-704)".to_string(),
+            status: CheckStatus::Pass,
+            message: "No SQL best practice violations detected".to_string(),
+            severity: Severity::Info,
+        }
+    }
+}
+
+pub(crate) fn check_markdown_best_practices(project_path: &Path) -> ComplianceCheck {
+    let md_files = super::comply_cb_detect::walkdir_markdown_files(project_path);
+    if md_files.is_empty() {
+        return ComplianceCheck {
+            name: "CB-900: Markdown Best Practices (CB-900 to CB-903)".to_string(),
+            status: CheckStatus::Pass,
+            message: "No Markdown files found".to_string(),
+            severity: Severity::Info,
+        };
+    }
+
+    let mut all_issues: Vec<String> = Vec::new();
+    let mut error_count = 0;
+    let mut warning_count = 0;
+    let mut info_count = 0;
+
+    let detectors: Vec<(&str, Vec<CbPatternViolation>)> = vec![
+        ("CB-900", super::comply_cb_detect::detect_cb900_broken_internal_link(project_path)),
+        ("CB-901", super::comply_cb_detect::detect_cb901_heading_hierarchy_skip(project_path)),
+        ("CB-902", super::comply_cb_detect::detect_cb902_missing_alt_text(project_path)),
+        ("CB-903", super::comply_cb_detect::detect_cb903_bare_url(project_path)),
+    ];
+
+    for (_id, violations) in &detectors {
+        for v in violations {
+            all_issues.push(format!(
+                "{}: {} ({}:{})",
+                v.pattern_id, v.description, v.file, v.line
+            ));
+            match v.severity {
+                super::comply_cb_detect::Severity::Error => error_count += 1,
+                super::comply_cb_detect::Severity::Warning => warning_count += 1,
+                _ => info_count += 1,
+            }
+        }
+    }
+
+    let total = error_count + warning_count + info_count;
+    if total > 0 {
+        let display_issues = if all_issues.len() > 20 {
+            let mut truncated: Vec<String> = all_issues.iter().take(20).cloned().collect();
+            truncated.push(format!("    ... and {} more", all_issues.len() - 20));
+            truncated
+        } else {
+            all_issues.clone()
+        };
+
+        ComplianceCheck {
+            name: "CB-900: Markdown Best Practices (CB-900 to CB-903)".to_string(),
+            status: CheckStatus::Warn,
+            message: format!(
+                "[Advisory] {} errors, {} warnings, {} info:\n{}",
+                error_count, warning_count, info_count,
+                display_issues.join("\n"),
+            ),
+            severity: Severity::Warning,
+        }
+    } else {
+        ComplianceCheck {
+            name: "CB-900: Markdown Best Practices (CB-900 to CB-903)".to_string(),
+            status: CheckStatus::Pass,
+            message: "No Markdown best practice violations detected".to_string(),
+            severity: Severity::Info,
+        }
+    }
+}
+
+pub(crate) fn check_yaml_best_practices(project_path: &Path) -> ComplianceCheck {
+    let yaml_files = super::comply_cb_detect::walkdir_yaml_files(project_path);
+    if yaml_files.is_empty() {
+        return ComplianceCheck {
+            name: "CB-950: YAML Best Practices (CB-950 to CB-954)".to_string(),
+            status: CheckStatus::Pass,
+            message: "No YAML files found".to_string(),
+            severity: Severity::Info,
+        };
+    }
+
+    let mut all_issues: Vec<String> = Vec::new();
+    let mut error_count = 0;
+    let mut warning_count = 0;
+    let mut info_count = 0;
+
+    let detectors: Vec<(&str, Vec<CbPatternViolation>)> = vec![
+        ("CB-950", super::comply_cb_detect::detect_cb950_truthy_ambiguity(project_path)),
+        ("CB-951", super::comply_cb_detect::detect_cb951_excessive_nesting(project_path)),
+        ("CB-952", super::comply_cb_detect::detect_cb952_missing_required_fields(project_path)),
+        ("CB-953", super::comply_cb_detect::detect_cb953_unpinned_action(project_path)),
+        ("CB-954", super::comply_cb_detect::detect_cb954_plaintext_secret(project_path)),
+    ];
+
+    for (_id, violations) in &detectors {
+        for v in violations {
+            all_issues.push(format!(
+                "{}: {} ({}:{})",
+                v.pattern_id, v.description, v.file, v.line
+            ));
+            match v.severity {
+                super::comply_cb_detect::Severity::Error => error_count += 1,
+                super::comply_cb_detect::Severity::Warning => warning_count += 1,
+                _ => info_count += 1,
+            }
+        }
+    }
+
+    let total = error_count + warning_count + info_count;
+    if total > 0 {
+        let display_issues = if all_issues.len() > 20 {
+            let mut truncated: Vec<String> = all_issues.iter().take(20).cloned().collect();
+            truncated.push(format!("    ... and {} more", all_issues.len() - 20));
+            truncated
+        } else {
+            all_issues.clone()
+        };
+
+        ComplianceCheck {
+            name: "CB-950: YAML Best Practices (CB-950 to CB-954)".to_string(),
+            status: if error_count > 0 {
+                CheckStatus::Fail
+            } else {
+                CheckStatus::Warn
+            },
+            message: format!(
+                "[Advisory] {} errors, {} warnings, {} info:\n{}",
+                error_count, warning_count, info_count,
+                display_issues.join("\n"),
+            ),
+            severity: Severity::Warning,
+        }
+    } else {
+        ComplianceCheck {
+            name: "CB-950: YAML Best Practices (CB-950 to CB-954)".to_string(),
+            status: CheckStatus::Pass,
+            message: "No YAML best practice violations detected".to_string(),
+            severity: Severity::Info,
+        }
+    }
+}
+
+pub(crate) fn check_model_quality(project_path: &Path) -> ComplianceCheck {
+    let model_files = super::comply_cb_detect::walkdir_model_files(project_path);
+    if model_files.is_empty() {
+        return ComplianceCheck {
+            name: "CB-1000: MLOps Model Quality (CB-1000 to CB-1008)".to_string(),
+            status: CheckStatus::Pass,
+            message: "No model files found (*.gguf, *.apr, *.safetensors)".to_string(),
+            severity: Severity::Info,
+        };
+    }
+
+    let mut all_issues: Vec<String> = Vec::new();
+    let mut error_count = 0;
+    let mut warning_count = 0;
+    let mut info_count = 0;
+
+    let detectors: Vec<(&str, Vec<CbPatternViolation>)> = vec![
+        ("CB-1000", super::comply_cb_detect::detect_cb1000_missing_model_card(project_path)),
+        ("CB-1001", super::comply_cb_detect::detect_cb1001_oversized_tensor_count(project_path)),
+        ("CB-1002", super::comply_cb_detect::detect_cb1002_missing_tokenizer(project_path)),
+        ("CB-1006", super::comply_cb_detect::detect_cb1006_sharded_without_index(project_path)),
+        ("CB-1007", super::comply_cb_detect::detect_cb1007_excessive_file_size(project_path)),
+        ("CB-1008", super::comply_cb_detect::detect_cb1008_apr_missing_crc(project_path)),
+    ];
+
+    for (_id, violations) in &detectors {
+        for v in violations {
+            all_issues.push(format!(
+                "{}: {} ({}:{})",
+                v.pattern_id, v.description, v.file, v.line
+            ));
+            match v.severity {
+                super::comply_cb_detect::Severity::Error => error_count += 1,
+                super::comply_cb_detect::Severity::Warning => warning_count += 1,
+                _ => info_count += 1,
+            }
+        }
+    }
+
+    let total = error_count + warning_count + info_count;
+    if total > 0 {
+        let display_issues = if all_issues.len() > 20 {
+            let mut truncated: Vec<String> = all_issues.iter().take(20).cloned().collect();
+            truncated.push(format!("    ... and {} more", all_issues.len() - 20));
+            truncated
+        } else {
+            all_issues.clone()
+        };
+
+        ComplianceCheck {
+            name: "CB-1000: MLOps Model Quality (CB-1000 to CB-1008)".to_string(),
+            status: if error_count > 0 {
+                CheckStatus::Fail
+            } else {
+                CheckStatus::Warn
+            },
+            message: format!(
+                "[Advisory] {} errors, {} warnings, {} info:\n{}",
+                error_count, warning_count, info_count,
+                display_issues.join("\n"),
+            ),
+            severity: Severity::Warning,
+        }
+    } else {
+        ComplianceCheck {
+            name: "CB-1000: MLOps Model Quality (CB-1000 to CB-1008)".to_string(),
+            status: CheckStatus::Pass,
+            message: format!(
+                "All {} model file(s) pass quality checks",
+                model_files.len()
+            ),
             severity: Severity::Info,
         }
     }

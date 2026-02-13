@@ -294,6 +294,10 @@ fn extension_to_language(ext: &str) -> Option<&'static str> {
         "cs" => Some("csharp"),
         "sh" | "bash" => Some("bash"),
         "lua" => Some("lua"),
+        "sql" | "ddl" | "dml" => Some("sql"),
+        "scala" | "sc" | "sbt" => Some("scala"),
+        "md" | "mdx" | "markdown" => Some("markdown"),
+        "yaml" | "yml" => Some("yaml"),
         _ => None,
     }
 }

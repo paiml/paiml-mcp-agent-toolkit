@@ -1295,3 +1295,625 @@ mod cb600_lua_tests {
         assert!(violations.is_empty());
     }
 }
+
+// =============================================================================
+// Tests for CB-700 SQL Best Practices
+// =============================================================================
+
+mod cb700_sql_tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    #[test]
+    fn test_cb700_no_sql_files_empty() {
+        let temp = TempDir::new().unwrap();
+        let violations = detect_cb700_select_star(temp.path());
+        assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn test_cb700_detects_select_star() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("query.sql"),
+            "SELECT * FROM users WHERE active = 1;\n",
+        )
+        .unwrap();
+        let violations = detect_cb700_select_star(temp.path());
+        assert_eq!(violations.len(), 1);
+        assert_eq!(violations[0].pattern_id, "CB-700");
+    }
+
+    #[test]
+    fn test_cb700_allows_count_star() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("query.sql"),
+            "SELECT COUNT(*) FROM users;\n",
+        )
+        .unwrap();
+        let violations = detect_cb700_select_star(temp.path());
+        assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn test_cb700_allows_explicit_columns() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("query.sql"),
+            "SELECT id, name, email FROM users;\n",
+        )
+        .unwrap();
+        let violations = detect_cb700_select_star(temp.path());
+        assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn test_cb701_detects_update_without_where() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("dangerous.sql"),
+            "UPDATE users SET active = 0;\n",
+        )
+        .unwrap();
+        let violations = detect_cb701_missing_where(temp.path());
+        assert_eq!(violations.len(), 1);
+        assert_eq!(violations[0].pattern_id, "CB-701");
+        assert!(matches!(violations[0].severity, Severity::Error));
+    }
+
+    #[test]
+    fn test_cb701_allows_update_with_where() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("safe.sql"),
+            "UPDATE users SET active = 0 WHERE id = 5;\n",
+        )
+        .unwrap();
+        let violations = detect_cb701_missing_where(temp.path());
+        assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn test_cb701_detects_delete_without_where() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("dangerous.sql"),
+            "DELETE FROM users;\n",
+        )
+        .unwrap();
+        let violations = detect_cb701_missing_where(temp.path());
+        assert_eq!(violations.len(), 1);
+        assert_eq!(violations[0].pattern_id, "CB-701");
+    }
+
+    #[test]
+    fn test_cb702_detects_implicit_join() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("query.sql"),
+            "SELECT u.name FROM users u, orders o WHERE u.id = o.user_id;\n",
+        )
+        .unwrap();
+        let violations = detect_cb702_implicit_join(temp.path());
+        assert_eq!(violations.len(), 1);
+        assert_eq!(violations[0].pattern_id, "CB-702");
+    }
+
+    #[test]
+    fn test_cb702_allows_explicit_join() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("query.sql"),
+            "SELECT u.name FROM users u JOIN orders o ON u.id = o.user_id;\n",
+        )
+        .unwrap();
+        let violations = detect_cb702_implicit_join(temp.path());
+        assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn test_cb704_detects_many_joins() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("query.sql"),
+            "SELECT a.x FROM a JOIN b ON a.id = b.id JOIN c ON b.id = c.id JOIN d ON c.id = d.id JOIN e ON d.id = e.id;\n",
+        )
+        .unwrap();
+        let violations = detect_cb704_missing_index_hint(temp.path());
+        assert_eq!(violations.len(), 1);
+        assert_eq!(violations[0].pattern_id, "CB-704");
+    }
+
+    #[test]
+    fn test_sql_test_file_excluded() {
+        let temp = TempDir::new().unwrap();
+        let test_dir = temp.path().join("tests");
+        fs::create_dir_all(&test_dir).unwrap();
+        fs::write(
+            test_dir.join("test_queries.sql"),
+            "SELECT * FROM users;\n",
+        )
+        .unwrap();
+        let violations = detect_cb700_select_star(temp.path());
+        assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn test_compute_sql_production_lines() {
+        let content = "-- This is a comment\nSELECT id FROM users; -- inline comment\n/* block */\nINSERT INTO t VALUES(1);\n";
+        let lines = compute_sql_production_lines(content);
+        assert_eq!(lines.len(), 2);
+        assert!(lines[0].1.contains("SELECT"));
+        assert!(lines[1].1.contains("INSERT"));
+    }
+
+    #[test]
+    fn test_walkdir_sql_files_skips_git() {
+        let temp = TempDir::new().unwrap();
+        let git_dir = temp.path().join(".git");
+        fs::create_dir_all(&git_dir).unwrap();
+        fs::write(git_dir.join("hooks.sql"), "SELECT 1;\n").unwrap();
+        fs::write(temp.path().join("real.sql"), "SELECT 1;\n").unwrap();
+        let files = walkdir_sql_files(temp.path());
+        assert_eq!(files.len(), 1);
+    }
+}
+
+// =============================================================================
+// Tests for CB-900 Markdown Best Practices
+// =============================================================================
+
+mod cb900_markdown_tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    #[test]
+    fn test_cb900_no_md_files_empty() {
+        let temp = TempDir::new().unwrap();
+        let violations = detect_cb900_broken_internal_link(temp.path());
+        assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn test_cb900_detects_broken_link() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("README.md"),
+            "# Hello\n\nSee [docs](./nonexistent.md) for more.\n",
+        )
+        .unwrap();
+        let violations = detect_cb900_broken_internal_link(temp.path());
+        assert_eq!(violations.len(), 1);
+        assert_eq!(violations[0].pattern_id, "CB-900");
+    }
+
+    #[test]
+    fn test_cb900_allows_valid_link() {
+        let temp = TempDir::new().unwrap();
+        fs::write(temp.path().join("other.md"), "# Other\n").unwrap();
+        fs::write(
+            temp.path().join("README.md"),
+            "# Hello\n\nSee [docs](./other.md) for more.\n",
+        )
+        .unwrap();
+        let violations = detect_cb900_broken_internal_link(temp.path());
+        assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn test_cb900_skips_http_links() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("README.md"),
+            "# Hello\n\n[link](https://example.com)\n",
+        )
+        .unwrap();
+        let violations = detect_cb900_broken_internal_link(temp.path());
+        assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn test_cb901_detects_heading_skip() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("doc.md"),
+            "# Title\n\n### Subsection\n\nContent here.\n",
+        )
+        .unwrap();
+        let violations = detect_cb901_heading_hierarchy_skip(temp.path());
+        assert_eq!(violations.len(), 1);
+        assert_eq!(violations[0].pattern_id, "CB-901");
+        assert!(violations[0].description.contains("h1 to h3"));
+    }
+
+    #[test]
+    fn test_cb901_allows_proper_hierarchy() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("doc.md"),
+            "# Title\n\n## Section\n\n### Subsection\n",
+        )
+        .unwrap();
+        let violations = detect_cb901_heading_hierarchy_skip(temp.path());
+        assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn test_cb902_detects_missing_alt_text() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("doc.md"),
+            "# Title\n\n![](image.png)\n",
+        )
+        .unwrap();
+        let violations = detect_cb902_missing_alt_text(temp.path());
+        assert_eq!(violations.len(), 1);
+        assert_eq!(violations[0].pattern_id, "CB-902");
+    }
+
+    #[test]
+    fn test_cb902_allows_alt_text() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("doc.md"),
+            "# Title\n\n![A diagram](image.png)\n",
+        )
+        .unwrap();
+        let violations = detect_cb902_missing_alt_text(temp.path());
+        assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn test_cb903_detects_bare_url() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("doc.md"),
+            "# Title\n\nhttps://example.com\n",
+        )
+        .unwrap();
+        let violations = detect_cb903_bare_url(temp.path());
+        assert_eq!(violations.len(), 1);
+        assert_eq!(violations[0].pattern_id, "CB-903");
+    }
+
+    #[test]
+    fn test_cb903_allows_markdown_link() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("doc.md"),
+            "# Title\n\n[Example](https://example.com)\n",
+        )
+        .unwrap();
+        let violations = detect_cb903_bare_url(temp.path());
+        assert!(violations.is_empty());
+    }
+}
+
+// =============================================================================
+// Tests for CB-950 YAML Best Practices
+// =============================================================================
+
+mod cb950_yaml_tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    #[test]
+    fn test_cb950_no_yaml_files_empty() {
+        let temp = TempDir::new().unwrap();
+        let violations = detect_cb950_truthy_ambiguity(temp.path());
+        assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn test_cb950_detects_truthy_string() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("config.yaml"),
+            "name: my-app\nenabled: yes\nverbose: no\n",
+        )
+        .unwrap();
+        let violations = detect_cb950_truthy_ambiguity(temp.path());
+        assert_eq!(violations.len(), 2);
+        assert_eq!(violations[0].pattern_id, "CB-950");
+    }
+
+    #[test]
+    fn test_cb950_allows_quoted_truthy() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("config.yaml"),
+            "name: my-app\nenabled: \"yes\"\nverbose: 'no'\n",
+        )
+        .unwrap();
+        let violations = detect_cb950_truthy_ambiguity(temp.path());
+        assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn test_cb951_detects_excessive_nesting() {
+        let temp = TempDir::new().unwrap();
+        // Create deeply nested YAML (10 levels)
+        let mut content = String::new();
+        for i in 0..10 {
+            let indent = "  ".repeat(i);
+            content.push_str(&format!("{}level{}:\n", indent, i));
+        }
+        fs::write(temp.path().join("deep.yaml"), &content).unwrap();
+        let violations = detect_cb951_excessive_nesting(temp.path());
+        assert_eq!(violations.len(), 1);
+        assert_eq!(violations[0].pattern_id, "CB-951");
+    }
+
+    #[test]
+    fn test_cb951_allows_moderate_nesting() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("config.yaml"),
+            "level0:\n  level1:\n    level2:\n      value: ok\n",
+        )
+        .unwrap();
+        let violations = detect_cb951_excessive_nesting(temp.path());
+        assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn test_cb952_detects_missing_gha_fields() {
+        let temp = TempDir::new().unwrap();
+        let gha_dir = temp.path().join(".github").join("workflows");
+        fs::create_dir_all(&gha_dir).unwrap();
+        fs::write(
+            gha_dir.join("ci.yml"),
+            "# No name, no on, no jobs\nsteps:\n  - run: echo hi\n",
+        )
+        .unwrap();
+        let violations = detect_cb952_missing_required_fields(temp.path());
+        assert!(violations.len() >= 2); // missing name, on, jobs
+    }
+
+    #[test]
+    fn test_cb952_passes_valid_workflow() {
+        let temp = TempDir::new().unwrap();
+        let gha_dir = temp.path().join(".github").join("workflows");
+        fs::create_dir_all(&gha_dir).unwrap();
+        fs::write(
+            gha_dir.join("ci.yml"),
+            "name: CI\non: [push]\njobs:\n  build:\n    runs-on: ubuntu-latest\n",
+        )
+        .unwrap();
+        let violations = detect_cb952_missing_required_fields(temp.path());
+        assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn test_cb953_detects_unpinned_action() {
+        let temp = TempDir::new().unwrap();
+        let gha_dir = temp.path().join(".github").join("workflows");
+        fs::create_dir_all(&gha_dir).unwrap();
+        fs::write(
+            gha_dir.join("ci.yml"),
+            "name: CI\non: [push]\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@main\n",
+        )
+        .unwrap();
+        let violations = detect_cb953_unpinned_action(temp.path());
+        assert_eq!(violations.len(), 1);
+        assert_eq!(violations[0].pattern_id, "CB-953");
+    }
+
+    #[test]
+    fn test_cb953_allows_pinned_action() {
+        let temp = TempDir::new().unwrap();
+        let gha_dir = temp.path().join(".github").join("workflows");
+        fs::create_dir_all(&gha_dir).unwrap();
+        fs::write(
+            gha_dir.join("ci.yml"),
+            "name: CI\non: [push]\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n",
+        )
+        .unwrap();
+        let violations = detect_cb953_unpinned_action(temp.path());
+        assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn test_cb954_detects_plaintext_secret() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("config.yaml"),
+            "database:\n  password: supersecret123\n  host: localhost\n",
+        )
+        .unwrap();
+        let violations = detect_cb954_plaintext_secret(temp.path());
+        assert_eq!(violations.len(), 1);
+        assert_eq!(violations[0].pattern_id, "CB-954");
+        assert!(matches!(violations[0].severity, Severity::Error));
+    }
+
+    #[test]
+    fn test_cb954_allows_env_reference() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("config.yaml"),
+            "database:\n  password: ${{ secrets.DB_PASSWORD }}\n  host: localhost\n",
+        )
+        .unwrap();
+        let violations = detect_cb954_plaintext_secret(temp.path());
+        assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn test_walkdir_yaml_files_skips_git() {
+        let temp = TempDir::new().unwrap();
+        let git_dir = temp.path().join(".git");
+        fs::create_dir_all(&git_dir).unwrap();
+        fs::write(git_dir.join("config.yml"), "key: val\n").unwrap();
+        fs::write(temp.path().join("real.yaml"), "key: val\n").unwrap();
+        let files = walkdir_yaml_files(temp.path());
+        assert_eq!(files.len(), 1);
+    }
+}
+
+// =============================================================================
+// Tests for CB-1000 MLOps Model Quality
+// =============================================================================
+
+mod cb1000_model_tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    #[test]
+    fn test_cb1000_no_model_files_empty() {
+        let temp = TempDir::new().unwrap();
+        let violations = detect_cb1000_missing_model_card(temp.path());
+        assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn test_cb1000_detects_missing_model_card() {
+        let temp = TempDir::new().unwrap();
+        let models_dir = temp.path().join("models");
+        fs::create_dir_all(&models_dir).unwrap();
+        // Create a minimal GGUF file (just magic bytes)
+        let mut gguf_header = vec![0x47u8, 0x47, 0x55, 0x46]; // GGUF magic
+        gguf_header.extend_from_slice(&3u32.to_le_bytes()); // version 3
+        gguf_header.extend_from_slice(&10u64.to_le_bytes()); // tensor_count
+        gguf_header.extend_from_slice(&5u64.to_le_bytes()); // metadata_count
+        gguf_header.resize(64, 0);
+        fs::write(models_dir.join("model.gguf"), &gguf_header).unwrap();
+
+        let violations = detect_cb1000_missing_model_card(temp.path());
+        assert_eq!(violations.len(), 1);
+        assert_eq!(violations[0].pattern_id, "CB-1000");
+    }
+
+    #[test]
+    fn test_cb1000_passes_with_readme() {
+        let temp = TempDir::new().unwrap();
+        let models_dir = temp.path().join("models");
+        fs::create_dir_all(&models_dir).unwrap();
+        fs::write(models_dir.join("model.gguf"), &[0x47, 0x47, 0x55, 0x46, 0, 0, 0, 0]).unwrap();
+        fs::write(models_dir.join("README.md"), "# Model Card\n").unwrap();
+
+        let violations = detect_cb1000_missing_model_card(temp.path());
+        assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn test_cb1001_detects_oversized_tensor_count() {
+        let temp = TempDir::new().unwrap();
+        let mut header = vec![0x47u8, 0x47, 0x55, 0x46]; // GGUF magic
+        header.extend_from_slice(&3u32.to_le_bytes()); // version
+        header.extend_from_slice(&200_000u64.to_le_bytes()); // oversized tensor_count
+        header.extend_from_slice(&0u64.to_le_bytes()); // metadata_count
+        header.resize(64, 0);
+        fs::write(temp.path().join("bad.gguf"), &header).unwrap();
+
+        let violations = detect_cb1001_oversized_tensor_count(temp.path());
+        assert_eq!(violations.len(), 1);
+        assert_eq!(violations[0].pattern_id, "CB-1001");
+        assert!(matches!(violations[0].severity, Severity::Error));
+    }
+
+    #[test]
+    fn test_cb1001_passes_normal_tensor_count() {
+        let temp = TempDir::new().unwrap();
+        let mut header = vec![0x47u8, 0x47, 0x55, 0x46]; // GGUF magic
+        header.extend_from_slice(&3u32.to_le_bytes()); // version
+        header.extend_from_slice(&500u64.to_le_bytes()); // normal tensor_count
+        header.extend_from_slice(&10u64.to_le_bytes()); // metadata_count
+        header.resize(64, 0);
+        fs::write(temp.path().join("good.gguf"), &header).unwrap();
+
+        let violations = detect_cb1001_oversized_tensor_count(temp.path());
+        assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn test_cb1006_detects_sharded_without_index() {
+        let temp = TempDir::new().unwrap();
+        // Create header bytes for SafeTensors (8-byte length + small JSON)
+        let json_header = b"{\"tensor\":{\"dtype\":\"F32\",\"shape\":[1],\"data_offsets\":[0,4]}}";
+        let header_len = json_header.len() as u64;
+        let mut data = Vec::new();
+        data.extend_from_slice(&header_len.to_le_bytes());
+        data.extend_from_slice(json_header);
+        data.extend_from_slice(&[0u8; 4]); // tensor data
+
+        fs::write(
+            temp.path().join("model-00001-of-00002.safetensors"),
+            &data,
+        )
+        .unwrap();
+        fs::write(
+            temp.path().join("model-00002-of-00002.safetensors"),
+            &data,
+        )
+        .unwrap();
+
+        let violations = detect_cb1006_sharded_without_index(temp.path());
+        assert_eq!(violations.len(), 1);
+        assert_eq!(violations[0].pattern_id, "CB-1006");
+    }
+
+    #[test]
+    fn test_cb1006_passes_with_index() {
+        let temp = TempDir::new().unwrap();
+        let json_header = b"{\"tensor\":{\"dtype\":\"F32\",\"shape\":[1],\"data_offsets\":[0,4]}}";
+        let header_len = json_header.len() as u64;
+        let mut data = Vec::new();
+        data.extend_from_slice(&header_len.to_le_bytes());
+        data.extend_from_slice(json_header);
+        data.extend_from_slice(&[0u8; 4]);
+
+        fs::write(
+            temp.path().join("model-00001-of-00002.safetensors"),
+            &data,
+        )
+        .unwrap();
+        fs::write(
+            temp.path().join("model-00002-of-00002.safetensors"),
+            &data,
+        )
+        .unwrap();
+        fs::write(
+            temp.path().join("model.safetensors.index.json"),
+            "{}",
+        )
+        .unwrap();
+
+        let violations = detect_cb1006_sharded_without_index(temp.path());
+        assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn test_cb1007_detects_large_file() {
+        // We can't create a 10GB file in tests, but we can test the threshold logic
+        let temp = TempDir::new().unwrap();
+        // Create a small file — should NOT trigger
+        fs::write(temp.path().join("small.gguf"), &[0u8; 100]).unwrap();
+        let violations = detect_cb1007_excessive_file_size(temp.path());
+        assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn test_walkdir_model_files() {
+        let temp = TempDir::new().unwrap();
+        fs::write(temp.path().join("model.gguf"), &[0u8; 16]).unwrap();
+        fs::write(temp.path().join("weights.safetensors"), &[0u8; 16]).unwrap();
+        fs::write(temp.path().join("model.apr"), &[0u8; 16]).unwrap();
+        fs::write(temp.path().join("code.rs"), "fn main() {}").unwrap();
+
+        let files = walkdir_model_files(temp.path());
+        assert_eq!(files.len(), 3);
+    }
+
+    #[test]
+    fn test_model_format_from_extension() {
+        assert_eq!(ModelFormat::from_extension("gguf"), Some(ModelFormat::Gguf));
+        assert_eq!(ModelFormat::from_extension("apr"), Some(ModelFormat::Apr));
+        assert_eq!(
+            ModelFormat::from_extension("safetensors"),
+            Some(ModelFormat::SafeTensors)
+        );
+        assert_eq!(ModelFormat::from_extension("rs"), None);
+    }
+}

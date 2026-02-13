@@ -41,6 +41,8 @@ pub enum Language {
     AssemblyScript = 14,
     WebAssembly = 15,
     Lua = 16,
+    Sql = 17,
+    Scala = 18,
 }
 
 /// Node flags for quick filtering and AST node categorization
