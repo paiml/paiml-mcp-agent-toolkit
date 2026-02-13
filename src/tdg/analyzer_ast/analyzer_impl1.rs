@@ -451,21 +451,27 @@ impl TdgAnalyzerAst {
         score.penalties_applied = tracker.get_attributions();
 
         // Known Defects v2.1: Detect critical defects for auto-fail
-        if language == Language::Rust {
-            if let Some(ref path) = score.file_path {
-                let detector = RustDefectDetector::new();
-                let defects = detector.detect(source, path);
+        if let Some(ref path) = score.file_path {
+            let defects = match language {
+                Language::Rust => {
+                    let detector = RustDefectDetector::new();
+                    detector.detect(source, path)
+                }
+                Language::Lua => {
+                    let detector = LuaDefectDetector::new();
+                    detector.detect(source, path)
+                }
+                _ => Vec::new(),
+            };
 
-                // Count critical defects
-                let critical_count: usize = defects
-                    .iter()
-                    .filter(|d| d.severity == DefectSeverity::Critical)
-                    .map(|d| d.instances.len())
-                    .sum();
+            let critical_count: usize = defects
+                .iter()
+                .filter(|d| d.severity == DefectSeverity::Critical)
+                .map(|d| d.instances.len())
+                .sum();
 
-                score.critical_defects_count = critical_count;
-                score.has_critical_defects = critical_count > 0;
-            }
+            score.critical_defects_count = critical_count;
+            score.has_critical_defects = critical_count > 0;
         }
 
         score.calculate_total();
