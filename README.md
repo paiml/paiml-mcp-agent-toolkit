@@ -123,7 +123,7 @@ pmat mutate --target src/ --threshold 85  # Quality gate
 pmat mutate --failures-only            # CI optimization
 ```
 
-**Supported Languages:** Rust, Python, TypeScript, JavaScript, Go, C++
+**Supported Languages:** Rust, Python, TypeScript, JavaScript, Go, C++, Lua, Java, Kotlin, Ruby, Swift, C, SQL, Scala, YAML, Markdown + MLOps model formats (GGUF, SafeTensors, APR)
 
 ### Repository Health Scoring
 
@@ -239,7 +239,7 @@ pmat/
 | Tests | 20,700+ passing |
 | Coverage | 99.66% |
 | Mutation Score | >80% |
-| Languages | 18+ supported |
+| Languages | 22+ supported (incl. SQL, Scala, YAML, Markdown, MLOps models) |
 | MCP Tools | 19 available |
 
 ### Falsifiable Quality Commitments
@@ -255,7 +255,7 @@ Per [Popper's demarcation criterion](https://en.wikipedia.org/wiki/Demarcation_p
 | **Build Time** | < 3 minutes incremental | `cargo build --timings` |
 | **CI Pipeline** | < 15 minutes total | GitHub Actions workflow timing |
 | **Binary Size** | < 50 MB release binary | `ls -lh target/release/pmat` |
-| **Language Parsers** | All 18 languages parse without panic | Fuzz testing in CI |
+| **Language Parsers** | All 22+ languages parse without panic | Fuzz testing in CI |
 
 **How to Verify:**
 
