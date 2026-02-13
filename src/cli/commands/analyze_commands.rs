@@ -1437,4 +1437,20 @@ pub enum AnalyzeCommands {
         #[arg(long, value_enum, default_value = "table")]
         format: OutputFormat,
     },
+
+    /// Analyze ML model files (GGUF, APR, SafeTensors)
+    #[command(visible_aliases = &["model", "mlops"])]
+    Models {
+        /// Path to scan for model files
+        #[arg(long, default_value = ".")]
+        path: std::path::PathBuf,
+
+        /// Output format (table, json)
+        #[arg(long, value_enum, default_value = "table")]
+        format: OutputFormat,
+
+        /// Run compliance checks on model files
+        #[arg(long)]
+        check: bool,
+    },
 }

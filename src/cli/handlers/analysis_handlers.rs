@@ -187,6 +187,9 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
         AnalyzeCommands::Cluster { .. } | AnalyzeCommands::Topics { .. } => {
             route_semantic_analysis(cmd).await
         }
+
+        // MLOps model analysis (PMAT-500)
+        AnalyzeCommands::Models { .. } => route_model_analysis(cmd).await,
     }
 }
 
@@ -1692,6 +1695,166 @@ async fn route_semantic_analysis(cmd: AnalyzeCommands) -> Result<()> {
         }
         _ => unreachable!("Expected semantic analysis command"),
     }
+}
+
+/// Route MLOps model analysis (PMAT-500)
+async fn route_model_analysis(cmd: AnalyzeCommands) -> Result<()> {
+    use cli::AnalyzeCommands;
+
+    if let AnalyzeCommands::Models { path, format, check } = cmd {
+        let project_path = std::fs::canonicalize(&path)
+            .unwrap_or_else(|_| path.clone());
+
+        let model_files = super::comply_cb_detect::walkdir_model_files(&project_path);
+
+        if model_files.is_empty() {
+            println!("No model files found (*.gguf, *.apr, *.safetensors) in {}", project_path.display());
+            return Ok(());
+        }
+
+        // Collect metadata for each model file
+        let mut entries: Vec<ModelInventoryEntry> = Vec::new();
+        let mut total_size: u64 = 0;
+
+        for file_path in &model_files {
+            let file_size = std::fs::metadata(file_path)
+                .map(|m| m.len())
+                .unwrap_or(0);
+            total_size += file_size;
+
+            let ext = file_path.extension().and_then(|e| e.to_str()).unwrap_or("");
+            let format_name = super::comply_cb_detect::ModelFormat::from_extension(ext)
+                .map(|f| f.name())
+                .unwrap_or("Unknown");
+
+            let rel = file_path
+                .strip_prefix(&project_path)
+                .unwrap_or(file_path)
+                .display()
+                .to_string();
+
+            entries.push(ModelInventoryEntry {
+                file: rel,
+                format: format_name.to_string(),
+                size_bytes: file_size,
+            });
+        }
+
+        match format {
+            cli::OutputFormat::Json => {
+                print_model_inventory_json(&entries, total_size)?;
+            }
+            _ => {
+                print_model_inventory_table(&entries, total_size);
+            }
+        }
+
+        // Optionally run compliance checks
+        if check {
+            println!();
+            let violations = collect_model_violations(&project_path);
+            if violations.is_empty() {
+                println!("✅ All model files pass quality checks");
+            } else {
+                for v in &violations {
+                    let icon = match v.severity {
+                        super::comply_cb_detect::Severity::Error => "❌",
+                        super::comply_cb_detect::Severity::Warning => "⚠️",
+                        _ => "ℹ️",
+                    };
+                    println!("{} {}: {} ({})", icon, v.pattern_id, v.description, v.file);
+                }
+            }
+        }
+
+        Ok(())
+    } else {
+        unreachable!("Expected Models command")
+    }
+}
+
+struct ModelInventoryEntry {
+    file: String,
+    format: String,
+    size_bytes: u64,
+}
+
+fn format_size(bytes: u64) -> String {
+    if bytes >= 1_073_741_824 {
+        format!("{:.1} GB", bytes as f64 / 1_073_741_824.0)
+    } else if bytes >= 1_048_576 {
+        format!("{:.1} MB", bytes as f64 / 1_048_576.0)
+    } else if bytes >= 1024 {
+        format!("{:.1} KB", bytes as f64 / 1024.0)
+    } else {
+        format!("{} B", bytes)
+    }
+}
+
+fn print_model_inventory_table(entries: &[ModelInventoryEntry], total_size: u64) {
+    println!(
+        "Model Inventory ({} files, {} total)",
+        entries.len(),
+        format_size(total_size)
+    );
+    println!("{}", "─".repeat(72));
+    println!(
+        "{:<40} {:<12} {:>12}",
+        "File", "Format", "Size"
+    );
+    println!("{}", "─".repeat(72));
+    for entry in entries {
+        println!(
+            "{:<40} {:<12} {:>12}",
+            if entry.file.len() > 38 {
+                format!("...{}", &entry.file[entry.file.len() - 35..])
+            } else {
+                entry.file.clone()
+            },
+            entry.format,
+            format_size(entry.size_bytes)
+        );
+    }
+    println!("{}", "─".repeat(72));
+}
+
+fn print_model_inventory_json(entries: &[ModelInventoryEntry], total_size: u64) -> Result<()> {
+    let json_entries: Vec<serde_json::Value> = entries
+        .iter()
+        .map(|e| {
+            serde_json::json!({
+                "file": e.file,
+                "format": e.format,
+                "size_bytes": e.size_bytes,
+                "size_human": format_size(e.size_bytes),
+            })
+        })
+        .collect();
+
+    let output = serde_json::json!({
+        "model_count": entries.len(),
+        "total_size_bytes": total_size,
+        "total_size_human": format_size(total_size),
+        "models": json_entries,
+    });
+
+    println!("{}", serde_json::to_string_pretty(&output)?);
+    Ok(())
+}
+
+fn collect_model_violations(
+    project_path: &std::path::Path,
+) -> Vec<super::comply_cb_detect::CbPatternViolation> {
+    let mut all = Vec::new();
+    all.extend(super::comply_cb_detect::detect_cb1000_missing_model_card(project_path));
+    all.extend(super::comply_cb_detect::detect_cb1001_oversized_tensor_count(project_path));
+    all.extend(super::comply_cb_detect::detect_cb1002_missing_tokenizer(project_path));
+    all.extend(super::comply_cb_detect::detect_cb1004_missing_architecture(project_path));
+    all.extend(super::comply_cb_detect::detect_cb1005_quantization_mismatch(project_path));
+    all.extend(super::comply_cb_detect::detect_cb1006_sharded_without_index(project_path));
+    all.extend(super::comply_cb_detect::detect_cb1007_excessive_file_size(project_path));
+    all.extend(super::comply_cb_detect::detect_cb1008_apr_missing_crc(project_path));
+    all
 }
 
 // Tests re-unified via Operation Logical Atomism
