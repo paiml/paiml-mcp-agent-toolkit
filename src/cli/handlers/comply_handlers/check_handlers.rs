@@ -1899,7 +1899,7 @@ pub(crate) fn check_sql_best_practices(project_path: &Path) -> ComplianceCheck {
     let sql_files = super::comply_cb_detect::walkdir_sql_files(project_path);
     if sql_files.is_empty() {
         return ComplianceCheck {
-            name: "CB-700: SQL Best Practices (CB-700 to CB-704)".to_string(),
+            name: "CB-700: SQL Best Practices (CB-700 to CB-705)".to_string(),
             status: CheckStatus::Pass,
             message: "Not a SQL project (no .sql files found)".to_string(),
             severity: Severity::Info,
@@ -1917,6 +1917,7 @@ pub(crate) fn check_sql_best_practices(project_path: &Path) -> ComplianceCheck {
         ("CB-702", super::comply_cb_detect::detect_cb702_implicit_join(project_path)),
         ("CB-703", super::comply_cb_detect::detect_cb703_sql_injection(project_path)),
         ("CB-704", super::comply_cb_detect::detect_cb704_missing_index_hint(project_path)),
+        ("CB-705", super::comply_cb_detect::detect_cb705_n_plus_1_query(project_path)),
     ];
 
     for (_id, violations) in &detectors {
@@ -1944,7 +1945,7 @@ pub(crate) fn check_sql_best_practices(project_path: &Path) -> ComplianceCheck {
         };
 
         ComplianceCheck {
-            name: "CB-700: SQL Best Practices (CB-700 to CB-704)".to_string(),
+            name: "CB-700: SQL Best Practices (CB-700 to CB-705)".to_string(),
             status: if error_count > 0 {
                 CheckStatus::Fail
             } else {
@@ -1959,7 +1960,7 @@ pub(crate) fn check_sql_best_practices(project_path: &Path) -> ComplianceCheck {
         }
     } else {
         ComplianceCheck {
-            name: "CB-700: SQL Best Practices (CB-700 to CB-704)".to_string(),
+            name: "CB-700: SQL Best Practices (CB-700 to CB-705)".to_string(),
             status: CheckStatus::Pass,
             message: "No SQL best practice violations detected".to_string(),
             severity: Severity::Info,
@@ -1971,7 +1972,7 @@ pub(crate) fn check_markdown_best_practices(project_path: &Path) -> ComplianceCh
     let md_files = super::comply_cb_detect::walkdir_markdown_files(project_path);
     if md_files.is_empty() {
         return ComplianceCheck {
-            name: "CB-900: Markdown Best Practices (CB-900 to CB-903)".to_string(),
+            name: "CB-900: Markdown Best Practices (CB-900 to CB-904)".to_string(),
             status: CheckStatus::Pass,
             message: "No Markdown files found".to_string(),
             severity: Severity::Info,
@@ -1988,6 +1989,7 @@ pub(crate) fn check_markdown_best_practices(project_path: &Path) -> ComplianceCh
         ("CB-901", super::comply_cb_detect::detect_cb901_heading_hierarchy_skip(project_path)),
         ("CB-902", super::comply_cb_detect::detect_cb902_missing_alt_text(project_path)),
         ("CB-903", super::comply_cb_detect::detect_cb903_bare_url(project_path)),
+        ("CB-904", super::comply_cb_detect::detect_cb904_long_line(project_path)),
     ];
 
     for (_id, violations) in &detectors {
@@ -2015,7 +2017,7 @@ pub(crate) fn check_markdown_best_practices(project_path: &Path) -> ComplianceCh
         };
 
         ComplianceCheck {
-            name: "CB-900: Markdown Best Practices (CB-900 to CB-903)".to_string(),
+            name: "CB-900: Markdown Best Practices (CB-900 to CB-904)".to_string(),
             status: CheckStatus::Warn,
             message: format!(
                 "[Advisory] {} errors, {} warnings, {} info:\n{}",
@@ -2026,7 +2028,7 @@ pub(crate) fn check_markdown_best_practices(project_path: &Path) -> ComplianceCh
         }
     } else {
         ComplianceCheck {
-            name: "CB-900: Markdown Best Practices (CB-900 to CB-903)".to_string(),
+            name: "CB-900: Markdown Best Practices (CB-900 to CB-904)".to_string(),
             status: CheckStatus::Pass,
             message: "No Markdown best practice violations detected".to_string(),
             severity: Severity::Info,
@@ -2126,6 +2128,8 @@ pub(crate) fn check_model_quality(project_path: &Path) -> ComplianceCheck {
         ("CB-1000", super::comply_cb_detect::detect_cb1000_missing_model_card(project_path)),
         ("CB-1001", super::comply_cb_detect::detect_cb1001_oversized_tensor_count(project_path)),
         ("CB-1002", super::comply_cb_detect::detect_cb1002_missing_tokenizer(project_path)),
+        ("CB-1004", super::comply_cb_detect::detect_cb1004_missing_architecture(project_path)),
+        ("CB-1005", super::comply_cb_detect::detect_cb1005_quantization_mismatch(project_path)),
         ("CB-1006", super::comply_cb_detect::detect_cb1006_sharded_without_index(project_path)),
         ("CB-1007", super::comply_cb_detect::detect_cb1007_excessive_file_size(project_path)),
         ("CB-1008", super::comply_cb_detect::detect_cb1008_apr_missing_crc(project_path)),

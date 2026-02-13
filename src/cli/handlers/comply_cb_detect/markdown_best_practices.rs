@@ -292,3 +292,65 @@ pub fn detect_cb903_bare_url(project_path: &Path) -> Vec<CbPatternViolation> {
 
     violations
 }
+
+// =============================================================================
+// CB-904: Long Line
+// =============================================================================
+
+/// Default line length threshold for markdown files.
+const MD_LINE_LENGTH_THRESHOLD: usize = 120;
+
+pub fn detect_cb904_long_line(project_path: &Path) -> Vec<CbPatternViolation> {
+    let files = walkdir_markdown_files(project_path);
+    let mut violations = Vec::new();
+
+    for file_path in &files {
+        let content = match fs::read_to_string(file_path) {
+            Ok(c) => c,
+            Err(_) => continue,
+        };
+        let rel = file_path
+            .strip_prefix(project_path)
+            .unwrap_or(file_path)
+            .display()
+            .to_string();
+
+        let mut in_code_block = false;
+
+        for (i, line) in content.lines().enumerate() {
+            let trimmed = line.trim();
+            if trimmed.starts_with("```") {
+                in_code_block = !in_code_block;
+                continue;
+            }
+            // Skip code blocks (long lines are expected in code examples)
+            if in_code_block {
+                continue;
+            }
+            // Skip tables (lines with pipes)
+            if trimmed.starts_with('|') {
+                continue;
+            }
+            // Skip lines that are mostly URLs
+            if trimmed.contains("http://") || trimmed.contains("https://") {
+                continue;
+            }
+
+            if line.len() > MD_LINE_LENGTH_THRESHOLD {
+                violations.push(CbPatternViolation {
+                    pattern_id: "CB-904".to_string(),
+                    file: rel.clone(),
+                    line: i + 1,
+                    description: format!(
+                        "Line length {} exceeds {} characters",
+                        line.len(),
+                        MD_LINE_LENGTH_THRESHOLD
+                    ),
+                    severity: Severity::Info,
+                });
+            }
+        }
+    }
+
+    violations
+}

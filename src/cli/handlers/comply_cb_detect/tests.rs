@@ -1458,6 +1458,31 @@ mod cb700_sql_tests {
         let files = walkdir_sql_files(temp.path());
         assert_eq!(files.len(), 1);
     }
+
+    #[test]
+    fn test_cb705_detects_n_plus_1_query() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("app.py"),
+            "users = db.query('SELECT * FROM users')\nfor user in users:\n    cursor.execute('SELECT * FROM orders WHERE user_id=' + str(user.id))\n",
+        )
+        .unwrap();
+        let violations = detect_cb705_n_plus_1_query(temp.path());
+        assert_eq!(violations.len(), 1);
+        assert_eq!(violations[0].pattern_id, "CB-705");
+    }
+
+    #[test]
+    fn test_cb705_no_false_positive_outside_loop() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("app.py"),
+            "result = cursor.execute('SELECT * FROM users WHERE id = 1')\n",
+        )
+        .unwrap();
+        let violations = detect_cb705_n_plus_1_query(temp.path());
+        assert_eq!(violations.len(), 0);
+    }
 }
 
 // =============================================================================
@@ -1587,6 +1612,46 @@ mod cb900_markdown_tests {
         .unwrap();
         let violations = detect_cb903_bare_url(temp.path());
         assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn test_cb904_detects_long_line() {
+        let temp = TempDir::new().unwrap();
+        let long_line = "x".repeat(150);
+        fs::write(
+            temp.path().join("doc.md"),
+            format!("# Title\n\n{}\n", long_line),
+        )
+        .unwrap();
+        let violations = detect_cb904_long_line(temp.path());
+        assert_eq!(violations.len(), 1);
+        assert_eq!(violations[0].pattern_id, "CB-904");
+    }
+
+    #[test]
+    fn test_cb904_allows_code_blocks() {
+        let temp = TempDir::new().unwrap();
+        let long_line = "x".repeat(150);
+        fs::write(
+            temp.path().join("doc.md"),
+            format!("# Title\n\n```\n{}\n```\n", long_line),
+        )
+        .unwrap();
+        let violations = detect_cb904_long_line(temp.path());
+        assert_eq!(violations.len(), 0);
+    }
+
+    #[test]
+    fn test_cb904_allows_tables() {
+        let temp = TempDir::new().unwrap();
+        let long_table = format!("| {} | {} |", "cell".repeat(30), "data".repeat(30));
+        fs::write(
+            temp.path().join("doc.md"),
+            format!("# Title\n\n{}\n", long_table),
+        )
+        .unwrap();
+        let violations = detect_cb904_long_line(temp.path());
+        assert_eq!(violations.len(), 0);
     }
 }
 
@@ -1915,6 +1980,54 @@ mod cb1000_model_tests {
             Some(ModelFormat::SafeTensors)
         );
         assert_eq!(ModelFormat::from_extension("rs"), None);
+    }
+
+    #[test]
+    fn test_cb1004_detects_missing_architecture() {
+        let temp = TempDir::new().unwrap();
+        // Create GGUF file without "general.architecture" key
+        let mut header = vec![0x47u8, 0x47, 0x55, 0x46]; // GGUF magic
+        header.extend_from_slice(&3u32.to_le_bytes()); // version
+        header.extend_from_slice(&10u64.to_le_bytes()); // tensor_count
+        header.extend_from_slice(&0u64.to_le_bytes()); // metadata_count
+        header.resize(200, 0); // Pad to be > 100 bytes
+        fs::write(temp.path().join("model.gguf"), &header).unwrap();
+
+        let violations = detect_cb1004_missing_architecture(temp.path());
+        assert_eq!(violations.len(), 1);
+        assert_eq!(violations[0].pattern_id, "CB-1004");
+    }
+
+    #[test]
+    fn test_cb1004_passes_with_architecture() {
+        let temp = TempDir::new().unwrap();
+        let mut header = vec![0x47u8, 0x47, 0x55, 0x46]; // GGUF magic
+        header.extend_from_slice(&3u32.to_le_bytes());
+        header.extend_from_slice(&10u64.to_le_bytes());
+        header.extend_from_slice(&1u64.to_le_bytes()); // 1 metadata entry
+        // Add "general.architecture" as a key string
+        header.extend_from_slice(b"general.architecture");
+        header.resize(200, 0);
+        fs::write(temp.path().join("model.gguf"), &header).unwrap();
+
+        let violations = detect_cb1004_missing_architecture(temp.path());
+        assert_eq!(violations.len(), 0);
+    }
+
+    #[test]
+    fn test_cb1005_detects_size_mismatch() {
+        let temp = TempDir::new().unwrap();
+        // Create tiny GGUF file claiming F32
+        let mut header = vec![0x47u8, 0x47, 0x55, 0x46];
+        header.extend_from_slice(&3u32.to_le_bytes());
+        header.extend_from_slice(&10u64.to_le_bytes());
+        header.extend_from_slice(&0u64.to_le_bytes());
+        // File is only ~32 bytes but claims f32
+        fs::write(temp.path().join("model-f32.gguf"), &header).unwrap();
+
+        let violations = detect_cb1005_quantization_mismatch(temp.path());
+        assert_eq!(violations.len(), 1);
+        assert_eq!(violations[0].pattern_id, "CB-1005");
     }
 }
 

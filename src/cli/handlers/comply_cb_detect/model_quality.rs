@@ -505,6 +505,122 @@ pub fn detect_cb1007_excessive_file_size(project_path: &Path) -> Vec<CbPatternVi
 // CB-1008: APR Missing CRC
 // =============================================================================
 
+// =============================================================================
+// CB-1004: Missing Architecture (GGUF)
+// =============================================================================
+
+pub fn detect_cb1004_missing_architecture(project_path: &Path) -> Vec<CbPatternViolation> {
+    let model_files = walkdir_model_files(project_path);
+    let mut violations = Vec::new();
+
+    for file_path in &model_files {
+        if file_path.extension().and_then(|e| e.to_str()) != Some("gguf") {
+            continue;
+        }
+
+        // Read enough header to check for architecture KV
+        let content = match fs::read(file_path) {
+            Ok(c) => c,
+            Err(_) => continue,
+        };
+
+        // GGUF files should contain "general.architecture" key in metadata
+        // Simple byte scan — GGUF metadata keys are stored as strings
+        let needle = b"general.architecture";
+        let has_arch = content
+            .windows(needle.len())
+            .any(|w| w == needle);
+
+        if !has_arch && content.len() > 100 {
+            let rel = file_path
+                .strip_prefix(project_path)
+                .unwrap_or(file_path)
+                .display()
+                .to_string();
+
+            violations.push(CbPatternViolation {
+                pattern_id: "CB-1004".to_string(),
+                file: rel,
+                line: 0,
+                description:
+                    "GGUF file missing `general.architecture` metadata key (BUG-EXPORT-004)"
+                        .to_string(),
+                severity: Severity::Warning,
+            });
+        }
+    }
+
+    violations
+}
+
+// =============================================================================
+// CB-1005: Quantization Mismatch
+// =============================================================================
+
+/// Common quantization names that appear in filenames.
+const QUANT_NAMES: &[&str] = &[
+    "q2_k", "q3_k", "q4_k", "q4_0", "q4_1", "q5_k", "q5_0", "q5_1",
+    "q6_k", "q8_0", "q8_1", "f16", "f32", "bf16",
+    "q4_k_m", "q4_k_s", "q5_k_m", "q5_k_s", "q3_k_m", "q3_k_s", "q3_k_l",
+    "q6_k_l", "q2_k_s", "iq4_xs", "iq4_nl",
+];
+
+pub fn detect_cb1005_quantization_mismatch(project_path: &Path) -> Vec<CbPatternViolation> {
+    let model_files = walkdir_model_files(project_path);
+    let mut violations = Vec::new();
+
+    for file_path in &model_files {
+        if file_path.extension().and_then(|e| e.to_str()) != Some("gguf") {
+            continue;
+        }
+
+        let filename = file_path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("")
+            .to_lowercase();
+
+        // Check if filename claims a quantization type
+        let claimed_quant = QUANT_NAMES
+            .iter()
+            .find(|q| filename.contains(*q));
+
+        if let Some(quant) = claimed_quant {
+            // For F32 claims, check file size ratio
+            // F32 models are ~4x larger than Q4 models
+            if *quant == "f32" {
+                let file_size = fs::metadata(file_path).map(|m| m.len()).unwrap_or(0);
+                // A small F32 GGUF (< 100KB) with "f32" in name is suspicious
+                if file_size < 100_000 && file_size > 0 {
+                    let rel = file_path
+                        .strip_prefix(project_path)
+                        .unwrap_or(file_path)
+                        .display()
+                        .to_string();
+
+                    violations.push(CbPatternViolation {
+                        pattern_id: "CB-1005".to_string(),
+                        file: rel,
+                        line: 0,
+                        description: format!(
+                            "Filename claims {} quantization but file is suspiciously small ({} bytes) (BUG-1)",
+                            quant.to_uppercase(),
+                            file_size
+                        ),
+                        severity: Severity::Warning,
+                    });
+                }
+            }
+        }
+    }
+
+    violations
+}
+
+// =============================================================================
+// CB-1008: APR Missing CRC
+// =============================================================================
+
 pub fn detect_cb1008_apr_missing_crc(project_path: &Path) -> Vec<CbPatternViolation> {
     let model_files = walkdir_model_files(project_path);
     let mut violations = Vec::new();

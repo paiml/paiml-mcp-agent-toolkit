@@ -429,3 +429,97 @@ pub fn detect_cb704_missing_index_hint(project_path: &Path) -> Vec<CbPatternViol
 
     violations
 }
+
+// =============================================================================
+// CB-705: N+1 Query Pattern
+// =============================================================================
+
+/// Detect SQL queries embedded inside loops in co-located code files.
+/// Looks for patterns like `for row in results: cursor.execute("SELECT ...")`.
+pub fn detect_cb705_n_plus_1_query(project_path: &Path) -> Vec<CbPatternViolation> {
+    let code_extensions = ["py", "rb", "php", "java", "js", "ts"];
+    let mut code_files: Vec<PathBuf> = Vec::new();
+    collect_code_files(project_path, &code_extensions, &mut code_files);
+
+    let mut violations = Vec::new();
+
+    for file_path in &code_files {
+        if is_test_context(file_path) {
+            continue;
+        }
+        let content = match fs::read_to_string(file_path) {
+            Ok(c) => c,
+            Err(_) => continue,
+        };
+        let rel = file_path
+            .strip_prefix(project_path)
+            .unwrap_or(file_path)
+            .display()
+            .to_string();
+
+        detect_n_plus_1_in_content(&content, &rel, &mut violations);
+    }
+
+    violations
+}
+
+fn detect_n_plus_1_in_content(
+    content: &str,
+    rel: &str,
+    violations: &mut Vec<CbPatternViolation>,
+) {
+    let mut in_loop = false;
+    let mut loop_depth: i32 = 0;
+
+    for (i, line) in content.lines().enumerate() {
+        let trimmed = line.trim().to_lowercase();
+
+        // Detect loop starts
+        if trimmed.starts_with("for ")
+            || trimmed.starts_with("while ")
+            || trimmed.starts_with("foreach")
+            || trimmed.contains(".foreach")
+            || trimmed.contains(".map(")
+            || trimmed.contains(".each ")
+        {
+            in_loop = true;
+            loop_depth += 1;
+        }
+
+        // Track braces for loop scope
+        for c in trimmed.chars() {
+            if c == '}' && in_loop {
+                loop_depth -= 1;
+                if loop_depth <= 0 {
+                    in_loop = false;
+                    loop_depth = 0;
+                }
+            }
+        }
+
+        // Check for SQL execution inside loop
+        if in_loop {
+            let has_sql_exec = trimmed.contains("execute(")
+                || trimmed.contains(".query(")
+                || trimmed.contains(".raw(")
+                || trimmed.contains("cursor.execute")
+                || trimmed.contains("db.query")
+                || trimmed.contains("connection.execute");
+
+            let has_sql_keyword = trimmed.contains("select ")
+                || trimmed.contains("insert ")
+                || trimmed.contains("update ")
+                || trimmed.contains("delete ");
+
+            if has_sql_exec && has_sql_keyword {
+                violations.push(CbPatternViolation {
+                    pattern_id: "CB-705".to_string(),
+                    file: rel.to_string(),
+                    line: i + 1,
+                    description: "N+1 query pattern — SQL execution inside loop".to_string(),
+                    severity: Severity::Info,
+                });
+            }
+        }
+    }
+}
