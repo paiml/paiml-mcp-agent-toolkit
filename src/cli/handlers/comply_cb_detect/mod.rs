@@ -14,6 +14,7 @@ mod sql_best_practices;
 mod yaml_best_practices;
 mod markdown_best_practices;
 mod model_quality;
+mod scala_best_practices;
 
 pub use types::*;
 pub use safety_checks::*;
@@ -25,6 +26,7 @@ pub use sql_best_practices::*;
 pub use yaml_best_practices::*;
 pub use markdown_best_practices::*;
 pub use model_quality::*;
+pub use scala_best_practices::*;
 
 #[cfg(test)]
 mod tests;

@@ -293,6 +293,8 @@ async fn handle_check(
         filter_check_by_config(check_lua_best_practices(project_path), "cb-600", comply_config),
         // CB-700: SQL Best Practices (PMAT-500)
         filter_check_by_config(check_sql_best_practices(project_path), "cb-700", comply_config),
+        // CB-800: Scala Best Practices (PMAT-500)
+        filter_check_by_config(check_scala_best_practices(project_path), "cb-800", comply_config),
         // CB-900: Markdown Best Practices (PMAT-500)
         filter_check_by_config(check_markdown_best_practices(project_path), "cb-900", comply_config),
         // CB-950: YAML Best Practices (PMAT-500)
@@ -2175,6 +2177,79 @@ pub(crate) fn check_model_quality(project_path: &Path) -> ComplianceCheck {
                 "All {} model file(s) pass quality checks",
                 model_files.len()
             ),
+            severity: Severity::Info,
+        }
+    }
+}
+
+pub(crate) fn check_scala_best_practices(project_path: &Path) -> ComplianceCheck {
+    let scala_files = super::comply_cb_detect::walkdir_scala_files(project_path);
+    if scala_files.is_empty() {
+        return ComplianceCheck {
+            name: "CB-800: Scala Best Practices (CB-800 to CB-805)".to_string(),
+            status: CheckStatus::Pass,
+            message: "Not a Scala project (no .scala files found)".to_string(),
+            severity: Severity::Info,
+        };
+    }
+
+    let mut all_issues: Vec<String> = Vec::new();
+    let mut error_count = 0;
+    let mut warning_count = 0;
+    let mut info_count = 0;
+
+    let detectors: Vec<(&str, Vec<CbPatternViolation>)> = vec![
+        ("CB-800", super::comply_cb_detect::detect_cb800_mutable_collection(project_path)),
+        ("CB-801", super::comply_cb_detect::detect_cb801_null_usage(project_path)),
+        ("CB-802", super::comply_cb_detect::detect_cb802_wildcard_import(project_path)),
+        ("CB-803", super::comply_cb_detect::detect_cb803_return_statement(project_path)),
+        ("CB-804", super::comply_cb_detect::detect_cb804_var_declaration(project_path)),
+        ("CB-805", super::comply_cb_detect::detect_cb805_blocking_in_future(project_path)),
+    ];
+
+    for (_id, violations) in &detectors {
+        for v in violations {
+            all_issues.push(format!(
+                "{}: {} ({}:{})",
+                v.pattern_id, v.description, v.file, v.line
+            ));
+            match v.severity {
+                super::comply_cb_detect::Severity::Error => error_count += 1,
+                super::comply_cb_detect::Severity::Warning => warning_count += 1,
+                _ => info_count += 1,
+            }
+        }
+    }
+
+    let total = error_count + warning_count + info_count;
+    if total > 0 {
+        let display_issues = if all_issues.len() > 20 {
+            let mut truncated: Vec<String> = all_issues.iter().take(20).cloned().collect();
+            truncated.push(format!("    ... and {} more", all_issues.len() - 20));
+            truncated
+        } else {
+            all_issues.clone()
+        };
+
+        ComplianceCheck {
+            name: "CB-800: Scala Best Practices (CB-800 to CB-805)".to_string(),
+            status: if error_count > 0 {
+                CheckStatus::Fail
+            } else {
+                CheckStatus::Warn
+            },
+            message: format!(
+                "[Advisory] {} errors, {} warnings, {} info:\n{}",
+                error_count, warning_count, info_count,
+                display_issues.join("\n"),
+            ),
+            severity: Severity::Warning,
+        }
+    } else {
+        ComplianceCheck {
+            name: "CB-800: Scala Best Practices (CB-800 to CB-805)".to_string(),
+            status: CheckStatus::Pass,
+            message: "No Scala best practice violations detected".to_string(),
             severity: Severity::Info,
         }
     }
