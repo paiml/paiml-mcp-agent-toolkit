@@ -767,6 +767,8 @@ impl TdgAnalyzerAst {
                 );
 
                 score.consistency_score = self.score_consistency_lua(source, tracker);
+
+                score.entropy_score = self.score_entropy_analysis(source, Language::Lua, tracker);
             } else {
                 self.analyze_heuristic(source, score, tracker)?;
             }
