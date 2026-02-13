@@ -899,6 +899,55 @@ mod cb600_lua_tests {
         assert!(violations.is_empty());
     }
 
+    #[test]
+    fn test_cb601_string_key_with_dots_not_false_positive() {
+        // ["H.N.S.W."] and ["C.I.C.D."] are string-literal table keys,
+        // not deep field access chains
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("app.lua"),
+            concat!(
+                "local corrections = {}\n",
+                "corrections[\"H.N.S.W.\"] = \"HNSW\"\n",
+                "corrections[\"C.I.C.D.\"] = \"CICD\"\n",
+                "corrections['R.A.G.'] = \"RAG\"\n",
+            ),
+        )
+        .unwrap();
+        let violations = detect_cb601_nil_unsafe_access(temp.path());
+        assert!(
+            violations.is_empty(),
+            "Dots inside string-literal table keys should not be flagged: {:?}",
+            violations
+        );
+    }
+
+    #[test]
+    fn test_cb601_real_deep_chain_still_detected() {
+        // Ensure real deep chains are still caught after the string fix
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("app.lua"),
+            "local x = a.b.c.d\n",
+        )
+        .unwrap();
+        let violations = detect_cb601_nil_unsafe_access(temp.path());
+        assert_eq!(violations.len(), 1);
+        assert!(violations[0].description.contains("deep field"));
+    }
+
+    #[test]
+    fn test_count_consecutive_field_access_skips_strings() {
+        // Dots inside strings don't count
+        assert!(count_consecutive_field_access("tbl[\"H.N.S.W.\"] = 1") < 4);
+        assert!(count_consecutive_field_access("x['a.b.c.d.e'] = 1") < 4);
+        // Real chains still count
+        assert_eq!(count_consecutive_field_access("a.b.c.d"), 4);
+        assert_eq!(count_consecutive_field_access("a.b.c"), 3);
+        // Mixed: bracket access counts as 1 level but its contents don't add depth
+        assert!(count_consecutive_field_access("tbl[\"key\"].field") < 4);
+    }
+
     // =========================================================================
     // CB-602: pcall Error Handling
     // =========================================================================

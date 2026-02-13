@@ -164,28 +164,79 @@ fn skip_identifier(bytes: &[u8], mut i: usize) -> usize {
 }
 
 /// Count consecutive field accesses in a line (e.g., `a.b.c.d` = 4 segments).
-fn count_consecutive_field_access(line: &str) -> usize {
+/// Skips over string literals and bracket expressions to avoid false positives
+/// on patterns like `tbl["H.N.S.W."]` where dots are inside strings.
+pub(crate) fn count_consecutive_field_access(line: &str) -> usize {
     let mut max_depth = 0;
     let bytes = line.as_bytes();
     let mut i = 0;
     while i < bytes.len() {
-        if !is_ident_start(bytes[i]) {
-            i += 1;
-            continue;
-        }
-        let mut depth = 1;
-        i = skip_identifier(bytes, i);
-        while i < bytes.len() && bytes[i] == b'.' {
-            i += 1;
-            if i >= bytes.len() || !is_ident_start(bytes[i]) {
-                break;
+        match bytes[i] {
+            b'"' | b'\'' => { i = skip_lua_string(bytes, i); }
+            b'[' => { i = skip_bracket_expr(bytes, i); }
+            b if is_ident_start(b) => {
+                let (depth, new_i) = measure_access_chain(bytes, i);
+                i = new_i;
+                max_depth = max_depth.max(depth);
             }
-            depth += 1;
-            i = skip_identifier(bytes, i);
+            _ => { i += 1; }
         }
-        max_depth = max_depth.max(depth);
     }
     max_depth
+}
+
+/// Measure one access chain starting at an identifier. Returns (depth, new_position).
+fn measure_access_chain(bytes: &[u8], start: usize) -> (usize, usize) {
+    let mut depth = 1;
+    let mut i = skip_identifier(bytes, start);
+    while i < bytes.len() {
+        if bytes[i] == b'[' {
+            depth += 1;
+            i = skip_bracket_expr(bytes, i);
+        } else if bytes[i] == b'.' && i + 1 < bytes.len() && is_ident_start(bytes[i + 1]) {
+            depth += 1;
+            i = skip_identifier(bytes, i + 1);
+        } else {
+            break;
+        }
+    }
+    (depth, i)
+}
+
+/// Skip past a quoted string (single or double), returning position after closing quote.
+fn skip_lua_string(bytes: &[u8], start: usize) -> usize {
+    let quote = bytes[start];
+    let mut i = start + 1;
+    while i < bytes.len() {
+        if bytes[i] == b'\\' {
+            i += 2; // skip escaped character
+            continue;
+        }
+        if bytes[i] == quote {
+            return i + 1;
+        }
+        i += 1;
+    }
+    i // unterminated string, skip to end
+}
+
+/// Skip past a bracket expression `[...]`, handling nested brackets and strings.
+fn skip_bracket_expr(bytes: &[u8], start: usize) -> usize {
+    let mut i = start + 1;
+    let mut depth = 1;
+    while i < bytes.len() && depth > 0 {
+        if bytes[i] == b'"' || bytes[i] == b'\'' {
+            i = skip_lua_string(bytes, i);
+            continue;
+        }
+        if bytes[i] == b'[' {
+            depth += 1;
+        } else if bytes[i] == b']' {
+            depth -= 1;
+        }
+        i += 1;
+    }
+    i
 }
 
 // =============================================================================
