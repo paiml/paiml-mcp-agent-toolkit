@@ -937,6 +937,80 @@ mod cb600_lua_tests {
         assert!(violations.is_empty());
     }
 
+    #[test]
+    fn test_cb602_prefixed_variable_not_false_positive() {
+        // Pattern: local wrap_ok = pcall(obj.method, obj, ...) / if wrap_ok then
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("app.lua"),
+            concat!(
+                "local wrap_ok, wrap_err = pcall(obj.wrap, obj, config)\n",
+                "if wrap_ok then\n",
+                "  config = {applied = true}\n",
+                "end\n",
+            ),
+        )
+        .unwrap();
+        let violations = detect_cb602_pcall_error_handling(temp.path());
+        assert!(
+            violations.is_empty(),
+            "pcall with prefixed var checked on next line should not be flagged: {:?}",
+            violations
+        );
+    }
+
+    #[test]
+    fn test_cb602_multiple_prefixed_vars_pass() {
+        // All 4 false positive patterns from CB-602 audit
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("app.lua"),
+            concat!(
+                "local lint_ok, lint_result = pcall(obj.lint, obj, source)\n",
+                "if lint_ok then\n",
+                "  process(lint_result)\n",
+                "end\n",
+                "\n",
+                "local qe_ok, qe_result = pcall(query_engine.execute, query_engine, q)\n",
+                "if not qe_ok then\n",
+                "  error(qe_result)\n",
+                "end\n",
+                "\n",
+                "local export_ok, data = pcall(obj.export, obj, fmt)\n",
+                "if export_ok then\n",
+                "  save(data)\n",
+                "end\n",
+            ),
+        )
+        .unwrap();
+        let violations = detect_cb602_pcall_error_handling(temp.path());
+        assert!(
+            violations.is_empty(),
+            "All prefixed pcall vars checked on next line: {:?}",
+            violations
+        );
+    }
+
+    #[test]
+    fn test_cb602_extract_pcall_status_var() {
+        assert_eq!(
+            extract_pcall_status_var("local ok, err = pcall(fn)"),
+            Some("ok".to_string())
+        );
+        assert_eq!(
+            extract_pcall_status_var("local wrap_ok, wrap_err = pcall(obj.method, obj)"),
+            Some("wrap_ok".to_string())
+        );
+        assert_eq!(
+            extract_pcall_status_var("status = pcall(fn)"),
+            Some("status".to_string())
+        );
+        assert_eq!(
+            extract_pcall_status_var("pcall(fn)"),
+            None
+        );
+    }
+
     // =========================================================================
     // CB-603: Deprecated/Dangerous API
     // =========================================================================

@@ -502,7 +502,9 @@ pub fn detect_cb602_pcall_error_handling(project_path: &Path) -> Vec<CbPatternVi
             }
 
             // Case 2: captured but status not checked within next 5 lines
-            if !has_status_check(&prod_lines, idx) {
+            // Extract the status variable name from `local ok, err = pcall(...)`
+            let status_var = extract_pcall_status_var(trimmed);
+            if !has_status_check(&prod_lines, idx, status_var.as_deref()) {
                 violations.push(CbPatternViolation {
                     pattern_id: "CB-602".to_string(),
                     file: rel.clone(),
@@ -518,10 +520,43 @@ pub fn detect_cb602_pcall_error_handling(project_path: &Path) -> Vec<CbPatternVi
     violations
 }
 
+/// Extract the first variable name from a pcall assignment.
+/// E.g. `local wrap_ok, err = pcall(...)` → Some("wrap_ok")
+///      `local ok = pcall(...)` → Some("ok")
+///      `status = pcall(...)` → Some("status")
+pub(crate) fn extract_pcall_status_var(line: &str) -> Option<String> {
+    // Find the `=` that precedes pcall
+    let eq_pos = line.find('=')?;
+    let lhs = line[..eq_pos].trim();
+
+    // Strip `local` prefix if present
+    let lhs = lhs.strip_prefix("local").map(|s| s.trim_start()).unwrap_or(lhs);
+
+    // Take the first variable (before any comma for multi-return)
+    let first_var = lhs.split(',').next()?.trim();
+
+    if first_var.is_empty() || !first_var.chars().all(|c| c.is_alphanumeric() || c == '_') {
+        return None;
+    }
+
+    Some(first_var.to_string())
+}
+
 /// Check if pcall status variable is checked within 5 lines after index `idx`.
-fn has_status_check(prod_lines: &[(usize, String)], idx: usize) -> bool {
+fn has_status_check(prod_lines: &[(usize, String)], idx: usize, status_var: Option<&str>) -> bool {
     let lookahead_end = std::cmp::min(idx + 6, prod_lines.len());
     prod_lines[idx + 1..lookahead_end].iter().any(|(_, l)| {
+        // Check for the specific captured variable name (e.g. "if wrap_ok then")
+        if let Some(var) = status_var {
+            if l.contains(&format!("if {var}"))
+                || l.contains(&format!("if not {var}"))
+                || l.contains(&format!("assert({var}"))
+            {
+                return true;
+            }
+        }
+
+        // Fallback: generic patterns for common naming conventions
         l.contains("if ok") || l.contains("if not ok")
             || l.contains("if success") || l.contains("if not success")
             || l.contains("if status") || l.contains("if not status")
