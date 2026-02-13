@@ -396,6 +396,11 @@ pub(crate) fn is_generic_callee(name: &str) -> bool {
             | "serialize" | "deserialize" | "drop"
             | "init" | "run" | "start" | "stop" | "build" | "parse" | "format"
             | "test" | "setup" | "teardown" | "assert" | "verify" | "check"
+            // Lua stdlib (prevent noise edges)
+            | "require" | "print" | "pairs" | "ipairs" | "type" | "error"
+            | "pcall" | "xpcall" | "select" | "rawget" | "rawset" | "rawlen"
+            | "tostring" | "tonumber" | "setmetatable" | "getmetatable"
+            | "table" | "string" | "math" | "coroutine" | "unpack"
     )
 }
 
@@ -842,5 +847,17 @@ pub(super) fn is_keyword(word: &str) -> bool {
             | "None"
             | "null"
             | "undefined"
+            // Lua keywords
+            | "local"
+            | "then"
+            | "end"
+            | "elseif"
+            | "repeat"
+            | "until"
+            | "and"
+            | "or"
+            | "not"
+            | "nil"
+            | "goto"
     )
 }
