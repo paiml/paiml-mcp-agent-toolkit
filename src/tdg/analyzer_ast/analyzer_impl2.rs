@@ -451,6 +451,82 @@ impl TdgAnalyzerAst {
         score.max(0.0f32)
     }
 
+    #[allow(clippy::cast_possible_truncation)]
+    fn score_consistency_lua(&self, source: &str, tracker: &mut PenaltyTracker) -> f32 {
+        let mut points = self.config.weights.consistency;
+        points -= self.check_lua_indentation_consistency(source, tracker);
+        points -= self.check_lua_naming_consistency(source, tracker);
+        points.max(0.0)
+    }
+
+    fn check_lua_indentation_consistency(&self, source: &str, tracker: &mut PenaltyTracker) -> f32 {
+        let mut tab_count = 0u32;
+        let mut space_count = 0u32;
+        for line in source.lines() {
+            if line.starts_with('\t') {
+                tab_count += 1;
+            } else if line.starts_with("  ") {
+                space_count += 1;
+            }
+        }
+
+        let total_indented = tab_count + space_count;
+        if tab_count == 0 || space_count == 0 || total_indented <= 5 {
+            return 0.0;
+        }
+        let minority = tab_count.min(space_count) as f32;
+        let ratio = minority / total_indented as f32;
+        if ratio <= 0.1 {
+            return 0.0;
+        }
+        let penalty = (ratio * 10.0).min(5.0);
+        tracker.apply(
+            "mixed_indentation".to_string(),
+            MetricCategory::Consistency,
+            penalty,
+            "Mixed indentation (tabs and spaces) detected".to_string(),
+        ).unwrap_or(0.0)
+    }
+
+    fn check_lua_naming_consistency(&self, source: &str, tracker: &mut PenaltyTracker) -> f32 {
+        let mut snake_count = 0u32;
+        let mut camel_count = 0u32;
+        for line in source.lines() {
+            let trimmed = line.trim();
+            let Some(rest) = trimmed.strip_prefix("local ") else { continue };
+            let name = rest.split(|c: char| !c.is_alphanumeric() && c != '_')
+                .next()
+                .unwrap_or("");
+            if name.is_empty() || name == "function" {
+                continue;
+            }
+            if name.contains('_') {
+                snake_count += 1;
+            } else if name.chars().next().is_some_and(|c| c.is_lowercase())
+                && name.chars().any(|c| c.is_uppercase())
+            {
+                camel_count += 1;
+            }
+        }
+
+        let total_named = snake_count + camel_count;
+        if total_named <= 3 || snake_count == 0 || camel_count == 0 {
+            return 0.0;
+        }
+        let minority = snake_count.min(camel_count) as f32;
+        let ratio = minority / total_named as f32;
+        if ratio <= 0.15 {
+            return 0.0;
+        }
+        let penalty = (ratio * 8.0).min(4.0);
+        tracker.apply(
+            "inconsistent_naming".to_string(),
+            MetricCategory::Consistency,
+            penalty,
+            "Mixed naming conventions (snake_case and camelCase)".to_string(),
+        ).unwrap_or(0.0)
+    }
+
     /// Score entropy analysis - pattern repetition and violation detection
     #[allow(clippy::cast_possible_truncation)]
     fn score_entropy_analysis(
@@ -459,59 +535,34 @@ impl TdgAnalyzerAst {
         _language: Language,
         tracker: &mut PenaltyTracker,
     ) -> f32 {
-        // Create entropy analyzer
-        let _analyzer = EntropyAnalyzer::new();
-
-        // Create temp directory for analysis since entropy analyzer expects a project
-        use std::io::Write;
-        let temp_dir = std::env::temp_dir().join(format!("tdg_entropy_{}", std::process::id()));
-        let temp_file = temp_dir.join("temp_file.rs");
-
-        let raw_score = if std::fs::create_dir_all(&temp_dir).is_ok() {
-            if let Ok(mut file) = std::fs::File::create(&temp_file) {
-                if file.write_all(source.as_bytes()).is_ok() {
-                    // Simplified entropy scoring based on basic patterns
-                    // Avoids runtime conflicts by using simple heuristics
-                    let lines = source.lines().collect::<Vec<_>>();
-                    let mut pattern_score = 10.0; // Start at max entropy score (0-10 range)
-
-                    // Check for repetitive patterns in code
-                    let mut line_counts = std::collections::HashMap::new();
-                    for line in &lines {
-                        let trimmed = line.trim();
-                        if !trimmed.is_empty() && !trimmed.starts_with("//") {
-                            *line_counts.entry(trimmed).or_insert(0) += 1;
-                        }
-                    }
-
-                    // Penalty for duplicate lines (scaled to 0-10 range)
-                    let duplicate_lines = line_counts.values().filter(|&&count| count > 1).count();
-                    if duplicate_lines > 0 {
-                        let penalty = (duplicate_lines as f32 * 0.5).min(5.0); // Max 5 point penalty
-                        pattern_score -= penalty;
-                        tracker.apply(
-                            "duplicate_code_patterns".to_string(),
-                            MetricCategory::Duplication,
-                            penalty,
-                            format!("Found {duplicate_lines} duplicate code patterns"),
-                        );
-                    }
-
-                    pattern_score.max(0.0) // Ensure non-negative
-                } else {
-                    5.0 // Neutral score if can't write temp file (middle of 0-10 range)
-                }
-            } else {
-                5.0 // Neutral score if can't create temp file
-            }
-        } else {
-            5.0 // Neutral score if can't create temp dir
-        };
-
-        let _ = std::fs::remove_dir_all(&temp_dir);
-
-        // Clamp to 0-10 range to match entropy_score weight limit
+        let raw_score = self.compute_entropy_score(source, tracker);
         raw_score.clamp(0.0, 10.0)
+    }
+
+    #[allow(clippy::cast_possible_truncation)]
+    fn compute_entropy_score(&self, source: &str, tracker: &mut PenaltyTracker) -> f32 {
+        let mut pattern_score = 10.0f32;
+        let mut line_counts = std::collections::HashMap::new();
+        for line in source.lines() {
+            let trimmed = line.trim();
+            if !trimmed.is_empty() && !trimmed.starts_with("//") {
+                *line_counts.entry(trimmed).or_insert(0) += 1;
+            }
+        }
+
+        let duplicate_lines = line_counts.values().filter(|&&count| count > 1).count();
+        if duplicate_lines > 0 {
+            let penalty = (duplicate_lines as f32 * 0.5).min(5.0);
+            pattern_score -= penalty;
+            tracker.apply(
+                "duplicate_code_patterns".to_string(),
+                MetricCategory::Duplication,
+                penalty,
+                format!("Found {duplicate_lines} duplicate code patterns"),
+            );
+        }
+
+        pattern_score.max(0.0)
     }
 
     #[cfg(any(feature = "c-ast", feature = "cpp-ast"))]

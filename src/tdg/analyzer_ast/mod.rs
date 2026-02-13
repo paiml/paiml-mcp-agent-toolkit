@@ -5,7 +5,6 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime};
 
-use crate::entropy::EntropyAnalyzer;
 use crate::services::defect_detector::{RustDefectDetector, Severity as DefectSeverity};
 use crate::tdg::{
     config::TdgConfig, AdaptiveThresholdFactory, AdaptiveThresholdManager, AnalysisMetadata,

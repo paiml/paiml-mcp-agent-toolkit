@@ -150,130 +150,106 @@ impl<'a> PythonComplexityVisitor<'a> {
         self.visit_node(&root);
     }
 
-    #[allow(clippy::cast_possible_truncation)]
     fn visit_node(&mut self, node: &tree_sitter::Node) {
         match node.kind() {
-            "function_definition" => {
-                self.total_functions += 1;
-                self.current_nesting_depth += 1;
-                if self.current_nesting_depth > self.max_nesting_depth {
-                    self.max_nesting_depth = self.current_nesting_depth;
-                }
-
-                // Count parameters
-                if let Some(params) = node.child_by_field_name("parameters") {
-                    let param_count = params.child_count();
-                    if param_count > self.max_params {
-                        self.max_params = param_count;
-                    }
-                }
-
-                // Check for docstring
-                if let Some(body) = node.child_by_field_name("body") {
-                    if let Some(first_child) = body.child(0) {
-                        if first_child.kind() == "expression_statement" {
-                            if let Some(string_node) = first_child.child(0) {
-                                if string_node.kind() == "string" {
-                                    self.documented_functions += 1;
-                                    // Count docstring lines
-                                    let docstring_text = &self.source[string_node.byte_range()];
-                                    self.docstring_lines += docstring_text.lines().count() as u32;
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // Count decorators
-                let mut cursor = node.walk();
-                for child in node.children(&mut cursor) {
-                    if child.kind() == "decorator" {
-                        self.decorator_count += 1;
-                    }
-                }
-
-                // Visit function body
-                for child in node.children(&mut node.walk()) {
-                    self.visit_node(&child);
-                }
-
-                self.current_nesting_depth -= 1;
-            }
-            "class_definition" => {
-                self.current_nesting_depth += 1;
-                if self.current_nesting_depth > self.max_nesting_depth {
-                    self.max_nesting_depth = self.current_nesting_depth;
-                }
-
-                // Check for metaclass
-                if let Some(arg_list) = node.child_by_field_name("superclasses") {
-                    let arg_text = &self.source[arg_list.byte_range()];
-                    if arg_text.contains("metaclass") {
-                        self.metaclass_count += 1;
-                    }
-                }
-
-                for child in node.children(&mut node.walk()) {
-                    self.visit_node(&child);
-                }
-
-                self.current_nesting_depth -= 1;
-            }
+            "function_definition" => self.visit_function_def(node),
+            "class_definition" => self.visit_class_def(node),
             "import_statement" | "import_from_statement" => {
                 self.import_count += 1;
             }
             "if_statement" | "while_statement" | "for_statement" | "match_statement" => {
-                self.cyclomatic_complexity += 1;
-                self.cognitive_complexity += 1 + self.current_nesting_depth as u32;
-
-                self.current_nesting_depth += 1;
-                if self.current_nesting_depth > self.max_nesting_depth {
-                    self.max_nesting_depth = self.current_nesting_depth;
-                }
-
-                for child in node.children(&mut node.walk()) {
-                    self.visit_node(&child);
-                }
-
-                self.current_nesting_depth -= 1;
+                self.visit_nesting_branch(node);
             }
             "elif_clause" | "else_clause" | "except_clause" => {
-                self.cyclomatic_complexity += 1;
-                self.cognitive_complexity += 1 + self.current_nesting_depth as u32;
-
-                for child in node.children(&mut node.walk()) {
-                    self.visit_node(&child);
-                }
+                self.visit_flat_branch(node);
             }
-            "try_statement" => {
+            "try_statement" | "boolean_operator" | "comparison_operator" => {
                 self.cyclomatic_complexity += 1;
-
-                for child in node.children(&mut node.walk()) {
-                    self.visit_node(&child);
-                }
-            }
-            "boolean_operator" | "comparison_operator" => {
-                // Logical operators add to complexity
-                self.cyclomatic_complexity += 1;
-
-                for child in node.children(&mut node.walk()) {
-                    self.visit_node(&child);
-                }
+                self.visit_children_recursive(node);
             }
             "call" => {
-                // Count external calls (simplified - counts all calls)
                 self.external_calls += 1;
+                self.visit_children_recursive(node);
+            }
+            _ => self.visit_children_recursive(node),
+        }
+    }
 
-                for child in node.children(&mut node.walk()) {
-                    self.visit_node(&child);
-                }
+    #[allow(clippy::cast_possible_truncation)]
+    fn visit_function_def(&mut self, node: &tree_sitter::Node) {
+        self.total_functions += 1;
+        self.current_nesting_depth += 1;
+        self.max_nesting_depth = self.max_nesting_depth.max(self.current_nesting_depth);
+
+        if let Some(params) = node.child_by_field_name("parameters") {
+            self.max_params = self.max_params.max(params.child_count());
+        }
+
+        self.check_python_docstring(node);
+
+        let mut cursor = node.walk();
+        for child in node.children(&mut cursor) {
+            if child.kind() == "decorator" {
+                self.decorator_count += 1;
             }
-            _ => {
-                // Visit children for other node types
-                for child in node.children(&mut node.walk()) {
-                    self.visit_node(&child);
-                }
+        }
+
+        self.visit_children_recursive(node);
+        self.current_nesting_depth -= 1;
+    }
+
+    #[allow(clippy::cast_possible_truncation)]
+    fn check_python_docstring(&mut self, node: &tree_sitter::Node) {
+        let body = match node.child_by_field_name("body") {
+            Some(b) => b,
+            None => return,
+        };
+        let first_child = match body.child(0) {
+            Some(c) if c.kind() == "expression_statement" => c,
+            _ => return,
+        };
+        let string_node = match first_child.child(0) {
+            Some(s) if s.kind() == "string" => s,
+            _ => return,
+        };
+        self.documented_functions += 1;
+        let docstring_text = &self.source[string_node.byte_range()];
+        self.docstring_lines += docstring_text.lines().count() as u32;
+    }
+
+    fn visit_class_def(&mut self, node: &tree_sitter::Node) {
+        self.current_nesting_depth += 1;
+        self.max_nesting_depth = self.max_nesting_depth.max(self.current_nesting_depth);
+
+        if let Some(arg_list) = node.child_by_field_name("superclasses") {
+            let arg_text = &self.source[arg_list.byte_range()];
+            if arg_text.contains("metaclass") {
+                self.metaclass_count += 1;
             }
+        }
+
+        self.visit_children_recursive(node);
+        self.current_nesting_depth -= 1;
+    }
+
+    fn visit_nesting_branch(&mut self, node: &tree_sitter::Node) {
+        self.cyclomatic_complexity += 1;
+        self.cognitive_complexity += 1 + self.current_nesting_depth as u32;
+        self.current_nesting_depth += 1;
+        self.max_nesting_depth = self.max_nesting_depth.max(self.current_nesting_depth);
+        self.visit_children_recursive(node);
+        self.current_nesting_depth -= 1;
+    }
+
+    fn visit_flat_branch(&mut self, node: &tree_sitter::Node) {
+        self.cyclomatic_complexity += 1;
+        self.cognitive_complexity += 1 + self.current_nesting_depth as u32;
+        self.visit_children_recursive(node);
+    }
+
+    fn visit_children_recursive(&mut self, node: &tree_sitter::Node) {
+        for child in node.children(&mut node.walk()) {
+            self.visit_node(&child);
         }
     }
 }
@@ -362,6 +338,138 @@ impl swc_ecma_visit::Visit for JavaScriptComplexityVisitor {
 
     fn visit_class_decl(&mut self, _node: &swc_ecma_ast::ClassDecl) {
         self.class_count += 1;
+    }
+}
+
+#[cfg(feature = "lua-ast")]
+struct LuaComplexityVisitor<'a> {
+    source: &'a str,
+    cyclomatic_complexity: u32,
+    cognitive_complexity: u32,
+    max_nesting_depth: usize,
+    max_method_length: usize,
+    max_params: usize,
+    import_count: u32,
+    external_calls: u32,
+    documented_functions: u32,
+    total_functions: u32,
+    comment_lines: u32,
+    total_lines: u32,
+    current_nesting_depth: usize,
+    /// Count of metatables set (Lua's OOP pattern)
+    metatable_count: u32,
+}
+
+#[cfg(feature = "lua-ast")]
+impl<'a> LuaComplexityVisitor<'a> {
+    #[allow(clippy::cast_possible_truncation)]
+    fn new(source: &'a str) -> Self {
+        Self {
+            source,
+            cyclomatic_complexity: 1,
+            cognitive_complexity: 0,
+            max_nesting_depth: 0,
+            max_method_length: 0,
+            max_params: 0,
+            import_count: 0,
+            external_calls: 0,
+            documented_functions: 0,
+            total_functions: 0,
+            comment_lines: 0,
+            total_lines: source.lines().count() as u32,
+            current_nesting_depth: 0,
+            metatable_count: 0,
+        }
+    }
+
+    fn analyze_tree(&mut self, tree: &tree_sitter::Tree) {
+        // Count comment lines via simple scan (comments aren't always visited as nodes)
+        for line in self.source.lines() {
+            let trimmed = line.trim();
+            if trimmed.starts_with("--") {
+                self.comment_lines += 1;
+            }
+        }
+        let root = tree.root_node();
+        self.visit_node(&root);
+    }
+
+    fn visit_node(&mut self, node: &tree_sitter::Node) {
+        match node.kind() {
+            "function_declaration" | "function_definition" => self.visit_function_decl(node),
+            "if_statement" | "for_statement" | "while_statement" | "repeat_statement" => {
+                self.visit_nesting_control_flow(node);
+            }
+            "elseif_statement" => self.visit_flat_control_flow(node),
+            "binary_expression" => self.visit_binary_expr(node),
+            "function_call" => self.visit_function_call(node),
+            _ => self.visit_children(node),
+        }
+    }
+
+    #[allow(clippy::cast_possible_truncation)]
+    fn visit_function_decl(&mut self, node: &tree_sitter::Node) {
+        self.total_functions += 1;
+        self.current_nesting_depth += 1;
+        self.max_nesting_depth = self.max_nesting_depth.max(self.current_nesting_depth);
+
+        if let Some(params) = node.child_by_field_name("parameters") {
+            self.max_params = self.max_params.max(params.named_child_count());
+        }
+
+        let fn_length = node.end_position().row.saturating_sub(node.start_position().row);
+        self.max_method_length = self.max_method_length.max(fn_length);
+
+        if node.prev_sibling().is_some_and(|s| s.kind() == "comment") {
+            self.documented_functions += 1;
+        }
+
+        self.visit_children(node);
+        self.current_nesting_depth -= 1;
+    }
+
+    #[allow(clippy::cast_possible_truncation)]
+    fn visit_nesting_control_flow(&mut self, node: &tree_sitter::Node) {
+        self.cyclomatic_complexity += 1;
+        self.cognitive_complexity += 1 + self.current_nesting_depth as u32;
+        self.current_nesting_depth += 1;
+        self.max_nesting_depth = self.max_nesting_depth.max(self.current_nesting_depth);
+        self.visit_children(node);
+        self.current_nesting_depth -= 1;
+    }
+
+    #[allow(clippy::cast_possible_truncation)]
+    fn visit_flat_control_flow(&mut self, node: &tree_sitter::Node) {
+        self.cyclomatic_complexity += 1;
+        self.cognitive_complexity += 1 + self.current_nesting_depth as u32;
+        self.visit_children(node);
+    }
+
+    fn visit_binary_expr(&mut self, node: &tree_sitter::Node) {
+        for child in node.children(&mut node.walk()) {
+            if child.kind() == "and" || child.kind() == "or" {
+                self.cyclomatic_complexity += 1;
+            }
+            self.visit_node(&child);
+        }
+    }
+
+    fn visit_function_call(&mut self, node: &tree_sitter::Node) {
+        self.external_calls += 1;
+        let call_text = &self.source[node.byte_range()];
+        if call_text.starts_with("require") {
+            self.import_count += 1;
+        }
+        if call_text.starts_with("setmetatable") {
+            self.metatable_count += 1;
+        }
+        self.visit_children(node);
+    }
+
+    fn visit_children(&mut self, node: &tree_sitter::Node) {
+        for child in node.children(&mut node.walk()) {
+            self.visit_node(&child);
+        }
     }
 }
 

@@ -1,12 +1,13 @@
 //! Lua Language Analysis Example
 //!
-//! Demonstrates pmat's Lua AST parsing capabilities using tree-sitter-lua.
+//! Demonstrates pmat's Lua analysis capabilities using tree-sitter-lua.
 //!
 //! Features demonstrated:
 //! 1. Parsing Lua source files into unified AST
 //! 2. Extracting functions, imports (require), and types (tables)
 //! 3. Calculating cyclomatic and cognitive complexity
 //! 4. Analyzing control flow patterns (if/for/while/repeat/and/or)
+//! 5. TDG (Technical Debt Grading) with full 7-component scoring
 //!
 //! # Usage
 //!
@@ -17,13 +18,38 @@
 use anyhow::Result;
 use pmat::ast::core::Language;
 use pmat::ast::languages::LanguageStrategy;
+use pmat::tdg::TdgAnalyzer;
 
 fn main() -> Result<()> {
     println!("=== PMAT Lua Language Analysis ===\n");
 
     let strategy = pmat::ast::languages::lua::LuaStrategy::new();
+    let rt = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()?;
 
-    // 1. Simple function parsing
+    demo_function_parsing(&strategy, &rt)?;
+    demo_imports(&strategy, &rt)?;
+    demo_control_flow(&strategy, &rt)?;
+    demo_oop(&strategy, &rt)?;
+    demo_language_detection(&strategy);
+    demo_tdg_scoring()?;
+
+    println!("=== Lua Analysis Complete ===");
+    println!();
+    println!("Try analyzing your own Lua projects:");
+    println!("  pmat analyze tdg --path /path/to/file.lua");
+    println!("  pmat analyze complexity --path /path/to/lua/project");
+    println!("  pmat comply check   # includes CB-600 Lua best practices");
+    println!("  pmat query \"function_name\" --include-source");
+
+    Ok(())
+}
+
+fn demo_function_parsing(
+    strategy: &pmat::ast::languages::lua::LuaStrategy,
+    rt: &tokio::runtime::Runtime,
+) -> Result<()> {
     println!("1. Simple Function Parsing");
     let code = r#"
 function greet(name)
@@ -37,9 +63,6 @@ local function factorial(n)
     return n * factorial(n - 1)
 end
 "#;
-    let rt = tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()?;
     let ast = rt.block_on(strategy.parse_file(std::path::Path::new("demo.lua"), code))?;
     let functions = strategy.extract_functions(&ast);
     let (cyclomatic, cognitive) = strategy.calculate_complexity(&ast);
@@ -49,8 +72,13 @@ end
         cyclomatic, cognitive
     );
     println!();
+    Ok(())
+}
 
-    // 2. Module with require() imports
+fn demo_imports(
+    strategy: &pmat::ast::languages::lua::LuaStrategy,
+    rt: &tokio::runtime::Runtime,
+) -> Result<()> {
     println!("2. Module Imports (require)");
     let code = r#"
 local json = require("dkjson")
@@ -75,8 +103,13 @@ return M
     println!("   Imports detected: {}", imports.len());
     println!("   Functions defined: {}", functions.len());
     println!();
+    Ok(())
+}
 
-    // 3. Complex control flow
+fn demo_control_flow(
+    strategy: &pmat::ast::languages::lua::LuaStrategy,
+    rt: &tokio::runtime::Runtime,
+) -> Result<()> {
     println!("3. Complex Control Flow Analysis");
     let code = r#"
 function process_events(events)
@@ -114,19 +147,20 @@ end
         "   Complexity: cyclomatic={}, cognitive={}",
         cyclomatic, cognitive
     );
-    println!(
-        "   Grade: {}",
-        if cyclomatic <= 10 {
-            "A (simple)"
-        } else if cyclomatic <= 20 {
-            "B (moderate)"
-        } else {
-            "C (complex)"
-        }
-    );
+    let grade = match cyclomatic {
+        0..=10 => "A (simple)",
+        11..=20 => "B (moderate)",
+        _ => "C (complex)",
+    };
+    println!("   Grade: {grade}");
     println!();
+    Ok(())
+}
 
-    // 4. Table constructors (OOP pattern)
+fn demo_oop(
+    strategy: &pmat::ast::languages::lua::LuaStrategy,
+    rt: &tokio::runtime::Runtime,
+) -> Result<()> {
     println!("4. Table Constructors (Lua OOP)");
     let code = r#"
 local Player = {}
@@ -162,8 +196,10 @@ local config = {
     println!("   Table constructors: {}", types.len());
     println!("   Methods/functions: {}", functions.len());
     println!();
+    Ok(())
+}
 
-    // 5. Language detection
+fn demo_language_detection(strategy: &pmat::ast::languages::lua::LuaStrategy) {
     println!("5. Language Detection");
     assert_eq!(strategy.language(), Language::Lua);
     assert!(strategy.can_parse(std::path::Path::new("init.lua")));
@@ -173,13 +209,76 @@ local config = {
     println!("   Parses .lua files: true");
     println!("   Parses .py files: false");
     println!();
+}
 
-    println!("=== Lua Analysis Complete ===");
+fn demo_tdg_scoring() -> Result<()> {
+    println!("6. TDG Quality Scoring");
+    let tdg_code = r#"
+--- Game entity manager module
+-- Handles creation, update, and querying of game entities.
+
+local json = require("dkjson")
+
+local M = {}
+
+local entities = {}
+
+--- Create a new entity with the given components
+function M.create_entity(name, x, y, health)
+    local entity = {
+        name = name,
+        x = x or 0,
+        y = y or 0,
+        health = health or 100,
+        alive = true,
+    }
+    entities[#entities + 1] = entity
+    return entity
+end
+
+--- Update all entities each frame
+function M.update(dt)
+    for i, entity in ipairs(entities) do
+        if entity.alive then
+            if entity.health <= 0 then
+                entity.alive = false
+            else
+                entity.x = entity.x + dt
+            end
+        end
+    end
+end
+
+--- Find entity by name
+function M.find(name)
+    for _, entity in ipairs(entities) do
+        if entity.name == name then
+            return entity
+        end
+    end
+    return nil
+end
+
+return M
+"#;
+    let analyzer = TdgAnalyzer::new()?;
+    let score = analyzer.analyze_source(tdg_code, pmat::tdg::Language::Lua, None)?;
+    println!("   TDG Total:  {:.1}/100", score.total);
+    println!("   Grade:      {:?}", score.grade);
+    println!("   Confidence: {:.0}%", score.confidence * 100.0);
+    println!("   Components:");
+    println!("     Structural Complexity: {:.1}/25", score.structural_complexity);
+    println!("     Semantic Complexity:   {:.1}/20", score.semantic_complexity);
+    println!("     Duplication Ratio:     {:.1}/20", score.duplication_ratio);
+    println!("     Coupling Score:        {:.1}/15", score.coupling_score);
+    println!("     Doc Coverage:          {:.1}/10", score.doc_coverage);
+    println!("     Consistency Score:     {:.1}/10", score.consistency_score);
+    if !score.penalties_applied.is_empty() {
+        println!("   Penalties:");
+        for penalty in &score.penalties_applied {
+            println!("     - {}: -{:.1}", penalty.issue, penalty.amount);
+        }
+    }
     println!();
-    println!("Try analyzing your own Lua projects:");
-    println!("  pmat context --project-path /path/to/lua/project");
-    println!("  pmat analyze complexity /path/to/lua/project");
-    println!("  pmat query \"function_name\" --include-source");
-
     Ok(())
 }

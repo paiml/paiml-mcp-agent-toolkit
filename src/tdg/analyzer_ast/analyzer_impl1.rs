@@ -439,6 +439,7 @@ impl TdgAnalyzerAst {
             Language::Java => self.analyze_java_ast(source, &mut score, &mut tracker)?,
             Language::C | Language::Cpp => self.analyze_c_ast(source, &mut score, &mut tracker)?,
             Language::Ruchy => self.analyze_ruchy_ast(source, &mut score, &mut tracker)?,
+            Language::Lua => self.analyze_lua_ast(source, &mut score, &mut tracker)?,
             _ => {
                 // Fallback to heuristics for unsupported languages
                 // but with reduced confidence
@@ -711,6 +712,71 @@ impl TdgAnalyzerAst {
         // Java requires tree-sitter-java which we don't have yet
         // Use tree-sitter generic parser as fallback
         self.analyze_tree_sitter_generic(source, Language::Java, score, tracker)
+    }
+
+    fn analyze_lua_ast(
+        &self,
+        source: &str,
+        score: &mut TdgScore,
+        tracker: &mut PenaltyTracker,
+    ) -> Result<()> {
+        #[cfg(feature = "lua-ast")]
+        {
+            use tree_sitter::Parser as TsParser;
+
+            let mut parser = TsParser::new();
+            parser
+                .set_language(&tree_sitter_lua::LANGUAGE.into())
+                .map_err(|e| anyhow::anyhow!("Failed to set Lua language: {e}"))?;
+
+            if let Some(tree) = parser.parse(source, None) {
+                let mut visitor = LuaComplexityVisitor::new(source);
+                visitor.analyze_tree(&tree);
+
+                score.structural_complexity = self.score_structural_complexity(
+                    visitor.cyclomatic_complexity,
+                    visitor.cognitive_complexity,
+                    visitor.max_nesting_depth,
+                    visitor.max_method_length,
+                    tracker,
+                );
+
+                score.semantic_complexity = self.score_semantic_complexity(
+                    visitor.max_params,
+                    visitor.metatable_count,
+                    0, // Lua has no abstraction levels like generics
+                    tracker,
+                );
+
+                score.duplication_ratio =
+                    self.analyze_duplication_ast(source, Language::Lua, tracker);
+
+                score.coupling_score = self.score_coupling(
+                    visitor.import_count,
+                    visitor.external_calls,
+                    0, // Lua has no explicit interfaces
+                    tracker,
+                );
+
+                score.doc_coverage = self.score_documentation(
+                    visitor.documented_functions,
+                    visitor.total_functions,
+                    visitor.comment_lines,
+                    visitor.total_lines,
+                    tracker,
+                );
+
+                score.consistency_score = self.score_consistency_lua(source, tracker);
+            } else {
+                self.analyze_heuristic(source, score, tracker)?;
+            }
+        }
+        #[cfg(not(feature = "lua-ast"))]
+        {
+            self.analyze_heuristic(source, score, tracker)?;
+        }
+
+        Ok(())
     }
 
     fn analyze_c_ast(

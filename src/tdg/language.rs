@@ -263,6 +263,41 @@ impl LanguageAdapter for GoAdapter {
     }
 }
 
+pub struct LuaAdapter {
+    parser: Parser,
+}
+
+impl LuaAdapter {
+    pub fn new() -> Result<Self> {
+        let mut parser = Parser::new();
+        parser.set_language(&tree_sitter_lua::LANGUAGE.into())?;
+        Ok(Self { parser })
+    }
+}
+
+impl LanguageAdapter for LuaAdapter {
+    fn detect(&self, path: &Path) -> bool {
+        path.extension().map_or(false, |ext| ext == "lua")
+    }
+
+    fn parse(&self, source: &str) -> Result<Tree> {
+        self.parser.parse(source, None)
+            .ok_or_else(|| anyhow::anyhow!("Failed to parse Lua source"))
+    }
+
+    fn confidence(&self) -> f32 {
+        0.90
+    }
+
+    fn language(&self) -> Language {
+        Language::Lua
+    }
+
+    fn naming_rules(&self) -> LanguageRules {
+        LanguageRules::lua_rules()
+    }
+}
+
 pub struct LanguageRegistry {
     adapters: HashMap<Language, Box<dyn LanguageAdapter>>,
 }
@@ -272,13 +307,14 @@ impl LanguageRegistry {
         let mut registry = Self {
             adapters: HashMap::new(),
         };
-        
+
         registry.register(Language::Rust, Box::new(RustAdapter::new()?))?;
         registry.register(Language::Python, Box::new(PythonAdapter::new()?))?;
         registry.register(Language::JavaScript, Box::new(JavaScriptAdapter::new()?))?;
         registry.register(Language::TypeScript, Box::new(TypeScriptAdapter::new()?))?;
         registry.register(Language::Go, Box::new(GoAdapter::new()?))?;
-        
+        registry.register(Language::Lua, Box::new(LuaAdapter::new()?))?;
+
         Ok(registry)
     }
     
