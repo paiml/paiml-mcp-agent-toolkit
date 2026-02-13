@@ -1094,6 +1094,75 @@ mod cb600_lua_tests {
         assert!(violations.is_empty());
     }
 
+    #[test]
+    fn test_cb603_hardcoded_string_is_info_severity() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("app.lua"),
+            "os.execute(\"make clean\")\n",
+        )
+        .unwrap();
+        let violations = detect_cb603_deprecated_dangerous_api(temp.path());
+        assert_eq!(violations.len(), 1);
+        assert_eq!(violations[0].severity, Severity::Info, "Hardcoded string arg should be Info");
+        assert!(violations[0].description.contains("hardcoded"));
+    }
+
+    #[test]
+    fn test_cb603_concatenation_is_warning() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("app.lua"),
+            "os.execute(\"rm -rf \" .. user_input)\n",
+        )
+        .unwrap();
+        let violations = detect_cb603_deprecated_dangerous_api(temp.path());
+        assert_eq!(violations.len(), 1);
+        assert_eq!(violations[0].severity, Severity::Warning, "Concatenation should be Warning");
+        assert!(violations[0].description.contains("command injection"));
+    }
+
+    #[test]
+    fn test_cb603_variable_arg_is_warning() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("app.lua"),
+            "os.execute(cmd)\n",
+        )
+        .unwrap();
+        let violations = detect_cb603_deprecated_dangerous_api(temp.path());
+        assert_eq!(violations.len(), 1);
+        assert_eq!(violations[0].severity, Severity::Warning);
+    }
+
+    #[test]
+    fn test_cb603_inline_suppression() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("app.lua"),
+            concat!(
+                "os.execute(\"make build\") -- pmat:ignore CB-603\n",
+                "os.execute(\"make test\")\n",
+            ),
+        )
+        .unwrap();
+        let violations = detect_cb603_deprecated_dangerous_api(temp.path());
+        assert_eq!(violations.len(), 1, "Suppressed line should not be flagged");
+        assert_eq!(violations[0].line, 2, "Only unsuppressed line should be flagged");
+    }
+
+    #[test]
+    fn test_cb603_bare_pmat_ignore_suppresses_all() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("app.lua"),
+            "io.popen(\"ls\") -- pmat:ignore\n",
+        )
+        .unwrap();
+        let violations = detect_cb603_deprecated_dangerous_api(temp.path());
+        assert!(violations.is_empty(), "Bare pmat:ignore should suppress all");
+    }
+
     // =========================================================================
     // CB-604: Unused Variables
     // =========================================================================

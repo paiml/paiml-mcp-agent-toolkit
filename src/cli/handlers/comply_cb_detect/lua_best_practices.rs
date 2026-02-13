@@ -623,6 +623,9 @@ const LUA_DANGEROUS_APIS: &[&str] = &["os.execute(", "io.popen("];
 
 /// CB-603: Deprecated/Dangerous API usage.
 /// Based on LuaTaint and FLuaScan — os.execute(), io.popen(), loadstring(), setfenv().
+///
+/// Supports inline suppression: `-- pmat:ignore CB-603` on the same line.
+/// Distinguishes safe usage (hardcoded string arg) from dangerous (concatenation/variable).
 pub fn detect_cb603_deprecated_dangerous_api(project_path: &Path) -> Vec<CbPatternViolation> {
     let files = walkdir_lua_files(project_path);
     let mut violations = Vec::new();
@@ -635,6 +638,8 @@ pub fn detect_cb603_deprecated_dangerous_api(project_path: &Path) -> Vec<CbPatte
             Ok(c) => c,
             Err(_) => continue,
         };
+        // Build map of original lines for suppression comment checking
+        let original_lines: Vec<&str> = content.lines().collect();
         let prod_lines = compute_lua_production_lines(&content);
         let rel = file_path
             .strip_prefix(project_path)
@@ -643,12 +648,35 @@ pub fn detect_cb603_deprecated_dangerous_api(project_path: &Path) -> Vec<CbPatte
             .to_string();
 
         for (line_num, trimmed) in &prod_lines {
+            // Check inline suppression on original line (before comment stripping)
+            if is_suppressed(&original_lines, *line_num, "CB-603") {
+                continue;
+            }
             check_deprecated_apis(trimmed, &rel, *line_num, &mut violations);
             check_dangerous_apis(trimmed, &rel, *line_num, &mut violations);
         }
     }
 
     violations
+}
+
+/// Check if a line has an inline suppression comment: `-- pmat:ignore CB-XXX`
+fn is_suppressed(original_lines: &[&str], line_num: usize, pattern_id: &str) -> bool {
+    if line_num == 0 || line_num > original_lines.len() {
+        return false;
+    }
+    let line = original_lines[line_num - 1];
+    // Look for `-- pmat:ignore` with the specific pattern ID or bare `-- pmat:ignore`
+    if let Some(pos) = line.find("-- pmat:ignore") {
+        let after = &line[pos + 14..].trim_start();
+        // Bare `-- pmat:ignore` suppresses all patterns on that line
+        if after.is_empty() {
+            return true;
+        }
+        // `-- pmat:ignore CB-603` suppresses specific pattern
+        return after.contains(pattern_id);
+    }
+    false
 }
 
 fn check_deprecated_apis(trimmed: &str, rel: &str, line_num: usize, violations: &mut Vec<CbPatternViolation>) {
@@ -670,19 +698,49 @@ fn check_deprecated_apis(trimmed: &str, rel: &str, line_num: usize, violations: 
 
 fn check_dangerous_apis(trimmed: &str, rel: &str, line_num: usize, violations: &mut Vec<CbPatternViolation>) {
     for api in LUA_DANGEROUS_APIS {
-        if trimmed.contains(api) && !is_in_lua_string(trimmed, api) {
-            violations.push(CbPatternViolation {
-                pattern_id: "CB-603".to_string(),
-                file: rel.to_string(),
-                line: line_num,
-                description: format!(
-                    "Dangerous API: `{}` — potential command injection",
-                    api.trim_end_matches('(')
-                ),
-                severity: Severity::Warning,
-            });
+        if !trimmed.contains(api) || is_in_lua_string(trimmed, api) {
+            continue;
         }
+        // Distinguish safe (hardcoded string arg) from dangerous (concatenation/variable)
+        let severity = if has_hardcoded_string_arg(trimmed, api) {
+            Severity::Info
+        } else {
+            Severity::Warning
+        };
+        violations.push(CbPatternViolation {
+            pattern_id: "CB-603".to_string(),
+            file: rel.to_string(),
+            line: line_num,
+            description: format!(
+                "Dangerous API: `{}` — {}",
+                api.trim_end_matches('('),
+                if severity == Severity::Warning {
+                    "potential command injection (variable/concatenation in argument)"
+                } else {
+                    "hardcoded string argument (lower risk)"
+                }
+            ),
+            severity,
+        });
     }
+}
+
+/// Check if a dangerous API call uses a hardcoded string argument.
+/// `os.execute("make clean")` → true (safe)
+/// `os.execute(cmd)` or `os.execute("rm " .. x)` → false (dangerous)
+fn has_hardcoded_string_arg(line: &str, api: &str) -> bool {
+    let Some(api_pos) = line.find(api) else { return false };
+    let after = &line[api_pos + api.len()..];
+
+    // Check if argument starts with a string literal
+    let trimmed = after.trim_start();
+    let starts_with_string = trimmed.starts_with('"') || trimmed.starts_with('\'');
+    if !starts_with_string {
+        return false;
+    }
+
+    // Check there's no concatenation operator (..) in the argument
+    !after.contains("..")
 }
 
 /// CB-604: Unused Variables — `local var = ...` where var is never referenced again.
