@@ -599,6 +599,8 @@ impl TdgAnalyzerAst {
             );
 
             score.consistency_score = self.score_consistency_python(source, tracker);
+
+            score.entropy_score = self.score_entropy_analysis(source, Language::Python, tracker);
         }
         #[cfg(not(feature = "python-ast"))]
         {
@@ -678,6 +680,9 @@ impl TdgAnalyzerAst {
                     );
 
                     score.consistency_score = self.score_consistency_javascript(source, tracker);
+
+                    score.entropy_score =
+                        self.score_entropy_analysis(source, Language::JavaScript, tracker);
                 }
                 Err(_) => {
                     self.analyze_heuristic(source, score, tracker)?;
