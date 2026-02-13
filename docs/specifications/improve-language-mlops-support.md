@@ -428,19 +428,19 @@ fn discover_model_files(path: &Path) -> Vec<ModelFile> {
 ### Phase 2: SQL & YAML Pattern Analysis (2-3 days) ✅
 
 - [ ] SQL pattern-based function extraction (CREATE FUNCTION/VIEW/TRIGGER, CTEs)
-- [ ] SQL TDG scorer in `analyzer_impl1.rs` or new `analyzer_sql.rs`
+- [x] SQL TDG scorer in `analyzer_impl2.rs` (heuristic: subquery nesting, JOIN complexity, keyword casing)
 - [x] SQL compliance checks CB-700 to CB-705
 - [x] YAML pattern-based analysis (nesting depth, truthy ambiguity)
-- [ ] YAML TDG scorer
+- [x] YAML TDG scorer in `analyzer_impl2.rs` (heuristic: indent depth, anchor/alias, indent consistency)
 - [x] YAML compliance checks CB-950 to CB-954
 - [x] Tests: 15 for SQL, 12 for YAML
 
-### Phase 3: Scala AST Support (2-3 days) ✅ (compliance only)
+### Phase 3: Scala AST Support (2-3 days) ✅ (compliance + TDG heuristic)
 
 - [ ] Add `tree-sitter-scala` dependency (feature-gated: `scala-ast`)
 - [ ] Implement `ScalaStrategy` in `src/ast/languages/scala.rs`
 - [ ] Scala function/type/import extraction
-- [ ] Scala TDG scorer with complexity analysis
+- [x] Scala TDG scorer in `analyzer_impl2.rs` (heuristic: pattern match depth, implicit chains, camelCase)
 - [x] Scala compliance checks CB-800 to CB-805
 - [ ] Promote existing `ScalaMapper` from polyglot to use new strategy
 - [x] Tests: 16 for compliance
@@ -448,7 +448,7 @@ fn discover_model_files(path: &Path) -> Vec<ModelFile> {
 ### Phase 4: Markdown Analysis (1-2 days) ✅
 
 - [x] Markdown pattern-based analysis (heading structure, links, readability)
-- [ ] Markdown TDG scorer
+- [x] Markdown TDG scorer in `analyzer_impl2.rs` (heuristic: heading hierarchy, list marker, link density)
 - [x] Markdown compliance checks CB-900 to CB-904
 - [x] Link validation (internal only—no HTTP requests)
 - [x] Tests: 13 for Markdown analysis
@@ -464,13 +464,13 @@ fn discover_model_files(path: &Path) -> Vec<ModelFile> {
 - [ ] Git LFS / .gitignore detection for model files
 - [x] Tests: 13 for model quality + 3 for CB-1004/CB-1005
 
-### Phase 6: Book & Documentation (1 day)
+### Phase 6: Book & Documentation (1 day) ✅
 
-- [ ] pmat-book chapter for SQL best practices (CB-700)
-- [ ] pmat-book chapter for Scala best practices (CB-800)
-- [ ] pmat-book chapter for Markdown best practices (CB-900)
-- [ ] pmat-book chapter for YAML best practices (CB-950)
-- [ ] pmat-book chapter for MLOps model quality (CB-1000)
+- [x] pmat-book chapter for SQL best practices (CB-700) — ch48
+- [x] pmat-book chapter for Scala best practices (CB-800) — ch49
+- [x] pmat-book chapter for Markdown best practices (CB-900) — ch50
+- [x] pmat-book chapter for YAML best practices (CB-950) — ch51
+- [x] pmat-book chapter for MLOps model quality (CB-1000) — ch52
 - [ ] Update README with new language count and model support
 
 ## 5. Testing Strategy
