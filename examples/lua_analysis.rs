@@ -8,6 +8,8 @@
 //! 3. Calculating cyclomatic and cognitive complexity
 //! 4. Analyzing control flow patterns (if/for/while/repeat/and/or)
 //! 5. TDG (Technical Debt Grading) with full 7-component scoring
+//! 6. Dead code detection with module export awareness
+//! 7. Defect detection (LUA-GLOBAL, LUA-NIL, LUA-PCALL, LUA-DANGER)
 //!
 //! # Usage
 //!
@@ -34,12 +36,15 @@ fn main() -> Result<()> {
     demo_oop(&strategy, &rt)?;
     demo_language_detection(&strategy);
     demo_tdg_scoring()?;
+    demo_dead_code_detection()?;
+    demo_defect_detection();
 
     println!("=== Lua Analysis Complete ===");
     println!();
     println!("Try analyzing your own Lua projects:");
     println!("  pmat analyze tdg --path /path/to/file.lua");
     println!("  pmat analyze complexity --path /path/to/lua/project");
+    println!("  pmat analyze dead-code --path /path/to/lua/project");
     println!("  pmat comply check   # includes CB-600 Lua best practices");
     println!("  pmat query \"function_name\" --include-source");
 
@@ -281,4 +286,75 @@ return M
     }
     println!();
     Ok(())
+}
+
+fn demo_dead_code_detection() -> Result<()> {
+    println!("7. Dead Code Detection (Module-Export Aware)");
+
+    // Create a temp directory with Lua files
+    let temp = tempfile::TempDir::new()?;
+    std::fs::write(
+        temp.path().join("mylib.lua"),
+        r#"local M = {}
+
+function M.public_api()
+    return M.helper()
+end
+
+function M.helper()
+    return 42
+end
+
+local function truly_dead()
+    return "nobody calls me"
+end
+
+return M
+"#,
+    )?;
+
+    let result =
+        pmat::services::dead_code_multi_language::analyze_dead_code_multi_language(temp.path())?;
+
+    println!("   Language: {}", result.language);
+    println!("   Total functions: {}", result.total_functions);
+    println!("   Dead functions: {}", result.dead_functions.len());
+    for dead_fn in &result.dead_functions {
+        println!("     - {} (line {}): {}", dead_fn.name, dead_fn.line, dead_fn.reason);
+    }
+    println!(
+        "   Dead code: {:.1}%",
+        result.dead_code_percentage
+    );
+    println!(
+        "   Module exports (M.*): correctly excluded from dead code"
+    );
+    println!();
+    Ok(())
+}
+
+fn demo_defect_detection() {
+    println!("8. Defect Detection (LuaDefectDetector)");
+    use pmat::services::defect_detector::LuaDefectDetector;
+
+    let detector = LuaDefectDetector::new();
+    let code = r#"count = 0
+result = compute(data)
+get_player():set_health(100)
+pcall(dangerous_function)
+os.execute("rm -rf " .. user_input)
+"#;
+    let defects = detector.detect(code, std::path::Path::new("demo.lua"));
+
+    println!("   Defects found: {}", defects.len());
+    for defect in &defects {
+        println!(
+            "     [{:?}] {} ({} instance{})",
+            defect.severity,
+            defect.name,
+            defect.instances.len(),
+            if defect.instances.len() == 1 { "" } else { "s" }
+        );
+    }
+    println!();
 }
