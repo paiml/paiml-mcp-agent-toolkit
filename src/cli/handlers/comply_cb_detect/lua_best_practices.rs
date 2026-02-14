@@ -1297,6 +1297,7 @@ fn is_string_accumulator(line: &str) -> bool {
 /// CB-611: Detect weak table misuse patterns.
 /// - String/numeric keys with `__mode = "k"` (never GC'd — value types)
 /// - Unbounded caches without weak references or eviction
+///
 /// Reference: Kong, AwesomeWM, KOReader weak table usage.
 pub fn detect_cb611_weak_table_misuse(project_path: &Path) -> Vec<CbPatternViolation> {
     let files = walkdir_lua_files(project_path);
@@ -1655,15 +1656,15 @@ fn extract_require_module(line: &str) -> Option<String> {
         }
     }
     let after = after.strip_prefix('(').unwrap_or(after).trim();
-    let (quote, rest) = if after.starts_with('"') {
-        ('"', &after[1..])
-    } else if after.starts_with('\'') {
-        ('\'', &after[1..])
+    let (quote, rest) = if let Some(stripped) = after.strip_prefix('"') {
+        ('"', stripped)
+    } else if let Some(stripped) = after.strip_prefix('\'') {
+        ('\'', stripped)
     } else {
         return None;
     };
     let end = rest.find(quote)?;
-    let module = rest[..end].replace('.', "."); // Normalize dots
+    let module = rest[..end].to_string();
     if module.is_empty() { None } else { Some(module) }
 }
 
@@ -1771,10 +1772,10 @@ fn check_global_metatables(content: &str, has_newindex: &mut bool, has_index: &m
         if trimmed.contains("__newindex") && (trimmed.contains("_G") || trimmed.contains("error")) {
             *has_newindex = true;
         }
-        if trimmed.contains("__index") && !trimmed.contains("__newindex") {
-            if trimmed.contains("_G") || trimmed.contains("error") || trimmed.contains("undefined") {
-                *has_index = true;
-            }
+        if trimmed.contains("__index") && !trimmed.contains("__newindex")
+            && (trimmed.contains("_G") || trimmed.contains("error") || trimmed.contains("undefined"))
+        {
+            *has_index = true;
         }
     }
 }
@@ -2211,7 +2212,7 @@ fn extract_local_cache_name(line: &str) -> Option<&str> {
     let rhs = rest[eq_pos + 1..].trim();
     // Check if RHS is exactly a known cacheable global (no parens/brackets after)
     for g in OPENRESTY_CACHEABLE_GLOBALS {
-        if rhs == *g || (rhs.starts_with(g) && rhs[g.len()..].chars().next().is_none_or(|c| c == ' ' || c == '\n')) {
+        if rhs == *g || (rhs.starts_with(g) && rhs[g.len()..].chars().next().map_or(true, |c| c == ' ' || c == '\n')) {
             return Some(*g);
         }
     }
@@ -2435,10 +2436,10 @@ fn detect_oop_in_file(content: &str) -> Vec<LuaOopPattern> {
     }
 
     // Separate metatable: `local mt = { __index = M }` + `setmetatable({}, mt)`
-    if content.contains("__index = M") || content.contains("__index = _M") {
-        if content.contains("setmetatable({") || content.contains("setmetatable(self") {
-            patterns.push(LuaOopPattern::SeparateMetatable);
-        }
+    if (content.contains("__index = M") || content.contains("__index = _M"))
+        && (content.contains("setmetatable({") || content.contains("setmetatable(self"))
+    {
+        patterns.push(LuaOopPattern::SeparateMetatable);
     }
 
     // Prototypal: `self.__index = self` or `Base:extend`

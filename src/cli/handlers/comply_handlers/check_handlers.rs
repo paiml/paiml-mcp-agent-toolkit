@@ -586,15 +586,14 @@ async fn handle_init(project_path: &Path, force: bool) -> Result<()> {
 }
 
 fn generate_default_pmat_yaml() -> String {
-    format!(
-        r#"# PMAT Compliance Configuration
+    r#"# PMAT Compliance Configuration
 # See: pmat comply check --help
 
 comply:
   # Check configurations (disable individual checks)
   checks:
-    cb-050: {{ enabled: true, severity: critical }}
-    cb-060: {{ enabled: true, severity: high }}
+    cb-050: { enabled: true, severity: critical }
+    cb-060: { enabled: true, severity: high }
   # Global thresholds
   thresholds:
     coverage: 85.0
@@ -613,7 +612,7 @@ quality:
   tdg_enabled: true
   min_tdg_score: 70.0
 "#
-    )
+    .to_string()
 }
 
 fn generate_claude_md(project_name: &str) -> String {

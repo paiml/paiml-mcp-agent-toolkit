@@ -392,19 +392,25 @@ pub fn execute_all_gates(config: &GateConfig, project_dir: &Path) -> Result<Qual
     if config.run_clippy {
         eprintln!("Running clippy...");
         gates.push(execute_clippy(config, project_dir)?);
-        eprintln!("  clippy: {:.1}s", gates.last().unwrap().duration.as_secs_f64());
+        if let Some(last) = gates.last() {
+            eprintln!("  clippy: {:.1}s", last.duration.as_secs_f64());
+        }
     }
 
     if config.run_tests {
         eprintln!("Running tests (--lib)...");
         gates.push(execute_tests(config, project_dir)?);
-        eprintln!("  tests: {:.1}s", gates.last().unwrap().duration.as_secs_f64());
+        if let Some(last) = gates.last() {
+            eprintln!("  tests: {:.1}s", last.duration.as_secs_f64());
+        }
     }
 
     if config.check_coverage {
         eprintln!("Running coverage...");
         gates.push(execute_coverage(config, project_dir)?);
-        eprintln!("  coverage: {:.1}s", gates.last().unwrap().duration.as_secs_f64());
+        if let Some(last) = gates.last() {
+            eprintln!("  coverage: {:.1}s", last.duration.as_secs_f64());
+        }
     }
 
     if config.check_complexity {
