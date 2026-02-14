@@ -70,6 +70,10 @@ pub struct ComplyConfig {
     /// Output format preferences
     #[serde(default)]
     pub output: OutputConfig,
+
+    /// Per-project suppression rules for false positive management
+    #[serde(default)]
+    pub suppressions: Vec<SuppressionYamlRule>,
 }
 
 impl Default for ComplyConfig {
@@ -79,8 +83,39 @@ impl Default for ComplyConfig {
             thresholds: ComplyThresholds::default(),
             fail_fast: false,
             output: OutputConfig::default(),
+            suppressions: Vec::new(),
         }
     }
+}
+
+/// A suppression rule loaded from .pmat.yaml
+///
+/// Example YAML:
+/// ```yaml
+/// comply:
+///   suppressions:
+///     - rules: ["CB-954"]
+///       reason: "max_tokens is an LLM parameter, not a secret"
+///     - rules: ["CB-501"]
+///       files: ["examples/**"]
+///       reason: "Examples use unwrap for brevity"
+///     - rules: ["CB-516"]
+///       files: ["src/constants.rs"]
+///       reason: "Constants file legitimately contains magic numbers"
+///       expires: "2026-12-31"
+/// ```
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SuppressionYamlRule {
+    /// Check IDs to suppress (e.g., ["CB-954", "CB-501"])
+    pub rules: Vec<String>,
+    /// Optional glob patterns for file matching (e.g., ["examples/**"])
+    #[serde(default)]
+    pub files: Vec<String>,
+    /// Required reason for audit trail
+    pub reason: String,
+    /// Optional expiry date (ISO 8601: "2026-12-31")
+    #[serde(default)]
+    pub expires: Option<String>,
 }
 
 /// Configuration for an individual check
@@ -451,6 +486,71 @@ impl ComplyConfig {
             CheckSeverity::Info => false,
         }
     }
+
+    /// Check if a specific violation should be suppressed.
+    ///
+    /// Matches against the `suppressions` rules from `.pmat.yaml`.
+    /// Returns `Some(reason)` if suppressed, `None` if not.
+    pub fn is_suppressed(&self, check_id: &str, file_path: &str) -> Option<String> {
+        let today = current_date_iso();
+        for rule in &self.suppressions {
+            // Check rule ID match (case-insensitive)
+            let id_matches = rule.rules.iter().any(|r| r.eq_ignore_ascii_case(check_id));
+            if !id_matches {
+                continue;
+            }
+
+            // Check expiry
+            if let Some(ref expires) = rule.expires {
+                if expires.as_str() < today.as_str() {
+                    continue; // Expired rule, skip
+                }
+            }
+
+            // Check file glob match (if file globs specified)
+            if !rule.files.is_empty() {
+                let matches_any = rule.files.iter().any(|pattern| {
+                    glob::Pattern::new(pattern)
+                        .map(|p| {
+                            let opts = glob::MatchOptions {
+                                case_sensitive: true,
+                                require_literal_separator: false,
+                                require_literal_leading_dot: false,
+                            };
+                            p.matches_with(file_path, opts)
+                        })
+                        .unwrap_or(false)
+                });
+                if !matches_any {
+                    continue;
+                }
+            }
+
+            // All conditions matched
+            return Some(rule.reason.clone());
+        }
+        None
+    }
+}
+
+/// Get current date in ISO 8601 format for expiry comparison
+fn current_date_iso() -> String {
+    let secs = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs();
+    // Howard Hinnant's civil date algorithm
+    let z = (secs / 86400) as i64 + 719468;
+    let era = if z >= 0 { z } else { z - 146096 } / 146097;
+    let doe = (z - era * 146097) as u64;
+    let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
+    let y = yoe as i64 + era * 400;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let d = doy - (153 * mp + 2) / 5 + 1;
+    let m = if mp < 10 { mp + 3 } else { mp - 9 };
+    let y = if m <= 2 { y + 1 } else { y };
+    format!("{y:04}-{m:02}-{d:02}")
 }
 
 /// Configuration loading errors
@@ -546,5 +646,135 @@ comply:
         assert!(check.enabled);
         assert_eq!(check.severity, CheckSeverity::Warning);
         assert!(check.threshold.is_none());
+    }
+
+    #[test]
+    fn test_suppression_by_rule_id() {
+        let config = ComplyConfig {
+            suppressions: vec![SuppressionYamlRule {
+                rules: vec!["CB-954".to_string()],
+                files: vec![],
+                reason: "max_tokens is an LLM parameter".to_string(),
+                expires: None,
+            }],
+            ..Default::default()
+        };
+        // CB-954 should be suppressed regardless of file
+        assert!(config.is_suppressed("CB-954", "playbooks/config.yaml").is_some());
+        // CB-950 should NOT be suppressed
+        assert!(config.is_suppressed("CB-950", "playbooks/config.yaml").is_none());
+    }
+
+    #[test]
+    fn test_suppression_case_insensitive() {
+        let config = ComplyConfig {
+            suppressions: vec![SuppressionYamlRule {
+                rules: vec!["cb-954".to_string()],
+                files: vec![],
+                reason: "test".to_string(),
+                expires: None,
+            }],
+            ..Default::default()
+        };
+        assert!(config.is_suppressed("CB-954", "file.yaml").is_some());
+    }
+
+    #[test]
+    fn test_suppression_with_file_glob() {
+        let config = ComplyConfig {
+            suppressions: vec![SuppressionYamlRule {
+                rules: vec!["CB-501".to_string()],
+                files: vec!["examples/**".to_string()],
+                reason: "Examples use unwrap for brevity".to_string(),
+                expires: None,
+            }],
+            ..Default::default()
+        };
+        // File matching glob should be suppressed
+        assert!(config.is_suppressed("CB-501", "examples/demo.rs").is_some());
+        // File NOT matching glob should NOT be suppressed
+        assert!(config.is_suppressed("CB-501", "src/main.rs").is_none());
+    }
+
+    #[test]
+    fn test_suppression_expired() {
+        let config = ComplyConfig {
+            suppressions: vec![SuppressionYamlRule {
+                rules: vec!["CB-516".to_string()],
+                files: vec![],
+                reason: "Temporary suppression".to_string(),
+                expires: Some("2020-01-01".to_string()), // Long expired
+            }],
+            ..Default::default()
+        };
+        // Expired suppression should NOT apply
+        assert!(config.is_suppressed("CB-516", "src/lib.rs").is_none());
+    }
+
+    #[test]
+    fn test_suppression_not_expired() {
+        let config = ComplyConfig {
+            suppressions: vec![SuppressionYamlRule {
+                rules: vec!["CB-516".to_string()],
+                files: vec![],
+                reason: "Future suppression".to_string(),
+                expires: Some("2099-12-31".to_string()),
+            }],
+            ..Default::default()
+        };
+        assert!(config.is_suppressed("CB-516", "src/lib.rs").is_some());
+    }
+
+    #[test]
+    fn test_suppression_yaml_parsing() {
+        let yaml = r#"
+comply:
+  suppressions:
+    - rules: ["CB-954"]
+      reason: "max_tokens is an LLM parameter"
+    - rules: ["CB-501"]
+      files: ["examples/**"]
+      reason: "Examples use unwrap for brevity"
+      expires: "2026-12-31"
+"#;
+        let config: PmatYamlConfig = serde_yaml::from_str(yaml).unwrap();
+        assert_eq!(config.comply.suppressions.len(), 2);
+        assert_eq!(config.comply.suppressions[0].rules, vec!["CB-954"]);
+        assert_eq!(config.comply.suppressions[1].files, vec!["examples/**"]);
+        assert_eq!(
+            config.comply.suppressions[1].expires,
+            Some("2026-12-31".to_string())
+        );
+    }
+
+    #[test]
+    fn test_suppression_returns_reason() {
+        let config = ComplyConfig {
+            suppressions: vec![SuppressionYamlRule {
+                rules: vec!["CB-954".to_string()],
+                files: vec![],
+                reason: "LLM parameter, not a secret".to_string(),
+                expires: None,
+            }],
+            ..Default::default()
+        };
+        let reason = config.is_suppressed("CB-954", "file.yaml");
+        assert_eq!(reason, Some("LLM parameter, not a secret".to_string()));
+    }
+
+    #[test]
+    fn test_suppression_multiple_rules() {
+        let config = ComplyConfig {
+            suppressions: vec![SuppressionYamlRule {
+                rules: vec!["CB-501".to_string(), "CB-507".to_string()],
+                files: vec![],
+                reason: "Accepted risk".to_string(),
+                expires: None,
+            }],
+            ..Default::default()
+        };
+        assert!(config.is_suppressed("CB-501", "any.rs").is_some());
+        assert!(config.is_suppressed("CB-507", "any.rs").is_some());
+        assert!(config.is_suppressed("CB-502", "any.rs").is_none());
     }
 }
