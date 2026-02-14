@@ -3372,3 +3372,188 @@ mod tests {
         assert!(violations.is_empty());
     }
 }
+
+// =============================================================================
+// CB-608: Unchecked nil, err Return Pattern (#181)
+// =============================================================================
+
+mod cb608_tests {
+    use super::*;
+    use std::fs;
+    use tempfile::TempDir;
+
+    #[test]
+    fn test_cb608_detects_unchecked_io_open() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("app.lua"),
+            "local f = io.open('data.txt')\n",
+        )
+        .unwrap();
+        let violations = detect_cb608_unchecked_nil_err(temp.path());
+        assert_eq!(violations.len(), 1);
+        assert_eq!(violations[0].pattern_id, "CB-608");
+        assert!(violations[0].description.contains("io.open"));
+    }
+
+    #[test]
+    fn test_cb608_passes_when_error_captured() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("app.lua"),
+            "local f, err = io.open('data.txt')\n",
+        )
+        .unwrap();
+        let violations = detect_cb608_unchecked_nil_err(temp.path());
+        assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn test_cb608_detects_unchecked_pcall() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("app.lua"),
+            "pcall(dangerous_function)\n",
+        )
+        .unwrap();
+        let violations = detect_cb608_unchecked_nil_err(temp.path());
+        assert_eq!(violations.len(), 1);
+        assert!(violations[0].description.contains("pcall"));
+    }
+
+    #[test]
+    fn test_cb608_skips_test_files() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("app_test.lua"),
+            "local f = io.open('test.txt')\n",
+        )
+        .unwrap();
+        let violations = detect_cb608_unchecked_nil_err(temp.path());
+        assert!(violations.is_empty());
+    }
+}
+
+// =============================================================================
+// CB-609: assert() in Library Code (#193)
+// =============================================================================
+
+mod cb609_tests {
+    use super::*;
+    use std::fs;
+    use tempfile::TempDir;
+
+    #[test]
+    fn test_cb609_detects_assert_in_library() {
+        let temp = TempDir::new().unwrap();
+        // assert on line 8 (past the 5-line require-guard threshold)
+        let code = "local M = {}\nlocal utils = require('utils')\n\
+                     local fmt = string.format\nlocal insert = table.insert\n\
+                     local pairs = pairs\nlocal type = type\n\
+                     function M.process(data)\n  assert(type(data) == 'table')\n\
+                     return data\nend\nreturn M\n";
+        fs::write(temp.path().join("lib.lua"), code).unwrap();
+        let violations = detect_cb609_assert_in_library(temp.path());
+        assert!(!violations.is_empty(), "Should detect assert() past line 5");
+        assert_eq!(violations[0].pattern_id, "CB-609");
+    }
+
+    #[test]
+    fn test_cb609_skips_test_files() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("test_app.lua"),
+            "assert(result == expected)\n",
+        )
+        .unwrap();
+        let violations = detect_cb609_assert_in_library(temp.path());
+        assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn test_cb609_skips_module_require_guards() {
+        let temp = TempDir::new().unwrap();
+        // assert in first 5 lines (module-level guards) should be skipped
+        fs::write(
+            temp.path().join("lib.lua"),
+            "local ok = pcall(require, 'ffi')\nassert(ok, 'FFI required')\nlocal M = {}\nreturn M\n",
+        )
+        .unwrap();
+        let violations = detect_cb609_assert_in_library(temp.path());
+        assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn test_cb609_skips_test_framework_assertions() {
+        let temp = TempDir::new().unwrap();
+        // assert.is_true() is a test framework method, not plain assert()
+        fs::write(
+            temp.path().join("lib.lua"),
+            "local M = {}\nfunction M.run()\n  -- noop\nend\nlocal x = assert.is_true\nreturn M\n",
+        )
+        .unwrap();
+        let violations = detect_cb609_assert_in_library(temp.path());
+        assert!(violations.is_empty());
+    }
+}
+
+// =============================================================================
+// CB-610: String Accumulator in Loop (#190)
+// =============================================================================
+
+mod cb610_tests {
+    use super::*;
+    use std::fs;
+    use tempfile::TempDir;
+
+    #[test]
+    fn test_cb610_detects_string_accumulator() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("app.lua"),
+            "local result = ''\nfor _, item in ipairs(items) do\n  result = result .. item\nend\n",
+        )
+        .unwrap();
+        let violations = detect_cb610_string_accumulator_in_loop(temp.path());
+        assert_eq!(violations.len(), 1);
+        assert_eq!(violations[0].pattern_id, "CB-610");
+    }
+
+    #[test]
+    fn test_cb610_skips_single_use_concat() {
+        let temp = TempDir::new().unwrap();
+        // Single-use concat in loop is O(n), not O(n²) — should not be flagged
+        fs::write(
+            temp.path().join("app.lua"),
+            "for _, item in ipairs(items) do\n  log('Processing: ' .. item.name)\nend\n",
+        )
+        .unwrap();
+        let violations = detect_cb610_string_accumulator_in_loop(temp.path());
+        assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn test_cb610_skips_outside_loop() {
+        let temp = TempDir::new().unwrap();
+        // Accumulator outside loop is fine (not O(n²))
+        fs::write(
+            temp.path().join("app.lua"),
+            "local msg = prefix .. suffix\n",
+        )
+        .unwrap();
+        let violations = detect_cb610_string_accumulator_in_loop(temp.path());
+        assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn test_cb610_skips_test_files() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("test_builder.lua"),
+            "local result = ''\nfor _, item in ipairs(items) do\n  result = result .. item\nend\n",
+        )
+        .unwrap();
+        let violations = detect_cb610_string_accumulator_in_loop(temp.path());
+        assert!(violations.is_empty());
+    }
+}
