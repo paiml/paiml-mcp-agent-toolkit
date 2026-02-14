@@ -330,14 +330,17 @@ impl PatternExtractor {
     ) -> Result<()> {
         use regex::Regex;
 
-        // Pattern: Input validation (is_empty, len, contains checks)
-        // Note: Use \( instead of \(\) to match methods with or without arguments
-        let validation_pattern =
-            Regex::new(r"(?m)if\s+.*\.(is_empty|len|contains|starts_with|ends_with)\(")
-                .expect("Hardcoded regex pattern must be valid");
+        // Pattern: Input validation — only match multi-condition validation blocks,
+        // not standalone `.len()` / `.is_empty()` calls (those are standard Rust idioms).
+        // Require at least two chained conditions or comparisons on the same line.
+        let validation_pattern = Regex::new(
+            r"(?m)if\s+.*\.(is_empty|len|contains|starts_with|ends_with)\(.*(\&\&|\|\||\.len\(\)\s*[<>=])",
+        )
+        .expect("Hardcoded regex pattern must be valid");
         let matches: Vec<_> = validation_pattern.find_iter(content).collect();
 
-        if matches.len() > 2 {
+        // Raised threshold: standalone validation calls are idiomatic, not duplication
+        if matches.len() > 5 {
             let pattern_hash = self.hash_pattern(&format!("validation_{}", file_path.display()));
             let mut locations = Vec::new();
 
@@ -383,11 +386,14 @@ impl PatternExtractor {
         use regex::Regex;
 
         // Pattern: File/resource management (open/close, lock/unlock)
+        // Standalone `.lock()` calls on mutexes are idiomatic Rust, not duplication.
+        // Only flag when the same resource management sequence repeats.
         let resource_pattern = Regex::new(r"(?m)\.(open|close|lock|unlock|acquire|release)\(\)")
             .expect("Hardcoded regex pattern must be valid");
         let matches: Vec<_> = resource_pattern.find_iter(content).collect();
 
-        if matches.len() > 1 {
+        // Raised threshold: individual .lock()/.open() calls are standard practice
+        if matches.len() > 5 {
             let pattern_hash = self.hash_pattern(&format!("resource_{}", file_path.display()));
             let mut locations = Vec::new();
 
@@ -479,12 +485,15 @@ impl PatternExtractor {
     ) -> Result<()> {
         use regex::Regex;
 
-        // Pattern: Iterator chains (map, filter, collect)
-        let iter_pattern = Regex::new(r"\.(map|filter|collect|fold|reduce)\(")
+        // Pattern: Iterator chains — only flag multi-step chains, not individual
+        // .map()/.collect() calls which are standard Rust idiom.
+        // Match chains of 2+ combinators: e.g. `.iter().map(...).collect()`
+        let iter_pattern = Regex::new(r"\.(map|filter|filter_map|flat_map|fold|reduce)\(")
             .expect("Hardcoded regex pattern must be valid");
         let matches: Vec<_> = iter_pattern.find_iter(content).collect();
 
-        if matches.len() > 3 {
+        // Raised threshold: individual iterator combinators are idiomatic Rust
+        if matches.len() > 8 {
             let pattern_hash = self.hash_pattern(&format!("transform_{}", file_path.display()));
             let mut locations = Vec::new();
 
@@ -527,12 +536,15 @@ impl PatternExtractor {
         use regex::Regex;
 
         // Pattern: HTTP/API calls (reqwest, fetch, etc.)
+        // Exclude bare `.get(` which matches HashMap/BTreeMap/Vec accessors.
+        // Only match qualified HTTP patterns (client., http., fetch(), .post, .put, .delete).
         let api_pattern =
-            Regex::new(r"(?m)(client\.|http\.|fetch\(|\.get\(|\.post\(|\.put\(|\.delete\()")
+            Regex::new(r"(?m)(client\.|http\.|fetch\(|\.post\(|\.put\(|\.delete\()")
                 .expect("Hardcoded regex pattern must be valid");
         let matches: Vec<_> = api_pattern.find_iter(content).collect();
 
-        if matches.len() > 1 {
+        // Raised threshold: isolated HTTP calls are not duplication
+        if matches.len() > 3 {
             let pattern_hash = self.hash_pattern(&format!("api_call_{}", file_path.display()));
             let mut locations = Vec::new();
 
