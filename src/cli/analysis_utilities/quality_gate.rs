@@ -650,6 +650,18 @@ async fn handle_project_quality_gate(
     )
     .await?;
 
+    // Apply [exclude] paths from .pmat-metrics.toml to ALL violations (#196, #197)
+    let exclude_paths = load_entropy_exclude_paths(&project_path);
+    if !exclude_paths.is_empty() {
+        let before = violations.len();
+        filter_violations_by_exclude(&mut violations, &exclude_paths);
+        let removed = before - violations.len();
+        if removed > 0 {
+            eprintln!("  📁 Excluded {removed} violations from excluded paths");
+            results.recalculate_from(&violations);
+        }
+    }
+
     // Add provability if requested
     if include_provability {
         let prov_start = if perf { Some(Instant::now()) } else { None };
@@ -1193,19 +1205,6 @@ async fn run_all_project_checks(
         check_provability(project_path, provability_threshold),
         provability_violations
     );
-
-    // Apply [exclude] paths from .pmat-metrics.toml to ALL violations (#196)
-    let exclude_paths = load_entropy_exclude_paths(project_path);
-    if !exclude_paths.is_empty() {
-        let before = violations.len();
-        filter_violations_by_exclude(violations, &exclude_paths);
-        let removed = before - violations.len();
-        if removed > 0 {
-            eprintln!("  📁 Excluded {removed} violations from excluded paths");
-            // Recount violations per category
-            results.recalculate_from(violations);
-        }
-    }
 
     Ok(())
 }
