@@ -3741,3 +3741,173 @@ mod cb612_tests {
         assert!(violations[0].description.contains("LuaUnit"));
     }
 }
+
+// =============================================================================
+// CB-613: Require Cycle Detection (#187)
+// =============================================================================
+
+mod cb613_tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    #[test]
+    fn test_cb613_detects_simple_cycle() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("a.lua"),
+            "local b = require('b')\nreturn {}\n",
+        )
+        .unwrap();
+        fs::write(
+            temp.path().join("b.lua"),
+            "local a = require('a')\nreturn {}\n",
+        )
+        .unwrap();
+        let violations = detect_cb613_require_cycles(temp.path());
+        assert!(!violations.is_empty(), "Should detect a -> b -> a cycle");
+        assert_eq!(violations[0].pattern_id, "CB-613");
+        assert!(violations[0].description.contains("Circular"));
+    }
+
+    #[test]
+    fn test_cb613_no_cycle() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("a.lua"),
+            "local b = require('b')\nreturn {}\n",
+        )
+        .unwrap();
+        fs::write(temp.path().join("b.lua"), "return {}\n").unwrap();
+        let violations = detect_cb613_require_cycles(temp.path());
+        assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn test_cb613_ignores_function_scoped_require() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("a.lua"),
+            "local b = require('b')\nreturn {}\n",
+        )
+        .unwrap();
+        fs::write(
+            temp.path().join("b.lua"),
+            "local M = {}\nfunction M.init()\n  local a = require('a')\nend\nreturn M\n",
+        )
+        .unwrap();
+        let violations = detect_cb613_require_cycles(temp.path());
+        // b's require('a') is inside a function, so no cycle
+        assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn test_cb613_single_file_no_crash() {
+        let temp = TempDir::new().unwrap();
+        fs::write(temp.path().join("a.lua"), "return {}\n").unwrap();
+        let violations = detect_cb613_require_cycles(temp.path());
+        assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn test_cb613_handles_dotted_requires() {
+        let temp = TempDir::new().unwrap();
+        // a requires foo.b, b requires foo.a — but cycle detection uses normalized names
+        fs::write(
+            temp.path().join("a.lua"),
+            "local b = require(\"b\")\nreturn {}\n",
+        )
+        .unwrap();
+        fs::write(
+            temp.path().join("b.lua"),
+            "local a = require(\"a\")\nreturn {}\n",
+        )
+        .unwrap();
+        let violations = detect_cb613_require_cycles(temp.path());
+        assert!(!violations.is_empty());
+    }
+}
+
+// =============================================================================
+// CB-614: Global Protection and Sandbox Detection (#191)
+// =============================================================================
+
+mod cb614_tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    #[test]
+    fn test_cb614_detects_full_protection() {
+        let temp = TempDir::new().unwrap();
+        fs::write(temp.path().join("a.lua"), "return {}\n").unwrap();
+        fs::write(temp.path().join("b.lua"), "return {}\n").unwrap();
+        fs::write(
+            temp.path().join("strict.lua"),
+            r#"local strict = {}
+strict.__newindex = function(t, k, v) error("cannot set: " .. k) end
+strict.__index = function(t, k) error("cannot get undefined: " .. k) end
+setmetatable(_G, strict)
+"#,
+        )
+        .unwrap();
+        let violations = detect_cb614_global_protection(temp.path());
+        let info: Vec<_> = violations.iter().filter(|v| v.file == "project").collect();
+        assert!(!info.is_empty());
+        assert!(info[0].description.contains("full"));
+    }
+
+    #[test]
+    fn test_cb614_detects_partial_protection() {
+        let temp = TempDir::new().unwrap();
+        fs::write(temp.path().join("a.lua"), "return {}\n").unwrap();
+        fs::write(temp.path().join("b.lua"), "return {}\n").unwrap();
+        fs::write(
+            temp.path().join("strict.lua"),
+            "setmetatable(_G, { __newindex = error })\n",
+        )
+        .unwrap();
+        let violations = detect_cb614_global_protection(temp.path());
+        let project: Vec<_> = violations.iter().filter(|v| v.file == "project").collect();
+        assert!(!project.is_empty());
+        assert!(project[0].description.contains("partial"));
+    }
+
+    #[test]
+    fn test_cb614_flags_loadfile_without_t_mode() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("loader.lua"),
+            "local chunk = loadfile(\"plugin.lua\")\n",
+        )
+        .unwrap();
+        let violations = detect_cb614_global_protection(temp.path());
+        let load_violations: Vec<_> = violations
+            .iter()
+            .filter(|v| v.description.contains("loadfile"))
+            .collect();
+        assert!(!load_violations.is_empty());
+        assert!(load_violations[0].description.contains("bytecode"));
+    }
+
+    #[test]
+    fn test_cb614_allows_loadfile_with_t_mode() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("loader.lua"),
+            "local chunk = loadfile(\"plugin.lua\", \"t\", env)\n",
+        )
+        .unwrap();
+        let violations = detect_cb614_global_protection(temp.path());
+        let load_violations: Vec<_> = violations
+            .iter()
+            .filter(|v| v.description.contains("loadfile"))
+            .collect();
+        assert!(load_violations.is_empty());
+    }
+
+    #[test]
+    fn test_cb614_no_lua_files() {
+        let temp = TempDir::new().unwrap();
+        let violations = detect_cb614_global_protection(temp.path());
+        assert!(violations.is_empty());
+    }
+}

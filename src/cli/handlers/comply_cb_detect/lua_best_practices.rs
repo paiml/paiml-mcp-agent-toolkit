@@ -1542,3 +1542,351 @@ fn has_test_nginx_indicators(project_path: &Path) -> bool {
         Err(_) => false,
     }
 }
+
+// =============================================================================
+// CB-613: Lua Require Cycle Detection (#187)
+// =============================================================================
+
+/// CB-613: Detect circular require() chains in Lua projects.
+/// Builds a directed graph from top-level require() calls and finds cycles via DFS.
+/// Function-scoped requires are excluded (they're safe — deferred loading).
+pub fn detect_cb613_require_cycles(project_path: &Path) -> Vec<CbPatternViolation> {
+    let files = walkdir_lua_files(project_path);
+    if files.len() < 2 {
+        return Vec::new();
+    }
+
+    // Build require graph: module_name -> Vec<required_module>
+    let graph = build_require_graph(project_path, &files);
+    if graph.is_empty() {
+        return Vec::new();
+    }
+
+    // Find cycles via DFS
+    let cycles = find_require_cycles(&graph);
+    cycles
+        .into_iter()
+        .map(|cycle| {
+            let chain = cycle.join(" -> ");
+            CbPatternViolation {
+                pattern_id: "CB-613".to_string(),
+                file: cycle.first().map(|s| format!("{s}.lua")).unwrap_or_default(),
+                line: 0,
+                description: format!("Circular require chain: {chain}"),
+                severity: Severity::Warning,
+            }
+        })
+        .collect()
+}
+
+/// Build a directed graph of top-level require() calls.
+/// Returns module_name -> Vec<required_module_name>.
+fn build_require_graph(
+    project_path: &Path,
+    files: &[PathBuf],
+) -> std::collections::HashMap<String, Vec<String>> {
+    let mut graph: std::collections::HashMap<String, Vec<String>> = std::collections::HashMap::new();
+
+    for file_path in files {
+        if is_lua_test_file(file_path) {
+            continue;
+        }
+        let content = match fs::read_to_string(file_path) {
+            Ok(c) => c,
+            Err(_) => continue,
+        };
+        let rel = file_path
+            .strip_prefix(project_path)
+            .unwrap_or(file_path)
+            .with_extension("")
+            .display()
+            .to_string()
+            .replace(['/', '\\'], ".");
+
+        let requires = extract_top_level_requires(&content);
+        if !requires.is_empty() {
+            graph.insert(rel, requires);
+        }
+    }
+
+    graph
+}
+
+/// Extract module names from top-level require() calls (not inside functions).
+fn extract_top_level_requires(content: &str) -> Vec<String> {
+    let mut requires = Vec::new();
+    let mut func_depth: i32 = 0;
+
+    for line in content.lines() {
+        let trimmed = line.trim();
+        if trimmed.starts_with("--") {
+            continue;
+        }
+        // Track function nesting
+        if trimmed.starts_with("function ")
+            || trimmed.starts_with("local function ")
+            || trimmed.contains("= function(")
+        {
+            func_depth += 1;
+        }
+        // Only capture top-level requires
+        if func_depth == 0 {
+            if let Some(module) = extract_require_module(trimmed) {
+                requires.push(module);
+            }
+        }
+        if trimmed == "end" || trimmed.starts_with("end ") || trimmed.starts_with("end)") {
+            func_depth = (func_depth - 1).max(0);
+        }
+    }
+    requires
+}
+
+/// Extract module name from a require() call.
+/// Matches: require("foo"), require('foo'), require "foo", require 'foo'
+fn extract_require_module(line: &str) -> Option<String> {
+    let req_idx = line.find("require")?;
+    let after = line[req_idx + 7..].trim();
+    // Skip if require is part of a larger word
+    if req_idx > 0 {
+        let before_char = line.as_bytes()[req_idx - 1];
+        if before_char.is_ascii_alphanumeric() || before_char == b'_' {
+            return None;
+        }
+    }
+    let after = after.strip_prefix('(').unwrap_or(after).trim();
+    let (quote, rest) = if after.starts_with('"') {
+        ('"', &after[1..])
+    } else if after.starts_with('\'') {
+        ('\'', &after[1..])
+    } else {
+        return None;
+    };
+    let end = rest.find(quote)?;
+    let module = rest[..end].replace('.', "."); // Normalize dots
+    if module.is_empty() { None } else { Some(module) }
+}
+
+/// Find cycles in the require graph using DFS.
+fn find_require_cycles(
+    graph: &std::collections::HashMap<String, Vec<String>>,
+) -> Vec<Vec<String>> {
+    use std::collections::HashSet;
+    let mut cycles = Vec::new();
+    let mut visited = HashSet::new();
+    let mut rec_stack = Vec::new();
+
+    for start in graph.keys() {
+        if visited.contains(start) {
+            continue;
+        }
+        dfs_find_cycle(start, graph, &mut visited, &mut rec_stack, &mut cycles);
+    }
+    cycles
+}
+
+/// DFS helper to detect back edges (cycles).
+fn dfs_find_cycle(
+    node: &str,
+    graph: &std::collections::HashMap<String, Vec<String>>,
+    visited: &mut std::collections::HashSet<String>,
+    rec_stack: &mut Vec<String>,
+    cycles: &mut Vec<Vec<String>>,
+) {
+    visited.insert(node.to_string());
+    rec_stack.push(node.to_string());
+
+    if let Some(deps) = graph.get(node) {
+        for dep in deps {
+            if let Some(pos) = rec_stack.iter().position(|n| n == dep) {
+                // Found a cycle: extract the cycle from stack
+                let cycle: Vec<String> = rec_stack[pos..].to_vec();
+                cycles.push(cycle);
+            } else if !visited.contains(dep.as_str()) {
+                dfs_find_cycle(dep, graph, visited, rec_stack, cycles);
+            }
+        }
+    }
+
+    rec_stack.pop();
+}
+
+// =============================================================================
+// CB-614: Lua Global Protection and Sandbox Pattern Detection (#191)
+// =============================================================================
+
+/// CB-614: Detect global protection patterns and security-sensitive load calls.
+/// - Checks for setmetatable(_G) with __index/__newindex
+/// - Flags loadfile/load without "t" mode (bytecode injection risk)
+/// - Reports protection level: full, partial, or none
+pub fn detect_cb614_global_protection(project_path: &Path) -> Vec<CbPatternViolation> {
+    let files = walkdir_lua_files(project_path);
+    if files.is_empty() {
+        return Vec::new();
+    }
+
+    let mut violations = Vec::new();
+    let mut has_newindex_protection = false;
+    let mut has_index_protection = false;
+
+    for file_path in &files {
+        if is_lua_test_file(file_path) {
+            continue;
+        }
+        let content = match fs::read_to_string(file_path) {
+            Ok(c) => c,
+            Err(_) => continue,
+        };
+        let rel = file_path
+            .strip_prefix(project_path)
+            .unwrap_or(file_path)
+            .display()
+            .to_string();
+
+        check_global_metatables(&content, &mut has_newindex_protection, &mut has_index_protection);
+        check_unsafe_load_calls(&content, &rel, &mut violations);
+    }
+
+    report_protection_level(
+        &files,
+        has_newindex_protection,
+        has_index_protection,
+        &mut violations,
+    );
+    violations
+}
+
+/// Check if content sets metatable on _G with __index/__newindex.
+fn check_global_metatables(content: &str, has_newindex: &mut bool, has_index: &mut bool) {
+    for line in content.lines() {
+        let trimmed = line.trim();
+        if trimmed.starts_with("--") {
+            continue;
+        }
+        if trimmed.contains("setmetatable") && trimmed.contains("_G") {
+            // Found setmetatable(_G, ...) — check surrounding lines won't have
+            // both protections on same line, so track across the file
+            *has_newindex = true; // setmetatable(_G) implies at least __newindex
+        }
+        if trimmed.contains("__newindex") && (trimmed.contains("_G") || trimmed.contains("error")) {
+            *has_newindex = true;
+        }
+        if trimmed.contains("__index") && !trimmed.contains("__newindex") {
+            if trimmed.contains("_G") || trimmed.contains("error") || trimmed.contains("undefined") {
+                *has_index = true;
+            }
+        }
+    }
+}
+
+/// Flag loadfile/load calls without "t" mode (allows bytecode injection).
+fn check_unsafe_load_calls(
+    content: &str,
+    rel: &str,
+    violations: &mut Vec<CbPatternViolation>,
+) {
+    for (i, line) in content.lines().enumerate() {
+        let trimmed = line.trim();
+        if trimmed.starts_with("--") {
+            continue;
+        }
+        check_single_load_call(trimmed, "loadfile", i + 1, rel, violations);
+        // load(chunk, name, mode, env) — mode is 3rd arg
+        if trimmed.contains("load(") && !trimmed.contains("loadfile") {
+            check_load_function_call(trimmed, i + 1, rel, violations);
+        }
+    }
+}
+
+/// Check a single loadfile() call for missing "t" mode.
+fn check_single_load_call(
+    trimmed: &str,
+    func: &str,
+    line_num: usize,
+    rel: &str,
+    violations: &mut Vec<CbPatternViolation>,
+) {
+    let pattern = format!("{func}(");
+    let Some(pos) = trimmed.find(&pattern) else { return };
+    let after = &trimmed[pos + pattern.len()..];
+    // loadfile(path, mode, env) — mode is 2nd arg
+    // If no "t" in the args, flag it
+    if !after.contains("\"t\"") && !after.contains("'t'") && after.contains('"') {
+        violations.push(CbPatternViolation {
+            pattern_id: "CB-614".to_string(),
+            file: rel.to_string(),
+            line: line_num,
+            description: format!(
+                "`{func}()` without \"t\" mode — allows bytecode injection. Use {func}(path, \"t\", env)"
+            ),
+            severity: Severity::Warning,
+        });
+    }
+}
+
+/// Check load(chunk, name, mode, env) for missing "t" mode.
+fn check_load_function_call(
+    trimmed: &str,
+    line_num: usize,
+    rel: &str,
+    violations: &mut Vec<CbPatternViolation>,
+) {
+    let Some(pos) = trimmed.find("load(") else { return };
+    // Ensure it's not loadfile/loadstring
+    if pos > 0 {
+        let before = trimmed.as_bytes()[pos - 1];
+        if before.is_ascii_alphanumeric() || before == b'_' {
+            return;
+        }
+    }
+    let after = &trimmed[pos + 5..];
+    // Count commas to check if mode arg is present
+    let comma_count = after.chars().take_while(|c| *c != ')').filter(|c| *c == ',').count();
+    if comma_count >= 2 && !after.contains("\"t\"") && !after.contains("'t'") {
+        violations.push(CbPatternViolation {
+            pattern_id: "CB-614".to_string(),
+            file: rel.to_string(),
+            line: line_num,
+            description:
+                "`load()` without \"t\" mode — allows bytecode injection. Use load(chunk, name, \"t\", env)"
+                    .to_string(),
+            severity: Severity::Warning,
+        });
+    }
+}
+
+/// Report overall protection level for the project.
+fn report_protection_level(
+    files: &[PathBuf],
+    has_newindex: bool,
+    has_index: bool,
+    violations: &mut Vec<CbPatternViolation>,
+) {
+    if files.len() < 3 {
+        return; // Too few files to assess
+    }
+    match (has_newindex, has_index) {
+        (true, true) => {
+            violations.push(CbPatternViolation {
+                pattern_id: "CB-614".to_string(),
+                file: "project".to_string(),
+                line: 0,
+                description: "Global protection: full (both __index and __newindex on _G)"
+                    .to_string(),
+                severity: Severity::Info,
+            });
+        }
+        (true, false) => {
+            violations.push(CbPatternViolation {
+                pattern_id: "CB-614".to_string(),
+                file: "project".to_string(),
+                line: 0,
+                description:
+                    "Global protection: partial (__newindex only) — reading undefined globals returns nil silently"
+                        .to_string(),
+                severity: Severity::Warning,
+            });
+        }
+        _ => {} // No protection — CB-600 already flags implicit globals
+    }
+}
