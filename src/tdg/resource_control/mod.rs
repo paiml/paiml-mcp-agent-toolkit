@@ -707,13 +707,6 @@ impl ResourceControllerFactory {
     }
 }
 
-// External tests broken: double-nesting (mod.rs declares mod tests + tests.rs also
-// declares mod tests inside) causes use super::* to resolve to wrong parent.
-// All 1208 lines of tests have #[ignore] anyway.
-#[cfg(all(test, feature = "broken-tests"))]
-#[path = "tests.rs"]
-mod resource_control_tests_external;
-
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {

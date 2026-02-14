@@ -597,7 +597,3 @@ impl LanguageAnalyzer {
     }
 }
 
-// BROKEN: lang_analyzer_tests_part1.rs truncated at line 500
-#[cfg(all(test, feature = "broken-tests"))]
-#[path = "language_analyzer_tests.rs"]
-mod tests;

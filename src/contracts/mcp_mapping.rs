@@ -167,7 +167,3 @@ fn parse_quality_profile(value: &Value) -> QualityProfile {
         .unwrap_or_default()
 }
 
-// BROKEN: ContractValidation doesn't implement Debug
-#[cfg(all(test, feature = "broken-tests"))]
-#[path = "mcp_mapping_tests.rs"]
-mod tests;

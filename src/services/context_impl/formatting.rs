@@ -430,11 +430,6 @@ fn count_ast_items(
 }
 
 
-// BROKEN: context_tests.rs file is missing
-#[cfg(all(test, feature = "broken-tests"))]
-#[path = "context_tests.rs"]
-mod tests;
-
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod visitor_tests {

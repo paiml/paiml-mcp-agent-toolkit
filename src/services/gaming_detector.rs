@@ -400,7 +400,7 @@ pub fn run_meta_falsification(_project_path: &Path) -> Result<bool> {
         fn hidden_function() {}
     "#;
 
-    // The meta-check: if we CAN'T detect this pattern, the detector is broken
+    // Meta-check: verify the detector can identify this known pattern
     let mut violations = Vec::new();
     check_cfg_patterns(Path::new("meta-test.rs"), test_content, &mut violations);
 

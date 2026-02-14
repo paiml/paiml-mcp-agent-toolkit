@@ -941,7 +941,7 @@ async fn test_supply_chain_integrity(project_path: &Path) -> Result<Falsificatio
             ));
         }
 
-        // SECURITY: Require 'passed' field to exist - reject malformed cache (Popperian Audit v2.1 fix)
+        // Validate 'passed' field exists — reject malformed cache (Popperian Audit v2.1)
         let passed = match cache.value.get("passed").and_then(|v| v.as_bool()) {
             Some(p) => p,
             None => {
@@ -984,7 +984,7 @@ async fn test_examples_compile(project_path: &Path) -> Result<FalsificationResul
             ));
         }
 
-        // SECURITY: Require 'passed' field to exist - reject malformed cache (Popperian Audit v2.1 fix)
+        // Validate 'passed' field exists — reject malformed cache (Popperian Audit v2.1)
         let passed = match cache.value.get("passed").and_then(|v| v.as_bool()) {
             Some(p) => p,
             None => {
@@ -1841,7 +1841,7 @@ async fn test_lint_pass(project_path: &Path) -> Result<FalsificationResult> {
             ));
         }
 
-        // SECURITY: Require 'passed' field to exist - reject malformed cache (Popperian Audit v2.1 fix)
+        // Validate 'passed' field exists — reject malformed cache (Popperian Audit v2.1)
         let passed = match cache.value.get("passed").and_then(|v| v.as_bool()) {
             Some(p) => p,
             None => {

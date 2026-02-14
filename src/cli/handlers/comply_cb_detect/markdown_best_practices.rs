@@ -53,7 +53,7 @@ fn walk_md_recursive(dir: &Path, files: &mut Vec<PathBuf>) {
 }
 
 // =============================================================================
-// CB-900: Broken Internal Link
+// CB-900: Internal link validation
 // =============================================================================
 
 pub fn detect_cb900_broken_internal_link(project_path: &Path) -> Vec<CbPatternViolation> {

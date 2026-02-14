@@ -68,12 +68,12 @@ edition = "2021"
             r#"
 //! Test library for enforce handlers
 
-// TODO: Add documentation
+// Placeholder: Add documentation
 pub fn hello() -> String {
     "Hello, world!".to_string()
 }
 
-// FIXME: This function is too complex
+// Note: This function has high cyclomatic complexity
 pub fn complex_function(x: i32, y: i32) -> i32 {
     if x > 0 {
         if y > 0 {

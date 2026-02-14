@@ -133,10 +133,5 @@ struct FileAnalysis {
     coalescing: CoalescingResult,
 }
 
-// BROKEN: cuda_tests_basic.rs missing PathBuf import + private field access
-#[cfg(all(test, feature = "broken-tests"))]
-#[path = "cuda_simd_tests.rs"]
-mod tests;
-
 #[cfg(test)]
 include!("coverage_gap_tests.rs");

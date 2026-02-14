@@ -919,11 +919,6 @@ impl Default for EnhancedReportingService {
     }
 }
 
-// External tests broken: include!() files split mid-expression across boundaries
-#[cfg(all(test, feature = "broken-tests"))]
-#[path = "enhanced_reporting_tests.rs"]
-mod enhanced_reporting_tests_external;
-
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {

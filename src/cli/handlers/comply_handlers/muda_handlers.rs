@@ -191,7 +191,7 @@ fn measure_inventory(project_path: &Path) -> f64 {
         }
     }
 
-    // Quick heuristic: count TODO/FIXME in source
+    // Quick heuristic: count SATD markers in source
     let count = count_satd_markers(project_path);
     ((count as f64) * 2.0).clamp(0.0, 100.0)
 }

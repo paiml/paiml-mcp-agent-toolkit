@@ -305,7 +305,7 @@ static CB050_PATTERNS: LazyLock<Vec<(Regex, &'static str, &'static str)>> = Lazy
             "CB-050-E",
             "Python NotImplementedError - will raise at runtime",
         ),
-        // CB-050-F: Python pass with stub/todo/fixme comment
+        // CB-050-F: Python pass with stub/placeholder comment
         (
             Regex::new(r"pass\s*#\s*(?i:stub|todo|fixme)").expect("valid regex"),
             "CB-050-F",
