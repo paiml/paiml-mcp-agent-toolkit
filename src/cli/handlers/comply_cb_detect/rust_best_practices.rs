@@ -243,7 +243,8 @@ pub fn detect_cb505_workspace_lint_hygiene(project_path: &Path) -> Vec<CbPattern
         Err(_) => return Vec::new(),
     };
 
-    let has_workspace_lints = content.contains("[workspace.lints]");
+    let has_workspace_lints =
+        content.contains("[workspace.lints]") || content.contains("[workspace.lints.");
     let has_lints = content.contains("[lints]") || content.contains("[lints.");
 
     if has_workspace_lints || has_lints {

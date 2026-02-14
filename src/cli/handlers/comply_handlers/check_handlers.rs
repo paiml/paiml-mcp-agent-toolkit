@@ -1759,6 +1759,16 @@ pub(crate) fn check_agent_context_adoption(project_path: &Path) -> ComplianceChe
 
 /// Rust Best Practices Detection (CB-500 through CB-518)
 pub(crate) fn check_rust_best_practices(project_path: &Path) -> ComplianceCheck {
+    // Quick exit: no Cargo.toml means not a Rust project — skip all CB-500 checks
+    if !project_path.join("Cargo.toml").exists() {
+        return ComplianceCheck {
+            name: "CB-500: Rust Best Practices (CB-500 to CB-527)".to_string(),
+            status: CheckStatus::Pass,
+            message: "Not a Rust project (no Cargo.toml found)".to_string(),
+            severity: Severity::Info,
+        };
+    }
+
     let mut all_issues: Vec<String> = Vec::new();
     let mut error_count = 0;
     let mut warning_count = 0;

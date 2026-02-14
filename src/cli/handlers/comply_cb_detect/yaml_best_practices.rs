@@ -30,6 +30,22 @@ const SECRET_KEY_PATTERNS: &[&str] = &[
     "aws_secret", "credentials", "auth_token",
 ];
 
+/// Known non-secret keys that contain secret-pattern substrings (e.g. "token").
+/// These are common ML/LLM inference parameters, not credentials.
+const SECRET_KEY_ALLOWLIST: &[&str] = &[
+    "max_tokens",
+    "num_tokens",
+    "context_tokens",
+    "token_limit",
+    "total_tokens",
+    "completion_tokens",
+    "prompt_tokens",
+    "max_output_tokens",
+    "max_new_tokens",
+    "token_count",
+    "tokens_per_second",
+];
+
 // =============================================================================
 // File walking
 // =============================================================================
@@ -368,10 +384,12 @@ pub fn detect_cb954_plaintext_secret(project_path: &Path) -> Vec<CbPatternViolat
                 let key = trimmed[..colon_pos].trim().to_lowercase();
                 let value = trimmed[colon_pos + 2..].trim();
 
-                // Check if key matches secret patterns
-                let is_secret_key = SECRET_KEY_PATTERNS
+                // Check if key matches secret patterns but is not in allowlist
+                let is_allowlisted = SECRET_KEY_ALLOWLIST
                     .iter()
-                    .any(|p| key.contains(p));
+                    .any(|a| key == *a);
+                let is_secret_key = !is_allowlisted
+                    && SECRET_KEY_PATTERNS.iter().any(|p| key.contains(p));
 
                 if is_secret_key {
                     // Allow references to env vars or secrets

@@ -80,6 +80,9 @@ pub async fn check_complexity(
     let max_cyclomatic = config.quality.max_complexity;
     let max_cognitive = config.quality.max_cognitive_complexity;
 
+    // Load exclude_paths from .pmat-metrics.toml for filtering generated files
+    let exclude_globs = load_exclude_paths(project_path);
+
     // Use the existing analyze_project_files function - the ONE implementation
     let file_metrics = analyze_project_files(
         project_path,
@@ -100,10 +103,49 @@ pub async fn check_complexity(
     // Convert violations to QualityViolation format
     // ONLY count actual violations where complexity exceeds threshold
     for violation in &report.violations {
-        process_complexity_violation(violation, &mut violations);
+        if !is_violation_excluded(violation, &exclude_globs) {
+            process_complexity_violation(violation, &mut violations);
+        }
     }
 
     Ok(violations)
+}
+
+/// Load exclude_paths globs from `.pmat-metrics.toml`.
+fn load_exclude_paths(project_path: &Path) -> Vec<glob::Pattern> {
+    let config_path = project_path.join(".pmat-metrics.toml");
+    let content = match std::fs::read_to_string(&config_path) {
+        Ok(c) => c,
+        Err(_) => return Vec::new(),
+    };
+    let table: toml::Table = match content.parse() {
+        Ok(t) => t,
+        Err(_) => return Vec::new(),
+    };
+    table
+        .get("exclude_paths")
+        .and_then(|v| v.as_array())
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|v| v.as_str())
+                .filter_map(|s| glob::Pattern::new(s).ok())
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+/// Check if a complexity violation's file matches any exclude_paths glob.
+fn is_violation_excluded(
+    violation: &crate::services::complexity::Violation,
+    exclude_globs: &[glob::Pattern],
+) -> bool {
+    use crate::services::complexity::Violation;
+    let file_path = match violation {
+        Violation::Error { file, .. } | Violation::Warning { file, .. } => file,
+    };
+    exclude_globs
+        .iter()
+        .any(|pat| pat.matches(file_path) || pat.matches_path(std::path::Path::new(file_path)))
 }
 
 /// Process a single complexity violation into `QualityViolation` format

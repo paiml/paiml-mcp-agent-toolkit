@@ -212,6 +212,13 @@ set -e
 
 echo "Running pre-commit quality gates (fast mode)..."
 
+# Check if any source files are staged (skip for docs-only commits)
+STAGED_SRC=$(git diff --cached --name-only --diff-filter=ACMR -- '*.rs' '*.py' '*.ts' '*.tsx' '*.js' '*.go' '*.c' '*.cpp' '*.lua' 2>/dev/null || true)
+if [ -z "$STAGED_SRC" ]; then
+    echo "⏭️  No source files staged (docs-only commit) — skipping quality gates"
+    exit 0
+fi
+
 # Clippy (strict mode)
 echo "→ Running clippy..."
 cargo clippy --all-targets --all-features -- -D warnings
