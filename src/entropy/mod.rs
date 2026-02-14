@@ -58,6 +58,24 @@ impl Default for EntropyConfig {
     }
 }
 
+impl EntropyConfig {
+    /// Load additional exclude patterns from `.pmatignore` and `.gitignore`.
+    pub fn with_project_ignores(mut self, project_path: &std::path::Path) -> Self {
+        for ignore_file in &[".pmatignore", ".paimlignore"] {
+            let path = project_path.join(ignore_file);
+            if let Ok(content) = std::fs::read_to_string(&path) {
+                for line in content.lines() {
+                    let trimmed = line.trim();
+                    if !trimmed.is_empty() && !trimmed.starts_with('#') {
+                        self.exclude_paths.push(trimmed.to_string());
+                    }
+                }
+            }
+        }
+        self
+    }
+}
+
 /// Main entropy analyzer
 pub struct EntropyAnalyzer {
     #[allow(dead_code)]

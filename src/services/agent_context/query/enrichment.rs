@@ -219,8 +219,8 @@ pub async fn enrich_results_with_entropy(
         return Ok(());
     }
 
-    // Run entropy analysis on the project
-    let config = EntropyConfig::default();
+    // Run entropy analysis on the project, loading .pmatignore
+    let config = EntropyConfig::default().with_project_ignores(project_root);
     let analyzer = EntropyAnalyzer::with_config(config);
     let report = analyzer
         .analyze(project_root)
