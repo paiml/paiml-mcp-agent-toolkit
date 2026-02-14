@@ -16,7 +16,7 @@ pub struct Roadmap {
     pub roadmap_version: String,
 
     /// GitHub integration enabled
-    #[serde(default = "default_github_enabled")]
+    #[serde(default = "default_github_enabled", deserialize_with = "deserialize_bool_lenient")]
     pub github_enabled: bool,
 
     /// GitHub repository (owner/repo)
@@ -29,6 +29,32 @@ pub struct Roadmap {
 
 fn default_github_enabled() -> bool {
     true
+}
+
+/// Lenient boolean deserializer: accepts both native YAML booleans and quoted strings "true"/"false"
+fn deserialize_bool_lenient<'de, D>(deserializer: D) -> Result<bool, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    use serde::de;
+    struct BoolVisitor;
+    impl<'de> de::Visitor<'de> for BoolVisitor {
+        type Value = bool;
+        fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+            f.write_str("a boolean or string \"true\"/\"false\"")
+        }
+        fn visit_bool<E: de::Error>(self, v: bool) -> Result<bool, E> {
+            Ok(v)
+        }
+        fn visit_str<E: de::Error>(self, v: &str) -> Result<bool, E> {
+            match v {
+                "true" => Ok(true),
+                "false" => Ok(false),
+                _ => Err(E::custom(format!("expected true/false, got '{}'", v))),
+            }
+        }
+    }
+    deserializer.deserialize_any(BoolVisitor)
 }
 
 fn default_timestamp() -> String {
@@ -747,6 +773,35 @@ roadmap:
 
         assert!(roadmap.find_item_by_github_issue(42).is_some());
         assert!(roadmap.find_item_by_github_issue(999).is_none());
+    }
+
+    #[test]
+    fn test_github_enabled_native_bool() {
+        let yaml = "roadmap_version: '1.0'\ngithub_enabled: true\nroadmap: []\n";
+        let roadmap: Roadmap = serde_yaml::from_str(yaml).unwrap();
+        assert!(roadmap.github_enabled);
+
+        let yaml = "roadmap_version: '1.0'\ngithub_enabled: false\nroadmap: []\n";
+        let roadmap: Roadmap = serde_yaml::from_str(yaml).unwrap();
+        assert!(!roadmap.github_enabled);
+    }
+
+    #[test]
+    fn test_github_enabled_quoted_string() {
+        let yaml = "roadmap_version: '1.0'\ngithub_enabled: \"true\"\nroadmap: []\n";
+        let roadmap: Roadmap = serde_yaml::from_str(yaml).unwrap();
+        assert!(roadmap.github_enabled);
+
+        let yaml = "roadmap_version: '1.0'\ngithub_enabled: \"false\"\nroadmap: []\n";
+        let roadmap: Roadmap = serde_yaml::from_str(yaml).unwrap();
+        assert!(!roadmap.github_enabled);
+    }
+
+    #[test]
+    fn test_github_enabled_missing_defaults_true() {
+        let yaml = "roadmap_version: '1.0'\nroadmap: []\n";
+        let roadmap: Roadmap = serde_yaml::from_str(yaml).unwrap();
+        assert!(roadmap.github_enabled);
     }
 
     // Part A: YAML Parsing Resilience - Status Alias Tests
