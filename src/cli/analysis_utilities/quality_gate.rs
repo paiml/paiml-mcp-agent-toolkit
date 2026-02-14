@@ -1068,6 +1068,27 @@ fn load_entropy_exclude_paths(project_path: &Path) -> Vec<String> {
     .unwrap_or_default()
 }
 
+/// Filter violations whose file path matches any exclude path (#196).
+///
+/// Matches both exact prefix and glob patterns. Violations with `file = "project"`
+/// or other non-path values are kept (project-level metrics).
+fn filter_violations_by_exclude(violations: &mut Vec<QualityViolation>, exclude_paths: &[String]) {
+    violations.retain(|v| {
+        // Keep project-level violations (no file path)
+        if v.file == "project" || v.file.is_empty() {
+            return true;
+        }
+        // Check if the violation's file matches any exclude path
+        !exclude_paths.iter().any(|excl| {
+            let normalized = excl.trim_end_matches('/');
+            v.file.starts_with(normalized)
+                || v.file.starts_with(&format!("{normalized}/"))
+                || v.file.starts_with(&format!("./{normalized}"))
+                || glob::Pattern::new(excl).is_ok_and(|p| p.matches(&v.file))
+        })
+    });
+}
+
 /// Helper for provability check execution
 async fn execute_provability_check(
     project_path: &Path,
@@ -1172,6 +1193,19 @@ async fn run_all_project_checks(
         check_provability(project_path, provability_threshold),
         provability_violations
     );
+
+    // Apply [exclude] paths from .pmat-metrics.toml to ALL violations (#196)
+    let exclude_paths = load_entropy_exclude_paths(project_path);
+    if !exclude_paths.is_empty() {
+        let before = violations.len();
+        filter_violations_by_exclude(violations, &exclude_paths);
+        let removed = before - violations.len();
+        if removed > 0 {
+            eprintln!("  📁 Excluded {removed} violations from excluded paths");
+            // Recount violations per category
+            results.recalculate_from(violations);
+        }
+    }
 
     Ok(())
 }
@@ -2121,6 +2155,57 @@ paths = ["new/"]
 
         let paths = load_entropy_exclude_paths(temp_dir.path());
         assert_eq!(paths, vec!["new/"], "[exclude] paths should take precedence over top-level exclude_paths");
+    }
+
+    // --- Filter violations by exclude paths tests (#196) ---
+
+    #[test]
+    fn test_filter_violations_excludes_matching_files() {
+        let mut violations = vec![
+            QualityViolation { check_type: "satd".into(), severity: "warning".into(), file: "reference/kong/init.lua".into(), line: Some(10), message: "TODO".into() },
+            QualityViolation { check_type: "satd".into(), severity: "warning".into(), file: "src/main.rs".into(), line: Some(5), message: "TODO".into() },
+            QualityViolation { check_type: "duplicates".into(), severity: "info".into(), file: "reference/apisix/core.lua".into(), line: None, message: "dup".into() },
+        ];
+        let excludes = vec!["reference/".to_string()];
+        filter_violations_by_exclude(&mut violations, &excludes);
+        assert_eq!(violations.len(), 1);
+        assert_eq!(violations[0].file, "src/main.rs");
+    }
+
+    #[test]
+    fn test_filter_violations_keeps_project_level() {
+        let mut violations = vec![
+            QualityViolation { check_type: "entropy".into(), severity: "warning".into(), file: "project".into(), line: None, message: "low diversity".into() },
+            QualityViolation { check_type: "satd".into(), severity: "info".into(), file: "vendor/lib.lua".into(), line: Some(1), message: "hack".into() },
+        ];
+        let excludes = vec!["vendor/".to_string()];
+        filter_violations_by_exclude(&mut violations, &excludes);
+        assert_eq!(violations.len(), 1);
+        assert_eq!(violations[0].file, "project");
+    }
+
+    #[test]
+    fn test_filter_violations_empty_excludes_no_change() {
+        let mut violations = vec![
+            QualityViolation { check_type: "satd".into(), severity: "info".into(), file: "src/lib.rs".into(), line: Some(1), message: "fixme".into() },
+        ];
+        filter_violations_by_exclude(&mut violations, &[]);
+        assert_eq!(violations.len(), 1);
+    }
+
+    #[test]
+    fn test_recalculate_from_violations() {
+        let violations = vec![
+            QualityViolation { check_type: "satd".into(), severity: "warning".into(), file: "a.rs".into(), line: Some(1), message: "todo".into() },
+            QualityViolation { check_type: "satd".into(), severity: "info".into(), file: "b.rs".into(), line: Some(2), message: "hack".into() },
+            QualityViolation { check_type: "complexity".into(), severity: "error".into(), file: "c.rs".into(), line: Some(3), message: "high".into() },
+        ];
+        let mut results = QualityGateResults::default();
+        results.recalculate_from(&violations);
+        assert_eq!(results.satd_violations, 2);
+        assert_eq!(results.complexity_violations, 1);
+        assert_eq!(results.total_violations, 3);
+        assert_eq!(results.entropy_violations, 0);
     }
 }
 

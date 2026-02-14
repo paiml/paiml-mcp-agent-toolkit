@@ -554,6 +554,22 @@ pub struct QualityGateResults {
     pub violations: Vec<String>, // Simplified for test purposes
 }
 
+impl QualityGateResults {
+    /// Recalculate per-category violation counts from the filtered violations list (#196).
+    pub fn recalculate_from(&mut self, violations: &[QualityViolation]) {
+        self.complexity_violations = violations.iter().filter(|v| v.check_type == "complexity").count();
+        self.dead_code_violations = violations.iter().filter(|v| v.check_type == "dead_code").count();
+        self.satd_violations = violations.iter().filter(|v| v.check_type == "satd").count();
+        self.entropy_violations = violations.iter().filter(|v| v.check_type == "entropy").count();
+        self.security_violations = violations.iter().filter(|v| v.check_type == "security").count();
+        self.duplicate_violations = violations.iter().filter(|v| v.check_type == "duplicates").count();
+        self.coverage_violations = violations.iter().filter(|v| v.check_type == "coverage").count();
+        self.section_violations = violations.iter().filter(|v| v.check_type == "sections").count();
+        self.provability_violations = violations.iter().filter(|v| v.check_type == "provability").count();
+        self.total_violations = violations.len();
+    }
+}
+
 impl Default for QualityGateResults {
     fn default() -> Self {
         Self {
