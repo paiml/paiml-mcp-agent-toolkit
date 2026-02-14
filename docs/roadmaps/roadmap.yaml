@@ -1996,7 +1996,7 @@ roadmap:
   updated: 2026-02-14T11:44:48Z
   spec: null
   acceptance_criteria:
-  - 'Detect file discovery that only checks a single exact path without fallback search. Motivated by aprender GH-216 where GGUF-to-APR conversion failed to find tokenizer.json when not a direct sibling. Pattern: Path::join() + .exists() without parent-dir search, glob fallback, or recursive discovery.'
+  - 'Detect file discovery that only checks a single exact path without fallback search. Motivated by aprender GH-216 where GGUF-to-APR conversion failed to find tokenizer.json when not a direct sibling. Pattern: Path::join() + .exists() without parent-dir search, glob fallback, or recursive discovery.' # pmat:ignore
   phases: []
   subtasks: []
   estimated_effort: null
