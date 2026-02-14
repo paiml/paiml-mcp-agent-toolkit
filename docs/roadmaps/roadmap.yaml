@@ -1813,11 +1813,11 @@ roadmap:
   github_issue: 168
   item_type: task
   title: The installation of pmat fails due to missing trait imports in the codebase (GraphCentrality for the aprender crate).
-  status: inprogress
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-02-12T10:46:15.317500303+00:00
-  updated: 2026-02-12T10:46:15.317500303+00:00
+  updated: 2026-02-14T12:10:47Z
   spec: null
   acceptance_criteria: []
   phases: []
@@ -2029,11 +2029,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'Fix kaizen blockers: clippy clean + binary size threshold'
-  status: inprogress
+  status: completed
   priority: critical
   assigned_to: null
   created: 2026-02-13T23:09:03Z
-  updated: 2026-02-14T11:45:03.638238035+00:00
+  updated: 2026-02-14T12:14:04.562889069+00:00
   spec: null
   acceptance_criteria:
   - 1. Update binary_size.rs threshold from 25MB to 40MB (binary grew with new language support). 2. Fix any remaining clippy warnings. These block make kaizen from passing.
