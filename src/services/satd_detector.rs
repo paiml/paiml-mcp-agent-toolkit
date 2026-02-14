@@ -1060,8 +1060,30 @@ impl SATDDetector {
             .unwrap_or_default()
     }
 
-    /// Find all source files in a directory
+    /// Find all source files in a directory, respecting .gitignore.
+    /// Uses `git ls-files` for tracked repos, falls back to recursive walk.
     async fn find_source_files(&self, root: &Path) -> Result<Vec<PathBuf>, TemplateError> {
+        // Try git ls-files first to respect .gitignore
+        if let Ok(output) = tokio::process::Command::new("git")
+            .args(["ls-files", "--cached", "--others", "--exclude-standard"])
+            .current_dir(root)
+            .output()
+            .await
+        {
+            if output.status.success() {
+                let stdout = String::from_utf8_lossy(&output.stdout);
+                let files: Vec<PathBuf> = stdout
+                    .lines()
+                    .filter(|line| !line.is_empty())
+                    .map(|line| root.join(line))
+                    .filter(|path| self.is_valid_source_file(path))
+                    .collect();
+                if !files.is_empty() {
+                    return Ok(files);
+                }
+            }
+        }
+        // Fallback: recursive walk (non-git projects)
         let mut files = Vec::new();
         self.collect_files_recursive(root, &mut files).await?;
         Ok(files)
