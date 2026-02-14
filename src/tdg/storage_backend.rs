@@ -130,6 +130,13 @@ impl LibsqlBackend {
         // Open database with rusqlite (libsql-compatible)
         let conn = rusqlite::Connection::open(path)?;
 
+        // Enable WAL mode for concurrent access (#161)
+        conn.execute_batch(
+            "PRAGMA journal_mode = WAL;
+             PRAGMA synchronous = NORMAL;
+             PRAGMA busy_timeout = 5000;",
+        )?;
+
         // Create table for key-value storage
         conn.execute(
             "CREATE TABLE IF NOT EXISTS tdg_storage (

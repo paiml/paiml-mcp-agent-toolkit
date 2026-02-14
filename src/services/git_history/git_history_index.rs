@@ -106,6 +106,12 @@ impl GitHistoryIndex {
     /// Create or open git history index at the given path
     pub fn open(path: &Path) -> Result<Self, GitHistoryError> {
         let conn = Connection::open(path)?;
+        // Enable WAL mode for concurrent access (#161)
+        conn.execute_batch(
+            "PRAGMA journal_mode = WAL;
+             PRAGMA synchronous = NORMAL;
+             PRAGMA busy_timeout = 5000;",
+        )?;
         let index = Self { conn };
         index.init_schema()?;
         Ok(index)
