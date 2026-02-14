@@ -1357,6 +1357,11 @@ const CLAIM_PATTERNS: &[(&[&str], &str)] = &[
     (&["dead code introduced", "dead code detected"], "dead-code"),
     (&["per-file coverage", "files have >= 95%", "all files have"], "per-file-coverage"),
     (&["lint passes", "make lint"], "lint"),
+    // v3.1 defect churn prevention
+    (&["match arm", "variant"], "variant-coverage"),
+    (&["fix-after-fix", "fix chain"], "fix-chain"),
+    (&["cross-crate", "sibling project", "integration tests pass"], "cross-crate"),
+    (&["regression", "performance"], "regression-gate"),
 ];
 
 fn claim_to_override_name(hypothesis: &str) -> String {
