@@ -769,6 +769,27 @@ fn print_complete_next_steps(item: &RoadmapItem, id: &str, metadata: &CommitMeta
     println!();
 }
 
+/// Handle standalone falsification (does NOT complete the work item)
+///
+/// Runs the full Popperian falsification protocol and produces a receipt,
+/// but does not mark the item as completed or update the roadmap.
+/// Use `pmat work complete` to both falsify AND close the item.
+pub async fn handle_work_falsify(
+    id: String,
+    override_claims: Option<Vec<String>>,
+    ticket: Option<String>,
+    path: Option<PathBuf>,
+) -> Result<()> {
+    let project_path = path.unwrap_or_else(|| PathBuf::from("."));
+
+    validate_override_accountability(&override_claims, &ticket, &id)?;
+
+    println!("🔬 Running falsification for: {}", id);
+    println!();
+
+    run_contract_falsification(&project_path, &id, &override_claims, &ticket, &id).await
+}
+
 /// Handle work complete command
 ///
 /// Popperian Falsification Protocol:

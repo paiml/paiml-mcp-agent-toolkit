@@ -832,6 +832,10 @@ impl CommandExecutor {
                     command
                 )
             }
+            // Falsify command - handled by command_dispatcher.rs
+            Commands::Falsify { .. } => {
+                anyhow::bail!("Falsify command should be handled by command_dispatcher.rs")
+            }
             // GH-102: QA Work - Toyota Way quality validation
             Commands::QaWork { .. } => {
                 anyhow::bail!("QaWork command should be handled by command_dispatcher.rs")

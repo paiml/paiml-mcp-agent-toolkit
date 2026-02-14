@@ -120,7 +120,7 @@ fn test_predict_quality_json_output() {
     let forecast = first_prediction["forecast"]
         .as_array()
         .expect("Forecast should be an array");
-    assert!(forecast.len() > 0, "Forecast should have data points");
+    assert!(!forecast.is_empty(), "Forecast should have data points");
 
     let first_point = &forecast[0];
     assert!(

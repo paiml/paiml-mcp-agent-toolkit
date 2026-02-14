@@ -66,7 +66,7 @@ async fn main() -> Result<()> {
         (0, "F", "Failing - Critical issues"),
     ];
 
-    println!("  {:>5}  {:>3}  {}", "SCORE", "GRADE", "DESCRIPTION");
+    println!("  {:>5}  {:>3}  DESCRIPTION", "SCORE", "GRADE");
     println!("  {:->5}  {:->3}  {:->30}", "", "", "");
     for (score, grade, desc) in thresholds {
         let marker =
@@ -203,8 +203,8 @@ match parser.parse(input) {
     ];
 
     println!(
-        "  {:35} {:>6} {:>7}  {}",
-        "CATEGORY", "MAX", "%", "DESCRIPTION"
+        "  {:35} {:>6} {:>7}  DESCRIPTION",
+        "CATEGORY", "MAX", "%"
     );
     println!("  {:->35} {:->6} {:->7}  {:->25}", "", "", "", "");
     for (name, max, desc) in categories {

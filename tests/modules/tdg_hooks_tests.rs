@@ -168,7 +168,7 @@ async fn test_tdg_hooks_pre_commit_blocks_on_regression() -> Result<()> {
     // Test that pre-commit hook blocks commits when regression detected
 
     // ARRANGE
-    let fixture = TdgHooksFixture::new()?;
+    let _fixture = TdgHooksFixture::new()?;
 
     // Install hooks
     // pmat hooks install --tdg-enforcement
@@ -196,7 +196,7 @@ async fn test_tdg_hooks_pre_commit_allows_improvement() -> Result<()> {
     // Test that pre-commit hook allows commits when quality improves
 
     // ARRANGE
-    let fixture = TdgHooksFixture::new()?;
+    let _fixture = TdgHooksFixture::new()?;
 
     // Install hooks
     // pmat hooks install --tdg-enforcement
@@ -229,7 +229,7 @@ async fn test_tdg_hooks_post_commit_updates_baseline() -> Result<()> {
     // pmat hooks install --tdg-enforcement
 
     // Create initial baseline
-    let baseline_path = fixture.baseline_path();
+    let _baseline_path = fixture.baseline_path();
     // pmat tdg baseline create --output baseline_path
 
     // Get initial modification time
@@ -323,7 +323,7 @@ async fn test_tdg_hooks_handles_missing_baseline_gracefully() -> Result<()> {
     // Test that hooks handle missing baseline without crashing
 
     // ARRANGE
-    let fixture = TdgHooksFixture::new()?;
+    let _fixture = TdgHooksFixture::new()?;
 
     // Install hooks
     // pmat hooks install --tdg-enforcement

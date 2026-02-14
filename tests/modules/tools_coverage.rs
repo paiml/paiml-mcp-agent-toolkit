@@ -757,7 +757,7 @@ mod template_validation_tests {
 }
 
 // Re-export functions that need to be tested
-pub use pmat::handlers::tools::{
-    format_churn_as_csv, format_churn_as_markdown, format_churn_summary, is_analysis_tool,
+pub(super) use pmat::handlers::tools::{
+    is_analysis_tool,
     is_template_tool,
 };

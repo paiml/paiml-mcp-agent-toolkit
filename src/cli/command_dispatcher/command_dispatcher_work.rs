@@ -57,6 +57,20 @@ impl CommandDispatcher {
                 )
                 .await
             }
+            WorkCommands::Falsify {
+                id,
+                override_claims,
+                ticket,
+                path,
+            } => {
+                work_handlers::handle_work_falsify(
+                    id.clone(),
+                    override_claims.clone(),
+                    ticket.clone(),
+                    path.clone(),
+                )
+                .await
+            }
             WorkCommands::Status { id, path, active } => {
                 work_handlers::handle_work_status(id.clone(), path.clone(), *active).await
             }
@@ -196,5 +210,16 @@ impl CommandDispatcher {
                 format,
             } => spec_handlers::handle_spec_drift(&spec_path, &roadmap_path, format).await,
         }
+    }
+
+    /// Execute top-level falsify command
+    pub(crate) async fn execute_falsify_command(
+        target: String,
+        override_claims: Option<Vec<String>>,
+        ticket: Option<String>,
+        path: Option<std::path::PathBuf>,
+    ) -> anyhow::Result<()> {
+        use crate::cli::handlers::work_handlers;
+        work_handlers::handle_work_falsify(target, override_claims, ticket, path).await
     }
 }

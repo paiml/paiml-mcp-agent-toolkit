@@ -5,7 +5,7 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
 
 use super::commands::QddCommands;
-use super::{AnalyzeCommands, Commands, OutputFormat, RefactorCommands};
+use super::{AnalyzeCommands, Commands, RefactorCommands};
 use crate::cli::handlers;
 use crate::cli::handlers::cache::CacheCommand;
 use crate::cli::handlers::memory::MemoryCommand;
@@ -26,6 +26,10 @@ mod test_commands;
 // Work and spec handlers extracted for file health compliance (CB-040)
 #[path = "command_dispatcher_work.rs"]
 mod command_dispatcher_work;
+
+// Scoring and infrastructure handlers extracted for cognitive complexity reduction
+#[path = "command_dispatcher_scoring.rs"]
+mod command_dispatcher_scoring;
 
 /// Trait for command handlers to reduce complexity through delegation
 #[allow(dead_code)]
@@ -279,186 +283,15 @@ impl CommandDispatcher {
                 }
             }
             Commands::Prompt(prompt_cmd) => handlers::handle_prompt_command(prompt_cmd).await,
-            Commands::QualityGate {
-                project_path,
-                file,
-                format,
-                fail_on_violation,
-                checks,
-                max_dead_code,
-                min_entropy,
-                max_complexity_p99,
-                include_provability,
-                output,
-                perf,
-            } => {
-                // Convert QualityGateOutputFormat to OutputFormat for the internal method
-                let output_format = match format {
-                    crate::cli::enums::QualityGateOutputFormat::Json => OutputFormat::Json,
-                    _ => OutputFormat::Table,
-                };
-
-                // Convert QualityCheckType vec to String vec
-                let check_strings: Vec<String> = checks
-                    .iter()
-                    .map(|c| format!("{c:?}").to_lowercase())
-                    .collect();
-
-                Self::execute_quality_gate_command(
-                    Some(project_path),
-                    file,
-                    output_format,
-                    fail_on_violation,
-                    check_strings,
-                    Some(max_dead_code),
-                    Some(min_entropy),
-                    Some(max_complexity_p99 as usize),
-                    include_provability,
-                    output,
-                    perf,
-                )
-                .await
-            }
-            Commands::Report {
-                project_path,
-                output_format,
-                include_visualizations,
-                include_executive_summary,
-                include_recommendations,
-                analyses,
-                confidence_threshold,
-                output,
-                perf,
-                text,
-                markdown,
-                csv,
-            } => {
-                // Convert ReportOutputFormat to OutputFormat for the internal method
-                let internal_format = match output_format {
-                    crate::cli::enums::ReportOutputFormat::Json => OutputFormat::Json,
-                    _ => OutputFormat::Table,
-                };
-
-                // Convert AnalysisType vec to String vec
-                let analysis_strings: Vec<String> = analyses
-                    .iter()
-                    .map(|a| format!("{a:?}").to_lowercase())
-                    .collect();
-
-                Self::execute_report_command(
-                    Some(project_path),
-                    internal_format,
-                    include_visualizations,
-                    include_executive_summary,
-                    include_recommendations,
-                    analysis_strings,
-                    Some(f64::from(confidence_threshold) / 100.0),
-                    output,
-                    perf,
-                    text,
-                    markdown,
-                    csv,
-                )
-                .await
-            }
-            Commands::RepoScore {
-                path,
-                format,
-                verbose,
-                failures_only,
-                output,
-                update_badge,
-                deep,
-            } => {
-                handlers::handle_repo_score(
-                    &path,
-                    format,
-                    verbose,
-                    failures_only,
-                    output.as_deref(),
-                    update_badge,
-                    deep,
-                )
-                .await
-            }
-            Commands::RustProjectScore {
-                path,
-                format,
-                verbose,
-                failures_only,
-                output,
-                full,
-            } => {
-                handlers::handle_rust_project_score(
-                    &path,
-                    &format,
-                    verbose,
-                    failures_only,
-                    output.as_deref(),
-                    full,
-                )
-                .await
-            }
-            Commands::BrickScore {
-                path,
-                input,
-                format,
-                verbose,
-                failures_only,
-                threshold,
-                output,
-                hardware,
-            } => {
-                handlers::handle_brick_score(
-                    &path,
-                    input.as_deref(),
-                    &format,
-                    verbose,
-                    failures_only,
-                    threshold,
-                    output.as_deref(),
-                    hardware.as_deref(),
-                )
-                .await
-            }
-            Commands::PopperScore {
-                path,
-                format,
-                verbose,
-                failures_only,
-                output,
-            } => {
-                handlers::handle_popper_score(
-                    &path,
-                    &format,
-                    verbose,
-                    failures_only,
-                    output.as_deref(),
-                )
-                .await
-            }
-            Commands::DemoScore {
-                path,
-                format,
-                verbose,
-                failures_only,
-                output,
-            } => {
-                handlers::handle_demo_score(
-                    &path,
-                    &format,
-                    verbose,
-                    failures_only,
-                    output.as_deref(),
-                )
-                .await
-            }
-            Commands::Serve {
-                port,
-                host,
-                cors,
-                transport,
-            } => handlers::handle_serve(host, port, cors, transport).await,
+            // Scoring and reporting commands delegated to reduce cognitive complexity
+            cmd @ (Commands::QualityGate { .. }
+            | Commands::Report { .. }
+            | Commands::RepoScore { .. }
+            | Commands::RustProjectScore { .. }
+            | Commands::BrickScore { .. }
+            | Commands::PopperScore { .. }
+            | Commands::DemoScore { .. }
+            | Commands::Serve { .. }) => Self::route_scoring_command(cmd).await,
             Commands::Diagnose(args) => super::diagnose::handle_diagnose(args).await,
             Commands::Enforce(enforce_cmd) => handlers::route_enforce_command(enforce_cmd).await,
             Commands::Refactor(refactor_cmd) => Self::execute_refactor_command(refactor_cmd).await,
@@ -480,234 +313,32 @@ impl CommandDispatcher {
             }
             Commands::Memory { command } => Self::execute_memory_command(command).await,
             Commands::Cache { command } => Self::execute_cache_command(command).await,
-            Commands::Telemetry {
-                system,
-                service,
-                reset,
-                test_event,
-            } => {
-                handlers::telemetry_handlers::handle_telemetry(system, service, reset, test_event)
-                    .await
-            }
-            Commands::Config {
-                show,
-                edit,
-                validate,
-                reset,
-                section,
-                set,
-                config_path,
-            } => {
-                Self::execute_config_command(
-                    show,
-                    edit,
-                    validate,
-                    reset,
-                    section,
-                    if set.is_empty() { None } else { Some(set) },
-                    config_path,
-                )
-                .await
-            }
-
-            Commands::ShowMetrics {
-                trend,
-                days,
-                metric,
-                format,
-                failures_only,
-            } => {
-                Self::execute_show_metrics_command(trend, days, metric, format, failures_only).await
-            }
-
-            Commands::PredictQuality {
-                metric,
-                threshold,
-                days,
-                format,
-                all,
-                failures_only,
-            } => {
-                handlers::predict_quality_handlers::handle_predict_quality(
-                    metric,
-                    threshold,
-                    days,
-                    format,
-                    all,
-                    failures_only,
-                )
-                .await
-            }
-
-            Commands::RecordMetric {
-                metric,
-                value,
-                timestamp,
-            } => Self::execute_record_metric_command(metric, value, timestamp).await,
-
-            #[cfg(feature = "agent-daemon")]
-            Commands::Agent { command } => handlers::handle_agent_command(command).await,
-            #[cfg(not(feature = "agent-daemon"))]
-            Commands::Agent { .. } => {
-                anyhow::bail!("Agent daemon feature not enabled. Build with --features agent-daemon")
-            }
-
-            Commands::Tdg {
-                path,
-                command,
-                format,
-                config,
-                quiet,
-                include_components,
-                min_grade,
-                output,
-                with_git_context,
-                explain,
-                threshold,
-                baseline,
-                ml: _, // GH-97: ML flag (not yet implemented in handler)
-                viz,
-                viz_theme,
-            } => {
-                let tdg_config = handlers::tdg_handlers::TdgCommandConfig {
-                    path,
-                    command,
-                    format,
-                    config,
-                    quiet,
-                    include_components,
-                    min_grade,
-                    output,
-                    with_git_context,
-                    explain,
-                    threshold,
-                    baseline,
-                    viz,
-                    viz_theme,
-                };
-                handlers::handle_tdg_command(tdg_config).await
-            }
-
-            Commands::QualityGates {
-                command,
-                config,
-                report,
-                json,
-                project_dir,
-            } => {
-                handlers::handle_quality_gates_command(command, config, report, json, project_dir)
-                    .await
-            }
-
-            Commands::Maintain { command } => {
-                use super::commands::MaintainCommands;
-                match command {
-                    MaintainCommands::Roadmap {
-                        roadmap,
-                        tickets_dir,
-                        validate,
-                        health,
-                        fix,
-                        generate_tickets,
-                        dry_run,
-                        format,
-                    } => {
-                        let config = handlers::roadmap_handler::RoadmapMaintenanceConfig::new(
-                            validate,
-                            health,
-                            fix,
-                            generate_tickets,
-                            dry_run,
-                        );
-                        handlers::handle_maintain_roadmap(roadmap, tickets_dir, config, format)
-                            .await
-                    }
-                    MaintainCommands::Health {
-                        project_dir,
-                        format,
-                        quick,
-                        all,
-                        check_build,
-                        check_tests,
-                        check_coverage,
-                        check_complexity,
-                        check_satd,
-                    } => {
-                        let config = handlers::health_handler::HealthCheckConfig::new(
-                            quick,
-                            all,
-                            check_build,
-                            check_tests,
-                            check_coverage,
-                            check_complexity,
-                            check_satd,
-                        );
-                        handlers::handle_maintain_health(project_dir, format, config).await
-                    }
-                    MaintainCommands::BugReport {
-                        title,
-                        dry_run,
-                        interactive,
-                        clear,
-                    } => {
-                        handlers::bug_report_handler::handle_bug_report(
-                            title.as_deref(),
-                            dry_run,
-                            interactive,
-                            clear,
-                        )
-                        .await
-                    }
-                    MaintainCommands::CleanupResources {
-                        project_dir,
-                        targets,
-                        execute,
-                        exclude,
-                        min_age_days,
-                        format,
-                    } => {
-                        handlers::cleanup_resources_handler::handle_cleanup_resources(
-                            &project_dir,
-                            &targets,
-                            execute,
-                            &exclude,
-                            min_age_days,
-                            format,
-                        )
-                        .await
-                    }
-                }
-            }
-
-            Commands::Hooks(hooks_cmd) => handlers::handle_hooks_command(&hooks_cmd).await,
+            // Infrastructure and config commands delegated to reduce cognitive complexity
+            cmd @ (Commands::Telemetry { .. }
+            | Commands::Config { .. }
+            | Commands::ShowMetrics { .. }
+            | Commands::PredictQuality { .. }
+            | Commands::RecordMetric { .. }
+            | Commands::Agent { .. }
+            | Commands::Tdg { .. }
+            | Commands::QualityGates { .. }
+            | Commands::Maintain { .. }
+            | Commands::Hooks(..)
+            | Commands::Debug { .. }) => Self::route_infra_command(cmd, server).await,
 
             #[cfg(feature = "mutation-testing")]
             Commands::Mutate(args) => handlers::mutate::handle(args, server).await,
-
-            Commands::Debug { command } => {
-                // Sprint 74: Time-travel debugging commands
-                // TODO: Implement debug handlers in DEBUG-002 and DEBUG-003
-                use crate::cli::commands::DebugCommands;
-                match command {
-                    DebugCommands::Serve {
-                        port,
-                        host,
-                        record_dir,
-                    } => {
-                        anyhow::bail!("Debug serve command not yet implemented (DEBUG-002). Port: {}, Host: {}, Record Dir: {:?}", port, host, record_dir)
-                    }
-                    DebugCommands::Replay {
-                        recording,
-                        position,
-                        interactive,
-                    } => {
-                        anyhow::bail!("Debug replay command not yet implemented (DEBUG-003). Recording: {:?}, Position: {:?}, Interactive: {}", recording, position, interactive)
-                    }
-                }
-            }
             Commands::Work { command } => {
                 // Issue #75: Unified GitHub/YAML workflow
                 Self::execute_work_command(&command).await
+            }
+            Commands::Falsify {
+                target,
+                override_claims,
+                ticket,
+                path,
+            } => {
+                Self::execute_falsify_command(target, override_claims, ticket, path).await
             }
             Commands::QaWork { command } => {
                 // GH-102: Toyota Way quality validation
@@ -718,145 +349,16 @@ impl CommandDispatcher {
                 handlers::comply_handlers::handle_comply_command(command).await
             }
 
-            Commands::ProjectDiag {
-                path,
-                format,
-                category,
-                failures_only,
-                output,
-                quiet,
-            } => {
-                // Project diagnostics (lltop Tab 8 equivalent)
-                let config = handlers::project_diag_handlers::ProjectDiagConfig {
-                    path,
-                    format,
-                    category,
-                    failures_only,
-                    output,
-                    quiet,
-                };
-                handlers::project_diag_handlers::handle_project_diag(config).await
-            }
-
-            Commands::TestDiscovery { command } => {
-                // GH-98: Systematic test discovery and fixing
-                handlers::test_discovery_handlers::handle_test_discovery_command(command).await
-            }
-
-            Commands::DebugFiveWhys {
-                issue,
-                depth,
-                format,
-                output,
-                path,
-                context,
-                auto_analyze,
-            } => {
-                // Five Whys root cause analysis (Toyota Way)
-                crate::cli::handlers::five_whys_handlers::handle_debug(
-                    &issue,
-                    depth,
-                    format,
-                    output.as_deref(),
-                    &path,
-                    context.as_deref(),
-                    auto_analyze,
-                )
-                .await
-            }
-
-            Commands::Oracle { command } => {
-                // PMAT Oracle - PDCA loop for automated quality improvement (Toyota Way)
-                crate::cli::handlers::oracle_handlers::handle_oracle_command(command).await
-            }
-
-            Commands::PerfectionScore {
-                path,
-                breakdown,
-                target,
-                format,
-                output,
-                fast,
-            } => {
-                // Unified 200-point Perfection Score (master-plan-pmat-work-system.md)
-                handlers::perfection_score_handlers::handle_perfection_score(
-                    &path,
-                    breakdown,
-                    target,
-                    format,
-                    output.as_deref(),
-                    fast,
-                )
-                .await
-            }
-
-            Commands::Spec { command } => {
-                // Specification management (master-plan-pmat-work-system.md)
-                Self::handle_spec_command(command).await
-            }
-
-            Commands::Localize {
-                passed_coverage,
-                failed_coverage,
-                passed_count,
-                failed_count,
-                formula,
-                top_n,
-                output,
-                format,
-            } => {
-                // Fault localization using Tarantula SBFL (GH-103)
-                crate::cli::handlers::localize_handlers::handle_localize(
-                    &passed_coverage,
-                    &failed_coverage,
-                    passed_count,
-                    failed_count,
-                    &formula,
-                    top_n,
-                    output.as_deref(),
-                    &format,
-                )
-                .await
-            }
-
-            Commands::CudaTdg {
-                path,
-                command,
-                format,
-                min_score,
-                fail_on_p0,
-                simd,
-                wgpu,
-                output,
-                quiet,
-            } => {
-                // CUDA-SIMD TDG: 100-point Popper falsification scoring
-                let config = handlers::CudaTdgCommandConfig {
-                    path,
-                    command,
-                    format,
-                    min_score,
-                    fail_on_p0,
-                    simd,
-                    wgpu,
-                    output,
-                    quiet,
-                };
-                handlers::handle_cuda_tdg_command(config).await
-            }
-
-            Commands::DepsAudit {
-                path,
-                format,
-                all,
-                pareto,
-                sort_by,
-            } => {
-                // Dependency audit for Sovereign AI stack migration
-                handlers::deps_audit_handlers::handle_deps_audit(
-                    &path, &format, all, pareto, &sort_by,
-                )
-            }
+            // Quality and analysis commands delegated to reduce cognitive complexity
+            cmd @ (Commands::ProjectDiag { .. }
+            | Commands::TestDiscovery { .. }
+            | Commands::DebugFiveWhys { .. }
+            | Commands::Oracle { .. }
+            | Commands::PerfectionScore { .. }
+            | Commands::Spec { .. }
+            | Commands::Localize { .. }
+            | Commands::CudaTdg { .. }
+            | Commands::DepsAudit { .. }) => Self::route_quality_command(cmd).await,
         }
     }
 
@@ -888,6 +390,129 @@ impl CommandDispatcher {
     pub async fn execute_cache_command(cache_cmd: CacheCommand) -> anyhow::Result<()> {
         // Delegate to the cache handler
         super::handlers::handle_cache_command(&cache_cmd).await
+    }
+
+    /// Route quality and analysis commands (extracted to reduce route_command cognitive complexity)
+    async fn route_quality_command(command: Commands) -> anyhow::Result<()> {
+        match command {
+            Commands::ProjectDiag {
+                path,
+                format,
+                category,
+                failures_only,
+                output,
+                quiet,
+            } => {
+                let config = handlers::project_diag_handlers::ProjectDiagConfig {
+                    path,
+                    format,
+                    category,
+                    failures_only,
+                    output,
+                    quiet,
+                };
+                handlers::project_diag_handlers::handle_project_diag(config).await
+            }
+            Commands::TestDiscovery { command } => {
+                handlers::test_discovery_handlers::handle_test_discovery_command(command).await
+            }
+            Commands::DebugFiveWhys {
+                issue,
+                depth,
+                format,
+                output,
+                path,
+                context,
+                auto_analyze,
+            } => {
+                crate::cli::handlers::five_whys_handlers::handle_debug(
+                    &issue,
+                    depth,
+                    format,
+                    output.as_deref(),
+                    &path,
+                    context.as_deref(),
+                    auto_analyze,
+                )
+                .await
+            }
+            Commands::Oracle { command } => {
+                crate::cli::handlers::oracle_handlers::handle_oracle_command(command).await
+            }
+            Commands::PerfectionScore {
+                path,
+                breakdown,
+                target,
+                format,
+                output,
+                fast,
+            } => {
+                handlers::perfection_score_handlers::handle_perfection_score(
+                    &path,
+                    breakdown,
+                    target,
+                    format,
+                    output.as_deref(),
+                    fast,
+                )
+                .await
+            }
+            Commands::Spec { command } => Self::handle_spec_command(command).await,
+            Commands::Localize {
+                passed_coverage,
+                failed_coverage,
+                passed_count,
+                failed_count,
+                formula,
+                top_n,
+                output,
+                format,
+            } => {
+                crate::cli::handlers::localize_handlers::handle_localize(
+                    &passed_coverage,
+                    &failed_coverage,
+                    passed_count,
+                    failed_count,
+                    &formula,
+                    top_n,
+                    output.as_deref(),
+                    &format,
+                )
+                .await
+            }
+            Commands::CudaTdg {
+                path,
+                command,
+                format,
+                min_score,
+                fail_on_p0,
+                simd,
+                wgpu,
+                output,
+                quiet,
+            } => {
+                let config = handlers::CudaTdgCommandConfig {
+                    path,
+                    command,
+                    format,
+                    min_score,
+                    fail_on_p0,
+                    simd,
+                    wgpu,
+                    output,
+                    quiet,
+                };
+                handlers::handle_cuda_tdg_command(config).await
+            }
+            Commands::DepsAudit {
+                path,
+                format,
+                all,
+                pareto,
+                sort_by,
+            } => handlers::deps_audit_handlers::handle_deps_audit(&path, &format, all, pareto, &sort_by),
+            _ => unreachable!("route_quality_command called with non-quality command"),
+        }
     }
 }
 

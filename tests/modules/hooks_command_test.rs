@@ -612,7 +612,7 @@ exit 0
 "#;
     fixture.create_existing_hook(test_hook)?;
 
-    let hooks_cmd = HooksCommand::new(fixture.hooks_dir().clone(), fixture.config_path().clone());
+    let _hooks_cmd = HooksCommand::new(fixture.hooks_dir().clone(), fixture.config_path().clone());
 
     // ACT - this would need to be implemented
     // let result = hooks_cmd.run(false, true).await?;
@@ -642,7 +642,7 @@ exit 0
 "#;
     fixture.create_existing_hook(test_hook)?;
 
-    let hooks_cmd = HooksCommand::new(fixture.hooks_dir().clone(), fixture.config_path().clone());
+    let _hooks_cmd = HooksCommand::new(fixture.hooks_dir().clone(), fixture.config_path().clone());
 
     // ACT - would test all_files flag
     // let result = hooks_cmd.run(true, true).await?;
@@ -670,7 +670,7 @@ exit 1
 "#;
     fixture.create_existing_hook(test_hook)?;
 
-    let hooks_cmd = HooksCommand::new(fixture.hooks_dir().clone(), fixture.config_path().clone());
+    let _hooks_cmd = HooksCommand::new(fixture.hooks_dir().clone(), fixture.config_path().clone());
 
     // ACT & ASSERT
     // let result = hooks_cmd.run(false, false).await?;

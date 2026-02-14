@@ -174,8 +174,8 @@ async fn test_12_confidence_bounded() {
     let analyzer = FiveWhysAnalyzer::new();
 
     // Empty evidence
-    let confidence = analyzer.calculate_confidence(&vec![]).unwrap();
-    assert!(confidence >= 0.0 && confidence <= 1.0);
+    let confidence = analyzer.calculate_confidence(&[]).unwrap();
+    assert!((0.0..=1.0).contains(&confidence));
 
     // Extreme evidence
     let evidence = vec![
@@ -183,7 +183,7 @@ async fn test_12_confidence_bounded() {
         create_test_evidence(EvidenceSource::SATD, json!({"count": 100})),
     ];
     let confidence = analyzer.calculate_confidence(&evidence).unwrap();
-    assert!(confidence >= 0.0 && confidence <= 1.0);
+    assert!((0.0..=1.0).contains(&confidence));
 }
 
 // ============================================================================

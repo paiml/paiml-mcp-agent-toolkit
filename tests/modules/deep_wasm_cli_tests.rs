@@ -5,8 +5,6 @@
 use pmat::cli::commands::AnalyzeCommands;
 #[cfg(feature = "deep-wasm")]
 use pmat::cli::enums::{DeepWasmFocus, DeepWasmLanguage, DeepWasmOutputFormat};
-use std::path::PathBuf;
-use tempfile::tempdir;
 
 #[cfg(feature = "deep-wasm")]
 #[test]

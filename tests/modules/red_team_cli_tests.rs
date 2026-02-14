@@ -119,7 +119,7 @@ fn test_cli_output_formatting() {
     use pmat::red_team::{EvidenceResult, EvidenceSource};
 
     // Simulate CLI output for hallucination report
-    let claim_text = "all tests passing";
+    let _claim_text = "all tests passing";
     let evidence = [
         EvidenceResult {
             source: EvidenceSource::TestExecution,

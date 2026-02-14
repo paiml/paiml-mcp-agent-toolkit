@@ -5,7 +5,7 @@ use std::fs;
 use std::path::Path;
 
 #[derive(Debug, Clone, Copy)]
-pub enum ArtifactCategory {
+pub(super) enum ArtifactCategory {
     NonCodeSimple,
     NonCodeStyled,
     AstSimple,
@@ -24,7 +24,7 @@ impl ArtifactCategory {
 }
 
 #[derive(Debug)]
-pub struct MermaidArtifactSpec {
+pub(super) struct MermaidArtifactSpec {
     pub category: ArtifactCategory,
     pub name: &'static str,
     pub description: &'static str,

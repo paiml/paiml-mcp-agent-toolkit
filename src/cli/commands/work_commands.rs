@@ -178,6 +178,25 @@ pub enum WorkCommands {
         path: Option<PathBuf>,
     },
 
+    /// Run falsification tests without completing the work item
+    #[command(visible_aliases = &["falsify", "test-claims"])]
+    Falsify {
+        /// Issue number or ticket ID
+        id: String,
+
+        /// Override specific falsification claims (requires --ticket)
+        #[arg(long, value_delimiter = ',')]
+        override_claims: Option<Vec<String>>,
+
+        /// Ticket ID for override accountability (MANDATORY with --override-claims)
+        #[arg(long)]
+        ticket: Option<String>,
+
+        /// Project path (default: current directory)
+        #[arg(short, long)]
+        path: Option<PathBuf>,
+    },
+
     /// Show work status
     #[command(visible_aliases = &["st", "stat"])]
     Status {

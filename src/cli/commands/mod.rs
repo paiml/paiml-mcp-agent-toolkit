@@ -1129,6 +1129,28 @@ pub enum Commands {
         command: WorkCommands,
     },
 
+    /// Falsify claims in a work item, spec, or ticket against the codebase
+    ///
+    /// Runs the Popperian falsification protocol: extracts testable claims
+    /// and attempts to find disconfirming evidence. Produces an immutable receipt.
+    #[command(visible_aliases = &["falsify-spec"])]
+    Falsify {
+        /// Work item ID or spec file path to falsify
+        target: String,
+
+        /// Override specific falsification claims (requires --ticket)
+        #[arg(long, value_delimiter = ',')]
+        override_claims: Option<Vec<String>>,
+
+        /// Ticket ID for override accountability (MANDATORY with --override-claims)
+        #[arg(long)]
+        ticket: Option<String>,
+
+        /// Project path (default: current directory)
+        #[arg(short, long)]
+        path: Option<PathBuf>,
+    },
+
     /// QA validation after work completion with Toyota Way quality gates
     #[command(name = "qa-work", visible_aliases = &["qa", "quality"])]
     QaWork {
