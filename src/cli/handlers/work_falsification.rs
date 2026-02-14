@@ -1165,11 +1165,22 @@ fn detect_new_satd_since_baseline(
             if line.starts_with("+++") {
                 continue;
             }
-            // This is an added line
+            let trimmed = line_content.trim();
+
+            // Only flag actual comments, not string literals or code
+            if !trimmed.starts_with("//") || trimmed.starts_with("///") || trimmed.starts_with("//!") {
+                continue;
+            }
+
+            // Exclude security/safety annotations — not debt
+            let comment_text = trimmed[2..].trim_start();
+            if comment_text.starts_with("SECURITY:") || comment_text.starts_with("SAFETY:") {
+                continue;
+            }
+
             for pattern in &satd_patterns {
-                if line_content.contains(pattern) {
+                if trimmed.contains(pattern) {
                     if let Some(ref file) = current_file {
-                        // Extract the marker context
                         let marker = line_content
                             .split(pattern)
                             .nth(1)

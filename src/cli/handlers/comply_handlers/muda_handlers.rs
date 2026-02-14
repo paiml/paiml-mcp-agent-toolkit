@@ -225,18 +225,93 @@ fn collect_rs_source_files(src_dir: &Path) -> Vec<std::path::PathBuf> {
 }
 
 /// Count SATD markers (TODO/FIXME/HACK) in file content.
+/// Only counts markers in actual production code comments, not string literals,
+/// doc comments, security annotations, or test modules.
 fn count_satd_in_content(content: &str) -> usize {
-    content
-        .lines()
-        .map(|l| l.trim())
-        .filter(|t| is_satd_marker(t))
-        .count()
+    let mut count = 0;
+    let mut in_raw_string = false;
+    let mut in_test_module = false;
+
+    for line in content.lines() {
+        let trimmed = line.trim();
+
+        // Stop counting after #[cfg(test)] — everything below is test code
+        if trimmed == "#[cfg(test)]" || trimmed.starts_with("#[cfg(all(test,") {
+            in_test_module = true;
+        }
+        if in_test_module {
+            continue;
+        }
+
+        // Track raw string boundaries (r#"..."#) to skip embedded comments
+        if !in_raw_string && trimmed.contains("r#\"") {
+            in_raw_string = true;
+            // Check if it closes on the same line
+            if trimmed.contains("\"#") && trimmed.rfind("\"#") > trimmed.find("r#\"") {
+                in_raw_string = false;
+            }
+            continue;
+        }
+        if in_raw_string {
+            if trimmed.contains("\"#") {
+                in_raw_string = false;
+            }
+            continue;
+        }
+
+        if is_satd_marker(trimmed) {
+            count += 1;
+        }
+    }
+    count
 }
 
-/// Check if a line contains a SATD marker (not in doc comments).
+/// Check if a line is a genuine SATD comment (not a string literal,
+/// doc comment, or security annotation).
 fn is_satd_marker(trimmed: &str) -> bool {
-    let has_marker = trimmed.contains("TODO") || trimmed.contains("FIXME") || trimmed.contains("HACK");
-    has_marker && !trimmed.starts_with("///") && !trimmed.starts_with("//!")
+    // Must be a line comment (not doc comment)
+    if !trimmed.starts_with("//") || trimmed.starts_with("///") || trimmed.starts_with("//!") {
+        return false;
+    }
+
+    // Extract the comment text after //
+    let comment = trimmed.get(2..).unwrap_or("");
+
+    // Exclude security annotations — these are hardening notes, not debt
+    if comment.trim_start().starts_with("SECURITY:")
+        || comment.trim_start().starts_with("SAFETY:")
+    {
+        return false;
+    }
+
+    // The marker must appear in the comment text itself, not in a string
+    // literal that happens to be on this line. If the line has quotes before
+    // the marker, it's likely a string literal reference.
+    let has_marker = comment.contains("TODO") || comment.contains("FIXME") || comment.contains("HACK");
+    if !has_marker {
+        return false;
+    }
+
+    // Exclude lines where the marker appears only inside quotes
+    // (test fixtures, string constants referencing SATD patterns)
+    let unquoted = strip_quoted_strings(trimmed);
+    unquoted.contains("TODO") || unquoted.contains("FIXME") || unquoted.contains("HACK")
+}
+
+/// Strip content inside double quotes to avoid matching string literals.
+fn strip_quoted_strings(s: &str) -> String {
+    let mut result = String::with_capacity(s.len());
+    let mut in_quote = false;
+    let mut prev_escape = false;
+    for ch in s.chars() {
+        if ch == '"' && !prev_escape {
+            in_quote = !in_quote;
+        } else if !in_quote {
+            result.push(ch);
+        }
+        prev_escape = ch == '\\' && !prev_escape;
+    }
+    result
 }
 
 /// Transport waste: excessive data copying (.clone() density)
@@ -401,5 +476,81 @@ mod tests {
         let path = PathBuf::from("/nonexistent/path");
         let score = measure_defects(&path);
         assert_eq!(score, 0.0);
+    }
+
+    #[test]
+    fn test_is_satd_marker_real_comments() {
+        // Real SATD markers
+        assert!(is_satd_marker("// TODO: implement this"));
+        assert!(is_satd_marker("// FIXME: broken logic"));
+        assert!(is_satd_marker("// HACK: temporary workaround"));
+        assert!(is_satd_marker("//TODO: no space"));
+        assert!(is_satd_marker("// FIXME(noah): needs refactor"));
+    }
+
+    #[test]
+    fn test_is_satd_marker_excludes_non_comments() {
+        // Not comments — should NOT be flagged
+        assert!(!is_satd_marker(r#"patterns: vec!["TODO".to_string()]"#));
+        assert!(!is_satd_marker(r#"let s = "FIXME: broken";"#));
+        assert!(!is_satd_marker("fn check_todo() {"));
+        assert!(!is_satd_marker(r#"Regex::new(r"\bHACK\b")"#));
+    }
+
+    #[test]
+    fn test_is_satd_marker_excludes_doc_comments() {
+        assert!(!is_satd_marker("/// TODO: document this"));
+        assert!(!is_satd_marker("//! FIXME: module docs"));
+    }
+
+    #[test]
+    fn test_is_satd_marker_excludes_security_annotations() {
+        assert!(!is_satd_marker("// SECURITY: Require 'passed' field to exist"));
+        assert!(!is_satd_marker("// SAFETY: this pointer is valid because..."));
+    }
+
+    #[test]
+    fn test_is_satd_marker_excludes_string_literals_in_comments() {
+        // Comments that reference SATD patterns in quotes (meta-discussion)
+        assert!(!is_satd_marker(r#"// tracking "TODO" and "FIXME" comments"#));
+        assert!(!is_satd_marker(r#"// scans for "HACK" markers"#));
+    }
+
+    #[test]
+    fn test_count_satd_in_content() {
+        let content = r#"
+// TODO: real debt marker
+/// TODO: doc comment (excluded)
+//! FIXME: module doc (excluded)
+let x = "TODO: string literal (excluded)";
+// SECURITY: FIXME cache validation (excluded)
+// HACK: actual hack
+fn contains_todo() {} // no marker, just identifier
+"#;
+        assert_eq!(count_satd_in_content(content), 2); // Only the real TODO and HACK
+    }
+
+    #[test]
+    fn test_count_satd_skips_test_modules() {
+        let content = "// TODO: real debt in production\nfn prod() {}\n\n#[cfg(test)]\nmod tests {\n    // TODO: test marker (excluded)\n    // FIXME: test fix (excluded)\n}\n";
+        assert_eq!(count_satd_in_content(content), 1); // Only the production TODO
+    }
+
+    #[test]
+    fn test_count_satd_skips_raw_string_content() {
+        let content = "fn check() {\n    let code = r#\"\n        // TODO: embedded comment\n        // FIXME: also embedded\n    \"#;\n}\n// HACK: real marker\n";
+        assert_eq!(count_satd_in_content(content), 1); // Only the real HACK
+    }
+
+    #[test]
+    fn test_strip_quoted_strings() {
+        assert_eq!(strip_quoted_strings(r#"hello "world" foo"#), "hello  foo");
+        assert_eq!(strip_quoted_strings(r#""TODO" marker"#), " marker");
+        assert_eq!(strip_quoted_strings("no quotes"), "no quotes");
+        // Multiple quoted segments
+        assert_eq!(
+            strip_quoted_strings(r#"vec!["TODO", "FIXME"]"#),
+            "vec![, ]"
+        );
     }
 }
