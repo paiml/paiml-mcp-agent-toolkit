@@ -195,16 +195,13 @@ fn write_qg_violations_summary(
 
     for (check_type, type_violations) in by_type {
         writeln!(output, "## {} ({} violations)", check_type, type_violations.len())?;
-        for v in type_violations.iter().take(5) {
-            // Show first 5 per category
+        // Show all violations (no truncation) so users can see the full list
+        for v in type_violations.iter() {
             if let Some(line) = v.line {
                 writeln!(output, "  - {}:{} - {}", v.file, line, v.message)?;
             } else {
                 writeln!(output, "  - {} - {}", v.file, v.message)?;
             }
-        }
-        if type_violations.len() > 5 {
-            writeln!(output, "  ... and {} more", type_violations.len() - 5)?;
         }
     }
     Ok(())

@@ -31,7 +31,7 @@ const SECRET_KEY_PATTERNS: &[&str] = &[
 ];
 
 /// Known non-secret keys that contain secret-pattern substrings (e.g. "token").
-/// These are common ML/LLM inference parameters, not credentials.
+/// These are common ML/LLM inference parameters and permission scopes, not credentials.
 const SECRET_KEY_ALLOWLIST: &[&str] = &[
     "max_tokens",
     "num_tokens",
@@ -44,6 +44,9 @@ const SECRET_KEY_ALLOWLIST: &[&str] = &[
     "max_new_tokens",
     "token_count",
     "tokens_per_second",
+    // GitHub Actions permission scopes (not secrets)
+    "id-token",
+    "id_token",
 ];
 
 // =============================================================================
@@ -133,6 +136,7 @@ pub fn detect_cb950_truthy_ambiguity(project_path: &Path) -> Vec<CbPatternViolat
             Ok(c) => c,
             Err(_) => continue,
         };
+        let raw_lines: Vec<&str> = content.lines().collect();
         let prod_lines = compute_yaml_production_lines(&content);
         let rel = file_path
             .strip_prefix(project_path)
@@ -141,6 +145,12 @@ pub fn detect_cb950_truthy_ambiguity(project_path: &Path) -> Vec<CbPatternViolat
             .to_string();
 
         for (line_num, line) in &prod_lines {
+            // Honor inline # pmat:ignore directives
+            if let Some(raw) = raw_lines.get(line_num.wrapping_sub(1)) {
+                if raw.contains("# pmat:ignore") {
+                    continue;
+                }
+            }
             // Pattern: key: value where value is an unquoted truthy string
             if let Some(colon_pos) = line.find(": ") {
                 let value = line[colon_pos + 2..].trim();
@@ -377,6 +387,10 @@ pub fn detect_cb954_plaintext_secret(project_path: &Path) -> Vec<CbPatternViolat
         for (i, line) in content.lines().enumerate() {
             let trimmed = line.trim();
             if trimmed.starts_with('#') || trimmed.is_empty() {
+                continue;
+            }
+            // Honor inline # pmat:ignore directives
+            if line.contains("# pmat:ignore") {
                 continue;
             }
 

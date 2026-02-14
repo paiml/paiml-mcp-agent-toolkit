@@ -241,7 +241,7 @@ impl SimpleContractService {
                         serde_json::from_value::<EntropyResponse>(entropy_result)
                     {
                         // Convert high-severity entropy violations to quality gate violations
-                        for violation in entropy_response.violations.iter().take(5) {
+                        for violation in entropy_response.violations.iter() {
                             if matches!(
                                 violation.severity,
                                 crate::entropy::violation_detector::Severity::High
