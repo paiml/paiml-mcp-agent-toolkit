@@ -431,8 +431,8 @@ pub fn detect_cb600_implicit_globals(project_path: &Path) -> Vec<CbPatternViolat
             // Apply opens before checking (a line like `{ key = val }` starts inside)
             brace_depth += opens;
 
-            if brace_depth <= 0 {
-                if !starts_with_lua_keyword(trimmed) {
+            if brace_depth <= 0
+                && !starts_with_lua_keyword(trimmed) {
                     if let Some(lhs) = extract_implicit_global(trimmed) {
                         // Skip identifiers known to be local (params, loop vars, local decls)
                         if !known_locals.contains(lhs) {
@@ -448,7 +448,6 @@ pub fn detect_cb600_implicit_globals(project_path: &Path) -> Vec<CbPatternViolat
                         }
                     }
                 }
-            }
 
             brace_depth -= closes;
             brace_depth = brace_depth.max(0);

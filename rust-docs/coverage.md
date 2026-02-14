@@ -1,6 +1,6 @@
 # Test Coverage Report
 
-## Current Coverage: 85%+ (QA V2 Framework)
+## Current Coverage: 81%+ (QA V2 Framework)
 
 ### Overview
 
@@ -208,4 +208,4 @@ all-features = true
 
 ---
 
-*Last Updated: 6/2/2025*
+*Last Updated: 2/14/2026*

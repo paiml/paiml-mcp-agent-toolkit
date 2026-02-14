@@ -83,6 +83,7 @@ impl CliAdapter {
                 timeout: _,
                 include: _,
                 exclude: _,
+                extended: _,
             } => Self::decode_analyze_satd(
                 path,
                 format,

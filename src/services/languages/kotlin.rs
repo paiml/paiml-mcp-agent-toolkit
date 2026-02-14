@@ -333,6 +333,24 @@ impl KotlinComplexityAnalyzer {
     }
 }
 
+/// Analyze a Kotlin file and return AST items
+#[cfg(feature = "kotlin-ast")]
+pub async fn analyze_kotlin_file(
+    file_path: &Path,
+) -> anyhow::Result<Vec<AstItem>> {
+    let source = std::fs::read_to_string(file_path)?;
+    let visitor = KotlinAstVisitor::new(file_path);
+    visitor.analyze_kotlin_source(&source).map_err(|e| anyhow::anyhow!("{e}"))
+}
+
+/// Stub when kotlin-ast feature is disabled
+#[cfg(not(feature = "kotlin-ast"))]
+pub async fn analyze_kotlin_file(
+    _file_path: &std::path::Path,
+) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
+    Ok(Vec::new())
+}
+
 #[cfg(all(test, feature = "kotlin-ast"))]
 mod tests {
     use super::*;

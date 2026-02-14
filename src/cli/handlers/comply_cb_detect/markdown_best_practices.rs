@@ -158,7 +158,7 @@ pub fn detect_cb901_heading_hierarchy_skip(project_path: &Path) -> Vec<CbPattern
             // Count heading level
             if trimmed.starts_with('#') {
                 let level = trimmed.chars().take_while(|c| *c == '#').count();
-                if level >= 1 && level <= 6 {
+                if (1..=6).contains(&level) {
                     // Check for skip: e.g., h1 -> h3 (skip h2)
                     if last_level > 0 && level > last_level + 1 {
                         violations.push(CbPatternViolation {

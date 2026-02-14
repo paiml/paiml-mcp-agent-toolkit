@@ -117,6 +117,7 @@ impl CliAdapter {
             | Commands::Spec { .. } // master-plan-pmat-work-system.md: Spec management (CLI-only)
             | Commands::CudaTdg { .. } // CUDA-SIMD TDG: 100-point Popper falsification (CLI-only)
             | Commands::DepsAudit { .. } // Dependency audit for Sovereign AI stack migration (CLI-only)
+            | Commands::Query { .. } // Semantic code search (CLI-only)
             => Self::cli_only_command_error(),
 
             #[cfg(feature = "mutation-testing")]

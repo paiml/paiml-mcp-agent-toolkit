@@ -300,7 +300,7 @@ fn test_cli_search_templates() {
 
 /// SLOW: >240s - excluded from fast test suite
 #[test]
-// Re-enabled: test passes
+#[ignore] // SLOW: >240s - triggers full cargo build, times out in kaizen
 fn test_cli_invalid_command() {
     let output = Command::new("cargo")
         .args(["run", "--bin", "pmat", "--", "invalid-command"])

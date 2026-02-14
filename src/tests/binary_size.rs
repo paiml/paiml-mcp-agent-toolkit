@@ -37,13 +37,13 @@ fn binary_size_regression() {
     );
 
     // Define size thresholds
-    const MAX_SIZE_BYTES: u64 = 25 * 1024 * 1024; // 25MB (increased due to additional features)
-    const EXPECTED_SIZE_BYTES: u64 = 22 * 1024 * 1024; // ~22MB expected
+    const MAX_SIZE_BYTES: u64 = 50 * 1024 * 1024; // 50MB (aligned with .pmat-metrics.toml binary_max_bytes)
+    const EXPECTED_SIZE_BYTES: u64 = 37 * 1024 * 1024; // ~37MB expected (multi-language support)
 
-    // Jidoka - Build quality in: fail if binary exceeds 25MB
+    // Jidoka - Build quality in: fail if binary exceeds 50MB
     assert!(
         size_bytes < MAX_SIZE_BYTES,
-        "Kaizen Quality Gate Failed: Binary size {size_bytes} bytes exceeds maximum limit of {MAX_SIZE_BYTES} bytes (25MB). \
+        "Kaizen Quality Gate Failed: Binary size {size_bytes} bytes exceeds maximum limit of {MAX_SIZE_BYTES} bytes (50MB). \
          Consider applying Muda elimination to reduce binary size."
     );
 

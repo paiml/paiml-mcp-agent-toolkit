@@ -1845,3 +1845,202 @@ roadmap:
   - lua
   - detection
   notes: null
+- id: PMAT-488
+  github_issue: null
+  item_type: task
+  title: 'CB-519: Lossy Data Pipeline Detection'
+  status: inprogress
+  priority: high
+  assigned_to: null
+  created: 2026-02-13T17:49:49Z
+  updated: 2026-02-13T17:50:54.522151993+00:00
+  spec: null
+  acceptance_criteria:
+  - 'Detect quantize-dequantize-requantize chains where data flows through lossy transforms multiple times. Motivated by aprender GH-215/231/234/237 where GGUF export double-quantized attention weights. Pattern: function calls .quantize() then .dequantize() or equivalent round-trip on same data path.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - cb-500
+  - comply
+  - ml-pipeline
+  notes: null
+- id: PMAT-489
+  github_issue: null
+  item_type: task
+  title: 'CB-520: Expensive Init in Hot Path'
+  status: inprogress
+  priority: high
+  assigned_to: null
+  created: 2026-02-13T17:49:56Z
+  updated: 2026-02-13T17:50:54.834380905+00:00
+  spec: null
+  acceptance_criteria:
+  - 'Detect expensive initialization patterns inside loops beyond just .clone(). Motivated by aprender GH-224 where ChatSession recreated GPU models (5-6GB VRAM upload) on every generate() call. Pattern: new()/create()/load()/init()/connect()/open() calls inside for/while/loop bodies, especially when the object could be hoisted.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - cb-500
+  - comply
+  - performance
+  notes: null
+- id: PMAT-490
+  github_issue: null
+  item_type: task
+  title: 'CB-521: Format Detection Without Magic Bytes'
+  status: inprogress
+  priority: high
+  assigned_to: null
+  created: 2026-02-13T17:50:04Z
+  updated: 2026-02-13T17:50:54.955654008+00:00
+  spec: null
+  acceptance_criteria:
+  - 'Detect file format parsing that doesn''t validate magic bytes or format signatures before interpreting binary structure. Motivated by aprender GH-213 where .safetensors.index.json was parsed as binary SafeTensors (8-byte size prefix), crashing with header too large. Pattern: read_exact/from_le_bytes on file content without prior magic byte validation.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - cb-500
+  - comply
+  - safety
+  notes: null
+- id: PMAT-491
+  github_issue: null
+  item_type: task
+  title: 'CB-522: Untested Path Normalization'
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2026-02-13T17:50:11Z
+  updated: 2026-02-13T17:50:55.079431386+00:00
+  spec: null
+  acceptance_criteria:
+  - 'Detect URL/path string manipulation without normalization tests. Motivated by aprender GH-221 where hf://org/repo/resolve/main/file preserved web path components as filesystem path. Pattern: .replace()/.strip_prefix()/.split(''/'') chains on user-provided paths without corresponding test cases for edge cases (double slashes, web URLs, relative paths).'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - cb-500
+  - comply
+  - path-safety
+  notes: null
+- id: PMAT-492
+  github_issue: null
+  item_type: task
+  title: 'CB-523: External Config Over Embedded Metadata'
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2026-02-13T17:50:19Z
+  updated: 2026-02-13T17:50:55.204543086+00:00
+  spec: null
+  acceptance_criteria:
+  - 'Detect patterns where external filesystem heuristics (sibling files, parent directory names) are used to infer metadata when embedded/internal metadata fields exist. Motivated by aprender GH-222 where apr chat used sibling config.json instead of APR v2 embedded metadata. Pattern: Path::parent()/with_file_name() for config discovery when the loaded struct has metadata fields.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - cb-500
+  - comply
+  - architecture
+  notes: null
+- id: PMAT-493
+  github_issue: null
+  item_type: task
+  title: 'CB-524: Incomplete Enum Match Coverage'
+  status: inprogress
+  priority: high
+  assigned_to: null
+  created: 2026-02-13T17:50:26Z
+  updated: 2026-02-13T17:50:55.327967669+00:00
+  spec: null
+  acceptance_criteria:
+  - 'Detect when a project-defined enum is matched in multiple functions but not all functions handle all variants. Motivated by aprender GH-233/236 where adding new Architecture variants required updating match arms across 5+ functions. Pattern: multiple match blocks on the same enum type where some use _ => catch-all and others enumerate variants explicitly.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - cb-500
+  - comply
+  - exhaustiveness
+  notes: null
+- id: PMAT-494
+  github_issue: null
+  item_type: task
+  title: 'CB-525: Hardcoded Field Names Without Aliases'
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2026-02-13T17:50:34Z
+  updated: 2026-02-13T17:50:55.451900332+00:00
+  spec: null
+  acceptance_criteria:
+  - 'Detect config/JSON deserialization using hardcoded string field names without alias support. Motivated by aprender GH-235 where load_model_config_from_json only handled standard HuggingFace names (hidden_size) but not GPT-2 names (n_embd). Pattern: repeated .get("field_name") or ["field_name"] on serde_json::Value without fallback .or_else(.get("alias")).'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - cb-500
+  - comply
+  - compatibility
+  notes: null
+- id: PMAT-495
+  github_issue: null
+  item_type: task
+  title: 'CB-526: Single-Path File Resolution'
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2026-02-13T17:50:41Z
+  updated: 2026-02-13T17:50:55.573982921+00:00
+  spec: null
+  acceptance_criteria:
+  - 'Detect file discovery that only checks a single exact path without fallback search. Motivated by aprender GH-216 where GGUF-to-APR conversion failed to find tokenizer.json when not a direct sibling. Pattern: Path::join() + .exists() without parent-dir search, glob fallback, or recursive discovery.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - cb-500
+  - comply
+  - robustness
+  notes: null
+- id: PMAT-496
+  github_issue: null
+  item_type: task
+  title: 'CB-527: Incomplete Pattern List for Data Classification'
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2026-02-13T17:50:48Z
+  updated: 2026-02-13T17:50:55.696367648+00:00
+  spec: null
+  acceptance_criteria:
+  - 'Detect when string-matching classifiers use incomplete pattern lists that miss known variants. Motivated by aprender GH-233B/234 where Rosetta density threshold only recognized ''embed'' but not ''wte'', ''wpe'', ''position_embedding'', ''lm_head''. Pattern: contains()/starts_with() chains for classification without exhaustive variant coverage or a centralized pattern registry.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - cb-500
+  - comply
+  - classification
+  notes: null
+- id: PMAT-497
+  github_issue: null
+  item_type: task
+  title: 'Fix kaizen blockers: clippy clean + binary size threshold'
+  status: inprogress
+  priority: critical
+  assigned_to: null
+  created: 2026-02-13T23:09:03Z
+  updated: 2026-02-13T23:09:08.265233833+00:00
+  spec: null
+  acceptance_criteria:
+  - 1. Update binary_size.rs threshold from 25MB to 40MB (binary grew with new language support). 2. Fix any remaining clippy warnings. These block make kaizen from passing.
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - kaizen
+  - quality-gate
+  notes: null

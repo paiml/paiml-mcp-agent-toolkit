@@ -44,6 +44,14 @@ use super::comply_cb_detect::{
     detect_cb508_lossy_numeric_casts, detect_cb509_feature_gate_coverage,
     detect_cb510_include_macro_hygiene, detect_cb511_flaky_timing_tests,
     detect_cb512_error_propagation_gap,
+    detect_cb513_silent_error_swallowing, detect_cb514_debug_eprintln_leaks,
+    detect_cb515_catch_all_match_default, detect_cb516_hardcoded_magic_numbers,
+    detect_cb517_stale_debug_artifacts, detect_cb518_expensive_clone_in_loop,
+    detect_cb519_lossy_data_pipeline, detect_cb520_expensive_init_in_loop,
+    detect_cb521_format_without_magic_bytes, detect_cb522_untested_path_normalization,
+    detect_cb523_external_config_over_embedded, detect_cb524_incomplete_enum_match,
+    detect_cb525_hardcoded_field_names, detect_cb526_single_path_resolution,
+    detect_cb527_incomplete_pattern_list,
     CbPatternViolation,
 };
 use chrono::{DateTime, Utc};
@@ -1749,7 +1757,7 @@ pub(crate) fn check_agent_context_adoption(project_path: &Path) -> ComplianceChe
     }
 }
 
-/// Rust Best Practices Detection (CB-500 through CB-512)
+/// Rust Best Practices Detection (CB-500 through CB-518)
 pub(crate) fn check_rust_best_practices(project_path: &Path) -> ComplianceCheck {
     let mut all_issues: Vec<String> = Vec::new();
     let mut error_count = 0;
@@ -1770,6 +1778,21 @@ pub(crate) fn check_rust_best_practices(project_path: &Path) -> ComplianceCheck 
         ("CB-510", detect_cb510_include_macro_hygiene(project_path)),
         ("CB-511", detect_cb511_flaky_timing_tests(project_path)),
         ("CB-512", detect_cb512_error_propagation_gap(project_path)),
+        ("CB-513", detect_cb513_silent_error_swallowing(project_path)),
+        ("CB-514", detect_cb514_debug_eprintln_leaks(project_path)),
+        ("CB-515", detect_cb515_catch_all_match_default(project_path)),
+        ("CB-516", detect_cb516_hardcoded_magic_numbers(project_path)),
+        ("CB-517", detect_cb517_stale_debug_artifacts(project_path)),
+        ("CB-518", detect_cb518_expensive_clone_in_loop(project_path)),
+        ("CB-519", detect_cb519_lossy_data_pipeline(project_path)),
+        ("CB-520", detect_cb520_expensive_init_in_loop(project_path)),
+        ("CB-521", detect_cb521_format_without_magic_bytes(project_path)),
+        ("CB-522", detect_cb522_untested_path_normalization(project_path)),
+        ("CB-523", detect_cb523_external_config_over_embedded(project_path)),
+        ("CB-524", detect_cb524_incomplete_enum_match(project_path)),
+        ("CB-525", detect_cb525_hardcoded_field_names(project_path)),
+        ("CB-526", detect_cb526_single_path_resolution(project_path)),
+        ("CB-527", detect_cb527_incomplete_pattern_list(project_path)),
     ];
 
     for (_id, violations) in &detectors {
@@ -1798,7 +1821,7 @@ pub(crate) fn check_rust_best_practices(project_path: &Path) -> ComplianceCheck 
         };
 
         ComplianceCheck {
-            name: "CB-500: Rust Best Practices (CB-500 to CB-512)".to_string(),
+            name: "CB-500: Rust Best Practices (CB-500 to CB-527)".to_string(),
             status: CheckStatus::Warn,
             message: format!(
                 "[Advisory] {} errors, {} warnings, {} info:\n{}",
@@ -1811,7 +1834,7 @@ pub(crate) fn check_rust_best_practices(project_path: &Path) -> ComplianceCheck 
         }
     } else {
         ComplianceCheck {
-            name: "CB-500: Rust Best Practices (CB-500 to CB-512)".to_string(),
+            name: "CB-500: Rust Best Practices (CB-500 to CB-527)".to_string(),
             status: CheckStatus::Pass,
             message: "No Rust best practice violations detected".to_string(),
             severity: Severity::Info,

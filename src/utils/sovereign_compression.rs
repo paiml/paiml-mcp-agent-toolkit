@@ -130,7 +130,8 @@ pub fn compress(input: &[u8]) -> io::Result<Vec<u8>> {
         page[..chunk.len()].copy_from_slice(chunk);
 
         // Compress using SIMD-accelerated LZ4
-        let compressed = lz4::compress(&page)?;
+        let compressed = lz4::compress(&page)
+            .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("{e}")))?;
         page_sizes.push(compressed.len() as u32);
         compressed_pages.extend_from_slice(&compressed);
     }
@@ -184,7 +185,8 @@ pub fn decompress(input: &[u8]) -> io::Result<Vec<u8>> {
 
         // Decompress to PAGE_SIZE buffer
         let mut page = [0u8; PAGE_SIZE];
-        let decompressed_len = lz4::decompress(compressed, &mut page)?;
+        let decompressed_len = lz4::decompress(compressed, &mut page)
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, format!("{e}")))?;
 
         // Calculate how much of this page contains actual data
         let remaining = header.original_len as usize - result.len();

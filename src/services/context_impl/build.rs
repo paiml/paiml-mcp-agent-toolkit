@@ -251,7 +251,15 @@ async fn analyze_file_by_toolchain(
         #[cfg(feature = "kotlin-ast")]
         "kt" | "kts" => {
             use crate::services::languages::kotlin;
-            kotlin::analyze_kotlin_file(path).await.ok()
+            match kotlin::analyze_kotlin_file(path).await {
+                Ok(items) => Some(FileContext {
+                    path: path.display().to_string(),
+                    language: "kotlin".to_string(),
+                    items,
+                    complexity_metrics: None,
+                }),
+                Err(_) => None,
+            }
         }
 
         // Ruby files (tree-sitter) - TODO: implement analyze_ruby_file()

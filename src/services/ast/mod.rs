@@ -93,7 +93,7 @@ impl AstRegistry {
 
         #[cfg(feature = "kotlin-ast")]
         {
-            self.register(Arc::new(languages::kotlin::KotlinStrategy::new()));
+            self.register(Arc::new(languages::kotlin_strategy::KotlinStrategy::new()));
         }
     }
 

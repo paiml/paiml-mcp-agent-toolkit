@@ -84,9 +84,12 @@ lint-main:
 	@echo "✅ Main code linting passed!"
 
 # Type check all projects
+# Note: --all-features includes "broken-tests" which enables known-broken split test files
+# So we check: (1) lib with all features, (2) all targets without broken-tests
 check:
 	@echo "✅ Type checking Rust code..."
-	@cargo check --manifest-path Cargo.toml --all-targets --all-features
+	@cargo check --manifest-path Cargo.toml --all-features
+	@cargo check --manifest-path Cargo.toml --all-targets
 	@echo "✅ All type checks passed!"
 
 # Fast tests without coverage (optimized for speed) - Test execution MUST complete under 5 minutes

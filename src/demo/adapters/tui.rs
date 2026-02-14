@@ -20,9 +20,9 @@ use tokio::sync::mpsc;
 #[cfg(feature = "tui")]
 #[allow(unused_imports)]
 use presentar_core::{Brick, BrickAssertion, BrickBudget, Constraints, Size, Widget};
-#[cfg(feature = "tui")]
-#[allow(unused_imports)]
-use presentar_terminal::{Meter, Table, TuiApp, TuiConfig};
+// presentar_terminal disabled until published to crates.io
+// #[cfg(feature = "tui")]
+// use presentar_terminal::{Meter, Table, TuiApp, TuiConfig};
 
 #[cfg(feature = "tui")]
 use crate::demo::protocol_harness::{DemoProtocol, ProtocolMetadata};

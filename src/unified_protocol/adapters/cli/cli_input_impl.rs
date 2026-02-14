@@ -196,6 +196,9 @@ impl CliInput {
             Commands::CudaTdg { .. } => {
                 CommandCategory::Analysis // CUDA-SIMD TDG: 100-point Popper falsification
             }
+            Commands::Query { .. } => {
+                CommandCategory::System // Semantic code search
+            }
         }
     }
 
@@ -316,6 +319,8 @@ impl CliAdapter {
 
             #[cfg(feature = "deep-wasm")]
             AnalyzeCommands::DeepWasm { .. } => AnalyzeCommandCategory::Specialized,
+
+            AnalyzeCommands::Models { .. } => AnalyzeCommandCategory::Specialized,
         }
     }
 }

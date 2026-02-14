@@ -7,13 +7,21 @@ use anyhow::Result;
 use async_trait::async_trait;
 use std::path::Path;
 
-use crate::services::ast_strategies::AstStrategy;
+use crate::services::ast::AstStrategy;
 use crate::services::context::FileContext;
 use crate::services::file_classifier::FileClassifier;
 use crate::services::languages::kotlin::KotlinAstVisitor;
 
 /// Kotlin AST Strategy for unified analysis
 pub struct KotlinStrategy;
+
+impl KotlinStrategy {
+    /// Creates a new Kotlin language strategy
+    #[must_use]
+    pub fn new() -> Self {
+        Self
+    }
+}
 
 #[async_trait]
 impl AstStrategy for KotlinStrategy {
@@ -49,9 +57,16 @@ impl AstStrategy for KotlinStrategy {
         }
     }
 
-    /// Checks if this strategy supports the given file extension
-    fn supports_extension(&self, ext: &str) -> bool {
-        matches!(ext, "kt" | "kts")
+    fn primary_extension(&self) -> &'static str {
+        "kt"
+    }
+
+    fn supported_extensions(&self) -> Vec<&'static str> {
+        vec!["kt", "kts"]
+    }
+
+    fn language_name(&self) -> &'static str {
+        "Kotlin"
     }
 }
 
@@ -66,19 +81,19 @@ mod tests {
         let strategy = KotlinStrategy;
 
         assert!(
-            strategy.supports_extension("kt"),
+            strategy.can_handle("kt"),
             "Should support .kt files"
         );
         assert!(
-            strategy.supports_extension("kts"),
+            strategy.can_handle("kts"),
             "Should support .kts files"
         );
         assert!(
-            !strategy.supports_extension("java"),
+            !strategy.can_handle("java"),
             "Should not support .java files"
         );
         assert!(
-            !strategy.supports_extension("py"),
+            !strategy.can_handle("py"),
             "Should not support .py files"
         );
     }
