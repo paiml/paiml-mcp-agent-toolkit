@@ -670,9 +670,10 @@ impl AstStrategy for KotlinAstStrategy {
     async fn analyze(&self, path: &Path, classifier: &FileClassifier) -> Result<FileContext> {
         // Delegate to the new implementation in ast::languages::kotlin_strategy
         use crate::services::ast::languages::kotlin_strategy::KotlinStrategy;
+        use crate::services::ast::AstStrategy as UnifiedAstStrategy;
 
         let kotlin_strategy = KotlinStrategy;
-        kotlin_strategy.analyze(path, classifier).await
+        UnifiedAstStrategy::analyze(&kotlin_strategy, path, classifier).await
     }
 
     fn supports_extension(&self, ext: &str) -> bool {
