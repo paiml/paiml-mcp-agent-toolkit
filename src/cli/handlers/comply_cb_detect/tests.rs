@@ -3911,3 +3911,149 @@ setmetatable(_G, strict)
         assert!(violations.is_empty());
     }
 }
+
+// =============================================================================
+// CB-615: Coroutine Complexity Checks (#188)
+// =============================================================================
+
+mod cb615_tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    #[test]
+    fn test_cb615_detects_resume_without_pcall() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("scheduler.lua"),
+            "local co = coroutine.create(fn)\ncoroutine.resume(co)\n",
+        )
+        .unwrap();
+        let violations = detect_cb615_coroutine_checks(temp.path());
+        assert_eq!(violations.len(), 1);
+        assert_eq!(violations[0].pattern_id, "CB-615");
+        assert!(violations[0].description.contains("pcall"));
+    }
+
+    #[test]
+    fn test_cb615_allows_resume_with_pcall() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("scheduler.lua"),
+            "local ok, err = pcall(coroutine.resume, co)\n",
+        )
+        .unwrap();
+        let violations = detect_cb615_coroutine_checks(temp.path());
+        assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn test_cb615_allows_resume_with_ok_err_capture() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("worker.lua"),
+            "local ok, err = coroutine.resume(co, arg)\n",
+        )
+        .unwrap();
+        let violations = detect_cb615_coroutine_checks(temp.path());
+        assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn test_cb615_skips_test_files() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("test_coro.lua"),
+            "coroutine.resume(co)\n",
+        )
+        .unwrap();
+        let violations = detect_cb615_coroutine_checks(temp.path());
+        assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn test_cb615_no_coroutines() {
+        let temp = TempDir::new().unwrap();
+        fs::write(temp.path().join("app.lua"), "return {}\n").unwrap();
+        let violations = detect_cb615_coroutine_checks(temp.path());
+        assert!(violations.is_empty());
+    }
+}
+
+// =============================================================================
+// CB-616: Type Annotation Awareness (#183)
+// =============================================================================
+
+mod cb616_tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    #[test]
+    fn test_cb616_detects_luals_annotations() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("module.lua"),
+            r#"---@param name string
+---@return boolean
+function M.check(name)
+  return true
+end
+function M.other() end
+"#,
+        )
+        .unwrap();
+        let violations = detect_cb616_type_annotations(temp.path());
+        assert_eq!(violations.len(), 1);
+        assert!(violations[0].description.contains("LuaLS"));
+        assert!(violations[0].description.contains("1/2"));
+    }
+
+    #[test]
+    fn test_cb616_detects_ldoc_annotations() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("widget.lua"),
+            r#"-- @tparam string name Widget name
+-- @treturn Widget The new widget
+function M.new(name) end
+"#,
+        )
+        .unwrap();
+        let violations = detect_cb616_type_annotations(temp.path());
+        assert_eq!(violations.len(), 1);
+        assert!(violations[0].description.contains("LDoc"));
+    }
+
+    #[test]
+    fn test_cb616_no_annotations_few_functions() {
+        let temp = TempDir::new().unwrap();
+        fs::write(temp.path().join("small.lua"), "function init() end\n").unwrap();
+        let violations = detect_cb616_type_annotations(temp.path());
+        // Only 1 function, below threshold of 10
+        assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn test_cb616_no_annotations_many_functions() {
+        let temp = TempDir::new().unwrap();
+        let mut content = String::new();
+        for i in 0..12 {
+            content.push_str(&format!("function fn_{i}() end\n"));
+        }
+        fs::write(temp.path().join("big.lua"), &content).unwrap();
+        let violations = detect_cb616_type_annotations(temp.path());
+        assert_eq!(violations.len(), 1);
+        assert!(violations[0].description.contains("No type annotations"));
+    }
+
+    #[test]
+    fn test_cb616_skips_test_files() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("test_mod.lua"),
+            "---@param x number\nfunction test_add(x) end\n",
+        )
+        .unwrap();
+        let violations = detect_cb616_type_annotations(temp.path());
+        assert!(violations.is_empty());
+    }
+}

@@ -1890,3 +1890,229 @@ fn report_protection_level(
         _ => {} // No protection — CB-600 already flags implicit globals
     }
 }
+
+// =============================================================================
+// CB-615: Lua Coroutine Complexity Scoring (#188)
+// =============================================================================
+
+/// CB-615: Detect coroutine defect patterns and report usage.
+/// - coroutine.resume without pcall (crashes on error)
+/// - Coroutine usage counts for complexity awareness
+pub fn detect_cb615_coroutine_checks(project_path: &Path) -> Vec<CbPatternViolation> {
+    let files = walkdir_lua_files(project_path);
+    let mut violations = Vec::new();
+
+    for file_path in &files {
+        if is_lua_test_file(file_path) {
+            continue;
+        }
+        let content = match fs::read_to_string(file_path) {
+            Ok(c) => c,
+            Err(_) => continue,
+        };
+        let rel = file_path
+            .strip_prefix(project_path)
+            .unwrap_or(file_path)
+            .display()
+            .to_string();
+
+        check_coroutine_patterns(&content, &rel, &mut violations);
+    }
+
+    violations
+}
+
+/// Check for coroutine defect patterns in file content.
+fn check_coroutine_patterns(
+    content: &str,
+    rel: &str,
+    violations: &mut Vec<CbPatternViolation>,
+) {
+    for (i, line) in content.lines().enumerate() {
+        let trimmed = line.trim();
+        if trimmed.starts_with("--") {
+            continue;
+        }
+        check_resume_without_pcall(trimmed, i + 1, rel, content, violations);
+    }
+}
+
+/// Flag coroutine.resume() not wrapped in pcall/xpcall.
+fn check_resume_without_pcall(
+    trimmed: &str,
+    line_num: usize,
+    rel: &str,
+    content: &str,
+    violations: &mut Vec<CbPatternViolation>,
+) {
+    if !trimmed.contains("coroutine.resume") {
+        return;
+    }
+    // Check if the resume is wrapped in pcall/xpcall on same line or previous line
+    let safe = trimmed.contains("pcall") || trimmed.contains("xpcall");
+    let prev_safe = line_num >= 2 && content.lines().nth(line_num - 2).is_some_and(|prev| {
+        let p = prev.trim();
+        p.contains("pcall") || p.contains("xpcall")
+    });
+    // Also safe if assigned to ok, err pattern: `local ok, err = coroutine.resume(...)`
+    let has_err_capture = trimmed.contains("ok,") || trimmed.contains("ok ,");
+
+    if !safe && !prev_safe && !has_err_capture {
+        violations.push(CbPatternViolation {
+            pattern_id: "CB-615".to_string(),
+            file: rel.to_string(),
+            line: line_num,
+            description: "coroutine.resume() without pcall/xpcall — errors propagate to caller"
+                .to_string(),
+            severity: Severity::Warning,
+        });
+    }
+}
+
+// =============================================================================
+// CB-616: Lua Type Annotation Awareness (#183)
+// =============================================================================
+
+/// Detected Lua annotation system.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum LuaAnnotationSystem {
+    LuaLS,
+    LDoc,
+}
+
+impl std::fmt::Display for LuaAnnotationSystem {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            LuaAnnotationSystem::LuaLS => write!(f, "LuaLS/sumneko"),
+            LuaAnnotationSystem::LDoc => write!(f, "LDoc"),
+        }
+    }
+}
+
+/// CB-616: Detect type annotation system and report doc coverage.
+/// Supports LuaLS (---@param, ---@return) and LDoc (-- @tparam, -- @treturn).
+pub fn detect_cb616_type_annotations(project_path: &Path) -> Vec<CbPatternViolation> {
+    let files = walkdir_lua_files(project_path);
+    if files.is_empty() {
+        return Vec::new();
+    }
+
+    let mut luals_count: usize = 0;
+    let mut ldoc_count: usize = 0;
+    let mut total_functions: usize = 0;
+    let mut annotated_functions: usize = 0;
+
+    for file_path in &files {
+        if is_lua_test_file(file_path) {
+            continue;
+        }
+        let content = match fs::read_to_string(file_path) {
+            Ok(c) => c,
+            Err(_) => continue,
+        };
+        let stats = count_annotation_stats(&content);
+        luals_count += stats.luals;
+        ldoc_count += stats.ldoc;
+        total_functions += stats.functions;
+        annotated_functions += stats.annotated;
+    }
+
+    build_annotation_violations(luals_count, ldoc_count, total_functions, annotated_functions)
+}
+
+/// Stats from scanning a single file for annotations.
+struct AnnotationStats {
+    luals: usize,
+    ldoc: usize,
+    functions: usize,
+    annotated: usize,
+}
+
+/// Count annotation patterns and functions in a single file.
+fn count_annotation_stats(content: &str) -> AnnotationStats {
+    let mut stats = AnnotationStats { luals: 0, ldoc: 0, functions: 0, annotated: 0 };
+    let mut prev_was_annotation = false;
+
+    for line in content.lines() {
+        let trimmed = line.trim();
+        let is_annotation = is_annotation_line(trimmed, &mut stats);
+
+        if trimmed.starts_with("function ") || trimmed.starts_with("local function ") {
+            stats.functions += 1;
+            if prev_was_annotation {
+                stats.annotated += 1;
+            }
+        }
+        prev_was_annotation = is_annotation;
+    }
+    stats
+}
+
+/// Check if a line is an annotation and count it. Returns true if annotation.
+fn is_annotation_line(trimmed: &str, stats: &mut AnnotationStats) -> bool {
+    // LuaLS: ---@param, ---@return, ---@class, ---@field, ---@type
+    if trimmed.starts_with("---@") {
+        stats.luals += 1;
+        return true;
+    }
+    // LDoc: -- @tparam, -- @treturn, -- @param, -- @return, -- @raise
+    if trimmed.starts_with("-- @") || trimmed.starts_with("--- @") {
+        let after = trimmed.trim_start_matches('-').trim();
+        if after.starts_with("@tparam")
+            || after.starts_with("@treturn")
+            || after.starts_with("@param")
+            || after.starts_with("@return")
+            || after.starts_with("@raise")
+        {
+            stats.ldoc += 1;
+            return true;
+        }
+    }
+    false
+}
+
+/// Build violations from aggregated annotation stats.
+fn build_annotation_violations(
+    luals_count: usize,
+    ldoc_count: usize,
+    total_functions: usize,
+    annotated_functions: usize,
+) -> Vec<CbPatternViolation> {
+    let mut violations = Vec::new();
+
+    let system = match (luals_count > 0, ldoc_count > 0) {
+        (true, true) => Some(format!("LuaLS/sumneko ({luals_count} annotations) + LDoc ({ldoc_count} annotations)")),
+        (true, false) => Some(format!("LuaLS/sumneko ({luals_count} annotations)")),
+        (false, true) => Some(format!("LDoc ({ldoc_count} annotations)")),
+        (false, false) => None,
+    };
+
+    if let Some(desc) = system {
+        let coverage_pct = if total_functions > 0 {
+            annotated_functions * 100 / total_functions
+        } else {
+            0
+        };
+        violations.push(CbPatternViolation {
+            pattern_id: "CB-616".to_string(),
+            file: "project".to_string(),
+            line: 0,
+            description: format!(
+                "Type annotations: {desc}. Doc coverage: {annotated_functions}/{total_functions} functions ({coverage_pct}%)"
+            ),
+            severity: Severity::Info,
+        });
+    } else if total_functions >= 10 {
+        violations.push(CbPatternViolation {
+            pattern_id: "CB-616".to_string(),
+            file: "project".to_string(),
+            line: 0,
+            description: format!(
+                "No type annotations found ({total_functions} functions) — consider adding LuaLS annotations"
+            ),
+            severity: Severity::Info,
+        });
+    }
+
+    violations
+}
