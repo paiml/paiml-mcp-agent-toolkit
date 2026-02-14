@@ -2064,11 +2064,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'New task: falsify-rag'
-  status: inprogress
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-02-14T12:21:09.705753814+00:00
-  updated: 2026-02-14T12:21:09.705753814+00:00
+  updated: 2026-02-14T13:01:33.209738441+00:00
   spec: null
   acceptance_criteria: []
   phases: []
