@@ -283,6 +283,11 @@ const CLAIM_PATTERNS: &[(&str, &[&str])] = &[
     ("dead-code", &["dead code"]),
     ("per-file-coverage", &["per-file coverage", "all files have"]),
     ("lint", &["lint"]),
+    // v3.1 defect churn prevention
+    ("variant-coverage", &["match arm", "variant"]),
+    ("fix-chain", &["fix-after-fix", "fix chain"]),
+    ("cross-crate", &["cross-crate", "sibling project", "integration tests pass"]),
+    ("regression-gate", &["regression", "performance"]),
 ];
 
 /// Convert hypothesis text to a stable claim ID (mirrors claim_to_override_name in core_handlers)
@@ -921,6 +926,23 @@ mod tests {
         assert_eq!(
             hypothesis_to_claim_id("No dead code introduced"),
             "dead-code"
+        );
+        // v3.1 defect churn claims
+        assert_eq!(
+            hypothesis_to_claim_id("All match arm variants have test coverage"),
+            "variant-coverage"
+        );
+        assert_eq!(
+            hypothesis_to_claim_id("No fix-after-fix chains exceed limit"),
+            "fix-chain"
+        );
+        assert_eq!(
+            hypothesis_to_claim_id("Cross-crate integration tests pass"),
+            "cross-crate"
+        );
+        assert_eq!(
+            hypothesis_to_claim_id("No performance regressions detected"),
+            "regression-gate"
         );
     }
 

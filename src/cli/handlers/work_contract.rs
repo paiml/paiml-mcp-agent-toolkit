@@ -216,6 +216,41 @@ impl WorkContract {
                 result: None,
                 override_info: None,
             },
+            // v3.1 defect churn prevention
+            FalsifiableClaim {
+                hypothesis: "All match arm variants have test coverage".to_string(),
+                falsification_method: FalsificationMethod::VariantCoverage,
+                evidence_required: EvidenceType::FileList(vec![]),
+                result: None,
+                override_info: None,
+            },
+            FalsifiableClaim {
+                hypothesis: "No fix-after-fix chains exceed limit".to_string(),
+                falsification_method: FalsificationMethod::FixChainLimit,
+                evidence_required: EvidenceType::NumericComparison {
+                    actual: 0.0,
+                    threshold: 3.0,
+                },
+                result: None,
+                override_info: None,
+            },
+            FalsifiableClaim {
+                hypothesis: "Cross-crate integration tests pass".to_string(),
+                falsification_method: FalsificationMethod::CrossCrateParity,
+                evidence_required: EvidenceType::BooleanCheck(false),
+                result: None,
+                override_info: None,
+            },
+            FalsifiableClaim {
+                hypothesis: "No performance regressions detected".to_string(),
+                falsification_method: FalsificationMethod::RegressionGate,
+                evidence_required: EvidenceType::NumericComparison {
+                    actual: 0.0,
+                    threshold: 0.0,
+                },
+                result: None,
+                override_info: None,
+            },
         ]
     }
 
@@ -435,6 +470,18 @@ pub struct ContractThresholds {
 
     /// Require lint to pass (v2.6 comply spec)
     pub require_lint_pass: bool,
+
+    /// Maximum consecutive fix commits on same file before blocking (v3.1 defect churn)
+    pub max_fix_chain: usize,
+
+    /// Block on untested match arm variants (v3.1 defect churn)
+    pub block_on_untested_variants: bool,
+
+    /// Block on cross-crate parity failures (v3.1 defect churn)
+    pub block_on_cross_crate_failure: bool,
+
+    /// Block on performance regression (v3.1 defect churn)
+    pub block_on_regression: bool,
 }
 
 impl Default for ContractThresholds {
@@ -452,6 +499,10 @@ impl Default for ContractThresholds {
             block_on_new_satd: true,
             block_on_new_dead_code: true,
             require_lint_pass: true,
+            max_fix_chain: 3,
+            block_on_untested_variants: true,
+            block_on_cross_crate_failure: false, // Off by default — requires sibling project config
+            block_on_regression: false,          // Off by default — requires benchmark cache
         }
     }
 }
@@ -784,6 +835,18 @@ pub enum FalsificationMethod {
 
     /// Try to find lint failures (make lint) (New in v2.6 - comply spec)
     LintPass,
+
+    /// Try to find untested match arm variants (New in v3.1 - defect churn)
+    VariantCoverage,
+
+    /// Try to find consecutive fix-commit chains (New in v3.1 - defect churn)
+    FixChainLimit,
+
+    /// Try to find cross-crate integration failures (New in v3.1 - defect churn)
+    CrossCrateParity,
+
+    /// Try to find performance regressions via benchmark gate (New in v3.1 - defect churn)
+    RegressionGate,
 }
 
 /// Evidence types for falsification
@@ -865,7 +928,7 @@ mod tests {
     #[test]
     fn test_work_contract_default_claims() {
         let contract = WorkContract::new("test-item".to_string(), "abc123".to_string());
-        assert_eq!(contract.claims.len(), 17); // 17 Popperian falsification claims (v2.6)
+        assert_eq!(contract.claims.len(), 21); // 21 Popperian falsification claims (v3.1)
 
         // Verify all claim types are present
         let methods: Vec<_> = contract
@@ -937,7 +1000,7 @@ mod coverage_instrumented_tests {
     #[test]
     fn test_default_claims_returns_17_claims() {
         let claims = WorkContract::default_claims();
-        assert_eq!(claims.len(), 17, "Expected 17 Popperian falsification claims");
+        assert_eq!(claims.len(), 21, "Expected 21 Popperian falsification claims");
     }
 
     #[test]
@@ -962,6 +1025,10 @@ mod coverage_instrumented_tests {
         assert!(methods.contains(&&FalsificationMethod::DeadCodeDetection));
         assert!(methods.contains(&&FalsificationMethod::PerFileCoverage));
         assert!(methods.contains(&&FalsificationMethod::LintPass));
+        assert!(methods.contains(&&FalsificationMethod::VariantCoverage));
+        assert!(methods.contains(&&FalsificationMethod::FixChainLimit));
+        assert!(methods.contains(&&FalsificationMethod::CrossCrateParity));
+        assert!(methods.contains(&&FalsificationMethod::RegressionGate));
     }
 
     #[test]
@@ -1032,7 +1099,7 @@ mod coverage_instrumented_tests {
         assert_eq!(contract.baseline_tdg, 0.0);
         assert_eq!(contract.baseline_coverage, 0.0);
         assert!(contract.baseline_rust_score.is_none());
-        assert_eq!(contract.claims.len(), 17);
+        assert_eq!(contract.claims.len(), 21);
     }
 
     #[test]
