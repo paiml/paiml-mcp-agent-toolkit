@@ -833,15 +833,19 @@ async fn handle_coverage_gaps_mode(
     apply_result_filters_coverage(&mut results, language, path_pattern, exclude_tests);
     profile.phase("filter");
 
-    // Use cached coverage_off_files from index for O(1) lookup (no file I/O)
-    let cached_cov_off = if index.coverage_off_files.is_empty() {
-        None
-    } else {
+    // Use cached coverage_off_files from index for O(1) lookup (no file I/O).
+    // When db_path is Some, the field was populated from SQLite (even if empty = no files have coverage(off)).
+    // When db_path is None (legacy blob), only trust the field if non-empty.
+    let cached_cov_off = if index.db_path.is_some() || !index.coverage_off_files.is_empty() {
         Some(&index.coverage_off_files)
+    } else {
+        None
     };
+    if !quiet { eprintln!("Classifying coverage exclusions ({} results)...", results.len()); }
     crate::services::agent_context::classify_exclusions(&mut results, project_path, cached_cov_off);
     profile.phase("classify_exclusions");
 
+    if !quiet { eprintln!("Loading coverage data..."); }
     let cov_path = coverage_file.as_deref();
     if let Err(e) = enrich_results_with_coverage(&mut results, project_path, cov_path).await {
         eprintln!("Error: {}", e);
