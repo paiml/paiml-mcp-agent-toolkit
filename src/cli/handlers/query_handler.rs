@@ -1361,7 +1361,10 @@ fn load_or_build_index(
     }
 
     if (!index_path.exists() && !db_path.exists()) || rebuild_index {
-        if !quiet { eprintln!("Building index for {:?}...", project_path); }
+        if !quiet {
+            eprintln!("Building index for {:?}...", project_path);
+            eprintln!("  This may take 1-3 minutes for large repos (progress below).");
+        }
         return build_and_save_index(project_path, index_path);
     }
     if !quiet { eprintln!("Loading index from {:?}...", index_path); }
@@ -1369,7 +1372,8 @@ fn load_or_build_index(
         Ok(existing) => Ok(try_incremental_update(project_path, index_path, existing, quiet)),
         Err(e) => {
             eprintln!("Failed to load index ({}), rebuilding...", e);
-            eprintln!("  Hint: for large repos, run 'pmat index' explicitly for faster rebuilds");
+            eprintln!("  This may take 1-3 minutes for large repos.");
+            eprintln!("  Hint: run 'pmat index' explicitly if this is slow.");
             build_and_save_index(project_path, index_path)
         }
     }
