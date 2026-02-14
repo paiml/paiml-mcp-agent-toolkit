@@ -2044,3 +2044,19 @@ roadmap:
   - kaizen
   - quality-gate
   notes: null
+- id: 'PMAT-500: Variant-coverage and fix-chain falsification claims for cross-project defect prevention'
+  github_issue: null
+  item_type: task
+  title: 'New task: PMAT-500: Variant-coverage and fix-chain falsification claims for cross-project defect prevention'
+  status: completed
+  priority: medium
+  assigned_to: null
+  created: 2026-02-14T10:48:27.247270589+00:00
+  updated: 2026-02-14T11:16:00.421604806+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null

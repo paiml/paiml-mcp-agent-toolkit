@@ -472,15 +472,19 @@ pub struct ContractThresholds {
     pub require_lint_pass: bool,
 
     /// Maximum consecutive fix commits on same file before blocking (v3.1 defect churn)
+    #[serde(default = "default_max_fix_chain")]
     pub max_fix_chain: usize,
 
     /// Block on untested match arm variants (v3.1 defect churn)
+    #[serde(default = "default_true")]
     pub block_on_untested_variants: bool,
 
     /// Block on cross-crate parity failures (v3.1 defect churn)
+    #[serde(default)]
     pub block_on_cross_crate_failure: bool,
 
     /// Block on performance regression (v3.1 defect churn)
+    #[serde(default)]
     pub block_on_regression: bool,
 }
 
@@ -506,6 +510,9 @@ impl Default for ContractThresholds {
         }
     }
 }
+
+fn default_max_fix_chain() -> usize { 3 }
+fn default_true() -> bool { true }
 
 /// Immutable file manifest captured at work start
 ///
