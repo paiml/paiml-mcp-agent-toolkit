@@ -23,6 +23,7 @@ pub mod go_tree_sitter_mutations;
 pub mod guard;
 pub mod json_parser; // Sprint 70: cargo-mutants JSON parser
 pub mod language;
+pub mod lua_adapter;
 pub mod language_detector; // Sprint 63: Multi-language support
 pub mod ml_predictor;
 pub mod operators;
@@ -99,6 +100,7 @@ pub use go_tree_sitter_mutations::*;
 pub use guard::*;
 pub use language::*;
 pub use language_detector::*; // Sprint 63: Multi-language support
+pub use lua_adapter::*;
 pub use ml_predictor::*;
 pub use operators::*;
 pub use python_adapter::*;
