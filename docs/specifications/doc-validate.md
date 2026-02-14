@@ -166,6 +166,7 @@ pub struct ValidationSummary {
 
 #### 3.2.1 Link Extraction
 
+<!-- pmat:ignore-link -->
 ````rust
 /// Extracts all markdown links from a file
 ///
@@ -472,6 +473,7 @@ impl ValidateDocsCmd {
 
 ### 4.1 Property Tests
 
+<!-- pmat:ignore-link -->
 ````rust
 #[cfg(test)]
 mod property_tests {
@@ -570,6 +572,7 @@ mod property_tests {
 
 ### 4.2 Unit Tests (TDD Style)
 
+<!-- pmat:ignore-link -->
 ````rust
 #[cfg(test)]
 mod unit_tests {

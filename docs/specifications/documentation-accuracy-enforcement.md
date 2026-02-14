@@ -395,7 +395,7 @@ impl ClaimExtractor {
     /// - "Run pmat X" -> Command claim
     /// - "File/Module X contains Y" -> Structure claim
     /// - "Function X(Y) -> Z" -> API claim
-    /// - "See \[link\](url)" -> External reference
+    /// - "See \[link\]\(url\)" -> External reference
     ///
     /// # Examples
     ///

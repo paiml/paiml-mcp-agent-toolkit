@@ -363,6 +363,7 @@ impl BadgeGenerator {
 ```
 
 **CLI Integration**:
+<!-- pmat:ignore-link -->
 ```bash
 # Generate badge SVG
 pmat mutate --target src/ --output-badge mutation-score.svg

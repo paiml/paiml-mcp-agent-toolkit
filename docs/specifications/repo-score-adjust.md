@@ -356,6 +356,7 @@ let walker = WalkBuilder::new(repo_path)
 ```
 
 **Implementation**:
+<!-- pmat:ignore-link -->
 ````rust
 // In repo_score_handlers.rs
 pub async fn update_readme_badge(
@@ -417,6 +418,7 @@ git commit -m "chore: Update repo health badge [skip ci]"
 ```
 
 **Integration Tests**:
+<!-- pmat:ignore-link -->
 ````rust
 #[tokio::test]
 async fn test_badge_insertion_in_new_readme() {

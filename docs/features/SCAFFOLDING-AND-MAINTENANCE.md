@@ -1019,9 +1019,9 @@ pmat maintain health --quick
 
 ## Additional Resources
 
-- [Sprint 16 Summary](../sprints/SPRINT-16-SUMMARY.md) - Scaffolding Foundation
-- [Sprint 17 Summary](../sprints/SPRINT-17-SUMMARY.md) - Maintenance Engine
-- [Sprint 18 Summary](../sprints/SPRINT-18-SUMMARY.md) - Quality Gates
+- Sprint 16 Summary - Scaffolding Foundation (archived)
+- Sprint 17 Summary - Maintenance Engine (archived)
+- Sprint 18 Summary - Quality Gates (archived)
 - [Sprint 19 Summary](../sprints/SPRINT-19-SUMMARY.md) - CLI Integration
 - [Sprint 20 Summary](../sprints/SPRINT-20-SUMMARY.md) - UX Improvements
 - [Dogfooding Results](../dogfooding/SPRINT-19-DOGFOODING-RESULTS.md)

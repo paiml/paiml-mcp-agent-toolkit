@@ -183,7 +183,7 @@ digraph CrossLanguageDependencies {
 
 When rendered, this provides a clear visualization of the cross-language relationships:
 
-![Cross-Language Dependency Graph](../assets/cross-language-dependencies.png)
+*Cross-Language Dependency Graph (diagram generated from DOT output above)*
 
 ## Benefits
 

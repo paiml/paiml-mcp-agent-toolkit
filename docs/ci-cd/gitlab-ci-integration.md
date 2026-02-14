@@ -721,6 +721,7 @@ mutation-mr-comment:
 
 ### Update Merge Request Description
 
+<!-- pmat:ignore-link -->
 ````yaml
 mutation-update-mr:
   stage: mutation

@@ -610,7 +610,7 @@ console.log(tools.tools.map(t => t.name));
 
 - [Integration Guide](INTEGRATION.md) - How to connect to the MCP server
 - [JVM Language Tools](JVM-TOOLS.md) - Java and Scala language analysis tools (New in Sprint 51)
-- [Examples](../examples/mcp/) - Complete usage examples
+- [Examples](../../examples/) - Complete usage examples
 - [Architecture](../architecture/) - System architecture documentation
 
 ---

@@ -490,6 +490,7 @@ fn analyze_X_file(path: &Path) -> Result<FileContext, TemplateError> {
 
 #### C/C++ Analyzer:
 
+<!-- pmat:ignore-link -->
 ````rust
 fn analyze_c_file(path: &Path) -> Result<FileContext, TemplateError> {
     // Read file
@@ -531,6 +532,7 @@ fn analyze_c_file(path: &Path) -> Result<FileContext, TemplateError> {
 
 #### Ruby Analyzer:
 
+<!-- pmat:ignore-link -->
 ````rust
 fn analyze_ruby_file(path: &Path) -> Result<FileContext, TemplateError> {
     let content = tokio::fs::read_to_string(path).await
