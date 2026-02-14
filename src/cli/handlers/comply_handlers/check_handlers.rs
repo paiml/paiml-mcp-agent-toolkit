@@ -2002,7 +2002,7 @@ pub(crate) fn check_lua_best_practices_with_config(
     let lua_files = super::comply_cb_detect::walkdir_lua_files(project_path);
     if lua_files.is_empty() {
         return ComplianceCheck {
-            name: "CB-600: Lua Best Practices (CB-600 to CB-616)".to_string(),
+            name: "CB-600: Lua Best Practices (CB-600 to CB-619)".to_string(),
             status: CheckStatus::Pass,
             message: "Not a Lua project (no .lua files found)".to_string(),
             severity: Severity::Info,
@@ -2027,10 +2027,13 @@ pub(crate) fn check_lua_best_practices_with_config(
         ("CB-614", super::comply_cb_detect::detect_cb614_global_protection(project_path)),
         ("CB-615", super::comply_cb_detect::detect_cb615_coroutine_checks(project_path)),
         ("CB-616", super::comply_cb_detect::detect_cb616_type_annotations(project_path)),
+        ("CB-617", super::comply_cb_detect::detect_cb617_openresty_checks(project_path)),
+        ("CB-618", super::comply_cb_detect::detect_cb618_ffi_safety(project_path)),
+        ("CB-619", super::comply_cb_detect::detect_cb619_oop_patterns(project_path)),
     ];
 
     aggregate_violations(
-        "CB-600: Lua Best Practices (CB-600 to CB-616)",
+        "CB-600: Lua Best Practices (CB-600 to CB-619)",
         &detectors,
         comply_config,
         false,

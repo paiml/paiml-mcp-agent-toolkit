@@ -4057,3 +4057,212 @@ function M.new(name) end
         assert!(violations.is_empty());
     }
 }
+
+// =============================================================================
+// CB-617: OpenResty-Specific Checks (#185)
+// =============================================================================
+
+mod cb617_tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    #[test]
+    fn test_cb617_skips_non_openresty_project() {
+        let temp = TempDir::new().unwrap();
+        fs::write(temp.path().join("app.lua"), "return {}\n").unwrap();
+        let violations = detect_cb617_openresty_checks(temp.path());
+        assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn test_cb617_detects_uncached_type_in_handler() {
+        let temp = TempDir::new().unwrap();
+        // Handler file with ngx.* usage (triggers OpenResty detection) and uncached type()
+        fs::write(
+            temp.path().join("handler.lua"),
+            "local M = {}\nfunction _M.access(conf)\n    local h = ngx.var.host\n    local t = type(conf.name)\nend\nreturn M\n",
+        )
+        .unwrap();
+        let violations = detect_cb617_openresty_checks(temp.path());
+        let uncached: Vec<_> = violations
+            .iter()
+            .filter(|v| v.description.contains("Uncached"))
+            .collect();
+        assert!(!uncached.is_empty(), "Expected uncached type() violation, got {:?}", violations);
+        assert!(uncached[0].description.contains("type"));
+    }
+
+    #[test]
+    fn test_cb617_allows_cached_type_in_handler() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("handler.lua"),
+            "local type = type\nlocal M = {}\nfunction _M.access(conf)\n    local h = ngx.var.host\n    local t = type(conf.name)\nend\nreturn M\n",
+        )
+        .unwrap();
+        let violations = detect_cb617_openresty_checks(temp.path());
+        let uncached: Vec<_> = violations
+            .iter()
+            .filter(|v| v.description.contains("Uncached"))
+            .collect();
+        assert!(uncached.is_empty());
+    }
+}
+
+// =============================================================================
+// CB-618: FFI Safety Checks (#189)
+// =============================================================================
+
+mod cb618_tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    #[test]
+    fn test_cb618_detects_ffi_usage() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("crypto.lua"),
+            r#"local ffi = require("ffi")
+local C = ffi.C
+ffi.cdef[[int open(const char *path, int flags);]]
+local fd = C.open("/dev/urandom", 0)
+"#,
+        )
+        .unwrap();
+        let violations = detect_cb618_ffi_safety(temp.path());
+        // Should have the info message about FFI usage + warning about unchecked C.open
+        let info: Vec<_> = violations.iter().filter(|v| v.file == "project").collect();
+        assert!(!info.is_empty());
+        assert!(info[0].description.contains("FFI used in 1 files"));
+    }
+
+    #[test]
+    fn test_cb618_flags_unchecked_c_open() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("io.lua"),
+            r#"local ffi = require("ffi")
+local C = ffi.C
+local fd = C.open(path, 0)
+C.read(fd, buf, size)
+"#,
+        )
+        .unwrap();
+        let violations = detect_cb618_ffi_safety(temp.path());
+        let warnings: Vec<_> = violations
+            .iter()
+            .filter(|v| v.description.contains("C.open"))
+            .collect();
+        assert!(!warnings.is_empty());
+    }
+
+    #[test]
+    fn test_cb618_allows_checked_c_open() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("io.lua"),
+            r#"local ffi = require("ffi")
+local C = ffi.C
+local fd = C.open(path, 0)
+if fd < 0 then error("open failed") end
+"#,
+        )
+        .unwrap();
+        let violations = detect_cb618_ffi_safety(temp.path());
+        let warnings: Vec<_> = violations
+            .iter()
+            .filter(|v| v.description.contains("C.open"))
+            .collect();
+        assert!(warnings.is_empty());
+    }
+
+    #[test]
+    fn test_cb618_no_ffi() {
+        let temp = TempDir::new().unwrap();
+        fs::write(temp.path().join("app.lua"), "return {}\n").unwrap();
+        let violations = detect_cb618_ffi_safety(temp.path());
+        assert!(violations.is_empty());
+    }
+}
+
+// =============================================================================
+// CB-619: OOP Pattern Recognition (#182)
+// =============================================================================
+
+mod cb619_tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    #[test]
+    fn test_cb619_detects_separate_metatable() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("class.lua"),
+            r#"local M = {}
+local mt = { __index = M }
+function M.new(opts)
+    return setmetatable({}, mt)
+end
+"#,
+        )
+        .unwrap();
+        let violations = detect_cb619_oop_patterns(temp.path());
+        assert_eq!(violations.len(), 1);
+        assert!(violations[0].description.contains("separate-metatable"));
+    }
+
+    #[test]
+    fn test_cb619_detects_prototypal_inheritance() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("base.lua"),
+            r#"local Base = {}
+function Base:extend(o)
+    o = o or {}
+    setmetatable(o, self)
+    self.__index = self
+    return o
+end
+"#,
+        )
+        .unwrap();
+        let violations = detect_cb619_oop_patterns(temp.path());
+        assert_eq!(violations.len(), 1);
+        assert!(violations[0].description.contains("prototypal"));
+    }
+
+    #[test]
+    fn test_cb619_detects_call_constructor() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("widget.lua"),
+            r#"local M = {}
+setmetatable(M, { __call = function(_, ...) return M.new(...) end })
+"#,
+        )
+        .unwrap();
+        let violations = detect_cb619_oop_patterns(temp.path());
+        assert_eq!(violations.len(), 1);
+        assert!(violations[0].description.contains("__call"));
+    }
+
+    #[test]
+    fn test_cb619_no_oop() {
+        let temp = TempDir::new().unwrap();
+        fs::write(temp.path().join("util.lua"), "local M = {}\nreturn M\n").unwrap();
+        let violations = detect_cb619_oop_patterns(temp.path());
+        assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn test_cb619_skips_test_files() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("test_class.lua"),
+            "local M = {}\nlocal mt = { __index = M }\nsetmetatable({}, mt)\n",
+        )
+        .unwrap();
+        let violations = detect_cb619_oop_patterns(temp.path());
+        assert!(violations.is_empty());
+    }
+}
