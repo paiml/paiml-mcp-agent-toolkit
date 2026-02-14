@@ -149,9 +149,13 @@ fn check_lockfile(project_path: &Path) -> bool {
     let has_lockfile = project_path.join("Cargo.lock").exists()
         || project_path.join("package-lock.json").exists()
         || project_path.join("yarn.lock").exists()
+        || project_path.join("pnpm-lock.yaml").exists()
         || project_path.join("poetry.lock").exists()
         || project_path.join("Pipfile.lock").exists()
-        || project_path.join("go.sum").exists();
+        || project_path.join("go.sum").exists()
+        || project_path.join("Gemfile.lock").exists()
+        || project_path.join("flake.lock").exists()
+        || project_path.join("uv.lock").exists();
     if has_lockfile {
         return true;
     }

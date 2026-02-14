@@ -52,6 +52,7 @@ impl ReproducibilityScorer {
             ("Gemfile.lock", 5.0, "Gemfile.lock found"),
             ("go.sum", 5.0, "go.sum found"),
             ("flake.lock", 5.0, "flake.lock found"),
+            ("uv.lock", 5.0, "uv.lock found"),
         ];
 
         let mut lock_found = false;
