@@ -28,6 +28,6 @@ validation_tools:
   - pmat validate-readme
   - make validate-book
 zero_tolerance:
-  broken_links: false
-  hallucinations: false
-  404_errors: false
+  broken_links: "false"
+  hallucinations: "false"
+  404_errors: "false"

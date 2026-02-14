@@ -159,7 +159,7 @@ tdg_report:
       - tdg-report.json
       - tdg-report.md
     expire_in: 30 days
-  allow_failure: true
+  allow_failure: "true"
 
 # Update baseline on main branch commits
 tdg_baseline_update:
@@ -196,7 +196,7 @@ tdg_baseline_update:
       else
         echo "ℹ️  Baseline unchanged"
       fi
-  allow_failure: true
+  allow_failure: "true"
 
 # Display final summary
 tdg_summary:
@@ -215,5 +215,5 @@ tdg_summary:
       echo "Max Score Drop: ${MAX_SCORE_DROP}"
       echo "Mode: ${MODE}"
       echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  allow_failure: true
+  allow_failure: "true"
   when: always

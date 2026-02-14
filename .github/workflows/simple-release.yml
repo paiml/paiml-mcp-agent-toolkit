@@ -152,4 +152,4 @@ jobs:
           tag_name: v${{ needs.bump-version.outputs.version }}
           name: v${{ needs.bump-version.outputs.version }}
           files: release-files/*
-          generate_release_notes: true
+          generate_release_notes: "true"

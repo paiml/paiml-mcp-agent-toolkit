@@ -1,5 +1,5 @@
 roadmap_version: '1.0'
-github_enabled: true
+github_enabled: "true"
 github_repo: paiml/paiml-mcp-agent-toolkit
 roadmap:
 - id: ml-model-serialization

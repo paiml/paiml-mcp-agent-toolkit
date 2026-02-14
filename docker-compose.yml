@@ -47,8 +47,8 @@ services:
     environment:
       - RUST_LOG=warn,pmat=info
     command: ["pmat", "agent", "mcp-server", "--config", "/etc/pmat/agent-production.toml"]
-    stdin_open: true
-    tty: true
+    stdin_open: "true"
+    tty: "true"
     networks:
       - pmat-network
 

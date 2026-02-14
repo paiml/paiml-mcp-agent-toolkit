@@ -23,6 +23,15 @@ const TRUTHY_STRINGS: &[&str] = &[
     "y", "n", "Y", "N",
 ];
 
+/// CI/CD YAML keys that legitimately require native booleans (not quoted strings).
+/// GitHub Actions: `if`, `fail-fast`, `continue-on-error`, `required`, `cancel-in-progress`
+/// GitLab CI: `allow_failure`
+/// Kubernetes: `readOnly`, `privileged`
+const NATIVE_BOOLEAN_KEYS: &[&str] = &[
+    "if", "fail-fast", "continue-on-error", "required", "cancel-in-progress",
+    "allow_failure", "readOnly", "privileged",
+];
+
 /// Secret-indicating key patterns (case-insensitive).
 const SECRET_KEY_PATTERNS: &[&str] = &[
     "password", "secret", "token", "api_key", "apikey", "api-key",
@@ -153,7 +162,12 @@ pub fn detect_cb950_truthy_ambiguity(project_path: &Path) -> Vec<CbPatternViolat
             }
             // Pattern: key: value where value is an unquoted truthy string
             if let Some(colon_pos) = line.find(": ") {
+                let key = line[..colon_pos].trim();
                 let value = line[colon_pos + 2..].trim();
+                // Skip CI/CD keys that require native booleans
+                if NATIVE_BOOLEAN_KEYS.contains(&key) {
+                    continue;
+                }
                 // Check if value is an unquoted truthy string
                 if !value.starts_with('"')
                     && !value.starts_with('\'')

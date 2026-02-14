@@ -11,4 +11,4 @@ See [Agent Scaffolding](./agent-scaffolding.md).
 ## Related
 
 - [Agent Scaffolding](./agent-scaffolding.md)
-- [Agent Architecture](../../server/docs/AGENT_ARCHITECTURE.md)
+- Agent Architecture (removed: `../../server/docs/AGENT_ARCHITECTURE.md` no longer exists)

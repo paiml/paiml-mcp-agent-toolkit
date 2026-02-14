@@ -27,7 +27,7 @@ jobs:
             build
             revert
             deps
-          requireScope: false
+          requireScope: "false"
           subjectPattern: ^[a-zA-Z].*[^.]$
           subjectPatternError: |
             The subject "{subject}" found in the pull request title "{title}"

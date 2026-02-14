@@ -687,7 +687,7 @@ done
 
 ### Further Reading
 - [Mutation Testing: An Empirical Evaluation (ACM)](https://dl.acm.org/doi/10.1145/3183440)
-- [PMAT Main Documentation](../../server/README.md)
+- [PMAT Main Documentation](../../README.md)
 
 ---
 

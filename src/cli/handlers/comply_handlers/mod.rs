@@ -1,6 +1,7 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
 // Comply handlers - split for file health (CB-040)
 include!("check_handlers.rs");
+include!("check_handlers_part2.rs");
 include!("migrate_handlers.rs");
 
 // CB-050/CB-060 detection logic

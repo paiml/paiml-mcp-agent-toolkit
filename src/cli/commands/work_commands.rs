@@ -179,7 +179,7 @@ pub enum WorkCommands {
     },
 
     /// Run falsification tests without completing the work item
-    #[command(visible_aliases = &["falsify", "test-claims"])]
+    #[command(visible_alias = "test-claims")]
     Falsify {
         /// Issue number or ticket ID
         id: String,

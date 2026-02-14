@@ -386,7 +386,7 @@ impl HallucinationDetector {
 
 ### 3.4 Claim Extraction
 
-```rust
+````rust
 impl ClaimExtractor {
     /// Extract factual claims from documentation
     ///
@@ -395,7 +395,7 @@ impl ClaimExtractor {
     /// - "Run pmat X" -> Command claim
     /// - "File/Module X contains Y" -> Structure claim
     /// - "Function X(Y) -> Z" -> API claim
-    /// - "See [link](url)" -> External reference
+    /// - "See \[link\](url)" -> External reference
     ///
     /// # Examples
     ///
@@ -521,7 +521,7 @@ pub enum Entity {
     /// External URL
     Url(String),
 }
-```
+````
 
 ### 3.5 Code Facts Database
 

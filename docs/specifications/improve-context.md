@@ -668,7 +668,7 @@ Found 3 functions matching "mcp server":
 ## References
 
 - [trueno-rag documentation](https://docs.rs/trueno-rag)
-- [TDG persistence](../server/src/tdg/storage_impl.rs)
-- [Existing semantic infrastructure](../server/src/services/semantic/)
+- TDG persistence (removed: `../server/src/tdg/storage_impl.rs` no longer exists)
+- Existing semantic infrastructure (removed: `../server/src/services/semantic/` no longer exists)
 - [MCP specification](https://modelcontextprotocol.io/)
 - [trueno-graph PageRank](https://docs.rs/trueno-graph) - CSR graph with PageRank

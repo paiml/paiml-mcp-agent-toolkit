@@ -127,7 +127,7 @@ jobs:
         with:
           pattern: artifacts-*
           path: target/distrib/
-          merge-multiple: true
+          merge-multiple: "true"
       - name: Install dependencies
         run: |
           ${{ matrix.packages_install }}
@@ -182,7 +182,7 @@ jobs:
         with:
           pattern: artifacts-*
           path: target/distrib/
-          merge-multiple: true
+          merge-multiple: "true"
       - id: cargo-dist
         shell: bash
         run: |
@@ -231,7 +231,7 @@ jobs:
         with:
           pattern: artifacts-*
           path: target/distrib/
-          merge-multiple: true
+          merge-multiple: "true"
       - id: host
         shell: bash
         run: |
@@ -251,7 +251,7 @@ jobs:
         with:
           pattern: artifacts-*
           path: artifacts
-          merge-multiple: true
+          merge-multiple: "true"
       - name: Cleanup
         run: |
           # Remove the granular manifests

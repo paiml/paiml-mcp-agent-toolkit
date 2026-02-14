@@ -481,7 +481,7 @@ jobs:
 ### Getting Help
 
 1. Check [Troubleshooting](#troubleshooting) section
-2. Review [examples/](../../server/examples/) for working code
+2. Review examples in the project repository for working code
 3. Open issue on GitHub with reproduction steps
 
 ### Contributing

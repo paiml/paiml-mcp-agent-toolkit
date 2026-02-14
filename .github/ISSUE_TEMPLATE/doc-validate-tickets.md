@@ -16,7 +16,7 @@ This file contains all GitHub issue templates for the doc-validate feature imple
 Implement a robust regex-based parser to extract all markdown links from file content.
 
 **Acceptance Criteria**:
-- [ ] Parse all standard markdown link syntax: `[text](url)`
+- [ ] Parse all standard markdown link syntax: `[text]` + `(url)`
 - [ ] Extract link text, target, and source location
 - [ ] Handle inline code blocks (don't parse links inside backticks)
 - [ ] Property tests verify all valid markdown links are extracted

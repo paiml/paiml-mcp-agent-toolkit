@@ -219,13 +219,13 @@ impl CommitParser {
         let full_text = format!("{} {}", subject, body);
 
         // GitHub-style: #123
-        let github_re = regex::Regex::new(r"#(\d+)").unwrap();
+        let github_re = regex::Regex::new(r"#(\d+)").expect("valid regex");
         for cap in github_re.captures_iter(&full_text) {
             refs.push(format!("#{}", &cap[1]));
         }
 
         // JIRA-style: PROJ-123
-        let jira_re = regex::Regex::new(r"([A-Z]+-\d+)").unwrap();
+        let jira_re = regex::Regex::new(r"([A-Z]+-\d+)").expect("valid regex");
         for cap in jira_re.captures_iter(&full_text) {
             let issue = cap[1].to_string();
             if !refs.contains(&issue) {

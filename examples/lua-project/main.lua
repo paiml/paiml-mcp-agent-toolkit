@@ -1,8 +1,10 @@
 --- Main entry point for the example Lua game
 -- Demonstrates pmat analysis on a multi-file Lua project
 
-local Game = require("game")
-local Utils = require("utils")
+local ok, Game = pcall(require, "game")
+if not ok then error("Failed to load game module: " .. tostring(Game)) end
+local ok2, Utils = pcall(require, "utils")
+if not ok2 then error("Failed to load utils module: " .. tostring(Utils)) end
 
 --- Create a player entity
 local function create_player(x, y)
@@ -67,7 +69,7 @@ end
 local function main()
     print("=== Lua Game Demo ===")
 
-    local game = Game.new(800, 600)
+    local game = Game:new(800, 600)
     local player = create_player(400, 300)
     game:add_entity(player)
 

@@ -17,7 +17,7 @@ on:
         description: 'Dry run (no actual release)'
         required: false
         type: boolean
-        default: false
+        default: "false"
 
 env:
   CARGO_TERM_COLOR: always
@@ -167,9 +167,9 @@ jobs:
         with:
           tag_name: v${{ steps.new.outputs.version }}
           name: v${{ steps.new.outputs.version }}
-          draft: false
-          prerelease: false
-          generate_release_notes: true
+          draft: "false"
+          prerelease: "false"
+          generate_release_notes: "true"
           files: |
             target/release/pmat-${{ steps.new.outputs.version }}-x86_64-unknown-linux-gnu.tar.gz
       

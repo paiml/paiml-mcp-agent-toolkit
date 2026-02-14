@@ -37,6 +37,7 @@ include!("churn.rs");
 
 // Quality gate handlers - extracted for file health (CB-040)
 include!("quality_gate.rs");
+include!("quality_gate_part2.rs");
 
 // Comprehensive and serve handlers - extracted for file health (CB-040)
 include!("comprehensive.rs");

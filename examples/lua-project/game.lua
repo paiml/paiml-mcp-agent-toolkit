@@ -1,7 +1,8 @@
 --- Game module: A simple game engine demonstrating Lua patterns
 -- Used by pmat for Lua AST analysis demonstration
 
-local json = require("dkjson")
+local ok, json = pcall(require, "dkjson")
+if not ok then error("Failed to load dkjson module: " .. tostring(json)) end
 
 local Game = {}
 Game.__index = Game
@@ -10,8 +11,8 @@ Game.__index = Game
 -- @param width number Screen width
 -- @param height number Screen height
 -- @return Game
-function Game.new(width, height)
-    local self = setmetatable({}, Game)
+function Game:new(width, height)
+    local self = setmetatable({}, self)
     self.width = width or 800
     self.height = height or 600
     self.entities = {}
@@ -72,7 +73,7 @@ end
 -- @param a table First entity
 -- @param b table Second entity
 -- @return boolean
-function Game.check_collision(a, b)
+function Game:check_collision(a, b)
     if not a.radius or not b.radius then
         return false
     end
@@ -90,7 +91,7 @@ function Game:process_collisions()
         for j = i + 1, n do
             local a = self.entities[i]
             local b = self.entities[j]
-            if Game.check_collision(a, b) then
+            if self:check_collision(a, b) then
                 if a.on_collision then
                     a:on_collision(b)
                 end

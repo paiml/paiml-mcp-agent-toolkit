@@ -6,8 +6,8 @@ Scaffolding documentation for agent architecture.
 
 ## Status
 
-See [Agent Architecture documentation](../../server/docs/AGENT_ARCHITECTURE.md).
+Agent Architecture documentation previously at `../../server/docs/AGENT_ARCHITECTURE.md` (no longer exists).
 
 ## Related
 
-- [Agent Architecture](../../server/docs/AGENT_ARCHITECTURE.md)
+- Agent Architecture (removed: `../../server/docs/AGENT_ARCHITECTURE.md` no longer exists)

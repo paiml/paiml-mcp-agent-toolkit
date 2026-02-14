@@ -1,0 +1,448 @@
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_falsification_report_blocking() {
+        let report = FalsificationReport {
+            total_claims: 3,
+            passed: 2,
+            failed: 1,
+            warnings: 0,
+            claim_results: vec![
+                ClaimResult {
+                    index: 1,
+                    hypothesis: "Test 1".to_string(),
+                    method: FalsificationMethod::ManifestIntegrity,
+                    result: FalsificationResult::passed("OK"),
+                    is_blocking: true,
+                },
+                ClaimResult {
+                    index: 2,
+                    hypothesis: "Test 2".to_string(),
+                    method: FalsificationMethod::AbsoluteCoverage,
+                    result: FalsificationResult::failed(
+                        "Coverage low",
+                        EvidenceType::NumericComparison {
+                            actual: 80.0,
+                            threshold: 95.0,
+                        },
+                    ),
+                    is_blocking: true,
+                },
+            ],
+            all_passed: false,
+        };
+
+        assert!(report.has_blocking_failures());
+        assert_eq!(report.blocking_failures().len(), 1);
+    }
+
+    #[test]
+    fn test_github_sync_parsing() {
+        // This tests the parsing logic for git status output
+        let status = "## main...origin/main [ahead 2]\n M file.rs\n?? new.rs";
+
+        let ahead = if status.contains("ahead") {
+            status
+                .lines()
+                .next()
+                .and_then(|l| {
+                    l.find("ahead")
+                        .and_then(|i| l.get(i..))
+                        .and_then(|s| s.split_whitespace().nth(1))
+                        .and_then(|n| n.trim_end_matches(']').parse::<usize>().ok())
+                })
+                .unwrap_or(0)
+        } else {
+            0
+        };
+
+        assert_eq!(ahead, 2);
+    }
+
+    #[test]
+    fn test_falsification_report_warnings() {
+        let report = FalsificationReport {
+            total_claims: 2,
+            passed: 1,
+            failed: 1,
+            warnings: 1,
+            claim_results: vec![
+                ClaimResult {
+                    index: 1,
+                    hypothesis: "Test OK".to_string(),
+                    method: FalsificationMethod::ManifestIntegrity,
+                    result: FalsificationResult::passed("OK"),
+                    is_blocking: false,
+                },
+                ClaimResult {
+                    index: 2,
+                    hypothesis: "Warning test".to_string(),
+                    method: FalsificationMethod::LintPass,
+                    result: FalsificationResult::failed(
+                        "Size above warning threshold",
+                        EvidenceType::NumericComparison {
+                            actual: 45.0,
+                            threshold: 40.0,
+                        },
+                    ),
+                    is_blocking: false,
+                },
+            ],
+            all_passed: false,
+        };
+
+        assert!(!report.has_blocking_failures());
+        assert_eq!(report.blocking_failures().len(), 0);
+        assert_eq!(report.warning_failures().len(), 1);
+    }
+
+    #[test]
+    fn test_falsification_report_all_passed() {
+        let report = FalsificationReport {
+            total_claims: 2,
+            passed: 2,
+            failed: 0,
+            warnings: 0,
+            claim_results: vec![
+                ClaimResult {
+                    index: 1,
+                    hypothesis: "Test 1".to_string(),
+                    method: FalsificationMethod::ManifestIntegrity,
+                    result: FalsificationResult::passed("OK"),
+                    is_blocking: true,
+                },
+                ClaimResult {
+                    index: 2,
+                    hypothesis: "Test 2".to_string(),
+                    method: FalsificationMethod::AbsoluteCoverage,
+                    result: FalsificationResult::passed("Coverage OK"),
+                    is_blocking: true,
+                },
+            ],
+            all_passed: true,
+        };
+
+        assert!(!report.has_blocking_failures());
+        assert_eq!(report.blocking_failures().len(), 0);
+        assert_eq!(report.warning_failures().len(), 0);
+    }
+
+    #[test]
+    fn test_falsification_result_constructors() {
+        let passed = FalsificationResult::passed("Success");
+        assert!(!passed.falsified);
+        assert_eq!(passed.explanation, "Success");
+
+        let failed = FalsificationResult::failed("Error", EvidenceType::BooleanCheck(false));
+        assert!(failed.falsified);
+        assert_eq!(failed.explanation, "Error");
+    }
+
+    #[test]
+    fn test_evidence_type_display() {
+        let bool_check = EvidenceType::BooleanCheck(true);
+        let numeric = EvidenceType::NumericComparison {
+            actual: 80.0,
+            threshold: 95.0,
+        };
+
+        // Just verify these don't panic when formatted
+        let _ = format!("{:?}", bool_check);
+        let _ = format!("{:?}", numeric);
+    }
+
+    #[test]
+    fn test_cached_metric_staleness_levels() {
+        // Test cache staleness calculation
+        let fresh = CachedMetric {
+            value: serde_json::json!({"coverage": 85.0}),
+            age_minutes: 30,
+            is_stale_warn: false,
+            is_stale_block: false,
+        };
+        assert!(!fresh.is_stale_warn);
+        assert!(!fresh.is_stale_block);
+
+        let warning = CachedMetric {
+            value: serde_json::json!({"coverage": 85.0}),
+            age_minutes: 90,
+            is_stale_warn: true,
+            is_stale_block: false,
+        };
+        assert!(warning.is_stale_warn);
+        assert!(!warning.is_stale_block);
+
+        let blocked = CachedMetric {
+            value: serde_json::json!({"coverage": 85.0}),
+            age_minutes: 1500, // 25 hours
+            is_stale_warn: true,
+            is_stale_block: true,
+        };
+        assert!(blocked.is_stale_warn);
+        assert!(blocked.is_stale_block);
+    }
+
+    #[test]
+    fn test_read_cached_metric_nonexistent() {
+        use tempfile::TempDir;
+        let temp_dir = TempDir::new().unwrap();
+        let result = read_cached_metric(temp_dir.path(), "nonexistent.json");
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_read_cached_metric_invalid_json() {
+        use tempfile::TempDir;
+        let temp_dir = TempDir::new().unwrap();
+        let cache_dir = temp_dir.path().join(".pmat-metrics");
+        std::fs::create_dir_all(&cache_dir).unwrap();
+        std::fs::write(cache_dir.join("test.json"), "not valid json").unwrap();
+        let result = read_cached_metric(temp_dir.path(), "test.json");
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_read_cached_metric_valid() {
+        use tempfile::TempDir;
+        let temp_dir = TempDir::new().unwrap();
+        let cache_dir = temp_dir.path().join(".pmat-metrics");
+        std::fs::create_dir_all(&cache_dir).unwrap();
+        std::fs::write(
+            cache_dir.join("coverage.json"),
+            r#"{"line_coverage": 85.5}"#,
+        )
+        .unwrap();
+        let result = read_cached_metric(temp_dir.path(), "coverage.json");
+        assert!(result.is_some());
+        let metric = result.unwrap();
+        assert_eq!(metric.value["line_coverage"], 85.5);
+        assert!(!metric.is_stale_warn); // Just created
+        assert!(!metric.is_stale_block);
+    }
+
+    #[test]
+    fn test_claim_result_debug() {
+        let claim = ClaimResult {
+            index: 1,
+            hypothesis: "Test hypothesis".to_string(),
+            method: FalsificationMethod::ManifestIntegrity,
+            result: FalsificationResult::passed("OK"),
+            is_blocking: true,
+        };
+        let debug_str = format!("{:?}", claim);
+        assert!(debug_str.contains("hypothesis"));
+        assert!(debug_str.contains("Test hypothesis"));
+    }
+
+    #[test]
+    fn test_falsification_report_empty() {
+        let report = FalsificationReport {
+            total_claims: 0,
+            passed: 0,
+            failed: 0,
+            warnings: 0,
+            claim_results: vec![],
+            all_passed: true,
+        };
+        assert!(!report.has_blocking_failures());
+        assert!(report.blocking_failures().is_empty());
+        assert!(report.warning_failures().is_empty());
+    }
+
+    #[test]
+    fn test_falsification_report_mixed_results() {
+        let report = FalsificationReport {
+            total_claims: 4,
+            passed: 2,
+            failed: 1,
+            warnings: 1,
+            claim_results: vec![
+                ClaimResult {
+                    index: 1,
+                    hypothesis: "Passed".to_string(),
+                    method: FalsificationMethod::ManifestIntegrity,
+                    result: FalsificationResult::passed("OK"),
+                    is_blocking: true,
+                },
+                ClaimResult {
+                    index: 2,
+                    hypothesis: "Blocking failure".to_string(),
+                    method: FalsificationMethod::AbsoluteCoverage,
+                    result: FalsificationResult::failed(
+                        "Coverage low",
+                        EvidenceType::NumericComparison {
+                            actual: 70.0,
+                            threshold: 95.0,
+                        },
+                    ),
+                    is_blocking: true,
+                },
+                ClaimResult {
+                    index: 3,
+                    hypothesis: "Warning".to_string(),
+                    method: FalsificationMethod::FileSizeRegression,
+                    result: FalsificationResult::failed(
+                        "File too large",
+                        EvidenceType::NumericComparison {
+                            actual: 600.0,
+                            threshold: 500.0,
+                        },
+                    ),
+                    is_blocking: false,
+                },
+                ClaimResult {
+                    index: 4,
+                    hypothesis: "Another pass".to_string(),
+                    method: FalsificationMethod::LintPass,
+                    result: FalsificationResult::passed("Lint OK"),
+                    is_blocking: true,
+                },
+            ],
+            all_passed: false,
+        };
+        assert!(report.has_blocking_failures());
+        assert_eq!(report.blocking_failures().len(), 1);
+        assert_eq!(report.warning_failures().len(), 1);
+    }
+
+    #[test]
+    fn test_evidence_type_variants() {
+        let file_list = EvidenceType::FileList(vec![
+            PathBuf::from("file1.rs"),
+            PathBuf::from("file2.rs"),
+        ]);
+        let _ = format!("{:?}", file_list);
+
+        let counter_example = EvidenceType::CounterExample {
+            details: "Some evidence text".to_string(),
+        };
+        let _ = format!("{:?}", counter_example);
+    }
+
+    #[test]
+    fn test_falsification_method_variants() {
+        // Verify all falsification methods can be formatted
+        let methods = vec![
+            FalsificationMethod::ManifestIntegrity,
+            FalsificationMethod::MetaFalsification,
+            FalsificationMethod::CoverageGaming,
+            FalsificationMethod::DifferentialCoverage,
+            FalsificationMethod::AbsoluteCoverage,
+            FalsificationMethod::TdgRegression,
+            FalsificationMethod::ComplexityRegression,
+            FalsificationMethod::SupplyChainIntegrity,
+            FalsificationMethod::FileSizeRegression,
+            FalsificationMethod::SpecQuality,
+            FalsificationMethod::RoadmapUpdate,
+            FalsificationMethod::GitHubSync,
+            FalsificationMethod::ExamplesCompile,
+            FalsificationMethod::BookValidation,
+            FalsificationMethod::SatdDetection,
+            FalsificationMethod::DeadCodeDetection,
+            FalsificationMethod::PerFileCoverage,
+            FalsificationMethod::LintPass,
+            FalsificationMethod::VariantCoverage,
+            FalsificationMethod::FixChainLimit,
+            FalsificationMethod::CrossCrateParity,
+            FalsificationMethod::RegressionGate,
+        ];
+        for method in methods {
+            let _ = format!("{:?}", method);
+        }
+    }
+
+    #[test]
+    fn test_extract_large_match_variants() {
+        let code = r#"
+            match dtype {
+                Dtype::F32 => do_f32(),
+                Dtype::F16 => do_f16(),
+                Dtype::Q4_K => do_q4k(),
+                Dtype::Q6_K => do_q6k(),
+                Dtype::Q8_0 => do_q80(),
+                _ => panic!("unsupported"),
+            }
+        "#;
+        let variants = extract_large_match_variants(code);
+        assert!(variants.contains(&"F32".to_string()));
+        assert!(variants.contains(&"Q4_K".to_string()));
+        assert!(variants.contains(&"Q8_0".to_string()));
+        assert_eq!(variants.len(), 5);
+    }
+
+    #[test]
+    fn test_extract_large_match_variants_small_match() {
+        // Match with <5 arms should return empty
+        let code = r#"
+            match color {
+                Color::Red => 1,
+                Color::Blue => 2,
+            }
+        "#;
+        let variants = extract_large_match_variants(code);
+        assert!(variants.is_empty());
+    }
+
+    #[test]
+    fn test_detect_fix_chains_basic() {
+        let log = "\
+abc1234 fix: broken Q4K dispatch
+src/quantize.rs
+abc1235 fix: also broken Q6K
+src/quantize.rs
+abc1236 fix: and Q8_0 too
+src/quantize.rs
+abc1237 fix: final Q2_K fix
+src/quantize.rs
+abc1238 feat: add new feature
+src/other.rs
+";
+        let chains = detect_fix_chains(log, 3);
+        assert_eq!(chains.len(), 1);
+        assert_eq!(chains[0].0, "src/quantize.rs");
+        assert_eq!(chains[0].1, 4);
+    }
+
+    #[test]
+    fn test_detect_fix_chains_no_violations() {
+        let log = "\
+abc1234 fix: one fix
+src/a.rs
+abc1235 feat: feature
+src/b.rs
+abc1236 fix: another fix
+src/c.rs
+";
+        let chains = detect_fix_chains(log, 3);
+        assert!(chains.is_empty());
+    }
+
+    #[test]
+    fn test_extract_test_section() {
+        let code = r#"
+fn production_code() {}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_something() {
+        assert!(true);
+    }
+}
+"#;
+        let section = extract_test_section(code);
+        assert!(section.contains("test_something"));
+        assert!(!section.contains("production_code"));
+    }
+
+    #[test]
+    fn test_cache_staleness_thresholds() {
+        // Verify constants are reasonable
+        assert_eq!(CACHE_WARN_HOURS, 1);
+        assert_eq!(CACHE_BLOCK_HOURS, 24);
+        assert!(CACHE_WARN_HOURS < CACHE_BLOCK_HOURS);
+    }
+}

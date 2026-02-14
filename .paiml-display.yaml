@@ -22,8 +22,8 @@ panels:
     
   # Context generation settings
   context:
-    include_ast: true       # Include AST analysis (default: true)
-    include_metrics: true   # Include code metrics (default: true)
+    include_ast: "true"       # Include AST analysis (default: true)
+    include_metrics: "true"   # Include code metrics (default: true)
     max_file_size: 500000   # Max file size in bytes (default: 500KB)
 
 # Export configuration
@@ -32,11 +32,11 @@ export:
     - markdown
     - json
     - sarif
-  include_metadata: true    # Include generation metadata
-  include_raw_data: false   # Include raw analysis data in exports
+  include_metadata: "true"    # Include generation metadata
+  include_raw_data: "false"   # Include raw analysis data in exports
 
 # Performance settings
 performance:
-  cache_enabled: true       # Enable caching (default: true)
+  cache_enabled: "true"       # Enable caching (default: true)
   cache_ttl: 3600          # Cache TTL in seconds (default: 1 hour)
   parallel_workers: 4       # Number of parallel workers (default: 4)

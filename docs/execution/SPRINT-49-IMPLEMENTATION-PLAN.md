@@ -490,7 +490,7 @@ fn analyze_X_file(path: &Path) -> Result<FileContext, TemplateError> {
 
 #### C/C++ Analyzer:
 
-```rust
+````rust
 fn analyze_c_file(path: &Path) -> Result<FileContext, TemplateError> {
     // Read file
     let content = tokio::fs::read_to_string(path).await
@@ -527,11 +527,11 @@ fn analyze_c_file(path: &Path) -> Result<FileContext, TemplateError> {
         complexity_metrics: None,
     })
 }
-```
+````
 
 #### Ruby Analyzer:
 
-```rust
+````rust
 fn analyze_ruby_file(path: &Path) -> Result<FileContext, TemplateError> {
     let content = tokio::fs::read_to_string(path).await
         .map_err(TemplateError::Io)?;
@@ -583,7 +583,7 @@ fn analyze_ruby_file(path: &Path) -> Result<FileContext, TemplateError> {
         complexity_metrics: None,
     })
 }
-```
+````
 
 #### Shell Script Analyzer:
 

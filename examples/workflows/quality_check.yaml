@@ -45,7 +45,7 @@ steps:
           params:
             strategy: reduce_complexity
             target_complexity: 8
-            preserve_behavior: true
+            preserve_behavior: "true"
         
         # Sub-step 2: Re-analyze
         - id: reanalyze
@@ -78,9 +78,9 @@ steps:
     operation: validate
     condition:
       expression: "steps.quality_gate.status == 'completed'"
-      skip_on_false: false
+      skip_on_false: "false"
     params:
-      strict: true
+      strict: "true"
       rules:
         - all
     on_error: skip
@@ -93,5 +93,5 @@ steps:
     operation: generate_report
     params:
       format: html
-      include_metrics: true
-      include_suggestions: true
+      include_metrics: "true"
+      include_suggestions: "true"

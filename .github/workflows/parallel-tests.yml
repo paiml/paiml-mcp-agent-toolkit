@@ -40,7 +40,7 @@ jobs:
       uses: Swatinem/rust-cache@v2
       with:
         workspaces: "server -> target"
-        cache-on-failure: true
+        cache-on-failure: "true"
         shared-key: "test-shard-${{ matrix.shard }}"
 
     - name: Run test shard ${{ matrix.shard }}

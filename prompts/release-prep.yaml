@@ -168,7 +168,7 @@ toyota_way_principles:
   andon_cord: stop_on_failure
   genchi_genbutsu: verify_personally
   kaizen: continuous_improvement
-  zero_defects: true
+  zero_defects: "true"
 language_support:
   rust:
     test_cmd: "cargo test"

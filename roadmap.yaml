@@ -1056,21 +1056,21 @@ deployment_strategy:
   phases:
     - phase: development
       features:
-        agent_system: true
-        distributed_state: false
-        resource_isolation: true
+        agent_system: "true"
+        distributed_state: "false"
+        resource_isolation: "true"
 
     - phase: staging
       features:
-        agent_system: true
-        distributed_state: true
-        resource_isolation: true
+        agent_system: "true"
+        distributed_state: "true"
+        resource_isolation: "true"
 
     - phase: production
       features:
-        agent_system: false  # Start conservative
-        distributed_state: false
-        resource_isolation: true
+        agent_system: "false"  # Start conservative
+        distributed_state: "false"
+        resource_isolation: "true"
       rollout:
         strategy: canary
         percentage: 5

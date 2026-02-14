@@ -1128,5 +1128,5 @@ impl QualityGateExtension for ClippyFixValidator {
 
 - [Rust Clippy Lint Index](https://rust-lang.github.io/rust-clippy/master/index.html)
 - [syn AST Documentation](https://docs.rs/syn/latest/syn/)
-- [PMAT Architecture Specification](docs/SPECIFICATION.md)
+- PMAT Architecture Specification (`docs/SPECIFICATION.md` - deprecated)
 - [Toyota Production System Principles](https://en.wikipedia.org/wiki/Toyota_Production_System)

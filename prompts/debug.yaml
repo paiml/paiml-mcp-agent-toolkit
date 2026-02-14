@@ -36,6 +36,6 @@ prompt: |
 
   Quality Gate: Issue must not recur under any circumstances.
 toyota_way_principles:
-  five_whys: true
+  five_whys: "true"
   root_cause_analysis: required
   genchi_genbutsu: go_to_the_source

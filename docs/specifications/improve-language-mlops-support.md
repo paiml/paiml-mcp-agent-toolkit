@@ -204,9 +204,9 @@ fn extension_to_language(ext: &str) -> Option<&'static str> {
 
 | ID | Check | Severity | What It Detects |
 |----|-------|----------|-----------------|
-| CB-900 | Broken Internal Link | Warning | `[text](./path.md)` where target doesn't exist |
+| CB-900 | Broken Internal Link | Warning | `[text]``(./path.md)` where target doesn't exist |
 | CB-901 | Heading Hierarchy Skip | Info | Jump from `#` to `###` without `##` |
-| CB-902 | Missing Alt Text | Info | `![](image.png)` without alt text |
+| CB-902 | Missing Alt Text | Info | `![]``(image.png)` without alt text |
 | CB-903 | Bare URL | Info | Raw URL without link syntax |
 | CB-904 | Long Line | Info | Lines exceeding 120 characters (configurable) |
 

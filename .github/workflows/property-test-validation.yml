@@ -47,7 +47,7 @@ jobs:
       uses: Swatinem/rust-cache@v2
       with:
         workspaces: "server -> target"
-        cache-on-failure: true
+        cache-on-failure: "true"
     
     - name: Count total Rust source files
       id: count_files

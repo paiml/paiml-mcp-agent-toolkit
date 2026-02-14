@@ -33,7 +33,7 @@ spec:
     spec:
       serviceAccountName: tdg-server
       securityContext:
-        runAsNonRoot: true
+        runAsNonRoot: "true"
         runAsUser: 1000
         fsGroup: 1000
         
@@ -119,7 +119,7 @@ spec:
         volumeMounts:
         - name: config
           mountPath: /config
-          readOnly: true
+          readOnly: "true"
         - name: storage
           mountPath: /data
         - name: cache
@@ -128,12 +128,12 @@ spec:
           mountPath: /tmp
           
         securityContext:
-          allowPrivilegeEscalation: false
+          allowPrivilegeEscalation: "false"
           capabilities:
             drop:
             - ALL
-          readOnlyRootFilesystem: true
-          runAsNonRoot: true
+          readOnlyRootFilesystem: "true"
+          runAsNonRoot: "true"
           runAsUser: 1000
           
       volumes:

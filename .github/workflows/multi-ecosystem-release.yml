@@ -12,7 +12,7 @@ on:
       dry_run:
         description: 'Dry run (no actual publishing)'
         type: boolean
-        default: false
+        default: "false"
 
 env:
   VERSION: ${{ github.event.inputs.version || github.ref_name }}

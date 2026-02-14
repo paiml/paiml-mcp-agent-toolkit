@@ -166,7 +166,7 @@ pub struct ValidationSummary {
 
 #### 3.2.1 Link Extraction
 
-```rust
+````rust
 /// Extracts all markdown links from a file
 ///
 /// # Examples
@@ -227,7 +227,7 @@ pub fun classify_link(target: &str) -> LinkType {
         LinkType::Internal
     }
 }
-```
+````
 
 #### 3.2.2 Link Validation
 
@@ -472,7 +472,7 @@ impl ValidateDocsCmd {
 
 ### 4.1 Property Tests
 
-```rust
+````rust
 #[cfg(test)]
 mod property_tests {
     use super::*;
@@ -566,11 +566,11 @@ mod property_tests {
         }
     }
 }
-```
+````
 
 ### 4.2 Unit Tests (TDD Style)
 
-```rust
+````rust
 #[cfg(test)]
 mod unit_tests {
     use super::*;
@@ -753,7 +753,7 @@ mod unit_tests {
         assert_eq!(summary.valid_links, 10);
     }
 }
-```
+````
 
 ### 4.3 Integration Tests
 

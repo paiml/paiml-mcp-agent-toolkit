@@ -3,7 +3,7 @@ description: Achieve >85% coverage using EXTREME TDD - v3.0 (Ruchy+bashrs valida
 category: quality
 priority: critical
 methodology: EXTREME TDD + Toyota Way + Compiler-Grade Testing
-autonomous: true
+autonomous: "true"
 version: 3.0
 empirical_validation: |
   - Depyler: 67.83% → 71.15%, +136 tests, 100x efficiency gain
@@ -465,12 +465,12 @@ prompt: |
 
 toyota_way_principles:
   jidoka: stop_the_line
-  andon_cord: true
+  andon_cord: "true"
   genchi_genbutsu: verify_actual_state
   hansei: deep_reflection_on_roi_decline
   kaizen: continuous_improvement_via_empirical_feedback
-  autonomation: true
-  human_override_available: true
+  autonomation: "true"
+  human_override_available: "true"
 empirical_evidence:
   depyler_validation: "67.83% → 71.15%, +136 tests, 100x efficiency (Depyler project, 2025-11-12)"
   roi_improvement: "26x ROI gain via strategic pivot (0.004%/test → 0.105%/test)"

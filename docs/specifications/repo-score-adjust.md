@@ -356,7 +356,7 @@ let walker = WalkBuilder::new(repo_path)
 ```
 
 **Implementation**:
-```rust
+````rust
 // In repo_score_handlers.rs
 pub async fn update_readme_badge(
     repo_path: &Path,
@@ -403,7 +403,7 @@ fn generate_badge_url(score: &RepositoryScore) -> String {
         color
     )
 }
-```
+````
 
 **CLI Usage**:
 ```bash
@@ -417,7 +417,7 @@ git commit -m "chore: Update repo health badge [skip ci]"
 ```
 
 **Integration Tests**:
-```rust
+````rust
 #[tokio::test]
 async fn test_badge_insertion_in_new_readme() {
     let temp_dir = TempDir::new().unwrap();
@@ -448,7 +448,7 @@ async fn test_badge_replacement_in_existing_readme() {
     assert!(content.contains("repo%20health-85"));
     assert!(content.contains("green")); // A- uses "green"
 }
-```
+````
 
 **Effort**: 3 hours
 **Impact**: Visual reinforcement of code quality, great for public repos

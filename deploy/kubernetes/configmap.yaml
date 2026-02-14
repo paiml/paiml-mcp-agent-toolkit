@@ -19,7 +19,7 @@ data:
       request_timeout_seconds: 30
       
     dashboard:
-      enabled: true
+      enabled: "true"
       port: 8081
       update_interval_seconds: 10
       max_websocket_connections: 100
@@ -28,13 +28,13 @@ data:
       backend: sled
       path: /data/tdg
       cache_size_mb: 256
-      compression: true
+      compression: "true"
       hot_cache_ttl_seconds: 300
       warm_tier_threshold_mb: 512
       cold_tier_threshold_mb: 2048
       
     metrics:
-      enabled: true
+      enabled: "true"
       retention_hours: 168  # 1 week
       aggregation_interval_seconds: 60
       export_formats:
@@ -42,18 +42,18 @@ data:
         - json
         
     alerts:
-      enabled: true
+      enabled: "true"
       evaluation_interval_seconds: 10
       max_active_alerts: 100
       cooldown_period_seconds: 300
       
     profiling:
-      enabled: false  # Enable only when debugging
+      enabled: "false"  # Enable only when debugging
       sample_interval_ms: 100
       max_profiles_retained: 100
       
     mcp:
-      enabled: true
+      enabled: "true"
       max_concurrent_tools: 10
       timeout_seconds: 60
       

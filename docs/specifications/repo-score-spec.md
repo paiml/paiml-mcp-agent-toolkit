@@ -69,7 +69,7 @@ pmat validate-docs \
 - ✅ Code blocks have language tags (\`\`\`bash, \`\`\`rust, etc.)
 - ✅ No trailing whitespace
 - ✅ Consistent list formatting (all `-` or all `*`, not mixed)
-- ✅ Proper link formatting ([text](url) not bare URLs)
+- ✅ Proper link formatting (\[text\](url) not bare URLs)
 - ✅ No duplicate headings at same level
 - ✅ Blank lines before/after headings
 - ✅ Line length ≤120 chars (configurable)
@@ -166,7 +166,7 @@ Status: COHESIVE ✅
 ```
 
 **Best Practices:**
-- Use cross-references instead of copy-paste (`See [Architecture](docs/design/architecture.md)`)
+- Use cross-references instead of copy-paste (e.g., `See \[Architecture\](docs/design/architecture.md)`)
 - Single source of truth for each concept
 - Create index docs that link to all specs/designs
 - Detect with: `pmat analyze-docs --check-duplicates --fail-on-duplicates`

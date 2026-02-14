@@ -721,7 +721,7 @@ mutation-mr-comment:
 
 ### Update Merge Request Description
 
-```yaml
+````yaml
 mutation-update-mr:
   stage: mutation
   image: rust:latest
@@ -759,7 +759,7 @@ See [artifacts](${CI_PROJECT_URL}/-/jobs/${CI_JOB_ID}/artifacts/browse) for deta
         "$CI_API_V4_URL/projects/$CI_PROJECT_ID/merge_requests/$CI_MERGE_REQUEST_IID"
   only:
     - merge_requests
-```
+````
 
 ## Troubleshooting
 

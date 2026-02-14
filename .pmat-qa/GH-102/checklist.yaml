@@ -5,130 +5,130 @@ categories:
   safety_ethics:
   - id: A1
     description: No hardcoded secrets or credentials
-    checked: false
-    automated: true
+    checked: "false"
+    automated: "true"
     evidence: null
   - id: A2
     description: Error handling covers all failure modes
-    checked: false
-    automated: false
+    checked: "false"
+    automated: "false"
     evidence: null
   - id: A3
     description: Input validation prevents injection attacks
-    checked: false
-    automated: true
+    checked: "false"
+    automated: "true"
     evidence: null
   - id: A4
     description: Logging doesn't expose sensitive data
-    checked: false
-    automated: true
+    checked: "false"
+    automated: "true"
     evidence: null
   - id: A5
     description: Rate limiting considered for APIs
-    checked: false
-    automated: false
+    checked: "false"
+    automated: "false"
     evidence: null
   code_quality:
   - id: B1
     description: Cyclomatic complexity <= 10
-    checked: false
-    automated: true
+    checked: "false"
+    automated: "true"
     evidence: null
   - id: B2
     description: Cognitive complexity <= 15
-    checked: false
-    automated: true
+    checked: "false"
+    automated: "true"
     evidence: null
   - id: B3
     description: Test coverage >= 95%
-    checked: false
-    automated: true
+    checked: "false"
+    automated: "true"
     evidence: null
   - id: B4
     description: Mutation score >= 80%
-    checked: false
-    automated: true
+    checked: "false"
+    automated: "true"
     evidence: null
   - id: B5
     description: No new clippy warnings
-    checked: false
-    automated: true
+    checked: "false"
+    automated: "true"
     evidence: null
   testing:
   - id: C1
     description: Unit tests cover happy path
-    checked: false
-    automated: false
+    checked: "false"
+    automated: "false"
     evidence: null
   - id: C2
     description: Unit tests cover error paths
-    checked: false
-    automated: false
+    checked: "false"
+    automated: "false"
     evidence: null
   - id: C3
     description: Property tests for complex logic
-    checked: false
-    automated: false
+    checked: "false"
+    automated: "false"
     evidence: null
   - id: C4
     description: Integration tests for API boundaries
-    checked: false
-    automated: false
+    checked: "false"
+    automated: "false"
     evidence: null
   - id: C5
     description: Golden tests for output formats
-    checked: false
-    automated: false
+    checked: "false"
+    automated: "false"
     evidence: null
   documentation:
   - id: D1
     description: Public API documented
-    checked: false
-    automated: true
+    checked: "false"
+    automated: "true"
     evidence: null
   - id: D2
     description: Examples provided in docs
-    checked: false
-    automated: false
+    checked: "false"
+    automated: "false"
     evidence: null
   - id: D3
     description: CHANGELOG updated
-    checked: false
-    automated: true
+    checked: "false"
+    automated: "true"
     evidence: null
   - id: D4
     description: README reflects changes
-    checked: false
-    automated: false
+    checked: "false"
+    automated: "false"
     evidence: null
   - id: D5
     description: Error messages are actionable
-    checked: false
-    automated: false
+    checked: "false"
+    automated: "false"
     evidence: null
   process:
   - id: E1
     description: All acceptance criteria met
-    checked: false
-    automated: false
+    checked: "false"
+    automated: "false"
     evidence: null
   - id: E2
     description: Commit messages reference ticket
-    checked: false
-    automated: true
+    checked: "false"
+    automated: "true"
     evidence: null
   - id: E3
     description: PR description complete
-    checked: false
-    automated: false
+    checked: "false"
+    automated: "false"
     evidence: null
   - id: E4
     description: CI/CD passes all gates
-    checked: false
-    automated: true
+    checked: "false"
+    automated: "true"
     evidence: null
   - id: E5
     description: Peer review completed
-    checked: false
-    automated: false
+    checked: "false"
+    automated: "false"
     evidence: null
