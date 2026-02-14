@@ -536,7 +536,7 @@ pub fn detect_cb511_flaky_timing_tests(project_path: &Path) -> Vec<CbPatternViol
             Err(_) => continue,
         };
 
-        // Only check test code
+        // Only check files with test attributes
         if !content.contains("#[test]") && !content.contains("#[tokio::test]") {
             continue;
         }
@@ -547,18 +547,69 @@ pub fn detect_cb511_flaky_timing_tests(project_path: &Path) -> Vec<CbPatternViol
             .display()
             .to_string();
 
-        let has_instant = content.contains("Instant::now()");
-        let has_elapsed = content.contains(".elapsed()");
-        let has_duration_assert = content.contains("assert!(") && content.contains("elapsed");
+        // Per-test-function analysis: only flag when Instant::now(), .elapsed(),
+        // and a duration assertion all appear in the SAME test function
+        let lines: Vec<&str> = content.lines().collect();
+        let mut in_test_fn = false;
+        let mut test_fn_start: usize = 0;
+        let mut brace_depth: u32 = 0;
+        let mut fn_has_instant = false;
+        let mut fn_has_elapsed = false;
+        let mut fn_has_duration_assert = false;
 
-        if has_instant && has_elapsed && has_duration_assert {
-            violations.push(CbPatternViolation {
-                pattern_id: "CB-511".to_string(),
-                file,
-                line: 0,
-                description: "Test uses Instant::now() with duration assertions - may be flaky under load".to_string(),
-                severity: Severity::Warning,
-            });
+        for (i, line) in lines.iter().enumerate() {
+            let trimmed = line.trim();
+
+            // Detect test function start (look for #[test] or #[tokio::test] preceding fn)
+            if !in_test_fn
+                && (trimmed.starts_with("fn ") || trimmed.starts_with("async fn "))
+                && i > 0
+            {
+                // Look back for #[test] or #[tokio::test] attribute
+                let has_test_attr = (1..=3).any(|back| {
+                    i >= back && {
+                        let prev = lines[i - back].trim();
+                        prev == "#[test]" || prev == "#[tokio::test]"
+                    }
+                });
+                if has_test_attr {
+                    in_test_fn = true;
+                    test_fn_start = i + 1;
+                    brace_depth = 0;
+                    fn_has_instant = false;
+                    fn_has_elapsed = false;
+                    fn_has_duration_assert = false;
+                }
+            }
+
+            if in_test_fn {
+                brace_depth += trimmed.matches('{').count() as u32;
+                brace_depth = brace_depth.saturating_sub(trimmed.matches('}').count() as u32);
+
+                if trimmed.contains("Instant::now()") {
+                    fn_has_instant = true;
+                }
+                if trimmed.contains(".elapsed()") {
+                    fn_has_elapsed = true;
+                }
+                if trimmed.contains("assert!") && trimmed.contains("elapsed") {
+                    fn_has_duration_assert = true;
+                }
+
+                // End of test function
+                if brace_depth == 0 && i > test_fn_start {
+                    if fn_has_instant && fn_has_elapsed && fn_has_duration_assert {
+                        violations.push(CbPatternViolation {
+                            pattern_id: "CB-511".to_string(),
+                            file: file.clone(),
+                            line: test_fn_start,
+                            description: "Test uses Instant::now() with duration assertions — may be flaky under load".to_string(),
+                            severity: Severity::Warning,
+                        });
+                    }
+                    in_test_fn = false;
+                }
+            }
         }
     }
 
@@ -1167,9 +1218,19 @@ pub fn detect_cb519_lossy_data_pipeline(project_path: &Path) -> Vec<CbPatternVio
 
                 // End of function
                 if fn_depth == 0 && i > fn_start.unwrap_or(i) {
-                    let content_lower = fn_content.to_lowercase();
+                    // Strip derive annotations and comments to avoid false positives
+                    // from #[derive(Serialize, Deserialize)] or doc comments
+                    let filtered: String = fn_content
+                        .lines()
+                        .filter(|l| {
+                            let t = l.trim();
+                            !t.starts_with("#[derive(") && !t.starts_with("//")
+                        })
+                        .collect::<Vec<_>>()
+                        .join("\n")
+                        .to_lowercase();
                     for (fwd, rev) in transform_pairs {
-                        if content_lower.contains(fwd) && content_lower.contains(rev) {
+                        if filtered.contains(fwd) && filtered.contains(rev) {
                             violations.push(CbPatternViolation {
                                 pattern_id: "CB-519".to_string(),
                                 file: file.clone(),

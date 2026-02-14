@@ -28,8 +28,14 @@ const TRUTHY_STRINGS: &[&str] = &[
 /// GitLab CI: `allow_failure`
 /// Kubernetes: `readOnly`, `privileged`
 const NATIVE_BOOLEAN_KEYS: &[&str] = &[
+    // GitHub Actions
     "if", "fail-fast", "continue-on-error", "required", "cancel-in-progress",
-    "allow_failure", "readOnly", "privileged",
+    // GitLab CI
+    "allow_failure",
+    // Kubernetes
+    "readOnly", "privileged",
+    // PMAT roadmap schema (boolean fields parsed as native bool)
+    "active", "draft",
 ];
 
 /// Secret-indicating key patterns (case-insensitive).
