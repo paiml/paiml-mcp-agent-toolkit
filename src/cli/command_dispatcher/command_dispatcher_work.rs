@@ -212,14 +212,25 @@ impl CommandDispatcher {
         }
     }
 
-    /// Execute top-level falsify command
+    /// Execute top-level falsify command — routes to spec or work item falsification
     pub(crate) async fn execute_falsify_command(
         target: String,
         override_claims: Option<Vec<String>>,
         ticket: Option<String>,
         path: Option<std::path::PathBuf>,
+        format: Option<String>,
+        failures_only: bool,
+        dry_run: bool,
     ) -> anyhow::Result<()> {
-        use crate::cli::handlers::work_handlers;
-        work_handlers::handle_work_falsify(target, override_claims, ticket, path).await
+        crate::cli::handlers::spec_falsify_handler::handle_falsify(
+            target,
+            override_claims,
+            ticket,
+            path,
+            format,
+            failures_only,
+            dry_run,
+        )
+        .await
     }
 }

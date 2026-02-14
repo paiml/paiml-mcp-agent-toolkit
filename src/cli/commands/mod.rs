@@ -1149,6 +1149,18 @@ pub enum Commands {
         /// Project path (default: current directory)
         #[arg(short, long)]
         path: Option<PathBuf>,
+
+        /// Output format (text, json)
+        #[arg(long)]
+        format: Option<String>,
+
+        /// Only show falsified claims
+        #[arg(long, default_value_t = false)]
+        failures_only: bool,
+
+        /// Extract claims only, do not run falsification
+        #[arg(long, default_value_t = false)]
+        dry_run: bool,
     },
 
     /// QA validation after work completion with Toyota Way quality gates

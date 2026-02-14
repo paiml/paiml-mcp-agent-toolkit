@@ -337,8 +337,20 @@ impl CommandDispatcher {
                 override_claims,
                 ticket,
                 path,
+                format,
+                failures_only,
+                dry_run,
             } => {
-                Self::execute_falsify_command(target, override_claims, ticket, path).await
+                Self::execute_falsify_command(
+                    target,
+                    override_claims,
+                    ticket,
+                    path,
+                    format,
+                    failures_only,
+                    dry_run,
+                )
+                .await
             }
             Commands::QaWork { command } => {
                 // GH-102: Toyota Way quality validation

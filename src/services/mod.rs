@@ -228,6 +228,7 @@ pub mod satd_detector;
 pub mod semantic; // PMAT-SEARCH-001: Semantic code search services
 pub mod semantic_naming;
 pub mod simple_deep_context;
+pub mod spec_falsification; // RAG-powered Popperian falsification for specs
 pub mod spec_parser; // Part C: Specification parsing for pmat qa command
 pub mod symbol_table;
 pub mod tdg_calculator;
