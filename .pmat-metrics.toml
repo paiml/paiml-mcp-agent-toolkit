@@ -12,6 +12,7 @@ coverage_max_ms = 600_000         # 10min (user requirement: "under 10 min cover
 binary_max_bytes = 50_000_000     # 50 MB (current: 42 MB, 16% headroom)
 deps_default_max = 3_000          # 3,000 dependencies (current: 2,754, 8% headroom)
 provability_min = 0.60            # Minimum provability score (0.0-1.0)
+entropy_min_diversity = 0.3       # Minimum pattern diversity (0.0-1.0, default: 0.3 = 30%)
 
 # Soft limits (warnings only)
 build_release_max_ms = 900_000    # 15min (current: 11m 57s)

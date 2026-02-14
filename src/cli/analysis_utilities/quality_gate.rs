@@ -921,15 +921,17 @@ async fn execute_satd_check(
     .await
 }
 
-/// Helper for entropy check execution
+/// Helper for entropy check execution (loads threshold + excludes from .pmat-metrics.toml)
 async fn execute_entropy_check(
     project_path: &Path,
     min_entropy: f64,
     violations: &mut Vec<QualityViolation>,
     results: &mut QualityGateResults,
 ) -> Result<()> {
+    let threshold = load_entropy_threshold(project_path, min_entropy);
+    let exclude_paths = load_entropy_exclude_paths(project_path);
     execute_quality_check_template(
-        check_entropy(project_path, min_entropy),
+        check_entropy_with_excludes(project_path, threshold, &exclude_paths),
         |count| results.entropy_violations = count,
         violations,
     )
@@ -1017,6 +1019,55 @@ fn load_provability_threshold(project_path: &Path) -> f64 {
         .unwrap_or(DEFAULT_PROVABILITY_THRESHOLD)
 }
 
+/// Load entropy min_pattern_diversity from `.pmat-metrics.toml` (#194).
+///
+/// Looks for `entropy_min_diversity` under `[thresholds]`.
+/// Falls back to CLI-provided value or `DEFAULT_ENTROPY_MIN_DIVERSITY` (0.3).
+fn load_entropy_threshold(project_path: &Path, cli_value: f64) -> f64 {
+    let config_path = project_path.join(".pmat-metrics.toml");
+    let content = match std::fs::read_to_string(&config_path) {
+        Ok(c) => c,
+        Err(_) => return cli_value,
+    };
+    let table: toml::Table = match content.parse() {
+        Ok(t) => t,
+        Err(_) => return cli_value,
+    };
+    table
+        .get("thresholds")
+        .and_then(|t| t.get("entropy_min_diversity"))
+        .and_then(|v| v.as_float())
+        .unwrap_or(cli_value)
+}
+
+/// Load exclude paths from `.pmat-metrics.toml` (#195).
+///
+/// Checks both `[exclude] paths = [...]` and top-level `exclude_paths = [...]`.
+/// Returns an empty vec if the file is missing or no exclude config exists.
+fn load_entropy_exclude_paths(project_path: &Path) -> Vec<String> {
+    let config_path = project_path.join(".pmat-metrics.toml");
+    let content = match std::fs::read_to_string(&config_path) {
+        Ok(c) => c,
+        Err(_) => return vec![],
+    };
+    let table: toml::Table = match content.parse() {
+        Ok(t) => t,
+        Err(_) => return vec![],
+    };
+    // Try [exclude] paths first, then fall back to top-level exclude_paths
+    let arr = table
+        .get("exclude")
+        .and_then(|t| t.get("paths"))
+        .and_then(|v| v.as_array())
+        .or_else(|| table.get("exclude_paths").and_then(|v| v.as_array()));
+    arr.map(|a| {
+        a.iter()
+            .filter_map(|v| v.as_str().map(String::from))
+            .collect()
+    })
+    .unwrap_or_default()
+}
+
 /// Helper for provability check execution
 async fn execute_provability_check(
     project_path: &Path,
@@ -1086,11 +1137,15 @@ async fn run_all_project_checks(
         dead_code_violations
     );
     run_check!("technical debt", check_satd(project_path), satd_violations);
-    run_check!(
-        "code entropy",
-        check_entropy(project_path, min_entropy),
-        entropy_violations
-    );
+    {
+        let ent_threshold = load_entropy_threshold(project_path, min_entropy);
+        let ent_excludes = load_entropy_exclude_paths(project_path);
+        run_check!(
+            "code entropy",
+            check_entropy_with_excludes(project_path, ent_threshold, &ent_excludes),
+            entropy_violations
+        );
+    }
     run_check!(
         "security",
         check_security(project_path),
@@ -1973,6 +2028,99 @@ min_coverage_pct = 85.0
             (threshold - DEFAULT_PROVABILITY_THRESHOLD).abs() < f64::EPSILON,
             "Should fall back to default when [thresholds] section is missing"
         );
+    }
+
+    // --- Entropy threshold tests (#194) ---
+
+    #[test]
+    fn test_load_entropy_threshold_no_file() {
+        let temp_dir = tempfile::TempDir::new().unwrap();
+        let threshold = load_entropy_threshold(temp_dir.path(), 0.3);
+        assert!(
+            (threshold - 0.3).abs() < f64::EPSILON,
+            "Should fall back to CLI value when file is missing"
+        );
+    }
+
+    #[test]
+    fn test_load_entropy_threshold_from_config() {
+        let temp_dir = tempfile::TempDir::new().unwrap();
+        let config_content = r#"
+[thresholds]
+entropy_min_diversity = 0.0
+"#;
+        std::fs::write(temp_dir.path().join(".pmat-metrics.toml"), config_content).unwrap();
+
+        let threshold = load_entropy_threshold(temp_dir.path(), 0.3);
+        assert!(
+            threshold.abs() < f64::EPSILON,
+            "Should read entropy_min_diversity=0.0 from config, got {threshold}"
+        );
+    }
+
+    #[test]
+    fn test_load_entropy_threshold_missing_key_falls_back_to_cli() {
+        let temp_dir = tempfile::TempDir::new().unwrap();
+        let config_content = r#"
+[thresholds]
+provability_min = 0.70
+"#;
+        std::fs::write(temp_dir.path().join(".pmat-metrics.toml"), config_content).unwrap();
+
+        let threshold = load_entropy_threshold(temp_dir.path(), 0.5);
+        assert!(
+            (threshold - 0.5).abs() < f64::EPSILON,
+            "Should fall back to CLI value when key is missing"
+        );
+    }
+
+    // --- Exclude paths tests (#195) ---
+
+    #[test]
+    fn test_load_entropy_exclude_paths_no_file() {
+        let temp_dir = tempfile::TempDir::new().unwrap();
+        let paths = load_entropy_exclude_paths(temp_dir.path());
+        assert!(paths.is_empty(), "Should return empty when file is missing");
+    }
+
+    #[test]
+    fn test_load_entropy_exclude_paths_from_exclude_section() {
+        let temp_dir = tempfile::TempDir::new().unwrap();
+        let config_content = r#"
+[exclude]
+paths = ["reference/", "vendor/"]
+"#;
+        std::fs::write(temp_dir.path().join(".pmat-metrics.toml"), config_content).unwrap();
+
+        let paths = load_entropy_exclude_paths(temp_dir.path());
+        assert_eq!(paths, vec!["reference/", "vendor/"]);
+    }
+
+    #[test]
+    fn test_load_entropy_exclude_paths_from_top_level() {
+        let temp_dir = tempfile::TempDir::new().unwrap();
+        let config_content = r#"
+exclude_paths = ["third_party/"]
+"#;
+        std::fs::write(temp_dir.path().join(".pmat-metrics.toml"), config_content).unwrap();
+
+        let paths = load_entropy_exclude_paths(temp_dir.path());
+        assert_eq!(paths, vec!["third_party/"]);
+    }
+
+    #[test]
+    fn test_load_entropy_exclude_paths_section_takes_precedence() {
+        let temp_dir = tempfile::TempDir::new().unwrap();
+        let config_content = r#"
+exclude_paths = ["old/"]
+
+[exclude]
+paths = ["new/"]
+"#;
+        std::fs::write(temp_dir.path().join(".pmat-metrics.toml"), config_content).unwrap();
+
+        let paths = load_entropy_exclude_paths(temp_dir.path());
+        assert_eq!(paths, vec!["new/"], "[exclude] paths should take precedence over top-level exclude_paths");
     }
 }
 

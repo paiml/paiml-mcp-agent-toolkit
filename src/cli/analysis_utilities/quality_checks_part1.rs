@@ -441,7 +441,16 @@ pub async fn check_satd(project_path: &Path) -> Result<Vec<QualityViolation>> {
 /// ```
 pub async fn check_entropy(
     project_path: &Path,
-    _min_entropy: f64,
+    min_entropy: f64,
+) -> Result<Vec<QualityViolation>> {
+    check_entropy_with_excludes(project_path, min_entropy, &[]).await
+}
+
+/// Check entropy with configurable threshold and exclude paths (#194, #195).
+pub async fn check_entropy_with_excludes(
+    project_path: &Path,
+    min_entropy: f64,
+    extra_exclude_paths: &[String],
 ) -> Result<Vec<QualityViolation>> {
     // TOYOTA WAY FIX: Replace Shannon entropy with AST pattern-based entropy
     // Sprint 98: Fix for 5831 false positive entropy violations
@@ -451,12 +460,27 @@ pub async fn check_entropy(
     // Create entropy analyzer with tuned config to reduce false positives
     let mut config = EntropyConfig {
         min_severity: Severity::Medium, // Only report medium+ severity
+        // Use CLI/TOML-provided threshold instead of hardcoded 0.3 (#194)
+        min_pattern_diversity: min_entropy,
         ..Default::default()
     };
     config.exclude_paths.push("**/target/**".to_string());
     config.exclude_paths.push("**/node_modules/**".to_string());
     config.exclude_paths.push("**/*.test.rs".to_string());
     config.exclude_paths.push("**/tests/**".to_string());
+
+    // Apply extra exclude paths from .pmat-metrics.toml [exclude] (#195)
+    for path in extra_exclude_paths {
+        let pattern = if path.contains('*') {
+            path.clone()
+        } else {
+            format!("{}**", path.trim_end_matches('/').to_owned() + "/")
+        };
+        config.exclude_paths.push(pattern);
+    }
+
+    // Also load .pmatignore patterns
+    config = config.with_project_ignores(project_path);
 
     let analyzer = EntropyAnalyzer::with_config(config);
 
