@@ -25,3 +25,25 @@ check_complexity = true
 
 # Maximum cyclomatic complexity per function
 max_complexity = 10
+
+[exclude]
+# Paths excluded from quality gate checks
+paths = [
+    "tests/**",
+    "examples/**",
+    "benches/**",
+    "**/target/**",
+]
+
+[comply]
+# CB-954 false positives: ML model contract YAML files use "token" in field names
+# (eos_token, bos_token, embed_tokens, etc.) which triggers the secret detector
+yaml_secret_exclude_paths = [
+    "contracts/**/*.yaml",
+    "docs/roadmaps/**/*.yaml",
+]
+
+[dead_code]
+# Library crates have higher "dead code" due to public APIs used by external consumers
+# 30% threshold accounts for public APIs not called internally
+max_dead_code_pct = 30.0
