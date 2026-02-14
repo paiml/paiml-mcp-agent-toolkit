@@ -3557,3 +3557,187 @@ mod cb610_tests {
         assert!(violations.is_empty());
     }
 }
+
+// =============================================================================
+// CB-611: Weak Table Misuse (#186)
+// =============================================================================
+
+mod cb611_tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    #[test]
+    fn test_cb611_detects_string_key_on_weak_key_table() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("cache.lua"),
+            r#"local cache = setmetatable({}, { __mode = "k" })
+cache["my_key"] = some_value
+"#,
+        )
+        .unwrap();
+        let violations = detect_cb611_weak_table_misuse(temp.path());
+        assert_eq!(violations.len(), 1);
+        assert_eq!(violations[0].pattern_id, "CB-611");
+        assert!(violations[0].description.contains("string"));
+    }
+
+    #[test]
+    fn test_cb611_detects_numeric_key_on_weak_key_table() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("pool.lua"),
+            r#"local pool = setmetatable({}, { __mode = "k" })
+pool[123] = conn
+"#,
+        )
+        .unwrap();
+        let violations = detect_cb611_weak_table_misuse(temp.path());
+        assert_eq!(violations.len(), 1);
+        assert!(violations[0].description.contains("numeric"));
+    }
+
+    #[test]
+    fn test_cb611_ignores_weak_value_tables() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("cache.lua"),
+            r#"local cache = setmetatable({}, { __mode = "v" })
+cache["my_key"] = some_value
+"#,
+        )
+        .unwrap();
+        let violations = detect_cb611_weak_table_misuse(temp.path());
+        assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn test_cb611_ignores_weak_kv_tables() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("cache.lua"),
+            r#"local cache = setmetatable({}, { __mode = "kv" })
+cache["my_key"] = some_value
+"#,
+        )
+        .unwrap();
+        let violations = detect_cb611_weak_table_misuse(temp.path());
+        assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn test_cb611_allows_table_key_on_weak_key_table() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("refs.lua"),
+            r#"local refs = setmetatable({}, { __mode = "k" })
+refs[obj] = true
+"#,
+        )
+        .unwrap();
+        let violations = detect_cb611_weak_table_misuse(temp.path());
+        assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn test_cb611_skips_test_files() {
+        let temp = TempDir::new().unwrap();
+        fs::write(
+            temp.path().join("test_cache.lua"),
+            r#"local cache = setmetatable({}, { __mode = "k" })
+cache["key"] = val
+"#,
+        )
+        .unwrap();
+        let violations = detect_cb611_weak_table_misuse(temp.path());
+        assert!(violations.is_empty());
+    }
+}
+
+// =============================================================================
+// CB-612: Test Framework Detection (#184)
+// =============================================================================
+
+mod cb612_tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    #[test]
+    fn test_cb612_detects_busted_via_spec_files() {
+        let temp = TempDir::new().unwrap();
+        fs::write(temp.path().join("app.lua"), "return {}\n").unwrap();
+        fs::write(temp.path().join("app_spec.lua"), "describe('app', function() end)\n").unwrap();
+        let violations = detect_cb612_test_framework(temp.path());
+        assert_eq!(violations.len(), 1);
+        assert_eq!(violations[0].pattern_id, "CB-612");
+        assert!(violations[0].description.contains("busted"));
+    }
+
+    #[test]
+    fn test_cb612_detects_busted_via_config() {
+        let temp = TempDir::new().unwrap();
+        fs::write(temp.path().join("app.lua"), "return {}\n").unwrap();
+        fs::write(temp.path().join(".busted"), "return { default = { verbose = true } }\n").unwrap();
+        let violations = detect_cb612_test_framework(temp.path());
+        assert_eq!(violations.len(), 1);
+        assert!(violations[0].description.contains("busted"));
+    }
+
+    #[test]
+    fn test_cb612_detects_test_nginx() {
+        let temp = TempDir::new().unwrap();
+        fs::write(temp.path().join("app.lua"), "return {}\n").unwrap();
+        fs::create_dir(temp.path().join("t")).unwrap();
+        fs::write(temp.path().join("t/001-basic.t"), "use Test::Nginx::Socket;\n").unwrap();
+        let violations = detect_cb612_test_framework(temp.path());
+        assert_eq!(violations.len(), 1);
+        assert!(violations[0].description.contains("Test::Nginx"));
+    }
+
+    #[test]
+    fn test_cb612_detects_hybrid_busted_and_test_nginx() {
+        let temp = TempDir::new().unwrap();
+        fs::write(temp.path().join("app.lua"), "return {}\n").unwrap();
+        fs::write(temp.path().join("handler_spec.lua"), "describe('handler', function() end)\n").unwrap();
+        fs::create_dir(temp.path().join("t")).unwrap();
+        fs::write(temp.path().join("t/001.t"), "use Test::Nginx;\n").unwrap();
+        let violations = detect_cb612_test_framework(temp.path());
+        assert_eq!(violations.len(), 1);
+        assert!(violations[0].description.contains("busted"));
+        assert!(violations[0].description.contains("Test::Nginx"));
+    }
+
+    #[test]
+    fn test_cb612_no_framework_few_files() {
+        let temp = TempDir::new().unwrap();
+        fs::write(temp.path().join("init.lua"), "return {}\n").unwrap();
+        let violations = detect_cb612_test_framework(temp.path());
+        // Less than 3 Lua files, no warning
+        assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn test_cb612_no_framework_many_files() {
+        let temp = TempDir::new().unwrap();
+        fs::write(temp.path().join("a.lua"), "return {}\n").unwrap();
+        fs::write(temp.path().join("b.lua"), "return {}\n").unwrap();
+        fs::write(temp.path().join("c.lua"), "return {}\n").unwrap();
+        let violations = detect_cb612_test_framework(temp.path());
+        assert_eq!(violations.len(), 1);
+        assert!(violations[0].description.contains("No Lua test framework"));
+    }
+
+    #[test]
+    fn test_cb612_detects_luaunit() {
+        let temp = TempDir::new().unwrap();
+        fs::write(temp.path().join("app.lua"), "return {}\n").unwrap();
+        fs::write(
+            temp.path().join("test_app.lua"),
+            "local lu = require('luaunit')\nfunction test_foo() end\n",
+        )
+        .unwrap();
+        let violations = detect_cb612_test_framework(temp.path());
+        assert_eq!(violations.len(), 1);
+        assert!(violations[0].description.contains("LuaUnit"));
+    }
+}
