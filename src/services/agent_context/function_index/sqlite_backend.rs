@@ -672,6 +672,7 @@ pub(crate) fn load_graph_metrics(conn: &Connection) -> Result<Vec<GraphMetrics>,
 /// Load index metadata from the SQLite database.
 ///
 /// Reads all metadata key-value pairs in a single query instead of 6 individual queries.
+/// Self-heals on missing keys by using sensible defaults (#162).
 pub(crate) fn load_metadata(conn: &Connection) -> Result<IndexManifest, String> {
     let mut stmt = conn
         .prepare("SELECT key, value FROM metadata")
@@ -685,20 +686,27 @@ pub(crate) fn load_metadata(conn: &Connection) -> Result<IndexManifest, String> 
         .filter_map(|r| r.ok())
         .collect();
 
-    let version = rows.get("version").ok_or("Missing metadata key 'version'")?.clone();
-    let built_at = rows.get("built_at").ok_or("Missing metadata key 'built_at'")?.clone();
-    let project_root = rows.get("project_root").ok_or("Missing metadata key 'project_root'")?.clone();
+    // Self-heal: use defaults for missing metadata instead of failing (#162)
+    let version = rows.get("version").cloned().unwrap_or_else(|| "2.0".to_string());
+    let built_at = rows.get("built_at").cloned().unwrap_or_else(|| "unknown".to_string());
+    let project_root = rows.get("project_root").cloned().unwrap_or_else(|| ".".to_string());
     let function_count: usize = rows.get("function_count")
-        .ok_or("Missing metadata key 'function_count'")?
-        .parse()
-        .map_err(|e| format!("Bad function_count: {e}"))?;
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(0);
     let file_count: usize = rows.get("file_count")
-        .ok_or("Missing metadata key 'file_count'")?
-        .parse()
-        .map_err(|e| format!("Bad file_count: {e}"))?;
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(0);
     let checksums_json = rows.get("file_checksums").cloned().unwrap_or_else(|| "{}".to_string());
     let file_checksums: HashMap<String, String> =
         serde_json::from_str(&checksums_json).unwrap_or_default();
+
+    // If critical metadata was missing, try to self-heal by inserting defaults
+    if !rows.contains_key("version") {
+        let _ = conn.execute(
+            "INSERT OR REPLACE INTO metadata (key, value) VALUES ('version', '2.0')",
+            [],
+        );
+    }
 
     Ok(IndexManifest {
         version,

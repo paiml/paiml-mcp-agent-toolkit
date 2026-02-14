@@ -909,12 +909,16 @@ mod tests {
         assert_eq!(loaded.file_count, 33);
     }
 
-    /// F-058: Metadata missing key returns error
+    /// F-058: Metadata missing key self-heals with defaults (#162)
     #[test]
-    fn f058_metadata_missing_key() {
+    fn f058_metadata_missing_key_self_heals() {
         let conn = db();
         let result = load_metadata(&conn);
-        assert!(result.is_err(), "missing metadata should error");
+        // Self-healing: returns Ok with defaults instead of error
+        assert!(result.is_ok(), "missing metadata should self-heal with defaults");
+        let manifest = result.unwrap();
+        assert_eq!(manifest.version, "2.0");
+        assert_eq!(manifest.function_count, 0);
     }
 
     // ═══════════════════════════════════════════════════════════════════
