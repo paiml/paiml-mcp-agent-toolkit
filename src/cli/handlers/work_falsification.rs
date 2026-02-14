@@ -15,6 +15,7 @@ use crate::cli::handlers::work_contract::{
 };
 use crate::services::gaming_detector;
 use anyhow::{Context, Result};
+use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -59,7 +60,7 @@ fn read_cached_metric(project_path: &Path, filename: &str) -> Option<CachedMetri
 }
 
 /// Result of running all falsification tests
-#[derive(Debug)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FalsificationReport {
     /// Total number of claims tested
     pub total_claims: usize,
@@ -81,7 +82,7 @@ pub struct FalsificationReport {
 }
 
 /// Result of testing a single claim
-#[derive(Debug)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ClaimResult {
     /// Claim index (1-based for display)
     pub index: usize,

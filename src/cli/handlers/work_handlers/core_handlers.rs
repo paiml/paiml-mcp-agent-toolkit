@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
 // Quality handlers extracted to work_quality_handlers.rs for file health compliance (CB-040)
-pub use super::work_quality_handlers::{run_popper_falsification, run_quality_gates, FalsificationResult};
+pub use super::work_quality_handlers::{run_quality_gates, FalsificationResult};
 
 // Work Contract and Falsification (PMAT Work Contract specification)
 use super::work_contract::{FileManifest, WorkContract};
@@ -517,41 +517,8 @@ async fn capture_rust_project_score(project_path: &PathBuf) -> Result<f64> {
 
 // Falsification report types from work_falsification module
 use super::work_falsification::{ClaimResult, FalsificationReport};
-
-/// Helper to process falsification report (CB-040 complexity refactor)
-/// Returns Ok(()) if work can proceed, Err if blocked
-fn process_falsification_report(
-    report: &FalsificationReport,
-    override_claims: Option<&Vec<String>>,
-    ticket: Option<&String>,
-    id: &str,
-) -> Result<()> {
-    if !report.has_blocking_failures() {
-        println!(
-            "✅ FALSIFICATION RESULT: PASSED ({}/{} claims validated)",
-            report.passed, report.total_claims
-        );
-        print_warning_failures(report);
-        println!();
-        return Ok(());
-    }
-
-    let failures = report.blocking_failures();
-    let unoverrideable = filter_unoverriden_failures(&failures, override_claims);
-
-    if unoverrideable.is_empty() {
-        if let Some(t) = ticket {
-            print_overridden_result(&failures, t);
-            return Ok(());
-        }
-    }
-
-    print_blocked_result(report, &unoverrideable, id);
-    anyhow::bail!(
-        "Work blocked: {} falsification(s) found. Fix issues or use --override-claims with --ticket.",
-        unoverrideable.len()
-    )
-}
+// Falsification ledger: append-only receipt tracking
+use super::work_ledger::{FalsificationLedger, FalsificationReceipt, FalsificationTrigger};
 
 /// Filter failures not covered by overrides
 fn filter_unoverriden_failures<'a>(
@@ -585,26 +552,6 @@ fn print_warning_failures(report: &FalsificationReport) {
             );
         }
     }
-}
-
-/// Print result when all failures are overridden
-fn print_overridden_result(failures: &[&ClaimResult], ticket_id: &str) {
-    println!(
-        "⚠️  FALSIFICATION RESULT: OVERRIDDEN ({} claim(s) overridden with ticket {})",
-        failures.len(),
-        ticket_id
-    );
-    println!();
-    println!("Overridden claims:");
-    for failure in failures {
-        println!(
-            "  - [{}] {}: {} (OVERRIDDEN)",
-            failure.index, failure.hypothesis, failure.result.explanation
-        );
-    }
-    println!();
-    println!("⚠️  WARNING: Technical debt incurred. Track with ticket: {}", ticket_id);
-    println!();
 }
 
 /// Print result when work is blocked
@@ -683,7 +630,9 @@ async fn run_quality_check(project_path: &PathBuf, skip_quality: bool) -> Result
     Ok(())
 }
 
-/// Run contract-based or legacy falsification (helper for handle_work_complete)
+/// Run contract-based falsification (helper for handle_work_complete)
+///
+/// Legacy mode (no contract) is now a hard error — users must run `pmat work start` first.
 async fn run_contract_falsification(
     project_path: &Path,
     item_id: &str,
@@ -692,10 +641,11 @@ async fn run_contract_falsification(
     id: &str,
 ) -> Result<()> {
     if !WorkContract::exists(project_path, item_id) {
-        println!("ℹ️  No work contract found (legacy mode)");
-        println!("   Run 'pmat work start {}' to create a contract for future work", id);
-        println!();
-        return run_legacy_falsification(&project_path.to_path_buf()).await;
+        anyhow::bail!(
+            "No work contract found for '{}'. Run 'pmat work start {}' to create one.\n\
+             Contracts are required for falsification-gated completion.",
+            item_id, id
+        );
     }
 
     println!("📜 Loading Work Contract...");
@@ -710,15 +660,15 @@ async fn run_contract_falsification(
             run_contract_tests(project_path, &contract, override_claims, ticket, id).await
         }
         Err(e) => {
-            println!("⚠️  Could not load contract: {}", e);
-            println!("   Falling back to legacy validation...");
-            println!();
-            run_legacy_falsification(&project_path.to_path_buf()).await
+            anyhow::bail!(
+                "Could not load contract for '{}': {}. Re-run 'pmat work start {}' to recreate.",
+                item_id, e, id
+            );
         }
     }
 }
 
-/// Run falsification tests against a loaded contract (helper for run_contract_falsification)
+/// Run falsification tests against a loaded contract, produce receipt, gate on result
 async fn run_contract_tests(
     project_path: &Path,
     contract: &WorkContract,
@@ -726,16 +676,50 @@ async fn run_contract_tests(
     ticket: &Option<String>,
     id: &str,
 ) -> Result<()> {
-    match run_falsification_tests(project_path, contract).await {
-        Ok(report) => {
-            process_falsification_report(&report, override_claims.as_ref(), ticket.as_ref(), id)
+    let report = run_falsification_tests(project_path, contract).await?;
+
+    // Build immutable receipt
+    let git_sha = super::work_ledger::get_current_git_sha(project_path);
+    let receipt = FalsificationReceipt::from_report(
+        &report,
+        git_sha,
+        contract.work_item_id.clone(),
+        FalsificationTrigger::WorkComplete,
+        override_claims.as_ref(),
+        ticket.as_ref(),
+    );
+
+    // Persist receipt and append to global ledger
+    let ledger = FalsificationLedger::new(project_path);
+    let receipt_path = ledger.persist_receipt(&receipt)?;
+    ledger.append_to_ledger(&receipt)?;
+
+    // Gate on receipt summary
+    if receipt.summary.allows_completion {
+        println!(
+            "✅ FALSIFICATION RESULT: PASSED ({}/{} claims validated)",
+            receipt.summary.passed, receipt.summary.total
+        );
+        if receipt.summary.overridden > 0 {
+            println!(
+                "   ⚠️  {} claim(s) overridden (ticket: {})",
+                receipt.summary.overridden,
+                ticket.as_deref().unwrap_or("unknown")
+            );
         }
-        Err(e) => {
-            println!("⚠️  Falsification error: {}", e);
-            println!("   Continuing with legacy validation...");
-            println!();
-            run_legacy_falsification(&project_path.to_path_buf()).await
-        }
+        print_warning_failures(&report);
+        println!("   📋 Receipt: {}", receipt_path.display());
+        println!();
+        Ok(())
+    } else {
+        let failures = report.blocking_failures();
+        let unoverrideable = filter_unoverriden_failures(&failures, override_claims.as_ref());
+        print_blocked_result(&report, &unoverrideable, id);
+        println!("   📋 Receipt: {}", receipt_path.display());
+        anyhow::bail!(
+            "Work blocked: {} falsification(s) found. Fix issues or use --override-claims with --ticket.",
+            unoverrideable.len()
+        )
     }
 }
 
@@ -812,7 +796,17 @@ pub async fn handle_work_complete(
         .with_context(|| format!("Item not found: {}", id))?;
 
     run_quality_check(&project_path, skip_quality).await?;
-    run_contract_falsification(&project_path, &item.id, &override_claims, &ticket, &id).await?;
+
+    // O(1) freshness check: skip re-running falsification if a fresh receipt exists
+    let ledger = FalsificationLedger::new(&project_path);
+    let current_sha = super::work_ledger::get_current_git_sha(&project_path);
+    if ledger.has_fresh_receipt(&item.id, &current_sha)? {
+        println!("✅ Fresh falsification receipt found (matches HEAD {})", &current_sha[..8.min(current_sha.len())]);
+        println!("   Skipping re-run (receipt still valid)");
+        println!();
+    } else {
+        run_contract_falsification(&project_path, &item.id, &override_claims, &ticket, &id).await?;
+    }
 
     // Mark as completed
     item.status = ItemStatus::Completed;
@@ -1362,24 +1356,3 @@ fn claim_to_override_name(hypothesis: &str) -> String {
         .collect()
 }
 
-/// Run legacy falsification validation (warnings only, for backward compatibility)
-async fn run_legacy_falsification(project_path: &PathBuf) -> Result<()> {
-    match run_popper_falsification(project_path).await {
-        Ok(falsification) => {
-            if !falsification.passed {
-                println!("⚠️  Falsification issues detected:");
-                println!("   {}", falsification.summary);
-                println!();
-                println!("   This is a warning - work will still be marked complete.");
-                println!("   Consider addressing these issues for higher confidence.");
-                println!();
-            }
-        }
-        Err(e) => {
-            println!("⚠️  Falsification validation error: {}", e);
-            println!("   Continuing with completion...");
-            println!();
-        }
-    }
-    Ok(())
-}
