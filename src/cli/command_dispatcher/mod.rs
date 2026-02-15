@@ -523,7 +523,9 @@ impl CommandDispatcher {
                 all,
                 pareto,
                 sort_by,
-            } => handlers::deps_audit_handlers::handle_deps_audit(&path, &format, all, pareto, &sort_by),
+            } => handlers::deps_audit_handlers::handle_deps_audit(
+                &path, &format, all, pareto, &sort_by,
+            ),
             Commands::Kaizen {
                 path,
                 dry_run,
@@ -537,6 +539,7 @@ impl CommandDispatcher {
                 skip_fmt,
                 skip_comply,
                 skip_github,
+                skip_defects,
             } => {
                 let config = handlers::kaizen_handler::KaizenConfig {
                     path,
@@ -551,6 +554,7 @@ impl CommandDispatcher {
                     skip_fmt,
                     skip_comply,
                     skip_github,
+                    skip_defects,
                 };
                 handlers::kaizen_handler::handle_kaizen(config).await
             }

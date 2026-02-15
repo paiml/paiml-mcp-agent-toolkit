@@ -49,8 +49,8 @@ pub mod graph_context_integration_tests;
 pub mod handler_utils; // Unit-testable pure functions extracted from handlers
 pub mod health_handler;
 pub mod hooks_command_handlers;
-pub mod kaizen_handler; // GH-213: Autonomous continuous improvement (Toyota Way Kaizen)
 pub mod incremental_coverage_handler;
+pub mod kaizen_handler; // GH-213: Autonomous continuous improvement (Toyota Way Kaizen)
 pub mod lint_hotspot_handlers;
 #[cfg(test)]
 pub mod lint_hotspot_property_tests;
@@ -74,10 +74,10 @@ pub mod provability_handler;
 pub mod qa_work_handler;
 pub mod qdd_handlers;
 pub mod quality_gate_formatter;
-pub mod query_handler; // PMAT-470: RAG-powered semantic code search
 #[cfg(test)]
 pub mod quality_gate_property_tests;
 pub mod quality_gates_handler; // TICKET-PMAT-5023
+pub mod query_handler; // PMAT-470: RAG-powered semantic code search
 pub mod readme_validate_handlers; // Sprint 38: Hallucination detection CLI
 pub mod red_team; // Red Team Mode: Automated hallucination detection
 pub mod refactor_auto_handlers;
@@ -91,6 +91,7 @@ pub mod roadmap_handler;
 pub mod rust_project_score_handlers; // Sprint 3: Rust Project Score v1.1
 pub mod satd_handler;
 pub mod similarity_handler;
+pub mod spec_falsify_handler;
 pub mod spec_handlers; // master-plan-pmat-work-system.md: Spec management commands
 pub mod subagent_handlers;
 pub mod tdg_diagnostic_handler;
@@ -117,10 +118,9 @@ pub mod wasm_handler;
 pub mod wasm_handlers; // Phase 4: Organizational Intelligence Integration
 pub mod work_contract; // PMAT Work Contract: Popperian falsification-based quality enforcement
 pub mod work_falsification; // PMAT Work Contract: Falsification executor
-pub mod work_ledger; // Falsification ledger: append-only receipt tracking
 pub mod work_handlers; // Issue #75: Unified GitHub/YAML workflow // GH-102: Toyota Way QA validation
-pub mod work_quality_handlers; // Quality gates and falsification extracted for file health (CB-040)
-pub mod spec_falsify_handler; // RAG-powered spec falsification handler
+pub mod work_ledger; // Falsification ledger: append-only receipt tracking
+pub mod work_quality_handlers; // Quality gates and falsification extracted for file health (CB-040) // RAG-powered spec falsification handler
 
 // Re-export handler functions
 pub use advanced_analysis_handlers::{

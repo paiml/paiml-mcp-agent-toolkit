@@ -1304,6 +1304,10 @@ pub enum Commands {
         /// Skip GitHub issues analysis
         #[arg(long)]
         skip_github: bool,
+
+        /// Skip batuta defect pattern analysis
+        #[arg(long)]
+        skip_defects: bool,
     },
 
     /// Rust project diagnostics (20 checks across 5 categories)

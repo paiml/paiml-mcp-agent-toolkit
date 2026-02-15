@@ -25,6 +25,7 @@ pub struct KaizenConfig {
     pub skip_fmt: bool,
     pub skip_comply: bool,
     pub skip_github: bool,
+    pub skip_defects: bool,
 }
 
 /// Source of a kaizen finding
@@ -34,6 +35,7 @@ pub enum FindingSource {
     Clippy,
     Rustfmt,
     Comply,
+    Defects,
     CoverageGap,
     GitHubIssue,
 }
@@ -94,6 +96,11 @@ pub async fn handle_kaizen(config: KaizenConfig) -> Result<()> {
     if !config.skip_comply {
         let comply_findings = scan_comply(&path)?;
         findings.extend(comply_findings);
+    }
+
+    if !config.skip_defects {
+        let defect_findings = scan_defects(&path)?;
+        findings.extend(defect_findings);
     }
 
     if !config.skip_github {
@@ -266,7 +273,14 @@ fn scan_rustfmt(path: &Path) -> Result<Vec<KaizenFinding>> {
 /// Scan for PMAT compliance violations
 fn scan_comply(path: &Path) -> Result<Vec<KaizenFinding>> {
     let output = Command::new("pmat")
-        .args(["comply", "check", "-p", &path.to_string_lossy(), "-f", "json"])
+        .args([
+            "comply",
+            "check",
+            "-p",
+            &path.to_string_lossy(),
+            "-f",
+            "json",
+        ])
         .current_dir(path)
         .output();
 
@@ -290,10 +304,7 @@ fn scan_comply(path: &Path) -> Result<Vec<KaizenFinding>> {
                 continue;
             }
 
-            let id = check
-                .get("id")
-                .and_then(|s| s.as_str())
-                .unwrap_or("CB-???");
+            let id = check.get("id").and_then(|s| s.as_str()).unwrap_or("CB-???");
             let msg = check
                 .get("message")
                 .and_then(|s| s.as_str())
@@ -314,6 +325,95 @@ fn scan_comply(path: &Path) -> Result<Vec<KaizenFinding>> {
                 )),
             });
         }
+    }
+
+    Ok(findings)
+}
+
+/// Scan for known defect patterns (batuta bug-hunt: unwrap, panic, unsafe, etc.)
+fn scan_defects(path: &Path) -> Result<Vec<KaizenFinding>> {
+    let output = Command::new("pmat")
+        .args([
+            "analyze",
+            "defects",
+            "-p",
+            &path.to_string_lossy(),
+            "--format",
+            "json",
+        ])
+        .current_dir(path)
+        .output();
+
+    let output = match output {
+        Ok(o) => o,
+        Err(_) => return Ok(Vec::new()),
+    };
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let json: serde_json::Value = match serde_json::from_str(&stdout) {
+        Ok(v) => v,
+        Err(_) => return Ok(Vec::new()),
+    };
+
+    let mut findings = Vec::new();
+
+    let defects = json.get("defects").and_then(|d| d.as_array());
+    let Some(defects) = defects else {
+        return Ok(findings);
+    };
+
+    for defect in defects {
+        let id = defect
+            .get("id")
+            .and_then(|s| s.as_str())
+            .unwrap_or("DEFECT-???");
+        let name = defect
+            .get("name")
+            .and_then(|s| s.as_str())
+            .unwrap_or("Unknown defect");
+        let sev_str = defect
+            .get("severity")
+            .and_then(|s| s.as_str())
+            .unwrap_or("Medium");
+        let fix = defect
+            .get("fix_recommendation")
+            .and_then(|s| s.as_str())
+            .unwrap_or("");
+
+        let severity = match sev_str.to_lowercase().as_str() {
+            "critical" => FindingSeverity::Critical,
+            "high" => FindingSeverity::High,
+            "low" => FindingSeverity::Low,
+            _ => FindingSeverity::Medium,
+        };
+
+        let instances = defect.get("instances").and_then(|i| i.as_array());
+        let instance_count = instances.map(|i| i.len()).unwrap_or(0);
+
+        // Create one finding per defect pattern (not per instance) for actionability
+        let first_file = instances
+            .and_then(|insts| insts.first())
+            .and_then(|inst| inst.get("file"))
+            .and_then(|f| f.as_str())
+            .map(String::from);
+
+        findings.push(KaizenFinding {
+            source: FindingSource::Defects,
+            severity,
+            category: format!("defect::{id}"),
+            message: format!("{name} ({instance_count} instances)"),
+            file: first_file.clone(),
+            auto_fixable: false,
+            agent_fixable: true,
+            fix_applied: false,
+            agent_prompt: Some(format!(
+                "Fix defect pattern {id}: {name}. {fix} \
+                 There are {instance_count} instances. \
+                 Start with file {} and fix all instances. \
+                 Run `pmat analyze defects` after fixing to verify.",
+                first_file.as_deref().unwrap_or("the project")
+            )),
+        });
     }
 
     Ok(findings)
@@ -472,7 +572,8 @@ fn apply_safe_fixes(path: &Path, findings: &mut [KaizenFinding]) -> Result<usize
     // Mark applied
     let mut count = 0usize;
     for f in findings.iter_mut() {
-        if f.auto_fixable && (f.source == FindingSource::Clippy || f.source == FindingSource::Rustfmt)
+        if f.auto_fixable
+            && (f.source == FindingSource::Clippy || f.source == FindingSource::Rustfmt)
         {
             f.fix_applied = true;
             count += 1;
@@ -591,7 +692,9 @@ fn commit_changes(path: &Path, message: &str) -> Result<Option<String>> {
         .current_dir(path)
         .output()?;
 
-    let hash = String::from_utf8_lossy(&hash_output.stdout).trim().to_string();
+    let hash = String::from_utf8_lossy(&hash_output.stdout)
+        .trim()
+        .to_string();
     Ok(Some(hash))
 }
 
