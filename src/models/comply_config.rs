@@ -198,6 +198,14 @@ pub struct ComplyThresholds {
     /// Slow coverage threshold in minutes
     #[serde(default = "default_slow_coverage")]
     pub slow_coverage_minutes: f64,
+
+    /// Minimum TDG grade for CB-200 gate (A, B, C, D, F)
+    #[serde(default = "default_min_tdg_grade")]
+    pub min_tdg_grade: String,
+
+    /// File path patterns to exclude from TDG grade gate (glob syntax)
+    #[serde(default)]
+    pub tdg_exclude_paths: Vec<String>,
 }
 
 impl Default for ComplyThresholds {
@@ -211,6 +219,8 @@ impl Default for ComplyThresholds {
             max_function_lines: default_function_size(),
             slow_test_seconds: default_slow_test(),
             slow_coverage_minutes: default_slow_coverage(),
+            min_tdg_grade: default_min_tdg_grade(),
+            tdg_exclude_paths: Vec::new(),
         }
     }
 }
@@ -277,6 +287,7 @@ fn default_file_size() -> u32 { 500 }
 fn default_function_size() -> u32 { 50 }
 fn default_slow_test() -> f64 { 5.0 }
 fn default_slow_coverage() -> f64 { 10.0 }
+fn default_min_tdg_grade() -> String { "B".to_string() }
 fn default_tdg_score() -> f64 { 70.0 }
 fn default_cache_warn_hours() -> i64 { 1 }
 fn default_cache_block_hours() -> i64 { 24 }
@@ -378,6 +389,14 @@ fn default_checks() -> HashMap<String, CheckConfig> {
         enabled: true,
         severity: CheckSeverity::Warning,
         threshold: Some(1.0), // Max dead code percentage
+        options: HashMap::new(),
+    });
+
+    // CB-200: TDG Grade Gate (#214)
+    checks.insert("cb-200".to_string(), CheckConfig {
+        enabled: true,
+        severity: CheckSeverity::Warning,
+        threshold: None,
         options: HashMap::new(),
     });
 

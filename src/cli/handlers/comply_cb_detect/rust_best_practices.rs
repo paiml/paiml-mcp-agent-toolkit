@@ -592,7 +592,13 @@ pub fn detect_cb511_flaky_timing_tests(project_path: &Path) -> Vec<CbPatternViol
                 if trimmed.contains(".elapsed()") {
                     fn_has_elapsed = true;
                 }
-                if trimmed.contains("assert!") && trimmed.contains("elapsed") {
+                // Require .elapsed() specifically in an assertion context,
+                // not just any line with "assert!" and the word "elapsed"
+                if (trimmed.contains("assert!") || trimmed.contains("assert_eq!")
+                    || trimmed.contains("assert_ne!") || trimmed.contains("assert_lt!")
+                    || trimmed.contains("assert_le!"))
+                    && trimmed.contains(".elapsed()")
+                {
                     fn_has_duration_assert = true;
                 }
 
@@ -884,8 +890,10 @@ pub fn detect_cb515_catch_all_match_default(project_path: &Path) -> Vec<CbPatter
                 continue;
             }
 
-            // Skip if it's just a closing brace or comma
-            if after == "}" || after == "}," || after == "," {
+            // Skip if it's just a closing brace, comma, or empty block (unit return)
+            if after == "}" || after == "}," || after == ","
+                || after == "{}" || after == "{},"
+            {
                 continue;
             }
 
@@ -1149,6 +1157,51 @@ pub fn detect_cb518_expensive_clone_in_loop(project_path: &Path) -> Vec<CbPatter
     violations
 }
 
+/// Lossy transform pairs: if both halves appear in the same function, it's suspicious.
+const LOSSY_TRANSFORM_PAIRS: &[(&str, &str)] = &[
+    ("quantize", "dequantize"),
+    ("encode", "decode"),
+    ("compress", "decompress"),
+    ("serialize", "deserialize"),
+    ("pack", "unpack"),
+    ("to_bytes", "from_bytes"),
+    ("to_f16", "to_f32"),
+    ("to_bf16", "to_f32"),
+];
+
+/// Check if a function definition line is a test function (by attribute or name).
+fn is_test_fn_definition(trimmed: &str, line_idx: usize, lines: &[&str]) -> bool {
+    let has_test_attr = (1..=3).any(|back| {
+        line_idx >= back && {
+            let prev = lines[line_idx - back].trim();
+            prev == "#[test]" || prev == "#[tokio::test]"
+                || prev.starts_with("#[cfg(test")
+        }
+    });
+    let fn_name_lower = trimmed.to_lowercase();
+    has_test_attr
+        || fn_name_lower.contains("test_")
+        || fn_name_lower.contains("_test")
+        || fn_name_lower.contains("roundtrip")
+}
+
+/// Check function body for lossy transform pairs. Returns matched pair or None.
+fn find_lossy_pair(fn_content: &str) -> Option<(&'static str, &'static str)> {
+    let filtered: String = fn_content
+        .lines()
+        .filter(|l| {
+            let t = l.trim();
+            !t.starts_with("#[derive(") && !t.starts_with("//")
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+        .to_lowercase();
+    LOSSY_TRANSFORM_PAIRS
+        .iter()
+        .find(|(fwd, rev)| filtered.contains(*fwd) && filtered.contains(*rev))
+        .copied()
+}
+
 /// CB-519: Lossy Data Pipeline - detect quantize/dequantize/encode/decode round-trip chains
 pub fn detect_cb519_lossy_data_pipeline(project_path: &Path) -> Vec<CbPatternViolation> {
     let src_dir = project_path.join("src");
@@ -1156,18 +1209,6 @@ pub fn detect_cb519_lossy_data_pipeline(project_path: &Path) -> Vec<CbPatternVio
         Ok(e) => e,
         Err(_) => return Vec::new(),
     };
-
-    // Lossy transform pairs: if both halves appear in the same function, it's suspicious
-    let transform_pairs: &[(&str, &str)] = &[
-        ("quantize", "dequantize"),
-        ("encode", "decode"),
-        ("compress", "decompress"),
-        ("serialize", "deserialize"),
-        ("pack", "unpack"),
-        ("to_bytes", "from_bytes"),
-        ("to_f16", "to_f32"),
-        ("to_bf16", "to_f32"),
-    ];
 
     let mut violations = Vec::new();
 
@@ -1187,10 +1228,10 @@ pub fn detect_cb519_lossy_data_pipeline(project_path: &Path) -> Vec<CbPatternVio
             .display()
             .to_string();
 
-        // Track per-function: detect functions containing both halves of a lossy pair
         let mut fn_start: Option<usize> = None;
         let mut fn_depth: u32 = 0;
         let mut fn_content = String::new();
+        let mut skip_fn = false;
 
         for (i, line) in lines.iter().enumerate() {
             if test_lines.contains(&i) {
@@ -1198,59 +1239,147 @@ pub fn detect_cb519_lossy_data_pipeline(project_path: &Path) -> Vec<CbPatternVio
             }
             let trimmed = line.trim();
 
-            // Detect function start
-            if (trimmed.starts_with("pub fn ")
-                || trimmed.starts_with("fn ")
-                || trimmed.starts_with("pub async fn ")
-                || trimmed.starts_with("async fn "))
-                && fn_start.is_none()
-            {
+            if is_fn_start(trimmed) && fn_start.is_none() {
+                skip_fn = is_test_fn_definition(trimmed, i, &lines);
                 fn_start = Some(i);
                 fn_depth = 0;
                 fn_content.clear();
             }
 
-            if fn_start.is_some() {
-                fn_depth += trimmed.matches('{').count() as u32;
-                fn_depth = fn_depth.saturating_sub(trimmed.matches('}').count() as u32);
-                fn_content.push_str(trimmed);
-                fn_content.push('\n');
+            if fn_start.is_none() {
+                continue;
+            }
+            fn_depth += trimmed.matches('{').count() as u32;
+            fn_depth = fn_depth.saturating_sub(trimmed.matches('}').count() as u32);
+            fn_content.push_str(trimmed);
+            fn_content.push('\n');
 
-                // End of function
-                if fn_depth == 0 && i > fn_start.unwrap_or(i) {
-                    // Strip derive annotations and comments to avoid false positives
-                    // from #[derive(Serialize, Deserialize)] or doc comments
-                    let filtered: String = fn_content
-                        .lines()
-                        .filter(|l| {
-                            let t = l.trim();
-                            !t.starts_with("#[derive(") && !t.starts_with("//")
-                        })
-                        .collect::<Vec<_>>()
-                        .join("\n")
-                        .to_lowercase();
-                    for (fwd, rev) in transform_pairs {
-                        if filtered.contains(fwd) && filtered.contains(rev) {
-                            violations.push(CbPatternViolation {
-                                pattern_id: "CB-519".to_string(),
-                                file: file.clone(),
-                                line: fn_start.unwrap_or(0) + 1,
-                                description: format!(
-                                    "Lossy data pipeline: both {fwd}() and {rev}() in same function — possible round-trip data corruption"
-                                ),
-                                severity: Severity::Warning,
-                            });
-                            break;
-                        }
+            // End of function
+            if fn_depth == 0 && i > fn_start.unwrap_or(i) {
+                if !skip_fn {
+                    if let Some((fwd, rev)) = find_lossy_pair(&fn_content) {
+                        violations.push(CbPatternViolation {
+                            pattern_id: "CB-519".to_string(),
+                            file: file.clone(),
+                            line: fn_start.unwrap_or(0) + 1,
+                            description: format!(
+                                "Lossy data pipeline: both {fwd}() and {rev}() in same function — possible round-trip data corruption"
+                            ),
+                            severity: Severity::Warning,
+                        });
                     }
-                    fn_start = None;
-                    fn_content.clear();
                 }
+                fn_start = None;
+                fn_content.clear();
             }
         }
     }
 
     violations
+}
+
+/// Returns true if the line starts a function definition.
+fn is_fn_start(trimmed: &str) -> bool {
+    trimmed.starts_with("pub fn ")
+        || trimmed.starts_with("fn ")
+        || trimmed.starts_with("pub async fn ")
+        || trimmed.starts_with("async fn ")
+}
+
+/// Returns true if the line starts a loop construct.
+fn is_loop_start(trimmed: &str) -> bool {
+    trimmed.starts_with("for ")
+        || trimmed.starts_with("while ")
+        || trimmed == "loop {"
+        || trimmed.starts_with("loop {")
+}
+
+/// Returns true if the line starts a spawn closure (thread::spawn, tokio::spawn, etc.)
+fn is_spawn_call(trimmed: &str) -> bool {
+    trimmed.contains("thread::spawn")
+        || trimmed.contains("tokio::spawn")
+        || trimmed.contains("rayon::spawn")
+        || trimmed.contains("spawn_blocking")
+}
+
+const EXPENSIVE_INIT_PATTERNS: &[&str] = &[
+    "::new(", "::open(", "::connect(", "::create(", "::load(",
+    "::init(", "::build(", "::from_file(", "::from_path(",
+    "::read_to_string(", "File::open(",
+];
+
+/// Scan a single file for CB-520 expensive init in loop violations.
+fn scan_cb520_file(
+    lines: &[&str],
+    test_lines: &std::collections::HashSet<usize>,
+    file: &str,
+    violations: &mut Vec<CbPatternViolation>,
+) {
+    let mut in_loop = false;
+    let mut loop_depth: u32 = 0;
+    let mut loop_start: usize = 0;
+    let mut init_count: u32 = 0;
+    let mut init_examples: Vec<String> = Vec::new();
+    let mut spawn_depth: u32 = 0;
+
+    for (i, line) in lines.iter().enumerate() {
+        if test_lines.contains(&i) {
+            continue;
+        }
+        let trimmed = line.trim();
+        if trimmed.starts_with("//") || trimmed.starts_with("*") {
+            continue;
+        }
+
+        if !in_loop && is_loop_start(trimmed) {
+            in_loop = true;
+            loop_depth = 0;
+            loop_start = i;
+            init_count = 0;
+            init_examples.clear();
+            spawn_depth = 0;
+        }
+        if !in_loop {
+            continue;
+        }
+        loop_depth += trimmed.matches('{').count() as u32;
+        loop_depth = loop_depth.saturating_sub(trimmed.matches('}').count() as u32);
+
+        // Track spawn closures — constructors inside these are per-thread init
+        if is_spawn_call(trimmed) {
+            spawn_depth += trimmed.matches('{').count() as u32;
+        }
+        if spawn_depth > 0 {
+            spawn_depth = spawn_depth.saturating_sub(trimmed.matches('}').count() as u32);
+        }
+
+        // Only count expensive init if NOT inside a spawn closure
+        if spawn_depth == 0 {
+            if let Some(pat) = EXPENSIVE_INIT_PATTERNS.iter().find(|p| trimmed.contains(**p)) {
+                init_count += 1;
+                if init_examples.len() < 3 {
+                    init_examples.push(pat.trim_start_matches("::").to_string());
+                }
+            }
+        }
+
+        if loop_depth == 0 && i > loop_start {
+            if init_count >= 2 {
+                violations.push(CbPatternViolation {
+                    pattern_id: "CB-520".to_string(),
+                    file: file.to_string(),
+                    line: loop_start + 1,
+                    description: format!(
+                        "Expensive initialization in loop: {} constructor/load calls ({})",
+                        init_count,
+                        init_examples.join(", ")
+                    ),
+                    severity: Severity::Warning,
+                });
+            }
+            in_loop = false;
+        }
+    }
 }
 
 /// CB-520: Expensive Init in Hot Path - constructor/load/open calls inside loops
@@ -1261,12 +1390,6 @@ pub fn detect_cb520_expensive_init_in_loop(project_path: &Path) -> Vec<CbPattern
         Err(_) => return Vec::new(),
     };
 
-    let expensive_patterns = [
-        "::new(", "::open(", "::connect(", "::create(", "::load(",
-        "::init(", "::build(", "::from_file(", "::from_path(",
-        "::read_to_string(", "File::open(",
-    ];
-
     let mut violations = Vec::new();
 
     for entry in &entries {
@@ -1285,72 +1408,41 @@ pub fn detect_cb520_expensive_init_in_loop(project_path: &Path) -> Vec<CbPattern
             .display()
             .to_string();
 
-        let mut in_loop = false;
-        let mut loop_depth: u32 = 0;
-        let mut loop_start: usize = 0;
-        let mut init_count: u32 = 0;
-        let mut init_examples: Vec<String> = Vec::new();
-
-        for (i, line) in lines.iter().enumerate() {
-            if test_lines.contains(&i) {
-                continue;
-            }
-            let trimmed = line.trim();
-            if trimmed.starts_with("//") || trimmed.starts_with("*") {
-                continue;
-            }
-
-            if !in_loop
-                && (trimmed.starts_with("for ")
-                    || trimmed.starts_with("while ")
-                    || trimmed == "loop {"
-                    || trimmed.starts_with("loop {"))
-            {
-                in_loop = true;
-                loop_depth = 0;
-                loop_start = i;
-                init_count = 0;
-                init_examples.clear();
-            }
-
-            if in_loop {
-                loop_depth += trimmed.matches('{').count() as u32;
-                loop_depth = loop_depth.saturating_sub(trimmed.matches('}').count() as u32);
-
-                for pat in &expensive_patterns {
-                    if trimmed.contains(pat) {
-                        init_count += 1;
-                        if init_examples.len() < 3 {
-                            init_examples.push(pat.trim_start_matches("::").to_string());
-                        }
-                        break;
-                    }
-                }
-
-                if loop_depth == 0 && i > loop_start {
-                    if init_count >= 2 {
-                        violations.push(CbPatternViolation {
-                            pattern_id: "CB-520".to_string(),
-                            file: file.clone(),
-                            line: loop_start + 1,
-                            description: format!(
-                                "Expensive initialization in loop: {} constructor/load calls ({})",
-                                init_count,
-                                init_examples.join(", ")
-                            ),
-                            severity: Severity::Warning,
-                        });
-                    }
-                    in_loop = false;
-                }
-            }
-        }
+        scan_cb520_file(&lines, &test_lines, &file, &mut violations);
     }
 
     violations
 }
 
 /// CB-521: Format Detection Without Magic Bytes - binary parsing without header validation
+/// Binary read patterns that should be preceded by magic byte validation.
+const BINARY_READ_PATTERNS: &[&str] = &[
+    "read_exact(", "from_le_bytes(", "from_be_bytes(",
+    "read_u32::", "read_u64::", "read_i32::", "read_i64::",
+];
+
+const MAGIC_VALIDATION_PATTERNS: &[&str] = &[
+    "magic", "MAGIC", "signature", "SIGNATURE", "header_magic",
+    "file_type", "format_version", "FILE_MAGIC",
+];
+
+/// I/O context markers: function must have actual file/stream I/O to be
+/// considered "binary format parsing" (not just byte math in hash/quantize code).
+const IO_CONTEXT_PATTERNS: &[&str] = &[
+    "File::", "BufReader", "BufRead", "Cursor::", "stdin",
+    "from_reader(", ".read(", ".read_to_end(", "open(",
+    "Read>", "impl Read", "&[u8]",
+];
+
+/// Classify a non-comment code line for CB-521 binary parsing analysis.
+/// Returns (has_binary_read, has_magic_check, has_io_context).
+fn classify_cb521_line(trimmed: &str) -> (bool, bool, bool) {
+    let binary = BINARY_READ_PATTERNS.iter().any(|p| trimmed.contains(p));
+    let magic = MAGIC_VALIDATION_PATTERNS.iter().any(|p| trimmed.contains(p));
+    let io = IO_CONTEXT_PATTERNS.iter().any(|p| trimmed.contains(p));
+    (binary, magic, io)
+}
+
 pub fn detect_cb521_format_without_magic_bytes(project_path: &Path) -> Vec<CbPatternViolation> {
     let src_dir = project_path.join("src");
     let entries = match walkdir_rs_files(&src_dir) {
@@ -1358,17 +1450,6 @@ pub fn detect_cb521_format_without_magic_bytes(project_path: &Path) -> Vec<CbPat
         Err(_) => return Vec::new(),
     };
 
-    // Binary read patterns that should be preceded by magic byte validation
-    let binary_read_patterns = [
-        "read_exact(", "from_le_bytes(", "from_be_bytes(",
-        "read_u32::", "read_u64::", "read_i32::", "read_i64::",
-    ];
-
-    let magic_validation_patterns = [
-        "magic", "MAGIC", "signature", "SIGNATURE", "header_magic",
-        "file_type", "format_version", "FILE_MAGIC",
-    ];
-
     let mut violations = Vec::new();
 
     for entry in &entries {
@@ -1387,11 +1468,11 @@ pub fn detect_cb521_format_without_magic_bytes(project_path: &Path) -> Vec<CbPat
             .display()
             .to_string();
 
-        // Per-function analysis: functions that read binary but never check magic bytes
         let mut fn_start: Option<usize> = None;
         let mut fn_depth: u32 = 0;
         let mut has_binary_read = false;
         let mut has_magic_check = false;
+        let mut has_io_context = false;
         let mut binary_line = 0usize;
 
         for (i, line) in lines.iter().enumerate() {
@@ -1400,47 +1481,46 @@ pub fn detect_cb521_format_without_magic_bytes(project_path: &Path) -> Vec<CbPat
             }
             let trimmed = line.trim();
 
-            if (trimmed.starts_with("pub fn ")
-                || trimmed.starts_with("fn ")
-                || trimmed.starts_with("pub async fn ")
-                || trimmed.starts_with("async fn "))
-                && fn_start.is_none()
-            {
+            if is_fn_start(trimmed) && fn_start.is_none() {
                 fn_start = Some(i);
                 fn_depth = 0;
                 has_binary_read = false;
                 has_magic_check = false;
                 binary_line = 0;
+                // Check function signature for I/O types
+                let (_, _, io) = classify_cb521_line(trimmed);
+                has_io_context = io;
             }
 
-            if fn_start.is_some() {
-                fn_depth += trimmed.matches('{').count() as u32;
-                fn_depth = fn_depth.saturating_sub(trimmed.matches('}').count() as u32);
+            if fn_start.is_none() {
+                continue;
+            }
+            fn_depth += trimmed.matches('{').count() as u32;
+            fn_depth = fn_depth.saturating_sub(trimmed.matches('}').count() as u32);
 
-                if !trimmed.starts_with("//") {
-                    if binary_read_patterns.iter().any(|p| trimmed.contains(p)) {
-                        if !has_binary_read {
-                            binary_line = i;
-                        }
-                        has_binary_read = true;
-                    }
-                    if magic_validation_patterns.iter().any(|p| trimmed.contains(p)) {
-                        has_magic_check = true;
-                    }
+            if !trimmed.starts_with("//") {
+                let (binary, magic, io) = classify_cb521_line(trimmed);
+                if binary && !has_binary_read {
+                    binary_line = i;
                 }
+                has_binary_read |= binary;
+                has_magic_check |= magic;
+                has_io_context |= io;
+            }
 
-                if fn_depth == 0 && i > fn_start.unwrap_or(i) {
-                    if has_binary_read && !has_magic_check {
-                        violations.push(CbPatternViolation {
-                            pattern_id: "CB-521".to_string(),
-                            file: file.clone(),
-                            line: binary_line + 1,
-                            description: "Binary format parsing without magic byte/header validation".to_string(),
-                            severity: Severity::Warning,
-                        });
-                    }
-                    fn_start = None;
+            if fn_depth == 0 && i > fn_start.unwrap_or(i) {
+                // Only flag if actual I/O context is present — pure byte math
+                // (hash functions, quantized matvec) is not binary format parsing
+                if has_binary_read && !has_magic_check && has_io_context {
+                    violations.push(CbPatternViolation {
+                        pattern_id: "CB-521".to_string(),
+                        file: file.clone(),
+                        line: binary_line + 1,
+                        description: "Binary format parsing without magic byte/header validation".to_string(),
+                        severity: Severity::Warning,
+                    });
                 }
+                fn_start = None;
             }
         }
     }

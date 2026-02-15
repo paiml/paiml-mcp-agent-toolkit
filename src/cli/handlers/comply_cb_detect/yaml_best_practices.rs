@@ -16,10 +16,13 @@ const SKIP_DIRS: &[&str] = &[
 ];
 
 /// YAML "truthy" strings that cause subtle bugs when unquoted.
+/// Note: true/false/True/False/TRUE/FALSE are EXCLUDED because they are the
+/// canonical YAML 1.2 boolean values. Quoting them changes the type from bool
+/// to string, which breaks parsers that expect native booleans.
 const TRUTHY_STRINGS: &[&str] = &[
-    "yes", "no", "on", "off", "true", "false",
-    "Yes", "No", "On", "Off", "True", "False",
-    "YES", "NO", "ON", "OFF", "TRUE", "FALSE",
+    "yes", "no", "on", "off",
+    "Yes", "No", "On", "Off",
+    "YES", "NO", "ON", "OFF",
     "y", "n", "Y", "N",
 ];
 
@@ -48,6 +51,7 @@ const SECRET_KEY_PATTERNS: &[&str] = &[
 /// Known non-secret keys that contain secret-pattern substrings (e.g. "token").
 /// These are common ML/LLM inference parameters and permission scopes, not credentials.
 const SECRET_KEY_ALLOWLIST: &[&str] = &[
+    // LLM inference parameters
     "max_tokens",
     "num_tokens",
     "context_tokens",
@@ -59,6 +63,29 @@ const SECRET_KEY_ALLOWLIST: &[&str] = &[
     "max_new_tokens",
     "token_count",
     "tokens_per_second",
+    // ML model architecture fields (tokenizer / embedding config)
+    "eos_token",
+    "bos_token",
+    "pad_token",
+    "unk_token",
+    "sep_token",
+    "cls_token",
+    "mask_token",
+    "embed_tokens",
+    "token_type_embeddings",
+    "token_embeddings",
+    "stop_tokens",
+    "special_tokens",
+    "added_tokens",
+    "additional_special_tokens",
+    "token_type_ids",
+    "min_token_l2",
+    "saves_per_token",
+    "tokens_per_batch",
+    "token_dim",
+    "token_vocab_size",
+    "vocab_token",
+    "tokenizer",
     // GitHub Actions permission scopes (not secrets)
     "id-token",
     "id_token",

@@ -298,6 +298,8 @@ async fn handle_check(
         filter_check_by_config(check_shell_makefile_quality(project_path), "cb-400", comply_config),
         // CB-130: Agent Context Adoption (PMAT-470)
         filter_check_by_config(check_agent_context_adoption(project_path), "cb-130", comply_config),
+        // CB-200: TDG Grade Gate (#214)
+        filter_check_by_config(check_tdg_grade_gate(project_path, comply_config), "cb-200", comply_config),
         // CB-500: Rust Best Practices (defect detection improvement)
         filter_check_by_config(check_rust_best_practices_with_config(project_path, Some(comply_config)), "cb-500", comply_config),
         // CB-600: Lua Best Practices (PMAT-487: LuaTaint, FLuaScan, luacheck research)
@@ -1673,4 +1675,7 @@ pub(crate) fn check_dependency_count(project_path: &Path) -> ComplianceCheck {
 
 // Dead code analysis extracted for file health (CB-040)
 include!("check_handlers_dead_code.rs");
+
+// CB-200: TDG Grade Gate (#214)
+include!("check_handlers_tdg_grade.rs");
 
