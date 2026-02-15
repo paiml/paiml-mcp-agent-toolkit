@@ -52,6 +52,8 @@ use super::comply_cb_detect::{
     detect_cb523_external_config_over_embedded, detect_cb524_incomplete_enum_match,
     detect_cb525_hardcoded_field_names, detect_cb526_single_path_resolution,
     detect_cb527_incomplete_pattern_list,
+    // CB-528+: Numerical stability checks
+    detect_cb528_division_by_length, detect_cb530_log_without_clamp,
     CbPatternViolation,
 };
 use chrono::{DateTime, Utc};

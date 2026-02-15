@@ -891,3 +891,287 @@ setmetatable(M, { __call = function(_, ...) return M.new(...) end })
         assert!(violations.is_empty());
     }
 }
+
+// ============================================================================
+// CB-528: Division-by-length Without Empty Guard
+// ============================================================================
+mod cb528_tests {
+    use super::*;
+    use std::fs;
+    use tempfile::TempDir;
+
+    #[test]
+    fn test_cb528_detects_unguarded_division_by_len() {
+        let temp = TempDir::new().unwrap();
+        let src = temp.path().join("src");
+        fs::create_dir_all(&src).unwrap();
+        fs::write(
+            src.join("stats.rs"),
+            r#"
+fn mean(values: &[f64]) -> f64 {
+    let sum: f64 = values.iter().sum();
+    sum / values.len() as f64
+}
+"#,
+        )
+        .unwrap();
+
+        let violations = detect_cb528_division_by_length(temp.path());
+        assert_eq!(violations.len(), 1, "should detect unguarded division by len");
+        assert!(violations[0].description.contains("Division by .len()"));
+        assert_eq!(violations[0].pattern_id, "CB-528");
+    }
+
+    #[test]
+    fn test_cb528_allows_guarded_division_with_is_empty() {
+        let temp = TempDir::new().unwrap();
+        let src = temp.path().join("src");
+        fs::create_dir_all(&src).unwrap();
+        fs::write(
+            src.join("stats.rs"),
+            r#"
+fn mean(values: &[f64]) -> f64 {
+    if values.is_empty() {
+        return 0.0;
+    }
+    let sum: f64 = values.iter().sum();
+    sum / values.len() as f64
+}
+"#,
+        )
+        .unwrap();
+
+        let violations = detect_cb528_division_by_length(temp.path());
+        assert!(violations.is_empty(), "should not flag when is_empty guard present");
+    }
+
+    #[test]
+    fn test_cb528_allows_guarded_division_with_max_1() {
+        let temp = TempDir::new().unwrap();
+        let src = temp.path().join("src");
+        fs::create_dir_all(&src).unwrap();
+        fs::write(
+            src.join("stats.rs"),
+            r#"
+fn diversity(items: &[String], total: &[String]) -> f32 {
+    items.len() as f32 / total.len().max(1) as f32
+}
+"#,
+        )
+        .unwrap();
+
+        let violations = detect_cb528_division_by_length(temp.path());
+        assert!(violations.is_empty(), "should not flag when .max(1) guard present");
+    }
+
+    #[test]
+    fn test_cb528_skips_test_code() {
+        let temp = TempDir::new().unwrap();
+        let src = temp.path().join("src");
+        fs::create_dir_all(&src).unwrap();
+        fs::write(
+            src.join("lib.rs"),
+            r#"
+fn production() {}
+
+#[cfg(test)]
+mod tests {
+    fn test_mean() {
+        let sum = 10.0;
+        let result = sum / vec![1,2,3].len() as f64;
+    }
+}
+"#,
+        )
+        .unwrap();
+
+        let violations = detect_cb528_division_by_length(temp.path());
+        assert!(violations.is_empty(), "should not flag test code");
+    }
+
+    #[test]
+    fn test_cb528_allows_len_gt_zero_guard() {
+        let temp = TempDir::new().unwrap();
+        let src = temp.path().join("src");
+        fs::create_dir_all(&src).unwrap();
+        fs::write(
+            src.join("stats.rs"),
+            r#"
+fn mean(values: &[f64]) -> f64 {
+    if values.len() > 0 {
+        values.iter().sum::<f64>() / values.len() as f64
+    } else {
+        0.0
+    }
+}
+"#,
+        )
+        .unwrap();
+
+        let violations = detect_cb528_division_by_length(temp.path());
+        assert!(violations.is_empty(), "should not flag when len > 0 guard present");
+    }
+}
+
+// ============================================================================
+// CB-530: Log Without Clamp Guard
+// ============================================================================
+mod cb530_tests {
+    use super::*;
+    use std::fs;
+    use tempfile::TempDir;
+
+    #[test]
+    fn test_cb530_detects_bare_ln() {
+        let temp = TempDir::new().unwrap();
+        let src = temp.path().join("src");
+        fs::create_dir_all(&src).unwrap();
+        fs::write(
+            src.join("loss.rs"),
+            r#"
+fn cross_entropy(probs: &[f32], labels: &[usize]) -> f32 {
+    let mut total = 0.0;
+    for &label in labels {
+        total -= probs[label].ln();
+    }
+    total
+}
+"#,
+        )
+        .unwrap();
+
+        let violations = detect_cb530_log_without_clamp(temp.path());
+        assert_eq!(violations.len(), 1, "should detect bare .ln() without guard");
+        assert!(violations[0].description.contains("ln()"));
+        assert_eq!(violations[0].pattern_id, "CB-530");
+    }
+
+    #[test]
+    fn test_cb530_allows_max_guarded_ln() {
+        let temp = TempDir::new().unwrap();
+        let src = temp.path().join("src");
+        fs::create_dir_all(&src).unwrap();
+        fs::write(
+            src.join("loss.rs"),
+            r#"
+fn cross_entropy(probs: &[f32], labels: &[usize]) -> f32 {
+    let mut total = 0.0;
+    for &label in labels {
+        total -= probs[label].max(1e-10).ln();
+    }
+    total
+}
+"#,
+        )
+        .unwrap();
+
+        let violations = detect_cb530_log_without_clamp(temp.path());
+        assert!(violations.is_empty(), "should not flag when .max(eps) guard present");
+    }
+
+    #[test]
+    fn test_cb530_allows_clamp_guarded_log() {
+        let temp = TempDir::new().unwrap();
+        let src = temp.path().join("src");
+        fs::create_dir_all(&src).unwrap();
+        fs::write(
+            src.join("info.rs"),
+            r#"
+fn entropy(p: f64) -> f64 {
+    let safe_p = p.clamp(1e-15, 1.0);
+    -safe_p * safe_p.ln()
+}
+"#,
+        )
+        .unwrap();
+
+        let violations = detect_cb530_log_without_clamp(temp.path());
+        // The clamp is on a preceding line — should be caught by context check
+        // Actually .ln() is on safe_p which was clamped, but our detector checks same line
+        // This tests that we look at preceding lines for guards
+        assert!(violations.is_empty(), "should not flag when .clamp() guard on preceding line");
+    }
+
+    #[test]
+    fn test_cb530_allows_positive_literal_log() {
+        let temp = TempDir::new().unwrap();
+        let src = temp.path().join("src");
+        fs::create_dir_all(&src).unwrap();
+        fs::write(
+            src.join("math.rs"),
+            r#"
+fn log_base_2() -> f64 {
+    let ln2 = 2.0_f64.ln();
+    ln2
+}
+"#,
+        )
+        .unwrap();
+
+        let violations = detect_cb530_log_without_clamp(temp.path());
+        assert!(violations.is_empty(), "should not flag positive literal .ln()");
+    }
+
+    #[test]
+    fn test_cb530_detects_log2() {
+        let temp = TempDir::new().unwrap();
+        let src = temp.path().join("src");
+        fs::create_dir_all(&src).unwrap();
+        fs::write(
+            src.join("bits.rs"),
+            r#"
+fn bit_entropy(freq: f32) -> f32 {
+    -freq * freq.log2()
+}
+"#,
+        )
+        .unwrap();
+
+        let violations = detect_cb530_log_without_clamp(temp.path());
+        assert_eq!(violations.len(), 1, "should detect bare .log2()");
+        assert!(violations[0].description.contains("log2()"));
+    }
+
+    #[test]
+    fn test_cb530_skips_test_code() {
+        let temp = TempDir::new().unwrap();
+        let src = temp.path().join("src");
+        fs::create_dir_all(&src).unwrap();
+        fs::write(
+            src.join("lib.rs"),
+            r#"
+fn production() {}
+
+#[cfg(test)]
+mod tests {
+    fn test_log() {
+        let x = 0.5_f32.ln();
+    }
+}
+"#,
+        )
+        .unwrap();
+
+        let violations = detect_cb530_log_without_clamp(temp.path());
+        assert!(violations.is_empty(), "should not flag test code");
+    }
+
+    #[test]
+    fn test_cb530_allows_log_of_one_plus_x() {
+        let temp = TempDir::new().unwrap();
+        let src = temp.path().join("src");
+        fs::create_dir_all(&src).unwrap();
+        fs::write(
+            src.join("mel.rs"),
+            r#"
+fn hz_to_mel(hz: f32) -> f32 {
+    2595.0 * (1.0 + hz / 700.0).log10()
+}
+"#,
+        )
+        .unwrap();
+
+        let violations = detect_cb530_log_without_clamp(temp.path());
+        assert!(violations.is_empty(), "should not flag log of (1.0 + x) pattern");
+    }
+}

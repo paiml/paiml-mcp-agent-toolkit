@@ -266,7 +266,7 @@ pub(crate) fn check_rust_best_practices_with_config(
     // Quick exit: no Cargo.toml means not a Rust project — skip all CB-500 checks
     if !project_path.join("Cargo.toml").exists() {
         return ComplianceCheck {
-            name: "CB-500: Rust Best Practices (CB-500 to CB-527)".to_string(),
+            name: "CB-500: Rust Best Practices (CB-500 to CB-530)".to_string(),
             status: CheckStatus::Pass,
             message: "Not a Rust project (no Cargo.toml found)".to_string(),
             severity: Severity::Info,
@@ -302,10 +302,12 @@ pub(crate) fn check_rust_best_practices_with_config(
         ("CB-525", detect_cb525_hardcoded_field_names(project_path)),
         ("CB-526", detect_cb526_single_path_resolution(project_path)),
         ("CB-527", detect_cb527_incomplete_pattern_list(project_path)),
+        ("CB-528", detect_cb528_division_by_length(project_path)),
+        ("CB-530", detect_cb530_log_without_clamp(project_path)),
     ];
 
     aggregate_violations(
-        "CB-500: Rust Best Practices (CB-500 to CB-527)",
+        "CB-500: Rust Best Practices (CB-500 to CB-530)",
         &detectors,
         comply_config,
         false,
