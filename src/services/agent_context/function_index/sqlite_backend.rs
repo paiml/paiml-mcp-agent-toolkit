@@ -29,15 +29,23 @@ pub(crate) fn open_db(db_path: &Path) -> Result<Connection, String> {
     )
     .map_err(|e| format!("Failed to open index DB: {e}"))?;
 
-    // Performance + concurrency pragmas
-    conn.execute_batch(
+    // Dynamic mmap: cover the full file to avoid read() syscall fallback.
+    // For new DBs (size=0), use 256MB default. Cap at 2GB (SQLite limit on 32-bit).
+    let file_size = std::fs::metadata(db_path).map(|m| m.len()).unwrap_or(0);
+    let mmap_size = if file_size > 0 {
+        (file_size as i64 * 5 / 4).min(2_147_483_648) // 125% of file size, cap 2GB
+    } else {
+        268_435_456 // 256MB default for new DBs
+    };
+
+    conn.execute_batch(&format!(
         "PRAGMA journal_mode = WAL;
          PRAGMA synchronous = NORMAL;
          PRAGMA busy_timeout = 5000;
          PRAGMA cache_size = -64000;
-         PRAGMA mmap_size = 268435456;
+         PRAGMA mmap_size = {mmap_size};
          PRAGMA temp_store = MEMORY;",
-    )
+    ))
     .map_err(|e| format!("Failed to set pragmas: {e}"))?;
 
     Ok(conn)
