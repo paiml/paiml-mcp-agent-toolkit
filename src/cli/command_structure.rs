@@ -889,6 +889,11 @@ impl CommandExecutor {
             Commands::DepsAudit { .. } => {
                 anyhow::bail!("DepsAudit command should be handled by command_dispatcher.rs")
             }
+
+            // Kaizen autonomous improvement - handled by command_dispatcher.rs
+            Commands::Kaizen { .. } => {
+                anyhow::bail!("Kaizen command should be handled by command_dispatcher.rs")
+            }
         }
     }
 }

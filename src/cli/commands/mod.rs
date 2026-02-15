@@ -1253,6 +1253,59 @@ pub enum Commands {
         command: ComplyCommands,
     },
 
+    /// Autonomous continuous improvement (Toyota Way Kaizen)
+    /// Scans for improvement opportunities, applies safe fixes, and reports remaining issues
+    #[command(visible_aliases = &["improve"])]
+    Kaizen {
+        /// Project path to analyze
+        #[arg(short = 'p', long, default_value = ".")]
+        path: PathBuf,
+
+        /// Scan only, do not apply any fixes
+        #[arg(long)]
+        dry_run: bool,
+
+        /// Commit after applying fixes
+        #[arg(long)]
+        commit: bool,
+
+        /// Push after committing
+        #[arg(long)]
+        push: bool,
+
+        /// Spawn AI sub-agents for complex fixes
+        #[arg(long)]
+        agent: bool,
+
+        /// Maximum concurrent AI sub-agents
+        #[arg(long, default_value_t = 3)]
+        max_agents: usize,
+
+        /// Output format
+        #[arg(short = 'f', long, value_enum, default_value = "text")]
+        format: KaizenOutputFormat,
+
+        /// Write output to file
+        #[arg(short = 'o', long)]
+        output: Option<PathBuf>,
+
+        /// Skip clippy analysis
+        #[arg(long)]
+        skip_clippy: bool,
+
+        /// Skip rustfmt analysis
+        #[arg(long)]
+        skip_fmt: bool,
+
+        /// Skip comply analysis
+        #[arg(long)]
+        skip_comply: bool,
+
+        /// Skip GitHub issues analysis
+        #[arg(long)]
+        skip_github: bool,
+    },
+
     /// Rust project diagnostics (20 checks across 5 categories)
     #[command(name = "project-diag", visible_aliases = &["pdiag", "proj-diag"])]
     ProjectDiag {

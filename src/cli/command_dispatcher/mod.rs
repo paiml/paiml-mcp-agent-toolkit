@@ -370,7 +370,8 @@ impl CommandDispatcher {
             | Commands::Spec { .. }
             | Commands::Localize { .. }
             | Commands::CudaTdg { .. }
-            | Commands::DepsAudit { .. }) => Self::route_quality_command(cmd).await,
+            | Commands::DepsAudit { .. }
+            | Commands::Kaizen { .. }) => Self::route_quality_command(cmd).await,
         }
     }
 
@@ -523,6 +524,36 @@ impl CommandDispatcher {
                 pareto,
                 sort_by,
             } => handlers::deps_audit_handlers::handle_deps_audit(&path, &format, all, pareto, &sort_by),
+            Commands::Kaizen {
+                path,
+                dry_run,
+                commit,
+                push,
+                agent,
+                max_agents,
+                format,
+                output,
+                skip_clippy,
+                skip_fmt,
+                skip_comply,
+                skip_github,
+            } => {
+                let config = handlers::kaizen_handler::KaizenConfig {
+                    path,
+                    dry_run,
+                    commit,
+                    push,
+                    auto_agent: agent,
+                    max_agents,
+                    format,
+                    output,
+                    skip_clippy,
+                    skip_fmt,
+                    skip_comply,
+                    skip_github,
+                };
+                handlers::kaizen_handler::handle_kaizen(config).await
+            }
             _ => unreachable!("route_quality_command called with non-quality command"),
         }
     }

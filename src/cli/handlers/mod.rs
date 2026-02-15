@@ -49,6 +49,7 @@ pub mod graph_context_integration_tests;
 pub mod handler_utils; // Unit-testable pure functions extracted from handlers
 pub mod health_handler;
 pub mod hooks_command_handlers;
+pub mod kaizen_handler; // GH-213: Autonomous continuous improvement (Toyota Way Kaizen)
 pub mod incremental_coverage_handler;
 pub mod lint_hotspot_handlers;
 #[cfg(test)]

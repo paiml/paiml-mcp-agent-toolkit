@@ -536,6 +536,18 @@ pub enum SpecOutputFormat {
     Markdown,
 }
 
+/// Output format for kaizen command
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, clap::ValueEnum)]
+pub enum KaizenOutputFormat {
+    /// Human-readable text format
+    #[default]
+    Text,
+    /// JSON format for CI/CD
+    Json,
+    /// Markdown report format
+    Markdown,
+}
+
 /// Output format for work annotate command
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, clap::ValueEnum)]
 pub enum AnnotateOutputFormat {
