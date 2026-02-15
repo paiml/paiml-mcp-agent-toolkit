@@ -705,8 +705,11 @@ impl AgentContextIndex {
 
     /// Build an incremental index update, re-parsing only changed files.
     ///
-    /// Compares file SHA256 checksums against the existing index to determine
-    /// which files need re-parsing. Unchanged files reuse existing function entries.
+    /// Uses a two-tier change detection strategy:
+    /// 1. **Mtime fast path**: If file mtime < index built_at, skip read+SHA256 entirely
+    /// 2. **SHA256 fallback**: For files with newer mtime, read and compare checksums
+    ///
+    /// This reduces I/O from reading all files to only those modified since last build.
     pub fn build_incremental(project_path: &Path, existing: &Self) -> Result<Self, String> {
         let project_root = project_path
             .canonicalize()
@@ -718,7 +721,11 @@ impl AgentContextIndex {
         let mut file_checksums: HashMap<String, String> = HashMap::new();
         let mut files_reused = 0usize;
         let mut files_reparsed = 0usize;
+        let mut files_mtime_skipped = 0usize;
         let mut coverage_off_files = HashSet::new();
+
+        // Parse index built_at timestamp for mtime comparison
+        let index_built_at = parse_built_at(&existing.manifest.built_at);
 
         // Walk the project directory
         for entry in WalkBuilder::new(&project_root)
@@ -739,16 +746,28 @@ impl AgentContextIndex {
                 None => continue,
             };
 
-            let content = match fs::read_to_string(path) {
-                Ok(c) => c,
-                Err(_) => continue,
-            };
-
             let relative_path = path
                 .strip_prefix(&project_root)
                 .unwrap_or(path)
                 .to_string_lossy()
                 .to_string();
+
+            // Mtime fast path: skip read+SHA256 if file hasn't been modified since index was built
+            if let Some(reuse) = check_mtime_reuse(path, &relative_path, &index_built_at, existing) {
+                functions.extend(reuse.functions);
+                file_checksums.insert(relative_path.clone(), reuse.checksum);
+                if reuse.coverage_off {
+                    coverage_off_files.insert(relative_path);
+                }
+                files_mtime_skipped += 1;
+                file_count += 1;
+                continue;
+            }
+
+            let content = match fs::read_to_string(path) {
+                Ok(c) => c,
+                Err(_) => continue,
+            };
 
             let checksum = compute_file_sha256(&content);
             file_checksums.insert(relative_path.clone(), checksum.clone());
@@ -758,7 +777,7 @@ impl AgentContextIndex {
                 coverage_off_files.insert(relative_path.clone());
             }
 
-            // Check if file is unchanged
+            // Check if file is unchanged (content-based fallback for files with newer mtime)
             let unchanged = existing
                 .manifest
                 .file_checksums
@@ -836,8 +855,8 @@ impl AgentContextIndex {
         }
 
         eprintln!(
-            "Incremental update: {} files reused, {} files re-parsed",
-            files_reused, files_reparsed
+            "Incremental update: {} mtime-skipped, {} checksum-reused, {} re-parsed",
+            files_mtime_skipped, files_reused, files_reparsed
         );
 
         // Build all derived data
@@ -1063,7 +1082,6 @@ impl AgentContextIndex {
     pub fn load_source_for(&self, file_path: &str, start_line: usize) -> String {
         // Look up end_line from the in-memory index for filesystem fallback
         let mut end_line = 0usize;
-        // Check if any function in memory already has source
         if let Some(indices) = self.file_index.get(file_path) {
             for &idx in indices {
                 if self.functions[idx].start_line == start_line {
@@ -1074,29 +1092,77 @@ impl AgentContextIndex {
                 }
             }
         }
-        // Fall back to SQLite
         if let Some(ref db_path) = self.db_path {
-            if let Ok(conn) = super::sqlite_backend::open_db(db_path) {
-                if let Ok(src) = super::sqlite_backend::load_source_by_location(&conn, file_path, start_line) {
-                    if !src.is_empty() {
-                        return src;
-                    }
-                }
+            if let Some(src) = load_source_from_sqlite(db_path, file_path, start_line) {
+                return src;
             }
         }
-        // Final fallback: read from filesystem
-        if end_line > 0 && start_line > 0 {
-            if let Ok(content) = std::fs::read_to_string(file_path) {
-                let lines: Vec<&str> = content.lines().collect();
-                let start = start_line.saturating_sub(1);
-                let end = end_line.min(lines.len());
-                if start < end {
-                    return lines[start..end].join("\n");
-                }
-            }
-        }
-        String::new()
+        load_source_from_file(file_path, start_line, end_line).unwrap_or_default()
     }
+}
+
+/// Load function source from SQLite by file path and start line.
+fn load_source_from_sqlite(db_path: &Path, file_path: &str, start_line: usize) -> Option<String> {
+    let conn = super::sqlite_backend::open_db(db_path).ok()?;
+    let src = super::sqlite_backend::load_source_by_location(&conn, file_path, start_line).ok()?;
+    if src.is_empty() { None } else { Some(src) }
+}
+
+/// Load function source from filesystem using line range.
+fn load_source_from_file(file_path: &str, start_line: usize, end_line: usize) -> Option<String> {
+    if end_line == 0 || start_line == 0 {
+        return None;
+    }
+    let content = std::fs::read_to_string(file_path).ok()?;
+    let lines: Vec<&str> = content.lines().collect();
+    let start = start_line.saturating_sub(1);
+    let end = end_line.min(lines.len());
+    if start < end { Some(lines[start..end].join("\n")) } else { None }
+}
+
+/// Result of a successful mtime-based file reuse check.
+struct MtimeReuseResult {
+    functions: Vec<FunctionEntry>,
+    checksum: String,
+    coverage_off: bool,
+}
+
+/// Check if a file can be reused based on mtime (no read or SHA256 needed).
+///
+/// Returns Some if the file's mtime is older than the index built_at timestamp
+/// and its checksum exists in the existing manifest. Returns None otherwise,
+/// signaling the caller must fall back to content-based SHA256 comparison.
+fn check_mtime_reuse(
+    path: &Path,
+    relative_path: &str,
+    index_built_at: &Option<std::time::SystemTime>,
+    existing: &AgentContextIndex,
+) -> Option<MtimeReuseResult> {
+    let built_at = index_built_at.as_ref()?;
+    let mtime = fs::metadata(path).ok()?.modified().ok()?;
+    if mtime >= *built_at {
+        return None;
+    }
+    let checksum = existing.manifest.file_checksums.get(relative_path)?.clone();
+    let funcs = existing
+        .file_index
+        .get(relative_path)
+        .map(|indices| indices.iter().map(|&idx| existing.functions[idx].clone()).collect())
+        .unwrap_or_default();
+    let coverage_off = existing.coverage_off_files.contains(relative_path);
+    Some(MtimeReuseResult { functions: funcs, checksum, coverage_off })
+}
+
+/// Parse an RFC 3339 timestamp string into a SystemTime.
+///
+/// Returns None if the string can't be parsed (graceful fallback to SHA256-only path).
+fn parse_built_at(built_at: &str) -> Option<std::time::SystemTime> {
+    let dt = chrono::DateTime::parse_from_rfc3339(built_at).ok()?;
+    let secs = dt.timestamp();
+    if secs < 0 {
+        return None;
+    }
+    Some(std::time::UNIX_EPOCH + std::time::Duration::from_secs(secs as u64))
 }
 
 /// Extract the project prefix from a file path (everything before the first `/`).

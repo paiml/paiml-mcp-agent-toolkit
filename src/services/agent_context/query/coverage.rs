@@ -492,6 +492,64 @@ fn mnt_target_candidates(project_root: &Path) -> Vec<std::path::PathBuf> {
         .collect()
 }
 
+/// Fast profdata discovery: same as `get_profdata_mtime_and_dir()` but skips
+/// `cargo metadata` subprocess (step 6). Returns immediately if no fast
+/// candidate found. Used for pre-checks where hanging on a subprocess is
+/// unacceptable (e.g., `--coverage-gaps` on repos without coverage data).
+#[cfg_attr(coverage_nightly, coverage(off))]
+fn get_profdata_mtime_fast(
+    project_root: &Path,
+    stored_path: Option<&str>,
+) -> Option<(u64, String)> {
+    // Fast path: check previously stored directory first
+    if let Some(p) = stored_path {
+        if let Some(mtime) = dir_mtime(std::path::Path::new(p)) {
+            return Some((mtime, p.to_string()));
+        }
+    }
+
+    let mut candidates: Vec<std::path::PathBuf> = Vec::with_capacity(8);
+
+    // 1. CARGO_TARGET_DIR env var
+    if let Ok(target_dir) = std::env::var("CARGO_TARGET_DIR") {
+        candidates.push(std::path::PathBuf::from(&target_dir).join("llvm-cov-target"));
+    }
+
+    // 2. .cargo/config.toml (project-local, then global)
+    candidates.extend(target_dir_from_cargo_config(
+        &project_root.join(".cargo/config.toml"),
+        project_root,
+    ));
+    let cargo_home = std::env::var("CARGO_HOME").unwrap_or_else(|_| {
+        std::env::var("HOME")
+            .map(|h| format!("{h}/.cargo"))
+            .unwrap_or_default()
+    });
+    if !cargo_home.is_empty() {
+        let global_config = std::path::PathBuf::from(&cargo_home).join("config.toml");
+        candidates.extend(target_dir_from_cargo_config(&global_config, project_root));
+    }
+
+    // 3. NVMe/RAID mount scan
+    candidates.extend(mnt_target_candidates(project_root));
+
+    // 4. Default target dir (follows symlinks via canonicalize)
+    let default_target = project_root.join("target");
+    if let Ok(canonical) = default_target.canonicalize() {
+        candidates.push(canonical.join("llvm-cov-target"));
+    }
+    candidates.push(default_target.join("llvm-cov-target"));
+
+    // Check fast candidates only — NO cargo metadata subprocess
+    for dir in &candidates {
+        if let Some(mtime) = dir_mtime(dir) {
+            return Some((mtime, dir.to_string_lossy().to_string()));
+        }
+    }
+
+    None
+}
+
 /// Try `cargo metadata` to discover target_directory (slow — subprocess spawn).
 #[cfg_attr(coverage_nightly, coverage(off))]
 fn cargo_metadata_target_dir(project_root: &Path) -> Vec<std::path::PathBuf> {
@@ -711,8 +769,9 @@ fn run_cargo_llvm_cov_and_cache(
     }
 
     // Fast pre-check: verify profdata directory exists before spawning subprocess.
-    // Without this, `cargo llvm-cov report` hangs for 30s then fails.
-    if get_profdata_mtime_and_dir(project_root, None).is_none() {
+    // Uses get_profdata_mtime_fast() which skips `cargo metadata` subprocess —
+    // prevents 30s hangs on repos without coverage data (#212).
+    if get_profdata_mtime_fast(project_root, None).is_none() {
         return Err(
             "No coverage data available.\n\n\
             To generate it, run:\n  \
@@ -723,6 +782,7 @@ fn run_cargo_llvm_cov_and_cache(
         );
     }
 
+    eprintln!("Generating coverage report...");
     let output = run_llvm_cov_subprocess(project_root)?;
     let json = String::from_utf8_lossy(&output.stdout);
     let file_coverage = build_coverage_map(&json, project_root)?;
@@ -744,6 +804,28 @@ fn write_coverage_cache(
         coverage_mtime: mtime,
         profdata_dir: dir,
         files: files.clone(),
+    };
+    if let Ok(cache_json) = serde_json::to_string(&cache) {
+        let _ = std::fs::create_dir_all(project_root.join(".pmat"));
+        let _ = std::fs::write(cache_path, cache_json);
+    }
+}
+
+/// Write a negative coverage cache — records that no coverage data is available.
+///
+/// Uses `get_profdata_mtime_fast()` (no subprocess) so this never blocks.
+/// Invalidated when git hash changes or profdata mtime changes (user runs
+/// `cargo llvm-cov test`). Avoids 30s subprocess timeout on every invocation (#212).
+#[cfg_attr(coverage_nightly, coverage(off))]
+fn write_negative_coverage_cache(cache_path: &Path, head_hash: &str, project_root: &Path) {
+    let (mtime, dir) = get_profdata_mtime_fast(project_root, None)
+        .map(|(m, d)| (Some(m), Some(d)))
+        .unwrap_or((None, None));
+    let cache = CoverageCache {
+        git_hash: head_hash.to_string(),
+        coverage_mtime: mtime,
+        profdata_dir: dir,
+        files: HashMap::new(),
     };
     if let Ok(cache_json) = serde_json::to_string(&cache) {
         let _ = std::fs::create_dir_all(project_root.join(".pmat"));
@@ -898,11 +980,37 @@ pub async fn enrich_results_with_coverage(
         .map_err(|e| format!("git rev-parse failed: {e}"))?;
     let head_hash = String::from_utf8_lossy(&head_hash.stdout).trim().to_string();
 
-    let cov = load_coverage_from_cache(&cache_path, &head_hash, project_root)
-        .map(Ok)
-        .unwrap_or_else(|| run_cargo_llvm_cov_and_cache(project_root, &cache_path, &head_hash))?;
-    enrich_with_coverage(results, &cov);
-    Ok(())
+    // Check cache first
+    if let Some(cached) = load_coverage_from_cache(&cache_path, &head_hash, project_root) {
+        if cached.is_empty() {
+            // Negative cache hit: previous attempt found no coverage data.
+            // Invalidated when git hash or profdata mtime changes.
+            return Err(
+                "No coverage data available (cached from previous attempt).\n\n\
+                To generate it, run:\n  \
+                cargo llvm-cov test --lib --no-report\n\n\
+                Then re-run with --coverage-gaps.\n\
+                Or pass --coverage-file <path> to use existing coverage JSON."
+                    .to_string(),
+            );
+        }
+        enrich_with_coverage(results, &cached);
+        return Ok(());
+    }
+
+    // Cache miss — run cargo llvm-cov (writes positive cache on success)
+    match run_cargo_llvm_cov_and_cache(project_root, &cache_path, &head_hash) {
+        Ok(cov) => {
+            enrich_with_coverage(results, &cov);
+            Ok(())
+        }
+        Err(e) => {
+            // Negative cache: avoid 30s subprocess retry on next invocation (#212).
+            // Invalidated when git hash or profdata mtime changes.
+            write_negative_coverage_cache(&cache_path, &head_hash, project_root);
+            Err(e)
+        }
+    }
 }
 
 /// Load and merge coverage caches from sibling projects for workspace-level coverage gaps.

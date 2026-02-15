@@ -847,13 +847,17 @@ async fn handle_coverage_gaps_mode(
 
     if !quiet { eprintln!("Loading coverage data..."); }
     let cov_path = coverage_file.as_deref();
-    if let Err(e) = enrich_results_with_coverage(&mut results, project_path, cov_path).await {
-        eprintln!("Error: {}", e);
-        return Ok(());
-    }
+    let coverage_loaded = match enrich_results_with_coverage(&mut results, project_path, cov_path).await {
+        Ok(()) => true,
+        Err(e) => {
+            eprintln!("{YELLOW}Warning:{RESET} {}", e);
+            eprintln!("{DIM}Showing functions without coverage enrichment.{RESET}");
+            false
+        }
+    };
 
     // Merge sibling coverage caches for workspace-level coverage gaps
-    if !siblings.is_empty() {
+    if coverage_loaded && !siblings.is_empty() {
         let workspace_cov = crate::services::agent_context::load_workspace_coverage(siblings);
         if !workspace_cov.is_empty() {
             if !quiet {
@@ -864,7 +868,10 @@ async fn handle_coverage_gaps_mode(
     }
     profile.phase("enrich_coverage");
 
-    results.retain(|r| r.lines_total > 0 && r.line_coverage_pct < 100.0);
+    // Only filter by coverage data if coverage was successfully loaded
+    if coverage_loaded {
+        results.retain(|r| r.lines_total > 0 && r.line_coverage_pct < 100.0);
+    }
 
     let (mut testable, excluded): (Vec<QueryResult>, Vec<QueryResult>) =
         results.into_iter().partition(|r| !r.coverage_excluded);
@@ -1327,6 +1334,10 @@ include!("query_handler_git_format.rs");
 // ── Index management (unchanged) ────────────────────────────────────────────
 
 /// Load local index, do incremental update if needed, and merge siblings.
+///
+/// Save threshold: only rewrites the full SQLite index when changes exceed
+/// 50 files or 5% of the index. This avoids rewriting 660MB for a handful
+/// of changes during development (#212).
 fn try_incremental_update(
     project_path: &PathBuf, index_path: &PathBuf, existing: AgentContextIndex, quiet: bool,
 ) -> AgentContextIndex {
@@ -1336,12 +1347,27 @@ fn try_incremental_update(
     if !quiet { eprintln!("Checking for incremental updates..."); }
     match AgentContextIndex::build_incremental(project_path, &existing) {
         Ok(updated) => {
-            if updated.manifest().last_incremental_changes > 0 {
-                let _ = updated.save(index_path);
-            }
+            maybe_save_incremental(&updated, index_path, quiet);
             updated
         }
         Err(_) => existing,
+    }
+}
+
+/// Save the index only when changes exceed 50 files or 5% of index size.
+/// Avoids rewriting 660MB SQLite for a handful of changes (#212).
+fn maybe_save_incremental(index: &AgentContextIndex, index_path: &PathBuf, quiet: bool) {
+    let changes = index.manifest().last_incremental_changes;
+    if changes == 0 {
+        return;
+    }
+    let total = index.functions.len();
+    let pct = if total > 0 { changes as f64 / total as f64 } else { 0.0 };
+    if changes > 50 || pct > 0.05 {
+        if !quiet { eprintln!("Saving index ({} changes)...", changes); }
+        let _ = index.save(index_path);
+    } else if !quiet {
+        eprintln!("Skipping save ({} minor changes)", changes);
     }
 }
 
