@@ -894,6 +894,11 @@ impl CommandExecutor {
             Commands::Kaizen { .. } => {
                 anyhow::bail!("Kaizen command should be handled by command_dispatcher.rs")
             }
+
+            // GH-215: Extract - handled by command_dispatcher.rs
+            Commands::Extract { .. } => {
+                anyhow::bail!("Extract command should be handled by command_dispatcher.rs")
+            }
         }
     }
 }

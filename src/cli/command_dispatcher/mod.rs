@@ -360,6 +360,10 @@ impl CommandDispatcher {
                 // GH-96: PMAT compliance and migration system
                 handlers::comply_handlers::handle_comply_command(command).await
             }
+            Commands::Extract { list } => {
+                // GH-215: Extract function boundaries from a single file
+                handlers::handle_extract_list(&list).await
+            }
 
             // Quality and analysis commands delegated to reduce cognitive complexity
             cmd @ (Commands::ProjectDiag { .. }

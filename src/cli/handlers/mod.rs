@@ -41,6 +41,7 @@ pub mod deps_audit_handlers; // Dependency audit for Sovereign AI stack migratio
 pub mod doc_validate_handlers;
 pub mod duplication_analysis;
 pub mod enforce_handlers;
+pub mod extract_handler; // GH-215: pmat extract --list
 pub mod enhanced_reporting_handlers;
 pub mod five_whys_handlers; // Five Whys root cause analysis (Toyota Way)
 pub mod generation_handlers;
@@ -146,6 +147,7 @@ pub use demo_score_handlers::handle_demo_score; // GH-109/112: Demo Quality scor
 pub use doc_validate_handlers::ValidateDocsCmd;
 pub use duplication_analysis::handle_analyze_duplicates;
 pub use enforce_handlers::route_enforce_command;
+pub use extract_handler::handle_extract_list; // GH-215: pmat extract --list
 pub use generation_handlers::{
     handle_generate,
     handle_list_agent_templates,

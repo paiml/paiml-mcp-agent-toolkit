@@ -1382,6 +1382,14 @@ pub enum Commands {
         format: String,
     },
 
+    /// Extract function boundaries from a single file (tree-sitter, no index)
+    #[command(visible_aliases = &["ext"])]
+    Extract {
+        /// List all function/struct/enum/trait boundaries as JSON
+        #[arg(long)]
+        list: PathBuf,
+    },
+
     /// CUDA-SIMD Technical Debt Gradient (100-point Popper falsification scoring)
     /// Analyzes CUDA PTX, SIMD (AVX2/AVX-512/NEON), and WGPU code for defects
     /// Integrates Toyota Production System principles with falsificationist methodology
