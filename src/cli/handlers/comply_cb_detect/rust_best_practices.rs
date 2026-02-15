@@ -368,6 +368,31 @@ pub fn detect_cb507_panic_macros(project_path: &Path) -> Vec<CbPatternViolation>
 }
 
 /// CB-508: Lossy Numeric Casts - `as u8`, `as i32`, etc. without bounds checking
+/// Check if a cast on line `i` is covered by a nearby `#[allow(clippy::cast_*)]`
+/// annotation or `// SAFETY:` comment (within preceding 5 lines or function scope).
+fn is_cast_allowed(lines: &[&str], i: usize) -> bool {
+    // Check same line
+    let trimmed = lines[i].trim();
+    if trimmed.contains("allow(clippy::cast") {
+        return true;
+    }
+    // Check preceding 1-5 lines for annotation or SAFETY comment
+    for back in 1..=5 {
+        if i < back {
+            break;
+        }
+        let prev = lines[i - back].trim();
+        if prev.contains("allow(clippy::cast") || prev.starts_with("// SAFETY:") {
+            return true;
+        }
+        // Stop looking if we hit a blank line or non-attribute/comment line
+        if !prev.starts_with("#[") && !prev.starts_with("//") && !prev.is_empty() {
+            break;
+        }
+    }
+    false
+}
+
 pub fn detect_cb508_lossy_numeric_casts(project_path: &Path) -> Vec<CbPatternViolation> {
     let src_dir = project_path.join("src");
     let entries = match walkdir_rs_files(&src_dir) {
@@ -395,11 +420,11 @@ pub fn detect_cb508_lossy_numeric_casts(project_path: &Path) -> Vec<CbPatternVio
             .iter()
             .enumerate()
             .filter(|(i, _)| !test_lines.contains(i))
-            .filter(|(_, line)| {
+            .filter(|(i, line)| {
                 let trimmed = line.trim();
                 !trimmed.starts_with("//")
-                    && !trimmed.contains("allow(clippy::cast")
                     && cast_patterns.iter().any(|p| trimmed.contains(p))
+                    && !is_cast_allowed(&lines, *i)
             })
             .count();
 
