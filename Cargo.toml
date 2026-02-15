@@ -658,6 +658,10 @@ name = "agent_context_query_demo"
 path = "examples/agent_context_query_demo.rs"
 
 [[example]]
+name = "extract_demo"
+path = "examples/extract_demo.rs"
+
+[[example]]
 name = "lua_analysis"
 path = "examples/lua_analysis.rs"
 required-features = ["lua-ast"]
