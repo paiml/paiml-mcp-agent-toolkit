@@ -3,6 +3,8 @@
 //! This example shows how `pmat extract --list` uses tree-sitter to parse a single file
 //! and dump function/struct/enum/trait boundaries as JSON — no index required.
 //!
+//! Output includes file-level metadata (imports, test boundaries) and per-item visibility.
+//!
 //! # Usage
 //! ```bash
 //! cargo run --example extract_demo
@@ -16,13 +18,13 @@ fn main() {
     println!("🔍 PMAT Extract Demo");
     println!("====================\n");
 
-    println!("1. Extract from Rust file");
+    println!("1. Extract from Rust file (imports + visibility + cfg_test)");
     test_extract_rust();
 
-    println!("\n2. Extract from Python file");
+    println!("\n2. Extract from Python file (imports)");
     test_extract_python();
 
-    println!("\n3. Extract from TypeScript file");
+    println!("\n3. Extract from TypeScript file (imports + export visibility)");
     test_extract_typescript();
 
     println!("\n4. Pipe extract output to jq for analysis");
@@ -32,19 +34,18 @@ fn main() {
 }
 
 fn find_pmat_binary() -> String {
-    // Try cargo-built binary first
-    let cargo_bin = std::env::current_dir()
-        .ok()
-        .map(|p| {
-            p.join("target")
-                .join("release")
-                .join("pmat")
-                .display()
-                .to_string()
-        })
-        .unwrap_or_default();
-    if std::path::Path::new(&cargo_bin).exists() {
-        return cargo_bin;
+    // Try cargo-built debug binary first (matches `cargo run --example`)
+    let base = std::env::current_dir().unwrap_or_default();
+    for profile in ["debug", "release"] {
+        let bin = base.join("target").join(profile).join("pmat");
+        if bin.exists() {
+            // Verify it supports the extract subcommand
+            if let Ok(out) = Command::new(&bin).args(["extract", "--help"]).output() {
+                if out.status.success() {
+                    return bin.display().to_string();
+                }
+            }
+        }
     }
     // Fall back to PATH
     "pmat".to_string()
@@ -56,8 +57,7 @@ fn test_extract_rust() {
 
     fs::write(
         &rust_file,
-        r#"
-use std::collections::HashMap;
+        r#"use std::collections::HashMap;
 
 /// A cache with TTL-based eviction
 pub struct Cache<K, V> {
@@ -79,8 +79,8 @@ impl<K: std::hash::Hash + Eq, V> Cache<K, V> {
         })
     }
 
-    pub fn insert(&mut self, key: K, value: V) {
-        self.entries.insert(key, (value, std::time::Instant::now()));
+    fn evict_expired(&mut self) {
+        self.entries.retain(|_, (_, t)| t.elapsed() < self.ttl);
     }
 }
 
@@ -92,6 +92,12 @@ pub enum CachePolicy {
 
 pub trait Evictable {
     fn should_evict(&self) -> bool;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    fn test_cache() {}
 }
 "#,
     )
@@ -106,10 +112,30 @@ pub trait Evictable {
     let stdout = String::from_utf8_lossy(&output.stdout);
     println!("   Output:\n{stdout}");
 
-    // Parse and validate
-    let items: Vec<serde_json::Value> = serde_json::from_str(&stdout).unwrap_or_default();
-    println!("   Found {} items", items.len());
-    assert!(items.len() >= 5, "Expected at least 5 items (struct, impl, 3 fns, enum, trait)");
+    // Parse and validate the new object format
+    let result: serde_json::Value = serde_json::from_str(&stdout).unwrap_or_default();
+    let imports = result["imports"].as_array().map(|a| a.len()).unwrap_or(0);
+    let items = result["items"].as_array().map(|a| a.len()).unwrap_or(0);
+    let cfg_test = result.get("cfg_test_line").and_then(|v| v.as_u64());
+
+    println!("   Language: {}", result["language"].as_str().unwrap_or("?"));
+    println!("   Imports: {imports}");
+    println!("   cfg_test_line: {cfg_test:?}");
+    println!("   Items: {items}");
+
+    assert!(imports >= 1, "Expected at least 1 import");
+    assert!(cfg_test.is_some(), "Expected cfg_test_line for Rust file with #[cfg(test)]");
+    assert!(items >= 5, "Expected at least 5 items");
+
+    // Validate visibility on items
+    if let Some(arr) = result["items"].as_array() {
+        for item in arr {
+            let name = item["name"].as_str().unwrap_or("?");
+            let vis = item["visibility"].as_str().unwrap_or("?");
+            let ty = item["type"].as_str().unwrap_or("?");
+            println!("   {vis:>12} {ty:>10} {name}");
+        }
+    }
 }
 
 fn test_extract_python() {
@@ -118,8 +144,7 @@ fn test_extract_python() {
 
     fs::write(
         &py_file,
-        r#"
-import asyncio
+        r#"import asyncio
 from dataclasses import dataclass
 
 @dataclass
@@ -155,15 +180,19 @@ def create_server(host: str, port: int) -> Server:
         .expect("Failed to run pmat extract");
 
     let stdout = String::from_utf8_lossy(&output.stdout);
-    let items: Vec<serde_json::Value> = serde_json::from_str(&stdout).unwrap_or_default();
-    println!("   Found {} Python items", items.len());
+    let result: serde_json::Value = serde_json::from_str(&stdout).unwrap_or_default();
+    let imports = result["imports"].as_array().map(|a| a.len()).unwrap_or(0);
+    let items = result["items"].as_array().map(|a| a.len()).unwrap_or(0);
+    println!("   Imports: {imports}, Items: {items}");
 
-    for item in &items {
-        let name = item["name"].as_str().unwrap_or("?");
-        let ty = item["type"].as_str().unwrap_or("?");
-        let start = item["start_line"].as_u64().unwrap_or(0);
-        let end = item["end_line"].as_u64().unwrap_or(0);
-        println!("   {ty:>10} {name} (lines {start}-{end})");
+    if let Some(arr) = result["items"].as_array() {
+        for item in arr {
+            let name = item["name"].as_str().unwrap_or("?");
+            let ty = item["type"].as_str().unwrap_or("?");
+            let start = item["start_line"].as_u64().unwrap_or(0);
+            let end = item["end_line"].as_u64().unwrap_or(0);
+            println!("   {ty:>10} {name} (lines {start}-{end})");
+        }
     }
 }
 
@@ -173,7 +202,9 @@ fn test_extract_typescript() {
 
     fs::write(
         &ts_file,
-        r#"
+        r#"import { Router } from 'express';
+import type { Request, Response } from 'express';
+
 interface ApiResponse<T> {
     data: T;
     status: number;
@@ -187,19 +218,16 @@ class HttpClient {
         const resp = await fetch(`${this.baseUrl}${path}`);
         return resp.json();
     }
-
-    async post<T>(path: string, body: unknown): Promise<ApiResponse<T>> {
-        const resp = await fetch(`${this.baseUrl}${path}`, {
-            method: "POST",
-            body: JSON.stringify(body),
-        });
-        return resp.json();
-    }
 }
 
 export function createClient(baseUrl: string): HttpClient {
     return new HttpClient(baseUrl);
 }
+
+export const fetchData = async (url: string) => {
+    const resp = await fetch(url);
+    return resp.json();
+};
 "#,
     )
     .expect("Failed to write TypeScript file");
@@ -211,14 +239,19 @@ export function createClient(baseUrl: string): HttpClient {
         .expect("Failed to run pmat extract");
 
     let stdout = String::from_utf8_lossy(&output.stdout);
-    let items: Vec<serde_json::Value> = serde_json::from_str(&stdout).unwrap_or_default();
-    println!("   Found {} TypeScript items", items.len());
+    let result: serde_json::Value = serde_json::from_str(&stdout).unwrap_or_default();
+    let imports = result["imports"].as_array().map(|a| a.len()).unwrap_or(0);
+    let items = result["items"].as_array().map(|a| a.len()).unwrap_or(0);
+    println!("   Imports: {imports}, Items: {items}");
 
-    for item in &items {
-        let name = item["name"].as_str().unwrap_or("?");
-        let ty = item["type"].as_str().unwrap_or("?");
-        let lines = item["lines"].as_u64().unwrap_or(0);
-        println!("   {ty:>10} {name} ({lines} lines)");
+    if let Some(arr) = result["items"].as_array() {
+        for item in arr {
+            let name = item["name"].as_str().unwrap_or("?");
+            let ty = item["type"].as_str().unwrap_or("?");
+            let vis = item["visibility"].as_str().unwrap_or("");
+            let lines = item["lines"].as_u64().unwrap_or(0);
+            println!("   {vis:>12} {ty:>10} {name} ({lines} lines)");
+        }
     }
 }
 
@@ -238,19 +271,26 @@ fn test_extract_pipeline() {
         .expect("Failed to run pmat extract");
 
     let stdout = String::from_utf8_lossy(&output.stdout);
-    let items: Vec<serde_json::Value> = serde_json::from_str(&stdout).unwrap_or_default();
+    let result: serde_json::Value = serde_json::from_str(&stdout).unwrap_or_default();
 
-    let functions: Vec<_> = items
-        .iter()
-        .filter(|i| i["type"].as_str() == Some("function"))
-        .collect();
-    let structs: Vec<_> = items
-        .iter()
-        .filter(|i| i["type"].as_str() == Some("struct"))
-        .collect();
+    let imports = result["imports"].as_array().map(|a| a.len()).unwrap_or(0);
+    let cfg_test = result.get("cfg_test_line").and_then(|v| v.as_u64());
 
-    println!("   extract_handler.rs: {} functions, {} structs", functions.len(), structs.len());
-    println!("   Total lines covered: {}", items.iter()
-        .map(|i| i["lines"].as_u64().unwrap_or(0))
-        .sum::<u64>());
+    if let Some(arr) = result["items"].as_array() {
+        let functions: Vec<_> = arr
+            .iter()
+            .filter(|i| i["type"].as_str() == Some("function"))
+            .collect();
+        let pub_items: Vec<_> = arr
+            .iter()
+            .filter(|i| !i["visibility"].as_str().unwrap_or("").is_empty())
+            .collect();
+
+        println!("   extract_handler.rs: {} imports, {} items ({} functions, {} pub)",
+            imports, arr.len(), functions.len(), pub_items.len());
+        println!("   cfg_test_line: {cfg_test:?}");
+        println!("   Total lines covered: {}", arr.iter()
+            .map(|i| i["lines"].as_u64().unwrap_or(0))
+            .sum::<u64>());
+    }
 }

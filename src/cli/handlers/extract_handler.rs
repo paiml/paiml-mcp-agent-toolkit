@@ -3,20 +3,9 @@
 //! No index required — direct AST extraction (#215).
 
 use anyhow::{bail, Context, Result};
-use serde::Serialize;
 use std::path::Path;
 
-use crate::services::semantic::chunker::{self, ChunkType, Language};
-
-#[derive(Serialize)]
-struct ExtractItem {
-    name: String,
-    #[serde(rename = "type")]
-    item_type: String,
-    start_line: usize,
-    end_line: usize,
-    lines: usize,
-}
+use crate::services::semantic::chunker::{self, Language};
 
 /// Handle `pmat extract --list <FILE>`
 pub async fn handle_extract_list(file_path: &Path) -> Result<()> {
@@ -24,39 +13,12 @@ pub async fn handle_extract_list(file_path: &Path) -> Result<()> {
         .with_context(|| format!("Cannot read {}", file_path.display()))?;
 
     let language = detect_chunker_language(file_path)?;
-    let chunks = chunker::chunk_code(&source, language)
-        .map_err(|e| anyhow::anyhow!("tree-sitter parse failed: {e}"))?;
+    let result =
+        chunker::extract_file_details(&file_path.display().to_string(), &source, language)
+            .map_err(|e| anyhow::anyhow!("tree-sitter parse failed: {e}"))?;
 
-    let mut items: Vec<ExtractItem> = chunks
-        .into_iter()
-        .filter(|c| c.chunk_type != ChunkType::File)
-        .map(|c| ExtractItem {
-            name: c.chunk_name,
-            item_type: chunk_type_label(&c.chunk_type).to_string(),
-            start_line: c.start_line,
-            end_line: c.end_line,
-            lines: c.end_line.saturating_sub(c.start_line) + 1,
-        })
-        .collect();
-
-    items.sort_by_key(|i| i.start_line);
-
-    println!("{}", serde_json::to_string_pretty(&items)?);
+    println!("{}", serde_json::to_string_pretty(&result)?);
     Ok(())
-}
-
-fn chunk_type_label(ct: &ChunkType) -> &'static str {
-    match ct {
-        ChunkType::Function => "function",
-        ChunkType::Class => "class",
-        ChunkType::Module => "module",
-        ChunkType::File => "file",
-        ChunkType::Struct => "struct",
-        ChunkType::Enum => "enum",
-        ChunkType::Trait => "trait",
-        ChunkType::TypeAlias => "type_alias",
-        ChunkType::Impl => "impl",
-    }
 }
 
 fn detect_chunker_language(path: &Path) -> Result<Language> {
@@ -100,14 +62,5 @@ mod tests {
             Language::Go
         );
         assert!(detect_chunker_language(&PathBuf::from("nope.xyz")).is_err());
-    }
-
-    #[test]
-    fn test_chunk_type_label() {
-        assert_eq!(chunk_type_label(&ChunkType::Function), "function");
-        assert_eq!(chunk_type_label(&ChunkType::Struct), "struct");
-        assert_eq!(chunk_type_label(&ChunkType::Enum), "enum");
-        assert_eq!(chunk_type_label(&ChunkType::Trait), "trait");
-        assert_eq!(chunk_type_label(&ChunkType::Impl), "impl");
     }
 }
