@@ -905,6 +905,13 @@ pub fn detect_cb515_catch_all_match_default(project_path: &Path) -> Vec<CbPatter
                 .trim_start_matches("_=>")
                 .trim();
 
+            // Strip inline comments before pattern checks
+            let after = if let Some(pos) = after.find("//") {
+                after[..pos].trim()
+            } else {
+                after
+            };
+
             // Skip empty arms (multi-line blocks)
             if after.is_empty() || after == "{" {
                 continue;
@@ -1182,16 +1189,18 @@ pub fn detect_cb518_expensive_clone_in_loop(project_path: &Path) -> Vec<CbPatter
     violations
 }
 
-/// Lossy transform pairs: if both halves appear in the same function, it's suspicious.
-const LOSSY_TRANSFORM_PAIRS: &[(&str, &str)] = &[
-    ("quantize", "dequantize"),
-    ("encode", "decode"),
-    ("compress", "decompress"),
-    ("serialize", "deserialize"),
-    ("pack", "unpack"),
-    ("to_bytes", "from_bytes"),
-    ("to_f16", "to_f32"),
-    ("to_bf16", "to_f32"),
+/// Lossy transform pairs: (forward, reverse, path_stems).
+/// If both halves appear in the same function, it's suspicious — unless the file
+/// path contains one of the path_stems (indicating the module implements that transform).
+const LOSSY_TRANSFORM_PAIRS: &[(&str, &str, &[&str])] = &[
+    ("quantize", "dequantize", &["quant", "qlora", "lora"]),
+    ("encode", "decode", &["codec", "encoding", "decoder", "encoder"]),
+    ("compress", "decompress", &["compress", "zlib", "gzip", "lz4", "zstd"]),
+    ("serialize", "deserialize", &["serde", "serial", "marshal"]),
+    ("pack", "unpack", &["pack", "msgpack"]),
+    ("to_bytes", "from_bytes", &["bytes", "binary"]),
+    ("to_f16", "to_f32", &[]),
+    ("to_bf16", "to_f32", &[]),
 ];
 
 /// Check if a function definition line is a test function (by attribute or name).
@@ -1211,7 +1220,9 @@ fn is_test_fn_definition(trimmed: &str, line_idx: usize, lines: &[&str]) -> bool
 }
 
 /// Check function body for lossy transform pairs. Returns matched pair or None.
-fn find_lossy_pair(fn_content: &str) -> Option<(&'static str, &'static str)> {
+/// Skips pairs when the file path indicates the module implements that transform
+/// (e.g. skip quantize/dequantize pair in files under a "quant" module).
+fn find_lossy_pair<'a>(fn_content: &str, file_path: &str) -> Option<(&'a str, &'a str)> {
     let filtered: String = fn_content
         .lines()
         .filter(|l| {
@@ -1221,10 +1232,25 @@ fn find_lossy_pair(fn_content: &str) -> Option<(&'static str, &'static str)> {
         .collect::<Vec<_>>()
         .join("\n")
         .to_lowercase();
+    let path_lower = file_path.to_lowercase();
     LOSSY_TRANSFORM_PAIRS
         .iter()
-        .find(|(fwd, rev)| filtered.contains(*fwd) && filtered.contains(*rev))
-        .copied()
+        .find_map(|(fwd, rev, stems)| {
+            // Skip if the file path matches the transform domain
+            if stems.iter().any(|s| path_lower.contains(s)) {
+                return None;
+            }
+            if !filtered.contains(*rev) {
+                return None;
+            }
+            // Ensure fwd appears independently, not only as substring of rev
+            let without_rev = filtered.replace(rev, "");
+            if without_rev.contains(*fwd) {
+                Some((*fwd, *rev))
+            } else {
+                None
+            }
+        })
 }
 
 /// CB-519: Lossy Data Pipeline - detect quantize/dequantize/encode/decode round-trip chains
@@ -1282,7 +1308,7 @@ pub fn detect_cb519_lossy_data_pipeline(project_path: &Path) -> Vec<CbPatternVio
             // End of function
             if fn_depth == 0 && i > fn_start.unwrap_or(i) {
                 if !skip_fn {
-                    if let Some((fwd, rev)) = find_lossy_pair(&fn_content) {
+                    if let Some((fwd, rev)) = find_lossy_pair(&fn_content, &file) {
                         violations.push(CbPatternViolation {
                             pattern_id: "CB-519".to_string(),
                             file: file.clone(),
@@ -1456,7 +1482,7 @@ const MAGIC_VALIDATION_PATTERNS: &[&str] = &[
 const IO_CONTEXT_PATTERNS: &[&str] = &[
     "File::", "BufReader", "BufRead", "Cursor::", "stdin",
     "from_reader(", ".read(", ".read_to_end(", "open(",
-    "Read>", "impl Read", "&[u8]",
+    "Read>", "impl Read",
 ];
 
 /// Classify a non-comment code line for CB-521 binary parsing analysis.

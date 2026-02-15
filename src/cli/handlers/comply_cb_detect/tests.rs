@@ -2806,7 +2806,7 @@ fn convert_tensor(data: &[f32]) -> Vec<u8> {
         let src = temp.path().join("src");
         fs::create_dir_all(&src).unwrap();
         fs::write(
-            src.join("codec.rs"),
+            src.join("pipeline.rs"),
             r#"
 fn process(data: &[u8]) -> Vec<u8> {
     let encoded = encode_base64(data);
