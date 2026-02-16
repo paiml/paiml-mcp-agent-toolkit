@@ -1,0 +1,7 @@
+comply:
+  thresholds:
+    min_tdg_grade: "A"
+    tdg_exclude_paths:
+      - "examples/*"
+      - "tests/*"
+      - "benches/*"

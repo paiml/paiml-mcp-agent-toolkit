@@ -76,97 +76,7 @@ impl CommandExecutor {
                     .await
             }
             Commands::Scaffold { command } => {
-                match command {
-                    ScaffoldCommands::Project {
-                        toolchain,
-                        templates,
-                        params,
-                        parallel,
-                    } => {
-                        self.registry
-                            .generate_handlers
-                            .handle_scaffold(
-                                self.server.clone(),
-                                toolchain,
-                                templates,
-                                params,
-                                parallel,
-                            )
-                            .await
-                    }
-                    ScaffoldCommands::Agent {
-                        name,
-                        template,
-                        features,
-                        quality,
-                        output,
-                        force,
-                        dry_run,
-                        interactive,
-                        deterministic_core,
-                        probabilistic_wrapper,
-                    } => {
-                        // TICKET-PMAT-5030: Wire up agent scaffolding
-                        let params = super::handlers::ScaffoldAgentParams {
-                            name,
-                            template,
-                            features,
-                            quality,
-                            output,
-                            force,
-                            dry_run,
-                            interactive,
-                            deterministic_core,
-                            probabilistic_wrapper,
-                        };
-                        super::handlers::handle_scaffold_agent(params).await
-                    }
-                    ScaffoldCommands::Wasm {
-                        name,
-                        framework,
-                        features,
-                        quality,
-                        output,
-                        force,
-                        dry_run,
-                    } => {
-                        // TICKET-PMAT-5031: Wire up WASM scaffolding
-                        let params = super::handlers::ScaffoldWasmParams {
-                            name,
-                            framework,
-                            features,
-                            quality,
-                            output,
-                            force,
-                            dry_run,
-                        };
-                        super::handlers::handle_scaffold_wasm(params).await
-                    }
-                    ScaffoldCommands::ListTemplates => {
-                        super::handlers::handle_list_agent_templates().await
-                    }
-                    ScaffoldCommands::ValidateTemplate { path } => {
-                        super::handlers::handle_validate_agent_template(path).await
-                    }
-                    ScaffoldCommands::ListSubagents { all } => {
-                        super::handlers::subagent_handlers::list_subagents(all)
-                    }
-                    ScaffoldCommands::CreateSubagent { agent_name, output } => {
-                        super::handlers::subagent_handlers::create_subagent(&agent_name, output)
-                    }
-                    ScaffoldCommands::CreateAllSubagents { output } => {
-                        super::handlers::subagent_handlers::create_all_mvp_subagents(output)
-                    }
-                    ScaffoldCommands::ValidateSubagent { file_path } => {
-                        super::handlers::subagent_handlers::validate_subagent(&file_path)
-                    }
-                    ScaffoldCommands::ShowToolMapping { agent } => {
-                        super::handlers::subagent_handlers::show_tool_mapping(agent)
-                    }
-                    ScaffoldCommands::ExportToolMapping { output } => {
-                        super::handlers::subagent_handlers::export_tool_mapping_json(&output)
-                    }
-                }
+                self.execute_scaffold(command).await
             }
             Commands::Validate { uri, params } => {
                 self.registry
@@ -682,89 +592,7 @@ impl CommandExecutor {
             }
 
             Commands::Maintain { command } => {
-                use super::commands::MaintainCommands;
-                match command {
-                    MaintainCommands::Roadmap {
-                        roadmap,
-                        tickets_dir,
-                        validate,
-                        health,
-                        fix,
-                        generate_tickets,
-                        dry_run,
-                        format,
-                    } => {
-                        let config =
-                            super::handlers::roadmap_handler::RoadmapMaintenanceConfig::new(
-                                validate,
-                                health,
-                                fix,
-                                generate_tickets,
-                                dry_run,
-                            );
-                        super::handlers::handle_maintain_roadmap(
-                            roadmap,
-                            tickets_dir,
-                            config,
-                            format,
-                        )
-                        .await
-                    }
-                    MaintainCommands::Health {
-                        project_dir,
-                        format,
-                        quick,
-                        all,
-                        check_build,
-                        check_tests,
-                        check_coverage,
-                        check_complexity,
-                        check_satd,
-                    } => {
-                        let config = super::handlers::health_handler::HealthCheckConfig::new(
-                            quick,
-                            all,
-                            check_build,
-                            check_tests,
-                            check_coverage,
-                            check_complexity,
-                            check_satd,
-                        );
-                        super::handlers::handle_maintain_health(project_dir, format, config).await
-                    }
-                    MaintainCommands::BugReport {
-                        title,
-                        dry_run,
-                        interactive,
-                        clear,
-                    } => {
-                        super::handlers::bug_report_handler::handle_bug_report(
-                            title.as_deref(),
-                            dry_run,
-                            interactive,
-                            clear,
-                        )
-                        .await
-                    }
-                    MaintainCommands::CleanupResources {
-                        project_dir,
-                        targets,
-                        execute,
-                        exclude,
-                        min_age_days,
-                        format,
-                    } => {
-                        super::handlers::cleanup_resources_handler::handle_cleanup_resources(
-                            &project_dir,
-                            &targets,
-                            execute,
-                            &exclude,
-                            min_age_days,
-                            format,
-                        )
-                        .await
-                    }
-                }
+                Self::execute_maintain(command).await
             }
 
             Commands::Hooks(hooks_cmd) => super::handlers::handle_hooks_command(&hooks_cmd).await,
@@ -786,120 +614,145 @@ impl CommandExecutor {
 
             // Time-travel debugging commands (Sprint 74)
             Commands::Debug { command } => {
-                use crate::cli::commands::DebugCommands;
-                match command {
-                    DebugCommands::Serve {
-                        port,
-                        host,
-                        record_dir,
-                    } => {
-                        // DEBUG-002: DAP Server CLI Handler (implemented)
-                        // Sprint 76 CAPTURE-003: Added record_dir support
-                        super::handlers::debug_handlers::handle_debug_serve(port, host, record_dir)
-                            .await
-                    }
-                    DebugCommands::Replay {
-                        recording,
-                        position,
-                        interactive,
-                    } => {
-                        // DEBUG-003: Replay CLI Handler (implemented)
-                        super::handlers::debug_handlers::handle_debug_replay(
-                            recording,
-                            position,
-                            interactive,
-                        )
-                        .await
-                    }
-                }
+                Self::execute_debug(command).await
             }
-            // Phase 3.1: O(1) Quality Gates - CLI Integration
-            Commands::ShowMetrics { .. } => {
-                anyhow::bail!("ShowMetrics command should be handled by command_dispatcher.rs")
-            }
-            // Phase 4.1: O(1) Quality Gates - Predictive CLI
-            Commands::PredictQuality { .. } => {
-                anyhow::bail!("PredictQuality command should be handled by command_dispatcher.rs")
-            }
-            // Phase 3.4: O(1) Quality Gates - CI/CD Integration
-            Commands::RecordMetric { .. } => {
-                anyhow::bail!("RecordMetric command should be handled by command_dispatcher.rs")
-            }
-            // Issue #75: Unified GitHub/YAML workflow
-            Commands::Work { command } => {
-                anyhow::bail!(
-                    "Work command not yet implemented in command structure: {:?}",
-                    command
-                )
-            }
-            // Falsify command - handled by command_dispatcher.rs
-            Commands::Falsify { .. } => {
-                anyhow::bail!("Falsify command should be handled by command_dispatcher.rs")
-            }
-            // GH-102: QA Work - Toyota Way quality validation
-            Commands::QaWork { .. } => {
-                anyhow::bail!("QaWork command should be handled by command_dispatcher.rs")
-            }
-            // GH-96: PMAT compliance and migration system - handled by command_dispatcher.rs
-            Commands::Comply { .. } => {
-                anyhow::bail!("Comply command should be handled by command_dispatcher.rs")
-            }
+            // Commands handled by command_dispatcher.rs
+            other => Self::forward_to_dispatcher(other),
+        }
+    }
 
-            // Project diagnostics (lltop Tab 8 equivalent) - handled by command_dispatcher.rs
-            Commands::ProjectDiag { .. } => {
-                anyhow::bail!("ProjectDiag command should be handled by command_dispatcher.rs")
+    /// Execute scaffold subcommands
+    async fn execute_scaffold(&self, command: ScaffoldCommands) -> Result<()> {
+        match command {
+            ScaffoldCommands::Project {
+                toolchain,
+                templates,
+                params,
+                parallel,
+            } => {
+                self.registry
+                    .generate_handlers
+                    .handle_scaffold(self.server.clone(), toolchain, templates, params, parallel)
+                    .await
             }
-
-            // GH-98: Systematic test discovery and fixing - handled by command_dispatcher.rs
-            Commands::TestDiscovery { .. } => {
-                anyhow::bail!("TestDiscovery command should be handled by command_dispatcher.rs")
+            ScaffoldCommands::Agent {
+                name, template, features, quality, output, force,
+                dry_run, interactive, deterministic_core, probabilistic_wrapper,
+            } => {
+                let params = super::handlers::ScaffoldAgentParams {
+                    name, template, features, quality, output, force,
+                    dry_run, interactive, deterministic_core, probabilistic_wrapper,
+                };
+                super::handlers::handle_scaffold_agent(params).await
             }
-
-            // Five Whys root cause analysis - handled by command_dispatcher.rs
-            Commands::DebugFiveWhys { .. } => {
-                anyhow::bail!("DebugFiveWhys command should be handled by command_dispatcher.rs")
+            ScaffoldCommands::Wasm {
+                name, framework, features, quality, output, force, dry_run,
+            } => {
+                let params = super::handlers::ScaffoldWasmParams {
+                    name, framework, features, quality, output, force, dry_run,
+                };
+                super::handlers::handle_scaffold_wasm(params).await
             }
-
-            // Fault localization - handled by command_dispatcher.rs (GH-103)
-            Commands::Localize { .. } => {
-                anyhow::bail!("Localize command should be handled by command_dispatcher.rs")
+            ScaffoldCommands::ListTemplates => {
+                super::handlers::handle_list_agent_templates().await
             }
-
-            // PMAT Oracle - handled by command_dispatcher.rs
-            Commands::Oracle { .. } => {
-                anyhow::bail!("Oracle command should be handled by command_dispatcher.rs")
+            ScaffoldCommands::ValidateTemplate { path } => {
+                super::handlers::handle_validate_agent_template(path).await
             }
-
-            // master-plan-pmat-work-system.md: 200-point unified score - handled by command_dispatcher.rs
-            Commands::PerfectionScore { .. } => {
-                anyhow::bail!("PerfectionScore command should be handled by command_dispatcher.rs")
+            ScaffoldCommands::ListSubagents { all } => {
+                super::handlers::subagent_handlers::list_subagents(all)
             }
-
-            // master-plan-pmat-work-system.md: Spec management - handled by command_dispatcher.rs
-            Commands::Spec { .. } => {
-                anyhow::bail!("Spec command should be handled by command_dispatcher.rs")
+            ScaffoldCommands::CreateSubagent { agent_name, output } => {
+                super::handlers::subagent_handlers::create_subagent(&agent_name, output)
             }
-
-            // CUDA-SIMD TDG: 100-point Popper falsification - handled by command_dispatcher.rs
-            Commands::CudaTdg { .. } => {
-                anyhow::bail!("CudaTdg command should be handled by command_dispatcher.rs")
+            ScaffoldCommands::CreateAllSubagents { output } => {
+                super::handlers::subagent_handlers::create_all_mvp_subagents(output)
             }
-
-            // Dependency audit for Sovereign AI stack migration - handled by command_dispatcher.rs
-            Commands::DepsAudit { .. } => {
-                anyhow::bail!("DepsAudit command should be handled by command_dispatcher.rs")
+            ScaffoldCommands::ValidateSubagent { file_path } => {
+                super::handlers::subagent_handlers::validate_subagent(&file_path)
             }
-
-            // Kaizen autonomous improvement - handled by command_dispatcher.rs
-            Commands::Kaizen { .. } => {
-                anyhow::bail!("Kaizen command should be handled by command_dispatcher.rs")
+            ScaffoldCommands::ShowToolMapping { agent } => {
+                super::handlers::subagent_handlers::show_tool_mapping(agent)
             }
-
-            // GH-215: Extract - handled by command_dispatcher.rs
-            Commands::Extract { .. } => {
-                anyhow::bail!("Extract command should be handled by command_dispatcher.rs")
+            ScaffoldCommands::ExportToolMapping { output } => {
+                super::handlers::subagent_handlers::export_tool_mapping_json(&output)
             }
         }
+    }
+
+    /// Execute maintain subcommands
+    async fn execute_maintain(command: super::commands::MaintainCommands) -> Result<()> {
+        use super::commands::MaintainCommands;
+        match command {
+            MaintainCommands::Roadmap {
+                roadmap, tickets_dir, validate, health, fix, generate_tickets, dry_run, format,
+            } => {
+                let config = super::handlers::roadmap_handler::RoadmapMaintenanceConfig::new(
+                    validate, health, fix, generate_tickets, dry_run,
+                );
+                super::handlers::handle_maintain_roadmap(roadmap, tickets_dir, config, format).await
+            }
+            MaintainCommands::Health {
+                project_dir, format, quick, all,
+                check_build, check_tests, check_coverage, check_complexity, check_satd,
+            } => {
+                let config = super::handlers::health_handler::HealthCheckConfig::new(
+                    quick, all, check_build, check_tests, check_coverage, check_complexity, check_satd,
+                );
+                super::handlers::handle_maintain_health(project_dir, format, config).await
+            }
+            MaintainCommands::BugReport { title, dry_run, interactive, clear } => {
+                super::handlers::bug_report_handler::handle_bug_report(
+                    title.as_deref(), dry_run, interactive, clear,
+                ).await
+            }
+            MaintainCommands::CleanupResources {
+                project_dir, targets, execute, exclude, min_age_days, format,
+            } => {
+                super::handlers::cleanup_resources_handler::handle_cleanup_resources(
+                    &project_dir, &targets, execute, &exclude, min_age_days, format,
+                ).await
+            }
+        }
+    }
+
+    /// Execute debug subcommands
+    async fn execute_debug(command: crate::cli::commands::DebugCommands) -> Result<()> {
+        use crate::cli::commands::DebugCommands;
+        match command {
+            DebugCommands::Serve { port, host, record_dir } => {
+                super::handlers::debug_handlers::handle_debug_serve(port, host, record_dir).await
+            }
+            DebugCommands::Replay { recording, position, interactive } => {
+                super::handlers::debug_handlers::handle_debug_replay(recording, position, interactive).await
+            }
+        }
+    }
+
+    /// Forward commands that should be handled by command_dispatcher.rs
+    fn forward_to_dispatcher(command: Commands) -> Result<()> {
+        let name = match command {
+            Commands::ShowMetrics { .. } => "ShowMetrics",
+            Commands::PredictQuality { .. } => "PredictQuality",
+            Commands::RecordMetric { .. } => "RecordMetric",
+            Commands::Work { .. } => "Work",
+            Commands::Falsify { .. } => "Falsify",
+            Commands::QaWork { .. } => "QaWork",
+            Commands::Comply { .. } => "Comply",
+            Commands::ProjectDiag { .. } => "ProjectDiag",
+            Commands::TestDiscovery { .. } => "TestDiscovery",
+            Commands::DebugFiveWhys { .. } => "DebugFiveWhys",
+            Commands::Localize { .. } => "Localize",
+            Commands::Oracle { .. } => "Oracle",
+            Commands::PerfectionScore { .. } => "PerfectionScore",
+            Commands::Spec { .. } => "Spec",
+            Commands::CudaTdg { .. } => "CudaTdg",
+            Commands::DepsAudit { .. } => "DepsAudit",
+            Commands::Kaizen { .. } => "Kaizen",
+            Commands::Extract { .. } => "Extract",
+            _ => "Unknown",
+        };
+        anyhow::bail!("{} command should be handled by command_dispatcher.rs", name)
     }
 }
 
@@ -1400,7 +1253,7 @@ mod tests {
         let result = executor.execute(command).await;
         assert!(result.is_err());
         let err_msg = result.unwrap_err().to_string();
-        assert!(err_msg.contains("Work command not yet implemented"));
+        assert!(err_msg.contains("command_dispatcher.rs"));
     }
 
     #[tokio::test]
