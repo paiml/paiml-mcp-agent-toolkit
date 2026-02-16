@@ -533,7 +533,8 @@ impl CommandDispatcher {
             Commands::Kaizen {
                 path,
                 dry_run,
-                commit,
+                no_commit,
+                no_issues,
                 push,
                 agent,
                 max_agents,
@@ -548,7 +549,8 @@ impl CommandDispatcher {
                 let config = handlers::kaizen_handler::KaizenConfig {
                     path,
                     dry_run,
-                    commit,
+                    commit: !no_commit,
+                    create_issues: !no_issues,
                     push,
                     auto_agent: agent,
                     max_agents,

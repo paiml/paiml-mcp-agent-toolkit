@@ -1,18 +1,18 @@
-/// CB-200: TDG Grade Gate (#214)
-///
-/// Reads the SQLite index (.pmat/context.db) and fails if functions fall below
-/// a configurable minimum TDG grade (default B). Uses direct SQLite query
-/// for performance (<10ms) instead of full index load (~150ms).
-///
-/// Configuration in .pmat.yaml:
-/// ```yaml
-/// comply:
-///   thresholds:
-///     min_tdg_grade: "B"        # A, B, C, D, F
-///     tdg_exclude_paths:
-///       - "vendor/"
-///       - "generated/"
-/// ```
+// CB-200: TDG Grade Gate (#214)
+//
+// Reads the SQLite index (.pmat/context.db) and fails if functions fall below
+// a configurable minimum TDG grade (default A). Uses direct SQLite query
+// for performance (<10ms) instead of full index load (~150ms).
+//
+// Configuration in .pmat.yaml:
+// ```yaml
+// comply:
+//   thresholds:
+//     min_tdg_grade: "A"        # A, B, C, D, F
+//     tdg_exclude_paths:
+//       - "vendor/"
+//       - "generated/"
+// ```
 
 /// Convert a TDG grade letter to a numeric ordinal for comparison.
 /// A=0 (best), B=1, C=2, D=3, F=4 (worst).
@@ -203,13 +203,144 @@ pub(crate) fn check_tdg_grade_gate(
 
     ComplianceCheck {
         name: "CB-200: TDG Grade Gate".to_string(),
-        status: CheckStatus::Warn,
+        status: CheckStatus::Fail,
         message: format!(
             "{count} function(s) below minimum grade {min_grade}\n{}",
             details.join("\n")
         ),
-        severity: Severity::Warning,
+        severity: Severity::Error,
     }
+}
+
+/// CB-1100: Custom Project Scores
+///
+/// Runs project-specific score commands from .pmat.yaml `scoring.custom_scores`.
+/// Each command must output JSON with a `score` field. Fails if below `min_score`.
+pub(crate) fn check_custom_scores(
+    project_path: &Path,
+) -> Vec<ComplianceCheck> {
+    let config = match crate::models::comply_config::PmatYamlConfig::load(project_path) {
+        Ok(c) => c,
+        Err(_) => return vec![],
+    };
+
+    if config.scoring.custom_scores.is_empty() {
+        return vec![];
+    }
+
+    let mut checks = Vec::new();
+
+    for score_def in &config.scoring.custom_scores {
+        let check_name = format!("CB-1100: Custom Score [{}]", score_def.id);
+
+        let output = std::process::Command::new("sh")
+            .args(["-c", &score_def.command])
+            .current_dir(project_path)
+            .output();
+
+        let output = match output {
+            Ok(o) => o,
+            Err(e) => {
+                checks.push(ComplianceCheck {
+                    name: check_name,
+                    status: CheckStatus::Skip,
+                    message: format!("Failed to run command: {e}"),
+                    severity: Severity::Info,
+                });
+                continue;
+            }
+        };
+
+        if !output.status.success() {
+            checks.push(ComplianceCheck {
+                name: check_name,
+                status: CheckStatus::Fail,
+                message: format!(
+                    "{}: command failed (exit {})",
+                    score_def.name,
+                    output.status.code().unwrap_or(-1)
+                ),
+                severity: Severity::from(score_def.severity),
+            });
+            continue;
+        }
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        // Parse JSON output looking for {"score": N}
+        let score: Option<f64> = extract_score_from_output(&stdout);
+
+        match score {
+            Some(actual_score) => {
+                if let Some(min) = score_def.min_score {
+                    if actual_score < min {
+                        checks.push(ComplianceCheck {
+                            name: check_name,
+                            status: CheckStatus::Fail,
+                            message: format!(
+                                "{}: score {:.1} below minimum {:.1}",
+                                score_def.name, actual_score, min
+                            ),
+                            severity: Severity::from(score_def.severity),
+                        });
+                    } else {
+                        checks.push(ComplianceCheck {
+                            name: check_name,
+                            status: CheckStatus::Pass,
+                            message: format!(
+                                "{}: score {:.1} (min: {:.1})",
+                                score_def.name, actual_score, min
+                            ),
+                            severity: Severity::Info,
+                        });
+                    }
+                } else {
+                    checks.push(ComplianceCheck {
+                        name: check_name,
+                        status: CheckStatus::Pass,
+                        message: format!("{}: score {:.1}", score_def.name, actual_score),
+                        severity: Severity::Info,
+                    });
+                }
+            }
+            None => {
+                checks.push(ComplianceCheck {
+                    name: check_name,
+                    status: CheckStatus::Skip,
+                    message: format!(
+                        "{}: could not parse score from command output",
+                        score_def.name
+                    ),
+                    severity: Severity::Info,
+                });
+            }
+        }
+    }
+
+    checks
+}
+
+/// Extract a numeric score from command output.
+/// Looks for JSON `{"score": N}` pattern anywhere in the output.
+fn extract_score_from_output(output: &str) -> Option<f64> {
+    // Try to parse each line as JSON
+    for line in output.lines() {
+        let line = line.trim();
+        if let Ok(json) = serde_json::from_str::<serde_json::Value>(line) {
+            if let Some(score) = json.get("score").and_then(|s| s.as_f64()) {
+                return Some(score);
+            }
+        }
+    }
+    // Fallback: try to find "SCORE: N" pattern
+    for line in output.lines() {
+        let line = line.trim();
+        if let Some(rest) = line.strip_prefix("SCORE:") {
+            if let Ok(score) = rest.trim().parse::<f64>() {
+                return Some(score);
+            }
+        }
+    }
+    None
 }
 
 #[cfg_attr(coverage_nightly, coverage(off))]
@@ -318,11 +449,11 @@ mod tests_tdg_grade {
         ).expect("insert test D");
         drop(conn);
 
-        let config = ComplyConfig::default(); // min_tdg_grade = "B"
+        let config = ComplyConfig::default(); // min_tdg_grade = "A"
         let result = check_tdg_grade_gate(tmp.path(), &config);
 
-        assert_eq!(result.status, CheckStatus::Warn);
-        assert!(result.message.contains("2 function(s) below minimum grade B"));
+        assert_eq!(result.status, CheckStatus::Fail);
+        assert!(result.message.contains("2 function(s) below minimum grade A"));
         assert!(result.message.contains("src/legacy.rs:20 bad_fn [D]"));
         assert!(result.message.contains("src/awful.rs:30 terrible_fn [F]"));
         // Test helper should be excluded
@@ -381,7 +512,7 @@ mod tests_tdg_grade {
         config.thresholds.tdg_exclude_paths = vec!["vendor/*".to_string()];
         let result = check_tdg_grade_gate(tmp.path(), &config);
 
-        assert_eq!(result.status, CheckStatus::Warn);
+        assert_eq!(result.status, CheckStatus::Fail);
         assert!(result.message.contains("1 function(s)"));
         assert!(result.message.contains("main_fn"));
         assert!(!result.message.contains("vendor_fn"));
@@ -435,7 +566,9 @@ mod tests_tdg_grade {
         ).expect("insert B");
         drop(conn);
 
-        let config = ComplyConfig::default(); // min_tdg_grade = "B"
+        // Override to min_tdg_grade = "B" to test that both A and B pass
+        let mut config = ComplyConfig::default();
+        config.thresholds.min_tdg_grade = "B".to_string();
         let result = check_tdg_grade_gate(tmp.path(), &config);
 
         assert_eq!(result.status, CheckStatus::Pass);

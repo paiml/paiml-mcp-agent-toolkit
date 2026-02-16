@@ -1254,7 +1254,7 @@ pub enum Commands {
     },
 
     /// Autonomous continuous improvement (Toyota Way Kaizen)
-    /// Scans for improvement opportunities, applies safe fixes, and reports remaining issues
+    /// Scans, fixes, commits, and files GitHub issues for remaining findings
     #[command(visible_aliases = &["improve"])]
     Kaizen {
         /// Project path to analyze
@@ -1265,9 +1265,13 @@ pub enum Commands {
         #[arg(long)]
         dry_run: bool,
 
-        /// Commit after applying fixes
+        /// Suppress auto-commit after fixes (commit is default)
         #[arg(long)]
-        commit: bool,
+        no_commit: bool,
+
+        /// Suppress GitHub issue creation for unfixed findings
+        #[arg(long)]
+        no_issues: bool,
 
         /// Push after committing
         #[arg(long)]

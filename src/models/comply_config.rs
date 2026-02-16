@@ -50,6 +50,10 @@ pub struct PmatYamlConfig {
     /// Work contract configuration
     #[serde(default)]
     pub work: WorkConfig,
+
+    /// Project-specific scoring plugins
+    #[serde(default)]
+    pub scoring: ScoringPluginConfig,
 }
 
 /// Configuration for pmat comply checks
@@ -277,6 +281,52 @@ pub struct WorkConfig {
     pub skip_quality_gates: bool,
 }
 
+/// Project-specific scoring plugins for domain scores (model accuracy, render quality, etc.)
+///
+/// Example .pmat.yaml:
+/// ```yaml
+/// scoring:
+///   custom_scores:
+///     - id: model-accuracy
+///       name: "APR Model Accuracy"
+///       command: "cargo test --test accuracy -- --nocapture 2>&1 | grep SCORE"
+///       max_score: 100.0
+///       min_score: 90.0
+///       severity: error
+/// ```
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ScoringPluginConfig {
+    /// Custom score definitions
+    #[serde(default)]
+    pub custom_scores: Vec<CustomScoreDefinition>,
+}
+
+/// A single custom score definition for project-specific metrics
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CustomScoreDefinition {
+    /// Unique identifier (e.g., "model-accuracy")
+    pub id: String,
+    /// Human-readable name
+    pub name: String,
+    /// Shell command that outputs JSON with {"score": N}
+    pub command: String,
+    /// Maximum possible score
+    #[serde(default = "default_max_score")]
+    pub max_score: f64,
+    /// Minimum acceptable score (None = no minimum)
+    #[serde(default)]
+    pub min_score: Option<f64>,
+    /// Severity when score is below minimum
+    #[serde(default)]
+    pub severity: CheckSeverity,
+    /// Weight for composite scoring (default 1.0)
+    #[serde(default = "default_weight")]
+    pub weight: f64,
+}
+
+fn default_max_score() -> f64 { 100.0 }
+fn default_weight() -> f64 { 1.0 }
+
 // Default value functions
 fn default_true() -> bool { true }
 fn default_coverage() -> f64 { 95.0 }
@@ -287,7 +337,7 @@ fn default_file_size() -> u32 { 500 }
 fn default_function_size() -> u32 { 50 }
 fn default_slow_test() -> f64 { 5.0 }
 fn default_slow_coverage() -> f64 { 10.0 }
-fn default_min_tdg_grade() -> String { "B".to_string() }
+fn default_min_tdg_grade() -> String { "A".to_string() }
 fn default_tdg_score() -> f64 { 70.0 }
 fn default_cache_warn_hours() -> i64 { 1 }
 fn default_cache_block_hours() -> i64 { 24 }
@@ -392,10 +442,10 @@ fn default_checks() -> HashMap<String, CheckConfig> {
         options: HashMap::new(),
     });
 
-    // CB-200: TDG Grade Gate (#214)
+    // CB-200: TDG Grade Gate (#214) — "A" or Fail
     checks.insert("cb-200".to_string(), CheckConfig {
         enabled: true,
-        severity: CheckSeverity::Warning,
+        severity: CheckSeverity::Error,
         threshold: None,
         options: HashMap::new(),
     });
@@ -429,6 +479,14 @@ fn default_checks() -> HashMap<String, CheckConfig> {
         enabled: true,
         severity: CheckSeverity::Warning,
         threshold: Some(80.0), // Minimum EDD compliance percentage
+        options: HashMap::new(),
+    });
+
+    // CB-1100: Custom Project Scores
+    checks.insert("cb-1100".to_string(), CheckConfig {
+        enabled: true,
+        severity: CheckSeverity::Error,
+        threshold: None,
         options: HashMap::new(),
     });
 
@@ -795,5 +853,55 @@ comply:
         assert!(config.is_suppressed("CB-501", "any.rs").is_some());
         assert!(config.is_suppressed("CB-507", "any.rs").is_some());
         assert!(config.is_suppressed("CB-502", "any.rs").is_none());
+    }
+
+    #[test]
+    fn test_scoring_plugin_yaml_parsing() {
+        let yaml = r#"
+scoring:
+  custom_scores:
+    - id: model-accuracy
+      name: "APR Model Accuracy"
+      command: "cargo test --test accuracy"
+      max_score: 100.0
+      min_score: 90.0
+      severity: error
+      weight: 2.0
+    - id: inference-speed
+      name: "Inference Speed"
+      command: "cargo bench --bench inference"
+      min_score: 50.0
+"#;
+        let config: PmatYamlConfig = serde_yaml::from_str(yaml).unwrap();
+        assert_eq!(config.scoring.custom_scores.len(), 2);
+
+        let first = &config.scoring.custom_scores[0];
+        assert_eq!(first.id, "model-accuracy");
+        assert_eq!(first.min_score, Some(90.0));
+        assert_eq!(first.severity, CheckSeverity::Error);
+        assert!((first.weight - 2.0).abs() < 0.001);
+
+        let second = &config.scoring.custom_scores[1];
+        assert_eq!(second.id, "inference-speed");
+        assert_eq!(second.max_score, 100.0); // default
+        assert!((second.weight - 1.0).abs() < 0.001); // default
+    }
+
+    #[test]
+    fn test_default_config_has_scoring() {
+        let config = PmatYamlConfig::default();
+        assert!(config.scoring.custom_scores.is_empty());
+    }
+
+    #[test]
+    fn test_default_min_tdg_grade_is_a() {
+        let config = ComplyConfig::default();
+        assert_eq!(config.thresholds.min_tdg_grade, "A");
+    }
+
+    #[test]
+    fn test_cb200_default_severity_is_error() {
+        let config = ComplyConfig::default();
+        assert_eq!(config.get_severity("cb-200"), CheckSeverity::Error);
     }
 }

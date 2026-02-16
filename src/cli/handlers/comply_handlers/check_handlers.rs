@@ -264,7 +264,7 @@ async fn handle_check(
     let project_version = &config.pmat.version;
 
     // Run compliance checks (filtered by .pmat.yaml configuration - COMPLY-044)
-    let checks = vec![
+    let mut checks = vec![
         check_version_currency(project_version),
         check_config_files(project_path),
         check_hooks_installed(project_path),
@@ -317,6 +317,12 @@ async fn handle_check(
         // CB-1000: MLOps Model Quality (PMAT-500: GGUF, APR, SafeTensors)
         filter_check_by_config(check_model_quality_with_config(project_path, Some(comply_config)), "cb-1000", comply_config),
     ];
+
+    // CB-1100: Custom Project Scores (dynamic, from .pmat.yaml)
+    let custom_checks = check_custom_scores(project_path);
+    for check in custom_checks {
+        checks.push(filter_check_by_config(check, "cb-1100", comply_config));
+    }
 
     // Calculate compliance
     let failures = checks
