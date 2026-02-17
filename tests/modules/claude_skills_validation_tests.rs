@@ -65,7 +65,7 @@ fn parse_skill_file(path: &Path) -> Result<ClaudeSkill, String> {
                 if trimmed.len() > "description:".len() {
                     let inline = trimmed.strip_prefix("description:").unwrap().trim();
                     if !inline.is_empty() && inline != "|" {
-                        description = inline.to_string();
+                        desc_lines.push(inline.to_string());
                         in_description = false;
                         continue;
                     } else if inline == "|" {

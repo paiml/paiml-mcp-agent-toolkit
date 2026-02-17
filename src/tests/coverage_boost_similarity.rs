@@ -398,8 +398,8 @@ mod similarity_detector_tests {
             (PathBuf::from("file2.rs"), content.to_string()),
         ];
         let similar = detector.detect_semantic_similarity(&files, 0.5);
-        // Same content should have semantic matches
-        assert!(similar.len() >= 0);
+        // Same content should have semantic matches - len() is usize, always >= 0
+        let _ = similar.len();
     }
 
     // analyze_entropy tests
@@ -578,7 +578,7 @@ mod similarity_detector_tests {
         let report = detector.comprehensive_analysis(&files);
         assert!(report.metrics.duplication_percentage >= 0.0);
         assert!(report.metrics.average_entropy >= 0.0);
-        assert!(report.metrics.total_clones >= 0);
+        let _ = report.metrics.total_clones;
     }
 }
 
@@ -696,8 +696,8 @@ mod winnowing_tests {
         let fp_text = winnow.fingerprint(text);
         let fp_sub = winnow.fingerprint(sub);
         let matches = winnow.find_matches(&fp_text, &fp_sub);
-        // Should find some matches since sub is contained in text
-        assert!(matches.len() >= 0);
+        // Should find some matches since sub is contained in text - len() is usize, always >= 0
+        let _ = matches.len();
     }
 
     #[test]
@@ -1303,8 +1303,8 @@ mod hash_collision_tests {
 
         let duplicates = detector.detect_exact_duplicates(&files);
         // Should detect duplicates between a.rs and b.rs but not c.rs
-        // The exact behavior depends on block extraction
-        assert!(duplicates.len() >= 0);
+        // The exact behavior depends on block extraction - len() is usize, always >= 0
+        let _ = duplicates.len();
     }
 }
 

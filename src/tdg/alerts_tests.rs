@@ -933,7 +933,7 @@ mod comprehensive_tests {
         // Stats should show resolved alert
         let stats = manager.get_statistics().await;
         // Note: resolve count may be 0 if auto-resolve ran first
-        assert!(stats.total_triggered >= 0);
+        let _ = stats.total_triggered;
     }
 
     #[tokio::test]

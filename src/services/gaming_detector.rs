@@ -151,6 +151,32 @@ pub fn detect_coverage_gaming(project_path: &Path) -> Result<GamingDetectionResu
     Ok(result)
 }
 
+/// Update raw string tracking state and determine if the line should be skipped.
+/// Returns (should_skip, new_in_raw_string_state).
+fn update_raw_string_state(trimmed: &str, in_raw_string: bool) -> (bool, bool) {
+    if in_raw_string {
+        let closed = trimmed.contains("\"#");
+        return (true, !closed);
+    }
+    if !trimmed.contains("r#\"") {
+        return (false, false);
+    }
+    // Line starts a raw string; check if it also closes on the same line
+    let is_single_line =
+        trimmed.contains("\"#") && trimmed.rfind("\"#") > trimmed.find("r#\"");
+    (true, !is_single_line)
+}
+
+/// Check if a trimmed line should be skipped (comments or string literals).
+fn is_non_attribute_line(trimmed: &str) -> bool {
+    // Skip comments and doc comments
+    if trimmed.starts_with("//") || trimmed.starts_with("/*") || trimmed.starts_with('*') {
+        return true;
+    }
+    // Skip lines where the pattern appears inside a string literal
+    trimmed.contains('"') && !trimmed.starts_with("#[") && !trimmed.starts_with("#!")
+}
+
 /// Check for cfg(not(...)) coverage exclusion patterns
 fn check_cfg_patterns(path: &Path, content: &str, violations: &mut Vec<GamingViolation>) {
     let patterns = [
@@ -163,35 +189,21 @@ fn check_cfg_patterns(path: &Path, content: &str, violations: &mut Vec<GamingVio
         ),
     ];
 
-    // Track raw string literal blocks (r#"..."#)
     let mut in_raw_string = false;
 
     for (line_num, line) in content.lines().enumerate() {
         let trimmed = line.trim();
 
-        // Track raw string literal boundaries
-        if !in_raw_string && trimmed.contains("r#\"") {
-            in_raw_string = true;
-            if trimmed.contains("\"#") && trimmed.rfind("\"#") > trimmed.find("r#\"") {
-                in_raw_string = false; // Single-line raw string
-            }
-            continue;
-        }
-        if in_raw_string {
-            if trimmed.contains("\"#") {
-                in_raw_string = false;
-            }
+        let (skip, new_state) = update_raw_string_state(trimmed, in_raw_string);
+        in_raw_string = new_state;
+        if skip {
             continue;
         }
 
-        // Skip comments and doc comments
-        if trimmed.starts_with("//") || trimmed.starts_with("/*") || trimmed.starts_with('*') {
+        if is_non_attribute_line(trimmed) {
             continue;
         }
-        // Skip lines where the pattern appears inside a string literal
-        if trimmed.contains('"') && !trimmed.starts_with("#[") && !trimmed.starts_with("#!") {
-            continue;
-        }
+
         for (pattern, gaming_type) in &patterns {
             if line.contains(pattern)
                 || line.contains(&pattern.replace("(", " ("))

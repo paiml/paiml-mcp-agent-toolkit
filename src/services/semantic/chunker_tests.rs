@@ -1076,7 +1076,7 @@ impl Greeter for Person {
         let source = "const MyClass = class {};";
         let chunks = chunk_code(source, Language::TypeScript).unwrap();
         // The outer class may or may not be extracted depending on tree structure
-        assert!(chunks.len() >= 0);
+        let _ = chunks.len();
     }
 
     #[test]
@@ -1094,7 +1094,7 @@ impl Greeter for Person {
         let chunks = chunk_code(source, Language::TypeScript).unwrap();
         // IIFE may not be extracted as named function
         let named_funcs: Vec<_> = chunks.iter().filter(|c| !c.chunk_name.is_empty()).collect();
-        assert!(named_funcs.len() >= 0);
+        let _ = named_funcs.len();
     }
 
     // Coverage for recursive extraction

@@ -481,7 +481,7 @@ async fn calculate_provability_with_details(
 
     // Find lowest-scoring functions for explainability
     let mut scored: Vec<_> = sample_functions.iter().zip(summaries.iter()).collect();
-    scored.sort_by(|a, b| a.1.provability_score.partial_cmp(&b.1.provability_score).unwrap());
+    scored.sort_by(|a, b| a.1.provability_score.total_cmp(&b.1.provability_score));
 
     let worst_files: Vec<String> = scored.iter()
         .take(5)

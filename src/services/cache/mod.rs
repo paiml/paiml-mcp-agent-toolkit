@@ -579,7 +579,8 @@ mod property_tests {
         fn age_is_non_negative(_dummy in 0..100) {
             let entry = CacheEntry::new("test".to_string(), 100);
             let age = entry.age();
-            prop_assert!(age.as_nanos() >= 0);
+            // Duration::as_nanos() returns u128, always non-negative; just verify it completes
+            let _ = age.as_nanos();
         }
     }
 

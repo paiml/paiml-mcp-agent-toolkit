@@ -269,7 +269,7 @@
                 .unwrap();
 
             // May or may not have violations depending on the code
-            assert!(violations.len() >= 0);
+            let _ = &violations;
         }
 
         #[tokio::test]
@@ -279,7 +279,7 @@
 
             let violations = run_satd_analysis(temp_dir.path(), &profile).await.unwrap();
             // May or may not have violations
-            assert!(violations.len() >= 0);
+            let _ = &violations;
         }
 
         #[tokio::test]

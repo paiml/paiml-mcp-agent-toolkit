@@ -244,6 +244,36 @@ pub fn scale_budgets_for_hardware(
         .collect()
 }
 
+/// Categorize an operation by name pattern and return its arithmetic intensity (FLOP/byte).
+///
+/// Uses a lookup table of (patterns, value) tuples, returning the first match.
+/// Default: 2.0 (balanced operation).
+fn categorize_operation(name_lower: &str) -> f64 {
+    // Lookup table: (patterns, arithmetic_intensity)
+    // Order matters — first match wins.
+    const OPERATION_CATEGORIES: &[(&[&str], f64)] = &[
+        // Memory-bound operations (AI < 1): read/write more data than compute
+        (&["rmsnorm", "layernorm", "residual", "add", "embed", "softmax"], 0.25),
+        // Elementwise activations (memory-bound)
+        (&["swiglu", "gelu", "silu", "relu"], 0.5),
+        // RoPE (rotary position embedding) - moderate AI
+        (&["rope", "rotary"], 2.0),
+        // Attention (compute-heavy for large sequences)
+        (&["attention"], 8.0),
+        // Matrix multiplications (compute-bound): FFN, QKV projections, output projections
+        (&["ffn", "mlp", "qkv", "proj"], 16.0),
+    ];
+
+    for &(patterns, value) in OPERATION_CATEGORIES {
+        if patterns.iter().any(|p| name_lower.contains(p)) {
+            return value;
+        }
+    }
+
+    // Default: balanced operation
+    2.0
+}
+
 /// Estimate arithmetic intensity (FLOP/byte) for roofline analysis (PMAT-449)
 ///
 /// Reference values from trueno-zram measurements and ML literature:
@@ -252,51 +282,7 @@ pub fn scale_budgets_for_hardware(
 /// - Compute-bound (AI > 10): Matrix multiplications, convolutions
 fn estimate_arithmetic_intensity(brick_name: &str) -> f64 {
     let name_lower = brick_name.to_lowercase();
-
-    // Memory-bound operations (AI < 1)
-    // These read/write more data than compute
-    if name_lower.contains("rmsnorm")
-        || name_lower.contains("layernorm")
-        || name_lower.contains("residual")
-        || name_lower.contains("add")
-        || name_lower.contains("embed")
-        || name_lower.contains("softmax")
-    {
-        return 0.25; // 2 FLOPs / 8 bytes = 0.25 FLOP/byte
-    }
-
-    // Elementwise activations (memory-bound)
-    if name_lower.contains("swiglu")
-        || name_lower.contains("gelu")
-        || name_lower.contains("silu")
-        || name_lower.contains("relu")
-    {
-        return 0.5; // 4 FLOPs / 8 bytes = 0.5 FLOP/byte
-    }
-
-    // RoPE (rotary position embedding) - moderate AI
-    if name_lower.contains("rope") || name_lower.contains("rotary") {
-        return 2.0; // Complex number multiply: ~16 FLOPs / 8 bytes
-    }
-
-    // Attention (compute-heavy for large sequences)
-    // AI = 2*seq_len / 4 bytes per element
-    if name_lower.contains("attention") {
-        return 8.0; // ~64 FLOPs (matmul) / 8 bytes input
-    }
-
-    // Matrix multiplications (compute-bound)
-    // FFN, QKV projections, output projections
-    if name_lower.contains("ffn")
-        || name_lower.contains("mlp")
-        || name_lower.contains("qkv")
-        || name_lower.contains("proj")
-    {
-        return 16.0; // Large matmuls: ~128 FLOPs / 8 bytes
-    }
-
-    // Default: balanced operation
-    2.0
+    categorize_operation(&name_lower)
 }
 
 /// BrickProfiler JSON input format (matches trueno::brick::BrickStats)
@@ -526,6 +512,103 @@ pub struct BrickScoreMetadata {
     pub budget_scale_factor: Option<f64>,
 }
 
+/// Score a single brick's performance against its budget.
+fn score_performance(mean_us: f64, budget_us: f64, brick_name: &str) -> BrickCheck {
+    let budget_ratio = mean_us / budget_us;
+    let perf_points = if budget_ratio <= 1.0 {
+        4.0 // Full points for meeting budget
+    } else if budget_ratio <= 1.5 {
+        2.0 // Half points for 50% over
+    } else if budget_ratio <= 2.0 {
+        1.0 // Quarter points for 100% over
+    } else {
+        0.0 // No points for >2x over budget
+    };
+
+    BrickCheck {
+        name: brick_name.to_string(),
+        passed: budget_ratio <= 1.0,
+        points: perf_points,
+        max_points: 4.0,
+        actual: mean_us,
+        threshold: budget_us,
+        unit: "µs".to_string(),
+        recommendation: if budget_ratio > 1.0 {
+            Some(format!(
+                "Optimize {} to meet {}µs budget (currently {:.1}µs, {:.0}% over)",
+                brick_name,
+                budget_us,
+                mean_us,
+                (budget_ratio - 1.0) * 100.0
+            ))
+        } else {
+            None
+        },
+    }
+}
+
+/// Score a single brick's throughput efficiency.
+fn score_efficiency(throughput: f64, brick_name: &str) -> BrickCheck {
+    let eff_points = if throughput > 1_000_000.0 {
+        2.5 // >1M elem/s
+    } else if throughput > 100_000.0 {
+        1.5 // >100K elem/s
+    } else if throughput > 0.0 {
+        0.5
+    } else {
+        0.0
+    };
+
+    BrickCheck {
+        name: brick_name.to_string(),
+        passed: throughput > 100_000.0,
+        points: eff_points,
+        max_points: 2.5,
+        actual: throughput,
+        threshold: 100_000.0,
+        unit: "elem/s".to_string(),
+        recommendation: if throughput < 100_000.0 {
+            Some(format!(
+                "Improve {} throughput (currently {:.0} elem/s)",
+                brick_name, throughput
+            ))
+        } else {
+            None
+        },
+    }
+}
+
+/// Score a single brick's measurement stability via coefficient of variation.
+fn score_stability(cv: f64, brick_name: &str) -> BrickCheck {
+    let stability_points = if cv < 5.0 {
+        1.5 // Excellent stability
+    } else if cv < 10.0 {
+        1.0 // Good stability
+    } else if cv < 15.0 {
+        0.5 // Acceptable stability
+    } else {
+        0.0 // Unstable
+    };
+
+    BrickCheck {
+        name: brick_name.to_string(),
+        passed: cv < 15.0,
+        points: stability_points,
+        max_points: 1.5,
+        actual: cv,
+        threshold: 15.0,
+        unit: "%".to_string(),
+        recommendation: if cv >= 15.0 {
+            Some(format!(
+                "Stabilize {} measurements (CV {:.1}% exceeds 15% threshold)",
+                brick_name, cv
+            ))
+        } else {
+            None
+        },
+    }
+}
+
 /// Score a BrickProfiler output
 ///
 /// PMAT-448: If hardware is provided, the score metadata will include
@@ -557,96 +640,14 @@ pub fn score_brick_profiler(
 
         // Performance check: within budget
         if let Some(budget_us) = budget {
-            let budget_ratio = mean_us / budget_us;
-            let perf_points = if budget_ratio <= 1.0 {
-                4.0 // Full points for meeting budget
-            } else if budget_ratio <= 1.5 {
-                2.0 // Half points for 50% over
-            } else if budget_ratio <= 2.0 {
-                1.0 // Quarter points for 100% over
-            } else {
-                0.0 // No points for >2x over budget
-            };
-
-            performance_checks.push(BrickCheck {
-                name: brick.name.clone(),
-                passed: budget_ratio <= 1.0,
-                points: perf_points,
-                max_points: 4.0,
-                actual: mean_us,
-                threshold: budget_us,
-                unit: "µs".to_string(),
-                recommendation: if budget_ratio > 1.0 {
-                    Some(format!(
-                        "Optimize {} to meet {}µs budget (currently {:.1}µs, {:.0}% over)",
-                        brick.name,
-                        budget_us,
-                        mean_us,
-                        (budget_ratio - 1.0) * 100.0
-                    ))
-                } else {
-                    None
-                },
-            });
+            performance_checks.push(score_performance(mean_us, budget_us, &brick.name));
         }
 
-        // Efficiency check: throughput > 0
-        let eff_points = if throughput > 1_000_000.0 {
-            2.5 // >1M elem/s
-        } else if throughput > 100_000.0 {
-            1.5 // >100K elem/s
-        } else if throughput > 0.0 {
-            0.5
-        } else {
-            0.0
-        };
-
-        efficiency_checks.push(BrickCheck {
-            name: brick.name.clone(),
-            passed: throughput > 100_000.0,
-            points: eff_points,
-            max_points: 2.5,
-            actual: throughput,
-            threshold: 100_000.0,
-            unit: "elem/s".to_string(),
-            recommendation: if throughput < 100_000.0 {
-                Some(format!(
-                    "Improve {} throughput (currently {:.0} elem/s)",
-                    brick.name, throughput
-                ))
-            } else {
-                None
-            },
-        });
+        // Efficiency check: throughput
+        efficiency_checks.push(score_efficiency(throughput, &brick.name));
 
         // Stability check: CV < 15%
-        let stability_points = if cv < 5.0 {
-            1.5 // Excellent stability
-        } else if cv < 10.0 {
-            1.0 // Good stability
-        } else if cv < 15.0 {
-            0.5 // Acceptable stability
-        } else {
-            0.0 // Unstable
-        };
-
-        stability_checks.push(BrickCheck {
-            name: brick.name.clone(),
-            passed: cv < 15.0,
-            points: stability_points,
-            max_points: 1.5,
-            actual: cv,
-            threshold: 15.0,
-            unit: "%".to_string(),
-            recommendation: if cv >= 15.0 {
-                Some(format!(
-                    "Stabilize {} measurements (CV {:.1}% exceeds 15% threshold)",
-                    brick.name, cv
-                ))
-            } else {
-                None
-            },
-        });
+        stability_checks.push(score_stability(cv, &brick.name));
 
         // PMAT-449: Estimate arithmetic intensity for roofline analysis
         // AI = FLOP / bytes_transferred

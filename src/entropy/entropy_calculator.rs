@@ -1205,7 +1205,7 @@ mod coverage_tests {
                 .collect();
             let report = create_test_report(violations, 10000);
 
-            prop_assert!(report.total_loc_reduction() <= 10000 || report.total_loc_reduction() >= 0);
+            prop_assert!(report.total_loc_reduction() <= 10000);
         }
 
         #[test]

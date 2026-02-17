@@ -1907,5 +1907,5 @@ fn test_ptx_diagnostics_register_and_branch_counting() {
     let result = run_ptx_diagnostics(&index);
     // The function references ptx keywords so should be found
     // (may or may not have diagnostics depending on content)
-    assert!(result.total_critical + result.total_warning + result.total_info >= 0);
+    let _ = &result;
 }

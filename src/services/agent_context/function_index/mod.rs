@@ -23,4 +23,6 @@ pub(crate) use types::DefinitionType;
 #[cfg(test)]
 mod sqlite_falsification_tests;
 #[cfg(test)]
+mod sqlite_falsification_tests_part2;
+#[cfg(test)]
 mod tests;

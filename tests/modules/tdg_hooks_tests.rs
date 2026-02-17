@@ -14,7 +14,9 @@ use tempfile::TempDir;
 struct TdgHooksFixture {
     #[allow(dead_code)]
     temp_dir: TempDir,
+    #[allow(dead_code)]
     project_root: PathBuf,
+    #[allow(dead_code)]
     git_dir: PathBuf,
     hooks_dir: PathBuf,
     pmat_dir: PathBuf,

@@ -652,7 +652,7 @@ mod tests {
 
     #[test]
     fn test_local_embedder_basic() {
-        let mut embedder = LocalEmbedder::new();
+        let embedder = LocalEmbedder::new();
 
         // Fit on some documents
         let docs = vec![

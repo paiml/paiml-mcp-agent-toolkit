@@ -363,7 +363,7 @@ mod project_analyzer_tests {
         let project = Project::new(Path::new(".")).unwrap();
         let files = project.source_files();
         // Should return a vector (may be empty depending on directory)
-        assert!(files.len() >= 0);
+        let _ = files.len();
     }
 }
 

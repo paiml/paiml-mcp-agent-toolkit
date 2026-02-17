@@ -147,13 +147,15 @@ mod tests {
     #[test]
     fn test_unified_ast_engine_new() {
         let engine = UnifiedAstEngine::new();
-        assert!(std::mem::size_of_val(&engine) >= 0);
+        // Verify construction completes without panic
+        let _ = std::mem::size_of_val(&engine);
     }
 
     #[test]
     fn test_unified_ast_engine_default() {
         let engine = UnifiedAstEngine::default();
-        assert!(std::mem::size_of_val(&engine) >= 0);
+        // Verify construction completes without panic
+        let _ = std::mem::size_of_val(&engine);
     }
 
     #[tokio::test]

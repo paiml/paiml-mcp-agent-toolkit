@@ -377,4 +377,4 @@ mod fuzz_test_compatibility {
 }
 
 /// Re-export the uncached analysis function from complexity module
-pub use crate::services::complexity::analyze_file_complexity_uncached;
+pub(crate) use crate::services::complexity::analyze_file_complexity_uncached;

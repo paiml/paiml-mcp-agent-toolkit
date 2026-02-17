@@ -619,7 +619,7 @@ mod tests {
         let ast = syn::parse_file(code).unwrap();
         let cfg = ControlFlowGraph::from_ast(&ast);
         let essential = cfg.essential_complexity();
-        assert!(essential >= 0);
+        let _ = essential;
     }
 
     #[test]

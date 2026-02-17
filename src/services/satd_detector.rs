@@ -53,6 +53,7 @@ pub struct SATDSummary {
 
 /// Test-only structures for SATD metrics
 #[cfg(test)]
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 struct DebtFileMetrics {
     file: PathBuf,
@@ -63,6 +64,7 @@ struct DebtFileMetrics {
 }
 
 #[cfg(test)]
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 struct DebtCategoryMetrics {
     count: usize,

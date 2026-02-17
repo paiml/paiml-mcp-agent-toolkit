@@ -1232,8 +1232,8 @@ fn test_typescript_iife_not_extracted() {
     let chunks = chunk_code(source, Language::TypeScript).unwrap();
     // IIFE is anonymous, may or may not be extracted
     let named_funcs: Vec<_> = chunks.iter().filter(|c| !c.chunk_name.is_empty()).collect();
-    // Check that we don't crash
-    assert!(named_funcs.len() >= 0);
+    // Check that we don't crash - named_funcs.len() is valid (usize always >= 0)
+    let _ = named_funcs.len();
 }
 
 #[test]

@@ -1004,6 +1004,7 @@ fn test_churn_result_defaults() {
         repeated_fixes: Vec<RepeatedFix>,
     }
 
+    #[allow(dead_code)]
     struct RepeatedFix {
         file: String,
         line_range: String,

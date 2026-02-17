@@ -51,28 +51,24 @@ mod tests {
 
     #[test]
     fn test_analyzer_pool_new() {
-        let pool = AnalyzerPool::new();
-        assert!(std::mem::size_of_val(&pool) >= 0);
+        let _pool = AnalyzerPool::new();
     }
 
     #[test]
     fn test_analyzer_pool_default() {
-        let pool = AnalyzerPool::default();
-        assert!(std::mem::size_of_val(&pool) >= 0);
+        let _pool = AnalyzerPool::default();
     }
 
     // ============ RustAnalyzer Tests ============
 
     #[test]
     fn test_rust_analyzer_new() {
-        let analyzer = RustAnalyzer::new();
-        assert!(std::mem::size_of_val(&analyzer) >= 0);
+        let _analyzer = RustAnalyzer::new();
     }
 
     #[test]
     fn test_rust_analyzer_default() {
-        let analyzer = RustAnalyzer::default();
-        assert!(std::mem::size_of_val(&analyzer) >= 0);
+        let _analyzer = RustAnalyzer::default();
     }
 
     #[test]

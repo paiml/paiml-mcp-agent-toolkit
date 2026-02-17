@@ -795,7 +795,7 @@ let a = _mm_add_ps(x, y);
         );
         let analysis = analyze_simd(content);
         let total_ops = analysis.defects.iter().count();
-        assert!(total_ops >= 0);
+        let _ = total_ops;
     }
 
     #[test]

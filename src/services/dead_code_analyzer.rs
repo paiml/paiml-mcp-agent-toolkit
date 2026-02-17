@@ -880,6 +880,55 @@ pub(crate) fn compute_reachability(
     reachable
 }
 
+/// Find which function contains a given line number in a file.
+///
+/// Iterates through all known functions to find which one contains the specified line,
+/// using a simple heuristic: the function whose declaration line is closest to (but not
+/// after) the given line number.
+#[must_use]
+#[allow(dead_code)]
+fn find_containing_function(
+    file_path: &str,
+    line_number: usize,
+    all_functions: &HashMap<String, (String, u32)>,
+) -> Option<String> {
+    let mut current_function = None;
+    for (qualified_name, (func_file, func_line)) in all_functions {
+        if qualified_name.starts_with(file_path)
+            && func_file == file_path
+            && line_number >= *func_line as usize
+        {
+            current_function = Some(qualified_name.clone());
+        }
+    }
+    current_function
+}
+
+/// Find all function calls in a single line of source code.
+///
+/// Checks each known function to see if it is called (not defined) on this line,
+/// excluding self-calls from the caller.
+#[must_use]
+#[allow(dead_code)]
+fn find_calls_in_line(
+    line: &str,
+    caller: &str,
+    all_functions: &HashMap<String, (String, u32)>,
+) -> Vec<String> {
+    let mut calls = Vec::new();
+    for callee_qualified in all_functions.keys() {
+        let callee_name = callee_qualified.split("::").last().unwrap_or("");
+        if !callee_name.is_empty()
+            && line.contains(&format!("{callee_name}("))
+            && !line.contains(&format!("fn {callee_name}"))
+            && caller != callee_qualified
+        {
+            calls.push(callee_qualified.clone());
+        }
+    }
+    calls
+}
+
 /// Detect function calls within source code lines (pure function).
 ///
 /// Scans lines of code to detect calls to known functions.
@@ -903,34 +952,12 @@ pub(crate) fn detect_function_calls_in_lines(
     for (i, line) in lines.iter().enumerate() {
         let line_number = i + 1;
 
-        // Find which function this line belongs to
-        let mut current_function = None;
-        for (qualified_name, (func_file, func_line)) in all_functions {
-            if qualified_name.starts_with(file_path) && func_file == file_path {
-                // Simple heuristic: if this line is after the function declaration,
-                // it might be inside that function
-                if line_number >= *func_line as usize {
-                    current_function = Some(qualified_name.clone());
-                }
-            }
-        }
-
-        if let Some(caller) = current_function {
-            // Look for function calls in this line
-            for callee_qualified in all_functions.keys() {
-                let callee_name = callee_qualified.split("::").last().unwrap_or("");
-                // More specific matching: function name followed by opening parenthesis
-                // and not part of a function definition
-                if !callee_name.is_empty()
-                    && line.contains(&format!("{callee_name}("))
-                    && !line.contains(&format!("fn {callee_name}"))
-                    && caller != *callee_qualified
-                {
-                    function_calls
-                        .entry(caller.clone())
-                        .or_default()
-                        .insert(callee_qualified.clone());
-                }
+        if let Some(caller) = find_containing_function(file_path, line_number, all_functions) {
+            for callee in find_calls_in_line(line, &caller, all_functions) {
+                function_calls
+                    .entry(caller.clone())
+                    .or_default()
+                    .insert(callee);
             }
         }
     }

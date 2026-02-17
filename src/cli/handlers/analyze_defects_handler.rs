@@ -551,7 +551,7 @@ mod coverage_tests {
 
         let files = collect_rust_files(temp_dir.path()).expect("Should succeed");
         // Test may find 0, 1, or 2 files depending on filesystem timing
-        assert!(files.len() >= 0, "Should return a list of files");
+        let _ = &files; // Verify collect succeeded without panic
     }
 
     #[test]

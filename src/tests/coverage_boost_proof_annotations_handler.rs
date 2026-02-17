@@ -1027,7 +1027,7 @@ fn test_setup_proof_annotator_mock_sources() {
     let annotator = setup_proof_annotator(false);
     // The annotator should be functional
     let stats = annotator.cache_stats();
-    assert!(stats.files_tracked >= 0);
+    let _ = stats.files_tracked;
 }
 
 // =============================================================================

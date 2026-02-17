@@ -419,8 +419,8 @@ mod tests {
         let analyzer = SATDAnalyzer::new();
         let result = analyzer.analyze_project(temp_dir.path()).await.unwrap();
 
-        // Should analyze multiple files
-        assert!(result.total_files_analyzed >= 0);
+        // Should analyze multiple files (result completes without panic)
+        let _ = result.total_files_analyzed;
     }
 
     #[tokio::test]
@@ -438,8 +438,8 @@ mod tests {
         let analyzer = SATDAnalyzer::new();
         let result = analyzer.analyze_project(temp_dir.path()).await.unwrap();
 
-        // Should analyze nested files
-        assert!(result.total_files_analyzed >= 0);
+        // Should analyze nested files (result completes without panic)
+        let _ = result.total_files_analyzed;
     }
 
     // === ProjectAnalyzer trait tests ===

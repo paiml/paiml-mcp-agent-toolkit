@@ -366,55 +366,57 @@ impl<'a> TypeScriptAstVisitor<'a> {
     fn visit_expr(&mut self, expr: &swc_ecma_ast::Expr) {
         match expr {
             swc_ecma_ast::Expr::Fn(fn_expr) => {
-                let mut node =
-                    UnifiedAstNode::new(AstKind::Function(FunctionKind::Regular), self.language);
-                if fn_expr.function.is_async {
-                    node.flags.set(NodeFlags::ASYNC);
-                }
-                self.dag.add_node(node);
+                self.add_function_node(fn_expr.function.is_async);
             }
             swc_ecma_ast::Expr::Arrow(arrow_fn) => {
-                let mut node =
-                    UnifiedAstNode::new(AstKind::Function(FunctionKind::Regular), self.language);
-                if arrow_fn.is_async {
-                    node.flags.set(NodeFlags::ASYNC);
-                }
-                self.dag.add_node(node);
+                self.add_function_node(arrow_fn.is_async);
             }
             swc_ecma_ast::Expr::Object(obj_lit) => {
-                // Handle object methods and properties
-                for prop_or_spread in &obj_lit.props {
-                    if let swc_ecma_ast::PropOrSpread::Prop(prop) = prop_or_spread {
-                        match prop.as_ref() {
-                            swc_ecma_ast::Prop::Method(_method_prop) => {
-                                let node = UnifiedAstNode::new(
-                                    AstKind::Function(FunctionKind::Regular),
-                                    self.language,
-                                );
-                                self.dag.add_node(node);
-                            }
-                            swc_ecma_ast::Prop::KeyValue(kv_prop) => {
-                                // Check if the value is a function expression
-                                self.visit_expr(&kv_prop.value);
-                            }
-                            _ => {}
-                        }
-                    }
-                }
+                self.visit_object_props(obj_lit);
             }
             swc_ecma_ast::Expr::Call(call_expr) => {
-                // Visit the callee and arguments
-                if let swc_ecma_ast::Callee::Expr(expr) = &call_expr.callee {
-                    self.visit_expr(expr);
-                }
-                for arg in &call_expr.args {
-                    self.visit_expr(&arg.expr);
-                }
+                self.visit_call_expr(call_expr);
             }
-            _ => {
-                // For other expressions, we don't recurse to keep it simple
-                // Most function expressions should be caught by the above patterns
+            _ => {}
+        }
+    }
+
+    fn add_function_node(&mut self, is_async: bool) {
+        let mut node =
+            UnifiedAstNode::new(AstKind::Function(FunctionKind::Regular), self.language);
+        if is_async {
+            node.flags.set(NodeFlags::ASYNC);
+        }
+        self.dag.add_node(node);
+    }
+
+    fn visit_object_props(&mut self, obj_lit: &swc_ecma_ast::ObjectLit) {
+        for prop_or_spread in &obj_lit.props {
+            let swc_ecma_ast::PropOrSpread::Prop(prop) = prop_or_spread else {
+                continue;
+            };
+            match prop.as_ref() {
+                swc_ecma_ast::Prop::Method(_) => {
+                    let node = UnifiedAstNode::new(
+                        AstKind::Function(FunctionKind::Regular),
+                        self.language,
+                    );
+                    self.dag.add_node(node);
+                }
+                swc_ecma_ast::Prop::KeyValue(kv_prop) => {
+                    self.visit_expr(&kv_prop.value);
+                }
+                _ => {}
             }
+        }
+    }
+
+    fn visit_call_expr(&mut self, call_expr: &swc_ecma_ast::CallExpr) {
+        if let swc_ecma_ast::Callee::Expr(expr) = &call_expr.callee {
+            self.visit_expr(expr);
+        }
+        for arg in &call_expr.args {
+            self.visit_expr(&arg.expr);
         }
     }
 }
@@ -782,10 +784,7 @@ mod tests {
         // Base complexity is 1, and we found 2 function declarations
         // The current implementation doesn't traverse into function bodies
         assert!(cyclomatic >= 1, "Should have base cyclomatic complexity");
-        assert!(
-            cognitive >= 0,
-            "Cognitive complexity should be non-negative"
-        );
+        let _ = cognitive; // usize is always non-negative
     }
 
     #[tokio::test]
@@ -1048,10 +1047,7 @@ mod tests {
         let (cyclomatic, cognitive) = strategy.calculate_complexity(&dag);
         // Base complexity is 1, current implementation doesn't traverse function bodies
         assert!(cyclomatic >= 1, "Should have base cyclomatic complexity");
-        assert!(
-            cognitive >= 0,
-            "Cognitive complexity should be non-negative"
-        );
+        let _ = cognitive; // usize is always non-negative
     }
 
     // ==================== Error Handling Tests ====================

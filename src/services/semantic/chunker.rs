@@ -138,52 +138,58 @@ fn parse_rust(source: &str) -> Result<Tree, String> {
         .ok_or_else(|| "Failed to parse Rust source".to_string())
 }
 
+/// Check whether a sibling node is a doc comment that should be included.
+/// Returns `true` if the sibling is a doc comment (include and continue scanning),
+/// `false` if scanning should stop (non-comment or non-doc comment).
+fn is_doc_comment(kind: &str, source: &str, sibling: Node) -> bool {
+    let is_comment = kind == "comment"      // TypeScript, C, C++, Go
+        || kind == "line_comment"           // Rust
+        || kind == "block_comment";         // Rust, C, C++
+
+    if !is_comment {
+        return false;
+    }
+
+    // For Rust line_comment: only include /// doc comments, not regular //
+    if kind == "line_comment" {
+        let comment_text = &source[sibling.byte_range()];
+        return comment_text.trim_start().starts_with("///");
+    }
+
+    // All other comment types (block_comment, generic comment) are included
+    true
+}
+
 /// Helper: Find preceding doc comments for a node (all languages)
 /// Returns the start byte position of the first comment, or node start if none
 fn find_doc_comment_start(node: Node, source: &str) -> usize {
     let mut start_byte = node.start_byte();
 
-    // Walk backwards through preceding siblings to find comments
-    if let Some(parent) = node.parent() {
-        let mut cursor = parent.walk();
-        let siblings: Vec<Node> = parent.children(&mut cursor).collect();
+    let parent = match node.parent() {
+        Some(p) => p,
+        None => return start_byte,
+    };
 
-        if let Some(node_index) = siblings.iter().position(|n| n.id() == node.id()) {
-            // Check previous siblings in reverse order
-            for i in (0..node_index).rev() {
-                let sibling = siblings[i];
-                let kind = sibling.kind();
+    let mut cursor = parent.walk();
+    let siblings: Vec<Node> = parent.children(&mut cursor).collect();
 
-                // Detect comments for all languages
-                let is_comment = kind == "comment"  // TypeScript, C, C++, Go
-                    || kind == "line_comment"   // Rust
-                    || kind == "block_comment"; // Rust, C, C++
+    let node_index = match siblings.iter().position(|n| n.id() == node.id()) {
+        Some(idx) => idx,
+        None => return start_byte,
+    };
 
-                if is_comment {
-                    // For Rust: only include /// doc comments, not regular //
-                    if kind == "line_comment" {
-                        let comment_text = &source[sibling.byte_range()];
-                        if comment_text.trim_start().starts_with("///") {
-                            start_byte = sibling.start_byte();
-                            continue;
-                        }
-                        // Skip regular // comments in Rust
-                        break;
-                    } else {
-                        // Include all other comment types
-                        start_byte = sibling.start_byte();
-                        continue;
-                    }
-                }
-
-                // Stop if we hit a non-comment node
-                break;
-            }
+    // Check previous siblings in reverse order
+    for i in (0..node_index).rev() {
+        let sibling = siblings[i];
+        if !is_doc_comment(sibling.kind(), source, sibling) {
+            break;
         }
+        start_byte = sibling.start_byte();
     }
 
     start_byte
 }
+
 
 /// Map Rust AST node kind to chunk type and name field
 fn rust_node_to_chunk(kind: &str) -> Option<(ChunkType, &'static str, bool)> {

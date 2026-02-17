@@ -908,6 +908,7 @@ impl MockCrossLanguageDependencyAnalyzer {
 }
 
 /// Cross-language dependency representation
+#[allow(dead_code)]
 struct CrossLanguageDependency {
     source_id: String,
     target_id: String,
@@ -921,6 +922,7 @@ struct CrossLanguageDependency {
 }
 
 /// Mock polyglot analyzer for testing
+#[allow(dead_code)]
 struct MockPolyglotAnalyzer {
     fixture_path: PathBuf,
 }
@@ -992,6 +994,7 @@ struct PolyglotAnalysisResult {
 // Parameter structs for MCP tools
 /// Parameters for polyglot analysis
 #[derive(Debug)]
+#[allow(dead_code)]
 struct PolyglotAnalysisParams {
     path: String,
     languages: Option<Vec<String>>,
@@ -1001,6 +1004,7 @@ struct PolyglotAnalysisParams {
 
 /// Parameters for language boundary detection
 #[derive(Debug)]
+#[allow(dead_code)]
 struct LanguageBoundaryParams {
     path: String,
     source_language: Option<String>,
@@ -1048,6 +1052,7 @@ struct NodeSummary {
 }
 
 /// Mock MCP polyglot analysis tool for testing
+#[allow(dead_code)]
 struct MockPolyglotAnalysisTool {
     fixture_path: PathBuf,
 }
@@ -1135,6 +1140,7 @@ impl MockPolyglotAnalysisTool {
 }
 
 /// Mock MCP language boundary tool for testing
+#[allow(dead_code)]
 struct MockLanguageBoundaryTool {
     fixture_path: PathBuf,
 }

@@ -1,4 +1,5 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
+#![allow(unreachable_pub)]
 //! Kaizen Test Reliability Patterns
 //!
 //! Implements Toyota Way reliability principles to eliminate flaky tests

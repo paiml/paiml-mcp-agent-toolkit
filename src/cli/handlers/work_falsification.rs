@@ -196,137 +196,120 @@ pub async fn run_falsification_tests(
     })
 }
 
+/// Determine if a falsification method should block completion on failure.
+///
+/// Returns `true` for always-blocking methods, or reads from contract thresholds
+/// for configurable methods (v2.6/v3.1 additions).
+fn determine_blocking_status(
+    method: &FalsificationMethod,
+    thresholds: &crate::cli::handlers::work_contract::ContractThresholds,
+) -> bool {
+    match method {
+        // Always blocking
+        FalsificationMethod::ManifestIntegrity
+        | FalsificationMethod::MetaFalsification
+        | FalsificationMethod::CoverageGaming
+        | FalsificationMethod::DifferentialCoverage
+        | FalsificationMethod::AbsoluteCoverage
+        | FalsificationMethod::TdgRegression
+        | FalsificationMethod::ComplexityRegression
+        | FalsificationMethod::SupplyChainIntegrity
+        | FalsificationMethod::SpecQuality
+        | FalsificationMethod::RoadmapUpdate
+        | FalsificationMethod::GitHubSync
+        | FalsificationMethod::ExamplesCompile
+        | FalsificationMethod::BookValidation
+        | FalsificationMethod::PerFileCoverage
+        | FalsificationMethod::FixChainLimit => true,
+
+        // Warning only
+        FalsificationMethod::FileSizeRegression => false,
+
+        // Configurable via thresholds
+        FalsificationMethod::SatdDetection => thresholds.block_on_new_satd,
+        FalsificationMethod::DeadCodeDetection => thresholds.block_on_new_dead_code,
+        FalsificationMethod::LintPass => thresholds.require_lint_pass,
+        FalsificationMethod::VariantCoverage => thresholds.block_on_untested_variants,
+        FalsificationMethod::CrossCrateParity => thresholds.block_on_cross_crate_failure,
+        FalsificationMethod::RegressionGate => thresholds.block_on_regression,
+    }
+}
+
+/// Dispatch a falsification test to the appropriate handler.
+///
+/// Each variant maps to a single test function. Sync tests are called directly;
+/// async tests are `.await`ed.
+async fn dispatch_falsification_test(
+    project_path: &Path,
+    contract: &WorkContract,
+    claim: &FalsifiableClaim,
+) -> Result<FalsificationResult> {
+    match claim.falsification_method {
+        FalsificationMethod::ManifestIntegrity => {
+            test_manifest_integrity(project_path, &contract.baseline_file_manifest)
+        }
+        FalsificationMethod::MetaFalsification => test_meta_falsification(project_path),
+        FalsificationMethod::CoverageGaming => test_coverage_gaming(project_path),
+        FalsificationMethod::DifferentialCoverage => {
+            test_differential_coverage(project_path, &contract.baseline_commit).await
+        }
+        FalsificationMethod::AbsoluteCoverage => {
+            test_absolute_coverage(project_path, contract.thresholds.min_coverage_pct).await
+        }
+        FalsificationMethod::TdgRegression => {
+            test_tdg_regression(project_path, contract.baseline_tdg).await
+        }
+        FalsificationMethod::ComplexityRegression => {
+            test_complexity_regression(project_path, contract.thresholds.max_function_complexity)
+        }
+        FalsificationMethod::SupplyChainIntegrity => {
+            test_supply_chain_integrity(project_path).await
+        }
+        FalsificationMethod::FileSizeRegression => {
+            test_file_size_regression(project_path, contract.thresholds.max_file_lines)
+        }
+        FalsificationMethod::SpecQuality => test_spec_quality(
+            project_path,
+            &contract.work_item_id,
+            contract.thresholds.min_spec_score,
+        ),
+        FalsificationMethod::RoadmapUpdate => {
+            test_roadmap_update(project_path, &contract.baseline_commit)
+        }
+        FalsificationMethod::GitHubSync => test_github_sync(project_path),
+        FalsificationMethod::ExamplesCompile => test_examples_compile(project_path).await,
+        FalsificationMethod::BookValidation => test_book_validation(project_path).await,
+        FalsificationMethod::SatdDetection => {
+            test_satd_detection(project_path, &contract.baseline_commit).await
+        }
+        FalsificationMethod::DeadCodeDetection => {
+            test_dead_code_detection(project_path, &contract.baseline_commit).await
+        }
+        FalsificationMethod::PerFileCoverage => {
+            test_per_file_coverage(project_path, contract.thresholds.min_per_file_coverage_pct)
+                .await
+        }
+        FalsificationMethod::LintPass => test_lint_pass(project_path).await,
+        FalsificationMethod::VariantCoverage => {
+            test_variant_coverage(project_path, &contract.baseline_commit)
+        }
+        FalsificationMethod::FixChainLimit => {
+            test_fix_chain_limit(project_path, contract.thresholds.max_fix_chain)
+        }
+        FalsificationMethod::CrossCrateParity => test_cross_crate_parity(project_path).await,
+        FalsificationMethod::RegressionGate => test_regression_gate(project_path).await,
+    }
+}
+
 /// Run a single falsification test
 async fn run_single_falsification(
     project_path: &Path,
     contract: &WorkContract,
     claim: &FalsifiableClaim,
 ) -> Result<(FalsificationResult, bool)> {
-    match claim.falsification_method {
-        FalsificationMethod::ManifestIntegrity => {
-            let result = test_manifest_integrity(project_path, &contract.baseline_file_manifest)?;
-            Ok((result, true)) // Blocking
-        }
-
-        FalsificationMethod::MetaFalsification => {
-            let result = test_meta_falsification(project_path)?;
-            Ok((result, true)) // Blocking
-        }
-
-        FalsificationMethod::CoverageGaming => {
-            let result = test_coverage_gaming(project_path)?;
-            Ok((result, true)) // Blocking
-        }
-
-        FalsificationMethod::DifferentialCoverage => {
-            let result =
-                test_differential_coverage(project_path, &contract.baseline_commit).await?;
-            Ok((result, true)) // Blocking
-        }
-
-        FalsificationMethod::AbsoluteCoverage => {
-            let result =
-                test_absolute_coverage(project_path, contract.thresholds.min_coverage_pct).await?;
-            Ok((result, true)) // Blocking
-        }
-
-        FalsificationMethod::TdgRegression => {
-            let result = test_tdg_regression(project_path, contract.baseline_tdg).await?;
-            Ok((result, true)) // Blocking
-        }
-
-        FalsificationMethod::ComplexityRegression => {
-            let result = test_complexity_regression(
-                project_path,
-                contract.thresholds.max_function_complexity,
-            )?;
-            Ok((result, true)) // Blocking
-        }
-
-        FalsificationMethod::SupplyChainIntegrity => {
-            let result = test_supply_chain_integrity(project_path).await?;
-            Ok((result, true)) // Blocking
-        }
-
-        FalsificationMethod::FileSizeRegression => {
-            let result =
-                test_file_size_regression(project_path, contract.thresholds.max_file_lines)?;
-            Ok((result, false)) // Warning only
-        }
-
-        FalsificationMethod::SpecQuality => {
-            let result = test_spec_quality(
-                project_path,
-                &contract.work_item_id,
-                contract.thresholds.min_spec_score,
-            )?;
-            Ok((result, true)) // Blocking
-        }
-
-        FalsificationMethod::RoadmapUpdate => {
-            let result = test_roadmap_update(project_path, &contract.baseline_commit)?;
-            Ok((result, true)) // Blocking
-        }
-
-        FalsificationMethod::GitHubSync => {
-            let result = test_github_sync(project_path)?;
-            Ok((result, true)) // Blocking
-        }
-
-        FalsificationMethod::ExamplesCompile => {
-            let result = test_examples_compile(project_path).await?;
-            Ok((result, true)) // Blocking
-        }
-
-        FalsificationMethod::BookValidation => {
-            let result = test_book_validation(project_path).await?;
-            Ok((result, true)) // Blocking
-        }
-
-        // v2.6 comply spec additions
-        FalsificationMethod::SatdDetection => {
-            let result = test_satd_detection(project_path, &contract.baseline_commit).await?;
-            Ok((result, contract.thresholds.block_on_new_satd)) // Configurable blocking
-        }
-
-        FalsificationMethod::DeadCodeDetection => {
-            let result = test_dead_code_detection(project_path, &contract.baseline_commit).await?;
-            Ok((result, contract.thresholds.block_on_new_dead_code)) // Configurable blocking
-        }
-
-        FalsificationMethod::PerFileCoverage => {
-            let result =
-                test_per_file_coverage(project_path, contract.thresholds.min_per_file_coverage_pct)
-                    .await?;
-            Ok((result, true)) // Blocking
-        }
-
-        FalsificationMethod::LintPass => {
-            let result = test_lint_pass(project_path).await?;
-            Ok((result, contract.thresholds.require_lint_pass)) // Configurable blocking
-        }
-
-        // v3.1 defect churn prevention
-        FalsificationMethod::VariantCoverage => {
-            let result = test_variant_coverage(project_path, &contract.baseline_commit)?;
-            Ok((result, contract.thresholds.block_on_untested_variants))
-        }
-
-        FalsificationMethod::FixChainLimit => {
-            let result = test_fix_chain_limit(project_path, contract.thresholds.max_fix_chain)?;
-            Ok((result, true)) // Always blocking
-        }
-
-        FalsificationMethod::CrossCrateParity => {
-            let result = test_cross_crate_parity(project_path).await?;
-            Ok((result, contract.thresholds.block_on_cross_crate_failure))
-        }
-
-        FalsificationMethod::RegressionGate => {
-            let result = test_regression_gate(project_path).await?;
-            Ok((result, contract.thresholds.block_on_regression))
-        }
-    }
+    let result = dispatch_falsification_test(project_path, contract, claim).await?;
+    let is_blocking = determine_blocking_status(&claim.falsification_method, &contract.thresholds);
+    Ok((result, is_blocking))
 }
 
 /// Test manifest integrity: verify all baseline files still exist
@@ -1144,69 +1127,87 @@ async fn test_examples_compile(project_path: &Path) -> Result<FalsificationResul
     ))
 }
 
+/// Run `make validate-book` and return the result.
+///
+/// Returns `Some(result)` if the command executed (pass or fail),
+/// or `None` if `make` was not available.
+fn try_make_validate_book(project_path: &Path) -> Option<FalsificationResult> {
+    let output = Command::new("make")
+        .args(["validate-book"])
+        .current_dir(project_path)
+        .output()
+        .ok()?;
+
+    if output.status.success() {
+        Some(FalsificationResult::passed(
+            "pmat-book validation passed".to_string(),
+        ))
+    } else {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        Some(FalsificationResult::failed(
+            "pmat-book validation failed".to_string(),
+            EvidenceType::CounterExample {
+                details: stderr.chars().take(500).collect(),
+            },
+        ))
+    }
+}
+
+/// Run pmat-book chapter test script as a fallback.
+///
+/// Returns `Some(result)` if the script exists and executed,
+/// or `None` if not available.
+fn try_book_chapter_tests(book_path: &Path) -> Option<FalsificationResult> {
+    let test_script = book_path.join("tests/ch13/test_language_examples.sh");
+    if !test_script.exists() {
+        return None;
+    }
+
+    let output = Command::new("bash")
+        .arg(&test_script)
+        .current_dir(book_path)
+        .output()
+        .ok()?;
+
+    if output.status.success() {
+        Some(FalsificationResult::passed(
+            "pmat-book chapter tests passed".to_string(),
+        ))
+    } else {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        Some(FalsificationResult::failed(
+            "pmat-book chapter tests failed".to_string(),
+            EvidenceType::CounterExample {
+                details: stderr.chars().take(500).collect(),
+            },
+        ))
+    }
+}
+
 /// Test pmat-book validation: book tests must pass
 async fn test_book_validation(project_path: &Path) -> Result<FalsificationResult> {
     print!("Validating pmat-book... ");
 
     // Check if this is the pmat repository by looking for pmat-book sibling
-    let pmat_book_path = project_path.parent().map(|p| p.join("pmat-book"));
-
-    if let Some(book_path) = pmat_book_path {
-        if book_path.exists() {
-            // Try to run make validate-book
-            let output = Command::new("make")
-                .args(["validate-book"])
-                .current_dir(project_path)
-                .output();
-
-            match output {
-                Ok(out) if out.status.success() => {
-                    return Ok(FalsificationResult::passed(
-                        "pmat-book validation passed".to_string(),
-                    ));
-                }
-                Ok(out) => {
-                    let stderr = String::from_utf8_lossy(&out.stderr);
-                    return Ok(FalsificationResult::failed(
-                        "pmat-book validation failed".to_string(),
-                        EvidenceType::CounterExample {
-                            details: stderr.chars().take(500).collect(),
-                        },
-                    ));
-                }
-                Err(_) => {
-                    // make validate-book not available, try direct test
-                    let test_script = book_path.join("tests/ch13/test_language_examples.sh");
-                    if test_script.exists() {
-                        let script_output = Command::new("bash")
-                            .arg(&test_script)
-                            .current_dir(&book_path)
-                            .output();
-
-                        match script_output {
-                            Ok(out) if out.status.success() => {
-                                return Ok(FalsificationResult::passed(
-                                    "pmat-book chapter tests passed".to_string(),
-                                ));
-                            }
-                            Ok(out) => {
-                                let stderr = String::from_utf8_lossy(&out.stderr);
-                                return Ok(FalsificationResult::failed(
-                                    "pmat-book chapter tests failed".to_string(),
-                                    EvidenceType::CounterExample {
-                                        details: stderr.chars().take(500).collect(),
-                                    },
-                                ));
-                            }
-                            Err(_) => {}
-                        }
-                    }
-                }
-            }
+    let book_path = match project_path.parent().map(|p| p.join("pmat-book")) {
+        Some(p) if p.exists() => p,
+        _ => {
+            return Ok(FalsificationResult::passed(
+                "pmat-book not found (skipping validation)".to_string(),
+            ));
         }
+    };
+
+    // Try make validate-book first, then fall back to chapter test script
+    if let Some(result) = try_make_validate_book(project_path) {
+        return Ok(result);
     }
 
-    // No pmat-book found or no validation available
+    if let Some(result) = try_book_chapter_tests(&book_path) {
+        return Ok(result);
+    }
+
+    // No validation method available
     Ok(FalsificationResult::passed(
         "pmat-book not found (skipping validation)".to_string(),
     ))
@@ -1719,6 +1720,39 @@ async fn test_satd_detection(
     }
 }
 
+/// Check if a trimmed line is a regular SATD-eligible comment.
+/// Must start with `//` but NOT `///` or `//!`, and must not be
+/// a SECURITY/SAFETY annotation.
+fn is_satd_comment(trimmed: &str) -> bool {
+    if !trimmed.starts_with("//") || trimmed.starts_with("///") || trimmed.starts_with("//!") {
+        return false;
+    }
+    let comment_text = trimmed[2..].trim_start();
+    !comment_text.starts_with("SECURITY:") && !comment_text.starts_with("SAFETY:")
+}
+
+/// Extract SATD markers from a single added line.
+/// Returns one entry per matching pattern found in the line.
+fn extract_satd_markers(
+    line_content: &str,
+    file: &Path,
+    satd_patterns: &[&str],
+) -> Vec<(PathBuf, String)> {
+    let trimmed = line_content.trim();
+    satd_patterns
+        .iter()
+        .filter(|pattern| trimmed.contains(*pattern))
+        .map(|pattern| {
+            let marker = line_content
+                .split(pattern)
+                .nth(1)
+                .map(|s| format!("{}{}", pattern, s.chars().take(50).collect::<String>()))
+                .unwrap_or_else(|| pattern.to_string());
+            (file.to_path_buf(), marker)
+        })
+        .collect()
+}
+
 /// Detect new SATD markers by comparing git diff
 fn detect_new_satd_since_baseline(
     project_path: &Path,
@@ -1744,44 +1778,29 @@ fn detect_new_satd_since_baseline(
     for line in diff.lines() {
         if let Some(file_path) = line.strip_prefix("+++ b/") {
             current_file = Some(PathBuf::from(file_path));
-        } else if let Some(line_content) = line.strip_prefix('+') {
-            if line.starts_with("+++") {
-                continue;
-            }
-            let trimmed = line_content.trim();
+            continue;
+        }
 
-            // Only flag actual comments, not string literals or code
-            if !trimmed.starts_with("//")
-                || trimmed.starts_with("///")
-                || trimmed.starts_with("//!")
-            {
-                continue;
-            }
+        // Skip non-added lines and the "+++ b/" header (already handled above)
+        let Some(line_content) = line.strip_prefix('+') else {
+            continue;
+        };
+        if line.starts_with("+++") {
+            continue;
+        }
 
-            // Exclude security/safety annotations — not debt
-            let comment_text = trimmed[2..].trim_start();
-            if comment_text.starts_with("SECURITY:") || comment_text.starts_with("SAFETY:") {
-                continue;
-            }
+        let trimmed = line_content.trim();
+        if !is_satd_comment(trimmed) {
+            continue;
+        }
 
-            for pattern in &satd_patterns {
-                if trimmed.contains(pattern) {
-                    if let Some(ref file) = current_file {
-                        let marker = line_content
-                            .split(pattern)
-                            .nth(1)
-                            .map(|s| {
-                                format!("{}{}", pattern, s.chars().take(50).collect::<String>())
-                            })
-                            .unwrap_or_else(|| pattern.to_string());
-                        new_satd.push((file.clone(), marker));
-                    }
-                }
-            }
+        if let Some(ref file) = current_file {
+            new_satd.extend(extract_satd_markers(line_content, file, &satd_patterns));
         }
     }
 
     Ok(new_satd)
+
 }
 
 /// Test dead code detection: find new unreachable code since baseline
@@ -1884,6 +1903,84 @@ fn get_changed_files(project_path: &Path, baseline_commit: &str) -> Result<Vec<S
     }
 }
 
+/// Check if a file should be skipped for per-file coverage checks.
+fn is_excluded_from_per_file_coverage(filename: &str) -> bool {
+    filename.contains("/tests/") || filename.contains("_test.rs") || filename.contains("/target/")
+}
+
+/// Extract the line coverage percentage from a single llvm-cov file entry.
+fn extract_file_line_coverage(file_entry: &serde_json::Value) -> f64 {
+    file_entry
+        .get("summary")
+        .and_then(|s| s.get("lines"))
+        .and_then(|l| l.get("percent"))
+        .and_then(|p| p.as_f64())
+        .unwrap_or(100.0)
+}
+
+/// Parse llvm-cov JSON and return files whose coverage is below `threshold`.
+///
+/// Each entry is `(filename, coverage_pct)`. Test files and generated files
+/// are excluded.
+fn collect_files_below_threshold(
+    json: &serde_json::Value,
+    threshold: f64,
+) -> Vec<(PathBuf, f64)> {
+    let data = match json.get("data").and_then(|d| d.as_array()) {
+        Some(d) => d,
+        None => return Vec::new(),
+    };
+
+    data.iter()
+        .filter_map(|file_data| file_data.get("files").and_then(|f| f.as_array()))
+        .flatten()
+        .filter_map(|file| {
+            let filename = file.get("filename").and_then(|f| f.as_str()).unwrap_or("unknown");
+            if is_excluded_from_per_file_coverage(filename) {
+                return None;
+            }
+            let coverage = extract_file_line_coverage(file);
+            if coverage < threshold {
+                Some((PathBuf::from(filename), coverage))
+            } else {
+                None
+            }
+        })
+        .collect()
+}
+
+/// Build a FalsificationResult from the list of files below coverage threshold.
+fn build_per_file_coverage_result(
+    files_below_threshold: Vec<(PathBuf, f64)>,
+    threshold: f64,
+) -> FalsificationResult {
+    if files_below_threshold.is_empty() {
+        return FalsificationResult::passed(format!(
+            "All files >= {:.1}% coverage",
+            threshold
+        ));
+    }
+
+    let paths: Vec<PathBuf> = files_below_threshold
+        .iter()
+        .map(|(p, _)| p.clone())
+        .collect();
+    let details: Vec<String> = files_below_threshold
+        .iter()
+        .take(10)
+        .map(|(p, cov)| format!("{}: {:.1}%", p.display(), cov))
+        .collect();
+    FalsificationResult::failed(
+        format!(
+            "{} file(s) below {:.1}% threshold: {}",
+            files_below_threshold.len(),
+            threshold,
+            details.join(", ")
+        ),
+        EvidenceType::FileList(paths),
+    )
+}
+
 /// Test per-file coverage: all files must meet threshold
 async fn test_per_file_coverage(
     project_path: &Path,
@@ -1895,7 +1992,6 @@ async fn test_per_file_coverage(
     let coverage_json = project_path.join("target/llvm-cov/coverage.json");
 
     if !coverage_json.exists() {
-        // Try to run coverage if not available
         return Ok(FalsificationResult::passed(format!(
             "No per-file coverage data (run 'make coverage'), threshold: {:.1}%",
             threshold
@@ -1905,67 +2001,8 @@ async fn test_per_file_coverage(
     let content = std::fs::read_to_string(&coverage_json)?;
     let json: serde_json::Value = serde_json::from_str(&content)?;
 
-    let mut files_below_threshold = Vec::new();
-
-    // Parse llvm-cov JSON format
-    if let Some(data) = json.get("data").and_then(|d| d.as_array()) {
-        for file_data in data {
-            if let Some(files) = file_data.get("files").and_then(|f| f.as_array()) {
-                for file in files {
-                    let filename = file
-                        .get("filename")
-                        .and_then(|f| f.as_str())
-                        .unwrap_or("unknown");
-
-                    // Skip test files and generated files
-                    if filename.contains("/tests/")
-                        || filename.contains("_test.rs")
-                        || filename.contains("/target/")
-                    {
-                        continue;
-                    }
-
-                    // Get coverage percentage
-                    let coverage = file
-                        .get("summary")
-                        .and_then(|s| s.get("lines"))
-                        .and_then(|l| l.get("percent"))
-                        .and_then(|p| p.as_f64())
-                        .unwrap_or(100.0);
-
-                    if coverage < threshold {
-                        files_below_threshold.push((PathBuf::from(filename), coverage));
-                    }
-                }
-            }
-        }
-    }
-
-    if files_below_threshold.is_empty() {
-        Ok(FalsificationResult::passed(format!(
-            "All files >= {:.1}% coverage",
-            threshold
-        )))
-    } else {
-        let paths: Vec<PathBuf> = files_below_threshold
-            .iter()
-            .map(|(p, _)| p.clone())
-            .collect();
-        let details: Vec<String> = files_below_threshold
-            .iter()
-            .take(10)
-            .map(|(p, cov)| format!("{}: {:.1}%", p.display(), cov))
-            .collect();
-        Ok(FalsificationResult::failed(
-            format!(
-                "{} file(s) below {:.1}% threshold: {}",
-                files_below_threshold.len(),
-                threshold,
-                details.join(", ")
-            ),
-            EvidenceType::FileList(paths),
-        ))
-    }
+    let files_below = collect_files_below_threshold(&json, threshold);
+    Ok(build_per_file_coverage_result(files_below, threshold))
 }
 
 /// Test lint pass: O(1) - reads from cached lint status

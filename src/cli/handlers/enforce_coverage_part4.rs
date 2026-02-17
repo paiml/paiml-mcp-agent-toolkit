@@ -26,7 +26,7 @@
 
             let violations = run_tdg_analysis(temp_dir.path(), &profile).await.unwrap();
             // May or may not have violations
-            assert!(violations.len() >= 0);
+            let _ = &violations;
         }
 
         #[tokio::test]
@@ -38,7 +38,7 @@
                 .await
                 .unwrap();
             // May or may not have violations
-            assert!(violations.len() >= 0);
+            let _ = &violations;
         }
 
         #[tokio::test]
@@ -50,7 +50,7 @@
                 .await
                 .unwrap();
             // May or may not have violations
-            assert!(violations.len() >= 0);
+            let _ = &violations;
         }
 
         #[tokio::test]
@@ -62,7 +62,7 @@
                 .await
                 .unwrap();
             // With relaxed profile allowing duplication, should have fewer violations
-            assert!(violations.len() >= 0);
+            let _ = &violations;
         }
     }
 

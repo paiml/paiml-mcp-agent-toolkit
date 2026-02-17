@@ -1650,7 +1650,7 @@ mod test_utilities {
 
     /// Creates a mock AstItem for testing purposes
     #[allow(dead_code)]
-    pub fn create_mock_function(name: &str, is_async: bool, line: usize) -> AstItem {
+    fn create_mock_function(name: &str, is_async: bool, line: usize) -> AstItem {
         AstItem::Function {
             name: name.to_string(),
             visibility: "public".to_string(),
@@ -1661,7 +1661,7 @@ mod test_utilities {
 
     /// Creates a mock class/struct for testing
     #[allow(dead_code)]
-    pub fn create_mock_class(name: &str, fields_count: usize, line: usize) -> AstItem {
+    fn create_mock_class(name: &str, fields_count: usize, line: usize) -> AstItem {
         AstItem::Struct {
             name: name.to_string(),
             visibility: "public".to_string(),
@@ -1673,7 +1673,7 @@ mod test_utilities {
 
     /// Validates that function names follow enhanced naming conventions
     #[allow(dead_code)]
-    pub fn validate_enhanced_function_names(names: &[String]) -> Vec<String> {
+    fn validate_enhanced_function_names(names: &[String]) -> Vec<String> {
         let mut issues = Vec::new();
 
         for name in names {
@@ -1700,7 +1700,7 @@ mod test_utilities {
 
     /// Validates WASM function names are descriptive
     #[allow(dead_code)]
-    pub fn validate_wasm_function_names(names: &[String], module_name: &str) -> Vec<String> {
+    fn validate_wasm_function_names(names: &[String], module_name: &str) -> Vec<String> {
         let mut issues = Vec::new();
 
         for name in names {

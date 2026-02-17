@@ -370,7 +370,8 @@ mod tests {
     #[test]
     fn test_complexity_service_adapter_new() {
         let adapter = ComplexityServiceAdapter::new_complexity_service();
-        assert!(format!("{:?}", adapter.inner()).len() >= 0);
+        // Verify Debug impl works without panic
+        let _ = format!("{:?}", adapter.inner());
     }
 
     #[tokio::test]
@@ -580,7 +581,8 @@ mod tests {
     #[test]
     fn test_refactor_service_adapter_new() {
         let adapter = RefactorServiceAdapter::new_refactor_service();
-        assert!(format!("{:?}", adapter.inner()).len() >= 0);
+        // Verify Debug impl works without panic
+        let _ = format!("{:?}", adapter.inner());
     }
 
     #[tokio::test]

@@ -426,7 +426,7 @@ mod tests {
             PopperCategoryScore::new("Historical Integrity", 7.0, 10.0);
         // ML stays N/A
 
-        let mut recommendations = vec![
+        let recommendations = vec![
             PopperRecommendation::new(
                 "Testing",
                 "Add mutation testing",

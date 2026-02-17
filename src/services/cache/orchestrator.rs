@@ -136,11 +136,11 @@ struct StrategyEvaluation {
 
 #[cfg(test)]
 impl StrategyEvaluation {
-    pub fn score(&self) -> f64 {
+    pub(crate) fn score(&self) -> f64 {
         self.performance.hit_rate * self.performance.throughput
     }
 
-    pub fn is_valid(&self) -> bool {
+    pub(crate) fn is_valid(&self) -> bool {
         self.timestamp.elapsed().as_secs() < 3600
     }
 }

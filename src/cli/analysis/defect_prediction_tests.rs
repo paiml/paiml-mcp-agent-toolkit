@@ -332,7 +332,7 @@ mod tests {
     #[test]
     fn test_filter_and_sort_predictions_combined_filters() {
         // Test combining high_risk_only AND confidence filtering
-        let mut predictions = vec![
+        let predictions = vec![
             (
                 "high_low_conf.rs".to_string(),
                 create_mock_defect_score(0.9, 0.3, RiskLevel::High),

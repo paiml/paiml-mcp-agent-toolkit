@@ -116,6 +116,21 @@ pub fn detect_project_language_enhanced(path: &Path) -> LanguageDetection {
     }
 }
 
+/// Compute a confidence boost for a detected language based on project indicator files.
+fn compute_confidence_boost(lang: &str, path: &Path) -> f64 {
+    if lang == "rust" && path.join("Cargo.toml").exists() {
+        10.0
+    } else if (lang == "cpp" || lang == "c") && path.join("CMakeLists.txt").exists() {
+        10.0
+    } else if (lang == "javascript" || lang == "typescript")
+        && path.join("package.json").exists()
+    {
+        5.0
+    } else {
+        0.0
+    }
+}
+
 /// Detect all languages in a polyglot project
 pub fn detect_all_languages(path: &Path) -> MultiLanguageDetection {
     debug!("Detecting all languages at: {:?}", path);
@@ -148,17 +163,7 @@ pub fn detect_all_languages(path: &Path) -> MultiLanguageDetection {
             // Calculate confidence (percentage + primary indicator boost)
             let mut confidence = percentage;
 
-            // Add primary indicator boost
-            if lang == "rust" && path.join("Cargo.toml").exists() {
-                confidence += 10.0;
-            } else if (lang == "cpp" || lang == "c") && path.join("CMakeLists.txt").exists() {
-                confidence += 10.0;
-            } else if (lang == "javascript" || lang == "typescript")
-                && path.join("package.json").exists()
-            {
-                confidence += 5.0;
-            }
-
+            confidence += compute_confidence_boost(lang, path);
             languages.push(LanguageInfo {
                 language: lang.clone(),
                 confidence: confidence.min(100.0),

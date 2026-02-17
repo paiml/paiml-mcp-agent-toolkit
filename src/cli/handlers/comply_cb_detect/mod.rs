@@ -10,6 +10,7 @@ mod markdown_best_practices;
 mod model_quality;
 mod quality_checks;
 mod rust_best_practices;
+mod rust_best_practices_extended;
 mod safety_checks;
 mod scala_best_practices;
 mod sql_best_practices;
@@ -22,6 +23,7 @@ pub use markdown_best_practices::*;
 pub use model_quality::*;
 pub use quality_checks::*;
 pub use rust_best_practices::*;
+pub use rust_best_practices_extended::*;
 pub use safety_checks::*;
 pub use scala_best_practices::*;
 pub use sql_best_practices::*;
@@ -30,3 +32,7 @@ pub use yaml_best_practices::*;
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tests_part2;
+#[cfg(test)]
+mod tests_part3;

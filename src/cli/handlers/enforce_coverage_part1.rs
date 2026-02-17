@@ -39,6 +39,7 @@ pub fn complex_function(x: i32) -> i32 {
     }
 
     /// Create a test project with Cargo.toml for more realistic testing
+    #[allow(dead_code)]
     fn create_test_project_with_cargo() -> TempDir {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
 

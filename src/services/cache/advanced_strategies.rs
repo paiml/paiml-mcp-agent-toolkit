@@ -1153,8 +1153,8 @@ mod tests {
 
         let keys = vec!["key1".to_string(), "key2".to_string()];
         let warmed = cache.warm_cache(keys).await?;
-        // Warming may not succeed without actual values
-        assert!(warmed >= 0);
+        // Warming may not succeed without actual values; verify it completes
+        let _ = warmed;
 
         Ok(())
     }

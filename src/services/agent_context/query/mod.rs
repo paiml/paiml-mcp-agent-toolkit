@@ -30,3 +30,5 @@ pub use types::{CaseSensitivity, QueryOptions, QueryResult, RankBy, SearchMode};
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tests_part2;

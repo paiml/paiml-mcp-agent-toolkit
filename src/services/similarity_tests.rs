@@ -163,7 +163,7 @@ mod tests {
         ];
         let similar = detector.detect_semantic_similarity(&files, 0.5);
         // May or may not find semantic similarity depending on token overlap
-        assert!(similar.len() >= 0);
+        let _ = similar.len();
     }
 
     #[test]
@@ -1098,9 +1098,9 @@ fn calculate_sum(x: i32, y: i32) -> i32 {
         let semantic = detector.detect_semantic_similarity(&files, 0.6);
 
         // Just verify no panics and valid output
-        assert!(exact.len() >= 0);
-        assert!(structural.len() >= 0);
-        assert!(semantic.len() >= 0);
+        let _ = exact.len();
+        let _ = structural.len();
+        let _ = semantic.len();
     }
 }
 

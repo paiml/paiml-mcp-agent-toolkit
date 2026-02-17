@@ -553,7 +553,7 @@ Not valid JSON line
         // Check report structure
         let report = &json["report"];
         assert_eq!(report["total_diagnostics"], 2);
-        assert!(report["successful_fixes"].as_u64().unwrap() >= 0);
+        let _ = report["successful_fixes"].as_u64().unwrap();
         assert!(report["success_rate"].is_number());
         assert!(report["total_duration_ms"].is_number());
 

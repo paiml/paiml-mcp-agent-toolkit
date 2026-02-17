@@ -133,6 +133,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     Ok(())
 }
 
+/// Check if a line is the Unreleased section header
+fn is_unreleased_header(line: &str) -> bool {
+    line.starts_with("## [Unreleased]")
+}
+
+/// Check if a line is a versioned section header (e.g., "## [1.0.0]")
+fn is_version_header(line: &str) -> bool {
+    line.starts_with("## [") && !is_unreleased_header(line)
+}
+
+/// Check if a line is a section boundary (subsection or version header)
+fn is_section_boundary(line: &str) -> bool {
+    line.starts_with("### ") || line.starts_with("## ")
+}
+
 /// Insert entry into changelog content
 fn insert_entry(content: &str, entry: &ChangelogEntry) -> Result<String> {
     let lines: Vec<&str> = content.lines().collect();
@@ -144,38 +159,34 @@ fn insert_entry(content: &str, entry: &ChangelogEntry) -> Result<String> {
     let section_header = entry.category.section_header();
 
     for line in lines.iter() {
-        // Check if we're entering Unreleased section
-        if line.starts_with("## [Unreleased]") {
+        // Entering Unreleased section
+        if is_unreleased_header(line) {
             in_unreleased = true;
             result.push(line.to_string());
             continue;
         }
 
-        // Check if we're leaving Unreleased section
-        if in_unreleased && line.starts_with("## [") && !line.starts_with("## [Unreleased]") {
+        // Leaving Unreleased section (hit a versioned header)
+        if in_unreleased && is_version_header(line) {
             in_unreleased = false;
         }
 
-        // Check if we're in the target section
+        // Entering the target subsection within Unreleased
         if in_unreleased && line.starts_with(section_header) {
             in_target_section = true;
             result.push(line.to_string());
             continue;
         }
 
-        // Check if we're leaving the target section
-        if in_target_section && (line.starts_with("### ") || line.starts_with("## ")) {
+        // Leaving the target subsection (hit next section boundary)
+        if in_target_section && is_section_boundary(line) {
             in_target_section = false;
         }
 
-        // Insert entry in target section (after section header, skip empty lines)
-        if in_target_section && !inserted {
-            // Skip empty lines after section header
-            if !line.trim().is_empty() {
-                // Insert before existing entries
-                result.push(entry.to_markdown());
-                inserted = true;
-            }
+        // Insert entry before first non-empty line in target section
+        if in_target_section && !inserted && !line.trim().is_empty() {
+            result.push(entry.to_markdown());
+            inserted = true;
         }
 
         result.push(line.to_string());

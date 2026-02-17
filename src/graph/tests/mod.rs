@@ -2,4 +2,4 @@
 // Complexity: All functions ≤ 10
 // SATD: Zero tolerance
 
-pub mod integration_tests;
+pub(crate) mod integration_tests;

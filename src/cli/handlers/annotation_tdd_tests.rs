@@ -114,8 +114,26 @@ const validateInput = () => { return true; };
     async fn red_must_show_complexity_scores() {
         // RED: Must show complexity metrics for functions
         let temp_dir = TempDir::new().unwrap();
+        let complex_function = COMPLEX_JS_FUNCTION;
 
-        let complex_function = r#"
+        fs::write(temp_dir.path().join("complex.js"), complex_function).unwrap();
+
+        let output = std::process::Command::new("./target/debug/pmat")
+            .args([
+                "context",
+                "--project-path",
+                temp_dir.path().to_str().unwrap(),
+                "--format",
+                "llm-optimized",
+            ])
+            .output()
+            .expect("Failed to run pmat");
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        assert_complexity_output(&stdout);
+    }
+
+    const COMPLEX_JS_FUNCTION: &str = r#"
 function complexLogic(input) {
     if (input > 10) {
         if (input > 20) {
@@ -135,22 +153,7 @@ function complexLogic(input) {
 }
 "#;
 
-        fs::write(temp_dir.path().join("complex.js"), complex_function).unwrap();
-
-        let output = std::process::Command::new("./target/debug/pmat")
-            .args([
-                "context",
-                "--project-path",
-                temp_dir.path().to_str().unwrap(),
-                "--format",
-                "llm-optimized",
-            ])
-            .output()
-            .expect("Failed to run pmat");
-
-        let stdout = String::from_utf8_lossy(&output.stdout);
-
-        // Must show complexity indicators
+    fn assert_complexity_output(stdout: &str) {
         assert!(
             stdout.contains("complexity")
                 || stdout.contains("Complexity")
@@ -377,7 +380,7 @@ export { usedFunction };
 mod green_phase_implementation {
 
     // Helper to create enhanced format output
-    pub fn format_context_with_annotations(
+    pub(super) fn format_context_with_annotations(
         analysis_report: &crate::services::simple_deep_context::SimpleAnalysisReport,
         project_path: &std::path::Path,
     ) -> String {

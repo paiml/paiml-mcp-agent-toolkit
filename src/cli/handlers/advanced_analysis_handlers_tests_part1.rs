@@ -73,6 +73,7 @@ mod tests {
     }
 
     /// Helper to create a simple Makefile for testing
+    #[allow(dead_code)]
     fn create_test_makefile(dir: &TempDir) {
         let makefile = dir.path().join("Makefile");
         fs::write(

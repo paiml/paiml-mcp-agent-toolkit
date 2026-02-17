@@ -401,7 +401,8 @@ mod tests {
 
         // Verify structure
         assert!(!diag.session_id.is_nil(), "Session ID should not be nil");
-        assert!(diag.uptime.as_nanos() >= 0, "Uptime should be non-negative");
+        // Duration::as_nanos() returns u128, always non-negative; verify field is accessible
+        let _ = diag.uptime.as_nanos();
         assert!(
             diag.memory_usage_mb >= 0.0,
             "Memory usage should be non-negative"
@@ -632,7 +633,8 @@ mod property_tests {
 
             if let Ok(manager) = PersistentCacheManager::new(config, cache_dir) {
                 let diag = manager.get_diagnostics();
-                prop_assert!(diag.uptime.as_nanos() >= 0);
+                // Duration::as_nanos() returns u128, always non-negative
+                let _ = diag.uptime.as_nanos();
             }
         }
     }

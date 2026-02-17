@@ -1,6 +1,6 @@
 [package]
 name = "pmat"
-version = "3.3.0"
+version = "3.4.0"
 edition = "2021"
 rust-version = "1.80.0"
 authors = ["Pragmatic AI Labs"]
@@ -362,6 +362,10 @@ internal_tests = []
 # Empty feature: exists only so cfg(feature = "broken-tests") compiles without warnings
 # NEVER add to any feature bundle (default, full, all-languages, etc.)
 broken-tests = []
+# Feature flag for red-phase TDD tests (expected failures, not yet passing)
+# Empty feature: exists only so cfg(feature = "red-phase-tests") compiles without warnings
+# NEVER add to any feature bundle (default, full, all-languages, etc.)
+red-phase-tests = []
 # Feature flag for slow CLI integration tests (assert_cmd spawns binaries)
 # Disabled by default for fast coverage - enable with --features cli-integration
 cli-integration = []
