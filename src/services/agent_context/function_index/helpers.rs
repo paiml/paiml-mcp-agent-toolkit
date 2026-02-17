@@ -778,9 +778,10 @@ pub(super) fn calculate_simple_tdg(complexity: u32, satd_count: u32, loc: u32) -
     let mut score = 0.0f32;
 
     // Complexity penalty (0-4 points)
-    // Divisor of 20: CC=40 → 2.0 (B boundary). Functions at the pre-commit
-    // CC<=30 gate get score=1.5 (well within A). CC=60 → 3.0, CC=80 → 4.0 (cap).
-    score += (complexity as f32 / 20.0).min(4.0);
+    // Divisor of 25: CC=50 → 2.0 (B boundary). Functions at the pre-commit
+    // CC<=30 gate get score=1.2 (safe A). Dispatchers (CC~45) score 1.8 (A).
+    // CC=75 → 3.0, CC=100 → 4.0 (cap).
+    score += (complexity as f32 / 25.0).min(4.0);
 
     // SATD penalty (0-2 points, first 2 markers free to reduce false positives)
     // Many functions reference SATD markers descriptively (detector code, enums).

@@ -354,92 +354,6 @@ impl Language {
         LANGUAGE_INFO[(*self).to_index()].name
     }
 
-    /// Original extensions method - REPLACED with data-driven approach
-    #[allow(dead_code)]
-    #[must_use]
-    pub fn extensions_old(&self) -> &'static [&'static str] {
-        match self {
-            // Systems Programming
-            Language::Rust => &["rs"],
-            Language::C => &["c", "h"],
-            Language::Cpp => &["cpp", "cc", "cxx", "hpp", "hxx", "C", "H"],
-            Language::Go => &["go"],
-            Language::Zig => &["zig"],
-
-            // JVM Ecosystem
-            Language::Java => &["java"],
-            Language::Kotlin => &["kt", "kts"],
-            Language::Scala => &["scala", "sc"],
-            Language::Groovy => &["groovy", "gvy", "gy", "gsh"],
-            Language::Clojure => &["clj", "cljs", "cljc", "edn"],
-
-            // .NET Ecosystem
-            Language::CSharp => &["cs"],
-            Language::FSharp => &["fs", "fsi", "fsx"],
-            Language::VisualBasic => &["vb"],
-
-            // Dynamic Languages
-            Language::Python => &["py", "pyw", "pyi", "pyx", "pxd"],
-            Language::JavaScript => &["js", "jsx", "mjs", "cjs"],
-            Language::TypeScript => &["ts", "tsx", "d.ts"],
-            Language::Ruby => &["rb", "rbw", "rake", "gemspec"],
-            Language::PHP => &["php", "phtml", "php3", "php4", "php5", "phps"],
-            Language::Perl => &["pl", "pm", "t", "pod"],
-            Language::Lua => &["lua"],
-
-            // Functional Languages
-            Language::Haskell => &["hs", "lhs"],
-            Language::Elixir => &["ex", "exs"],
-            Language::Erlang => &["erl", "hrl"],
-            Language::OCaml => &["ml", "mli"],
-            Language::ReasonML => &["re", "rei"],
-            Language::Elm => &["elm"],
-            Language::PureScript => &["purs"],
-
-            // Mobile Development
-            Language::Swift => &["swift"],
-            Language::ObjectiveC => &["m", "mm", "M"],
-            Language::Dart => &["dart"],
-
-            // Shell & Scripting
-            Language::Bash => &["sh", "bash", "zsh"],
-            Language::Zsh => &["zsh"],
-            Language::Fish => &["fish"],
-            Language::PowerShell => &["ps1", "psm1", "psd1"],
-
-            // Data & Config
-            Language::SQL => &["sql", "ddl", "dml"],
-            Language::HCL => &["tf", "tfvars", "hcl"],
-            Language::YAML => &["yml", "yaml"],
-            Language::TOML => &["toml"],
-            Language::JSON => &["json", "jsonc"],
-            Language::XML => &["xml", "xsd", "xsl", "xslt"],
-
-            // Documentation & Markup
-            Language::Markdown => &["md", "markdown", "mdown", "mkd"],
-            Language::LaTeX => &["tex", "latex", "sty", "cls"],
-            Language::AsciiDoc => &["adoc", "asciidoc"],
-
-            // Build Systems
-            Language::Makefile => &["mk", "make"],
-            Language::CMake => &["cmake"],
-            Language::Bazel => &["bazel", "bzl"],
-            Language::Gradle => &["gradle"],
-            Language::Maven => &["pom"],
-
-            // Specialized
-            Language::Solidity => &["sol"],
-            Language::VHDL => &["vhd", "vhdl"],
-            Language::Verilog => &["v", "vh"],
-            Language::R => &["r", "R"],
-            Language::Julia => &["jl"],
-            Language::Matlab => &["m"],
-            Language::Assembly => &["s", "S", "asm"],
-
-            Language::Unknown => &[],
-        }
-    }
-
     /// Detect language from file extension
     #[must_use]
     pub fn from_extension(ext: &str) -> Self {
@@ -1085,13 +999,6 @@ mod tests {
         assert!(!set.contains(&Language::Go));
     }
 
-    #[test]
-    fn test_extensions_old_fallback() {
-        // Test the old extensions method works correctly
-        assert!(Language::Rust.extensions_old().contains(&"rs"));
-        assert!(Language::Python.extensions_old().contains(&"py"));
-        assert!(Language::Unknown.extensions_old().is_empty());
-    }
 }
 
 #[cfg_attr(coverage_nightly, coverage(off))]
