@@ -1435,6 +1435,36 @@ pub enum Commands {
         #[arg(short, long)]
         quiet: bool,
     },
+
+    /// Direct SQL access to the function index database
+    ///
+    /// Run SQL queries against the .pmat/context.db SQLite index.
+    /// Supports named example queries, custom SQL, and multiple output formats.
+    #[command(name = "sql")]
+    Sql {
+        /// SQL query or named example (e.g., "grade-dist", "worst-files", "complex-funcs")
+        query: Option<String>,
+
+        /// Output format: table, json, csv
+        #[arg(short = 'f', long, default_value = "table")]
+        format: String,
+
+        /// Query workspace index instead of local project
+        #[arg(long)]
+        workspace: bool,
+
+        /// Print table schemas
+        #[arg(long)]
+        schema: bool,
+
+        /// Print built-in example queries
+        #[arg(long)]
+        examples: bool,
+
+        /// Project path
+        #[arg(short = 'p', long, default_value = ".")]
+        path: PathBuf,
+    },
 }
 
 // Misc command types - extracted for file health (CB-040)

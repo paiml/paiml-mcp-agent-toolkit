@@ -199,6 +199,31 @@ impl CommandDispatcher {
                 )
                 .await
             }
+            Commands::Sql {
+                query,
+                format,
+                workspace,
+                schema,
+                examples,
+                path,
+            } => {
+                use crate::cli::handlers::sql_handler;
+
+                if examples {
+                    sql_handler::handle_examples();
+                    return Ok(());
+                }
+
+                let db_path = sql_handler::find_db_path(&path, workspace)?;
+
+                if schema {
+                    return sql_handler::handle_schema(&db_path);
+                }
+
+                let sql = query.as_deref().unwrap_or("grade-dist");
+                let fmt = sql_handler::SqlOutputFormat::from_str_opt(&format);
+                sql_handler::handle_sql(sql, fmt, &db_path)
+            }
             Commands::Analyze(analyze_cmd) => Self::execute_analyze_command(analyze_cmd).await,
             Commands::Qdd(qdd_cmd) => Self::execute_qdd_command(qdd_cmd).await,
             Commands::Embed(embed_cmd) => Self::execute_embed_command(embed_cmd).await,
