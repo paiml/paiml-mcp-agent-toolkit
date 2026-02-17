@@ -1052,32 +1052,58 @@ fn load_entropy_threshold(project_path: &Path, cli_value: f64) -> f64 {
         .unwrap_or(cli_value)
 }
 
-/// Load exclude paths from `.pmat-metrics.toml` (#195).
+/// Extract exclude paths from a parsed TOML table.
 ///
-/// Checks both `[exclude] paths = [...]` and top-level `exclude_paths = [...]`.
-/// Returns an empty vec if the file is missing or no exclude config exists.
-fn load_entropy_exclude_paths(project_path: &Path) -> Vec<String> {
-    let config_path = project_path.join(".pmat-metrics.toml");
-    let content = match std::fs::read_to_string(&config_path) {
-        Ok(c) => c,
-        Err(_) => return vec![],
-    };
-    let table: toml::Table = match content.parse() {
-        Ok(t) => t,
-        Err(_) => return vec![],
-    };
-    // Try [exclude] paths first, then fall back to top-level exclude_paths
+/// Checks multiple patterns:
+/// - `[exclude] paths = [...]`
+/// - `exclude_paths = [...]`
+/// - `[quality-gates] exclude = [...]`
+fn extract_excludes_from_table(table: &toml::Table) -> Vec<String> {
     let arr = table
         .get("exclude")
         .and_then(|t| t.get("paths"))
         .and_then(|v| v.as_array())
-        .or_else(|| table.get("exclude_paths").and_then(|v| v.as_array()));
+        .or_else(|| table.get("exclude_paths").and_then(|v| v.as_array()))
+        .or_else(|| {
+            table
+                .get("quality-gates")
+                .and_then(|t| t.get("exclude"))
+                .and_then(|v| v.as_array())
+        });
     arr.map(|a| {
         a.iter()
             .filter_map(|v| v.as_str().map(String::from))
             .collect()
     })
     .unwrap_or_default()
+}
+
+/// Load exclude paths from `.pmat-metrics.toml` and `.pmat-gates.toml` (#195, #217).
+///
+/// Checks both config files and merges exclude patterns.
+/// Returns an empty vec if neither file exists or no exclude config exists.
+fn load_entropy_exclude_paths(project_path: &Path) -> Vec<String> {
+    let mut excludes = Vec::new();
+
+    // Load from .pmat-metrics.toml
+    if let Ok(content) = std::fs::read_to_string(project_path.join(".pmat-metrics.toml")) {
+        if let Ok(table) = content.parse::<toml::Table>() {
+            excludes.extend(extract_excludes_from_table(&table));
+        }
+    }
+
+    // Load from .pmat-gates.toml (#217)
+    if let Ok(content) = std::fs::read_to_string(project_path.join(".pmat-gates.toml")) {
+        if let Ok(table) = content.parse::<toml::Table>() {
+            for pattern in extract_excludes_from_table(&table) {
+                if !excludes.contains(&pattern) {
+                    excludes.push(pattern);
+                }
+            }
+        }
+    }
+
+    excludes
 }
 
 /// Filter violations whose file path matches any exclude path (#196).

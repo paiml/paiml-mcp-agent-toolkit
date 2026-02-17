@@ -1053,6 +1053,47 @@ paths = ["new/"]
         assert_eq!(paths, vec!["new/"], "[exclude] paths should take precedence over top-level exclude_paths");
     }
 
+    #[test]
+    fn test_load_entropy_exclude_paths_from_gates_toml() {
+        let temp_dir = tempfile::TempDir::new().unwrap();
+        let gates_content = r#"
+[quality-gates]
+exclude = [
+    "**/*_generated.rs",
+    "demos/**",
+    "examples/**",
+]
+"#;
+        std::fs::write(temp_dir.path().join(".pmat-gates.toml"), gates_content).unwrap();
+
+        let paths = load_entropy_exclude_paths(temp_dir.path());
+        assert_eq!(paths.len(), 3, "Should load excludes from .pmat-gates.toml [quality-gates] exclude");
+        assert!(paths.contains(&"**/*_generated.rs".to_string()));
+        assert!(paths.contains(&"demos/**".to_string()));
+        assert!(paths.contains(&"examples/**".to_string()));
+    }
+
+    #[test]
+    fn test_load_entropy_exclude_paths_merges_both_files() {
+        let temp_dir = tempfile::TempDir::new().unwrap();
+        let metrics_content = r#"
+[exclude]
+paths = ["target/**"]
+"#;
+        let gates_content = r#"
+[quality-gates]
+exclude = ["demos/**", "examples/**"]
+"#;
+        std::fs::write(temp_dir.path().join(".pmat-metrics.toml"), metrics_content).unwrap();
+        std::fs::write(temp_dir.path().join(".pmat-gates.toml"), gates_content).unwrap();
+
+        let paths = load_entropy_exclude_paths(temp_dir.path());
+        assert_eq!(paths.len(), 3, "Should merge excludes from both config files");
+        assert!(paths.contains(&"target/**".to_string()));
+        assert!(paths.contains(&"demos/**".to_string()));
+        assert!(paths.contains(&"examples/**".to_string()));
+    }
+
     // --- Filter violations by exclude paths tests (#196) ---
 
     #[test]
