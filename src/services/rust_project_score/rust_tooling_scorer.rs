@@ -313,9 +313,95 @@ impl RustToolingScorer {
     /// Total possible: 37 points
     ///
     /// References:
-    /// - Hilton et al. 2016 ASE: CI adoption correlates with faster releases
-    /// - Memon et al. 2017 ICSE-SEIP: Flaky tests reduce productivity by 16%
-    /// - McIntosh et al. 2015 ICSE: Build system maintenance overhead
+    fn workflow_has_name(files: &[std::fs::DirEntry], patterns: &[&str]) -> bool {
+        files.iter().any(|entry| {
+            let name = entry.file_name().to_string_lossy().to_lowercase();
+            patterns.iter().any(|p| name.contains(p))
+        })
+    }
+
+    /// Score GitHub Actions workflow quality (28pts)
+    fn score_workflows(workflows_dir: &Path) -> ScorerResult<f64> {
+        let workflow_files: Vec<_> = std::fs::read_dir(workflows_dir)
+            .map_err(|e| ScorerError::IoError(e.to_string()))?
+            .filter_map(|entry| entry.ok())
+            .filter(|entry| {
+                entry
+                    .path()
+                    .extension()
+                    .and_then(|ext| ext.to_str())
+                    .is_some_and(|ext| ext == "yml" || ext == "yaml")
+            })
+            .collect();
+
+        let mut all_content = String::new();
+        for file in &workflow_files {
+            if let Ok(content) = std::fs::read_to_string(file.path()) {
+                all_content.push_str(&content);
+                all_content.push('\n');
+            }
+        }
+
+        let mut score = 0.0;
+        let has_multi_platform = all_content.contains("ubuntu-")
+            && all_content.contains("windows-")
+            && all_content.contains("macos-");
+        if has_multi_platform {
+            score += 6.0;
+        }
+
+        let has_feature_matrix = all_content.contains("features:")
+            && (all_content.contains("minimal")
+                || all_content.contains("default")
+                || all_content.contains("full"));
+        if has_feature_matrix {
+            score += 4.0;
+        }
+        if workflow_files.len() >= 3 {
+            score += 6.0;
+        }
+        if Self::workflow_has_name(&workflow_files, &["audit", "security"])
+            || all_content.contains("cargo audit")
+        {
+            score += 4.0;
+        }
+        if Self::workflow_has_name(&workflow_files, &["bench", "benchmark"])
+            || all_content.contains("cargo bench")
+        {
+            score += 3.0;
+        }
+        if Self::workflow_has_name(&workflow_files, &["lint", "clippy", "spell"]) {
+            score += 2.0;
+        }
+        if Self::workflow_has_name(&workflow_files, &["stress", "loom"]) {
+            score += 3.0;
+        }
+        Ok(score)
+    }
+
+    /// Score build automation (justfile/Makefile/xtask, 8pts)
+    fn score_build_automation(project_path: &Path) -> f64 {
+        let justfile = project_path.join("justfile");
+        let makefile = project_path.join("Makefile");
+        let xtask = project_path.join("xtask");
+
+        let (base_score, content) = if justfile.exists() {
+            (5.0, std::fs::read_to_string(&justfile).unwrap_or_default())
+        } else if xtask.exists() {
+            (5.0, String::new())
+        } else if makefile.exists() {
+            (3.0, std::fs::read_to_string(&makefile).unwrap_or_default())
+        } else {
+            return 0.0;
+        };
+
+        let has_all_targets = content.contains("build:")
+            && content.contains("test:")
+            && (content.contains("lint:") || content.contains("clippy:"))
+            && content.contains("bench:");
+        base_score + if has_all_targets { 3.0 } else { 0.0 }
+    }
+
     fn score_ci_cd_integration(
         &self,
         project_path: &Path,
@@ -323,153 +409,12 @@ impl RustToolingScorer {
     ) -> ScorerResult<f64> {
         let mut score = 0.0;
 
-        // Check if .github/workflows directory exists
         let workflows_dir = project_path.join(".github").join("workflows");
         if workflows_dir.exists() && workflows_dir.is_dir() {
-            // Read all workflow files
-            let workflow_files: Vec<_> = std::fs::read_dir(&workflows_dir)
-                .map_err(|e| ScorerError::IoError(e.to_string()))?
-                .filter_map(|entry| entry.ok())
-                .filter(|entry| {
-                    entry
-                        .path()
-                        .extension()
-                        .and_then(|ext| ext.to_str())
-                        .map(|ext| ext == "yml" || ext == "yaml")
-                        .unwrap_or(false)
-                })
-                .collect();
-
-            let workflow_count = workflow_files.len();
-
-            // Read all workflow contents for analysis
-            let mut all_workflow_content = String::new();
-            for file in &workflow_files {
-                if let Ok(content) = std::fs::read_to_string(file.path()) {
-                    all_workflow_content.push_str(&content);
-                    all_workflow_content.push('\n');
-                }
-            }
-
-            // Multi-Platform CI checks
-            let has_ubuntu = all_workflow_content.contains("ubuntu-latest")
-                || all_workflow_content.contains("ubuntu-");
-            let has_windows = all_workflow_content.contains("windows-latest")
-                || all_workflow_content.contains("windows-");
-            let has_macos = all_workflow_content.contains("macos-latest")
-                || all_workflow_content.contains("macos-");
-
-            // Check 1: Multi-platform testing (+6pts)
-            if has_ubuntu && has_windows && has_macos {
-                score += 6.0;
-            }
-
-            // Check 2: Feature matrix testing (+4pts)
-            let has_feature_matrix = (all_workflow_content.contains("minimal")
-                || all_workflow_content.contains("default")
-                || all_workflow_content.contains("full"))
-                && all_workflow_content.contains("features:");
-
-            if has_feature_matrix {
-                score += 4.0;
-            }
-
-            // Check 3: Workflow counting (+6pts for ≥3 workflows)
-            if workflow_count >= 3 {
-                score += 6.0;
-            }
-
-            // Check 4: Dedicated audit workflow (+4pts)
-            let has_audit_workflow = workflow_files.iter().any(|entry| {
-                let filename = entry.file_name();
-                let filename_str = filename.to_string_lossy().to_lowercase();
-                filename_str.contains("audit") || filename_str.contains("security")
-            }) || all_workflow_content.contains("cargo audit");
-
-            if has_audit_workflow {
-                score += 4.0;
-            }
-
-            // Check 5: Dedicated benchmark workflow (+3pts)
-            let has_bench_workflow = workflow_files.iter().any(|entry| {
-                let filename = entry.file_name();
-                let filename_str = filename.to_string_lossy().to_lowercase();
-                filename_str.contains("bench") || filename_str.contains("benchmark")
-            }) || all_workflow_content.contains("cargo bench");
-
-            if has_bench_workflow {
-                score += 3.0;
-            }
-
-            // Check 6: Dedicated lint workflow (+2pts)
-            let has_lint_workflow = workflow_files.iter().any(|entry| {
-                let filename = entry.file_name();
-                let filename_str = filename.to_string_lossy().to_lowercase();
-                filename_str.contains("lint")
-                    || filename_str.contains("clippy")
-                    || filename_str.contains("spell")
-            });
-
-            if has_lint_workflow {
-                score += 2.0;
-            }
-
-            // Check 7: Separate workflows for stress/loom/audit (+3pts)
-            let has_separate_workflows = workflow_files.iter().any(|entry| {
-                let filename = entry.file_name();
-                let filename_str = filename.to_string_lossy().to_lowercase();
-                filename_str.contains("stress") || filename_str.contains("loom")
-            });
-
-            if has_separate_workflows {
-                score += 3.0;
-            }
+            score += Self::score_workflows(&workflows_dir)?;
         }
 
-        // Build Automation checks
-        let justfile_path = project_path.join("justfile");
-        let makefile_path = project_path.join("Makefile");
-        let cargo_xtask_path = project_path.join("xtask");
-
-        let mut build_automation_score = 0.0;
-        let mut has_build_automation = false;
-        let mut build_file_content = String::new();
-
-        // Check 8: justfile or cargo-xtask (+5pts, Rust-native)
-        if justfile_path.exists() {
-            has_build_automation = true;
-            build_automation_score += 5.0;
-            if let Ok(content) = std::fs::read_to_string(&justfile_path) {
-                build_file_content = content;
-            }
-        } else if cargo_xtask_path.exists() {
-            has_build_automation = true;
-            build_automation_score += 5.0;
-        }
-        // Check 9: Makefile (+3pts, downgraded per TPS review - Windows-problematic)
-        else if makefile_path.exists() {
-            has_build_automation = true;
-            build_automation_score += 3.0;
-            if let Ok(content) = std::fs::read_to_string(&makefile_path) {
-                build_file_content = content;
-            }
-        }
-
-        // Check 10: Common targets (+3pts)
-        if has_build_automation {
-            let has_build = build_file_content.contains("build:");
-            let has_test = build_file_content.contains("test:");
-            let has_lint =
-                build_file_content.contains("lint:") || build_file_content.contains("clippy:");
-            let has_bench = build_file_content.contains("bench:");
-
-            if has_build && has_test && has_lint && has_bench {
-                build_automation_score += 3.0;
-            }
-        }
-
-        score += build_automation_score;
-
+        score += Self::score_build_automation(project_path);
         Ok(score)
     }
 
@@ -646,30 +591,47 @@ impl RustToolingScorer {
         Ok(score)
     }
 
-    /// Score MSRV (Minimum Supported Rust Version) tracking
-    ///
-    /// Based on "Learn from Rust Giants" specification (TPS-reviewed):
-    /// - +5pts: `rust-version` field in Cargo.toml
-    /// - +3pts: CI tests against MSRV (not just stable)
-    /// - +2pts: MSRV documented in README
-    ///
-    /// Total possible: 10 points
-    ///
-    /// References:
-    /// - Decan et al. 2019 EMSE: Rust ecosystem has lowest dependency conflict rate (3.2%)
+    fn extract_msrv(content: &str) -> Option<String> {
+        content
+            .lines()
+            .find(|line| line.contains("rust-version"))
+            .and_then(|line| {
+                line.split('=')
+                    .nth(1)?
+                    .trim()
+                    .trim_matches(|c| c == '"' || c == '\'')
+                    .split_once('.')
+                    .map(|(major, minor)| {
+                        format!("{}.{}", major, minor.split('.').next().unwrap_or(minor))
+                    })
+            })
+    }
+
+    /// Check if any CI workflow tests against a given MSRV version
+    fn ci_tests_msrv(project_path: &Path, msrv: &str) -> bool {
+        let workflows_dir = project_path.join(".github/workflows");
+        let entries = match std::fs::read_dir(&workflows_dir) {
+            Ok(e) => e,
+            Err(_) => return false,
+        };
+        entries.filter_map(|e| e.ok()).any(|entry| {
+            std::fs::read_to_string(entry.path())
+                .map(|content| content.contains(msrv) && content.contains("rust:"))
+                .unwrap_or(false)
+        })
+    }
+
+    /// Score MSRV (Minimum Supported Rust Version) tracking (10pts)
     fn score_msrv_tracking(
         &self,
         project_path: &Path,
         cache: Option<&FileCache>,
     ) -> ScorerResult<f64> {
-        let mut score = 0.0;
-
         let cargo_toml_path = project_path.join("Cargo.toml");
         if !cargo_toml_path.exists() {
             return Ok(0.0);
         }
 
-        // Use cache if available, otherwise read file
         let cargo_toml_content = if let Some(cache) = cache {
             cache
                 .get(&cargo_toml_path)
@@ -680,52 +642,24 @@ impl RustToolingScorer {
                 .map_err(|e| ScorerError::IoError(e.to_string()))?
         };
 
-        // Check 1: rust-version field exists (+5pts)
-        if cargo_toml_content.contains("rust-version") {
-            score += 5.0;
+        if !cargo_toml_content.contains("rust-version") {
+            return Ok(0.0);
+        }
 
-            // Extract MSRV for CI check (e.g., "1.74" from `rust-version = "1.74"`)
-            let msrv_version = cargo_toml_content
-                .lines()
-                .find(|line| line.contains("rust-version"))
-                .and_then(|line| {
-                    line.split('=')
-                        .nth(1)?
-                        .trim()
-                        .trim_matches(|c| c == '"' || c == '\'')
-                        .split_once('.')
-                        .map(|(major, minor)| {
-                            format!("{}.{}", major, minor.split('.').next().unwrap_or(minor))
-                        })
-                });
+        let mut score = 5.0; // rust-version exists
 
-            // Check 2: CI tests against MSRV (+3pts)
-            let workflows_dir = project_path.join(".github/workflows");
-            if workflows_dir.exists() {
-                if let Ok(entries) = std::fs::read_dir(&workflows_dir) {
-                    for entry in entries.filter_map(|e| e.ok()) {
-                        if let Ok(content) = std::fs::read_to_string(entry.path()) {
-                            // Check if workflow contains MSRV version in rust matrix
-                            if let Some(ref msrv) = msrv_version {
-                                if content.contains(msrv) && content.contains("rust:") {
-                                    score += 3.0;
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                }
+        if let Some(msrv) = Self::extract_msrv(&cargo_toml_content) {
+            if Self::ci_tests_msrv(project_path, &msrv) {
+                score += 3.0;
             }
+        }
 
-            // Check 3: MSRV documented in README (+2pts)
-            let readme_path = project_path.join("README.md");
-            if readme_path.exists() {
-                if let Ok(readme_content) = std::fs::read_to_string(&readme_path) {
-                    if readme_content.to_lowercase().contains("msrv") {
-                        score += 2.0;
-                    }
-                }
-            }
+        let readme_has_msrv = project_path.join("README.md").exists()
+            && std::fs::read_to_string(project_path.join("README.md"))
+                .map(|c| c.to_lowercase().contains("msrv"))
+                .unwrap_or(false);
+        if readme_has_msrv {
+            score += 2.0;
         }
 
         Ok(score)
@@ -742,21 +676,50 @@ impl RustToolingScorer {
     ///
     /// Total possible: 11 points (can go negative with penalties)
     ///
-    /// References:
-    /// - Beller et al. 2017 MSR: Builds >10min correlate with 42% fewer local test runs
+    fn extract_profile_section<'a>(content: &'a str, header: &str) -> Option<&'a str> {
+        let start = content.find(header)?;
+        let section = &content[start..];
+        let end = section[1..].find("\n[").map(|i| i + 1).unwrap_or(section.len());
+        Some(&section[..end])
+    }
+
+    /// Score release profile settings
+    fn score_release_section(section: &str) -> f64 {
+        let mut score = 0.0;
+        let has_lto = section.contains("lto = true")
+            || section.contains("lto = \"thin\"")
+            || section.contains("lto = \"fat\"")
+            || section.contains("lto = 'thin'")
+            || section.contains("lto = 'fat'");
+        if has_lto {
+            score += 4.0;
+        }
+        if section.contains("codegen-units = 1") {
+            score += 3.0;
+        }
+        if section.contains("panic = \"abort\"") || section.contains("panic = 'abort'") {
+            score += 2.0;
+        }
+        score
+    }
+
+    /// Check if a profile section has LTO enabled (penalty for dev/test)
+    fn profile_has_lto(section: &str) -> bool {
+        section.contains("lto = true")
+            || section.contains("lto = \"")
+            || section.contains("lto = '")
+    }
+
     fn score_release_profiles(
         &self,
         project_path: &Path,
         cache: Option<&FileCache>,
     ) -> ScorerResult<f64> {
-        let mut score = 0.0;
-
         let cargo_toml_path = project_path.join("Cargo.toml");
         if !cargo_toml_path.exists() {
             return Ok(0.0);
         }
 
-        // Use cache if available, otherwise read file
         let cargo_toml_content = if let Some(cache) = cache {
             cache
                 .get(&cargo_toml_path)
@@ -767,79 +730,24 @@ impl RustToolingScorer {
                 .map_err(|e| ScorerError::IoError(e.to_string()))?
         };
 
-        // Parse profile sections
-        let has_release_profile = cargo_toml_content.contains("[profile.release]");
-        let has_dev_profile = cargo_toml_content.contains("[profile.dev]");
-        let has_test_profile = cargo_toml_content.contains("[profile.test]");
+        let mut score = 0.0;
 
-        // Check 1: LTO in release profile (+4pts)
-        if has_release_profile {
-            // Find release profile section
-            if let Some(release_start) = cargo_toml_content.find("[profile.release]") {
-                let release_section = &cargo_toml_content[release_start..];
-                let release_end = release_section.find("\n[").unwrap_or(release_section.len());
-                let release_content = &release_section[..release_end];
+        if let Some(release) = Self::extract_profile_section(&cargo_toml_content, "[profile.release]") {
+            score += Self::score_release_section(release);
+        }
 
-                // Check for lto = true or lto = "thin" or lto = "fat"
-                if release_content.contains("lto = true")
-                    || release_content.contains("lto = \"thin\"")
-                    || release_content.contains("lto = \"fat\"")
-                    || release_content.contains("lto = 'thin'")
-                    || release_content.contains("lto = 'fat'")
-                {
-                    score += 4.0;
-                }
-
-                // Check 2: codegen-units = 1 (+3pts)
-                if release_content.contains("codegen-units = 1") {
-                    score += 3.0;
-                }
-
-                // Check 3: panic = "abort" in release (+2pts)
-                if release_content.contains("panic = \"abort\"")
-                    || release_content.contains("panic = 'abort'")
-                {
-                    score += 2.0;
-                }
+        if let Some(dev) = Self::extract_profile_section(&cargo_toml_content, "[profile.dev]") {
+            if dev.contains("panic = \"abort\"") || dev.contains("panic = 'abort'") {
+                score += 2.0;
+            }
+            if Self::profile_has_lto(dev) {
+                score -= 3.0;
             }
         }
 
-        // Check 4: panic = "abort" in dev profile (+2pts)
-        if has_dev_profile {
-            if let Some(dev_start) = cargo_toml_content.find("[profile.dev]") {
-                let dev_section = cargo_toml_content.get(dev_start..).unwrap_or_default();
-                let dev_end = dev_section.find("\n[").unwrap_or(dev_section.len());
-                let dev_content = dev_section.get(..dev_end).unwrap_or_default();
-
-                if dev_content.contains("panic = \"abort\"")
-                    || dev_content.contains("panic = 'abort'")
-                {
-                    score += 2.0;
-                }
-
-                // Penalty: LTO in dev profile (-3pts) - slows TDD
-                if dev_content.contains("lto = true")
-                    || dev_content.contains("lto = \"")
-                    || dev_content.contains("lto = '")
-                {
-                    score -= 3.0;
-                }
-            }
-        }
-
-        // Penalty: LTO in test profile (-3pts) - slows TDD
-        if has_test_profile {
-            if let Some(test_start) = cargo_toml_content.find("[profile.test]") {
-                let test_section = &cargo_toml_content[test_start..];
-                let test_end = test_section.find("\n[").unwrap_or(test_section.len());
-                let test_content = &test_section[..test_end];
-
-                if test_content.contains("lto = true")
-                    || test_content.contains("lto = \"")
-                    || test_content.contains("lto = '")
-                {
-                    score -= 3.0;
-                }
+        if let Some(test) = Self::extract_profile_section(&cargo_toml_content, "[profile.test]") {
+            if Self::profile_has_lto(test) {
+                score -= 3.0;
             }
         }
 
@@ -851,13 +759,46 @@ impl RustToolingScorer {
     /// **Kaizen Round 4**: Cache-aware scoring implementation
     /// Note: This scorer only does file existence checks and subprocess calls,
     /// so cache is not used (no file reads to optimize)
+    /// Score clippy based on mode (10pts)
+    fn score_clippy_by_mode(&self, project_path: &Path, mode: ScoringMode) -> ScorerResult<f64> {
+        if !mode.is_full() {
+            return Ok(5.0); // Fast mode: moderate credit
+        }
+        match self.score_clippy(project_path) {
+            Ok(score) => Ok(score),
+            Err(ScorerError::ToolNotFound(_)) => Ok(5.0), // Graceful degradation
+            Err(e) => Err(e),
+        }
+    }
+
+    /// Score rustfmt based on mode (5pts)
+    fn score_rustfmt_by_mode(&self, project_path: &Path, mode: ScoringMode) -> ScorerResult<f64> {
+        if !mode.is_full() {
+            let has_config = project_path.join("rustfmt.toml").exists()
+                || project_path.join(".rustfmt.toml").exists();
+            return Ok(if has_config { 3.0 } else { 2.5 });
+        }
+        match self.score_rustfmt(project_path) {
+            Ok(score) => Ok(score),
+            Err(ScorerError::ToolNotFound(_)) => Ok(2.5),
+            Err(e) => Err(e),
+        }
+    }
+
+    /// Score cargo-audit based on mode (7pts)
+    fn score_audit_by_mode(&self, project_path: &Path, mode: ScoringMode) -> ScorerResult<f64> {
+        if !mode.is_full() {
+            return Ok(3.5); // Fast mode: moderate credit
+        }
+        self.score_cargo_audit(project_path)
+    }
+
     fn score_internal(
         &self,
         project_path: &Path,
         mode: ScoringMode,
         _cache: Option<&FileCache>,
     ) -> ScorerResult<CategoryScore> {
-        // Verify project has Cargo.toml
         if !project_path.join("Cargo.toml").exists() {
             return Err(ScorerError::InvalidProject(
                 "No Cargo.toml found - not a valid Rust project".to_string(),
@@ -866,105 +807,17 @@ impl RustToolingScorer {
 
         let mut total_earned = 0.0;
 
-        // Score clippy (10pts) - ONLY in full mode (too slow for fast mode)
-        if mode.is_full() {
-            match self.score_clippy(project_path) {
-                Ok(score) => total_earned += score,
-                Err(ScorerError::ToolNotFound(_)) => {
-                    // Graceful degradation - give 50% credit if tool not found
-                    total_earned += 5.0;
-                }
-                Err(e) => return Err(e),
-            }
-        } else {
-            // Fast mode: Skip clippy (too slow - takes 60-90s on large projects)
-            // Give moderate credit (5/10 points) to avoid penalizing fast mode
-            total_earned += 5.0;
-        }
-
-        // Score rustfmt (5pts)
-        // KAIZEN: Skip in fast mode - takes 30-60s on large projects (145 files)
-        if mode.is_full() {
-            match self.score_rustfmt(project_path) {
-                Ok(score) => total_earned += score,
-                Err(ScorerError::ToolNotFound(_)) => {
-                    // Graceful degradation
-                    total_earned += 2.5;
-                }
-                Err(e) => return Err(e),
-            }
-        } else {
-            // Fast mode: Check for rustfmt.toml existence as proxy
-            // If rustfmt.toml exists, assume formatting is configured (give 3/5 pts)
-            // If not, give moderate credit (2.5/5 pts)
-            if project_path.join("rustfmt.toml").exists()
-                || project_path.join(".rustfmt.toml").exists()
-            {
-                total_earned += 3.0;
-            } else {
-                total_earned += 2.5;
-            }
-        }
-
-        // Score cargo-audit (7pts) - ONLY in full mode (network calls ~30s)
-        if mode.is_full() {
-            match self.score_cargo_audit(project_path) {
-                Ok(score) => total_earned += score,
-                Err(e) => return Err(e),
-            }
-        } else {
-            // Fast mode: Skip cargo-audit (network calls too slow)
-            // Give moderate credit (3.5/7 points) to avoid penalizing fast mode
-            total_earned += 3.5;
-        }
-
-        // Score cargo-deny (3pts) - fast enough for both modes
-        match self.score_cargo_deny(project_path) {
-            Ok(score) => total_earned += score,
-            Err(e) => return Err(e),
-        }
-
-        // Score workspace lints (12pts) - v2.0 Phase 1 (fast, just file reads)
-        match self.score_workspace_lints(project_path, _cache) {
-            Ok(score) => total_earned += score,
-            Err(e) => return Err(e),
-        }
-
-        // Score CI/CD integration (37pts) - v2.0 Phase 2 (fast, just file reads)
-        match self.score_ci_cd_integration(project_path, _cache) {
-            Ok(score) => total_earned += score,
-            Err(e) => return Err(e),
-        }
-
-        // Score docs.rs metadata (10pts) - v2.0 Phase 3 (fast, just file reads)
-        match self.score_docs_rs_metadata(project_path, _cache) {
-            Ok(score) => total_earned += score,
-            Err(e) => return Err(e),
-        }
-
-        // Score workspace organization (13pts) - v2.0 Phase 3 (fast, just file reads)
-        match self.score_workspace_organization(project_path, _cache) {
-            Ok(score) => total_earned += score,
-            Err(e) => return Err(e),
-        }
-
-        // Score release automation (12pts) - v2.0 Phase 3 (fast, just file reads)
-        match self.score_release_automation(project_path, _cache) {
-            Ok(score) => total_earned += score,
-            Err(e) => return Err(e),
-        }
-
-        // Score MSRV tracking (10pts) - Phase 1 remaining (fast, just file reads)
-        match self.score_msrv_tracking(project_path, _cache) {
-            Ok(score) => total_earned += score,
-            Err(e) => return Err(e),
-        }
-
-        // Score release profiles (11pts) - Phase 1 remaining (fast, just file reads)
-        match self.score_release_profiles(project_path, _cache) {
-            Ok(score) => total_earned += score,
-            Err(e) => return Err(e),
-        }
+        total_earned += self.score_clippy_by_mode(project_path, mode)?;
+        total_earned += self.score_rustfmt_by_mode(project_path, mode)?;
+        total_earned += self.score_audit_by_mode(project_path, mode)?;
+        total_earned += self.score_cargo_deny(project_path)?;
+        total_earned += self.score_workspace_lints(project_path, _cache)?;
+        total_earned += self.score_ci_cd_integration(project_path, _cache)?;
+        total_earned += self.score_docs_rs_metadata(project_path, _cache)?;
+        total_earned += self.score_workspace_organization(project_path, _cache)?;
+        total_earned += self.score_release_automation(project_path, _cache)?;
+        total_earned += self.score_msrv_tracking(project_path, _cache)?;
+        total_earned += self.score_release_profiles(project_path, _cache)?;
 
         Ok(CategoryScore::new(total_earned, self.max_points))
     }
@@ -973,6 +826,33 @@ impl RustToolingScorer {
 impl Default for RustToolingScorer {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl RustToolingScorer {
+    /// Generate workspace lint recommendations based on Cargo.toml content
+    fn lint_recommendations(project_path: &Path) -> Vec<String> {
+        let mut recs = Vec::new();
+        let cargo_path = project_path.join("Cargo.toml");
+        if !cargo_path.exists() {
+            return recs;
+        }
+        let content = match std::fs::read_to_string(&cargo_path) {
+            Ok(c) => c,
+            Err(_) => return recs,
+        };
+        if !content.contains("[workspace.lints") {
+            recs.push("Add [workspace.lints.rust] and [workspace.lints.clippy] to Cargo.toml for consistent linting across all crates".to_string());
+        }
+        if !content.contains("unsafe_op_in_unsafe_fn")
+            && !content.contains("checked_conversions")
+        {
+            recs.push("Enable high-value lint categories (unsafe_op_in_unsafe_fn, unreachable_pub, checked_conversions) for better code quality".to_string());
+        }
+        if !project_path.join(".clippy.toml").exists() {
+            recs.push("Create .clippy.toml with disallowed-methods to enforce project-specific style preferences".to_string());
+        }
+        recs
     }
 }
 
@@ -1012,54 +892,20 @@ impl Scorer for RustToolingScorer {
     }
 
     fn recommendations(&self, project_path: &Path) -> Vec<String> {
-        let mut recommendations = Vec::new();
+        let mut recommendations = vec![
+            "Run 'cargo clippy --fix' to automatically fix clippy warnings".to_string(),
+            "Run 'cargo fmt' to format code according to Rust style guidelines".to_string(),
+            "Run 'cargo audit' and update vulnerable dependencies".to_string(),
+        ];
 
-        // Check clippy - SKIP subprocess, always recommend
-        recommendations
-            .push("Run 'cargo clippy --fix' to automatically fix clippy warnings".to_string());
-
-        // Check rustfmt - SKIP subprocess, always recommend
-        recommendations
-            .push("Run 'cargo fmt' to format code according to Rust style guidelines".to_string());
-
-        // Check cargo-audit - SKIP subprocess, always recommend
-        recommendations.push("Run 'cargo audit' and update vulnerable dependencies".to_string());
-
-        // Check cargo-deny - Fast filesystem check is ok
-        if let Ok(score) = self.score_cargo_deny(project_path) {
-            if score < 3.0 {
-                recommendations.push(
-                    "Add deny.toml configuration for dependency policy enforcement".to_string(),
-                );
-            }
+        if self.score_cargo_deny(project_path).is_ok_and(|s| s < 3.0) {
+            recommendations.push(
+                "Add deny.toml configuration for dependency policy enforcement".to_string(),
+            );
         }
 
-        // v2.0: Check workspace lints
-        if let Ok(lint_score) = self.score_workspace_lints(project_path, None) {
-            if lint_score < 12.0 {
-                if !project_path.join("Cargo.toml").exists() {
-                    // Skip workspace lint recommendations if not a Rust project
-                } else if let Ok(content) = std::fs::read_to_string(project_path.join("Cargo.toml"))
-                {
-                    if !content.contains("[workspace.lints") {
-                        recommendations.push(
-                            "Add [workspace.lints.rust] and [workspace.lints.clippy] to Cargo.toml for consistent linting across all crates".to_string(),
-                        );
-                    }
-                    if !content.contains("unsafe_op_in_unsafe_fn")
-                        && !content.contains("checked_conversions")
-                    {
-                        recommendations.push(
-                            "Enable high-value lint categories (unsafe_op_in_unsafe_fn, unreachable_pub, checked_conversions) for better code quality".to_string(),
-                        );
-                    }
-                }
-                if !project_path.join(".clippy.toml").exists() {
-                    recommendations.push(
-                        "Create .clippy.toml with disallowed-methods to enforce project-specific style preferences".to_string(),
-                    );
-                }
-            }
+        if self.score_workspace_lints(project_path, None).is_ok_and(|s| s < 12.0) {
+            recommendations.extend(Self::lint_recommendations(project_path));
         }
 
         recommendations
