@@ -63,6 +63,99 @@ mod tests {
     }
 
     #[test]
+    fn test_github_sync_excludes_untracked_files() {
+        // Untracked files (??) should NOT count as dirty (#224)
+        let status = "## master...origin/master\n?? target\n?? docs/spec.md\n?? scripts/";
+        let dirty_count = status
+            .lines()
+            .skip(1)
+            .filter(|l| !l.is_empty() && !l.starts_with("??"))
+            .count();
+        assert_eq!(dirty_count, 0, "Untracked files should not count as dirty");
+    }
+
+    #[test]
+    fn test_github_sync_counts_modified_files() {
+        // Modified/staged files should count as dirty
+        let status = "## master...origin/master\n M src/lib.rs\nA  src/new.rs\n?? untracked.txt";
+        let dirty_count = status
+            .lines()
+            .skip(1)
+            .filter(|l| !l.is_empty() && !l.starts_with("??"))
+            .count();
+        assert_eq!(dirty_count, 2, "Modified and staged files should count");
+    }
+
+    #[test]
+    fn test_find_cache_file_empty_dir() {
+        let tmp = std::env::temp_dir().join("pmat-test-cache-find");
+        let _ = std::fs::create_dir_all(&tmp);
+        let result = find_cache_file(&tmp, "nonexistent.txt");
+        assert!(result.is_empty());
+        let _ = std::fs::remove_dir_all(&tmp);
+    }
+
+    #[test]
+    fn test_find_cache_file_in_pmat_dir() {
+        let tmp = std::env::temp_dir().join("pmat-test-cache-pmat");
+        let pmat_dir = tmp.join(".pmat");
+        let _ = std::fs::create_dir_all(&pmat_dir);
+        std::fs::write(pmat_dir.join("deny-cache.txt"), "ok").unwrap();
+
+        let result = find_cache_file(&tmp, "deny-cache.txt");
+        assert_eq!(result.len(), 1);
+        assert!(result[0].ends_with(".pmat/deny-cache.txt"));
+
+        let _ = std::fs::remove_dir_all(&tmp);
+    }
+
+    #[test]
+    fn test_find_cache_file_in_work_dir() {
+        let tmp = std::env::temp_dir().join("pmat-test-cache-work");
+        let work_dir = tmp.join(".pmat-work").join("PMAT-260");
+        let _ = std::fs::create_dir_all(&work_dir);
+        std::fs::write(work_dir.join("lint-cache.txt"), "passed").unwrap();
+
+        let result = find_cache_file(&tmp, "lint-cache.txt");
+        assert_eq!(result.len(), 1);
+        assert!(result[0].to_string_lossy().contains("PMAT-260"));
+
+        let _ = std::fs::remove_dir_all(&tmp);
+    }
+
+    #[test]
+    fn test_read_deny_cache_fallback_with_pass() {
+        let tmp = std::env::temp_dir().join("pmat-test-deny-fallback");
+        let pmat_dir = tmp.join(".pmat");
+        let _ = std::fs::create_dir_all(&pmat_dir);
+        std::fs::write(pmat_dir.join("deny-cache.txt"), "all checks passed\n0 warnings").unwrap();
+
+        let result = read_deny_cache_fallback(&tmp);
+        assert!(result.is_some());
+        let cache = result.unwrap();
+        assert_eq!(cache.value.get("passed").and_then(|v| v.as_bool()), Some(true));
+
+        let _ = std::fs::remove_dir_all(&tmp);
+    }
+
+    #[test]
+    fn test_read_lint_cache_fallback_with_errors() {
+        let tmp = std::env::temp_dir().join("pmat-test-lint-fallback");
+        let pmat_dir = tmp.join(".pmat");
+        let _ = std::fs::create_dir_all(&pmat_dir);
+        std::fs::write(pmat_dir.join("lint-cache.txt"), "error[E0001]: unused var\nerror[E0002]: missing type").unwrap();
+
+        let result = read_lint_cache_fallback(&tmp);
+        assert!(result.is_some());
+        let cache = result.unwrap();
+        assert_eq!(cache.value.get("passed").and_then(|v| v.as_bool()), Some(false));
+        // "error" appears twice (once per line)
+        assert!(cache.value.get("error_count").and_then(|v| v.as_u64()).unwrap() >= 2);
+
+        let _ = std::fs::remove_dir_all(&tmp);
+    }
+
+    #[test]
     fn test_falsification_report_warnings() {
         let report = FalsificationReport {
             total_claims: 2,

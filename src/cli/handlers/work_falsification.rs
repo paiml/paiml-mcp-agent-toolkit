@@ -774,8 +774,12 @@ fn test_github_sync(project_path: &Path) -> Result<FalsificationResult> {
         0
     };
 
-    // Count dirty files
-    let dirty_count = status.lines().skip(1).filter(|l| !l.is_empty()).count();
+    // Count dirty files (exclude untracked ?? files — they are not uncommitted changes)
+    let dirty_count = status
+        .lines()
+        .skip(1)
+        .filter(|l| !l.is_empty() && !l.starts_with("??"))
+        .count();
 
     if ahead_count == 0 && dirty_count == 0 {
         Ok(FalsificationResult::passed(
@@ -928,12 +932,97 @@ fn test_meta_falsification(project_path: &Path) -> Result<FalsificationResult> {
     }
 }
 
+/// Fallback: try reading deny cache from .pmat-work/<item>/ or .pmat/ directories.
+/// Converts raw text output to the expected JSON format with `passed` field.
+fn read_deny_cache_fallback(project_path: &Path) -> Option<CachedMetric> {
+    // Try .pmat-work/**/deny-cache.txt then .pmat/deny-cache.txt
+    let candidates = find_cache_file(project_path, "deny-cache.txt");
+    for path in candidates {
+        if let Ok(content) = std::fs::read_to_string(&path) {
+            let passed = !content.contains("error") && !content.contains("DENIED");
+            let age_minutes = file_age_minutes(&path);
+            return Some(CachedMetric {
+                value: serde_json::json!({ "passed": passed }),
+                age_minutes,
+                is_stale_warn: age_minutes >= CACHE_WARN_HOURS * 60,
+                is_stale_block: age_minutes >= CACHE_BLOCK_HOURS * 60,
+            });
+        }
+    }
+    None
+}
+
+/// Fallback: try reading lint cache from .pmat-work/<item>/ or .pmat/ directories.
+fn read_lint_cache_fallback(project_path: &Path) -> Option<CachedMetric> {
+    let candidates = find_cache_file(project_path, "lint-cache.txt");
+    for path in candidates {
+        if let Ok(content) = std::fs::read_to_string(&path) {
+            let passed = !content.contains("error");
+            let error_count = content.matches("error").count() as u64;
+            let age_minutes = file_age_minutes(&path);
+            return Some(CachedMetric {
+                value: serde_json::json!({ "passed": passed, "error_count": error_count }),
+                age_minutes,
+                is_stale_warn: age_minutes >= CACHE_WARN_HOURS * 60,
+                is_stale_block: age_minutes >= CACHE_BLOCK_HOURS * 60,
+            });
+        }
+    }
+    None
+}
+
+/// Find cache file candidates in .pmat-work/*/ and .pmat/ directories.
+fn find_cache_file(project_path: &Path, filename: &str) -> Vec<PathBuf> {
+    let mut candidates = Vec::new();
+
+    // Check .pmat-work/*/<filename> (most specific, sorted by mtime desc)
+    let work_dir = project_path.join(".pmat-work");
+    if work_dir.exists() {
+        if let Ok(entries) = std::fs::read_dir(&work_dir) {
+            let mut work_candidates: Vec<PathBuf> = entries
+                .filter_map(|e| e.ok())
+                .filter(|e| e.path().is_dir())
+                .map(|e| e.path().join(filename))
+                .filter(|p| p.exists())
+                .collect();
+            // Sort by mtime descending (most recent first)
+            work_candidates.sort_by(|a, b| {
+                let a_time = std::fs::metadata(a).and_then(|m| m.modified()).ok();
+                let b_time = std::fs::metadata(b).and_then(|m| m.modified()).ok();
+                b_time.cmp(&a_time)
+            });
+            candidates.extend(work_candidates);
+        }
+    }
+
+    // Check .pmat/<filename>
+    let pmat_path = project_path.join(".pmat").join(filename);
+    if pmat_path.exists() {
+        candidates.push(pmat_path);
+    }
+
+    candidates
+}
+
+/// Get file age in minutes.
+fn file_age_minutes(path: &Path) -> i64 {
+    std::fs::metadata(path)
+        .and_then(|m| m.modified())
+        .ok()
+        .and_then(|t| std::time::SystemTime::now().duration_since(t).ok())
+        .map(|d| d.as_secs() as i64 / 60)
+        .unwrap_or(0)
+}
+
 /// Test supply chain integrity: O(1) - reads from cached cargo deny status
 async fn test_supply_chain_integrity(project_path: &Path) -> Result<FalsificationResult> {
     print!("Reading deny cache... ");
 
     // O(1): Read from cache instead of running cargo deny
-    if let Some(cache) = read_cached_metric(project_path, "deny-status.json") {
+    // Try primary cache location, then fallback to work-item and .pmat directories
+    if let Some(cache) = read_cached_metric(project_path, "deny-status.json")
+        .or_else(|| read_deny_cache_fallback(project_path))
+    {
         if cache.is_stale_block {
             return Ok(FalsificationResult::failed(
                 format!(
@@ -1885,7 +1974,10 @@ async fn test_lint_pass(project_path: &Path) -> Result<FalsificationResult> {
     print!("Reading lint cache... ");
 
     // O(1): Read from cache instead of running make lint
-    if let Some(cache) = read_cached_metric(project_path, "lint-status.json") {
+    // Try primary cache location, then fallback to work-item and .pmat directories
+    if let Some(cache) = read_cached_metric(project_path, "lint-status.json")
+        .or_else(|| read_lint_cache_fallback(project_path))
+    {
         if cache.is_stale_block {
             return Ok(FalsificationResult::failed(
                 format!(
