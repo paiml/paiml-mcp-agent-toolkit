@@ -650,7 +650,9 @@ pub(super) fn count_complexity(source: &str) -> u32 {
     complexity
 }
 
-/// Count SATD markers in comment lines only (not string literals or identifiers)
+/// Count SATD markers in implementation comments only.
+/// Excludes doc comments (/// and //!), string literals, and identifiers.
+/// Only counts markers that represent genuine self-admitted technical debt.
 #[allow(clippy::cast_possible_truncation)]
 pub(super) fn count_satd_markers(source: &str) -> u32 {
     let mut count = 0u32;
@@ -683,8 +685,19 @@ pub(super) fn count_satd_markers(source: &str) -> u32 {
             continue;
         }
 
-        // Only count markers in line comments
+        // Skip doc comments (/// and //!) — these describe behavior, not debt
+        if trimmed.starts_with("///") || trimmed.starts_with("//!") {
+            continue;
+        }
+
+        // Only count markers in implementation comments (//)
+        // Skip if // appears after a quote (likely inside a string literal)
         if let Some(comment_start) = trimmed.find("//") {
+            let before = &trimmed[..comment_start];
+            let unmatched_quotes = before.chars().filter(|&c| c == '"').count() % 2 != 0;
+            if unmatched_quotes {
+                continue;
+            }
             let comment = &trimmed[comment_start..].to_uppercase();
             for marker in ["TODO", "FIXME", "HACK", "XXX", "OPTIMIZE"] {
                 count += comment.matches(marker).count() as u32;
