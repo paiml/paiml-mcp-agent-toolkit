@@ -223,6 +223,17 @@ pub struct ValidationError {
     pub offset: Option<usize>,
 }
 
+/// Collected WASM sections from first parsing pass
+struct WasmSections<'a> {
+    type_section: Vec<FuncType>,
+    function_section: Vec<u32>,
+    code_section: Vec<FunctionBody<'a>>,
+    export_section: Vec<(String, u32, String)>,
+    import_section: Vec<ImportAnalysis>,
+    name_map: HashMap<u32, String>,
+    validation_errors: Vec<ValidationError>,
+}
+
 /// Bytecode analyzer
 pub struct BytecodeAnalyzer {
     /// Whether to perform deep analysis (slower but more detailed)
@@ -345,17 +356,6 @@ impl BytecodeAnalyzer {
             is_exported,
             export_name,
         }))
-    }
-
-    /// Collected WASM sections from first parsing pass
-    struct WasmSections<'a> {
-        type_section: Vec<FuncType>,
-        function_section: Vec<u32>,
-        code_section: Vec<FunctionBody<'a>>,
-        export_section: Vec<(String, u32, String)>,
-        import_section: Vec<ImportAnalysis>,
-        name_map: HashMap<u32, String>,
-        validation_errors: Vec<ValidationError>,
     }
 
     /// First pass: parse all WASM sections

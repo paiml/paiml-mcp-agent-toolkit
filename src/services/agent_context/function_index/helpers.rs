@@ -650,14 +650,46 @@ pub(super) fn count_complexity(source: &str) -> u32 {
     complexity
 }
 
-/// Count SATD markers
+/// Count SATD markers in comment lines only (not string literals or identifiers)
 #[allow(clippy::cast_possible_truncation)]
 pub(super) fn count_satd_markers(source: &str) -> u32 {
-    let upper = source.to_uppercase();
-    let mut count = 0;
+    let mut count = 0u32;
+    let mut in_block_comment = false;
 
-    for marker in ["TODO", "FIXME", "HACK", "XXX", "BUG", "OPTIMIZE"] {
-        count += upper.matches(marker).count() as u32;
+    for line in source.lines() {
+        let trimmed = line.trim();
+
+        // Track block comment state
+        if in_block_comment {
+            let upper = trimmed.to_uppercase();
+            for marker in ["TODO", "FIXME", "HACK", "XXX", "OPTIMIZE"] {
+                count += upper.matches(marker).count() as u32;
+            }
+            if trimmed.contains("*/") {
+                in_block_comment = false;
+            }
+            continue;
+        }
+
+        if trimmed.starts_with("/*") {
+            in_block_comment = true;
+            let upper = trimmed.to_uppercase();
+            for marker in ["TODO", "FIXME", "HACK", "XXX", "OPTIMIZE"] {
+                count += upper.matches(marker).count() as u32;
+            }
+            if trimmed.contains("*/") {
+                in_block_comment = false;
+            }
+            continue;
+        }
+
+        // Only count markers in line comments
+        if let Some(comment_start) = trimmed.find("//") {
+            let comment = &trimmed[comment_start..].to_uppercase();
+            for marker in ["TODO", "FIXME", "HACK", "XXX", "OPTIMIZE"] {
+                count += comment.matches(marker).count() as u32;
+            }
+        }
     }
 
     count
