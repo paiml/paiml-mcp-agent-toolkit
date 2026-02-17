@@ -201,6 +201,188 @@ impl SpecParser {
         self.parse_content(&content, path)
     }
 
+    /// Finalize a code block and add it to the spec
+    fn finalize_code_block(
+        code_lang: &str,
+        code_content: &str,
+        code_start_line: usize,
+        spec: &mut ParsedSpec,
+    ) {
+        let is_executable = matches!(
+            code_lang,
+            "bash" | "sh" | "shell" | "rust" | "python" | "typescript" | "javascript"
+        );
+        spec.code_examples.push(CodeExample {
+            language: code_lang.to_string(),
+            code: code_content.trim().to_string(),
+            line: code_start_line,
+            executable: is_executable,
+        });
+
+        if is_executable && !code_content.trim().is_empty() {
+            let claim_text = format!(
+                "Code example ({}) at line {} compiles/runs correctly",
+                code_lang, code_start_line
+            );
+            spec.claims.push(ValidationClaim {
+                id: format!("CODE-{}", spec.code_examples.len()),
+                text: claim_text,
+                line: code_start_line,
+                category: ClaimCategory::Falsifiability,
+                automatable: false,
+                validation_cmd: None,
+                expected_pattern: None,
+            });
+        }
+    }
+
+    /// Extract checkbox items as acceptance criteria and claims
+    fn extract_checkbox(&self, line: &str, line_num: usize, section: &str, spec: &mut ParsedSpec) {
+        if let Some(caps) = self.checkbox_regex.captures(line) {
+            let checked = caps.get(1).map(|m| m.as_str()) == Some("x")
+                || caps.get(1).map(|m| m.as_str()) == Some("X");
+            let text = caps
+                .get(2)
+                .map(|m| m.as_str().to_string())
+                .unwrap_or_default();
+
+            spec.acceptance_criteria.push(AcceptanceCriterion {
+                text: text.clone(),
+                complete: checked,
+                line: line_num,
+            });
+
+            let category = ClaimCategory::from_section(section)
+                .unwrap_or(ClaimCategory::Implementation);
+            spec.claims.push(ValidationClaim {
+                id: format!("AC-{}", spec.acceptance_criteria.len()),
+                text,
+                line: line_num,
+                category,
+                automatable: false,
+                validation_cmd: None,
+                expected_pattern: None,
+            });
+        }
+    }
+
+    /// Extract falsification condition claims from bullet points
+    fn extract_falsification(line: &str, line_num: usize, spec: &mut ParsedSpec) {
+        if line.starts_with("- ") && line.to_lowercase().contains("falsified") {
+            let claim_text = line.trim_start_matches("- ").trim().to_string();
+            spec.claims.push(ValidationClaim {
+                id: format!("FC-{}", spec.claims.len() + 1),
+                text: claim_text,
+                line: line_num,
+                category: ClaimCategory::Falsifiability,
+                automatable: false,
+                validation_cmd: None,
+                expected_pattern: None,
+            });
+        }
+    }
+
+    /// Extract documentation requirement claims from doc sections
+    fn extract_doc_requirement(line: &str, line_num: usize, section: &str, spec: &mut ParsedSpec) {
+        let section_lower = section.to_lowercase();
+        let is_doc_section =
+            section_lower.contains("documentation") || section_lower.contains("open science");
+        if is_doc_section && line.starts_with("- ") && !line.contains("[ ]") {
+            let claim_text = line.trim_start_matches("- ").trim().to_string();
+            if !claim_text.is_empty() {
+                spec.claims.push(ValidationClaim {
+                    id: format!("DOC-{}", spec.claims.len() + 1),
+                    text: claim_text,
+                    line: line_num,
+                    category: ClaimCategory::Documentation,
+                    automatable: false,
+                    validation_cmd: None,
+                    expected_pattern: None,
+                });
+            }
+        }
+    }
+
+    /// Check if a claim text is automatable
+    fn is_automatable(claim_text: &str) -> bool {
+        let lower = claim_text.to_lowercase();
+        lower.contains("pmat ")
+            || lower.contains("cargo ")
+            || lower.contains("test")
+            || lower.contains("coverage")
+            || lower.contains("compile")
+            || lower.contains("build")
+            || lower.contains("pass")
+            || lower.contains("fail")
+            || lower.contains('%')
+            || lower.contains("< ")
+            || lower.contains("> ")
+            || lower.contains("≥")
+            || lower.contains("≤")
+    }
+
+    /// Extract MUST/SHALL/SHOULD claims from a line
+    fn extract_formal_claims(&self, line: &str, line_num: usize, section: &str, spec: &mut ParsedSpec) {
+        if let Some(caps) = self.claim_regex.captures(line) {
+            let verb = caps
+                .get(1)
+                .map(|m| m.as_str().to_uppercase())
+                .unwrap_or_default();
+            let claim_text = caps
+                .get(2)
+                .map(|m| m.as_str().to_string())
+                .unwrap_or_default();
+
+            let category = Self::categorize_claim(&claim_text, section);
+            let automatable = Self::is_automatable(&claim_text);
+            let validation_cmd = if automatable {
+                self.extract_validation_command(&claim_text)
+            } else {
+                None
+            };
+
+            spec.claims.push(ValidationClaim {
+                id: format!("{}-{}", &verb[..1], spec.claims.len() + 1),
+                text: format!("{} {}", verb, claim_text),
+                line: line_num,
+                category,
+                automatable,
+                validation_cmd,
+                expected_pattern: None,
+            });
+        }
+    }
+
+    /// Classify test type from line content
+    fn classify_test_type(lower: &str) -> &'static str {
+        if lower.contains("unit") {
+            "unit"
+        } else if lower.contains("integration") {
+            "integration"
+        } else if lower.contains("property") || lower.contains("proptest") {
+            "property"
+        } else if lower.contains("e2e") || lower.contains("end-to-end") {
+            "e2e"
+        } else {
+            "general"
+        }
+    }
+
+    /// Extract test requirements from a line
+    fn extract_test_req(&self, line: &str, spec: &mut ParsedSpec) {
+        let lower = line.to_lowercase();
+        let has_test = lower.contains("test");
+        let has_obligation =
+            lower.contains("must") || lower.contains("should") || lower.contains("require");
+        if has_test && has_obligation {
+            spec.test_requirements.push(TestRequirement {
+                text: line.trim().to_string(),
+                test_type: Self::classify_test_type(&lower).to_string(),
+                code_path: self.extract_code_path(line),
+            });
+        }
+    }
+
     /// Parse specification content
     pub fn parse_content(&self, content: &str, path: &Path) -> Result<ParsedSpec> {
         let mut spec = ParsedSpec {
@@ -259,40 +441,10 @@ impl SpecParser {
             // Track code blocks
             if line.starts_with("```") {
                 if in_code_block {
-                    // End of code block
-                    let is_executable = matches!(
-                        code_lang.as_str(),
-                        "bash" | "sh" | "shell" | "rust" | "python" | "typescript" | "javascript"
-                    );
-                    spec.code_examples.push(CodeExample {
-                        language: code_lang.clone(),
-                        code: code_content.trim().to_string(),
-                        line: code_start_line,
-                        executable: is_executable,
-                    });
-
-                    // Code examples are falsifiable claims - they either compile/run or they don't
-                    // Mark as manual validation (can be run by user, gives credit for having testable claims)
-                    if is_executable && !code_content.trim().is_empty() {
-                        let claim_text = format!(
-                            "Code example ({}) at line {} compiles/runs correctly",
-                            code_lang, code_start_line
-                        );
-                        spec.claims.push(ValidationClaim {
-                            id: format!("CODE-{}", spec.code_examples.len()),
-                            text: claim_text,
-                            line: code_start_line,
-                            category: ClaimCategory::Falsifiability,
-                            automatable: false, // Manual validation - but still falsifiable!
-                            validation_cmd: None,
-                            expected_pattern: None,
-                        });
-                    }
-
+                    Self::finalize_code_block(&code_lang, &code_content, code_start_line, &mut spec);
                     in_code_block = false;
                     code_content.clear();
                 } else {
-                    // Start of code block
                     in_code_block = true;
                     code_lang = line.trim_start_matches("```").to_string();
                     code_start_line = line_num;
@@ -311,142 +463,11 @@ impl SpecParser {
                 current_section = line.trim_start_matches('#').trim().to_string();
             }
 
-            // Extract checkbox items (acceptance criteria)
-            if let Some(caps) = self.checkbox_regex.captures(line) {
-                let checked = caps.get(1).map(|m| m.as_str()) == Some("x")
-                    || caps.get(1).map(|m| m.as_str()) == Some("X");
-                let text = caps
-                    .get(2)
-                    .map(|m| m.as_str().to_string())
-                    .unwrap_or_default();
-
-                spec.acceptance_criteria.push(AcceptanceCriterion {
-                    text: text.clone(),
-                    complete: checked,
-                    line: line_num,
-                });
-
-                // Also create a claim from acceptance criteria
-                let category = ClaimCategory::from_section(&current_section)
-                    .unwrap_or(ClaimCategory::Implementation);
-
-                spec.claims.push(ValidationClaim {
-                    id: format!("AC-{}", spec.acceptance_criteria.len()),
-                    text,
-                    line: line_num,
-                    category,
-                    automatable: false,
-                    validation_cmd: None,
-                    expected_pattern: None,
-                });
-            }
-
-            // Extract Falsification Conditions (explicit falsifiability claims)
-            // Format: "- If X, Y is falsified" or "- X is falsified when Y"
-            if line.starts_with("- ") && line.to_lowercase().contains("falsified") {
-                let claim_text = line.trim_start_matches("- ").trim().to_string();
-                spec.claims.push(ValidationClaim {
-                    id: format!("FC-{}", spec.claims.len() + 1),
-                    text: claim_text,
-                    line: line_num,
-                    category: ClaimCategory::Falsifiability,
-                    automatable: false, // Manual verification required
-                    validation_cmd: None,
-                    expected_pattern: None,
-                });
-            }
-
-            // Extract Documentation requirements from bullet points in doc sections
-            // Format: "- **Key**: Description" in Documentation sections
-            if (current_section.to_lowercase().contains("documentation")
-                || current_section.to_lowercase().contains("open science"))
-                && line.starts_with("- ")
-                && !line.contains("[ ]")
-            {
-                let claim_text = line.trim_start_matches("- ").trim().to_string();
-                if !claim_text.is_empty() {
-                    spec.claims.push(ValidationClaim {
-                        id: format!("DOC-{}", spec.claims.len() + 1),
-                        text: claim_text,
-                        line: line_num,
-                        category: ClaimCategory::Documentation,
-                        automatable: false,
-                        validation_cmd: None,
-                        expected_pattern: None,
-                    });
-                }
-            }
-
-            // Extract MUST/SHALL/SHOULD claims
-            if let Some(caps) = self.claim_regex.captures(line) {
-                let verb = caps
-                    .get(1)
-                    .map(|m| m.as_str().to_uppercase())
-                    .unwrap_or_default();
-                let claim_text = caps
-                    .get(2)
-                    .map(|m| m.as_str().to_string())
-                    .unwrap_or_default();
-
-                // Content-based category detection (more accurate than section-based)
-                let category = Self::categorize_claim(&claim_text, &current_section);
-
-                // Determine if automatable - expanded detection
-                let lower_claim = claim_text.to_lowercase();
-                let automatable = lower_claim.contains("pmat ")
-                    || lower_claim.contains("cargo ")
-                    || lower_claim.contains("test")
-                    || lower_claim.contains("coverage")
-                    || lower_claim.contains("compile")
-                    || lower_claim.contains("build")
-                    || lower_claim.contains("pass")
-                    || lower_claim.contains("fail")
-                    || lower_claim.contains("%")
-                    || lower_claim.contains("< ")
-                    || lower_claim.contains("> ")
-                    || lower_claim.contains("≥")
-                    || lower_claim.contains("≤");
-
-                let validation_cmd = if automatable {
-                    self.extract_validation_command(&claim_text)
-                } else {
-                    None
-                };
-
-                spec.claims.push(ValidationClaim {
-                    id: format!("{}-{}", &verb[..1], spec.claims.len() + 1),
-                    text: format!("{} {}", verb, claim_text),
-                    line: line_num,
-                    category,
-                    automatable,
-                    validation_cmd,
-                    expected_pattern: None,
-                });
-            }
-
-            // Extract test requirements
-            let lower = line.to_lowercase();
-            if lower.contains("test")
-                && (lower.contains("must") || lower.contains("should") || lower.contains("require"))
-            {
-                let test_type = if lower.contains("unit") {
-                    "unit"
-                } else if lower.contains("integration") {
-                    "integration"
-                } else if lower.contains("property") || lower.contains("proptest") {
-                    "property"
-                } else if lower.contains("e2e") || lower.contains("end-to-end") {
-                    "e2e"
-                } else {
-                    "general"
-                };
-
-                spec.test_requirements.push(TestRequirement {
-                    text: line.trim().to_string(),
-                    test_type: test_type.to_string(),
-                    code_path: self.extract_code_path(line),
-                });
-            }
+            self.extract_checkbox(line, line_num, &current_section, &mut spec);
+            Self::extract_falsification(line, line_num, &mut spec);
+            Self::extract_doc_requirement(line, line_num, &current_section, &mut spec);
+            self.extract_formal_claims(line, line_num, &current_section, &mut spec);
+            self.extract_test_req(line, &mut spec);
         }
 
         Ok(spec)

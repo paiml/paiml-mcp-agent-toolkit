@@ -257,56 +257,69 @@ impl CudaSimdAnalyzer {
         }
     }
 
-    fn detect_known_patterns(&self, content: &str, path: &Path, analysis: &mut FileAnalysis) {
-        // Check for PAR-041: FlashAttention tile size issues
-        if content.contains("FlashAttention")
+    fn check_flash_attention_tile_size(
+        &self,
+        content: &str,
+        path: &Path,
+        analysis: &mut FileAnalysis,
+    ) {
+        let has_flash = content.contains("FlashAttention")
             || content.contains("flash_attention")
-            || content.contains("tiled_attention")
-        {
-            // Look for tile_kv and head_dim
-            if let (Some(tile_kv), Some(head_dim)) = (
-                self.extract_value(content, "tile_kv"),
-                self.extract_value(content, "head_dim"),
-            ) {
-                if tile_kv < head_dim {
-                    if let Some(defect_class) = self.taxonomy.get("PAR-041") {
-                        analysis.defects.push(DetectedDefect {
-                            defect_class: defect_class.clone(),
-                            file_path: path.to_path_buf(),
-                            line: None,
-                            snippet: Some(format!(
-                                "tile_kv ({}) < head_dim ({})",
-                                tile_kv, head_dim
-                            )),
-                            suggestion: Some(format!(
-                                "Set tile_kv >= head_dim (at least {})",
-                                head_dim
-                            )),
-                        });
-                    }
-                }
-            }
+            || content.contains("tiled_attention");
+        if !has_flash {
+            return;
         }
+        let tile_kv = match self.extract_value(content, "tile_kv") {
+            Some(v) => v,
+            None => return,
+        };
+        let head_dim = match self.extract_value(content, "head_dim") {
+            Some(v) => v,
+            None => return,
+        };
+        if tile_kv >= head_dim {
+            return;
+        }
+        if let Some(defect_class) = self.taxonomy.get("PAR-041") {
+            analysis.defects.push(DetectedDefect {
+                defect_class: defect_class.clone(),
+                file_path: path.to_path_buf(),
+                line: None,
+                snippet: Some(format!("tile_kv ({}) < head_dim ({})", tile_kv, head_dim)),
+                suggestion: Some(format!("Set tile_kv >= head_dim (at least {})", head_dim)),
+            });
+        }
+    }
 
-        // Check for PAR-034: Missing Tensor Core usage
-        if (content.contains("matmul") || content.contains("gemm"))
-            && !content.contains("wmma")
-            && !content.contains("mma")
-            && !content.contains("tensor_core")
-        {
-            if let Some(defect_class) = self.taxonomy.get("PAR-034") {
-                analysis.defects.push(DetectedDefect {
-                    defect_class: defect_class.clone(),
-                    file_path: path.to_path_buf(),
-                    line: None,
-                    snippet: Some("Matrix multiplication without Tensor Core".to_string()),
-                    suggestion: Some(
-                        "Consider using wmma or mma instructions for better performance"
-                            .to_string(),
-                    ),
-                });
-            }
+    fn check_missing_tensor_core(
+        &self,
+        content: &str,
+        path: &Path,
+        analysis: &mut FileAnalysis,
+    ) {
+        let has_matmul = content.contains("matmul") || content.contains("gemm");
+        let has_tensor = content.contains("wmma")
+            || content.contains("mma")
+            || content.contains("tensor_core");
+        if !has_matmul || has_tensor {
+            return;
         }
+        if let Some(defect_class) = self.taxonomy.get("PAR-034") {
+            analysis.defects.push(DetectedDefect {
+                defect_class: defect_class.clone(),
+                file_path: path.to_path_buf(),
+                line: None,
+                snippet: Some("Matrix multiplication without Tensor Core".to_string()),
+                suggestion: Some(
+                    "Consider using wmma or mma instructions for better performance".to_string(),
+                ),
+            });
+        }
+    }
+
+    fn detect_known_patterns(&self, content: &str, path: &Path, analysis: &mut FileAnalysis) {
+        self.check_flash_attention_tile_size(content, path, analysis);
+        self.check_missing_tensor_core(content, path, analysis);
     }
 
     fn extract_value(&self, content: &str, name: &str) -> Option<usize> {
@@ -330,18 +343,28 @@ impl CudaSimdAnalyzer {
         None
     }
 
+    /// Check if any .rs file in src/backends contains SAFETY comments
+    fn has_safety_comments(path: &Path) -> bool {
+        let backends = path.join("src/backends");
+        let entries = match std::fs::read_dir(&backends) {
+            Ok(e) => e,
+            Err(_) => return false,
+        };
+        entries.filter_map(Result::ok).any(|entry| {
+            entry.path().extension().is_some_and(|e| e == "rs")
+                && std::fs::read_to_string(entry.path())
+                    .map(|c| c.contains("// SAFETY:") || c.contains("/// SAFETY:"))
+                    .unwrap_or(false)
+        })
+    }
+
     /// Detect Rust project quality patterns for enhanced scoring
     fn detect_rust_patterns(&self, path: &Path) -> RustProjectPatterns {
         let mut patterns = RustProjectPatterns::default();
 
-        // Check for Cargo.lock (version pinning)
         patterns.has_cargo_lock = path.join("Cargo.lock").exists();
-
-        // Check for rust-toolchain.toml (Rust version pinning)
         patterns.has_rust_toolchain =
             path.join("rust-toolchain.toml").exists() || path.join("rust-toolchain").exists();
-
-        // Check for Criterion benchmarks
         patterns.has_criterion_benches = path.join("benches").exists()
             && std::fs::read_dir(path.join("benches"))
                 .map(|d| {
@@ -349,37 +372,13 @@ impl CudaSimdAnalyzer {
                         .any(|e| e.path().extension().is_some_and(|ext| ext == "rs"))
                 })
                 .unwrap_or(false);
-
-        // Check for GitHub Actions CI
         patterns.has_github_ci = path.join(".github/workflows").exists();
-
-        // Check for proptest regressions (regression tests)
         patterns.has_proptest_regressions = path.join("proptest-regressions").exists();
-
-        // Check for CHANGELOG.md (historical integrity)
         patterns.has_changelog =
             path.join("CHANGELOG.md").exists() || path.join("CHANGELOG").exists();
-
-        // Check for golden traces (deterministic output)
         patterns.has_golden_traces = path.join("golden_traces").exists();
-
-        // Check for SAFETY comments in SIMD code
-        if path.join("src/backends").exists() {
-            if let Ok(entries) = std::fs::read_dir(path.join("src/backends")) {
-                for entry in entries.filter_map(Result::ok) {
-                    if entry.path().extension().is_some_and(|e| e == "rs") {
-                        if let Ok(content) = std::fs::read_to_string(entry.path()) {
-                            if content.contains("// SAFETY:") || content.contains("/// SAFETY:") {
-                                patterns.has_safety_comments = true;
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        // Check for Miri configuration
+        patterns.has_safety_comments =
+            path.join("src/backends").exists() && Self::has_safety_comments(path);
         patterns.has_miri_config = path.join(".cargo/config.toml").exists()
             && std::fs::read_to_string(path.join(".cargo/config.toml"))
                 .map(|c| c.contains("miri"))
@@ -388,53 +387,36 @@ impl CudaSimdAnalyzer {
         patterns
     }
 
-    fn calculate_score(
-        &self,
+    fn score_falsifiability(
         defects: &[DetectedDefect],
         barrier_safety: &BarrierSafetyResult,
-        coalescing: &CoalescingResult,
-        path: &Path,
-    ) -> PopperScore {
-        // Detect Rust project patterns for enhanced scoring
-        let patterns = self.detect_rust_patterns(path);
-
-        // Calculate Category A: Falsifiability
+        patterns: &RustProjectPatterns,
+    ) -> FalsifiabilityScore {
         let p0_defects = defects
             .iter()
             .filter(|d| d.defect_class.severity == DefectSeverity::P0Critical)
             .count();
 
-        let falsifiability = FalsifiabilityScore {
+        FalsifiabilityScore {
             barrier_safety: if barrier_safety.unsafe_barriers.is_empty() {
                 5.0
             } else {
                 5.0 * barrier_safety.safety_score
             },
             bounds_verification: if p0_defects == 0 {
-                if patterns.has_safety_comments {
-                    5.0
-                } else {
-                    4.0
-                }
+                if patterns.has_safety_comments { 5.0 } else { 4.0 }
             } else {
                 2.5
             },
-            // Full credit if proptest regressions exist (property-based testing)
-            divergence_testing: if patterns.has_proptest_regressions {
-                5.0
-            } else {
-                2.5
-            },
-            // Full credit if Miri is configured (memory safety verification)
+            divergence_testing: if patterns.has_proptest_regressions { 5.0 } else { 2.5 },
             memory_race_detection: if patterns.has_miri_config { 5.0 } else { 2.5 },
-            occupancy_bounds: 5.0, // Assume valid unless we detect issues
-        };
+            occupancy_bounds: 5.0,
+        }
+    }
 
-        // Category B: Reproducibility - enhanced with Rust patterns
-        let reproducibility = ReproducibilityScore {
-            // Golden traces indicate deterministic output verification
+    fn score_reproducibility(patterns: &RustProjectPatterns) -> ReproducibilityScore {
+        ReproducibilityScore {
             deterministic_output: if patterns.has_golden_traces { 8.0 } else { 4.0 },
-            // Cargo.lock + rust-toolchain = full version pinning
             version_pinning: if patterns.has_cargo_lock && patterns.has_rust_toolchain {
                 5.0
             } else if patterns.has_cargo_lock {
@@ -442,27 +424,14 @@ impl CudaSimdAnalyzer {
             } else {
                 2.5
             },
-            hardware_specification: 2.5, // Partial credit by default
-            // Criterion benchmarks = full benchmark harness credit
-            benchmark_harness: if patterns.has_criterion_benches {
-                4.0
-            } else {
-                2.0
-            },
-            // GitHub Actions = full CI/CD credit
+            hardware_specification: 2.5,
+            benchmark_harness: if patterns.has_criterion_benches { 4.0 } else { 2.0 },
             ci_cd_integration: if patterns.has_github_ci { 3.0 } else { 1.5 },
-        };
+        }
+    }
 
-        // Category C: Transparency
-        let transparency = TransparencyScore {
-            ptx_inspection: 3.0,
-            register_allocation: 2.5,
-            occupancy_calculation: 2.5,
-            memory_layout: 2.0,
-        };
-
-        // Category D: Statistical Rigor - Criterion provides all of these
-        let statistical_rigor = if patterns.has_criterion_benches {
+    fn score_statistical_rigor(patterns: &RustProjectPatterns) -> StatisticalRigorScore {
+        if patterns.has_criterion_benches {
             StatisticalRigorScore {
                 warmup_iterations: 4.0,
                 sample_count: 4.0,
@@ -476,11 +445,14 @@ impl CudaSimdAnalyzer {
                 outlier_analysis: 2.0,
                 confidence_intervals: 1.5,
             }
-        };
+        }
+    }
 
-        // Category E: Historical Integrity
-        let historical_integrity = HistoricalIntegrityScore {
-            // CHANGELOG indicates fault lineage tracking
+    fn score_historical_integrity(
+        defects: &[DetectedDefect],
+        patterns: &RustProjectPatterns,
+    ) -> HistoricalIntegrityScore {
+        HistoricalIntegrityScore {
             fault_lineage: if patterns.has_changelog {
                 4.0
             } else if !defects.is_empty() {
@@ -488,16 +460,30 @@ impl CudaSimdAnalyzer {
             } else {
                 2.0
             },
-            // Proptest regressions = regression tests from historical bugs
-            regression_tests: if patterns.has_proptest_regressions {
-                3.0
-            } else {
-                1.5
-            },
+            regression_tests: if patterns.has_proptest_regressions { 3.0 } else { 1.5 },
             root_cause_documentation: if patterns.has_changelog { 3.0 } else { 1.5 },
-        };
+        }
+    }
 
-        // Category F: GPU/SIMD Specific
+    fn calculate_score(
+        &self,
+        defects: &[DetectedDefect],
+        barrier_safety: &BarrierSafetyResult,
+        coalescing: &CoalescingResult,
+        path: &Path,
+    ) -> PopperScore {
+        let patterns = self.detect_rust_patterns(path);
+
+        let falsifiability = Self::score_falsifiability(defects, barrier_safety, &patterns);
+        let reproducibility = Self::score_reproducibility(&patterns);
+        let transparency = TransparencyScore {
+            ptx_inspection: 3.0,
+            register_allocation: 2.5,
+            occupancy_calculation: 2.5,
+            memory_layout: 2.0,
+        };
+        let statistical_rigor = Self::score_statistical_rigor(&patterns);
+        let historical_integrity = Self::score_historical_integrity(defects, &patterns);
         let gpu_simd_specific = GpuSimdSpecificScore {
             warp_efficiency: 1.0,
             memory_throughput: coalescing.efficiency * 2.0,
