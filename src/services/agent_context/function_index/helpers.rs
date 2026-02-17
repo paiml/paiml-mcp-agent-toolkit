@@ -601,8 +601,13 @@ pub(super) fn extract_quality_metrics(chunk: &CodeChunk, _full_content: &str) ->
     // Estimate Big-O from control flow
     let big_o = estimate_big_o(&chunk.content);
 
-    // Calculate TDG score (simplified - real implementation uses full TDG)
-    let tdg_score = calculate_simple_tdg(complexity, satd_count, loc);
+    // Exempt enums/structs/traits from LOC penalty — they're declarations, not logic
+    use crate::services::semantic::ChunkType;
+    let effective_loc = match chunk.chunk_type {
+        ChunkType::Enum | ChunkType::Struct | ChunkType::Trait | ChunkType::TypeAlias => 0,
+        _ => loc,
+    };
+    let tdg_score = calculate_simple_tdg(complexity, satd_count, effective_loc);
     let tdg_grade = score_to_grade(tdg_score);
 
     QualityMetrics {
@@ -777,8 +782,10 @@ pub(super) fn calculate_simple_tdg(complexity: u32, satd_count: u32, loc: u32) -
     // CC<=30 gate get score=1.5 (well within A). CC=60 → 3.0, CC=80 → 4.0 (cap).
     score += (complexity as f32 / 20.0).min(4.0);
 
-    // SATD penalty (0-2 points, first marker free to reduce false positives)
-    score += (satd_count.saturating_sub(1) as f32).min(2.0);
+    // SATD penalty (0-2 points, first 2 markers free to reduce false positives)
+    // Many functions reference SATD markers descriptively (detector code, enums).
+    // 3 SATD → 0.5, 4 → 1.0, 5 → 1.5, 6+ → 2.0.
+    score += (satd_count.saturating_sub(2) as f32 * 0.5).min(2.0);
 
     // LOC penalty (0-2 points for > 200 lines)
     // Threshold at 200: functions under 200 LOC are rarely problematic.
