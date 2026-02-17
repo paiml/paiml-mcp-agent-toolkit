@@ -236,8 +236,13 @@ pub async fn handle_quality_gate(
 
     let start_time = if perf { Some(Instant::now()) } else { None };
 
+    // Suppress progress output for machine-readable formats (#230)
+    let quiet = matches!(format, QualityGateOutputFormat::Json | QualityGateOutputFormat::Junit);
+
     // Print initial status message
-    print_quality_gate_start_message(&file);
+    if !quiet {
+        print_quality_gate_start_message(&file);
+    }
 
     // Show which checks will be run
     let checks_to_run = if checks.is_empty() {
@@ -245,7 +250,9 @@ pub async fn handle_quality_gate(
     } else {
         checks.clone()
     };
-    print_checks_to_run(&checks_to_run);
+    if !quiet {
+        print_checks_to_run(&checks_to_run);
+    }
 
     // Handle single file or project-wide quality gate
     let result = if let Some(single_file) = file {
@@ -258,6 +265,7 @@ pub async fn handle_quality_gate(
             max_complexity_p99,
             output,
             perf,
+            quiet,
         )
         .await
     } else {
@@ -272,20 +280,23 @@ pub async fn handle_quality_gate(
             include_provability,
             output,
             perf,
+            quiet,
         )
         .await
     };
 
-    // Show performance metrics if requested
-    if let Some(start) = start_time {
-        let duration = start.elapsed();
-        eprintln!("\n⏱️  Performance Metrics:");
-        eprintln!("  Total execution time: {:.2}s", duration.as_secs_f64());
-        eprintln!("  Checks performed: {}", checks_to_run.len());
-        eprintln!(
-            "  Average time per check: {:.2}s",
-            duration.as_secs_f64() / checks_to_run.len() as f64
-        );
+    // Show performance metrics if requested (suppress in quiet/JSON mode)
+    if !quiet {
+        if let Some(start) = start_time {
+            let duration = start.elapsed();
+            eprintln!("\n⏱️  Performance Metrics:");
+            eprintln!("  Total execution time: {:.2}s", duration.as_secs_f64());
+            eprintln!("  Checks performed: {}", checks_to_run.len());
+            eprintln!(
+                "  Average time per check: {:.2}s",
+                duration.as_secs_f64() / checks_to_run.len() as f64
+            );
+        }
     }
 
     result
@@ -371,9 +382,12 @@ async fn handle_single_file_quality_gate(
     max_complexity_p99: u32,
     output: Option<PathBuf>,
     perf: bool,
+    quiet: bool,
 ) -> Result<()> {
     use std::time::Instant;
-    eprintln!("📄 Analyzing single file: {}", single_file.display());
+    if !quiet {
+        eprintln!("📄 Analyzing single file: {}", single_file.display());
+    }
 
     let mut violations = Vec::new();
     let mut results = QualityGateResults::default();
@@ -398,9 +412,11 @@ async fn handle_single_file_quality_gate(
     )
     .await?;
 
-    if let Some(start) = check_start {
-        let duration = start.elapsed();
-        eprintln!("\n⏱️  File analysis took: {:.3}s", duration.as_secs_f64());
+    if !quiet {
+        if let Some(start) = check_start {
+            let duration = start.elapsed();
+            eprintln!("\n⏱️  File analysis took: {:.3}s", duration.as_secs_f64());
+        }
     }
 
     // Calculate overall status
@@ -630,6 +646,7 @@ async fn handle_project_quality_gate(
     include_provability: bool,
     output: Option<PathBuf>,
     perf: bool,
+    quiet: bool,
 ) -> Result<()> {
     use std::time::Instant;
     let mut violations = Vec::new();
@@ -657,7 +674,9 @@ async fn handle_project_quality_gate(
         filter_violations_by_exclude(&mut violations, &exclude_paths);
         let removed = before - violations.len();
         if removed > 0 {
-            eprintln!("  📁 Excluded {removed} violations from excluded paths");
+            if !quiet {
+                eprintln!("  📁 Excluded {removed} violations from excluded paths");
+            }
             results.recalculate_from(&violations);
         }
     }
@@ -668,20 +687,24 @@ async fn handle_project_quality_gate(
         let provability_score = calculate_provability_score(&project_path).await?;
         results.provability_score = Some(provability_score);
 
-        if let Some(start) = prov_start {
-            eprintln!(
-                "  ⏱️  Provability analysis: {:.3}s",
-                start.elapsed().as_secs_f64()
-            );
+        if !quiet {
+            if let Some(start) = prov_start {
+                eprintln!(
+                    "  ⏱️  Provability analysis: {:.3}s",
+                    start.elapsed().as_secs_f64()
+                );
+            }
         }
     }
 
-    if let Some(start) = checks_start {
-        let duration = start.elapsed();
-        eprintln!(
-            "\n⏱️  All checks completed in: {:.3}s",
-            duration.as_secs_f64()
-        );
+    if !quiet {
+        if let Some(start) = checks_start {
+            let duration = start.elapsed();
+            eprintln!(
+                "\n⏱️  All checks completed in: {:.3}s",
+                duration.as_secs_f64()
+            );
+        }
     }
 
     // Calculate overall pass/fail
@@ -691,8 +714,10 @@ async fn handle_project_quality_gate(
     // Format and output results
     output_project_results(&results, &violations, format, output).await?;
 
-    // Print final status
-    print_quality_gate_final_status(&results, &violations);
+    // Print final status (suppress for JSON/machine-readable output, #230)
+    if !quiet {
+        print_quality_gate_final_status(&results, &violations);
+    }
 
     // Handle exit status
     handle_quality_gate_exit_status(fail_on_violation, results.passed);
