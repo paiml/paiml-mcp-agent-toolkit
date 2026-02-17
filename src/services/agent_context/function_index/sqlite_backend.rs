@@ -103,7 +103,35 @@ pub(super) fn create_schema(conn: &Connection) -> Result<(), String> {
         CREATE INDEX IF NOT EXISTS idx_functions_name ON functions(function_name);
         CREATE INDEX IF NOT EXISTS idx_functions_lang ON functions(language);
         CREATE INDEX IF NOT EXISTS idx_functions_grade ON functions(tdg_grade);
-        CREATE INDEX IF NOT EXISTS idx_call_graph_callee ON call_graph(callee_id);",
+        CREATE INDEX IF NOT EXISTS idx_call_graph_callee ON call_graph(callee_id);
+
+        CREATE TABLE IF NOT EXISTS entropy_violations (
+            id INTEGER PRIMARY KEY,
+            file_path TEXT NOT NULL,
+            pattern_type TEXT NOT NULL,
+            pattern_hash TEXT NOT NULL,
+            repetitions INTEGER NOT NULL,
+            variation_score REAL NOT NULL,
+            estimated_loc_reduction INTEGER NOT NULL,
+            severity TEXT NOT NULL,
+            example_code TEXT,
+            UNIQUE(file_path, pattern_hash)
+        );
+
+        CREATE TABLE IF NOT EXISTS provability_scores (
+            id INTEGER PRIMARY KEY,
+            function_id INTEGER,
+            file_path TEXT NOT NULL,
+            function_name TEXT NOT NULL,
+            provability_score REAL NOT NULL,
+            verified_properties INTEGER DEFAULT 0,
+            FOREIGN KEY (function_id) REFERENCES functions(id)
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_entropy_file ON entropy_violations(file_path);
+        CREATE INDEX IF NOT EXISTS idx_entropy_severity ON entropy_violations(severity);
+        CREATE INDEX IF NOT EXISTS idx_provability_score ON provability_scores(provability_score);
+        CREATE INDEX IF NOT EXISTS idx_provability_file ON provability_scores(file_path);",
     )
     .map_err(|e| format!("Failed to create schema: {e}"))?;
 

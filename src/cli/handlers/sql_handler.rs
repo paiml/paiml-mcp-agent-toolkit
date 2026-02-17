@@ -64,6 +64,14 @@ const EXAMPLE_QUERIES: &[(&str, &str)] = &[
         "fault-density",
         "SELECT file_path, count(*) as fault_funcs FROM functions WHERE fault_annotations <> '[]' GROUP BY file_path ORDER BY fault_funcs DESC LIMIT 20",
     ),
+    (
+        "entropy-violations",
+        "SELECT file_path, pattern_type, repetitions, variation_score, severity FROM entropy_violations ORDER BY repetitions DESC LIMIT 20",
+    ),
+    (
+        "low-provability",
+        "SELECT function_name, file_path, provability_score, verified_properties FROM provability_scores WHERE provability_score < 0.5 ORDER BY provability_score ASC LIMIT 20",
+    ),
 ];
 
 /// Handle --schema flag: print table schemas
