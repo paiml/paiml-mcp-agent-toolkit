@@ -92,6 +92,8 @@ pub async fn check_complexity(
         // Language analysis infrastructure: inherently complex pattern matching
         "**/dead_code_multi_language.rs",
         "**/mcp_integration/**",
+        // MCP tool functions: thin dispatch wrappers with many match arms
+        "**/mcp_pmcp/tool_functions/**",
     ] {
         if let Ok(p) = glob::Pattern::new(pattern) {
             exclude_globs.push(p);
