@@ -70,6 +70,8 @@ fn main() {
             "TODO: Refactor this function",
         ),
         // Entropy violation WITH explainability details (#226)
+        // Note: structural code hashing groups only structurally identical patterns,
+        // so variation_score is 0.0 (all matches are identical after normalization).
         QualityViolation::new(
             "entropy",
             "warning",
@@ -82,12 +84,12 @@ fn main() {
                 "src/config.rs".to_string(),
                 "src/settings.rs".to_string(),
             ],
-            example_code: Some(".get_or_insert(".to_string()),
-            fix_suggestion: Some("Extract shared config builder".to_string()),
+            example_code: Some("let guard = mutex.lock()".to_string()),
+            fix_suggestion: Some("Extract shared resource guard helper".to_string()),
             score_factors: vec![
                 "pattern_type: ResourceManagement".to_string(),
                 "repetitions: 8".to_string(),
-                "variation_score: 0.85".to_string(),
+                "variation_score: 0.0 (structurally identical)".to_string(),
             ],
         }),
     ];
