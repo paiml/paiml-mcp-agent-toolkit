@@ -493,15 +493,13 @@ impl PatternExtractor {
         }
     }
 
-    /// Calculate how much patterns vary from each other
-    fn calculate_pattern_variations(&self, collection: &mut PatternCollection) {
-        // Compare similar patterns and calculate variation scores
-        for pattern in collection.patterns.values_mut() {
-            if pattern.locations.len() > 1 {
-                // Simplified: more locations = more variation
-                pattern.variation_score = (pattern.locations.len() as f64 / 10.0).min(1.0);
-            }
-        }
+    /// Calculate how much patterns vary from each other.
+    /// For Rust patterns (created via group_by_structural_hash), variation_score is already
+    /// set correctly at creation time (0.0 = structurally identical). For Ruchy patterns
+    /// (created with per-method variation calculators), variation_score is also already set.
+    /// This method is now a no-op; the old heuristic (locations.len / 10) was overriding
+    /// structural hash results with meaningless values.
+    fn calculate_pattern_variations(&self, _collection: &mut PatternCollection) {
     }
 
     /// Create a hash for a pattern to identify similar ones

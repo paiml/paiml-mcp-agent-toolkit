@@ -279,11 +279,14 @@ struct SourceFlags {
     has_statements: bool,
     has_unsafe: bool,
     has_unwrap: bool,
+    has_question_mark: bool,
     has_mut_ref: bool,
     has_raw_ptr: bool,
     has_io: bool,
     has_index: bool,
     has_loop: bool,
+    has_iterator_chain: bool,
+    returns_result_option: bool,
     is_test: bool,
     is_rust: bool,
 }
@@ -291,18 +294,19 @@ struct SourceFlags {
 impl SourceFlags {
     fn extract(source: &str, func_id: &FunctionId) -> Self {
         let body = source.split('{').nth(1).unwrap_or("");
-        let has_statements = body.contains(';')
-            || body.contains("let ")
-            || body.contains("return ")
-            || body.contains("if ")
-            || body.contains("match ")
-            || body.contains("for ");
+        // A function body "has statements" if it contains any non-trivial content.
+        // This includes explicit statements (with ;) AND expression returns (no ;).
+        let body_content = body.trim().trim_end_matches('}').trim();
+        let has_statements = !body_content.is_empty() && body_content.len() >= 3;
         let trimmed = source.trim();
+        // Check function signature (before first '{') for return type
+        let signature = source.split('{').next().unwrap_or("");
 
         Self {
-            has_statements: !trimmed.is_empty() && trimmed.len() >= 5 && has_statements,
+            has_statements: !trimmed.is_empty() && has_statements,
             has_unsafe: source.contains("unsafe "),
             has_unwrap: source.contains(".unwrap()") || source.contains(".expect("),
+            has_question_mark: body.contains('?'),
             has_mut_ref: source.contains("&mut "),
             has_raw_ptr: source.contains("*const ") || source.contains("*mut "),
             has_io: source.contains("println!")
@@ -313,6 +317,14 @@ impl SourceFlags {
                 || source.contains("async fn"),
             has_index: source.contains('[') && source.contains(']'),
             has_loop: source.contains("for ") || source.contains("while ") || source.contains("loop "),
+            has_iterator_chain: body.contains(".iter()")
+                || body.contains(".into_iter()")
+                || body.contains(".map(")
+                || body.contains(".filter(")
+                || body.contains(".collect()"),
+            returns_result_option: signature.contains("-> Result<")
+                || signature.contains("-> Option<")
+                || signature.contains("-> anyhow::Result"),
             is_test: func_id.function_name.starts_with("test_")
                 || source.contains("#[test]")
                 || source.contains("#[tokio::test]"),
@@ -321,27 +333,40 @@ impl SourceFlags {
     }
 
     fn infer_nullability(&self) -> NullabilityLattice {
-        if !self.is_rust || self.has_unsafe || self.has_raw_ptr {
+        if !self.is_rust || self.has_raw_ptr {
+            NullabilityLattice::MaybeNull
+        } else if self.has_unsafe && !self.returns_result_option {
+            // unsafe without Result/Option return — weaker null guarantees
             NullabilityLattice::MaybeNull
         } else {
+            // Safe Rust (or unsafe wrapped in Result/Option): references are always valid,
+            // Option/Result are explicit null handling via type system
             NullabilityLattice::NotNull
         }
     }
 
     fn infer_bounds(&self) -> IntervalLattice {
-        if self.has_unwrap {
+        if self.has_unwrap && !self.has_question_mark {
+            // Only unwrap, no ? — panics on failure, no bounds evidence
             IntervalLattice { lower: None, upper: None }
+        } else if self.has_unwrap && self.has_question_mark {
+            // Mixed: some unwrap but also proper ? propagation — partial bounds
+            IntervalLattice { lower: Some(0), upper: None }
         } else if self.has_index {
             IntervalLattice { lower: Some(0), upper: None }
         } else {
+            // No unwrap — bounded behavior
             IntervalLattice { lower: Some(0), upper: Some(i64::MAX) }
         }
     }
 
     fn infer_aliasing(&self) -> AliasLattice {
-        if self.has_raw_ptr || self.has_unsafe || self.has_mut_ref {
+        if self.has_raw_ptr || self.has_unsafe {
+            // Raw pointers and unsafe bypass Rust's borrow checker — may alias
             AliasLattice::MayAlias
         } else {
+            // Rust's borrow checker guarantees: &mut is exclusive, & is shared-immutable.
+            // Both prevent aliasing. &mut does NOT mean "may alias" — it means exclusive access.
             AliasLattice::NoAlias
         }
     }
@@ -352,6 +377,11 @@ impl SourceFlags {
         }
         if self.has_io || self.has_unsafe {
             return PurityLattice::WriteGlobal;
+        }
+        // Iterator chains (.iter().map().filter().collect()) are effectively ReadOnly
+        // even if the function takes &mut self, since the chain operates on copies/refs
+        if self.has_iterator_chain && !self.has_mut_ref {
+            return PurityLattice::ReadOnly;
         }
         if self.has_mut_ref {
             PurityLattice::WriteLocal

@@ -475,7 +475,12 @@ pub async fn check_entropy_with_excludes(
     config.exclude_paths.push("**/target/**".to_string());
     config.exclude_paths.push("**/node_modules/**".to_string());
     config.exclude_paths.push("**/*.test.rs".to_string());
+    config.exclude_paths.push("**/*_tests.rs".to_string());
+    config.exclude_paths.push("**/*_tests_*.rs".to_string());
+    config.exclude_paths.push("**/*tests_part*.rs".to_string());
     config.exclude_paths.push("**/tests/**".to_string());
+    config.exclude_paths.push("**/examples/**".to_string());
+    config.exclude_paths.push("**/benches/**".to_string());
 
     // Apply extra exclude paths from .pmat-metrics.toml [exclude] (#195)
     for path in extra_exclude_paths {
