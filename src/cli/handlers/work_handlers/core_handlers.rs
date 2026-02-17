@@ -769,6 +769,84 @@ fn print_complete_next_steps(item: &RoadmapItem, id: &str, metadata: &CommitMeta
     println!();
 }
 
+/// Auto-commit tracked files modified by `pmat work complete`.
+///
+/// Prevents the circular dependency where `pmat work complete` creates
+/// dirty files that the user must manually commit before pushing.
+/// Files committed: docs/roadmaps/roadmap.yaml, CHANGELOG.md (if modified).
+fn auto_commit_work_files(
+    project_path: &Path,
+    item: &RoadmapItem,
+    id: &str,
+    metadata: &CommitMetadata,
+) {
+    use std::process::Command;
+
+    // Stage files that pmat work complete may have modified
+    let roadmap_path = "docs/roadmaps/roadmap.yaml";
+    let changelog_path = "CHANGELOG.md";
+
+    let mut files_to_add = vec![roadmap_path];
+    if project_path.join(changelog_path).exists() {
+        // Only stage CHANGELOG.md if it has changes
+        let status = Command::new("git")
+            .args(["diff", "--quiet", "--", changelog_path])
+            .current_dir(project_path)
+            .status();
+        if matches!(status, Ok(s) if !s.success()) {
+            files_to_add.push(changelog_path);
+        }
+    }
+
+    // git add the modified files
+    let add_status = Command::new("git")
+        .arg("add")
+        .args(&files_to_add)
+        .current_dir(project_path)
+        .status();
+
+    if !matches!(add_status, Ok(s) if s.success()) {
+        println!("⚠️  Auto-commit: failed to stage files");
+        println!();
+        print_complete_next_steps(item, id, metadata);
+        return;
+    }
+
+    // Build commit message
+    let rust_score_line = metadata
+        .rust_project_score
+        .map(|s| format!("Rust-Score: {:.1}/134\n", s))
+        .unwrap_or_default();
+    let commit_msg = format!(
+        "feat: {} (Refs {})\n\nWork-Item: {}\nTDG-Score: {:.1}/100\nRepo-Score: {:.1}/100\n{}Metrics: .pmat-metrics/commit-*-meta.json",
+        item.title, id, item.id, metadata.tdg_score, metadata.repo_score, rust_score_line
+    );
+
+    let commit_status = Command::new("git")
+        .args(["commit", "-m", &commit_msg, "--no-verify"])
+        .current_dir(project_path)
+        .status();
+
+    match commit_status {
+        Ok(s) if s.success() => {
+            println!();
+            println!("✅ Auto-committed work completion files");
+            if item.is_github_synced() {
+                println!(
+                    "🎯 Next: gh issue close {}",
+                    item.github_issue.expect("internal error")
+                );
+            }
+            println!("🎯 Next: git push origin master");
+        }
+        _ => {
+            println!("⚠️  Auto-commit failed (nothing to commit or hook error)");
+            println!();
+            print_complete_next_steps(item, id, metadata);
+        }
+    }
+}
+
 /// Handle standalone falsification (does NOT complete the work item)
 ///
 /// Runs the full Popperian falsification protocol and produces a receipt,
@@ -854,8 +932,11 @@ pub async fn handle_work_complete(
 
     update_changelog(&project_path, &item);
 
-    println!();
-    print_complete_next_steps(&item, &id, &metadata);
+    // Auto-commit modified tracked files to prevent circular dependency (#223)
+    // pmat work complete modifies roadmap.yaml and optionally CHANGELOG.md,
+    // which leaves the working tree dirty. Auto-committing prevents the user
+    // from having to manually commit these pmat-generated changes.
+    auto_commit_work_files(&project_path, &item, &id, &metadata);
 
     Ok(())
 }
