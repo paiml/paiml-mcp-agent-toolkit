@@ -731,7 +731,8 @@ pub(super) fn calculate_simple_tdg(complexity: u32, satd_count: u32, loc: u32) -
     let mut score = 0.0f32;
 
     // Complexity penalty (0-4 points)
-    score += (complexity as f32 / 10.0).min(4.0);
+    // Divisor of 15 aligns with pre-commit CC<=30 gate (CC=30 → score=2.0)
+    score += (complexity as f32 / 15.0).min(4.0);
 
     // SATD penalty (0-2 points)
     score += (satd_count as f32).min(2.0);
