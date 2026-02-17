@@ -705,7 +705,7 @@ pub(super) fn count_satd_markers(source: &str) -> u32 {
 fn count_markers_in_line(line: &str) -> u32 {
     let upper = line.to_uppercase();
     let mut count = 0u32;
-    for marker in ["TODO", "FIXME", "HACK", "XXX", "OPTIMIZE"] {
+    for marker in ["TODO", "FIXME", "HACK", "OPTIMIZE"] {
         count += upper.matches(marker).count() as u32;
     }
     count

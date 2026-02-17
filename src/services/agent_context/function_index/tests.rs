@@ -808,7 +808,7 @@ fn test_count_complexity_various() {
 fn test_count_satd_markers_various() {
     assert_eq!(count_satd_markers("// FIXME: broken"), 1);
     assert_eq!(count_satd_markers("// HACK: workaround"), 1);
-    assert_eq!(count_satd_markers("// XXX: temporary"), 1);
+    assert_eq!(count_satd_markers("// XXX: temporary"), 0); // XXX removed - caused false positives from BUG-XXX patterns
     assert_eq!(count_satd_markers("// TODO: fix\n// FIXME: also fix"), 2);
     assert_eq!(count_satd_markers("// Normal comment"), 0);
 }
