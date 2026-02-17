@@ -194,6 +194,58 @@ fn handle_quality_gate_exit_status(fail_on_violation: bool, passed: bool) {
     }
 }
 
+/// Persist all quality gate violations to SQLite for `pmat sql` queryability.
+///
+/// Opens the existing `.pmat/context.db` and writes all violations to the
+/// `quality_violations` table. This makes them queryable via:
+///   `pmat sql "SELECT * FROM quality_violations WHERE check_type = 'complexity'"`
+fn persist_violations_to_sqlite(
+    project_path: &std::path::Path,
+    violations: &[QualityViolation],
+    quiet: bool,
+) {
+    let db_path = project_path.join(".pmat").join("context.db");
+    if !db_path.exists() {
+        if !quiet {
+            eprintln!("  ⚠️  No .pmat/context.db found — violations not persisted to SQL");
+        }
+        return;
+    }
+
+    let tuples: Vec<(String, String, String, Option<usize>, String, Option<String>)> = violations
+        .iter()
+        .map(|v| {
+            let details_json = v
+                .details
+                .as_ref()
+                .and_then(|d| serde_json::to_string(d).ok());
+            (
+                v.check_type.clone(),
+                v.severity.clone(),
+                v.file.clone(),
+                v.line,
+                v.message.clone(),
+                details_json,
+            )
+        })
+        .collect();
+
+    match crate::services::agent_context::persist_quality_violations(&db_path, &tuples) {
+        Ok(()) => {
+            if !quiet {
+                eprintln!(
+                    "  💾 Persisted {} violations to .pmat/context.db",
+                    violations.len()
+                );
+            }
+        }
+        Err(e) => {
+            if !quiet {
+                eprintln!("  ⚠️  Failed to persist violations to SQL: {e}");
+            }
+        }
+    }
+}
 
 // Single file quality check functions - extracted for file health (CB-040)
 async fn check_single_file_complexity(

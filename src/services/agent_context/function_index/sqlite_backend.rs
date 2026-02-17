@@ -128,10 +128,24 @@ pub(super) fn create_schema(conn: &Connection) -> Result<(), String> {
             FOREIGN KEY (function_id) REFERENCES functions(id)
         );
 
+        CREATE TABLE IF NOT EXISTS quality_violations (
+            id INTEGER PRIMARY KEY,
+            check_type TEXT NOT NULL,
+            severity TEXT NOT NULL,
+            file_path TEXT NOT NULL,
+            line INTEGER,
+            message TEXT NOT NULL,
+            details_json TEXT,
+            created_at TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+
         CREATE INDEX IF NOT EXISTS idx_entropy_file ON entropy_violations(file_path);
         CREATE INDEX IF NOT EXISTS idx_entropy_severity ON entropy_violations(severity);
         CREATE INDEX IF NOT EXISTS idx_provability_score ON provability_scores(provability_score);
-        CREATE INDEX IF NOT EXISTS idx_provability_file ON provability_scores(file_path);",
+        CREATE INDEX IF NOT EXISTS idx_provability_file ON provability_scores(file_path);
+        CREATE INDEX IF NOT EXISTS idx_qv_check_type ON quality_violations(check_type);
+        CREATE INDEX IF NOT EXISTS idx_qv_file ON quality_violations(file_path);
+        CREATE INDEX IF NOT EXISTS idx_qv_severity ON quality_violations(severity);",
     )
     .map_err(|e| format!("Failed to create schema: {e}"))?;
 
@@ -827,6 +841,78 @@ pub(crate) fn has_valid_schema(conn: &Connection) -> bool {
         )
         .unwrap_or(0);
     count == 4
+}
+
+/// Persist quality gate violations to the SQLite database.
+///
+/// Opens the existing context.db (must already exist from index build),
+/// clears old violations, and inserts the new set. This makes all quality
+/// gate results queryable via `pmat sql`.
+pub(crate) fn persist_quality_violations(
+    db_path: &Path,
+    violations: &[(String, String, String, Option<usize>, String, Option<String>)],
+) -> Result<(), String> {
+    if !db_path.exists() {
+        return Err(format!(
+            "No index database at {}. Run `pmat query` first to build the index.",
+            db_path.display()
+        ));
+    }
+
+    let conn = Connection::open_with_flags(
+        db_path,
+        OpenFlags::SQLITE_OPEN_READ_WRITE | OpenFlags::SQLITE_OPEN_NO_MUTEX,
+    )
+    .map_err(|e| format!("Failed to open DB for violations: {e}"))?;
+
+    conn.execute_batch("PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL;")
+        .map_err(|e| format!("Failed to set pragmas: {e}"))?;
+
+    // Ensure table exists (handles DBs created before this feature)
+    conn.execute_batch(
+        "CREATE TABLE IF NOT EXISTS quality_violations (
+            id INTEGER PRIMARY KEY,
+            check_type TEXT NOT NULL,
+            severity TEXT NOT NULL,
+            file_path TEXT NOT NULL,
+            line INTEGER,
+            message TEXT NOT NULL,
+            details_json TEXT,
+            created_at TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+        CREATE INDEX IF NOT EXISTS idx_qv_check_type ON quality_violations(check_type);
+        CREATE INDEX IF NOT EXISTS idx_qv_file ON quality_violations(file_path);
+        CREATE INDEX IF NOT EXISTS idx_qv_severity ON quality_violations(severity);",
+    )
+    .map_err(|e| format!("Failed to ensure quality_violations table: {e}"))?;
+
+    let tx = conn
+        .unchecked_transaction()
+        .map_err(|e| format!("Failed to begin violation transaction: {e}"))?;
+
+    // Clear previous violations
+    tx.execute("DELETE FROM quality_violations", [])
+        .map_err(|e| format!("Failed to clear quality_violations: {e}"))?;
+
+    {
+        let mut stmt = tx
+            .prepare_cached(
+                "INSERT INTO quality_violations (check_type, severity, file_path, line, message, details_json)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+            )
+            .map_err(|e| format!("Failed to prepare violation insert: {e}"))?;
+
+        for (check_type, severity, file_path, line, message, details_json) in violations {
+            let line_val: Option<i64> = line.map(|l| l as i64);
+            stmt.execute(params![check_type, severity, file_path, line_val, message, details_json])
+                .map_err(|e| format!("Failed to insert violation: {e}"))?;
+        }
+    }
+
+    tx.commit()
+        .map_err(|e| format!("Failed to commit violations: {e}"))?;
+
+    Ok(())
 }
 
 fn humanize_bytes(bytes: u64) -> String {

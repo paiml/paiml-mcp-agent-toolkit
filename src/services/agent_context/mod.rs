@@ -61,6 +61,7 @@ mod query;
 pub use function_index::{
     AgentContextIndex, FunctionEntry, GraphMetrics, IndexManifest, IndexStats, QualityMetrics,
 };
+pub(crate) use function_index::sqlite_backend::persist_quality_violations;
 pub use query::coverage_exclusion::{classify_exclusions, CoverageExclusion, ExclusionSummary};
 pub use query::ptx_diagnostics::{
     format_ptx_diagnostics_json, format_ptx_diagnostics_text, run_ptx_diagnostics,

@@ -711,6 +711,9 @@ async fn handle_project_quality_gate(
     results.passed = violations.is_empty();
     results.total_violations = violations.len();
 
+    // Persist violations to SQLite for `pmat sql` queryability
+    persist_violations_to_sqlite(&project_path, &violations, quiet);
+
     // Format and output results
     output_project_results(&results, &violations, format, output).await?;
 
