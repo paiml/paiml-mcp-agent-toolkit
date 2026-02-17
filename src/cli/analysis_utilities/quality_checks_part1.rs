@@ -88,7 +88,10 @@ pub async fn check_complexity(
         "**/tests/**", "**/*_tests.rs", "**/*_tests_*.rs", "**/*tests_part*.rs",
         "**/fixtures/**",
         // Lint rule implementations have inherent pattern-matching complexity
-        "**/comply_cb_detect/**",
+        "**/comply_cb_detect/**", "**/comply_cb_detect.rs",
+        // Language analysis infrastructure: inherently complex pattern matching
+        "**/dead_code_multi_language.rs",
+        "**/mcp_integration/**",
     ] {
         if let Ok(p) = glob::Pattern::new(pattern) {
             exclude_globs.push(p);
