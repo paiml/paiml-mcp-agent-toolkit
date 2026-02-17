@@ -29,9 +29,10 @@
 - **Repository Scoring** - Quantitative health assessment (0-211 scale)
 - **Git History RAG** - Semantic search across commit history with RRF fusion
 - **Semantic Search** - Natural language code discovery
-- **Compliance Checks** - CB-500 Rust and CB-600 Lua best practices detection
+- **Compliance Governance** - 30+ checks across code quality, best practices, and reproducibility
+- **Autonomous Kaizen** - Toyota Way continuous improvement with auto-fix and commit
 - **MCP Integration** - 19 tools for Claude Code, Cline, and AI agents
-- **Quality Gates** - Pre-commit hooks, CI/CD integration
+- **Quality Gates** - Pre-commit hooks, CI/CD integration, `.pmat-gates.toml` config
 - **18+ Languages** - Rust, TypeScript, Python, Go, Java, C/C++, Lua, and more
 
 Part of the [PAIML Stack](https://github.com/paiml), following Toyota Way quality principles (Jidoka, Genchi Genbutsu, Kaizen).
@@ -55,7 +56,7 @@ cargo install pmat
 
 # Or from source (latest)
 git clone https://github.com/paiml/paiml-mcp-agent-toolkit
-cd paiml-mcp-agent-toolkit && cargo install --path server
+cd paiml-mcp-agent-toolkit && cargo install --path .
 ```
 
 ### Basic Usage
@@ -173,6 +174,54 @@ pmat hooks install --tdg-enforcement   # With TDG quality gates
 pmat hooks status                      # Check hook status
 ```
 
+### Compliance Governance (`pmat comply`)
+
+30+ automated checks across code quality, best practices, and governance:
+
+```bash
+pmat comply check                      # Run all compliance checks
+pmat comply check --strict             # Exit non-zero on failure
+pmat comply check --format json        # Machine-readable output
+pmat comply migrate                    # Update to latest version
+```
+
+**Key Checks:**
+- **CB-200**: TDG Grade Gate — blocks on non-A functions (auto-rebuilds stale index)
+- **CB-304**: Dead code percentage enforcement
+- **CB-400**: Shell/Makefile quality via bashrs
+- **CB-500**: Rust best practices (30+ patterns)
+- **CB-600**: Lua best practices
+- **CB-900**: Markdown link validation
+- **CB-1000**: MLOps model quality
+
+Configure via `.pmat-gates.toml`:
+
+```toml
+[tdg]
+min_grade = "A"
+exclude = ["examples/**", "scripts/**"]
+```
+
+### Autonomous Kaizen (`pmat kaizen`)
+
+Toyota Way continuous improvement — scan, auto-fix, commit:
+
+```bash
+pmat kaizen --dry-run                  # Scan only (no changes)
+pmat kaizen                            # Apply safe auto-fixes
+pmat kaizen --commit --push            # Fix, commit, and push
+pmat kaizen --format json -o report.json  # CI/CD integration
+```
+
+### Function Extraction (`pmat extract`)
+
+Extract function boundaries with metadata:
+
+```bash
+pmat extract src/lib.rs                # Extract functions from file
+pmat extract --list src/               # List all functions with imports and visibility
+```
+
 ## Examples
 
 ### Generate Context for AI
@@ -220,14 +269,13 @@ pmat tdg check-regression \
 
 ```
 pmat/
-├── server/           CLI and MCP server
-│   ├── src/
-│   │   ├── cli/      Command handlers
-│   │   ├── services/ Analysis engines
-│   │   ├── mcp/      MCP protocol
-│   │   └── tdg/      Technical Debt Grading
-├── crates/
-│   └── pmat-dashboard/  Pure WASM dashboard
+├── src/
+│   ├── cli/          Command handlers and dispatchers
+│   ├── services/     Analysis engines (TDG, SATD, complexity, agent context)
+│   ├── mcp_server/   MCP protocol server
+│   ├── mcp_pmcp/     PMCP protocol integration
+│   └── models/       Configuration and data models
+├── examples/         75+ runnable examples
 └── docs/
     └── specifications/  Technical specs
 ```
@@ -330,7 +378,7 @@ PMAT is built on the PAIML Sovereign Stack - pure-Rust, SIMD-accelerated librari
 | [trueno-db](https://crates.io/crates/trueno-db) | Embedded analytics database | 0.3.13 |
 | [trueno-viz](https://crates.io/crates/trueno-viz) | Terminal graph visualization | 0.1.23 |
 | [trueno-zram-core](https://crates.io/crates/trueno-zram-core) | SIMD LZ4/ZSTD compression (optional) | 0.3.0 |
-| **pmat** | Code analysis toolkit | 3.0.7 |
+| **pmat** | Code analysis toolkit | 3.3.0 |
 
 **Key Benefits:**
 - Pure Rust (no C dependencies, no FFI)
