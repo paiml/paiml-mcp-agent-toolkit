@@ -933,21 +933,37 @@ async fn execute_satd_check(
     .await
 }
 
-/// Helper for entropy check execution (loads threshold + excludes from .pmat-metrics.toml)
+/// Helper for entropy check execution (loads config from .pmat-gates.toml, #220)
 async fn execute_entropy_check(
     project_path: &Path,
     min_entropy: f64,
     violations: &mut Vec<QualityViolation>,
     results: &mut QualityGateResults,
 ) -> Result<()> {
+    let gate_config = load_entropy_gate_config(project_path);
+    if !gate_config.enabled {
+        eprintln!("  ⏭️  Entropy check disabled via .pmat-gates.toml");
+        return Ok(());
+    }
     let threshold = load_entropy_threshold(project_path, min_entropy);
-    let exclude_paths = load_entropy_exclude_paths(project_path);
-    execute_quality_check_template(
-        check_entropy_with_excludes(project_path, threshold, &exclude_paths),
-        |count| results.entropy_violations = count,
-        violations,
-    )
-    .await
+    let mut exclude_paths = load_entropy_exclude_paths(project_path);
+    // Merge per-check excludes from [entropy] section (#220)
+    for pattern in &gate_config.exclude {
+        if !exclude_paths.contains(pattern) {
+            exclude_paths.push(pattern.clone());
+        }
+    }
+    let mut entropy_violations =
+        check_entropy_with_excludes(project_path, threshold, &exclude_paths).await?;
+    // Apply max_violations threshold (#220)
+    if let Some(max) = gate_config.max_violations {
+        if entropy_violations.len() <= max {
+            entropy_violations.clear();
+        }
+    }
+    results.entropy_violations = entropy_violations.len();
+    violations.extend(entropy_violations);
+    Ok(())
 }
 
 /// Helper for security check execution
@@ -1077,6 +1093,68 @@ fn read_entropy_threshold_from_file(path: &Path) -> Option<f64> {
         .get("thresholds")
         .and_then(|t| t.get("entropy_min_diversity"))
         .and_then(|v| v.as_float())
+}
+
+/// Entropy gate configuration loaded from `.pmat-gates.toml` (#220).
+struct EntropyGateConfig {
+    enabled: bool,
+    max_violations: Option<usize>,
+    exclude: Vec<String>,
+}
+
+/// Load entropy gate configuration from `.pmat-gates.toml` (#220).
+///
+/// Reads `[entropy]` section: `enabled`, `max_violations`, `exclude`.
+fn load_entropy_gate_config(project_path: &Path) -> EntropyGateConfig {
+    let path = project_path.join(".pmat-gates.toml");
+    let content = match std::fs::read_to_string(&path) {
+        Ok(c) => c,
+        Err(_) => {
+            return EntropyGateConfig {
+                enabled: true,
+                max_violations: None,
+                exclude: Vec::new(),
+            }
+        }
+    };
+    let table: toml::Table = match content.parse() {
+        Ok(t) => t,
+        Err(_) => {
+            return EntropyGateConfig {
+                enabled: true,
+                max_violations: None,
+                exclude: Vec::new(),
+            }
+        }
+    };
+
+    let entropy = table.get("entropy");
+
+    let enabled = entropy
+        .and_then(|t| t.get("enabled"))
+        .and_then(|v| v.as_bool())
+        .unwrap_or(true);
+
+    let max_violations = entropy
+        .and_then(|t| t.get("max_violations"))
+        .and_then(|v| v.as_integer())
+        .map(|v| v.max(0) as usize);
+
+    let exclude = entropy
+        .and_then(|t| t.get("exclude"))
+        .and_then(|v| v.as_array())
+        .map(|a| {
+            a.iter()
+                .filter_map(|v| v.as_str().map(String::from))
+                .collect()
+        })
+        .unwrap_or_default();
+
+    EntropyGateConfig {
+        enabled,
+        max_violations,
+        exclude,
+    }
 }
 
 /// Extract exclude paths from a parsed TOML table.

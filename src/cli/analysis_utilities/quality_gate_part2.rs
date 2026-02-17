@@ -67,15 +67,7 @@ async fn run_all_project_checks(
         dead_code_violations
     );
     run_check!("technical debt", check_satd(project_path), satd_violations);
-    {
-        let ent_threshold = load_entropy_threshold(project_path, min_entropy);
-        let ent_excludes = load_entropy_exclude_paths(project_path);
-        run_check!(
-            "code entropy",
-            check_entropy_with_excludes(project_path, ent_threshold, &ent_excludes),
-            entropy_violations
-        );
-    }
+    run_entropy_check_gated(project_path, min_entropy, violations, results, perf).await?;
     run_check!(
         "security",
         check_security(project_path),
@@ -104,6 +96,63 @@ async fn run_all_project_checks(
     );
 
     Ok(())
+}
+
+/// Run entropy check with gate config (#220): enabled, excludes, max_violations.
+async fn run_entropy_check_gated(
+    project_path: &Path,
+    min_entropy: f64,
+    violations: &mut Vec<QualityViolation>,
+    results: &mut QualityGateResults,
+    perf: bool,
+) -> Result<()> {
+    use std::time::Instant;
+
+    let gate_config = load_entropy_gate_config(project_path);
+    if !gate_config.enabled {
+        eprintln!("  \u{23ed}\u{fe0f}  Skipping code entropy (disabled via .pmat-gates.toml)");
+        return Ok(());
+    }
+
+    let ent_threshold = load_entropy_threshold(project_path, min_entropy);
+    let mut ent_excludes = load_entropy_exclude_paths(project_path);
+    merge_excludes(&mut ent_excludes, &gate_config.exclude);
+
+    eprint!("  \u{1f50d} Checking code entropy...");
+    let start = if perf { Some(Instant::now()) } else { None };
+    let ent_violations =
+        check_entropy_with_excludes(project_path, ent_threshold, &ent_excludes).await?;
+    results.entropy_violations = ent_violations.len();
+    violations.extend(ent_violations);
+
+    if let Some(s) = start {
+        eprintln!(
+            " {} violations found ({:.3}s)",
+            results.entropy_violations,
+            s.elapsed().as_secs_f64()
+        );
+    } else {
+        eprintln!(" {} violations found", results.entropy_violations);
+    }
+
+    // Apply max_violations threshold (#220)
+    if let Some(max) = gate_config.max_violations {
+        if results.entropy_violations <= max {
+            violations.retain(|v| v.check_type != "entropy");
+            results.entropy_violations = 0;
+        }
+    }
+
+    Ok(())
+}
+
+/// Merge exclude patterns, deduplicating.
+fn merge_excludes(base: &mut Vec<String>, extra: &[String]) {
+    for pattern in extra {
+        if !base.contains(pattern) {
+            base.push(pattern.clone());
+        }
+    }
 }
 
 /// Formats and outputs project results
@@ -1092,6 +1141,74 @@ exclude = ["demos/**", "examples/**"]
         assert!(paths.contains(&"target/**".to_string()));
         assert!(paths.contains(&"demos/**".to_string()));
         assert!(paths.contains(&"examples/**".to_string()));
+    }
+
+    // --- Entropy gate config tests (#220) ---
+
+    #[test]
+    fn test_load_entropy_gate_config_no_file() {
+        let temp_dir = tempfile::TempDir::new().unwrap();
+        let config = load_entropy_gate_config(temp_dir.path());
+        assert!(config.enabled);
+        assert!(config.max_violations.is_none());
+        assert!(config.exclude.is_empty());
+    }
+
+    #[test]
+    fn test_load_entropy_gate_config_enabled_false() {
+        let temp_dir = tempfile::TempDir::new().unwrap();
+        let content = r#"
+[entropy]
+enabled = false
+"#;
+        std::fs::write(temp_dir.path().join(".pmat-gates.toml"), content).unwrap();
+        let config = load_entropy_gate_config(temp_dir.path());
+        assert!(!config.enabled);
+    }
+
+    #[test]
+    fn test_load_entropy_gate_config_max_violations() {
+        let temp_dir = tempfile::TempDir::new().unwrap();
+        let content = r#"
+[entropy]
+max_violations = 5
+"#;
+        std::fs::write(temp_dir.path().join(".pmat-gates.toml"), content).unwrap();
+        let config = load_entropy_gate_config(temp_dir.path());
+        assert!(config.enabled);
+        assert_eq!(config.max_violations, Some(5));
+    }
+
+    #[test]
+    fn test_load_entropy_gate_config_excludes() {
+        let temp_dir = tempfile::TempDir::new().unwrap();
+        let content = r#"
+[entropy]
+exclude = ["**/gqa.rs", "benches/**"]
+"#;
+        std::fs::write(temp_dir.path().join(".pmat-gates.toml"), content).unwrap();
+        let config = load_entropy_gate_config(temp_dir.path());
+        assert_eq!(config.exclude.len(), 2);
+        assert!(config.exclude.contains(&"**/gqa.rs".to_string()));
+        assert!(config.exclude.contains(&"benches/**".to_string()));
+    }
+
+    #[test]
+    fn test_load_entropy_gate_config_full() {
+        let temp_dir = tempfile::TempDir::new().unwrap();
+        let content = r#"
+[entropy]
+enabled = true
+max_pattern_repetition = 12
+min_pattern_diversity = 0.3
+max_violations = 3
+exclude = ["**/gqa.rs"]
+"#;
+        std::fs::write(temp_dir.path().join(".pmat-gates.toml"), content).unwrap();
+        let config = load_entropy_gate_config(temp_dir.path());
+        assert!(config.enabled);
+        assert_eq!(config.max_violations, Some(3));
+        assert_eq!(config.exclude, vec!["**/gqa.rs"]);
     }
 
     // --- Filter violations by exclude paths tests (#196) ---
