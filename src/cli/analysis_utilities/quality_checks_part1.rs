@@ -457,11 +457,15 @@ pub async fn check_entropy_with_excludes(
     use crate::entropy::violation_detector::Severity;
     use crate::entropy::{EntropyAnalyzer, EntropyConfig};
 
+    // Load max_pattern_repetition from config files (#219)
+    let max_rep = load_max_pattern_repetition(project_path);
+
     // Create entropy analyzer with tuned config to reduce false positives
     let mut config = EntropyConfig {
         min_severity: Severity::Medium, // Only report medium+ severity
         // Use CLI/TOML-provided threshold instead of hardcoded 0.3 (#194)
         min_pattern_diversity: min_entropy,
+        max_pattern_repetition: max_rep,
         ..Default::default()
     };
     config.exclude_paths.push("**/target/**".to_string());
@@ -513,10 +517,24 @@ pub async fn check_entropy_with_excludes(
     Ok(violations)
 }
 
-// NOTE: Shannon entropy functions removed in Sprint 98
-// These were replaced by AST pattern-based entropy detection
-// in the entropy module. The old character-based approach
-// generated 5,831 false positives and has been deprecated.
+/// Load max_pattern_repetition from `.pmat-gates.toml` or `.pmat-metrics.toml` (#219).
+fn load_max_pattern_repetition(project_path: &Path) -> usize {
+    for filename in &[".pmat-gates.toml", ".pmat-metrics.toml"] {
+        let path = project_path.join(filename);
+        if let Ok(content) = std::fs::read_to_string(&path) {
+            if let Ok(table) = content.parse::<toml::Table>() {
+                if let Some(val) = table
+                    .get("entropy")
+                    .and_then(|t| t.get("max_pattern_repetition"))
+                    .and_then(|v| v.as_integer())
+                {
+                    return val.max(1) as usize;
+                }
+            }
+        }
+    }
+    5 // default: same as EntropyConfig::default()
+}
 
 async fn check_security(project_path: &Path) -> Result<Vec<QualityViolation>> {
     let mut violations = Vec::new();

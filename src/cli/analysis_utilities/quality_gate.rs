@@ -1031,25 +1031,52 @@ fn load_provability_threshold(project_path: &Path) -> f64 {
         .unwrap_or(DEFAULT_PROVABILITY_THRESHOLD)
 }
 
-/// Load entropy min_pattern_diversity from `.pmat-metrics.toml` (#194).
+/// Load entropy min_pattern_diversity from config files (#194, #219).
 ///
-/// Looks for `entropy_min_diversity` under `[thresholds]`.
-/// Falls back to CLI-provided value or `DEFAULT_ENTROPY_MIN_DIVERSITY` (0.3).
+/// Priority: `.pmat-gates.toml` > `.pmat-metrics.toml` > CLI default.
+/// Reads from `[entropy] min_pattern_diversity` or `[thresholds] entropy_min_diversity`.
+/// Clamps result to 0.0-1.0 range to prevent unreachable thresholds.
 fn load_entropy_threshold(project_path: &Path, cli_value: f64) -> f64 {
-    let config_path = project_path.join(".pmat-metrics.toml");
-    let content = match std::fs::read_to_string(&config_path) {
-        Ok(c) => c,
-        Err(_) => return cli_value,
-    };
-    let table: toml::Table = match content.parse() {
-        Ok(t) => t,
-        Err(_) => return cli_value,
-    };
+    let mut result = cli_value;
+
+    // Load from .pmat-metrics.toml (lower priority)
+    if let Some(val) = read_entropy_threshold_from_file(
+        &project_path.join(".pmat-metrics.toml"),
+    ) {
+        result = val;
+    }
+
+    // Load from .pmat-gates.toml (higher priority, #219)
+    if let Some(val) = read_entropy_threshold_from_file(
+        &project_path.join(".pmat-gates.toml"),
+    ) {
+        result = val;
+    }
+
+    // Clamp to valid range (#219: prevent 200% unreachable thresholds)
+    result.clamp(0.0, 1.0)
+}
+
+/// Read entropy threshold from a single TOML file.
+/// Checks `[entropy] min_pattern_diversity` and `[thresholds] entropy_min_diversity`.
+fn read_entropy_threshold_from_file(path: &Path) -> Option<f64> {
+    let content = std::fs::read_to_string(path).ok()?;
+    let table: toml::Table = content.parse().ok()?;
+
+    // Check [entropy] min_pattern_diversity first (preferred key)
+    if let Some(val) = table
+        .get("entropy")
+        .and_then(|t| t.get("min_pattern_diversity"))
+        .and_then(|v| v.as_float())
+    {
+        return Some(val);
+    }
+
+    // Fallback: [thresholds] entropy_min_diversity (legacy key)
     table
         .get("thresholds")
         .and_then(|t| t.get("entropy_min_diversity"))
         .and_then(|v| v.as_float())
-        .unwrap_or(cli_value)
 }
 
 /// Extract exclude paths from a parsed TOML table.
