@@ -1004,7 +1004,7 @@ This line SHOULD be extracted.
 
     #[test]
     fn path_reference_validation_existing_file() {
-        let engine = FalsificationEngine::new(Path::new("."));
+        let engine = FalsificationEngine::new(Path::new(env!("CARGO_MANIFEST_DIR")));
         let claim = SpecClaim {
             id: "test-001".to_string(),
             original_text: "Config at src/lib.rs".to_string(),
@@ -1027,7 +1027,7 @@ This line SHOULD be extracted.
 
     #[test]
     fn path_reference_validation_missing_file() {
-        let engine = FalsificationEngine::new(Path::new("."));
+        let engine = FalsificationEngine::new(Path::new(env!("CARGO_MANIFEST_DIR")));
         let claim = SpecClaim {
             id: "test-002".to_string(),
             original_text: "Config at src/nonexistent_file_xyz.rs".to_string(),
