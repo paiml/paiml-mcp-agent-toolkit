@@ -43,6 +43,14 @@ yaml_secret_exclude_paths = [
     "docs/roadmaps/**/*.yaml",
 ]
 
+[tdg]
+# Exclude non-production code from TDG grade gate
+exclude = [
+    "examples/**",
+    "scripts/**",
+    "benches/**",
+]
+
 [dead_code]
 # Library crates have higher "dead code" due to public APIs used by external consumers
 # 30% threshold accounts for public APIs not called internally
