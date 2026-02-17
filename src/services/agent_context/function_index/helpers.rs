@@ -657,16 +657,19 @@ pub(super) fn count_complexity(source: &str) -> u32 {
 pub(super) fn count_satd_markers(source: &str) -> u32 {
     let mut count = 0u32;
     let mut in_block_comment = false;
+    let mut in_raw_string = false;
 
     for line in source.lines() {
         let trimmed = line.trim();
 
+        // Skip lines inside raw string literals
+        if update_raw_string_state(trimmed, &mut in_raw_string) {
+            continue;
+        }
+
         // Track block comment state
         if in_block_comment {
-            let upper = trimmed.to_uppercase();
-            for marker in ["TODO", "FIXME", "HACK", "XXX", "OPTIMIZE"] {
-                count += upper.matches(marker).count() as u32;
-            }
+            count += count_markers_in_line(trimmed);
             if trimmed.contains("*/") {
                 in_block_comment = false;
             }
@@ -675,10 +678,7 @@ pub(super) fn count_satd_markers(source: &str) -> u32 {
 
         if trimmed.starts_with("/*") {
             in_block_comment = true;
-            let upper = trimmed.to_uppercase();
-            for marker in ["TODO", "FIXME", "HACK", "XXX", "OPTIMIZE"] {
-                count += upper.matches(marker).count() as u32;
-            }
+            count += count_markers_in_line(trimmed);
             if trimmed.contains("*/") {
                 in_block_comment = false;
             }
@@ -690,22 +690,51 @@ pub(super) fn count_satd_markers(source: &str) -> u32 {
             continue;
         }
 
-        // Only count markers in implementation comments (//)
-        // Skip if // appears after a quote (likely inside a string literal)
-        if let Some(comment_start) = trimmed.find("//") {
-            let before = &trimmed[..comment_start];
-            let unmatched_quotes = before.chars().filter(|&c| c == '"').count() % 2 != 0;
-            if unmatched_quotes {
-                continue;
-            }
-            let comment = &trimmed[comment_start..].to_uppercase();
-            for marker in ["TODO", "FIXME", "HACK", "XXX", "OPTIMIZE"] {
-                count += comment.matches(marker).count() as u32;
-            }
-        }
+        count += count_markers_in_comment(trimmed);
     }
 
     count
+}
+
+/// Count SATD markers in a single line (used for block comments).
+fn count_markers_in_line(line: &str) -> u32 {
+    let upper = line.to_uppercase();
+    let mut count = 0u32;
+    for marker in ["TODO", "FIXME", "HACK", "XXX", "OPTIMIZE"] {
+        count += upper.matches(marker).count() as u32;
+    }
+    count
+}
+
+/// Count SATD markers in inline comment portion of a line.
+/// Skips if // is inside a string literal (odd quote count before //).
+fn count_markers_in_comment(trimmed: &str) -> u32 {
+    let Some(comment_start) = trimmed.find("//") else {
+        return 0;
+    };
+    let before = &trimmed[..comment_start];
+    if before.chars().filter(|&c| c == '"').count() % 2 != 0 {
+        return 0;
+    }
+    count_markers_in_line(&trimmed[comment_start..])
+}
+
+/// Track raw string literal state. Returns true if line should be skipped.
+fn update_raw_string_state(trimmed: &str, in_raw_string: &mut bool) -> bool {
+    if *in_raw_string {
+        if trimmed.contains("\"#") || trimmed.ends_with('"') {
+            *in_raw_string = false;
+        }
+        return true;
+    }
+    if let Some(pos) = trimmed.find("r#\"") {
+        let after_open = &trimmed[pos + 3..];
+        if !after_open.contains("\"#") {
+            *in_raw_string = true;
+        }
+        return true;
+    }
+    false
 }
 
 /// Estimate Big-O from control flow
@@ -747,8 +776,8 @@ pub(super) fn calculate_simple_tdg(complexity: u32, satd_count: u32, loc: u32) -
     // Divisor of 15 aligns with pre-commit CC<=30 gate (CC=30 → score=2.0)
     score += (complexity as f32 / 15.0).min(4.0);
 
-    // SATD penalty (0-2 points)
-    score += (satd_count as f32).min(2.0);
+    // SATD penalty (0-2 points, first marker free to reduce false positives)
+    score += (satd_count.saturating_sub(1) as f32).min(2.0);
 
     // LOC penalty (0-2 points for > 100 lines)
     // Threshold raised from 50 to 100 to align with industry linter defaults
