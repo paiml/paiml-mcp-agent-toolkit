@@ -45,6 +45,53 @@ struct TdgViolation {
     start_line: usize,
 }
 
+/// Load TDG gate overrides from `.pmat-gates.toml` `[tdg]` section (#221).
+struct TdgGateOverrides {
+    min_grade: Option<String>,
+    exclude: Vec<String>,
+}
+
+fn load_tdg_gate_overrides(project_path: &Path) -> TdgGateOverrides {
+    let path = project_path.join(".pmat-gates.toml");
+    let content = match std::fs::read_to_string(&path) {
+        Ok(c) => c,
+        Err(_) => {
+            return TdgGateOverrides {
+                min_grade: None,
+                exclude: Vec::new(),
+            }
+        }
+    };
+    let table: toml::Table = match content.parse() {
+        Ok(t) => t,
+        Err(_) => {
+            return TdgGateOverrides {
+                min_grade: None,
+                exclude: Vec::new(),
+            }
+        }
+    };
+
+    let tdg = table.get("tdg");
+
+    let min_grade = tdg
+        .and_then(|t| t.get("min_grade"))
+        .and_then(|v| v.as_str())
+        .map(String::from);
+
+    let exclude = tdg
+        .and_then(|t| t.get("exclude"))
+        .and_then(|v| v.as_array())
+        .map(|a| {
+            a.iter()
+                .filter_map(|v| v.as_str().map(String::from))
+                .collect()
+        })
+        .unwrap_or_default();
+
+    TdgGateOverrides { min_grade, exclude }
+}
+
 /// Check TDG grade gate against the SQLite index.
 pub(crate) fn check_tdg_grade_gate(
     project_path: &Path,
@@ -61,7 +108,12 @@ pub(crate) fn check_tdg_grade_gate(
         };
     }
 
-    let min_grade = &comply_config.thresholds.min_tdg_grade;
+    // Merge overrides from .pmat-gates.toml [tdg] section (#221)
+    let overrides = load_tdg_gate_overrides(project_path);
+    let min_grade = overrides
+        .min_grade
+        .as_deref()
+        .unwrap_or(&comply_config.thresholds.min_tdg_grade);
     let failing_grades = grades_below(min_grade);
 
     if failing_grades.is_empty() {
@@ -137,10 +189,15 @@ pub(crate) fn check_tdg_grade_gate(
         }
     };
 
-    // Filter out excluded paths (glob matching)
-    let exclude_patterns: Vec<glob::Pattern> = comply_config
+    // Merge exclude patterns from .pmat.yaml and .pmat-gates.toml (#221)
+    let all_excludes: Vec<&str> = comply_config
         .thresholds
         .tdg_exclude_paths
+        .iter()
+        .map(|s| s.as_str())
+        .chain(overrides.exclude.iter().map(|s| s.as_str()))
+        .collect();
+    let exclude_patterns: Vec<glob::Pattern> = all_excludes
         .iter()
         .filter_map(|p| glob::Pattern::new(p).ok())
         .collect();
@@ -573,5 +630,101 @@ mod tests_tdg_grade {
 
         assert_eq!(result.status, CheckStatus::Pass);
         assert!(result.message.contains("meet minimum grade B"));
+    }
+
+    #[test]
+    fn test_pmat_gates_toml_min_grade_override() {
+        let tmp = tempfile::tempdir().expect("create tempdir");
+        let pmat_dir = tmp.path().join(".pmat");
+        std::fs::create_dir_all(&pmat_dir).expect("create .pmat");
+        let db_path = pmat_dir.join("context.db");
+
+        let conn = rusqlite::Connection::open(&db_path).expect("open db");
+        conn.execute_batch(
+            "CREATE TABLE IF NOT EXISTS functions (
+                id INTEGER PRIMARY KEY, file_path TEXT NOT NULL,
+                function_name TEXT NOT NULL,
+                signature TEXT NOT NULL DEFAULT '', definition_type TEXT NOT NULL DEFAULT 'function',
+                doc_comment TEXT NOT NULL DEFAULT '', source TEXT NOT NULL DEFAULT '',
+                start_line INTEGER NOT NULL DEFAULT 0, end_line INTEGER NOT NULL DEFAULT 0,
+                language TEXT NOT NULL DEFAULT 'Rust', checksum TEXT NOT NULL DEFAULT '',
+                tdg_score REAL NOT NULL DEFAULT 0.0, tdg_grade TEXT NOT NULL DEFAULT 'A',
+                complexity INTEGER NOT NULL DEFAULT 1, cognitive_complexity INTEGER NOT NULL DEFAULT 1,
+                big_o TEXT NOT NULL DEFAULT 'O(1)', satd_count INTEGER NOT NULL DEFAULT 0,
+                loc INTEGER NOT NULL DEFAULT 0, commit_count INTEGER NOT NULL DEFAULT 0,
+                churn_score REAL NOT NULL DEFAULT 0.0, clone_count INTEGER NOT NULL DEFAULT 0,
+                pattern_diversity REAL NOT NULL DEFAULT 0.0,
+                fault_annotations TEXT NOT NULL DEFAULT '[]'
+            )"
+        ).expect("create schema");
+        conn.execute(
+            "INSERT INTO functions (file_path, function_name, tdg_grade, complexity, start_line)
+             VALUES ('src/lib.rs', 'good_fn', 'A', 3, 1)", [],
+        ).expect("insert A");
+        conn.execute(
+            "INSERT INTO functions (file_path, function_name, tdg_grade, complexity, start_line)
+             VALUES ('src/util.rs', 'ok_fn', 'B', 8, 10)", [],
+        ).expect("insert B");
+        drop(conn);
+
+        // Write .pmat-gates.toml with min_grade = "B" (#221)
+        std::fs::write(
+            tmp.path().join(".pmat-gates.toml"),
+            "[tdg]\nmin_grade = \"B\"\n",
+        ).expect("write gates toml");
+
+        let config = ComplyConfig::default(); // default is "A"
+        let result = check_tdg_grade_gate(tmp.path(), &config);
+        // .pmat-gates.toml overrides to "B", so B function should pass
+        assert_eq!(result.status, CheckStatus::Pass);
+    }
+
+    #[test]
+    fn test_pmat_gates_toml_exclude_override() {
+        let tmp = tempfile::tempdir().expect("create tempdir");
+        let pmat_dir = tmp.path().join(".pmat");
+        std::fs::create_dir_all(&pmat_dir).expect("create .pmat");
+        let db_path = pmat_dir.join("context.db");
+
+        let conn = rusqlite::Connection::open(&db_path).expect("open db");
+        conn.execute_batch(
+            "CREATE TABLE IF NOT EXISTS functions (
+                id INTEGER PRIMARY KEY, file_path TEXT NOT NULL,
+                function_name TEXT NOT NULL,
+                signature TEXT NOT NULL DEFAULT '', definition_type TEXT NOT NULL DEFAULT 'function',
+                doc_comment TEXT NOT NULL DEFAULT '', source TEXT NOT NULL DEFAULT '',
+                start_line INTEGER NOT NULL DEFAULT 0, end_line INTEGER NOT NULL DEFAULT 0,
+                language TEXT NOT NULL DEFAULT 'Rust', checksum TEXT NOT NULL DEFAULT '',
+                tdg_score REAL NOT NULL DEFAULT 0.0, tdg_grade TEXT NOT NULL DEFAULT 'A',
+                complexity INTEGER NOT NULL DEFAULT 1, cognitive_complexity INTEGER NOT NULL DEFAULT 1,
+                big_o TEXT NOT NULL DEFAULT 'O(1)', satd_count INTEGER NOT NULL DEFAULT 0,
+                loc INTEGER NOT NULL DEFAULT 0, commit_count INTEGER NOT NULL DEFAULT 0,
+                churn_score REAL NOT NULL DEFAULT 0.0, clone_count INTEGER NOT NULL DEFAULT 0,
+                pattern_diversity REAL NOT NULL DEFAULT 0.0,
+                fault_annotations TEXT NOT NULL DEFAULT '[]'
+            )"
+        ).expect("create schema");
+        conn.execute(
+            "INSERT INTO functions (file_path, function_name, tdg_grade, complexity, start_line)
+             VALUES ('src/core_generated.rs', 'gen_fn', 'D', 40, 10)", [],
+        ).expect("insert generated D");
+        conn.execute(
+            "INSERT INTO functions (file_path, function_name, tdg_grade, complexity, start_line)
+             VALUES ('src/real.rs', 'real_fn', 'D', 30, 5)", [],
+        ).expect("insert real D");
+        drop(conn);
+
+        // Write .pmat-gates.toml with exclude for generated files (#221)
+        std::fs::write(
+            tmp.path().join(".pmat-gates.toml"),
+            "[tdg]\nexclude = [\"**/*_generated.rs\"]\n",
+        ).expect("write gates toml");
+
+        let config = ComplyConfig::default();
+        let result = check_tdg_grade_gate(tmp.path(), &config);
+        assert_eq!(result.status, CheckStatus::Fail);
+        assert!(result.message.contains("1 function(s)"));
+        assert!(result.message.contains("real_fn"));
+        assert!(!result.message.contains("gen_fn"));
     }
 }
