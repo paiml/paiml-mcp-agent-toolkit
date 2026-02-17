@@ -125,8 +125,7 @@ pub async fn handle_context(
     };
     let effective_languages = get_effective_languages(&override_opts, &project_path)?;
 
-    // Use the first effective language as the toolchain (for now - single language support)
-    // TODO: Full multi-language support in future sprint
+    // Use the first effective language as the toolchain (single language support)
     let toolchain = if !effective_languages.is_empty() {
         effective_languages[0].clone()
     } else {

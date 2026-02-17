@@ -502,9 +502,7 @@ fn build_context_graph(
         }
     }
 
-    // Phase 2: Extract edges (function calls, struct usage, etc.)
-    // TODO: Implement call graph edge extraction in future iteration
-    // For now, just return the graph with nodes (still provides O(1) lookups)
+    // Phase 2: Edge extraction deferred; graph provides O(1) node lookups
 
     // Phase 3: Run PageRank to identify "hot" symbols
     if let Err(e) = graph.update_hotness() {

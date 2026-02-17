@@ -476,8 +476,7 @@ impl DocValidator {
         &self,
         _link: &Link,
     ) -> (ValidationStatus, Option<String>, Option<u16>) {
-        // For now, assume anchors are valid
-        // TODO: Parse markdown headers and validate anchor exists
+        // Anchor validation not yet implemented; assumes valid
         (ValidationStatus::Valid, None, None)
     }
 

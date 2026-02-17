@@ -1170,7 +1170,7 @@ pub(crate) fn check_coverage_quality_patterns(project_path: &Path) -> Compliance
         }
     }
 
-    // CB-126: Slow tests
+    // CB-126: High-latency tests
     let cb126_violations = detect_cb126_slow_tests(project_path);
     for v in &cb126_violations {
         all_issues.push(format!(
@@ -1184,7 +1184,7 @@ pub(crate) fn check_coverage_quality_patterns(project_path: &Path) -> Compliance
         }
     }
 
-    // CB-127: Slow coverage configuration
+    // CB-127: Expensive coverage configuration
     let cb127_violations = detect_cb127_slow_coverage(project_path);
     for v in &cb127_violations {
         all_issues.push(format!(
@@ -1199,7 +1199,7 @@ pub(crate) fn check_coverage_quality_patterns(project_path: &Path) -> Compliance
     }
 
     // v2.2 patterns are BLOCKING (unlike v2.1 advisory patterns)
-    // Per [GAME-001], [SLOW-001], [PERF-001]: These directly impact development velocity
+    // Per [GAME-001], [LATENCY-001], [PERF-001]: These directly impact development velocity
     if critical_count > 0 {
         ComplianceCheck {
             name: "Coverage Quality Patterns (CB-125 to CB-127)".to_string(),

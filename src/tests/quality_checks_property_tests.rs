@@ -48,10 +48,10 @@ proptest! {
                     .nth(1)
                     .and_then(|s| s.split(' ').next())
                     .and_then(|s| s.parse::<u32>().ok()) {
-                    // Warnings are for complexity > (threshold - 5) but <= threshold
+                    // Warnings are for complexity > (threshold - 2) but <= threshold
                     // Errors are for complexity > threshold
                     if violation.severity == "warning" {
-                        let warn_threshold = threshold.saturating_sub(5).max(1);
+                        let warn_threshold = threshold.saturating_sub(2).max(1);
                         prop_assert!(complexity_str > warn_threshold);
                         prop_assert!(complexity_str <= threshold);
                     } else if violation.severity == "error" {

@@ -126,10 +126,6 @@ impl GraphStorage {
     /// # });
     /// ```
     pub async fn find_callers(&self, _node_id: u32) -> Result<Vec<u32>> {
-        // TODO: Integrate with trueno-db SQL query when API is stable
-        // let query = format!("SELECT source FROM edges WHERE target = {}", node_id);
-        // let edges = self.edges_backend.query(&query).await?;
-
         Ok(vec![]) // Placeholder
     }
 
@@ -162,11 +158,6 @@ impl GraphStorage {
     /// # });
     /// ```
     pub async fn pagerank(&self) -> Result<Vec<f32>> {
-        // TODO: Integrate with aprender::graph::PageRank when API is available
-        // 1. let edges = self.edges_backend.query("SELECT * FROM edges").await?;
-        // 2. let graph = aprender::graph::Graph::from_edges(&edges)?;
-        // 3. let scores = graph.pagerank(iterations=20)?;
-
         Ok(vec![]) // Placeholder
     }
 
@@ -186,9 +177,6 @@ impl GraphStorage {
     /// # });
     /// ```
     pub async fn node_count(&self) -> Result<usize> {
-        // TODO: Integrate with trueno-db SQL query
-        // let result = self.nodes_backend.query("SELECT COUNT(*) FROM nodes").await?;
-
         Ok(0) // Placeholder
     }
 }

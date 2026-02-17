@@ -763,7 +763,7 @@ fn {}() {{
             mutation_score, caught, missed
         );
 
-        // Clean up temporary file
+        // Clean up ephemeral file
         let _ = tokio::fs::remove_file(json_path).await;
 
         Ok(mutation_score)

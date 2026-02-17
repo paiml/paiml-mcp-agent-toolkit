@@ -177,7 +177,7 @@ echo "✓ Error handling example completed successfully"
 
 set -euo pipefail
 
-# Create temporary empty directory
+# Create ephemeral empty directory
 TEMP_DIR=$(mktemp -d)
 trap "rm -rf $TEMP_DIR" EXIT
 

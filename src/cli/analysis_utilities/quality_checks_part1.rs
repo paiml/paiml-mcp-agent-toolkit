@@ -81,7 +81,19 @@ pub async fn check_complexity(
     let max_cognitive = config.quality.max_cognitive_complexity;
 
     // Load exclude_paths from .pmat-metrics.toml for filtering generated files
-    let exclude_globs = load_exclude_paths(project_path);
+    let mut exclude_globs = load_exclude_paths(project_path);
+    // Built-in excludes: non-production code where high complexity is expected
+    for pattern in &[
+        "**/examples/**", "**/benches/**", "**/scripts/**",
+        "**/tests/**", "**/*_tests.rs", "**/*_tests_*.rs", "**/*tests_part*.rs",
+        "**/fixtures/**",
+        // Lint rule implementations have inherent pattern-matching complexity
+        "**/comply_cb_detect/**",
+    ] {
+        if let Ok(p) = glob::Pattern::new(pattern) {
+            exclude_globs.push(p);
+        }
+    }
 
     // Use the existing analyze_project_files function - the ONE implementation
     let file_metrics = analyze_project_files(

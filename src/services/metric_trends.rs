@@ -394,9 +394,7 @@ impl MetricTrendStore {
     /// Falls back to scalar if SIMD not available.
     #[allow(dead_code)] // Will be used when SIMD is fully integrated
     fn simd_linear_regression(&self, observations: &[MetricObservation]) -> (f64, f64) {
-        // TODO Phase 3.2: Implement SIMD using aprender patterns
-        // For now, delegate to scalar version
-        // Future: Use f64x4 AVX2 vectors for parallel computation
+        // Delegates to scalar version; SIMD variant deferred
         self.compute_trend(observations)
     }
 

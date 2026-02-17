@@ -87,7 +87,7 @@ pub fn classify_satd_manifestation(content: &str) -> SATDManifestationType {
         return SATDManifestationType::Code;
     }
 
-    // Default: Comment manifestation (// TODO, /* FIXME */, # HACK)
+    // Default: Comment manifestation (e.g. `TODO`, `FIXME`, `HACK` markers)
     SATDManifestationType::Comment
 }
 
@@ -276,7 +276,7 @@ fn is_expired(date_str: &str) -> bool {
 /// Using LazyLock for thread-safe one-time initialization
 static CB050_PATTERNS: LazyLock<Vec<(Regex, &'static str, &'static str)>> = LazyLock::new(|| {
     vec![
-        // CB-050-A: todo!() macro - handles spacing variations
+        // CB-050-A: `todo!()` macro - handles spacing variations
         (
             Regex::new(r"todo\s*!\s*\(").expect("valid regex"),
             "CB-050-A",

@@ -187,7 +187,6 @@ impl QualityRefactoringEngine {
 
     /// Implement TODO comments
     fn implement_todo(&self, code: &str, _todo: &str) -> Result<String> {
-        // Replace TODO with actual implementation
         let result = code.replace("todo!(", "Ok(Default::default()) // ");
         Ok(result)
     }

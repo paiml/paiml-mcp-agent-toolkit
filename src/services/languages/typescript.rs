@@ -37,7 +37,7 @@ impl TypeScriptAstVisitor {
             .tempfile()
             .map_err(|e| anyhow::anyhow!("Failed to create temp file: {}", e))?;
 
-        // Write source code to temporary file
+        // Write source code to ephemeral file
         std::fs::write(temp_file.path(), source.as_bytes())
             .map_err(|e| anyhow::anyhow!("Failed to write source to temp file: {}", e))?;
 

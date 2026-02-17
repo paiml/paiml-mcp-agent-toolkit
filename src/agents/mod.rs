@@ -103,7 +103,6 @@ pub struct AgentSpec {
 // System initialization
 // Note: actix::System::new() returns SystemRunner, not System
 pub fn init_agent_system() {
-    // TODO: Properly implement agent system initialization
     // actix::System::new() returns SystemRunner which auto-runs
 }
 

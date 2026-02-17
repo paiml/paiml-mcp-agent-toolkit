@@ -1,7 +1,7 @@
 // HygieneScorer - Category C: Repository Hygiene (15 points)
 //
 // Scores based on:
-// - C1: No Cruft Files (5 points) - No temp files, caches, build artifacts
+// - C1: No Cruft Files (5 points) - No transient files, caches, build artifacts
 // - C2: No Team-Specific Files (5 points) - No .idea/, .vscode/, .DS_Store
 // - C3: No Large Files in Git History (5 points) - No files >1MB in git history
 
@@ -34,7 +34,7 @@ impl HygieneScorer {
             "node_modules/",
             ".next/",
             ".cache/",
-            // Temp files
+            // Transient files
             "*.tmp",
             "*.swp",
             "*.swo",
@@ -265,7 +265,7 @@ impl HygieneScorer {
         // PMAT-DEADLOCK-FIX: Use piped command to avoid stdin/stdout deadlock
         // Use git rev-list | git cat-file --batch-check to stream efficiently
         // Default: HEAD only (fast, <1s even on large repos)
-        // With --deep: --all (slow, minutes on large repos)
+        // With --deep: --all (expensive, minutes on large repos)
         let rev_list_target = if config.deep { "--all" } else { "HEAD" };
         let git_command = format!(
             "git rev-list --objects {} | git cat-file --batch-check='%(objecttype) %(objectname) %(objectsize) %(rest)'",

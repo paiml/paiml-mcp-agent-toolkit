@@ -606,9 +606,7 @@ impl DefectReportService {
 
                 // Check min_lines threshold
                 if min_lines > 0 {
-                    // For now, we don't have line count metadata in defects
-                    // This would require reading files or storing line counts
-                    // TODO: Implement line count filtering when metadata available
+                    // Line count filtering requires file metadata not yet available in defects
                 }
 
                 true

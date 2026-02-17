@@ -459,10 +459,10 @@ impl DistributedExecutor {
     ) -> MutationResult {
         let start = std::time::Instant::now();
 
-        // Create temp file with RAII-based cleanup
+        // Create scratch file with RAII-based cleanup
         let temp_file = super::temp_file::WorkerTempFile::new(
             worker_id,
-            // Convert string ID to numeric ID for temp file naming
+            // Convert string ID to numeric ID for scratch file naming
             mutant.id.parse::<usize>().unwrap_or_else(|_| {
                 // If parsing fails, hash the string to get a numeric value
                 use std::collections::hash_map::DefaultHasher;
@@ -475,7 +475,7 @@ impl DistributedExecutor {
             Some("rs"),
         );
 
-        // Write mutated source to temp file
+        // Write mutated source to scratch file
         if let Err(e) = temp_file.write(&mutant.mutated_source).await {
             return MutationResult {
                 mutant: mutant.clone(),

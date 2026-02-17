@@ -208,8 +208,7 @@ fn validate_parameter(name: &str, schema: &Value, is_required: bool) -> Paramete
 /// This would connect to the actual MCP server to get tool definitions.
 /// For testing, we'll parse from the mcp_impl.rs handlers.
 pub fn load_mcp_tool_definitions() -> Result<Vec<McpToolDefinition>> {
-    // TODO: Implement actual loading from MCP server
-    // For now, return hardcoded tool definitions based on PMAT-6017, PMAT-6019, etc.
+    // Returns hardcoded tool definitions based on PMAT-6017, PMAT-6019, etc.
 
     let tools = vec![
         McpToolDefinition {

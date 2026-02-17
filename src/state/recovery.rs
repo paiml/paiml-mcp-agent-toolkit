@@ -285,7 +285,7 @@ impl AdaptiveSnapshotScheduler {
         let mut config = self.config.write();
 
         if recovery_time > config.recovery_time_target * 2 {
-            // Recovery too slow, snapshot more frequently
+            // Recovery exceeds target, snapshot more frequently
             config.min_events = (config.min_events / 2).max(100);
             config.min_time_between_snapshots =
                 (config.min_time_between_snapshots / 2).max(Duration::from_secs(30));

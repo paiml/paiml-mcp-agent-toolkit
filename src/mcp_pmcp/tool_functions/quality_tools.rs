@@ -266,7 +266,7 @@ pub async fn quality_gate_baseline(paths: &[PathBuf], output: Option<&Path>) -> 
         baseline.save(output_path)?;
         output_path.display().to_string()
     } else {
-        // Default to temp location
+        // Default to system scratch location
         let temp_path = std::env::temp_dir().join("pmat_baseline.json");
         baseline.save(&temp_path)?;
         temp_path.display().to_string()

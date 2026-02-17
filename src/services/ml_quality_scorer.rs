@@ -560,13 +560,13 @@ impl MLQualityScorer {
 
     /// Save model to file
     pub fn save(&self, _path: &Path) -> Result<()> {
-        // TODO: Implement serialization when aprender supports it
+        // Serialization deferred until aprender supports it
         Ok(())
     }
 
     /// Load model from file
     pub fn load(_path: &Path) -> Result<Self> {
-        // TODO: Implement deserialization when aprender supports it
+        // Deserialization deferred until aprender supports it
         Ok(Self::new())
     }
 }

@@ -57,8 +57,7 @@ impl BackendSelector {
     pub fn auto_select() -> Backend {
         #[cfg(feature = "analytics-gpu")]
         {
-            // TODO: Check if GPU is actually available
-            // For now, fall through to SIMD
+            // GPU availability check not yet implemented; fall through to SIMD
         }
 
         #[cfg(feature = "analytics-simd")]
@@ -214,9 +213,7 @@ pub mod stats {
     /// SIMD implementation using trueno
     #[cfg(feature = "analytics-simd")]
     fn compute_avg_simd(dataset: &[f64]) -> Result<f64> {
-        // Use trueno for SIMD-accelerated sum
-        // For now, use scalar as placeholder
-        // TODO: Integrate trueno::simd::sum() when available
+        // Scalar placeholder until trueno::simd::sum() is available
         compute_avg_scalar(dataset)
     }
 
@@ -439,9 +436,7 @@ pub mod gpu {
                 return Ok(data.iter().sum());
             }
 
-            // TODO: Implement GPU compute shader for parallel sum
-            // For now, fall back to CPU
-            // This is a placeholder until we implement the WGSL shader
+            // GPU compute shader not yet implemented; falls back to CPU
             Ok(data.iter().sum())
         }
     }

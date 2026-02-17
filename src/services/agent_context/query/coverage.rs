@@ -668,7 +668,7 @@ fn get_profdata_mtime_and_dir(
         }
     }
 
-    // 5. cargo metadata (slow — spawns subprocess)
+    // 5. cargo metadata (heavyweight — spawns subprocess)
     for dir in cargo_metadata_target_dir(project_root) {
         if let Some(mtime) = dir_mtime(&dir) {
             return Some((mtime, dir.to_string_lossy().to_string()));

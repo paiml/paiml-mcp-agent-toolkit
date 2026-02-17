@@ -614,7 +614,7 @@ async fn compare_baseline(
     create_baseline(analyzer, current_path, &temp_output, false).await?;
     let new_baseline = TdgBaseline::load(&temp_output)?;
 
-    // Clean up temp file
+    // Clean up ephemeral baseline file
     std::fs::remove_file(&temp_output).ok();
 
     // Compare

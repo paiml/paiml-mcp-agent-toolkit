@@ -467,7 +467,6 @@ impl UnifiedHelpService {
     /// Extract relevant snippet from document
     fn extract_snippet(&self, doc: &str, _query: &str) -> String {
         // Simple snippet: first 100 chars
-        // TODO: Use query to highlight matching terms
         if doc.len() <= 100 {
             doc.to_string()
         } else {

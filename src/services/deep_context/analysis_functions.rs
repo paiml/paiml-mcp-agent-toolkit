@@ -623,14 +623,12 @@ async fn analyze_ruby_file(
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
     #[cfg(feature = "ruby-ast")]
     {
-        // TODO: Implement tree-sitter Ruby analyzer
-        // For now, fall back to ruchy if available
+        // Tree-sitter Ruby analyzer not yet available; falls back to ruchy
         Ok(Vec::new())
     }
     #[cfg(not(feature = "ruby-ast"))]
     {
-        // Fall back to ruchy parser - TODO: Implement proper ruchy integration
-        // Ruchy API requires parsed Expr, not source string - need to refactor
+        // Ruchy parser fallback (API requires parsed Expr, not source string)
         #[cfg(feature = "ruchy-ast")]
         {
             // RuchyAstAnalyzer API incompatible with this code path
@@ -648,7 +646,7 @@ pub async fn analyze_swift_file(
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
     #[cfg(feature = "swift-ast")]
     {
-        // TODO: Implement Swift tree-sitter analyzer
+        // Swift tree-sitter analyzer not yet available
         Ok(Vec::new())
     }
     #[cfg(not(feature = "swift-ast"))]

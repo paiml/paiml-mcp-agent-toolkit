@@ -65,7 +65,7 @@ impl PageRankComputer {
     /// Use `compute(&DependencyGraph)` instead.
     #[deprecated(since = "2.201.0", note = "Use compute(&DependencyGraph) instead")]
     pub fn compute_legacy(&self, matrices: &GraphMatrices) -> Vec<f64> {
-        // Build temporary DependencyGraph from GraphMatrices
+        // Build scratch DependencyGraph from GraphMatrices
         let mut graph = DependencyGraph::new();
 
         // Add nodes

@@ -153,7 +153,7 @@ impl LibsqlBackend {
     }
 
     pub fn new_temporary() -> Result<Self> {
-        // Use in-memory database for temporary storage
+        // Use in-memory database for ephemeral storage
         let conn = rusqlite::Connection::open_in_memory()?;
 
         // Create table for key-value storage

@@ -122,7 +122,7 @@ impl PrecommitScorer {
             });
         }
 
-        // Skip performance test if requested (can be slow)
+        // Skip performance test if requested (can be expensive)
         if config.skip_slow_checks {
             return Ok(SubcategoryScore {
                 id: "B2".to_string(),

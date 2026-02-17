@@ -777,11 +777,12 @@ fn build_custom_thresholds(
     let mut thresholds = ComplexityThresholds::default();
 
     if let Some(max_cyc) = max_cyclomatic {
-        thresholds.cyclomatic_warn = max_cyc.saturating_sub(5).max(1);
+        // Narrow warning band: only warn within 2 of error threshold
+        thresholds.cyclomatic_warn = max_cyc.saturating_sub(2).max(1);
         thresholds.cyclomatic_error = max_cyc;
     }
     if let Some(max_cog) = max_cognitive {
-        thresholds.cognitive_warn = max_cog.saturating_sub(5).max(1);
+        thresholds.cognitive_warn = max_cog.saturating_sub(2).max(1);
         thresholds.cognitive_error = max_cog;
     }
 

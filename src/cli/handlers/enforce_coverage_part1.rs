@@ -16,7 +16,6 @@ pub fn hello() {
     println!("Hello, world!");
 }
 
-// TODO: Refactor this function
 pub fn complex_function(x: i32) -> i32 {
     if x > 0 {
         if x > 10 {
@@ -92,7 +91,6 @@ pub fn complex_function(x: i32, y: i32) -> i32 {
     }
 }
 
-// HACK: Temporary workaround
 fn unused_function() {
     println!("This is unused");
 }

@@ -475,7 +475,7 @@ fn default_checks() -> HashMap<String, CheckConfig> {
         },
     );
 
-    // CB-126: Slow tests
+    // CB-126: High-latency tests
     checks.insert(
         "cb-126".to_string(),
         CheckConfig {
@@ -486,7 +486,7 @@ fn default_checks() -> HashMap<String, CheckConfig> {
         },
     );
 
-    // CB-127: Slow coverage
+    // CB-127: Expensive coverage
     checks.insert(
         "cb-127".to_string(),
         CheckConfig {

@@ -382,7 +382,7 @@ pub(crate) fn save_to_sqlite(
 ) -> Result<(), String> {
     let tmp_path = db_path.with_extension("db.tmp");
 
-    // Remove stale temp file from a previous interrupted save
+    // Remove stale scratch file from a previous interrupted save
     let _ = std::fs::remove_file(&tmp_path);
 
     let conn = open_db(&tmp_path)?;

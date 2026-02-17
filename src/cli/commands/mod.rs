@@ -46,7 +46,7 @@ pmat analyze complexity --path .
 # Calculate Technical Debt Grade (TDG)
 pmat tdg .
 
-# Find technical debt markers (TODO, FIXME, HACK)
+# Find self-admitted technical debt markers
 pmat analyze satd --path .
 
 # Find dead code

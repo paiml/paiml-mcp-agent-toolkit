@@ -229,11 +229,11 @@ impl MutantExecutor {
 
         let start_time = Instant::now();
 
-        // Create unique temp file for this mutant (no conflicts!)
+        // Create unique scratch file for this mutant (no conflicts!)
         let temp_dir = std::env::temp_dir();
         let unique_file = temp_dir.join(format!("pmat_{}_{}.rs", std::process::id(), mutant.id));
 
-        // Write mutated source to unique temp file
+        // Write mutated source to unique scratch file
         fs::write(&unique_file, &mutant.mutated_source)
             .await
             .context("Failed to write isolated mutant")?;
@@ -241,7 +241,7 @@ impl MutantExecutor {
         // Run tests with timeout (smart filtering)
         let test_result = timeout(self.timeout, self.run_cargo_test_for_mutant(mutant)).await;
 
-        // Cleanup temp file
+        // Cleanup scratch file
         let _ = fs::remove_file(&unique_file).await;
 
         // Parse results
@@ -553,27 +553,27 @@ impl MutantExecutor {
     async fn atomic_write(&self, path: &Path, content: &str) -> Result<()> {
         use tokio::io::AsyncWriteExt;
 
-        // Create temp file in same directory as target
+        // Create scratch file in same directory as target
         // (required for atomic rename on same filesystem)
         let temp_path = path.with_extension("pmat_tmp");
 
-        // Write to temp file
+        // Write to scratch file
         let mut file = tokio::fs::File::create(&temp_path)
             .await
-            .with_context(|| format!("Failed to create temp file: {}", temp_path.display()))?;
+            .with_context(|| format!("Failed to create scratch file: {}", temp_path.display()))?;
 
         file.write_all(content.as_bytes())
             .await
-            .context("Failed to write to temp file")?;
+            .context("Failed to write to scratch file")?;
 
         // Flush and sync to ensure data is on disk
-        file.flush().await.context("Failed to flush temp file")?;
-        file.sync_all().await.context("Failed to sync temp file")?;
+        file.flush().await.context("Failed to flush scratch file")?;
+        file.sync_all().await.context("Failed to sync scratch file")?;
 
         // Close the file explicitly
         drop(file);
 
-        // Atomically rename temp file to target
+        // Atomically rename scratch file to target
         // This is atomic on Unix - either succeeds completely or fails completely
         tokio::fs::rename(&temp_path, path).await.with_context(|| {
             format!(
