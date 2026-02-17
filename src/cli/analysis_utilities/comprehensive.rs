@@ -693,13 +693,61 @@ struct DuplicateBlock {
     tokens: usize,
 }
 
-#[derive(Debug, serde::Serialize)]
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct QualityViolation {
     pub check_type: String,
     pub severity: String,
     pub file: String,
     pub line: Option<usize>,
     pub message: String,
+    /// Detailed explanation for explainability (#226, #229).
+    /// Contains affected files, example code, and score breakdown.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub details: Option<ViolationDetails>,
+}
+
+/// Detailed violation context for explainability (#226, #229).
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct ViolationDetails {
+    /// Files affected by this violation
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub affected_files: Vec<String>,
+    /// Example code snippet showing the pattern
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub example_code: Option<String>,
+    /// Concrete fix suggestion
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fix_suggestion: Option<String>,
+    /// Score factors that contributed to this violation
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub score_factors: Vec<String>,
+}
+
+impl QualityViolation {
+    /// Create a simple violation without details (backwards-compatible).
+    pub fn new(
+        check_type: impl Into<String>,
+        severity: impl Into<String>,
+        file: impl Into<String>,
+        line: Option<usize>,
+        message: impl Into<String>,
+    ) -> Self {
+        Self {
+            check_type: check_type.into(),
+            severity: severity.into(),
+            file: file.into(),
+            line,
+            message: message.into(),
+            details: None,
+        }
+    }
+
+    /// Attach details for explainability (#226).
+    #[must_use]
+    pub fn with_details(mut self, details: ViolationDetails) -> Self {
+        self.details = Some(details);
+        self
+    }
 }
 
 // Helper function to check if file is source code

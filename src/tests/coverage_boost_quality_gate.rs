@@ -179,6 +179,7 @@ fn test_quality_violation_construction() {
         file: "src/main.rs".to_string(),
         line: Some(42),
         message: "Function too complex".to_string(),
+        details: None,
     };
     assert_eq!(violation.check_type, "complexity");
     assert_eq!(violation.severity, "error");
@@ -193,6 +194,7 @@ fn test_quality_violation_no_line() {
         file: "src/lib.rs".to_string(),
         line: None,
         message: "Unused module".to_string(),
+        details: None,
     };
     assert!(violation.line.is_none());
 }
@@ -205,6 +207,7 @@ fn test_quality_violation_empty_file() {
         file: String::new(),
         line: None,
         message: "Low entropy".to_string(),
+        details: None,
     };
     assert!(violation.file.is_empty());
 }

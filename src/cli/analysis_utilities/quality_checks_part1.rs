@@ -195,6 +195,7 @@ fn process_complexity_violation(
                 value,
                 threshold
             ),
+            details: None,
         });
     }
 }
@@ -277,6 +278,7 @@ pub async fn check_dead_code(
             message: format!(
                 "Dead code percentage {dead_percentage:.1}% exceeds maximum allowed {max_percentage:.1}%"
             ),
+            details: None,
         });
     }
 
@@ -293,6 +295,7 @@ pub async fn check_dead_code(
                     file.file_dead_percentage,
                     file.dead_items.len()
                 ),
+                details: None,
             });
         }
     }
@@ -389,6 +392,7 @@ pub async fn check_satd(project_path: &Path) -> Result<Vec<QualityViolation>> {
                 "{}: {} (at column {})",
                 debt.category, debt.text, debt.column
             ),
+            details: None,
         })
         .collect();
 
@@ -511,6 +515,16 @@ pub async fn check_entropy_with_excludes(
                 "{} (saves {} lines) - Fix: {}",
                 violation.message, violation.estimated_loc_reduction, violation.fix_suggestion
             ),
+            details: Some(ViolationDetails {
+                affected_files: violation.affected_files.iter().map(|p| p.to_string_lossy().to_string()).collect(),
+                example_code: Some(violation.pattern.example_code.clone()),
+                fix_suggestion: Some(violation.fix_suggestion.clone()),
+                score_factors: vec![
+                    format!("pattern_type: {:?}", violation.pattern.pattern_type),
+                    format!("repetitions: {}", violation.pattern.repetitions),
+                    format!("variation_score: {:.2}", violation.pattern.variation_score),
+                ],
+            }),
         })
         .collect();
 

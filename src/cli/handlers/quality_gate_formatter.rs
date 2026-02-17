@@ -527,6 +527,7 @@ mod tests {
                 file: "test.rs".to_string(),
                 line: Some(42),
                 message: "Function complexity exceeds threshold".to_string(),
+                details: None,
             },
             QualityViolation {
                 check_type: "SATD".to_string(),
@@ -534,6 +535,7 @@ mod tests {
                 file: "test.rs".to_string(),
                 line: Some(100),
                 message: "TODO comment found".to_string(),
+                details: None,
             },
         ]
     }
@@ -640,6 +642,7 @@ mod tests {
                 file: "a.rs".to_string(),
                 line: Some(1),
                 message: "Complex function".to_string(),
+                details: None,
             },
             QualityViolation {
                 check_type: "Complexity".to_string(),
@@ -647,6 +650,7 @@ mod tests {
                 file: "b.rs".to_string(),
                 line: Some(2),
                 message: "Another complex function".to_string(),
+                details: None,
             },
             QualityViolation {
                 check_type: "SATD".to_string(),
@@ -654,6 +658,7 @@ mod tests {
                 file: "c.rs".to_string(),
                 line: Some(3),
                 message: "TODO found".to_string(),
+                details: None,
             },
         ];
 
@@ -724,6 +729,7 @@ mod tests {
             file: "test.rs".to_string(),
             line: Some(42),
             message: "Function too complex".to_string(),
+            details: None,
         };
 
         write_junit_test_case(&mut output, &violation).unwrap();
@@ -771,6 +777,7 @@ mod violation_display_tests {
             file: "/path/to/src/services/complex_module.rs".to_string(),
             line: Some(42),
             message: "Function too complex".to_string(),
+            details: None,
         };
 
         let mut output = String::new();
@@ -804,6 +811,7 @@ mod violation_display_tests {
             file: "/path/to/src/config.rs".to_string(),
             line: None,
             message: "Potential security issue".to_string(),
+            details: None,
         };
 
         let mut output = String::new();
@@ -831,6 +839,7 @@ mod violation_display_tests {
             file: String::new(),
             line: None,
             message: "General information".to_string(),
+            details: None,
         };
 
         let mut output = String::new();

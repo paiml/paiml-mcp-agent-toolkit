@@ -300,6 +300,7 @@ fn create_complexity_violation(
             "Function '{}' has cyclomatic complexity {} (max: {})",
             func.name, func.metrics.cyclomatic, max_complexity
         ),
+        details: None,
     }
 }
 
@@ -343,6 +344,7 @@ async fn check_single_file_dead_code(
                     file: file_path.to_string_lossy().to_string(),
                     line: Some(line_no + 1),
                     message: message.to_string(),
+                    details: None,
                 });
             }
         }
@@ -390,6 +392,7 @@ async fn check_single_file_satd(
                 file: file_path.to_string_lossy().to_string(),
                 line: Some(line_no + 1),
                 message: format!("Self-admitted technical debt: {satd_type} - {text}"),
+                details: None,
             });
         }
     }
@@ -453,6 +456,7 @@ async fn check_single_file_security(
                     file: file_path.to_string_lossy().to_string(),
                     line: Some(line_no + 1),
                     message: message.to_string(),
+                    details: None,
                 });
             }
         }
@@ -745,6 +749,7 @@ mod quality_gate_unit_tests {
             file: "src/main.rs".to_string(),
             line: Some(42),
             message: "Function too complex".to_string(),
+            details: None,
         };
 
         assert_eq!(violation.check_type, "complexity");
@@ -761,6 +766,7 @@ mod quality_gate_unit_tests {
             file: "src/lib.rs".to_string(),
             line: None,
             message: "Unused function".to_string(),
+            details: None,
         };
 
         assert!(violation.line.is_none());
@@ -817,6 +823,7 @@ mod quality_gate_unit_tests {
             file: "src/main.rs".to_string(),
             line: Some(10),
             message: "Too complex".to_string(),
+            details: None,
         }];
 
         let mut output = String::new();
@@ -836,6 +843,7 @@ mod quality_gate_unit_tests {
                 file: "src/a.rs".to_string(),
                 line: Some(10),
                 message: "Complex".to_string(),
+                details: None,
             },
             QualityViolation {
                 check_type: "security".to_string(),
@@ -843,6 +851,7 @@ mod quality_gate_unit_tests {
                 file: "src/b.rs".to_string(),
                 line: Some(20),
                 message: "Unsafe".to_string(),
+                details: None,
             },
         ];
 
@@ -865,6 +874,7 @@ mod quality_gate_unit_tests {
             file: "src/main.rs".to_string(),
             line: Some(42),
             message: "Function too complex".to_string(),
+            details: None,
         };
 
         let mut output = String::new();
@@ -884,6 +894,7 @@ mod quality_gate_unit_tests {
             file: "src/lib.rs".to_string(),
             line: None,
             message: "Unused code".to_string(),
+            details: None,
         };
 
         let mut output = String::new();
@@ -902,6 +913,7 @@ mod quality_gate_unit_tests {
             file: String::new(),
             line: None,
             message: "Technical debt found".to_string(),
+            details: None,
         };
 
         let mut output = String::new();
@@ -1216,9 +1228,9 @@ exclude = ["**/gqa.rs"]
     #[test]
     fn test_filter_violations_excludes_matching_files() {
         let mut violations = vec![
-            QualityViolation { check_type: "satd".into(), severity: "warning".into(), file: "reference/kong/init.lua".into(), line: Some(10), message: "TODO".into() },
-            QualityViolation { check_type: "satd".into(), severity: "warning".into(), file: "src/main.rs".into(), line: Some(5), message: "TODO".into() },
-            QualityViolation { check_type: "duplicates".into(), severity: "info".into(), file: "reference/apisix/core.lua".into(), line: None, message: "dup".into() },
+            QualityViolation { check_type: "satd".into(), severity: "warning".into(), file: "reference/kong/init.lua".into(), line: Some(10), message: "TODO".into(), details: None },
+            QualityViolation { check_type: "satd".into(), severity: "warning".into(), file: "src/main.rs".into(), line: Some(5), message: "TODO".into(), details: None },
+            QualityViolation { check_type: "duplicates".into(), severity: "info".into(), file: "reference/apisix/core.lua".into(), line: None, message: "dup".into(), details: None },
         ];
         let excludes = vec!["reference/".to_string()];
         filter_violations_by_exclude(&mut violations, &excludes);
@@ -1229,8 +1241,8 @@ exclude = ["**/gqa.rs"]
     #[test]
     fn test_filter_violations_keeps_project_level() {
         let mut violations = vec![
-            QualityViolation { check_type: "entropy".into(), severity: "warning".into(), file: "project".into(), line: None, message: "low diversity".into() },
-            QualityViolation { check_type: "satd".into(), severity: "info".into(), file: "vendor/lib.lua".into(), line: Some(1), message: "hack".into() },
+            QualityViolation { check_type: "entropy".into(), severity: "warning".into(), file: "project".into(), line: None, message: "low diversity".into(), details: None },
+            QualityViolation { check_type: "satd".into(), severity: "info".into(), file: "vendor/lib.lua".into(), line: Some(1), message: "hack".into(), details: None },
         ];
         let excludes = vec!["vendor/".to_string()];
         filter_violations_by_exclude(&mut violations, &excludes);
@@ -1241,7 +1253,7 @@ exclude = ["**/gqa.rs"]
     #[test]
     fn test_filter_violations_empty_excludes_no_change() {
         let mut violations = vec![
-            QualityViolation { check_type: "satd".into(), severity: "info".into(), file: "src/lib.rs".into(), line: Some(1), message: "fixme".into() },
+            QualityViolation { check_type: "satd".into(), severity: "info".into(), file: "src/lib.rs".into(), line: Some(1), message: "fixme".into(), details: None },
         ];
         filter_violations_by_exclude(&mut violations, &[]);
         assert_eq!(violations.len(), 1);
@@ -1250,9 +1262,9 @@ exclude = ["**/gqa.rs"]
     #[test]
     fn test_recalculate_from_violations() {
         let violations = vec![
-            QualityViolation { check_type: "satd".into(), severity: "warning".into(), file: "a.rs".into(), line: Some(1), message: "todo".into() },
-            QualityViolation { check_type: "satd".into(), severity: "info".into(), file: "b.rs".into(), line: Some(2), message: "hack".into() },
-            QualityViolation { check_type: "complexity".into(), severity: "error".into(), file: "c.rs".into(), line: Some(3), message: "high".into() },
+            QualityViolation { check_type: "satd".into(), severity: "warning".into(), file: "a.rs".into(), line: Some(1), message: "todo".into(), details: None },
+            QualityViolation { check_type: "satd".into(), severity: "info".into(), file: "b.rs".into(), line: Some(2), message: "hack".into(), details: None },
+            QualityViolation { check_type: "complexity".into(), severity: "error".into(), file: "c.rs".into(), line: Some(3), message: "high".into(), details: None },
         ];
         let mut results = QualityGateResults::default();
         results.recalculate_from(&violations);

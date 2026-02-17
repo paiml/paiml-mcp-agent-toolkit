@@ -52,6 +52,7 @@ fn scan_content_for_pattern(
                 file: path.to_string_lossy().to_string(),
                 line: Some(line_no + 1),
                 message: message.to_string(),
+                details: None,
             });
         }
     }
@@ -217,6 +218,7 @@ fn create_violations_for_duplicate_group(
             file: path.to_string_lossy().to_string(),
             line: None,
             message: format!("Duplicate code found in: {files_str}"),
+            details: None,
         });
     }
 }
@@ -269,6 +271,7 @@ async fn check_coverage(project_path: &Path, min_coverage: f64) -> Result<Vec<Qu
                 ),
                 file: "project".to_string(),
                 line: None,
+                details: None,
             });
         }
     }
@@ -337,6 +340,7 @@ async fn check_sections(project_path: &Path) -> Result<Vec<QualityViolation>> {
                     message: format!("Missing required section: {section}"),
                     file: "README.md".to_string(),
                     line: None,
+                    details: None,
                 });
             }
         }
@@ -361,6 +365,7 @@ async fn check_provability(
             ),
             file: project_path.to_string_lossy().to_string(),
             line: None,
+            details: None,
         });
     }
 

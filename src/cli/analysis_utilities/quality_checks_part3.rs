@@ -439,6 +439,7 @@ mod quality_checks_part3_tests {
             file: "src/test.rs".to_string(),
             line: Some(42),
             severity: "warning".to_string(),
+            details: None,
         }
     }
 
