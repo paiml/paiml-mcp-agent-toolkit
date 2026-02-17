@@ -202,10 +202,7 @@ match parser.parse(input) {
         ("Performance", 15, "Benchmarks and profiling"),
     ];
 
-    println!(
-        "  {:35} {:>6} {:>7}  DESCRIPTION",
-        "CATEGORY", "MAX", "%"
-    );
+    println!("  {:35} {:>6} {:>7}  DESCRIPTION", "CATEGORY", "MAX", "%");
     println!("  {:->35} {:->6} {:->7}  {:->25}", "", "", "", "");
     for (name, max, desc) in categories {
         let pct = (max as f64 / 200.0) * 100.0;

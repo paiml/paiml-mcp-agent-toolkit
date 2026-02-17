@@ -272,12 +272,24 @@ return M
     println!("   Grade:      {:?}", score.grade);
     println!("   Confidence: {:.0}%", score.confidence * 100.0);
     println!("   Components:");
-    println!("     Structural Complexity: {:.1}/25", score.structural_complexity);
-    println!("     Semantic Complexity:   {:.1}/20", score.semantic_complexity);
-    println!("     Duplication Ratio:     {:.1}/20", score.duplication_ratio);
+    println!(
+        "     Structural Complexity: {:.1}/25",
+        score.structural_complexity
+    );
+    println!(
+        "     Semantic Complexity:   {:.1}/20",
+        score.semantic_complexity
+    );
+    println!(
+        "     Duplication Ratio:     {:.1}/20",
+        score.duplication_ratio
+    );
     println!("     Coupling Score:        {:.1}/15", score.coupling_score);
     println!("     Doc Coverage:          {:.1}/10", score.doc_coverage);
-    println!("     Consistency Score:     {:.1}/10", score.consistency_score);
+    println!(
+        "     Consistency Score:     {:.1}/10",
+        score.consistency_score
+    );
     if !score.penalties_applied.is_empty() {
         println!("   Penalties:");
         for penalty in &score.penalties_applied {
@@ -320,15 +332,13 @@ return M
     println!("   Total functions: {}", result.total_functions);
     println!("   Dead functions: {}", result.dead_functions.len());
     for dead_fn in &result.dead_functions {
-        println!("     - {} (line {}): {}", dead_fn.name, dead_fn.line, dead_fn.reason);
+        println!(
+            "     - {} (line {}): {}",
+            dead_fn.name, dead_fn.line, dead_fn.reason
+        );
     }
-    println!(
-        "   Dead code: {:.1}%",
-        result.dead_code_percentage
-    );
-    println!(
-        "   Module exports (M.*): correctly excluded from dead code"
-    );
+    println!("   Dead code: {:.1}%", result.dead_code_percentage);
+    println!("   Module exports (M.*): correctly excluded from dead code");
     println!();
     Ok(())
 }

@@ -151,11 +151,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let git_results: Vec<RankedDocument> = results
         .iter()
         .map(|r| RankedDocument {
-            id: format!(
-                "{}:{}",
-                &r.commit.hash[..7],
-                r.commit.message_subject
-            ),
+            id: format!("{}:{}", &r.commit.hash[..7], r.commit.message_subject),
             original_score: r.relevance_score,
             source: "git".to_string(),
             metadata: DocumentMetadata {

@@ -118,13 +118,19 @@ mod tests {
     let items = result["items"].as_array().map(|a| a.len()).unwrap_or(0);
     let cfg_test = result.get("cfg_test_line").and_then(|v| v.as_u64());
 
-    println!("   Language: {}", result["language"].as_str().unwrap_or("?"));
+    println!(
+        "   Language: {}",
+        result["language"].as_str().unwrap_or("?")
+    );
     println!("   Imports: {imports}");
     println!("   cfg_test_line: {cfg_test:?}");
     println!("   Items: {items}");
 
     assert!(imports >= 1, "Expected at least 1 import");
-    assert!(cfg_test.is_some(), "Expected cfg_test_line for Rust file with #[cfg(test)]");
+    assert!(
+        cfg_test.is_some(),
+        "Expected cfg_test_line for Rust file with #[cfg(test)]"
+    );
     assert!(items >= 5, "Expected at least 5 items");
 
     // Validate visibility on items
@@ -286,11 +292,19 @@ fn test_extract_pipeline() {
             .filter(|i| !i["visibility"].as_str().unwrap_or("").is_empty())
             .collect();
 
-        println!("   extract_handler.rs: {} imports, {} items ({} functions, {} pub)",
-            imports, arr.len(), functions.len(), pub_items.len());
+        println!(
+            "   extract_handler.rs: {} imports, {} items ({} functions, {} pub)",
+            imports,
+            arr.len(),
+            functions.len(),
+            pub_items.len()
+        );
         println!("   cfg_test_line: {cfg_test:?}");
-        println!("   Total lines covered: {}", arr.iter()
-            .map(|i| i["lines"].as_u64().unwrap_or(0))
-            .sum::<u64>());
+        println!(
+            "   Total lines covered: {}",
+            arr.iter()
+                .map(|i| i["lines"].as_u64().unwrap_or(0))
+                .sum::<u64>()
+        );
     }
 }

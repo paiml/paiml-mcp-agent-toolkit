@@ -757,7 +757,4 @@ mod template_validation_tests {
 }
 
 // Re-export functions that need to be tested
-pub(super) use pmat::handlers::tools::{
-    is_analysis_tool,
-    is_template_tool,
-};
+pub(super) use pmat::handlers::tools::{is_analysis_tool, is_template_tool};
