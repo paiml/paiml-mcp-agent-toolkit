@@ -278,7 +278,8 @@ impl KnownDefectsScorer {
                 || filename_lower.contains("_coverage_")     // e.g., *_coverage_part*.rs
                 || filename_lower.starts_with("test_")       // e.g., test_*.rs
                 || filename_lower.starts_with("tests_")      // e.g., tests_core_part3.rs
-                || filename_lower.starts_with("coverage_")   // e.g., coverage_part4.rs (include!'d tests)
+                || filename_lower.starts_with("coverage_")
+            // e.g., coverage_part4.rs (include!'d tests)
             {
                 return true;
             }

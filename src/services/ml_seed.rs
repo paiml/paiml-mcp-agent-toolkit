@@ -187,7 +187,10 @@ mod tests {
         let mut rng2 = create_embedding_rng();
         let val2: u64 = rng2.random();
 
-        assert_ne!(val1, val2, "Different seeds should produce different values");
+        assert_ne!(
+            val1, val2,
+            "Different seeds should produce different values"
+        );
 
         // Reset
         set_embedding_seed(42);

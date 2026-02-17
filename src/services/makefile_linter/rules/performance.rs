@@ -238,7 +238,9 @@ fn process_parenthesized_var(
     vars: &mut HashSet<String>,
 ) -> Option<usize> {
     if let Some(end) = text.get(start_idx + 1..).unwrap_or_default().find(')') {
-        let var_ref = text.get(start_idx + 1..start_idx + 1 + end).unwrap_or_default();
+        let var_ref = text
+            .get(start_idx + 1..start_idx + 1 + end)
+            .unwrap_or_default();
         if should_include_var_ref(var_ref) {
             let var_name = extract_var_name(var_ref);
             vars.insert(var_name.to_string());
@@ -251,7 +253,9 @@ fn process_parenthesized_var(
 
 fn process_braced_var(text: &str, start_idx: usize, vars: &mut HashSet<String>) -> Option<usize> {
     if let Some(end) = text.get(start_idx + 1..).unwrap_or_default().find('}') {
-        let var_name = text.get(start_idx + 1..start_idx + 1 + end).unwrap_or_default();
+        let var_name = text
+            .get(start_idx + 1..start_idx + 1 + end)
+            .unwrap_or_default();
         if !is_automatic_var(var_name) {
             vars.insert(var_name.to_string());
         }

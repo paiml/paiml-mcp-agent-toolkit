@@ -68,7 +68,12 @@ pub fn format_display_path(path: &std::path::Path, max_len: usize) -> String {
     if path_str.len() <= max_len {
         path_str.to_string()
     } else {
-        format!("...{}", path_str.get(path_str.len() - max_len + 3..).unwrap_or(&path_str))
+        format!(
+            "...{}",
+            path_str
+                .get(path_str.len() - max_len + 3..)
+                .unwrap_or(&path_str)
+        )
     }
 }
 

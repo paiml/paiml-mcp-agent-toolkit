@@ -226,5 +226,4 @@ mod coverage_tests {
 
         assert_eq!(formats.len(), 3);
     }
-
 }

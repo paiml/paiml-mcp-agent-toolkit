@@ -11,15 +11,22 @@ use std::path::{Path, PathBuf};
 
 /// Directories to skip when walking for SQL files.
 const SKIP_DIRS: &[&str] = &[
-    ".git", "node_modules", "target", ".pmat", "vendor", "build", "dist",
-    "migrations_backup", "__pycache__",
+    ".git",
+    "node_modules",
+    "target",
+    ".pmat",
+    "vendor",
+    "build",
+    "dist",
+    "migrations_backup",
+    "__pycache__",
 ];
 
 /// SQL keywords that start statements (not assignments).
 const SQL_KEYWORDS: &[&str] = &[
-    "select", "insert", "update", "delete", "create", "alter", "drop",
-    "grant", "revoke", "begin", "commit", "rollback", "explain",
-    "with", "merge", "truncate", "set", "declare", "exec", "execute",
+    "select", "insert", "update", "delete", "create", "alter", "drop", "grant", "revoke", "begin",
+    "commit", "rollback", "explain", "with", "merge", "truncate", "set", "declare", "exec",
+    "execute",
 ];
 
 // =============================================================================
@@ -41,10 +48,7 @@ fn walk_sql_recursive(dir: &Path, files: &mut Vec<PathBuf>) {
     for entry in entries.flatten() {
         let path = entry.path();
         if path.is_dir() {
-            let dir_name = path
-                .file_name()
-                .and_then(|n| n.to_str())
-                .unwrap_or("");
+            let dir_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
             if !SKIP_DIRS.contains(&dir_name) {
                 walk_sql_recursive(&path, files);
             }
@@ -349,8 +353,7 @@ pub fn detect_cb703_sql_injection(project_path: &Path) -> Vec<CbPatternViolation
                     pattern_id: "CB-703".to_string(),
                     file: rel.clone(),
                     line: i + 1,
-                    description:
-                        "SQL string concatenation — use parameterized queries".to_string(),
+                    description: "SQL string concatenation — use parameterized queries".to_string(),
                     severity: Severity::Warning,
                 });
             }
@@ -366,7 +369,12 @@ fn collect_code_files(dir: &Path, extensions: &[&str], files: &mut Vec<PathBuf>)
         let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
         if path.is_dir() && !SKIP_DIRS.contains(&name) {
             collect_code_files(&path, extensions, files);
-        } else if path.extension().and_then(|e| e.to_str()).map(|e| extensions.contains(&e)).unwrap_or(false) {
+        } else if path
+            .extension()
+            .and_then(|e| e.to_str())
+            .map(|e| extensions.contains(&e))
+            .unwrap_or(false)
+        {
             files.push(path);
         }
     }
@@ -463,11 +471,7 @@ pub fn detect_cb705_n_plus_1_query(project_path: &Path) -> Vec<CbPatternViolatio
     violations
 }
 
-fn detect_n_plus_1_in_content(
-    content: &str,
-    rel: &str,
-    violations: &mut Vec<CbPatternViolation>,
-) {
+fn detect_n_plus_1_in_content(content: &str, rel: &str, violations: &mut Vec<CbPatternViolation>) {
     let mut in_loop = false;
     let mut loop_depth: i32 = 0;
 

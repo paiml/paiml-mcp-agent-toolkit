@@ -278,8 +278,7 @@ fn is_satd_marker(trimmed: &str) -> bool {
     let comment = trimmed.get(2..).unwrap_or("");
 
     // Exclude security annotations — these are hardening notes, not debt
-    if comment.trim_start().starts_with("SECURITY:")
-        || comment.trim_start().starts_with("SAFETY:")
+    if comment.trim_start().starts_with("SECURITY:") || comment.trim_start().starts_with("SAFETY:")
     {
         return false;
     }
@@ -287,7 +286,8 @@ fn is_satd_marker(trimmed: &str) -> bool {
     // The marker must appear in the comment text itself, not in a string
     // literal that happens to be on this line. If the line has quotes before
     // the marker, it's likely a string literal reference.
-    let has_marker = comment.contains("TODO") || comment.contains("FIXME") || comment.contains("HACK");
+    let has_marker =
+        comment.contains("TODO") || comment.contains("FIXME") || comment.contains("HACK");
     if !has_marker {
         return false;
     }
@@ -505,14 +505,20 @@ mod tests {
 
     #[test]
     fn test_is_satd_marker_excludes_security_annotations() {
-        assert!(!is_satd_marker("// SECURITY: Require 'passed' field to exist"));
-        assert!(!is_satd_marker("// SAFETY: this pointer is valid because..."));
+        assert!(!is_satd_marker(
+            "// SECURITY: Require 'passed' field to exist"
+        ));
+        assert!(!is_satd_marker(
+            "// SAFETY: this pointer is valid because..."
+        ));
     }
 
     #[test]
     fn test_is_satd_marker_excludes_string_literals_in_comments() {
         // Comments that reference SATD patterns in quotes (meta-discussion)
-        assert!(!is_satd_marker(r#"// tracking "TODO" and "FIXME" comments"#));
+        assert!(!is_satd_marker(
+            r#"// tracking "TODO" and "FIXME" comments"#
+        ));
         assert!(!is_satd_marker(r#"// scans for "HACK" markers"#));
     }
 
@@ -548,9 +554,6 @@ fn contains_todo() {} // no marker, just identifier
         assert_eq!(strip_quoted_strings(r#""TODO" marker"#), " marker");
         assert_eq!(strip_quoted_strings("no quotes"), "no quotes");
         // Multiple quoted segments
-        assert_eq!(
-            strip_quoted_strings(r#"vec!["TODO", "FIXME"]"#),
-            "vec![, ]"
-        );
+        assert_eq!(strip_quoted_strings(r#"vec!["TODO", "FIXME"]"#), "vec![, ]");
     }
 }

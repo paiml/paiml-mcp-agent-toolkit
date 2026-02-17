@@ -78,7 +78,10 @@ fn format_roadmap_markdown(roadmap: &Roadmap) -> String {
         for ticket in &sprint.tickets {
             let checkbox = if ticket.completed { "[x]" } else { "[ ]" };
             let commit_ref = if let Some(ref commit) = ticket.commit {
-                format!(" (commit: {})", commit.get(..7.min(commit.len())).unwrap_or(commit))
+                format!(
+                    " (commit: {})",
+                    commit.get(..7.min(commit.len())).unwrap_or(commit)
+                )
             } else {
                 String::new()
             };
@@ -141,7 +144,10 @@ pub fn update_roadmap_from_commit(
         write_roadmap(&roadmap, roadmap_path)?;
         println!(
             "✓ Updated roadmap with commit {}",
-            commit.hash.get(..7.min(commit.hash.len())).unwrap_or(&commit.hash)
+            commit
+                .hash
+                .get(..7.min(commit.hash.len()))
+                .unwrap_or(&commit.hash)
         );
     }
 

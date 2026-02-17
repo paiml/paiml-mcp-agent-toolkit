@@ -49,7 +49,11 @@ fn test_tdg_severity_as_str() {
 
 #[test]
 fn test_tdg_severity_serde() {
-    let severities = vec![TDGSeverity::Normal, TDGSeverity::Warning, TDGSeverity::Critical];
+    let severities = vec![
+        TDGSeverity::Normal,
+        TDGSeverity::Warning,
+        TDGSeverity::Critical,
+    ];
     for sev in &severities {
         let json = serde_json::to_string(sev).unwrap();
         let back: TDGSeverity = serde_json::from_str(&json).unwrap();
@@ -94,7 +98,10 @@ fn test_tdg_components_serde() {
 
 #[test]
 fn test_tdg_components_copy() {
-    let comp = TDGComponents { complexity: 1.0, ..Default::default() };
+    let comp = TDGComponents {
+        complexity: 1.0,
+        ..Default::default()
+    };
     let copied = comp;
     assert_eq!(copied.complexity, 1.0);
 }
@@ -255,9 +262,24 @@ fn test_tdg_analysis_serde() {
 fn test_tdg_distribution_serde() {
     let dist = TDGDistribution {
         buckets: vec![
-            TDGBucket { min: 0.0, max: 1.0, count: 50, percentage: 50.0 },
-            TDGBucket { min: 1.0, max: 2.0, count: 30, percentage: 30.0 },
-            TDGBucket { min: 2.0, max: 5.0, count: 20, percentage: 20.0 },
+            TDGBucket {
+                min: 0.0,
+                max: 1.0,
+                count: 50,
+                percentage: 50.0,
+            },
+            TDGBucket {
+                min: 1.0,
+                max: 2.0,
+                count: 30,
+                percentage: 30.0,
+            },
+            TDGBucket {
+                min: 2.0,
+                max: 5.0,
+                count: 20,
+                percentage: 20.0,
+            },
         ],
         total_files: 100,
     };

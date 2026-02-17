@@ -2,9 +2,8 @@
 #[cfg(test)]
 mod tests {
     use crate::cli::diagnose::{
-        DiagnoseArgs, DiagnosticFormat, FeatureResult, FeatureStatus,
-        DiagnosticSummary, BuildInfo, CompactErrorContext, SuggestedFix,
-        EnvironmentSnapshot,
+        BuildInfo, CompactErrorContext, DiagnoseArgs, DiagnosticFormat, DiagnosticSummary,
+        EnvironmentSnapshot, FeatureResult, FeatureStatus, SuggestedFix,
     };
     use std::collections::BTreeMap;
 
@@ -127,14 +126,12 @@ mod tests {
         let context = CompactErrorContext {
             failed_features: vec!["ast_parser".to_string(), "cache".to_string()],
             error_patterns,
-            suggested_fixes: vec![
-                SuggestedFix {
-                    feature: "ast_parser".to_string(),
-                    error_pattern: "FileNotFound".to_string(),
-                    fix_command: Some("chmod +r files/".to_string()),
-                    documentation_link: None,
-                },
-            ],
+            suggested_fixes: vec![SuggestedFix {
+                feature: "ast_parser".to_string(),
+                error_pattern: "FileNotFound".to_string(),
+                fix_command: Some("chmod +r files/".to_string()),
+                documentation_link: None,
+            }],
             environment: EnvironmentSnapshot {
                 os: "linux".to_string(),
                 arch: "x86_64".to_string(),

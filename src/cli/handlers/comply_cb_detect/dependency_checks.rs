@@ -20,9 +20,20 @@ use std::path::Path;
 
 /// Sovereign stack crates (batuta ecosystem)
 const SOVEREIGN_CRATES: &[&str] = &[
-    "aprender", "trueno", "trueno-graph", "trueno-db", "trueno-rag",
-    "trueno-viz", "trueno-zram-core", "pmcp", "presentar-core",
-    "renacer", "certeza", "bashrs", "probar", "ruchy",
+    "aprender",
+    "trueno",
+    "trueno-graph",
+    "trueno-db",
+    "trueno-rag",
+    "trueno-viz",
+    "trueno-zram-core",
+    "pmcp",
+    "presentar-core",
+    "renacer",
+    "certeza",
+    "bashrs",
+    "probar",
+    "ruchy",
 ];
 
 /// Dependency count analysis result (enhanced)
@@ -33,7 +44,7 @@ pub struct DependencyCountReport {
     pub transitive_count: usize,
     /// Production-only transitive count (excludes dev-dep transitive), used for scoring
     pub prod_transitive_count: Option<usize>,
-    pub score: u8,  // 0-5 points based on rust-project-score thresholds
+    pub score: u8, // 0-5 points based on rust-project-score thresholds
     /// Crates with multiple versions in Cargo.lock
     pub duplicate_crates: Vec<DuplicateCrate>,
     /// Dependencies using default-features = false
@@ -41,7 +52,7 @@ pub struct DependencyCountReport {
     pub feature_gated_pct: f64,
     /// Sovereign stack crates used
     pub sovereign_crates: Vec<String>,
-    pub sovereign_bonus: u8,  // 0-3 bonus points
+    pub sovereign_bonus: u8, // 0-3 bonus points
     /// Delta from previous check (if available)
     pub trend: Option<DependencyTrend>,
     pub violations: Vec<CbPatternViolation>,
@@ -118,8 +129,7 @@ pub(super) fn parse_cargo_lock(cargo_lock_path: &Path) -> (usize, Vec<DuplicateC
         Err(_) => return (0, Vec::new()),
     };
 
-    let mut crate_versions: HashMap<String, Vec<String>> =
-        HashMap::new();
+    let mut crate_versions: HashMap<String, Vec<String>> = HashMap::new();
     let mut current_name: Option<String> = None;
     let mut current_version: Option<String> = None;
     let mut package_count = 0;
@@ -176,8 +186,7 @@ pub(super) fn count_production_transitive(project_path: &Path) -> Option<usize> 
     }
 
     let stdout = String::from_utf8_lossy(&output.stdout);
-    let mut unique_packages: HashSet<String> =
-        HashSet::new();
+    let mut unique_packages: HashSet<String> = HashSet::new();
     for line in stdout.lines() {
         let trimmed = line.trim();
         if !trimmed.is_empty() {
@@ -199,7 +208,11 @@ pub(super) fn get_cached_dependency_analysis(
     // Try to use cached results first
     if let Some(cache) = DependencyCache::load(project_path) {
         if cache.is_valid(cargo_lock_path) {
-            return (cache.transitive_count, cache.prod_transitive_count, cache.duplicate_crates);
+            return (
+                cache.transitive_count,
+                cache.prod_transitive_count,
+                cache.duplicate_crates,
+            );
         }
     }
 
@@ -212,7 +225,11 @@ pub(super) fn get_cached_dependency_analysis(
     // Save to cache
     let mtime = fs::metadata(cargo_lock_path)
         .and_then(|m| m.modified())
-        .map(|t| t.duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0))
+        .map(|t| {
+            t.duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_secs())
+                .unwrap_or(0)
+        })
         .unwrap_or(0);
 
     let cache = DependencyCache {
@@ -257,9 +274,15 @@ fn build_threshold_violation(
 
     if transitive > trans_max {
         parts.push(if matches!(severity, Severity::Error) {
-            format!("{} prod transitive deps exceed max {}", transitive, trans_max)
+            format!(
+                "{} prod transitive deps exceed max {}",
+                transitive, trans_max
+            )
         } else {
-            format!("{} prod transitive deps (threshold {})", transitive, trans_max)
+            format!(
+                "{} prod transitive deps (threshold {})",
+                transitive, trans_max
+            )
         });
     } else {
         ok_parts.push(format!("{} transitive OK", transitive));
@@ -303,9 +326,23 @@ fn check_dependency_count_violations(
     let trans_error_max = 250 + sovereign_allowance;
     let trans_warn_max = 200 + sovereign_allowance;
 
-    if let Some(v) = build_threshold_violation(cargo_toml, direct, effective_transitive, 50, trans_error_max, Severity::Error) {
+    if let Some(v) = build_threshold_violation(
+        cargo_toml,
+        direct,
+        effective_transitive,
+        50,
+        trans_error_max,
+        Severity::Error,
+    ) {
         violations.push(v);
-    } else if let Some(v) = build_threshold_violation(cargo_toml, direct, effective_transitive, 40, trans_warn_max, Severity::Warning) {
+    } else if let Some(v) = build_threshold_violation(
+        cargo_toml,
+        direct,
+        effective_transitive,
+        40,
+        trans_warn_max,
+        Severity::Warning,
+    ) {
         violations.push(v);
     }
 
@@ -342,7 +379,8 @@ fn check_dependency_count_violations(
     // CB-081-E: Trend regression
     if let Some(ref t) = trend {
         let pct_increase = if t.transitive_delta > 0 {
-            (t.transitive_delta as f64 / (transitive_count as i32 - t.transitive_delta) as f64) * 100.0
+            (t.transitive_delta as f64 / (transitive_count as i32 - t.transitive_delta) as f64)
+                * 100.0
         } else {
             0.0
         };
@@ -400,7 +438,8 @@ pub fn detect_cb081_dependency_count(project_path: &Path) -> DependencyCountRepo
     let trend = load_dependency_trend(project_path);
 
     // Calculate base score using production-only transitive count (sovereign-adjusted)
-    let mut score = calculate_dependency_score(direct_count, effective_transitive, sovereign_crates.len());
+    let mut score =
+        calculate_dependency_score(direct_count, effective_transitive, sovereign_crates.len());
 
     // Apply bonuses (capped at 5 total)
     if feature_gated_pct >= 50.0 && score < 5 {
@@ -444,10 +483,10 @@ fn is_dependency_section(trimmed: &str) -> (bool, bool, bool) {
     let in_dependencies = trimmed == "[dependencies]"
         || trimmed.starts_with("[dependencies.")
         || trimmed.starts_with("[target.");
-    let in_dev_dependencies = trimmed == "[dev-dependencies]"
-        || trimmed.starts_with("[dev-dependencies.");
-    let in_build_dependencies = trimmed == "[build-dependencies]"
-        || trimmed.starts_with("[build-dependencies.");
+    let in_dev_dependencies =
+        trimmed == "[dev-dependencies]" || trimmed.starts_with("[dev-dependencies.");
+    let in_build_dependencies =
+        trimmed == "[build-dependencies]" || trimmed.starts_with("[build-dependencies.");
     (in_dependencies, in_dev_dependencies, in_build_dependencies)
 }
 
@@ -466,8 +505,7 @@ fn process_dependency_line(trimmed: &str, sovereign_found: &mut Vec<String>) -> 
     let is_optional = trimmed.contains("optional") && trimmed.contains("true");
     let is_direct = !is_optional;
 
-    let is_feature_gated =
-        trimmed.contains("default-features") && trimmed.contains("false");
+    let is_feature_gated = trimmed.contains("default-features") && trimmed.contains("false");
 
     for crate_name in SOVEREIGN_CRATES {
         if trimmed.starts_with(crate_name)
@@ -506,7 +544,12 @@ pub(super) fn analyze_cargo_toml(cargo_toml_path: &Path) -> (usize, usize, Vec<S
         }
 
         // Count dependencies (excluding dev, build, and optional deps for scoring)
-        if is_scoreable_dependency(in_dependencies, in_dev_dependencies, in_build_dependencies, trimmed) {
+        if is_scoreable_dependency(
+            in_dependencies,
+            in_dev_dependencies,
+            in_build_dependencies,
+            trimmed,
+        ) {
             let (is_direct, is_feature_gated) =
                 process_dependency_line(trimmed, &mut sovereign_found);
             if is_direct {
@@ -524,7 +567,11 @@ pub(super) fn analyze_cargo_toml(cargo_toml_path: &Path) -> (usize, usize, Vec<S
 /// Calculate dependency health score (0-5 points)
 /// Sovereign stack projects get adjusted thresholds (each sovereign crate brings
 /// its own ecosystem, e.g. trueno-graph → arrow/wgpu, trueno-rag → vector search).
-pub(super) fn calculate_dependency_score(direct: usize, transitive: usize, sovereign_count: usize) -> u8 {
+pub(super) fn calculate_dependency_score(
+    direct: usize,
+    transitive: usize,
+    sovereign_count: usize,
+) -> u8 {
     let bonus = sovereign_count.min(3) * 50;
     if direct <= 20 && transitive <= 100 + bonus {
         5
@@ -567,7 +614,11 @@ pub(super) fn load_dependency_trend(project_path: &Path) -> Option<DependencyTre
 }
 
 /// CB-081-E: Save current dependency metrics for future trend tracking
-pub(super) fn save_dependency_metrics(project_path: &Path, direct: usize, transitive: usize) -> std::io::Result<()> {
+pub(super) fn save_dependency_metrics(
+    project_path: &Path,
+    direct: usize,
+    transitive: usize,
+) -> std::io::Result<()> {
     let metrics_dir = project_path.join(".pmat").join("metrics");
     fs::create_dir_all(&metrics_dir)?;
 
@@ -655,11 +706,7 @@ pub struct ForbiddenPatternMatch {
 }
 
 /// Required patterns that should be in CLAUDE.md for agent context adoption
-const REQUIRED_PATTERNS: &[&str] = &[
-    "pmat query",
-    "NEVER use grep",
-    "--faults",
-];
+const REQUIRED_PATTERNS: &[&str] = &["pmat query", "NEVER use grep", "--faults"];
 
 /// Forbidden patterns that indicate agents might use grep instead of pmat query
 const FORBIDDEN_PATTERNS: &[&str] = &[
@@ -677,7 +724,11 @@ const FORBIDDEN_PATTERNS: &[&str] = &[
 /// Returns (age_hours, is_stale). `is_stale` is true when age exceeds 24 hours.
 fn check_index_age(index_path: &Path) -> (Option<f64>, bool) {
     let manifest_path = index_path.join("manifest.json");
-    let check_path = if manifest_path.exists() { &manifest_path } else { index_path };
+    let check_path = if manifest_path.exists() {
+        &manifest_path
+    } else {
+        index_path
+    };
     let metadata = match fs::metadata(check_path) {
         Ok(m) => m,
         Err(_) => return (None, false),
@@ -698,7 +749,10 @@ fn check_index_age(index_path: &Path) -> (Option<f64>, bool) {
 /// `configured` is true when the file contains "pmat_query_code" or "pmat query".
 fn is_negative_example(line: &str) -> bool {
     let lower = line.to_lowercase();
-    lower.contains("bad") || lower.contains("don't") || lower.contains("never") || lower.contains("avoid")
+    lower.contains("bad")
+        || lower.contains("don't")
+        || lower.contains("never")
+        || lower.contains("avoid")
 }
 
 fn find_forbidden_patterns(content: &str) -> Vec<ForbiddenPatternMatch> {
@@ -732,8 +786,7 @@ fn check_claude_md_patterns(
         }
     };
 
-    let configured =
-        content.contains("pmat_query_code") || content.contains("pmat query");
+    let configured = content.contains("pmat_query_code") || content.contains("pmat query");
 
     // Check for missing required patterns
     let missing: Vec<String> = REQUIRED_PATTERNS
@@ -760,7 +813,11 @@ pub fn detect_cb130_agent_context_adoption(project_path: &Path) -> AgentContextR
     let index_exists = index_path.exists() || db_path.exists();
 
     // Check freshness: prefer .db mtime, fall back to .idx/
-    let age_check_path = if db_path.exists() { &db_path } else { &index_path };
+    let age_check_path = if db_path.exists() {
+        &db_path
+    } else {
+        &index_path
+    };
     let (index_age_hours, index_stale) = if index_exists {
         check_index_age(age_check_path)
     } else {

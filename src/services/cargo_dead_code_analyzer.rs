@@ -287,9 +287,8 @@ impl CargoDeadCodeAnalyzer {
 
         // Patterns for dead_code suppression
         // Matches: #[allow(dead_code)], #[allow(unused)], #![allow(dead_code)]
-        let suppression_re = Regex::new(
-            r#"#!?\[allow\((dead_code|unused)\)\]"#
-        ).expect("Invalid regex");
+        let suppression_re =
+            Regex::new(r#"#!?\[allow\((dead_code|unused)\)\]"#).expect("Invalid regex");
 
         // Pattern to extract the item name on the following line
         let item_re = Regex::new(
@@ -725,7 +724,12 @@ fn used_function() {
         let items = analyzer.scan_for_suppression_attributes().unwrap();
 
         // Should detect 3 suppressed items
-        assert_eq!(items.len(), 3, "Expected 3 suppressed items, found {}", items.len());
+        assert_eq!(
+            items.len(),
+            3,
+            "Expected 3 suppressed items, found {}",
+            items.len()
+        );
 
         // Verify the items are marked as Suppressed
         for (_, item) in &items {
@@ -734,9 +738,18 @@ fn used_function() {
 
         // Check specific names
         let names: Vec<&str> = items.iter().map(|(_, i)| i.name.as_str()).collect();
-        assert!(names.contains(&"unused_function"), "Should detect unused_function");
-        assert!(names.contains(&"UnusedStruct"), "Should detect UnusedStruct");
-        assert!(names.contains(&"UNUSED_CONST"), "Should detect UNUSED_CONST");
+        assert!(
+            names.contains(&"unused_function"),
+            "Should detect unused_function"
+        );
+        assert!(
+            names.contains(&"UnusedStruct"),
+            "Should detect UnusedStruct"
+        );
+        assert!(
+            names.contains(&"UNUSED_CONST"),
+            "Should detect UNUSED_CONST"
+        );
     }
 
     #[test]

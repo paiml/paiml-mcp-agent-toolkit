@@ -455,6 +455,5 @@ pub async fn start_dashboard_server(
     Ok(())
 }
 
-
 // Tests extracted to web_dashboard_tests.rs for file health (CB-040).
 include!("web_dashboard_tests.rs");

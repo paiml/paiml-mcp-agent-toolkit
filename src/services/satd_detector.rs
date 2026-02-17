@@ -1149,7 +1149,15 @@ impl SATDDetector {
     }
 
     fn is_common_build_directory(&self, name: &str) -> bool {
-        ["target", "node_modules", "dist", "build", "__pycache__", "book"].contains(&name)
+        [
+            "target",
+            "node_modules",
+            "dist",
+            "build",
+            "__pycache__",
+            "book",
+        ]
+        .contains(&name)
     }
 
     fn process_file(&self, path: &Path, files: &mut Vec<PathBuf>) {
@@ -1389,14 +1397,19 @@ impl SATDDetector {
             let comment_text = trimmed.trim_start_matches("//").trim().to_lowercase();
 
             // Section headers with separators (=== or ---)
-            if comment_text.contains("===") || comment_text.contains("---")
-                || comment_text.contains("───") {
+            if comment_text.contains("===")
+                || comment_text.contains("---")
+                || comment_text.contains("───")
+            {
                 return true;
             }
 
             // Mathematical notation (e.g., "s^T × temp")
-            if comment_text.contains("×") || comment_text.contains("∑")
-                || comment_text.contains("^t ") || comment_text.contains("^t×") {
+            if comment_text.contains("×")
+                || comment_text.contains("∑")
+                || comment_text.contains("^t ")
+                || comment_text.contains("^t×")
+            {
                 return true;
             }
 
@@ -1405,7 +1418,8 @@ impl SATDDetector {
                 || comment_text.contains("isolation")
                 || comment_text.starts_with("output ")
                 || comment_text.starts_with("input ")
-                || comment_text.starts_with("all ") {
+                || comment_text.starts_with("all ")
+            {
                 return true;
             }
 
@@ -1841,7 +1855,9 @@ mod coverage_tests {
         assert!(classifier.compiled_patterns.is_match("TODO: fix this"));
         assert!(classifier.compiled_patterns.is_match("FIXME: broken"));
         assert!(classifier.compiled_patterns.is_match("HACK workaround"));
-        assert!(classifier.compiled_patterns.is_match("security vulnerability"));
+        assert!(classifier
+            .compiled_patterns
+            .is_match("security vulnerability"));
         assert!(classifier.compiled_patterns.is_match("performance issue"));
         assert!(classifier.compiled_patterns.is_match("technical debt"));
         assert!(classifier.compiled_patterns.is_match("code smell"));
@@ -1870,8 +1886,12 @@ mod coverage_tests {
     #[test]
     fn test_new_extended_does_not_match_normal_code() {
         let classifier = DebtClassifier::new_extended();
-        assert!(!classifier.compiled_patterns.is_match("fn process_request()"));
-        assert!(!classifier.compiled_patterns.is_match("let result = compute()"));
+        assert!(!classifier
+            .compiled_patterns
+            .is_match("fn process_request()"));
+        assert!(!classifier
+            .compiled_patterns
+            .is_match("let result = compute()"));
         assert!(!classifier.compiled_patterns.is_match("return Ok(value)"));
     }
 

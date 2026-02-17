@@ -90,7 +90,11 @@ impl CommitParser {
     }
 
     /// Parse all commits, optionally since a given commit hash
-    pub fn parse_commits(&self, since: Option<&str>, limit: Option<usize>) -> Result<Vec<CommitInfo>> {
+    pub fn parse_commits(
+        &self,
+        since: Option<&str>,
+        limit: Option<usize>,
+    ) -> Result<Vec<CommitInfo>> {
         let mut revwalk = self.repo.revwalk()?;
         revwalk.set_sorting(Sort::TIME | Sort::REVERSE)?;
         revwalk.push_head()?;
@@ -208,9 +212,7 @@ impl CommitParser {
     /// Check if commit is a feature (conventional commit)
     fn is_feat_commit(subject: &str) -> bool {
         let lower = subject.to_lowercase();
-        lower.starts_with("feat:")
-            || lower.starts_with("feat(")
-            || lower.starts_with("feature:")
+        lower.starts_with("feat:") || lower.starts_with("feat(") || lower.starts_with("feature:")
     }
 
     /// Extract issue references from commit message
@@ -248,15 +250,15 @@ impl CommitParser {
         };
 
         let mut diff_opts = DiffOptions::new();
-        let diff = self.repo.diff_tree_to_tree(
-            parent_tree.as_ref(),
-            Some(&tree),
-            Some(&mut diff_opts),
-        )?;
+        let diff =
+            self.repo
+                .diff_tree_to_tree(parent_tree.as_ref(), Some(&tree), Some(&mut diff_opts))?;
 
         diff.foreach(
             &mut |delta, _progress| {
-                let path = delta.new_file().path()
+                let path = delta
+                    .new_file()
+                    .path()
                     .or_else(|| delta.old_file().path())
                     .map(|p| p.to_string_lossy().to_string())
                     .unwrap_or_default();
@@ -336,17 +338,28 @@ mod tests {
 
         // Hash should be 40 hex chars
         assert_eq!(commit.hash.len(), 40, "Hash should be 40 characters");
-        assert!(commit.hash.chars().all(|c| c.is_ascii_hexdigit()),
-            "Hash should be hex");
+        assert!(
+            commit.hash.chars().all(|c| c.is_ascii_hexdigit()),
+            "Hash should be hex"
+        );
 
         // Subject should be non-empty
-        assert!(!commit.message_subject.is_empty(), "Subject should not be empty");
+        assert!(
+            !commit.message_subject.is_empty(),
+            "Subject should not be empty"
+        );
 
         // Author should be set
-        assert!(!commit.author_name.is_empty(), "Author name should not be empty");
+        assert!(
+            !commit.author_name.is_empty(),
+            "Author name should not be empty"
+        );
 
         // Timestamp should be reasonable (after 2020)
-        assert!(commit.timestamp > 1577836800, "Timestamp should be after 2020");
+        assert!(
+            commit.timestamp > 1577836800,
+            "Timestamp should be after 2020"
+        );
     }
 
     #[test]
@@ -370,9 +383,13 @@ mod tests {
     #[test]
     fn test_is_fix_commit_conventional() {
         assert!(CommitParser::is_fix_commit("fix: resolve null pointer"));
-        assert!(CommitParser::is_fix_commit("fix(parser): handle empty input"));
+        assert!(CommitParser::is_fix_commit(
+            "fix(parser): handle empty input"
+        ));
         assert!(CommitParser::is_fix_commit("bugfix: memory leak"));
-        assert!(CommitParser::is_fix_commit("hotfix: critical security issue"));
+        assert!(CommitParser::is_fix_commit(
+            "hotfix: critical security issue"
+        ));
     }
 
     #[test]
@@ -529,8 +546,9 @@ mod tests {
             commit_days.insert(day);
 
             // Only commits with .rs file changes count for code index
-            let has_code_changes = commit.files.iter()
-                .any(|f| f.path.ends_with(".rs") || f.path.ends_with(".ts") || f.path.ends_with(".py"));
+            let has_code_changes = commit.files.iter().any(|f| {
+                f.path.ends_with(".rs") || f.path.ends_with(".ts") || f.path.ends_with(".py")
+            });
 
             if has_code_changes {
                 code_change_days.insert(day);

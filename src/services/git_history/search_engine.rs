@@ -50,8 +50,16 @@ impl<'a> GitHistorySearchEngine<'a> {
     }
 
     /// Search git history for commits matching a query
-    pub fn search(&mut self, query: &str, options: GitSearchOptions) -> Result<Vec<GitSearchResult>, GitHistoryError> {
-        let limit = if options.limit == 0 { 10 } else { options.limit };
+    pub fn search(
+        &mut self,
+        query: &str,
+        options: GitSearchOptions,
+    ) -> Result<Vec<GitSearchResult>, GitHistoryError> {
+        let limit = if options.limit == 0 {
+            10
+        } else {
+            options.limit
+        };
 
         // Get candidate commits based on filters
         let candidates = self.get_candidates(&options)?;
@@ -61,9 +69,7 @@ impl<'a> GitHistorySearchEngine<'a> {
         }
 
         // Embed query and all candidate messages
-        let messages: Vec<String> = candidates.iter()
-            .map(|c| c.full_message())
-            .collect();
+        let messages: Vec<String> = candidates.iter().map(|c| c.full_message()).collect();
 
         // Include query in corpus for proper TF-IDF
         let mut corpus = messages.clone();
@@ -102,7 +108,11 @@ impl<'a> GitHistorySearchEngine<'a> {
     }
 
     /// Search by file - find commits that touched a specific file
-    pub fn search_by_file(&self, file_path: &str, limit: usize) -> Result<Vec<GitSearchResult>, GitHistoryError> {
+    pub fn search_by_file(
+        &self,
+        file_path: &str,
+        limit: usize,
+    ) -> Result<Vec<GitSearchResult>, GitHistoryError> {
         let commits = self.index.get_commits_for_file(file_path, limit)?;
 
         let results: Vec<GitSearchResult> = commits
@@ -123,14 +133,17 @@ impl<'a> GitHistorySearchEngine<'a> {
     }
 
     /// Get candidates based on filter options
-    fn get_candidates(&self, options: &GitSearchOptions) -> Result<Vec<CommitInfo>, GitHistoryError> {
+    fn get_candidates(
+        &self,
+        options: &GitSearchOptions,
+    ) -> Result<Vec<CommitInfo>, GitHistoryError> {
         let mut sql = String::from(
             r#"
             SELECT commit_hash, message_subject, message_body, author_name, author_email,
                    timestamp, is_merge, is_fix, is_feat, issue_refs
             FROM git_commits
             WHERE 1=1
-            "#
+            "#,
         );
 
         let mut conditions = Vec::new();
@@ -175,7 +188,9 @@ impl<'a> GitHistorySearchEngine<'a> {
             (None, Some(s), None) => stmt.query_map(params![s], Self::row_to_commit),
             (None, None, Some(u)) => stmt.query_map(params![u], Self::row_to_commit),
             (None, None, None) => stmt.query_map([], Self::row_to_commit),
-        }?.filter_map(|r| r.ok()).collect();
+        }?
+        .filter_map(|r| r.ok())
+        .collect();
 
         Ok(commits)
     }
@@ -223,9 +238,7 @@ impl<'a> GitHistorySearchEngine<'a> {
     /// Get files changed in a commit
     fn get_files_for_commit(&self, hash: &str) -> Result<Vec<String>, GitHistoryError> {
         let conn = self.get_connection()?;
-        let mut stmt = conn.prepare(
-            "SELECT file_path FROM commit_files WHERE commit_hash = ?1"
-        )?;
+        let mut stmt = conn.prepare("SELECT file_path FROM commit_files WHERE commit_hash = ?1")?;
 
         let files = stmt
             .query_map([hash], |row| row.get(0))?
@@ -276,14 +289,12 @@ mod tests {
                 is_fix: true,
                 is_feat: false,
                 issue_refs: vec!["#123".to_string()],
-                files: vec![
-                    FileChange {
-                        path: "src/parser.rs".to_string(),
-                        change_type: ChangeType::Modified,
-                        lines_added: 5,
-                        lines_deleted: 2,
-                    },
-                ],
+                files: vec![FileChange {
+                    path: "src/parser.rs".to_string(),
+                    change_type: ChangeType::Modified,
+                    lines_added: 5,
+                    lines_deleted: 2,
+                }],
             },
             CommitInfo {
                 hash: "b".repeat(40),
@@ -296,14 +307,12 @@ mod tests {
                 is_fix: false,
                 is_feat: true,
                 issue_refs: vec!["#456".to_string()],
-                files: vec![
-                    FileChange {
-                        path: "src/ui/theme.rs".to_string(),
-                        change_type: ChangeType::Modified,
-                        lines_added: 100,
-                        lines_deleted: 10,
-                    },
-                ],
+                files: vec![FileChange {
+                    path: "src/ui/theme.rs".to_string(),
+                    change_type: ChangeType::Modified,
+                    lines_added: 100,
+                    lines_deleted: 10,
+                }],
             },
             CommitInfo {
                 hash: "c".repeat(40),
@@ -316,14 +325,12 @@ mod tests {
                 is_fix: true,
                 is_feat: false,
                 issue_refs: vec![],
-                files: vec![
-                    FileChange {
-                        path: "src/cache.rs".to_string(),
-                        change_type: ChangeType::Modified,
-                        lines_added: 20,
-                        lines_deleted: 5,
-                    },
-                ],
+                files: vec![FileChange {
+                    path: "src/cache.rs".to_string(),
+                    change_type: ChangeType::Modified,
+                    lines_added: 20,
+                    lines_deleted: 5,
+                }],
             },
             CommitInfo {
                 hash: "d".repeat(40),
@@ -336,14 +343,12 @@ mod tests {
                 is_fix: false,
                 is_feat: false,
                 issue_refs: vec![],
-                files: vec![
-                    FileChange {
-                        path: "src/parser.rs".to_string(),
-                        change_type: ChangeType::Modified,
-                        lines_added: 50,
-                        lines_deleted: 30,
-                    },
-                ],
+                files: vec![FileChange {
+                    path: "src/parser.rs".to_string(),
+                    change_type: ChangeType::Modified,
+                    lines_added: 50,
+                    lines_deleted: 30,
+                }],
             },
         ];
 
@@ -356,15 +361,21 @@ mod tests {
         let index = create_test_index();
         let mut engine = GitHistorySearchEngine::new(&index);
 
-        let results = engine.search("fix bug error", GitSearchOptions::default()).unwrap();
+        let results = engine
+            .search("fix bug error", GitSearchOptions::default())
+            .unwrap();
 
         assert!(!results.is_empty(), "Should find commits about fixing bugs");
 
         // Fix commits should rank higher
         let first = &results[0];
         assert!(
-            first.commit.message_subject.to_lowercase().contains("fix") ||
-            first.commit.message_subject.to_lowercase().contains("error"),
+            first.commit.message_subject.to_lowercase().contains("fix")
+                || first
+                    .commit
+                    .message_subject
+                    .to_lowercase()
+                    .contains("error"),
             "Top result should be about fixing errors"
         );
     }
@@ -435,7 +446,9 @@ mod tests {
         let index = create_test_index();
         let mut engine = GitHistorySearchEngine::new(&index);
 
-        let results = engine.search("dark mode", GitSearchOptions::default()).unwrap();
+        let results = engine
+            .search("dark mode", GitSearchOptions::default())
+            .unwrap();
 
         if !results.is_empty() {
             assert!(!results[0].files.is_empty(), "Results should include files");
@@ -460,7 +473,9 @@ mod tests {
         let index = GitHistoryIndex::in_memory().unwrap();
         let mut engine = GitHistorySearchEngine::new(&index);
 
-        let results = engine.search("anything", GitSearchOptions::default()).unwrap();
+        let results = engine
+            .search("anything", GitSearchOptions::default())
+            .unwrap();
 
         assert!(results.is_empty());
     }
@@ -642,16 +657,20 @@ mod tests {
         let mut engine = GitHistorySearchEngine::new(&index);
 
         // Search for "fix" should rank fix commits higher than feature commits
-        let results = engine.search("fix bug error crash", GitSearchOptions::default()).unwrap();
+        let results = engine
+            .search("fix bug error crash", GitSearchOptions::default())
+            .unwrap();
 
         if results.len() >= 2 {
             // Fix commits should have higher relevance for this query
-            let fix_scores: Vec<f32> = results.iter()
+            let fix_scores: Vec<f32> = results
+                .iter()
                 .filter(|r| r.commit.is_fix)
                 .map(|r| r.relevance_score)
                 .collect();
 
-            let non_fix_scores: Vec<f32> = results.iter()
+            let non_fix_scores: Vec<f32> = results
+                .iter()
                 .filter(|r| !r.commit.is_fix)
                 .map(|r| r.relevance_score)
                 .collect();
@@ -662,7 +681,10 @@ mod tests {
 
                 // Fix commits should have higher average score for fix-related query
                 // This is a weak test since TF-IDF has limitations
-                println!("Avg fix score: {}, Avg non-fix score: {}", avg_fix, avg_non_fix);
+                println!(
+                    "Avg fix score: {}, Avg non-fix score: {}",
+                    avg_fix, avg_non_fix
+                );
             }
         }
     }

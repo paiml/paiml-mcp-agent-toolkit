@@ -138,7 +138,8 @@ fn build_match_result(
         .map(|s| s.to_string())
         .collect();
 
-    let context_after: Vec<String> = lines.get(i + 1..after_end)
+    let context_after: Vec<String> = lines
+        .get(i + 1..after_end)
         .map(|slice| slice.iter().map(|s| s.to_string()).collect())
         .unwrap_or_default();
 
@@ -160,7 +161,9 @@ fn collect_files_with_matches(
     exclude_regex: &Option<Regex>,
     acc: &mut FileMatchAccumulator,
 ) {
-    let has_match = lines.iter().any(|line| line_matches(line, regex, exclude_regex));
+    let has_match = lines
+        .iter()
+        .any(|line| line_matches(line, regex, exclude_regex));
     if has_match {
         acc.file_matches.push(relative_path.to_string());
     }
@@ -174,7 +177,10 @@ fn collect_count_matches(
     exclude_regex: &Option<Regex>,
     acc: &mut FileMatchAccumulator,
 ) {
-    let count = lines.iter().filter(|line| line_matches(line, regex, exclude_regex)).count();
+    let count = lines
+        .iter()
+        .filter(|line| line_matches(line, regex, exclude_regex))
+        .count();
     if count > 0 {
         acc.file_counts.push(FileMatchCount {
             file_path: relative_path.to_string(),
@@ -201,7 +207,11 @@ fn collect_line_matches(
             return true;
         }
         acc.results.push(build_match_result(
-            lines, relative_path, i, options.before_context, options.after_context,
+            lines,
+            relative_path,
+            i,
+            options.before_context,
+            options.after_context,
         ));
         acc.total_results += 1;
     }
@@ -303,7 +313,8 @@ fn walk_and_collect(
         };
 
         let lines: Vec<&str> = content.lines().collect();
-        let limit_reached = collect_file_matches(&lines, &relative_path, regex, exclude_regex, options, acc);
+        let limit_reached =
+            collect_file_matches(&lines, &relative_path, regex, exclude_regex, options, acc);
         if limit_reached {
             break;
         }
@@ -311,7 +322,10 @@ fn walk_and_collect(
 }
 
 /// Execute raw file search across all project files
-pub fn raw_search(project_path: &Path, options: &RawSearchOptions) -> Result<RawSearchOutput, String> {
+pub fn raw_search(
+    project_path: &Path,
+    options: &RawSearchOptions,
+) -> Result<RawSearchOutput, String> {
     let project_root = project_path
         .canonicalize()
         .unwrap_or_else(|_| project_path.to_path_buf());
@@ -327,7 +341,15 @@ pub fn raw_search(project_path: &Path, options: &RawSearchOptions) -> Result<Raw
         total_results: 0,
     };
 
-    walk_and_collect(&project_root, &regex, &exclude_regex, &lang_extensions, &exclude_glob, options, &mut acc);
+    walk_and_collect(
+        &project_root,
+        &regex,
+        &exclude_regex,
+        &lang_extensions,
+        &exclude_glob,
+        options,
+        &mut acc,
+    );
 
     if options.files_with_matches {
         Ok(RawSearchOutput::Files(acc.file_matches))
@@ -346,9 +368,9 @@ pub fn is_within_indexed_function(
     raw_line: usize,
     indexed_results: &[super::types::QueryResult],
 ) -> bool {
-    indexed_results.iter().any(|r| {
-        r.file_path == raw_file && raw_line >= r.start_line && raw_line <= r.end_line
-    })
+    indexed_results
+        .iter()
+        .any(|r| r.file_path == raw_file && raw_line >= r.start_line && raw_line <= r.end_line)
 }
 
 /// Directories to skip during raw search (beyond .gitignore)
@@ -416,12 +438,14 @@ mod tests {
         fs::write(
             dir.path().join("Cargo.toml"),
             "[package]\nname = \"test\"\nversion = \"0.1.0\"\n\n[dependencies]\nserde = \"1.0\"\n",
-        ).unwrap();
+        )
+        .unwrap();
         // Create a markdown file
         fs::write(
             dir.path().join("README.md"),
             "# Test Project\n\nThis has a TIMEOUT of 30 seconds.\n",
-        ).unwrap();
+        )
+        .unwrap();
         dir
     }
 

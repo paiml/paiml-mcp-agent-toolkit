@@ -321,7 +321,12 @@ fn parse_ticket_line(line: &str) -> Option<Ticket> {
     // Extract commit if present
     let commit = if let Some(commit_start) = content.find("(commit: ") {
         let commit_end = content.get(commit_start..)?.find(')')?;
-        Some(content.get(commit_start + 9..commit_start + commit_end).unwrap_or_default().to_string())
+        Some(
+            content
+                .get(commit_start + 9..commit_start + commit_end)
+                .unwrap_or_default()
+                .to_string(),
+        )
     } else {
         None
     };
@@ -495,8 +500,7 @@ mod tests {
     #[test]
     fn integration_parse_real_roadmap() {
         // Parse the actual PMAT ROADMAP.md file
-        let roadmap_path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("ROADMAP.md");
+        let roadmap_path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("ROADMAP.md");
 
         if !roadmap_path.exists() {
             eprintln!("Skipping: ROADMAP.md not found at {:?}", roadmap_path);
@@ -531,8 +535,7 @@ mod tests {
     #[test]
     fn integration_validate_pmat_roadmap() {
         // Validate the actual PMAT ROADMAP.md structure
-        let roadmap_path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("ROADMAP.md");
+        let roadmap_path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("ROADMAP.md");
 
         if !roadmap_path.exists() {
             eprintln!("Skipping: ROADMAP.md not found at {:?}", roadmap_path);

@@ -395,6 +395,5 @@ impl Default for FiveWhysAnalyzer {
     }
 }
 
-
 // Tests extracted to five_whys_analyzer_tests.rs for file health (CB-040).
 include!("five_whys_analyzer_tests.rs");

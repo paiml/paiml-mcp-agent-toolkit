@@ -11,8 +11,16 @@ use std::path::{Path, PathBuf};
 
 /// Directories to skip when walking for Markdown files.
 const SKIP_DIRS: &[&str] = &[
-    ".git", "node_modules", "target", ".pmat", "vendor", "build", "dist",
-    "__pycache__", ".venv", "site-packages",
+    ".git",
+    "node_modules",
+    "target",
+    ".pmat",
+    "vendor",
+    "build",
+    "dist",
+    "__pycache__",
+    ".venv",
+    "site-packages",
 ];
 
 // =============================================================================
@@ -34,10 +42,7 @@ fn walk_md_recursive(dir: &Path, files: &mut Vec<PathBuf>) {
     for entry in entries.flatten() {
         let path = entry.path();
         if path.is_dir() {
-            let dir_name = path
-                .file_name()
-                .and_then(|n| n.to_str())
-                .unwrap_or("");
+            let dir_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
             if !SKIP_DIRS.contains(&dir_name) {
                 walk_md_recursive(&path, files);
             }
@@ -220,8 +225,9 @@ pub fn detect_cb902_missing_alt_text(project_path: &Path) -> Vec<CbPatternViolat
                     pattern_id: "CB-902".to_string(),
                     file: rel.clone(),
                     line: i + 1,
-                    description: "Image missing alt text — add descriptive text in `![alt text](url)`"
-                        .to_string(),
+                    description:
+                        "Image missing alt text — add descriptive text in `![alt text](url)`"
+                            .to_string(),
                     severity: Severity::Info,
                 });
             }

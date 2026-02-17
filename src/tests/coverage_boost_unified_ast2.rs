@@ -6,7 +6,7 @@
 
 use crate::models::unified_ast::{
     AstKind, BytePos, ClassKind, ConfidenceLevel, EvidenceType, FunctionKind, Language, Location,
-    MacroKind, ModuleKind, NodeMetadata, PropertyType, ProofAnnotation, QualifiedName,
+    MacroKind, ModuleKind, NodeMetadata, ProofAnnotation, PropertyType, QualifiedName,
     RelativeLocation, Span, TypeKind, UnifiedAstNode, VerificationMethod,
 };
 use std::path::PathBuf;
@@ -162,7 +162,7 @@ fn test_span_contains_inside() {
 #[test]
 fn test_span_contains_outside() {
     let span = Span::new(10, 50);
-    assert!(!span.contains(BytePos(9)));  // before
+    assert!(!span.contains(BytePos(9))); // before
     assert!(!span.contains(BytePos(50))); // end exclusive
     assert!(!span.contains(BytePos(100)));
 }
@@ -242,7 +242,7 @@ fn test_location_hash() {
     let mut set = HashSet::new();
     set.insert(Location::new(PathBuf::from("a.rs"), 0, 10));
     set.insert(Location::new(PathBuf::from("a.rs"), 0, 20)); // same start, different end
-    // Hash only uses file_path and start pos, so these may collide
+                                                             // Hash only uses file_path and start pos, so these may collide
     assert!(set.len() >= 1);
 }
 
@@ -283,11 +283,8 @@ fn test_qualified_name_simple_to_string() {
 
 #[test]
 fn test_qualified_name_with_disambiguator() {
-    let qname = QualifiedName::new(
-        vec!["mod".to_string()],
-        "func".to_string(),
-    )
-    .with_disambiguator(1);
+    let qname =
+        QualifiedName::new(vec!["mod".to_string()], "func".to_string()).with_disambiguator(1);
     assert_eq!(qname.disambiguator, Some(1));
     assert_eq!(qname.to_qualified_string(), "mod::func#1");
 }
@@ -320,10 +317,7 @@ fn test_qualified_name_from_str_trait() {
 
 #[test]
 fn test_qualified_name_display() {
-    let qname = QualifiedName::new(
-        vec!["crate".to_string()],
-        "Foo".to_string(),
-    );
+    let qname = QualifiedName::new(vec!["crate".to_string()], "Foo".to_string());
     let displayed = format!("{}", qname);
     assert_eq!(displayed, "crate::Foo");
 }
@@ -358,10 +352,7 @@ fn test_node_metadata_clone() {
 
 #[test]
 fn test_unified_ast_node_new_function() {
-    let node = UnifiedAstNode::new(
-        AstKind::Function(FunctionKind::Regular),
-        Language::Rust,
-    );
+    let node = UnifiedAstNode::new(AstKind::Function(FunctionKind::Regular), Language::Rust);
     assert!(node.is_function());
     assert!(!node.is_type_definition());
     assert_eq!(node.lang, Language::Rust);
@@ -375,29 +366,20 @@ fn test_unified_ast_node_new_function() {
 
 #[test]
 fn test_unified_ast_node_new_class() {
-    let node = UnifiedAstNode::new(
-        AstKind::Class(ClassKind::Struct),
-        Language::TypeScript,
-    );
+    let node = UnifiedAstNode::new(AstKind::Class(ClassKind::Struct), Language::TypeScript);
     assert!(!node.is_function());
     assert!(node.is_type_definition());
 }
 
 #[test]
 fn test_unified_ast_node_new_type() {
-    let node = UnifiedAstNode::new(
-        AstKind::Type(TypeKind::Alias),
-        Language::Rust,
-    );
+    let node = UnifiedAstNode::new(AstKind::Type(TypeKind::Alias), Language::Rust);
     assert!(node.is_type_definition());
 }
 
 #[test]
 fn test_unified_ast_node_new_module() {
-    let node = UnifiedAstNode::new(
-        AstKind::Module(ModuleKind::File),
-        Language::Python,
-    );
+    let node = UnifiedAstNode::new(AstKind::Module(ModuleKind::File), Language::Python);
     assert!(node.is_type_definition());
     assert!(!node.is_function());
 }
@@ -413,10 +395,7 @@ fn test_unified_ast_node_method_is_function() {
 
 #[test]
 fn test_unified_ast_node_set_complexity() {
-    let mut node = UnifiedAstNode::new(
-        AstKind::Function(FunctionKind::Regular),
-        Language::Rust,
-    );
+    let mut node = UnifiedAstNode::new(AstKind::Function(FunctionKind::Regular), Language::Rust);
     assert_eq!(node.complexity(), 0);
     node.set_complexity(15);
     assert_eq!(node.complexity(), 15);
@@ -424,10 +403,7 @@ fn test_unified_ast_node_set_complexity() {
 
 #[test]
 fn test_unified_ast_node_clone() {
-    let mut node = UnifiedAstNode::new(
-        AstKind::Function(FunctionKind::Regular),
-        Language::Rust,
-    );
+    let mut node = UnifiedAstNode::new(AstKind::Function(FunctionKind::Regular), Language::Rust);
     node.set_complexity(10);
     let cloned = node.clone();
     assert_eq!(cloned.complexity(), 10);

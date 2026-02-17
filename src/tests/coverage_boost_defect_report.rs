@@ -73,7 +73,10 @@ fn test_defect_category_serde() {
 #[test]
 fn test_defect_category_display() {
     assert_eq!(format!("{}", DefectCategory::Complexity), "Complexity");
-    assert_eq!(format!("{}", DefectCategory::TechnicalDebt), "Technical Debt");
+    assert_eq!(
+        format!("{}", DefectCategory::TechnicalDebt),
+        "Technical Debt"
+    );
     assert_eq!(format!("{}", DefectCategory::DeadCode), "Dead Code");
     assert_eq!(format!("{}", DefectCategory::Duplication), "Duplication");
     assert_eq!(format!("{}", DefectCategory::Performance), "Performance");
@@ -196,14 +199,8 @@ fn test_report_metadata_serde() {
 fn test_defect_summary_serde() {
     let summary = DefectSummary {
         total_defects: 42,
-        by_severity: BTreeMap::from([
-            ("critical".to_string(), 2),
-            ("high".to_string(), 10),
-        ]),
-        by_category: BTreeMap::from([
-            ("complexity".to_string(), 15),
-            ("dead_code".to_string(), 5),
-        ]),
+        by_severity: BTreeMap::from([("critical".to_string(), 2), ("high".to_string(), 10)]),
+        by_category: BTreeMap::from([("complexity".to_string(), 15), ("dead_code".to_string(), 5)]),
         hotspot_files: vec![],
     };
     let json = serde_json::to_string(&summary).unwrap();

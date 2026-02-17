@@ -1498,14 +1498,26 @@ pub(crate) fn crate_func() {}
 
         assert_eq!(result.items.len(), 3);
 
-        let public = result.items.iter().find(|i| i.name == "public_func").unwrap();
+        let public = result
+            .items
+            .iter()
+            .find(|i| i.name == "public_func")
+            .unwrap();
         assert_eq!(public.visibility, "pub");
         assert_eq!(public.item_type, "function");
 
-        let private = result.items.iter().find(|i| i.name == "private_func").unwrap();
+        let private = result
+            .items
+            .iter()
+            .find(|i| i.name == "private_func")
+            .unwrap();
         assert_eq!(private.visibility, "");
 
-        let crate_vis = result.items.iter().find(|i| i.name == "crate_func").unwrap();
+        let crate_vis = result
+            .items
+            .iter()
+            .find(|i| i.name == "crate_func")
+            .unwrap();
         assert_eq!(crate_vis.visibility, "pub(crate)");
     }
 
@@ -1578,10 +1590,18 @@ impl Foo {
 "#;
         let result = extract_file_details("foo.rs", source, Language::Rust).unwrap();
 
-        let pub_method = result.items.iter().find(|i| i.name == "public_method").unwrap();
+        let pub_method = result
+            .items
+            .iter()
+            .find(|i| i.name == "public_method")
+            .unwrap();
         assert_eq!(pub_method.visibility, "pub");
 
-        let priv_method = result.items.iter().find(|i| i.name == "private_method").unwrap();
+        let priv_method = result
+            .items
+            .iter()
+            .find(|i| i.name == "private_method")
+            .unwrap();
         assert_eq!(priv_method.visibility, "");
     }
 
@@ -1602,13 +1622,25 @@ export const arrowExport = () => {};
         assert!(result.imports[0].contains("foo"));
         assert!(result.cfg_test_line.is_none());
 
-        let exported = result.items.iter().find(|i| i.name == "exportedFunc").unwrap();
+        let exported = result
+            .items
+            .iter()
+            .find(|i| i.name == "exportedFunc")
+            .unwrap();
         assert_eq!(exported.visibility, "export");
 
-        let private = result.items.iter().find(|i| i.name == "privateFunc").unwrap();
+        let private = result
+            .items
+            .iter()
+            .find(|i| i.name == "privateFunc")
+            .unwrap();
         assert_eq!(private.visibility, "");
 
-        let arrow = result.items.iter().find(|i| i.name == "arrowExport").unwrap();
+        let arrow = result
+            .items
+            .iter()
+            .find(|i| i.name == "arrowExport")
+            .unwrap();
         assert_eq!(arrow.visibility, "export");
     }
 
@@ -1631,10 +1663,18 @@ func unexportedFunc() {}
         assert_eq!(result.imports.len(), 1);
         assert!(result.imports[0].contains("fmt"));
 
-        let exported = result.items.iter().find(|i| i.name == "ExportedFunc").unwrap();
+        let exported = result
+            .items
+            .iter()
+            .find(|i| i.name == "ExportedFunc")
+            .unwrap();
         assert_eq!(exported.visibility, "pub");
 
-        let unexported = result.items.iter().find(|i| i.name == "unexportedFunc").unwrap();
+        let unexported = result
+            .items
+            .iter()
+            .find(|i| i.name == "unexportedFunc")
+            .unwrap();
         assert_eq!(unexported.visibility, "");
     }
 
@@ -1668,10 +1708,18 @@ func unexportedFunc() {}
         let source = "fn single_line() {}\n\nfn multi_line(\n    x: i32,\n    y: i32,\n) -> i32 {\n    x + y\n}\n";
         let result = extract_file_details("test.rs", source, Language::Rust).unwrap();
 
-        let single = result.items.iter().find(|i| i.name == "single_line").unwrap();
+        let single = result
+            .items
+            .iter()
+            .find(|i| i.name == "single_line")
+            .unwrap();
         assert_eq!(single.lines, 1);
 
-        let multi = result.items.iter().find(|i| i.name == "multi_line").unwrap();
+        let multi = result
+            .items
+            .iter()
+            .find(|i| i.name == "multi_line")
+            .unwrap();
         assert!(multi.lines > 1);
     }
 

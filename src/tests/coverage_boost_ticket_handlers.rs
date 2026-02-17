@@ -140,8 +140,14 @@ fn test_generate_next_id_with_mixed_prefixes() {
 #[test]
 fn test_generate_next_id_with_non_numeric_ids() {
     let mut roadmap = Roadmap::new(None);
-    roadmap.upsert_item(RoadmapItem::new("no-number".to_string(), "Test".to_string()));
-    roadmap.upsert_item(RoadmapItem::new("also-no-number".to_string(), "Test".to_string()));
+    roadmap.upsert_item(RoadmapItem::new(
+        "no-number".to_string(),
+        "Test".to_string(),
+    ));
+    roadmap.upsert_item(RoadmapItem::new(
+        "also-no-number".to_string(),
+        "Test".to_string(),
+    ));
     let next_id = generate_next_id_test(&roadmap);
     // No numeric suffixes found, so starts from 1
     assert_eq!(next_id, "PMAT-001");
@@ -261,8 +267,8 @@ fn test_calculate_spec_score_max_code_examples() {
 #[test]
 fn test_calculate_spec_score_max_score() {
     let spec = TestParsedSpec {
-        issue_refs: vec!["GH-1".to_string()],           // +10
-        code_examples: vec!["ex".to_string(); 5],       // +20 (5*4)
+        issue_refs: vec!["GH-1".to_string()],            // +10
+        code_examples: vec!["ex".to_string(); 5],        // +20 (5*4)
         acceptance_criteria: vec!["ac".to_string(); 10], // +30 (10*3)
         claims: vec!["cl".to_string(); 20],              // +20 (20*1)
         title: "Title".to_string(),                      // +5
@@ -430,9 +436,7 @@ fn test_roadmap_service_remove() {
     let item = RoadmapItem::new("TEST-001".to_string(), "Test ticket".to_string());
     service.upsert_item(item).expect("Failed to upsert");
 
-    let removed = service
-        .remove_item("TEST-001")
-        .expect("Failed to remove");
+    let removed = service.remove_item("TEST-001").expect("Failed to remove");
     assert!(removed.is_some());
     assert_eq!(removed.unwrap().id, "TEST-001");
 
@@ -501,44 +505,95 @@ fn test_fuzzy_matching_not_found() {
 
 #[test]
 fn test_item_status_from_string_completed() {
-    assert_eq!(ItemStatus::from_string("completed").unwrap(), ItemStatus::Completed);
-    assert_eq!(ItemStatus::from_string("done").unwrap(), ItemStatus::Completed);
-    assert_eq!(ItemStatus::from_string("DONE").unwrap(), ItemStatus::Completed);
+    assert_eq!(
+        ItemStatus::from_string("completed").unwrap(),
+        ItemStatus::Completed
+    );
+    assert_eq!(
+        ItemStatus::from_string("done").unwrap(),
+        ItemStatus::Completed
+    );
+    assert_eq!(
+        ItemStatus::from_string("DONE").unwrap(),
+        ItemStatus::Completed
+    );
 }
 
 #[test]
 fn test_item_status_from_string_inprogress() {
-    assert_eq!(ItemStatus::from_string("inprogress").unwrap(), ItemStatus::InProgress);
-    assert_eq!(ItemStatus::from_string("wip").unwrap(), ItemStatus::InProgress);
-    assert_eq!(ItemStatus::from_string("in-progress").unwrap(), ItemStatus::InProgress);
+    assert_eq!(
+        ItemStatus::from_string("inprogress").unwrap(),
+        ItemStatus::InProgress
+    );
+    assert_eq!(
+        ItemStatus::from_string("wip").unwrap(),
+        ItemStatus::InProgress
+    );
+    assert_eq!(
+        ItemStatus::from_string("in-progress").unwrap(),
+        ItemStatus::InProgress
+    );
 }
 
 #[test]
 fn test_item_status_from_string_planned() {
-    assert_eq!(ItemStatus::from_string("planned").unwrap(), ItemStatus::Planned);
-    assert_eq!(ItemStatus::from_string("todo").unwrap(), ItemStatus::Planned);
-    assert_eq!(ItemStatus::from_string("open").unwrap(), ItemStatus::Planned);
+    assert_eq!(
+        ItemStatus::from_string("planned").unwrap(),
+        ItemStatus::Planned
+    );
+    assert_eq!(
+        ItemStatus::from_string("todo").unwrap(),
+        ItemStatus::Planned
+    );
+    assert_eq!(
+        ItemStatus::from_string("open").unwrap(),
+        ItemStatus::Planned
+    );
 }
 
 #[test]
 fn test_item_status_from_string_blocked() {
-    assert_eq!(ItemStatus::from_string("blocked").unwrap(), ItemStatus::Blocked);
-    assert_eq!(ItemStatus::from_string("stuck").unwrap(), ItemStatus::Blocked);
-    assert_eq!(ItemStatus::from_string("on-hold").unwrap(), ItemStatus::Blocked);
+    assert_eq!(
+        ItemStatus::from_string("blocked").unwrap(),
+        ItemStatus::Blocked
+    );
+    assert_eq!(
+        ItemStatus::from_string("stuck").unwrap(),
+        ItemStatus::Blocked
+    );
+    assert_eq!(
+        ItemStatus::from_string("on-hold").unwrap(),
+        ItemStatus::Blocked
+    );
 }
 
 #[test]
 fn test_item_status_from_string_review() {
-    assert_eq!(ItemStatus::from_string("review").unwrap(), ItemStatus::Review);
+    assert_eq!(
+        ItemStatus::from_string("review").unwrap(),
+        ItemStatus::Review
+    );
     assert_eq!(ItemStatus::from_string("pr").unwrap(), ItemStatus::Review);
-    assert_eq!(ItemStatus::from_string("pending-review").unwrap(), ItemStatus::Review);
+    assert_eq!(
+        ItemStatus::from_string("pending-review").unwrap(),
+        ItemStatus::Review
+    );
 }
 
 #[test]
 fn test_item_status_from_string_cancelled() {
-    assert_eq!(ItemStatus::from_string("cancelled").unwrap(), ItemStatus::Cancelled);
-    assert_eq!(ItemStatus::from_string("canceled").unwrap(), ItemStatus::Cancelled);
-    assert_eq!(ItemStatus::from_string("wontfix").unwrap(), ItemStatus::Cancelled);
+    assert_eq!(
+        ItemStatus::from_string("cancelled").unwrap(),
+        ItemStatus::Cancelled
+    );
+    assert_eq!(
+        ItemStatus::from_string("canceled").unwrap(),
+        ItemStatus::Cancelled
+    );
+    assert_eq!(
+        ItemStatus::from_string("wontfix").unwrap(),
+        ItemStatus::Cancelled
+    );
 }
 
 #[test]
@@ -771,7 +826,10 @@ fn test_title_with_unicode() {
     let (temp_dir, roadmap_path) = setup_temp_roadmap();
 
     let service = RoadmapService::new(&roadmap_path);
-    let item = RoadmapItem::new("TEST-001".to_string(), "Unicode: \u{2713} \u{2717}".to_string());
+    let item = RoadmapItem::new(
+        "TEST-001".to_string(),
+        "Unicode: \u{2713} \u{2717}".to_string(),
+    );
     service.upsert_item(item).expect("Failed to upsert");
 
     let loaded = service.find_item("TEST-001").unwrap().unwrap();
@@ -827,7 +885,12 @@ fn test_status_normalization_patterns() {
     for (old, new) in patterns {
         let mut content = format!("test content with {}", old);
         content = content.replace(old, new);
-        assert!(content.contains(new), "Failed to replace {} with {}", old, new);
+        assert!(
+            content.contains(new),
+            "Failed to replace {} with {}",
+            old,
+            new
+        );
     }
 }
 
@@ -1016,7 +1079,10 @@ fn test_file_path_regex_pattern() {
     ];
 
     for (input, expected) in test_cases {
-        let result = pattern.captures(input).and_then(|c| c.get(1)).map(|m| m.as_str());
+        let result = pattern
+            .captures(input)
+            .and_then(|c| c.get(1))
+            .map(|m| m.as_str());
         assert_eq!(result, expected, "Failed for input: {}", input);
     }
 }
@@ -1080,7 +1146,14 @@ roadmap:
 
 #[test]
 fn test_yaml_with_all_status_values() {
-    let statuses = ["planned", "inprogress", "blocked", "review", "completed", "cancelled"];
+    let statuses = [
+        "planned",
+        "inprogress",
+        "blocked",
+        "review",
+        "completed",
+        "cancelled",
+    ];
 
     for status in statuses {
         let yaml = format!(
@@ -1127,7 +1200,11 @@ fn test_handle_work_list_filtering_logic() {
     let planned: Vec<_> = roadmap
         .roadmap
         .iter()
-        .filter(|item| format!("{:?}", item.status).to_lowercase().contains("planned"))
+        .filter(|item| {
+            format!("{:?}", item.status)
+                .to_lowercase()
+                .contains("planned")
+        })
         .collect();
     assert_eq!(planned.len(), 1);
     assert_eq!(planned[0].id, "PMAT-001");

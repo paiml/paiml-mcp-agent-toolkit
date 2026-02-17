@@ -166,4 +166,3 @@ fn parse_quality_profile(value: &Value) -> QualityProfile {
         })
         .unwrap_or_default()
 }
-

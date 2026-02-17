@@ -123,12 +123,12 @@ impl Default for TDGConfig {
         Self {
             // CB-128: Rebalanced weights to add dead_code component
             // Total still sums to 1.0
-            complexity_weight: 0.25,  // Was 0.30
-            churn_weight: 0.20,       // Was 0.35
+            complexity_weight: 0.25, // Was 0.30
+            churn_weight: 0.20,      // Was 0.35
             coupling_weight: 0.15,
             domain_risk_weight: 0.10,
             duplication_weight: 0.10,
-            dead_code_weight: 0.20,   // NEW: CB-128 6th dimension
+            dead_code_weight: 0.20, // NEW: CB-128 6th dimension
             critical_threshold: 2.5,
             warning_threshold: 1.5,
         }
@@ -382,7 +382,7 @@ mod tests {
             + config.coupling_weight
             + config.domain_risk_weight
             + config.duplication_weight
-            + config.dead_code_weight;  // CB-128: 6th dimension
+            + config.dead_code_weight; // CB-128: 6th dimension
 
         // Weights should sum to 1.0
         assert!((total_weight - 1.0).abs() < f64::EPSILON);
@@ -421,7 +421,7 @@ mod new_tests {
             coupling: 0.3,
             domain_risk: 0.2,
             duplication: 0.4,
-            dead_code: 0.1,  // CB-128: 6th dimension
+            dead_code: 0.1, // CB-128: 6th dimension
         };
 
         let score = TDGScore {
@@ -601,7 +601,7 @@ mod new_tests {
             coupling_weight: 0.15,
             domain_risk_weight: 0.10,
             duplication_weight: 0.10,
-            dead_code_weight: 0.20,  // CB-128: 6th dimension
+            dead_code_weight: 0.20, // CB-128: 6th dimension
             critical_threshold: 2.5,
             warning_threshold: 1.5,
         };

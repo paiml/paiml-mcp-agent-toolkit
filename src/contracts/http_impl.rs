@@ -1312,7 +1312,10 @@ mod openapi_coverage_tests {
         let spec = generate_openapi_spec();
         assert_eq!(spec["info"]["title"], "PMAT API");
         assert!(spec["info"]["version"].is_string());
-        assert!(spec["info"]["description"].as_str().unwrap().contains("uniform contracts"));
+        assert!(spec["info"]["description"]
+            .as_str()
+            .unwrap()
+            .contains("uniform contracts"));
     }
 
     #[test]
@@ -1340,7 +1343,11 @@ mod openapi_coverage_tests {
 
         for path in &expected_paths {
             assert!(paths.contains_key(*path), "Missing path: {}", path);
-            assert!(paths[*path]["post"].is_object(), "Path {} should have POST", path);
+            assert!(
+                paths[*path]["post"].is_object(),
+                "Path {} should have POST",
+                path
+            );
         }
     }
 
@@ -1391,9 +1398,14 @@ mod openapi_coverage_tests {
     #[test]
     fn test_openapi_spec_format_enum_values() {
         let spec = generate_openapi_spec();
-        let format_enum = &spec["components"]["schemas"]["BaseAnalysisContract"]["properties"]["format"]["enum"];
-        let formats: Vec<&str> = format_enum.as_array().unwrap()
-            .iter().map(|v| v.as_str().unwrap()).collect();
+        let format_enum =
+            &spec["components"]["schemas"]["BaseAnalysisContract"]["properties"]["format"]["enum"];
+        let formats: Vec<&str> = format_enum
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|v| v.as_str().unwrap())
+            .collect();
 
         assert!(formats.contains(&"table"));
         assert!(formats.contains(&"json"));
@@ -1424,7 +1436,11 @@ mod openapi_coverage_tests {
         let paths = spec["paths"].as_object().unwrap();
         for (path, methods) in paths {
             if let Some(post) = methods.get("post") {
-                assert!(post.get("summary").is_some(), "Path {} POST missing summary", path);
+                assert!(
+                    post.get("summary").is_some(),
+                    "Path {} POST missing summary",
+                    path
+                );
                 let summary = post["summary"].as_str().unwrap();
                 assert!(!summary.is_empty(), "Path {} POST has empty summary", path);
             }

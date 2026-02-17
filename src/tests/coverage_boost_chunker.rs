@@ -632,7 +632,9 @@ mod python_disabled_tests {
         let source = "def test(): pass";
         let result = chunk_code(source, Language::Python);
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("python-ast feature is disabled"));
+        assert!(result
+            .unwrap_err()
+            .contains("python-ast feature is disabled"));
     }
 }
 
@@ -1053,7 +1055,8 @@ fn test_chunk_text_with_overlap_single_chunk() {
 
 #[test]
 fn test_chunk_text_with_overlap_multiple_chunks() {
-    let text = "This is a longer text that should be split into multiple chunks for testing purposes.";
+    let text =
+        "This is a longer text that should be split into multiple chunks for testing purposes.";
     let chunks = chunk_text_with_overlap(text, 30, 10);
     assert!(chunks.len() > 1);
 }

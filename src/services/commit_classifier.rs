@@ -253,9 +253,7 @@ mod tests {
         let result = ClassificationResult {
             class: "TestClass".to_string(),
             confidence: 0.85,
-            scores: [("TestClass".to_string(), -1.5)]
-                .into_iter()
-                .collect(),
+            scores: [("TestClass".to_string(), -1.5)].into_iter().collect(),
         };
         assert_eq!(result.class, "TestClass");
         assert_eq!(result.confidence, 0.85);
@@ -277,12 +275,8 @@ mod tests {
         let classifier = CommitClassifier {
             vocabulary: HashMap::new(),
             classes: vec!["Default".to_string()],
-            class_priors: [("Default".to_string(), -1.0)]
-                .into_iter()
-                .collect(),
-            feature_log_probs: [("Default".to_string(), vec![])]
-                .into_iter()
-                .collect(),
+            class_priors: [("Default".to_string(), -1.0)].into_iter().collect(),
+            feature_log_probs: [("Default".to_string(), vec![])].into_iter().collect(),
             metadata: ClassifierMetadata::default(),
         };
 

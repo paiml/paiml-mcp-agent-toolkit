@@ -467,10 +467,7 @@ class Calculator {
             analyzer.extract_function_name("func compute(_ a: Int, _ b: Int) -> Int {"),
             Some("compute".to_string())
         );
-        assert_eq!(
-            analyzer.extract_function_name("not a function"),
-            None
-        );
+        assert_eq!(analyzer.extract_function_name("not a function"), None);
     }
 
     #[test]
@@ -489,19 +486,22 @@ class Calculator {
             analyzer.extract_class_name("struct Point {"),
             Some("Point".to_string())
         );
-        assert_eq!(
-            analyzer.extract_class_name("not a class"),
-            None
-        );
+        assert_eq!(analyzer.extract_class_name("not a class"), None);
     }
 
     #[test]
     fn test_swift_analyzer_extract_visibility() {
         let analyzer = SwiftSourceAnalyzer::new(Path::new("test.swift"));
 
-        assert_eq!(analyzer.extract_visibility("private func helper()"), "private");
+        assert_eq!(
+            analyzer.extract_visibility("private func helper()"),
+            "private"
+        );
         assert_eq!(analyzer.extract_visibility("public func api()"), "public");
-        assert_eq!(analyzer.extract_visibility("internal func internal_fn()"), "internal");
+        assert_eq!(
+            analyzer.extract_visibility("internal func internal_fn()"),
+            "internal"
+        );
         assert_eq!(analyzer.extract_visibility("func default_fn()"), "internal");
     }
 
@@ -649,7 +649,10 @@ struct Point {
 "#;
         let items = analyzer.analyze_swift_source(code).expect("Should parse");
 
-        let structs: Vec<_> = items.iter().filter(|i| matches!(i, AstItem::Struct { .. })).collect();
+        let structs: Vec<_> = items
+            .iter()
+            .filter(|i| matches!(i, AstItem::Struct { .. }))
+            .collect();
         assert!(!structs.is_empty());
     }
 
@@ -671,7 +674,10 @@ struct Product {
 "#;
         let items = analyzer.analyze_swift_source(code).expect("Should parse");
 
-        let types: Vec<_> = items.iter().filter(|i| matches!(i, AstItem::Struct { .. })).collect();
+        let types: Vec<_> = items
+            .iter()
+            .filter(|i| matches!(i, AstItem::Struct { .. }))
+            .collect();
         assert_eq!(types.len(), 3);
     }
 
@@ -685,15 +691,21 @@ func fetchData() async throws -> Data {
 "#;
         let items = analyzer.analyze_swift_source(code).expect("Should parse");
 
-        let functions: Vec<_> = items.iter().filter_map(|i| {
-            if let AstItem::Function { is_async, .. } = i {
-                Some(*is_async)
-            } else {
-                None
-            }
-        }).collect();
+        let functions: Vec<_> = items
+            .iter()
+            .filter_map(|i| {
+                if let AstItem::Function { is_async, .. } = i {
+                    Some(*is_async)
+                } else {
+                    None
+                }
+            })
+            .collect();
 
-        assert!(functions.iter().any(|&is_async| is_async), "Should detect async function");
+        assert!(
+            functions.iter().any(|&is_async| is_async),
+            "Should detect async function"
+        );
     }
 
     #[test]
@@ -708,7 +720,10 @@ func helperFunction() {
         let items = analyzer.analyze_swift_source(code).expect("Should parse");
 
         // Verify function is found
-        let functions: Vec<_> = items.iter().filter(|i| matches!(i, AstItem::Function { .. })).collect();
+        let functions: Vec<_> = items
+            .iter()
+            .filter(|i| matches!(i, AstItem::Function { .. }))
+            .collect();
         assert!(!functions.is_empty(), "Should detect function");
     }
 }

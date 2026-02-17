@@ -218,7 +218,9 @@ pub(super) fn insert_call_graph(
 
     {
         let mut stmt = tx
-            .prepare_cached("INSERT OR IGNORE INTO call_graph (caller_id, callee_id) VALUES (?1, ?2)")
+            .prepare_cached(
+                "INSERT OR IGNORE INTO call_graph (caller_id, callee_id) VALUES (?1, ?2)",
+            )
             .map_err(|e| format!("Failed to prepare call_graph insert: {e}"))?;
 
         for (caller, callees) in calls {
@@ -255,8 +257,14 @@ pub(super) fn insert_graph_metrics(
 
         for (idx, m) in metrics.iter().enumerate() {
             let func_id = (idx + 1) as i64;
-            stmt.execute(params![func_id, m.pagerank, m.centrality, m.in_degree, m.out_degree])
-                .map_err(|e| format!("Failed to insert metric {}: {e}", idx))?;
+            stmt.execute(params![
+                func_id,
+                m.pagerank,
+                m.centrality,
+                m.in_degree,
+                m.out_degree
+            ])
+            .map_err(|e| format!("Failed to insert metric {}: {e}", idx))?;
         }
     }
 
@@ -266,10 +274,7 @@ pub(super) fn insert_graph_metrics(
 }
 
 /// Insert metadata key-value pairs.
-pub(super) fn insert_metadata(
-    conn: &Connection,
-    manifest: &IndexManifest,
-) -> Result<(), String> {
+pub(super) fn insert_metadata(conn: &Connection, manifest: &IndexManifest) -> Result<(), String> {
     conn.execute(
         "INSERT OR REPLACE INTO metadata (key, value) VALUES ('version', ?1)",
         params![SCHEMA_VERSION],
@@ -565,7 +570,10 @@ pub(crate) fn load_functions_lightweight(conn: &Connection) -> Result<Vec<Functi
 ///
 /// Reads `(id, source)` from SQLite and updates `functions[id-1].source`.
 /// Used when regex/literal mode needs full source for pattern matching.
-pub(crate) fn load_source_into(conn: &Connection, functions: &mut [FunctionEntry]) -> Result<(), String> {
+pub(crate) fn load_source_into(
+    conn: &Connection,
+    functions: &mut [FunctionEntry],
+) -> Result<(), String> {
     let mut stmt = conn
         .prepare("SELECT id, source FROM functions ORDER BY id")
         .map_err(|e| format!("Failed to prepare source load: {e}"))?;
@@ -647,7 +655,9 @@ pub(crate) fn load_graph_metrics(conn: &Connection) -> Result<Vec<GraphMetrics>,
     let mut metrics = vec![GraphMetrics::default(); count as usize];
 
     let mut stmt = conn
-        .prepare("SELECT function_id, pagerank, centrality, in_degree, out_degree FROM graph_metrics")
+        .prepare(
+            "SELECT function_id, pagerank, centrality, in_degree, out_degree FROM graph_metrics",
+        )
         .map_err(|e| format!("Failed to prepare metrics load: {e}"))?;
 
     let rows = stmt
@@ -695,16 +705,30 @@ pub(crate) fn load_metadata(conn: &Connection) -> Result<IndexManifest, String> 
         .collect();
 
     // Self-heal: use defaults for missing metadata instead of failing (#162)
-    let version = rows.get("version").cloned().unwrap_or_else(|| "2.0".to_string());
-    let built_at = rows.get("built_at").cloned().unwrap_or_else(|| "unknown".to_string());
-    let project_root = rows.get("project_root").cloned().unwrap_or_else(|| ".".to_string());
-    let function_count: usize = rows.get("function_count")
+    let version = rows
+        .get("version")
+        .cloned()
+        .unwrap_or_else(|| "2.0".to_string());
+    let built_at = rows
+        .get("built_at")
+        .cloned()
+        .unwrap_or_else(|| "unknown".to_string());
+    let project_root = rows
+        .get("project_root")
+        .cloned()
+        .unwrap_or_else(|| ".".to_string());
+    let function_count: usize = rows
+        .get("function_count")
         .and_then(|v| v.parse().ok())
         .unwrap_or(0);
-    let file_count: usize = rows.get("file_count")
+    let file_count: usize = rows
+        .get("file_count")
         .and_then(|v| v.parse().ok())
         .unwrap_or(0);
-    let checksums_json = rows.get("file_checksums").cloned().unwrap_or_else(|| "{}".to_string());
+    let checksums_json = rows
+        .get("file_checksums")
+        .cloned()
+        .unwrap_or_else(|| "{}".to_string());
     let file_checksums: HashMap<String, String> =
         serde_json::from_str(&checksums_json).unwrap_or_default();
 
@@ -833,9 +857,17 @@ mod tests {
         create_schema(&conn).unwrap();
 
         let functions = vec![
-            make_test_entry("handle_request", "fn handle_request() { validate(); }", "src/server.rs"),
+            make_test_entry(
+                "handle_request",
+                "fn handle_request() { validate(); }",
+                "src/server.rs",
+            ),
             make_test_entry("validate", "fn validate() { check_auth(); }", "src/auth.rs"),
-            make_test_entry("render_page", "fn render_page() { template(); }", "src/view.rs"),
+            make_test_entry(
+                "render_page",
+                "fn render_page() { template(); }",
+                "src/view.rs",
+            ),
         ];
 
         insert_functions(&conn, &functions).unwrap();
@@ -852,15 +884,30 @@ mod tests {
         create_schema(&conn).unwrap();
 
         let functions = vec![
-            make_test_entry("handle_request", "fn handle_request() { validate(); process_response(); }", "src/server.rs"),
-            make_test_entry("validate_input", "fn validate_input() { check_bounds(); }", "src/validation.rs"),
-            make_test_entry("render_page", "fn render_page() { template_engine(); css_loader(); }", "src/view.rs"),
+            make_test_entry(
+                "handle_request",
+                "fn handle_request() { validate(); process_response(); }",
+                "src/server.rs",
+            ),
+            make_test_entry(
+                "validate_input",
+                "fn validate_input() { check_bounds(); }",
+                "src/validation.rs",
+            ),
+            make_test_entry(
+                "render_page",
+                "fn render_page() { template_engine(); css_loader(); }",
+                "src/view.rs",
+            ),
         ];
 
         insert_functions(&conn, &functions).unwrap();
 
         let results = fts5_search(&conn, "validate", 10).unwrap();
-        assert!(!results.is_empty(), "should find functions matching 'validate'");
+        assert!(
+            !results.is_empty(),
+            "should find functions matching 'validate'"
+        );
         // validate_input should rank higher (name match)
         let top_name = &functions[results[0].0].function_name;
         assert!(
@@ -970,16 +1017,34 @@ mod tests {
         let db_path = temp_dir.path().join("test.db");
 
         let functions = vec![
-            make_test_entry("handle_error", "fn handle_error() { log_error(); notify(); }", "src/error.rs"),
-            make_test_entry("log_error", "fn log_error() { write_log(); }", "src/logging.rs"),
+            make_test_entry(
+                "handle_error",
+                "fn handle_error() { log_error(); notify(); }",
+                "src/error.rs",
+            ),
+            make_test_entry(
+                "log_error",
+                "fn log_error() { write_log(); }",
+                "src/logging.rs",
+            ),
         ];
 
         let mut calls = HashMap::new();
         calls.insert(0, vec![1]);
 
         let metrics = vec![
-            GraphMetrics { pagerank: 0.6, centrality: 0.4, in_degree: 0, out_degree: 1 },
-            GraphMetrics { pagerank: 0.8, centrality: 0.5, in_degree: 1, out_degree: 0 },
+            GraphMetrics {
+                pagerank: 0.6,
+                centrality: 0.4,
+                in_degree: 0,
+                out_degree: 1,
+            },
+            GraphMetrics {
+                pagerank: 0.8,
+                centrality: 0.5,
+                in_degree: 1,
+                out_degree: 0,
+            },
         ];
 
         let manifest = IndexManifest {
@@ -994,7 +1059,15 @@ mod tests {
             last_incremental_changes: 0,
         };
 
-        save_to_sqlite(&db_path, &functions, &calls, &metrics, &manifest, &HashSet::new()).unwrap();
+        save_to_sqlite(
+            &db_path,
+            &functions,
+            &calls,
+            &metrics,
+            &manifest,
+            &HashSet::new(),
+        )
+        .unwrap();
 
         // Verify file exists and has reasonable size
         assert!(db_path.exists());

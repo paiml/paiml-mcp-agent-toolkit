@@ -90,7 +90,9 @@ mod cb130_tests {
         let report = detect_cb130_agent_context_adoption(temp.path());
         // "pmat query" is present but "NEVER use grep" is missing
         assert!(report.claude_md_configured);
-        assert!(report.missing_required_patterns.contains(&"NEVER use grep".to_string()));
+        assert!(report
+            .missing_required_patterns
+            .contains(&"NEVER use grep".to_string()));
     }
 
     #[test]
@@ -451,16 +453,21 @@ mod cb081_dependency_tests {
         let temp = TempDir::new().unwrap();
 
         // Create Cargo.toml with many dependencies (>50)
-        let mut deps = String::from("[package]\nname = \"test\"\nversion = \"0.1.0\"\n\n[dependencies]\n");
+        let mut deps =
+            String::from("[package]\nname = \"test\"\nversion = \"0.1.0\"\n\n[dependencies]\n");
         for i in 0..60 {
             deps.push_str(&format!("dep{} = \"1.0\"\n", i));
         }
         fs::write(temp.path().join("Cargo.toml"), &deps).unwrap();
-        fs::write(temp.path().join("Cargo.lock"), "[[package]]\nname = \"test\"").unwrap();
+        fs::write(
+            temp.path().join("Cargo.lock"),
+            "[[package]]\nname = \"test\"",
+        )
+        .unwrap();
 
         let report = detect_cb081_dependency_count(temp.path());
         assert_eq!(report.direct_count, 60);
-        assert_eq!(report.score, 0);  // >50 direct = score 0
+        assert_eq!(report.score, 0); // >50 direct = score 0
         assert!(!report.violations.is_empty());
         assert_eq!(report.violations[0].pattern_id, "CB-081-A");
     }
@@ -470,7 +477,8 @@ mod cb081_dependency_tests {
         let temp = TempDir::new().unwrap();
 
         // Create Cargo.toml with moderate dependencies (30-40)
-        let mut deps = String::from("[package]\nname = \"test\"\nversion = \"0.1.0\"\n\n[dependencies]\n");
+        let mut deps =
+            String::from("[package]\nname = \"test\"\nversion = \"0.1.0\"\n\n[dependencies]\n");
         for i in 0..35 {
             deps.push_str(&format!("dep{} = \"1.0\"\n", i));
         }
@@ -486,7 +494,7 @@ mod cb081_dependency_tests {
         let report = detect_cb081_dependency_count(temp.path());
         assert_eq!(report.direct_count, 35);
         assert_eq!(report.transitive_count, 180);
-        assert_eq!(report.score, 3);  // 30-40 direct, 150-200 transitive = 3
+        assert_eq!(report.score, 3); // 30-40 direct, 150-200 transitive = 3
     }
 
     #[test]
@@ -494,7 +502,8 @@ mod cb081_dependency_tests {
         let temp = TempDir::new().unwrap();
 
         // Create Cargo.toml with few dependencies (<=20)
-        let mut deps = String::from("[package]\nname = \"test\"\nversion = \"0.1.0\"\n\n[dependencies]\n");
+        let mut deps =
+            String::from("[package]\nname = \"test\"\nversion = \"0.1.0\"\n\n[dependencies]\n");
         for i in 0..15 {
             deps.push_str(&format!("dep{} = \"1.0\"\n", i));
         }
@@ -510,7 +519,7 @@ mod cb081_dependency_tests {
         let report = detect_cb081_dependency_count(temp.path());
         assert_eq!(report.direct_count, 15);
         assert_eq!(report.transitive_count, 80);
-        assert_eq!(report.score, 5);  // <=20 direct, <=100 transitive = 5
+        assert_eq!(report.score, 5); // <=20 direct, <=100 transitive = 5
         assert!(report.violations.is_empty());
     }
 
@@ -536,7 +545,11 @@ quickcheck = "1.0"
 tokio-test = "0.4"
 "#;
         fs::write(temp.path().join("Cargo.toml"), deps).unwrap();
-        fs::write(temp.path().join("Cargo.lock"), "[[package]]\nname = \"test\"").unwrap();
+        fs::write(
+            temp.path().join("Cargo.lock"),
+            "[[package]]\nname = \"test\"",
+        )
+        .unwrap();
 
         let report = detect_cb081_dependency_count(temp.path());
         // Only counts [dependencies], not [dev-dependencies]
@@ -580,7 +593,11 @@ tokio-test = "0.4"
         let hooks_dir = temp.path().join(".git/hooks");
         fs::create_dir_all(&hooks_dir).unwrap();
         // Sample hooks should be ignored
-        fs::write(hooks_dir.join("pre-commit.sample"), "#!/bin/bash\necho test").unwrap();
+        fs::write(
+            hooks_dir.join("pre-commit.sample"),
+            "#!/bin/bash\necho test",
+        )
+        .unwrap();
         let violations = detect_cb400_git_hooks_quality(temp.path());
         assert!(violations.is_empty(), "Sample hooks should be ignored");
     }
@@ -598,7 +615,10 @@ tokio-test = "0.4"
         let temp = TempDir::new().unwrap();
         // No shell scripts
         let violations = detect_cb402_shell_script_quality(temp.path());
-        assert!(violations.is_empty(), "No shell scripts should return empty");
+        assert!(
+            violations.is_empty(),
+            "No shell scripts should return empty"
+        );
     }
 
     #[test]
@@ -609,7 +629,10 @@ tokio-test = "0.4"
         fs::create_dir_all(&target_dir).unwrap();
         fs::write(target_dir.join("test.sh"), "#!/bin/bash\necho test").unwrap();
         let violations = detect_cb402_shell_script_quality(temp.path());
-        assert!(violations.is_empty(), "Scripts in target/ should be ignored");
+        assert!(
+            violations.is_empty(),
+            "Scripts in target/ should be ignored"
+        );
     }
 
     #[test]
@@ -712,11 +735,7 @@ mod cb600_lua_tests {
     #[test]
     fn test_cb600_detects_implicit_global() {
         let temp = TempDir::new().unwrap();
-        fs::write(
-            temp.path().join("app.lua"),
-            "counter = 0\nlocal x = 1\n",
-        )
-        .unwrap();
+        fs::write(temp.path().join("app.lua"), "counter = 0\nlocal x = 1\n").unwrap();
         let violations = detect_cb600_implicit_globals(temp.path());
         assert_eq!(violations.len(), 1);
         assert_eq!(violations[0].pattern_id, "CB-600");
@@ -764,7 +783,11 @@ mod cb600_lua_tests {
         )
         .unwrap();
         let violations = detect_cb600_implicit_globals(temp.path());
-        assert!(violations.is_empty(), "table constructor fields are not globals: {:?}", violations);
+        assert!(
+            violations.is_empty(),
+            "table constructor fields are not globals: {:?}",
+            violations
+        );
     }
 
     #[test]
@@ -776,7 +799,11 @@ mod cb600_lua_tests {
         )
         .unwrap();
         let violations = detect_cb600_implicit_globals(temp.path());
-        assert!(violations.is_empty(), "inline table constructor fields are not globals: {:?}", violations);
+        assert!(
+            violations.is_empty(),
+            "inline table constructor fields are not globals: {:?}",
+            violations
+        );
     }
 
     #[test]
@@ -804,7 +831,11 @@ mod cb600_lua_tests {
         )
         .unwrap();
         let violations = detect_cb600_implicit_globals(temp.path());
-        assert!(violations.is_empty(), "function params should not be flagged: {:?}", violations);
+        assert!(
+            violations.is_empty(),
+            "function params should not be flagged: {:?}",
+            violations
+        );
     }
 
     #[test]
@@ -816,7 +847,11 @@ mod cb600_lua_tests {
         )
         .unwrap();
         let violations = detect_cb600_implicit_globals(temp.path());
-        assert!(violations.is_empty(), "for-loop vars should not be flagged: {:?}", violations);
+        assert!(
+            violations.is_empty(),
+            "for-loop vars should not be flagged: {:?}",
+            violations
+        );
     }
 
     #[test]
@@ -828,7 +863,11 @@ mod cb600_lua_tests {
         )
         .unwrap();
         let violations = detect_cb600_implicit_globals(temp.path());
-        assert!(violations.is_empty(), "local var reassignment should not be flagged: {:?}", violations);
+        assert!(
+            violations.is_empty(),
+            "local var reassignment should not be flagged: {:?}",
+            violations
+        );
     }
 
     #[test]
@@ -840,7 +879,11 @@ mod cb600_lua_tests {
         )
         .unwrap();
         let violations = detect_cb600_implicit_globals(temp.path());
-        assert!(violations.is_empty(), "multi-local reassignment should not be flagged: {:?}", violations);
+        assert!(
+            violations.is_empty(),
+            "multi-local reassignment should not be flagged: {:?}",
+            violations
+        );
     }
 
     #[test]
@@ -926,11 +969,7 @@ mod cb600_lua_tests {
     fn test_cb601_real_deep_chain_still_detected() {
         // Ensure real deep chains are still caught after the string fix
         let temp = TempDir::new().unwrap();
-        fs::write(
-            temp.path().join("app.lua"),
-            "local x = a.b.c.d\n",
-        )
-        .unwrap();
+        fs::write(temp.path().join("app.lua"), "local x = a.b.c.d\n").unwrap();
         let violations = detect_cb601_nil_unsafe_access(temp.path());
         assert_eq!(violations.len(), 1);
         assert!(violations[0].description.contains("deep field"));
@@ -1054,10 +1093,7 @@ mod cb600_lua_tests {
             extract_pcall_status_var("status = pcall(fn)"),
             Some("status".to_string())
         );
-        assert_eq!(
-            extract_pcall_status_var("pcall(fn)"),
-            None
-        );
+        assert_eq!(extract_pcall_status_var("pcall(fn)"), None);
     }
 
     // =========================================================================
@@ -1097,14 +1133,14 @@ mod cb600_lua_tests {
     #[test]
     fn test_cb603_hardcoded_string_is_info_severity() {
         let temp = TempDir::new().unwrap();
-        fs::write(
-            temp.path().join("app.lua"),
-            "os.execute(\"make clean\")\n",
-        )
-        .unwrap();
+        fs::write(temp.path().join("app.lua"), "os.execute(\"make clean\")\n").unwrap();
         let violations = detect_cb603_deprecated_dangerous_api(temp.path());
         assert_eq!(violations.len(), 1);
-        assert_eq!(violations[0].severity, Severity::Info, "Hardcoded string arg should be Info");
+        assert_eq!(
+            violations[0].severity,
+            Severity::Info,
+            "Hardcoded string arg should be Info"
+        );
         assert!(violations[0].description.contains("hardcoded"));
     }
 
@@ -1118,18 +1154,18 @@ mod cb600_lua_tests {
         .unwrap();
         let violations = detect_cb603_deprecated_dangerous_api(temp.path());
         assert_eq!(violations.len(), 1);
-        assert_eq!(violations[0].severity, Severity::Warning, "Concatenation should be Warning");
+        assert_eq!(
+            violations[0].severity,
+            Severity::Warning,
+            "Concatenation should be Warning"
+        );
         assert!(violations[0].description.contains("command injection"));
     }
 
     #[test]
     fn test_cb603_variable_arg_is_warning() {
         let temp = TempDir::new().unwrap();
-        fs::write(
-            temp.path().join("app.lua"),
-            "os.execute(cmd)\n",
-        )
-        .unwrap();
+        fs::write(temp.path().join("app.lua"), "os.execute(cmd)\n").unwrap();
         let violations = detect_cb603_deprecated_dangerous_api(temp.path());
         assert_eq!(violations.len(), 1);
         assert_eq!(violations[0].severity, Severity::Warning);
@@ -1148,7 +1184,10 @@ mod cb600_lua_tests {
         .unwrap();
         let violations = detect_cb603_deprecated_dangerous_api(temp.path());
         assert_eq!(violations.len(), 1, "Suppressed line should not be flagged");
-        assert_eq!(violations[0].line, 2, "Only unsuppressed line should be flagged");
+        assert_eq!(
+            violations[0].line, 2,
+            "Only unsuppressed line should be flagged"
+        );
     }
 
     #[test]
@@ -1160,7 +1199,10 @@ mod cb600_lua_tests {
         )
         .unwrap();
         let violations = detect_cb603_deprecated_dangerous_api(temp.path());
-        assert!(violations.is_empty(), "Bare pmat:ignore should suppress all");
+        assert!(
+            violations.is_empty(),
+            "Bare pmat:ignore should suppress all"
+        );
     }
 
     // =========================================================================
@@ -1220,7 +1262,11 @@ mod cb600_lua_tests {
     #[test]
     fn test_cb605_concat_outside_loop_passes() {
         let temp = TempDir::new().unwrap();
-        fs::write(temp.path().join("app.lua"), "local msg = greeting .. name\n").unwrap();
+        fs::write(
+            temp.path().join("app.lua"),
+            "local msg = greeting .. name\n",
+        )
+        .unwrap();
         let violations = detect_cb605_string_concat_in_loop(temp.path());
         assert!(violations.is_empty());
     }
@@ -1377,11 +1423,7 @@ mod cb700_sql_tests {
     #[test]
     fn test_cb701_detects_delete_without_where() {
         let temp = TempDir::new().unwrap();
-        fs::write(
-            temp.path().join("dangerous.sql"),
-            "DELETE FROM users;\n",
-        )
-        .unwrap();
+        fs::write(temp.path().join("dangerous.sql"), "DELETE FROM users;\n").unwrap();
         let violations = detect_cb701_missing_where(temp.path());
         assert_eq!(violations.len(), 1);
         assert_eq!(violations[0].pattern_id, "CB-701");
@@ -1430,11 +1472,7 @@ mod cb700_sql_tests {
         let temp = TempDir::new().unwrap();
         let test_dir = temp.path().join("tests");
         fs::create_dir_all(&test_dir).unwrap();
-        fs::write(
-            test_dir.join("test_queries.sql"),
-            "SELECT * FROM users;\n",
-        )
-        .unwrap();
+        fs::write(test_dir.join("test_queries.sql"), "SELECT * FROM users;\n").unwrap();
         let violations = detect_cb700_select_star(temp.path());
         assert!(violations.is_empty());
     }
@@ -1567,11 +1605,7 @@ mod cb900_markdown_tests {
     #[test]
     fn test_cb902_detects_missing_alt_text() {
         let temp = TempDir::new().unwrap();
-        fs::write(
-            temp.path().join("doc.md"),
-            "# Title\n\n![](image.png)\n",
-        )
-        .unwrap();
+        fs::write(temp.path().join("doc.md"), "# Title\n\n![](image.png)\n").unwrap();
         let violations = detect_cb902_missing_alt_text(temp.path());
         assert_eq!(violations.len(), 1);
         assert_eq!(violations[0].pattern_id, "CB-902");
@@ -1855,7 +1889,11 @@ mod cb1000_model_tests {
         let temp = TempDir::new().unwrap();
         let models_dir = temp.path().join("models");
         fs::create_dir_all(&models_dir).unwrap();
-        fs::write(models_dir.join("model.gguf"), &[0x47, 0x47, 0x55, 0x46, 0, 0, 0, 0]).unwrap();
+        fs::write(
+            models_dir.join("model.gguf"),
+            &[0x47, 0x47, 0x55, 0x46, 0, 0, 0, 0],
+        )
+        .unwrap();
         fs::write(models_dir.join("README.md"), "# Model Card\n").unwrap();
 
         let violations = detect_cb1000_missing_model_card(temp.path());
@@ -1903,16 +1941,8 @@ mod cb1000_model_tests {
         data.extend_from_slice(json_header);
         data.extend_from_slice(&[0u8; 4]); // tensor data
 
-        fs::write(
-            temp.path().join("model-00001-of-00002.safetensors"),
-            &data,
-        )
-        .unwrap();
-        fs::write(
-            temp.path().join("model-00002-of-00002.safetensors"),
-            &data,
-        )
-        .unwrap();
+        fs::write(temp.path().join("model-00001-of-00002.safetensors"), &data).unwrap();
+        fs::write(temp.path().join("model-00002-of-00002.safetensors"), &data).unwrap();
 
         let violations = detect_cb1006_sharded_without_index(temp.path());
         assert_eq!(violations.len(), 1);
@@ -1929,21 +1959,9 @@ mod cb1000_model_tests {
         data.extend_from_slice(json_header);
         data.extend_from_slice(&[0u8; 4]);
 
-        fs::write(
-            temp.path().join("model-00001-of-00002.safetensors"),
-            &data,
-        )
-        .unwrap();
-        fs::write(
-            temp.path().join("model-00002-of-00002.safetensors"),
-            &data,
-        )
-        .unwrap();
-        fs::write(
-            temp.path().join("model.safetensors.index.json"),
-            "{}",
-        )
-        .unwrap();
+        fs::write(temp.path().join("model-00001-of-00002.safetensors"), &data).unwrap();
+        fs::write(temp.path().join("model-00002-of-00002.safetensors"), &data).unwrap();
+        fs::write(temp.path().join("model.safetensors.index.json"), "{}").unwrap();
 
         let violations = detect_cb1006_sharded_without_index(temp.path());
         assert!(violations.is_empty());
@@ -2005,7 +2023,7 @@ mod cb1000_model_tests {
         header.extend_from_slice(&3u32.to_le_bytes());
         header.extend_from_slice(&10u64.to_le_bytes());
         header.extend_from_slice(&1u64.to_le_bytes()); // 1 metadata entry
-        // Add "general.architecture" as a key string
+                                                       // Add "general.architecture" as a key string
         header.extend_from_slice(b"general.architecture");
         header.resize(200, 0);
         fs::write(temp.path().join("model.gguf"), &header).unwrap();
@@ -2208,7 +2226,9 @@ mod cb800_scala_tests {
     #[test]
     fn test_scala_test_file_detection() {
         use std::path::Path;
-        assert!(is_scala_test_file(Path::new("src/test/scala/AppTest.scala")));
+        assert!(is_scala_test_file(Path::new(
+            "src/test/scala/AppTest.scala"
+        )));
         assert!(is_scala_test_file(Path::new("AppSpec.scala")));
         assert!(is_scala_test_file(Path::new("TestHelper.scala")));
         assert!(!is_scala_test_file(Path::new("src/main/scala/App.scala")));

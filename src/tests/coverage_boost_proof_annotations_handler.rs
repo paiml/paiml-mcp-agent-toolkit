@@ -1545,10 +1545,7 @@ fn test_large_span() {
 #[test]
 fn test_unicode_file_path() {
     let location = create_test_location("src/\u{1F600}/test.rs", 10, 20);
-    assert!(location
-        .file_path
-        .to_string_lossy()
-        .contains("\u{1F600}"));
+    assert!(location.file_path.to_string_lossy().contains("\u{1F600}"));
 }
 
 #[test]

@@ -14,10 +14,10 @@ use crate::services::complexity::{
 };
 use crate::services::context::{AstItem, FileContext};
 use crate::services::deep_context::{
-    AnnotatedFileTree, AnnotatedNode, CrossLangReference,
-    CrossLangReferenceType, DeepContext, DeepContextAnalyzer, DeepContextConfig, DefectAnnotations,
-    DefectHotspot, DefectSummary, EnhancedFileContext, FileLocation, Impact, NodeAnnotations,
-    NodeType, Priority, PrioritizedRecommendation, QualityScorecard, RefactoringEstimate,
+    AnnotatedFileTree, AnnotatedNode, CrossLangReference, CrossLangReferenceType, DeepContext,
+    DeepContextAnalyzer, DeepContextConfig, DefectAnnotations, DefectHotspot, DefectSummary,
+    EnhancedFileContext, FileLocation, Impact, NodeAnnotations, NodeType,
+    PrioritizedRecommendation, Priority, QualityScorecard, RefactoringEstimate,
 };
 use crate::services::satd_detector::{DebtCategory, SATDAnalysisResult, SATDSummary, Severity};
 use chrono::Utc;
@@ -340,7 +340,12 @@ fn make_populated_context() -> DeepContext {
     ctx.build_info = Some(make_build_info());
     ctx.recommendations = vec![
         make_recommendation("Reduce complexity", Priority::High, Impact::High, vec![]),
-        make_recommendation("Add tests", Priority::Medium, Impact::Medium, vec!["CI setup"]),
+        make_recommendation(
+            "Add tests",
+            Priority::Medium,
+            Impact::Medium,
+            vec!["CI setup"],
+        ),
     ];
     ctx.file_tree = make_annotated_tree(42, 512_000);
     ctx.analyses.complexity_report = Some(make_complexity_report());
@@ -390,7 +395,10 @@ fn test_new_with_custom_config() {
 async fn test_comprehensive_markdown_empty_context() {
     let analyzer = make_analyzer();
     let ctx = make_empty_context();
-    let result = analyzer.format_as_comprehensive_markdown(&ctx).await.unwrap();
+    let result = analyzer
+        .format_as_comprehensive_markdown(&ctx)
+        .await
+        .unwrap();
     assert!(result.starts_with("# Deep Context Analysis Report"));
     assert!(result.contains("Quality Scorecard"));
 }
@@ -399,7 +407,10 @@ async fn test_comprehensive_markdown_empty_context() {
 async fn test_comprehensive_markdown_contains_header() {
     let analyzer = make_analyzer();
     let ctx = make_empty_context();
-    let md = analyzer.format_as_comprehensive_markdown(&ctx).await.unwrap();
+    let md = analyzer
+        .format_as_comprehensive_markdown(&ctx)
+        .await
+        .unwrap();
     assert!(md.contains("# Deep Context Analysis Report"));
 }
 
@@ -412,7 +423,10 @@ async fn test_comprehensive_markdown_with_project_overview() {
     let analyzer = make_analyzer();
     let mut ctx = make_empty_context();
     ctx.project_overview = Some(make_project_overview());
-    let md = analyzer.format_as_comprehensive_markdown(&ctx).await.unwrap();
+    let md = analyzer
+        .format_as_comprehensive_markdown(&ctx)
+        .await
+        .unwrap();
     assert!(md.contains("## Project Overview"));
     assert!(md.contains("A test project for analysis."));
     assert!(md.contains("Feature A"));
@@ -430,7 +444,10 @@ async fn test_comprehensive_markdown_overview_no_description() {
         architecture_summary: None,
         api_summary: None,
     });
-    let md = analyzer.format_as_comprehensive_markdown(&ctx).await.unwrap();
+    let md = analyzer
+        .format_as_comprehensive_markdown(&ctx)
+        .await
+        .unwrap();
     assert!(md.contains("## Project Overview"));
     assert!(md.contains("Only feature"));
     // Empty description should not produce an extra paragraph
@@ -447,7 +464,10 @@ async fn test_comprehensive_markdown_overview_no_features() {
         architecture_summary: None,
         api_summary: None,
     });
-    let md = analyzer.format_as_comprehensive_markdown(&ctx).await.unwrap();
+    let md = analyzer
+        .format_as_comprehensive_markdown(&ctx)
+        .await
+        .unwrap();
     assert!(md.contains("Desc"));
     assert!(!md.contains("Key Features"));
 }
@@ -462,7 +482,10 @@ async fn test_comprehensive_markdown_overview_no_architecture() {
         architecture_summary: None,
         api_summary: None,
     });
-    let md = analyzer.format_as_comprehensive_markdown(&ctx).await.unwrap();
+    let md = analyzer
+        .format_as_comprehensive_markdown(&ctx)
+        .await
+        .unwrap();
     assert!(!md.contains("**Architecture:**"));
 }
 
@@ -475,7 +498,10 @@ async fn test_comprehensive_markdown_with_build_info() {
     let analyzer = make_analyzer();
     let mut ctx = make_empty_context();
     ctx.build_info = Some(make_build_info());
-    let md = analyzer.format_as_comprehensive_markdown(&ctx).await.unwrap();
+    let md = analyzer
+        .format_as_comprehensive_markdown(&ctx)
+        .await
+        .unwrap();
     assert!(md.contains("## Build System"));
     assert!(md.contains("**Detected Toolchain:** Rust"));
     assert!(md.contains("pmat, pmat-cli"));
@@ -493,7 +519,10 @@ async fn test_comprehensive_markdown_build_info_no_targets() {
         dependencies: Vec::new(),
         primary_command: None,
     });
-    let md = analyzer.format_as_comprehensive_markdown(&ctx).await.unwrap();
+    let md = analyzer
+        .format_as_comprehensive_markdown(&ctx)
+        .await
+        .unwrap();
     assert!(md.contains("**Detected Toolchain:** Python"));
     assert!(!md.contains("Primary Targets"));
     assert!(!md.contains("Key Dependencies"));
@@ -508,7 +537,10 @@ async fn test_comprehensive_markdown_build_info_no_targets() {
 async fn test_comprehensive_markdown_quality_scorecard_default() {
     let analyzer = make_analyzer();
     let ctx = make_empty_context();
-    let md = analyzer.format_as_comprehensive_markdown(&ctx).await.unwrap();
+    let md = analyzer
+        .format_as_comprehensive_markdown(&ctx)
+        .await
+        .unwrap();
     assert!(md.contains("Overall Health: 0.0%"));
     assert!(md.contains("Maintainability Index: 0.0%"));
     assert!(md.contains("Refactoring Time: 0.0 hours"));
@@ -520,7 +552,10 @@ async fn test_comprehensive_markdown_quality_scorecard_high_health() {
     let analyzer = make_analyzer();
     let mut ctx = make_empty_context();
     ctx.quality_scorecard = make_scorecard(95.0, 88.0, 2.0);
-    let md = analyzer.format_as_comprehensive_markdown(&ctx).await.unwrap();
+    let md = analyzer
+        .format_as_comprehensive_markdown(&ctx)
+        .await
+        .unwrap();
     assert!(md.contains("Overall Health: 95.0%"));
     assert!(md.contains("Maintainability Index: 88.0%"));
     assert!(md.contains("Refactoring Time: 2.0 hours"));
@@ -535,7 +570,10 @@ async fn test_comprehensive_markdown_project_structure() {
     let analyzer = make_analyzer();
     let mut ctx = make_empty_context();
     ctx.file_tree = make_annotated_tree(100, 1_000_000);
-    let md = analyzer.format_as_comprehensive_markdown(&ctx).await.unwrap();
+    let md = analyzer
+        .format_as_comprehensive_markdown(&ctx)
+        .await
+        .unwrap();
     assert!(md.contains("## Project Structure"));
     assert!(md.contains("Total Files: 100"));
     assert!(md.contains("Total Size: 1000000 bytes"));
@@ -549,7 +587,10 @@ async fn test_comprehensive_markdown_project_structure() {
 async fn test_comprehensive_markdown_analysis_results_empty() {
     let analyzer = make_analyzer();
     let ctx = make_empty_context();
-    let md = analyzer.format_as_comprehensive_markdown(&ctx).await.unwrap();
+    let md = analyzer
+        .format_as_comprehensive_markdown(&ctx)
+        .await
+        .unwrap();
     assert!(md.contains("## Analysis Results"));
     // No AST, complexity, or churn sub-headings when empty
     assert!(!md.contains("### AST Analysis"));
@@ -566,7 +607,10 @@ async fn test_comprehensive_markdown_with_ast_contexts() {
         make_enhanced_file_context("b.rs", "Rust"),
         make_enhanced_file_context("c.rs", "Rust"),
     ];
-    let md = analyzer.format_as_comprehensive_markdown(&ctx).await.unwrap();
+    let md = analyzer
+        .format_as_comprehensive_markdown(&ctx)
+        .await
+        .unwrap();
     assert!(md.contains("### AST Analysis"));
     assert!(md.contains("Files analyzed: 3"));
 }
@@ -576,7 +620,10 @@ async fn test_comprehensive_markdown_with_complexity_report() {
     let analyzer = make_analyzer();
     let mut ctx = make_empty_context();
     ctx.analyses.complexity_report = Some(make_complexity_report());
-    let md = analyzer.format_as_comprehensive_markdown(&ctx).await.unwrap();
+    let md = analyzer
+        .format_as_comprehensive_markdown(&ctx)
+        .await
+        .unwrap();
     assert!(md.contains("### Complexity Analysis"));
     assert!(md.contains("Total files: 5"));
     assert!(md.contains("Total functions: 20"));
@@ -588,7 +635,10 @@ async fn test_comprehensive_markdown_with_churn_analysis() {
     let analyzer = make_analyzer();
     let mut ctx = make_empty_context();
     ctx.analyses.churn_analysis = Some(make_churn_analysis());
-    let md = analyzer.format_as_comprehensive_markdown(&ctx).await.unwrap();
+    let md = analyzer
+        .format_as_comprehensive_markdown(&ctx)
+        .await
+        .unwrap();
     assert!(md.contains("### Code Churn"));
     assert!(md.contains("Files analyzed: 1"));
     assert!(md.contains("Total commits: 100"));
@@ -602,7 +652,10 @@ async fn test_comprehensive_markdown_with_churn_analysis() {
 async fn test_comprehensive_markdown_no_recommendations() {
     let analyzer = make_analyzer();
     let ctx = make_empty_context();
-    let md = analyzer.format_as_comprehensive_markdown(&ctx).await.unwrap();
+    let md = analyzer
+        .format_as_comprehensive_markdown(&ctx)
+        .await
+        .unwrap();
     // When empty, the recommendations section should NOT be appended
     assert!(!md.contains("## Recommendations"));
 }
@@ -615,7 +668,10 @@ async fn test_comprehensive_markdown_with_recommendations() {
         make_recommendation("Fix bug", Priority::Critical, Impact::High, vec!["Deploy"]),
         make_recommendation("Add docs", Priority::Low, Impact::Low, vec![]),
     ];
-    let md = analyzer.format_as_comprehensive_markdown(&ctx).await.unwrap();
+    let md = analyzer
+        .format_as_comprehensive_markdown(&ctx)
+        .await
+        .unwrap();
     assert!(md.contains("## Recommendations"));
     assert!(md.contains("**Fix bug**"));
     assert!(md.contains("Priority: Critical"));
@@ -627,7 +683,10 @@ async fn test_comprehensive_markdown_with_recommendations() {
 async fn test_comprehensive_markdown_fully_populated() {
     let analyzer = make_analyzer();
     let ctx = make_populated_context();
-    let md = analyzer.format_as_comprehensive_markdown(&ctx).await.unwrap();
+    let md = analyzer
+        .format_as_comprehensive_markdown(&ctx)
+        .await
+        .unwrap();
     // All sections should appear
     assert!(md.contains("# Deep Context Analysis Report"));
     assert!(md.contains("## Project Overview"));
@@ -739,8 +798,10 @@ fn test_legacy_markdown_project_structure_with_tree() {
     let analyzer = make_analyzer();
     let mut ctx = make_empty_context();
     let mut root = make_annotated_node("project", NodeType::Directory);
-    root.children.push(make_annotated_node("src", NodeType::Directory));
-    root.children.push(make_annotated_node("README.md", NodeType::File));
+    root.children
+        .push(make_annotated_node("src", NodeType::Directory));
+    root.children
+        .push(make_annotated_node("README.md", NodeType::File));
     ctx.file_tree = AnnotatedFileTree {
         root,
         total_files: 2,
@@ -1161,8 +1222,7 @@ fn test_legacy_markdown_dead_code_analysis() {
 fn test_legacy_markdown_cross_references() {
     let analyzer = make_analyzer();
     let mut ctx = make_empty_context();
-    ctx.analyses.cross_language_refs =
-        vec![make_cross_lang_ref("binding.rs", "lib.py", 0.85)];
+    ctx.analyses.cross_language_refs = vec![make_cross_lang_ref("binding.rs", "lib.py", 0.85)];
     let md = analyzer
         .format_as_comprehensive_markdown_legacy(&ctx)
         .unwrap();
@@ -1208,7 +1268,12 @@ fn test_legacy_markdown_recommendations_section() {
     let analyzer = make_analyzer();
     let mut ctx = make_empty_context();
     ctx.recommendations = vec![
-        make_recommendation("Fix critical bug", Priority::Critical, Impact::High, vec!["Hotfix"]),
+        make_recommendation(
+            "Fix critical bug",
+            Priority::Critical,
+            Impact::High,
+            vec!["Hotfix"],
+        ),
         make_recommendation("Update deps", Priority::Low, Impact::Low, vec![]),
     ];
     let md = analyzer
@@ -1435,7 +1500,10 @@ fn test_sarif_satd_severity_levels() {
     let sarif_str = analyzer.format_as_sarif(&ctx).unwrap();
     let parsed: serde_json::Value = serde_json::from_str(&sarif_str).unwrap();
     let results = parsed["runs"][0]["results"].as_array().unwrap();
-    let levels: Vec<&str> = results.iter().map(|r| r["level"].as_str().unwrap()).collect();
+    let levels: Vec<&str> = results
+        .iter()
+        .map(|r| r["level"].as_str().unwrap())
+        .collect();
     // Critical -> "error", High -> "warning", Medium -> "note", Low -> "note"
     assert!(levels.contains(&"error"));
     assert!(levels.contains(&"warning"));
@@ -1963,7 +2031,10 @@ fn test_memory_complexity_all_variants() {
         let md = analyzer
             .format_as_comprehensive_markdown_legacy(&ctx)
             .unwrap();
-        assert!(md.contains(mem), "Memory complexity '{mem}' not found in output");
+        assert!(
+            md.contains(mem),
+            "Memory complexity '{mem}' not found in output"
+        );
     }
 }
 

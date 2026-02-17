@@ -287,11 +287,12 @@ impl GitHistoryIndex {
     }
 
     /// Update embedding for a commit
-    pub fn update_embedding(&self, commit_hash: &str, embedding: &[f32]) -> Result<(), GitHistoryError> {
-        let embedding_bytes: Vec<u8> = embedding
-            .iter()
-            .flat_map(|f| f.to_le_bytes())
-            .collect();
+    pub fn update_embedding(
+        &self,
+        commit_hash: &str,
+        embedding: &[f32],
+    ) -> Result<(), GitHistoryError> {
+        let embedding_bytes: Vec<u8> = embedding.iter().flat_map(|f| f.to_le_bytes()).collect();
 
         self.conn.execute(
             "UPDATE git_commits SET embedding = ?1 WHERE commit_hash = ?2",
@@ -302,10 +303,13 @@ impl GitHistoryIndex {
     }
 
     /// Get commits that need embeddings
-    pub fn get_commits_without_embeddings(&self, limit: usize) -> Result<Vec<String>, GitHistoryError> {
-        let mut stmt = self.conn.prepare(
-            "SELECT commit_hash FROM git_commits WHERE embedding IS NULL LIMIT ?1"
-        )?;
+    pub fn get_commits_without_embeddings(
+        &self,
+        limit: usize,
+    ) -> Result<Vec<String>, GitHistoryError> {
+        let mut stmt = self
+            .conn
+            .prepare("SELECT commit_hash FROM git_commits WHERE embedding IS NULL LIMIT ?1")?;
 
         let hashes = stmt
             .query_map([limit], |row| row.get(0))?
@@ -317,7 +321,8 @@ impl GitHistoryIndex {
 
     /// Get last indexed commit hash
     pub fn get_last_indexed_commit(&self) -> Result<Option<String>, GitHistoryError> {
-        let result: Option<String> = self.conn
+        let result: Option<String> = self
+            .conn
             .query_row(
                 "SELECT value FROM git_metadata WHERE key = 'last_indexed_commit'",
                 [],
@@ -339,16 +344,18 @@ impl GitHistoryIndex {
 
     /// Get total commit count
     pub fn commit_count(&self) -> Result<usize, GitHistoryError> {
-        let count: i64 = self.conn.query_row(
-            "SELECT COUNT(*) FROM git_commits",
-            [],
-            |row| row.get(0),
-        )?;
+        let count: i64 = self
+            .conn
+            .query_row("SELECT COUNT(*) FROM git_commits", [], |row| row.get(0))?;
         Ok(count as usize)
     }
 
     /// Get commits by file path
-    pub fn get_commits_for_file(&self, file_path: &str, limit: usize) -> Result<Vec<String>, GitHistoryError> {
+    pub fn get_commits_for_file(
+        &self,
+        file_path: &str,
+        limit: usize,
+    ) -> Result<Vec<String>, GitHistoryError> {
         let mut stmt = self.conn.prepare(
             r#"
             SELECT DISTINCT gc.commit_hash
@@ -357,7 +364,7 @@ impl GitHistoryIndex {
             WHERE cf.file_path = ?1
             ORDER BY gc.timestamp DESC
             LIMIT ?2
-            "#
+            "#,
         )?;
 
         let hashes = stmt
@@ -372,7 +379,10 @@ impl GitHistoryIndex {
     /// Toyota Way: Heijunka - Level loading without blocking
     ///
     /// Returns number of new commits synced
-    pub fn sync_incremental(&mut self, new_commits: &[CommitInfo]) -> Result<SyncResult, GitHistoryError> {
+    pub fn sync_incremental(
+        &mut self,
+        new_commits: &[CommitInfo],
+    ) -> Result<SyncResult, GitHistoryError> {
         let last_indexed = self.get_last_indexed_commit()?;
         let start_count = self.commit_count()?;
 
@@ -480,7 +490,11 @@ impl GitHistoryIndex {
     }
 
     /// Get commits by timestamp range (for incremental queries)
-    pub fn get_commits_since(&self, timestamp: i64, limit: usize) -> Result<Vec<CommitInfo>, GitHistoryError> {
+    pub fn get_commits_since(
+        &self,
+        timestamp: i64,
+        limit: usize,
+    ) -> Result<Vec<CommitInfo>, GitHistoryError> {
         let mut stmt = self.conn.prepare(
             r#"
             SELECT commit_hash, message_subject, message_body, author_name, author_email,
@@ -489,13 +503,14 @@ impl GitHistoryIndex {
             WHERE timestamp > ?1
             ORDER BY timestamp ASC
             LIMIT ?2
-            "#
+            "#,
         )?;
 
         let commits = stmt
             .query_map(params![timestamp, limit], |row| {
                 let issue_refs_str: String = row.get::<_, String>(9).unwrap_or_default();
-                let issue_refs: Vec<String> = serde_json::from_str(&issue_refs_str).unwrap_or_default();
+                let issue_refs: Vec<String> =
+                    serde_json::from_str(&issue_refs_str).unwrap_or_default();
 
                 Ok(CommitInfo {
                     hash: row.get(0)?,
@@ -519,13 +534,12 @@ impl GitHistoryIndex {
 
     /// Calculate checksum of index (for falsification test F1)
     pub fn checksum(&self) -> Result<String, GitHistoryError> {
-        let count: i64 = self.conn.query_row(
-            "SELECT COUNT(*) FROM git_commits",
-            [],
-            |row| row.get(0),
-        )?;
+        let count: i64 = self
+            .conn
+            .query_row("SELECT COUNT(*) FROM git_commits", [], |row| row.get(0))?;
 
-        let last_hash: Option<String> = self.conn
+        let last_hash: Option<String> = self
+            .conn
             .query_row(
                 "SELECT commit_hash FROM git_commits ORDER BY timestamp DESC LIMIT 1",
                 [],
@@ -553,14 +567,12 @@ mod tests {
             is_fix: subject.to_lowercase().contains("fix"),
             is_feat: subject.to_lowercase().contains("feat"),
             issue_refs: vec![],
-            files: vec![
-                FileChange {
-                    path: "src/main.rs".to_string(),
-                    change_type: ChangeType::Modified,
-                    lines_added: 10,
-                    lines_deleted: 5,
-                },
-            ],
+            files: vec![FileChange {
+                path: "src/main.rs".to_string(),
+                change_type: ChangeType::Modified,
+                lines_added: 10,
+                lines_deleted: 5,
+            }],
         }
     }
 
@@ -592,10 +604,10 @@ mod tests {
         let mut index = GitHistoryIndex::in_memory().unwrap();
 
         let commits = vec![
-            create_test_commit(&"a".repeat(40), "Fix bug in parser"),  // indexable
+            create_test_commit(&"a".repeat(40), "Fix bug in parser"), // indexable
             CommitInfo {
                 hash: "b".repeat(40),
-                message_subject: "wip".to_string(),  // too short - not indexable
+                message_subject: "wip".to_string(), // too short - not indexable
                 message_body: None,
                 author_name: "Test".to_string(),
                 author_email: "test@example.com".to_string(),
@@ -609,7 +621,7 @@ mod tests {
         ];
 
         let inserted = index.insert_commits(&commits).unwrap();
-        assert_eq!(inserted, 1);  // Only 1 indexable
+        assert_eq!(inserted, 1); // Only 1 indexable
     }
 
     #[test]
@@ -665,7 +677,10 @@ mod tests {
         let checksum1 = index.checksum().unwrap();
 
         // Message must be >= 10 chars to be indexable
-        let commits = vec![create_test_commit(&"a".repeat(40), "Fix important bug in parser")];
+        let commits = vec![create_test_commit(
+            &"a".repeat(40),
+            "Fix important bug in parser",
+        )];
         index.insert_commits(&commits).unwrap();
 
         let checksum2 = index.checksum().unwrap();
@@ -696,9 +711,7 @@ mod tests {
         let mut index = GitHistoryIndex::in_memory().unwrap();
 
         // Initial sync
-        let commits1 = vec![
-            create_test_commit(&"a".repeat(40), "First commit message"),
-        ];
+        let commits1 = vec![create_test_commit(&"a".repeat(40), "First commit message")];
         index.sync_incremental(&commits1).unwrap();
 
         // Second sync with existing + new
@@ -746,17 +759,12 @@ mod tests {
 
         assert!(index.get_last_indexed_commit().unwrap().is_none());
 
-        let commits = vec![
-            create_test_commit(&"a".repeat(40), "First commit message"),
-        ];
+        let commits = vec![create_test_commit(&"a".repeat(40), "First commit message")];
 
         let result = index.sync_incremental(&commits).unwrap();
 
         assert!(result.last_commit.is_some());
-        assert_eq!(
-            index.get_last_indexed_commit().unwrap(),
-            result.last_commit
-        );
+        assert_eq!(index.get_last_indexed_commit().unwrap(), result.last_commit);
     }
 
     #[test]
@@ -827,9 +835,7 @@ mod tests {
     fn test_sync_all_already_present() {
         let mut index = GitHistoryIndex::in_memory().unwrap();
 
-        let commits = vec![
-            create_test_commit(&"a".repeat(40), "Test commit message"),
-        ];
+        let commits = vec![create_test_commit(&"a".repeat(40), "Test commit message")];
 
         // First sync
         index.sync_incremental(&commits).unwrap();

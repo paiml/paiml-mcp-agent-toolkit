@@ -356,11 +356,15 @@ fn warn_ignored_parameters(_config: &ComprehensiveConfig) {
 /// Find the project root by looking for Cargo.toml
 fn find_project_root(start_path: &Path) -> Result<PathBuf> {
     let start_dir = if start_path.is_file() {
-        start_path.parent().context("File has no parent directory")?
+        start_path
+            .parent()
+            .context("File has no parent directory")?
     } else {
         start_path
     };
-    walk_up_to_cargo_toml(start_dir).ok_or_else(|| anyhow::anyhow!("No Cargo.toml found")).or_else(|_| Ok(start_dir.to_path_buf()))
+    walk_up_to_cargo_toml(start_dir)
+        .ok_or_else(|| anyhow::anyhow!("No Cargo.toml found"))
+        .or_else(|_| Ok(start_dir.to_path_buf()))
 }
 
 fn walk_up_to_cargo_toml(start: &Path) -> Option<PathBuf> {
@@ -370,7 +374,9 @@ fn walk_up_to_cargo_toml(start: &Path) -> Option<PathBuf> {
             return Some(current.to_path_buf());
         }
         let parent = current.parent()?;
-        if is_system_root(parent) { return None; }
+        if is_system_root(parent) {
+            return None;
+        }
         current = parent;
     }
 }

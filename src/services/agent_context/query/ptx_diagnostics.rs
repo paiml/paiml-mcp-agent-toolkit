@@ -94,8 +94,7 @@ fn compute_branch_density(source: &str) -> f32 {
 
 /// Count total shared memory bytes declared
 fn count_shared_memory(source: &str) -> u32 {
-    let re = Regex::new(r"\.shared\s+\.\w+\s+\w+\[(\d+)\]")
-        .expect("static regex must compile");
+    let re = Regex::new(r"\.shared\s+\.\w+\s+\w+\[(\d+)\]").expect("static regex must compile");
     let mut total = 0u32;
     for cap in re.captures_iter(source) {
         if let Some(size) = cap.get(1) {
@@ -160,13 +159,15 @@ fn collect_metric_diagnostics(
 fn collect_register_diag(diags: &mut Vec<PtxDiagnostic>, count: u32) {
     if count > 64 {
         diags.push(PtxDiagnostic {
-            severity: PtxSeverity::Critical, category: "register_pressure".into(),
+            severity: PtxSeverity::Critical,
+            category: "register_pressure".into(),
             message: format!("{} registers (>64 risks spilling to local memory)", count),
             value: count as f32,
         });
     } else if count > 32 {
         diags.push(PtxDiagnostic {
-            severity: PtxSeverity::Warning, category: "register_pressure".into(),
+            severity: PtxSeverity::Warning,
+            category: "register_pressure".into(),
             message: format!("{} registers (>32 may reduce occupancy)", count),
             value: count as f32,
         });
@@ -176,14 +177,22 @@ fn collect_register_diag(diags: &mut Vec<PtxDiagnostic>, count: u32) {
 fn collect_branch_diag(diags: &mut Vec<PtxDiagnostic>, density: f32) {
     if density > 0.3 {
         diags.push(PtxDiagnostic {
-            severity: PtxSeverity::Critical, category: "branch_density".into(),
-            message: format!("{:.0}% branch density (high divergence risk)", density * 100.0),
+            severity: PtxSeverity::Critical,
+            category: "branch_density".into(),
+            message: format!(
+                "{:.0}% branch density (high divergence risk)",
+                density * 100.0
+            ),
             value: density,
         });
     } else if density > 0.15 {
         diags.push(PtxDiagnostic {
-            severity: PtxSeverity::Warning, category: "branch_density".into(),
-            message: format!("{:.0}% branch density (moderate divergence risk)", density * 100.0),
+            severity: PtxSeverity::Warning,
+            category: "branch_density".into(),
+            message: format!(
+                "{:.0}% branch density (moderate divergence risk)",
+                density * 100.0
+            ),
             value: density,
         });
     }
@@ -192,13 +201,15 @@ fn collect_branch_diag(diags: &mut Vec<PtxDiagnostic>, density: f32) {
 fn collect_shmem_diag(diags: &mut Vec<PtxDiagnostic>, bytes: u32) {
     if bytes > 48_000 {
         diags.push(PtxDiagnostic {
-            severity: PtxSeverity::Critical, category: "shared_memory".into(),
+            severity: PtxSeverity::Critical,
+            category: "shared_memory".into(),
             message: format!("{}B shared memory (exceeds 48KB limit)", bytes),
             value: bytes as f32,
         });
     } else if bytes > 0 {
         diags.push(PtxDiagnostic {
-            severity: PtxSeverity::Info, category: "shared_memory".into(),
+            severity: PtxSeverity::Info,
+            category: "shared_memory".into(),
             message: format!("{}B shared memory", bytes),
             value: bytes as f32,
         });
@@ -208,13 +219,15 @@ fn collect_shmem_diag(diags: &mut Vec<PtxDiagnostic>, bytes: u32) {
 fn collect_barrier_diag(diags: &mut Vec<PtxDiagnostic>, count: u32) {
     if count > 5 {
         diags.push(PtxDiagnostic {
-            severity: PtxSeverity::Warning, category: "barriers".into(),
+            severity: PtxSeverity::Warning,
+            category: "barriers".into(),
             message: format!("{} sync points (complex synchronization)", count),
             value: count as f32,
         });
     } else if count > 0 {
         diags.push(PtxDiagnostic {
-            severity: PtxSeverity::Info, category: "barriers".into(),
+            severity: PtxSeverity::Info,
+            category: "barriers".into(),
             message: format!("{} sync point(s)", count),
             value: count as f32,
         });
@@ -224,26 +237,31 @@ fn collect_barrier_diag(diags: &mut Vec<PtxDiagnostic>, count: u32) {
 /// Collect CB-060 compliance diagnostics from existing detectors
 fn collect_cb060_diagnostics(diags: &mut Vec<PtxDiagnostic>, source: &str) {
     use crate::cli::handlers::comply_handlers::comply_cb_detect::{
-        detect_ptx_barrier_divergence_in_str,
-        detect_shared_memory_unbounded_in_str,
+        detect_ptx_barrier_divergence_in_str, detect_shared_memory_unbounded_in_str,
         detect_tiled_kernel_no_bounds_in_str,
     };
     for (line, _sev, msg) in &detect_ptx_barrier_divergence_in_str(source) {
         diags.push(PtxDiagnostic {
-            severity: PtxSeverity::Critical, category: "CB-060-A".into(),
-            message: format!("line {}: {}", line, msg), value: 0.0,
+            severity: PtxSeverity::Critical,
+            category: "CB-060-A".into(),
+            message: format!("line {}: {}", line, msg),
+            value: 0.0,
         });
     }
     for (line, _sev, msg) in &detect_shared_memory_unbounded_in_str(source) {
         diags.push(PtxDiagnostic {
-            severity: PtxSeverity::Warning, category: "CB-060-B".into(),
-            message: format!("line {}: {}", line, msg), value: 0.0,
+            severity: PtxSeverity::Warning,
+            category: "CB-060-B".into(),
+            message: format!("line {}: {}", line, msg),
+            value: 0.0,
         });
     }
     for (line, _sev, msg) in &detect_tiled_kernel_no_bounds_in_str(source) {
         diags.push(PtxDiagnostic {
-            severity: PtxSeverity::Warning, category: "CB-060-C".into(),
-            message: format!("line {}: {}", line, msg), value: 0.0,
+            severity: PtxSeverity::Warning,
+            category: "CB-060-C".into(),
+            message: format!("line {}: {}", line, msg),
+            value: 0.0,
         });
     }
 }
@@ -266,7 +284,10 @@ pub fn run_ptx_diagnostics(index: &AgentContextIndex) -> PtxDiagnosticResult {
         let barrier_count = count_barriers(&func.source);
 
         let mut diagnostics = collect_metric_diagnostics(
-            register_count, branch_density, shared_memory_bytes, barrier_count,
+            register_count,
+            branch_density,
+            shared_memory_bytes,
+            barrier_count,
         );
         collect_cb060_diagnostics(&mut diagnostics, &func.source);
 
@@ -285,8 +306,16 @@ pub fn run_ptx_diagnostics(index: &AgentContextIndex) -> PtxDiagnosticResult {
         functions.push(PtxFunctionDiagnostics {
             function_name: func.function_name.clone(),
             file_path: func.file_path.clone(),
-            project: func.file_path.split('/').next().unwrap_or("local").to_string(),
-            register_count, branch_density, shared_memory_bytes, barrier_count,
+            project: func
+                .file_path
+                .split('/')
+                .next()
+                .unwrap_or("local")
+                .to_string(),
+            register_count,
+            branch_density,
+            shared_memory_bytes,
+            barrier_count,
             diagnostics,
         });
     }
@@ -297,7 +326,12 @@ pub fn run_ptx_diagnostics(index: &AgentContextIndex) -> PtxDiagnosticResult {
         max_b.cmp(&max_a)
     });
 
-    PtxDiagnosticResult { functions, total_critical, total_warning, total_info }
+    PtxDiagnosticResult {
+        functions,
+        total_critical,
+        total_warning,
+        total_info,
+    }
 }
 
 /// Format PTX diagnostics as human-readable text
@@ -305,7 +339,10 @@ pub fn format_ptx_diagnostics_text(result: &PtxDiagnosticResult) -> String {
     let mut out = String::new();
     out.push_str(&format!(
         "\x1b[1;4mPTX Diagnostics\x1b[0m ({} functions, {} critical, {} warning, {} info)\n\n",
-        result.functions.len(), result.total_critical, result.total_warning, result.total_info
+        result.functions.len(),
+        result.total_critical,
+        result.total_warning,
+        result.total_info
     ));
 
     if result.functions.is_empty() {
@@ -320,8 +357,10 @@ pub fn format_ptx_diagnostics_text(result: &PtxDiagnosticResult) -> String {
         ));
         out.push_str(&format!(
             "    regs:{} branch:{:.0}% shmem:{}B barriers:{}\n",
-            func.register_count, func.branch_density * 100.0,
-            func.shared_memory_bytes, func.barrier_count
+            func.register_count,
+            func.branch_density * 100.0,
+            func.shared_memory_bytes,
+            func.barrier_count
         ));
         for d in &func.diagnostics {
             let color = match d.severity {
@@ -342,26 +381,34 @@ pub fn format_ptx_diagnostics_text(result: &PtxDiagnosticResult) -> String {
 
 /// Format PTX diagnostics as JSON
 pub fn format_ptx_diagnostics_json(result: &PtxDiagnosticResult) -> String {
-    let functions: Vec<serde_json::Value> = result.functions.iter().map(|f| {
-        let diags: Vec<serde_json::Value> = f.diagnostics.iter().map(|d| {
+    let functions: Vec<serde_json::Value> = result
+        .functions
+        .iter()
+        .map(|f| {
+            let diags: Vec<serde_json::Value> = f
+                .diagnostics
+                .iter()
+                .map(|d| {
+                    serde_json::json!({
+                        "severity": d.severity.to_string(),
+                        "category": d.category,
+                        "message": d.message,
+                        "value": d.value,
+                    })
+                })
+                .collect();
             serde_json::json!({
-                "severity": d.severity.to_string(),
-                "category": d.category,
-                "message": d.message,
-                "value": d.value,
+                "function_name": f.function_name,
+                "file_path": f.file_path,
+                "project": f.project,
+                "register_count": f.register_count,
+                "branch_density": f.branch_density,
+                "shared_memory_bytes": f.shared_memory_bytes,
+                "barrier_count": f.barrier_count,
+                "diagnostics": diags,
             })
-        }).collect();
-        serde_json::json!({
-            "function_name": f.function_name,
-            "file_path": f.file_path,
-            "project": f.project,
-            "register_count": f.register_count,
-            "branch_density": f.branch_density,
-            "shared_memory_bytes": f.shared_memory_bytes,
-            "barrier_count": f.barrier_count,
-            "diagnostics": diags,
         })
-    }).collect();
+        .collect();
     serde_json::json!({
         "ptx_diagnostics": {
             "functions": functions,
@@ -369,5 +416,6 @@ pub fn format_ptx_diagnostics_json(result: &PtxDiagnosticResult) -> String {
             "total_warning": result.total_warning,
             "total_info": result.total_info,
         }
-    }).to_string()
+    })
+    .to_string()
 }

@@ -247,10 +247,17 @@ impl Default for FalsificationResult {
 }
 
 /// Check test regression hypothesis. Returns (passed, validated_count).
-fn falsify_test_regression(project_path: &PathBuf, step: usize, total: usize) -> Result<(bool, Vec<String>)> {
+fn falsify_test_regression(
+    project_path: &PathBuf,
+    step: usize,
+    total: usize,
+) -> Result<(bool, Vec<String>)> {
     use std::process::Command;
 
-    println!("   📊 [{}/{}] Hypothesis: No regressions introduced", step, total);
+    println!(
+        "   📊 [{}/{}] Hypothesis: No regressions introduced",
+        step, total
+    );
     println!("      Falsification: Running tests...");
 
     let status = Command::new("cargo")
@@ -269,9 +276,17 @@ fn falsify_test_regression(project_path: &PathBuf, step: usize, total: usize) ->
 }
 
 /// Check coverage maintenance hypothesis from cached metrics.
-fn falsify_coverage_regression(project_path: &PathBuf, result: &mut FalsificationResult, step: usize, total: usize) -> (bool, Vec<String>) {
+fn falsify_coverage_regression(
+    project_path: &PathBuf,
+    result: &mut FalsificationResult,
+    step: usize,
+    total: usize,
+) -> (bool, Vec<String>) {
     println!();
-    println!("   📊 [{}/{}] Hypothesis: Coverage maintained or improved", step, total);
+    println!(
+        "   📊 [{}/{}] Hypothesis: Coverage maintained or improved",
+        step, total
+    );
     println!("      Falsification: Checking coverage trends...");
 
     let trend_file = project_path.join(".pmat-metrics/trends/test-coverage.json");
@@ -284,8 +299,15 @@ fn falsify_coverage_regression(project_path: &PathBuf, result: &mut Falsificatio
             if current >= previous {
                 result.coverage_maintained = true;
                 let delta = current - previous;
-                let msg = if delta > 0.0 { format!("+{:.2}%", delta) } else { format!("at {:.2}%", current) };
-                println!("      ✅ Hypothesis holds: Coverage {} ({}/{} validated)", msg, step, total);
+                let msg = if delta > 0.0 {
+                    format!("+{:.2}%", delta)
+                } else {
+                    format!("at {:.2}%", current)
+                };
+                println!(
+                    "      ✅ Hypothesis holds: Coverage {} ({}/{} validated)",
+                    msg, step, total
+                );
                 (true, vec![])
             } else {
                 let delta = previous - current;
@@ -295,7 +317,10 @@ fn falsify_coverage_regression(project_path: &PathBuf, result: &mut Falsificatio
         }
         None => {
             result.coverage_maintained = true;
-            println!("      ⚠️  No coverage history ({}/{} validated)", step, total);
+            println!(
+                "      ⚠️  No coverage history ({}/{} validated)",
+                step, total
+            );
             (true, vec![])
         }
     }
@@ -306,7 +331,9 @@ fn parse_coverage_trend(path: &std::path::Path) -> Option<(f32, f32)> {
     let content = std::fs::read_to_string(path).ok()?;
     let json: serde_json::Value = serde_json::from_str(&content).ok()?;
     let entries = json.as_array()?;
-    if entries.len() < 2 { return None; }
+    if entries.len() < 2 {
+        return None;
+    }
 
     let current = entries.last()?.get("value")?.as_f64()? as f32;
     let previous = entries.get(entries.len() - 2)?.get("value")?.as_f64()? as f32;
@@ -327,11 +354,20 @@ fn falsify_binary_bloat(project_path: &PathBuf, step: usize, total: usize) -> (b
     if let Ok(metadata) = std::fs::metadata(&release_binary) {
         let size_mb = metadata.len() as f64 / (1024.0 * 1024.0);
         if size_mb <= 50.0 {
-            println!("      ✅ Hypothesis holds: {:.1}MB < 50MB ({}/{} validated)", size_mb, step, total);
+            println!(
+                "      ✅ Hypothesis holds: {:.1}MB < 50MB ({}/{} validated)",
+                size_mb, step, total
+            );
             (true, vec![])
         } else {
-            println!("      ❌ Hypothesis falsified: {:.1}MB > 50MB limit", size_mb);
-            (false, vec![format!("Binary size {:.1}MB exceeds 50MB limit", size_mb)])
+            println!(
+                "      ❌ Hypothesis falsified: {:.1}MB > 50MB limit",
+                size_mb
+            );
+            (
+                false,
+                vec![format!("Binary size {:.1}MB exceeds 50MB limit", size_mb)],
+            )
         }
     } else {
         (true, vec![])
@@ -347,7 +383,10 @@ pub async fn run_popper_falsification(project_path: &PathBuf) -> Result<Falsific
     let total = 3;
 
     println!();
-    println!("🔬 Karl Popper Falsification Validation (0/{} complete)", total);
+    println!(
+        "🔬 Karl Popper Falsification Validation (0/{} complete)",
+        total
+    );
     println!("   (Scientific method: attempting to falsify your work)");
     println!();
 
@@ -365,11 +404,26 @@ pub async fn run_popper_falsification(project_path: &PathBuf) -> Result<Falsific
 
     println!();
     if result.passed {
-        result.summary = format!("{}/{} hypotheses validated - work is valid", validated, total);
-        println!("   🎉 FALSIFICATION RESULT: PASSED ({}/{})", validated, total);
+        result.summary = format!(
+            "{}/{} hypotheses validated - work is valid",
+            validated, total
+        );
+        println!(
+            "   🎉 FALSIFICATION RESULT: PASSED ({}/{})",
+            validated, total
+        );
     } else {
-        result.summary = format!("{}/{} validated, {} falsified: {}", validated, total, total - validated, all_issues.join(", "));
-        println!("   ⚠️  FALSIFICATION RESULT: FAILED ({}/{} validated)", validated, total);
+        result.summary = format!(
+            "{}/{} validated, {} falsified: {}",
+            validated,
+            total,
+            total - validated,
+            all_issues.join(", ")
+        );
+        println!(
+            "   ⚠️  FALSIFICATION RESULT: FAILED ({}/{} validated)",
+            validated, total
+        );
         for issue in &all_issues {
             println!("      - {}", issue);
         }

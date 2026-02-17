@@ -155,8 +155,7 @@ impl Default for SnapshotManager {
 
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
-mod tests {
-}
+mod tests {}
 
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]

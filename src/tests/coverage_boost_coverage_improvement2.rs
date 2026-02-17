@@ -89,7 +89,8 @@ TOTAL                          10000   5000    50.00%    1000    500    50.00%  
 
 #[test]
 fn test_parse_coverage_high_percentage() {
-    let output = "TOTAL   336484  79572  76.35%  23872  4996  79.07%  234886  57001  75.73%  0  0  -\n";
+    let output =
+        "TOTAL   336484  79572  76.35%  23872  4996  79.07%  234886  57001  75.73%  0  0  -\n";
     let result = CoverageImprovementService::parse_coverage_percentage(output);
     assert!(result.is_ok());
     assert!((result.unwrap() - 75.73).abs() < 0.01);
@@ -457,10 +458,15 @@ fn test_generate_strategy_reference() {
 #[test]
 fn test_generate_strategy_all_numeric_types() {
     let svc = CoverageImprovementService::new(CoverageImprovementConfig::default());
-    for type_name in &["i8", "i16", "i32", "i64", "u8", "u16", "u32", "u64", "usize", "isize", "f32", "f64"] {
+    for type_name in &[
+        "i8", "i16", "i32", "i64", "u8", "u16", "u32", "u64", "usize", "isize", "f32", "f64",
+    ] {
         let ty: syn::Type = syn::parse_str(type_name).unwrap();
         let strategy = svc.generate_strategy_for_type(&ty);
-        assert!(strategy.contains(type_name), "Strategy for {type_name} should reference the type");
+        assert!(
+            strategy.contains(type_name),
+            "Strategy for {type_name} should reference the type"
+        );
     }
 }
 

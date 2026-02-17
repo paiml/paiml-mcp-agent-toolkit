@@ -480,7 +480,7 @@ mod tests {
                 coupling: 1.0,
                 domain_risk: 0.5,
                 duplication: 0.2,
-            dead_code: 0.0,
+                dead_code: 0.0,
             },
             severity: TDGSeverity::Normal,
             percentile: 50.0,
@@ -832,7 +832,8 @@ function App() {}
         assert!(
             complex_tdg.value >= medium_tdg.value,
             "Complex file TDG ({:.3}) should be >= medium TDG ({:.3})",
-            complex_tdg.value, medium_tdg.value
+            complex_tdg.value,
+            medium_tdg.value
         );
         // Simple vs medium ordering can vary without git history context
         // Just verify they computed to valid, different values (already checked above)
@@ -1158,7 +1159,12 @@ mod simd_equivalence_tests {
         let path = std::path::Path::new("test.rs");
 
         let recs = calc.generate_recommendations(&score, path).await.unwrap();
-        assert_eq!(recs.len(), 4, "Expected 4 recommendations, got {}", recs.len());
+        assert_eq!(
+            recs.len(),
+            4,
+            "Expected 4 recommendations, got {}",
+            recs.len()
+        );
 
         // Verify sorted by priority descending: 5, 4, 3, 2
         assert_eq!(recs[0].priority, 5);
@@ -1193,7 +1199,12 @@ mod simd_equivalence_tests {
         let path = std::path::Path::new("test.rs");
 
         let recs = calc.generate_recommendations(&score, path).await.unwrap();
-        assert_eq!(recs.len(), 2, "Expected 2 recommendations, got {}", recs.len());
+        assert_eq!(
+            recs.len(),
+            2,
+            "Expected 2 recommendations, got {}",
+            recs.len()
+        );
 
         // priority 5 (complexity) comes before priority 2 (duplication)
         assert_eq!(recs[0].priority, 5);

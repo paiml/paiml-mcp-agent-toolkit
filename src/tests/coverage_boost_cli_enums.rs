@@ -37,7 +37,10 @@ fn test_refactor_docs_output_format_display() {
     assert_eq!(RefactorDocsOutputFormat::Summary.to_string(), "summary");
     assert_eq!(RefactorDocsOutputFormat::Detailed.to_string(), "detailed");
     assert_eq!(RefactorDocsOutputFormat::Json.to_string(), "json");
-    assert_eq!(RefactorDocsOutputFormat::Interactive.to_string(), "interactive");
+    assert_eq!(
+        RefactorDocsOutputFormat::Interactive.to_string(),
+        "interactive"
+    );
 }
 
 // ============ QualityProfile Tests ============
@@ -72,7 +75,10 @@ fn test_lint_hotspot_output_format_display() {
     assert_eq!(LintHotspotOutputFormat::Summary.to_string(), "summary");
     assert_eq!(LintHotspotOutputFormat::Detailed.to_string(), "detailed");
     assert_eq!(LintHotspotOutputFormat::Json.to_string(), "json");
-    assert_eq!(LintHotspotOutputFormat::EnforcementJson.to_string(), "enforcement-json");
+    assert_eq!(
+        LintHotspotOutputFormat::EnforcementJson.to_string(),
+        "enforcement-json"
+    );
     assert_eq!(LintHotspotOutputFormat::Sarif.to_string(), "sarif");
 }
 
@@ -104,7 +110,10 @@ fn test_duplicate_type_display() {
 #[test]
 fn test_defect_prediction_output_format_display() {
     assert_eq!(DefectPredictionOutputFormat::Summary.to_string(), "summary");
-    assert_eq!(DefectPredictionOutputFormat::Detailed.to_string(), "detailed");
+    assert_eq!(
+        DefectPredictionOutputFormat::Detailed.to_string(),
+        "detailed"
+    );
     assert_eq!(DefectPredictionOutputFormat::Json.to_string(), "json");
     assert_eq!(DefectPredictionOutputFormat::Csv.to_string(), "csv");
     assert_eq!(DefectPredictionOutputFormat::Sarif.to_string(), "sarif");
@@ -178,7 +187,10 @@ fn test_deep_context_dag_type_display() {
     assert_eq!(DeepContextDagType::CallGraph.to_string(), "call-graph");
     assert_eq!(DeepContextDagType::ImportGraph.to_string(), "import-graph");
     assert_eq!(DeepContextDagType::Inheritance.to_string(), "inheritance");
-    assert_eq!(DeepContextDagType::FullDependency.to_string(), "full-dependency");
+    assert_eq!(
+        DeepContextDagType::FullDependency.to_string(),
+        "full-dependency"
+    );
 }
 
 // ============ DeepContextCacheStrategy Tests ============
@@ -186,7 +198,10 @@ fn test_deep_context_dag_type_display() {
 #[test]
 fn test_deep_context_cache_strategy_display() {
     assert_eq!(DeepContextCacheStrategy::Normal.to_string(), "normal");
-    assert_eq!(DeepContextCacheStrategy::ForceRefresh.to_string(), "force-refresh");
+    assert_eq!(
+        DeepContextCacheStrategy::ForceRefresh.to_string(),
+        "force-refresh"
+    );
     assert_eq!(DeepContextCacheStrategy::Offline.to_string(), "offline");
 }
 
@@ -197,7 +212,10 @@ fn test_proof_annotation_output_format_display() {
     assert_eq!(ProofAnnotationOutputFormat::Summary.to_string(), "summary");
     assert_eq!(ProofAnnotationOutputFormat::Full.to_string(), "full");
     assert_eq!(ProofAnnotationOutputFormat::Json.to_string(), "json");
-    assert_eq!(ProofAnnotationOutputFormat::Markdown.to_string(), "markdown");
+    assert_eq!(
+        ProofAnnotationOutputFormat::Markdown.to_string(),
+        "markdown"
+    );
     assert_eq!(ProofAnnotationOutputFormat::Sarif.to_string(), "sarif");
 }
 
@@ -205,12 +223,27 @@ fn test_proof_annotation_output_format_display() {
 
 #[test]
 fn test_property_type_filter_display() {
-    assert_eq!(PropertyTypeFilter::MemorySafety.to_string(), "memory-safety");
-    assert_eq!(PropertyTypeFilter::ThreadSafety.to_string(), "thread-safety");
-    assert_eq!(PropertyTypeFilter::DataRaceFreeze.to_string(), "data-race-freeze");
+    assert_eq!(
+        PropertyTypeFilter::MemorySafety.to_string(),
+        "memory-safety"
+    );
+    assert_eq!(
+        PropertyTypeFilter::ThreadSafety.to_string(),
+        "thread-safety"
+    );
+    assert_eq!(
+        PropertyTypeFilter::DataRaceFreeze.to_string(),
+        "data-race-freeze"
+    );
     assert_eq!(PropertyTypeFilter::Termination.to_string(), "termination");
-    assert_eq!(PropertyTypeFilter::FunctionalCorrectness.to_string(), "functional-correctness");
-    assert_eq!(PropertyTypeFilter::ResourceBounds.to_string(), "resource-bounds");
+    assert_eq!(
+        PropertyTypeFilter::FunctionalCorrectness.to_string(),
+        "functional-correctness"
+    );
+    assert_eq!(
+        PropertyTypeFilter::ResourceBounds.to_string(),
+        "resource-bounds"
+    );
     assert_eq!(PropertyTypeFilter::All.to_string(), "all");
 }
 
@@ -218,11 +251,26 @@ fn test_property_type_filter_display() {
 
 #[test]
 fn test_verification_method_filter_display() {
-    assert_eq!(VerificationMethodFilter::FormalProof.to_string(), "formal-proof");
-    assert_eq!(VerificationMethodFilter::ModelChecking.to_string(), "model-checking");
-    assert_eq!(VerificationMethodFilter::StaticAnalysis.to_string(), "static-analysis");
-    assert_eq!(VerificationMethodFilter::AbstractInterpretation.to_string(), "abstract-interpretation");
-    assert_eq!(VerificationMethodFilter::BorrowChecker.to_string(), "borrow-checker");
+    assert_eq!(
+        VerificationMethodFilter::FormalProof.to_string(),
+        "formal-proof"
+    );
+    assert_eq!(
+        VerificationMethodFilter::ModelChecking.to_string(),
+        "model-checking"
+    );
+    assert_eq!(
+        VerificationMethodFilter::StaticAnalysis.to_string(),
+        "static-analysis"
+    );
+    assert_eq!(
+        VerificationMethodFilter::AbstractInterpretation.to_string(),
+        "abstract-interpretation"
+    );
+    assert_eq!(
+        VerificationMethodFilter::BorrowChecker.to_string(),
+        "borrow-checker"
+    );
     assert_eq!(VerificationMethodFilter::All.to_string(), "all");
 }
 
@@ -230,10 +278,19 @@ fn test_verification_method_filter_display() {
 
 #[test]
 fn test_incremental_coverage_output_format_display() {
-    assert_eq!(IncrementalCoverageOutputFormat::Summary.to_string(), "summary");
-    assert_eq!(IncrementalCoverageOutputFormat::Detailed.to_string(), "detailed");
+    assert_eq!(
+        IncrementalCoverageOutputFormat::Summary.to_string(),
+        "summary"
+    );
+    assert_eq!(
+        IncrementalCoverageOutputFormat::Detailed.to_string(),
+        "detailed"
+    );
     assert_eq!(IncrementalCoverageOutputFormat::Json.to_string(), "json");
-    assert_eq!(IncrementalCoverageOutputFormat::Markdown.to_string(), "markdown");
+    assert_eq!(
+        IncrementalCoverageOutputFormat::Markdown.to_string(),
+        "markdown"
+    );
     assert_eq!(IncrementalCoverageOutputFormat::Lcov.to_string(), "lcov");
     assert_eq!(IncrementalCoverageOutputFormat::Delta.to_string(), "delta");
     assert_eq!(IncrementalCoverageOutputFormat::Sarif.to_string(), "sarif");

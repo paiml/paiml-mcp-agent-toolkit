@@ -25,16 +25,12 @@ impl SemanticCli {
     /// # Note
     /// Uses pure Rust TF-IDF embeddings via aprender.
     /// No external API keys or internet connection required.
-    pub async fn new(
-        db_path: &str,
-        workspace_path: &std::path::Path,
-    ) -> Result<Self, String> {
+    pub async fn new(db_path: &str, workspace_path: &std::path::Path) -> Result<Self, String> {
         let vector_db = Arc::new(TursoVectorDB::new_local(db_path).await?);
 
         let search_engine = Arc::new(SemanticSearchEngine::new(db_path).await?);
 
-        let hybrid_engine =
-            Arc::new(HybridSearchEngine::new(db_path, workspace_path).await?);
+        let hybrid_engine = Arc::new(HybridSearchEngine::new(db_path, workspace_path).await?);
 
         let clustering_engine = Arc::new(ClusteringEngine::new(Arc::clone(&vector_db)));
         let topic_engine = Arc::new(TopicEngine::new(Arc::clone(&vector_db)));
@@ -134,7 +130,11 @@ impl SemanticCli {
             return Ok(format!("No similar code found for: {}", file.display()));
         }
 
-        let mut output = format!("Found {} similar code chunks to: {}\n\n", results.len(), file.display());
+        let mut output = format!(
+            "Found {} similar code chunks to: {}\n\n",
+            results.len(),
+            file.display()
+        );
         for (i, result) in results.iter().enumerate() {
             output.push_str(&format!(
                 "{}. {} ({}:{}-{}) - similarity: {:.2}\n   {}\n\n",

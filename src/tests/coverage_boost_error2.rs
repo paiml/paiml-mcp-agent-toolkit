@@ -238,7 +238,9 @@ fn test_should_not_retry_validation_error() {
 
 #[test]
 fn test_should_not_retry_allocation_error() {
-    let err = PmatError::AllocationError { size: 1_000_000_000 };
+    let err = PmatError::AllocationError {
+        size: 1_000_000_000,
+    };
     assert!(!err.should_retry());
 }
 
@@ -469,7 +471,9 @@ fn test_template_error_cache_error_source() {
 
 #[test]
 fn test_template_error_json_error_source() {
-    let json_err = serde_json::from_str::<serde_json::Value>("bad").err().unwrap();
+    let json_err = serde_json::from_str::<serde_json::Value>("bad")
+        .err()
+        .unwrap();
     let err = TemplateError::JsonError(json_err);
     assert!(err.source().is_some());
 }
@@ -490,7 +494,9 @@ fn test_pmat_error_io_source() {
 
 #[test]
 fn test_pmat_error_json_source() {
-    let json_err = serde_json::from_str::<serde_json::Value>("x").err().unwrap();
+    let json_err = serde_json::from_str::<serde_json::Value>("x")
+        .err()
+        .unwrap();
     let err = PmatError::Json(json_err);
     assert!(err.source().is_some());
 }
@@ -1164,7 +1170,11 @@ fn test_mcp_codes_are_negative() {
     ];
 
     for err in errors {
-        assert!(err.to_mcp_code() < 0, "MCP code should be negative for {:?}", err);
+        assert!(
+            err.to_mcp_code() < 0,
+            "MCP code should be negative for {:?}",
+            err
+        );
     }
 }
 

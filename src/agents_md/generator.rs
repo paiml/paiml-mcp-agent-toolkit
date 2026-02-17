@@ -473,6 +473,5 @@ impl AgentsMdGenerator {
     }
 }
 
-
 // Tests extracted to generator_tests.rs for file health (CB-040).
 include!("generator_tests.rs");

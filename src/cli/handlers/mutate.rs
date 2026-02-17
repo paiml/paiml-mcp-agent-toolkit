@@ -362,7 +362,11 @@ fn output_text_summary(score: &MutationScore) {
     if score.total > 0 {
         let pct = |n: usize| (n as f64 / score.total as f64) * 100.0;
 
-        println!("Killed:         {} ({:.1}%)", score.killed, pct(score.killed));
+        println!(
+            "Killed:         {} ({:.1}%)",
+            score.killed,
+            pct(score.killed)
+        );
         println!(
             "Survived:       {} ({:.1}%)",
             score.survived,

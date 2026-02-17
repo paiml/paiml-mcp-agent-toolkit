@@ -371,7 +371,7 @@ fn cli_enum_duplicate_types() {
 /// Test Mode and ColorMode from commands module
 #[test]
 fn cli_enum_mode_color() {
-    use crate::cli::commands::{Mode, ColorMode};
+    use crate::cli::commands::{ColorMode, Mode};
 
     // Test Mode variants
     for variant in Mode::value_variants() {
@@ -398,8 +398,8 @@ fn cli_enum_defaults() {
 /// Test enum Clone implementations
 #[test]
 fn cli_enum_clone() {
+    use crate::cli::commands::{ColorMode, Mode};
     use crate::cli::enums::*;
-    use crate::cli::commands::{Mode, ColorMode};
 
     // Clone tests exercise the Clone derive
     let m = Mode::Cli;
@@ -418,7 +418,7 @@ fn cli_enum_clone() {
 /// Test enum PartialEq implementations
 #[test]
 fn cli_enum_partialeq() {
-    use crate::cli::commands::{Mode, ColorMode};
+    use crate::cli::commands::{ColorMode, Mode};
 
     // PartialEq tests
     assert_eq!(Mode::Cli, Mode::Cli);

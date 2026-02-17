@@ -335,7 +335,13 @@ fn test_cyclomatic_complexity_rule_evaluate_warning() {
     let violation = rule.evaluate(&metrics, "test.rs", 10, Some("complex_fn"));
     assert!(violation.is_some());
 
-    if let Some(Violation::Warning { rule: r, value, threshold, .. }) = violation {
+    if let Some(Violation::Warning {
+        rule: r,
+        value,
+        threshold,
+        ..
+    }) = violation
+    {
         assert_eq!(r, "cyclomatic-complexity");
         assert_eq!(value, 15);
         assert_eq!(threshold, 10);
@@ -353,7 +359,14 @@ fn test_cyclomatic_complexity_rule_evaluate_error() {
     let violation = rule.evaluate(&metrics, "test.rs", 10, None);
     assert!(violation.is_some());
 
-    if let Some(Violation::Error { rule: r, value, threshold, function, .. }) = violation {
+    if let Some(Violation::Error {
+        rule: r,
+        value,
+        threshold,
+        function,
+        ..
+    }) = violation
+    {
         assert_eq!(r, "cyclomatic-complexity");
         assert_eq!(value, 25);
         assert_eq!(threshold, 20);
@@ -395,7 +408,13 @@ fn test_cognitive_complexity_rule_evaluate_warning() {
     let violation = rule.evaluate(&metrics, "test.rs", 10, Some("complex_fn"));
     assert!(violation.is_some());
 
-    if let Some(Violation::Warning { rule: r, value, threshold, .. }) = violation {
+    if let Some(Violation::Warning {
+        rule: r,
+        value,
+        threshold,
+        ..
+    }) = violation
+    {
         assert_eq!(r, "cognitive-complexity");
         assert_eq!(value, 20);
         assert_eq!(threshold, 15);
@@ -413,7 +432,13 @@ fn test_cognitive_complexity_rule_evaluate_error() {
     let violation = rule.evaluate(&metrics, "test.rs", 10, None);
     assert!(violation.is_some());
 
-    if let Some(Violation::Error { rule: r, value, threshold, .. }) = violation {
+    if let Some(Violation::Error {
+        rule: r,
+        value,
+        threshold,
+        ..
+    }) = violation
+    {
         assert_eq!(r, "cognitive-complexity");
         assert_eq!(value, 35);
         assert_eq!(threshold, 30);
@@ -525,17 +550,15 @@ fn test_format_as_sarif_empty_report() {
 fn test_format_as_sarif_with_warning() {
     let report = ComplexityReport {
         summary: ComplexitySummary::default(),
-        violations: vec![
-            Violation::Warning {
-                rule: "cyclomatic-complexity".to_string(),
-                message: "Too complex".to_string(),
-                value: 15,
-                threshold: 10,
-                file: "test.rs".to_string(),
-                line: 42,
-                function: Some("complex_fn".to_string()),
-            },
-        ],
+        violations: vec![Violation::Warning {
+            rule: "cyclomatic-complexity".to_string(),
+            message: "Too complex".to_string(),
+            value: 15,
+            threshold: 10,
+            file: "test.rs".to_string(),
+            line: 42,
+            function: Some("complex_fn".to_string()),
+        }],
         hotspots: vec![],
         files: vec![],
     };
@@ -550,17 +573,15 @@ fn test_format_as_sarif_with_warning() {
 fn test_format_as_sarif_with_error() {
     let report = ComplexityReport {
         summary: ComplexitySummary::default(),
-        violations: vec![
-            Violation::Error {
-                rule: "cognitive-complexity".to_string(),
-                message: "Very complex".to_string(),
-                value: 35,
-                threshold: 30,
-                file: "complex.rs".to_string(),
-                line: 100,
-                function: None,
-            },
-        ],
+        violations: vec![Violation::Error {
+            rule: "cognitive-complexity".to_string(),
+            message: "Very complex".to_string(),
+            value: 35,
+            threshold: 30,
+            file: "complex.rs".to_string(),
+            line: 100,
+            function: None,
+        }],
         hotspots: vec![],
         files: vec![],
     };

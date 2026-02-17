@@ -844,11 +844,7 @@ mod coverage_tests {
         let tools = get_vectorized_tools_info();
         for tool in &tools {
             let desc = tool["description"].as_str().unwrap();
-            assert!(
-                desc.len() > 20,
-                "Description too short: '{}'",
-                desc
-            );
+            assert!(desc.len() > 20, "Description too short: '{}'", desc);
         }
     }
 

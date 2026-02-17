@@ -534,8 +534,7 @@ impl MemoryManager {
 }
 
 /// Global memory manager instance
-static GLOBAL_MEMORY_MANAGER: std::sync::OnceLock<Arc<MemoryManager>> =
-    std::sync::OnceLock::new();
+static GLOBAL_MEMORY_MANAGER: std::sync::OnceLock<Arc<MemoryManager>> = std::sync::OnceLock::new();
 
 /// Get the global memory manager instance
 pub fn global_memory_manager() -> Result<Arc<MemoryManager>> {

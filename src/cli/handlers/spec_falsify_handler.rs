@@ -142,7 +142,11 @@ async fn handle_spec_falsification(
 
     if dry_run {
         println!();
-        println!("Dry run complete: {} claims extracted across {} specs", total_claims, spec_files.len());
+        println!(
+            "Dry run complete: {} claims extracted across {} specs",
+            total_claims,
+            spec_files.len()
+        );
         println!("Run without --dry-run to falsify claims against the codebase.");
     }
 

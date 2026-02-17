@@ -2,8 +2,12 @@
 //! Coverage boost tests for demo module
 //! Tests: assets, runner resolve functions, report types
 
-use crate::demo::assets::{decompress_asset, get_asset, get_asset_hash, AssetEncoding, EmbeddedAsset};
-use crate::demo::runner::{detect_repository, resolve_repository, DemoAnalysisResult, DemoReport, DemoStep};
+use crate::demo::assets::{
+    decompress_asset, get_asset, get_asset_hash, AssetEncoding, EmbeddedAsset,
+};
+use crate::demo::runner::{
+    detect_repository, resolve_repository, DemoAnalysisResult, DemoReport, DemoStep,
+};
 use std::collections::HashMap;
 use std::path::PathBuf;
 
@@ -135,21 +139,13 @@ fn test_resolve_repository_current_dir() {
 
 #[test]
 fn test_resolve_repository_nonexistent_path() {
-    let result = resolve_repository(
-        Some(PathBuf::from("/nonexistent/path")),
-        None,
-        None,
-    );
+    let result = resolve_repository(Some(PathBuf::from("/nonexistent/path")), None, None);
     assert!(result.is_err());
 }
 
 #[test]
 fn test_resolve_repository_nonexistent_repo_spec() {
-    let result = resolve_repository(
-        None,
-        None,
-        Some("not-a-valid-spec.tar.gz".to_string()),
-    );
+    let result = resolve_repository(None, None, Some("not-a-valid-spec.tar.gz".to_string()));
     assert!(result.is_err());
 }
 

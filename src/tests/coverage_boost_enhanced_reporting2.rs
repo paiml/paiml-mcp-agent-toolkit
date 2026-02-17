@@ -5,8 +5,8 @@
 use crate::services::enhanced_reporting::{
     AnalysisResults, BigOAnalysis, ComplexityAnalysis, DeadCodeAnalysis, DuplicationAnalysis,
     EffortLevel, EnhancedReportingService, ExecutiveSummary, Finding, Location, MetricValue,
-    Priority, Recommendation, ReportConfig, ReportFormat, ReportMetadata, ReportSection,
-    RiskLevel, SectionType, Severity, TdgAnalysis, Trend, UnifiedAnalysisReport, Visualization,
+    Priority, Recommendation, ReportConfig, ReportFormat, ReportMetadata, ReportSection, RiskLevel,
+    SectionType, Severity, TdgAnalysis, Trend, UnifiedAnalysisReport, Visualization,
     VisualizationType,
 };
 use std::collections::HashMap;

@@ -962,5 +962,4 @@ fn foo() {
         assert!(result.earned >= 0.0);
         assert!(result.earned <= result.max);
     }
-
 }

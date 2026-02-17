@@ -81,7 +81,10 @@ pub(super) fn segments_to_line_hits(segments: &[Vec<serde_json::Value>]) -> Hash
 
         let line = seg[0].as_u64().unwrap_or(0) as usize;
         let count = seg[2].as_u64().unwrap_or(0);
-        let has_count = seg[3].as_bool().or_else(|| seg[3].as_u64().map(|v| v != 0)).unwrap_or(false);
+        let has_count = seg[3]
+            .as_bool()
+            .or_else(|| seg[3].as_u64().map(|v| v != 0))
+            .unwrap_or(false);
 
         if !has_count {
             continue;
@@ -114,8 +117,8 @@ pub fn build_coverage_map(
     json: &str,
     project_root: &Path,
 ) -> Result<HashMap<String, HashMap<usize, u64>>, String> {
-    let export: LlvmCoverageExport =
-        serde_json::from_str(json).map_err(|e| format!("Failed to parse LLVM coverage JSON: {e}"))?;
+    let export: LlvmCoverageExport = serde_json::from_str(json)
+        .map_err(|e| format!("Failed to parse LLVM coverage JSON: {e}"))?;
 
     let mut coverage_map: HashMap<String, HashMap<usize, u64>> = HashMap::new();
     let canonical_root = project_root
@@ -138,11 +141,15 @@ pub fn build_coverage_map(
             // Normalize path to project-relative (try canonical root first, then raw)
             // Skip files outside the project (dependency sources, registry crates, etc.)
             let rel_path = if file.filename.starts_with(root_str) {
-                file.filename.get(root_str.len()..).unwrap_or_default()
+                file.filename
+                    .get(root_str.len()..)
+                    .unwrap_or_default()
                     .trim_start_matches('/')
                     .to_string()
             } else if file.filename.starts_with(raw_root_str) {
-                file.filename.get(raw_root_str.len()..).unwrap_or_default()
+                file.filename
+                    .get(raw_root_str.len()..)
+                    .unwrap_or_default()
                     .trim_start_matches('/')
                     .to_string()
             } else {
@@ -209,7 +216,10 @@ fn annotate_coverage_faults(result: &mut QueryResult) {
         "partial" if result.line_coverage_pct < 50.0 => {
             result.fault_annotations.push(format!(
                 "LOW_COVERAGE: {:.0}% ({}/{} lines) — {} missed lines need tests",
-                result.line_coverage_pct, result.lines_covered, result.lines_total, result.missed_lines
+                result.line_coverage_pct,
+                result.lines_covered,
+                result.lines_total,
+                result.missed_lines
             ));
         }
         _ => {}
@@ -343,15 +353,19 @@ pub fn format_coverage_summary(results: &[QueryResult]) -> Option<String> {
         .filter(|r| r.coverage_status == "partial")
         .count();
 
-    let top_impact = with_data
-        .iter()
-        .max_by(|a, b| {
-            a.impact_score
-                .partial_cmp(&b.impact_score)
-                .unwrap_or(std::cmp::Ordering::Equal)
-        });
+    let top_impact = with_data.iter().max_by(|a, b| {
+        a.impact_score
+            .partial_cmp(&b.impact_score)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
 
-    let pct_color = if total_pct >= 80.0 { "\x1b[32m" } else if total_pct >= 50.0 { "\x1b[33m" } else { "\x1b[1;31m" };
+    let pct_color = if total_pct >= 80.0 {
+        "\x1b[32m"
+    } else if total_pct >= 50.0 {
+        "\x1b[33m"
+    } else {
+        "\x1b[1;31m"
+    };
     let mut summary = format!(
         "Coverage: {}/{} lines ({}{:.1}%\x1b[0m) across {} functions",
         total_covered,
@@ -362,7 +376,10 @@ pub fn format_coverage_summary(results: &[QueryResult]) -> Option<String> {
     );
 
     if uncovered_count > 0 {
-        summary.push_str(&format!(" | \x1b[1;31m{} uncovered\x1b[0m", uncovered_count));
+        summary.push_str(&format!(
+            " | \x1b[1;31m{} uncovered\x1b[0m",
+            uncovered_count
+        ));
     }
     if partial_count > 0 {
         summary.push_str(&format!(" | \x1b[33m{} partial\x1b[0m", partial_count));
@@ -444,7 +461,10 @@ fn dir_mtime(dir: &Path) -> Option<u64> {
 
 /// Extract target-dir from a cargo config TOML file (simple line-based parsing).
 #[cfg_attr(coverage_nightly, coverage(off))]
-fn target_dir_from_cargo_config(config_path: &Path, project_root: &Path) -> Vec<std::path::PathBuf> {
+fn target_dir_from_cargo_config(
+    config_path: &Path,
+    project_root: &Path,
+) -> Vec<std::path::PathBuf> {
     let content = match std::fs::read_to_string(config_path) {
         Ok(c) => c,
         Err(_) => return vec![],
@@ -488,7 +508,12 @@ fn mnt_target_candidates(project_root: &Path) -> Vec<std::path::PathBuf> {
     };
     entries
         .flatten()
-        .map(|e| e.path().join("targets").join(project_name).join("llvm-cov-target"))
+        .map(|e| {
+            e.path()
+                .join("targets")
+                .join(project_name)
+                .join("llvm-cov-target")
+        })
         .collect()
 }
 
@@ -657,9 +682,7 @@ fn get_profdata_mtime_and_dir(
 ///
 /// Searches standard locations: `target/coverage/lcov.info`, `target/llvm-cov-target/lcov.info`.
 #[cfg_attr(coverage_nightly, coverage(off))]
-fn try_load_lcov_info(
-    project_root: &Path,
-) -> Option<HashMap<String, HashMap<usize, u64>>> {
+fn try_load_lcov_info(project_root: &Path) -> Option<HashMap<String, HashMap<usize, u64>>> {
     let candidates = [
         project_root.join("target/coverage/lcov.info"),
         project_root.join("target/llvm-cov-target/lcov.info"),
@@ -684,9 +707,7 @@ fn try_load_lcov_info(
 /// don't pass `--coverage-file`. Without this, pmat would skip the file and
 /// run the subprocess, potentially getting stale or different data (#158).
 #[cfg_attr(coverage_nightly, coverage(off))]
-fn try_load_coverage_json(
-    project_root: &Path,
-) -> Option<HashMap<String, HashMap<usize, u64>>> {
+fn try_load_coverage_json(project_root: &Path) -> Option<HashMap<String, HashMap<usize, u64>>> {
     let candidates = [
         project_root.join("target/coverage/coverage.json"),
         project_root.join("target/llvm-cov-target/coverage.json"),
@@ -733,8 +754,13 @@ fn parse_lcov_to_coverage_map(
             if let Some(ref file) = current_file {
                 let parts: Vec<&str> = da.splitn(2, ',').collect();
                 if parts.len() == 2 {
-                    if let (Ok(line_no), Ok(count)) = (parts[0].parse::<usize>(), parts[1].parse::<u64>()) {
-                        result.entry(file.clone()).or_default().insert(line_no, count);
+                    if let (Ok(line_no), Ok(count)) =
+                        (parts[0].parse::<usize>(), parts[1].parse::<u64>())
+                    {
+                        result
+                            .entry(file.clone())
+                            .or_default()
+                            .insert(line_no, count);
                     }
                 }
             }
@@ -772,14 +798,12 @@ fn run_cargo_llvm_cov_and_cache(
     // Uses get_profdata_mtime_fast() which skips `cargo metadata` subprocess —
     // prevents 30s hangs on repos without coverage data (#212).
     if get_profdata_mtime_fast(project_root, None).is_none() {
-        return Err(
-            "No coverage data available.\n\n\
+        return Err("No coverage data available.\n\n\
             To generate it, run:\n  \
             cargo llvm-cov test --lib --no-report\n\n\
             Then re-run with --coverage-gaps.\n\
             Or pass --coverage-file <path> to use existing coverage JSON."
-                .to_string(),
-        );
+            .to_string());
     }
 
     eprintln!("Generating coverage report...");
@@ -793,8 +817,10 @@ fn run_cargo_llvm_cov_and_cache(
 
 /// Write coverage data to the cache file.
 fn write_coverage_cache(
-    cache_path: &Path, head_hash: &str,
-    project_root: &Path, files: &HashMap<String, HashMap<usize, u64>>,
+    cache_path: &Path,
+    head_hash: &str,
+    project_root: &Path,
+    files: &HashMap<String, HashMap<usize, u64>>,
 ) {
     let (mtime, dir) = get_profdata_mtime_and_dir(project_root, None)
         .map(|(m, d)| (Some(m), Some(d)))
@@ -858,9 +884,13 @@ fn run_llvm_cov_subprocess(project_root: &Path) -> Result<std::process::Output, 
         })
         .map_err(|e| format!("cargo llvm-cov report --json failed to spawn: {e}"))?;
 
-    let mut stdout_handle = child.stdout.take()
+    let mut stdout_handle = child
+        .stdout
+        .take()
         .ok_or_else(|| "Failed to capture stdout from cargo llvm-cov".to_string())?;
-    let mut stderr_handle = child.stderr.take()
+    let mut stderr_handle = child
+        .stderr
+        .take()
         .ok_or_else(|| "Failed to capture stderr from cargo llvm-cov".to_string())?;
 
     let stdout_thread = std::thread::spawn(move || -> Vec<u8> {
@@ -878,10 +908,20 @@ fn run_llvm_cov_subprocess(project_root: &Path) -> Result<std::process::Output, 
 
     wait_with_timeout(&mut child, std::time::Duration::from_secs(30))?;
 
-    let status = child.wait().map_err(|e| format!("Failed to wait on cargo llvm-cov: {e}"))?;
-    let stdout = stdout_thread.join().map_err(|_| "stdout reader thread panicked".to_string())?;
-    let stderr = stderr_thread.join().map_err(|_| "stderr reader thread panicked".to_string())?;
-    let output = std::process::Output { status, stdout, stderr };
+    let status = child
+        .wait()
+        .map_err(|e| format!("Failed to wait on cargo llvm-cov: {e}"))?;
+    let stdout = stdout_thread
+        .join()
+        .map_err(|_| "stdout reader thread panicked".to_string())?;
+    let stderr = stderr_thread
+        .join()
+        .map_err(|_| "stderr reader thread panicked".to_string())?;
+    let output = std::process::Output {
+        status,
+        stdout,
+        stderr,
+    };
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
@@ -898,7 +938,10 @@ fn run_llvm_cov_subprocess(project_root: &Path) -> Result<std::process::Output, 
 }
 
 /// Poll child process with timeout, killing if exceeded.
-fn wait_with_timeout(child: &mut std::process::Child, timeout: std::time::Duration) -> Result<(), String> {
+fn wait_with_timeout(
+    child: &mut std::process::Child,
+    timeout: std::time::Duration,
+) -> Result<(), String> {
     let start = std::time::Instant::now();
     loop {
         match child.try_wait() {
@@ -906,16 +949,14 @@ fn wait_with_timeout(child: &mut std::process::Child, timeout: std::time::Durati
             Ok(None) if start.elapsed() > timeout => {
                 let _ = child.kill();
                 let _ = child.wait();
-                return Err(
-                    "No coverage data available.\n\n\
+                return Err("No coverage data available.\n\n\
                     cargo llvm-cov report --json timed out after 30s.\n\
                     This usually means corrupted profdata. Try:\n  \
                     cargo llvm-cov clean\n  \
                     cargo llvm-cov test --lib --no-report\n\n\
                     Then re-run with --coverage or --coverage-gaps.\n\
                     Or pass --coverage-file <path> to use existing coverage JSON."
-                        .to_string(),
-                );
+                    .to_string());
             }
             Ok(None) => std::thread::sleep(std::time::Duration::from_millis(50)),
             Err(e) => return Err(format!("Failed to wait on cargo llvm-cov: {e}")),
@@ -933,7 +974,8 @@ fn wait_with_timeout(child: &mut std::process::Child, timeout: std::time::Durati
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[allow(clippy::type_complexity)]
 fn try_load_coverage_from_explicit_path(
-    path: &Path, project_root: &Path,
+    path: &Path,
+    project_root: &Path,
 ) -> Result<Option<HashMap<String, HashMap<usize, u64>>>, String> {
     let json = std::fs::read_to_string(path)
         .map_err(|e| format!("Failed to read coverage file {}: {e}", path.display()))?;
@@ -941,13 +983,17 @@ fn try_load_coverage_from_explicit_path(
 }
 
 #[allow(clippy::type_complexity)]
-fn try_load_coverage_from_env(project_root: &Path) -> Result<Option<HashMap<String, HashMap<usize, u64>>>, String> {
+fn try_load_coverage_from_env(
+    project_root: &Path,
+) -> Result<Option<HashMap<String, HashMap<usize, u64>>>, String> {
     let env_path = match std::env::var("PMAT_COVERAGE_FILE") {
         Ok(p) => p,
         Err(_) => return Ok(None),
     };
     let path = std::path::PathBuf::from(&env_path);
-    if !path.exists() { return Ok(None); }
+    if !path.exists() {
+        return Ok(None);
+    }
     try_load_coverage_from_explicit_path(&path, project_root)
 }
 
@@ -958,7 +1004,9 @@ pub async fn enrich_results_with_coverage(
 ) -> Result<(), String> {
     use std::process::Command;
 
-    if results.is_empty() { return Ok(()); }
+    if results.is_empty() {
+        return Ok(());
+    }
 
     // 1. Explicit file, 2. Env var
     let file_coverage = if let Some(path) = coverage_file {
@@ -978,7 +1026,9 @@ pub async fn enrich_results_with_coverage(
         .current_dir(project_root)
         .output()
         .map_err(|e| format!("git rev-parse failed: {e}"))?;
-    let head_hash = String::from_utf8_lossy(&head_hash.stdout).trim().to_string();
+    let head_hash = String::from_utf8_lossy(&head_hash.stdout)
+        .trim()
+        .to_string();
 
     // Check cache first
     if let Some(cached) = load_coverage_from_cache(&cache_path, &head_hash, project_root) {
@@ -1061,9 +1111,27 @@ mod tests {
     fn test_segments_to_line_hits_basic() {
         // Segments: [line, col, count, has_count, is_region_entry]
         let segments = vec![
-            vec![json_u64(10), json_u64(1), json_u64(5), json_bool(true), json_bool(true)],
-            vec![json_u64(15), json_u64(1), json_u64(0), json_bool(true), json_bool(false)],
-            vec![json_u64(20), json_u64(1), json_u64(3), json_bool(true), json_bool(true)],
+            vec![
+                json_u64(10),
+                json_u64(1),
+                json_u64(5),
+                json_bool(true),
+                json_bool(true),
+            ],
+            vec![
+                json_u64(15),
+                json_u64(1),
+                json_u64(0),
+                json_bool(true),
+                json_bool(false),
+            ],
+            vec![
+                json_u64(20),
+                json_u64(1),
+                json_u64(3),
+                json_bool(true),
+                json_bool(true),
+            ],
         ];
         let hits = segments_to_line_hits(&segments);
 
@@ -1085,9 +1153,13 @@ mod tests {
     #[test]
     fn test_segments_to_line_hits_no_count() {
         // Segment with has_count=false should be skipped
-        let segments = vec![
-            vec![json_u64(10), json_u64(1), json_u64(5), json_bool(false), json_bool(true)],
-        ];
+        let segments = vec![vec![
+            json_u64(10),
+            json_u64(1),
+            json_u64(5),
+            json_bool(false),
+            json_bool(true),
+        ]];
         let hits = segments_to_line_hits(&segments);
         assert!(hits.is_empty());
     }
@@ -1112,7 +1184,7 @@ mod tests {
         assert_eq!(results[0].lines_covered, 6); // 10,11,12,13,14,15
         assert_eq!(results[0].lines_total, 11); // 10..=20
         assert_eq!(results[0].missed_lines, 5); // 16,17,18,19,20
-        // Coverage = 6/11 ≈ 54.5%
+                                                // Coverage = 6/11 ≈ 54.5%
         assert!((results[0].line_coverage_pct - 54.545).abs() < 1.0);
         assert!(results[0].impact_score > 0.0);
         assert_eq!(results[0].coverage_status, "partial");
@@ -1388,8 +1460,14 @@ mod tests {
         enrich_with_coverage(&mut results, &file_coverage);
 
         // Should have NO_COVERAGE fault annotation
-        assert!(results[0].fault_annotations.iter().any(|f| f.starts_with("NO_COVERAGE:")),
-            "Expected NO_COVERAGE annotation, got: {:?}", results[0].fault_annotations);
+        assert!(
+            results[0]
+                .fault_annotations
+                .iter()
+                .any(|f| f.starts_with("NO_COVERAGE:")),
+            "Expected NO_COVERAGE annotation, got: {:?}",
+            results[0].fault_annotations
+        );
         assert!(results[0].fault_annotations[0].contains("0/10 lines"));
     }
 
@@ -1399,14 +1477,24 @@ mod tests {
         let mut file_coverage = HashMap::new();
         let mut line_hits = HashMap::new();
         // 3 covered, 7 uncovered → 30% coverage
-        for l in 1..=3 { line_hits.insert(l, 1); }
-        for l in 4..=10 { line_hits.insert(l, 0); }
+        for l in 1..=3 {
+            line_hits.insert(l, 1);
+        }
+        for l in 4..=10 {
+            line_hits.insert(l, 0);
+        }
         file_coverage.insert("src/main.rs".to_string(), line_hits);
         enrich_with_coverage(&mut results, &file_coverage);
 
         // Should have LOW_COVERAGE fault annotation (30% < 50%)
-        assert!(results[0].fault_annotations.iter().any(|f| f.starts_with("LOW_COVERAGE:")),
-            "Expected LOW_COVERAGE annotation, got: {:?}", results[0].fault_annotations);
+        assert!(
+            results[0]
+                .fault_annotations
+                .iter()
+                .any(|f| f.starts_with("LOW_COVERAGE:")),
+            "Expected LOW_COVERAGE annotation, got: {:?}",
+            results[0].fault_annotations
+        );
     }
 
     #[test]
@@ -1415,16 +1503,26 @@ mod tests {
         let mut results = vec![make_result("src/main.rs", 1, 20, 0.01, 2)];
         let mut file_coverage = HashMap::new();
         let mut line_hits = HashMap::new();
-        for l in 1..=5 { line_hits.insert(l, 1); }
-        for l in 6..=20 { line_hits.insert(l, 0); }
+        for l in 1..=5 {
+            line_hits.insert(l, 1);
+        }
+        for l in 6..=20 {
+            line_hits.insert(l, 0);
+        }
         file_coverage.insert("src/main.rs".to_string(), line_hits);
         enrich_with_coverage(&mut results, &file_coverage);
 
         // Impact = 15 missed * (0.01*10000=100.0) / 2.0 = 750.0 → COVERAGE_RISK
         assert!(results[0].impact_score > 5.0);
-        assert!(results[0].fault_annotations.iter().any(|f| f.starts_with("COVERAGE_RISK:")),
+        assert!(
+            results[0]
+                .fault_annotations
+                .iter()
+                .any(|f| f.starts_with("COVERAGE_RISK:")),
             "Expected COVERAGE_RISK annotation for impact={:.1}, got: {:?}",
-            results[0].impact_score, results[0].fault_annotations);
+            results[0].impact_score,
+            results[0].fault_annotations
+        );
     }
 
     #[test]
@@ -1432,16 +1530,27 @@ mod tests {
         let mut results = vec![make_result("src/main.rs", 1, 5, 0.1, 3)];
         let mut file_coverage = HashMap::new();
         let mut line_hits = HashMap::new();
-        for l in 1..=5 { line_hits.insert(l, 1); }
+        for l in 1..=5 {
+            line_hits.insert(l, 1);
+        }
         file_coverage.insert("src/main.rs".to_string(), line_hits);
         enrich_with_coverage(&mut results, &file_coverage);
 
         // Fully covered → no coverage fault annotations
-        let coverage_faults: Vec<_> = results[0].fault_annotations.iter()
-            .filter(|f| f.starts_with("NO_COVERAGE:") || f.starts_with("LOW_COVERAGE:") || f.starts_with("COVERAGE_RISK:"))
+        let coverage_faults: Vec<_> = results[0]
+            .fault_annotations
+            .iter()
+            .filter(|f| {
+                f.starts_with("NO_COVERAGE:")
+                    || f.starts_with("LOW_COVERAGE:")
+                    || f.starts_with("COVERAGE_RISK:")
+            })
             .collect();
-        assert!(coverage_faults.is_empty(),
-            "Fully covered function should have no coverage faults, got: {:?}", coverage_faults);
+        assert!(
+            coverage_faults.is_empty(),
+            "Fully covered function should have no coverage faults, got: {:?}",
+            coverage_faults
+        );
     }
 
     #[test]
@@ -1469,7 +1578,12 @@ mod tests {
         let map = build_coverage_map(json, root).unwrap();
 
         // Only project file should be included
-        assert_eq!(map.len(), 1, "Should only contain project files, got: {:?}", map.keys().collect::<Vec<_>>());
+        assert_eq!(
+            map.len(),
+            1,
+            "Should only contain project files, got: {:?}",
+            map.keys().collect::<Vec<_>>()
+        );
         assert!(map.contains_key("src/main.rs"));
     }
 
@@ -1522,8 +1636,12 @@ end_of_record
         std::fs::create_dir_all(&cov_dir).unwrap();
         std::fs::write(
             cov_dir.join("lcov.info"),
-            format!("SF:{}/src/lib.rs\nDA:1,5\nend_of_record\n", temp.path().display()),
-        ).unwrap();
+            format!(
+                "SF:{}/src/lib.rs\nDA:1,5\nend_of_record\n",
+                temp.path().display()
+            ),
+        )
+        .unwrap();
 
         let result = try_load_lcov_info(temp.path());
         assert!(result.is_some());

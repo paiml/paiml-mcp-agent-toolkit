@@ -1,6 +1,8 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
 ///! Popperian falsification audit retest - Vector 1.1 (Clone Army) and Vector 1.2 (Empty Shell)
-use crate::services::lightweight_provability_analyzer::{FunctionId, LightweightProvabilityAnalyzer};
+use crate::services::lightweight_provability_analyzer::{
+    FunctionId, LightweightProvabilityAnalyzer,
+};
 
 /// Get project root path for reliable test file resolution
 fn project_file(relative: &str) -> String {
@@ -57,10 +59,7 @@ async fn audit_retest_v1_1_clone_army_spread() {
 
     println!("=== VECTOR 1.1: Clone Army Retest ===");
     for (i, (func, score)) in functions.iter().zip(scores.iter()).enumerate() {
-        println!(
-            "  [{i}] {:<40} => {:.4}",
-            func.function_name, score
-        );
+        println!("  [{i}] {:<40} => {:.4}", func.function_name, score);
     }
     println!("  min={min_score:.4}, max={max_score:.4}, spread={spread:.4}");
 

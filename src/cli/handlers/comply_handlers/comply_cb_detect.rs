@@ -54,9 +54,9 @@ impl SATDManifestationType {
         match self {
             SATDManifestationType::Comment => base, // No escalation
             SATDManifestationType::Code => match base {
-                Severity::Low => Severity::Medium,      // Low -> Medium
-                Severity::Medium => Severity::High,     // Medium -> High
-                Severity::High => Severity::Critical,   // High -> Critical
+                Severity::Low => Severity::Medium,        // Low -> Medium
+                Severity::Medium => Severity::High,       // Medium -> High
+                Severity::High => Severity::Critical,     // High -> Critical
                 Severity::Critical => Severity::Critical, // Already max
             },
         }
@@ -188,12 +188,7 @@ impl SuppressionConfig {
 
     /// Check if a violation should be suppressed
     /// Returns (suppressed, reason) - O(1) for file-specific rules
-    pub fn should_suppress(
-        &self,
-        check_id: &str,
-        file_path: &str,
-        line: u32,
-    ) -> SuppressionResult {
+    pub fn should_suppress(&self, check_id: &str, file_path: &str, line: u32) -> SuppressionResult {
         // Normalize path separators (handle Windows paths)
         let normalized_path = file_path.replace('\\', "/");
 
@@ -328,8 +323,9 @@ static TRAIT_BLOCK_PATTERN: LazyLock<Regex> =
 
 /// Pattern to detect if line is inside a string literal
 #[allow(dead_code)] // Reserved for future string literal detection
-static STRING_LITERAL_PATTERN: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r#"^\s*(?:let\s+\w+\s*=\s*)?"[^"]*$|^\s*r#*""#).expect("valid regex"));
+static STRING_LITERAL_PATTERN: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r#"^\s*(?:let\s+\w+\s*=\s*)?"[^"]*$|^\s*r#*""#).expect("valid regex")
+});
 
 /// Pattern to detect comment lines
 /// Note: Cannot use negative lookahead (?!\[) - regex crate doesn't support it
@@ -414,7 +410,12 @@ pub fn detect_cb050_code_stubs_in_str_with_path(
         let fn_name = cap.get(1).map(|m| m.as_str()).unwrap_or("");
 
         // Find the line number for this match
-        let line_num = code.get(..match_start).unwrap_or_default().matches('\n').count() as u32 + 1;
+        let line_num = code
+            .get(..match_start)
+            .unwrap_or_default()
+            .matches('\n')
+            .count() as u32
+            + 1;
 
         // Skip if in a trait block (trait default methods are intentionally empty)
         if trait_lines.contains(&(line_num as usize)) {
@@ -556,7 +557,9 @@ fn is_marker_function(name: &str) -> bool {
     let lower_name = name.to_lowercase();
 
     // Exact matches
-    let exact_markers = ["marker", "sentinel", "phantom", "noop", "no_op", "dummy", "_"];
+    let exact_markers = [
+        "marker", "sentinel", "phantom", "noop", "no_op", "dummy", "_",
+    ];
     if exact_markers.iter().any(|&m| lower_name == m) {
         return true;
     }
@@ -608,8 +611,9 @@ static PTX_BOUNDS_CHECK_PATTERN: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"setp\.lt\.\w+\s+%p\d+").expect("valid regex"));
 
 /// Pattern to detect constant offset shared access (safe)
-static PTX_CONSTANT_OFFSET_PATTERN: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"(ld|st)\.shared\.\w+\s+[^,]+,\s*\[\w+\s*\+\s*\d+\]").expect("valid regex"));
+static PTX_CONSTANT_OFFSET_PATTERN: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"(ld|st)\.shared\.\w+\s+[^,]+,\s*\[\w+\s*\+\s*\d+\]").expect("valid regex")
+});
 
 /// Pattern to detect WGSL workgroup barrier
 static WGSL_BARRIER_PATTERN: LazyLock<Regex> =
@@ -624,28 +628,34 @@ static WGSL_ELSE_PATTERN: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"\}\s*else\s*\{").expect("valid regex"));
 
 /// Pattern to detect WGSL for loop with thread-dependent bounds (divergent)
-static WGSL_DIVERGENT_LOOP_PATTERN: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"for\s*\([^)]*<\s*(?:local_id|global_id)\.\w+[^)]*\)").expect("valid regex"));
+static WGSL_DIVERGENT_LOOP_PATTERN: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"for\s*\([^)]*<\s*(?:local_id|global_id)\.\w+[^)]*\)").expect("valid regex")
+});
 
 /// Pattern to detect matrix store without bounds (tiled kernel)
 static TILED_STORE_PATTERN: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"\bc\s*\[\s*row\s*\*\s*n\s*\+\s*col\s*\]").expect("valid regex"));
 
 /// Pattern to detect proper bounds check (row < m && col < n)
-static TILED_BOUNDS_CHECK_PATTERN: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"(?:row|global_id\.y)\s*<\s*(?:m|\w+).*(?:col|global_id\.x)\s*<\s*(?:n|\w+)").expect("valid regex"));
+static TILED_BOUNDS_CHECK_PATTERN: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"(?:row|global_id\.y)\s*<\s*(?:m|\w+).*(?:col|global_id\.x)\s*<\s*(?:n|\w+)")
+        .expect("valid regex")
+});
 
 /// Pattern to detect complex but valid bounds expressions
-static TILED_COMPLEX_BOUNDS_PATTERN: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"\([^)]*row[^)]*\)\s*<\s*\([^)]*m[^)]*\).*col\s*<\s*n").expect("valid regex"));
+static TILED_COMPLEX_BOUNDS_PATTERN: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"\([^)]*row[^)]*\)\s*<\s*\([^)]*m[^)]*\).*col\s*<\s*n").expect("valid regex")
+});
 
 /// Pattern to detect PTX early exit pattern before tile loop
-static PTX_EARLY_EXIT_PATTERN: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"@%p\d+\s+bra\s+exit[\s\S]{0,200}(?:tile|loop|ld\.shared)").expect("valid regex"));
+static PTX_EARLY_EXIT_PATTERN: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"@%p\d+\s+bra\s+exit[\s\S]{0,200}(?:tile|loop|ld\.shared)").expect("valid regex")
+});
 
 /// Pattern to detect WGSL tiled kernel store
-static WGSL_TILED_STORE_PATTERN: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"\ba\s*\[\s*(?:global_id|local_id)\.\w+\s*\*").expect("valid regex"));
+static WGSL_TILED_STORE_PATTERN: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"\ba\s*\[\s*(?:global_id|local_id)\.\w+\s*\*").expect("valid regex")
+});
 
 /// Detect PTX barrier divergence patterns
 /// Returns list of (line_number, pattern_id, description)
@@ -728,7 +738,10 @@ pub fn detect_wgsl_barrier_divergence_in_str(wgsl: &str) -> Vec<(u32, &'static s
         // Track divergent loops (for with thread-dependent bounds)
         if WGSL_DIVERGENT_LOOP_PATTERN.is_match(line) {
             in_divergent_loop = true;
-            divergent_loop_depth = 1 + line.matches('{').count().saturating_sub(line.matches('}').count());
+            divergent_loop_depth = 1 + line
+                .matches('{')
+                .count()
+                .saturating_sub(line.matches('}').count());
         }
 
         // Track brace depth for divergent loop
@@ -811,8 +824,8 @@ pub fn detect_shared_memory_unbounded_in_str(ptx: &str) -> Vec<(u32, &'static st
         }
 
         // Check if this line has shared memory access (load or store)
-        let has_shared_access = PTX_SHARED_LOAD_PATTERN.is_match(line)
-            || PTX_SHARED_STORE_PATTERN.is_match(line);
+        let has_shared_access =
+            PTX_SHARED_LOAD_PATTERN.is_match(line) || PTX_SHARED_STORE_PATTERN.is_match(line);
         if has_shared_access {
             // Check for safety patterns:
 
@@ -883,7 +896,8 @@ pub fn detect_tiled_kernel_no_bounds_in_str(code: &str) -> Vec<(u32, &'static st
         }
 
         // Look for proper bounds checks
-        if TILED_BOUNDS_CHECK_PATTERN.is_match(line) || TILED_COMPLEX_BOUNDS_PATTERN.is_match(line) {
+        if TILED_BOUNDS_CHECK_PATTERN.is_match(line) || TILED_COMPLEX_BOUNDS_PATTERN.is_match(line)
+        {
             has_proper_bounds = true;
             bounds_check_line = Some(line_idx);
         }
@@ -903,7 +917,12 @@ pub fn detect_tiled_kernel_no_bounds_in_str(code: &str) -> Vec<(u32, &'static st
     }
 
     // Look for tiled stores
-    check_tiled_stores(&lines, has_proper_bounds, bounds_check_line, &mut violations);
+    check_tiled_stores(
+        &lines,
+        has_proper_bounds,
+        bounds_check_line,
+        &mut violations,
+    );
 
     violations
 }
@@ -922,7 +941,10 @@ fn check_tiled_stores(
         if trimmed.starts_with("//") || trimmed.starts_with("/*") {
             continue;
         }
-        if trimmed.starts_with('"') || trimmed.contains("= \"") || trimmed.starts_with("let kernel_src") {
+        if trimmed.starts_with('"')
+            || trimmed.contains("= \"")
+            || trimmed.starts_with("let kernel_src")
+        {
             continue;
         }
 

@@ -54,16 +54,33 @@ pub struct PtxFlowResult {
 }
 
 const EMITTER_KEYWORDS: &[&str] = &[
-    "asm!(", "asm volatile", "global_asm!", ".version ", ".target sm_",
-    "__global__", "__device__", "emit_ptx", "ptx_builder",
+    "asm!(",
+    "asm volatile",
+    "global_asm!",
+    ".version ",
+    ".target sm_",
+    "__global__",
+    "__device__",
+    "emit_ptx",
+    "ptx_builder",
 ];
 const LOADER_KEYWORDS: &[&str] = &[
-    "cuModuleLoad", "cuModuleLoadData", "create_shader_module",
-    "load_ptx", "ptx_module", "load_module", "compile_ptx",
+    "cuModuleLoad",
+    "cuModuleLoadData",
+    "create_shader_module",
+    "load_ptx",
+    "ptx_module",
+    "load_module",
+    "compile_ptx",
 ];
 const ANALYZER_KEYWORDS: &[&str] = &[
-    "barrier_count", "register_pressure", "shared_memory_size",
-    "ptx_analysis", "detect_ptx_barrier", "detect_shared_memory", "ptx_diagnostic",
+    "barrier_count",
+    "register_pressure",
+    "shared_memory_size",
+    "ptx_analysis",
+    "detect_ptx_barrier",
+    "detect_shared_memory",
+    "ptx_diagnostic",
 ];
 
 fn source_matches_any(source: &str, keywords: &[&str]) -> bool {
@@ -85,9 +102,18 @@ pub fn classify_ptx_role(source: &str, file_path: &str) -> Option<PtxRole> {
     None
 }
 
-fn make_node(func: &crate::services::agent_context::FunctionEntry, idx: usize, role: PtxRole) -> PtxFlowNode {
+fn make_node(
+    func: &crate::services::agent_context::FunctionEntry,
+    idx: usize,
+    role: PtxRole,
+) -> PtxFlowNode {
     PtxFlowNode {
-        project: func.file_path.split('/').next().unwrap_or("local").to_string(),
+        project: func
+            .file_path
+            .split('/')
+            .next()
+            .unwrap_or("local")
+            .to_string(),
         function_name: func.function_name.clone(),
         file_path: func.file_path.clone(),
         role,
@@ -117,10 +143,16 @@ fn find_consumer_nodes(
     let ptx_indices: std::collections::HashSet<usize> = node_func_idx.iter().copied().collect();
     let mut seen = std::collections::HashSet::new();
     for &ptx_idx in node_func_idx {
-        let Some(caller_indices) = index.called_by_indices(ptx_idx) else { continue };
+        let Some(caller_indices) = index.called_by_indices(ptx_idx) else {
+            continue;
+        };
         for &caller_idx in caller_indices {
             if !ptx_indices.contains(&caller_idx) && seen.insert(caller_idx) {
-                nodes.push(make_node(&index.all_functions()[caller_idx], caller_idx, PtxRole::Consumer));
+                nodes.push(make_node(
+                    &index.all_functions()[caller_idx],
+                    caller_idx,
+                    PtxRole::Consumer,
+                ));
             }
         }
     }
@@ -136,11 +168,16 @@ fn build_flow_edges(index: &AgentContextIndex, nodes: &[PtxFlowNode]) -> Vec<Ptx
 
     let mut edges = Vec::new();
     for (from_node_idx, from_node) in nodes.iter().enumerate() {
-        let Some(callee_indices) = index.calls_indices(from_node.func_idx) else { continue };
+        let Some(callee_indices) = index.calls_indices(from_node.func_idx) else {
+            continue;
+        };
         for &callee_idx in callee_indices {
             if let Some(&to_node_idx) = func_idx_to_node.get(&callee_idx) {
                 if from_node_idx != to_node_idx {
-                    edges.push(PtxFlowEdge { from_idx: from_node_idx, to_idx: to_node_idx });
+                    edges.push(PtxFlowEdge {
+                        from_idx: from_node_idx,
+                        to_idx: to_node_idx,
+                    });
                 }
             }
         }
@@ -161,7 +198,11 @@ pub fn trace_ptx_dataflow(index: &AgentContextIndex) -> PtxFlowResult {
 /// Format PTX flow result as a human-readable table
 pub fn format_ptx_flow_text(result: &PtxFlowResult) -> String {
     let mut out = String::new();
-    out.push_str(&format!("\x1b[1;4mPTX Dataflow\x1b[0m ({} nodes, {} edges)\n\n", result.nodes.len(), result.edges.len()));
+    out.push_str(&format!(
+        "\x1b[1;4mPTX Dataflow\x1b[0m ({} nodes, {} edges)\n\n",
+        result.nodes.len(),
+        result.edges.len()
+    ));
 
     if result.nodes.is_empty() {
         out.push_str("  No PTX-related functions found in workspace.\n");
@@ -169,7 +210,12 @@ pub fn format_ptx_flow_text(result: &PtxFlowResult) -> String {
     }
 
     // Group by role
-    for role in &[PtxRole::Emitter, PtxRole::Loader, PtxRole::Analyzer, PtxRole::Consumer] {
+    for role in &[
+        PtxRole::Emitter,
+        PtxRole::Loader,
+        PtxRole::Analyzer,
+        PtxRole::Consumer,
+    ] {
         let role_nodes: Vec<_> = result.nodes.iter().filter(|n| &n.role == role).collect();
         if role_nodes.is_empty() {
             continue;
@@ -180,10 +226,17 @@ pub fn format_ptx_flow_text(result: &PtxFlowResult) -> String {
             PtxRole::Analyzer => "\x1b[1;36m",
             PtxRole::Consumer => "\x1b[1;32m",
         };
-        out.push_str(&format!("  {role_color}{role}\x1b[0m ({}):\n", role_nodes.len()));
+        out.push_str(&format!(
+            "  {role_color}{role}\x1b[0m ({}):\n",
+            role_nodes.len()
+        ));
         for node in &role_nodes {
-            out.push_str(&format!("    [{project}] {name}  \x1b[2m{path}\x1b[0m\n",
-                project = node.project, name = node.function_name, path = node.file_path));
+            out.push_str(&format!(
+                "    [{project}] {name}  \x1b[2m{path}\x1b[0m\n",
+                project = node.project,
+                name = node.function_name,
+                path = node.file_path
+            ));
         }
         out.push('\n');
     }
@@ -206,23 +259,32 @@ pub fn format_ptx_flow_text(result: &PtxFlowResult) -> String {
 
 /// Format PTX flow result as JSON
 pub fn format_ptx_flow_json(result: &PtxFlowResult) -> String {
-    let nodes: Vec<serde_json::Value> = result.nodes.iter().map(|n| {
-        serde_json::json!({
-            "project": n.project,
-            "function_name": n.function_name,
-            "file_path": n.file_path,
-            "role": n.role.to_string(),
+    let nodes: Vec<serde_json::Value> = result
+        .nodes
+        .iter()
+        .map(|n| {
+            serde_json::json!({
+                "project": n.project,
+                "function_name": n.function_name,
+                "file_path": n.file_path,
+                "role": n.role.to_string(),
+            })
         })
-    }).collect();
-    let edges: Vec<serde_json::Value> = result.edges.iter().map(|e| {
-        serde_json::json!({
-            "from": result.nodes[e.from_idx].function_name,
-            "to": result.nodes[e.to_idx].function_name,
-            "from_project": result.nodes[e.from_idx].project,
-            "to_project": result.nodes[e.to_idx].project,
+        .collect();
+    let edges: Vec<serde_json::Value> = result
+        .edges
+        .iter()
+        .map(|e| {
+            serde_json::json!({
+                "from": result.nodes[e.from_idx].function_name,
+                "to": result.nodes[e.to_idx].function_name,
+                "from_project": result.nodes[e.from_idx].project,
+                "to_project": result.nodes[e.to_idx].project,
+            })
         })
-    }).collect();
+        .collect();
     serde_json::json!({
         "ptx_flow": { "nodes": nodes, "edges": edges }
-    }).to_string()
+    })
+    .to_string()
 }

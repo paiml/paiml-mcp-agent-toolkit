@@ -70,9 +70,8 @@ fn setup_git_context(analyzer: &mut TdgAnalyzer, config: &TdgCommandConfig) {
     } else {
         &config.path
     };
-    let git_context = discover_git_workdir(search_path).and_then(|workdir| {
-        crate::models::git_context::GitContext::try_from_current_dir(&workdir)
-    });
+    let git_context = discover_git_workdir(search_path)
+        .and_then(|workdir| crate::models::git_context::GitContext::try_from_current_dir(&workdir));
     analyzer.set_git_context(git_context);
 }
 
@@ -385,7 +384,10 @@ async fn handle_baseline_command(
 }
 
 /// Extract git context for baseline creation
-fn extract_git_context(path: &Path, with_git_context: bool) -> Option<crate::models::git_context::GitContext> {
+fn extract_git_context(
+    path: &Path,
+    with_git_context: bool,
+) -> Option<crate::models::git_context::GitContext> {
     if !with_git_context {
         return None;
     }
@@ -403,20 +405,34 @@ fn extract_git_context(path: &Path, with_git_context: bool) -> Option<crate::mod
 
 /// Display grade distribution histogram
 fn display_grade_distribution(baseline: &crate::tdg::TdgBaseline) {
-    let mut grade_counts: std::collections::HashMap<Grade, usize> = std::collections::HashMap::new();
+    let mut grade_counts: std::collections::HashMap<Grade, usize> =
+        std::collections::HashMap::new();
     let mut f_grade_files: Vec<String> = Vec::new();
 
     for (path, entry) in &baseline.files {
         *grade_counts.entry(entry.score.grade).or_insert(0) += 1;
         if entry.score.grade == Grade::F {
-            f_grade_files.push(format!("     {} ({:.1})", path.display(), entry.score.total));
+            f_grade_files.push(format!(
+                "     {} ({:.1})",
+                path.display(),
+                entry.score.total
+            ));
         }
     }
 
     println!("\n📊 Grade Distribution:");
     let grade_order = [
-        Grade::APLus, Grade::A, Grade::AMinus, Grade::BPlus, Grade::B,
-        Grade::BMinus, Grade::CPlus, Grade::C, Grade::CMinus, Grade::D, Grade::F,
+        Grade::APLus,
+        Grade::A,
+        Grade::AMinus,
+        Grade::BPlus,
+        Grade::B,
+        Grade::BMinus,
+        Grade::CPlus,
+        Grade::C,
+        Grade::CMinus,
+        Grade::D,
+        Grade::F,
     ];
     for grade in grade_order {
         let count = grade_counts.get(&grade).unwrap_or(&0);
@@ -434,7 +450,10 @@ fn display_f_grade_warning(f_grade_files: &[String]) {
     if f_grade_files.is_empty() {
         return;
     }
-    println!("\n⚠️  F-Grade Warning: {} file(s) with F grade:", f_grade_files.len());
+    println!(
+        "\n⚠️  F-Grade Warning: {} file(s) with F grade:",
+        f_grade_files.len()
+    );
     for file in f_grade_files.iter().take(10) {
         println!("{}", file);
     }
@@ -456,11 +475,15 @@ async fn create_baseline(
     println!("🔨 Creating TDG baseline...");
     println!("   Path: {}", path.display());
     println!("   Output: {}", output.display());
-    println!("   Git context: {}", if with_git_context { "yes" } else { "no" });
+    println!(
+        "   Git context: {}",
+        if with_git_context { "yes" } else { "no" }
+    );
 
     let git_context = extract_git_context(path, with_git_context);
     let mut baseline = TdgBaseline::new(git_context);
-    let (files_analyzed, files_skipped) = analyze_baseline_files(analyzer, path, &mut baseline).await?;
+    let (files_analyzed, files_skipped) =
+        analyze_baseline_files(analyzer, path, &mut baseline).await?;
 
     println!();
     println!("\n✅ Analysis complete:");
@@ -496,7 +519,8 @@ async fn analyze_baseline_files(
         .into_iter()
         .filter_entry(|e| {
             let name = e.file_name().to_string_lossy();
-            !name.starts_with('.') && !matches!(name.as_ref(), "target" | "node_modules" | "dist" | "build")
+            !name.starts_with('.')
+                && !matches!(name.as_ref(), "target" | "node_modules" | "dist" | "build")
         })
     {
         let entry = entry?;
@@ -636,7 +660,9 @@ fn find_baseline_files(path: &Path) -> Vec<(PathBuf, crate::tdg::TdgBaseline)> {
         .filter_map(|entry| {
             let name = entry.file_name().to_str()?;
             if name.ends_with("-baseline.json") || name == ".pmat-baseline.json" {
-                TdgBaseline::load(entry.path()).ok().map(|b| (entry.path().to_path_buf(), b))
+                TdgBaseline::load(entry.path())
+                    .ok()
+                    .map(|b| (entry.path().to_path_buf(), b))
             } else {
                 None
             }
@@ -648,7 +674,10 @@ fn find_baseline_files(path: &Path) -> Vec<(PathBuf, crate::tdg::TdgBaseline)> {
 fn display_baseline_table(path: &Path, baseline: &crate::tdg::TdgBaseline) {
     println!("📝 {}", path.display());
     println!("   Version: {}", baseline.version);
-    println!("   Created: {}", baseline.created_at.format("%Y-%m-%d %H:%M:%S"));
+    println!(
+        "   Created: {}",
+        baseline.created_at.format("%Y-%m-%d %H:%M:%S")
+    );
     println!("   Files: {}", baseline.summary.total_files);
     println!("   Avg Score: {:.1}", baseline.summary.avg_score);
     if let Some(git_ctx) = &baseline.git_context {
@@ -677,22 +706,28 @@ async fn list_baselines(path: &Path, format: crate::cli::TdgOutputFormat) -> Res
             }
         }
         crate::cli::TdgOutputFormat::Json => {
-            let output: Vec<_> = baselines.iter().map(|(path, baseline)| {
-                serde_json::json!({
-                    "path": path.display().to_string(),
-                    "version": baseline.version,
-                    "created_at": baseline.created_at,
-                    "total_files": baseline.summary.total_files,
-                    "avg_score": baseline.summary.avg_score,
-                    "git_context": baseline.git_context
+            let output: Vec<_> = baselines
+                .iter()
+                .map(|(path, baseline)| {
+                    serde_json::json!({
+                        "path": path.display().to_string(),
+                        "version": baseline.version,
+                        "created_at": baseline.created_at,
+                        "total_files": baseline.summary.total_files,
+                        "avg_score": baseline.summary.avg_score,
+                        "git_context": baseline.git_context
+                    })
                 })
-            }).collect();
+                .collect();
             println!("{}", serde_json::to_string_pretty(&output)?);
         }
         crate::cli::TdgOutputFormat::Sarif => {
             for (path, baseline) in &baselines {
                 println!("📝 {}", path.display());
-                println!("   Files: {} | Avg: {:.1}", baseline.summary.total_files, baseline.summary.avg_score);
+                println!(
+                    "   Files: {} | Avg: {:.1}",
+                    baseline.summary.total_files, baseline.summary.avg_score
+                );
             }
         }
     }
@@ -1181,9 +1216,8 @@ fn run_primary_gate(
     use crate::tdg::{GateConfig, MinimumGradeGate, NewFileGate, QualityGate, TdgBaseline};
 
     if new_files_only {
-        let baseline_path = baseline_path.ok_or_else(|| {
-            anyhow::anyhow!("Baseline required for --new-files-only mode")
-        })?;
+        let baseline_path = baseline_path
+            .ok_or_else(|| anyhow::anyhow!("Baseline required for --new-files-only mode"))?;
         let baseline = TdgBaseline::load(baseline_path)?;
         let mut config = GateConfig::default();
         if let Some(grade_str) = min_grade_str {
@@ -1277,7 +1311,10 @@ fn display_gate_result_table(result: &crate::tdg::GateResult) {
                 path.get(..path.len().min(30)).unwrap_or(&path),
                 vtype.get(..vtype.len().min(12)).unwrap_or(&vtype),
                 sev.get(..sev.len().min(8)).unwrap_or(&sev),
-                violation.message.get(..violation.message.len().min(30)).unwrap_or(&violation.message)
+                violation
+                    .message
+                    .get(..violation.message.len().min(30))
+                    .unwrap_or(&violation.message)
             );
         }
         println!("└────────────────────────────────┴──────────────┴──────────┴────────────────────────────────┘");

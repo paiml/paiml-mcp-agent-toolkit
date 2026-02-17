@@ -513,8 +513,7 @@ impl FalsificationEngine {
                     Ok(out) => {
                         let stdout = String::from_utf8_lossy(&out.stdout);
                         // Strip ANSI codes and count non-empty lines that look like file paths
-                        let ansi_re =
-                            Regex::new(r"\x1b\[[0-9;]*m").expect("internal ansi regex");
+                        let ansi_re = Regex::new(r"\x1b\[[0-9;]*m").expect("internal ansi regex");
                         let clean = ansi_re.replace_all(&stdout, "");
                         let file_matches: Vec<&str> = clean
                             .lines()
@@ -542,10 +541,7 @@ impl FalsificationEngine {
                             let count = file_matches.len();
                             SpecEvidence {
                                 check: format!("Entity exists: `{}`", entity),
-                                finding: format!(
-                                    "Found in {} file(s), e.g. {}",
-                                    count, first_file
-                                ),
+                                finding: format!("Found in {} file(s), e.g. {}", count, first_file),
                                 contradiction_score: 0.0,
                             }
                         } else {
@@ -591,7 +587,13 @@ impl FalsificationEngine {
             .map(|term| {
                 let output = std::process::Command::new("pmat")
                     .args([
-                        "query", "--literal", term, "--count", "--exclude-tests", "--limit", "5",
+                        "query",
+                        "--literal",
+                        term,
+                        "--count",
+                        "--exclude-tests",
+                        "--limit",
+                        "5",
                     ])
                     .current_dir(&self.project_path)
                     .output();
@@ -600,8 +602,7 @@ impl FalsificationEngine {
                     Ok(out) => {
                         let stdout = String::from_utf8_lossy(&out.stdout);
                         // Strip ANSI codes before parsing count output
-                        let ansi_re =
-                            Regex::new(r"\x1b\[[0-9;]*m").expect("internal ansi regex");
+                        let ansi_re = Regex::new(r"\x1b\[[0-9;]*m").expect("internal ansi regex");
                         let clean = ansi_re.replace_all(&stdout, "");
                         let total_count: u32 = clean
                             .lines()
@@ -882,7 +883,9 @@ Configuration lives in `docs/specifications/falsify-rag.md`.
             path_claims.len(),
             path_claims
         );
-        assert!(path_claims.iter().any(|c| c.path_refs.iter().any(|p| p.contains("context.rs"))));
+        assert!(path_claims
+            .iter()
+            .any(|c| c.path_refs.iter().any(|p| p.contains("context.rs"))));
     }
 
     #[test]
@@ -895,7 +898,9 @@ Configuration lives in `docs/specifications/falsify-rag.md`.
 - Servers MAY support optional compression
 "#;
         let claims = extractor.extract(content, Path::new("test.md"));
-        assert!(claims.iter().any(|c| c.priority == ClaimPriority::P0Critical));
+        assert!(claims
+            .iter()
+            .any(|c| c.priority == ClaimPriority::P0Critical));
         assert!(claims.iter().any(|c| c.priority == ClaimPriority::P1High));
         assert!(claims.iter().any(|c| c.priority == ClaimPriority::P2Low));
     }
@@ -907,11 +912,22 @@ Configuration lives in `docs/specifications/falsify-rag.md`.
         let claims = extractor.extract(content, Path::new("test.md"));
         let metric_claims: Vec<_> = claims
             .iter()
-            .filter(|c| matches!(c.category, SpecClaimCategory::MetricClaim | SpecClaimCategory::AbsenceClaim | SpecClaimCategory::ArchitecturalClaim))
+            .filter(|c| {
+                matches!(
+                    c.category,
+                    SpecClaimCategory::MetricClaim
+                        | SpecClaimCategory::AbsenceClaim
+                        | SpecClaimCategory::ArchitecturalClaim
+                )
+            })
             .collect();
         // Should find a claim with numeric value
         let has_numeric = claims.iter().any(|c| c.numeric_value.is_some());
-        assert!(has_numeric, "Expected numeric claim, got: {:?}", metric_claims);
+        assert!(
+            has_numeric,
+            "Expected numeric claim, got: {:?}",
+            metric_claims
+        );
     }
 
     #[test]
@@ -1003,7 +1019,10 @@ This line SHOULD be extracted.
         };
         let evidence = engine.check_path_references(&claim);
         assert!(!evidence.is_empty());
-        assert_eq!(evidence[0].contradiction_score, 0.0, "src/lib.rs should exist");
+        assert_eq!(
+            evidence[0].contradiction_score, 0.0,
+            "src/lib.rs should exist"
+        );
     }
 
     #[test]
@@ -1023,7 +1042,10 @@ This line SHOULD be extracted.
         };
         let evidence = engine.check_path_references(&claim);
         assert!(!evidence.is_empty());
-        assert_eq!(evidence[0].contradiction_score, 1.0, "Nonexistent file should be falsified");
+        assert_eq!(
+            evidence[0].contradiction_score, 1.0,
+            "Nonexistent file should be falsified"
+        );
     }
 
     #[test]

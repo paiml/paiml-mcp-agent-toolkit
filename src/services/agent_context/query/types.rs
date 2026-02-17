@@ -322,9 +322,7 @@ impl QueryResult {
             result.called_by = prod;
         }
         if !tests.is_empty() {
-            result
-                .called_by
-                .push(format!("(+{} tests)", tests.len()));
+            result.called_by.push(format!("(+{} tests)", tests.len()));
         }
         result
     }

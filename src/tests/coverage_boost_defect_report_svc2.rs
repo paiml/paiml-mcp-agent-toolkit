@@ -60,14 +60,62 @@ fn make_report(defects: Vec<Defect>) -> DefectReport {
 
 fn sample_defects() -> Vec<Defect> {
     vec![
-        make_defect("D001", Severity::Critical, DefectCategory::Complexity, "src/main.rs", 10),
-        make_defect("D002", Severity::High, DefectCategory::TechnicalDebt, "src/main.rs", 50),
-        make_defect("D003", Severity::Medium, DefectCategory::DeadCode, "src/lib.rs", 20),
-        make_defect("D004", Severity::Low, DefectCategory::Duplication, "src/utils.rs", 30),
-        make_defect("D005", Severity::High, DefectCategory::Performance, "src/main.rs", 100),
-        make_defect("D006", Severity::Medium, DefectCategory::Architecture, "src/mod.rs", 5),
-        make_defect("D007", Severity::Critical, DefectCategory::Complexity, "tests/test.rs", 1),
-        make_defect("D008", Severity::Low, DefectCategory::TestCoverage, "src/lib.rs", 200),
+        make_defect(
+            "D001",
+            Severity::Critical,
+            DefectCategory::Complexity,
+            "src/main.rs",
+            10,
+        ),
+        make_defect(
+            "D002",
+            Severity::High,
+            DefectCategory::TechnicalDebt,
+            "src/main.rs",
+            50,
+        ),
+        make_defect(
+            "D003",
+            Severity::Medium,
+            DefectCategory::DeadCode,
+            "src/lib.rs",
+            20,
+        ),
+        make_defect(
+            "D004",
+            Severity::Low,
+            DefectCategory::Duplication,
+            "src/utils.rs",
+            30,
+        ),
+        make_defect(
+            "D005",
+            Severity::High,
+            DefectCategory::Performance,
+            "src/main.rs",
+            100,
+        ),
+        make_defect(
+            "D006",
+            Severity::Medium,
+            DefectCategory::Architecture,
+            "src/mod.rs",
+            5,
+        ),
+        make_defect(
+            "D007",
+            Severity::Critical,
+            DefectCategory::Complexity,
+            "tests/test.rs",
+            1,
+        ),
+        make_defect(
+            "D008",
+            Severity::Low,
+            DefectCategory::TestCoverage,
+            "src/lib.rs",
+            200,
+        ),
     ]
 }
 
@@ -101,7 +149,13 @@ fn test_compute_summary_empty() {
 #[test]
 fn test_compute_summary_single_defect() {
     let svc = DefectReportService::new();
-    let defects = vec![make_defect("D001", Severity::High, DefectCategory::Complexity, "src/main.rs", 10)];
+    let defects = vec![make_defect(
+        "D001",
+        Severity::High,
+        DefectCategory::Complexity,
+        "src/main.rs",
+        10,
+    )];
     let summary = svc.compute_summary(&defects);
     assert_eq!(summary.total_defects, 1);
     assert_eq!(summary.hotspot_files.len(), 1);
@@ -146,8 +200,20 @@ fn test_compute_summary_hotspot_limit() {
 fn test_compute_summary_severity_counting() {
     let svc = DefectReportService::new();
     let defects = vec![
-        make_defect("D001", Severity::Critical, DefectCategory::Complexity, "a.rs", 1),
-        make_defect("D002", Severity::Critical, DefectCategory::Complexity, "b.rs", 1),
+        make_defect(
+            "D001",
+            Severity::Critical,
+            DefectCategory::Complexity,
+            "a.rs",
+            1,
+        ),
+        make_defect(
+            "D002",
+            Severity::Critical,
+            DefectCategory::Complexity,
+            "b.rs",
+            1,
+        ),
         make_defect("D003", Severity::Low, DefectCategory::DeadCode, "c.rs", 1),
     ];
     let summary = svc.compute_summary(&defects);
@@ -327,12 +393,8 @@ fn test_generate_filename_text() {
 #[test]
 fn test_filter_by_pattern_include() {
     let report = make_report(sample_defects());
-    let filtered = DefectReportService::filter_by_pattern(
-        &report,
-        Some("src/main.rs".to_string()),
-        None,
-        0,
-    );
+    let filtered =
+        DefectReportService::filter_by_pattern(&report, Some("src/main.rs".to_string()), None, 0);
     // Only main.rs defects should remain
     for d in &filtered.defects {
         assert_eq!(d.file_path, PathBuf::from("src/main.rs"));
@@ -343,12 +405,8 @@ fn test_filter_by_pattern_include() {
 #[test]
 fn test_filter_by_pattern_exclude() {
     let report = make_report(sample_defects());
-    let filtered = DefectReportService::filter_by_pattern(
-        &report,
-        None,
-        Some("tests/*".to_string()),
-        0,
-    );
+    let filtered =
+        DefectReportService::filter_by_pattern(&report, None, Some("tests/*".to_string()), 0);
     for d in &filtered.defects {
         assert!(!d.file_path.starts_with("tests/"));
     }
@@ -379,15 +437,16 @@ fn test_filter_by_pattern_none() {
 #[test]
 fn test_filter_by_pattern_rebuilds_index() {
     let report = make_report(sample_defects());
-    let filtered = DefectReportService::filter_by_pattern(
-        &report,
-        Some("src/main.rs".to_string()),
-        None,
-        0,
-    );
+    let filtered =
+        DefectReportService::filter_by_pattern(&report, Some("src/main.rs".to_string()), None, 0);
     // file_index should only contain src/main.rs
-    assert!(filtered.file_index.contains_key(&PathBuf::from("src/main.rs")));
-    assert_eq!(filtered.metadata.total_files_analyzed, filtered.file_index.len());
+    assert!(filtered
+        .file_index
+        .contains_key(&PathBuf::from("src/main.rs")));
+    assert_eq!(
+        filtered.metadata.total_files_analyzed,
+        filtered.file_index.len()
+    );
 }
 
 // ==================== ReportFormat ====================
@@ -457,7 +516,13 @@ fn test_defect_without_fix_suggestion() {
 
 #[test]
 fn test_defect_without_line_end() {
-    let mut defect = make_defect("D101", Severity::Medium, DefectCategory::Complexity, "b.rs", 42);
+    let mut defect = make_defect(
+        "D101",
+        Severity::Medium,
+        DefectCategory::Complexity,
+        "b.rs",
+        42,
+    );
     defect.line_end = None;
     let svc = DefectReportService::new();
     let report = make_report(vec![defect]);

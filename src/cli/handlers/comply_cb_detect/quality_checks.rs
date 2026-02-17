@@ -38,7 +38,12 @@ fn count_exclusion_patterns(content: &str) -> (usize, usize) {
         let start = line.find('\'').unwrap_or(0);
         let end = line.rfind('\'').unwrap_or(0);
         if start < end {
-            count += line.get(start + 1..end).unwrap_or_default().matches('|').count() + 1;
+            count += line
+                .get(start + 1..end)
+                .unwrap_or_default()
+                .matches('|')
+                .count()
+                + 1;
         }
     }
     (count, last_line)
@@ -58,15 +63,23 @@ fn classify_exclusion_severity(
             Reduce to ≤10 patterns (binary entry points only)"
         ), Severity::Critical)
     } else if count > 20 {
-        ("CB-125-B", format!(
-            "{count} coverage exclusion patterns exceed 20% budget per [GAME-002] Google TAP. \
+        (
+            "CB-125-B",
+            format!(
+                "{count} coverage exclusion patterns exceed 20% budget per [GAME-002] Google TAP. \
             Significant coverage blind spot. Reduce exclusions or document technical debt"
-        ), Severity::Error)
+            ),
+            Severity::Error,
+        )
     } else if count > 10 {
-        ("CB-125-A", format!(
-            "{count} coverage exclusion patterns suggests complexity. \
+        (
+            "CB-125-A",
+            format!(
+                "{count} coverage exclusion patterns suggests complexity. \
             Consider reducing to ≤10 patterns (binary entry points only)"
-        ), Severity::Warning)
+            ),
+            Severity::Warning,
+        )
     } else {
         return Vec::new();
     };
@@ -86,11 +99,23 @@ pub(super) fn check_sleep_violation(
     line: usize,
 ) -> Option<CbPatternViolation> {
     let (pattern_id, desc, severity) = if duration > 300.0 {
-        ("CB-126-C", "Test sleep exceeds 300s critical threshold", Severity::Critical)
+        (
+            "CB-126-C",
+            "Test sleep exceeds 300s critical threshold",
+            Severity::Critical,
+        )
     } else if duration > 60.0 {
-        ("CB-126-B", "Test sleep exceeds 60s Tier 2 threshold", Severity::Error)
+        (
+            "CB-126-B",
+            "Test sleep exceeds 60s Tier 2 threshold",
+            Severity::Error,
+        )
     } else if duration > 5.0 {
-        ("CB-126-A", "Test sleep exceeds 5s Tier 1 threshold", Severity::Warning)
+        (
+            "CB-126-A",
+            "Test sleep exceeds 5s Tier 1 threshold",
+            Severity::Warning,
+        )
     } else {
         return None;
     };
@@ -138,7 +163,8 @@ fn find_test_targets_missing_proptest(content: &str, file_path: &str) -> Vec<CbP
             continue;
         }
         has_proptest |= line.contains("PROPTEST_CASES") || line.contains("QUICKCHECK_TESTS");
-        has_cargo_test |= line.contains("cargo test") || line.contains("cargo +nightly llvm-cov test");
+        has_cargo_test |=
+            line.contains("cargo test") || line.contains("cargo +nightly llvm-cov test");
 
         if is_end_of_makefile_target_generic(line, "test") {
             if has_cargo_test && !has_proptest {
@@ -158,7 +184,11 @@ fn find_test_targets_missing_proptest(content: &str, file_path: &str) -> Vec<CbP
 
 pub(super) fn is_end_of_makefile_target_generic(line: &str, target_prefix: &str) -> bool {
     line.is_empty()
-        || (line.chars().next().map(|c| !c.is_whitespace()).unwrap_or(false)
+        || (line
+            .chars()
+            .next()
+            .map(|c| !c.is_whitespace())
+            .unwrap_or(false)
             && !line.starts_with('\t')
             && !line.starts_with(target_prefix))
 }
@@ -279,7 +309,8 @@ impl CoverageTargetState {
                 file: file_path.to_string(),
                 line: self.line,
                 description: "CRITICAL: nextest + llvm-cov causes profraw explosion. \
-                    Use 'cargo llvm-cov test' instead".to_string(),
+                    Use 'cargo llvm-cov test' instead"
+                    .to_string(),
                 severity: Severity::Error,
             });
         }
@@ -307,7 +338,11 @@ impl CoverageTargetState {
 
 pub(super) fn is_end_of_makefile_target(line: &str) -> bool {
     line.is_empty()
-        || (line.chars().next().map(|c| !c.is_whitespace()).unwrap_or(false)
+        || (line
+            .chars()
+            .next()
+            .map(|c| !c.is_whitespace())
+            .unwrap_or(false)
             && !line.starts_with('\t')
             && !line.starts_with("coverage"))
 }
@@ -484,7 +519,9 @@ pub fn detect_cb402_shell_script_quality(project_path: &Path) -> Vec<CbPatternVi
                 for issue in issues {
                     violations.push(CbPatternViolation {
                         pattern_id: format!("CB-402-{}", issue.code),
-                        file: entry.path().strip_prefix(project_path)
+                        file: entry
+                            .path()
+                            .strip_prefix(project_path)
                             .map(|p| p.display().to_string())
                             .unwrap_or_else(|_| entry.path().display().to_string()),
                         line: issue.line,
@@ -497,7 +534,7 @@ pub fn detect_cb402_shell_script_quality(project_path: &Path) -> Vec<CbPatternVi
                     });
                 }
             }
-            Ok(_) => {} // No issues
+            Ok(_) => {}  // No issues
             Err(_) => {} // Skip silently for shell scripts
         }
     }
@@ -564,21 +601,28 @@ pub(super) fn parse_bashrs_json_output(json_str: &str) -> Result<Vec<BashrsIssue
 
     // Try to parse as array first, then as object
     if let Ok(diagnostics) = serde_json::from_str::<Vec<BashrsDiagnostic>>(json_str) {
-        return Ok(diagnostics.into_iter().map(|d| BashrsIssue {
-            code: d.code,
-            message: d.message,
-            line: d.line,
-            severity: d.severity,
-        }).collect());
+        return Ok(diagnostics
+            .into_iter()
+            .map(|d| BashrsIssue {
+                code: d.code,
+                message: d.message,
+                line: d.line,
+                severity: d.severity,
+            })
+            .collect());
     }
 
     if let Ok(output) = serde_json::from_str::<BashrsOutput>(json_str) {
-        return Ok(output.diagnostics.into_iter().map(|d| BashrsIssue {
-            code: d.code,
-            message: d.message,
-            line: d.line,
-            severity: d.severity,
-        }).collect());
+        return Ok(output
+            .diagnostics
+            .into_iter()
+            .map(|d| BashrsIssue {
+                code: d.code,
+                message: d.message,
+                line: d.line,
+                severity: d.severity,
+            })
+            .collect());
     }
 
     // If JSON parsing fails, return empty (graceful degradation)

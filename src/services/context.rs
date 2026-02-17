@@ -1047,5 +1047,4 @@ mod context_tests {
         let cloned = ctx.clone();
         assert_eq!(cloned.project_type, ctx.project_type);
     }
-
 }

@@ -3,8 +3,8 @@
 //! Tests for DeepContext configuration and related types
 
 use crate::services::deep_context::{
-    AnalysisType, CacheStrategy, DagType, DeepContextConfig,
-    DeepContext, NodeType, ComplexityThresholds,
+    AnalysisType, CacheStrategy, ComplexityThresholds, DagType, DeepContext, DeepContextConfig,
+    NodeType,
 };
 
 #[test]

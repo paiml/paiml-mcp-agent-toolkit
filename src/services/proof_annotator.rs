@@ -602,7 +602,10 @@ mod tests {
 
     #[test]
     fn test_cache_stats_debug() {
-        let stats = CacheStats { size: 10, files_tracked: 5 };
+        let stats = CacheStats {
+            size: 10,
+            files_tracked: 5,
+        };
         let debug_str = format!("{:?}", stats);
         assert!(debug_str.contains("CacheStats"));
         assert!(debug_str.contains("10"));
@@ -664,7 +667,10 @@ mod tests {
         let cache = Arc::new(RwLock::new(ProofCache::new()));
         let symbol_table = Arc::new(SymbolTable::new());
 
-        let result = source.collect(Path::new("."), &cache, &symbol_table).await.unwrap();
+        let result = source
+            .collect(Path::new("."), &cache, &symbol_table)
+            .await
+            .unwrap();
 
         assert_eq!(result.annotations.len(), 3);
         assert_eq!(result.metrics.annotations_found, 3);

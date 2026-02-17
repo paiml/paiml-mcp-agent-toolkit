@@ -193,7 +193,10 @@ fn test_violation_error_creation() {
         line: 10,
         function: Some("process".to_string()),
     };
-    if let Violation::Error { value, threshold, .. } = violation {
+    if let Violation::Error {
+        value, threshold, ..
+    } = violation
+    {
         assert_eq!(value, 25);
         assert_eq!(threshold, 20);
     }
@@ -210,7 +213,10 @@ fn test_violation_warning_creation() {
         line: 5,
         function: None,
     };
-    if let Violation::Warning { value, function, .. } = violation {
+    if let Violation::Warning {
+        value, function, ..
+    } = violation
+    {
         assert_eq!(value, 12);
         assert!(function.is_none());
     }

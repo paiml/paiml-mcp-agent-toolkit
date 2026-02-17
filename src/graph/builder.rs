@@ -390,8 +390,10 @@ impl DependencyGraphBuilder {
             let trimmed = line.trim();
             if trimmed.starts_with("import ") {
                 if let Some(end) = trimmed.rfind(" from ") {
-                    let module =
-                        trimmed.get(end + 6..).unwrap_or_default().trim_matches(|c| c == '\'' || c == '"' || c == ';');
+                    let module = trimmed
+                        .get(end + 6..)
+                        .unwrap_or_default()
+                        .trim_matches(|c| c == '\'' || c == '"' || c == ';');
                     imports.push(module.to_string());
                 }
             } else if trimmed.starts_with("const ") && trimmed.contains(" = require(") {

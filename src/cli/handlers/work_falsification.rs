@@ -45,9 +45,7 @@ fn read_cached_metric(project_path: &Path, filename: &str) -> Option<CachedMetri
     // Check file modification time for staleness
     let metadata = std::fs::metadata(&cache_path).ok()?;
     let modified = metadata.modified().ok()?;
-    let age = std::time::SystemTime::now()
-        .duration_since(modified)
-        .ok()?;
+    let age = std::time::SystemTime::now().duration_since(modified).ok()?;
     let age_minutes = age.as_secs() as i64 / 60;
     let age_hours = age_minutes / 60;
 
@@ -142,10 +140,7 @@ pub async fn run_falsification_tests(
 
     for (i, claim) in contract.claims.iter().enumerate() {
         let index = i + 1;
-        println!(
-            "[{}/{}] {}",
-            index, total_claims, claim.hypothesis
-        );
+        println!("[{}/{}] {}", index, total_claims, claim.hypothesis);
         print!("      Falsification: ");
 
         let (result, is_blocking) = run_single_falsification(project_path, contract, claim).await?;
@@ -300,11 +295,9 @@ async fn run_single_falsification(
         }
 
         FalsificationMethod::PerFileCoverage => {
-            let result = test_per_file_coverage(
-                project_path,
-                contract.thresholds.min_per_file_coverage_pct,
-            )
-            .await?;
+            let result =
+                test_per_file_coverage(project_path, contract.thresholds.min_per_file_coverage_pct)
+                    .await?;
             Ok((result, true)) // Blocking
         }
 
@@ -468,7 +461,10 @@ async fn test_absolute_coverage(
 }
 
 /// Test TDG score regression
-async fn test_tdg_regression(project_path: &Path, baseline_tdg: f64) -> Result<FalsificationResult> {
+async fn test_tdg_regression(
+    project_path: &Path,
+    baseline_tdg: f64,
+) -> Result<FalsificationResult> {
     print!("Checking TDG score... ");
 
     // Read current TDG score from cache
@@ -534,9 +530,7 @@ fn test_complexity_regression(
                     let high_complexity: Vec<_> = functions
                         .iter()
                         .filter(|f| {
-                            f.get("complexity")
-                                .and_then(|c| c.as_u64())
-                                .unwrap_or(0)
+                            f.get("complexity").and_then(|c| c.as_u64()).unwrap_or(0)
                                 > max_complexity as u64
                         })
                         .collect();
@@ -578,10 +572,7 @@ fn test_complexity_regression(
 }
 
 /// Test file size regression: no file should exceed threshold
-fn test_file_size_regression(
-    project_path: &Path,
-    max_lines: usize,
-) -> Result<FalsificationResult> {
+fn test_file_size_regression(project_path: &Path, max_lines: usize) -> Result<FalsificationResult> {
     print!("Checking file sizes... ");
 
     let mut large_files = Vec::new();
@@ -623,7 +614,12 @@ fn test_file_size_regression(
             .map(|(p, lines)| format!("{} ({} lines)", p.display(), lines))
             .collect();
         Ok(FalsificationResult::failed(
-            format!("{} file(s) exceed {} lines: {}", large_files.len(), max_lines, details.join(", ")),
+            format!(
+                "{} file(s) exceed {} lines: {}",
+                large_files.len(),
+                max_lines,
+                details.join(", ")
+            ),
             EvidenceType::FileList(paths),
         ))
     }
@@ -732,7 +728,9 @@ fn test_roadmap_update(project_path: &Path, baseline_commit: &str) -> Result<Fal
         Ok(output) if output.status.success() => {
             let changed = !output.stdout.is_empty();
             if changed {
-                Ok(FalsificationResult::passed("Roadmap was updated".to_string()))
+                Ok(FalsificationResult::passed(
+                    "Roadmap was updated".to_string(),
+                ))
             } else {
                 Ok(FalsificationResult::failed(
                     "Roadmap not updated since baseline".to_string(),
@@ -847,7 +845,9 @@ pub async fn capture_baseline(project_path: &Path) -> Result<(f64, f64, Option<f
         .unwrap_or(0.0);
 
     // Capture coverage
-    let coverage = capture_coverage_from_cache(project_path).await.unwrap_or(0.0);
+    let coverage = capture_coverage_from_cache(project_path)
+        .await
+        .unwrap_or(0.0);
 
     // Capture Rust project score (if applicable)
     let rust_score = if project_path.join("Cargo.toml").exists() {
@@ -936,7 +936,10 @@ async fn test_supply_chain_integrity(project_path: &Path) -> Result<Falsificatio
     if let Some(cache) = read_cached_metric(project_path, "deny-status.json") {
         if cache.is_stale_block {
             return Ok(FalsificationResult::failed(
-                format!("Deny cache too old ({} min). Run 'cargo deny check' first.", cache.age_minutes),
+                format!(
+                    "Deny cache too old ({} min). Run 'cargo deny check' first.",
+                    cache.age_minutes
+                ),
                 EvidenceType::BooleanCheck(false),
             ));
         }
@@ -946,7 +949,8 @@ async fn test_supply_chain_integrity(project_path: &Path) -> Result<Falsificatio
             Some(p) => p,
             None => {
                 return Ok(FalsificationResult::failed(
-                    "Invalid deny cache (missing 'passed' field). Re-run 'cargo deny check'.".to_string(),
+                    "Invalid deny cache (missing 'passed' field). Re-run 'cargo deny check'."
+                        .to_string(),
                     EvidenceType::BooleanCheck(false),
                 ));
             }
@@ -954,12 +958,22 @@ async fn test_supply_chain_integrity(project_path: &Path) -> Result<Falsificatio
         let stale_note = format!(" (cached {} min ago)", cache.age_minutes);
 
         if passed {
-            return Ok(FalsificationResult::passed(format!("No vulnerabilities{}", stale_note)));
+            return Ok(FalsificationResult::passed(format!(
+                "No vulnerabilities{}",
+                stale_note
+            )));
         } else {
-            let count = cache.value.get("vulnerability_count").and_then(|v| v.as_u64()).unwrap_or(0);
+            let count = cache
+                .value
+                .get("vulnerability_count")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(0);
             return Ok(FalsificationResult::failed(
                 format!("{} vulnerabilities{}", count, stale_note),
-                EvidenceType::NumericComparison { actual: count as f64, threshold: 0.0 },
+                EvidenceType::NumericComparison {
+                    actual: count as f64,
+                    threshold: 0.0,
+                },
             ));
         }
     }
@@ -979,7 +993,10 @@ async fn test_examples_compile(project_path: &Path) -> Result<FalsificationResul
     if let Some(cache) = read_cached_metric(project_path, "examples-status.json") {
         if cache.is_stale_block {
             return Ok(FalsificationResult::failed(
-                format!("Examples cache too old ({} min). Run 'cargo build --examples' first.", cache.age_minutes),
+                format!(
+                    "Examples cache too old ({} min). Run 'cargo build --examples' first.",
+                    cache.age_minutes
+                ),
                 EvidenceType::BooleanCheck(false),
             ));
         }
@@ -994,14 +1011,29 @@ async fn test_examples_compile(project_path: &Path) -> Result<FalsificationResul
                 ));
             }
         };
-        let count = cache.value.get("count").and_then(|v| v.as_u64()).unwrap_or(0);
+        let count = cache
+            .value
+            .get("count")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(0);
         let stale_note = format!(" (cached {} min ago)", cache.age_minutes);
 
         if passed {
-            return Ok(FalsificationResult::passed(format!("{} examples OK{}", count, stale_note)));
+            return Ok(FalsificationResult::passed(format!(
+                "{} examples OK{}",
+                count, stale_note
+            )));
         } else {
-            let failed = cache.value.get("failed").and_then(|v| v.as_array())
-                .map(|a| a.iter().filter_map(|v| v.as_str()).collect::<Vec<_>>().join(", "))
+            let failed = cache
+                .value
+                .get("failed")
+                .and_then(|v| v.as_array())
+                .map(|a| {
+                    a.iter()
+                        .filter_map(|v| v.as_str())
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                })
                 .unwrap_or_default();
             return Ok(FalsificationResult::failed(
                 format!("Examples failed{}: {}", stale_note, failed),
@@ -1107,10 +1139,15 @@ fn test_variant_coverage(
     print!("Scanning match arm coverage... ");
 
     let changed_files = get_changed_files(project_path, baseline_commit)?;
-    let rs_files: Vec<&String> = changed_files.iter().filter(|f| f.ends_with(".rs")).collect();
+    let rs_files: Vec<&String> = changed_files
+        .iter()
+        .filter(|f| f.ends_with(".rs"))
+        .collect();
 
     if rs_files.is_empty() {
-        return Ok(FalsificationResult::passed("No Rust files changed".to_string()));
+        return Ok(FalsificationResult::passed(
+            "No Rust files changed".to_string(),
+        ));
     }
 
     let mut untested_arms: Vec<(String, String)> = Vec::new(); // (file, variant)
@@ -1172,7 +1209,12 @@ struct MatchParser {
 
 impl MatchParser {
     fn new() -> Self {
-        Self { variants: Vec::new(), current_arms: Vec::new(), brace_depth: 0, in_match: false }
+        Self {
+            variants: Vec::new(),
+            current_arms: Vec::new(),
+            brace_depth: 0,
+            in_match: false,
+        }
     }
 
     fn process_line(&mut self, trimmed: &str) {
@@ -1215,13 +1257,20 @@ impl MatchParser {
     }
 
     fn try_extract_arm(&mut self, trimmed: &str) {
-        let Some(pattern) = trimmed.split("=>").next() else { return };
+        let Some(pattern) = trimmed.split("=>").next() else {
+            return;
+        };
         let pattern = pattern.trim();
         if pattern == "_" || pattern.starts_with("//") || !trimmed.contains("=>") {
             return;
         }
-        let variant = pattern.split("::").last()
-            .map(|s| s.trim_matches(|c: char| !c.is_alphanumeric() && c != '_').to_string())
+        let variant = pattern
+            .split("::")
+            .last()
+            .map(|s| {
+                s.trim_matches(|c: char| !c.is_alphanumeric() && c != '_')
+                    .to_string()
+            })
             .unwrap_or_default();
         if !variant.is_empty() {
             self.current_arms.push(variant);
@@ -1261,20 +1310,12 @@ fn extract_test_section(content: &str) -> String {
 ///
 /// Analyzes recent git history for patterns where 3+ consecutive commits with "fix"
 /// in the message touch the same file — a signal of inadequate pre-merge testing.
-fn test_fix_chain_limit(
-    project_path: &Path,
-    max_chain: usize,
-) -> Result<FalsificationResult> {
+fn test_fix_chain_limit(project_path: &Path, max_chain: usize) -> Result<FalsificationResult> {
     print!("Analyzing fix chains... ");
 
     // Get last 50 commits with changed files
     let output = Command::new("git")
-        .args([
-            "log",
-            "--oneline",
-            "--name-only",
-            "-50",
-        ])
+        .args(["log", "--oneline", "--name-only", "-50"])
         .current_dir(project_path)
         .output()
         .context("Failed to run git log")?;
@@ -1314,7 +1355,12 @@ fn test_fix_chain_limit(
 
 /// Check if a git log line is a commit header (starts with hex hash, length > 8)
 fn is_commit_line(trimmed: &str) -> bool {
-    trimmed.len() > 8 && trimmed.as_bytes().first().map(|b| b.is_ascii_hexdigit()).unwrap_or(false)
+    trimmed.len() > 8
+        && trimmed
+            .as_bytes()
+            .first()
+            .map(|b| b.is_ascii_hexdigit())
+            .unwrap_or(false)
 }
 
 /// Check if a commit message indicates a fix
@@ -1329,16 +1375,11 @@ fn collect_violations(
     max_chain: usize,
     violations: &mut Vec<(String, usize)>,
 ) {
-    violations.extend(
-        streaks.drain().filter(|(_, streak)| *streak > max_chain),
-    );
+    violations.extend(streaks.drain().filter(|(_, streak)| *streak > max_chain));
 }
 
 /// Increment streak counts for each file in the current commit
-fn increment_streaks(
-    files: &[String],
-    streaks: &mut std::collections::HashMap<String, usize>,
-) {
+fn increment_streaks(files: &[String], streaks: &mut std::collections::HashMap<String, usize>) {
     for file in files {
         *streaks.entry(file.clone()).or_insert(0) += 1;
     }
@@ -1570,7 +1611,11 @@ async fn test_satd_detection(
                         .map(|(p, marker)| format!("{}: {}", p.display(), marker))
                         .collect();
                     Ok(FalsificationResult::failed(
-                        format!("{} new SATD marker(s): {}", new_satd.len(), details.join("; ")),
+                        format!(
+                            "{} new SATD marker(s): {}",
+                            new_satd.len(),
+                            details.join("; ")
+                        ),
                         EvidenceType::FileList(paths),
                     ))
                 }
@@ -1618,7 +1663,10 @@ fn detect_new_satd_since_baseline(
             let trimmed = line_content.trim();
 
             // Only flag actual comments, not string literals or code
-            if !trimmed.starts_with("//") || trimmed.starts_with("///") || trimmed.starts_with("//!") {
+            if !trimmed.starts_with("//")
+                || trimmed.starts_with("///")
+                || trimmed.starts_with("//!")
+            {
                 continue;
             }
 
@@ -1634,7 +1682,9 @@ fn detect_new_satd_since_baseline(
                         let marker = line_content
                             .split(pattern)
                             .nth(1)
-                            .map(|s| format!("{}{}", pattern, s.chars().take(50).collect::<String>()))
+                            .map(|s| {
+                                format!("{}{}", pattern, s.chars().take(50).collect::<String>())
+                            })
                             .unwrap_or_else(|| pattern.to_string());
                         new_satd.push((file.clone(), marker));
                     }
@@ -1680,7 +1730,9 @@ async fn test_dead_code_detection(
                 // For now, we report any dead code found
                 // Future: compare with baseline to only flag NEW dead code
                 if dead_items == 0 {
-                    Ok(FalsificationResult::passed("No dead code detected".to_string()))
+                    Ok(FalsificationResult::passed(
+                        "No dead code detected".to_string(),
+                    ))
                 } else {
                     // Check if these are new since baseline
                     let changed_files = get_changed_files(project_path, baseline_commit)?;
@@ -1836,7 +1888,10 @@ async fn test_lint_pass(project_path: &Path) -> Result<FalsificationResult> {
     if let Some(cache) = read_cached_metric(project_path, "lint-status.json") {
         if cache.is_stale_block {
             return Ok(FalsificationResult::failed(
-                format!("Lint cache too old ({} min). Run 'make lint' first.", cache.age_minutes),
+                format!(
+                    "Lint cache too old ({} min). Run 'make lint' first.",
+                    cache.age_minutes
+                ),
                 EvidenceType::BooleanCheck(false),
             ));
         }
@@ -1852,7 +1907,10 @@ async fn test_lint_pass(project_path: &Path) -> Result<FalsificationResult> {
             }
         };
         let stale_note = if cache.is_stale_warn {
-            format!(" (cached {} min ago, consider re-running)", cache.age_minutes)
+            format!(
+                " (cached {} min ago, consider re-running)",
+                cache.age_minutes
+            )
         } else {
             format!(" (cached {} min ago)", cache.age_minutes)
         };
@@ -1860,10 +1918,17 @@ async fn test_lint_pass(project_path: &Path) -> Result<FalsificationResult> {
         if passed {
             return Ok(FalsificationResult::passed(format!("PASSED{}", stale_note)));
         } else {
-            let errors = cache.value.get("error_count").and_then(|v| v.as_u64()).unwrap_or(0);
+            let errors = cache
+                .value
+                .get("error_count")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(0);
             return Ok(FalsificationResult::failed(
                 format!("{} lint errors{}", errors, stale_note),
-                EvidenceType::NumericComparison { actual: errors as f64, threshold: 0.0 },
+                EvidenceType::NumericComparison {
+                    actual: errors as f64,
+                    threshold: 0.0,
+                },
             ));
         }
     }
@@ -1884,4 +1949,3 @@ async fn test_lint_pass(project_path: &Path) -> Result<FalsificationResult> {
 }
 
 include!("work_falsification_tests.rs");
-

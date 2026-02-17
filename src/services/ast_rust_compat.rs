@@ -50,7 +50,9 @@ pub async fn analyze_rust_file_with_complexity_and_classifier(
         let line_start = func.line_start;
         // Estimate line_end based on next function or a reasonable default
         let line_end = if i + 1 < accurate_result.functions.len() {
-            accurate_result.functions[i + 1].line_start.saturating_sub(1)
+            accurate_result.functions[i + 1]
+                .line_start
+                .saturating_sub(1)
         } else {
             line_start + 50 // Estimate for last function
         };

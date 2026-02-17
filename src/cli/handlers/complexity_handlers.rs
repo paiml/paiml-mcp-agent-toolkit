@@ -1667,7 +1667,9 @@ mod satd_formatting_tests {
     use chrono::Utc;
     use std::collections::HashMap;
 
-    fn create_test_satd_result(items: Vec<crate::services::satd_detector::TechnicalDebt>) -> SATDAnalysisResult {
+    fn create_test_satd_result(
+        items: Vec<crate::services::satd_detector::TechnicalDebt>,
+    ) -> SATDAnalysisResult {
         SATDAnalysisResult {
             items,
             summary: SATDSummary {

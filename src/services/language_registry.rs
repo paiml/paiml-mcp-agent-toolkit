@@ -998,7 +998,6 @@ mod tests {
         assert!(set.contains(&Language::Python));
         assert!(!set.contains(&Language::Go));
     }
-
 }
 
 #[cfg_attr(coverage_nightly, coverage(off))]

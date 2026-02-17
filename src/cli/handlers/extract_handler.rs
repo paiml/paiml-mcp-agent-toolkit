@@ -13,19 +13,15 @@ pub async fn handle_extract_list(file_path: &Path) -> Result<()> {
         .with_context(|| format!("Cannot read {}", file_path.display()))?;
 
     let language = detect_chunker_language(file_path)?;
-    let result =
-        chunker::extract_file_details(&file_path.display().to_string(), &source, language)
-            .map_err(|e| anyhow::anyhow!("tree-sitter parse failed: {e}"))?;
+    let result = chunker::extract_file_details(&file_path.display().to_string(), &source, language)
+        .map_err(|e| anyhow::anyhow!("tree-sitter parse failed: {e}"))?;
 
     println!("{}", serde_json::to_string_pretty(&result)?);
     Ok(())
 }
 
 fn detect_chunker_language(path: &Path) -> Result<Language> {
-    let ext = path
-        .extension()
-        .and_then(|e| e.to_str())
-        .unwrap_or("");
+    let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
     match ext {
         "rs" => Ok(Language::Rust),
         "ts" | "tsx" | "js" | "jsx" | "mjs" => Ok(Language::TypeScript),

@@ -162,10 +162,10 @@ fn test_thresholds_constants() {
 fn test_file_health_metrics_calculate_small_file() {
     let metrics = FileHealthMetrics::calculate(
         PathBuf::from("small.rs"),
-        100,  // lines
-        50,   // test_lines
-        5.0,  // avg_complexity
-        1,    // churn_30d
+        100, // lines
+        50,  // test_lines
+        5.0, // avg_complexity
+        1,   // churn_30d
     );
     assert_eq!(metrics.lines, 100);
     assert_eq!(metrics.test_lines, 50);
@@ -191,13 +191,7 @@ fn test_file_health_metrics_calculate_large_file() {
 
 #[test]
 fn test_file_health_metrics_calculate_zero_lines() {
-    let metrics = FileHealthMetrics::calculate(
-        PathBuf::from("empty.rs"),
-        0,
-        0,
-        0.0,
-        0,
-    );
+    let metrics = FileHealthMetrics::calculate(PathBuf::from("empty.rs"), 0, 0, 0.0, 0);
     assert_eq!(metrics.lines, 0);
     assert_eq!(metrics.tlr, 1.0); // 0 lines => tlr = 1.0
     assert_eq!(metrics.size_class, FileSizeClass::Ideal);
@@ -205,13 +199,7 @@ fn test_file_health_metrics_calculate_zero_lines() {
 
 #[test]
 fn test_file_health_metrics_calculate_medium_file() {
-    let metrics = FileHealthMetrics::calculate(
-        PathBuf::from("medium.rs"),
-        500,
-        250,
-        10.0,
-        5,
-    );
+    let metrics = FileHealthMetrics::calculate(PathBuf::from("medium.rs"), 500, 250, 10.0, 5);
     assert_eq!(metrics.size_class, FileSizeClass::Acceptable);
     assert!(metrics.health_score >= 50);
 }
@@ -235,12 +223,16 @@ fn test_file_health_metrics_score_components() {
     // Max possible: size(30) + tlr(40) + complexity(20) + stability(10) = 100
     let metrics = FileHealthMetrics::calculate(
         PathBuf::from("perfect.rs"),
-        50,   // ideal size: 30 points
-        100,  // high test coverage
-        3.0,  // low complexity: 20 points
-        0,    // no churn: 10 points
+        50,  // ideal size: 30 points
+        100, // high test coverage
+        3.0, // low complexity: 20 points
+        0,   // no churn: 10 points
     );
-    assert!(metrics.health_score >= 90, "Perfect file should score 90+, got {}", metrics.health_score);
+    assert!(
+        metrics.health_score >= 90,
+        "Perfect file should score 90+, got {}",
+        metrics.health_score
+    );
     assert_eq!(metrics.grade, HealthGrade::A);
 }
 

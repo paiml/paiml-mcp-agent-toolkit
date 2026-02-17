@@ -340,7 +340,17 @@ fn test_complexity_bound_display_various() {
     for (class, conf, expected_class, expected_conf) in cases {
         let bound = ComplexityBound::new(class, 1, InputVariable::N).with_confidence(conf);
         let display = format!("{}", bound);
-        assert!(display.contains(expected_class), "Expected {} in {}", expected_class, display);
-        assert!(display.contains(expected_conf), "Expected {} in {}", expected_conf, display);
+        assert!(
+            display.contains(expected_class),
+            "Expected {} in {}",
+            expected_class,
+            display
+        );
+        assert!(
+            display.contains(expected_conf),
+            "Expected {} in {}",
+            expected_conf,
+            display
+        );
     }
 }

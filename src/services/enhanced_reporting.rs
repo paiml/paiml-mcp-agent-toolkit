@@ -926,7 +926,12 @@ mod tests {
 
     #[test]
     fn test_risk_level_serde_roundtrip() {
-        for level in [RiskLevel::Low, RiskLevel::Medium, RiskLevel::High, RiskLevel::Critical] {
+        for level in [
+            RiskLevel::Low,
+            RiskLevel::Medium,
+            RiskLevel::High,
+            RiskLevel::Critical,
+        ] {
             let json = serde_json::to_string(&level).unwrap();
             let back: RiskLevel = serde_json::from_str(&json).unwrap();
             assert_eq!(
@@ -966,7 +971,12 @@ mod tests {
 
     #[test]
     fn test_severity_serde_roundtrip() {
-        for s in [Severity::Low, Severity::Medium, Severity::High, Severity::Critical] {
+        for s in [
+            Severity::Low,
+            Severity::Medium,
+            Severity::High,
+            Severity::Critical,
+        ] {
             let json = serde_json::to_string(&s).unwrap();
             let back: Severity = serde_json::from_str(&json).unwrap();
             assert_eq!(std::mem::discriminant(&s), std::mem::discriminant(&back));
@@ -975,7 +985,13 @@ mod tests {
 
     #[test]
     fn test_effort_level_serde_roundtrip() {
-        for e in [EffortLevel::Trivial, EffortLevel::Easy, EffortLevel::Medium, EffortLevel::Hard, EffortLevel::VeryHard] {
+        for e in [
+            EffortLevel::Trivial,
+            EffortLevel::Easy,
+            EffortLevel::Medium,
+            EffortLevel::Hard,
+            EffortLevel::VeryHard,
+        ] {
             let json = serde_json::to_string(&e).unwrap();
             let back: EffortLevel = serde_json::from_str(&json).unwrap();
             assert_eq!(std::mem::discriminant(&e), std::mem::discriminant(&back));
@@ -984,7 +1000,12 @@ mod tests {
 
     #[test]
     fn test_priority_serde_roundtrip() {
-        for p in [Priority::Low, Priority::Medium, Priority::High, Priority::Critical] {
+        for p in [
+            Priority::Low,
+            Priority::Medium,
+            Priority::High,
+            Priority::Critical,
+        ] {
             let json = serde_json::to_string(&p).unwrap();
             let back: Priority = serde_json::from_str(&json).unwrap();
             assert_eq!(std::mem::discriminant(&p), std::mem::discriminant(&back));

@@ -157,7 +157,14 @@ impl CrossLanguageDependencies {
                 continue;
             };
             for reference in &source.references {
-                self.find_matching_targets(source, reference, node_ids2, lang1, lang2, &mut dependencies);
+                self.find_matching_targets(
+                    source,
+                    reference,
+                    node_ids2,
+                    lang1,
+                    lang2,
+                    &mut dependencies,
+                );
             }
         }
 

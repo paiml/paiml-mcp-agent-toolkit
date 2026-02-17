@@ -558,13 +558,13 @@ mod tests {
         // 190/200 = 95% → A+, 180/200 = 90% → A, etc.
         assert_eq!(PerfectionScoreResult::calculate_overall_grade(198.0), "A+"); // 99%
         assert_eq!(PerfectionScoreResult::calculate_overall_grade(190.0), "A+"); // 95%
-        assert_eq!(PerfectionScoreResult::calculate_overall_grade(184.0), "A");  // 92%
+        assert_eq!(PerfectionScoreResult::calculate_overall_grade(184.0), "A"); // 92%
         assert_eq!(PerfectionScoreResult::calculate_overall_grade(174.0), "A-"); // 87%
         assert_eq!(PerfectionScoreResult::calculate_overall_grade(164.0), "B+"); // 82%
-        assert_eq!(PerfectionScoreResult::calculate_overall_grade(150.0), "B");  // 75%
-        assert_eq!(PerfectionScoreResult::calculate_overall_grade(130.0), "C");  // 65%
-        assert_eq!(PerfectionScoreResult::calculate_overall_grade(110.0), "D");  // 55%
-        assert_eq!(PerfectionScoreResult::calculate_overall_grade(80.0), "F");   // 40%
+        assert_eq!(PerfectionScoreResult::calculate_overall_grade(150.0), "B"); // 75%
+        assert_eq!(PerfectionScoreResult::calculate_overall_grade(130.0), "C"); // 65%
+        assert_eq!(PerfectionScoreResult::calculate_overall_grade(110.0), "D"); // 55%
+        assert_eq!(PerfectionScoreResult::calculate_overall_grade(80.0), "F"); // 40%
     }
 
     #[test]

@@ -3,8 +3,8 @@
 //! Comprehensive tests for extract_links, classify_link, Link, LinkType, ValidationStatus, etc.
 
 use crate::services::doc_validator::{
-    classify_link, extract_links, DocValidator, Link, LinkType, ValidationResult,
-    ValidationStatus, ValidationSummary, ValidatorConfig,
+    classify_link, extract_links, DocValidator, Link, LinkType, ValidationResult, ValidationStatus,
+    ValidationSummary, ValidatorConfig,
 };
 use std::path::{Path, PathBuf};
 
@@ -164,10 +164,7 @@ fn test_extract_links_with_anchor_in_internal() {
 
 #[test]
 fn test_classify_link_https() {
-    assert_eq!(
-        classify_link("https://example.com"),
-        LinkType::ExternalHttp
-    );
+    assert_eq!(classify_link("https://example.com"), LinkType::ExternalHttp);
 }
 
 #[test]
@@ -198,10 +195,7 @@ fn test_classify_link_anchor() {
 
 #[test]
 fn test_classify_link_anchor_complex() {
-    assert_eq!(
-        classify_link("#section-with-dashes-123"),
-        LinkType::Anchor
-    );
+    assert_eq!(classify_link("#section-with-dashes-123"), LinkType::Anchor);
 }
 
 #[test]
@@ -476,7 +470,9 @@ fn test_validator_config_default() {
 fn test_validator_config_default_excludes() {
     let config = ValidatorConfig::default();
     assert!(config.exclude_patterns.contains(&"archive".to_string()));
-    assert!(config.exclude_patterns.contains(&"node_modules".to_string()));
+    assert!(config
+        .exclude_patterns
+        .contains(&"node_modules".to_string()));
     assert!(config.exclude_patterns.contains(&".git".to_string()));
     assert!(config.exclude_patterns.contains(&"target".to_string()));
 }
@@ -801,11 +797,7 @@ async fn test_validate_directory_basic() {
     let temp_dir = tempfile::tempdir().unwrap();
 
     // Create markdown files with links
-    std::fs::write(
-        temp_dir.path().join("readme.md"),
-        "[link](./other.md)",
-    )
-    .unwrap();
+    std::fs::write(temp_dir.path().join("readme.md"), "[link](./other.md)").unwrap();
     std::fs::write(temp_dir.path().join("other.md"), "# Other").unwrap();
 
     let validator = DocValidator::default();

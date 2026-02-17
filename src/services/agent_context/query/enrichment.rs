@@ -40,7 +40,12 @@ pub fn enrich_with_churn(results: &mut [QueryResult], file_churn: &HashMap<Strin
 pub fn build_churn_map(metrics: &[FileChurnMetrics]) -> HashMap<String, (u32, f32)> {
     metrics
         .iter()
-        .map(|m| (m.relative_path.clone(), (m.commit_count as u32, m.churn_score)))
+        .map(|m| {
+            (
+                m.relative_path.clone(),
+                (m.commit_count as u32, m.churn_score),
+            )
+        })
         .collect()
 }
 
@@ -67,7 +72,10 @@ pub async fn enrich_results_with_churn(
 
     // Skip if most results already have cached churn data from index build.
     // Struct/type definitions legitimately have zero churn, so use majority check.
-    let cached = results.iter().filter(|r| r.commit_count > 0 || r.churn_score > 0.0).count();
+    let cached = results
+        .iter()
+        .filter(|r| r.commit_count > 0 || r.churn_score > 0.0)
+        .count();
     if cached * 2 > results.len() {
         return Ok(());
     }
@@ -97,7 +105,9 @@ pub async fn enrich_results_with_churn(
 }
 
 /// Detect language from file extension for duplicate detection.
-fn detect_language_for_duplication(path: &str) -> Option<crate::services::duplicate_detector::Language> {
+fn detect_language_for_duplication(
+    path: &str,
+) -> Option<crate::services::duplicate_detector::Language> {
     use crate::services::duplicate_detector::Language;
     let ext_langs: &[(&[&str], Language)] = &[
         (&[".rs"], Language::Rust),
@@ -115,10 +125,7 @@ fn detect_language_for_duplication(path: &str) -> Option<crate::services::duplic
 }
 
 /// Collect unique file contents from query results for analysis.
-fn collect_file_contents(
-    results: &[QueryResult],
-    project_root: &Path,
-) -> HashMap<String, String> {
+fn collect_file_contents(results: &[QueryResult], project_root: &Path) -> HashMap<String, String> {
     let mut contents: HashMap<String, String> = HashMap::new();
     for result in results {
         if contents.contains_key(&result.file_path) {
@@ -283,8 +290,9 @@ fn run_batuta_and_parse(project_root: &Path) -> Result<HashMap<String, Vec<Strin
         None => return Ok(HashMap::new()),
     };
 
-    let parsed: serde_json::Value = serde_json::from_str(stdout.get(json_start..).unwrap_or_default())
-        .map_err(|e| format!("Failed to parse batuta output: {e}"))?;
+    let parsed: serde_json::Value =
+        serde_json::from_str(stdout.get(json_start..).unwrap_or_default())
+            .map_err(|e| format!("Failed to parse batuta output: {e}"))?;
 
     let findings = match parsed.get("findings").and_then(|f| f.as_array()) {
         Some(f) => f,
@@ -295,7 +303,10 @@ fn run_batuta_and_parse(project_root: &Path) -> Result<HashMap<String, Vec<Strin
     for finding in findings {
         let file = finding.get("file").and_then(|f| f.as_str()).unwrap_or("");
         let line = finding.get("line").and_then(|l| l.as_u64()).unwrap_or(0);
-        let title = finding.get("title").and_then(|t| t.as_str()).unwrap_or("Unknown fault pattern");
+        let title = finding
+            .get("title")
+            .and_then(|t| t.as_str())
+            .unwrap_or("Unknown fault pattern");
         let id = finding.get("id").and_then(|i| i.as_str()).unwrap_or("BH");
         let normalized = file.strip_prefix("./").unwrap_or(file);
         fault_map
@@ -335,7 +346,10 @@ pub async fn enrich_results_with_faults(
     }
 
     // Skip if most results already have cached fault annotations from index build
-    let cached = results.iter().filter(|r| !r.fault_annotations.is_empty()).count();
+    let cached = results
+        .iter()
+        .filter(|r| !r.fault_annotations.is_empty())
+        .count();
     if cached * 2 > results.len() {
         return Ok(());
     }

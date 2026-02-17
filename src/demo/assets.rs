@@ -1,7 +1,7 @@
 #[cfg(feature = "demo")]
-use std::sync::LazyLock;
-#[cfg(feature = "demo")]
 use std::collections::HashMap;
+#[cfg(feature = "demo")]
+use std::sync::LazyLock;
 
 #[derive(Debug, Clone, Copy)]
 pub struct EmbeddedAsset {

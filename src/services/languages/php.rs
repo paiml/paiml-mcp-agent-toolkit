@@ -433,10 +433,7 @@ class Calculator {
             analyzer.extract_function_name("function compute($a, $b) {"),
             Some("compute".to_string())
         );
-        assert_eq!(
-            analyzer.extract_function_name("not a function"),
-            None
-        );
+        assert_eq!(analyzer.extract_function_name("not a function"), None);
     }
 
     #[test]
@@ -451,10 +448,7 @@ class Calculator {
             analyzer.extract_class_name("class BaseController extends Controller {"),
             Some("BaseController".to_string())
         );
-        assert_eq!(
-            analyzer.extract_class_name("not a class"),
-            None
-        );
+        assert_eq!(analyzer.extract_class_name("not a class"), None);
     }
 
     #[test]
@@ -473,10 +467,7 @@ class Calculator {
             analyzer.extract_method_name("protected function getData() {"),
             Some("getData".to_string())
         );
-        assert_eq!(
-            analyzer.extract_method_name("just some code"),
-            None
-        );
+        assert_eq!(analyzer.extract_method_name("just some code"), None);
     }
 
     #[test]
@@ -608,7 +599,10 @@ class BaseService {
 ?>"#;
         let items = analyzer.analyze_php_script(code).expect("Should parse");
 
-        let classes: Vec<_> = items.iter().filter(|i| matches!(i, AstItem::Struct { .. })).collect();
+        let classes: Vec<_> = items
+            .iter()
+            .filter(|i| matches!(i, AstItem::Struct { .. }))
+            .collect();
         assert!(!classes.is_empty());
     }
 
@@ -630,7 +624,10 @@ class Product {
 ?>"#;
         let items = analyzer.analyze_php_script(code).expect("Should parse");
 
-        let classes: Vec<_> = items.iter().filter(|i| matches!(i, AstItem::Struct { .. })).collect();
+        let classes: Vec<_> = items
+            .iter()
+            .filter(|i| matches!(i, AstItem::Struct { .. }))
+            .collect();
         assert_eq!(classes.len(), 3);
     }
 }

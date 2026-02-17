@@ -367,8 +367,11 @@ mod tests {
     #[test]
     #[ignore = "Environment variable manipulation unsafe in parallel tests"]
     fn test_redact_paths_with_user() {
-        let mut error =
-            CapturedError::new("pmat", &[], "Path /home/johndoe/project has error for johndoe");
+        let mut error = CapturedError::new(
+            "pmat",
+            &[],
+            "Path /home/johndoe/project has error for johndoe",
+        );
         std::env::set_var("HOME", "/home/johndoe");
         std::env::set_var("USER", "johndoe");
         error.redact_paths();

@@ -221,8 +221,11 @@ fn test_detect_calls_simple_call() {
 
 #[test]
 fn test_detect_calls_ignores_function_definitions() {
-    let lines = vec!["fn main() {", "    fn helper() {}", // nested definition, not a call
-                     "}"];
+    let lines = vec![
+        "fn main() {",
+        "    fn helper() {}", // nested definition, not a call
+        "}",
+    ];
 
     let mut all_functions = HashMap::new();
     all_functions.insert("test.rs::main".to_string(), ("test.rs".to_string(), 1));
@@ -261,10 +264,7 @@ fn test_detect_calls_ignores_self_calls() {
     let lines = vec!["fn recursive() {", "    recursive();", "}"];
 
     let mut all_functions = HashMap::new();
-    all_functions.insert(
-        "test.rs::recursive".to_string(),
-        ("test.rs".to_string(), 1),
-    );
+    all_functions.insert("test.rs::recursive".to_string(), ("test.rs".to_string(), 1));
 
     let calls = detect_function_calls_in_lines("test.rs", &lines, &all_functions);
 
@@ -671,7 +671,10 @@ fn test_integration_no_dead_code() {
     let dead = classify_dead_functions_pure(&all_functions, &reachable);
 
     assert!(dead.is_empty());
-    assert_eq!(calculate_dead_percentage(all_functions.len(), dead.len()), 0.0);
+    assert_eq!(
+        calculate_dead_percentage(all_functions.len(), dead.len()),
+        0.0
+    );
 }
 
 #[test]

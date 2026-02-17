@@ -94,7 +94,10 @@ fn test_optimization_strategy_ast_reuse() {
 #[test]
 fn test_retention_config_default() {
     let config = RetentionConfig::default();
-    assert_eq!(config.detailed_retention, Duration::from_secs(7 * 24 * 60 * 60));
+    assert_eq!(
+        config.detailed_retention,
+        Duration::from_secs(7 * 24 * 60 * 60)
+    );
     assert!(config.auto_cleanup);
 }
 
@@ -872,7 +875,10 @@ fn test_performance_monitor_generate_report() {
 async fn test_performance_monitor_establish_baseline() {
     let config = create_test_config();
     let mut monitor = PerformanceMonitor::new(config);
-    let baseline = monitor.establish_baseline("test_baseline".to_string()).await.unwrap();
+    let baseline = monitor
+        .establish_baseline("test_baseline".to_string())
+        .await
+        .unwrap();
     assert_eq!(baseline.id, "test_baseline");
     assert!(baseline.measurements.len() > 0);
 }
@@ -889,7 +895,10 @@ async fn test_performance_monitor_run_benchmark_not_found() {
 async fn test_performance_monitor_apply_optimization_cache() {
     let config = create_test_config();
     let mut monitor = PerformanceMonitor::new(config);
-    let result = monitor.apply_optimization(OptimizationStrategy::CacheOptimization).await.unwrap();
+    let result = monitor
+        .apply_optimization(OptimizationStrategy::CacheOptimization)
+        .await
+        .unwrap();
     let _ = result;
 }
 
@@ -897,7 +906,10 @@ async fn test_performance_monitor_apply_optimization_cache() {
 async fn test_performance_monitor_apply_optimization_parallel() {
     let config = create_test_config();
     let mut monitor = PerformanceMonitor::new(config);
-    let result = monitor.apply_optimization(OptimizationStrategy::ParallelProcessing).await.unwrap();
+    let result = monitor
+        .apply_optimization(OptimizationStrategy::ParallelProcessing)
+        .await
+        .unwrap();
     let _ = result;
 }
 
@@ -905,7 +917,10 @@ async fn test_performance_monitor_apply_optimization_parallel() {
 async fn test_performance_monitor_apply_optimization_memory() {
     let config = create_test_config();
     let mut monitor = PerformanceMonitor::new(config);
-    let result = monitor.apply_optimization(OptimizationStrategy::MemoryPooling).await.unwrap();
+    let result = monitor
+        .apply_optimization(OptimizationStrategy::MemoryPooling)
+        .await
+        .unwrap();
     let _ = result;
 }
 
@@ -913,7 +928,10 @@ async fn test_performance_monitor_apply_optimization_memory() {
 async fn test_performance_monitor_apply_optimization_incremental() {
     let config = create_test_config();
     let mut monitor = PerformanceMonitor::new(config);
-    let result = monitor.apply_optimization(OptimizationStrategy::IncrementalParsing).await.unwrap();
+    let result = monitor
+        .apply_optimization(OptimizationStrategy::IncrementalParsing)
+        .await
+        .unwrap();
     let _ = result;
 }
 
@@ -921,7 +939,10 @@ async fn test_performance_monitor_apply_optimization_incremental() {
 async fn test_performance_monitor_apply_optimization_io() {
     let config = create_test_config();
     let mut monitor = PerformanceMonitor::new(config);
-    let result = monitor.apply_optimization(OptimizationStrategy::IoOptimization).await.unwrap();
+    let result = monitor
+        .apply_optimization(OptimizationStrategy::IoOptimization)
+        .await
+        .unwrap();
     let _ = result;
 }
 
@@ -929,6 +950,9 @@ async fn test_performance_monitor_apply_optimization_io() {
 async fn test_performance_monitor_apply_optimization_ast() {
     let config = create_test_config();
     let mut monitor = PerformanceMonitor::new(config);
-    let result = monitor.apply_optimization(OptimizationStrategy::AstReuse).await.unwrap();
+    let result = monitor
+        .apply_optimization(OptimizationStrategy::AstReuse)
+        .await
+        .unwrap();
     let _ = result;
 }

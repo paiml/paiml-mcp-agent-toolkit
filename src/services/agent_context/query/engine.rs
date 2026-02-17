@@ -55,8 +55,7 @@ pub(super) fn glob_matches(pattern: &str, path: &str) -> bool {
             .replace('*', "[^/]*")
             .replace("\x00GLOBSTAR\x00", "(.*/)?")
             .replace("\x00GLOBSTAR2\x00", ".*");
-        Regex::new(&format!("^{regex_str}$"))
-            .is_ok_and(|re| re.is_match(path))
+        Regex::new(&format!("^{regex_str}$")).is_ok_and(|re| re.is_match(path))
     } else {
         path.contains(pattern)
     }
@@ -81,7 +80,11 @@ impl AgentContextIndex {
             return Err("Query cannot be empty".to_string());
         }
 
-        let limit = if options.limit == 0 { 10 } else { options.limit };
+        let limit = if options.limit == 0 {
+            10
+        } else {
+            options.limit
+        };
 
         // Parse scope prefixes
         let (file_filter, fn_filter, remaining_query) = parse_query_prefixes(query);
@@ -242,7 +245,8 @@ impl AgentContextIndex {
                         * (1.0 + 0.5 * self.count_cross_project_callers(a.0) as f32);
                     let score_b = self.graph_metrics.get(b.0).map_or(0.0, |m| m.pagerank)
                         * (1.0 + 0.5 * self.count_cross_project_callers(b.0) as f32);
-                    score_b.partial_cmp(&score_a)
+                    score_b
+                        .partial_cmp(&score_a)
                         .unwrap_or(std::cmp::Ordering::Equal)
                         .then_with(|| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal))
                 });
@@ -313,13 +317,7 @@ impl AgentContextIndex {
             .into_iter()
             .take(limit)
             .map(|(idx, score)| {
-                QueryResult::from_entry_with_context(
-                    &self.functions[idx],
-                    idx,
-                    self,
-                    score,
-                    false,
-                )
+                QueryResult::from_entry_with_context(&self.functions[idx], idx, self, score, false)
             })
             .collect();
 
@@ -332,7 +330,10 @@ impl AgentContextIndex {
     /// falls back to TF-only O(n) scan otherwise.
     ///
     /// Returns (index, score) pairs for all documents with non-zero scores.
-    pub(crate) fn calculate_relevance_scores(&self, query: &str) -> Result<Vec<(usize, f32)>, String> {
+    pub(crate) fn calculate_relevance_scores(
+        &self,
+        query: &str,
+    ) -> Result<Vec<(usize, f32)>, String> {
         // Try FTS5 BM25 search first (fast path)
         if let Some(ref db_path) = self.db_path {
             if let Ok(results) = self.calculate_relevance_scores_fts5(db_path, query) {
@@ -356,7 +357,9 @@ impl AgentContextIndex {
         db_path: &std::path::Path,
         query: &str,
     ) -> Result<Vec<(usize, f32)>, String> {
-        use crate::services::agent_context::function_index::sqlite_backend::{fts5_search, open_db};
+        use crate::services::agent_context::function_index::sqlite_backend::{
+            fts5_search, open_db,
+        };
         let conn = open_db(db_path)?;
         // Return more than final limit so downstream filters (grade, test, quality) have candidates
         fts5_search(&conn, query, 500)
@@ -530,11 +533,8 @@ impl AgentContextIndex {
         // Exclude content pattern (like grep -v)
         if let Some(exclude) = &options.exclude_pattern {
             let exclude_lower = exclude.to_lowercase();
-            let haystack = format!(
-                "{} {} {}",
-                func.function_name, func.signature, func.source
-            )
-            .to_lowercase();
+            let haystack =
+                format!("{} {} {}", func.function_name, func.signature, func.source).to_lowercase();
             if haystack.contains(&exclude_lower) {
                 return false;
             }
@@ -542,8 +542,7 @@ impl AgentContextIndex {
 
         // Exclude file pattern (like rg --glob '!pattern')
         if let Some(exclude_file) = &options.exclude_file_pattern {
-            if func.file_path.contains(exclude_file)
-                || glob_matches(exclude_file, &func.file_path)
+            if func.file_path.contains(exclude_file) || glob_matches(exclude_file, &func.file_path)
             {
                 return false;
             }

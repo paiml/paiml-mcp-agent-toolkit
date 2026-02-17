@@ -4,14 +4,14 @@
 
 use crate::qdd::core::{QualityMetrics, QualityProfile, QualityThresholds};
 use crate::qdd::patterns::{
-    DesignPattern, DependencyInjectionPattern, DryPattern, KissPattern,
+    DependencyInjectionPattern, DesignPattern, DryPattern, KissPattern,
     SingleResponsibilityPattern, ViolationSeverity, YagniPattern,
 };
 use crate::qdd::profiles::{ProfileComparator, ProfileValidator, QualityProfiles};
 use crate::qdd::refactor::{CodeAnalyzer, PatternEngine, QualityRefactoringEngine};
 use crate::qdd::{
-    CodeType, CreateSpec, EnhanceSpec, MigrateSpec, Parameter, QddOperation, QddTool,
-    QualityScore, RefactorSpec,
+    CodeType, CreateSpec, EnhanceSpec, MigrateSpec, Parameter, QddOperation, QddTool, QualityScore,
+    RefactorSpec,
 };
 use std::path::PathBuf;
 
@@ -268,10 +268,17 @@ fn test_srp_apply_short_code() {
 #[test]
 fn test_srp_apply_long_code() {
     let p = SingleResponsibilityPattern;
-    let long_code = (0..25).map(|i| format!("    let x{i} = {i};")).collect::<Vec<_>>().join("\n");
+    let long_code = (0..25)
+        .map(|i| format!("    let x{i} = {i};"))
+        .collect::<Vec<_>>()
+        .join("\n");
     let code = format!("fn big_func() {{\n{long_code}\n}}");
     let result = p.apply(&code).unwrap();
-    assert!(result.contains("SRP") || result.contains("single responsibility") || result.contains("helper"));
+    assert!(
+        result.contains("SRP")
+            || result.contains("single responsibility")
+            || result.contains("helper")
+    );
 }
 
 #[test]
@@ -284,7 +291,10 @@ fn test_srp_detect_violations_clean() {
 #[test]
 fn test_srp_detect_violations_complex() {
     let p = SingleResponsibilityPattern;
-    let long_code = (0..35).map(|i| format!("    let x{i} = {i};")).collect::<Vec<_>>().join("\n");
+    let long_code = (0..35)
+        .map(|i| format!("    let x{i} = {i};"))
+        .collect::<Vec<_>>()
+        .join("\n");
     let code = format!("fn big_func() {{\n{long_code}\n}}");
     let violations = p.detect_violations(&code);
     assert!(!violations.is_empty());
@@ -330,7 +340,9 @@ fn test_violation_severity_debug() {
 #[test]
 fn test_code_analyzer_simple() {
     let analyzer = CodeAnalyzer::new(QualityProfile::standard());
-    let analysis = analyzer.analyze("fn main() { println!(\"hello\"); }").unwrap();
+    let analysis = analyzer
+        .analyze("fn main() { println!(\"hello\"); }")
+        .unwrap();
     assert_eq!(analysis.function_count, 1);
     assert!(analysis.complexity >= 1);
 }

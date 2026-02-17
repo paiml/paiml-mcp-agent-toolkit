@@ -511,7 +511,12 @@ mod tests {
         let config = PdmtQualityConfig::default();
 
         let result = service
-            .generate_todos(requirements, Some("my_project".to_string()), "medium", config)
+            .generate_todos(
+                requirements,
+                Some("my_project".to_string()),
+                "medium",
+                config,
+            )
             .unwrap();
 
         assert_eq!(result.project_name, "my_project");

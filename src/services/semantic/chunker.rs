@@ -212,7 +212,10 @@ fn extract_rust_items(node: Node, source: &str, chunks: &mut Vec<CodeChunk>) {
             } else {
                 node.start_byte()
             };
-            let content = source.get(start_byte..node.end_byte()).unwrap_or_default().to_string();
+            let content = source
+                .get(start_byte..node.end_byte())
+                .unwrap_or_default()
+                .to_string();
 
             chunks.push(CodeChunk {
                 file_path: String::new(),
@@ -305,7 +308,10 @@ fn extract_ts_function(node: Node, source: &str, chunks: &mut Vec<CodeChunk>) {
     if let Some(name_node) = node.child_by_field_name("name") {
         let name = source[name_node.byte_range()].to_string();
         let start_byte = find_doc_comment_start(node, source);
-        let content = source.get(start_byte..node.end_byte()).unwrap_or_default().to_string();
+        let content = source
+            .get(start_byte..node.end_byte())
+            .unwrap_or_default()
+            .to_string();
 
         chunks.push(CodeChunk {
             file_path: String::new(),
@@ -335,7 +341,14 @@ fn try_extract_arrow_function(decl: Node, source: &str, chunks: &mut Vec<CodeChu
     }
     let name = source[name_node.byte_range()].to_string();
     let content = source[decl.byte_range()].to_string();
-    push_chunk(chunks, ChunkType::Function, name, "typescript", decl, content);
+    push_chunk(
+        chunks,
+        ChunkType::Function,
+        name,
+        "typescript",
+        decl,
+        content,
+    );
 }
 
 /// Extract TypeScript arrow function from variable declaration
@@ -484,7 +497,10 @@ fn extract_c_items(node: Node, source: &str, chunks: &mut Vec<CodeChunk>) {
 
                 // Include preceding doc comments
                 let start_byte = find_doc_comment_start(node, source);
-                let content = source.get(start_byte..node.end_byte()).unwrap_or_default().to_string();
+                let content = source
+                    .get(start_byte..node.end_byte())
+                    .unwrap_or_default()
+                    .to_string();
 
                 chunks.push(CodeChunk {
                     file_path: String::new(),
@@ -588,7 +604,10 @@ fn extract_cpp_template_functions(node: Node, source: &str, chunks: &mut Vec<Cod
         }
         if let Some(name) = extract_cpp_function_name(child, source) {
             let start_byte = find_doc_comment_start(node, source);
-            let content = source.get(start_byte..node.end_byte()).unwrap_or_default().to_string();
+            let content = source
+                .get(start_byte..node.end_byte())
+                .unwrap_or_default()
+                .to_string();
             push_chunk(chunks, ChunkType::Function, name, "cpp", node, content);
         }
     }
@@ -608,7 +627,10 @@ fn extract_cpp_items(node: Node, source: &str, chunks: &mut Vec<CodeChunk>) {
         "function_definition" => {
             if let Some(name) = extract_cpp_function_name(node, source) {
                 let start_byte = find_doc_comment_start(node, source);
-                let content = source.get(start_byte..node.end_byte()).unwrap_or_default().to_string();
+                let content = source
+                    .get(start_byte..node.end_byte())
+                    .unwrap_or_default()
+                    .to_string();
                 push_chunk(chunks, ChunkType::Function, name, "cpp", node, content);
             }
             return; // Don't recurse into function body
@@ -675,7 +697,10 @@ fn extract_go_items(node: Node, source: &str, chunks: &mut Vec<CodeChunk>) {
             if let Some(name_node) = node.child_by_field_name("name") {
                 let name = source[name_node.byte_range()].to_string();
                 let start_byte = find_doc_comment_start(node, source);
-                let content = source.get(start_byte..node.end_byte()).unwrap_or_default().to_string();
+                let content = source
+                    .get(start_byte..node.end_byte())
+                    .unwrap_or_default()
+                    .to_string();
                 push_chunk(chunks, ChunkType::Function, name, "go", node, content);
             }
             return; // Don't recurse into function body
@@ -691,7 +716,10 @@ fn extract_go_items(node: Node, source: &str, chunks: &mut Vec<CodeChunk>) {
         "type_declaration" => {
             if let Some(name) = extract_go_type_name(node, source) {
                 let start_byte = find_doc_comment_start(node, source);
-                let content = source.get(start_byte..node.end_byte()).unwrap_or_default().to_string();
+                let content = source
+                    .get(start_byte..node.end_byte())
+                    .unwrap_or_default()
+                    .to_string();
                 push_chunk(chunks, ChunkType::Class, name, "go", node, content);
             }
             return; // Don't recurse into type declaration children
@@ -740,7 +768,10 @@ fn extract_lua_items(node: Node, source: &str, chunks: &mut Vec<CodeChunk>) {
     if node.kind() == "function_declaration" {
         if let Some(name) = extract_lua_function_name(&node, source) {
             let start_byte = find_doc_comment_start(node, source);
-            let content = source.get(start_byte..node.end_byte()).unwrap_or_default().to_string();
+            let content = source
+                .get(start_byte..node.end_byte())
+                .unwrap_or_default()
+                .to_string();
 
             chunks.push(CodeChunk {
                 file_path: String::new(),
@@ -761,7 +792,10 @@ fn extract_lua_items(node: Node, source: &str, chunks: &mut Vec<CodeChunk>) {
         if let Some(name_node) = node.child_by_field_name("name") {
             let name = source[name_node.byte_range()].to_string();
             let start_byte = find_doc_comment_start(node, source);
-            let content = source.get(start_byte..node.end_byte()).unwrap_or_default().to_string();
+            let content = source
+                .get(start_byte..node.end_byte())
+                .unwrap_or_default()
+                .to_string();
 
             chunks.push(CodeChunk {
                 file_path: String::new(),
@@ -847,7 +881,14 @@ fn extract_lua_variable_function(node: Node, source: &str, chunks: &mut Vec<Code
         }
         if let Some(name) = &var_name {
             let content = source[node.byte_range()].to_string();
-            push_chunk(chunks, ChunkType::Function, name.clone(), "lua", node, content);
+            push_chunk(
+                chunks,
+                ChunkType::Function,
+                name.clone(),
+                "lua",
+                node,
+                content,
+            );
             return; // Only extract one function per variable_declaration
         }
     }

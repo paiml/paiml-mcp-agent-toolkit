@@ -857,7 +857,10 @@ pub fn greet(name: &str) -> String {
         };
 
         assert_eq!(violation.location, "test.rs:10");
-        assert!(matches!(violation.violation_type, ViolationType::Complexity));
+        assert!(matches!(
+            violation.violation_type,
+            ViolationType::Complexity
+        ));
     }
 
     #[test]

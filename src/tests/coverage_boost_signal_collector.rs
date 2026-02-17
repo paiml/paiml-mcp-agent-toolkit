@@ -430,7 +430,9 @@ fn test_signals_to_defects_preserves_signal_in_defect() {
 
 #[test]
 fn test_defect_category_from_rustc_all_ownership_codes() {
-    let ownership_codes = ["E0382", "E0502", "E0503", "E0505", "E0499", "E0597", "E0716", "E0515"];
+    let ownership_codes = [
+        "E0382", "E0502", "E0503", "E0505", "E0499", "E0597", "E0716", "E0515",
+    ];
     for code in ownership_codes {
         assert_eq!(
             DefectCategory::from_rustc_error(code),
@@ -713,7 +715,9 @@ fn test_fix_type_diff_patch() {
     let fix = SuggestedFix {
         description: "Apply patch".to_string(),
         confidence: 0.8,
-        fix_type: FixType::DiffPatch("--- a/file\n+++ b/file\n@@ -1,1 +1,1 @@\n-old\n+new".to_string()),
+        fix_type: FixType::DiffPatch(
+            "--- a/file\n+++ b/file\n@@ -1,1 +1,1 @@\n-old\n+new".to_string(),
+        ),
     };
     if let FixType::DiffPatch(patch) = &fix.fix_type {
         assert!(patch.contains("---"));

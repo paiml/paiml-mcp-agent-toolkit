@@ -1290,7 +1290,8 @@ impl SimpleDeepContext {
                     function_count += 1;
                     if let Some(func_match) = cap.get(0) {
                         let start = func_match.start();
-                        let func_end = self.find_function_end(content.get(start..).unwrap_or_default(), extension);
+                        let func_end = self
+                            .find_function_end(content.get(start..).unwrap_or_default(), extension);
                         if let Some(end) = func_end {
                             let func_body = content.get(start..start + end).unwrap_or_default();
                             let complexity = self.estimate_complexity(func_body, extension);
@@ -1358,8 +1359,7 @@ impl SimpleDeepContext {
             if trimmed == "end" || trimmed.starts_with("end ") || trimmed.starts_with("end,") {
                 depth -= 1;
                 if depth <= 0 {
-                    let byte_offset: usize =
-                        content.lines().take(i + 1).map(|l| l.len() + 1).sum();
+                    let byte_offset: usize = content.lines().take(i + 1).map(|l| l.len() + 1).sum();
                     return Some(byte_offset);
                 }
             }

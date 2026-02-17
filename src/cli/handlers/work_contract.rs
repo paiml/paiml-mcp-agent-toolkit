@@ -77,9 +77,7 @@ impl WorkContract {
             FalsifiableClaim {
                 hypothesis: "The falsifier is active and detecting (Meta-Check)".to_string(),
                 falsification_method: FalsificationMethod::MetaFalsification,
-                evidence_required: EvidenceType::CounterExample {
-                    details: "".into(),
-                },
+                evidence_required: EvidenceType::CounterExample { details: "".into() },
                 result: None,
                 override_info: None,
             },
@@ -133,9 +131,7 @@ impl WorkContract {
             FalsifiableClaim {
                 hypothesis: "No vulnerable dependencies added".to_string(),
                 falsification_method: FalsificationMethod::SupplyChainIntegrity,
-                evidence_required: EvidenceType::CounterExample {
-                    details: "".into(),
-                },
+                evidence_required: EvidenceType::CounterExample { details: "".into() },
                 result: None,
                 override_info: None,
             },
@@ -172,18 +168,14 @@ impl WorkContract {
             FalsifiableClaim {
                 hypothesis: "All examples compile and run".to_string(),
                 falsification_method: FalsificationMethod::ExamplesCompile,
-                evidence_required: EvidenceType::CounterExample {
-                    details: "".into(),
-                },
+                evidence_required: EvidenceType::CounterExample { details: "".into() },
                 result: None,
                 override_info: None,
             },
             FalsifiableClaim {
                 hypothesis: "pmat-book validation passes".to_string(),
                 falsification_method: FalsificationMethod::BookValidation,
-                evidence_required: EvidenceType::CounterExample {
-                    details: "".into(),
-                },
+                evidence_required: EvidenceType::CounterExample { details: "".into() },
                 result: None,
                 override_info: None,
             },
@@ -315,7 +307,8 @@ impl WorkContract {
             for claim in &mut self.claims {
                 if claim.falsification_method == FalsificationMethod::AbsoluteCoverage {
                     claim.override_info = Some(OverrideInfo {
-                        reason: "Legacy Debt: Project predates strict coverage requirements".to_string(),
+                        reason: "Legacy Debt: Project predates strict coverage requirements"
+                            .to_string(),
                         ticket_id: ticket_id.clone(),
                         timestamp: chrono::Utc::now(),
                     });
@@ -362,7 +355,8 @@ impl WorkContract {
             for claim in &mut self.claims {
                 if claim.falsification_method == FalsificationMethod::FileSizeRegression {
                     claim.override_info = Some(OverrideInfo {
-                        reason: "Legacy Debt: Large files predate strict size requirements".to_string(),
+                        reason: "Legacy Debt: Large files predate strict size requirements"
+                            .to_string(),
                         ticket_id: ticket_id.clone(),
                         timestamp: chrono::Utc::now(),
                     });
@@ -411,10 +405,7 @@ resolution:
                 );
 
                 std::fs::write(&ticket_path, yaml_content)?;
-                println!(
-                    "   📝 Created debt ticket: {}",
-                    ticket_path.display()
-                );
+                println!("   📝 Created debt ticket: {}", ticket_path.display());
             }
         }
 
@@ -511,8 +502,12 @@ impl Default for ContractThresholds {
     }
 }
 
-fn default_max_fix_chain() -> usize { 3 }
-fn default_true() -> bool { true }
+fn default_max_fix_chain() -> usize {
+    3
+}
+fn default_true() -> bool {
+    true
+}
 
 /// Immutable file manifest captured at work start
 ///
@@ -1007,7 +1002,11 @@ mod coverage_instrumented_tests {
     #[test]
     fn test_default_claims_returns_17_claims() {
         let claims = WorkContract::default_claims();
-        assert_eq!(claims.len(), 21, "Expected 21 Popperian falsification claims");
+        assert_eq!(
+            claims.len(),
+            21,
+            "Expected 21 Popperian falsification claims"
+        );
     }
 
     #[test]
@@ -1042,8 +1041,16 @@ mod coverage_instrumented_tests {
     fn test_default_claims_all_have_no_results() {
         let claims = WorkContract::default_claims();
         for claim in &claims {
-            assert!(claim.result.is_none(), "Claim '{}' should start with no result", claim.hypothesis);
-            assert!(claim.override_info.is_none(), "Claim '{}' should have no override", claim.hypothesis);
+            assert!(
+                claim.result.is_none(),
+                "Claim '{}' should start with no result",
+                claim.hypothesis
+            );
+            assert!(
+                claim.override_info.is_none(),
+                "Claim '{}' should have no override",
+                claim.hypothesis
+            );
         }
     }
 
@@ -1051,15 +1058,23 @@ mod coverage_instrumented_tests {
     fn test_default_claims_hypotheses_non_empty() {
         let claims = WorkContract::default_claims();
         for claim in &claims {
-            assert!(!claim.hypothesis.is_empty(), "Claim should have non-empty hypothesis");
-            assert!(claim.hypothesis.len() > 5, "Hypothesis too short: '{}'", claim.hypothesis);
+            assert!(
+                !claim.hypothesis.is_empty(),
+                "Claim should have non-empty hypothesis"
+            );
+            assert!(
+                claim.hypothesis.len() > 5,
+                "Hypothesis too short: '{}'",
+                claim.hypothesis
+            );
         }
     }
 
     #[test]
     fn test_default_claims_coverage_threshold_95() {
         let claims = WorkContract::default_claims();
-        let cov_claim = claims.iter()
+        let cov_claim = claims
+            .iter()
             .find(|c| c.falsification_method == FalsificationMethod::AbsoluteCoverage)
             .expect("AbsoluteCoverage claim should exist");
 
@@ -1073,11 +1088,14 @@ mod coverage_instrumented_tests {
     #[test]
     fn test_default_claims_complexity_threshold_20() {
         let claims = WorkContract::default_claims();
-        let complexity_claim = claims.iter()
+        let complexity_claim = claims
+            .iter()
             .find(|c| c.falsification_method == FalsificationMethod::ComplexityRegression)
             .expect("ComplexityRegression claim should exist");
 
-        if let EvidenceType::NumericComparison { threshold, .. } = &complexity_claim.evidence_required {
+        if let EvidenceType::NumericComparison { threshold, .. } =
+            &complexity_claim.evidence_required
+        {
             assert_eq!(*threshold, 20.0);
         } else {
             panic!("ComplexityRegression should use NumericComparison evidence");
@@ -1087,7 +1105,8 @@ mod coverage_instrumented_tests {
     #[test]
     fn test_default_claims_file_size_threshold_500() {
         let claims = WorkContract::default_claims();
-        let size_claim = claims.iter()
+        let size_claim = claims
+            .iter()
             .find(|c| c.falsification_method == FalsificationMethod::FileSizeRegression)
             .expect("FileSizeRegression claim should exist");
 
@@ -1133,7 +1152,10 @@ mod coverage_instrumented_tests {
     fn test_falsification_result_failed_with_evidence() {
         let result = FalsificationResult::failed(
             "Coverage too low",
-            EvidenceType::NumericComparison { actual: 80.0, threshold: 95.0 },
+            EvidenceType::NumericComparison {
+                actual: 80.0,
+                threshold: 95.0,
+            },
         );
         assert!(result.falsified);
         assert!(result.evidence.is_some());

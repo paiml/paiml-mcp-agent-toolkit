@@ -5,9 +5,9 @@
 
 use crate::models::unified_ast::{
     AstDag, AstKind, BytePos, ClassKind, ColumnStore, ConfidenceLevel, EvidenceType, FunctionKind,
-    ImportKind, Language, Location, MacroKind, ModuleKind, NodeFlags, NodeMetadata, PropertyType,
-    ProofAnnotation, QualifiedName, RelativeLocation, Span, StmtKind, TypeKind, UnifiedAstNode,
-    VarKind, VerificationMethod,
+    ImportKind, Language, Location, MacroKind, ModuleKind, NodeFlags, NodeMetadata,
+    ProofAnnotation, PropertyType, QualifiedName, RelativeLocation, Span, StmtKind, TypeKind,
+    UnifiedAstNode, VarKind, VerificationMethod,
 };
 use chrono::Utc;
 use std::path::PathBuf;
@@ -963,19 +963,13 @@ fn test_full_dag_workflow() {
     let mut dag = AstDag::new();
 
     // Add function node
-    let mut func = UnifiedAstNode::new(
-        AstKind::Function(FunctionKind::Regular),
-        Language::Rust,
-    );
+    let mut func = UnifiedAstNode::new(AstKind::Function(FunctionKind::Regular), Language::Rust);
     func.source_range = 0..100;
     func.set_complexity(5);
     let func_key = dag.add_node(func);
 
     // Add class node
-    let mut class = UnifiedAstNode::new(
-        AstKind::Class(ClassKind::Struct),
-        Language::Rust,
-    );
+    let mut class = UnifiedAstNode::new(AstKind::Class(ClassKind::Struct), Language::Rust);
     class.source_range = 100..200;
     let class_key = dag.add_node(class);
 
@@ -1004,10 +998,7 @@ fn test_full_dag_workflow() {
 fn test_node_with_proof_annotations_in_dag() {
     let mut dag = AstDag::new();
 
-    let mut node = UnifiedAstNode::new(
-        AstKind::Function(FunctionKind::Regular),
-        Language::Rust,
-    );
+    let mut node = UnifiedAstNode::new(AstKind::Function(FunctionKind::Regular), Language::Rust);
 
     let annotation = ProofAnnotation {
         annotation_id: Uuid::new_v4(),

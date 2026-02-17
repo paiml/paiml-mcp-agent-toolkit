@@ -362,7 +362,10 @@ async fn test_language_analyzer_analyze_all_types() {
         assert_eq!(result.analysis_results.len(), 8);
         // Most should succeed; some analysis types may not be supported for all languages
         let succeeded = result.analysis_results.iter().filter(|r| r.success).count();
-        assert!(succeeded >= 5, "Expected at least 5 successes, got {succeeded}");
+        assert!(
+            succeeded >= 5,
+            "Expected at least 5 successes, got {succeeded}"
+        );
     }
 }
 
@@ -417,7 +420,10 @@ class MyClass:
     assert!(!result.analysis_results.is_empty());
     // All requested analyses should succeed
     let succeeded = result.analysis_results.iter().filter(|r| r.success).count();
-    assert!(succeeded >= 3, "Expected at least 3 successes, got {succeeded}");
+    assert!(
+        succeeded >= 3,
+        "Expected at least 3 successes, got {succeeded}"
+    );
 }
 
 #[tokio::test]

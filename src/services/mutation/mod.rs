@@ -23,8 +23,8 @@ pub mod go_tree_sitter_mutations;
 pub mod guard;
 pub mod json_parser; // Sprint 70: cargo-mutants JSON parser
 pub mod language;
-pub mod lua_adapter;
 pub mod language_detector; // Sprint 63: Multi-language support
+pub mod lua_adapter;
 pub mod ml_predictor;
 pub mod operators;
 pub mod python_adapter;

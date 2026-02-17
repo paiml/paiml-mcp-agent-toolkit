@@ -120,7 +120,9 @@ fn determine_level(
     }
 
     // Silver: lockfile + (dockerfile OR CI) + some automation
-    if has_lockfile && (has_dockerfile || has_ci_config) && (has_make_reproduce || has_golden_traces)
+    if has_lockfile
+        && (has_dockerfile || has_ci_config)
+        && (has_make_reproduce || has_golden_traces)
     {
         return ReproducibilityLevel::Silver;
     }
@@ -186,7 +188,9 @@ fn check_dockerfile(project_path: &Path) -> bool {
     project_path.join("Dockerfile").exists()
         || project_path.join("docker-compose.yml").exists()
         || project_path.join("docker-compose.yaml").exists()
-        || project_path.join(".devcontainer/devcontainer.json").exists()
+        || project_path
+            .join(".devcontainer/devcontainer.json")
+            .exists()
         || project_path.join("flake.nix").exists()
 }
 

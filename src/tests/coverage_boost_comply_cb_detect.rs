@@ -23,7 +23,10 @@ use crate::cli::handlers::comply_handlers::comply_cb_detect::{
 
 #[test]
 fn test_satd_manifestation_type_equality() {
-    assert_eq!(SATDManifestationType::Comment, SATDManifestationType::Comment);
+    assert_eq!(
+        SATDManifestationType::Comment,
+        SATDManifestationType::Comment
+    );
     assert_eq!(SATDManifestationType::Code, SATDManifestationType::Code);
     assert_ne!(SATDManifestationType::Comment, SATDManifestationType::Code);
 }
@@ -112,7 +115,10 @@ fn test_severity_debug() {
 fn test_comment_manifestation_no_escalation() {
     let comment = SATDManifestationType::Comment;
     assert_eq!(comment.escalate_severity(Severity::Low), Severity::Low);
-    assert_eq!(comment.escalate_severity(Severity::Medium), Severity::Medium);
+    assert_eq!(
+        comment.escalate_severity(Severity::Medium),
+        Severity::Medium
+    );
     assert_eq!(comment.escalate_severity(Severity::High), Severity::High);
     assert_eq!(
         comment.escalate_severity(Severity::Critical),
@@ -126,7 +132,10 @@ fn test_code_manifestation_escalation() {
     assert_eq!(code.escalate_severity(Severity::Low), Severity::Medium);
     assert_eq!(code.escalate_severity(Severity::Medium), Severity::High);
     assert_eq!(code.escalate_severity(Severity::High), Severity::Critical);
-    assert_eq!(code.escalate_severity(Severity::Critical), Severity::Critical);
+    assert_eq!(
+        code.escalate_severity(Severity::Critical),
+        Severity::Critical
+    );
 }
 
 // =============================================================================
@@ -638,7 +647,10 @@ fn test_detect_panic_not_implemented_caps_not_matched() {
     let code = r#"fn test() { panic!("Not implemented"); }"#;
     let violations = detect_cb050_code_stubs_in_str(code);
     // Current pattern expects lowercase "not implemented"
-    let cb050c = violations.iter().filter(|(_, id, _)| *id == "CB-050-C").count();
+    let cb050c = violations
+        .iter()
+        .filter(|(_, id, _)| *id == "CB-050-C")
+        .count();
     assert_eq!(cb050c, 0, "Capital 'Not' doesn't match current pattern");
 }
 
@@ -1213,7 +1225,10 @@ fn normal() { let x = 1; }
 "###;
     let violations = detect_cb050_code_stubs_in_str(code);
     // The todo!() is inside a raw string, should be skipped
-    let cb050a = violations.iter().filter(|(_, id, _)| *id == "CB-050-A").count();
+    let cb050a = violations
+        .iter()
+        .filter(|(_, id, _)| *id == "CB-050-A")
+        .count();
     assert_eq!(cb050a, 0, "todo!() inside raw string should be skipped");
 }
 
@@ -1225,7 +1240,10 @@ fn stub() { todo!(); }
 "###;
     let violations = detect_cb050_code_stubs_in_str(code);
     // The second todo!() is NOT in a raw string
-    let cb050a: Vec<_> = violations.iter().filter(|(_, id, _)| *id == "CB-050-A").collect();
+    let cb050a: Vec<_> = violations
+        .iter()
+        .filter(|(_, id, _)| *id == "CB-050-A")
+        .collect();
     assert!(!cb050a.is_empty(), "todo!() on line 2 should be detected");
 }
 

@@ -53,7 +53,11 @@ pub struct ProfilerAnomaly {
 /// Compute line ranges that are inside test code (#[cfg(test)] mod tests { ... })
 /// Returns a HashSet of line indices that should be skipped for production code analysis.
 /// Mark all lines in a brace-delimited block starting at `start`.
-pub(super) fn mark_braced_block(lines: &[&str], start: usize, result: &mut std::collections::HashSet<usize>) {
+pub(super) fn mark_braced_block(
+    lines: &[&str],
+    start: usize,
+    result: &mut std::collections::HashSet<usize>,
+) {
     let mut depth = 0;
     for k in start..lines.len() {
         depth += lines[k].matches('{').count();
@@ -66,7 +70,12 @@ pub(super) fn mark_braced_block(lines: &[&str], start: usize, result: &mut std::
 }
 
 /// Find the next line containing `needle` within `start..start+window`, return its index.
-pub(super) fn find_line_within(lines: &[&str], start: usize, window: usize, needle: &str) -> Option<usize> {
+pub(super) fn find_line_within(
+    lines: &[&str],
+    start: usize,
+    window: usize,
+    needle: &str,
+) -> Option<usize> {
     let end = std::cmp::min(start + window, lines.len());
     (start..end).find(|&j| lines[j].contains(needle))
 }
@@ -93,8 +102,10 @@ pub fn compute_test_code_lines(lines: &[&str]) -> std::collections::HashSet<usiz
         }
 
         // Detect #[test] and #[tokio::test] functions
-        if line.starts_with("#[test]") || line.starts_with("#[tokio::test]")
-            || line.starts_with("#[tokio::test]") || line.starts_with("#[async_std::test]")
+        if line.starts_with("#[test]")
+            || line.starts_with("#[tokio::test]")
+            || line.starts_with("#[tokio::test]")
+            || line.starts_with("#[async_std::test]")
         {
             test_lines.insert(i);
             if let Some(j) = find_line_within(lines, i + 1, 4, "fn ") {
@@ -149,9 +160,12 @@ fn scan_file_for_unsafe_violations(path: &Path) -> Vec<CbPatternViolation> {
 }
 
 fn has_preceding_safety_comment(lines: &[&str], line_num: usize) -> bool {
-    lines.iter().take(line_num).rev().take(10).any(|l| {
-        l.contains("// SAFETY:") || l.contains("// SAFETY :") || l.contains("/ SAFETY:")
-    })
+    lines
+        .iter()
+        .take(line_num)
+        .rev()
+        .take(10)
+        .any(|l| l.contains("// SAFETY:") || l.contains("// SAFETY :") || l.contains("/ SAFETY:"))
 }
 
 /// Helper to walk directory for .rs files
@@ -172,6 +186,8 @@ pub fn walkdir_rs_files(dir: &Path) -> Result<Vec<std::path::PathBuf>, std::io::
 /// Check if a file is entirely test code based on naming conventions.
 pub fn is_test_file(path: &Path) -> bool {
     let name = path.file_stem().and_then(|s| s.to_str()).unwrap_or("");
-    name.ends_with("_tests") || name.ends_with("_test") || name == "tests"
+    name.ends_with("_tests")
+        || name.ends_with("_test")
+        || name == "tests"
         || path.components().any(|c| c.as_os_str() == "tests")
 }

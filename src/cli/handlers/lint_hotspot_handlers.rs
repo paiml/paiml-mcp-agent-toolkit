@@ -1732,7 +1732,7 @@ mod lint_hotspot_unit_tests {
     fn test_check_quality_gates_fail_both() {
         let hotspot = LintHotspot {
             file: PathBuf::from("src/test.rs"),
-            defect_density: 0.5, // Way above max
+            defect_density: 0.5,   // Way above max
             total_violations: 100, // Above 50
             sloc: 200,
             severity_distribution: SeverityDistribution::default(),

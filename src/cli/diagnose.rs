@@ -131,9 +131,13 @@ impl EnvironmentSnapshot {
             cpu_count: num_cpus::get(),
             memory_mb: {
                 #[cfg(feature = "diagnostics")]
-                { sys_info::mem_info().map(|m| m.total / 1024).unwrap_or(0) }
+                {
+                    sys_info::mem_info().map(|m| m.total / 1024).unwrap_or(0)
+                }
                 #[cfg(not(feature = "diagnostics"))]
-                { 0 }
+                {
+                    0
+                }
             },
             cwd: std::env::current_dir()
                 .map(|p| p.display().to_string())

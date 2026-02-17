@@ -89,12 +89,17 @@ fn check_file_for_simd_violations(entry: &Path) -> Vec<CbPatternViolation> {
 
 pub fn detect_cb021_simd_without_target_feature(project_path: &Path) -> Vec<CbPatternViolation> {
     let src_dir = project_path.join("src");
-    if !src_dir.exists() { return vec![]; }
+    if !src_dir.exists() {
+        return vec![];
+    }
     let entries = match walkdir_rs_files(&src_dir) {
         Ok(e) => e,
         Err(_) => return vec![],
     };
-    entries.iter().flat_map(|e| check_file_for_simd_violations(e)).collect()
+    entries
+        .iter()
+        .flat_map(|e| check_file_for_simd_violations(e))
+        .collect()
 }
 
 /// Check if any of the preceding 5 lines contain a bounds check (an `if` with `<` or `>=`).
@@ -118,7 +123,10 @@ fn check_wgsl_file_for_bounds_violations(entry: &Path) -> Vec<CbPatternViolation
 
     for (line_num, line) in content_lines.iter().enumerate() {
         let trimmed = line.trim();
-        if trimmed.contains('[') && trimmed.contains(']') && !has_bounds_check_nearby(&content_lines, line_num) {
+        if trimmed.contains('[')
+            && trimmed.contains(']')
+            && !has_bounds_check_nearby(&content_lines, line_num)
+        {
             violations.push(CbPatternViolation {
                 pattern_id: "CB-001".to_string(),
                 file: file_path.clone(),
@@ -213,8 +221,7 @@ fn check_wgsl_file_for_barrier_divergence(entry: &Path) -> Vec<CbPatternViolatio
         }
         if in_conditional {
             conditional_depth += trimmed.matches('{').count();
-            conditional_depth =
-                conditional_depth.saturating_sub(trimmed.matches('}').count());
+            conditional_depth = conditional_depth.saturating_sub(trimmed.matches('}').count());
             if conditional_depth == 0 {
                 in_conditional = false;
             }
@@ -284,7 +291,10 @@ pub fn detect_bricks_without_assertions(project_path: &Path) -> Vec<CbPatternVio
         Ok(e) => e,
         Err(_) => return vec![],
     };
-    entries.iter().filter_map(|e| check_brick_file_for_assertions(e)).collect()
+    entries
+        .iter()
+        .filter_map(|e| check_brick_file_for_assertions(e))
+        .collect()
 }
 
 /// Check a single line for high coefficient of variation (CV > 15%) anomaly.
@@ -379,7 +389,10 @@ pub fn extract_json_number(line: &str) -> Option<f64> {
 
 /// Extract brick name from JSON content near the target line
 fn find_name_field_backwards(lines: &[&str], from: usize) -> Option<String> {
-    lines[..from].iter().rev().take(20)
+    lines[..from]
+        .iter()
+        .rev()
+        .take(20)
         .find(|l| l.contains("\"name\"") || l.contains("\"brick_name\""))
         .and_then(|l| l.split('"').nth(3))
         .map(|s| s.to_string())
@@ -458,7 +471,12 @@ pub(super) fn scan_rs_production_lines(
 /// Check if a pattern is inside a string literal (odd number of quotes before it)
 pub(super) fn is_in_string_literal(line: &str, pattern: &str) -> bool {
     if let Some(idx) = line.find(pattern) {
-        let quote_count = line.get(..idx).unwrap_or_default().chars().filter(|&c| c == '"').count();
+        let quote_count = line
+            .get(..idx)
+            .unwrap_or_default()
+            .chars()
+            .filter(|&c| c == '"')
+            .count();
         quote_count % 2 == 1
     } else {
         false
@@ -466,24 +484,34 @@ pub(super) fn is_in_string_literal(line: &str, pattern: &str) -> bool {
 }
 
 pub fn detect_cb120_nan_unsafe_comparison(project_path: &Path) -> Vec<CbPatternViolation> {
-    scan_rs_production_lines(project_path, false, |trimmed, file_path, line_num, violations| {
-        if is_in_string_literal(trimmed, "partial_cmp") {
-            return;
-        }
-        if !trimmed.contains("partial_cmp") {
-            return;
-        }
-        let has_unwrap = trimmed.contains(DOT_UNWRAP_STR) && !trimmed.contains(UNWRAP_OR_STR);
-        let has_expect = trimmed.contains(".expect(");
-        let suffix = if has_unwrap { concat!("unwr", "ap()") } else if has_expect { "expect()" } else { return };
-        violations.push(CbPatternViolation {
+    scan_rs_production_lines(
+        project_path,
+        false,
+        |trimmed, file_path, line_num, violations| {
+            if is_in_string_literal(trimmed, "partial_cmp") {
+                return;
+            }
+            if !trimmed.contains("partial_cmp") {
+                return;
+            }
+            let has_unwrap = trimmed.contains(DOT_UNWRAP_STR) && !trimmed.contains(UNWRAP_OR_STR);
+            let has_expect = trimmed.contains(".expect(");
+            let suffix = if has_unwrap {
+                concat!("unwr", "ap()")
+            } else if has_expect {
+                "expect()"
+            } else {
+                return;
+            };
+            violations.push(CbPatternViolation {
             pattern_id: "CB-120".to_string(),
             file: file_path.to_string(),
             line: line_num + 1,
             description: format!("NaN-unsafe: .partial_cmp().{suffix} panics on NaN. Use .total_cmp() or .unwrap_or()"),
             severity: Severity::Error,
         });
-    })
+        },
+    )
 }
 
 /// CB-121: Detect lock poisoning vulnerabilities
@@ -515,7 +543,11 @@ pub(super) fn check_lock_poisoning_line(
         && !is_safe;
 
     if is_rwlock_op && (trimmed.contains("RwLock") || has_rwlock_import) {
-        let op = if trimmed.contains(".read()") { "read" } else { "write" };
+        let op = if trimmed.contains(".read()") {
+            "read"
+        } else {
+            "write"
+        };
         return Some(CbPatternViolation {
             pattern_id: "CB-121".to_string(),
             file: file_path.to_string(),
@@ -535,7 +567,12 @@ fn should_skip_line(trimmed: &str) -> bool {
         return true;
     }
     if let Some(idx) = trimmed.find(concat!(".loc", "k()")) {
-        let quote_count = trimmed.get(..idx).unwrap_or_default().chars().filter(|&c| c == '"').count();
+        let quote_count = trimmed
+            .get(..idx)
+            .unwrap_or_default()
+            .chars()
+            .filter(|&c| c == '"')
+            .count();
         if quote_count % 2 == 1 {
             return true;
         }
@@ -563,7 +600,8 @@ fn check_file_for_lock_poisoning(entry: &Path) -> Vec<CbPatternViolation> {
         if should_skip_line(trimmed) {
             continue;
         }
-        if let Some(v) = check_lock_poisoning_line(trimmed, has_rwlock_import, &file_path, line_num) {
+        if let Some(v) = check_lock_poisoning_line(trimmed, has_rwlock_import, &file_path, line_num)
+        {
             violations.push(v);
         }
     }
@@ -608,7 +646,12 @@ pub(super) fn check_serde_line(
         }
         // Skip if pattern is inside a string literal
         if let Some(idx) = trimmed.find(pattern) {
-            let quote_count = trimmed.get(..idx).unwrap_or_default().chars().filter(|&c| c == '"').count();
+            let quote_count = trimmed
+                .get(..idx)
+                .unwrap_or_default()
+                .chars()
+                .filter(|&c| c == '"')
+                .count();
             if quote_count % 2 == 1 {
                 continue;
             }
@@ -634,13 +677,23 @@ pub(super) fn check_serde_line(
 
 pub fn detect_cb122_serde_safety(project_path: &Path) -> Vec<CbPatternViolation> {
     let serde_patterns = [
-        "serde_json::from_str", "serde_json::from_slice", "serde_json::from_reader",
-        "serde_yaml::from_str", "serde_yaml::from_slice", "serde_yaml::from_reader",
-        "toml::from_str", "toml::de::from_str", "ron::from_str",
+        "serde_json::from_str",
+        "serde_json::from_slice",
+        "serde_json::from_reader",
+        "serde_yaml::from_str",
+        "serde_yaml::from_slice",
+        "serde_yaml::from_reader",
+        "toml::from_str",
+        "toml::de::from_str",
+        "ron::from_str",
     ];
-    scan_rs_production_lines(project_path, true, |trimmed, file_path, line_num, violations| {
-        check_serde_line(trimmed, &serde_patterns, file_path, line_num, violations);
-    })
+    scan_rs_production_lines(
+        project_path,
+        true,
+        |trimmed, file_path, line_num, violations| {
+            check_serde_line(trimmed, &serde_patterns, file_path, line_num, violations);
+        },
+    )
 }
 
 /// CB-123: Detect undocumented #[ignore] tests
@@ -664,7 +717,8 @@ fn check_file_for_undocumented_ignore(entry: &Path) -> Vec<CbPatternViolation> {
     let mut violations = Vec::new();
     for (line_num, line) in lines.iter().enumerate() {
         let trimmed = line.trim();
-        if trimmed.starts_with("#[ignore]") && !has_ignore_documentation(&lines, line_num, trimmed) {
+        if trimmed.starts_with("#[ignore]") && !has_ignore_documentation(&lines, line_num, trimmed)
+        {
             violations.push(CbPatternViolation {
                 pattern_id: "CB-123".to_string(),
                 file: file_path.clone(),
@@ -698,11 +752,15 @@ const COVERAGE_THRESHOLD_PATTERNS: &[(&str, char)] = &[
 ];
 
 fn check_coverage_threshold_line(
-    line: &str, line_num: usize, file_path: &str,
+    line: &str,
+    line_num: usize,
+    file_path: &str,
 ) -> Option<CbPatternViolation> {
     let line_lower = line.to_lowercase();
     for &(pattern, sep) in COVERAGE_THRESHOLD_PATTERNS {
-        if !line_lower.contains(pattern) { continue; }
+        if !line_lower.contains(pattern) {
+            continue;
+        }
         let value = extract_coverage_threshold(line, sep)?;
         let (description, severity) = if value < 80.0 {
             (format!("Low coverage threshold: {value:.1}% is below 80% minimum. Increase coverage requirements"), Severity::Error)
@@ -715,7 +773,8 @@ fn check_coverage_threshold_line(
             pattern_id: "CB-124".to_string(),
             file: file_path.to_string(),
             line: line_num + 1,
-            description, severity,
+            description,
+            severity,
         });
     }
     None
@@ -727,7 +786,9 @@ fn check_config_file_for_coverage(config_path: &Path) -> Vec<CbPatternViolation>
         Err(_) => return vec![],
     };
     let file_path = config_path.display().to_string();
-    content.lines().enumerate()
+    content
+        .lines()
+        .enumerate()
         .filter_map(|(ln, line)| check_coverage_threshold_line(line, ln, &file_path))
         .collect()
 }
@@ -740,11 +801,21 @@ pub fn detect_cb124_coverage_threshold(project_path: &Path) -> Vec<CbPatternViol
         project_path.join("codecov.yml"),
         project_path.join(".codecov.yml"),
         project_path.join("Makefile"),
-        project_path.join(".github").join("workflows").join("ci.yml"),
-        project_path.join(".github").join("workflows").join("test.yml"),
-        project_path.join(".github").join("workflows").join("coverage.yml"),
+        project_path
+            .join(".github")
+            .join("workflows")
+            .join("ci.yml"),
+        project_path
+            .join(".github")
+            .join("workflows")
+            .join("test.yml"),
+        project_path
+            .join(".github")
+            .join("workflows")
+            .join("coverage.yml"),
     ];
-    config_files.iter()
+    config_files
+        .iter()
         .filter(|p| p.exists())
         .flat_map(|p| check_config_file_for_coverage(p))
         .collect()

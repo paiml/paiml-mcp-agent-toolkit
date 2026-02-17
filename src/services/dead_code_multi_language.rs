@@ -390,11 +390,19 @@ fn extract_c_function_definitions(content: &str, file_str: &str, out: &mut Vec<F
         }
 
         if let Some(name) = try_extract_c_func_name(line) {
-            out.push(FunctionInfo { name, file: file_str.to_string(), line: line_idx + 1 });
+            out.push(FunctionInfo {
+                name,
+                file: file_str.to_string(),
+                line: line_idx + 1,
+            });
         } else if line_idx + 1 < lines.len() {
             let combined = format!("{} {}", line, lines[line_idx + 1].trim());
             if let Some(name) = try_extract_c_func_name(&combined) {
-                out.push(FunctionInfo { name, file: file_str.to_string(), line: line_idx + 2 });
+                out.push(FunctionInfo {
+                    name,
+                    file: file_str.to_string(),
+                    line: line_idx + 2,
+                });
                 skip_next_line = true;
             }
         }
@@ -530,20 +538,63 @@ fn find_uncalled_functions(
 /// - `local function name()` — local, dead if uncalled
 /// - `function name()` — global, lower confidence (may be called externally)
 /// - `function M.name()` / `M.name = function()` — exported if `return M` present
-fn analyze_lua_files(
-    files: &[std::path::PathBuf],
-) -> Result<(Vec<FunctionInfo>, HashSet<String>)> {
+fn analyze_lua_files(files: &[std::path::PathBuf]) -> Result<(Vec<FunctionInfo>, HashSet<String>)> {
     let mut defined_functions = Vec::new();
     let mut called_functions = HashSet::new();
 
     // Lua keywords and builtins to exclude from call tracking
     let lua_keywords: HashSet<&str> = [
-        "if", "then", "else", "elseif", "end", "do", "while", "for", "repeat", "until",
-        "function", "local", "return", "break", "goto", "in", "and", "or", "not", "nil",
-        "true", "false", "require", "print", "pairs", "ipairs", "type", "error", "pcall",
-        "xpcall", "select", "rawget", "rawset", "rawlen", "tostring", "tonumber",
-        "setmetatable", "getmetatable", "table", "string", "math", "coroutine", "unpack",
-        "assert", "next", "io", "os", "debug", "dofile", "loadfile", "loadstring",
+        "if",
+        "then",
+        "else",
+        "elseif",
+        "end",
+        "do",
+        "while",
+        "for",
+        "repeat",
+        "until",
+        "function",
+        "local",
+        "return",
+        "break",
+        "goto",
+        "in",
+        "and",
+        "or",
+        "not",
+        "nil",
+        "true",
+        "false",
+        "require",
+        "print",
+        "pairs",
+        "ipairs",
+        "type",
+        "error",
+        "pcall",
+        "xpcall",
+        "select",
+        "rawget",
+        "rawset",
+        "rawlen",
+        "tostring",
+        "tonumber",
+        "setmetatable",
+        "getmetatable",
+        "table",
+        "string",
+        "math",
+        "coroutine",
+        "unpack",
+        "assert",
+        "next",
+        "io",
+        "os",
+        "debug",
+        "dofile",
+        "loadfile",
+        "loadstring",
     ]
     .iter()
     .copied()
@@ -874,13 +925,25 @@ mod tests {
         let (defined, called) = analyze_lua_files(&lua_files).unwrap();
 
         assert_eq!(defined.len(), 3, "Should find 3 functions");
-        assert!(called.contains("used_helper"), "used_helper should be in calls");
-        assert!(!called.contains("dead_helper"), "dead_helper should NOT be in calls");
+        assert!(
+            called.contains("used_helper"),
+            "used_helper should be in calls"
+        );
+        assert!(
+            !called.contains("dead_helper"),
+            "dead_helper should NOT be in calls"
+        );
 
         let dead = find_uncalled_functions(&defined, &called);
         let dead_names: Vec<&str> = dead.iter().map(|d| d.name.as_str()).collect();
-        assert!(dead_names.contains(&"dead_helper"), "dead_helper should be dead");
-        assert!(!dead_names.contains(&"used_helper"), "used_helper should not be dead");
+        assert!(
+            dead_names.contains(&"dead_helper"),
+            "dead_helper should be dead"
+        );
+        assert!(
+            !dead_names.contains(&"used_helper"),
+            "used_helper should not be dead"
+        );
     }
 
     #[test]
@@ -913,14 +976,29 @@ mod tests {
         let (defined, called) = analyze_lua_files(&lua_files).unwrap();
 
         // Module functions should be treated as exported (called)
-        assert!(called.contains("public_api"), "M.public_api should be marked as exported");
-        assert!(called.contains("internal_calc"), "M.internal_calc should be marked as exported");
+        assert!(
+            called.contains("public_api"),
+            "M.public_api should be marked as exported"
+        );
+        assert!(
+            called.contains("internal_calc"),
+            "M.internal_calc should be marked as exported"
+        );
 
         let dead = find_uncalled_functions(&defined, &called);
         let dead_names: Vec<&str> = dead.iter().map(|d| d.name.as_str()).collect();
-        assert!(dead_names.contains(&"truly_dead"), "truly_dead should be dead");
-        assert!(!dead_names.contains(&"public_api"), "exported funcs should not be dead");
-        assert!(!dead_names.contains(&"internal_calc"), "exported funcs should not be dead");
+        assert!(
+            dead_names.contains(&"truly_dead"),
+            "truly_dead should be dead"
+        );
+        assert!(
+            !dead_names.contains(&"public_api"),
+            "exported funcs should not be dead"
+        );
+        assert!(
+            !dead_names.contains(&"internal_calc"),
+            "exported funcs should not be dead"
+        );
     }
 
     #[test]
@@ -953,7 +1031,10 @@ mod tests {
         let (defined, called) = analyze_lua_files(&lua_files).unwrap();
 
         assert!(called.contains("handler"), "M.handler should be exported");
-        assert!(called.contains("middleware"), "M.middleware should be exported");
+        assert!(
+            called.contains("middleware"),
+            "M.middleware should be exported"
+        );
 
         let dead = find_uncalled_functions(&defined, &called);
         let dead_names: Vec<&str> = dead.iter().map(|d| d.name.as_str()).collect();
@@ -984,7 +1065,10 @@ mod tests {
         let (defined, called) = analyze_lua_files(&lua_files).unwrap();
 
         // Without `return M`, M.something is NOT auto-exported
-        assert!(!called.contains("something"), "Without module return, not auto-exported");
+        assert!(
+            !called.contains("something"),
+            "Without module return, not auto-exported"
+        );
         let dead = find_uncalled_functions(&defined, &called);
         assert_eq!(dead.len(), 1);
         assert_eq!(dead[0].name, "something");
@@ -992,10 +1076,22 @@ mod tests {
 
     #[test]
     fn test_lua_detect_module_return() {
-        assert_eq!(detect_lua_module_return("return M\n"), Some("M".to_string()));
-        assert_eq!(detect_lua_module_return("return MyModule\n"), Some("MyModule".to_string()));
-        assert_eq!(detect_lua_module_return("x = 1\nreturn M\n"), Some("M".to_string()));
-        assert_eq!(detect_lua_module_return("return M\n-- trailing comment\n"), Some("M".to_string()));
+        assert_eq!(
+            detect_lua_module_return("return M\n"),
+            Some("M".to_string())
+        );
+        assert_eq!(
+            detect_lua_module_return("return MyModule\n"),
+            Some("MyModule".to_string())
+        );
+        assert_eq!(
+            detect_lua_module_return("x = 1\nreturn M\n"),
+            Some("M".to_string())
+        );
+        assert_eq!(
+            detect_lua_module_return("return M\n-- trailing comment\n"),
+            Some("M".to_string())
+        );
         assert_eq!(detect_lua_module_return("print('done')\n"), None);
         assert_eq!(detect_lua_module_return("return 1, 2, 3\n"), None);
         assert_eq!(detect_lua_module_return(""), None);
@@ -1020,11 +1116,7 @@ mod tests {
         .unwrap();
         std::fs::write(
             temp.path().join("main.lua"),
-            concat!(
-                "local function used_in_prod()\n",
-                "    return 1\n",
-                "end\n",
-            ),
+            concat!("local function used_in_prod()\n", "    return 1\n", "end\n",),
         )
         .unwrap();
 
@@ -1033,11 +1125,20 @@ mod tests {
 
         // Test file functions should NOT be in defined list
         let def_names: Vec<&str> = defined.iter().map(|d| d.name.as_str()).collect();
-        assert!(!def_names.contains(&"test_helper"), "Test functions excluded");
+        assert!(
+            !def_names.contains(&"test_helper"),
+            "Test functions excluded"
+        );
         assert!(!def_names.contains(&"test_run"), "Test functions excluded");
-        assert!(def_names.contains(&"used_in_prod"), "Prod functions included");
+        assert!(
+            def_names.contains(&"used_in_prod"),
+            "Prod functions included"
+        );
 
         // But calls FROM test files should still be tracked
-        assert!(called.contains("used_in_prod"), "Calls from tests should be tracked");
+        assert!(
+            called.contains("used_in_prod"),
+            "Calls from tests should be tracked"
+        );
     }
 }

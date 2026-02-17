@@ -457,6 +457,5 @@ impl EnforcementRules {
     }
 }
 
-
 // Tests extracted to enforcement_tests.rs for file health (CB-040).
 include!("enforcement_tests.rs");

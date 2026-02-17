@@ -139,8 +139,7 @@ mod satd_facade_tests {
 
 mod defect_prediction_tests {
     use crate::services::facades::defect_prediction_facade::{
-        DefectPredictionRequest, DefectPredictionResult, FilePrediction, FileRiskMetrics,
-        RiskLevel,
+        DefectPredictionRequest, DefectPredictionResult, FilePrediction, FileRiskMetrics, RiskLevel,
     };
     use std::path::PathBuf;
 

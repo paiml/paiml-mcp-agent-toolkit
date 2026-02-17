@@ -1417,7 +1417,6 @@ mod coverage_tests {
         assert_eq!(stats.medium_risk, 0);
         assert_eq!(stats.low_risk, 0);
     }
-
 }
 
 /// Active unit tests for defect prediction module

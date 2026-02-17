@@ -139,7 +139,7 @@ fn has_newer_source_file(dir: &Path, threshold: std::time::SystemTime) -> bool {
 fn is_source_file(path: &Path) -> bool {
     path.extension()
         .and_then(|e| e.to_str())
-        .map_or(false, |ext| {
+        .is_some_and(|ext| {
             matches!(
                 ext,
                 "rs" | "ts" | "tsx" | "js" | "jsx" | "py" | "go" | "java" | "kt" | "swift"
@@ -185,15 +185,16 @@ pub(crate) fn check_tdg_grade_gate(
     let db_path = project_path.join(".pmat").join("context.db");
 
     // Auto-rebuild if missing or stale (#222)
-    if !db_path.exists() || is_index_stale(project_path, &db_path) {
-        if !rebuild_index(project_path) && !db_path.exists() {
-            return ComplianceCheck {
-                name: "CB-200: TDG Grade Gate".to_string(),
-                status: CheckStatus::Skip,
-                message: "No .pmat/context.db found and rebuild failed — run `pmat query` to create index".to_string(),
-                severity: Severity::Info,
-            };
-        }
+    if (!db_path.exists() || is_index_stale(project_path, &db_path))
+        && !rebuild_index(project_path)
+        && !db_path.exists()
+    {
+        return ComplianceCheck {
+            name: "CB-200: TDG Grade Gate".to_string(),
+            status: CheckStatus::Skip,
+            message: "No .pmat/context.db found and rebuild failed — run `pmat query` to create index".to_string(),
+            severity: Severity::Info,
+        };
     }
 
     // Merge overrides from .pmat-gates.toml [tdg] section (#221)

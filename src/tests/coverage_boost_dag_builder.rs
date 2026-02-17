@@ -36,9 +36,10 @@ fn create_test_edge(from: &str, to: &str, edge_type: EdgeType) -> Edge {
 fn create_basic_graph() -> DependencyGraph {
     let mut graph = DependencyGraph::new();
 
-    graph
-        .nodes
-        .insert("main".to_string(), create_test_node("main", NodeType::Function));
+    graph.nodes.insert(
+        "main".to_string(),
+        create_test_node("main", NodeType::Function),
+    );
     graph.nodes.insert(
         "helper".to_string(),
         create_test_node("helper", NodeType::Function),
@@ -62,11 +63,9 @@ fn create_basic_graph() -> DependencyGraph {
     graph
         .edges
         .push(create_test_edge("main", "utils", EdgeType::Imports));
-    graph.edges.push(create_test_edge(
-        "MyClass",
-        "MyTrait",
-        EdgeType::Implements,
-    ));
+    graph
+        .edges
+        .push(create_test_edge("MyClass", "MyTrait", EdgeType::Implements));
 
     graph
 }
@@ -138,8 +137,14 @@ fn test_filter_call_edges_keeps_only_calls() {
 
     // Should only have call edges
     assert_eq!(filtered.edges.len(), 1);
-    assert!(filtered.edges.iter().all(|e| e.edge_type == EdgeType::Calls));
-    assert!(filtered.edges.iter().any(|e| e.from == "main" && e.to == "helper"));
+    assert!(filtered
+        .edges
+        .iter()
+        .all(|e| e.edge_type == EdgeType::Calls));
+    assert!(filtered
+        .edges
+        .iter()
+        .any(|e| e.from == "main" && e.to == "helper"));
 }
 
 #[test]
@@ -157,9 +162,15 @@ fn test_filter_call_edges_keeps_connected_nodes() {
 #[test]
 fn test_filter_call_edges_no_call_edges() {
     let mut graph = DependencyGraph::new();
-    graph.nodes.insert("a".to_string(), create_test_node("a", NodeType::Module));
-    graph.nodes.insert("b".to_string(), create_test_node("b", NodeType::Module));
-    graph.edges.push(create_test_edge("a", "b", EdgeType::Imports));
+    graph
+        .nodes
+        .insert("a".to_string(), create_test_node("a", NodeType::Module));
+    graph
+        .nodes
+        .insert("b".to_string(), create_test_node("b", NodeType::Module));
+    graph
+        .edges
+        .push(create_test_edge("a", "b", EdgeType::Imports));
 
     let filtered = filter_call_edges(graph);
     assert!(filtered.edges.is_empty());
@@ -183,8 +194,14 @@ fn test_filter_import_edges_keeps_only_imports() {
 
     // Should only have import edges
     assert_eq!(filtered.edges.len(), 1);
-    assert!(filtered.edges.iter().all(|e| e.edge_type == EdgeType::Imports));
-    assert!(filtered.edges.iter().any(|e| e.from == "main" && e.to == "utils"));
+    assert!(filtered
+        .edges
+        .iter()
+        .all(|e| e.edge_type == EdgeType::Imports));
+    assert!(filtered
+        .edges
+        .iter()
+        .any(|e| e.from == "main" && e.to == "utils"));
 }
 
 #[test]
@@ -202,9 +219,15 @@ fn test_filter_import_edges_keeps_connected_nodes() {
 #[test]
 fn test_filter_import_edges_no_import_edges() {
     let mut graph = DependencyGraph::new();
-    graph.nodes.insert("a".to_string(), create_test_node("a", NodeType::Function));
-    graph.nodes.insert("b".to_string(), create_test_node("b", NodeType::Function));
-    graph.edges.push(create_test_edge("a", "b", EdgeType::Calls));
+    graph
+        .nodes
+        .insert("a".to_string(), create_test_node("a", NodeType::Function));
+    graph
+        .nodes
+        .insert("b".to_string(), create_test_node("b", NodeType::Function));
+    graph
+        .edges
+        .push(create_test_edge("a", "b", EdgeType::Calls));
 
     let filtered = filter_import_edges(graph);
     assert!(filtered.edges.is_empty());
@@ -239,7 +262,10 @@ fn test_filter_inheritance_edges_keeps_only_inherits() {
 
     // filter_inheritance_edges only keeps Inherits edges, not Implements
     assert_eq!(filtered.edges.len(), 1);
-    assert!(filtered.edges.iter().all(|e| e.edge_type == EdgeType::Inherits));
+    assert!(filtered
+        .edges
+        .iter()
+        .all(|e| e.edge_type == EdgeType::Inherits));
 }
 
 #[test]
@@ -267,7 +293,9 @@ fn test_add_pagerank_scores_empty_graph() {
 #[test]
 fn test_add_pagerank_scores_single_node() {
     let mut graph = DependencyGraph::new();
-    graph.nodes.insert("a".to_string(), create_test_node("a", NodeType::Function));
+    graph
+        .nodes
+        .insert("a".to_string(), create_test_node("a", NodeType::Function));
 
     let scored = add_pagerank_scores(&graph);
     assert_eq!(scored.nodes.len(), 1);
@@ -288,13 +316,23 @@ fn test_add_pagerank_scores_preserves_structure() {
 #[test]
 fn test_add_pagerank_scores_with_chain() {
     let mut graph = DependencyGraph::new();
-    graph.nodes.insert("a".to_string(), create_test_node("a", NodeType::Function));
-    graph.nodes.insert("b".to_string(), create_test_node("b", NodeType::Function));
-    graph.nodes.insert("c".to_string(), create_test_node("c", NodeType::Function));
+    graph
+        .nodes
+        .insert("a".to_string(), create_test_node("a", NodeType::Function));
+    graph
+        .nodes
+        .insert("b".to_string(), create_test_node("b", NodeType::Function));
+    graph
+        .nodes
+        .insert("c".to_string(), create_test_node("c", NodeType::Function));
 
     // Chain: a -> b -> c
-    graph.edges.push(create_test_edge("a", "b", EdgeType::Calls));
-    graph.edges.push(create_test_edge("b", "c", EdgeType::Calls));
+    graph
+        .edges
+        .push(create_test_edge("a", "b", EdgeType::Calls));
+    graph
+        .edges
+        .push(create_test_edge("b", "c", EdgeType::Calls));
 
     let scored = add_pagerank_scores(&graph);
     assert_eq!(scored.nodes.len(), 3);
@@ -341,12 +379,22 @@ fn test_prune_graph_pagerank_keeps_max_nodes() {
 #[test]
 fn test_prune_graph_pagerank_removes_orphan_edges() {
     let mut graph = DependencyGraph::new();
-    graph.nodes.insert("a".to_string(), create_test_node("a", NodeType::Function));
-    graph.nodes.insert("b".to_string(), create_test_node("b", NodeType::Function));
-    graph.nodes.insert("c".to_string(), create_test_node("c", NodeType::Function));
+    graph
+        .nodes
+        .insert("a".to_string(), create_test_node("a", NodeType::Function));
+    graph
+        .nodes
+        .insert("b".to_string(), create_test_node("b", NodeType::Function));
+    graph
+        .nodes
+        .insert("c".to_string(), create_test_node("c", NodeType::Function));
 
-    graph.edges.push(create_test_edge("a", "b", EdgeType::Calls));
-    graph.edges.push(create_test_edge("b", "c", EdgeType::Calls));
+    graph
+        .edges
+        .push(create_test_edge("a", "b", EdgeType::Calls));
+    graph
+        .edges
+        .push(create_test_edge("b", "c", EdgeType::Calls));
 
     // Prune to 2 nodes - should also remove edges that reference missing nodes
     let pruned = prune_graph_pagerank(&graph, 2);
@@ -412,7 +460,10 @@ fn test_dependency_graph_new() {
 #[test]
 fn test_dependency_graph_node_insertion() {
     let mut graph = DependencyGraph::new();
-    graph.nodes.insert("test".to_string(), create_test_node("test", NodeType::Function));
+    graph.nodes.insert(
+        "test".to_string(),
+        create_test_node("test", NodeType::Function),
+    );
 
     assert_eq!(graph.nodes.len(), 1);
     assert!(graph.nodes.contains_key("test"));
@@ -421,7 +472,9 @@ fn test_dependency_graph_node_insertion() {
 #[test]
 fn test_dependency_graph_edge_insertion() {
     let mut graph = DependencyGraph::new();
-    graph.edges.push(create_test_edge("a", "b", EdgeType::Calls));
+    graph
+        .edges
+        .push(create_test_edge("a", "b", EdgeType::Calls));
 
     assert_eq!(graph.edges.len(), 1);
     assert_eq!(graph.edges[0].from, "a");

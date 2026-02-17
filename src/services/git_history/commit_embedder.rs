@@ -39,10 +39,7 @@ impl SimpleVectorizer {
         // producing non-zero cosine similarity for search. TF weighting provides discrimination.
         // Tie-break alphabetically for deterministic vocabulary across builds.
         let mut terms_by_df: Vec<(String, usize)> = doc_freq.into_iter().collect();
-        terms_by_df.sort_by(|a, b| {
-            b.1.cmp(&a.1)
-                .then_with(|| a.0.cmp(&b.0))
-        });
+        terms_by_df.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
 
         // Build vocabulary and IDF from top terms
         self.vocabulary.clear();
@@ -211,7 +208,10 @@ mod tests {
         let embedder = CommitEmbedder::new();
         let embedding = embedder.embed("");
 
-        assert!(!embedding.is_empty(), "Empty message should return default embedding");
+        assert!(
+            !embedding.is_empty(),
+            "Empty message should return default embedding"
+        );
     }
 
     #[test]

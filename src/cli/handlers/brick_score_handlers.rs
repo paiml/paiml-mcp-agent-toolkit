@@ -123,7 +123,10 @@ fn format_text(score: &BrickScore, verbose: bool, failures_only: bool) -> String
 
 fn format_text_header(score: &BrickScore, output: &mut String) {
     output.push_str("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
-    output.push_str(&format!("🧱  ComputeBrick Score v{}\n", score.metadata.version));
+    output.push_str(&format!(
+        "🧱  ComputeBrick Score v{}\n",
+        score.metadata.version
+    ));
     output.push_str("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
     output.push('\n');
     output.push_str("📌  Summary\n");
@@ -142,7 +145,12 @@ fn format_text_header(score: &BrickScore, output: &mut String) {
     output.push('\n');
 }
 
-fn format_text_categories(score: &BrickScore, verbose: bool, failures_only: bool, output: &mut String) {
+fn format_text_categories(
+    score: &BrickScore,
+    verbose: bool,
+    failures_only: bool,
+    output: &mut String,
+) {
     output.push_str("📂  Categories\n");
     let categories = [
         (&score.performance, "A. Performance"),
@@ -156,13 +164,32 @@ fn format_text_categories(score: &BrickScore, verbose: bool, failures_only: bool
     output.push('\n');
 }
 
-fn format_single_category(category: &crate::services::brick_score::CategoryScore, name: &str, verbose: bool, failures_only: bool, output: &mut String) {
+fn format_single_category(
+    category: &crate::services::brick_score::CategoryScore,
+    name: &str,
+    verbose: bool,
+    failures_only: bool,
+    output: &mut String,
+) {
     let percentage = category.percentage();
-    let icon = if percentage >= 80.0 { "✅" } else if percentage >= 60.0 { "⚠️" } else { "❌" };
-    output.push_str(&format!("  {} {}: {:.1}/{:.0} ({:.0}%)\n", icon, name, category.earned, category.max_points, percentage));
-    if !verbose { return; }
+    let icon = if percentage >= 80.0 {
+        "✅"
+    } else if percentage >= 60.0 {
+        "⚠️"
+    } else {
+        "❌"
+    };
+    output.push_str(&format!(
+        "  {} {}: {:.1}/{:.0} ({:.0}%)\n",
+        icon, name, category.earned, category.max_points, percentage
+    ));
+    if !verbose {
+        return;
+    }
     for check in &category.checks {
-        if failures_only && check.passed { continue; }
+        if failures_only && check.passed {
+            continue;
+        }
         let check_icon = if check.passed { "✓" } else { "✗" };
         output.push_str(&format!(
             "      {} {}: {:.2} {} (threshold: {:.2} {})\n",
@@ -181,11 +208,21 @@ fn format_text_brick_timing(score: &BrickScore, output: &mut String) {
     output.push_str("  ├───────────────────┼──────────┼──────────┼─────────┼───────────┤\n");
     for brick in &score.brick_reports {
         let status = if brick.over_budget { "❌" } else { "✅" };
-        let budget_str = brick.budget_us.map(|b| format!("{:.1}", b)).unwrap_or_else(|| "-".to_string());
+        let budget_str = brick
+            .budget_us
+            .map(|b| format!("{:.1}", b))
+            .unwrap_or_else(|| "-".to_string());
         output.push_str(&format!(
             "  │ {:<17} │ {:>7.1} │ {:>7} {} │ {:>6.1} │ {:>9.0} │\n",
-            brick.name.get(..brick.name.len().min(17)).unwrap_or(&brick.name), brick.mean_us, budget_str, status,
-            brick.cv_percent, brick.throughput / 1000.0,
+            brick
+                .name
+                .get(..brick.name.len().min(17))
+                .unwrap_or(&brick.name),
+            brick.mean_us,
+            budget_str,
+            status,
+            brick.cv_percent,
+            brick.throughput / 1000.0,
         ));
     }
     output.push_str("  └───────────────────┴──────────┴──────────┴─────────┴───────────┘\n");
@@ -194,20 +231,33 @@ fn format_text_brick_timing(score: &BrickScore, output: &mut String) {
 }
 
 fn format_text_roofline(score: &BrickScore, output: &mut String) {
-    if !score.brick_reports.iter().any(|b| b.bottleneck.is_some()) { return; }
+    if !score.brick_reports.iter().any(|b| b.bottleneck.is_some()) {
+        return;
+    }
     output.push_str("📈  Roofline Analysis\n");
     output.push_str("  ┌───────────────────┬────────┬────────────┐\n");
     output.push_str("  │ Brick             │ AI     │ Bottleneck │\n");
     output.push_str("  ├───────────────────┼────────┼────────────┤\n");
     for brick in &score.brick_reports {
-        let ai_str = brick.arithmetic_intensity.map(|ai| format!("{:.2}", ai)).unwrap_or_else(|| "-".to_string());
-        let bottleneck_str = brick.bottleneck.map(|b| match b {
-            crate::services::brick_score::Bottleneck::Memory => "🔴 Memory",
-            crate::services::brick_score::Bottleneck::Compute => "🟢 Compute",
-        }).unwrap_or("-");
+        let ai_str = brick
+            .arithmetic_intensity
+            .map(|ai| format!("{:.2}", ai))
+            .unwrap_or_else(|| "-".to_string());
+        let bottleneck_str = brick
+            .bottleneck
+            .map(|b| match b {
+                crate::services::brick_score::Bottleneck::Memory => "🔴 Memory",
+                crate::services::brick_score::Bottleneck::Compute => "🟢 Compute",
+            })
+            .unwrap_or("-");
         output.push_str(&format!(
             "  │ {:<17} │ {:>6} │ {:>10} │\n",
-            brick.name.get(..brick.name.len().min(17)).unwrap_or(&brick.name), ai_str, bottleneck_str
+            brick
+                .name
+                .get(..brick.name.len().min(17))
+                .unwrap_or(&brick.name),
+            ai_str,
+            bottleneck_str
         ));
     }
     output.push_str("  └───────────────────┴────────┴────────────┘\n");
@@ -218,9 +268,18 @@ fn format_text_roofline(score: &BrickScore, output: &mut String) {
 }
 
 fn format_text_recommendations(score: &BrickScore, output: &mut String) {
-    let recommendations: Vec<_> = [&score.performance.checks, &score.efficiency.checks, &score.stability.checks]
-        .iter().flat_map(|checks| checks.iter()).filter_map(|c| c.recommendation.as_ref()).collect();
-    if recommendations.is_empty() { return; }
+    let recommendations: Vec<_> = [
+        &score.performance.checks,
+        &score.efficiency.checks,
+        &score.stability.checks,
+    ]
+    .iter()
+    .flat_map(|checks| checks.iter())
+    .filter_map(|c| c.recommendation.as_ref())
+    .collect();
+    if recommendations.is_empty() {
+        return;
+    }
     output.push_str("💡  Recommendations\n");
     for (i, rec) in recommendations.iter().take(5).enumerate() {
         output.push_str(&format!("  {}. {}\n", i + 1, rec));
@@ -274,7 +333,6 @@ fn format_md_summary(score: &BrickScore, output: &mut String) {
 }
 
 fn format_md_categories(score: &BrickScore, output: &mut String) {
-
     output.push_str("## Categories\n\n");
     output.push_str("| Category | Score | Max | % |\n");
     output.push_str("|----------|-------|-----|---|\n");
@@ -285,8 +343,21 @@ fn format_md_categories(score: &BrickScore, output: &mut String) {
         (&score.stability, "Stability"),
     ];
     for (cat, name) in categories {
-        let status = if cat.percentage() >= 80.0 { "✅" } else if cat.percentage() >= 60.0 { "⚠️" } else { "❌" };
-        output.push_str(&format!("| {} {} | {:.1} | {:.0} | {:.0}% |\n", status, name, cat.earned, cat.max_points, cat.percentage()));
+        let status = if cat.percentage() >= 80.0 {
+            "✅"
+        } else if cat.percentage() >= 60.0 {
+            "⚠️"
+        } else {
+            "❌"
+        };
+        output.push_str(&format!(
+            "| {} {} | {:.1} | {:.0} | {:.0}% |\n",
+            status,
+            name,
+            cat.earned,
+            cat.max_points,
+            cat.percentage()
+        ));
     }
     output.push('\n');
 }
@@ -296,10 +367,24 @@ fn format_md_brick_details(score: &BrickScore, failures_only: bool, output: &mut
     output.push_str("| Brick | Mean µs | Budget µs | CV % | Status |\n");
     output.push_str("|-------|---------|-----------|------|--------|\n");
     for brick in &score.brick_reports {
-        if failures_only && !brick.over_budget && brick.cv_percent < 15.0 { continue; }
-        let status = if brick.over_budget { "❌ Over budget" } else if brick.cv_percent >= 15.0 { "⚠️ Unstable" } else { "✅ OK" };
-        let budget_str = brick.budget_us.map(|b| format!("{:.1}", b)).unwrap_or_else(|| "-".to_string());
-        output.push_str(&format!("| {} | {:.1} | {} | {:.1} | {} |\n", brick.name, brick.mean_us, budget_str, brick.cv_percent, status));
+        if failures_only && !brick.over_budget && brick.cv_percent < 15.0 {
+            continue;
+        }
+        let status = if brick.over_budget {
+            "❌ Over budget"
+        } else if brick.cv_percent >= 15.0 {
+            "⚠️ Unstable"
+        } else {
+            "✅ OK"
+        };
+        let budget_str = brick
+            .budget_us
+            .map(|b| format!("{:.1}", b))
+            .unwrap_or_else(|| "-".to_string());
+        output.push_str(&format!(
+            "| {} | {:.1} | {} | {:.1} | {} |\n",
+            brick.name, brick.mean_us, budget_str, brick.cv_percent, status
+        ));
     }
     output.push('\n');
 }

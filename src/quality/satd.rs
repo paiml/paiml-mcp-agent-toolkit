@@ -1,7 +1,7 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
 use super::gate::SatdResult;
-use std::sync::LazyLock;
 use regex::Regex;
+use std::sync::LazyLock;
 
 /// Standard SATD patterns (traditional markers)
 static SATD_PATTERNS: LazyLock<Vec<(&str, Regex)>> = LazyLock::new(|| {
@@ -56,10 +56,7 @@ static EXTENDED_PATTERNS: LazyLock<Vec<(&str, Regex)>> = LazyLock::new(|| {
             Regex::new(r"(?i)\bplaceholder\b").expect("valid regex"),
         ),
         // Stub patterns - indicate missing implementation
-        (
-            "STUB",
-            Regex::new(r"(?i)\bstub\b").expect("valid regex"),
-        ),
+        ("STUB", Regex::new(r"(?i)\bstub\b").expect("valid regex")),
         // Simplified patterns - indicate corners were cut
         (
             "SIMPLIFIED",
@@ -86,14 +83,12 @@ static EXTENDED_PATTERNS: LazyLock<Vec<(&str, Regex)>> = LazyLock::new(|| {
             Regex::new(r"(?i)\bfor\s+now\b").expect("valid regex"),
         ),
         // WIP patterns - work in progress
-        (
-            "WIP",
-            Regex::new(r"\bWIP\b").expect("valid regex"),
-        ),
+        ("WIP", Regex::new(r"\bWIP\b").expect("valid regex")),
         // Skip/bypass patterns - indicate missing validation
         (
             "SKIP",
-            Regex::new(r"(?i)\b(skip|bypass)\s+(for\s+now|this|validation)\b").expect("valid regex"),
+            Regex::new(r"(?i)\b(skip|bypass)\s+(for\s+now|this|validation)\b")
+                .expect("valid regex"),
         ),
     ]
 });
@@ -351,7 +346,8 @@ mod tests {
     #[test]
     fn test_extract_comments_line_comments() {
         let detector = SatdDetector::new();
-        let source = "fn foo() {\n    let x = 1; // inline comment\n    // full line comment\n    bar();\n}";
+        let source =
+            "fn foo() {\n    let x = 1; // inline comment\n    // full line comment\n    bar();\n}";
         let comments = detector.extract_comments(source);
         assert!(comments.contains("// inline comment"));
         assert!(comments.contains("// full line comment"));
@@ -373,7 +369,8 @@ mod tests {
     #[test]
     fn test_extract_comments_mixed() {
         let detector = SatdDetector::new();
-        let source = "// line comment\n/* block */\ncode();\n// another line\n/* start\nmiddle\nend */";
+        let source =
+            "// line comment\n/* block */\ncode();\n// another line\n/* start\nmiddle\nend */";
         let comments = detector.extract_comments(source);
         assert!(comments.contains("// line comment"));
         assert!(comments.contains("/* block */"));
@@ -402,7 +399,8 @@ mod tests {
     #[test]
     fn test_detect_in_comments_block_with_satd() {
         let detector = SatdDetector::new();
-        let source = "fn foo() {}\n/* HACK: temporary workaround\n   TODO: fix later */\nfn bar() {}";
+        let source =
+            "fn foo() {}\n/* HACK: temporary workaround\n   TODO: fix later */\nfn bar() {}";
         let result = detector.detect_in_comments(source);
         assert_eq!(result.count, 2);
         assert!(result.patterns.contains(&"HACK".to_string()));

@@ -259,7 +259,10 @@ fn build_overrides(
         .map(|cr| ClaimOverride {
             claim_id: hypothesis_to_claim_id(&cr.hypothesis),
             ticket: ticket_id.clone(),
-            reason: format!("Override approved via --override-claims (ticket: {})", ticket_id),
+            reason: format!(
+                "Override approved via --override-claims (ticket: {})",
+                ticket_id
+            ),
         })
         .collect()
 }
@@ -268,9 +271,18 @@ fn build_overrides(
 /// Order matters: more specific patterns must precede general ones.
 const CLAIM_PATTERNS: &[(&str, &[&str])] = &[
     ("manifest", &["manifest", "files deleted", "baseline files"]),
-    ("meta-falsification", &["meta-falsification", "falsification system", "falsifier"]),
-    ("coverage-gaming", &["coverage gaming", "coverage exclusion"]),
-    ("differential-coverage", &["differential coverage", "changed lines"]),
+    (
+        "meta-falsification",
+        &["meta-falsification", "falsification system", "falsifier"],
+    ),
+    (
+        "coverage-gaming",
+        &["coverage gaming", "coverage exclusion"],
+    ),
+    (
+        "differential-coverage",
+        &["differential coverage", "changed lines"],
+    ),
     ("coverage", &["total coverage", "coverage >= 95"]),
     ("tdg", &["tdg"]),
     ("complexity", &["complexity"]),
@@ -281,12 +293,18 @@ const CLAIM_PATTERNS: &[(&str, &[&str])] = &[
     ("book", &["book", "pmat-book"]),
     ("satd", &["satd", "todo/fixme"]),
     ("dead-code", &["dead code"]),
-    ("per-file-coverage", &["per-file coverage", "all files have"]),
+    (
+        "per-file-coverage",
+        &["per-file coverage", "all files have"],
+    ),
     ("lint", &["lint"]),
     // v3.1 defect churn prevention
     ("variant-coverage", &["match arm", "variant"]),
     ("fix-chain", &["fix-after-fix", "fix chain"]),
-    ("cross-crate", &["cross-crate", "sibling project", "integration tests pass"]),
+    (
+        "cross-crate",
+        &["cross-crate", "sibling project", "integration tests pass"],
+    ),
     ("regression-gate", &["regression", "performance"]),
 ];
 
@@ -384,8 +402,7 @@ impl FalsificationLedger {
         let filename = format!("receipt-{}.json", safe_ts);
         let path = falsification_dir.join(filename);
 
-        let json = serde_json::to_string_pretty(receipt)
-            .context("Failed to serialize receipt")?;
+        let json = serde_json::to_string_pretty(receipt).context("Failed to serialize receipt")?;
         std::fs::write(&path, json).context("Failed to write receipt")?;
 
         Ok(path)
@@ -393,13 +410,11 @@ impl FalsificationLedger {
 
     /// Append compact entry to global JSONL ledger
     pub fn append_to_ledger(&self, receipt: &FalsificationReceipt) -> Result<()> {
-        std::fs::create_dir_all(&self.work_dir)
-            .context("Failed to create .pmat-work directory")?;
+        std::fs::create_dir_all(&self.work_dir).context("Failed to create .pmat-work directory")?;
 
         let ledger_path = self.work_dir.join("ledger.jsonl");
         let entry = LedgerEntry::from_receipt(receipt);
-        let mut line = serde_json::to_string(&entry)
-            .context("Failed to serialize ledger entry")?;
+        let mut line = serde_json::to_string(&entry).context("Failed to serialize ledger entry")?;
         line.push('\n');
 
         use std::io::Write;
@@ -416,10 +431,7 @@ impl FalsificationLedger {
 
     /// Load the latest receipt for a work item (by sorted directory listing)
     pub fn latest_receipt(&self, work_item_id: &str) -> Result<Option<FalsificationReceipt>> {
-        let falsification_dir = self
-            .work_dir
-            .join(work_item_id)
-            .join("falsification");
+        let falsification_dir = self.work_dir.join(work_item_id).join("falsification");
 
         if !falsification_dir.exists() {
             return Ok(None);
@@ -444,10 +456,10 @@ impl FalsificationLedger {
             return Ok(None);
         };
 
-        let content = std::fs::read_to_string(latest_path)
-            .context("Failed to read latest receipt")?;
-        let receipt: FalsificationReceipt = serde_json::from_str(&content)
-            .context("Failed to parse receipt JSON")?;
+        let content =
+            std::fs::read_to_string(latest_path).context("Failed to read latest receipt")?;
+        let receipt: FalsificationReceipt =
+            serde_json::from_str(&content).context("Failed to parse receipt JSON")?;
 
         Ok(Some(receipt))
     }
@@ -456,20 +468,24 @@ impl FalsificationLedger {
     pub fn has_fresh_receipt(&self, work_item_id: &str, current_sha: &str) -> Result<bool> {
         let receipt = self.latest_receipt(work_item_id)?;
         match receipt {
-            Some(r) => Ok(r.is_fresh(current_sha, MAX_RECEIPT_AGE_SECS) && r.summary.allows_completion),
+            Some(r) => {
+                Ok(r.is_fresh(current_sha, MAX_RECEIPT_AGE_SECS) && r.summary.allows_completion)
+            }
             None => Ok(false),
         }
     }
 
     /// Verify integrity of all receipts for a work item
     pub fn verify_integrity(&self, work_item_id: &str) -> Result<IntegrityReport> {
-        let falsification_dir = self
-            .work_dir
-            .join(work_item_id)
-            .join("falsification");
+        let falsification_dir = self.work_dir.join(work_item_id).join("falsification");
 
         if !falsification_dir.exists() {
-            return Ok(IntegrityReport { total: 0, valid: 0, tampered: 0, missing: 0 });
+            return Ok(IntegrityReport {
+                total: 0,
+                valid: 0,
+                tampered: 0,
+                missing: 0,
+            });
         }
 
         let json_files: Vec<PathBuf> = std::fs::read_dir(&falsification_dir)?
@@ -490,7 +506,12 @@ impl FalsificationLedger {
             }
         }
 
-        Ok(IntegrityReport { total: json_files.len(), valid, tampered, missing })
+        Ok(IntegrityReport {
+            total: json_files.len(),
+            valid,
+            tampered,
+            missing,
+        })
     }
 
     /// Check a single receipt file for integrity (Ok(true) = valid, Ok(false) = tampered)
@@ -820,7 +841,9 @@ mod tests {
         );
         ledger.persist_receipt(&receipt).unwrap();
 
-        assert!(ledger.has_fresh_receipt("PMAT-400", "current_head").unwrap());
+        assert!(ledger
+            .has_fresh_receipt("PMAT-400", "current_head")
+            .unwrap());
     }
 
     #[test]
@@ -907,22 +930,13 @@ mod tests {
             hypothesis_to_claim_id("All baseline files still exist"),
             "manifest"
         );
-        assert_eq!(
-            hypothesis_to_claim_id("Total coverage >= 95%"),
-            "coverage"
-        );
-        assert_eq!(
-            hypothesis_to_claim_id("TDG score >= baseline"),
-            "tdg"
-        );
+        assert_eq!(hypothesis_to_claim_id("Total coverage >= 95%"), "coverage");
+        assert_eq!(hypothesis_to_claim_id("TDG score >= baseline"), "tdg");
         assert_eq!(
             hypothesis_to_claim_id("No coverage exclusion gaming"),
             "coverage-gaming"
         );
-        assert_eq!(
-            hypothesis_to_claim_id("make lint passes"),
-            "lint"
-        );
+        assert_eq!(hypothesis_to_claim_id("make lint passes"), "lint");
         assert_eq!(
             hypothesis_to_claim_id("No dead code introduced"),
             "dead-code"

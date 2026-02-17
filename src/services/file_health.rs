@@ -667,9 +667,13 @@ mod tests {
         // - complexity 8.0 = 15 pts
         // - churn 4 = 7 pts
         // Total = 15+27+15+7 = 64 (problem range)
-        let files = vec![
-            FileHealthMetrics::calculate(PathBuf::from("medium.rs"), 600, 400, 8.0, 4),
-        ];
+        let files = vec![FileHealthMetrics::calculate(
+            PathBuf::from("medium.rs"),
+            600,
+            400,
+            8.0,
+            4,
+        )];
 
         let report = FileHealthReport::from_files(PathBuf::from("."), files);
         // Should have problem files but still be compliant (no critical)
@@ -765,14 +769,13 @@ mod tests {
     fn test_scan_directory() {
         // Use CARGO_MANIFEST_DIR for deterministic path
         let project_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
-        let files = scan_directory(
-            project_dir,
-            &["rs"],
-            DEFAULT_EXCLUDE_PATTERNS,
-        );
+        let files = scan_directory(project_dir, &["rs"], DEFAULT_EXCLUDE_PATTERNS);
 
         // Should find some Rust files in the project
-        assert!(!files.is_empty(), "Should find Rust files in project directory");
+        assert!(
+            !files.is_empty(),
+            "Should find Rust files in project directory"
+        );
     }
 
     #[test]

@@ -16,7 +16,10 @@ pub struct Roadmap {
     pub roadmap_version: String,
 
     /// GitHub integration enabled
-    #[serde(default = "default_github_enabled", deserialize_with = "deserialize_bool_lenient")]
+    #[serde(
+        default = "default_github_enabled",
+        deserialize_with = "deserialize_bool_lenient"
+    )]
     pub github_enabled: bool,
 
     /// GitHub repository (owner/repo)
@@ -345,7 +348,8 @@ where
                         )));
                     }
                     serde_yaml::Value::Mapping(_) => {
-                        let phase: Phase = serde_yaml::from_value(value).map_err(de::Error::custom)?;
+                        let phase: Phase =
+                            serde_yaml::from_value(value).map_err(de::Error::custom)?;
                         phases.push(phase);
                     }
                     _ => {

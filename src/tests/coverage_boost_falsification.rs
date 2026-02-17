@@ -8,12 +8,7 @@ use crate::cli::handlers::work_falsification::{ClaimResult, FalsificationReport}
 
 // ============ Helpers ============
 
-fn make_claim(
-    index: usize,
-    hypothesis: &str,
-    falsified: bool,
-    is_blocking: bool,
-) -> ClaimResult {
+fn make_claim(index: usize, hypothesis: &str, falsified: bool, is_blocking: bool) -> ClaimResult {
     ClaimResult {
         index,
         hypothesis: hypothesis.to_string(),
@@ -123,11 +118,11 @@ fn test_mixed_blocking_and_warning() {
         failed: 2,
         warnings: 1,
         claim_results: vec![
-            make_claim(1, "Coverage >= 80%", true, true),   // blocking
-            make_claim(2, "TDG < 2.0", false, true),        // passed
-            make_claim(3, "No new SATD", true, false),       // warning
-            make_claim(4, "Complexity < 20", true, true),    // blocking
-            make_claim(5, "No dead code", false, false),     // passed
+            make_claim(1, "Coverage >= 80%", true, true), // blocking
+            make_claim(2, "TDG < 2.0", false, true),      // passed
+            make_claim(3, "No new SATD", true, false),    // warning
+            make_claim(4, "Complexity < 20", true, true), // blocking
+            make_claim(5, "No dead code", false, false),  // passed
         ],
         all_passed: false,
     };

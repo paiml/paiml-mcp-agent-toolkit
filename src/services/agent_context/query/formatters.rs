@@ -22,7 +22,10 @@ fn format_coverage_metrics_md(r: &QueryResult, out: &mut String) {
             out.push_str(&format!(" | ⚠️ **{} missed lines**", r.missed_lines));
         }
         "full" => {
-            out.push_str(&format!(" | 🛡️ **Fully covered** ({} lines)", r.lines_total));
+            out.push_str(&format!(
+                " | 🛡️ **Fully covered** ({} lines)",
+                r.lines_total
+            ));
         }
         _ => {}
     }
@@ -43,22 +46,37 @@ fn format_coverage_diff_md(diff: f32, out: &mut String) {
 fn format_coverage_metrics_text(r: &QueryResult, out: &mut String) {
     match r.coverage_status.as_str() {
         "uncovered" => {
-            out.push_str(&format!(" | \x1b[1;31m🛡️ Uncovered (0/{})\x1b[0m", r.lines_total));
+            out.push_str(&format!(
+                " | \x1b[1;31m🛡️ Uncovered (0/{})\x1b[0m",
+                r.lines_total
+            ));
         }
         "partial" => {
-            let cov_color = if r.line_coverage_pct < 50.0 { "\x1b[1;31m" } else if r.line_coverage_pct < 80.0 { "\x1b[33m" } else { "\x1b[32m" };
+            let cov_color = if r.line_coverage_pct < 50.0 {
+                "\x1b[1;31m"
+            } else if r.line_coverage_pct < 80.0 {
+                "\x1b[33m"
+            } else {
+                "\x1b[32m"
+            };
             out.push_str(&format!(
                 " | {}🛡️ Cov: {:.0}% ({}/{})\x1b[0m",
                 cov_color, r.line_coverage_pct, r.lines_covered, r.lines_total
             ));
         }
         "full" => {
-            out.push_str(&format!(" | \x1b[32m🛡️ Covered ({} lines)\x1b[0m", r.lines_total));
+            out.push_str(&format!(
+                " | \x1b[32m🛡️ Covered ({} lines)\x1b[0m",
+                r.lines_total
+            ));
         }
         _ => {}
     }
     if r.impact_score > 1.0 {
-        out.push_str(&format!(" | \x1b[1;33m📈 Impact: {:.1}\x1b[0m", r.impact_score));
+        out.push_str(&format!(
+            " | \x1b[1;33m📈 Impact: {:.1}\x1b[0m",
+            r.impact_score
+        ));
     }
     format_coverage_diff_text(r.coverage_diff, out);
 }
@@ -75,7 +93,12 @@ fn format_coverage_diff_text(diff: f32, out: &mut String) {
 fn truncate_doc(doc: &str) -> String {
     let first_line = doc.lines().next().unwrap_or(doc);
     if first_line.len() > 100 {
-        format!("{}...", first_line.get(..first_line.floor_char_boundary(97)).unwrap_or(first_line))
+        format!(
+            "{}...",
+            first_line
+                .get(..first_line.floor_char_boundary(97))
+                .unwrap_or(first_line)
+        )
     } else {
         first_line.to_string()
     }
@@ -183,10 +206,7 @@ fn push_coverage_metric_rich(r: &QueryResult, metrics: &mut Vec<String>) {
         _ => {}
     }
     if r.impact_score > 1.0 {
-        metrics.push(format!(
-            "\x1b[1;33m\u{1f4c8}{:.1}\x1b[0m",
-            r.impact_score
-        ));
+        metrics.push(format!("\x1b[1;33m\u{1f4c8}{:.1}\x1b[0m", r.impact_score));
     }
     if r.coverage_diff > 0.0 {
         metrics.push(format!("\x1b[1;32m+{:.1}%\x1b[0m", r.coverage_diff));
@@ -219,11 +239,7 @@ fn format_call_graph(r: &QueryResult) -> Option<String> {
         let calls_str = if r.calls.len() <= 5 {
             r.calls.join(", ")
         } else {
-            format!(
-                "{}, (+{} more)",
-                r.calls[..5].join(", "),
-                r.calls.len() - 5
-            )
+            format!("{}, (+{} more)", r.calls[..5].join(", "), r.calls.len() - 5)
         };
         parts.push(format!("calls: {}", calls_str));
     }
@@ -286,11 +302,18 @@ fn highlight_matches_in_line(line: &str, pattern: &str, is_regex: bool) -> Strin
         }
         let mut result = String::new();
         let mut pos = 0;
-        while let Some(idx) = lower_line.get(pos..).unwrap_or_default().find(&lower_pattern) {
+        while let Some(idx) = lower_line
+            .get(pos..)
+            .unwrap_or_default()
+            .find(&lower_pattern)
+        {
             let abs_idx = pos + idx;
             result.push_str(line.get(pos..abs_idx).unwrap_or_default());
             result.push_str(HL_START);
-            result.push_str(line.get(abs_idx..abs_idx + pattern.len()).unwrap_or_default());
+            result.push_str(
+                line.get(abs_idx..abs_idx + pattern.len())
+                    .unwrap_or_default(),
+            );
             result.push_str(HL_END);
             pos = abs_idx + pattern.len();
         }
@@ -299,13 +322,22 @@ fn highlight_matches_in_line(line: &str, pattern: &str, is_regex: bool) -> Strin
     }
 }
 
-fn highlight_source(source: &str, file_path: &str, output: &mut String, start_line: usize, highlight: Option<(&str, bool)>) {
+fn highlight_source(
+    source: &str,
+    file_path: &str,
+    output: &mut String,
+    start_line: usize,
+    highlight: Option<(&str, bool)>,
+) {
     if let Some((pattern, is_regex)) = highlight {
         // Match highlighting mode: line numbers + yellow highlight on matches
         for (i, line) in source.lines().enumerate() {
             let line_num = start_line + i;
             let highlighted = highlight_matches_in_line(line, pattern, is_regex);
-            output.push_str(&format!("\x1b[2m{:>4}\x1b[0m\u{2502} {}\n", line_num, highlighted));
+            output.push_str(&format!(
+                "\x1b[2m{:>4}\x1b[0m\u{2502} {}\n",
+                line_num, highlighted
+            ));
         }
     } else {
         #[cfg(feature = "syntax-highlighting")]
@@ -533,10 +565,16 @@ fn format_text_details(r: &QueryResult, output: &mut String) {
         output.push_str(&format!("   \x1b[3;37mDoc: {}\x1b[0m\n", doc));
     }
     if !r.calls.is_empty() {
-        output.push_str(&format!("   \x1b[2;36mCalls: {}\x1b[0m\n", r.calls.join(", ")));
+        output.push_str(&format!(
+            "   \x1b[2;36mCalls: {}\x1b[0m\n",
+            r.calls.join(", ")
+        ));
     }
     if !r.called_by.is_empty() {
-        output.push_str(&format!("   \x1b[2;36mCalled by: {}\x1b[0m\n", r.called_by.join(", ")));
+        output.push_str(&format!(
+            "   \x1b[2;36mCalled by: {}\x1b[0m\n",
+            r.called_by.join(", ")
+        ));
     }
     if r.pagerank > 0.0 || r.in_degree > 0 || r.out_degree > 0 {
         output.push_str(&format!(
@@ -549,7 +587,10 @@ fn format_text_details(r: &QueryResult, output: &mut String) {
 /// Format results as text (colorized for terminal)
 pub fn format_text(results: &[QueryResult]) -> String {
     let mut output = String::new();
-    output.push_str(&format!("\x1b[1mFound {} functions:\x1b[0m\n\n", results.len()));
+    output.push_str(&format!(
+        "\x1b[1mFound {} functions:\x1b[0m\n\n",
+        results.len()
+    ));
 
     for (i, r) in results.iter().enumerate() {
         output.push_str(&format!(
@@ -560,8 +601,17 @@ pub fn format_text(results: &[QueryResult]) -> String {
         output.push_str(&build_text_metrics(r));
         output.push('\n');
         format_text_details(r, &mut output);
-        let rel_color = if r.relevance_score > 0.7 { "\x1b[1;32m" } else if r.relevance_score > 0.3 { "\x1b[32m" } else { "\x1b[2m" };
-        output.push_str(&format!("   Relevance: {}{:.2}\x1b[0m\n\n", rel_color, r.relevance_score));
+        let rel_color = if r.relevance_score > 0.7 {
+            "\x1b[1;32m"
+        } else if r.relevance_score > 0.3 {
+            "\x1b[32m"
+        } else {
+            "\x1b[2m"
+        };
+        output.push_str(&format!(
+            "   Relevance: {}{:.2}\x1b[0m\n\n",
+            rel_color, r.relevance_score
+        ));
     }
 
     output

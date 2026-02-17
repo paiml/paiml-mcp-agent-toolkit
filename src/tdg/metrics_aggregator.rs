@@ -1122,10 +1122,7 @@ mod tests {
         };
         aggregator.record_performance_metrics(perf).await.unwrap();
 
-        let csv = aggregator
-            .export_metrics(ExportFormat::Csv)
-            .await
-            .unwrap();
+        let csv = aggregator.export_metrics(ExportFormat::Csv).await.unwrap();
         assert!(csv.contains("storage,total_entries,500"));
         assert!(csv.contains("storage,cache_hit_ratio,0.75"));
         assert!(csv.contains("performance,avg_analysis_time_ms,250"));

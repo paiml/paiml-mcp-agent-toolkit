@@ -75,9 +75,7 @@ impl CommandExecutor {
                     )
                     .await
             }
-            Commands::Scaffold { command } => {
-                self.execute_scaffold(command).await
-            }
+            Commands::Scaffold { command } => self.execute_scaffold(command).await,
             Commands::Validate { uri, params } => {
                 self.registry
                     .generate_handlers
@@ -500,7 +498,9 @@ impl CommandExecutor {
             Commands::Agent { command } => super::handlers::handle_agent_command(command).await,
             #[cfg(not(feature = "agent-daemon"))]
             Commands::Agent { .. } => {
-                anyhow::bail!("Agent daemon feature not enabled. Build with --features agent-daemon")
+                anyhow::bail!(
+                    "Agent daemon feature not enabled. Build with --features agent-daemon"
+                )
             }
 
             Commands::Tdg {
@@ -591,9 +591,7 @@ impl CommandExecutor {
                 .await
             }
 
-            Commands::Maintain { command } => {
-                Self::execute_maintain(command).await
-            }
+            Commands::Maintain { command } => Self::execute_maintain(command).await,
 
             Commands::Hooks(hooks_cmd) => super::handlers::handle_hooks_command(&hooks_cmd).await,
 
@@ -613,9 +611,7 @@ impl CommandExecutor {
             }
 
             // Time-travel debugging commands (Sprint 74)
-            Commands::Debug { command } => {
-                Self::execute_debug(command).await
-            }
+            Commands::Debug { command } => Self::execute_debug(command).await,
             // Commands handled by command_dispatcher.rs
             other => Self::forward_to_dispatcher(other),
         }
@@ -636,26 +632,52 @@ impl CommandExecutor {
                     .await
             }
             ScaffoldCommands::Agent {
-                name, template, features, quality, output, force,
-                dry_run, interactive, deterministic_core, probabilistic_wrapper,
+                name,
+                template,
+                features,
+                quality,
+                output,
+                force,
+                dry_run,
+                interactive,
+                deterministic_core,
+                probabilistic_wrapper,
             } => {
                 let params = super::handlers::ScaffoldAgentParams {
-                    name, template, features, quality, output, force,
-                    dry_run, interactive, deterministic_core, probabilistic_wrapper,
+                    name,
+                    template,
+                    features,
+                    quality,
+                    output,
+                    force,
+                    dry_run,
+                    interactive,
+                    deterministic_core,
+                    probabilistic_wrapper,
                 };
                 super::handlers::handle_scaffold_agent(params).await
             }
             ScaffoldCommands::Wasm {
-                name, framework, features, quality, output, force, dry_run,
+                name,
+                framework,
+                features,
+                quality,
+                output,
+                force,
+                dry_run,
             } => {
                 let params = super::handlers::ScaffoldWasmParams {
-                    name, framework, features, quality, output, force, dry_run,
+                    name,
+                    framework,
+                    features,
+                    quality,
+                    output,
+                    force,
+                    dry_run,
                 };
                 super::handlers::handle_scaffold_wasm(params).await
             }
-            ScaffoldCommands::ListTemplates => {
-                super::handlers::handle_list_agent_templates().await
-            }
+            ScaffoldCommands::ListTemplates => super::handlers::handle_list_agent_templates().await,
             ScaffoldCommands::ValidateTemplate { path } => {
                 super::handlers::handle_validate_agent_template(path).await
             }
@@ -685,33 +707,77 @@ impl CommandExecutor {
         use super::commands::MaintainCommands;
         match command {
             MaintainCommands::Roadmap {
-                roadmap, tickets_dir, validate, health, fix, generate_tickets, dry_run, format,
+                roadmap,
+                tickets_dir,
+                validate,
+                health,
+                fix,
+                generate_tickets,
+                dry_run,
+                format,
             } => {
                 let config = super::handlers::roadmap_handler::RoadmapMaintenanceConfig::new(
-                    validate, health, fix, generate_tickets, dry_run,
+                    validate,
+                    health,
+                    fix,
+                    generate_tickets,
+                    dry_run,
                 );
                 super::handlers::handle_maintain_roadmap(roadmap, tickets_dir, config, format).await
             }
             MaintainCommands::Health {
-                project_dir, format, quick, all,
-                check_build, check_tests, check_coverage, check_complexity, check_satd,
+                project_dir,
+                format,
+                quick,
+                all,
+                check_build,
+                check_tests,
+                check_coverage,
+                check_complexity,
+                check_satd,
             } => {
                 let config = super::handlers::health_handler::HealthCheckConfig::new(
-                    quick, all, check_build, check_tests, check_coverage, check_complexity, check_satd,
+                    quick,
+                    all,
+                    check_build,
+                    check_tests,
+                    check_coverage,
+                    check_complexity,
+                    check_satd,
                 );
                 super::handlers::handle_maintain_health(project_dir, format, config).await
             }
-            MaintainCommands::BugReport { title, dry_run, interactive, clear } => {
+            MaintainCommands::BugReport {
+                title,
+                dry_run,
+                interactive,
+                clear,
+            } => {
                 super::handlers::bug_report_handler::handle_bug_report(
-                    title.as_deref(), dry_run, interactive, clear,
-                ).await
+                    title.as_deref(),
+                    dry_run,
+                    interactive,
+                    clear,
+                )
+                .await
             }
             MaintainCommands::CleanupResources {
-                project_dir, targets, execute, exclude, min_age_days, format,
+                project_dir,
+                targets,
+                execute,
+                exclude,
+                min_age_days,
+                format,
             } => {
                 super::handlers::cleanup_resources_handler::handle_cleanup_resources(
-                    &project_dir, &targets, execute, &exclude, min_age_days, format,
-                ).await
+                    &project_dir,
+                    &targets,
+                    execute,
+                    &exclude,
+                    min_age_days,
+                    format,
+                )
+                .await
             }
         }
     }
@@ -720,11 +786,22 @@ impl CommandExecutor {
     async fn execute_debug(command: crate::cli::commands::DebugCommands) -> Result<()> {
         use crate::cli::commands::DebugCommands;
         match command {
-            DebugCommands::Serve { port, host, record_dir } => {
-                super::handlers::debug_handlers::handle_debug_serve(port, host, record_dir).await
-            }
-            DebugCommands::Replay { recording, position, interactive } => {
-                super::handlers::debug_handlers::handle_debug_replay(recording, position, interactive).await
+            DebugCommands::Serve {
+                port,
+                host,
+                record_dir,
+            } => super::handlers::debug_handlers::handle_debug_serve(port, host, record_dir).await,
+            DebugCommands::Replay {
+                recording,
+                position,
+                interactive,
+            } => {
+                super::handlers::debug_handlers::handle_debug_replay(
+                    recording,
+                    position,
+                    interactive,
+                )
+                .await
             }
         }
     }
@@ -752,7 +829,10 @@ impl CommandExecutor {
             Commands::Extract { .. } => "Extract",
             _ => "Unknown",
         };
-        anyhow::bail!("{} command should be handled by command_dispatcher.rs", name)
+        anyhow::bail!(
+            "{} command should be handled by command_dispatcher.rs",
+            name
+        )
     }
 }
 

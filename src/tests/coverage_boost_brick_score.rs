@@ -290,12 +290,10 @@ fn test_bottleneck_serde() {
 fn test_scale_budgets_for_hardware() {
     use crate::services::brick_score::{scale_budgets_for_hardware, BrickBudget};
 
-    let base_budgets = vec![
-        BrickBudget {
-            name: "test_op".to_string(),
-            max_us: 100.0,
-        },
-    ];
+    let base_budgets = vec![BrickBudget {
+        name: "test_op".to_string(),
+        max_us: 100.0,
+    }];
 
     // With default hardware (Scalar SIMD, 25 GB/s)
     let hw = HardwareCapability::default();
@@ -331,9 +329,8 @@ fn test_default_hardware_path() {
 
 #[test]
 fn test_load_hardware_capability_nonexistent() {
-    let result =
-        crate::services::brick_score::load_hardware_capability(Some(std::path::Path::new(
-            "/nonexistent/hardware.toml",
-        )));
+    let result = crate::services::brick_score::load_hardware_capability(Some(
+        std::path::Path::new("/nonexistent/hardware.toml"),
+    ));
     assert!(result.is_none());
 }

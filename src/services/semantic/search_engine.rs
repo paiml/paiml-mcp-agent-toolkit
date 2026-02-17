@@ -91,18 +91,21 @@ impl LocalEmbedder {
 
     /// Fit the embedder on a corpus of documents (builds IDF statistics)
     pub fn fit(&self, documents: &[String]) -> Result<(), String> {
-        let mut df = self.document_frequencies.write()
+        let mut df = self
+            .document_frequencies
+            .write()
             .map_err(|e| format!("Lock error: {e}"))?;
-        let mut count = self.doc_count.write()
+        let mut count = self
+            .doc_count
+            .write()
             .map_err(|e| format!("Lock error: {e}"))?;
 
         df.clear();
         *count = documents.len();
 
         for doc in documents {
-            let tokens: std::collections::HashSet<String> = self.tokenize(doc)
-                .into_iter()
-                .collect();
+            let tokens: std::collections::HashSet<String> =
+                self.tokenize(doc).into_iter().collect();
             for token in tokens {
                 *df.entry(token).or_insert(0) += 1;
             }
@@ -122,9 +125,13 @@ impl LocalEmbedder {
             *tf.entry(token.clone()).or_insert(0) += 1;
         }
 
-        let doc_count = *self.doc_count.read()
+        let doc_count = *self
+            .doc_count
+            .read()
             .map_err(|e| format!("Lock error: {e}"))?;
-        let df = self.document_frequencies.read()
+        let df = self
+            .document_frequencies
+            .read()
             .map_err(|e| format!("Lock error: {e}"))?;
 
         // Feature hashing with TF-IDF weighting
@@ -240,7 +247,10 @@ impl SemanticSearchEngine {
     async fn semantic_search(&self, query: &SearchQuery) -> Result<Vec<SearchResult>, String> {
         // Generate embedding for query using local embedder
         let query_embedding = {
-            let embedder = self.embedder.read().map_err(|e| format!("Lock error: {e}"))?;
+            let embedder = self
+                .embedder
+                .read()
+                .map_err(|e| format!("Lock error: {e}"))?;
             embedder.embed(&query.query)?
         };
 
@@ -326,8 +336,11 @@ impl SemanticSearchEngine {
             .into_iter()
             .filter(|r| {
                 // Check if any keyword matches
-                let searchable = format!("{} {} {}", r.file_path, r.chunk_name, r.chunk_type).to_lowercase();
-                keywords.iter().any(|kw| searchable.contains(&kw.to_lowercase()))
+                let searchable =
+                    format!("{} {} {}", r.file_path, r.chunk_name, r.chunk_type).to_lowercase();
+                keywords
+                    .iter()
+                    .any(|kw| searchable.contains(&kw.to_lowercase()))
             })
             .filter(|r| {
                 if let Some(ref lang) = query.language_filter {
@@ -399,7 +412,9 @@ impl SemanticSearchEngine {
             let key_b = format!("{}:{}", b.file_path, b.chunk_name);
             let score_a = scores.get(&key_a).unwrap_or(&0.0);
             let score_b = scores.get(&key_b).unwrap_or(&0.0);
-            score_b.partial_cmp(score_a).unwrap_or(std::cmp::Ordering::Equal)
+            score_b
+                .partial_cmp(score_a)
+                .unwrap_or(std::cmp::Ordering::Equal)
         });
 
         all_results.truncate(query.limit);
@@ -503,7 +518,10 @@ impl SemanticSearchEngine {
 
         // Fit the TF-IDF vectorizer on all collected content
         if !all_contents.is_empty() {
-            let embedder = self.embedder.read().map_err(|e| format!("Lock error: {e}"))?;
+            let embedder = self
+                .embedder
+                .read()
+                .map_err(|e| format!("Lock error: {e}"))?;
             embedder.fit(&all_contents)?;
         }
 
@@ -527,7 +545,10 @@ impl SemanticSearchEngine {
 
             // Generate embedding using local TF-IDF
             let embedding = {
-                let embedder = self.embedder.read().map_err(|e| format!("Lock error: {e}"))?;
+                let embedder = self
+                    .embedder
+                    .read()
+                    .map_err(|e| format!("Lock error: {e}"))?;
                 embedder.embed(&chunk.content)?
             };
 
@@ -557,7 +578,10 @@ impl SemanticSearchEngine {
     pub async fn embedding_count(&self) -> Result<usize, String> {
         // Get dimension without holding lock across await
         let dim = {
-            let embedder = self.embedder.read().map_err(|e| format!("Lock error: {e}"))?;
+            let embedder = self
+                .embedder
+                .read()
+                .map_err(|e| format!("Lock error: {e}"))?;
             embedder.dimension()
         };
         let all = self

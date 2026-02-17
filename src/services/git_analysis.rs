@@ -418,19 +418,17 @@ mod tests {
 
     #[test]
     fn test_generate_summary_stable_files() {
-        let files = vec![
-            FileChurnMetrics {
-                path: PathBuf::from("stable.rs"),
-                relative_path: "stable.rs".to_string(),
-                commit_count: 1,
-                unique_authors: vec!["Author".to_string()],
-                additions: 10,
-                deletions: 5,
-                churn_score: 0.05, // Low churn
-                last_modified: Utc::now(),
-                first_seen: Utc::now(),
-            },
-        ];
+        let files = vec![FileChurnMetrics {
+            path: PathBuf::from("stable.rs"),
+            relative_path: "stable.rs".to_string(),
+            commit_count: 1,
+            unique_authors: vec!["Author".to_string()],
+            additions: 10,
+            deletions: 5,
+            churn_score: 0.05, // Low churn
+            last_modified: Utc::now(),
+            first_seen: Utc::now(),
+        }];
         let summary = GitAnalysisService::generate_summary(&files);
         assert_eq!(summary.stable_files.len(), 1);
     }

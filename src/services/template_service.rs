@@ -95,7 +95,11 @@ pub async fn generate_template<T: TemplateServerTrait>(
     // Calculate checksum
     let mut hasher = Sha256::new();
     hasher.update(rendered.as_bytes());
-    let checksum = hasher.finalize().iter().map(|b| format!("{b:02x}")).collect::<String>();
+    let checksum = hasher
+        .finalize()
+        .iter()
+        .map(|b| format!("{b:02x}"))
+        .collect::<String>();
 
     // Extract project_name to use as subdirectory
     let project_name = parameters
@@ -130,7 +134,11 @@ async fn generate_context(
     // Calculate checksum
     let mut hasher = Sha256::new();
     hasher.update(content.as_bytes());
-    let checksum = hasher.finalize().iter().map(|b| format!("{b:02x}")).collect::<String>();
+    let checksum = hasher
+        .finalize()
+        .iter()
+        .map(|b| format!("{b:02x}"))
+        .collect::<String>();
 
     // Create toolchain enum
     let toolchain_enum = match toolchain {

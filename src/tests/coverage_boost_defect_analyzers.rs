@@ -116,13 +116,17 @@ fn test_performance_config_default() {
 
 #[test]
 fn test_performance_config_custom() {
-    let config = PerformanceConfig { include_nlogn: true };
+    let config = PerformanceConfig {
+        include_nlogn: true,
+    };
     assert!(config.include_nlogn);
 }
 
 #[test]
 fn test_performance_config_clone() {
-    let config = PerformanceConfig { include_nlogn: true };
+    let config = PerformanceConfig {
+        include_nlogn: true,
+    };
     let cloned = config.clone();
     assert_eq!(config.include_nlogn, cloned.include_nlogn);
 }
@@ -156,7 +160,10 @@ fn test_complexity_analyzer_category() {
     let category = analyzer.category();
     assert_eq!(
         format!("{:?}", category),
-        format!("{:?}", crate::models::defect_report::DefectCategory::Complexity)
+        format!(
+            "{:?}",
+            crate::models::defect_report::DefectCategory::Complexity
+        )
     );
 }
 
@@ -191,7 +198,10 @@ fn test_dead_code_analyzer_new() {
     let category = analyzer.category();
     assert_eq!(
         format!("{:?}", category),
-        format!("{:?}", crate::models::defect_report::DefectCategory::DeadCode)
+        format!(
+            "{:?}",
+            crate::models::defect_report::DefectCategory::DeadCode
+        )
     );
 }
 

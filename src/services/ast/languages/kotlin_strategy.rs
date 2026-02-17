@@ -80,22 +80,13 @@ mod tests {
     async fn test_kotlin_strategy_supports_extension() {
         let strategy = KotlinStrategy;
 
-        assert!(
-            strategy.can_handle("kt"),
-            "Should support .kt files"
-        );
-        assert!(
-            strategy.can_handle("kts"),
-            "Should support .kts files"
-        );
+        assert!(strategy.can_handle("kt"), "Should support .kt files");
+        assert!(strategy.can_handle("kts"), "Should support .kts files");
         assert!(
             !strategy.can_handle("java"),
             "Should not support .java files"
         );
-        assert!(
-            !strategy.can_handle("py"),
-            "Should not support .py files"
-        );
+        assert!(!strategy.can_handle("py"), "Should not support .py files");
     }
 
     // Add more tests as needed for the Kotlin strategy

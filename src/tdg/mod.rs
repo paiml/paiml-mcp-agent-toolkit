@@ -80,8 +80,8 @@ pub use language_simple::{Language, LanguageRules};
 pub use olap_analytics::TruenoOlapAnalytics;
 pub use olap_analytics::{AggOp, OlapAnalytics};
 pub use quality_gate::{
-    FGradeGate, GateConfig, GateResult, MinimumGradeGate, NewFileGate, QualityGate,
-    RegressionGate, Severity, Violation, ViolationType,
+    FGradeGate, GateConfig, GateResult, MinimumGradeGate, NewFileGate, QualityGate, RegressionGate,
+    Severity, Violation, ViolationType,
 };
 pub use recommendation_engine::generate_recommendations;
 pub use resource_control::{
@@ -1315,9 +1315,18 @@ mod tests {
             ..TdgScore::default()
         };
         let comparison = Comparison::new(source1, source2);
-        assert!(comparison.regressions.iter().any(|s| s.contains("Semantic")));
-        assert!(comparison.regressions.iter().any(|s| s.contains("duplication")));
-        assert!(comparison.improvements.iter().any(|s| s.contains("Documentation")));
+        assert!(comparison
+            .regressions
+            .iter()
+            .any(|s| s.contains("Semantic")));
+        assert!(comparison
+            .regressions
+            .iter()
+            .any(|s| s.contains("duplication")));
+        assert!(comparison
+            .improvements
+            .iter()
+            .any(|s| s.contains("Documentation")));
     }
 
     // ============ PenaltyTracker Tests ============

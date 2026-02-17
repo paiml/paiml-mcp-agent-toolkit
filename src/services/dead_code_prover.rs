@@ -284,7 +284,11 @@ impl FFIReferenceTracker {
         if line.starts_with("#[export_name") {
             if let Some(start) = line.find('"') {
                 if let Some(end) = line.get(start + 1..).unwrap_or_default().find('"') {
-                    return Some(line.get(start + 1..start + 1 + end).unwrap_or_default().to_string());
+                    return Some(
+                        line.get(start + 1..start + 1 + end)
+                            .unwrap_or_default()
+                            .to_string(),
+                    );
                 }
             }
         }

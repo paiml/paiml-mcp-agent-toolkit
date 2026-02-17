@@ -54,22 +54,19 @@ fn test_why_iteration_new() {
 
 #[test]
 fn test_why_iteration_with_confidence() {
-    let why = WhyIteration::new(1, "Q".to_string(), "H".to_string())
-        .with_confidence(0.9);
+    let why = WhyIteration::new(1, "Q".to_string(), "H".to_string()).with_confidence(0.9);
     assert!((why.confidence - 0.9).abs() < f64::EPSILON);
 }
 
 #[test]
 fn test_why_iteration_with_confidence_clamped_high() {
-    let why = WhyIteration::new(1, "Q".to_string(), "H".to_string())
-        .with_confidence(1.5);
+    let why = WhyIteration::new(1, "Q".to_string(), "H".to_string()).with_confidence(1.5);
     assert!((why.confidence - 1.0).abs() < f64::EPSILON);
 }
 
 #[test]
 fn test_why_iteration_with_confidence_clamped_low() {
-    let why = WhyIteration::new(1, "Q".to_string(), "H".to_string())
-        .with_confidence(-0.5);
+    let why = WhyIteration::new(1, "Q".to_string(), "H".to_string()).with_confidence(-0.5);
     assert!((why.confidence - 0.0).abs() < f64::EPSILON);
 }
 
@@ -178,10 +175,7 @@ fn test_recommendation_new() {
 
 #[test]
 fn test_recommendation_high() {
-    let rec = Recommendation::high(
-        "Critical fix".to_string(),
-        Some(PathBuf::from("main.rs")),
-    );
+    let rec = Recommendation::high("Critical fix".to_string(), Some(PathBuf::from("main.rs")));
     assert_eq!(rec.priority, Priority::High);
 }
 

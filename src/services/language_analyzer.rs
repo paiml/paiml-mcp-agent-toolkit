@@ -596,4 +596,3 @@ impl LanguageAnalyzer {
         }
     }
 }
-

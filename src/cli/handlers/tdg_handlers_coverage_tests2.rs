@@ -1136,5 +1136,4 @@ mod config_loading_edge_cases {
 
 mod grade_validation_tests {
     use super::*;
-
 }

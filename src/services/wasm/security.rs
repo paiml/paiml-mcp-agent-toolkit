@@ -140,7 +140,10 @@ mod tests {
         let result = validator.validate(data).unwrap();
         assert!(!result.passed);
         assert_eq!(result.issues.len(), 1);
-        assert!(matches!(result.issues[0].category, SecurityCategory::InvalidFormat));
+        assert!(matches!(
+            result.issues[0].category,
+            SecurityCategory::InvalidFormat
+        ));
     }
 
     #[test]
@@ -170,8 +173,14 @@ mod tests {
 
     #[test]
     fn test_security_category_eq() {
-        assert_eq!(SecurityCategory::InvalidFormat, SecurityCategory::InvalidFormat);
-        assert_ne!(SecurityCategory::InvalidFormat, SecurityCategory::MemorySafety);
+        assert_eq!(
+            SecurityCategory::InvalidFormat,
+            SecurityCategory::InvalidFormat
+        );
+        assert_ne!(
+            SecurityCategory::InvalidFormat,
+            SecurityCategory::MemorySafety
+        );
     }
 
     #[test]

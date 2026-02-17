@@ -347,8 +347,7 @@ fn test_filter_check_disabled() {
 
 #[test]
 fn test_check_version_currency_current() {
-    let check =
-        crate::cli::handlers::comply_handlers::check_version_currency(PMAT_VERSION);
+    let check = crate::cli::handlers::comply_handlers::check_version_currency(PMAT_VERSION);
     assert_eq!(check.status, CheckStatus::Pass);
     assert!(check.message.contains("latest version"));
 }
@@ -356,8 +355,7 @@ fn test_check_version_currency_current() {
 #[test]
 fn test_check_version_currency_slightly_behind() {
     // Simulate being slightly behind (this may vary based on actual versioning)
-    let check =
-        crate::cli::handlers::comply_handlers::check_version_currency("0.99.0");
+    let check = crate::cli::handlers::comply_handlers::check_version_currency("0.99.0");
     // Should be Warn or Fail depending on versions_behind calculation
     assert!(check.status == CheckStatus::Warn || check.status == CheckStatus::Fail);
 }
@@ -405,7 +403,11 @@ fn test_check_hooks_installed_pmat_hook() {
     let temp_dir = TempDir::new().unwrap();
     let hooks_dir = temp_dir.path().join(".git").join("hooks");
     std::fs::create_dir_all(&hooks_dir).unwrap();
-    std::fs::write(hooks_dir.join("pre-commit"), "#!/bin/sh\npmat hooks validate").unwrap();
+    std::fs::write(
+        hooks_dir.join("pre-commit"),
+        "#!/bin/sh\npmat hooks validate",
+    )
+    .unwrap();
 
     let check = crate::cli::handlers::comply_handlers::check_hooks_installed(temp_dir.path());
     assert_eq!(check.status, CheckStatus::Pass);
@@ -747,8 +749,7 @@ fn test_check_coverage_quality_patterns_clean() {
 fn test_check_dead_code_percentage_no_src() {
     let temp_dir = TempDir::new().unwrap();
 
-    let check =
-        crate::cli::handlers::comply_handlers::check_dead_code_percentage(temp_dir.path());
+    let check = crate::cli::handlers::comply_handlers::check_dead_code_percentage(temp_dir.path());
     assert_eq!(check.status, CheckStatus::Skip);
 }
 
@@ -757,10 +758,13 @@ fn test_check_dead_code_percentage_clean() {
     let temp_dir = TempDir::new().unwrap();
     let src_dir = temp_dir.path().join("src");
     std::fs::create_dir_all(&src_dir).unwrap();
-    std::fs::write(src_dir.join("lib.rs"), "pub fn active_fn() { println!(\"used\"); }").unwrap();
+    std::fs::write(
+        src_dir.join("lib.rs"),
+        "pub fn active_fn() { println!(\"used\"); }",
+    )
+    .unwrap();
 
-    let check =
-        crate::cli::handlers::comply_handlers::check_dead_code_percentage(temp_dir.path());
+    let check = crate::cli::handlers::comply_handlers::check_dead_code_percentage(temp_dir.path());
     // Clean code should pass
     assert!(check.status == CheckStatus::Pass || check.status == CheckStatus::Skip);
 }
@@ -785,8 +789,7 @@ pub fn active_fn() {}
     )
     .unwrap();
 
-    let check =
-        crate::cli::handlers::comply_handlers::check_dead_code_percentage(temp_dir.path());
+    let check = crate::cli::handlers::comply_handlers::check_dead_code_percentage(temp_dir.path());
     // Should detect dead code
     assert!(check.name.contains("Dead Code"));
 }
@@ -820,60 +823,42 @@ fn simd_fn4() {}
 
 #[test]
 fn test_is_dead_code_annotation_true() {
-    assert!(crate::cli::handlers::comply_handlers::is_dead_code_annotation(
-        "#[allow(dead_code)]"
-    ));
-    assert!(crate::cli::handlers::comply_handlers::is_dead_code_annotation(
-        "#[allow(unused)]"
-    ));
+    assert!(crate::cli::handlers::comply_handlers::is_dead_code_annotation("#[allow(dead_code)]"));
+    assert!(crate::cli::handlers::comply_handlers::is_dead_code_annotation("#[allow(unused)]"));
 }
 
 #[test]
 fn test_is_dead_code_annotation_false() {
-    assert!(!crate::cli::handlers::comply_handlers::is_dead_code_annotation(
-        "pub fn active() {}"
-    ));
-    assert!(!crate::cli::handlers::comply_handlers::is_dead_code_annotation(
-        "#[derive(Debug)]"
-    ));
+    assert!(!crate::cli::handlers::comply_handlers::is_dead_code_annotation("pub fn active() {}"));
+    assert!(!crate::cli::handlers::comply_handlers::is_dead_code_annotation("#[derive(Debug)]"));
 }
 
 #[test]
 fn test_is_code_item_declaration_true() {
-    assert!(crate::cli::handlers::comply_handlers::is_code_item_declaration(
-        "pub fn test() {}"
-    ));
-    assert!(crate::cli::handlers::comply_handlers::is_code_item_declaration(
-        "fn private() {}"
-    ));
-    assert!(crate::cli::handlers::comply_handlers::is_code_item_declaration(
-        "pub struct MyStruct {"
-    ));
-    assert!(crate::cli::handlers::comply_handlers::is_code_item_declaration(
-        "pub enum MyEnum {"
-    ));
-    assert!(crate::cli::handlers::comply_handlers::is_code_item_declaration(
-        "pub trait MyTrait {"
-    ));
-    assert!(crate::cli::handlers::comply_handlers::is_code_item_declaration(
-        "pub const VALUE: i32 = 42;"
-    ));
-    assert!(crate::cli::handlers::comply_handlers::is_code_item_declaration(
-        "pub async fn async_fn() {}"
-    ));
+    assert!(crate::cli::handlers::comply_handlers::is_code_item_declaration("pub fn test() {}"));
+    assert!(crate::cli::handlers::comply_handlers::is_code_item_declaration("fn private() {}"));
+    assert!(
+        crate::cli::handlers::comply_handlers::is_code_item_declaration("pub struct MyStruct {")
+    );
+    assert!(crate::cli::handlers::comply_handlers::is_code_item_declaration("pub enum MyEnum {"));
+    assert!(crate::cli::handlers::comply_handlers::is_code_item_declaration("pub trait MyTrait {"));
+    assert!(
+        crate::cli::handlers::comply_handlers::is_code_item_declaration(
+            "pub const VALUE: i32 = 42;"
+        )
+    );
+    assert!(
+        crate::cli::handlers::comply_handlers::is_code_item_declaration(
+            "pub async fn async_fn() {}"
+        )
+    );
 }
 
 #[test]
 fn test_is_code_item_declaration_false() {
-    assert!(!crate::cli::handlers::comply_handlers::is_code_item_declaration(
-        "let x = 5;"
-    ));
-    assert!(!crate::cli::handlers::comply_handlers::is_code_item_declaration(
-        "// comment"
-    ));
-    assert!(!crate::cli::handlers::comply_handlers::is_code_item_declaration(
-        "#[derive(Debug)]"
-    ));
+    assert!(!crate::cli::handlers::comply_handlers::is_code_item_declaration("let x = 5;"));
+    assert!(!crate::cli::handlers::comply_handlers::is_code_item_declaration("// comment"));
+    assert!(!crate::cli::handlers::comply_handlers::is_code_item_declaration("#[derive(Debug)]"));
 }
 
 #[test]
@@ -904,45 +889,49 @@ fn test_has_code_markers_false() {
 
 #[test]
 fn test_is_commented_out_code_true() {
-    assert!(crate::cli::handlers::comply_handlers::is_commented_out_code(
-        "// fn test() {"
-    ));
-    assert!(crate::cli::handlers::comply_handlers::is_commented_out_code(
-        "// let x = 5;"
-    ));
-    assert!(crate::cli::handlers::comply_handlers::is_commented_out_code(
-        "// return foo;"
-    ));
+    assert!(crate::cli::handlers::comply_handlers::is_commented_out_code("// fn test() {"));
+    assert!(crate::cli::handlers::comply_handlers::is_commented_out_code("// let x = 5;"));
+    assert!(crate::cli::handlers::comply_handlers::is_commented_out_code("// return foo;"));
 }
 
 #[test]
 fn test_is_commented_out_code_false() {
     // Just a regular comment
-    assert!(!crate::cli::handlers::comply_handlers::is_commented_out_code(
-        "// This is a regular comment"
-    ));
+    assert!(
+        !crate::cli::handlers::comply_handlers::is_commented_out_code(
+            "// This is a regular comment"
+        )
+    );
     // Not a comment
-    assert!(!crate::cli::handlers::comply_handlers::is_commented_out_code(
-        "fn test() {}"
-    ));
+    assert!(!crate::cli::handlers::comply_handlers::is_commented_out_code("fn test() {}"));
 }
 
 #[test]
 fn test_flush_comment_run_threshold() {
     // Run of 3 or more counts
-    assert_eq!(crate::cli::handlers::comply_handlers::flush_comment_run(3), 3);
-    assert_eq!(crate::cli::handlers::comply_handlers::flush_comment_run(5), 5);
+    assert_eq!(
+        crate::cli::handlers::comply_handlers::flush_comment_run(3),
+        3
+    );
+    assert_eq!(
+        crate::cli::handlers::comply_handlers::flush_comment_run(5),
+        5
+    );
     // Run of less than 3 doesn't count
-    assert_eq!(crate::cli::handlers::comply_handlers::flush_comment_run(2), 0);
-    assert_eq!(crate::cli::handlers::comply_handlers::flush_comment_run(0), 0);
+    assert_eq!(
+        crate::cli::handlers::comply_handlers::flush_comment_run(2),
+        0
+    );
+    assert_eq!(
+        crate::cli::handlers::comply_handlers::flush_comment_run(0),
+        0
+    );
 }
 
 #[test]
 fn test_update_macro_depth_enter() {
-    let depth = crate::cli::handlers::comply_handlers::update_macro_depth(
-        "macro_rules! my_macro {",
-        None,
-    );
+    let depth =
+        crate::cli::handlers::comply_handlers::update_macro_depth("macro_rules! my_macro {", None);
     assert!(depth.is_some());
 }
 
@@ -955,10 +944,8 @@ fn test_update_macro_depth_exit() {
 #[test]
 fn test_update_macro_depth_nested() {
     // Start macro
-    let depth = crate::cli::handlers::comply_handlers::update_macro_depth(
-        "macro_rules! test {",
-        None,
-    );
+    let depth =
+        crate::cli::handlers::comply_handlers::update_macro_depth("macro_rules! test {", None);
     assert!(depth.is_some());
 
     // Inside macro, nested brace
@@ -983,10 +970,13 @@ fn test_filter_production_lines() {
 
 #[test]
 fn test_count_dead_items_no_dead_code() {
-    let lines = vec!["pub fn active() {}", "pub struct Active {}", "impl Active {}"];
+    let lines = vec![
+        "pub fn active() {}",
+        "pub struct Active {}",
+        "impl Active {}",
+    ];
     let refs: Vec<&str> = lines.iter().map(|s| *s).collect();
-    let (total, dead, annotations) =
-        crate::cli::handlers::comply_handlers::count_dead_items(&refs);
+    let (total, dead, annotations) = crate::cli::handlers::comply_handlers::count_dead_items(&refs);
     assert_eq!(total, 2); // fn + struct
     assert_eq!(dead, 0);
     assert_eq!(annotations, 0);
@@ -994,10 +984,13 @@ fn test_count_dead_items_no_dead_code() {
 
 #[test]
 fn test_count_dead_items_with_dead_code() {
-    let lines = vec!["#[allow(dead_code)]", "fn dead_fn() {}", "pub fn active() {}"];
+    let lines = vec![
+        "#[allow(dead_code)]",
+        "fn dead_fn() {}",
+        "pub fn active() {}",
+    ];
     let refs: Vec<&str> = lines.iter().map(|s| *s).collect();
-    let (total, dead, annotations) =
-        crate::cli::handlers::comply_handlers::count_dead_items(&refs);
+    let (total, dead, annotations) = crate::cli::handlers::comply_handlers::count_dead_items(&refs);
     assert_eq!(total, 2);
     assert_eq!(dead, 1);
     assert_eq!(annotations, 1);
@@ -1012,8 +1005,7 @@ fn test_count_block_comment_code_lines() {
         "} */",
     ];
     let refs: Vec<&str> = lines.iter().map(|s| *s).collect();
-    let dead_lines =
-        crate::cli::handlers::comply_handlers::count_block_comment_code_lines(&refs);
+    let dead_lines = crate::cli::handlers::comply_handlers::count_block_comment_code_lines(&refs);
     // Should detect code-like content in block comment
     assert!(dead_lines >= 2);
 }
@@ -1151,8 +1143,7 @@ fn test_check_muda_waste_score() {
 fn test_check_reproducibility_level_none() {
     let temp_dir = TempDir::new().unwrap();
 
-    let check =
-        crate::cli::handlers::comply_handlers::check_reproducibility_level(temp_dir.path());
+    let check = crate::cli::handlers::comply_handlers::check_reproducibility_level(temp_dir.path());
     assert_eq!(check.status, CheckStatus::Fail);
     assert!(check.name.contains("Reproducibility"));
 }
@@ -1162,8 +1153,7 @@ fn test_check_reproducibility_level_with_lockfile() {
     let temp_dir = TempDir::new().unwrap();
     std::fs::write(temp_dir.path().join("Cargo.lock"), "").unwrap();
 
-    let check =
-        crate::cli::handlers::comply_handlers::check_reproducibility_level(temp_dir.path());
+    let check = crate::cli::handlers::comply_handlers::check_reproducibility_level(temp_dir.path());
     // Should be at least Bronze with lockfile
     assert!(check.status == CheckStatus::Pass || check.status == CheckStatus::Warn);
 }
@@ -1176,8 +1166,7 @@ fn test_check_reproducibility_level_with_lockfile() {
 fn test_check_golden_trace_drift_no_config() {
     let temp_dir = TempDir::new().unwrap();
 
-    let check =
-        crate::cli::handlers::comply_handlers::check_golden_trace_drift(temp_dir.path());
+    let check = crate::cli::handlers::comply_handlers::check_golden_trace_drift(temp_dir.path());
     assert_eq!(check.status, CheckStatus::Skip);
 }
 
@@ -1186,8 +1175,7 @@ fn test_check_golden_trace_drift_with_config() {
     let temp_dir = TempDir::new().unwrap();
     std::fs::write(temp_dir.path().join("renacer.toml"), "[golden_traces]").unwrap();
 
-    let check =
-        crate::cli::handlers::comply_handlers::check_golden_trace_drift(temp_dir.path());
+    let check = crate::cli::handlers::comply_handlers::check_golden_trace_drift(temp_dir.path());
     // Should pass or fail based on golden trace validation
     assert!(check.status == CheckStatus::Pass || check.status == CheckStatus::Fail);
 }
@@ -1257,11 +1245,7 @@ fn test_update_last_check_timestamp() {
     let temp_dir = TempDir::new().unwrap();
     let pmat_dir = temp_dir.path().join(".pmat");
     std::fs::create_dir_all(&pmat_dir).unwrap();
-    std::fs::write(
-        pmat_dir.join("project.toml"),
-        "[pmat]\nversion = \"1.0.0\"",
-    )
-    .unwrap();
+    std::fs::write(pmat_dir.join("project.toml"), "[pmat]\nversion = \"1.0.0\"").unwrap();
 
     let result =
         crate::cli::handlers::comply_handlers::update_last_check_timestamp(temp_dir.path());
@@ -1285,8 +1269,7 @@ fn test_check_paiml_deps_workspace() {
     )
     .unwrap();
 
-    let check =
-        crate::cli::handlers::comply_handlers::check_paiml_deps_workspace(temp_dir.path());
+    let check = crate::cli::handlers::comply_handlers::check_paiml_deps_workspace(temp_dir.path());
     // Should pass or warn based on workspace check
     assert!(
         check.status == CheckStatus::Pass

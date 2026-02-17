@@ -21,27 +21,25 @@ mod tests {
             let cli = Cli::try_parse_from(args).unwrap();
 
             match cli.command {
-                Commands::Analyze(analyze_cmd) => {
-                    match analyze_cmd {
-                        AnalyzeCommands::Churn {
-                            days,
-                            project_path,
-                            format,
-                            output,
-                            top_files,
-                            ..
-                        } => {
-                            assert_eq!(days, 30);
-                            assert_eq!(project_path, PathBuf::from("."));
-                            assert_eq!(format, ChurnOutputFormat::Summary);
-                            assert!(output.is_none());
-                            assert_eq!(top_files, 10);
-                        }
-                        _ => {
-                            panic!("Expected Churn command, got a different analyze command");
-                        }
+                Commands::Analyze(analyze_cmd) => match analyze_cmd {
+                    AnalyzeCommands::Churn {
+                        days,
+                        project_path,
+                        format,
+                        output,
+                        top_files,
+                        ..
+                    } => {
+                        assert_eq!(days, 30);
+                        assert_eq!(project_path, PathBuf::from("."));
+                        assert_eq!(format, ChurnOutputFormat::Summary);
+                        assert!(output.is_none());
+                        assert_eq!(top_files, 10);
                     }
-                }
+                    _ => {
+                        panic!("Expected Churn command, got a different analyze command");
+                    }
+                },
                 _ => panic!("Expected Analyze command"),
             }
         });

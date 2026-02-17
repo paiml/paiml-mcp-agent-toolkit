@@ -206,14 +206,13 @@ pub struct LuaDefectDetector {
 impl LuaDefectDetector {
     pub fn new() -> Self {
         Self {
-            global_assign_re: Regex::new(
-                r"^([a-zA-Z_]\w*)\s*="
-            ).expect("internal error"),
+            global_assign_re: Regex::new(r"^([a-zA-Z_]\w*)\s*=").expect("internal error"),
             nil_chain_re: Regex::new(r"\)\s*[.:]\w+").expect("internal error"),
             unchecked_pcall_re: Regex::new(r"^\s*x?pcall\s*\(").expect("internal error"),
             dangerous_api_re: Regex::new(
-                r"\b(?:os\.execute|io\.popen|loadstring|setfenv|getfenv|debug\.setlocal)\s*\("
-            ).expect("internal error"),
+                r"\b(?:os\.execute|io\.popen|loadstring|setfenv|getfenv|debug\.setlocal)\s*\(",
+            )
+            .expect("internal error"),
         }
     }
 
@@ -234,8 +233,11 @@ impl LuaDefectDetector {
     fn should_exclude_file(&self, file_path: &Path) -> bool {
         let path_str = file_path.to_string_lossy();
         let file_name = file_path.file_name().and_then(|n| n.to_str()).unwrap_or("");
-        path_str.contains("/tests/") || path_str.contains("/test/") || path_str.contains("/spec/")
-            || file_name.starts_with("test_") || file_name.ends_with("_test.lua")
+        path_str.contains("/tests/")
+            || path_str.contains("/test/")
+            || path_str.contains("/spec/")
+            || file_name.starts_with("test_")
+            || file_name.ends_with("_test.lua")
             || file_name.ends_with("_spec.lua")
     }
 
@@ -246,8 +248,8 @@ impl LuaDefectDetector {
         defects: &mut Vec<DefectPattern>,
     ) {
         let lua_keywords = [
-            "if", "then", "else", "elseif", "end", "do", "while", "repeat", "until",
-            "for", "in", "function", "return", "break", "goto", "not", "and", "or",
+            "if", "then", "else", "elseif", "end", "do", "while", "repeat", "until", "for", "in",
+            "function", "return", "break", "goto", "not", "and", "or",
         ];
         let mut instances = Vec::new();
         for (line_num, line) in content.lines().enumerate() {
@@ -255,7 +257,9 @@ impl LuaDefectDetector {
             if trimmed.is_empty() || trimmed.starts_with("--") || trimmed.starts_with("local ") {
                 continue;
             }
-            let Some(caps) = self.global_assign_re.captures(trimmed) else { continue };
+            let Some(caps) = self.global_assign_re.captures(trimmed) else {
+                continue;
+            };
             let name = caps.get(1).map_or("", |m| m.as_str());
             if lua_keywords.contains(&name) || name.starts_with('_') {
                 continue;
@@ -268,7 +272,11 @@ impl LuaDefectDetector {
             });
         }
         if !instances.is_empty() {
-            let severity = if instances.len() > 10 { Severity::Critical } else { Severity::High };
+            let severity = if instances.len() > 10 {
+                Severity::Critical
+            } else {
+                Severity::High
+            };
             defects.push(DefectPattern {
                 id: "LUA-GLOBAL-001".to_string(),
                 name: "Implicit global assignment".to_string(),
@@ -276,19 +284,16 @@ impl LuaDefectDetector {
                 fix_recommendation: "Add `local` keyword to variable declarations".to_string(),
                 bad_example: "count = 0".to_string(),
                 good_example: "local count = 0".to_string(),
-                evidence_description: "Global namespace pollution is Lua's #1 defect source (Maidl et al. 2014)".to_string(),
+                evidence_description:
+                    "Global namespace pollution is Lua's #1 defect source (Maidl et al. 2014)"
+                        .to_string(),
                 evidence_url: None,
                 instances,
             });
         }
     }
 
-    fn detect_nil_unsafe(
-        &self,
-        content: &str,
-        file_path: &Path,
-        defects: &mut Vec<DefectPattern>,
-    ) {
+    fn detect_nil_unsafe(&self, content: &str, file_path: &Path, defects: &mut Vec<DefectPattern>) {
         let mut instances = Vec::new();
         for (line_num, line) in content.lines().enumerate() {
             let trimmed = line.trim();
@@ -309,10 +314,14 @@ impl LuaDefectDetector {
                 id: "LUA-NIL-001".to_string(),
                 name: "Nil-unsafe chained access".to_string(),
                 severity: Severity::High,
-                fix_recommendation: "Store function return in local variable and nil-check before accessing".to_string(),
+                fix_recommendation:
+                    "Store function return in local variable and nil-check before accessing"
+                        .to_string(),
                 bad_example: "get_player():set_health(100)".to_string(),
                 good_example: "local p = get_player()\nif p then p:set_health(100) end".to_string(),
-                evidence_description: "Chained access on nil return causes runtime crash (LuaTaint analysis)".to_string(),
+                evidence_description:
+                    "Chained access on nil return causes runtime crash (LuaTaint analysis)"
+                        .to_string(),
                 evidence_url: None,
                 instances,
             });
@@ -444,7 +453,11 @@ mod tests {
         let path = PathBuf::from("src/lib.rs");
         let defects = detector.detect(code, &path);
 
-        assert_eq!(defects.len(), 0, "Doc comments should be excluded (issue #131)");
+        assert_eq!(
+            defects.len(),
+            0,
+            "Doc comments should be excluded (issue #131)"
+        );
     }
 
     #[test]

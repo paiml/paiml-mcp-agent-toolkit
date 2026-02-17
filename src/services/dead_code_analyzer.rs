@@ -956,11 +956,7 @@ pub(crate) fn classify_dead_functions_pure(
 
     for (qualified_name, (file_path, line)) in all_functions {
         if !reachable.contains(qualified_name) {
-            let function_name = qualified_name
-                .split("::")
-                .last()
-                .unwrap_or("")
-                .to_string();
+            let function_name = qualified_name.split("::").last().unwrap_or("").to_string();
             dead_functions.push((function_name, file_path.clone(), *line));
         }
     }

@@ -463,6 +463,5 @@ impl UniformCommandHandler {
 
 use std::sync::Arc;
 
-
 // Tests extracted to uniform_cli_commands_tests.rs for file health (CB-040).
 include!("uniform_cli_commands_tests.rs");

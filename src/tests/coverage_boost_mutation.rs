@@ -17,13 +17,13 @@
 
 #![cfg(feature = "mutation-testing")]
 
+use crate::services::mutation::language::LanguageAdapter;
 use crate::services::mutation::{
     DistributedConfig, Language, LanguageRegistry, Mutant, MutantStatus, MutationConfig,
     MutationEngine, MutationOperatorType, MutationProgress, MutationResult, MutationScore,
     MutationScorer, MutationState, MutationStateConfig, MutationStrategy, RustAdapter,
     SourceLocation, TestRunResult, WeakSpot,
 };
-use crate::services::mutation::language::LanguageAdapter;
 use std::collections::HashSet;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -663,8 +663,7 @@ fn test_mutation_state_new() {
 #[test]
 fn test_mutation_state_add_result() {
     let mutants = vec![create_test_mutant("m1", MutantStatus::Pending)];
-    let mut state =
-        MutationState::new(std::path::Path::new("/project"), mutants, 60, false, None);
+    let mut state = MutationState::new(std::path::Path::new("/project"), mutants, 60, false, None);
 
     let result = MutationResult {
         mutant: create_test_mutant("m1", MutantStatus::Killed),
@@ -687,8 +686,7 @@ fn test_mutation_state_completion_percentage() {
         create_test_mutant("m1", MutantStatus::Pending),
         create_test_mutant("m2", MutantStatus::Pending),
     ];
-    let mut state =
-        MutationState::new(std::path::Path::new("/project"), mutants, 60, false, None);
+    let mut state = MutationState::new(std::path::Path::new("/project"), mutants, 60, false, None);
 
     assert_eq!(state.completion_percentage(), 0.0);
 

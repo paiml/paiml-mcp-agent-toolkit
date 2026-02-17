@@ -440,7 +440,10 @@ impl JavaScriptAnalyzer {
             let before_paren = &text.get(..paren_pos).unwrap_or_default().trim();
             // Extract last word before '('
             if let Some(last_word_start) = before_paren.rfind(|c: char| c.is_whitespace()) {
-                let name = before_paren.get(last_word_start..).unwrap_or_default().trim();
+                let name = before_paren
+                    .get(last_word_start..)
+                    .unwrap_or_default()
+                    .trim();
                 if !name.is_empty()
                     && name
                         .chars()
@@ -758,7 +761,9 @@ impl LuaAnalyzer {
     fn extract_functions_treesitter(&self, content: &str) -> Option<Vec<FunctionInfo>> {
         use tree_sitter::Parser as TsParser;
         let mut parser = TsParser::new();
-        parser.set_language(&tree_sitter_lua::LANGUAGE.into()).ok()?;
+        parser
+            .set_language(&tree_sitter_lua::LANGUAGE.into())
+            .ok()?;
         let tree = parser.parse(content, None)?;
         let mut functions = Vec::new();
         Self::collect_functions(&tree.root_node(), content, &mut functions);
@@ -809,7 +814,9 @@ impl LuaAnalyzer {
     ) -> Option<ComplexityMetrics> {
         use tree_sitter::Parser as TsParser;
         let mut parser = TsParser::new();
-        parser.set_language(&tree_sitter_lua::LANGUAGE.into()).ok()?;
+        parser
+            .set_language(&tree_sitter_lua::LANGUAGE.into())
+            .ok()?;
         let tree = parser.parse(content, None)?;
 
         let mut cyc = 1u16;
@@ -989,8 +996,7 @@ impl LuaAnalyzer {
     }
 
     fn is_function_declaration(&self, line: &str) -> bool {
-        (line.starts_with("function ") || line.starts_with("local function "))
-            && line.contains('(')
+        (line.starts_with("function ") || line.starts_with("local function ")) && line.contains('(')
     }
 
     fn extract_function_name(&self, line: &str) -> Option<String> {
@@ -1102,7 +1108,9 @@ impl LanguageAnalyzer for SqlAnalyzer {
         for line in func_lines {
             let upper = line.trim().to_uppercase();
             // Control flow keywords
-            for kw in &["IF ", "ELSIF ", "ELSEIF ", "WHEN ", "LOOP", "WHILE ", "FOR "] {
+            for kw in &[
+                "IF ", "ELSIF ", "ELSEIF ", "WHEN ", "LOOP", "WHILE ", "FOR ",
+            ] {
                 if upper.starts_with(kw) || upper.contains(&format!(" {kw}")) {
                     cyclomatic += 1;
                     cognitive += 1 + u16::from(nesting);
@@ -1143,18 +1151,17 @@ impl SqlAnalyzer {
             return None;
         };
 
-        let (kind_prefix, after_kind) =
-            if let Some(a) = rest.strip_prefix("FUNCTION ") {
-                ("fn:", a)
-            } else if let Some(a) = rest.strip_prefix("PROCEDURE ") {
-                ("proc:", a)
-            } else if let Some(a) = rest.strip_prefix("VIEW ") {
-                ("view:", a)
-            } else if let Some(a) = rest.strip_prefix("TRIGGER ") {
-                ("trigger:", a)
-            } else {
-                return None;
-            };
+        let (kind_prefix, after_kind) = if let Some(a) = rest.strip_prefix("FUNCTION ") {
+            ("fn:", a)
+        } else if let Some(a) = rest.strip_prefix("PROCEDURE ") {
+            ("proc:", a)
+        } else if let Some(a) = rest.strip_prefix("VIEW ") {
+            ("view:", a)
+        } else if let Some(a) = rest.strip_prefix("TRIGGER ") {
+            ("trigger:", a)
+        } else {
+            return None;
+        };
 
         let name = after_kind
             .split(|c: char| !c.is_alphanumeric() && c != '_' && c != '.')
@@ -1280,9 +1287,15 @@ impl ScalaAnalyzer {
     fn extract_scala_name(trimmed: &str) -> Option<String> {
         // Match: def name, class name, object name, trait name
         let prefixes = [
-            "def ", "override def ", "private def ", "protected def ",
-            "class ", "case class ", "abstract class ",
-            "object ", "trait ",
+            "def ",
+            "override def ",
+            "private def ",
+            "protected def ",
+            "class ",
+            "case class ",
+            "abstract class ",
+            "object ",
+            "trait ",
         ];
         for prefix in &prefixes {
             if let Some(rest) = trimmed.strip_prefix(prefix) {

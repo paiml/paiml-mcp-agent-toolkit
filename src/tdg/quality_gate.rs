@@ -1730,9 +1730,7 @@ mod tests {
     #[test]
     fn test_new_file_gate_mixed_quality_new_files() {
         // Test with multiple new files: some passing, some failing
-        let baseline = create_test_baseline(vec![
-            (PathBuf::from("src/old.rs"), 90.0, Grade::A),
-        ]);
+        let baseline = create_test_baseline(vec![(PathBuf::from("src/old.rs"), 90.0, Grade::A)]);
         let current = create_test_baseline(vec![
             (PathBuf::from("src/old.rs"), 90.0, Grade::A),
             (PathBuf::from("src/new_good.rs"), 92.0, Grade::A),
@@ -1744,9 +1742,13 @@ mod tests {
 
         assert!(!result.passed);
         assert_eq!(result.violations.len(), 1);
-        assert!(result.message.contains("1 new file(s) below quality threshold"));
+        assert!(result
+            .message
+            .contains("1 new file(s) below quality threshold"));
         // Verify the violation message includes the grade and score
-        assert!(result.violations[0].message.contains("New file below minimum grade"));
+        assert!(result.violations[0]
+            .message
+            .contains("New file below minimum grade"));
     }
 
     #[test]

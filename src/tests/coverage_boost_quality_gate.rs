@@ -61,7 +61,9 @@ fn test_apply_satd_filters_severity_medium() {
 
     let filtered = apply_satd_filters(items, Some(SatdSeverity::Medium), false);
     assert!(filtered.len() >= 3); // Medium, High, Critical
-    assert!(filtered.iter().all(|d| d.severity as u8 >= Severity::Medium as u8));
+    assert!(filtered
+        .iter()
+        .all(|d| d.severity as u8 >= Severity::Medium as u8));
 }
 
 #[test]
@@ -101,10 +103,9 @@ fn test_apply_satd_filters_critical_only() {
 
     let filtered = apply_satd_filters(items, None, true);
     assert!(filtered.len() >= 1);
-    assert!(filtered.iter().all(|d| matches!(
-        d.severity,
-        Severity::Critical | Severity::High
-    )));
+    assert!(filtered
+        .iter()
+        .all(|d| matches!(d.severity, Severity::Critical | Severity::High)));
 }
 
 #[test]
@@ -125,10 +126,9 @@ fn test_apply_satd_filters_combined() {
 
     // Both severity filter AND critical_only
     let filtered = apply_satd_filters(items, Some(SatdSeverity::Medium), true);
-    assert!(filtered.iter().all(|d| matches!(
-        d.severity,
-        Severity::Critical | Severity::High
-    )));
+    assert!(filtered
+        .iter()
+        .all(|d| matches!(d.severity, Severity::Critical | Severity::High)));
 }
 
 // --- get_severity_icon tests ---
@@ -255,12 +255,18 @@ fn test_quality_check_type_display() {
     // Test Display impl for models::quality_gate::QualityCheckType
     use crate::models::quality_gate::QualityCheckType as ModelQualityCheckType;
 
-    assert_eq!(format!("{}", ModelQualityCheckType::Complexity), "complexity");
+    assert_eq!(
+        format!("{}", ModelQualityCheckType::Complexity),
+        "complexity"
+    );
     assert_eq!(format!("{}", ModelQualityCheckType::DeadCode), "dead_code");
     assert_eq!(format!("{}", ModelQualityCheckType::Satd), "satd");
     assert_eq!(format!("{}", ModelQualityCheckType::Security), "security");
     assert_eq!(format!("{}", ModelQualityCheckType::Entropy), "entropy");
-    assert_eq!(format!("{}", ModelQualityCheckType::Duplicates), "duplicates");
+    assert_eq!(
+        format!("{}", ModelQualityCheckType::Duplicates),
+        "duplicates"
+    );
     assert_eq!(format!("{}", ModelQualityCheckType::Coverage), "coverage");
 }
 

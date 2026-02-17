@@ -473,8 +473,8 @@ mod tests {
 
     #[test]
     fn integration_parse_ticket_5010() {
-        let ticket_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("docs/tickets/TICKET-PMAT-5010.md");
+        let ticket_path =
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("docs/tickets/TICKET-PMAT-5010.md");
 
         if !ticket_path.exists() {
             eprintln!("Skipping: ticket file not found at {:?}", ticket_path);
@@ -496,8 +496,7 @@ mod tests {
 
     #[test]
     fn integration_list_all_tickets() {
-        let tickets_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("docs/tickets");
+        let tickets_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("docs/tickets");
 
         if !tickets_dir.exists() {
             eprintln!("Skipping: tickets dir not found at {:?}", tickets_dir);
@@ -526,8 +525,7 @@ mod tests {
 
     #[test]
     fn test_ticket_exists() {
-        let tickets_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("docs/tickets");
+        let tickets_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("docs/tickets");
 
         if !tickets_dir.exists() {
             eprintln!("Skipping: tickets dir not found at {:?}", tickets_dir);

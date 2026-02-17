@@ -15,8 +15,15 @@ use std::path::{Path, PathBuf};
 
 /// Directories to skip when walking for model files.
 const SKIP_DIRS: &[&str] = &[
-    ".git", "node_modules", "target", ".pmat", "vendor", "build", "dist",
-    "__pycache__", ".venv",
+    ".git",
+    "node_modules",
+    "target",
+    ".pmat",
+    "vendor",
+    "build",
+    "dist",
+    "__pycache__",
+    ".venv",
 ];
 
 /// Model file extensions we recognize.
@@ -87,10 +94,7 @@ fn walk_model_recursive(dir: &Path, files: &mut Vec<PathBuf>) {
     for entry in entries.flatten() {
         let path = entry.path();
         if path.is_dir() {
-            let dir_name = path
-                .file_name()
-                .and_then(|n| n.to_str())
-                .unwrap_or("");
+            let dir_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
             if !SKIP_DIRS.contains(&dir_name) {
                 walk_model_recursive(&path, files);
             }
@@ -118,9 +122,7 @@ fn parse_model_header(path: &Path) -> Option<ModelMetadata> {
     match format {
         ModelFormat::Gguf => parse_gguf_header(&header_buf, file_size),
         ModelFormat::Apr => parse_apr_header(&header_buf, &mut file, file_size),
-        ModelFormat::SafeTensors => {
-            parse_safetensors_header(&header_buf, &mut file, file_size)
-        }
+        ModelFormat::SafeTensors => parse_safetensors_header(&header_buf, &mut file, file_size),
     }
 }
 
@@ -202,11 +204,7 @@ fn parse_apr_header(buf: &[u8], file: &mut File, file_size: u64) -> Option<Model
     })
 }
 
-fn parse_safetensors_header(
-    buf: &[u8],
-    file: &mut File,
-    file_size: u64,
-) -> Option<ModelMetadata> {
+fn parse_safetensors_header(buf: &[u8], file: &mut File, file_size: u64) -> Option<ModelMetadata> {
     if buf.len() < 8 {
         return None;
     }
@@ -429,10 +427,7 @@ pub fn detect_cb1006_sharded_without_index(project_path: &Path) -> Vec<CbPattern
         let sharded_files: Vec<&PathBuf> = files
             .iter()
             .filter(|f| {
-                let name = f
-                    .file_name()
-                    .and_then(|n| n.to_str())
-                    .unwrap_or("");
+                let name = f.file_name().and_then(|n| n.to_str()).unwrap_or("");
                 name.contains("-of-") && name.ends_with(".safetensors")
             })
             .collect();
@@ -527,9 +522,7 @@ pub fn detect_cb1004_missing_architecture(project_path: &Path) -> Vec<CbPatternV
         // GGUF files should contain "general.architecture" key in metadata
         // Simple byte scan — GGUF metadata keys are stored as strings
         let needle = b"general.architecture";
-        let has_arch = content
-            .windows(needle.len())
-            .any(|w| w == needle);
+        let has_arch = content.windows(needle.len()).any(|w| w == needle);
 
         if !has_arch && content.len() > 100 {
             let rel = file_path
@@ -559,10 +552,9 @@ pub fn detect_cb1004_missing_architecture(project_path: &Path) -> Vec<CbPatternV
 
 /// Common quantization names that appear in filenames.
 const QUANT_NAMES: &[&str] = &[
-    "q2_k", "q3_k", "q4_k", "q4_0", "q4_1", "q5_k", "q5_0", "q5_1",
-    "q6_k", "q8_0", "q8_1", "f16", "f32", "bf16",
-    "q4_k_m", "q4_k_s", "q5_k_m", "q5_k_s", "q3_k_m", "q3_k_s", "q3_k_l",
-    "q6_k_l", "q2_k_s", "iq4_xs", "iq4_nl",
+    "q2_k", "q3_k", "q4_k", "q4_0", "q4_1", "q5_k", "q5_0", "q5_1", "q6_k", "q8_0", "q8_1", "f16",
+    "f32", "bf16", "q4_k_m", "q4_k_s", "q5_k_m", "q5_k_s", "q3_k_m", "q3_k_s", "q3_k_l", "q6_k_l",
+    "q2_k_s", "iq4_xs", "iq4_nl",
 ];
 
 pub fn detect_cb1005_quantization_mismatch(project_path: &Path) -> Vec<CbPatternViolation> {
@@ -581,9 +573,7 @@ pub fn detect_cb1005_quantization_mismatch(project_path: &Path) -> Vec<CbPattern
             .to_lowercase();
 
         // Check if filename claims a quantization type
-        let claimed_quant = QUANT_NAMES
-            .iter()
-            .find(|q| filename.contains(*q));
+        let claimed_quant = QUANT_NAMES.iter().find(|q| filename.contains(*q));
 
         if let Some(quant) = claimed_quant {
             // For F32 claims, check file size ratio

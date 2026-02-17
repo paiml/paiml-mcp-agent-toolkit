@@ -309,9 +309,7 @@ impl CommandDispatcher {
                 handlers::handle_quality_gates_command(command, config, report, json, project_dir)
                     .await
             }
-            Commands::Maintain { command } => {
-                Self::route_maintain_command(command).await
-            }
+            Commands::Maintain { command } => Self::route_maintain_command(command).await,
             Commands::Hooks(hooks_cmd) => handlers::handle_hooks_command(&hooks_cmd).await,
             Commands::Debug { command } => {
                 use crate::cli::commands::DebugCommands;

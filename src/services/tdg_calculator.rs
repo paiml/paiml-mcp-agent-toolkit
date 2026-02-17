@@ -177,7 +177,7 @@ impl TDGCalculator {
             coupling,
             domain_risk,
             duplication,
-            dead_code: 0.0,  // TODO(CB-128): Integrate with CargoDeadCodeAnalyzer
+            dead_code: 0.0, // TODO(CB-128): Integrate with CargoDeadCodeAnalyzer
         };
 
         let value = self.calculate_weighted_tdg(&components, provability);

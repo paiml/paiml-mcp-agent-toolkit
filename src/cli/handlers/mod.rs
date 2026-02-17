@@ -41,8 +41,8 @@ pub mod deps_audit_handlers; // Dependency audit for Sovereign AI stack migratio
 pub mod doc_validate_handlers;
 pub mod duplication_analysis;
 pub mod enforce_handlers;
-pub mod extract_handler; // GH-215: pmat extract --list
 pub mod enhanced_reporting_handlers;
+pub mod extract_handler; // GH-215: pmat extract --list
 pub mod five_whys_handlers; // Five Whys root cause analysis (Toyota Way)
 pub mod generation_handlers;
 #[cfg(test)]

@@ -103,7 +103,10 @@ impl DiscoveryService {
         Self::pick_by_category_priority(candidates)
     }
 
-    fn match_by_extension<'a>(candidates: &[&'a str], context: Option<&Context>) -> Option<&'a str> {
+    fn match_by_extension<'a>(
+        candidates: &[&'a str],
+        context: Option<&Context>,
+    ) -> Option<&'a str> {
         let ext = context.and_then(|ctx| ctx.file_extension.as_deref())?;
         match ext {
             "rs" if candidates.contains(&"analyze_complexity") => Some("analyze_complexity"),
@@ -122,9 +125,15 @@ impl DiscoveryService {
     }
 
     fn category_priority(name: &str) -> u8 {
-        if name.starts_with("generate") || name.starts_with("scaffold") { return 0; }
-        if name.starts_with("analyze") { return 1; }
-        if name.starts_with("refactor") { return 2; }
+        if name.starts_with("generate") || name.starts_with("scaffold") {
+            return 0;
+        }
+        if name.starts_with("analyze") {
+            return 1;
+        }
+        if name.starts_with("refactor") {
+            return 2;
+        }
         3
     }
 }

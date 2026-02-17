@@ -278,7 +278,9 @@ async fn route_language_specific_analysis(cmd: AnalyzeCommands) -> Result<()> {
         AnalyzeCommands::Wasm { .. } => route_wasm_analysis(cmd).await,
         #[cfg(not(feature = "wasm-ast"))]
         AnalyzeCommands::Wasm { .. } => {
-            anyhow::bail!("WASM analysis requires the 'wasm-ast' feature. Build with --features wasm-ast")
+            anyhow::bail!(
+                "WASM analysis requires the 'wasm-ast' feature. Build with --features wasm-ast"
+            )
         }
         _ => unreachable!("Expected language-specific analysis command"),
     }
@@ -648,16 +650,22 @@ fn run_cargo_build(path: &Path, release: bool) -> Result<()> {
 fn check_quality_regression(path: &Path) -> Result<()> {
     let baseline_path = path.join(".pmat/baseline.json");
     if !baseline_path.exists() {
-        println!("⚠️  No baseline found at {}, skipping regression check", baseline_path.display());
+        println!(
+            "⚠️  No baseline found at {}, skipping regression check",
+            baseline_path.display()
+        );
         println!("   Run 'pmat tdg baseline create' to create a baseline");
         return Ok(());
     }
     println!("🔍 Checking for quality regressions...");
     let status = std::process::Command::new("pmat")
         .args([
-            "tdg", "check-regression",
-            "--baseline", baseline_path.to_str().unwrap_or(".pmat/baseline.json"),
-            "--path", path.to_str().unwrap_or("."),
+            "tdg",
+            "check-regression",
+            "--baseline",
+            baseline_path.to_str().unwrap_or(".pmat/baseline.json"),
+            "--path",
+            path.to_str().unwrap_or("."),
             "--fail-on-regression",
         ])
         .status();
@@ -672,8 +680,16 @@ fn check_quality_regression(path: &Path) -> Result<()> {
 /// Route build-tdg analysis command (build + TDG quality gate)
 async fn route_build_tdg_analysis(cmd: AnalyzeCommands) -> Result<()> {
     let AnalyzeCommands::BuildTdg {
-        path, release, threshold, fail_on_regression, tdg_only, top_files, format, output,
-    } = cmd else {
+        path,
+        release,
+        threshold,
+        fail_on_regression,
+        tdg_only,
+        top_files,
+        format,
+        output,
+    } = cmd
+    else {
         unreachable!("Expected BuildTdg command")
     };
 
@@ -1653,7 +1669,10 @@ fn output_topic_results(
             println!("   Documents: {}", result.num_documents);
             println!("   Topics: {}\n", result.topics.len());
             for topic in &result.topics {
-                println!("   Topic {} ({} documents):", topic.id, topic.document_count);
+                println!(
+                    "   Topic {} ({} documents):",
+                    topic.id, topic.document_count
+                );
                 println!("     Top terms:");
                 for (term, weight) in topic.top_terms.iter().take(10) {
                     println!("       - {} ({:.3})", term, weight);
@@ -1674,7 +1693,12 @@ async fn route_semantic_analysis(cmd: AnalyzeCommands) -> Result<()> {
     let mut engine = LocalSemanticEngine::new();
 
     match cmd {
-        AnalyzeCommands::Cluster { method, k, language, format } => {
+        AnalyzeCommands::Cluster {
+            method,
+            k,
+            language,
+            format,
+        } => {
             let method_str = match method {
                 crate::cli::commands::ClusterMethod::Kmeans => "kmeans",
                 crate::cli::commands::ClusterMethod::Hierarchical => "hierarchical",
@@ -1682,14 +1706,20 @@ async fn route_semantic_analysis(cmd: AnalyzeCommands) -> Result<()> {
             };
             index_workspace(&mut engine, &workspace, language.as_deref())?;
             println!("🧮 Running {} clustering...", method_str);
-            let result = engine.cluster(method_str, k)
+            let result = engine
+                .cluster(method_str, k)
                 .map_err(|e| anyhow::anyhow!("Clustering failed: {}", e))?;
             output_cluster_results(&result, &format)
         }
-        AnalyzeCommands::Topics { num_topics, language, format } => {
+        AnalyzeCommands::Topics {
+            num_topics,
+            language,
+            format,
+        } => {
             index_workspace(&mut engine, &workspace, language.as_deref())?;
             println!("🔬 Extracting {} topics using LDA...", num_topics);
-            let result = engine.extract_topics(num_topics, language)
+            let result = engine
+                .extract_topics(num_topics, language)
                 .map_err(|e| anyhow::anyhow!("Topic extraction failed: {}", e))?;
             output_topic_results(&result, &format)
         }
@@ -1701,14 +1731,21 @@ async fn route_semantic_analysis(cmd: AnalyzeCommands) -> Result<()> {
 async fn route_model_analysis(cmd: AnalyzeCommands) -> Result<()> {
     use cli::AnalyzeCommands;
 
-    if let AnalyzeCommands::Models { path, format, check } = cmd {
-        let project_path = std::fs::canonicalize(&path)
-            .unwrap_or_else(|_| path.clone());
+    if let AnalyzeCommands::Models {
+        path,
+        format,
+        check,
+    } = cmd
+    {
+        let project_path = std::fs::canonicalize(&path).unwrap_or_else(|_| path.clone());
 
         let model_files = super::comply_cb_detect::walkdir_model_files(&project_path);
 
         if model_files.is_empty() {
-            println!("No model files found (*.gguf, *.apr, *.safetensors) in {}", project_path.display());
+            println!(
+                "No model files found (*.gguf, *.apr, *.safetensors) in {}",
+                project_path.display()
+            );
             return Ok(());
         }
 
@@ -1720,9 +1757,7 @@ async fn route_model_analysis(cmd: AnalyzeCommands) -> Result<()> {
         let mut total_size: u64 = 0;
 
         for file_path in &model_files {
-            let file_size = std::fs::metadata(file_path)
-                .map(|m| m.len())
-                .unwrap_or(0);
+            let file_size = std::fs::metadata(file_path).map(|m| m.len()).unwrap_or(0);
             total_size += file_size;
 
             let ext = file_path.extension().and_then(|e| e.to_str()).unwrap_or("");
@@ -1736,10 +1771,7 @@ async fn route_model_analysis(cmd: AnalyzeCommands) -> Result<()> {
                 .display()
                 .to_string();
 
-            let filename = file_path
-                .file_name()
-                .and_then(|n| n.to_str())
-                .unwrap_or("");
+            let filename = file_path.file_name().and_then(|n| n.to_str()).unwrap_or("");
 
             entries.push(ModelInventoryEntry {
                 file: rel,
@@ -1817,10 +1849,7 @@ fn print_model_inventory_table(entries: &[ModelInventoryEntry], total_size: u64)
             "File", "Format", "Size", "LFS"
         );
     } else {
-        println!(
-            "{:<40} {:<12} {:>12}",
-            "File", "Format", "Size"
-        );
+        println!("{:<40} {:<12} {:>12}", "File", "Format", "Size");
     }
     println!("{}", "─".repeat(width));
     for entry in entries {
@@ -1916,14 +1945,24 @@ fn collect_model_violations(
     project_path: &std::path::Path,
 ) -> Vec<super::comply_cb_detect::CbPatternViolation> {
     let mut all = Vec::new();
-    all.extend(super::comply_cb_detect::detect_cb1000_missing_model_card(project_path));
+    all.extend(super::comply_cb_detect::detect_cb1000_missing_model_card(
+        project_path,
+    ));
     all.extend(super::comply_cb_detect::detect_cb1001_oversized_tensor_count(project_path));
-    all.extend(super::comply_cb_detect::detect_cb1002_missing_tokenizer(project_path));
-    all.extend(super::comply_cb_detect::detect_cb1004_missing_architecture(project_path));
+    all.extend(super::comply_cb_detect::detect_cb1002_missing_tokenizer(
+        project_path,
+    ));
+    all.extend(super::comply_cb_detect::detect_cb1004_missing_architecture(
+        project_path,
+    ));
     all.extend(super::comply_cb_detect::detect_cb1005_quantization_mismatch(project_path));
     all.extend(super::comply_cb_detect::detect_cb1006_sharded_without_index(project_path));
-    all.extend(super::comply_cb_detect::detect_cb1007_excessive_file_size(project_path));
-    all.extend(super::comply_cb_detect::detect_cb1008_apr_missing_crc(project_path));
+    all.extend(super::comply_cb_detect::detect_cb1007_excessive_file_size(
+        project_path,
+    ));
+    all.extend(super::comply_cb_detect::detect_cb1008_apr_missing_crc(
+        project_path,
+    ));
     all
 }
 

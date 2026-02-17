@@ -464,7 +464,13 @@ impl Iterator for VariableScanner<'_> {
 fn extract_from_default_value(var_content: &str) -> Option<String> {
     if var_content.contains(":-") {
         if let Some(pos) = var_content.find(":-") {
-            return Some(var_content.get(..pos).unwrap_or_default().trim().to_string());
+            return Some(
+                var_content
+                    .get(..pos)
+                    .unwrap_or_default()
+                    .trim()
+                    .to_string(),
+            );
         }
     }
     None
@@ -474,7 +480,13 @@ fn extract_from_default_value(var_content: &str) -> Option<String> {
 fn extract_from_alternative_value(var_content: &str) -> Option<String> {
     if var_content.contains(":+") {
         if let Some(pos) = var_content.find(":+") {
-            return Some(var_content.get(..pos).unwrap_or_default().trim().to_string());
+            return Some(
+                var_content
+                    .get(..pos)
+                    .unwrap_or_default()
+                    .trim()
+                    .to_string(),
+            );
         }
     }
     None

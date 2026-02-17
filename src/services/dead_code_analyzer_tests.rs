@@ -797,8 +797,11 @@ mod analyze_project_context_tests {
     fn test_analyze_project_context_percentage_calculation() {
         let temp_dir = TempDir::new().unwrap();
         let file_path = temp_dir.path().join("pct.rs");
-        fs::write(&file_path, "fn main() {}\nfn dead_a() {}\nfn dead_b() {}\nfn dead_c() {}\n")
-            .unwrap();
+        fs::write(
+            &file_path,
+            "fn main() {}\nfn dead_a() {}\nfn dead_b() {}\nfn dead_c() {}\n",
+        )
+        .unwrap();
 
         let ctx = make_project_context(vec![FileContext {
             path: file_path.to_string_lossy().to_string(),

@@ -116,7 +116,9 @@ mod similarity_config_tests {
         let deserialized: SimilarityConfig = serde_json::from_str(&json).unwrap();
         assert_eq!(config.min_lines, deserialized.min_lines);
         assert_eq!(config.min_tokens, deserialized.min_tokens);
-        assert!((config.similarity_threshold - deserialized.similarity_threshold).abs() < f64::EPSILON);
+        assert!(
+            (config.similarity_threshold - deserialized.similarity_threshold).abs() < f64::EPSILON
+        );
     }
 
     #[test]
@@ -216,7 +218,12 @@ mod clone_type_tests {
 
     #[test]
     fn test_clone_type_serialization() {
-        for ct in [CloneType::Type1, CloneType::Type2, CloneType::Type3, CloneType::Type4] {
+        for ct in [
+            CloneType::Type1,
+            CloneType::Type2,
+            CloneType::Type3,
+            CloneType::Type4,
+        ] {
             let json = serde_json::to_string(&ct).unwrap();
             let deserialized: CloneType = serde_json::from_str(&json).unwrap();
             assert_eq!(ct, deserialized);
@@ -268,7 +275,10 @@ mod similarity_detector_tests {
     #[test]
     fn test_detect_exact_duplicates_single_file() {
         let detector = create_detector_with_low_thresholds();
-        let files = vec![(PathBuf::from("test.rs"), "line1\nline2\nline3\n".to_string())];
+        let files = vec![(
+            PathBuf::from("test.rs"),
+            "line1\nline2\nline3\n".to_string(),
+        )];
         let duplicates = detector.detect_exact_duplicates(&files);
         // Single file can't have duplicates across files
         assert!(duplicates.is_empty() || duplicates.len() >= 1);
@@ -293,8 +303,14 @@ mod similarity_detector_tests {
     fn test_detect_exact_duplicates_whitespace_difference() {
         let detector = create_detector_with_low_thresholds();
         let files = vec![
-            (PathBuf::from("file1.rs"), "let x = 1;\nlet y = 2;\n".to_string()),
-            (PathBuf::from("file2.rs"), "let   x   =   1;\nlet   y   =   2;\n".to_string()),
+            (
+                PathBuf::from("file1.rs"),
+                "let x = 1;\nlet y = 2;\n".to_string(),
+            ),
+            (
+                PathBuf::from("file2.rs"),
+                "let   x   =   1;\nlet   y   =   2;\n".to_string(),
+            ),
         ];
         let _ = detector.detect_exact_duplicates(&files);
     }
@@ -315,8 +331,14 @@ mod similarity_detector_tests {
     fn test_detect_structural_similarity_threshold_zero() {
         let detector = create_detector_with_low_thresholds();
         let files = vec![
-            (PathBuf::from("file1.rs"), "let a = 1;\nlet b = 2;\nlet c = 3;\n".to_string()),
-            (PathBuf::from("file2.rs"), "let x = 1;\nlet y = 2;\nlet z = 3;\n".to_string()),
+            (
+                PathBuf::from("file1.rs"),
+                "let a = 1;\nlet b = 2;\nlet c = 3;\n".to_string(),
+            ),
+            (
+                PathBuf::from("file2.rs"),
+                "let x = 1;\nlet y = 2;\nlet z = 3;\n".to_string(),
+            ),
         ];
         let _ = detector.detect_structural_similarity(&files, 0.0);
     }
@@ -325,8 +347,14 @@ mod similarity_detector_tests {
     fn test_detect_structural_similarity_threshold_one() {
         let detector = create_detector_with_low_thresholds();
         let files = vec![
-            (PathBuf::from("file1.rs"), "let a = 1;\nlet b = 2;\nlet c = 3;\n".to_string()),
-            (PathBuf::from("file2.rs"), "let x = 1;\nlet y = 2;\nlet z = 3;\n".to_string()),
+            (
+                PathBuf::from("file1.rs"),
+                "let a = 1;\nlet b = 2;\nlet c = 3;\n".to_string(),
+            ),
+            (
+                PathBuf::from("file2.rs"),
+                "let x = 1;\nlet y = 2;\nlet z = 3;\n".to_string(),
+            ),
         ];
         let similar = detector.detect_structural_similarity(&files, 1.0);
         // With threshold 1.0, only exact matches after normalization
@@ -349,8 +377,14 @@ mod similarity_detector_tests {
     fn test_detect_semantic_similarity_threshold_zero() {
         let detector = create_detector_with_low_thresholds();
         let files = vec![
-            (PathBuf::from("file1.rs"), "hello world test code\nhello world test code\n".to_string()),
-            (PathBuf::from("file2.rs"), "goodbye moon different code\ngoodbye moon different code\n".to_string()),
+            (
+                PathBuf::from("file1.rs"),
+                "hello world test code\nhello world test code\n".to_string(),
+            ),
+            (
+                PathBuf::from("file2.rs"),
+                "goodbye moon different code\ngoodbye moon different code\n".to_string(),
+            ),
         ];
         let _ = detector.detect_semantic_similarity(&files, 0.0);
     }
@@ -373,7 +407,10 @@ mod similarity_detector_tests {
     #[test]
     fn test_analyze_entropy_single_file() {
         let detector = create_detector_with_low_thresholds();
-        let files = vec![(PathBuf::from("test.rs"), "abcdefghijklmnopqrstuvwxyz\nabcdefghijklmnopqrstuvwxyz\n".to_string())];
+        let files = vec![(
+            PathBuf::from("test.rs"),
+            "abcdefghijklmnopqrstuvwxyz\nabcdefghijklmnopqrstuvwxyz\n".to_string(),
+        )];
         let report = detector.analyze_entropy(&files);
         assert!(report.average_entropy >= 0.0);
     }
@@ -411,8 +448,14 @@ mod similarity_detector_tests {
     fn test_analyze_entropy_multiple_files() {
         let detector = create_detector_with_low_thresholds();
         let files = vec![
-            (PathBuf::from("file1.rs"), "abc def ghi\nabc def ghi\n".to_string()),
-            (PathBuf::from("file2.rs"), "xyz xyz xyz\nxyz xyz xyz\n".to_string()),
+            (
+                PathBuf::from("file1.rs"),
+                "abc def ghi\nabc def ghi\n".to_string(),
+            ),
+            (
+                PathBuf::from("file2.rs"),
+                "xyz xyz xyz\nxyz xyz xyz\n".to_string(),
+            ),
         ];
         let _ = detector.analyze_entropy(&files);
     }
@@ -477,7 +520,10 @@ mod similarity_detector_tests {
     #[test]
     fn test_find_refactoring_opportunities_single_file() {
         let detector = create_detector_with_low_thresholds();
-        let files = vec![(PathBuf::from("test.rs"), "fn foo() {}\nfn bar() {}\n".to_string())];
+        let files = vec![(
+            PathBuf::from("test.rs"),
+            "fn foo() {}\nfn bar() {}\n".to_string(),
+        )];
         let _ = detector.find_refactoring_opportunities(&files);
     }
 
@@ -494,7 +540,10 @@ mod similarity_detector_tests {
             ..SimilarityConfig::default()
         };
         let detector = SimilarityDetector::new(config);
-        let files = vec![(PathBuf::from("test.rs"), "fn test() {\n    let x = 1;\n    let y = 2;\n}\n".to_string())];
+        let files = vec![(
+            PathBuf::from("test.rs"),
+            "fn test() {\n    let x = 1;\n    let y = 2;\n}\n".to_string(),
+        )];
         let report = detector.comprehensive_analysis(&files);
         assert!(report.entropy_analysis.is_some());
     }
@@ -517,8 +566,14 @@ mod similarity_detector_tests {
     fn test_comprehensive_analysis_metrics() {
         let detector = create_detector_with_low_thresholds();
         let files = vec![
-            (PathBuf::from("file1.rs"), "fn test() let x\nfn test() let x\n".to_string()),
-            (PathBuf::from("file2.rs"), "fn test() let y\nfn test() let y\n".to_string()),
+            (
+                PathBuf::from("file1.rs"),
+                "fn test() let x\nfn test() let x\n".to_string(),
+            ),
+            (
+                PathBuf::from("file2.rs"),
+                "fn test() let y\nfn test() let y\n".to_string(),
+            ),
         ];
         let report = detector.comprehensive_analysis(&files);
         assert!(report.metrics.duplication_percentage >= 0.0);
@@ -564,7 +619,8 @@ mod winnowing_tests {
     #[test]
     fn test_fingerprint_long_text() {
         let winnow = Winnowing::new(5, 3);
-        let fp = winnow.fingerprint("the quick brown fox jumps over the lazy dog and more text here");
+        let fp =
+            winnow.fingerprint("the quick brown fox jumps over the lazy dog and more text here");
         assert!(!fp.is_empty());
     }
 
@@ -769,7 +825,12 @@ mod similar_block_tests {
 
     #[test]
     fn test_similar_block_all_clone_types() {
-        for ct in [CloneType::Type1, CloneType::Type2, CloneType::Type3, CloneType::Type4] {
+        for ct in [
+            CloneType::Type1,
+            CloneType::Type2,
+            CloneType::Type3,
+            CloneType::Type4,
+        ] {
             let block = SimilarBlock {
                 id: "test".to_string(),
                 locations: vec![],
@@ -1096,7 +1157,10 @@ mod metrics_tests {
         };
         let json = serde_json::to_string(&metrics).unwrap();
         let deserialized: Metrics = serde_json::from_str(&json).unwrap();
-        assert!((metrics.duplication_percentage - deserialized.duplication_percentage).abs() < f64::EPSILON);
+        assert!(
+            (metrics.duplication_percentage - deserialized.duplication_percentage).abs()
+                < f64::EPSILON
+        );
         assert_eq!(metrics.total_clones, deserialized.total_clones);
     }
 }
@@ -1177,7 +1241,10 @@ mod comprehensive_report_tests {
         };
         let json = serde_json::to_string(&report).unwrap();
         let deserialized: ComprehensiveReport = serde_json::from_str(&json).unwrap();
-        assert_eq!(report.metrics.total_clones, deserialized.metrics.total_clones);
+        assert_eq!(
+            report.metrics.total_clones,
+            deserialized.metrics.total_clones
+        );
     }
 }
 
@@ -1220,9 +1287,18 @@ mod hash_collision_tests {
 
         // Create files with similar but different content
         let files = vec![
-            (PathBuf::from("a.rs"), "let abc = 1;\nlet xyz = 2;\n".to_string()),
-            (PathBuf::from("b.rs"), "let abc = 1;\nlet xyz = 2;\n".to_string()),  // Same content
-            (PathBuf::from("c.rs"), "let abc = 1;\nlet uvw = 2;\n".to_string()),  // Different
+            (
+                PathBuf::from("a.rs"),
+                "let abc = 1;\nlet xyz = 2;\n".to_string(),
+            ),
+            (
+                PathBuf::from("b.rs"),
+                "let abc = 1;\nlet xyz = 2;\n".to_string(),
+            ), // Same content
+            (
+                PathBuf::from("c.rs"),
+                "let abc = 1;\nlet uvw = 2;\n".to_string(),
+            ), // Different
         ];
 
         let duplicates = detector.detect_exact_duplicates(&files);
@@ -1396,7 +1472,8 @@ fn compute_mean(values: &[i32]) -> f64 {
         });
 
         let python_code = "def hello():\n    print('Hello')\n    return True\n";
-        let javascript_code = "function hello() {\n    console.log('Hello');\n    return true;\n}\n";
+        let javascript_code =
+            "function hello() {\n    console.log('Hello');\n    return true;\n}\n";
         let rust_code = "fn hello() {\n    println!(\"Hello\");\n    true\n}\n";
 
         let files = vec![
@@ -1453,8 +1530,14 @@ mod boundary_tests {
         });
 
         let files = vec![
-            (PathBuf::from("a.rs"), "abc def ghi\nabc def ghi\n".to_string()),
-            (PathBuf::from("b.rs"), "xyz uvw rst\nxyz uvw rst\n".to_string()),
+            (
+                PathBuf::from("a.rs"),
+                "abc def ghi\nabc def ghi\n".to_string(),
+            ),
+            (
+                PathBuf::from("b.rs"),
+                "xyz uvw rst\nxyz uvw rst\n".to_string(),
+            ),
         ];
 
         // Threshold 0.0 should accept everything
@@ -1473,7 +1556,10 @@ mod boundary_tests {
             ..SimilarityConfig::default()
         });
 
-        let files = vec![(PathBuf::from("single.rs"), "single line content".to_string())];
+        let files = vec![(
+            PathBuf::from("single.rs"),
+            "single line content".to_string(),
+        )];
         let _ = detector.detect_exact_duplicates(&files);
     }
 

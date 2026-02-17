@@ -154,8 +154,7 @@ impl SimpleContractService {
         use crate::entropy::{EntropyAnalyzer, EntropyConfig};
 
         // Convert contract parameters to entropy config, loading .pmatignore
-        let mut config = EntropyConfig::default()
-            .with_project_ignores(&contract.base.path);
+        let mut config = EntropyConfig::default().with_project_ignores(&contract.base.path);
 
         if let Some(severity_str) = &contract.min_severity {
             config.min_severity = match severity_str.as_str() {

@@ -481,7 +481,11 @@ mod tests {
     fn test_with_tauranta_patterns_creates_non_empty_taxonomy() {
         let taxonomy = DefectTaxonomy::with_tauranta_patterns();
         assert!(!taxonomy.is_empty());
-        assert!(taxonomy.len() > 10, "Expected >10 patterns, got {}", taxonomy.len());
+        assert!(
+            taxonomy.len() > 10,
+            "Expected >10 patterns, got {}",
+            taxonomy.len()
+        );
     }
 
     #[test]
@@ -554,8 +558,16 @@ mod tests {
         let taxonomy = DefectTaxonomy::with_tauranta_patterns();
         for defect in taxonomy.all() {
             assert!(!defect.ticket_id.is_empty(), "Defect has empty ticket_id");
-            assert!(!defect.description.is_empty(), "Defect {} has empty description", defect.ticket_id);
-            assert!(!defect.detection_method.is_empty(), "Defect {} has empty detection_method", defect.ticket_id);
+            assert!(
+                !defect.description.is_empty(),
+                "Defect {} has empty description",
+                defect.ticket_id
+            );
+            assert!(
+                !defect.detection_method.is_empty(),
+                "Defect {} has empty detection_method",
+                defect.ticket_id
+            );
         }
     }
 
@@ -576,7 +588,10 @@ mod tests {
     #[test]
     fn test_defect_severity_display() {
         assert_eq!(format!("{}", DefectSeverity::P0Critical), "P0-Critical");
-        assert_eq!(format!("{}", DefectSeverity::P1Performance), "P1-Performance");
+        assert_eq!(
+            format!("{}", DefectSeverity::P1Performance),
+            "P1-Performance"
+        );
         assert_eq!(format!("{}", DefectSeverity::P2Efficiency), "P2-Efficiency");
         assert_eq!(format!("{}", DefectSeverity::P3Minor), "P3-Minor");
     }
@@ -595,7 +610,8 @@ mod tests {
     fn test_with_tauranta_patterns_cb_prefixed_defects() {
         let taxonomy = DefectTaxonomy::with_tauranta_patterns();
         // Check for CB-xxx defects (codebase quality patterns)
-        let cb_defects: Vec<_> = taxonomy.all()
+        let cb_defects: Vec<_> = taxonomy
+            .all()
             .filter(|d| d.ticket_id.starts_with("CB-"))
             .collect();
         assert!(!cb_defects.is_empty(), "Should have CB-prefixed defects");

@@ -486,8 +486,7 @@ impl AgentContextIndex {
         self.graph_metrics.extend(other.graph_metrics);
 
         // Merge name_frequency (recompute — cheap, just HashMap iteration)
-        self.name_frequency =
-            compute_name_frequency(&self.name_index, self.functions.len());
+        self.name_frequency = compute_name_frequency(&self.name_index, self.functions.len());
 
         // Update manifest
         self.manifest.function_count = self.functions.len();
@@ -583,7 +582,9 @@ impl AgentContextIndex {
     /// Skips corpus (FTS5 handles search), call graph (queried on-demand),
     /// and source code (loaded on-demand for display or regex/literal search).
     fn load_from_sqlite(db_path: &Path) -> Result<Self, String> {
-        use super::sqlite_backend::{load_functions_lightweight, load_graph_metrics, load_metadata, open_db};
+        use super::sqlite_backend::{
+            load_functions_lightweight, load_graph_metrics, load_metadata, open_db,
+        };
 
         let conn = open_db(db_path)?;
         let manifest = load_metadata(&conn)?;
@@ -645,36 +646,45 @@ impl AgentContextIndex {
         // Check if we have cached indices (v1.3.0+) - avoids expensive PageRank recomputation
         let has_cached_indices = !payload.name_index.is_empty();
 
-        let (name_index, file_index, graph_metrics, corpus_lower, name_frequency) = if has_cached_indices {
-            let corpus_lower = if payload.corpus_lower.is_empty() {
-                corpus.iter().map(|d| d.to_lowercase()).collect()
+        let (name_index, file_index, graph_metrics, corpus_lower, name_frequency) =
+            if has_cached_indices {
+                let corpus_lower = if payload.corpus_lower.is_empty() {
+                    corpus.iter().map(|d| d.to_lowercase()).collect()
+                } else {
+                    payload.corpus_lower
+                };
+                (
+                    payload.name_index,
+                    payload.file_index,
+                    payload.graph_metrics,
+                    corpus_lower,
+                    payload.name_frequency,
+                )
             } else {
-                payload.corpus_lower
+                // Slow path: rebuild indices for legacy formats (v1.0-v1.2)
+                let is_legacy =
+                    manifest.version.starts_with("1.0") || manifest.version.starts_with("1.1");
+                let indices = build_indices(&functions);
+
+                let (calls_rebuilt, called_by_rebuilt) = if is_legacy && calls.is_empty() {
+                    build_call_graph(&functions, &indices.name_index)
+                } else {
+                    (calls.clone(), called_by.clone())
+                };
+
+                let graph_metrics =
+                    compute_graph_metrics(functions.len(), &calls_rebuilt, &called_by_rebuilt);
+                let name_frequency = compute_name_frequency(&indices.name_index, functions.len());
+                let corpus_lower: Vec<String> = corpus.iter().map(|d| d.to_lowercase()).collect();
+
+                (
+                    indices.name_index,
+                    indices.file_index,
+                    graph_metrics,
+                    corpus_lower,
+                    name_frequency,
+                )
             };
-            (
-                payload.name_index,
-                payload.file_index,
-                payload.graph_metrics,
-                corpus_lower,
-                payload.name_frequency,
-            )
-        } else {
-            // Slow path: rebuild indices for legacy formats (v1.0-v1.2)
-            let is_legacy = manifest.version.starts_with("1.0") || manifest.version.starts_with("1.1");
-            let indices = build_indices(&functions);
-
-            let (calls_rebuilt, called_by_rebuilt) = if is_legacy && calls.is_empty() {
-                build_call_graph(&functions, &indices.name_index)
-            } else {
-                (calls.clone(), called_by.clone())
-            };
-
-            let graph_metrics = compute_graph_metrics(functions.len(), &calls_rebuilt, &called_by_rebuilt);
-            let name_frequency = compute_name_frequency(&indices.name_index, functions.len());
-            let corpus_lower: Vec<String> = corpus.iter().map(|d| d.to_lowercase()).collect();
-
-            (indices.name_index, indices.file_index, graph_metrics, corpus_lower, name_frequency)
-        };
 
         let project_root = PathBuf::from(&manifest.project_root);
 
@@ -753,7 +763,8 @@ impl AgentContextIndex {
                 .to_string();
 
             // Mtime fast path: skip read+SHA256 if file hasn't been modified since index was built
-            if let Some(reuse) = check_mtime_reuse(path, &relative_path, &index_built_at, existing) {
+            if let Some(reuse) = check_mtime_reuse(path, &relative_path, &index_built_at, existing)
+            {
                 functions.extend(reuse.functions);
                 file_checksums.insert(relative_path.clone(), reuse.checksum);
                 if reuse.coverage_off {
@@ -1033,7 +1044,10 @@ impl AgentContextIndex {
         let mut files_to_read: HashMap<String, Vec<usize>> = HashMap::new();
         for (idx, func) in self.functions.iter().enumerate() {
             if func.source.is_empty() && func.end_line > 0 {
-                files_to_read.entry(func.file_path.clone()).or_default().push(idx);
+                files_to_read
+                    .entry(func.file_path.clone())
+                    .or_default()
+                    .push(idx);
             }
         }
         for (file_path, indices) in &files_to_read {
@@ -1105,7 +1119,11 @@ impl AgentContextIndex {
 fn load_source_from_sqlite(db_path: &Path, file_path: &str, start_line: usize) -> Option<String> {
     let conn = super::sqlite_backend::open_db(db_path).ok()?;
     let src = super::sqlite_backend::load_source_by_location(&conn, file_path, start_line).ok()?;
-    if src.is_empty() { None } else { Some(src) }
+    if src.is_empty() {
+        None
+    } else {
+        Some(src)
+    }
 }
 
 /// Load function source from filesystem using line range.
@@ -1117,7 +1135,11 @@ fn load_source_from_file(file_path: &str, start_line: usize, end_line: usize) ->
     let lines: Vec<&str> = content.lines().collect();
     let start = start_line.saturating_sub(1);
     let end = end_line.min(lines.len());
-    if start < end { Some(lines[start..end].join("\n")) } else { None }
+    if start < end {
+        Some(lines[start..end].join("\n"))
+    } else {
+        None
+    }
 }
 
 /// Result of a successful mtime-based file reuse check.
@@ -1147,10 +1169,19 @@ fn check_mtime_reuse(
     let funcs = existing
         .file_index
         .get(relative_path)
-        .map(|indices| indices.iter().map(|&idx| existing.functions[idx].clone()).collect())
+        .map(|indices| {
+            indices
+                .iter()
+                .map(|&idx| existing.functions[idx].clone())
+                .collect()
+        })
         .unwrap_or_default();
     let coverage_off = existing.coverage_off_files.contains(relative_path);
-    Some(MtimeReuseResult { functions: funcs, checksum, coverage_off })
+    Some(MtimeReuseResult {
+        functions: funcs,
+        checksum,
+        coverage_off,
+    })
 }
 
 /// Parse an RFC 3339 timestamp string into a SystemTime.

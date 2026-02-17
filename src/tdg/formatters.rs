@@ -1111,14 +1111,12 @@ mod coverage_instrumented_tests {
         let score = TdgScore {
             total: 55.0,
             grade: Grade::CMinus,
-            penalties_applied: vec![
-                PenaltyAttribution {
-                    source_metric: MetricCategory::Coupling,
-                    amount: 8.0,
-                    applied_to: HashSet::new(),
-                    issue: "Excessive coupling between modules detected in analysis".to_string(),
-                },
-            ],
+            penalties_applied: vec![PenaltyAttribution {
+                source_metric: MetricCategory::Coupling,
+                amount: 8.0,
+                applied_to: HashSet::new(),
+                issue: "Excessive coupling between modules detected in analysis".to_string(),
+            }],
             ..TdgScore::default()
         };
         let output = format_human(&score);
@@ -1406,7 +1404,10 @@ mod coverage_instrumented_tests {
     fn test_ci_progress_bar_partial() {
         let bar = progress_bar(7.5, 10.0, 10);
         // 75% filled = 7 blocks, 3 empty
-        assert_eq!(bar, "\u{2588}\u{2588}\u{2588}\u{2588}\u{2588}\u{2588}\u{2588}\u{2591}\u{2591}\u{2591}");
+        assert_eq!(
+            bar,
+            "\u{2588}\u{2588}\u{2588}\u{2588}\u{2588}\u{2588}\u{2588}\u{2591}\u{2591}\u{2591}"
+        );
     }
 
     #[test]

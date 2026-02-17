@@ -2,11 +2,11 @@
 //! Coverage boost tests for services/perfection_score module
 //! Tests for PerfectionScoreCalculator, CategoryScore, and related types
 
+use crate::services::normalized_score::NormalizedScore;
 use crate::services::perfection_score::{
     CategoryScore, CategoryWeights, PerfectionScoreCalculator, PerfectionScoreResult,
     MAX_PERFECTION_SCORE,
 };
-use crate::services::normalized_score::NormalizedScore;
 
 // ============ Constants Tests ============
 
@@ -318,7 +318,10 @@ fn test_perfection_score_result_overall_grade_f() {
 fn test_perfection_score_result_recommendations_critical() {
     let categories = vec![CategoryScore::new("Test", 50.0, 100)];
     let result = PerfectionScoreResult::new(categories);
-    assert!(result.recommendations.iter().any(|r| r.contains("critical")));
+    assert!(result
+        .recommendations
+        .iter()
+        .any(|r| r.contains("critical")));
 }
 
 #[test]
@@ -335,10 +338,7 @@ fn test_perfection_score_result_recommendations_needs_attention() {
 fn test_perfection_score_result_recommendations_healthy() {
     let categories = vec![CategoryScore::new("Test", 95.0, 100)];
     let result = PerfectionScoreResult::new(categories);
-    assert!(result
-        .recommendations
-        .iter()
-        .any(|r| r.contains("healthy")));
+    assert!(result.recommendations.iter().any(|r| r.contains("healthy")));
 }
 
 #[test]

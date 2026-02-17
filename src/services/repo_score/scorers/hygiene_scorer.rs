@@ -1593,7 +1593,10 @@ mod coverage_tests {
     #[test]
     fn test_matches_pattern_pycache() {
         assert!(matches_pattern("path/__pycache__/", "__pycache__/"));
-        assert!(matches_pattern("src/__pycache__/module.pyc", "__pycache__/"));
+        assert!(matches_pattern(
+            "src/__pycache__/module.pyc",
+            "__pycache__/"
+        ));
     }
 
     #[test]

@@ -69,7 +69,8 @@ const EXAMPLE_QUERIES: &[(&str, &str)] = &[
 /// Handle --schema flag: print table schemas
 pub fn handle_schema(db_path: &Path) -> Result<()> {
     let conn = open_readonly(db_path)?;
-    let mut stmt = conn.prepare("SELECT sql FROM sqlite_master WHERE type='table' ORDER BY name")?;
+    let mut stmt =
+        conn.prepare("SELECT sql FROM sqlite_master WHERE type='table' ORDER BY name")?;
     let schemas: Vec<String> = stmt
         .query_map([], |row| row.get::<_, String>(0))?
         .filter_map(|r| r.ok())
@@ -109,11 +110,7 @@ pub fn handle_examples() {
 }
 
 /// Handle SQL query execution
-pub fn handle_sql(
-    query: &str,
-    format: SqlOutputFormat,
-    db_path: &Path,
-) -> Result<()> {
+pub fn handle_sql(query: &str, format: SqlOutputFormat, db_path: &Path) -> Result<()> {
     // Check if query is a named example
     let resolved_query = resolve_query(query);
 
@@ -337,10 +334,22 @@ mod tests {
 
     #[test]
     fn test_sql_output_format_from_str() {
-        assert!(matches!(SqlOutputFormat::from_str_opt("json"), SqlOutputFormat::Json));
-        assert!(matches!(SqlOutputFormat::from_str_opt("csv"), SqlOutputFormat::Csv));
-        assert!(matches!(SqlOutputFormat::from_str_opt("table"), SqlOutputFormat::Table));
-        assert!(matches!(SqlOutputFormat::from_str_opt("unknown"), SqlOutputFormat::Table));
+        assert!(matches!(
+            SqlOutputFormat::from_str_opt("json"),
+            SqlOutputFormat::Json
+        ));
+        assert!(matches!(
+            SqlOutputFormat::from_str_opt("csv"),
+            SqlOutputFormat::Csv
+        ));
+        assert!(matches!(
+            SqlOutputFormat::from_str_opt("table"),
+            SqlOutputFormat::Table
+        ));
+        assert!(matches!(
+            SqlOutputFormat::from_str_opt("unknown"),
+            SqlOutputFormat::Table
+        ));
     }
 
     #[test]
@@ -366,8 +375,9 @@ mod tests {
                 commit_count INTEGER, churn_score REAL,
                 clone_count INTEGER, pattern_diversity REAL,
                 fault_annotations TEXT
-            )"
-        ).unwrap();
+            )",
+        )
+        .unwrap();
 
         for (name, sql) in EXAMPLE_QUERIES {
             conn.prepare(sql)
@@ -387,15 +397,21 @@ mod tests {
             INSERT INTO functions VALUES (1, 'src/main.rs', 'main', 'A', 5, 20, 0);
             INSERT INTO functions VALUES (2, 'src/lib.rs', 'parse', 'B', 15, 80, 1);
             INSERT INTO functions VALUES (3, 'src/lib.rs', 'analyze', 'C', 25, 120, 3);",
-        ).unwrap();
+        )
+        .unwrap();
 
         // Save to temp file
         let dir = tempfile::tempdir().unwrap();
         let db_path = dir.path().join("test.db");
-        conn.execute(&format!("VACUUM INTO '{}'", db_path.display()), []).unwrap();
+        conn.execute(&format!("VACUUM INTO '{}'", db_path.display()), [])
+            .unwrap();
 
         // Test table format
-        let result = handle_sql("SELECT tdg_grade, count(*) as cnt FROM functions GROUP BY tdg_grade ORDER BY cnt DESC", SqlOutputFormat::Table, &db_path);
+        let result = handle_sql(
+            "SELECT tdg_grade, count(*) as cnt FROM functions GROUP BY tdg_grade ORDER BY cnt DESC",
+            SqlOutputFormat::Table,
+            &db_path,
+        );
         assert!(result.is_ok());
 
         // Test named query
@@ -403,11 +419,19 @@ mod tests {
         assert!(result.is_ok());
 
         // Test JSON format
-        let result = handle_sql("SELECT * FROM functions WHERE tdg_grade = 'A'", SqlOutputFormat::Json, &db_path);
+        let result = handle_sql(
+            "SELECT * FROM functions WHERE tdg_grade = 'A'",
+            SqlOutputFormat::Json,
+            &db_path,
+        );
         assert!(result.is_ok());
 
         // Test CSV format
-        let result = handle_sql("SELECT function_name, complexity FROM functions", SqlOutputFormat::Csv, &db_path);
+        let result = handle_sql(
+            "SELECT function_name, complexity FROM functions",
+            SqlOutputFormat::Csv,
+            &db_path,
+        );
         assert!(result.is_ok());
     }
 }

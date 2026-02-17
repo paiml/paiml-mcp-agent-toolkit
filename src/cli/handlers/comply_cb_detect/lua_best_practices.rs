@@ -11,20 +11,61 @@ use std::path::{Path, PathBuf};
 
 /// Known Lua standard library globals that should not be flagged by CB-600.
 const LUA_STD_GLOBALS: &[&str] = &[
-    "assert", "collectgarbage", "dofile", "error", "getmetatable", "ipairs",
-    "load", "loadfile", "next", "pairs", "pcall", "print", "rawequal",
-    "rawget", "rawlen", "rawset", "require", "select", "setmetatable",
-    "tonumber", "tostring", "type", "unpack", "xpcall",
+    "assert",
+    "collectgarbage",
+    "dofile",
+    "error",
+    "getmetatable",
+    "ipairs",
+    "load",
+    "loadfile",
+    "next",
+    "pairs",
+    "pcall",
+    "print",
+    "rawequal",
+    "rawget",
+    "rawlen",
+    "rawset",
+    "require",
+    "select",
+    "setmetatable",
+    "tonumber",
+    "tostring",
+    "type",
+    "unpack",
+    "xpcall",
     // Standard library tables
-    "coroutine", "debug", "io", "math", "os", "package", "string", "table",
-    "utf8", "bit32", "arg",
+    "coroutine",
+    "debug",
+    "io",
+    "math",
+    "os",
+    "package",
+    "string",
+    "table",
+    "utf8",
+    "bit32",
+    "arg",
     // Common environment globals
-    "self", "true", "false", "nil", "_G", "_ENV", "_VERSION",
+    "self",
+    "true",
+    "false",
+    "nil",
+    "_G",
+    "_ENV",
+    "_VERSION",
 ];
 
 /// Directories to skip when walking for Lua files.
 const SKIP_DIRS: &[&str] = &[
-    ".git", "node_modules", "target", ".pmat", "vendor", "build", "dist",
+    ".git",
+    "node_modules",
+    "target",
+    ".pmat",
+    "vendor",
+    "build",
+    "dist",
 ];
 
 // =============================================================================
@@ -50,10 +91,7 @@ fn walk_lua_recursive(dir: &Path, files: &mut Vec<PathBuf>) {
         };
         let path = entry.path();
         if path.is_dir() {
-            let dir_name = path
-                .file_name()
-                .and_then(|n| n.to_str())
-                .unwrap_or("");
+            let dir_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
             if !SKIP_DIRS.contains(&dir_name) {
                 walk_lua_recursive(&path, files);
             }
@@ -172,14 +210,20 @@ pub(crate) fn count_consecutive_field_access(line: &str) -> usize {
     let mut i = 0;
     while i < bytes.len() {
         match bytes[i] {
-            b'"' | b'\'' => { i = skip_lua_string(bytes, i); }
-            b'[' => { i = skip_bracket_expr(bytes, i); }
+            b'"' | b'\'' => {
+                i = skip_lua_string(bytes, i);
+            }
+            b'[' => {
+                i = skip_bracket_expr(bytes, i);
+            }
             b if is_ident_start(b) => {
                 let (depth, new_i) = measure_access_chain(bytes, i);
                 i = new_i;
                 max_depth = max_depth.max(depth);
             }
-            _ => { i += 1; }
+            _ => {
+                i += 1;
+            }
         }
     }
     max_depth
@@ -245,19 +289,38 @@ fn skip_bracket_expr(bytes: &[u8], start: usize) -> usize {
 
 /// Lua keywords and control flow prefixes that cannot be implicit globals.
 const LUA_KEYWORD_PREFIXES: &[&str] = &[
-    "local ", "function ", "if ", "for ", "while ", "repeat", "return",
-    "end", "else", "elseif ", "until ", "break", "goto ", "::",
+    "local ",
+    "function ",
+    "if ",
+    "for ",
+    "while ",
+    "repeat",
+    "return",
+    "end",
+    "else",
+    "elseif ",
+    "until ",
+    "break",
+    "goto ",
+    "::",
 ];
 
 /// Check if line starts with a Lua keyword/control flow statement.
 fn starts_with_lua_keyword(trimmed: &str) -> bool {
-    LUA_KEYWORD_PREFIXES.iter().any(|kw| trimmed.starts_with(kw))
+    LUA_KEYWORD_PREFIXES
+        .iter()
+        .any(|kw| trimmed.starts_with(kw))
 }
 
 /// Check if `=` at position is a comparison operator (==, ~=, <=, >=), not assignment.
 fn is_comparison_eq(trimmed: &str, eq_pos: usize) -> bool {
     let bytes = trimmed.as_bytes();
-    if eq_pos > 0 && matches!(bytes.get(eq_pos - 1), Some(b'~') | Some(b'<') | Some(b'>') | Some(b'=')) {
+    if eq_pos > 0
+        && matches!(
+            bytes.get(eq_pos - 1),
+            Some(b'~') | Some(b'<') | Some(b'>') | Some(b'=')
+        )
+    {
         return true;
     }
     bytes.get(eq_pos + 1) == Some(&b'=')
@@ -431,23 +494,22 @@ pub fn detect_cb600_implicit_globals(project_path: &Path) -> Vec<CbPatternViolat
             // Apply opens before checking (a line like `{ key = val }` starts inside)
             brace_depth += opens;
 
-            if brace_depth <= 0
-                && !starts_with_lua_keyword(trimmed) {
-                    if let Some(lhs) = extract_implicit_global(trimmed) {
-                        // Skip identifiers known to be local (params, loop vars, local decls)
-                        if !known_locals.contains(lhs) {
-                            violations.push(CbPatternViolation {
-                                pattern_id: "CB-600".to_string(),
-                                file: rel.clone(),
-                                line: *line_num,
-                                description: format!(
-                                    "Implicit global `{lhs}` — missing `local` keyword"
-                                ),
-                                severity: Severity::Warning,
-                            });
-                        }
+            if brace_depth <= 0 && !starts_with_lua_keyword(trimmed) {
+                if let Some(lhs) = extract_implicit_global(trimmed) {
+                    // Skip identifiers known to be local (params, loop vars, local decls)
+                    if !known_locals.contains(lhs) {
+                        violations.push(CbPatternViolation {
+                            pattern_id: "CB-600".to_string(),
+                            file: rel.clone(),
+                            line: *line_num,
+                            description: format!(
+                                "Implicit global `{lhs}` — missing `local` keyword"
+                            ),
+                            severity: Severity::Warning,
+                        });
                     }
                 }
+            }
 
             brace_depth -= closes;
             brace_depth = brace_depth.max(0);
@@ -488,8 +550,7 @@ pub fn detect_cb601_nil_unsafe_access(project_path: &Path) -> Vec<CbPatternViola
                     pattern_id: "CB-601".to_string(),
                     file: rel.clone(),
                     line: *line_num,
-                    description: "Nil-unsafe: chained access on function return value"
-                        .to_string(),
+                    description: "Nil-unsafe: chained access on function return value".to_string(),
                     severity: Severity::Warning,
                 });
                 continue;
@@ -501,8 +562,7 @@ pub fn detect_cb601_nil_unsafe_access(project_path: &Path) -> Vec<CbPatternViola
                     pattern_id: "CB-601".to_string(),
                     file: rel.clone(),
                     line: *line_num,
-                    description: "Nil-unsafe: deep field access chain (3+ levels)"
-                        .to_string(),
+                    description: "Nil-unsafe: deep field access chain (3+ levels)".to_string(),
                     severity: Severity::Warning,
                 });
             }
@@ -559,8 +619,7 @@ pub fn detect_cb602_pcall_error_handling(project_path: &Path) -> Vec<CbPatternVi
                     pattern_id: "CB-602".to_string(),
                     file: rel.clone(),
                     line: *line_num,
-                    description: "pcall/xpcall status not checked within 5 lines"
-                        .to_string(),
+                    description: "pcall/xpcall status not checked within 5 lines".to_string(),
                     severity: Severity::Warning,
                 });
             }
@@ -580,7 +639,10 @@ pub(crate) fn extract_pcall_status_var(line: &str) -> Option<String> {
     let lhs = line[..eq_pos].trim();
 
     // Strip `local` prefix if present
-    let lhs = lhs.strip_prefix("local").map(|s| s.trim_start()).unwrap_or(lhs);
+    let lhs = lhs
+        .strip_prefix("local")
+        .map(|s| s.trim_start())
+        .unwrap_or(lhs);
 
     // Take the first variable (before any comma for multi-return)
     let first_var = lhs.split(',').next()?.trim();
@@ -593,25 +655,38 @@ pub(crate) fn extract_pcall_status_var(line: &str) -> Option<String> {
 }
 
 /// Check if pcall status variable is checked within 5 lines after index `idx`.
+/// Generic status-check patterns for common naming conventions.
+const STATUS_CHECK_PATTERNS: &[&str] = &[
+    "if ok",
+    "if not ok",
+    "if success",
+    "if not success",
+    "if status",
+    "if not status",
+    "assert(ok",
+    "assert(success",
+];
+
 fn has_status_check(prod_lines: &[(usize, String)], idx: usize, status_var: Option<&str>) -> bool {
     let lookahead_end = std::cmp::min(idx + 6, prod_lines.len());
-    prod_lines[idx + 1..lookahead_end].iter().any(|(_, l)| {
-        // Check for the specific captured variable name (e.g. "if wrap_ok then")
-        if let Some(var) = status_var {
-            if l.contains(&format!("if {var}"))
-                || l.contains(&format!("if not {var}"))
-                || l.contains(&format!("assert({var}"))
-            {
-                return true;
-            }
-        }
+    prod_lines[idx + 1..lookahead_end]
+        .iter()
+        .any(|(_, l)| line_matches_status_check(l, status_var))
+}
 
-        // Fallback: generic patterns for common naming conventions
-        l.contains("if ok") || l.contains("if not ok")
-            || l.contains("if success") || l.contains("if not success")
-            || l.contains("if status") || l.contains("if not status")
-            || l.contains("assert(ok") || l.contains("assert(success")
-    })
+/// Check if a single line matches a status-check pattern.
+fn line_matches_status_check(line: &str, status_var: Option<&str>) -> bool {
+    // Check for the specific captured variable name (e.g. "if wrap_ok then")
+    if let Some(var) = status_var {
+        if line.contains(&format!("if {var}"))
+            || line.contains(&format!("if not {var}"))
+            || line.contains(&format!("assert({var}"))
+        {
+            return true;
+        }
+    }
+    // Fallback: generic patterns
+    STATUS_CHECK_PATTERNS.iter().any(|pat| line.contains(pat))
 }
 
 /// Deprecated Lua APIs that have modern replacements.
@@ -678,7 +753,12 @@ fn is_suppressed(original_lines: &[&str], line_num: usize, pattern_id: &str) -> 
     false
 }
 
-fn check_deprecated_apis(trimmed: &str, rel: &str, line_num: usize, violations: &mut Vec<CbPatternViolation>) {
+fn check_deprecated_apis(
+    trimmed: &str,
+    rel: &str,
+    line_num: usize,
+    violations: &mut Vec<CbPatternViolation>,
+) {
     for api in LUA_DEPRECATED_APIS {
         if trimmed.contains(api) && !is_in_lua_string(trimmed, api) {
             violations.push(CbPatternViolation {
@@ -695,7 +775,12 @@ fn check_deprecated_apis(trimmed: &str, rel: &str, line_num: usize, violations: 
     }
 }
 
-fn check_dangerous_apis(trimmed: &str, rel: &str, line_num: usize, violations: &mut Vec<CbPatternViolation>) {
+fn check_dangerous_apis(
+    trimmed: &str,
+    rel: &str,
+    line_num: usize,
+    violations: &mut Vec<CbPatternViolation>,
+) {
     for api in LUA_DANGEROUS_APIS {
         if !trimmed.contains(api) || is_in_lua_string(trimmed, api) {
             continue;
@@ -728,7 +813,9 @@ fn check_dangerous_apis(trimmed: &str, rel: &str, line_num: usize, violations: &
 /// `os.execute("make clean")` → true (safe)
 /// `os.execute(cmd)` or `os.execute("rm " .. x)` → false (dangerous)
 fn has_hardcoded_string_arg(line: &str, api: &str) -> bool {
-    let Some(api_pos) = line.find(api) else { return false };
+    let Some(api_pos) = line.find(api) else {
+        return false;
+    };
     let after = &line[api_pos + api.len()..];
 
     // Check if argument starts with a string literal
@@ -775,7 +862,9 @@ pub fn detect_cb604_unused_variables(project_path: &Path) -> Vec<CbPatternViolat
                     pattern_id: "CB-604".to_string(),
                     file: rel.clone(),
                     line: *line_num,
-                    description: format!("Unused variable `{var_name}` — prefix with `_` if intentional"),
+                    description: format!(
+                        "Unused variable `{var_name}` — prefix with `_` if intentional"
+                    ),
                     severity: Severity::Info,
                 });
             }
@@ -812,11 +901,9 @@ fn contains_identifier(line: &str, name: &str) -> bool {
     let mut start = 0;
     while let Some(pos) = line[start..].find(name) {
         let abs_pos = start + pos;
-        let before_ok = abs_pos == 0
-            || !is_ident_cont(line.as_bytes()[abs_pos - 1]);
+        let before_ok = abs_pos == 0 || !is_ident_cont(line.as_bytes()[abs_pos - 1]);
         let after_pos = abs_pos + name.len();
-        let after_ok = after_pos >= line.len()
-            || !is_ident_cont(line.as_bytes()[after_pos]);
+        let after_ok = after_pos >= line.len() || !is_ident_cont(line.as_bytes()[after_pos]);
         if before_ok && after_ok {
             return true;
         }
@@ -855,7 +942,10 @@ pub fn detect_cb605_string_concat_in_loop(project_path: &Path) -> Vec<CbPatternV
                 loop_depth += 1;
             }
 
-            if loop_depth > 0 && contains_concat_operator(trimmed) && !is_in_lua_string(trimmed, "..") {
+            if loop_depth > 0
+                && contains_concat_operator(trimmed)
+                && !is_in_lua_string(trimmed, "..")
+            {
                 violations.push(CbPatternViolation {
                     pattern_id: "CB-605".to_string(),
                     file: rel.clone(),
@@ -916,13 +1006,10 @@ pub fn detect_cb606_missing_module_return(project_path: &Path) -> Vec<CbPatternV
         let module_var = extract_module_table_var(&prod_lines);
 
         if let Some(var) = module_var {
-            let has_return = prod_lines
-                .iter()
-                .rev()
-                .any(|(_, trimmed)| {
-                    *trimmed == format!("return {var}")
-                        || trimmed.starts_with(&format!("return {var} "))
-                });
+            let has_return = prod_lines.iter().rev().any(|(_, trimmed)| {
+                *trimmed == format!("return {var}")
+                    || trimmed.starts_with(&format!("return {var} "))
+            });
 
             if !has_return {
                 violations.push(CbPatternViolation {
@@ -950,7 +1037,11 @@ fn extract_module_table_var(prod_lines: &[(usize, String)]) -> Option<String> {
                 .chars()
                 .take_while(|c| c.is_alphanumeric() || *c == '_')
                 .collect();
-            if !var.is_empty() { Some(var) } else { None }
+            if !var.is_empty() {
+                Some(var)
+            } else {
+                None
+            }
         } else {
             None
         }
@@ -959,8 +1050,16 @@ fn extract_module_table_var(prod_lines: &[(usize, String)]) -> Option<String> {
 
 /// Standard library tables that commonly use dot notation (not colon).
 const LUA_STD_TABLES: &[&str] = &[
-    "math", "string", "table", "io", "os", "debug", "coroutine",
-    "package", "utf8", "bit32",
+    "math",
+    "string",
+    "table",
+    "io",
+    "os",
+    "debug",
+    "coroutine",
+    "package",
+    "utf8",
+    "bit32",
 ];
 
 /// CB-607: Colon/Dot Confusion — mixed `:` and `.` method calls on same table.
@@ -1080,10 +1179,18 @@ fn extract_method_call(line: &str, separator: char) -> Option<String> {
 
 /// Known Lua standard library functions that return `nil, err` on failure.
 const NIL_ERR_FUNCTIONS: &[&str] = &[
-    "io.open", "io.popen", "io.lines", "io.tmpfile",
-    "os.execute", "os.rename", "os.remove",
-    "load", "loadfile", "loadstring",
-    "pcall", "xpcall",
+    "io.open",
+    "io.popen",
+    "io.lines",
+    "io.tmpfile",
+    "os.execute",
+    "os.rename",
+    "os.remove",
+    "load",
+    "loadfile",
+    "loadstring",
+    "pcall",
+    "xpcall",
     "require",
 ];
 
@@ -1257,8 +1364,9 @@ pub fn detect_cb610_string_accumulator_in_loop(project_path: &Path) -> Vec<CbPat
                     pattern_id: "CB-610".to_string(),
                     file: rel.clone(),
                     line: *line_num,
-                    description: "String accumulator in loop — O(n²), use table.insert + table.concat"
-                        .to_string(),
+                    description:
+                        "String accumulator in loop — O(n²), use table.insert + table.concat"
+                            .to_string(),
                     severity: Severity::Warning,
                 });
             }
@@ -1366,9 +1474,13 @@ fn detect_weak_key_with_value_types(
     for (line_num, trimmed) in prod_lines {
         for var in &weak_key_vars {
             let bracket_pattern = format!("{var}[");
-            let Some(pos) = trimmed.find(&bracket_pattern) else { continue };
+            let Some(pos) = trimmed.find(&bracket_pattern) else {
+                continue;
+            };
             let after = &trimmed[pos + bracket_pattern.len()..];
-            let Some(key_type) = classify_bracket_key(after) else { continue };
+            let Some(key_type) = classify_bracket_key(after) else {
+                continue;
+            };
             violations.push(CbPatternViolation {
                 pattern_id: "CB-611".to_string(),
                 file: rel.to_string(),
@@ -1392,8 +1504,15 @@ fn extract_weak_table_var(line: &str) -> Option<String> {
     if lhs.is_empty() || lhs.contains('.') || lhs.contains('[') {
         return None;
     }
-    let var: String = lhs.chars().take_while(|c| c.is_alphanumeric() || *c == '_').collect();
-    if var.is_empty() { None } else { Some(var) }
+    let var: String = lhs
+        .chars()
+        .take_while(|c| c.is_alphanumeric() || *c == '_')
+        .collect();
+    if var.is_empty() {
+        None
+    } else {
+        Some(var)
+    }
 }
 
 // =============================================================================
@@ -1450,10 +1569,7 @@ pub fn detect_cb612_test_framework(project_path: &Path) -> Vec<CbPatternViolatio
             pattern_id: "CB-612".to_string(),
             file: "project".to_string(),
             line: 0,
-            description: format!(
-                "Lua test framework(s) detected: {}",
-                names.join(", ")
-            ),
+            description: format!("Lua test framework(s) detected: {}", names.join(", ")),
             severity: Severity::Info,
         });
     }
@@ -1481,9 +1597,15 @@ pub fn detect_lua_test_frameworks(project_path: &Path) -> Vec<LuaTestFramework> 
 
     let (found_luaunit, found_telescope, found_custom) = scan_test_file_requires(project_path);
 
-    if found_luaunit { frameworks.push(LuaTestFramework::LuaUnit); }
-    if found_telescope { frameworks.push(LuaTestFramework::Telescope); }
-    if found_custom && frameworks.is_empty() { frameworks.push(LuaTestFramework::Custom); }
+    if found_luaunit {
+        frameworks.push(LuaTestFramework::LuaUnit);
+    }
+    if found_telescope {
+        frameworks.push(LuaTestFramework::Telescope);
+    }
+    if found_custom && frameworks.is_empty() {
+        frameworks.push(LuaTestFramework::Custom);
+    }
 
     frameworks
 }
@@ -1503,9 +1625,15 @@ fn scan_test_file_requires(project_path: &Path) -> (bool, bool, bool) {
             Ok(c) => c,
             Err(_) => continue,
         };
-        if !luaunit && has_require_pattern(&content, "luaunit") { luaunit = true; }
-        if !telescope && has_require_pattern(&content, "telescope") { telescope = true; }
-        if !custom && !luaunit && !telescope
+        if !luaunit && has_require_pattern(&content, "luaunit") {
+            luaunit = true;
+        }
+        if !telescope && has_require_pattern(&content, "telescope") {
+            telescope = true;
+        }
+        if !custom
+            && !luaunit
+            && !telescope
             && (content.contains("function test_") || content.contains("function Test"))
         {
             custom = true;
@@ -1537,9 +1665,9 @@ fn has_test_nginx_indicators(project_path: &Path) -> bool {
     }
     // Look for .t files in t/ directory
     match fs::read_dir(&t_dir) {
-        Ok(entries) => entries.flatten().any(|e| {
-            e.path().extension().map(|ext| ext == "t").unwrap_or(false)
-        }),
+        Ok(entries) => entries
+            .flatten()
+            .any(|e| e.path().extension().map(|ext| ext == "t").unwrap_or(false)),
         Err(_) => false,
     }
 }
@@ -1571,7 +1699,10 @@ pub fn detect_cb613_require_cycles(project_path: &Path) -> Vec<CbPatternViolatio
             let chain = cycle.join(" -> ");
             CbPatternViolation {
                 pattern_id: "CB-613".to_string(),
-                file: cycle.first().map(|s| format!("{s}.lua")).unwrap_or_default(),
+                file: cycle
+                    .first()
+                    .map(|s| format!("{s}.lua"))
+                    .unwrap_or_default(),
                 line: 0,
                 description: format!("Circular require chain: {chain}"),
                 severity: Severity::Warning,
@@ -1586,7 +1717,8 @@ fn build_require_graph(
     project_path: &Path,
     files: &[PathBuf],
 ) -> std::collections::HashMap<String, Vec<String>> {
-    let mut graph: std::collections::HashMap<String, Vec<String>> = std::collections::HashMap::new();
+    let mut graph: std::collections::HashMap<String, Vec<String>> =
+        std::collections::HashMap::new();
 
     for file_path in files {
         if is_lua_test_file(file_path) {
@@ -1665,13 +1797,15 @@ fn extract_require_module(line: &str) -> Option<String> {
     };
     let end = rest.find(quote)?;
     let module = rest[..end].to_string();
-    if module.is_empty() { None } else { Some(module) }
+    if module.is_empty() {
+        None
+    } else {
+        Some(module)
+    }
 }
 
 /// Find cycles in the require graph using DFS.
-fn find_require_cycles(
-    graph: &std::collections::HashMap<String, Vec<String>>,
-) -> Vec<Vec<String>> {
+fn find_require_cycles(graph: &std::collections::HashMap<String, Vec<String>>) -> Vec<Vec<String>> {
     use std::collections::HashSet;
     let mut cycles = Vec::new();
     let mut visited = HashSet::new();
@@ -1744,7 +1878,11 @@ pub fn detect_cb614_global_protection(project_path: &Path) -> Vec<CbPatternViola
             .display()
             .to_string();
 
-        check_global_metatables(&content, &mut has_newindex_protection, &mut has_index_protection);
+        check_global_metatables(
+            &content,
+            &mut has_newindex_protection,
+            &mut has_index_protection,
+        );
         check_unsafe_load_calls(&content, &rel, &mut violations);
     }
 
@@ -1772,8 +1910,11 @@ fn check_global_metatables(content: &str, has_newindex: &mut bool, has_index: &m
         if trimmed.contains("__newindex") && (trimmed.contains("_G") || trimmed.contains("error")) {
             *has_newindex = true;
         }
-        if trimmed.contains("__index") && !trimmed.contains("__newindex")
-            && (trimmed.contains("_G") || trimmed.contains("error") || trimmed.contains("undefined"))
+        if trimmed.contains("__index")
+            && !trimmed.contains("__newindex")
+            && (trimmed.contains("_G")
+                || trimmed.contains("error")
+                || trimmed.contains("undefined"))
         {
             *has_index = true;
         }
@@ -1781,11 +1922,7 @@ fn check_global_metatables(content: &str, has_newindex: &mut bool, has_index: &m
 }
 
 /// Flag loadfile/load calls without "t" mode (allows bytecode injection).
-fn check_unsafe_load_calls(
-    content: &str,
-    rel: &str,
-    violations: &mut Vec<CbPatternViolation>,
-) {
+fn check_unsafe_load_calls(content: &str, rel: &str, violations: &mut Vec<CbPatternViolation>) {
     for (i, line) in content.lines().enumerate() {
         let trimmed = line.trim();
         if trimmed.starts_with("--") {
@@ -1808,7 +1945,9 @@ fn check_single_load_call(
     violations: &mut Vec<CbPatternViolation>,
 ) {
     let pattern = format!("{func}(");
-    let Some(pos) = trimmed.find(&pattern) else { return };
+    let Some(pos) = trimmed.find(&pattern) else {
+        return;
+    };
     let after = &trimmed[pos + pattern.len()..];
     // loadfile(path, mode, env) — mode is 2nd arg
     // If no "t" in the args, flag it
@@ -1832,7 +1971,9 @@ fn check_load_function_call(
     rel: &str,
     violations: &mut Vec<CbPatternViolation>,
 ) {
-    let Some(pos) = trimmed.find("load(") else { return };
+    let Some(pos) = trimmed.find("load(") else {
+        return;
+    };
     // Ensure it's not loadfile/loadstring
     if pos > 0 {
         let before = trimmed.as_bytes()[pos - 1];
@@ -1842,7 +1983,11 @@ fn check_load_function_call(
     }
     let after = &trimmed[pos + 5..];
     // Count commas to check if mode arg is present
-    let comma_count = after.chars().take_while(|c| *c != ')').filter(|c| *c == ',').count();
+    let comma_count = after
+        .chars()
+        .take_while(|c| *c != ')')
+        .filter(|c| *c == ',')
+        .count();
     if comma_count >= 2 && !after.contains("\"t\"") && !after.contains("'t'") {
         violations.push(CbPatternViolation {
             pattern_id: "CB-614".to_string(),
@@ -1924,11 +2069,7 @@ pub fn detect_cb615_coroutine_checks(project_path: &Path) -> Vec<CbPatternViolat
 }
 
 /// Check for coroutine defect patterns in file content.
-fn check_coroutine_patterns(
-    content: &str,
-    rel: &str,
-    violations: &mut Vec<CbPatternViolation>,
-) {
+fn check_coroutine_patterns(content: &str, rel: &str, violations: &mut Vec<CbPatternViolation>) {
     for (i, line) in content.lines().enumerate() {
         let trimmed = line.trim();
         if trimmed.starts_with("--") {
@@ -1951,10 +2092,11 @@ fn check_resume_without_pcall(
     }
     // Check if the resume is wrapped in pcall/xpcall on same line or previous line
     let safe = trimmed.contains("pcall") || trimmed.contains("xpcall");
-    let prev_safe = line_num >= 2 && content.lines().nth(line_num - 2).is_some_and(|prev| {
-        let p = prev.trim();
-        p.contains("pcall") || p.contains("xpcall")
-    });
+    let prev_safe = line_num >= 2
+        && content.lines().nth(line_num - 2).is_some_and(|prev| {
+            let p = prev.trim();
+            p.contains("pcall") || p.contains("xpcall")
+        });
     // Also safe if assigned to ok, err pattern: `local ok, err = coroutine.resume(...)`
     let has_err_capture = trimmed.contains("ok,") || trimmed.contains("ok ,");
 

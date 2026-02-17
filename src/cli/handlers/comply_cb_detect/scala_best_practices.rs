@@ -11,8 +11,18 @@ use std::path::{Path, PathBuf};
 
 /// Directories to skip when walking for Scala files.
 const SKIP_DIRS: &[&str] = &[
-    ".git", "node_modules", "target", ".pmat", "vendor", "build", "dist",
-    ".bsp", ".metals", ".bloop", ".idea", "project/target",
+    ".git",
+    "node_modules",
+    "target",
+    ".pmat",
+    "vendor",
+    "build",
+    "dist",
+    ".bsp",
+    ".metals",
+    ".bloop",
+    ".idea",
+    "project/target",
 ];
 
 // =============================================================================
@@ -34,10 +44,7 @@ fn walk_scala_recursive(dir: &Path, files: &mut Vec<PathBuf>) {
     for entry in entries.flatten() {
         let path = entry.path();
         if path.is_dir() {
-            let dir_name = path
-                .file_name()
-                .and_then(|n| n.to_str())
-                .unwrap_or("");
+            let dir_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
             if !SKIP_DIRS.contains(&dir_name) {
                 walk_scala_recursive(&path, files);
             }
@@ -358,8 +365,7 @@ fn contains_return_keyword(line: &str) -> bool {
     }
     for i in 0..=len - 6 {
         if &bytes[i..i + 6] == ret {
-            let before_ok =
-                i == 0 || !bytes[i - 1].is_ascii_alphanumeric() && bytes[i - 1] != b'_';
+            let before_ok = i == 0 || !bytes[i - 1].is_ascii_alphanumeric() && bytes[i - 1] != b'_';
             let after_ok =
                 i + 6 >= len || !bytes[i + 6].is_ascii_alphanumeric() && bytes[i + 6] != b'_';
             if before_ok && after_ok {
@@ -422,7 +428,12 @@ fn contains_var_keyword(line: &str) -> bool {
         return true;
     }
     // Also catch: `private var`, `protected var`, `override var`, etc.
-    let modifiers = ["private var ", "protected var ", "override var ", "lazy var "];
+    let modifiers = [
+        "private var ",
+        "protected var ",
+        "override var ",
+        "lazy var ",
+    ];
     modifiers.iter().any(|m| trimmed.contains(m))
 }
 
@@ -481,8 +492,7 @@ fn detect_blocking_in_future_content(
         }
 
         // Detect Future block start
-        if (trimmed.contains("Future {") || trimmed.contains("Future.apply {"))
-            && !in_future_block
+        if (trimmed.contains("Future {") || trimmed.contains("Future.apply {")) && !in_future_block
         {
             in_future_block = true;
             future_start_depth = brace_depth;

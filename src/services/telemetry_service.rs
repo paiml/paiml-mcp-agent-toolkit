@@ -603,13 +603,19 @@ mod tests {
         telemetry.record_operation(input).await.unwrap();
 
         // Verify data was recorded
-        assert!(telemetry.get_service_telemetry("test_service").await.is_some());
+        assert!(telemetry
+            .get_service_telemetry("test_service")
+            .await
+            .is_some());
 
         // Reset
         telemetry.reset();
 
         // Verify data was cleared
-        assert!(telemetry.get_service_telemetry("test_service").await.is_none());
+        assert!(telemetry
+            .get_service_telemetry("test_service")
+            .await
+            .is_none());
         assert_eq!(telemetry.event_counter.load(Ordering::Relaxed), 0);
     }
 
@@ -737,7 +743,10 @@ mod tests {
         };
         telemetry.record_operation(input).await.unwrap();
 
-        let service_data = telemetry.get_service_telemetry("test_service").await.unwrap();
+        let service_data = telemetry
+            .get_service_telemetry("test_service")
+            .await
+            .unwrap();
         assert_eq!(service_data.total_operations, 4);
         assert_eq!(service_data.operation_counts.get("analyze"), Some(&3));
         assert_eq!(service_data.operation_counts.get("refactor"), Some(&1));
@@ -801,7 +810,10 @@ mod tests {
         };
         telemetry.record_operation(input3).await.unwrap();
 
-        let service_data = telemetry.get_service_telemetry("memory_test").await.unwrap();
+        let service_data = telemetry
+            .get_service_telemetry("memory_test")
+            .await
+            .unwrap();
         assert_eq!(service_data.peak_memory_bytes, 5000);
     }
 
@@ -830,7 +842,10 @@ mod tests {
             telemetry.record_operation(input).await.unwrap();
         }
 
-        let service_data = telemetry.get_service_telemetry("duration_test").await.unwrap();
+        let service_data = telemetry
+            .get_service_telemetry("duration_test")
+            .await
+            .unwrap();
         assert_eq!(service_data.total_duration_ms, 600);
         assert_eq!(service_data.avg_duration_ms, 200); // 600 / 3
     }

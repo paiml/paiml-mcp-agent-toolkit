@@ -212,7 +212,10 @@ impl KotlinAstParser {
         let source_end = (source_start + 20)
             .min(node.end_byte())
             .min(ctx.content.len());
-        let source_prefix = ctx.content.get(source_start..source_end).unwrap_or_default();
+        let source_prefix = ctx
+            .content
+            .get(source_start..source_end)
+            .unwrap_or_default();
         let is_enum = source_prefix.starts_with("enum ");
 
         let name = if is_enum {
@@ -317,7 +320,10 @@ impl KotlinAstParser {
     /// Extract enum name from enum class declaration
     fn extract_enum_name(&self, ctx: &mut ParseContext, node: Node) -> Option<String> {
         // Extract the enum name from source like "enum class Status {"
-        let source_text = ctx.content.get(node.start_byte()..node.end_byte()).unwrap_or_default();
+        let source_text = ctx
+            .content
+            .get(node.start_byte()..node.end_byte())
+            .unwrap_or_default();
         if let Some(first_line) = source_text.lines().next() {
             let words: Vec<&str> = first_line.split_whitespace().collect();
             // Look for pattern: enum class Name
@@ -341,7 +347,10 @@ impl KotlinAstParser {
         let source_end = (source_start + 20)
             .min(node.end_byte())
             .min(ctx.content.len());
-        let source_prefix = ctx.content.get(source_start..source_end).unwrap_or_default();
+        let source_prefix = ctx
+            .content
+            .get(source_start..source_end)
+            .unwrap_or_default();
         let is_enum = source_prefix.starts_with("enum ");
 
         let mut found_identifiers = Vec::new();

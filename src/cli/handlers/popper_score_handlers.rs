@@ -67,7 +67,11 @@ pub async fn handle_popper_score(
 /// Build the array of category tuples used by both text and markdown formatters
 fn popper_category_entries(
     score: &PopperScore,
-) -> [(&str, &crate::services::popper_score::PopperCategoryScore, bool); 6] {
+) -> [(
+    &str,
+    &crate::services::popper_score::PopperCategoryScore,
+    bool,
+); 6] {
     [
         (
             "A. Falsifiability & Testability",
@@ -185,7 +189,10 @@ fn format_text_recommendations(output: &mut String, score: &PopperScore, failure
     output.push_str("💡  Recommendations\n");
     for rec in &score.recommendations {
         let icon = priority_icon_text(&rec.priority);
-        output.push_str(&format!("  {} [{}] {}\n", icon, rec.category, rec.description));
+        output.push_str(&format!(
+            "  {} [{}] {}\n",
+            icon, rec.category, rec.description
+        ));
         if let Some(cmd) = &rec.command {
             output.push_str(&format!("     $ {}\n", cmd));
         }
@@ -228,7 +235,14 @@ fn format_text(score: &PopperScore, verbose: bool, failures_only: bool) -> Strin
     // Categories
     output.push_str("📂  Categories\n");
     for (name, category, is_gateway) in popper_category_entries(score) {
-        format_text_category(&mut output, name, category, is_gateway, verbose, failures_only);
+        format_text_category(
+            &mut output,
+            name,
+            category,
+            is_gateway,
+            verbose,
+            failures_only,
+        );
     }
     output.push('\n');
 

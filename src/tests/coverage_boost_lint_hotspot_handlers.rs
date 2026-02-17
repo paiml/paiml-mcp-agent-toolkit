@@ -695,7 +695,10 @@ fn test_lint_hotspot_result_serde_full() {
     let json = serde_json::to_string(&result).unwrap();
     assert!(json.contains("total_project_violations"));
     let back: LintHotspotResult = serde_json::from_str(&json).unwrap();
-    assert_eq!(back.total_project_violations, result.total_project_violations);
+    assert_eq!(
+        back.total_project_violations,
+        result.total_project_violations
+    );
     assert!(back.enforcement.is_some());
     assert!(back.refactor_chain.is_some());
 }
@@ -1154,7 +1157,9 @@ fn test_format_summary_empty_summary_by_file() {
 #[test]
 fn test_format_summary_long_file_path() {
     let mut result = create_full_result();
-    result.hotspot.file = PathBuf::from("very/long/nested/directory/structure/with/many/levels/src/module/submodule/file.rs");
+    result.hotspot.file = PathBuf::from(
+        "very/long/nested/directory/structure/with/many/levels/src/module/submodule/file.rs",
+    );
     let output = format_summary(&result, false, Duration::from_secs(1), 10).unwrap();
     assert!(output.contains("file.rs") || output.contains("very/long"));
 }

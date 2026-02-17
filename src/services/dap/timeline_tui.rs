@@ -6,7 +6,6 @@
 //
 // Sprint 79+: Presentar-terminal Brick architecture (ratatui-free)
 // Benefits: Jidoka verification gates, zero-allocation rendering, 95% test coverage
-
 #![cfg(feature = "tui")]
 
 use anyhow::Result;

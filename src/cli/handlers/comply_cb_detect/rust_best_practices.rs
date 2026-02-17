@@ -49,7 +49,12 @@ pub fn detect_cb500_publish_hygiene(project_path: &Path) -> Vec<CbPatternViolati
 
     if has_exclude {
         let critical_patterns = [
-            "target/", ".profraw", ".profdata", ".vscode/", ".idea/", ".pmat",
+            "target/",
+            ".profraw",
+            ".profdata",
+            ".vscode/",
+            ".idea/",
+            ".pmat",
             "proptest-regressions",
         ];
         let matched = critical_patterns
@@ -137,8 +142,14 @@ pub fn detect_cb502_expect_quality(project_path: &Path) -> Vec<CbPatternViolatio
     };
 
     let lazy_messages = [
-        "\"\")", "\"failed\")", "\"error\")", "\"unexpected\")",
-        "\"should not happen\")", "\"todo\")", "\"bug\")", "\"impossible\")",
+        "\"\")",
+        "\"failed\")",
+        "\"error\")",
+        "\"unexpected\")",
+        "\"should not happen\")",
+        "\"todo\")",
+        "\"bug\")",
+        "\"impossible\")",
     ];
 
     let mut violations = Vec::new();
@@ -167,7 +178,10 @@ pub fn detect_cb502_expect_quality(project_path: &Path) -> Vec<CbPatternViolatio
                 continue;
             }
             for lazy in &lazy_messages {
-                if line.contains(&format!("{DOT_EXPECT_QUOTE}{}", lazy.get(1..).unwrap_or_default())) {
+                if line.contains(&format!(
+                    "{DOT_EXPECT_QUOTE}{}",
+                    lazy.get(1..).unwrap_or_default()
+                )) {
                     violations.push(CbPatternViolation {
                         pattern_id: "CB-502".to_string(),
                         file: file.clone(),
@@ -208,7 +222,11 @@ pub fn detect_cb503_clippy_config(project_path: &Path) -> Vec<CbPatternViolation
             if !content.contains("disallowed-methods") {
                 violations.push(CbPatternViolation {
                     pattern_id: "CB-503".to_string(),
-                    file: path.file_name().unwrap_or_default().to_string_lossy().to_string(),
+                    file: path
+                        .file_name()
+                        .unwrap_or_default()
+                        .to_string_lossy()
+                        .to_string(),
                     line: 0,
                     description: "Clippy config missing `disallowed-methods` section".to_string(),
                     severity: Severity::Info,
@@ -619,8 +637,10 @@ pub fn detect_cb511_flaky_timing_tests(project_path: &Path) -> Vec<CbPatternViol
                 }
                 // Require .elapsed() specifically in an assertion context,
                 // not just any line with "assert!" and the word "elapsed"
-                if (trimmed.contains("assert!") || trimmed.contains("assert_eq!")
-                    || trimmed.contains("assert_ne!") || trimmed.contains("assert_lt!")
+                if (trimmed.contains("assert!")
+                    || trimmed.contains("assert_eq!")
+                    || trimmed.contains("assert_ne!")
+                    || trimmed.contains("assert_lt!")
                     || trimmed.contains("assert_le!"))
                     && trimmed.contains(".elapsed()")
                 {
@@ -772,7 +792,9 @@ pub fn detect_cb513_silent_error_swallowing(project_path: &Path) -> Vec<CbPatter
                     pattern_id: "CB-513".to_string(),
                     file: file.clone(),
                     line: i + 1,
-                    description: "Silent error swallowing: .unwrap_or_else(|_| discards error context".to_string(),
+                    description:
+                        "Silent error swallowing: .unwrap_or_else(|_| discards error context"
+                            .to_string(),
                     severity: Severity::Warning,
                 });
                 continue;
@@ -784,7 +806,9 @@ pub fn detect_cb513_silent_error_swallowing(project_path: &Path) -> Vec<CbPatter
                     pattern_id: "CB-513".to_string(),
                     file: file.clone(),
                     line: i + 1,
-                    description: "Silent error swallowing: .map_err(|_| discards original error context".to_string(),
+                    description:
+                        "Silent error swallowing: .map_err(|_| discards original error context"
+                            .to_string(),
                     severity: Severity::Warning,
                 });
             }
@@ -864,9 +888,18 @@ pub fn detect_cb515_catch_all_match_default(project_path: &Path) -> Vec<CbPatter
 
     // These are safe catch-all patterns that indicate proper error handling
     let safe_patterns = [
-        "Err(", "None", "unreachable!", "panic!", "return Err",
-        "return None", "bail!", "anyhow!", "todo!", "unimplemented!",
-        "Default::default()", "default()",
+        "Err(",
+        "None",
+        "unreachable!",
+        "panic!",
+        "return Err",
+        "return None",
+        "bail!",
+        "anyhow!",
+        "todo!",
+        "unimplemented!",
+        "Default::default()",
+        "default()",
     ];
 
     for entry in &entries {
@@ -923,9 +956,7 @@ pub fn detect_cb515_catch_all_match_default(project_path: &Path) -> Vec<CbPatter
             }
 
             // Skip if it's just a closing brace, comma, or empty block (unit return)
-            if after == "}" || after == "}," || after == ","
-                || after == "{}" || after == "{},"
-            {
+            if after == "}" || after == "}," || after == "," || after == "{}" || after == "{}," {
                 continue;
             }
 
@@ -935,7 +966,11 @@ pub fn detect_cb515_catch_all_match_default(project_path: &Path) -> Vec<CbPatter
                 line: i + 1,
                 description: format!(
                     "Catch-all match arm `_ =>` returns concrete value: {}",
-                    if after.len() > 60 { &after[..60] } else { after }
+                    if after.len() > 60 {
+                        &after[..60]
+                    } else {
+                        after
+                    }
                 ),
                 severity: Severity::Warning,
             });
@@ -958,8 +993,8 @@ pub fn detect_cb516_hardcoded_magic_numbers(project_path: &Path) -> Vec<CbPatter
 
     // Common non-magic constants to exclude
     let common_values: std::collections::HashSet<&str> = [
-        "100", "128", "256", "512", "1024", "2048", "4096", "8192",
-        "1000", "1024", "65535", "65536",
+        "100", "128", "256", "512", "1024", "2048", "4096", "8192", "1000", "1024", "65535",
+        "65536",
     ]
     .iter()
     .copied()
@@ -1066,7 +1101,9 @@ pub fn detect_cb517_stale_debug_artifacts(project_path: &Path) -> Vec<CbPatternV
                     pattern_id: "CB-517".to_string(),
                     file: file.clone(),
                     line: i + 1,
-                    description: "Stale debug artifact: static Atomic counter (likely debug instrumentation)".to_string(),
+                    description:
+                        "Stale debug artifact: static Atomic counter (likely debug instrumentation)"
+                            .to_string(),
                     severity: Severity::Warning,
                 });
                 continue;
@@ -1085,7 +1122,9 @@ pub fn detect_cb517_stale_debug_artifacts(project_path: &Path) -> Vec<CbPatternV
                             pattern_id: "CB-517".to_string(),
                             file: file.clone(),
                             line: i + 1,
-                            description: "Stale debug artifact: #[allow(unused)] on static variable".to_string(),
+                            description:
+                                "Stale debug artifact: #[allow(unused)] on static variable"
+                                    .to_string(),
                             severity: Severity::Warning,
                         });
                     }
@@ -1194,8 +1233,16 @@ pub fn detect_cb518_expensive_clone_in_loop(project_path: &Path) -> Vec<CbPatter
 /// path contains one of the path_stems (indicating the module implements that transform).
 const LOSSY_TRANSFORM_PAIRS: &[(&str, &str, &[&str])] = &[
     ("quantize", "dequantize", &["quant", "qlora", "lora"]),
-    ("encode", "decode", &["codec", "encoding", "decoder", "encoder"]),
-    ("compress", "decompress", &["compress", "zlib", "gzip", "lz4", "zstd"]),
+    (
+        "encode",
+        "decode",
+        &["codec", "encoding", "decoder", "encoder"],
+    ),
+    (
+        "compress",
+        "decompress",
+        &["compress", "zlib", "gzip", "lz4", "zstd"],
+    ),
     ("serialize", "deserialize", &["serde", "serial", "marshal"]),
     ("pack", "unpack", &["pack", "msgpack"]),
     ("to_bytes", "from_bytes", &["bytes", "binary"]),
@@ -1208,8 +1255,7 @@ fn is_test_fn_definition(trimmed: &str, line_idx: usize, lines: &[&str]) -> bool
     let has_test_attr = (1..=3).any(|back| {
         line_idx >= back && {
             let prev = lines[line_idx - back].trim();
-            prev == "#[test]" || prev == "#[tokio::test]"
-                || prev.starts_with("#[cfg(test")
+            prev == "#[test]" || prev == "#[tokio::test]" || prev.starts_with("#[cfg(test")
         }
     });
     let fn_name_lower = trimmed.to_lowercase();
@@ -1233,24 +1279,22 @@ fn find_lossy_pair<'a>(fn_content: &str, file_path: &str) -> Option<(&'a str, &'
         .join("\n")
         .to_lowercase();
     let path_lower = file_path.to_lowercase();
-    LOSSY_TRANSFORM_PAIRS
-        .iter()
-        .find_map(|(fwd, rev, stems)| {
-            // Skip if the file path matches the transform domain
-            if stems.iter().any(|s| path_lower.contains(s)) {
-                return None;
-            }
-            if !filtered.contains(*rev) {
-                return None;
-            }
-            // Ensure fwd appears independently, not only as substring of rev
-            let without_rev = filtered.replace(rev, "");
-            if without_rev.contains(*fwd) {
-                Some((*fwd, *rev))
-            } else {
-                None
-            }
-        })
+    LOSSY_TRANSFORM_PAIRS.iter().find_map(|(fwd, rev, stems)| {
+        // Skip if the file path matches the transform domain
+        if stems.iter().any(|s| path_lower.contains(s)) {
+            return None;
+        }
+        if !filtered.contains(*rev) {
+            return None;
+        }
+        // Ensure fwd appears independently, not only as substring of rev
+        let without_rev = filtered.replace(rev, "");
+        if without_rev.contains(*fwd) {
+            Some((*fwd, *rev))
+        } else {
+            None
+        }
+    })
 }
 
 /// CB-519: Lossy Data Pipeline - detect quantize/dequantize/encode/decode round-trip chains
@@ -1354,9 +1398,17 @@ fn is_spawn_call(trimmed: &str) -> bool {
 }
 
 const EXPENSIVE_INIT_PATTERNS: &[&str] = &[
-    "::new(", "::open(", "::connect(", "::create(", "::load(",
-    "::init(", "::build(", "::from_file(", "::from_path(",
-    "::read_to_string(", "File::open(",
+    "::new(",
+    "::open(",
+    "::connect(",
+    "::create(",
+    "::load(",
+    "::init(",
+    "::build(",
+    "::from_file(",
+    "::from_path(",
+    "::read_to_string(",
+    "File::open(",
 ];
 
 /// Scan a single file for CB-520 expensive init in loop violations.
@@ -1406,7 +1458,10 @@ fn scan_cb520_file(
 
         // Only count expensive init if NOT inside a spawn closure
         if spawn_depth == 0 {
-            if let Some(pat) = EXPENSIVE_INIT_PATTERNS.iter().find(|p| trimmed.contains(**p)) {
+            if let Some(pat) = EXPENSIVE_INIT_PATTERNS
+                .iter()
+                .find(|p| trimmed.contains(**p))
+            {
                 init_count += 1;
                 if init_examples.len() < 3 {
                     init_examples.push(pat.trim_start_matches("::").to_string());
@@ -1468,28 +1523,49 @@ pub fn detect_cb520_expensive_init_in_loop(project_path: &Path) -> Vec<CbPattern
 /// CB-521: Format Detection Without Magic Bytes - binary parsing without header validation
 /// Binary read patterns that should be preceded by magic byte validation.
 const BINARY_READ_PATTERNS: &[&str] = &[
-    "read_exact(", "from_le_bytes(", "from_be_bytes(",
-    "read_u32::", "read_u64::", "read_i32::", "read_i64::",
+    "read_exact(",
+    "from_le_bytes(",
+    "from_be_bytes(",
+    "read_u32::",
+    "read_u64::",
+    "read_i32::",
+    "read_i64::",
 ];
 
 const MAGIC_VALIDATION_PATTERNS: &[&str] = &[
-    "magic", "MAGIC", "signature", "SIGNATURE", "header_magic",
-    "file_type", "format_version", "FILE_MAGIC",
+    "magic",
+    "MAGIC",
+    "signature",
+    "SIGNATURE",
+    "header_magic",
+    "file_type",
+    "format_version",
+    "FILE_MAGIC",
 ];
 
 /// I/O context markers: function must have actual file/stream I/O to be
 /// considered "binary format parsing" (not just byte math in hash/quantize code).
 const IO_CONTEXT_PATTERNS: &[&str] = &[
-    "File::", "BufReader", "BufRead", "Cursor::", "stdin",
-    "from_reader(", ".read(", ".read_to_end(", "open(",
-    "Read>", "impl Read",
+    "File::",
+    "BufReader",
+    "BufRead",
+    "Cursor::",
+    "stdin",
+    "from_reader(",
+    ".read(",
+    ".read_to_end(",
+    "open(",
+    "Read>",
+    "impl Read",
 ];
 
 /// Classify a non-comment code line for CB-521 binary parsing analysis.
 /// Returns (has_binary_read, has_magic_check, has_io_context).
 fn classify_cb521_line(trimmed: &str) -> (bool, bool, bool) {
     let binary = BINARY_READ_PATTERNS.iter().any(|p| trimmed.contains(p));
-    let magic = MAGIC_VALIDATION_PATTERNS.iter().any(|p| trimmed.contains(p));
+    let magic = MAGIC_VALIDATION_PATTERNS
+        .iter()
+        .any(|p| trimmed.contains(p));
     let io = IO_CONTEXT_PATTERNS.iter().any(|p| trimmed.contains(p));
     (binary, magic, io)
 }
@@ -1567,7 +1643,8 @@ pub fn detect_cb521_format_without_magic_bytes(project_path: &Path) -> Vec<CbPat
                         pattern_id: "CB-521".to_string(),
                         file: file.clone(),
                         line: binary_line + 1,
-                        description: "Binary format parsing without magic byte/header validation".to_string(),
+                        description: "Binary format parsing without magic byte/header validation"
+                            .to_string(),
                         severity: Severity::Warning,
                     });
                 }
@@ -1589,8 +1666,12 @@ pub fn detect_cb522_untested_path_normalization(project_path: &Path) -> Vec<CbPa
 
     // Path manipulation patterns that indicate URL/path normalization
     let path_manip_patterns = [
-        ".strip_prefix(\"http", ".replace(\"//\"", ".replace(\"resolve/\"",
-        "split(\"://\")", "trim_start_matches(\"http", "Url::parse(",
+        ".strip_prefix(\"http",
+        ".replace(\"//\"",
+        ".replace(\"resolve/\"",
+        "split(\"://\")",
+        "trim_start_matches(\"http",
+        "Url::parse(",
     ];
 
     let mut violations = Vec::new();
@@ -1659,12 +1740,14 @@ pub fn detect_cb523_external_config_over_embedded(project_path: &Path) -> Vec<Cb
     let mut violations = Vec::new();
 
     // Filesystem heuristic patterns
-    let fs_heuristic_patterns = [
-        ".with_file_name(", ".with_extension(",
-    ];
+    let fs_heuristic_patterns = [".with_file_name(", ".with_extension("];
     let config_discovery = [
-        "config.json", "tokenizer.json", "generation_config",
-        "model.json", "params.json", "hyperparams",
+        "config.json",
+        "tokenizer.json",
+        "generation_config",
+        "model.json",
+        "params.json",
+        "hyperparams",
     ];
 
     for entry in &entries {
@@ -1761,8 +1844,15 @@ pub fn detect_cb524_incomplete_enum_match(project_path: &Path) -> Vec<CbPatternV
 
                 // Skip error/none/panic patterns — these are deliberate catch-alls
                 let safe_patterns = [
-                    "Err(", "None", "unreachable!", "panic!", "return Err",
-                    "bail!", "todo!", "unimplemented!", "Default::default()",
+                    "Err(",
+                    "None",
+                    "unreachable!",
+                    "panic!",
+                    "return Err",
+                    "bail!",
+                    "todo!",
+                    "unimplemented!",
+                    "Default::default()",
                 ];
                 let is_safe = after.is_empty()
                     || after == "{"
@@ -1922,10 +2012,7 @@ pub fn detect_cb526_single_path_resolution(project_path: &Path) -> Vec<CbPattern
             // or: path.join("specific_file.ext") followed by read without exists check
             if trimmed.contains(".join(\"") && trimmed.contains(".exists()") {
                 // Check if there's a fallback on same or next line
-                let next_trimmed = lines
-                    .get(i + 1)
-                    .map(|l| l.trim())
-                    .unwrap_or("");
+                let next_trimmed = lines.get(i + 1).map(|l| l.trim()).unwrap_or("");
                 let has_fallback = trimmed.contains("||")
                     || trimmed.contains(".or_else")
                     || next_trimmed.contains("||")
@@ -1956,10 +2043,8 @@ pub fn detect_cb527_incomplete_pattern_list(project_path: &Path) -> Vec<CbPatter
         Err(_) => return Vec::new(),
     };
 
-    let classification_re = regex::Regex::new(
-        r#"\.contains\(\s*"[a-z_]+"\s*\)\s*\|\|"#,
-    )
-    .expect("valid regex");
+    let classification_re =
+        regex::Regex::new(r#"\.contains\(\s*"[a-z_]+"\s*\)\s*\|\|"#).expect("valid regex");
 
     let mut violations = Vec::new();
 
@@ -2126,7 +2211,10 @@ fn check_division_before(line: &str, pos: usize) -> bool {
     }
     // Check there's no other arithmetic operator between `/` and `.len()`
     let between = &before[slash_pos + 2..];
-    !between.contains('+') && !between.contains('-') && !between.contains('*') && !between.contains('/')
+    !between.contains('+')
+        && !between.contains('-')
+        && !between.contains('*')
+        && !between.contains('/')
 }
 
 /// Check if the surrounding context has a guard against empty len

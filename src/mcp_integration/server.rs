@@ -370,7 +370,9 @@ impl McpServer {
     async fn register_semantic_tools(&self) -> Result<(), Box<dyn std::error::Error>> {
         // Check if semantic search is enabled
         if !self.config.semantic_enabled {
-            tracing::info!("Semantic search is disabled (set PMAT_SEMANTIC_ENABLED=true to enable)");
+            tracing::info!(
+                "Semantic search is disabled (set PMAT_SEMANTIC_ENABLED=true to enable)"
+            );
             return Ok(());
         }
 

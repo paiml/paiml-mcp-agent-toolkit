@@ -581,7 +581,12 @@ impl FaultLocalizer {
             // Truncate file path for display
             let file_display = ranking.statement.file.display().to_string();
             let file_short = if file_display.len() > 30 {
-                format!("...{}", file_display.get(file_display.len() - 27..).unwrap_or(&file_display))
+                format!(
+                    "...{}",
+                    file_display
+                        .get(file_display.len() - 27..)
+                        .unwrap_or(&file_display)
+                )
             } else {
                 file_display
             };

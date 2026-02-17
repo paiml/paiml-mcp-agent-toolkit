@@ -67,7 +67,10 @@ fn format_text(score: &CategoryScore, verbose: bool, failures_only: bool) -> Str
     output.push_str("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n");
     let percentage = (score.score / score.max_score) * 100.0;
     let grade = grade_from_percentage(percentage);
-    output.push_str(&format!("Score: {:.1}/{:.1} ({:.1}%) - Grade: {}\n\n", score.score, score.max_score, percentage, grade));
+    output.push_str(&format!(
+        "Score: {:.1}/{:.1} ({:.1}%) - Grade: {}\n\n",
+        score.score, score.max_score, percentage, grade
+    ));
     output.push_str("Categories:\n");
     for sub in &score.subcategories {
         format_text_subcategory(sub, verbose, failures_only, &mut output);
@@ -81,10 +84,24 @@ fn format_text(score: &CategoryScore, verbose: bool, failures_only: bool) -> Str
     output
 }
 
-fn subcategory_status(sub: &crate::services::repo_score::models::SubcategoryScore) -> (&'static str, f64, bool) {
+fn subcategory_status(
+    sub: &crate::services::repo_score::models::SubcategoryScore,
+) -> (&'static str, f64, bool) {
     let is_na = sub.max_score == 0.0;
-    let pct = if is_na { 0.0 } else { (sub.score / sub.max_score) * 100.0 };
-    let icon = if is_na { "➖" } else if pct >= 80.0 { "✅" } else if pct >= 50.0 { "⚠️" } else { "❌" };
+    let pct = if is_na {
+        0.0
+    } else {
+        (sub.score / sub.max_score) * 100.0
+    };
+    let icon = if is_na {
+        "➖"
+    } else if pct >= 80.0 {
+        "✅"
+    } else if pct >= 50.0 {
+        "⚠️"
+    } else {
+        "❌"
+    };
     (icon, pct, is_na)
 }
 
@@ -97,17 +114,35 @@ fn finding_icon_text(severity: crate::services::repo_score::models::Severity) ->
     }
 }
 
-fn format_text_subcategory(sub: &crate::services::repo_score::models::SubcategoryScore, verbose: bool, failures_only: bool, output: &mut String) {
+fn format_text_subcategory(
+    sub: &crate::services::repo_score::models::SubcategoryScore,
+    verbose: bool,
+    failures_only: bool,
+    output: &mut String,
+) {
     let (icon, pct, is_na) = subcategory_status(sub);
     if is_na {
         output.push_str(&format!("  {} {}: N/A\n", icon, sub.name));
     } else {
-        output.push_str(&format!("  {} {}: {:.1}/{:.1} ({:.0}%)\n", icon, sub.name, sub.score, sub.max_score, pct));
+        output.push_str(&format!(
+            "  {} {}: {:.1}/{:.1} ({:.0}%)\n",
+            icon, sub.name, sub.score, sub.max_score, pct
+        ));
     }
-    if !verbose { return; }
+    if !verbose {
+        return;
+    }
     for finding in &sub.findings {
-        if failures_only && finding.severity == crate::services::repo_score::models::Severity::Success { continue; }
-        output.push_str(&format!("      {} {}\n", finding_icon_text(finding.severity), finding.message));
+        if failures_only
+            && finding.severity == crate::services::repo_score::models::Severity::Success
+        {
+            continue;
+        }
+        output.push_str(&format!(
+            "      {} {}\n",
+            finding_icon_text(finding.severity),
+            finding.message
+        ));
     }
 }
 
@@ -122,7 +157,10 @@ fn format_markdown(score: &CategoryScore, verbose: bool, failures_only: bool) ->
     output.push_str("# Demo Quality Score (Category G)\n\n");
     let percentage = (score.score / score.max_score) * 100.0;
     let grade = grade_from_percentage(percentage);
-    output.push_str(&format!("**Score:** {:.1}/{:.1} ({:.1}%) - **Grade:** {}\n\n", score.score, score.max_score, percentage, grade));
+    output.push_str(&format!(
+        "**Score:** {:.1}/{:.1} ({:.1}%) - **Grade:** {}\n\n",
+        score.score, score.max_score, percentage, grade
+    ));
     output.push_str("## Categories\n\n");
     output.push_str("| Category | Score | Max | Percentage |\n");
     output.push_str("|----------|-------|-----|------------|\n");
@@ -131,7 +169,10 @@ fn format_markdown(score: &CategoryScore, verbose: bool, failures_only: bool) ->
         if is_na {
             output.push_str(&format!("| {} {} | N/A | N/A | N/A |\n", icon, sub.name));
         } else {
-            output.push_str(&format!("| {} {} | {:.1} | {:.1} | {:.0}% |\n", icon, sub.name, sub.score, sub.max_score, pct));
+            output.push_str(&format!(
+                "| {} {} | {:.1} | {:.1} | {:.0}% |\n",
+                icon, sub.name, sub.score, sub.max_score, pct
+            ));
         }
     }
     if verbose {
@@ -145,7 +186,11 @@ fn format_md_findings(score: &CategoryScore, failures_only: bool, output: &mut S
     for sub in &score.subcategories {
         output.push_str(&format!("### {}\n\n", sub.name));
         for finding in &sub.findings {
-            if failures_only && finding.severity == crate::services::repo_score::models::Severity::Success { continue; }
+            if failures_only
+                && finding.severity == crate::services::repo_score::models::Severity::Success
+            {
+                continue;
+            }
             let icon = match finding.severity {
                 crate::services::repo_score::models::Severity::Success => "✅",
                 crate::services::repo_score::models::Severity::Info => "ℹ️",

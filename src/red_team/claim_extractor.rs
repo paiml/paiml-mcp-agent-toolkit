@@ -159,7 +159,11 @@ impl ClaimExtractor {
                 let full_match = captures
                     .get(0)
                     .expect("Match group 0 always exists for successful regex match");
-                return Some((full_match.start(), full_match.as_str().to_string(), captures));
+                return Some((
+                    full_match.start(),
+                    full_match.as_str().to_string(),
+                    captures,
+                ));
             }
         }
         None
@@ -191,14 +195,20 @@ impl ClaimExtractor {
                 .get(4)
                 .and_then(|m| m.as_str().parse::<f64>().ok())
                 .or_else(|| self.extract_numeric_value(&text));
-            claims.push((pos, self.build_claim(ClaimCategory::TestStatus, &text, numeric, None, msg)));
+            claims.push((
+                pos,
+                self.build_claim(ClaimCategory::TestStatus, &text, numeric, None, msg),
+            ));
         }
     }
 
     fn extract_documentation_claims(&self, msg: &str, claims: &mut Vec<(usize, Claim)>) {
         if let Some((pos, text, _)) = Self::match_first_pattern(&self.documentation_patterns, msg) {
             let numeric = self.extract_numeric_value(&text);
-            claims.push((pos, self.build_claim(ClaimCategory::Documentation, &text, numeric, None, msg)));
+            claims.push((
+                pos,
+                self.build_claim(ClaimCategory::Documentation, &text, numeric, None, msg),
+            ));
         }
     }
 
@@ -208,13 +218,19 @@ impl ClaimExtractor {
                 .get(1)
                 .and_then(|m| m.as_str().parse::<f64>().ok())
                 .or_else(|| caps.get(2).and_then(|m| m.as_str().parse::<f64>().ok()));
-            claims.push((pos, self.build_claim(ClaimCategory::Coverage, &text, numeric, None, msg)));
+            claims.push((
+                pos,
+                self.build_claim(ClaimCategory::Coverage, &text, numeric, None, msg),
+            ));
         }
     }
 
     fn extract_migration_claims(&self, msg: &str, claims: &mut Vec<(usize, Claim)>) {
         if let Some((pos, text, _)) = Self::match_first_pattern(&self.migration_patterns, msg) {
-            claims.push((pos, self.build_claim(ClaimCategory::Migration, &text, None, None, msg)));
+            claims.push((
+                pos,
+                self.build_claim(ClaimCategory::Migration, &text, None, None, msg),
+            ));
         }
     }
 
@@ -224,7 +240,10 @@ impl ClaimExtractor {
             if claims.iter().any(|(p, _)| *p == pos) {
                 return;
             }
-            claims.push((pos, self.build_claim(ClaimCategory::FeatureCompletion, &text, None, None, msg)));
+            claims.push((
+                pos,
+                self.build_claim(ClaimCategory::FeatureCompletion, &text, None, None, msg),
+            ));
         }
     }
 
@@ -233,20 +252,30 @@ impl ClaimExtractor {
             let issue_number = caps
                 .get(caps.len() - 1)
                 .and_then(|m| m.as_str().parse::<u32>().ok());
-            claims.push((pos, self.build_claim(ClaimCategory::BugFix, &text, None, issue_number, msg)));
+            claims.push((
+                pos,
+                self.build_claim(ClaimCategory::BugFix, &text, None, issue_number, msg),
+            ));
         }
     }
 
     fn extract_performance_claims(&self, msg: &str, claims: &mut Vec<(usize, Claim)>) {
-        if let Some((pos, text, caps)) = Self::match_first_pattern(&self.performance_patterns, msg) {
+        if let Some((pos, text, caps)) = Self::match_first_pattern(&self.performance_patterns, msg)
+        {
             let numeric = caps.get(1).and_then(|m| m.as_str().parse::<f64>().ok());
-            claims.push((pos, self.build_claim(ClaimCategory::Performance, &text, numeric, None, msg)));
+            claims.push((
+                pos,
+                self.build_claim(ClaimCategory::Performance, &text, numeric, None, msg),
+            ));
         }
     }
 
     fn extract_security_claims(&self, msg: &str, claims: &mut Vec<(usize, Claim)>) {
         if let Some((pos, text, _)) = Self::match_first_pattern(&self.security_patterns, msg) {
-            claims.push((pos, self.build_claim(ClaimCategory::Security, &text, None, None, msg)));
+            claims.push((
+                pos,
+                self.build_claim(ClaimCategory::Security, &text, None, None, msg),
+            ));
         }
     }
 

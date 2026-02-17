@@ -5,8 +5,8 @@
 use crate::unified_quality::onboarding::{
     Achievement, Exercise, ExperienceLevel, GamificationConfig, LearningStyle,
     NotificationPreference, OnboardingConfig, OnboardingPhase, OnboardingProgress,
-    OnboardingReport, OnboardingSession, ProjectType, QualityMaturity, TeamInfo,
-    TeamOnboarding, TeamPreferences, TutorialContent, TutorialLibrary, WalkthroughStep,
+    OnboardingReport, OnboardingSession, ProjectType, QualityMaturity, TeamInfo, TeamOnboarding,
+    TeamPreferences, TutorialContent, TutorialLibrary, WalkthroughStep,
 };
 use crate::unified_quality::{QualityMode, QualityPhilosophy};
 use std::collections::HashMap;
@@ -662,7 +662,9 @@ fn test_team_onboarding_new() {
 fn test_team_onboarding_start_onboarding() {
     let mut onboarding = TeamOnboarding::new(create_test_config());
     let prefs = create_test_preferences();
-    let session = onboarding.start_onboarding("team1".to_string(), prefs).unwrap();
+    let session = onboarding
+        .start_onboarding("team1".to_string(), prefs)
+        .unwrap();
     assert_eq!(session.team_id, "team1");
     assert_eq!(session.current_phase, OnboardingPhase::Introduction);
 }
@@ -671,9 +673,13 @@ fn test_team_onboarding_start_onboarding() {
 fn test_team_onboarding_get_recommendations() {
     let mut onboarding = TeamOnboarding::new(create_test_config());
     let prefs = create_test_preferences();
-    onboarding.start_onboarding("team1".to_string(), prefs).unwrap();
+    onboarding
+        .start_onboarding("team1".to_string(), prefs)
+        .unwrap();
 
-    let recommendations = onboarding.get_recommendations(&"team1".to_string()).unwrap();
+    let recommendations = onboarding
+        .get_recommendations(&"team1".to_string())
+        .unwrap();
     assert!(!recommendations.is_empty());
 }
 
@@ -688,9 +694,12 @@ fn test_team_onboarding_get_recommendations_not_found() {
 fn test_team_onboarding_complete_tutorial() {
     let mut onboarding = TeamOnboarding::new(create_test_config());
     let prefs = create_test_preferences();
-    onboarding.start_onboarding("team1".to_string(), prefs).unwrap();
+    onboarding
+        .start_onboarding("team1".to_string(), prefs)
+        .unwrap();
 
-    let result = onboarding.complete_tutorial(&"team1".to_string(), "quality_philosophy".to_string(), 1);
+    let result =
+        onboarding.complete_tutorial(&"team1".to_string(), "quality_philosophy".to_string(), 1);
     assert!(result.is_ok());
 }
 
@@ -705,28 +714,42 @@ fn test_team_onboarding_complete_tutorial_not_found() {
 fn test_team_onboarding_complete_multiple_tutorials() {
     let mut onboarding = TeamOnboarding::new(create_test_config());
     let prefs = create_test_preferences();
-    onboarding.start_onboarding("team1".to_string(), prefs).unwrap();
+    onboarding
+        .start_onboarding("team1".to_string(), prefs)
+        .unwrap();
 
     // Complete first tutorial
-    onboarding.complete_tutorial(&"team1".to_string(), "tutorial1".to_string(), 2).unwrap();
+    onboarding
+        .complete_tutorial(&"team1".to_string(), "tutorial1".to_string(), 2)
+        .unwrap();
     // Complete same tutorial again (should be idempotent)
-    onboarding.complete_tutorial(&"team1".to_string(), "tutorial1".to_string(), 1).unwrap();
+    onboarding
+        .complete_tutorial(&"team1".to_string(), "tutorial1".to_string(), 1)
+        .unwrap();
     // Complete second tutorial
-    onboarding.complete_tutorial(&"team1".to_string(), "tutorial2".to_string(), 3).unwrap();
+    onboarding
+        .complete_tutorial(&"team1".to_string(), "tutorial2".to_string(), 3)
+        .unwrap();
 }
 
 #[test]
 fn test_team_onboarding_phase_advancement() {
     let mut onboarding = TeamOnboarding::new(create_test_config());
     let prefs = create_test_preferences();
-    onboarding.start_onboarding("team1".to_string(), prefs).unwrap();
+    onboarding
+        .start_onboarding("team1".to_string(), prefs)
+        .unwrap();
 
     // Complete enough tutorials to advance from Introduction
     for i in 0..3 {
-        onboarding.complete_tutorial(&"team1".to_string(), format!("tutorial_{i}"), 1).unwrap();
+        onboarding
+            .complete_tutorial(&"team1".to_string(), format!("tutorial_{i}"), 1)
+            .unwrap();
     }
 
-    let report = onboarding.generate_progress_report(&"team1".to_string()).unwrap();
+    let report = onboarding
+        .generate_progress_report(&"team1".to_string())
+        .unwrap();
     // Should have advanced past Introduction
     assert_ne!(report.current_phase, OnboardingPhase::Introduction);
 }
@@ -735,9 +758,13 @@ fn test_team_onboarding_phase_advancement() {
 fn test_team_onboarding_generate_report() {
     let mut onboarding = TeamOnboarding::new(create_test_config());
     let prefs = create_test_preferences();
-    onboarding.start_onboarding("team1".to_string(), prefs).unwrap();
+    onboarding
+        .start_onboarding("team1".to_string(), prefs)
+        .unwrap();
 
-    let report = onboarding.generate_progress_report(&"team1".to_string()).unwrap();
+    let report = onboarding
+        .generate_progress_report(&"team1".to_string())
+        .unwrap();
     assert_eq!(report.team_id, "team1");
     assert_eq!(report.overall_completion, 0.0);
 }
@@ -753,30 +780,48 @@ fn test_team_onboarding_generate_report_not_found() {
 fn test_team_onboarding_achievements_tutorial_enthusiast() {
     let mut onboarding = TeamOnboarding::new(create_test_config());
     let prefs = create_test_preferences();
-    onboarding.start_onboarding("team1".to_string(), prefs).unwrap();
+    onboarding
+        .start_onboarding("team1".to_string(), prefs)
+        .unwrap();
 
     // Complete 5 tutorials to earn achievement
     for i in 0..5 {
-        onboarding.complete_tutorial(&"team1".to_string(), format!("tutorial_{i}"), 0).unwrap();
+        onboarding
+            .complete_tutorial(&"team1".to_string(), format!("tutorial_{i}"), 0)
+            .unwrap();
     }
 
-    let report = onboarding.generate_progress_report(&"team1".to_string()).unwrap();
-    assert!(report.achievements.iter().any(|a| a.id == "tutorial_enthusiast"));
+    let report = onboarding
+        .generate_progress_report(&"team1".to_string())
+        .unwrap();
+    assert!(report
+        .achievements
+        .iter()
+        .any(|a| a.id == "tutorial_enthusiast"));
 }
 
 #[test]
 fn test_team_onboarding_achievements_hands_on_learner() {
     let mut onboarding = TeamOnboarding::new(create_test_config());
     let prefs = create_test_preferences();
-    onboarding.start_onboarding("team1".to_string(), prefs).unwrap();
+    onboarding
+        .start_onboarding("team1".to_string(), prefs)
+        .unwrap();
 
     // Complete tutorials with many exercises
     for i in 0..3 {
-        onboarding.complete_tutorial(&"team1".to_string(), format!("tutorial_{i}"), 4).unwrap();
+        onboarding
+            .complete_tutorial(&"team1".to_string(), format!("tutorial_{i}"), 4)
+            .unwrap();
     }
 
-    let report = onboarding.generate_progress_report(&"team1".to_string()).unwrap();
-    assert!(report.achievements.iter().any(|a| a.id == "hands_on_learner"));
+    let report = onboarding
+        .generate_progress_report(&"team1".to_string())
+        .unwrap();
+    assert!(report
+        .achievements
+        .iter()
+        .any(|a| a.id == "hands_on_learner"));
 }
 
 // ============ OnboardingSession Tests ============
@@ -833,9 +878,13 @@ fn test_relevance_with_language_match() {
     prefs.languages = vec!["Rust".to_string()];
     prefs.learning_style = LearningStyle::Practical;
     prefs.team_info.experience_level = ExperienceLevel::Junior;
-    onboarding.start_onboarding("team1".to_string(), prefs).unwrap();
+    onboarding
+        .start_onboarding("team1".to_string(), prefs)
+        .unwrap();
 
-    let recommendations = onboarding.get_recommendations(&"team1".to_string()).unwrap();
+    let recommendations = onboarding
+        .get_recommendations(&"team1".to_string())
+        .unwrap();
     // Should have recommendations sorted by relevance
     let _ = recommendations;
 }
@@ -845,9 +894,13 @@ fn test_relevance_with_theoretical_style() {
     let mut onboarding = TeamOnboarding::new(create_test_config());
     let mut prefs = create_test_preferences();
     prefs.learning_style = LearningStyle::Theoretical;
-    onboarding.start_onboarding("team1".to_string(), prefs).unwrap();
+    onboarding
+        .start_onboarding("team1".to_string(), prefs)
+        .unwrap();
 
-    let recommendations = onboarding.get_recommendations(&"team1".to_string()).unwrap();
+    let recommendations = onboarding
+        .get_recommendations(&"team1".to_string())
+        .unwrap();
     let _ = recommendations;
 }
 
@@ -856,9 +909,13 @@ fn test_relevance_with_senior_experience() {
     let mut onboarding = TeamOnboarding::new(create_test_config());
     let mut prefs = create_test_preferences();
     prefs.team_info.experience_level = ExperienceLevel::Senior;
-    onboarding.start_onboarding("team1".to_string(), prefs).unwrap();
+    onboarding
+        .start_onboarding("team1".to_string(), prefs)
+        .unwrap();
 
-    let recommendations = onboarding.get_recommendations(&"team1".to_string()).unwrap();
+    let recommendations = onboarding
+        .get_recommendations(&"team1".to_string())
+        .unwrap();
     let _ = recommendations;
 }
 
@@ -868,14 +925,20 @@ fn test_relevance_with_senior_experience() {
 fn test_phase_progression_all_phases() {
     let mut onboarding = TeamOnboarding::new(create_test_config());
     let prefs = create_test_preferences();
-    onboarding.start_onboarding("team1".to_string(), prefs).unwrap();
+    onboarding
+        .start_onboarding("team1".to_string(), prefs)
+        .unwrap();
 
     // Complete many tutorials to advance through phases
     for i in 0..15 {
-        onboarding.complete_tutorial(&"team1".to_string(), format!("tutorial_{i}"), 1).unwrap();
+        onboarding
+            .complete_tutorial(&"team1".to_string(), format!("tutorial_{i}"), 1)
+            .unwrap();
     }
 
-    let report = onboarding.generate_progress_report(&"team1".to_string()).unwrap();
+    let report = onboarding
+        .generate_progress_report(&"team1".to_string())
+        .unwrap();
     // Should be in a late phase
     let _ = report;
 }

@@ -728,7 +728,10 @@ mod tests {
             ],
         };
         let edges = infer_component_relationships(&components, &call_graph).unwrap();
-        assert!(edges.is_empty(), "Intra-component edges should be filtered out");
+        assert!(
+            edges.is_empty(),
+            "Intra-component edges should be filtered out"
+        );
     }
 
     #[test]
@@ -739,7 +742,12 @@ mod tests {
         ];
         let call_graph = CallGraph {
             nodes: vec![],
-            edges: vec![make_call_edge("fn_a1", "fn_b1", CallEdgeType::FunctionCall, 3)],
+            edges: vec![make_call_edge(
+                "fn_a1",
+                "fn_b1",
+                CallEdgeType::FunctionCall,
+                3,
+            )],
         };
         let edges = infer_component_relationships(&components, &call_graph).unwrap();
         assert_eq!(edges.len(), 1);
@@ -881,7 +889,10 @@ mod tests {
             ],
         };
         let edges = infer_component_relationships(&components, &call_graph).unwrap();
-        assert!(edges.is_empty(), "Edges with unknown nodes should be ignored");
+        assert!(
+            edges.is_empty(),
+            "Edges with unknown nodes should be ignored"
+        );
     }
 
     #[test]

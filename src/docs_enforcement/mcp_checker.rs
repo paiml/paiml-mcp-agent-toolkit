@@ -483,9 +483,7 @@ mod tests {
     fn test_scaffold_agent_requires_name() {
         let tools = load_mcp_tool_definitions().unwrap();
         let scaffold = tools.iter().find(|t| t.name == "scaffold_agent").unwrap();
-        let required = scaffold.input_schema["required"]
-            .as_array()
-            .unwrap();
+        let required = scaffold.input_schema["required"].as_array().unwrap();
         assert!(required.iter().any(|v| v.as_str() == Some("name")));
     }
 

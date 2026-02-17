@@ -141,7 +141,10 @@ async fn test_format_report_json() {
     let results = make_analysis_results();
     let report = svc.generate_report(config, results).await.unwrap();
 
-    let json = svc.format_report(&report, ReportFormat::Json).await.unwrap();
+    let json = svc
+        .format_report(&report, ReportFormat::Json)
+        .await
+        .unwrap();
     let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
     assert!(parsed.is_object());
 }
@@ -153,7 +156,10 @@ async fn test_format_report_markdown() {
     let results = make_analysis_results();
     let report = svc.generate_report(config, results).await.unwrap();
 
-    let md = svc.format_report(&report, ReportFormat::Markdown).await.unwrap();
+    let md = svc
+        .format_report(&report, ReportFormat::Markdown)
+        .await
+        .unwrap();
     assert!(md.contains("# "));
     assert!(md.contains("## Executive Summary"));
     assert!(md.contains("## Metadata"));
@@ -167,7 +173,10 @@ async fn test_format_report_html() {
     let results = make_analysis_results();
     let report = svc.generate_report(config, results).await.unwrap();
 
-    let html = svc.format_report(&report, ReportFormat::Html).await.unwrap();
+    let html = svc
+        .format_report(&report, ReportFormat::Html)
+        .await
+        .unwrap();
     assert!(html.contains("<!DOCTYPE html>"));
     assert!(html.contains("<html>"));
     assert!(html.contains("</html>"));
@@ -192,7 +201,10 @@ async fn test_format_report_dashboard() {
     let results = make_minimal_analysis_results();
     let report = svc.generate_report(config, results).await.unwrap();
 
-    let dash = svc.format_report(&report, ReportFormat::Dashboard).await.unwrap();
+    let dash = svc
+        .format_report(&report, ReportFormat::Dashboard)
+        .await
+        .unwrap();
     assert!(dash.contains("Dashboard"));
 }
 
@@ -205,7 +217,10 @@ async fn test_markdown_has_metrics_table() {
     let results = make_analysis_results();
     let report = svc.generate_report(config, results).await.unwrap();
 
-    let md = svc.format_report(&report, ReportFormat::Markdown).await.unwrap();
+    let md = svc
+        .format_report(&report, ReportFormat::Markdown)
+        .await
+        .unwrap();
     assert!(md.contains("| Metric |"));
 }
 
@@ -216,7 +231,10 @@ async fn test_markdown_has_key_findings() {
     let results = make_analysis_results();
     let report = svc.generate_report(config, results).await.unwrap();
 
-    let md = svc.format_report(&report, ReportFormat::Markdown).await.unwrap();
+    let md = svc
+        .format_report(&report, ReportFormat::Markdown)
+        .await
+        .unwrap();
     assert!(md.contains("Key Findings"));
 }
 
@@ -227,9 +245,17 @@ async fn test_markdown_recommendation_priorities() {
     let results = make_analysis_results();
     let report = svc.generate_report(config, results).await.unwrap();
 
-    let md = svc.format_report(&report, ReportFormat::Markdown).await.unwrap();
+    let md = svc
+        .format_report(&report, ReportFormat::Markdown)
+        .await
+        .unwrap();
     // Should have priority markers
-    assert!(md.contains("HIGH") || md.contains("MEDIUM") || md.contains("LOW") || md.contains("CRITICAL"));
+    assert!(
+        md.contains("HIGH")
+            || md.contains("MEDIUM")
+            || md.contains("LOW")
+            || md.contains("CRITICAL")
+    );
 }
 
 // ==================== Analysis data types ====================
@@ -309,7 +335,12 @@ fn test_report_format_variants() {
 
 #[test]
 fn test_risk_level_serde() {
-    for level in [RiskLevel::Low, RiskLevel::Medium, RiskLevel::High, RiskLevel::Critical] {
+    for level in [
+        RiskLevel::Low,
+        RiskLevel::Medium,
+        RiskLevel::High,
+        RiskLevel::Critical,
+    ] {
         let json = serde_json::to_string(&level).unwrap();
         let back: RiskLevel = serde_json::from_str(&json).unwrap();
         assert_eq!(format!("{:?}", level), format!("{:?}", back));
@@ -318,7 +349,13 @@ fn test_risk_level_serde() {
 
 #[test]
 fn test_severity_serde() {
-    for sev in [Severity::Info, Severity::Low, Severity::Medium, Severity::High, Severity::Critical] {
+    for sev in [
+        Severity::Info,
+        Severity::Low,
+        Severity::Medium,
+        Severity::High,
+        Severity::Critical,
+    ] {
         let json = serde_json::to_string(&sev).unwrap();
         let back: Severity = serde_json::from_str(&json).unwrap();
         assert_eq!(format!("{:?}", sev), format!("{:?}", back));
@@ -327,7 +364,13 @@ fn test_severity_serde() {
 
 #[test]
 fn test_effort_level_serde() {
-    for eff in [EffortLevel::Trivial, EffortLevel::Easy, EffortLevel::Medium, EffortLevel::Hard, EffortLevel::VeryHard] {
+    for eff in [
+        EffortLevel::Trivial,
+        EffortLevel::Easy,
+        EffortLevel::Medium,
+        EffortLevel::Hard,
+        EffortLevel::VeryHard,
+    ] {
         let json = serde_json::to_string(&eff).unwrap();
         let back: EffortLevel = serde_json::from_str(&json).unwrap();
         assert_eq!(format!("{:?}", eff), format!("{:?}", back));
@@ -336,7 +379,12 @@ fn test_effort_level_serde() {
 
 #[test]
 fn test_priority_serde() {
-    for pri in [Priority::Low, Priority::Medium, Priority::High, Priority::Critical] {
+    for pri in [
+        Priority::Low,
+        Priority::Medium,
+        Priority::High,
+        Priority::Critical,
+    ] {
         let json = serde_json::to_string(&pri).unwrap();
         let back: Priority = serde_json::from_str(&json).unwrap();
         assert_eq!(format!("{:?}", pri), format!("{:?}", back));
@@ -345,7 +393,12 @@ fn test_priority_serde() {
 
 #[test]
 fn test_trend_serde() {
-    for trend in [Trend::Improving, Trend::Stable, Trend::Degrading, Trend::Unknown] {
+    for trend in [
+        Trend::Improving,
+        Trend::Stable,
+        Trend::Degrading,
+        Trend::Unknown,
+    ] {
         let json = serde_json::to_string(&trend).unwrap();
         let back: Trend = serde_json::from_str(&json).unwrap();
         assert_eq!(format!("{:?}", trend), format!("{:?}", back));
@@ -571,7 +624,10 @@ async fn test_health_score_perfect() {
     let report = svc.generate_report(config, results).await.unwrap();
     // Perfect code should have high health score
     assert!(report.executive_summary.overall_health_score >= 90.0);
-    assert!(matches!(report.executive_summary.risk_assessment, RiskLevel::Low));
+    assert!(matches!(
+        report.executive_summary.risk_assessment,
+        RiskLevel::Low
+    ));
 }
 
 #[tokio::test]

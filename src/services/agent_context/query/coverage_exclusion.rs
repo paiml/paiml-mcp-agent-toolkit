@@ -61,7 +61,10 @@ impl ExclusionContext {
     ///
     /// When `cached_coverage_off` is provided (from SQLite index), skips all file I/O
     /// for coverage(off) detection — O(1) per file instead of O(file_size).
-    pub(crate) fn build(project_path: &Path, cached_coverage_off: Option<&HashSet<String>>) -> Self {
+    pub(crate) fn build(
+        project_path: &Path,
+        cached_coverage_off: Option<&HashSet<String>>,
+    ) -> Self {
         let makefile_regex = parse_makefile_coverage_exclude(project_path);
         let dead_functions = load_dead_code_functions(project_path);
         let coverage_off_files = cached_coverage_off.cloned().unwrap_or_default();
@@ -79,7 +82,11 @@ impl ExclusionContext {
     ///
     /// Checks in priority order: dead code > coverage(off) > Makefile pattern.
     /// With cached data, this is pure HashSet lookups — no file I/O.
-    pub(crate) fn classify(&mut self, result: &QueryResult, project_path: &Path) -> CoverageExclusion {
+    pub(crate) fn classify(
+        &mut self,
+        result: &QueryResult,
+        project_path: &Path,
+    ) -> CoverageExclusion {
         // 1. Dead code check (function-level, highest signal)
         let dead_key = format!("{}::{}", result.file_path, result.function_name);
         if self.dead_functions.contains(&dead_key) {
@@ -123,14 +130,11 @@ impl ExclusionContext {
         let full_path = project_path.join(file_path);
         if let Ok(content) = std::fs::read_to_string(&full_path) {
             // Check first 50 lines for module-level coverage(off)
-            let has_coverage_off = content
-                .lines()
-                .take(50)
-                .any(|line| {
-                    let trimmed = line.trim();
-                    trimmed.contains("cfg_attr(coverage_nightly, coverage(off))")
-                        || trimmed.contains("cfg_attr(coverage_nightly,coverage(off))")
-                });
+            let has_coverage_off = content.lines().take(50).any(|line| {
+                let trimmed = line.trim();
+                trimmed.contains("cfg_attr(coverage_nightly, coverage(off))")
+                    || trimmed.contains("cfg_attr(coverage_nightly,coverage(off))")
+            });
             if has_coverage_off {
                 self.coverage_off_files.insert(file_path.to_string());
                 return true;
@@ -225,7 +229,9 @@ fn parse_makefile_coverage_exclude(project_path: &Path) -> Option<regex::Regex> 
         }
         // Extract regex between single quotes after --ignore-filename-regex=
         if let Some(start) = line.find("--ignore-filename-regex='") {
-            let after = line.get(start + "--ignore-filename-regex='".len()..).unwrap_or_default();
+            let after = line
+                .get(start + "--ignore-filename-regex='".len()..)
+                .unwrap_or_default();
             if let Some(end) = after.find('\'') {
                 let raw_pattern = after.get(..end).unwrap_or_default();
                 // Normalize escaping: Makefile uses `\\.` (backslash-backslash-dot) which
@@ -270,7 +276,8 @@ fn load_dead_code_functions(project_path: &Path) -> HashSet<String> {
         Err(_) => return dead,
     };
 
-    let files = value.get("report")
+    let files = value
+        .get("report")
         .and_then(|r| r.get("files_with_dead_code"))
         .and_then(|f| f.as_array());
 
@@ -341,7 +348,10 @@ mod tests {
         assert_eq!(CoverageExclusion::None.label(), "testable");
         assert_eq!(CoverageExclusion::CoverageOff.label(), "coverage(off)");
         assert_eq!(CoverageExclusion::DeadCode.label(), "dead code");
-        assert_eq!(CoverageExclusion::MakefileExcluded.label(), "Makefile pattern");
+        assert_eq!(
+            CoverageExclusion::MakefileExcluded.label(),
+            "Makefile pattern"
+        );
     }
 
     #[test]
@@ -360,7 +370,8 @@ mod tests {
         std::fs::write(
             src_dir.join("handler.rs"),
             "#![cfg_attr(coverage_nightly, coverage(off))]\nfn foo() {}\n",
-        ).unwrap();
+        )
+        .unwrap();
 
         let mut ctx = ExclusionContext {
             coverage_off_files: HashSet::new(),
@@ -401,12 +412,9 @@ mod tests {
     fn test_classify_makefile_excluded() {
         let temp = tempfile::TempDir::new().unwrap();
         std::fs::create_dir_all(temp.path().join("src/cli/handlers")).unwrap();
-        std::fs::write(
-            temp.path().join("src/cli/handlers/foo.rs"),
-            "fn bar() {}\n",
-        ).unwrap();
+        std::fs::write(temp.path().join("src/cli/handlers/foo.rs"), "fn bar() {}\n").unwrap();
 
-        let re = regex::Regex::new(r"/(cli|mcp[^/]*)/" ).unwrap();
+        let re = regex::Regex::new(r"/(cli|mcp[^/]*)/").unwrap();
         let mut ctx = ExclusionContext {
             coverage_off_files: HashSet::new(),
             checked_files: HashSet::new(),
@@ -427,7 +435,8 @@ mod tests {
         std::fs::write(
             temp.path().join("src/services/core.rs"),
             "fn important() {}\n",
-        ).unwrap();
+        )
+        .unwrap();
 
         let mut ctx = ExclusionContext {
             coverage_off_files: HashSet::new(),
@@ -448,14 +457,12 @@ mod tests {
         let src = temp.path().join("src");
         std::fs::create_dir_all(src.join("services")).unwrap();
         std::fs::create_dir_all(src.join("cli")).unwrap();
-        std::fs::write(
-            src.join("services/core.rs"),
-            "fn testable() {}\n",
-        ).unwrap();
+        std::fs::write(src.join("services/core.rs"), "fn testable() {}\n").unwrap();
         std::fs::write(
             src.join("cli/handler.rs"),
             "#![cfg_attr(coverage_nightly, coverage(off))]\nfn excluded() {}\n",
-        ).unwrap();
+        )
+        .unwrap();
 
         let mut results = vec![
             make_result("src/services/core.rs", "testable"),
@@ -466,7 +473,10 @@ mod tests {
 
         assert_eq!(results[0].coverage_exclusion, CoverageExclusion::None);
         assert!(!results[0].coverage_excluded);
-        assert_eq!(results[1].coverage_exclusion, CoverageExclusion::CoverageOff);
+        assert_eq!(
+            results[1].coverage_exclusion,
+            CoverageExclusion::CoverageOff
+        );
         assert!(results[1].coverage_excluded);
     }
 
@@ -533,13 +543,19 @@ mod tests {
         assert!(re.is_some(), "Should parse double-backslash regex");
         let re = re.unwrap();
         // Must match actual file paths (without backslashes)
-        assert!(re.is_match("src/services/build_perf_impl.rs"),
-            "Should match build_perf_impl.rs with literal dot");
-        assert!(re.is_match("src/tdg/storage_impl.rs"),
-            "Should match storage_impl.rs with literal dot");
+        assert!(
+            re.is_match("src/services/build_perf_impl.rs"),
+            "Should match build_perf_impl.rs with literal dot"
+        );
+        assert!(
+            re.is_match("src/tdg/storage_impl.rs"),
+            "Should match storage_impl.rs with literal dot"
+        );
         // Must NOT match paths without the exact filename
-        assert!(!re.is_match("src/services/core.rs"),
-            "Should not match unrelated files");
+        assert!(
+            !re.is_match("src/services/core.rs"),
+            "Should not match unrelated files"
+        );
     }
 
     #[test]
@@ -569,7 +585,8 @@ mod tests {
                     ]
                 }
             }"#,
-        ).unwrap();
+        )
+        .unwrap();
 
         let dead = load_dead_code_functions(temp.path());
         assert!(dead.contains("src/old.rs::unused_fn"));
@@ -607,7 +624,8 @@ mod tests {
         std::fs::write(
             temp.path().join("src/mixed.rs"),
             "#![cfg_attr(coverage_nightly, coverage(off))]\nfn dead_fn() {}\n",
-        ).unwrap();
+        )
+        .unwrap();
 
         let mut dead = HashSet::new();
         dead.insert("src/mixed.rs::dead_fn".to_string());
@@ -633,7 +651,8 @@ mod tests {
         std::fs::write(
             temp.path().join("src/cached.rs"),
             "#![cfg_attr(coverage_nightly, coverage(off))]\nfn a() {}\nfn b() {}\n",
-        ).unwrap();
+        )
+        .unwrap();
 
         let mut ctx = ExclusionContext {
             coverage_off_files: HashSet::new(),
@@ -645,10 +664,16 @@ mod tests {
 
         // First check reads file
         let r1 = make_result("src/cached.rs", "a");
-        assert_eq!(ctx.classify(&r1, temp.path()), CoverageExclusion::CoverageOff);
+        assert_eq!(
+            ctx.classify(&r1, temp.path()),
+            CoverageExclusion::CoverageOff
+        );
         // Second check uses cache
         assert!(ctx.coverage_off_files.contains("src/cached.rs"));
         let r2 = make_result("src/cached.rs", "b");
-        assert_eq!(ctx.classify(&r2, temp.path()), CoverageExclusion::CoverageOff);
+        assert_eq!(
+            ctx.classify(&r2, temp.path()),
+            CoverageExclusion::CoverageOff
+        );
     }
 }

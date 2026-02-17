@@ -1,9 +1,7 @@
 use super::engine::{glob_matches, is_test_function, parse_query_prefixes};
 use super::enrichment::{build_churn_map, enrich_with_churn};
 use super::formatters::{format_json, format_markdown, format_text, format_text_with_code};
-use super::types::{
-    CaseSensitivity, QueryOptions, QueryResult, RankBy, SearchMode,
-};
+use super::types::{CaseSensitivity, QueryOptions, QueryResult, RankBy, SearchMode};
 use crate::services::agent_context::function_index::DefinitionType;
 use crate::services::agent_context::{AgentContextIndex, FunctionEntry, QualityMetrics};
 use std::collections::{HashMap, HashSet};
@@ -119,8 +117,7 @@ fn test_parse_query_prefixes_fn_only() {
 
 #[test]
 fn test_parse_query_prefixes_both() {
-    let (file, func, remaining) =
-        parse_query_prefixes("file:foo.rs fn:bar baz");
+    let (file, func, remaining) = parse_query_prefixes("file:foo.rs fn:bar baz");
     assert_eq!(file, Some("foo.rs".to_string()));
     assert_eq!(func, Some("bar".to_string()));
     assert_eq!(remaining, "baz");
@@ -332,10 +329,15 @@ fn build_test_index() -> AgentContextIndex {
         &indices.name_index,
         functions.len(),
     );
-    let (calls, called_by) =
-        crate::services::agent_context::function_index::build_call_graph(&functions, &indices.name_index);
-    let graph_metrics =
-        crate::services::agent_context::function_index::compute_graph_metrics(functions.len(), &calls, &called_by);
+    let (calls, called_by) = crate::services::agent_context::function_index::build_call_graph(
+        &functions,
+        &indices.name_index,
+    );
+    let graph_metrics = crate::services::agent_context::function_index::compute_graph_metrics(
+        functions.len(),
+        &calls,
+        &called_by,
+    );
 
     AgentContextIndex {
         functions,
@@ -404,7 +406,11 @@ fn test_query_with_file_scope() {
     assert!(!results.is_empty());
     // All results must be from utils.rs
     for r in &results {
-        assert!(r.file_path.contains("utils.rs"), "unexpected file: {}", r.file_path);
+        assert!(
+            r.file_path.contains("utils.rs"),
+            "unexpected file: {}",
+            r.file_path
+        );
     }
 }
 
@@ -483,7 +489,11 @@ fn test_query_complexity_filter() {
         )
         .unwrap();
     for r in &results {
-        assert!(r.complexity <= 3, "complexity {} exceeds max 3", r.complexity);
+        assert!(
+            r.complexity <= 3,
+            "complexity {} exceeds max 3",
+            r.complexity
+        );
     }
 }
 
@@ -554,7 +564,9 @@ fn test_query_test_function_demotion() {
         )
         .unwrap();
     // test_error_handling should be ranked lower than handle_error
-    let handle_pos = results.iter().position(|r| r.function_name == "handle_error");
+    let handle_pos = results
+        .iter()
+        .position(|r| r.function_name == "handle_error");
     let test_pos = results
         .iter()
         .position(|r| r.function_name == "test_error_handling");
@@ -660,7 +672,9 @@ fn test_find_similar() {
     // Should find similar functions (handle_request is similar)
     assert!(!results.is_empty());
     // Should not include self
-    assert!(results.iter().all(|r| !(r.file_path == "src/handler.rs" && r.function_name == "handle_error")));
+    assert!(results
+        .iter()
+        .all(|r| !(r.file_path == "src/handler.rs" && r.function_name == "handle_error")));
 }
 
 #[test]
@@ -797,16 +811,14 @@ fn test_called_by_test_summarization() {
     index.called_by.insert(0, callers);
     // Rebuild name_index for the new functions
     for (i, f) in index.functions.iter().enumerate() {
-        index.name_index.entry(f.function_name.clone()).or_default().push(i);
+        index
+            .name_index
+            .entry(f.function_name.clone())
+            .or_default()
+            .push(i);
     }
 
-    let result = QueryResult::from_entry_with_context(
-        &index.functions[0],
-        0,
-        &index,
-        0.9,
-        false,
-    );
+    let result = QueryResult::from_entry_with_context(&index.functions[0], 0, &index, 0.9, false);
     // Should have production caller + test summary
     assert!(result.called_by.iter().any(|s| s.contains("tests)")));
     // Should not list individual test_case_N names
@@ -846,13 +858,7 @@ fn test_called_by_production_cap() {
     }
     index.called_by.insert(0, callers);
 
-    let result = QueryResult::from_entry_with_context(
-        &index.functions[0],
-        0,
-        &index,
-        0.9,
-        false,
-    );
+    let result = QueryResult::from_entry_with_context(&index.functions[0], 0, &index, 0.9, false);
     // Should cap at 10 + "(+N more)"
     assert!(result.called_by.iter().any(|s| s.contains("more)")));
     // Total entries should be 10 visible + 1 summary = 11
@@ -924,7 +930,10 @@ fn test_format_text_with_code_shows_metrics() {
     // Should show SATD warning as "⚠2" (warning symbol + count)
     assert!(text.contains("⚠2"), "missing SATD");
     // Should show churn (high commit count shown as "🔥" indicator)
-    assert!(text.contains("🔥") || text.contains("30"), "missing churn indicator");
+    assert!(
+        text.contains("🔥") || text.contains("30"),
+        "missing churn indicator"
+    );
     // Should show function name in header
     assert!(text.contains("test_func"), "missing function name");
 }
@@ -1082,8 +1091,14 @@ fn test_rankby_from_str() {
     assert_eq!("impact".parse::<RankBy>().unwrap(), RankBy::Impact);
     assert_eq!("roi".parse::<RankBy>().unwrap(), RankBy::Impact);
     assert_eq!("coverage".parse::<RankBy>().unwrap(), RankBy::Impact);
-    assert_eq!("cross-project".parse::<RankBy>().unwrap(), RankBy::CrossProject);
-    assert_eq!("crossproject".parse::<RankBy>().unwrap(), RankBy::CrossProject);
+    assert_eq!(
+        "cross-project".parse::<RankBy>().unwrap(),
+        RankBy::CrossProject
+    );
+    assert_eq!(
+        "crossproject".parse::<RankBy>().unwrap(),
+        RankBy::CrossProject
+    );
     assert_eq!("xproject".parse::<RankBy>().unwrap(), RankBy::CrossProject);
     assert!("invalid".parse::<RankBy>().is_err());
 }
@@ -1161,7 +1176,10 @@ fn test_format_markdown_with_clones_and_entropy() {
 
     let md = format_markdown(&[result]);
     assert!(md.contains("📋 **Clones:"), "missing clones in markdown");
-    assert!(md.contains("🔄 **Repetitive"), "missing entropy in markdown");
+    assert!(
+        md.contains("🔄 **Repetitive"),
+        "missing entropy in markdown"
+    );
     assert!(md.contains("**Graph:**"), "missing graph metrics");
     assert!(md.contains("**Documentation:**"), "missing doc comment");
 }
@@ -1602,7 +1620,10 @@ fn test_format_text_with_doc_comment() {
     let mut result = QueryResult::from_entry(&entry, 0.5, false);
     result.doc_comment = Some("Important documentation".to_string());
     let text = format_text(&[result]);
-    assert!(text.contains("Important documentation"), "missing doc comment");
+    assert!(
+        text.contains("Important documentation"),
+        "missing doc comment"
+    );
 }
 
 #[test]
@@ -1710,7 +1731,10 @@ fn test_format_text_with_code_syntect_source() {
     let mut result = QueryResult::from_entry(&entry, 0.9, true);
     result.source = Some("fn src_fn() { let x = 42; }".to_string());
     let text = format_text_with_code(&[result], None);
-    assert!(text.contains("src_fn"), "missing source content with syntect");
+    assert!(
+        text.contains("src_fn"),
+        "missing source content with syntect"
+    );
     // syntect adds ANSI escape codes
     assert!(text.contains("\x1b["), "missing ANSI codes from syntect");
 }
@@ -1736,7 +1760,10 @@ fn test_format_text_with_code_low_pagerank_no_star() {
     let mut result = QueryResult::from_entry(&entry, 0.9, true);
     result.pagerank = 0.00005; // scaled: 0.5 -> below 1.0 threshold
     let text = format_text_with_code(&[result], None);
-    assert!(!text.contains("★"), "should not show star for very low pagerank");
+    assert!(
+        !text.contains("★"),
+        "should not show star for very low pagerank"
+    );
 }
 
 #[test]
@@ -1845,9 +1872,7 @@ fn test_from_entry_with_context_basic() {
 
 #[test]
 fn test_from_entry_with_context_out_of_bounds() {
-    use crate::services::agent_context::function_index::{
-        AgentContextIndex, IndexManifest,
-    };
+    use crate::services::agent_context::function_index::{AgentContextIndex, IndexManifest};
     use std::path::PathBuf;
 
     let entry = create_test_entry("my_func", 5, 1.5);
@@ -1944,10 +1969,7 @@ fn test_from_entry_with_context_callers_capping() {
         .iter()
         .any(|s| s.starts_with("(+") && s.ends_with("more)"));
     assert!(has_more, "Should have (+N more) message");
-    let has_tests = result
-        .called_by
-        .iter()
-        .any(|s| s.contains("tests)"));
+    let has_tests = result.called_by.iter().any(|s| s.contains("tests)"));
     assert!(has_tests, "Should have (+N tests) message");
 }
 
@@ -2024,9 +2046,7 @@ fn test_query_literal_mode() {
     for r in &results {
         // If there's a match, the source should contain the literal
         assert!(
-            r.function_name.contains("unwrap()")
-                || r.signature.contains("unwrap()")
-                || true, // source is not in result unless include_source
+            r.function_name.contains("unwrap()") || r.signature.contains("unwrap()") || true, // source is not in result unless include_source
         );
     }
 }
@@ -2186,8 +2206,8 @@ fn test_glob_matches_basic() {
 // ── Enrichment module coverage tests ────────────────────────────────
 
 use super::enrichment::{
-    enrich_results_with_churn, enrich_results_with_duplicates,
-    enrich_results_with_entropy, enrich_results_with_faults,
+    enrich_results_with_churn, enrich_results_with_duplicates, enrich_results_with_entropy,
+    enrich_results_with_faults,
 };
 
 // ── enrich_with_churn: additional edge cases ────────────────────────
@@ -2816,9 +2836,7 @@ fn test_load_workspace_coverage_skips_missing() {
     let pmat = tmp.path().join(".pmat");
     std::fs::create_dir_all(&pmat).unwrap();
 
-    let siblings = vec![
-        (pmat.join("context.db"), "missing_project".to_string()),
-    ];
+    let siblings = vec![(pmat.join("context.db"), "missing_project".to_string())];
 
     let merged = load_workspace_coverage(&siblings);
     assert!(merged.is_empty());

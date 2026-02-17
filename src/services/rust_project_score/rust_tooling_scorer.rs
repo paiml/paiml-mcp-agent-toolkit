@@ -679,7 +679,10 @@ impl RustToolingScorer {
     fn extract_profile_section<'a>(content: &'a str, header: &str) -> Option<&'a str> {
         let start = content.find(header)?;
         let section = &content[start..];
-        let end = section[1..].find("\n[").map(|i| i + 1).unwrap_or(section.len());
+        let end = section[1..]
+            .find("\n[")
+            .map(|i| i + 1)
+            .unwrap_or(section.len());
         Some(&section[..end])
     }
 
@@ -732,7 +735,9 @@ impl RustToolingScorer {
 
         let mut score = 0.0;
 
-        if let Some(release) = Self::extract_profile_section(&cargo_toml_content, "[profile.release]") {
+        if let Some(release) =
+            Self::extract_profile_section(&cargo_toml_content, "[profile.release]")
+        {
             score += Self::score_release_section(release);
         }
 
@@ -844,9 +849,7 @@ impl RustToolingScorer {
         if !content.contains("[workspace.lints") {
             recs.push("Add [workspace.lints.rust] and [workspace.lints.clippy] to Cargo.toml for consistent linting across all crates".to_string());
         }
-        if !content.contains("unsafe_op_in_unsafe_fn")
-            && !content.contains("checked_conversions")
-        {
+        if !content.contains("unsafe_op_in_unsafe_fn") && !content.contains("checked_conversions") {
             recs.push("Enable high-value lint categories (unsafe_op_in_unsafe_fn, unreachable_pub, checked_conversions) for better code quality".to_string());
         }
         if !project_path.join(".clippy.toml").exists() {
@@ -899,12 +902,14 @@ impl Scorer for RustToolingScorer {
         ];
 
         if self.score_cargo_deny(project_path).is_ok_and(|s| s < 3.0) {
-            recommendations.push(
-                "Add deny.toml configuration for dependency policy enforcement".to_string(),
-            );
+            recommendations
+                .push("Add deny.toml configuration for dependency policy enforcement".to_string());
         }
 
-        if self.score_workspace_lints(project_path, None).is_ok_and(|s| s < 12.0) {
+        if self
+            .score_workspace_lints(project_path, None)
+            .is_ok_and(|s| s < 12.0)
+        {
             recommendations.extend(Self::lint_recommendations(project_path));
         }
 

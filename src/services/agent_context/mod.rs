@@ -61,26 +61,23 @@ mod query;
 pub use function_index::{
     AgentContextIndex, FunctionEntry, GraphMetrics, IndexManifest, IndexStats, QualityMetrics,
 };
+pub use query::coverage_exclusion::{classify_exclusions, CoverageExclusion, ExclusionSummary};
+pub use query::ptx_diagnostics::{
+    format_ptx_diagnostics_json, format_ptx_diagnostics_text, run_ptx_diagnostics,
+    PtxDiagnosticResult,
+};
+pub use query::ptx_flow::{
+    classify_ptx_role, format_ptx_flow_json, format_ptx_flow_text, trace_ptx_dataflow, PtxFlowNode,
+    PtxFlowResult, PtxRole,
+};
+pub use query::raw_search::{
+    is_within_indexed_function, raw_search, FileMatchCount, RawSearchOptions, RawSearchOutput,
+    RawSearchResult,
+};
 pub use query::{
     build_churn_map, build_coverage_map, compute_impact_score, enrich_results_with_churn,
     enrich_results_with_coverage, enrich_results_with_duplicates, enrich_results_with_entropy,
-    enrich_results_with_faults, enrich_with_churn, enrich_with_coverage,
-    enrich_with_coverage_diff, format_coverage_summary, format_json, format_markdown, format_text,
-    format_text_with_code, load_workspace_coverage, CaseSensitivity, QueryOptions, QueryResult,
-    RankBy, SearchMode,
-};
-pub use query::coverage_exclusion::{
-    classify_exclusions, CoverageExclusion, ExclusionSummary,
-};
-pub use query::raw_search::{
-    raw_search, is_within_indexed_function, FileMatchCount, RawSearchOptions, RawSearchOutput,
-    RawSearchResult,
-};
-pub use query::ptx_flow::{
-    classify_ptx_role, trace_ptx_dataflow, format_ptx_flow_text, format_ptx_flow_json,
-    PtxRole, PtxFlowNode, PtxFlowResult,
-};
-pub use query::ptx_diagnostics::{
-    run_ptx_diagnostics, format_ptx_diagnostics_text, format_ptx_diagnostics_json,
-    PtxDiagnosticResult,
+    enrich_results_with_faults, enrich_with_churn, enrich_with_coverage, enrich_with_coverage_diff,
+    format_coverage_summary, format_json, format_markdown, format_text, format_text_with_code,
+    load_workspace_coverage, CaseSensitivity, QueryOptions, QueryResult, RankBy, SearchMode,
 };

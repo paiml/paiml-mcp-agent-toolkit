@@ -216,8 +216,16 @@ fn test_satd_fix_implement() {
 fn test_refactor_op_extract_function() {
     let op = RefactorOp::ExtractFunction {
         name: "helper".to_string(),
-        start: BytePos { byte: 100, line: 10, column: 1 },
-        end: BytePos { byte: 200, line: 20, column: 1 },
+        start: BytePos {
+            byte: 100,
+            line: 10,
+            column: 1,
+        },
+        end: BytePos {
+            byte: 200,
+            line: 20,
+            column: 1,
+        },
         params: vec!["x".to_string(), "y".to_string()],
     };
     let json = serde_json::to_string(&op).unwrap();
@@ -251,7 +259,11 @@ fn test_refactor_op_replace_hashmap() {
 #[test]
 fn test_refactor_op_remove_satd() {
     let op = RefactorOp::RemoveSatd {
-        location: Location { file: PathBuf::from("test.rs"), line: 42, column: 1 },
+        location: Location {
+            file: PathBuf::from("test.rs"),
+            line: 42,
+            column: 1,
+        },
         fix: SatdFix::Remove,
     };
     let json = serde_json::to_string(&op).unwrap();
@@ -292,7 +304,11 @@ fn test_refactor_type_variants() {
 
 #[test]
 fn test_byte_pos_construction() {
-    let pos = BytePos { byte: 100, line: 10, column: 5 };
+    let pos = BytePos {
+        byte: 100,
+        line: 10,
+        column: 5,
+    };
     let json = serde_json::to_string(&pos).unwrap();
     let back: BytePos = serde_json::from_str(&json).unwrap();
     assert_eq!(back.byte, 100);
@@ -332,7 +348,11 @@ fn test_refactor_location_serde() {
 fn test_violation_serde() {
     let v = Violation {
         violation_type: ViolationType::HighComplexity,
-        location: Location { file: PathBuf::from("test.rs"), line: 10, column: 1 },
+        location: Location {
+            file: PathBuf::from("test.rs"),
+            line: 10,
+            column: 1,
+        },
         severity: Severity::High,
         description: "Too complex".to_string(),
         suggested_fix: None,
@@ -346,7 +366,11 @@ fn test_violation_serde() {
 fn test_violation_to_op_high_complexity() {
     let v = Violation {
         violation_type: ViolationType::HighComplexity,
-        location: Location { file: PathBuf::from("test.rs"), line: 10, column: 1 },
+        location: Location {
+            file: PathBuf::from("test.rs"),
+            line: 10,
+            column: 1,
+        },
         severity: Severity::High,
         description: "complex".to_string(),
         suggested_fix: None,
@@ -359,7 +383,11 @@ fn test_violation_to_op_high_complexity() {
 fn test_violation_to_op_deep_nesting() {
     let v = Violation {
         violation_type: ViolationType::DeepNesting,
-        location: Location { file: PathBuf::from("test.rs"), line: 10, column: 1 },
+        location: Location {
+            file: PathBuf::from("test.rs"),
+            line: 10,
+            column: 1,
+        },
         severity: Severity::Medium,
         description: "nested".to_string(),
         suggested_fix: None,
@@ -372,7 +400,11 @@ fn test_violation_to_op_deep_nesting() {
 fn test_violation_to_op_satd() {
     let v = Violation {
         violation_type: ViolationType::SelfAdmittedTechDebt,
-        location: Location { file: PathBuf::from("test.rs"), line: 10, column: 1 },
+        location: Location {
+            file: PathBuf::from("test.rs"),
+            line: 10,
+            column: 1,
+        },
         severity: Severity::Low,
         description: "TODO".to_string(),
         suggested_fix: None,
@@ -385,7 +417,11 @@ fn test_violation_to_op_satd() {
 fn test_violation_to_op_with_suggested_fix() {
     let v = Violation {
         violation_type: ViolationType::LongFunction,
-        location: Location { file: PathBuf::from("test.rs"), line: 10, column: 1 },
+        location: Location {
+            file: PathBuf::from("test.rs"),
+            line: 10,
+            column: 1,
+        },
         severity: Severity::Medium,
         description: "too long".to_string(),
         suggested_fix: Some(RefactorOp::SimplifyExpression {
@@ -518,7 +554,9 @@ fn test_state_machine_serde() {
 
 #[test]
 fn test_state_scan_serde() {
-    let state = State::Scan { targets: vec![PathBuf::from("a.rs")] };
+    let state = State::Scan {
+        targets: vec![PathBuf::from("a.rs")],
+    };
     let json = serde_json::to_string(&state).unwrap();
     let back: State = serde_json::from_str(&json).unwrap();
     let _ = format!("{:?}", back);
@@ -526,7 +564,9 @@ fn test_state_scan_serde() {
 
 #[test]
 fn test_state_complete_serde() {
-    let state = State::Complete { summary: Summary::default() };
+    let state = State::Complete {
+        summary: Summary::default(),
+    };
     let json = serde_json::to_string(&state).unwrap();
     let back: State = serde_json::from_str(&json).unwrap();
     let _ = format!("{:?}", back);

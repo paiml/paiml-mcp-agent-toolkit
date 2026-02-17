@@ -777,11 +777,23 @@ mod violation_display_tests {
         add_violation_entry(&mut output, &violation);
 
         // Should include filename (not full path for readability)
-        assert!(output.contains("complex_module.rs"), "Output should contain filename: {}", output);
+        assert!(
+            output.contains("complex_module.rs"),
+            "Output should contain filename: {}",
+            output
+        );
         // Should include line number
-        assert!(output.contains(":42:"), "Output should contain line number: {}", output);
+        assert!(
+            output.contains(":42:"),
+            "Output should contain line number: {}",
+            output
+        );
         // Should include message
-        assert!(output.contains("Function too complex"), "Output should contain message: {}", output);
+        assert!(
+            output.contains("Function too complex"),
+            "Output should contain message: {}",
+            output
+        );
     }
 
     #[test]
@@ -798,9 +810,17 @@ mod violation_display_tests {
         add_violation_entry(&mut output, &violation);
 
         // Should include filename
-        assert!(output.contains("config.rs"), "Output should contain filename: {}", output);
+        assert!(
+            output.contains("config.rs"),
+            "Output should contain filename: {}",
+            output
+        );
         // Should NOT include colon-number pattern for line
-        assert!(!output.contains(":None"), "Output should not contain :None: {}", output);
+        assert!(
+            !output.contains(":None"),
+            "Output should not contain :None: {}",
+            output
+        );
     }
 
     #[test]
@@ -817,7 +837,11 @@ mod violation_display_tests {
         add_violation_entry(&mut output, &violation);
 
         // Should just have message
-        assert!(output.contains("General information"), "Output should contain message: {}", output);
+        assert!(
+            output.contains("General information"),
+            "Output should contain message: {}",
+            output
+        );
     }
 
     #[test]

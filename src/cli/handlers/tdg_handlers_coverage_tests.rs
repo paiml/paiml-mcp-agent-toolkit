@@ -398,7 +398,6 @@ mod validate_minimum_grade_tests {
         let result = validate_minimum_grade(&score, &config);
         assert!(result.is_ok());
     }
-
 }
 
 mod format_tdg_output_tests {

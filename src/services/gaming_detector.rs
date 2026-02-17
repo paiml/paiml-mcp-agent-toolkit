@@ -105,7 +105,10 @@ impl GamingDetectionResult {
 
     /// Count violations by severity
     pub fn count_by_severity(&self, severity: Severity) -> usize {
-        self.violations.iter().filter(|v| v.severity == severity).count()
+        self.violations
+            .iter()
+            .filter(|v| v.severity == severity)
+            .count()
     }
 }
 
@@ -154,7 +157,10 @@ fn check_cfg_patterns(path: &Path, content: &str, violations: &mut Vec<GamingVio
         ("cfg(not(coverage))", GamingPattern::CfgNotCoverage),
         ("cfg(not(tarpaulin))", GamingPattern::CfgNotTarpaulin),
         ("cfg(not(llvm_cov))", GamingPattern::CfgNotLlvmCov),
-        ("cfg(not(tarpaulin_include))", GamingPattern::CfgNotTarpaulin),
+        (
+            "cfg(not(tarpaulin_include))",
+            GamingPattern::CfgNotTarpaulin,
+        ),
     ];
 
     // Track raw string literal blocks (r#"..."#)
@@ -314,9 +320,7 @@ pub fn detect_test_deletions(
         // Check if it was a test file
         let is_test = baseline_file.to_string_lossy().contains("test")
             || baseline_file.to_string_lossy().contains("_test")
-            || baseline_file
-                .to_string_lossy()
-                .contains("/tests/");
+            || baseline_file.to_string_lossy().contains("/tests/");
 
         if is_test && !full_path.exists() {
             violations.push(GamingViolation {
@@ -387,7 +391,20 @@ fn is_source_file(path: &Path) -> bool {
     let ext = path.extension().and_then(|e| e.to_str());
     matches!(
         ext,
-        Some("rs" | "cu" | "cuh" | "c" | "cpp" | "h" | "hpp" | "py" | "ts" | "tsx" | "js" | "jsx" | "go")
+        Some(
+            "rs" | "cu"
+                | "cuh"
+                | "c"
+                | "cpp"
+                | "h"
+                | "hpp"
+                | "py"
+                | "ts"
+                | "tsx"
+                | "js"
+                | "jsx"
+                | "go"
+        )
     )
 }
 

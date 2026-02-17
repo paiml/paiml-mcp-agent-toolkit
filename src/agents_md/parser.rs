@@ -197,12 +197,7 @@ impl AgentsMdParser {
     }
 
     /// Process a single markdown event during parsing
-    fn process_event(
-        &self,
-        event: Event,
-        state: &mut ParseState,
-        document: &mut AgentsMdDocument,
-    ) {
+    fn process_event(&self, event: Event, state: &mut ParseState, document: &mut AgentsMdDocument) {
         match event {
             Event::Start(Tag::Heading { level, .. }) => {
                 state.current_heading_level = Self::heading_level_to_u8(level);
@@ -269,11 +264,7 @@ impl AgentsMdParser {
     }
 
     /// Start a new section when a heading text is encountered
-    fn start_new_section(
-        text: &str,
-        state: &mut ParseState,
-        document: &mut AgentsMdDocument,
-    ) {
+    fn start_new_section(text: &str, state: &mut ParseState, document: &mut AgentsMdDocument) {
         if let Some(section) = state.current_section.take() {
             document.sections.push(section);
         }
@@ -288,18 +279,11 @@ impl AgentsMdParser {
     }
 
     /// Process end of a code block
-    fn process_code_block_end(
-        &self,
-        state: &mut ParseState,
-        document: &mut AgentsMdDocument,
-    ) {
+    fn process_code_block_end(&self, state: &mut ParseState, document: &mut AgentsMdDocument) {
         if !state.in_code_block {
             return;
         }
-        let is_shell = matches!(
-            state.code_block_lang.as_str(),
-            "bash" | "sh" | "shell"
-        );
+        let is_shell = matches!(state.code_block_lang.as_str(), "bash" | "sh" | "shell");
         if is_shell {
             self.extract_shell_commands(state, document);
         }
@@ -315,11 +299,7 @@ impl AgentsMdParser {
     }
 
     /// Extract shell commands from a completed code block
-    fn extract_shell_commands(
-        &self,
-        state: &ParseState,
-        document: &mut AgentsMdDocument,
-    ) {
+    fn extract_shell_commands(&self, state: &ParseState, document: &mut AgentsMdDocument) {
         let section_title = state
             .current_section
             .as_ref()

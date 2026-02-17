@@ -751,10 +751,7 @@ mod tests {
         let medium = OperationPriority::Medium;
         let high = OperationPriority::High;
         let critical = OperationPriority::Critical;
-        assert_ne!(
-            std::mem::discriminant(&low),
-            std::mem::discriminant(&high)
-        );
+        assert_ne!(std::mem::discriminant(&low), std::mem::discriminant(&high));
         assert_ne!(
             std::mem::discriminant(&medium),
             std::mem::discriminant(&critical)
@@ -772,10 +769,7 @@ mod tests {
         for p in pressures {
             let json = serde_json::to_string(&p).unwrap();
             let back: ResourcePressure = serde_json::from_str(&json).unwrap();
-            assert_eq!(
-                std::mem::discriminant(&p),
-                std::mem::discriminant(&back)
-            );
+            assert_eq!(std::mem::discriminant(&p), std::mem::discriminant(&back));
         }
     }
 
@@ -784,8 +778,12 @@ mod tests {
         let actions = vec![
             ResourceAction::Allow,
             ResourceAction::Throttle { delay_ms: 100 },
-            ResourceAction::Queue { estimated_wait_ms: 500 },
-            ResourceAction::Reject { reason: "test".to_string() },
+            ResourceAction::Queue {
+                estimated_wait_ms: 500,
+            },
+            ResourceAction::Reject {
+                reason: "test".to_string(),
+            },
             ResourceAction::EmergencyStop,
         ];
         for a in &actions {

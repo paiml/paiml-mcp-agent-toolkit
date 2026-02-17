@@ -11,8 +11,15 @@ use std::path::{Path, PathBuf};
 
 /// Directories to skip when walking for YAML files.
 const SKIP_DIRS: &[&str] = &[
-    ".git", "node_modules", "target", ".pmat", "vendor", "build", "dist",
-    "__pycache__", ".venv",
+    ".git",
+    "node_modules",
+    "target",
+    ".pmat",
+    "vendor",
+    "build",
+    "dist",
+    "__pycache__",
+    ".venv",
 ];
 
 /// YAML "truthy" strings that cause subtle bugs when unquoted.
@@ -20,10 +27,8 @@ const SKIP_DIRS: &[&str] = &[
 /// canonical YAML 1.2 boolean values. Quoting them changes the type from bool
 /// to string, which breaks parsers that expect native booleans.
 const TRUTHY_STRINGS: &[&str] = &[
-    "yes", "no", "on", "off",
-    "Yes", "No", "On", "Off",
-    "YES", "NO", "ON", "OFF",
-    "y", "n", "Y", "N",
+    "yes", "no", "on", "off", "Yes", "No", "On", "Off", "YES", "NO", "ON", "OFF", "y", "n", "Y",
+    "N",
 ];
 
 /// CI/CD YAML keys that legitimately require native booleans (not quoted strings).
@@ -32,20 +37,37 @@ const TRUTHY_STRINGS: &[&str] = &[
 /// Kubernetes: `readOnly`, `privileged`
 const NATIVE_BOOLEAN_KEYS: &[&str] = &[
     // GitHub Actions
-    "if", "fail-fast", "continue-on-error", "required", "cancel-in-progress",
+    "if",
+    "fail-fast",
+    "continue-on-error",
+    "required",
+    "cancel-in-progress",
     // GitLab CI
     "allow_failure",
     // Kubernetes
-    "readOnly", "privileged",
+    "readOnly",
+    "privileged",
     // PMAT roadmap schema (boolean fields parsed as native bool)
-    "active", "draft",
+    "active",
+    "draft",
 ];
 
 /// Secret-indicating key patterns (case-insensitive).
 const SECRET_KEY_PATTERNS: &[&str] = &[
-    "password", "secret", "token", "api_key", "apikey", "api-key",
-    "private_key", "privatekey", "private-key", "access_key", "accesskey",
-    "aws_secret", "credentials", "auth_token",
+    "password",
+    "secret",
+    "token",
+    "api_key",
+    "apikey",
+    "api-key",
+    "private_key",
+    "privatekey",
+    "private-key",
+    "access_key",
+    "accesskey",
+    "aws_secret",
+    "credentials",
+    "auth_token",
 ];
 
 /// Known non-secret keys that contain secret-pattern substrings (e.g. "token").
@@ -110,10 +132,7 @@ fn walk_yaml_recursive(dir: &Path, files: &mut Vec<PathBuf>) {
     for entry in entries.flatten() {
         let path = entry.path();
         if path.is_dir() {
-            let dir_name = path
-                .file_name()
-                .and_then(|n| n.to_str())
-                .unwrap_or("");
+            let dir_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
             if !SKIP_DIRS.contains(&dir_name) {
                 walk_yaml_recursive(&path, files);
             }
@@ -286,9 +305,7 @@ pub fn detect_cb952_missing_required_fields(project_path: &Path) -> Vec<CbPatter
 
     for file_path in &files {
         // Only check GitHub Actions workflows
-        let rel_path = file_path
-            .strip_prefix(project_path)
-            .unwrap_or(file_path);
+        let rel_path = file_path.strip_prefix(project_path).unwrap_or(file_path);
         let rel = rel_path.display().to_string();
         if !rel.contains(".github/workflows") {
             continue;
@@ -346,9 +363,7 @@ pub fn detect_cb953_unpinned_action(project_path: &Path) -> Vec<CbPatternViolati
     let mut violations = Vec::new();
 
     for file_path in &files {
-        let rel_path = file_path
-            .strip_prefix(project_path)
-            .unwrap_or(file_path);
+        let rel_path = file_path.strip_prefix(project_path).unwrap_or(file_path);
         let rel = rel_path.display().to_string();
         if !rel.contains(".github/workflows") && !rel.contains(".github/actions") {
             continue;
@@ -446,11 +461,9 @@ pub fn detect_cb954_plaintext_secret(project_path: &Path) -> Vec<CbPatternViolat
                 let value = trimmed[colon_pos + 2..].trim();
 
                 // Check if key matches secret patterns but is not in allowlist
-                let is_allowlisted = SECRET_KEY_ALLOWLIST
-                    .iter()
-                    .any(|a| key == *a);
-                let is_secret_key = !is_allowlisted
-                    && SECRET_KEY_PATTERNS.iter().any(|p| key.contains(p));
+                let is_allowlisted = SECRET_KEY_ALLOWLIST.iter().any(|a| key == *a);
+                let is_secret_key =
+                    !is_allowlisted && SECRET_KEY_PATTERNS.iter().any(|p| key.contains(p));
 
                 if is_secret_key {
                     // Allow references to env vars or secrets

@@ -174,13 +174,13 @@ pub async fn handle_kaizen(config: KaizenConfig) -> Result<()> {
     // Phase 6: Create GitHub issues for unfixed findings
     let mut issues_created = Vec::new();
     if !config.dry_run && config.create_issues {
-        let unfixed: Vec<&KaizenFinding> = findings
-            .iter()
-            .filter(|f| !f.fix_applied)
-            .collect();
+        let unfixed: Vec<&KaizenFinding> = findings.iter().filter(|f| !f.fix_applied).collect();
 
         if !unfixed.is_empty() {
-            eprintln!("Kaizen: filing {} GitHub issues for unfixed findings", unfixed.len());
+            eprintln!(
+                "Kaizen: filing {} GitHub issues for unfixed findings",
+                unfixed.len()
+            );
             issues_created = create_github_issues(&path, &unfixed);
         }
     }
@@ -593,7 +593,9 @@ fn scan_custom_scores(path: &Path) -> Vec<KaizenFinding> {
         if let (Some(actual), Some(min)) = (score, score_def.min_score) {
             if actual < min {
                 let severity = match score_def.severity {
-                    crate::models::comply_config::CheckSeverity::Critical => FindingSeverity::Critical,
+                    crate::models::comply_config::CheckSeverity::Critical => {
+                        FindingSeverity::Critical
+                    }
                     crate::models::comply_config::CheckSeverity::Error => FindingSeverity::High,
                     crate::models::comply_config::CheckSeverity::Warning => FindingSeverity::Medium,
                     crate::models::comply_config::CheckSeverity::Info => FindingSeverity::Low,
@@ -705,7 +707,9 @@ fn enrich_with_tarantula(path: &Path, findings: &mut [KaizenFinding]) {
 }
 
 /// Parse LCOV format into file -> (line -> hit_count) map.
-fn parse_lcov_line_hits(content: &str) -> std::collections::HashMap<String, std::collections::HashMap<usize, u64>> {
+fn parse_lcov_line_hits(
+    content: &str,
+) -> std::collections::HashMap<String, std::collections::HashMap<usize, u64>> {
     let mut result: std::collections::HashMap<String, std::collections::HashMap<usize, u64>> =
         std::collections::HashMap::new();
     let mut current_file = String::new();
@@ -719,8 +723,13 @@ fn parse_lcov_line_hits(content: &str) -> std::collections::HashMap<String, std:
             }
             let parts: Vec<&str> = da.split(',').collect();
             if parts.len() >= 2 {
-                if let (Ok(line_no), Ok(hits)) = (parts[0].parse::<usize>(), parts[1].parse::<u64>()) {
-                    result.entry(current_file.clone()).or_default().insert(line_no, hits);
+                if let (Ok(line_no), Ok(hits)) =
+                    (parts[0].parse::<usize>(), parts[1].parse::<u64>())
+                {
+                    result
+                        .entry(current_file.clone())
+                        .or_default()
+                        .insert(line_no, hits);
                 }
             }
         } else if line == "end_of_record" {
@@ -970,10 +979,7 @@ fn create_github_issues(path: &Path, findings: &[&KaizenFinding]) -> Vec<GithubI
             args.push(label.clone());
         }
 
-        let output = Command::new("gh")
-            .args(&args)
-            .current_dir(path)
-            .output();
+        let output = Command::new("gh").args(&args).current_dir(path).output();
 
         match output {
             Ok(o) if o.status.success() => {
@@ -1311,13 +1317,22 @@ mod tests {
     fn test_truncate() {
         assert_eq!(truncate("short", 10), "short");
         assert_eq!(truncate("exactly_ten", 11), "exactly_ten");
-        assert_eq!(truncate("this is a long string that exceeds the limit", 20), "this is a long st...");
+        assert_eq!(
+            truncate("this is a long string that exceeds the limit", 20),
+            "this is a long st..."
+        );
     }
 
     #[test]
     fn test_extract_issue_number() {
-        assert_eq!(extract_issue_number("https://github.com/org/repo/issues/42"), 42);
-        assert_eq!(extract_issue_number("https://github.com/org/repo/issues/1234"), 1234);
+        assert_eq!(
+            extract_issue_number("https://github.com/org/repo/issues/42"),
+            42
+        );
+        assert_eq!(
+            extract_issue_number("https://github.com/org/repo/issues/1234"),
+            1234
+        );
         assert_eq!(extract_issue_number("not-a-url"), 0);
         assert_eq!(extract_issue_number(""), 0);
     }
@@ -1496,10 +1511,7 @@ end_of_record\n";
 
     #[test]
     fn test_extract_score_from_command_output_score_prefix() {
-        assert_eq!(
-            extract_score_from_command_output("SCORE: 88.3"),
-            Some(88.3)
-        );
+        assert_eq!(extract_score_from_command_output("SCORE: 88.3"), Some(88.3));
         assert_eq!(
             extract_score_from_command_output("running tests...\nSCORE: 100"),
             Some(100.0)

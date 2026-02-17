@@ -48,11 +48,23 @@ fn test_default_config_analysis_defaults() {
     let config = ConfigurationService::default_config();
 
     assert!(!config.analysis.include_patterns.is_empty());
-    assert!(config.analysis.include_patterns.contains(&"**/*.rs".to_string()));
-    assert!(config.analysis.include_patterns.contains(&"**/*.ts".to_string()));
+    assert!(config
+        .analysis
+        .include_patterns
+        .contains(&"**/*.rs".to_string()));
+    assert!(config
+        .analysis
+        .include_patterns
+        .contains(&"**/*.ts".to_string()));
     assert!(!config.analysis.exclude_patterns.is_empty());
-    assert!(config.analysis.exclude_patterns.contains(&"**/target/**".to_string()));
-    assert!(config.analysis.exclude_patterns.contains(&"**/node_modules/**".to_string()));
+    assert!(config
+        .analysis
+        .exclude_patterns
+        .contains(&"**/target/**".to_string()));
+    assert!(config
+        .analysis
+        .exclude_patterns
+        .contains(&"**/node_modules/**".to_string()));
     assert_eq!(config.analysis.max_file_size, 1024 * 1024); // 1MB
     assert_eq!(config.analysis.max_line_length, 100);
     assert!(config.analysis.skip_vendor);
@@ -86,10 +98,22 @@ fn test_default_config_mcp_defaults() {
     assert_eq!(config.mcp.max_request_size, 10 * 1024 * 1024); // 10MB
     assert!(!config.mcp.log_requests);
     assert!(!config.mcp.enabled_tools.is_empty());
-    assert!(config.mcp.enabled_tools.contains(&"analyze_complexity".to_string()));
-    assert!(config.mcp.enabled_tools.contains(&"analyze_dead_code".to_string()));
-    assert!(config.mcp.enabled_tools.contains(&"quality_gate".to_string()));
-    assert!(config.mcp.enabled_tools.contains(&"refactor_start".to_string()));
+    assert!(config
+        .mcp
+        .enabled_tools
+        .contains(&"analyze_complexity".to_string()));
+    assert!(config
+        .mcp
+        .enabled_tools
+        .contains(&"analyze_dead_code".to_string()));
+    assert!(config
+        .mcp
+        .enabled_tools
+        .contains(&"quality_gate".to_string()));
+    assert!(config
+        .mcp
+        .enabled_tools
+        .contains(&"refactor_start".to_string()));
 }
 
 #[test]
@@ -113,7 +137,10 @@ fn test_default_config_git_defaults() {
     let config = ConfigurationService::default_config();
 
     // CRITICAL: Verify zero-branching policy is enforced
-    assert!(!config.roadmap.git.create_branches, "Zero-branching policy must be enforced");
+    assert!(
+        !config.roadmap.git.create_branches,
+        "Zero-branching policy must be enforced"
+    );
     assert_eq!(config.roadmap.git.branch_pattern, "feature/{task_id}");
     assert_eq!(config.roadmap.git.commit_pattern, "{task_id}: {message}");
     assert!(config.roadmap.git.require_quality_check);
@@ -167,8 +194,14 @@ fn test_pmat_config_serialization_roundtrip() {
     let deserialized: PmatConfig = serde_json::from_str(&json).unwrap();
 
     assert_eq!(deserialized.system.project_name, config.system.project_name);
-    assert_eq!(deserialized.quality.max_complexity, config.quality.max_complexity);
-    assert_eq!(deserialized.analysis.max_file_size, config.analysis.max_file_size);
+    assert_eq!(
+        deserialized.quality.max_complexity,
+        config.quality.max_complexity
+    );
+    assert_eq!(
+        deserialized.analysis.max_file_size,
+        config.analysis.max_file_size
+    );
 }
 
 #[test]
@@ -379,7 +412,10 @@ fn test_system_config_clone() {
 
     let cloned = config.clone();
     assert_eq!(cloned.project_name, config.project_name);
-    assert_eq!(cloned.max_concurrent_operations, config.max_concurrent_operations);
+    assert_eq!(
+        cloned.max_concurrent_operations,
+        config.max_concurrent_operations
+    );
 }
 
 #[test]

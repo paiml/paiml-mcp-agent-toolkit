@@ -42,9 +42,7 @@ fn make_report(defects: Vec<Defect>) -> DefectReport {
         *by_severity
             .entry(format!("{:?}", d.severity).to_lowercase())
             .or_insert(0) += 1;
-        *by_category
-            .entry(format!("{:?}", d.category))
-            .or_insert(0) += 1;
+        *by_category.entry(format!("{:?}", d.category)).or_insert(0) += 1;
     }
 
     let mut file_index = BTreeMap::new();
@@ -81,11 +79,36 @@ fn make_report(defects: Vec<Defect>) -> DefectReport {
 
 fn sample_defects() -> Vec<Defect> {
     vec![
-        make_defect("CPLX-001", Severity::High, DefectCategory::Complexity, "src/a.rs"),
-        make_defect("CPLX-002", Severity::Medium, DefectCategory::Complexity, "src/b.rs"),
-        make_defect("SATD-001", Severity::Low, DefectCategory::TechnicalDebt, "src/a.rs"),
-        make_defect("DEAD-001", Severity::Critical, DefectCategory::DeadCode, "tests/t.rs"),
-        make_defect("PERF-001", Severity::High, DefectCategory::Performance, "src/c.rs"),
+        make_defect(
+            "CPLX-001",
+            Severity::High,
+            DefectCategory::Complexity,
+            "src/a.rs",
+        ),
+        make_defect(
+            "CPLX-002",
+            Severity::Medium,
+            DefectCategory::Complexity,
+            "src/b.rs",
+        ),
+        make_defect(
+            "SATD-001",
+            Severity::Low,
+            DefectCategory::TechnicalDebt,
+            "src/a.rs",
+        ),
+        make_defect(
+            "DEAD-001",
+            Severity::Critical,
+            DefectCategory::DeadCode,
+            "tests/t.rs",
+        ),
+        make_defect(
+            "PERF-001",
+            Severity::High,
+            DefectCategory::Performance,
+            "src/c.rs",
+        ),
     ]
 }
 
@@ -149,9 +172,24 @@ fn test_compute_summary_hotspot_sorting() {
     let svc = DefectReportService::new();
     // Create multiple defects in same file to produce a high-score hotspot
     let defects = vec![
-        make_defect("A-001", Severity::Critical, DefectCategory::Complexity, "src/hot.rs"),
-        make_defect("A-002", Severity::Critical, DefectCategory::Performance, "src/hot.rs"),
-        make_defect("B-001", Severity::Low, DefectCategory::DeadCode, "src/cold.rs"),
+        make_defect(
+            "A-001",
+            Severity::Critical,
+            DefectCategory::Complexity,
+            "src/hot.rs",
+        ),
+        make_defect(
+            "A-002",
+            Severity::Critical,
+            DefectCategory::Performance,
+            "src/hot.rs",
+        ),
+        make_defect(
+            "B-001",
+            Severity::Low,
+            DefectCategory::DeadCode,
+            "src/cold.rs",
+        ),
     ];
     let summary = svc.compute_summary(&defects);
     assert_eq!(summary.hotspot_files[0].path, PathBuf::from("src/hot.rs"));
@@ -399,7 +437,10 @@ fn test_filter_by_pattern_include() {
         DefectReportService::filter_by_pattern(&report, Some("src/**".to_string()), None, 0);
     // Should exclude tests/t.rs
     assert_eq!(filtered.defects.len(), 4);
-    assert!(filtered.defects.iter().all(|d| d.file_path.starts_with("src")));
+    assert!(filtered
+        .defects
+        .iter()
+        .all(|d| d.file_path.starts_with("src")));
 }
 
 #[test]

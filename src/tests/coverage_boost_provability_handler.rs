@@ -161,9 +161,11 @@ fn test_parse_function_spec_with_path() {
 
 #[test]
 fn test_parse_function_spec_nested_path() {
-    let result =
-        parse_function_spec("src/services/analyzer.rs:analyze", &PathBuf::from("/project"))
-            .unwrap();
+    let result = parse_function_spec(
+        "src/services/analyzer.rs:analyze",
+        &PathBuf::from("/project"),
+    )
+    .unwrap();
     assert_eq!(result.function_name, "analyze");
     assert!(result.file_path.contains("services"));
 }
@@ -1092,9 +1094,7 @@ fn test_large_function_list() {
     let function_ids: Vec<FunctionId> = (0..100)
         .map(|i| create_function_id(&format!("file{}.rs", i), &format!("fn{}", i), i))
         .collect();
-    let summaries: Vec<ProofSummary> = (0..100)
-        .map(|i| create_summary(i as f64 / 100.0))
-        .collect();
+    let summaries: Vec<ProofSummary> = (0..100).map(|i| create_summary(i as f64 / 100.0)).collect();
 
     let result = format_provability_summary(&function_ids, &summaries, 10).unwrap();
     assert!(result.contains("Total functions analyzed: 100"));
@@ -1107,7 +1107,11 @@ fn test_special_characters_in_function_names() {
         create_function_id("test.rs", "fn123", 2),
         create_function_id("test.rs", "__internal__", 3),
     ];
-    let summaries = vec![create_summary(0.8), create_summary(0.7), create_summary(0.6)];
+    let summaries = vec![
+        create_summary(0.8),
+        create_summary(0.7),
+        create_summary(0.6),
+    ];
 
     let result = format_provability_json(&function_ids, &summaries, false).unwrap();
     assert!(result.contains("test_fn_with_underscore"));

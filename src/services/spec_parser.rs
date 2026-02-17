@@ -252,8 +252,8 @@ impl SpecParser {
                 line: line_num,
             });
 
-            let category = ClaimCategory::from_section(section)
-                .unwrap_or(ClaimCategory::Implementation);
+            let category =
+                ClaimCategory::from_section(section).unwrap_or(ClaimCategory::Implementation);
             spec.claims.push(ValidationClaim {
                 id: format!("AC-{}", spec.acceptance_criteria.len()),
                 text,
@@ -322,7 +322,13 @@ impl SpecParser {
     }
 
     /// Extract MUST/SHALL/SHOULD claims from a line
-    fn extract_formal_claims(&self, line: &str, line_num: usize, section: &str, spec: &mut ParsedSpec) {
+    fn extract_formal_claims(
+        &self,
+        line: &str,
+        line_num: usize,
+        section: &str,
+        spec: &mut ParsedSpec,
+    ) {
         if let Some(caps) = self.claim_regex.captures(line) {
             let verb = caps
                 .get(1)
@@ -441,7 +447,12 @@ impl SpecParser {
             // Track code blocks
             if line.starts_with("```") {
                 if in_code_block {
-                    Self::finalize_code_block(&code_lang, &code_content, code_start_line, &mut spec);
+                    Self::finalize_code_block(
+                        &code_lang,
+                        &code_content,
+                        code_start_line,
+                        &mut spec,
+                    );
                     in_code_block = false;
                     code_content.clear();
                 } else {

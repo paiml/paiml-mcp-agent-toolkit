@@ -38,7 +38,13 @@ mod tests {
         }
     }
 
-    fn entry_with_quality(name: &str, file: &str, score: f32, grade: &str, cx: u32) -> FunctionEntry {
+    fn entry_with_quality(
+        name: &str,
+        file: &str,
+        score: f32,
+        grade: &str,
+        cx: u32,
+    ) -> FunctionEntry {
         let mut e = entry(name, &format!("fn {name}() {{ todo!() }}"), file);
         e.quality.tdg_score = score;
         e.quality.tdg_grade = grade.to_string();
@@ -89,11 +95,28 @@ mod tests {
             .filter_map(|r| r.ok())
             .collect();
         let expected = [
-            "id", "file_path", "function_name", "signature", "definition_type",
-            "doc_comment", "source", "start_line", "end_line", "language",
-            "checksum", "tdg_score", "tdg_grade", "complexity",
-            "cognitive_complexity", "big_o", "satd_count", "loc",
-            "commit_count", "churn_score", "clone_count", "pattern_diversity",
+            "id",
+            "file_path",
+            "function_name",
+            "signature",
+            "definition_type",
+            "doc_comment",
+            "source",
+            "start_line",
+            "end_line",
+            "language",
+            "checksum",
+            "tdg_score",
+            "tdg_grade",
+            "complexity",
+            "cognitive_complexity",
+            "big_o",
+            "satd_count",
+            "loc",
+            "commit_count",
+            "churn_score",
+            "clone_count",
+            "pattern_diversity",
             "fault_annotations",
         ];
         for col in &expected {
@@ -129,7 +152,13 @@ mod tests {
             .collect();
         assert_eq!(
             cols,
-            vec!["function_id", "pagerank", "centrality", "in_degree", "out_degree"]
+            vec![
+                "function_id",
+                "pagerank",
+                "centrality",
+                "in_degree",
+                "out_degree"
+            ]
         );
     }
 
@@ -252,7 +281,11 @@ mod tests {
         )
         .unwrap();
         let dt: String = conn
-            .query_row("SELECT definition_type FROM functions WHERE id=1", [], |r| r.get(0))
+            .query_row(
+                "SELECT definition_type FROM functions WHERE id=1",
+                [],
+                |r| r.get(0),
+            )
             .unwrap();
         assert_eq!(dt, "Function");
     }
@@ -267,9 +300,21 @@ mod tests {
     fn f011_fts5_bm25_ranking() {
         let conn = db();
         let funcs = vec![
-            entry("parse_json", "fn parse_json() { serde_json::from_str(); }", "src/json.rs"),
-            entry("unrelated", "fn unrelated() { println!(); }", "src/other.rs"),
-            entry("parse_json_stream", "fn parse_json_stream() { json::parse(); json_value(); }", "src/stream.rs"),
+            entry(
+                "parse_json",
+                "fn parse_json() { serde_json::from_str(); }",
+                "src/json.rs",
+            ),
+            entry(
+                "unrelated",
+                "fn unrelated() { println!(); }",
+                "src/other.rs",
+            ),
+            entry(
+                "parse_json_stream",
+                "fn parse_json_stream() { json::parse(); json_value(); }",
+                "src/stream.rs",
+            ),
         ];
         insert_functions(&conn, &funcs).unwrap();
         let results = fts5_search(&conn, "parse json", 10).unwrap();
@@ -283,12 +328,17 @@ mod tests {
     #[test]
     fn f012_fts5_porter_stemming() {
         let conn = db();
-        let funcs = vec![
-            entry("do_serialization", "fn do_serialization() { serialize_data(); }", "src/ser.rs"),
-        ];
+        let funcs = vec![entry(
+            "do_serialization",
+            "fn do_serialization() { serialize_data(); }",
+            "src/ser.rs",
+        )];
         insert_functions(&conn, &funcs).unwrap();
         let results = fts5_search(&conn, "serialize", 10).unwrap();
-        assert!(!results.is_empty(), "stemming should match 'serialize' -> 'serialization'");
+        assert!(
+            !results.is_empty(),
+            "stemming should match 'serialize' -> 'serialization'"
+        );
     }
 
     /// F-013: FTS5 handles empty query gracefully
@@ -314,7 +364,11 @@ mod tests {
     fn f015_fts5_scores_normalized() {
         let conn = db();
         let funcs = vec![
-            entry("handle_error", "fn handle_error() { log_error(); }", "src/err.rs"),
+            entry(
+                "handle_error",
+                "fn handle_error() { log_error(); }",
+                "src/err.rs",
+            ),
             entry("log_error", "fn log_error() { stderr(); }", "src/log.rs"),
             entry("other", "fn other() { println!(); }", "src/o.rs"),
         ];
@@ -355,8 +409,16 @@ mod tests {
     fn f017_fts5_name_match_priority() {
         let conn = db();
         let funcs = vec![
-            entry("validate_input", "fn validate_input() { check(); }", "src/val.rs"),
-            entry("unrelated", "fn unrelated() { validate_something(); }", "src/o.rs"),
+            entry(
+                "validate_input",
+                "fn validate_input() { check(); }",
+                "src/val.rs",
+            ),
+            entry(
+                "unrelated",
+                "fn unrelated() { validate_something(); }",
+                "src/o.rs",
+            ),
         ];
         insert_functions(&conn, &funcs).unwrap();
         let results = fts5_search(&conn, "validate", 10).unwrap();
@@ -377,23 +439,36 @@ mod tests {
         // Match via file_path
         let f2 = entry("beta", "fn beta() {}", "src/authentication/mod.rs");
         // Match via identifiers in source
-        let f3 = entry("gamma", "fn gamma() { authentication_check(); }", "src/g.rs");
+        let f3 = entry(
+            "gamma",
+            "fn gamma() { authentication_check(); }",
+            "src/g.rs",
+        );
         insert_functions(&conn, &[f1, f2, f3]).unwrap();
         let results = fts5_search(&conn, "authentication", 10).unwrap();
-        assert!(results.len() >= 2, "should match across columns, got {}", results.len());
+        assert!(
+            results.len() >= 2,
+            "should match across columns, got {}",
+            results.len()
+        );
     }
 
     /// F-019: FTS5 tokenizer strips diacritics (remove_diacritics 2)
     #[test]
     fn f019_fts5_diacritics() {
         let conn = db();
-        let funcs = vec![
-            entry("café_handler", "fn café_handler() { résumé(); }", "src/c.rs"),
-        ];
+        let funcs = vec![entry(
+            "café_handler",
+            "fn café_handler() { résumé(); }",
+            "src/c.rs",
+        )];
         insert_functions(&conn, &funcs).unwrap();
         let results = fts5_search(&conn, "cafe", 10).unwrap();
         // With remove_diacritics=2, "café" should match "cafe"
-        assert!(!results.is_empty(), "diacritic stripping should match café→cafe");
+        assert!(
+            !results.is_empty(),
+            "diacritic stripping should match café→cafe"
+        );
     }
 
     /// F-020: Query-only keywords are filtered by tokenize_query_for_fts5
@@ -425,7 +500,11 @@ mod tests {
     #[test]
     fn f022_roundtrip_function_name() {
         let conn = db();
-        let funcs = vec![entry("my_complex_func_name", "fn my_complex_func_name() {}", "a.rs")];
+        let funcs = vec![entry(
+            "my_complex_func_name",
+            "fn my_complex_func_name() {}",
+            "a.rs",
+        )];
         insert_functions(&conn, &funcs).unwrap();
         let loaded = load_functions(&conn).unwrap();
         assert_eq!(loaded[0].function_name, "my_complex_func_name");
@@ -439,7 +518,10 @@ mod tests {
         f.signature = "fn f(x: i32, y: &str) -> Result<(), Error>".to_string();
         insert_functions(&conn, &[f]).unwrap();
         let loaded = load_functions(&conn).unwrap();
-        assert_eq!(loaded[0].signature, "fn f(x: i32, y: &str) -> Result<(), Error>");
+        assert_eq!(
+            loaded[0].signature,
+            "fn f(x: i32, y: &str) -> Result<(), Error>"
+        );
     }
 
     /// F-024: definition_type roundtrip — all variants
@@ -470,7 +552,10 @@ mod tests {
         f.doc_comment = None;
         insert_functions(&conn, &[f]).unwrap();
         let loaded = load_functions(&conn).unwrap();
-        assert!(loaded[0].doc_comment.is_none(), "None doc_comment should survive");
+        assert!(
+            loaded[0].doc_comment.is_none(),
+            "None doc_comment should survive"
+        );
     }
 
     /// F-026: doc_comment Some survives roundtrip
@@ -638,10 +723,17 @@ mod tests {
     fn f040_roundtrip_fault_annotations() {
         let conn = db();
         let mut f = entry("f", "fn f() {}", "a.rs");
-        f.fault_annotations = vec!["unwrap".to_string(), "panic".to_string(), "unsafe".to_string()];
+        f.fault_annotations = vec![
+            "unwrap".to_string(),
+            "panic".to_string(),
+            "unsafe".to_string(),
+        ];
         insert_functions(&conn, &[f]).unwrap();
         let loaded = load_functions(&conn).unwrap();
-        assert_eq!(loaded[0].fault_annotations, vec!["unwrap", "panic", "unsafe"]);
+        assert_eq!(
+            loaded[0].fault_annotations,
+            vec!["unwrap", "panic", "unsafe"]
+        );
     }
 
     /// F-041: Empty fault_annotations survives roundtrip
@@ -735,7 +827,10 @@ mod tests {
         let count: i64 = conn
             .query_row("SELECT count(*) FROM call_graph", [], |r| r.get(0))
             .unwrap();
-        assert_eq!(count, 1, "duplicate edges should be ignored (INSERT OR IGNORE)");
+        assert_eq!(
+            count, 1,
+            "duplicate edges should be ignored (INSERT OR IGNORE)"
+        );
     }
 
     /// F-046: Call graph for non-existent function returns empty
@@ -787,8 +882,18 @@ mod tests {
         ];
         insert_functions(&conn, &funcs).unwrap();
         let metrics = vec![
-            GraphMetrics { pagerank: 0.123, centrality: 0.456, in_degree: 5, out_degree: 3 },
-            GraphMetrics { pagerank: 0.789, centrality: 0.012, in_degree: 0, out_degree: 8 },
+            GraphMetrics {
+                pagerank: 0.123,
+                centrality: 0.456,
+                in_degree: 5,
+                out_degree: 3,
+            },
+            GraphMetrics {
+                pagerank: 0.789,
+                centrality: 0.012,
+                in_degree: 0,
+                out_degree: 8,
+            },
         ];
         insert_graph_metrics(&conn, &metrics).unwrap();
         let loaded = load_graph_metrics(&conn).unwrap();
@@ -819,12 +924,25 @@ mod tests {
         let conn = db();
         let funcs = vec![entry("a", "fn a() {}", "a.rs")];
         insert_functions(&conn, &funcs).unwrap();
-        let m1 = vec![GraphMetrics { pagerank: 0.1, centrality: 0.2, in_degree: 1, out_degree: 1 }];
+        let m1 = vec![GraphMetrics {
+            pagerank: 0.1,
+            centrality: 0.2,
+            in_degree: 1,
+            out_degree: 1,
+        }];
         insert_graph_metrics(&conn, &m1).unwrap();
-        let m2 = vec![GraphMetrics { pagerank: 0.9, centrality: 0.8, in_degree: 5, out_degree: 5 }];
+        let m2 = vec![GraphMetrics {
+            pagerank: 0.9,
+            centrality: 0.8,
+            in_degree: 5,
+            out_degree: 5,
+        }];
         insert_graph_metrics(&conn, &m2).unwrap();
         let loaded = load_graph_metrics(&conn).unwrap();
-        assert!((loaded[0].pagerank - 0.9).abs() < 0.001, "should be updated to 0.9");
+        assert!(
+            (loaded[0].pagerank - 0.9).abs() < 0.001,
+            "should be updated to 0.9"
+        );
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -887,8 +1005,10 @@ mod tests {
     fn f056_metadata_checksums() {
         let conn = db();
         let mut m = manifest(10, 2);
-        m.file_checksums.insert("src/a.rs".to_string(), "sha256:aaa".to_string());
-        m.file_checksums.insert("src/b.rs".to_string(), "sha256:bbb".to_string());
+        m.file_checksums
+            .insert("src/a.rs".to_string(), "sha256:aaa".to_string());
+        m.file_checksums
+            .insert("src/b.rs".to_string(), "sha256:bbb".to_string());
         insert_metadata(&conn, &m).unwrap();
         let loaded = load_metadata(&conn).unwrap();
         assert_eq!(loaded.file_checksums.len(), 2);
@@ -915,7 +1035,10 @@ mod tests {
         let conn = db();
         let result = load_metadata(&conn);
         // Self-healing: returns Ok with defaults instead of error
-        assert!(result.is_ok(), "missing metadata should self-heal with defaults");
+        assert!(
+            result.is_ok(),
+            "missing metadata should self-heal with defaults"
+        );
         let manifest = result.unwrap();
         assert_eq!(manifest.version, "2.0");
         assert_eq!(manifest.function_count, 0);
@@ -995,9 +1118,18 @@ mod tests {
         ];
         insert_functions(&conn, &funcs).unwrap();
         let metrics = vec![
-            GraphMetrics { pagerank: 0.1, ..Default::default() },
-            GraphMetrics { pagerank: 0.2, ..Default::default() },
-            GraphMetrics { pagerank: 0.3, ..Default::default() },
+            GraphMetrics {
+                pagerank: 0.1,
+                ..Default::default()
+            },
+            GraphMetrics {
+                pagerank: 0.2,
+                ..Default::default()
+            },
+            GraphMetrics {
+                pagerank: 0.3,
+                ..Default::default()
+            },
         ];
         insert_graph_metrics(&conn, &metrics).unwrap();
         let loaded_m = load_graph_metrics(&conn).unwrap();
@@ -1019,7 +1151,11 @@ mod tests {
         insert_functions(&conn, &[entry("old", "fn old() {}", "a.rs")]).unwrap();
         assert_eq!(count(&conn, "functions"), 1);
         insert_functions(&conn, &[entry("new", "fn new() {}", "b.rs")]).unwrap();
-        assert_eq!(count(&conn, "functions"), 1, "should clear old before insert");
+        assert_eq!(
+            count(&conn, "functions"),
+            1,
+            "should clear old before insert"
+        );
         let loaded = load_functions(&conn).unwrap();
         assert_eq!(loaded[0].function_name, "new");
     }
@@ -1028,11 +1164,19 @@ mod tests {
     #[test]
     fn f064_insert_clears_fts5() {
         let conn = db();
-        insert_functions(&conn, &[entry("old", "fn old() { unique_old_marker(); }", "a.rs")]).unwrap();
+        insert_functions(
+            &conn,
+            &[entry("old", "fn old() { unique_old_marker(); }", "a.rs")],
+        )
+        .unwrap();
         let r1 = fts5_search(&conn, "unique_old_marker", 10).unwrap();
         assert!(!r1.is_empty());
 
-        insert_functions(&conn, &[entry("new", "fn new() { unique_new_marker(); }", "b.rs")]).unwrap();
+        insert_functions(
+            &conn,
+            &[entry("new", "fn new() { unique_new_marker(); }", "b.rs")],
+        )
+        .unwrap();
         let r2 = fts5_search(&conn, "unique_old_marker", 10).unwrap();
         assert!(r2.is_empty(), "old FTS5 data should be cleared");
         let r3 = fts5_search(&conn, "unique_new_marker", 10).unwrap();
@@ -1046,7 +1190,10 @@ mod tests {
         let conn = db();
         // Ensure FK enforcement is off (SQLite default) so DELETE order doesn't matter
         conn.execute_batch("PRAGMA foreign_keys = OFF;").unwrap();
-        let funcs = vec![entry("a", "fn a() {}", "a.rs"), entry("b", "fn b() {}", "b.rs")];
+        let funcs = vec![
+            entry("a", "fn a() {}", "a.rs"),
+            entry("b", "fn b() {}", "b.rs"),
+        ];
         insert_functions(&conn, &funcs).unwrap();
         let mut calls = HashMap::new();
         calls.insert(0, vec![1]);
@@ -1257,7 +1404,15 @@ mod tests {
         let tmp = tempfile::TempDir::new().unwrap();
         let db_path = tmp.path().join("test.db");
         let funcs = vec![entry("f", "fn f() {}", "a.rs")];
-        save_to_sqlite(&db_path, &funcs, &HashMap::new(), &[], &manifest(1, 1), &HashSet::new()).unwrap();
+        save_to_sqlite(
+            &db_path,
+            &funcs,
+            &HashMap::new(),
+            &[],
+            &manifest(1, 1),
+            &HashSet::new(),
+        )
+        .unwrap();
         assert!(db_path.exists());
     }
 
@@ -1267,9 +1422,25 @@ mod tests {
         let tmp = tempfile::TempDir::new().unwrap();
         let db_path = tmp.path().join("test.db");
         // First save
-        save_to_sqlite(&db_path, &[entry("old", "fn old() {}", "a.rs")], &HashMap::new(), &[], &manifest(1, 1), &HashSet::new()).unwrap();
+        save_to_sqlite(
+            &db_path,
+            &[entry("old", "fn old() {}", "a.rs")],
+            &HashMap::new(),
+            &[],
+            &manifest(1, 1),
+            &HashSet::new(),
+        )
+        .unwrap();
         // Second save (should replace)
-        save_to_sqlite(&db_path, &[entry("new", "fn new() {}", "b.rs")], &HashMap::new(), &[], &manifest(1, 1), &HashSet::new()).unwrap();
+        save_to_sqlite(
+            &db_path,
+            &[entry("new", "fn new() {}", "b.rs")],
+            &HashMap::new(),
+            &[],
+            &manifest(1, 1),
+            &HashSet::new(),
+        )
+        .unwrap();
 
         let conn = open_db(&db_path).unwrap();
         let loaded = load_functions(&conn).unwrap();
@@ -1282,12 +1453,21 @@ mod tests {
     fn f083_save_stores_all_components() {
         let tmp = tempfile::TempDir::new().unwrap();
         let db_path = tmp.path().join("test.db");
-        let funcs = vec![entry("a", "fn a() {}", "a.rs"), entry("b", "fn b() {}", "b.rs")];
+        let funcs = vec![
+            entry("a", "fn a() {}", "a.rs"),
+            entry("b", "fn b() {}", "b.rs"),
+        ];
         let mut calls = HashMap::new();
         calls.insert(0, vec![1]);
         let metrics = vec![
-            GraphMetrics { pagerank: 0.5, ..Default::default() },
-            GraphMetrics { pagerank: 0.8, ..Default::default() },
+            GraphMetrics {
+                pagerank: 0.5,
+                ..Default::default()
+            },
+            GraphMetrics {
+                pagerank: 0.8,
+                ..Default::default()
+            },
         ];
         let m = manifest(2, 2);
         save_to_sqlite(&db_path, &funcs, &calls, &metrics, &m, &HashSet::new()).unwrap();
@@ -1298,7 +1478,10 @@ mod tests {
         assert_eq!(count(&conn, "graph_metrics"), 2);
         // Metadata should have 6 keys
         let mcount = count(&conn, "metadata");
-        assert!(mcount >= 5, "should have at least 5 metadata keys, got {mcount}");
+        assert!(
+            mcount >= 5,
+            "should have at least 5 metadata keys, got {mcount}"
+        );
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -1320,7 +1503,11 @@ mod tests {
     #[test]
     fn f085_tokenize_underscored() {
         let conn = db();
-        let funcs = vec![entry("parse_request_body", "fn parse_request_body() {}", "a.rs")];
+        let funcs = vec![entry(
+            "parse_request_body",
+            "fn parse_request_body() {}",
+            "a.rs",
+        )];
         insert_functions(&conn, &funcs).unwrap();
         let r = fts5_search(&conn, "parse_request_body", 10).unwrap();
         assert!(!r.is_empty(), "underscored identifier should be searchable");
@@ -1434,13 +1621,20 @@ mod tests {
     #[test]
     fn f092_fts5_standalone() {
         let conn = db();
-        let funcs = vec![entry("test_func", "fn test_func() { unique_marker_xyz(); }", "a.rs")];
+        let funcs = vec![entry(
+            "test_func",
+            "fn test_func() { unique_marker_xyz(); }",
+            "a.rs",
+        )];
         insert_functions(&conn, &funcs).unwrap();
 
         // FTS5 should work even if we delete from functions table
         conn.execute("DELETE FROM functions", []).unwrap();
         let r = fts5_search(&conn, "unique_marker_xyz", 10).unwrap();
-        assert!(!r.is_empty(), "FTS5 should be standalone (data not content-synced)");
+        assert!(
+            !r.is_empty(),
+            "FTS5 should be standalone (data not content-synced)"
+        );
     }
 
     /// F-093: functions table does NOT have identifiers column
@@ -1481,7 +1675,10 @@ mod tests {
         assert_eq!(count(&conn, "functions"), 1000);
 
         let results = fts5_search(&conn, "operation_500", 10).unwrap();
-        assert!(!results.is_empty(), "should find specific function among 1000");
+        assert!(
+            !results.is_empty(),
+            "should find specific function among 1000"
+        );
     }
 
     /// F-095: Large call graph (5000 edges) works
@@ -1490,7 +1687,11 @@ mod tests {
         let conn = db();
         let mut funcs = Vec::new();
         for i in 0..500 {
-            funcs.push(entry(&format!("f{i}"), &format!("fn f{i}() {{}}"), &format!("f{i}.rs")));
+            funcs.push(entry(
+                &format!("f{i}"),
+                &format!("fn f{i}() {{}}"),
+                &format!("f{i}.rs"),
+            ));
         }
         insert_functions(&conn, &funcs).unwrap();
 
@@ -1513,9 +1714,20 @@ mod tests {
     fn f096_small_db_file_size() {
         let tmp = tempfile::TempDir::new().unwrap();
         let db_path = tmp.path().join("test.db");
-        save_to_sqlite(&db_path, &[entry("f", "fn f() {}", "a.rs")], &HashMap::new(), &[], &manifest(1, 1), &HashSet::new()).unwrap();
+        save_to_sqlite(
+            &db_path,
+            &[entry("f", "fn f() {}", "a.rs")],
+            &HashMap::new(),
+            &[],
+            &manifest(1, 1),
+            &HashSet::new(),
+        )
+        .unwrap();
         let size = db_path.metadata().unwrap().len();
-        assert!(size < 100_000, "single-function DB should be < 100KB, got {size}");
+        assert!(
+            size < 100_000,
+            "single-function DB should be < 100KB, got {size}"
+        );
         assert!(size > 0, "DB should not be empty");
     }
 
@@ -1526,16 +1738,52 @@ mod tests {
         let small_path = tmp.path().join("small.db");
         let large_path = tmp.path().join("large.db");
 
-        let small_funcs: Vec<_> = (0..10).map(|i| entry(&format!("f{i}"), &format!("fn f{i}() {{}}"), &format!("f{i}.rs"))).collect();
-        let large_funcs: Vec<_> = (0..100).map(|i| entry(&format!("f{i}"), &format!("fn f{i}() {{}}"), &format!("f{i}.rs"))).collect();
+        let small_funcs: Vec<_> = (0..10)
+            .map(|i| {
+                entry(
+                    &format!("f{i}"),
+                    &format!("fn f{i}() {{}}"),
+                    &format!("f{i}.rs"),
+                )
+            })
+            .collect();
+        let large_funcs: Vec<_> = (0..100)
+            .map(|i| {
+                entry(
+                    &format!("f{i}"),
+                    &format!("fn f{i}() {{}}"),
+                    &format!("f{i}.rs"),
+                )
+            })
+            .collect();
 
-        save_to_sqlite(&small_path, &small_funcs, &HashMap::new(), &[], &manifest(10, 10), &HashSet::new()).unwrap();
-        save_to_sqlite(&large_path, &large_funcs, &HashMap::new(), &[], &manifest(100, 100), &HashSet::new()).unwrap();
+        save_to_sqlite(
+            &small_path,
+            &small_funcs,
+            &HashMap::new(),
+            &[],
+            &manifest(10, 10),
+            &HashSet::new(),
+        )
+        .unwrap();
+        save_to_sqlite(
+            &large_path,
+            &large_funcs,
+            &HashMap::new(),
+            &[],
+            &manifest(100, 100),
+            &HashSet::new(),
+        )
+        .unwrap();
 
         let small_size = small_path.metadata().unwrap().len() as f64;
         let large_size = large_path.metadata().unwrap().len() as f64;
         // 10x more functions should result in less than 20x more size (sublinear overhead)
-        assert!(large_size / small_size < 20.0, "size scaling too high: {:.1}x", large_size / small_size);
+        assert!(
+            large_size / small_size < 20.0,
+            "size scaling too high: {:.1}x",
+            large_size / small_size
+        );
     }
 
     /// F-098: DB file is valid SQLite (can be re-opened)
@@ -1543,7 +1791,15 @@ mod tests {
     fn f098_db_file_valid_sqlite() {
         let tmp = tempfile::TempDir::new().unwrap();
         let db_path = tmp.path().join("test.db");
-        save_to_sqlite(&db_path, &[entry("f", "fn f() {}", "a.rs")], &HashMap::new(), &[], &manifest(1, 1), &HashSet::new()).unwrap();
+        save_to_sqlite(
+            &db_path,
+            &[entry("f", "fn f() {}", "a.rs")],
+            &HashMap::new(),
+            &[],
+            &manifest(1, 1),
+            &HashSet::new(),
+        )
+        .unwrap();
         // Re-open and verify
         let conn = open_db(&db_path).unwrap();
         let loaded = load_functions(&conn).unwrap();
@@ -1585,7 +1841,11 @@ mod tests {
         )
         .unwrap();
         let loaded = load_functions(&conn).unwrap();
-        assert_eq!(loaded[0].definition_type, DefinitionType::Function, "unknown type should default to Function");
+        assert_eq!(
+            loaded[0].definition_type,
+            DefinitionType::Function,
+            "unknown type should default to Function"
+        );
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -1615,7 +1875,10 @@ mod tests {
         }
         let elapsed = start.elapsed();
         // CB-511: Generous upper bound to avoid flaky tests under CI load
-        assert!(elapsed.as_secs() < 30, "100 FTS5 searches took {elapsed:?} (>30s)");
+        assert!(
+            elapsed.as_secs() < 30,
+            "100 FTS5 searches took {elapsed:?} (>30s)"
+        );
     }
 
     /// F-102: Spec claims "BM25 ranking" — IDF should differentiate rare vs common
@@ -1631,7 +1894,11 @@ mod tests {
                 &format!("src/f{i}.rs"),
             ));
         }
-        let mut rare = entry("rare_target", "fn rare_target() { rare_unique_xyz(); common_method(); }", "src/rare.rs");
+        let mut rare = entry(
+            "rare_target",
+            "fn rare_target() { rare_unique_xyz(); common_method(); }",
+            "src/rare.rs",
+        );
         rare.doc_comment = Some("Handles rare_unique_xyz operations".to_string());
         funcs.push(rare);
         insert_functions(&conn, &funcs).unwrap();
@@ -1651,13 +1918,21 @@ mod tests {
         let funcs = vec![
             entry("serialize_data", "fn serialize_data() {}", "src/ser.rs"),
             entry("deserializer", "fn deserializer() {}", "src/de.rs"),
-            entry("serialization_engine", "fn serialization_engine() {}", "src/engine.rs"),
+            entry(
+                "serialization_engine",
+                "fn serialization_engine() {}",
+                "src/engine.rs",
+            ),
         ];
         insert_functions(&conn, &funcs).unwrap();
 
         // All three should match a search for "serialize"
         let results = fts5_search(&conn, "serialize", 10).unwrap();
-        assert!(results.len() >= 2, "stemmer should match variants, got {}", results.len());
+        assert!(
+            results.len() >= 2,
+            "stemmer should match variants, got {}",
+            results.len()
+        );
     }
 
     /// F-104: Spec claims FTS5 uses 5 columns: function_name, signature, doc_comment, file_path, identifiers
@@ -1670,7 +1945,10 @@ mod tests {
         let stmt_result = conn.prepare(
             "SELECT * FROM functions_fts WHERE functions_fts MATCH 'function_name:\"test\"'",
         );
-        assert!(stmt_result.is_ok(), "FTS5 should support column-specific matching");
+        assert!(
+            stmt_result.is_ok(),
+            "FTS5 should support column-specific matching"
+        );
     }
 
     /// F-105: Spec claims "standalone FTS5 (no content-sync)" — verify INSERT into FTS5 is independent
@@ -1699,7 +1977,9 @@ mod tests {
             )
             .unwrap();
         assert!(
-            sql.contains("porter") && sql.contains("unicode61") && sql.contains("remove_diacritics"),
+            sql.contains("porter")
+                && sql.contains("unicode61")
+                && sql.contains("remove_diacritics"),
             "FTS5 should have porter unicode61 tokenizer: {sql}"
         );
     }
@@ -1708,9 +1988,11 @@ mod tests {
     #[test]
     fn f107_fts5_rank_negative_to_positive() {
         let conn = db();
-        let funcs = vec![
-            entry("target", "fn target() { target_specific_marker(); }", "a.rs"),
-        ];
+        let funcs = vec![entry(
+            "target",
+            "fn target() { target_specific_marker(); }",
+            "a.rs",
+        )];
         insert_functions(&conn, &funcs).unwrap();
 
         // Raw FTS5 rank should be negative
@@ -1721,7 +2003,10 @@ mod tests {
                 |r| r.get(0),
             )
             .unwrap();
-        assert!(raw_rank < 0.0, "raw FTS5 rank should be negative: {raw_rank}");
+        assert!(
+            raw_rank < 0.0,
+            "raw FTS5 rank should be negative: {raw_rank}"
+        );
 
         // Our API should return positive
         let results = fts5_search(&conn, "target", 10).unwrap();
@@ -1739,10 +2024,16 @@ mod tests {
         insert_functions(&conn, &funcs).unwrap();
 
         // First insert should succeed
-        conn.execute("INSERT INTO call_graph (caller_id, callee_id) VALUES (1, 2)", [])
-            .unwrap();
+        conn.execute(
+            "INSERT INTO call_graph (caller_id, callee_id) VALUES (1, 2)",
+            [],
+        )
+        .unwrap();
         // Duplicate should fail (or be ignored with INSERT OR IGNORE)
-        let r = conn.execute("INSERT INTO call_graph (caller_id, callee_id) VALUES (1, 2)", []);
+        let r = conn.execute(
+            "INSERT INTO call_graph (caller_id, callee_id) VALUES (1, 2)",
+            [],
+        );
         assert!(r.is_err(), "duplicate PK should fail without OR IGNORE");
     }
 
@@ -1750,16 +2041,30 @@ mod tests {
     #[test]
     fn f109_metadata_pk_uniqueness() {
         let conn = db();
-        conn.execute("INSERT INTO metadata (key, value) VALUES ('test_key', 'value1')", [])
-            .unwrap();
+        conn.execute(
+            "INSERT INTO metadata (key, value) VALUES ('test_key', 'value1')",
+            [],
+        )
+        .unwrap();
         // Direct insert of same key should fail
-        let r = conn.execute("INSERT INTO metadata (key, value) VALUES ('test_key', 'value2')", []);
-        assert!(r.is_err(), "duplicate metadata key should fail without OR REPLACE");
+        let r = conn.execute(
+            "INSERT INTO metadata (key, value) VALUES ('test_key', 'value2')",
+            [],
+        );
+        assert!(
+            r.is_err(),
+            "duplicate metadata key should fail without OR REPLACE"
+        );
         // OR REPLACE should work
-        conn.execute("INSERT OR REPLACE INTO metadata (key, value) VALUES ('test_key', 'value3')", [])
-            .unwrap();
+        conn.execute(
+            "INSERT OR REPLACE INTO metadata (key, value) VALUES ('test_key', 'value3')",
+            [],
+        )
+        .unwrap();
         let val: String = conn
-            .query_row("SELECT value FROM metadata WHERE key='test_key'", [], |r| r.get(0))
+            .query_row("SELECT value FROM metadata WHERE key='test_key'", [], |r| {
+                r.get(0)
+            })
             .unwrap();
         assert_eq!(val, "value3");
     }
@@ -1779,7 +2084,10 @@ mod tests {
             "INSERT INTO graph_metrics (function_id, pagerank, centrality, in_degree, out_degree) VALUES (1, 0.9, 0.1, 2, 2)",
             [],
         );
-        assert!(r.is_err(), "duplicate function_id should fail without OR REPLACE");
+        assert!(
+            r.is_err(),
+            "duplicate function_id should fail without OR REPLACE"
+        );
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -1914,7 +2222,10 @@ mod tests {
         )];
         insert_functions(&conn, &funcs).unwrap();
         let results = fts5_search(&conn, "very_unique_identifier_xyz", 10).unwrap();
-        assert!(!results.is_empty(), "should match via extracted identifiers");
+        assert!(
+            !results.is_empty(),
+            "should match via extracted identifiers"
+        );
     }
 
     // ═══════════════════════════════════════════════════════════════════

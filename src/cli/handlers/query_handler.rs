@@ -10,7 +10,7 @@ use crate::services::agent_context::{
     enrich_results_with_duplicates, enrich_results_with_entropy, enrich_results_with_faults,
     enrich_with_coverage_diff, format_coverage_summary, format_json, format_markdown, format_text,
     format_text_with_code, is_within_indexed_function, raw_search, AgentContextIndex,
-    CaseSensitivity, QueryOptions, RankBy, QueryResult, RawSearchOptions, RawSearchOutput,
+    CaseSensitivity, QueryOptions, QueryResult, RankBy, RawSearchOptions, RawSearchOutput,
     RawSearchResult, SearchMode,
 };
 use crate::services::git_history::{
@@ -53,7 +53,10 @@ const ANDON_THRESHOLD_MS: u128 = 500;
 
 impl QueryProfile {
     fn new() -> Self {
-        Self { phases: Vec::new(), start: Instant::now() }
+        Self {
+            phases: Vec::new(),
+            start: Instant::now(),
+        }
     }
 
     fn phase(&mut self, name: &'static str) {
@@ -61,7 +64,9 @@ impl QueryProfile {
     }
 
     fn emit(&self, quiet: bool) {
-        if quiet { return; }
+        if quiet {
+            return;
+        }
         let total = self.start.elapsed();
         let mut prev = std::time::Duration::ZERO;
         let mut violations = Vec::new();
@@ -74,16 +79,27 @@ impl QueryProfile {
             prev = *cumulative;
         }
         if !violations.is_empty() {
-            eprintln!("{DIM}query profile: {:.0}ms total{RESET}", total.as_secs_f64() * 1000.0);
+            eprintln!(
+                "{DIM}query profile: {:.0}ms total{RESET}",
+                total.as_secs_f64() * 1000.0
+            );
             for (name, cumulative) in &self.phases {
                 let delta = if self.phases.first().map(|f| f.0) == Some(*name) {
                     *cumulative
                 } else {
-                    let idx = self.phases.iter().position(|p| p.0 == *name).expect("phase must exist");
+                    let idx = self
+                        .phases
+                        .iter()
+                        .position(|p| p.0 == *name)
+                        .expect("phase must exist");
                     *cumulative - self.phases[idx - 1].1
                 };
                 let delta_ms = delta.as_millis();
-                let marker = if delta_ms > ANDON_THRESHOLD_MS { &format!(" {BRIGHT_RED}ANDON{RESET}") } else { "" };
+                let marker = if delta_ms > ANDON_THRESHOLD_MS {
+                    &format!(" {BRIGHT_RED}ANDON{RESET}")
+                } else {
+                    ""
+                };
                 eprintln!("  {DIM}{name}: {delta_ms}ms{marker}{RESET}");
             }
         }
@@ -278,9 +294,21 @@ pub async fn handle_query(
     // ── Raw search mode: skip index entirely ──────
     if raw {
         return handle_raw_search_mode(
-            &query, limit, &format, quiet, literal, ignore_case,
-            &language, &exclude_file, &exclude, files_with_matches,
-            count, context_lines, after_context, before_context, &project_path,
+            &query,
+            limit,
+            &format,
+            quiet,
+            literal,
+            ignore_case,
+            &language,
+            &exclude_file,
+            &exclude,
+            files_with_matches,
+            count,
+            context_lines,
+            after_context,
+            before_context,
+            &project_path,
             exclude_tests,
         );
     }
@@ -300,10 +328,21 @@ pub async fn handle_query(
     if coverage_gaps {
         let siblings = collect_siblings(&project_path, &include_project);
         return handle_coverage_gaps_mode(
-            &index, &project_path, &format, &coverage_file,
-            &language, &path_pattern, exclude_tests, limit, quiet,
-            include_excluded, files_with_matches, count, &siblings,
-        ).await;
+            &index,
+            &project_path,
+            &format,
+            &coverage_file,
+            &language,
+            &path_pattern,
+            exclude_tests,
+            limit,
+            quiet,
+            include_excluded,
+            files_with_matches,
+            count,
+            &siblings,
+        )
+        .await;
     }
 
     // ── PTX modes (flow / diagnostics) ──────
@@ -314,14 +353,37 @@ pub async fn handle_query(
 
     // ── Execute semantic query + enrich + output ──────
     let effective_include_source = include_source || code || is_regex_or_literal;
-    let merge_language = if is_regex_or_literal { language.clone() } else { None };
-    let merge_exclude_file = if is_regex_or_literal { exclude_file.clone() } else { None };
-    let merge_exclude = if is_regex_or_literal { exclude.clone() } else { None };
+    let merge_language = if is_regex_or_literal {
+        language.clone()
+    } else {
+        None
+    };
+    let merge_exclude_file = if is_regex_or_literal {
+        exclude_file.clone()
+    } else {
+        None
+    };
+    let merge_exclude = if is_regex_or_literal {
+        exclude.clone()
+    } else {
+        None
+    };
 
     let options = build_query_options(
-        limit, min_grade, max_complexity, language, path_pattern,
-        effective_include_source, &rank_by, min_pagerank,
-        regex, literal, case_sensitive, ignore_case, exclude, exclude_file,
+        limit,
+        min_grade,
+        max_complexity,
+        language,
+        path_pattern,
+        effective_include_source,
+        &rank_by,
+        min_pagerank,
+        regex,
+        literal,
+        case_sensitive,
+        ignore_case,
+        exclude,
+        exclude_file,
     );
     let mut results = index
         .query(&query, options)
@@ -330,10 +392,19 @@ pub async fn handle_query(
 
     apply_result_filters(&mut results, exclude_tests, &definition_type);
     apply_all_enrichments(
-        &mut results, &project_path, quiet,
-        churn, duplicates, entropy, faults,
-        coverage, uncovered_only, &coverage_file, &coverage_diff,
-    ).await;
+        &mut results,
+        &project_path,
+        quiet,
+        churn,
+        duplicates,
+        entropy,
+        faults,
+        coverage,
+        uncovered_only,
+        &coverage_file,
+        &coverage_diff,
+    )
+    .await;
     profile.phase("enrich");
     apply_post_enrichment_sort(&mut results, &rank_by);
 
@@ -345,21 +416,43 @@ pub async fn handle_query(
     }
 
     let merge_ctx = MergeContext {
-        query: &query, literal, ignore_case,
-        language: &merge_language, exclude_file: &merge_exclude_file,
-        exclude: &merge_exclude, project_path: &project_path,
+        query: &query,
+        literal,
+        ignore_case,
+        language: &merge_language,
+        exclude_file: &merge_exclude_file,
+        exclude: &merge_exclude,
+        project_path: &project_path,
         is_regex_or_literal,
     };
     let raw_results = merge_raw_results(
-        is_regex_or_literal, quiet, &query, limit, &merge_ctx,
-        context_lines, after_context, before_context, &results,
+        is_regex_or_literal,
+        quiet,
+        &query,
+        limit,
+        &merge_ctx,
+        context_lines,
+        after_context,
+        before_context,
+        &results,
     );
 
     emit_query_output(
-        &results, &raw_results, &git_data, &query,
-        &format, effective_include_source, coverage,
-        files_with_matches, count, context_lines, after_context, before_context,
-        &merge_ctx, &project_path, &index,
+        &results,
+        &raw_results,
+        &git_data,
+        &query,
+        &format,
+        effective_include_source,
+        coverage,
+        files_with_matches,
+        count,
+        context_lines,
+        after_context,
+        before_context,
+        &merge_ctx,
+        &project_path,
+        &index,
     )?;
     profile.phase("output");
     profile.emit(quiet);
@@ -368,20 +461,53 @@ pub async fn handle_query(
 
 #[allow(clippy::too_many_arguments)]
 fn build_query_options(
-    limit: usize, min_grade: Option<String>, max_complexity: Option<u32>,
-    language: Option<String>, path_pattern: Option<String>,
-    include_source: bool, rank_by: &Option<String>, min_pagerank: Option<f32>,
-    regex: bool, literal: bool, case_sensitive: bool, ignore_case: bool,
-    exclude: Option<String>, exclude_file: Option<String>,
+    limit: usize,
+    min_grade: Option<String>,
+    max_complexity: Option<u32>,
+    language: Option<String>,
+    path_pattern: Option<String>,
+    include_source: bool,
+    rank_by: &Option<String>,
+    min_pagerank: Option<f32>,
+    regex: bool,
+    literal: bool,
+    case_sensitive: bool,
+    ignore_case: bool,
+    exclude: Option<String>,
+    exclude_file: Option<String>,
 ) -> QueryOptions {
-    let rank_by_enum = rank_by.as_ref().map(|s| s.parse::<RankBy>().unwrap_or_default()).unwrap_or_default();
-    let search_mode = if regex { SearchMode::Regex } else if literal { SearchMode::Literal } else { SearchMode::Semantic };
-    let case_sensitivity = if case_sensitive { CaseSensitivity::Sensitive } else if ignore_case { CaseSensitivity::Insensitive } else { CaseSensitivity::Smart };
+    let rank_by_enum = rank_by
+        .as_ref()
+        .map(|s| s.parse::<RankBy>().unwrap_or_default())
+        .unwrap_or_default();
+    let search_mode = if regex {
+        SearchMode::Regex
+    } else if literal {
+        SearchMode::Literal
+    } else {
+        SearchMode::Semantic
+    };
+    let case_sensitivity = if case_sensitive {
+        CaseSensitivity::Sensitive
+    } else if ignore_case {
+        CaseSensitivity::Insensitive
+    } else {
+        CaseSensitivity::Smart
+    };
     QueryOptions {
-        limit, min_grade, max_complexity, max_loc: None, language, path_pattern,
-        include_source, rank_by: rank_by_enum, min_pagerank,
-        search_mode, case_sensitivity,
-        exclude_pattern: exclude, exclude_file_pattern: exclude_file,
+        limit,
+        min_grade,
+        max_complexity,
+        max_loc: None,
+        language,
+        path_pattern,
+        include_source,
+        rank_by: rank_by_enum,
+        min_pagerank,
+        search_mode,
+        case_sensitivity,
+        exclude_pattern: exclude,
+        exclude_file_pattern: exclude_file,
     }
 }
 
@@ -390,7 +516,9 @@ fn build_query_options(
 /// Print a single raw search match with surrounding context lines
 /// Pre-load source and call graph into the index based on the query mode.
 fn prepare_index_for_mode(
-    index: &mut AgentContextIndex, is_regex_or_literal: bool, is_ptx: bool,
+    index: &mut AgentContextIndex,
+    is_regex_or_literal: bool,
+    is_ptx: bool,
     rank_by: &Option<String>,
 ) {
     if is_regex_or_literal || is_ptx {
@@ -417,11 +545,16 @@ fn emit_index_stats(index: &AgentContextIndex, quiet: bool) {
 }
 
 /// Collect sibling project indexes for workspace coverage merging.
-fn collect_siblings(project_path: &std::path::Path, include_project: &[PathBuf]) -> Vec<(PathBuf, String)> {
+fn collect_siblings(
+    project_path: &std::path::Path,
+    include_project: &[PathBuf],
+) -> Vec<(PathBuf, String)> {
     let mut siblings = AgentContextIndex::discover_sibling_indexes(project_path);
     for project in include_project {
         let idx_path = project.join(".pmat/context.idx");
-        let name = project.file_name().map(|s| s.to_string_lossy().to_string())
+        let name = project
+            .file_name()
+            .map(|s| s.to_string_lossy().to_string())
             .unwrap_or_else(|| project.display().to_string());
         if !siblings.iter().any(|(_, n)| n == &name) {
             siblings.push((idx_path, name));
@@ -431,19 +564,35 @@ fn collect_siblings(project_path: &std::path::Path, include_project: &[PathBuf])
 }
 
 fn print_raw_match_context(
-    file_path: &str, line_number: usize, line_content: &str,
-    context_before: &[String], context_after: &[String],
+    file_path: &str,
+    line_number: usize,
+    line_content: &str,
+    context_before: &[String],
+    context_after: &[String],
 ) {
     if !context_before.is_empty() {
         let start_line = line_number - context_before.len();
         for (i, line) in context_before.iter().enumerate() {
-            println!("{DIM}{}{RESET}:{DIM}{}{RESET}-{}", file_path, start_line + i, line);
+            println!(
+                "{DIM}{}{RESET}:{DIM}{}{RESET}-{}",
+                file_path,
+                start_line + i,
+                line
+            );
         }
     }
-    println!("{BOLD}{CYAN}{}{RESET}:{YELLOW}{}{RESET}:{}", file_path, line_number, line_content);
+    println!(
+        "{BOLD}{CYAN}{}{RESET}:{YELLOW}{}{RESET}:{}",
+        file_path, line_number, line_content
+    );
     if !context_after.is_empty() {
         for (i, line) in context_after.iter().enumerate() {
-            println!("{DIM}{}{RESET}:{DIM}{}{RESET}-{}", file_path, line_number + 1 + i, line);
+            println!(
+                "{DIM}{}{RESET}:{DIM}{}{RESET}-{}",
+                file_path,
+                line_number + 1 + i,
+                line
+            );
         }
     }
 }
@@ -451,12 +600,21 @@ fn print_raw_match_context(
 /// Handle `--raw` mode: pure file-level search without the function index
 #[allow(clippy::too_many_arguments)]
 fn handle_raw_search_mode(
-    query: &str, limit: usize, format: &QueryOutputFormat, quiet: bool,
-    literal: bool, ignore_case: bool, language: &Option<String>,
-    exclude_file: &Option<String>, exclude: &Option<String>,
-    files_with_matches: bool, count: bool,
-    context_lines: Option<usize>, after_context: Option<usize>,
-    before_context: Option<usize>, project_path: &std::path::Path,
+    query: &str,
+    limit: usize,
+    format: &QueryOutputFormat,
+    quiet: bool,
+    literal: bool,
+    ignore_case: bool,
+    language: &Option<String>,
+    exclude_file: &Option<String>,
+    exclude: &Option<String>,
+    files_with_matches: bool,
+    count: bool,
+    context_lines: Option<usize>,
+    after_context: Option<usize>,
+    before_context: Option<usize>,
+    project_path: &std::path::Path,
     exclude_tests: bool,
 ) -> anyhow::Result<()> {
     let ctx_after = context_lines.or(after_context).unwrap_or(0);
@@ -467,29 +625,53 @@ fn handle_raw_search_mode(
     } else {
         None
     };
-    let excl_file_ref = effective_exclude_file.as_deref().or(exclude_file.as_deref());
+    let excl_file_ref = effective_exclude_file
+        .as_deref()
+        .or(exclude_file.as_deref());
     let raw_opts = RawSearchOptions {
-        pattern: query, literal, case_insensitive: ignore_case,
-        before_context: ctx_before, after_context: ctx_after, limit,
+        pattern: query,
+        literal,
+        case_insensitive: ignore_case,
+        before_context: ctx_before,
+        after_context: ctx_after,
+        limit,
         language_filter: language.as_deref(),
         exclude_file_pattern: excl_file_ref,
         exclude_pattern: exclude.as_deref(),
-        files_with_matches, count_mode: count,
+        files_with_matches,
+        count_mode: count,
     };
     let output = raw_search(project_path, &raw_opts).map_err(|e| anyhow::anyhow!("{}", e))?;
     match output {
-        RawSearchOutput::Files(files) => { for f in &files { println!("{CYAN}{}{RESET}", f); } }
-        RawSearchOutput::Counts(counts) => { for c in &counts { println!("{CYAN}{}{RESET}:{YELLOW}{}{RESET}", c.file_path, c.count); } }
+        RawSearchOutput::Files(files) => {
+            for f in &files {
+                println!("{CYAN}{}{RESET}", f);
+            }
+        }
+        RawSearchOutput::Counts(counts) => {
+            for c in &counts {
+                println!("{CYAN}{}{RESET}:{YELLOW}{}{RESET}", c.file_path, c.count);
+            }
+        }
         RawSearchOutput::Lines(lines) => {
             if matches!(format, QueryOutputFormat::Json) {
-                let json = serde_json::to_string_pretty(&lines).map_err(|e| anyhow::anyhow!("{}", e))?;
+                let json =
+                    serde_json::to_string_pretty(&lines).map_err(|e| anyhow::anyhow!("{}", e))?;
                 println!("{}", json);
             } else {
                 for r in &lines {
-                    print_raw_match_context(&r.file_path, r.line_number, &r.line_content, &r.context_before, &r.context_after);
+                    print_raw_match_context(
+                        &r.file_path,
+                        r.line_number,
+                        &r.line_content,
+                        &r.context_before,
+                        &r.context_after,
+                    );
                 }
             }
-            if !quiet { eprintln!("{} matches", lines.len()); }
+            if !quiet {
+                eprintln!("{} matches", lines.len());
+            }
         }
     }
     Ok(())
@@ -499,11 +681,18 @@ fn handle_raw_search_mode(
 /// Used when `--regex` or `--literal` is active (without `--raw`).
 #[allow(clippy::too_many_arguments)]
 fn run_raw_search_for_merge(
-    query: &str, limit: usize, literal: bool, ignore_case: bool,
-    language: &Option<String>, exclude_file: &Option<String>,
-    exclude: &Option<String>, context_lines: Option<usize>,
-    after_context: Option<usize>, before_context: Option<usize>,
-    project_path: &std::path::Path, indexed_results: &[QueryResult],
+    query: &str,
+    limit: usize,
+    literal: bool,
+    ignore_case: bool,
+    language: &Option<String>,
+    exclude_file: &Option<String>,
+    exclude: &Option<String>,
+    context_lines: Option<usize>,
+    after_context: Option<usize>,
+    before_context: Option<usize>,
+    project_path: &std::path::Path,
+    indexed_results: &[QueryResult],
 ) -> Vec<RawSearchResult> {
     let remaining = limit.saturating_sub(indexed_results.len());
     if remaining == 0 {
@@ -513,13 +702,17 @@ fn run_raw_search_for_merge(
     let ctx_after = context_lines.or(after_context).unwrap_or(0);
     let ctx_before = context_lines.or(before_context).unwrap_or(0);
     let raw_opts = RawSearchOptions {
-        pattern: query, literal, case_insensitive: ignore_case,
-        before_context: ctx_before, after_context: ctx_after,
+        pattern: query,
+        literal,
+        case_insensitive: ignore_case,
+        before_context: ctx_before,
+        after_context: ctx_after,
         limit: remaining + indexed_results.len(), // over-fetch to account for dedup
         language_filter: language.as_deref(),
         exclude_file_pattern: exclude_file.as_deref(),
         exclude_pattern: exclude.as_deref(),
-        files_with_matches: false, count_mode: false,
+        files_with_matches: false,
+        count_mode: false,
     };
 
     let output = match raw_search(project_path, &raw_opts) {
@@ -533,7 +726,8 @@ fn run_raw_search_for_merge(
     };
 
     // Filter out matches that overlap with indexed function results
-    lines.into_iter()
+    lines
+        .into_iter()
         .filter(|r| !is_within_indexed_function(&r.file_path, r.line_number, indexed_results))
         .take(remaining)
         .collect()
@@ -542,17 +736,26 @@ fn run_raw_search_for_merge(
 /// Run raw search and return file paths for merge with --files-with-matches mode.
 #[allow(clippy::too_many_arguments)]
 fn run_raw_files_for_merge(
-    query: &str, literal: bool, ignore_case: bool,
-    language: &Option<String>, exclude_file: &Option<String>,
-    exclude: &Option<String>, project_path: &std::path::Path,
+    query: &str,
+    literal: bool,
+    ignore_case: bool,
+    language: &Option<String>,
+    exclude_file: &Option<String>,
+    exclude: &Option<String>,
+    project_path: &std::path::Path,
 ) -> Vec<String> {
     let raw_opts = RawSearchOptions {
-        pattern: query, literal, case_insensitive: ignore_case,
-        before_context: 0, after_context: 0, limit: 0,
+        pattern: query,
+        literal,
+        case_insensitive: ignore_case,
+        before_context: 0,
+        after_context: 0,
+        limit: 0,
         language_filter: language.as_deref(),
         exclude_file_pattern: exclude_file.as_deref(),
         exclude_pattern: exclude.as_deref(),
-        files_with_matches: true, count_mode: false,
+        files_with_matches: true,
+        count_mode: false,
     };
     match raw_search(project_path, &raw_opts) {
         Ok(RawSearchOutput::Files(f)) => f,
@@ -563,17 +766,26 @@ fn run_raw_files_for_merge(
 /// Run raw search and return per-file counts for merge with --count mode.
 #[allow(clippy::too_many_arguments)]
 fn run_raw_counts_for_merge(
-    query: &str, literal: bool, ignore_case: bool,
-    language: &Option<String>, exclude_file: &Option<String>,
-    exclude: &Option<String>, project_path: &std::path::Path,
+    query: &str,
+    literal: bool,
+    ignore_case: bool,
+    language: &Option<String>,
+    exclude_file: &Option<String>,
+    exclude: &Option<String>,
+    project_path: &std::path::Path,
 ) -> Vec<crate::services::agent_context::FileMatchCount> {
     let raw_opts = RawSearchOptions {
-        pattern: query, literal, case_insensitive: ignore_case,
-        before_context: 0, after_context: 0, limit: 0,
+        pattern: query,
+        literal,
+        case_insensitive: ignore_case,
+        before_context: 0,
+        after_context: 0,
+        limit: 0,
         language_filter: language.as_deref(),
         exclude_file_pattern: exclude_file.as_deref(),
         exclude_pattern: exclude.as_deref(),
-        files_with_matches: false, count_mode: true,
+        files_with_matches: false,
+        count_mode: true,
     };
     match raw_search(project_path, &raw_opts) {
         Ok(RawSearchOutput::Counts(c)) => c,
@@ -583,7 +795,10 @@ fn run_raw_counts_for_merge(
 
 /// Load the function index with workspace support
 fn load_query_index(
-    project_path: &PathBuf, rebuild_index: bool, include_project: &[PathBuf], quiet: bool,
+    project_path: &PathBuf,
+    rebuild_index: bool,
+    include_project: &[PathBuf],
+    quiet: bool,
 ) -> anyhow::Result<AgentContextIndex> {
     let index_path = project_path.join(".pmat/context.idx");
     let workspace_idx = project_path.join(".pmat/workspace.idx");
@@ -592,24 +807,41 @@ fn load_query_index(
     for project in include_project {
         let idx_path = project.join(".pmat/context.idx");
         if idx_path.exists() {
-            let name = project.file_name().map(|s| s.to_string_lossy().to_string())
+            let name = project
+                .file_name()
+                .map(|s| s.to_string_lossy().to_string())
                 .unwrap_or_else(|| project.display().to_string());
             if !siblings.iter().any(|(_, n)| n == &name) {
                 siblings.push((idx_path, name));
             }
         } else if !quiet {
-            eprintln!("Warning: No index at {:?}, run 'pmat query --rebuild-index' in that project first", idx_path);
+            eprintln!(
+                "Warning: No index at {:?}, run 'pmat query --rebuild-index' in that project first",
+                idx_path
+            );
         }
     }
 
-    if !siblings.is_empty() && !rebuild_index && is_workspace_cache_fresh(&workspace_idx, &siblings, &index_path) {
-        if !quiet { eprintln!("Loading cached workspace index..."); }
+    if !siblings.is_empty()
+        && !rebuild_index
+        && is_workspace_cache_fresh(&workspace_idx, &siblings, &index_path)
+    {
+        if !quiet {
+            eprintln!("Loading cached workspace index...");
+        }
         if let Ok(cached) = AgentContextIndex::load(&workspace_idx) {
             return Ok(cached);
         }
     }
 
-    load_and_merge_index(project_path, &index_path, &workspace_idx, &siblings, rebuild_index, quiet)
+    load_and_merge_index(
+        project_path,
+        &index_path,
+        &workspace_idx,
+        &siblings,
+        rebuild_index,
+        quiet,
+    )
 }
 
 /// Backfill source code for query results from SQLite.
@@ -659,8 +891,14 @@ fn normalize_definition_type(def_type: &str) -> String {
 }
 
 /// Apply result filters: exclude-tests and definition-type
-fn apply_result_filters(results: &mut Vec<QueryResult>, exclude_tests: bool, definition_type: &Option<String>) {
-    if exclude_tests { results.retain(|r| !is_test_function(r)); }
+fn apply_result_filters(
+    results: &mut Vec<QueryResult>,
+    exclude_tests: bool,
+    definition_type: &Option<String>,
+) {
+    if exclude_tests {
+        results.retain(|r| !is_test_function(r));
+    }
     if let Some(ref def_type) = definition_type {
         let filter_type = normalize_definition_type(def_type);
         results.retain(|r| r.definition_type == filter_type);
@@ -669,8 +907,10 @@ fn apply_result_filters(results: &mut Vec<QueryResult>, exclude_tests: bool, def
 
 /// Apply filters for coverage-gaps mode (language, path, exclude-tests)
 fn apply_result_filters_coverage(
-    results: &mut Vec<QueryResult>, language: &Option<String>,
-    path_pattern: &Option<String>, exclude_tests: bool,
+    results: &mut Vec<QueryResult>,
+    language: &Option<String>,
+    path_pattern: &Option<String>,
+    exclude_tests: bool,
 ) {
     if let Some(ref lang) = language {
         let lang_lower = lang.to_lowercase();
@@ -679,15 +919,30 @@ fn apply_result_filters_coverage(
     if let Some(ref pattern) = path_pattern {
         results.retain(|r| r.file_path.contains(pattern));
     }
-    if exclude_tests { results.retain(|r| !is_test_function(r)); }
+    if exclude_tests {
+        results.retain(|r| !is_test_function(r));
+    }
 }
 
 /// Format and print coverage gap results in text mode (testable gaps only)
 fn print_coverage_gaps_text(results: &[QueryResult]) {
-    println!("{BOLD}{UNDERLINE}Coverage Gaps{RESET} ({} testable functions with uncovered code)\n", results.len());
+    println!(
+        "{BOLD}{UNDERLINE}Coverage Gaps{RESET} ({} testable functions with uncovered code)\n",
+        results.len()
+    );
     for (i, r) in results.iter().enumerate() {
-        let pct_color = if r.line_coverage_pct < 50.0 { BRIGHT_RED } else if r.line_coverage_pct < 80.0 { YELLOW } else { GREEN };
-        let impact_str = if r.impact_score > 1.0 { format!(" {YELLOW}impact:{:.1}{RESET}", r.impact_score) } else { String::new() };
+        let pct_color = if r.line_coverage_pct < 50.0 {
+            BRIGHT_RED
+        } else if r.line_coverage_pct < 80.0 {
+            YELLOW
+        } else {
+            GREEN
+        };
+        let impact_str = if r.impact_score > 1.0 {
+            format!(" {YELLOW}impact:{:.1}{RESET}", r.impact_score)
+        } else {
+            String::new()
+        };
         println!(
             "  {DIM}{:>3}.{RESET} {BRIGHT_RED}{:>4} uncov{RESET} | {pct_color}{:>5.1}% cov{RESET} | {CYAN}{}{RESET}:{YELLOW}{}{RESET} {WHITE}{}{RESET} {DIM}[{}]{RESET}{impact_str}",
             i + 1, r.missed_lines, r.line_coverage_pct, r.file_path, r.start_line, r.function_name, r.tdg_grade,
@@ -700,13 +955,22 @@ fn print_coverage_gaps_text(results: &[QueryResult]) {
 fn print_exclusion_summary(summary: &crate::services::agent_context::ExclusionSummary) {
     println!("{DIM}Excluded from coverage (not shown):{RESET}");
     if summary.coverage_off_count > 0 {
-        println!("  {DIM}coverage(off): {} functions across {} files{RESET}", summary.coverage_off_count, summary.coverage_off_files);
+        println!(
+            "  {DIM}coverage(off): {} functions across {} files{RESET}",
+            summary.coverage_off_count, summary.coverage_off_files
+        );
     }
     if summary.dead_code_count > 0 {
-        println!("  {DIM}dead code: {} functions across {} files{RESET}", summary.dead_code_count, summary.dead_code_files);
+        println!(
+            "  {DIM}dead code: {} functions across {} files{RESET}",
+            summary.dead_code_count, summary.dead_code_files
+        );
     }
     if summary.makefile_count > 0 {
-        println!("  {DIM}Makefile COVERAGE_EXCLUDE: {} functions across {} files{RESET}", summary.makefile_count, summary.makefile_files);
+        println!(
+            "  {DIM}Makefile COVERAGE_EXCLUDE: {} functions across {} files{RESET}",
+            summary.makefile_count, summary.makefile_files
+        );
     }
     println!("  {DIM}(use --include-excluded to see these){RESET}");
     println!();
@@ -723,12 +987,18 @@ fn print_excluded_results(excluded: &[&QueryResult]) {
     ];
 
     for (kind, label) in groups {
-        let in_group: Vec<&&QueryResult> = excluded.iter()
+        let in_group: Vec<&&QueryResult> = excluded
+            .iter()
             .filter(|r| r.coverage_exclusion == *kind)
             .collect();
-        if in_group.is_empty() { continue; }
+        if in_group.is_empty() {
+            continue;
+        }
 
-        println!("  {DIM}[EXCLUDED: {label}]{RESET} ({} functions)", in_group.len());
+        println!(
+            "  {DIM}[EXCLUDED: {label}]{RESET} ({} functions)",
+            in_group.len()
+        );
         for (i, r) in in_group.iter().enumerate().take(10) {
             println!(
                 "    {DIM}{:>3}.{RESET} {DIM}{:>4} uncov{RESET} | {DIM}{:>5.1}% cov{RESET} | {DIM}{}{RESET}:{DIM}{}{RESET} {DIM}{}{RESET} {DIM}[{}]{RESET}",
@@ -768,25 +1038,40 @@ fn output_coverage_gaps_by_file(results: &[QueryResult], files_only: bool) -> an
 
 /// Output coverage gap results in the requested format
 fn output_coverage_gaps(
-    format: &QueryOutputFormat, testable: Vec<QueryResult>, excluded: Vec<QueryResult>,
+    format: &QueryOutputFormat,
+    testable: Vec<QueryResult>,
+    excluded: Vec<QueryResult>,
     include_excluded: bool,
 ) -> anyhow::Result<()> {
     let excluded_refs: Vec<&QueryResult> = excluded.iter().collect();
-    let excl_summary = crate::services::agent_context::ExclusionSummary::from_results(&excluded_refs);
+    let excl_summary =
+        crate::services::agent_context::ExclusionSummary::from_results(&excluded_refs);
 
     match format {
         QueryOutputFormat::Json | QueryOutputFormat::Markdown => {
             let mut all = testable;
-            if include_excluded { all.extend(excluded); }
+            if include_excluded {
+                all.extend(excluded);
+            }
             if matches!(format, QueryOutputFormat::Json) {
-                println!("{}", format_json(&all).map_err(|e| anyhow::anyhow!("{}", e))?);
+                println!(
+                    "{}",
+                    format_json(&all).map_err(|e| anyhow::anyhow!("{}", e))?
+                );
             } else {
                 println!("{}", format_markdown(&all));
             }
         }
         _ => {
-            print_coverage_gaps_text_with_exclusions(&testable, &excluded_refs, &excl_summary, include_excluded);
-            if let Some(summary) = format_coverage_summary(&testable) { eprintln!("{DIM}{}{RESET}", summary); }
+            print_coverage_gaps_text_with_exclusions(
+                &testable,
+                &excluded_refs,
+                &excl_summary,
+                include_excluded,
+            );
+            if let Some(summary) = format_coverage_summary(&testable) {
+                eprintln!("{DIM}{}{RESET}", summary);
+            }
         }
     }
     Ok(())
@@ -794,12 +1079,17 @@ fn output_coverage_gaps(
 
 /// Print text-mode coverage gaps with exclusion handling
 fn print_coverage_gaps_text_with_exclusions(
-    testable: &[QueryResult], excluded: &[&QueryResult],
-    summary: &crate::services::agent_context::ExclusionSummary, include_excluded: bool,
+    testable: &[QueryResult],
+    excluded: &[&QueryResult],
+    summary: &crate::services::agent_context::ExclusionSummary,
+    include_excluded: bool,
 ) {
     if include_excluded && !excluded.is_empty() {
-        println!("{BOLD}{UNDERLINE}Coverage Gaps{RESET} ({} testable + {} excluded)\n",
-            testable.len(), summary.total());
+        println!(
+            "{BOLD}{UNDERLINE}Coverage Gaps{RESET} ({} testable + {} excluded)\n",
+            testable.len(),
+            summary.total()
+        );
         if !testable.is_empty() {
             println!("  {BOLD}[TESTABLE]{RESET}");
             print_coverage_gaps_text(testable);
@@ -807,7 +1097,9 @@ fn print_coverage_gaps_text_with_exclusions(
         print_excluded_results(excluded);
     } else {
         print_coverage_gaps_text(testable);
-        if !summary.is_empty() { print_exclusion_summary(summary); }
+        if !summary.is_empty() {
+            print_exclusion_summary(summary);
+        }
     }
 }
 
@@ -815,17 +1107,27 @@ fn print_coverage_gaps_text_with_exclusions(
 /// classifying exclusions to filter out coverage(off), dead code, and Makefile patterns.
 #[allow(clippy::too_many_arguments)]
 async fn handle_coverage_gaps_mode(
-    index: &AgentContextIndex, project_path: &std::path::Path,
-    format: &QueryOutputFormat, coverage_file: &Option<PathBuf>,
-    language: &Option<String>, path_pattern: &Option<String>,
-    exclude_tests: bool, limit: usize, quiet: bool,
-    include_excluded: bool, files_with_matches: bool, count_mode: bool,
+    index: &AgentContextIndex,
+    project_path: &std::path::Path,
+    format: &QueryOutputFormat,
+    coverage_file: &Option<PathBuf>,
+    language: &Option<String>,
+    path_pattern: &Option<String>,
+    exclude_tests: bool,
+    limit: usize,
+    quiet: bool,
+    include_excluded: bool,
+    files_with_matches: bool,
+    count_mode: bool,
     siblings: &[(PathBuf, String)],
 ) -> anyhow::Result<()> {
     let mut profile = QueryProfile::new();
 
     // Lightweight: graph metrics only, skip call graph (not displayed in coverage-gaps)
-    let mut results: Vec<QueryResult> = index.functions.iter().enumerate()
+    let mut results: Vec<QueryResult> = index
+        .functions
+        .iter()
+        .enumerate()
         .map(|(i, entry)| QueryResult::from_entry_with_metrics(entry, i, &index.graph_metrics, 0.0))
         .collect();
     profile.phase("build_results");
@@ -841,27 +1143,39 @@ async fn handle_coverage_gaps_mode(
     } else {
         None
     };
-    if !quiet { eprintln!("Classifying coverage exclusions ({} results)...", results.len()); }
+    if !quiet {
+        eprintln!(
+            "Classifying coverage exclusions ({} results)...",
+            results.len()
+        );
+    }
     crate::services::agent_context::classify_exclusions(&mut results, project_path, cached_cov_off);
     profile.phase("classify_exclusions");
 
-    if !quiet { eprintln!("Loading coverage data..."); }
+    if !quiet {
+        eprintln!("Loading coverage data...");
+    }
     let cov_path = coverage_file.as_deref();
-    let coverage_loaded = match enrich_results_with_coverage(&mut results, project_path, cov_path).await {
-        Ok(()) => true,
-        Err(e) => {
-            eprintln!("{YELLOW}Warning:{RESET} {}", e);
-            eprintln!("{DIM}Showing functions without coverage enrichment.{RESET}");
-            false
-        }
-    };
+    let coverage_loaded =
+        match enrich_results_with_coverage(&mut results, project_path, cov_path).await {
+            Ok(()) => true,
+            Err(e) => {
+                eprintln!("{YELLOW}Warning:{RESET} {}", e);
+                eprintln!("{DIM}Showing functions without coverage enrichment.{RESET}");
+                false
+            }
+        };
 
     // Merge sibling coverage caches for workspace-level coverage gaps
     if coverage_loaded && !siblings.is_empty() {
         let workspace_cov = crate::services::agent_context::load_workspace_coverage(siblings);
         if !workspace_cov.is_empty() {
             if !quiet {
-                eprintln!("Merging coverage from {} sibling(s) ({} files)", siblings.len(), workspace_cov.len());
+                eprintln!(
+                    "Merging coverage from {} sibling(s) ({} files)",
+                    siblings.len(),
+                    workspace_cov.len()
+                );
             }
             crate::services::agent_context::enrich_with_coverage(&mut results, &workspace_cov);
         }
@@ -876,8 +1190,13 @@ async fn handle_coverage_gaps_mode(
     let (mut testable, excluded): (Vec<QueryResult>, Vec<QueryResult>) =
         results.into_iter().partition(|r| !r.coverage_excluded);
 
-    testable.sort_by(|a, b| b.missed_lines.cmp(&a.missed_lines)
-        .then_with(|| a.line_coverage_pct.partial_cmp(&b.line_coverage_pct).unwrap_or(std::cmp::Ordering::Equal)));
+    testable.sort_by(|a, b| {
+        b.missed_lines.cmp(&a.missed_lines).then_with(|| {
+            a.line_coverage_pct
+                .partial_cmp(&b.line_coverage_pct)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        })
+    });
     testable.truncate(limit);
 
     if testable.is_empty() && excluded.is_empty() {
@@ -906,56 +1225,111 @@ async fn handle_coverage_gaps_mode(
 macro_rules! try_enrich {
     ($results:expr, $quiet:expr, $label:expr, $call:expr) => {
         if !$results.is_empty() {
-            if !$quiet { eprintln!($label); }
+            if !$quiet {
+                eprintln!($label);
+            }
             if let Err(e) = $call {
-                if !$quiet { eprintln!("Warning: {e}"); }
+                if !$quiet {
+                    eprintln!("Warning: {e}");
+                }
             }
         }
     };
 }
 
 async fn apply_churn(results: &mut Vec<QueryResult>, project_path: &std::path::Path, quiet: bool) {
-    try_enrich!(results, quiet, "Computing git churn metrics...",
-        enrich_results_with_churn(results, project_path, 90).await);
+    try_enrich!(
+        results,
+        quiet,
+        "Computing git churn metrics...",
+        enrich_results_with_churn(results, project_path, 90).await
+    );
 }
 
-async fn apply_duplicates(results: &mut Vec<QueryResult>, project_path: &std::path::Path, quiet: bool) {
-    try_enrich!(results, quiet, "Detecting code duplicates...",
-        enrich_results_with_duplicates(results, project_path).await);
+async fn apply_duplicates(
+    results: &mut Vec<QueryResult>,
+    project_path: &std::path::Path,
+    quiet: bool,
+) {
+    try_enrich!(
+        results,
+        quiet,
+        "Detecting code duplicates...",
+        enrich_results_with_duplicates(results, project_path).await
+    );
 }
 
-async fn apply_entropy(results: &mut Vec<QueryResult>, project_path: &std::path::Path, quiet: bool) {
-    try_enrich!(results, quiet, "Computing pattern diversity...",
-        enrich_results_with_entropy(results, project_path).await);
+async fn apply_entropy(
+    results: &mut Vec<QueryResult>,
+    project_path: &std::path::Path,
+    quiet: bool,
+) {
+    try_enrich!(
+        results,
+        quiet,
+        "Computing pattern diversity...",
+        enrich_results_with_entropy(results, project_path).await
+    );
 }
 
 async fn apply_faults(results: &mut Vec<QueryResult>, project_path: &std::path::Path, quiet: bool) {
-    try_enrich!(results, quiet, "Detecting fault patterns (batuta)...",
-        enrich_results_with_faults(results, project_path).await);
+    try_enrich!(
+        results,
+        quiet,
+        "Detecting fault patterns (batuta)...",
+        enrich_results_with_faults(results, project_path).await
+    );
 }
 
 async fn apply_coverage_enrichment(
-    results: &mut Vec<QueryResult>, project_path: &std::path::Path, quiet: bool,
-    coverage_file: &Option<PathBuf>, uncovered_only: bool,
+    results: &mut Vec<QueryResult>,
+    project_path: &std::path::Path,
+    quiet: bool,
+    coverage_file: &Option<PathBuf>,
+    uncovered_only: bool,
 ) {
     let cov_path = coverage_file.as_deref();
-    try_enrich!(results, quiet, "Loading coverage data...",
-        enrich_results_with_coverage(results, project_path, cov_path).await);
-    if uncovered_only { results.retain(|r| r.lines_total > 0 && r.line_coverage_pct < 100.0); }
+    try_enrich!(
+        results,
+        quiet,
+        "Loading coverage data...",
+        enrich_results_with_coverage(results, project_path, cov_path).await
+    );
+    if uncovered_only {
+        results.retain(|r| r.lines_total > 0 && r.line_coverage_pct < 100.0);
+    }
 }
 
 #[allow(clippy::too_many_arguments)]
 async fn apply_all_enrichments(
-    results: &mut Vec<QueryResult>, project_path: &std::path::Path, quiet: bool,
-    churn: bool, duplicates: bool, entropy: bool, faults: bool,
-    coverage: bool, uncovered_only: bool,
-    coverage_file: &Option<PathBuf>, coverage_diff: &Option<PathBuf>,
+    results: &mut Vec<QueryResult>,
+    project_path: &std::path::Path,
+    quiet: bool,
+    churn: bool,
+    duplicates: bool,
+    entropy: bool,
+    faults: bool,
+    coverage: bool,
+    uncovered_only: bool,
+    coverage_file: &Option<PathBuf>,
+    coverage_diff: &Option<PathBuf>,
 ) {
-    if churn { apply_churn(results, project_path, quiet).await; }
-    if duplicates { apply_duplicates(results, project_path, quiet).await; }
-    if entropy { apply_entropy(results, project_path, quiet).await; }
-    if faults { apply_faults(results, project_path, quiet).await; }
-    if coverage { apply_coverage_enrichment(results, project_path, quiet, coverage_file, uncovered_only).await; }
+    if churn {
+        apply_churn(results, project_path, quiet).await;
+    }
+    if duplicates {
+        apply_duplicates(results, project_path, quiet).await;
+    }
+    if entropy {
+        apply_entropy(results, project_path, quiet).await;
+    }
+    if faults {
+        apply_faults(results, project_path, quiet).await;
+    }
+    if coverage {
+        apply_coverage_enrichment(results, project_path, quiet, coverage_file, uncovered_only)
+            .await;
+    }
     if let Some(ref diff_path) = coverage_diff {
         if coverage && !results.is_empty() {
             apply_coverage_diff(results, project_path, diff_path, quiet);
@@ -964,22 +1338,46 @@ async fn apply_all_enrichments(
 }
 
 /// Apply coverage diff enrichment from a baseline file
-fn apply_coverage_diff(results: &mut [QueryResult], project_path: &std::path::Path, diff_path: &std::path::Path, quiet: bool) {
+fn apply_coverage_diff(
+    results: &mut [QueryResult],
+    project_path: &std::path::Path,
+    diff_path: &std::path::Path,
+    quiet: bool,
+) {
     match std::fs::read_to_string(diff_path) {
         Ok(json) => match build_coverage_map(&json, project_path) {
-            Ok(baseline) => { enrich_with_coverage_diff(results, &baseline); }
-            Err(e) => { if !quiet { eprintln!("Warning: Could not parse coverage baseline: {}", e); } }
+            Ok(baseline) => {
+                enrich_with_coverage_diff(results, &baseline);
+            }
+            Err(e) => {
+                if !quiet {
+                    eprintln!("Warning: Could not parse coverage baseline: {}", e);
+                }
+            }
         },
-        Err(e) => { if !quiet { eprintln!("Warning: Could not read coverage baseline {}: {}", diff_path.display(), e); } }
+        Err(e) => {
+            if !quiet {
+                eprintln!(
+                    "Warning: Could not read coverage baseline {}: {}",
+                    diff_path.display(),
+                    e
+                );
+            }
+        }
     }
 }
 
 /// Fetch git history search results if requested
 fn fetch_git_history_results(
-    project_path: &std::path::Path, query: &str, limit: usize,
-    index: &AgentContextIndex, quiet: bool,
+    project_path: &std::path::Path,
+    query: &str,
+    limit: usize,
+    index: &AgentContextIndex,
+    quiet: bool,
 ) -> anyhow::Result<Option<(Vec<GitSearchResult>, Vec<CommitInfo>)>> {
-    if !quiet { eprintln!("Searching git history..."); }
+    if !quiet {
+        eprintln!("Searching git history...");
+    }
     match search_git_history_profiled(project_path, query, limit, index, quiet) {
         Ok((git_hits, profile, all_commits)) => {
             if !quiet {
@@ -988,12 +1386,16 @@ fn fetch_git_history_results(
                     profile.commit_count, profile.total_ms, profile.git_log_ms, profile.parse_ms,
                     profile.index_ms, profile.search_ms, profile.annotate_ms,
                 );
-                if !git_hits.is_empty() { eprintln!("Found {} relevant commits", git_hits.len()); }
+                if !git_hits.is_empty() {
+                    eprintln!("Found {} relevant commits", git_hits.len());
+                }
             }
             Ok(Some((git_hits, all_commits)))
         }
         Err(e) => {
-            if !quiet { eprintln!("Warning: Git history search failed: {}", e); }
+            if !quiet {
+                eprintln!("Warning: Git history search failed: {}", e);
+            }
             Ok(None)
         }
     }
@@ -1004,13 +1406,19 @@ fn apply_post_enrichment_sort(results: &mut [QueryResult], rank_by: &Option<Stri
     if let Some(ref rank_str) = rank_by {
         let r = rank_str.to_lowercase();
         if r == "impact" || r == "roi" || r == "coverage" {
-            results.sort_by(|a, b| b.impact_score.partial_cmp(&a.impact_score).unwrap_or(std::cmp::Ordering::Equal));
+            results.sort_by(|a, b| {
+                b.impact_score
+                    .partial_cmp(&a.impact_score)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            });
         } else if r == "cross-project" || r == "crossproject" || r == "xproject" {
             // Secondary sort: boost by cross_project_callers (already set by engine)
             results.sort_by(|a, b| {
                 let score_a = a.pagerank * (1.0 + 0.5 * a.cross_project_callers as f32);
                 let score_b = b.pagerank * (1.0 + 0.5 * b.cross_project_callers as f32);
-                score_b.partial_cmp(&score_a).unwrap_or(std::cmp::Ordering::Equal)
+                score_b
+                    .partial_cmp(&score_a)
+                    .unwrap_or(std::cmp::Ordering::Equal)
             });
         }
     }
@@ -1032,9 +1440,12 @@ struct MergeContext<'a> {
 type GitData = Option<(Vec<GitSearchResult>, Vec<CommitInfo>)>;
 
 fn fetch_git_data(
-    git_history: bool, project_path: &std::path::Path,
-    query: &str, limit: usize,
-    index: &AgentContextIndex, quiet: bool,
+    git_history: bool,
+    project_path: &std::path::Path,
+    query: &str,
+    limit: usize,
+    index: &AgentContextIndex,
+    quiet: bool,
 ) -> anyhow::Result<GitData> {
     if git_history {
         fetch_git_history_results(project_path, query, limit, index, quiet)
@@ -1045,33 +1456,58 @@ fn fetch_git_data(
 
 #[allow(clippy::too_many_arguments)]
 fn merge_raw_results(
-    is_regex_literal: bool, quiet: bool, query: &str, limit: usize,
-    ctx: &MergeContext, context_lines: Option<usize>,
-    after_context: Option<usize>, before_context: Option<usize>,
+    is_regex_literal: bool,
+    quiet: bool,
+    query: &str,
+    limit: usize,
+    ctx: &MergeContext,
+    context_lines: Option<usize>,
+    after_context: Option<usize>,
+    before_context: Option<usize>,
     results: &[QueryResult],
 ) -> Vec<RawSearchResult> {
-    if !is_regex_literal { return Vec::new(); }
-    if !quiet { eprintln!("Searching raw files for non-indexed matches..."); }
+    if !is_regex_literal {
+        return Vec::new();
+    }
+    if !quiet {
+        eprintln!("Searching raw files for non-indexed matches...");
+    }
     run_raw_search_for_merge(
-        query, limit, ctx.literal, ctx.ignore_case,
-        ctx.language, ctx.exclude_file, ctx.exclude,
-        context_lines, after_context, before_context,
-        ctx.project_path, results,
+        query,
+        limit,
+        ctx.literal,
+        ctx.ignore_case,
+        ctx.language,
+        ctx.exclude_file,
+        ctx.exclude,
+        context_lines,
+        after_context,
+        before_context,
+        ctx.project_path,
+        results,
     )
 }
 
 #[allow(clippy::too_many_arguments)]
 fn emit_query_output(
-    results: &[QueryResult], raw_results: &[RawSearchResult],
-    git_data: &GitData, query: &str,
-    format: &QueryOutputFormat, include_source: bool, coverage: bool,
-    files_with_matches: bool, count: bool,
-    context_lines: Option<usize>, after_context: Option<usize>, before_context: Option<usize>,
+    results: &[QueryResult],
+    raw_results: &[RawSearchResult],
+    git_data: &GitData,
+    query: &str,
+    format: &QueryOutputFormat,
+    include_source: bool,
+    coverage: bool,
+    files_with_matches: bool,
+    count: bool,
+    context_lines: Option<usize>,
+    after_context: Option<usize>,
+    before_context: Option<usize>,
     merge_ctx: &MergeContext,
     project_path: &std::path::Path,
     index: &AgentContextIndex,
 ) -> anyhow::Result<()> {
-    if results.is_empty() && raw_results.is_empty()
+    if results.is_empty()
+        && raw_results.is_empty()
         && git_data.as_ref().map_or(true, |(hits, _)| hits.is_empty())
     {
         eprintln!("No matching functions found for: {}", query);
@@ -1079,29 +1515,58 @@ fn emit_query_output(
     }
 
     if try_special_output_modes_merged(
-        results, raw_results, files_with_matches, count,
-        context_lines, after_context, before_context, merge_ctx,
+        results,
+        raw_results,
+        files_with_matches,
+        count,
+        context_lines,
+        after_context,
+        before_context,
+        merge_ctx,
     )? {
         return Ok(());
     }
 
-    let highlight = if merge_ctx.is_regex_or_literal { Some((query, merge_ctx.literal)) } else { None };
-    print_query_output(results, format, include_source, coverage, git_data, project_path, index, highlight);
+    let highlight = if merge_ctx.is_regex_or_literal {
+        Some((query, merge_ctx.literal))
+    } else {
+        None
+    };
+    print_query_output(
+        results,
+        format,
+        include_source,
+        coverage,
+        git_data,
+        project_path,
+        index,
+        highlight,
+    );
     print_raw_results(raw_results, format);
     Ok(())
 }
 
 /// Print raw file matches (non-indexed).
 fn print_raw_results(raw_results: &[RawSearchResult], format: &QueryOutputFormat) {
-    if raw_results.is_empty() { return; }
+    if raw_results.is_empty() {
+        return;
+    }
     if matches!(format, QueryOutputFormat::Json) {
         let json = serde_json::to_string_pretty(&raw_results).unwrap_or_default();
         eprintln!("\n{{\"raw_matches\": {}}}", json);
     } else {
-        eprintln!("\n{DIM}── Raw file matches ({} non-indexed) ──{RESET}", raw_results.len());
+        eprintln!(
+            "\n{DIM}── Raw file matches ({} non-indexed) ──{RESET}",
+            raw_results.len()
+        );
         for r in raw_results {
-            print_raw_match_context(&r.file_path, r.line_number, &r.line_content,
-                &r.context_before, &r.context_after);
+            print_raw_match_context(
+                &r.file_path,
+                r.line_number,
+                &r.line_content,
+                &r.context_before,
+                &r.context_after,
+            );
         }
     }
 }
@@ -1109,9 +1574,13 @@ fn print_raw_results(raw_results: &[RawSearchResult], format: &QueryOutputFormat
 /// Returns Ok(true) if handled, Ok(false) for standard output.
 #[allow(clippy::too_many_arguments)]
 fn try_special_output_modes_merged(
-    results: &[QueryResult], raw_results: &[RawSearchResult],
-    files_with_matches: bool, count: bool,
-    context_lines: Option<usize>, after_context: Option<usize>, before_context: Option<usize>,
+    results: &[QueryResult],
+    raw_results: &[RawSearchResult],
+    files_with_matches: bool,
+    count: bool,
+    context_lines: Option<usize>,
+    after_context: Option<usize>,
+    before_context: Option<usize>,
     ctx: &MergeContext,
 ) -> anyhow::Result<bool> {
     if files_with_matches {
@@ -1131,44 +1600,72 @@ fn try_special_output_modes_merged(
 }
 
 fn handle_files_with_matches(
-    results: &[QueryResult], raw_results: &[RawSearchResult], ctx: &MergeContext,
+    results: &[QueryResult],
+    raw_results: &[RawSearchResult],
+    ctx: &MergeContext,
 ) -> anyhow::Result<bool> {
     let mut seen = std::collections::HashSet::new();
-    for r in results { seen.insert(r.file_path.clone()); }
-    for r in raw_results { seen.insert(r.file_path.clone()); }
+    for r in results {
+        seen.insert(r.file_path.clone());
+    }
+    for r in raw_results {
+        seen.insert(r.file_path.clone());
+    }
     if ctx.is_regex_or_literal {
         let raw_files = run_raw_files_for_merge(
-            ctx.query, ctx.literal, ctx.ignore_case,
-            ctx.language, ctx.exclude_file, ctx.exclude, ctx.project_path,
+            ctx.query,
+            ctx.literal,
+            ctx.ignore_case,
+            ctx.language,
+            ctx.exclude_file,
+            ctx.exclude,
+            ctx.project_path,
         );
-        for f in raw_files { seen.insert(f); }
+        for f in raw_files {
+            seen.insert(f);
+        }
     }
     let mut sorted: Vec<String> = seen.into_iter().collect();
     sorted.sort();
-    for f in &sorted { println!("{CYAN}{}{RESET}", f); }
+    for f in &sorted {
+        println!("{CYAN}{}{RESET}", f);
+    }
     Ok(true)
 }
 
-fn handle_count_mode(
-    results: &[QueryResult], ctx: &MergeContext,
-) -> anyhow::Result<bool> {
-    let mut file_counts: std::collections::BTreeMap<String, usize> = std::collections::BTreeMap::new();
-    for r in results { *file_counts.entry(r.file_path.clone()).or_insert(0) += 1; }
+fn handle_count_mode(results: &[QueryResult], ctx: &MergeContext) -> anyhow::Result<bool> {
+    let mut file_counts: std::collections::BTreeMap<String, usize> =
+        std::collections::BTreeMap::new();
+    for r in results {
+        *file_counts.entry(r.file_path.clone()).or_insert(0) += 1;
+    }
     if ctx.is_regex_or_literal {
         let raw_counts = run_raw_counts_for_merge(
-            ctx.query, ctx.literal, ctx.ignore_case,
-            ctx.language, ctx.exclude_file, ctx.exclude, ctx.project_path,
+            ctx.query,
+            ctx.literal,
+            ctx.ignore_case,
+            ctx.language,
+            ctx.exclude_file,
+            ctx.exclude,
+            ctx.project_path,
         );
         for c in raw_counts {
             let entry = file_counts.entry(c.file_path).or_insert(0);
             *entry = (*entry).max(c.count);
         }
     }
-    for (file, cnt) in &file_counts { println!("{CYAN}{}{RESET}:{YELLOW}{}{RESET}", file, cnt); }
+    for (file, cnt) in &file_counts {
+        println!("{CYAN}{}{RESET}:{YELLOW}{}{RESET}", file, cnt);
+    }
     Ok(true)
 }
 
-fn print_context_for_result(r: &QueryResult, project_path: &std::path::Path, ctx_before: usize, ctx_after: usize) {
+fn print_context_for_result(
+    r: &QueryResult,
+    project_path: &std::path::Path,
+    ctx_before: usize,
+    ctx_after: usize,
+) {
     let start = r.start_line.saturating_sub(ctx_before).max(1);
     let file_path = project_path.join(&r.file_path);
     let content = match std::fs::read_to_string(&file_path) {
@@ -1186,7 +1683,12 @@ fn print_context_for_result(r: &QueryResult, project_path: &std::path::Path, ctx
     let end = (r.end_line + ctx_after).min(lines.len());
     println!("{BOLD}{CYAN}{}{RESET}:{YELLOW}{}{RESET}-{YELLOW}{}{RESET}  {WHITE}{}{RESET}  TDG:{GREEN}{}{RESET}",
         r.file_path, start, end, r.function_name, r.tdg_grade);
-    for (line_idx, line) in lines.iter().enumerate().skip(start.saturating_sub(1)).take(end - start + 1) {
+    for (line_idx, line) in lines
+        .iter()
+        .enumerate()
+        .skip(start.saturating_sub(1))
+        .take(end - start + 1)
+    {
         let line_num = line_idx + 1;
         if line_num >= r.start_line && line_num <= r.end_line {
             println!("{GREEN}{:>4}{RESET} {}", line_num, line);
@@ -1197,7 +1699,12 @@ fn print_context_for_result(r: &QueryResult, project_path: &std::path::Path, ctx
     println!();
 }
 
-fn print_context_lines(results: &[QueryResult], project_path: &std::path::Path, ctx_before: usize, ctx_after: usize) {
+fn print_context_lines(
+    results: &[QueryResult],
+    project_path: &std::path::Path,
+    ctx_before: usize,
+    ctx_after: usize,
+) {
     for r in results {
         print_context_for_result(r, project_path, ctx_before, ctx_after);
     }
@@ -1206,14 +1713,22 @@ fn print_context_lines(results: &[QueryResult], project_path: &std::path::Path, 
 /// Print standard query output (text/json/markdown + coverage footer + git history)
 #[allow(clippy::too_many_arguments)]
 fn print_query_output(
-    results: &[QueryResult], format: &QueryOutputFormat, code: bool, coverage: bool,
+    results: &[QueryResult],
+    format: &QueryOutputFormat,
+    code: bool,
+    coverage: bool,
     git_data: &Option<(Vec<GitSearchResult>, Vec<CommitInfo>)>,
-    project_path: &std::path::Path, index: &AgentContextIndex,
+    project_path: &std::path::Path,
+    index: &AgentContextIndex,
     highlight: Option<(&str, bool)>,
 ) {
     let output = match format {
         QueryOutputFormat::Text => {
-            if code { format_text_with_code(results, highlight) } else { format_text(results) }
+            if code {
+                format_text_with_code(results, highlight)
+            } else {
+                format_text(results)
+            }
         }
         QueryOutputFormat::Json => format_json(results).unwrap_or_else(|e| format!("Error: {}", e)),
         QueryOutputFormat::Markdown => format_markdown(results),
@@ -1228,7 +1743,8 @@ fn print_query_output(
 
     if let Some((ref git_hits, ref all_commits)) = git_data {
         if !git_hits.is_empty() {
-            let git_output = format_git_history_colorized(git_hits, project_path, index, all_commits);
+            let git_output =
+                format_git_history_colorized(git_hits, project_path, index, all_commits);
             println!("{}", git_output);
         }
     }
@@ -1339,12 +1855,17 @@ include!("query_handler_git_format.rs");
 /// 50 files or 5% of the index. This avoids rewriting 660MB for a handful
 /// of changes during development (#212).
 fn try_incremental_update(
-    project_path: &PathBuf, index_path: &PathBuf, existing: AgentContextIndex, quiet: bool,
+    project_path: &PathBuf,
+    index_path: &PathBuf,
+    existing: AgentContextIndex,
+    quiet: bool,
 ) -> AgentContextIndex {
     if existing.manifest().file_checksums.is_empty() {
         return existing;
     }
-    if !quiet { eprintln!("Checking for incremental updates..."); }
+    if !quiet {
+        eprintln!("Checking for incremental updates...");
+    }
     match AgentContextIndex::build_incremental(project_path, &existing) {
         Ok(updated) => {
             maybe_save_incremental(&updated, index_path, quiet);
@@ -1362,9 +1883,15 @@ fn maybe_save_incremental(index: &AgentContextIndex, index_path: &PathBuf, quiet
         return;
     }
     let total = index.functions.len();
-    let pct = if total > 0 { changes as f64 / total as f64 } else { 0.0 };
+    let pct = if total > 0 {
+        changes as f64 / total as f64
+    } else {
+        0.0
+    };
     if changes > 50 || pct > 0.05 {
-        if !quiet { eprintln!("Saving index ({} changes)...", changes); }
+        if !quiet {
+            eprintln!("Saving index ({} changes)...", changes);
+        }
         let _ = index.save(index_path);
     } else if !quiet {
         eprintln!("Skipping save ({} minor changes)", changes);
@@ -1372,7 +1899,10 @@ fn maybe_save_incremental(index: &AgentContextIndex, index_path: &PathBuf, quiet
 }
 
 fn load_or_build_index(
-    project_path: &PathBuf, index_path: &PathBuf, rebuild_index: bool, quiet: bool,
+    project_path: &PathBuf,
+    index_path: &PathBuf,
+    rebuild_index: bool,
+    quiet: bool,
 ) -> anyhow::Result<AgentContextIndex> {
     // Check for either SQLite (.db) or blob (.idx/) index
     let db_path = index_path.with_extension("db");
@@ -1393,9 +1923,16 @@ fn load_or_build_index(
         }
         return build_and_save_index(project_path, index_path);
     }
-    if !quiet { eprintln!("Loading index from {:?}...", index_path); }
+    if !quiet {
+        eprintln!("Loading index from {:?}...", index_path);
+    }
     match AgentContextIndex::load(index_path) {
-        Ok(existing) => Ok(try_incremental_update(project_path, index_path, existing, quiet)),
+        Ok(existing) => Ok(try_incremental_update(
+            project_path,
+            index_path,
+            existing,
+            quiet,
+        )),
         Err(e) => {
             eprintln!("Failed to load index ({}), rebuilding...", e);
             eprintln!("  This may take 1-3 minutes for large repos.");
@@ -1406,9 +1943,12 @@ fn load_or_build_index(
 }
 
 fn load_and_merge_index(
-    project_path: &PathBuf, index_path: &PathBuf,
-    workspace_idx: &std::path::Path, siblings: &[(PathBuf, String)],
-    rebuild_index: bool, quiet: bool,
+    project_path: &PathBuf,
+    index_path: &PathBuf,
+    workspace_idx: &std::path::Path,
+    siblings: &[(PathBuf, String)],
+    rebuild_index: bool,
+    quiet: bool,
 ) -> anyhow::Result<AgentContextIndex> {
     let mut index = load_or_build_index(project_path, index_path, rebuild_index, quiet)?;
     if !siblings.is_empty() {
@@ -1452,7 +1992,9 @@ fn newest_index_mtime(idx_path: &std::path::Path) -> Option<std::time::SystemTim
     let manifest_path = idx_path.join("manifest.json");
 
     let db_mtime = std::fs::metadata(&db_path).and_then(|m| m.modified()).ok();
-    let manifest_mtime = std::fs::metadata(&manifest_path).and_then(|m| m.modified()).ok();
+    let manifest_mtime = std::fs::metadata(&manifest_path)
+        .and_then(|m| m.modified())
+        .ok();
 
     match (db_mtime, manifest_mtime) {
         (Some(a), Some(b)) => Some(a.max(b)),
@@ -1515,7 +2057,10 @@ fn build_and_save_index(
     // Save index — non-fatal on failure (index is still usable in memory)
     match index.save(index_path) {
         Ok(()) => eprintln!("Index saved to {:?}", index_path),
-        Err(e) => eprintln!("Warning: Failed to save index ({}), using in-memory index", e),
+        Err(e) => eprintln!(
+            "Warning: Failed to save index ({}), using in-memory index",
+            e
+        ),
     }
 
     Ok(index)
@@ -1574,36 +2119,36 @@ mod tests {
             false,
             false,
             false,
-            None,  // rank_by
-            None,  // min_pagerank
+            None,   // rank_by
+            None,   // min_pagerank
             vec![], // include_project
-            false, // churn
-            false, // duplicates
-            false, // entropy
-            false, // faults
-            false, // coverage
-            false, // uncovered_only
-            None,  // coverage_diff
-            None,  // coverage_file
-            false, // coverage_gaps
-            false, // include_excluded
-            None,  // definition_type
-            false, // code
-            false, // git_history
-            false, // regex
-            false, // literal
-            false, // raw
-            false, // case_sensitive
-            false, // ignore_case
-            None,  // exclude
-            None,  // exclude_file
-            false, // files_with_matches
-            false, // count
-            None,  // after_context
-            None,  // before_context
-            None,  // context_lines
-            false, // ptx_flow
-            false, // ptx_diagnostics
+            false,  // churn
+            false,  // duplicates
+            false,  // entropy
+            false,  // faults
+            false,  // coverage
+            false,  // uncovered_only
+            None,   // coverage_diff
+            None,   // coverage_file
+            false,  // coverage_gaps
+            false,  // include_excluded
+            None,   // definition_type
+            false,  // code
+            false,  // git_history
+            false,  // regex
+            false,  // literal
+            false,  // raw
+            false,  // case_sensitive
+            false,  // ignore_case
+            None,   // exclude
+            None,   // exclude_file
+            false,  // files_with_matches
+            false,  // count
+            None,   // after_context
+            None,   // before_context
+            None,   // context_lines
+            false,  // ptx_flow
+            false,  // ptx_diagnostics
         )
         .await;
 
@@ -1645,36 +2190,36 @@ fn main() {
             false,
             true, // Force rebuild
             false,
-            None,  // rank_by
-            None,  // min_pagerank
+            None,   // rank_by
+            None,   // min_pagerank
             vec![], // include_project
-            false, // churn
-            false, // duplicates
-            false, // entropy
-            false, // faults
-            false, // coverage
-            false, // uncovered_only
-            None,  // coverage_diff
-            None,  // coverage_file
-            false, // coverage_gaps
-            false, // include_excluded
-            None,  // definition_type
-            false, // code
-            false, // git_history
-            false, // regex
-            false, // literal
-            false, // raw
-            false, // case_sensitive
-            false, // ignore_case
-            None,  // exclude
-            None,  // exclude_file
-            false, // files_with_matches
-            false, // count
-            None,  // after_context
-            None,  // before_context
-            None,  // context_lines
-            false, // ptx_flow
-            false, // ptx_diagnostics
+            false,  // churn
+            false,  // duplicates
+            false,  // entropy
+            false,  // faults
+            false,  // coverage
+            false,  // uncovered_only
+            None,   // coverage_diff
+            None,   // coverage_file
+            false,  // coverage_gaps
+            false,  // include_excluded
+            None,   // definition_type
+            false,  // code
+            false,  // git_history
+            false,  // regex
+            false,  // literal
+            false,  // raw
+            false,  // case_sensitive
+            false,  // ignore_case
+            None,   // exclude
+            None,   // exclude_file
+            false,  // files_with_matches
+            false,  // count
+            None,   // after_context
+            None,   // before_context
+            None,   // context_lines
+            false,  // ptx_flow
+            false,  // ptx_diagnostics
         )
         .await;
 
@@ -1685,7 +2230,10 @@ fn main() {
     fn test_classify_commit_type() {
         assert_eq!(classify_commit_type("fix: null pointer").1, "[fix]");
         assert_eq!(classify_commit_type("feat: add auth").1, "[feat]");
-        assert_eq!(classify_commit_type("refactor: simplify parser").1, "[refactor]");
+        assert_eq!(
+            classify_commit_type("refactor: simplify parser").1,
+            "[refactor]"
+        );
         assert_eq!(classify_commit_type("docs: update README").1, "[docs]");
         assert_eq!(classify_commit_type("chore: bump deps").1, "[chore]");
         assert_eq!(classify_commit_type("random commit").1, "");
@@ -1719,7 +2267,10 @@ fn main() {
         healthy.fix_count = 0;
         healthy.annotation.tdg_grade = Some("A".to_string());
         let healthy_decay = compute_decay_score(&healthy, 100);
-        assert!(healthy_decay < decay, "Healthy file should have lower decay");
+        assert!(
+            healthy_decay < decay,
+            "Healthy file should have lower decay"
+        );
     }
 
     #[test]
@@ -1744,7 +2295,10 @@ fn main() {
         let log = "PMAT_START\nH:abc1234567890123456789012345678901234567\nS:feat: add auth (PMAT-472)\nN:noah\nE:noah@test.com\nT:1704067200\nPMAT_FILES\nM\tsrc/main.rs";
         let commits = parse_git_log(log);
         assert_eq!(commits.len(), 1);
-        assert!(commits[0].issue_refs.contains(&"PMAT-472".to_string()) || commits[0].issue_refs.contains(&"(PMAT-472)".to_string()));
+        assert!(
+            commits[0].issue_refs.contains(&"PMAT-472".to_string())
+                || commits[0].issue_refs.contains(&"(PMAT-472)".to_string())
+        );
         assert!(commits[0].is_feat);
     }
 

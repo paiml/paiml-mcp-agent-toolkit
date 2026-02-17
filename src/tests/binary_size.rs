@@ -95,7 +95,10 @@ fn template_compression_works() {
 
     // Should contain the expected compressed template structure
     assert!(compressed_content.contains("COMPRESSED_TEMPLATES"));
-    assert!(compressed_content.contains("hex_decode_templates") || compressed_content.contains("stub test data"));
+    assert!(
+        compressed_content.contains("hex_decode_templates")
+            || compressed_content.contains("stub test data")
+    );
 
     println!("Compressed templates file size: {compressed_size} bytes");
 }
@@ -127,7 +130,9 @@ mod benchmarks {
         // Apply Poka-yoke - Verify binary exists before testing
         if !std::path::Path::new(binary_path).exists() {
             // Gracefully skip if no binary found (e.g., during coverage runs)
-            println!("⚠️  Skipping startup time regression test - binary not found at {binary_path}");
+            println!(
+                "⚠️  Skipping startup time regression test - binary not found at {binary_path}"
+            );
             println!("   Run 'cargo build --release' to enable this test");
             return;
         }

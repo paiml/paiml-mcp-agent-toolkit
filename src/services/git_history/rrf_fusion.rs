@@ -89,17 +89,21 @@ impl RrfFusion {
             for (rank, doc) in docs.into_iter().enumerate() {
                 let rrf_contribution = 1.0 / (self.k + (rank as f32) + 1.0);
 
-                let entry = scores.entry(doc.id.clone()).or_insert_with(|| FusedResultBuilder {
-                    id: doc.id.clone(),
-                    total_rrf: 0.0,
-                    source_scores: HashMap::new(),
-                    best_metadata: doc.metadata.clone(),
-                    best_score: 0.0,
-                    primary_source: source.to_string(),
-                });
+                let entry = scores
+                    .entry(doc.id.clone())
+                    .or_insert_with(|| FusedResultBuilder {
+                        id: doc.id.clone(),
+                        total_rrf: 0.0,
+                        source_scores: HashMap::new(),
+                        best_metadata: doc.metadata.clone(),
+                        best_score: 0.0,
+                        primary_source: source.to_string(),
+                    });
 
                 entry.total_rrf += rrf_contribution;
-                entry.source_scores.insert(source.to_string(), doc.original_score);
+                entry
+                    .source_scores
+                    .insert(source.to_string(), doc.original_score);
 
                 // Track best source for metadata
                 if doc.original_score > entry.best_score {
@@ -122,7 +126,11 @@ impl RrfFusion {
             })
             .collect();
 
-        results.sort_by(|a, b| b.rrf_score.partial_cmp(&a.rrf_score).unwrap_or(std::cmp::Ordering::Equal));
+        results.sort_by(|a, b| {
+            b.rrf_score
+                .partial_cmp(&a.rrf_score)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
 
         results.truncate(limit);
         results
@@ -137,12 +145,18 @@ impl RrfFusion {
         ground_truth_ids: &[String],
     ) -> (f32, f32, f32) {
         let primary_mrr = Self::mean_reciprocal_rank(
-            &primary_results.iter().map(|d| d.id.clone()).collect::<Vec<_>>(),
+            &primary_results
+                .iter()
+                .map(|d| d.id.clone())
+                .collect::<Vec<_>>(),
             ground_truth_ids,
         );
 
         let fused_mrr = Self::mean_reciprocal_rank(
-            &fused_results.iter().map(|r| r.id.clone()).collect::<Vec<_>>(),
+            &fused_results
+                .iter()
+                .map(|r| r.id.clone())
+                .collect::<Vec<_>>(),
             ground_truth_ids,
         );
 
@@ -223,15 +237,12 @@ mod tests {
         ];
 
         let git_results = vec![
-            make_doc("func_b", 0.95, "git"),  // Higher in git
+            make_doc("func_b", 0.95, "git"), // Higher in git
             make_doc("func_a", 0.85, "git"),
-            make_doc("func_d", 0.75, "git"),  // Only in git
+            make_doc("func_d", 0.75, "git"), // Only in git
         ];
 
-        let results = fusion.fuse(
-            vec![("code", code_results), ("git", git_results)],
-            10,
-        );
+        let results = fusion.fuse(vec![("code", code_results), ("git", git_results)], 10);
 
         // func_a and func_b should rank highest (present in both)
         assert!(!results.is_empty());
@@ -261,19 +272,17 @@ mod tests {
     fn test_rrf_preserves_metadata() {
         let fusion = RrfFusion::new();
 
-        let code_results = vec![
-            RankedDocument {
-                id: "func_a".to_string(),
-                original_score: 0.9,
-                source: "code".to_string(),
-                metadata: DocumentMetadata {
-                    path: "src/main.rs".to_string(),
-                    name: "func_a".to_string(),
-                    line_or_timestamp: 42,
-                    related_commits: vec![],
-                },
+        let code_results = vec![RankedDocument {
+            id: "func_a".to_string(),
+            original_score: 0.9,
+            source: "code".to_string(),
+            metadata: DocumentMetadata {
+                path: "src/main.rs".to_string(),
+                name: "func_a".to_string(),
+                line_or_timestamp: 42,
+                related_commits: vec![],
             },
-        ];
+        }];
 
         let results = fusion.fuse(vec![("code", code_results)], 10);
 
@@ -288,10 +297,7 @@ mod tests {
         let code_results = vec![make_doc("func_a", 0.9, "code")];
         let git_results = vec![make_doc("func_a", 0.8, "git")];
 
-        let results = fusion.fuse(
-            vec![("code", code_results), ("git", git_results)],
-            10,
-        );
+        let results = fusion.fuse(vec![("code", code_results), ("git", git_results)], 10);
 
         assert!(results[0].source_scores.contains_key("code"));
         assert!(results[0].source_scores.contains_key("git"));
@@ -338,7 +344,10 @@ mod tests {
         let low_k_diff = low_k_results[0].rrf_score - low_k_results[1].rrf_score;
         let high_k_diff = high_k_results[0].rrf_score - high_k_results[1].rrf_score;
 
-        assert!(low_k_diff > high_k_diff, "Lower k should amplify rank differences");
+        assert!(
+            low_k_diff > high_k_diff,
+            "Lower k should amplify rank differences"
+        );
     }
 
     #[test]
@@ -352,7 +361,10 @@ mod tests {
         // Second position
         let truth = vec!["b".to_string()];
         let mrr = RrfFusion::mean_reciprocal_rank(&results, &truth);
-        assert!((mrr - 0.5).abs() < 0.001, "Second match should have MRR=0.5");
+        assert!(
+            (mrr - 0.5).abs() < 0.001,
+            "Second match should have MRR=0.5"
+        );
 
         // Not found
         let truth = vec!["z".to_string()];
@@ -368,24 +380,28 @@ mod tests {
         let primary = vec![
             make_doc("a", 0.9, "code"),
             make_doc("b", 0.8, "code"),
-            make_doc("target", 0.7, "code"),  // Ground truth
+            make_doc("target", 0.7, "code"), // Ground truth
         ];
 
         // Fused results: ground truth at position 1
         let fused = fusion.fuse(
             vec![
                 ("code", primary.clone()),
-                ("git", vec![make_doc("target", 0.95, "git")]),  // Boost target
+                ("git", vec![make_doc("target", 0.95, "git")]), // Boost target
             ],
             10,
         );
 
         let ground_truth = vec!["target".to_string()];
-        let (improvement, _, fused_mrr) = fusion.calculate_improvement(&fused, &primary, &ground_truth);
+        let (improvement, _, fused_mrr) =
+            fusion.calculate_improvement(&fused, &primary, &ground_truth);
 
         // Fused should have better MRR
         assert!(fused_mrr > 0.0);
-        assert!(improvement > 0.0, "Fusion should improve ranking for target");
+        assert!(
+            improvement > 0.0,
+            "Fusion should improve ranking for target"
+        );
     }
 
     // Falsification Test F3: RRF Fusion Improves or Maintains Relevance
@@ -406,13 +422,11 @@ mod tests {
             make_doc("other", 0.85, "git"),
         ];
 
-        let fused = fusion.fuse(
-            vec![("code", primary.clone()), ("git", git_results)],
-            10,
-        );
+        let fused = fusion.fuse(vec![("code", primary.clone()), ("git", git_results)], 10);
 
         let ground_truth = vec!["target".to_string()];
-        let (improvement, primary_mrr, fused_mrr) = fusion.calculate_improvement(&fused, &primary, &ground_truth);
+        let (improvement, primary_mrr, fused_mrr) =
+            fusion.calculate_improvement(&fused, &primary, &ground_truth);
 
         // Falsification: RRF MUST improve relevance when git has better signal
         // Target was #2 in code-only (MRR=0.5), should improve with git boost
@@ -420,7 +434,9 @@ mod tests {
             fused_mrr >= primary_mrr,
             "FALSIFIED: RRF did not improve relevance with complementary sources. \
              primary_mrr={}, fused_mrr={}, improvement={}",
-            primary_mrr, fused_mrr, improvement
+            primary_mrr,
+            fused_mrr,
+            improvement
         );
     }
 
@@ -441,10 +457,7 @@ mod tests {
             make_doc("noise2", 0.90, "git"),
         ];
 
-        let fused = fusion.fuse(
-            vec![("code", primary.clone()), ("git", git_results)],
-            10,
-        );
+        let fused = fusion.fuse(vec![("code", primary.clone()), ("git", git_results)], 10);
 
         // Target should still be in results (RRF doesn't remove documents)
         let has_target = fused.iter().any(|r| r.id == "target");
@@ -463,10 +476,7 @@ mod tests {
     fn test_rrf_default_trait() {
         let fusion = RrfFusion::default();
         // default should use k=60
-        let results = fusion.fuse(
-            vec![("code", vec![make_doc("a", 0.9, "code")])],
-            10,
-        );
+        let results = fusion.fuse(vec![("code", vec![make_doc("a", 0.9, "code")])], 10);
         assert_eq!(results.len(), 1);
     }
 
@@ -487,7 +497,8 @@ mod tests {
         );
 
         let ground_truth = vec!["target".to_string()];
-        let (improvement, primary_mrr, fused_mrr) = fusion.calculate_improvement(&fused, &primary, &ground_truth);
+        let (improvement, primary_mrr, fused_mrr) =
+            fusion.calculate_improvement(&fused, &primary, &ground_truth);
 
         assert_eq!(primary_mrr, 0.0);
         assert!(fused_mrr > 0.0);
@@ -502,7 +513,8 @@ mod tests {
         let fused = fusion.fuse(vec![("code", primary.clone())], 10);
 
         let ground_truth = vec!["nonexistent".to_string()];
-        let (improvement, primary_mrr, fused_mrr) = fusion.calculate_improvement(&fused, &primary, &ground_truth);
+        let (improvement, primary_mrr, fused_mrr) =
+            fusion.calculate_improvement(&fused, &primary, &ground_truth);
 
         assert_eq!(primary_mrr, 0.0);
         assert_eq!(fused_mrr, 0.0);
@@ -511,8 +523,14 @@ mod tests {
 
     #[test]
     fn test_mrr_empty_inputs() {
-        assert_eq!(RrfFusion::mean_reciprocal_rank(&[], &["a".to_string()]), 0.0);
-        assert_eq!(RrfFusion::mean_reciprocal_rank(&["a".to_string()], &[]), 0.0);
+        assert_eq!(
+            RrfFusion::mean_reciprocal_rank(&[], &["a".to_string()]),
+            0.0
+        );
+        assert_eq!(
+            RrfFusion::mean_reciprocal_rank(&["a".to_string()], &[]),
+            0.0
+        );
     }
 
     #[test]
@@ -532,10 +550,7 @@ mod tests {
         let code_results = vec![make_doc("func_a", 0.9, "code")];
         let git_results = vec![make_doc("func_a", 0.3, "git")];
 
-        let results = fusion.fuse(
-            vec![("code", code_results), ("git", git_results)],
-            10,
-        );
+        let results = fusion.fuse(vec![("code", code_results), ("git", git_results)], 10);
 
         assert_eq!(results[0].primary_source, "code");
     }

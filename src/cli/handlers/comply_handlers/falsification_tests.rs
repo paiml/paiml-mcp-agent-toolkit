@@ -1063,10 +1063,7 @@ mod suppression_falsification {
         });
 
         let result = config.should_suppress("CB-050-A", "src/lib.rs", 10);
-        assert!(
-            result.suppressed,
-            "FALSIFIED: specific file should match"
-        );
+        assert!(result.suppressed, "FALSIFIED: specific file should match");
     }
 
     #[test]
@@ -1241,7 +1238,10 @@ mod suppression_falsification {
 
         // Should suppress CB-050-A
         let result_a = config.should_suppress("CB-050-A", "src/lib.rs", 10);
-        assert!(result_a.suppressed, "FALSIFIED: CB-050-A should be suppressed");
+        assert!(
+            result_a.suppressed,
+            "FALSIFIED: CB-050-A should be suppressed"
+        );
 
         // Should NOT suppress CB-050-B (different check)
         let result_b = config.should_suppress("CB-050-B", "src/lib.rs", 10);
@@ -1286,7 +1286,10 @@ mod suppression_falsification {
 
         // Should match root level
         let result_root = config.should_suppress("CB-050-A", "lib.rs", 10);
-        assert!(result_root.suppressed, "FALSIFIED: *.rs should match lib.rs");
+        assert!(
+            result_root.suppressed,
+            "FALSIFIED: *.rs should match lib.rs"
+        );
 
         // Should NOT match nested
         let result_nested = config.should_suppress("CB-050-A", "src/lib.rs", 10);

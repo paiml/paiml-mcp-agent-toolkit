@@ -1080,26 +1080,30 @@ fn complex(x: i32) -> i32 {
         let analyzer = SimpleDeepContext;
         let temp_dir = TempDir::new().unwrap();
         let test_file = temp_dir.path().join("complex.rs");
-        fs::write(&test_file, concat!(
-            "fn very_complex(x: i32, y: i32) -> i32 {\n",
-            "    if x > 0 {\n",
-            "        if x > 10 {\n",
-            "            if y > 0 {\n",
-            "                match x {\n",
-            "                    1 => { if y > 5 { return 1; } else { return 2; } }\n",
-            "                    2 => { if y > 3 { return 3; } else { return 4; } }\n",
-            "                    3 => return 5,\n",
-            "                    4 => return 6,\n",
-            "                    5 => return 7,\n",
-            "                    _ => return 8,\n",
-            "                }\n",
-            "            } else { return -1; }\n",
-            "        }\n",
-            "    }\n",
-            "    0\n",
-            "}\n\n",
-            "fn simple() -> i32 { 42 }\n",
-        )).unwrap();
+        fs::write(
+            &test_file,
+            concat!(
+                "fn very_complex(x: i32, y: i32) -> i32 {\n",
+                "    if x > 0 {\n",
+                "        if x > 10 {\n",
+                "            if y > 0 {\n",
+                "                match x {\n",
+                "                    1 => { if y > 5 { return 1; } else { return 2; } }\n",
+                "                    2 => { if y > 3 { return 3; } else { return 4; } }\n",
+                "                    3 => return 5,\n",
+                "                    4 => return 6,\n",
+                "                    5 => return 7,\n",
+                "                    _ => return 8,\n",
+                "                }\n",
+                "            } else { return -1; }\n",
+                "        }\n",
+                "    }\n",
+                "    0\n",
+                "}\n\n",
+                "fn simple() -> i32 { 42 }\n",
+            ),
+        )
+        .unwrap();
 
         let metrics = analyzer.analyze_file_complexity(&test_file).await.unwrap();
         assert_eq!(metrics.function_count, 2);
@@ -1113,7 +1117,11 @@ fn complex(x: i32) -> i32 {
         let analyzer = SimpleDeepContext;
         let temp_dir = TempDir::new().unwrap();
         let test_file = temp_dir.path().join("no_funcs.rs");
-        fs::write(&test_file, "const FOO: i32 = 42;\nconst BAR: &str = \"hello\";\n").unwrap();
+        fs::write(
+            &test_file,
+            "const FOO: i32 = 42;\nconst BAR: &str = \"hello\";\n",
+        )
+        .unwrap();
 
         let metrics = analyzer.analyze_file_complexity(&test_file).await.unwrap();
         assert_eq!(metrics.function_count, 0);
@@ -1126,7 +1134,11 @@ fn complex(x: i32) -> i32 {
         let analyzer = SimpleDeepContext;
         let temp_dir = TempDir::new().unwrap();
         let test_file = temp_dir.path().join("bad.rs");
-        fs::write(&test_file, "this is not valid rust code {{{}}}}}\nfn broken(\n").unwrap();
+        fs::write(
+            &test_file,
+            "this is not valid rust code {{{}}}}}\nfn broken(\n",
+        )
+        .unwrap();
 
         let metrics = analyzer.analyze_file_complexity(&test_file).await.unwrap();
         assert!(metrics.function_count == 0 || metrics.avg_complexity >= 0.0);
@@ -1175,7 +1187,6 @@ fn complex(x: i32) -> i32 {
         assert!(metrics.function_count >= 1);
     }
 
-
     #[tokio::test]
     async fn test_analyze_file_complexity_ruby_file() {
         let analyzer = SimpleDeepContext;
@@ -1199,7 +1210,6 @@ fn complex(x: i32) -> i32 {
         assert!(metrics.function_count >= 2);
         assert!(metrics.avg_complexity >= 1.0);
     }
-
 
     #[tokio::test]
     async fn test_analyze_file_complexity_cs_file() {
@@ -1323,15 +1333,22 @@ fn complex(x: i32) -> i32 {
         assert!(metrics.function_count >= 2);
     }
 
-
     #[tokio::test]
     async fn test_analyze_multi_language_project() {
         let temp_dir = TempDir::new().unwrap();
         let src_dir = temp_dir.path().join("src");
         fs::create_dir_all(&src_dir).unwrap();
 
-        fs::write(src_dir.join("lib.rs"), "fn compute(x: i32) -> i32 {\n    if x > 0 { x * 2 } else { -x }\n}\n").unwrap();
-        fs::write(src_dir.join("utils.py"), "def calculate(x):\n    if x > 0:\n        return x * 2\n    return -x\n").unwrap();
+        fs::write(
+            src_dir.join("lib.rs"),
+            "fn compute(x: i32) -> i32 {\n    if x > 0 { x * 2 } else { -x }\n}\n",
+        )
+        .unwrap();
+        fs::write(
+            src_dir.join("utils.py"),
+            "def calculate(x):\n    if x > 0:\n        return x * 2\n    return -x\n",
+        )
+        .unwrap();
 
         let analyzer = SimpleDeepContext::new();
         let config = SimpleAnalysisConfig {
@@ -1347,7 +1364,6 @@ fn complex(x: i32) -> i32 {
         assert!(report.complexity_metrics.total_functions >= 2);
         assert!(report.file_complexity_details.len() == 2);
     }
-
 }
 
 mod property_tests {

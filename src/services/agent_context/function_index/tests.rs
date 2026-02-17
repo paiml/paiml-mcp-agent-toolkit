@@ -8,10 +8,7 @@ use std::path::{Path, PathBuf};
 
 #[test]
 fn test_detect_language() {
-    assert_eq!(
-        detect_language(Path::new("test.rs")),
-        Some(Language::Rust)
-    );
+    assert_eq!(detect_language(Path::new("test.rs")), Some(Language::Rust));
     assert_eq!(
         detect_language(Path::new("test.py")),
         Some(Language::Python)
@@ -240,8 +237,14 @@ fn test_load_prefers_sqlite_over_blob() {
     // Phase 3: only context.db and manifest written (no blob)
     let db_path = index_path.with_extension("db");
     assert!(db_path.exists(), "context.db should exist after save");
-    assert!(index_path.join("manifest.json").exists(), "manifest should exist");
-    assert!(!index_path.join("functions.lz4").exists(), "blob should NOT be written in Phase 3");
+    assert!(
+        index_path.join("manifest.json").exists(),
+        "manifest should exist"
+    );
+    assert!(
+        !index_path.join("functions.lz4").exists(),
+        "blob should NOT be written in Phase 3"
+    );
 
     // load() prefers SQLite
     let loaded = AgentContextIndex::load(&index_path).unwrap();
@@ -253,7 +256,10 @@ fn test_load_prefers_sqlite_over_blob() {
     // (calls/called_by HashMaps are empty — queried on-demand)
     let has_call_data = (0..loaded.functions.len())
         .any(|i| !loaded.get_calls(i).is_empty() || !loaded.get_called_by(i).is_empty());
-    assert!(has_call_data, "should have call graph data via SQLite query");
+    assert!(
+        has_call_data,
+        "should have call graph data via SQLite query"
+    );
 }
 
 #[test]
@@ -262,11 +268,7 @@ fn test_load_fails_without_sqlite_or_blob() {
     let project_path = temp_dir.path();
 
     std::fs::create_dir_all(project_path.join("src")).unwrap();
-    std::fs::write(
-        project_path.join("src/lib.rs"),
-        "fn gamma() {}\n",
-    )
-    .unwrap();
+    std::fs::write(project_path.join("src/lib.rs"), "fn gamma() {}\n").unwrap();
 
     let index = AgentContextIndex::build(project_path).unwrap();
     let index_path = project_path.join("idx");
@@ -294,8 +296,7 @@ fn test_incremental_build_unchanged() {
     .unwrap();
 
     let original = AgentContextIndex::build(project_path).unwrap();
-    let incremental =
-        AgentContextIndex::build_incremental(project_path, &original).unwrap();
+    let incremental = AgentContextIndex::build_incremental(project_path, &original).unwrap();
 
     // Same number of functions (nothing changed)
     assert_eq!(incremental.functions.len(), original.functions.len());
@@ -319,8 +320,7 @@ fn test_incremental_build_with_change() {
     )
     .unwrap();
 
-    let incremental =
-        AgentContextIndex::build_incremental(project_path, &original).unwrap();
+    let incremental = AgentContextIndex::build_incremental(project_path, &original).unwrap();
     // Should now have 2 functions
     assert_eq!(incremental.functions.len(), 2);
 }
@@ -449,7 +449,10 @@ fn test_get_calls_and_called_by() {
     assert!(calls_of_0.contains(&"callee"), "caller should call callee");
 
     let called_by_1 = index.get_called_by(1);
-    assert!(called_by_1.contains(&"caller"), "callee should be called by caller");
+    assert!(
+        called_by_1.contains(&"caller"),
+        "callee should be called by caller"
+    );
 
     // Non-existent index
     assert!(index.get_calls(999).is_empty());
@@ -458,26 +461,24 @@ fn test_get_calls_and_called_by() {
 
 #[test]
 fn test_find_function_index() {
-    let functions = vec![
-        FunctionEntry {
-            file_path: "a.rs".to_string(),
-            function_name: "foo".to_string(),
-            signature: "fn foo()".to_string(),
-            doc_comment: None,
-            source: "fn foo() {}".to_string(),
-            start_line: 1,
-            end_line: 1,
-            language: "Rust".to_string(),
-            quality: QualityMetrics::default(),
-            checksum: "aaa".to_string(),
-            definition_type: DefinitionType::default(),
-            commit_count: 0,
-            churn_score: 0.0,
-            clone_count: 0,
-            pattern_diversity: 0.0,
-            fault_annotations: Vec::new(),
-        },
-    ];
+    let functions = vec![FunctionEntry {
+        file_path: "a.rs".to_string(),
+        function_name: "foo".to_string(),
+        signature: "fn foo()".to_string(),
+        doc_comment: None,
+        source: "fn foo() {}".to_string(),
+        start_line: 1,
+        end_line: 1,
+        language: "Rust".to_string(),
+        quality: QualityMetrics::default(),
+        checksum: "aaa".to_string(),
+        definition_type: DefinitionType::default(),
+        commit_count: 0,
+        churn_score: 0.0,
+        clone_count: 0,
+        pattern_diversity: 0.0,
+        fault_annotations: Vec::new(),
+    }];
 
     let indices = build_indices(&functions);
     let corpus_lower: Vec<String> = indices.corpus.iter().map(|c| c.to_lowercase()).collect();
@@ -585,7 +586,11 @@ fn test_merge_fast() {
 
     assert_eq!(index_a.functions.len(), a_count + b_count);
     // All functions accessible
-    let names: Vec<&str> = index_a.functions.iter().map(|f| f.function_name.as_str()).collect();
+    let names: Vec<&str> = index_a
+        .functions
+        .iter()
+        .map(|f| f.function_name.as_str())
+        .collect();
     assert!(names.contains(&"alpha"));
     assert!(names.contains(&"beta"));
 }
@@ -740,7 +745,11 @@ fn test_build_skips_ignored_dirs() {
     .unwrap();
 
     let index = AgentContextIndex::build(project_path).unwrap();
-    let names: Vec<&str> = index.functions.iter().map(|f| f.function_name.as_str()).collect();
+    let names: Vec<&str> = index
+        .functions
+        .iter()
+        .map(|f| f.function_name.as_str())
+        .collect();
     assert!(names.contains(&"keep"));
     assert!(!names.contains(&"skip_nm"));
     assert!(!names.contains(&"skip_target"));
@@ -767,7 +776,11 @@ fn test_save_and_load_preserves_calls() {
     // Verify by checking actual call relationships
     let original_calls: Vec<String> = index.get_calls(0).iter().map(|s| s.to_string()).collect();
     let loaded_calls: Vec<String> = loaded.get_calls(0).iter().map(|s| s.to_string()).collect();
-    assert_eq!(loaded_calls.len(), original_calls.len(), "call graph should be preserved");
+    assert_eq!(
+        loaded_calls.len(),
+        original_calls.len(),
+        "call graph should be preserved"
+    );
 }
 
 #[test]
@@ -828,8 +841,11 @@ fn test_detect_code_clones_with_duplicates() {
             quality: QualityMetrics::default(),
             checksum: "aaa".to_string(),
             definition_type: DefinitionType::default(),
-            commit_count: 0, churn_score: 0.0, clone_count: 0,
-            pattern_diversity: 0.0, fault_annotations: Vec::new(),
+            commit_count: 0,
+            churn_score: 0.0,
+            clone_count: 0,
+            pattern_diversity: 0.0,
+            fault_annotations: Vec::new(),
         },
         FunctionEntry {
             file_path: "b.rs".to_string(),
@@ -844,8 +860,11 @@ fn test_detect_code_clones_with_duplicates() {
             quality: QualityMetrics::default(),
             checksum: "bbb".to_string(),
             definition_type: DefinitionType::default(),
-            commit_count: 0, churn_score: 0.0, clone_count: 0,
-            pattern_diversity: 0.0, fault_annotations: Vec::new(),
+            commit_count: 0,
+            churn_score: 0.0,
+            clone_count: 0,
+            pattern_diversity: 0.0,
+            fault_annotations: Vec::new(),
         },
         FunctionEntry {
             file_path: "c.rs".to_string(),
@@ -859,8 +878,11 @@ fn test_detect_code_clones_with_duplicates() {
             quality: QualityMetrics::default(),
             checksum: "ccc".to_string(),
             definition_type: DefinitionType::default(),
-            commit_count: 0, churn_score: 0.0, clone_count: 0,
-            pattern_diversity: 0.0, fault_annotations: Vec::new(),
+            commit_count: 0,
+            churn_score: 0.0,
+            clone_count: 0,
+            pattern_diversity: 0.0,
+            fault_annotations: Vec::new(),
         },
     ];
 
@@ -881,11 +903,17 @@ fn test_detect_code_clones_no_duplicates() {
             signature: "fn unique_a()".to_string(),
             doc_comment: None,
             source: "fn unique_a() { alpha(); }".to_string(),
-            start_line: 1, end_line: 1, language: "Rust".to_string(),
-            quality: QualityMetrics::default(), checksum: "aaa".to_string(),
+            start_line: 1,
+            end_line: 1,
+            language: "Rust".to_string(),
+            quality: QualityMetrics::default(),
+            checksum: "aaa".to_string(),
             definition_type: DefinitionType::default(),
-            commit_count: 0, churn_score: 0.0, clone_count: 0,
-            pattern_diversity: 0.0, fault_annotations: Vec::new(),
+            commit_count: 0,
+            churn_score: 0.0,
+            clone_count: 0,
+            pattern_diversity: 0.0,
+            fault_annotations: Vec::new(),
         },
         FunctionEntry {
             file_path: "b.rs".to_string(),
@@ -893,11 +921,17 @@ fn test_detect_code_clones_no_duplicates() {
             signature: "fn unique_b()".to_string(),
             doc_comment: None,
             source: "fn unique_b() { beta(); }".to_string(),
-            start_line: 1, end_line: 1, language: "Rust".to_string(),
-            quality: QualityMetrics::default(), checksum: "bbb".to_string(),
+            start_line: 1,
+            end_line: 1,
+            language: "Rust".to_string(),
+            quality: QualityMetrics::default(),
+            checksum: "bbb".to_string(),
             definition_type: DefinitionType::default(),
-            commit_count: 0, churn_score: 0.0, clone_count: 0,
-            pattern_diversity: 0.0, fault_annotations: Vec::new(),
+            commit_count: 0,
+            churn_score: 0.0,
+            clone_count: 0,
+            pattern_diversity: 0.0,
+            fault_annotations: Vec::new(),
         },
     ];
 
@@ -919,34 +953,64 @@ fn test_compute_file_pattern_diversity() {
             file_path: "a.rs".to_string(),
             function_name: "f1".to_string(),
             signature: "fn f1() -> bool".to_string(),
-            doc_comment: None, source: "".to_string(),
-            start_line: 1, end_line: 1, language: "Rust".to_string(),
-            quality: QualityMetrics { complexity: 2, ..Default::default() },
-            checksum: "a".to_string(), definition_type: DefinitionType::default(),
-            commit_count: 0, churn_score: 0.0, clone_count: 0,
-            pattern_diversity: 0.0, fault_annotations: Vec::new(),
+            doc_comment: None,
+            source: "".to_string(),
+            start_line: 1,
+            end_line: 1,
+            language: "Rust".to_string(),
+            quality: QualityMetrics {
+                complexity: 2,
+                ..Default::default()
+            },
+            checksum: "a".to_string(),
+            definition_type: DefinitionType::default(),
+            commit_count: 0,
+            churn_score: 0.0,
+            clone_count: 0,
+            pattern_diversity: 0.0,
+            fault_annotations: Vec::new(),
         },
         FunctionEntry {
             file_path: "a.rs".to_string(),
             function_name: "f2".to_string(),
             signature: "fn f2(x: i32) -> String".to_string(),
-            doc_comment: None, source: "".to_string(),
-            start_line: 5, end_line: 10, language: "Rust".to_string(),
-            quality: QualityMetrics { complexity: 8, ..Default::default() },
-            checksum: "b".to_string(), definition_type: DefinitionType::default(),
-            commit_count: 0, churn_score: 0.0, clone_count: 0,
-            pattern_diversity: 0.0, fault_annotations: Vec::new(),
+            doc_comment: None,
+            source: "".to_string(),
+            start_line: 5,
+            end_line: 10,
+            language: "Rust".to_string(),
+            quality: QualityMetrics {
+                complexity: 8,
+                ..Default::default()
+            },
+            checksum: "b".to_string(),
+            definition_type: DefinitionType::default(),
+            commit_count: 0,
+            churn_score: 0.0,
+            clone_count: 0,
+            pattern_diversity: 0.0,
+            fault_annotations: Vec::new(),
         },
         FunctionEntry {
             file_path: "a.rs".to_string(),
             function_name: "f3".to_string(),
             signature: "fn f3() -> bool".to_string(),
-            doc_comment: None, source: "".to_string(),
-            start_line: 15, end_line: 20, language: "Rust".to_string(),
-            quality: QualityMetrics { complexity: 2, ..Default::default() },
-            checksum: "c".to_string(), definition_type: DefinitionType::default(),
-            commit_count: 0, churn_score: 0.0, clone_count: 0,
-            pattern_diversity: 0.0, fault_annotations: Vec::new(),
+            doc_comment: None,
+            source: "".to_string(),
+            start_line: 15,
+            end_line: 20,
+            language: "Rust".to_string(),
+            quality: QualityMetrics {
+                complexity: 2,
+                ..Default::default()
+            },
+            checksum: "c".to_string(),
+            definition_type: DefinitionType::default(),
+            commit_count: 0,
+            churn_score: 0.0,
+            clone_count: 0,
+            pattern_diversity: 0.0,
+            fault_annotations: Vec::new(),
         },
     ];
     let mut file_index = HashMap::new();
@@ -972,7 +1036,10 @@ fn test_compute_file_pattern_diversity_empty() {
 #[test]
 fn test_extract_return_type() {
     assert_eq!(extract_return_type("fn foo() -> bool"), "bool");
-    assert_eq!(extract_return_type("fn foo() -> Result<String, Error>"), "Result<String, Error>");
+    assert_eq!(
+        extract_return_type("fn foo() -> Result<String, Error>"),
+        "Result<String, Error>"
+    );
     assert_eq!(extract_return_type("fn foo()"), "void");
 }
 
@@ -994,11 +1061,17 @@ fn test_detect_fault_patterns() {
             signature: "fn risky()".to_string(),
             doc_comment: None,
             source: "fn risky() { x.unwrap(); y.clone(); // TODO: fix }".to_string(),
-            start_line: 1, end_line: 1, language: "Rust".to_string(),
-            quality: QualityMetrics::default(), checksum: "a".to_string(),
+            start_line: 1,
+            end_line: 1,
+            language: "Rust".to_string(),
+            quality: QualityMetrics::default(),
+            checksum: "a".to_string(),
             definition_type: DefinitionType::default(),
-            commit_count: 0, churn_score: 0.0, clone_count: 0,
-            pattern_diversity: 0.0, fault_annotations: Vec::new(),
+            commit_count: 0,
+            churn_score: 0.0,
+            clone_count: 0,
+            pattern_diversity: 0.0,
+            fault_annotations: Vec::new(),
         },
         FunctionEntry {
             file_path: "b.rs".to_string(),
@@ -1006,11 +1079,17 @@ fn test_detect_fault_patterns() {
             signature: "fn safe()".to_string(),
             doc_comment: None,
             source: "fn safe() { println!(\"hello\"); }".to_string(),
-            start_line: 1, end_line: 1, language: "Rust".to_string(),
-            quality: QualityMetrics::default(), checksum: "b".to_string(),
+            start_line: 1,
+            end_line: 1,
+            language: "Rust".to_string(),
+            quality: QualityMetrics::default(),
+            checksum: "b".to_string(),
             definition_type: DefinitionType::default(),
-            commit_count: 0, churn_score: 0.0, clone_count: 0,
-            pattern_diversity: 0.0, fault_annotations: Vec::new(),
+            commit_count: 0,
+            churn_score: 0.0,
+            clone_count: 0,
+            pattern_diversity: 0.0,
+            fault_annotations: Vec::new(),
         },
         FunctionEntry {
             file_path: "c.rs".to_string(),
@@ -1018,11 +1097,17 @@ fn test_detect_fault_patterns() {
             signature: "fn dangerous()".to_string(),
             doc_comment: None,
             source: "fn dangerous() { unsafe { panic!(\"boom\"); } }".to_string(),
-            start_line: 1, end_line: 1, language: "Rust".to_string(),
-            quality: QualityMetrics::default(), checksum: "c".to_string(),
+            start_line: 1,
+            end_line: 1,
+            language: "Rust".to_string(),
+            quality: QualityMetrics::default(),
+            checksum: "c".to_string(),
             definition_type: DefinitionType::default(),
-            commit_count: 0, churn_score: 0.0, clone_count: 0,
-            pattern_diversity: 0.0, fault_annotations: Vec::new(),
+            commit_count: 0,
+            churn_score: 0.0,
+            clone_count: 0,
+            pattern_diversity: 0.0,
+            fault_annotations: Vec::new(),
         },
     ];
 
@@ -1097,7 +1182,12 @@ fn test_extract_doc_comment_block() {
     let content = "/**\n * Block doc comment\n */\nfn foo() {}";
     let doc = extract_doc_comment(content, 4);
     // Block comments cause break, so may return None or partial
-    assert!(doc.is_none() || doc.as_ref().map_or(false, |d| d.contains("Block doc comment")));
+    assert!(
+        doc.is_none()
+            || doc
+                .as_ref()
+                .map_or(false, |d| d.contains("Block doc comment"))
+    );
 }
 
 #[test]
@@ -1173,13 +1263,19 @@ fn test_compute_graph_metrics_isolated_nodes() {
     assert_eq!(metrics.len(), 3);
     // All nodes are dangling, PageRank should be uniform
     for m in &metrics {
-        assert!(m.pagerank > 0.0, "isolated node should have positive pagerank");
+        assert!(
+            m.pagerank > 0.0,
+            "isolated node should have positive pagerank"
+        );
         assert_eq!(m.in_degree, 0);
         assert_eq!(m.out_degree, 0);
     }
     // PageRank should be approximately equal for all
     let diff = (metrics[0].pagerank - metrics[1].pagerank).abs();
-    assert!(diff < 0.001, "isolated nodes should have near-equal pagerank");
+    assert!(
+        diff < 0.001,
+        "isolated nodes should have near-equal pagerank"
+    );
 }
 
 #[test]
@@ -1195,8 +1291,12 @@ fn test_compute_graph_metrics_chain() {
     let metrics = compute_graph_metrics(3, &calls, &called_by);
     assert_eq!(metrics.len(), 3);
     // Node 2 (end of chain) should have highest PageRank (most "important" via link structure)
-    assert!(metrics[2].pagerank > metrics[0].pagerank,
-        "end of chain should have higher pagerank: {} vs {}", metrics[2].pagerank, metrics[0].pagerank);
+    assert!(
+        metrics[2].pagerank > metrics[0].pagerank,
+        "end of chain should have higher pagerank: {} vs {}",
+        metrics[2].pagerank,
+        metrics[0].pagerank
+    );
     // In/out degree checks
     assert_eq!(metrics[0].out_degree, 1);
     assert_eq!(metrics[0].in_degree, 0);
@@ -1231,9 +1331,18 @@ fn test_is_ignored_dir_comprehensive() {
 #[test]
 fn test_detect_language_all_types() {
     assert_eq!(detect_language(Path::new("test.rs")), Some(Language::Rust));
-    assert_eq!(detect_language(Path::new("test.py")), Some(Language::Python));
-    assert_eq!(detect_language(Path::new("test.ts")), Some(Language::TypeScript));
-    assert_eq!(detect_language(Path::new("test.tsx")), Some(Language::TypeScript));
+    assert_eq!(
+        detect_language(Path::new("test.py")),
+        Some(Language::Python)
+    );
+    assert_eq!(
+        detect_language(Path::new("test.ts")),
+        Some(Language::TypeScript)
+    );
+    assert_eq!(
+        detect_language(Path::new("test.tsx")),
+        Some(Language::TypeScript)
+    );
     assert_eq!(detect_language(Path::new("test.c")), Some(Language::C));
     assert_eq!(detect_language(Path::new("test.h")), Some(Language::C));
     assert_eq!(detect_language(Path::new("test.cpp")), Some(Language::Cpp));
@@ -1428,11 +1537,17 @@ fn test_call_graph_excludes_generic_names() {
             signature: "fn new()".to_string(),
             doc_comment: None,
             source: "fn new() { }".to_string(),
-            start_line: 1, end_line: 1, language: "Rust".to_string(),
-            quality: QualityMetrics::default(), checksum: "a".to_string(),
+            start_line: 1,
+            end_line: 1,
+            language: "Rust".to_string(),
+            quality: QualityMetrics::default(),
+            checksum: "a".to_string(),
             definition_type: DefinitionType::default(),
-            commit_count: 0, churn_score: 0.0, clone_count: 0,
-            pattern_diversity: 0.0, fault_annotations: Vec::new(),
+            commit_count: 0,
+            churn_score: 0.0,
+            clone_count: 0,
+            pattern_diversity: 0.0,
+            fault_annotations: Vec::new(),
         },
         FunctionEntry {
             file_path: "b.rs".to_string(),
@@ -1441,11 +1556,17 @@ fn test_call_graph_excludes_generic_names() {
             doc_comment: None,
             // Source mentions "new" but it's a generic callee — should be excluded
             source: "fn process() { let x = Foo::new(); }".to_string(),
-            start_line: 1, end_line: 1, language: "Rust".to_string(),
-            quality: QualityMetrics::default(), checksum: "b".to_string(),
+            start_line: 1,
+            end_line: 1,
+            language: "Rust".to_string(),
+            quality: QualityMetrics::default(),
+            checksum: "b".to_string(),
             definition_type: DefinitionType::default(),
-            commit_count: 0, churn_score: 0.0, clone_count: 0,
-            pattern_diversity: 0.0, fault_annotations: Vec::new(),
+            commit_count: 0,
+            churn_score: 0.0,
+            clone_count: 0,
+            pattern_diversity: 0.0,
+            fault_annotations: Vec::new(),
         },
         FunctionEntry {
             file_path: "c.rs".to_string(),
@@ -1453,11 +1574,17 @@ fn test_call_graph_excludes_generic_names() {
             signature: "fn dispatch_event()".to_string(),
             doc_comment: None,
             source: "fn dispatch_event() { process(); }".to_string(),
-            start_line: 1, end_line: 1, language: "Rust".to_string(),
-            quality: QualityMetrics::default(), checksum: "c".to_string(),
+            start_line: 1,
+            end_line: 1,
+            language: "Rust".to_string(),
+            quality: QualityMetrics::default(),
+            checksum: "c".to_string(),
             definition_type: DefinitionType::default(),
-            commit_count: 0, churn_score: 0.0, clone_count: 0,
-            pattern_diversity: 0.0, fault_annotations: Vec::new(),
+            commit_count: 0,
+            churn_score: 0.0,
+            clone_count: 0,
+            pattern_diversity: 0.0,
+            fault_annotations: Vec::new(),
         },
     ];
 
@@ -1466,14 +1593,23 @@ fn test_call_graph_excludes_generic_names() {
 
     // "process" calling "new" should be EXCLUDED (generic callee)
     let process_calls = calls.get(&1).cloned().unwrap_or_default();
-    assert!(!process_calls.contains(&0), "generic callee 'new' should be excluded from call graph");
+    assert!(
+        !process_calls.contains(&0),
+        "generic callee 'new' should be excluded from call graph"
+    );
 
     // "dispatch_event" calling "process" should be INCLUDED (domain-specific)
     let dispatch_calls = calls.get(&2).cloned().unwrap_or_default();
-    assert!(dispatch_calls.contains(&1), "domain-specific callee 'process' should be in call graph");
+    assert!(
+        dispatch_calls.contains(&1),
+        "domain-specific callee 'process' should be in call graph"
+    );
 
     // "new" should have no callers (all filtered)
-    assert!(!called_by.contains_key(&0), "'new' should have no callers in call graph");
+    assert!(
+        !called_by.contains_key(&0),
+        "'new' should have no callers in call graph"
+    );
 }
 
 #[test]
@@ -1486,12 +1622,17 @@ fn test_name_index_capped_at_100() {
             signature: "fn new()".to_string(),
             doc_comment: None,
             source: format!("fn new() {{ /* variant {i} */ }}"),
-            start_line: 1, end_line: 1, language: "Rust".to_string(),
+            start_line: 1,
+            end_line: 1,
+            language: "Rust".to_string(),
             quality: QualityMetrics::default(),
             checksum: format!("{i}"),
             definition_type: DefinitionType::default(),
-            commit_count: 0, churn_score: 0.0, clone_count: 0,
-            pattern_diversity: 0.0, fault_annotations: Vec::new(),
+            commit_count: 0,
+            churn_score: 0.0,
+            clone_count: 0,
+            pattern_diversity: 0.0,
+            fault_annotations: Vec::new(),
         })
         .collect();
 
@@ -1515,9 +1656,19 @@ fn test_build_filters_test_functions() {
     .unwrap();
 
     let index = AgentContextIndex::build(project_path).unwrap();
-    let names: Vec<&str> = index.functions.iter().map(|f| f.function_name.as_str()).collect();
-    assert!(names.contains(&"real_func"), "non-test function should be indexed");
-    assert!(!names.contains(&"test_something"), "test_ function should be filtered");
+    let names: Vec<&str> = index
+        .functions
+        .iter()
+        .map(|f| f.function_name.as_str())
+        .collect();
+    assert!(
+        names.contains(&"real_func"),
+        "non-test function should be indexed"
+    );
+    assert!(
+        !names.contains(&"test_something"),
+        "test_ function should be filtered"
+    );
 }
 
 #[test]
@@ -1575,7 +1726,11 @@ fn test_rebuild_cross_project_graph_creates_cross_edges() {
     // Project A: defines `shared_util`, calls nothing
     let proj_a = temp_dir.path().join("a");
     std::fs::create_dir_all(proj_a.join("src")).unwrap();
-    std::fs::write(proj_a.join("src/lib.rs"), "pub fn shared_util() -> i32 { 42 }\n").unwrap();
+    std::fs::write(
+        proj_a.join("src/lib.rs"),
+        "pub fn shared_util() -> i32 { 42 }\n",
+    )
+    .unwrap();
     let mut index_a = AgentContextIndex::build(&proj_a).unwrap();
 
     // Project B: calls `shared_util`
@@ -1584,7 +1739,8 @@ fn test_rebuild_cross_project_graph_creates_cross_edges() {
     std::fs::write(
         proj_b.join("src/lib.rs"),
         "fn consumer() -> i32 { shared_util() }\n",
-    ).unwrap();
+    )
+    .unwrap();
 
     // Load B with prefix to simulate workspace
     let index_b = AgentContextIndex::build(&proj_b).unwrap();
@@ -1598,11 +1754,17 @@ fn test_rebuild_cross_project_graph_creates_cross_edges() {
     assert_eq!(index_a.graph_metrics.len(), index_a.functions.len());
 
     // Find consumer function and verify it has callees
-    let consumer_idx = index_a.functions.iter().position(|f| f.function_name == "consumer");
+    let consumer_idx = index_a
+        .functions
+        .iter()
+        .position(|f| f.function_name == "consumer");
     assert!(consumer_idx.is_some(), "consumer function should exist");
     let ci = consumer_idx.unwrap();
     let callees = index_a.get_calls(ci);
-    assert!(callees.contains(&"shared_util"), "consumer should call shared_util after rebuild");
+    assert!(
+        callees.contains(&"shared_util"),
+        "consumer should call shared_util after rebuild"
+    );
 }
 
 // ── Feature 3: Cross-Project Callers Count Test ────────────────────────────
@@ -1613,7 +1775,11 @@ fn test_count_cross_project_callers() {
 
     let proj_a = temp_dir.path().join("a");
     std::fs::create_dir_all(proj_a.join("src")).unwrap();
-    std::fs::write(proj_a.join("src/lib.rs"), "pub fn shared_util() -> i32 { 42 }\n").unwrap();
+    std::fs::write(
+        proj_a.join("src/lib.rs"),
+        "pub fn shared_util() -> i32 { 42 }\n",
+    )
+    .unwrap();
     let mut index = AgentContextIndex::build(&proj_a).unwrap();
 
     // Prefix project A paths
@@ -1627,7 +1793,8 @@ fn test_count_cross_project_callers() {
     std::fs::write(
         proj_b.join("src/lib.rs"),
         "fn caller_b() -> i32 { shared_util() }\n",
-    ).unwrap();
+    )
+    .unwrap();
     let mut index_b = AgentContextIndex::build(&proj_b).unwrap();
     for func in &mut index_b.functions {
         func.file_path = format!("proj_b/{}", func.file_path);
@@ -1637,10 +1804,18 @@ fn test_count_cross_project_callers() {
     index.rebuild_cross_project_graph();
 
     // Find shared_util
-    let shared_idx = index.functions.iter().position(|f| f.function_name == "shared_util").unwrap();
+    let shared_idx = index
+        .functions
+        .iter()
+        .position(|f| f.function_name == "shared_util")
+        .unwrap();
     let xp_callers = index.count_cross_project_callers(shared_idx);
     // caller_b from proj_b calls shared_util in proj_a — that's a cross-project caller
-    assert!(xp_callers > 0, "shared_util should have cross-project callers, got {}", xp_callers);
+    assert!(
+        xp_callers > 0,
+        "shared_util should have cross-project callers, got {}",
+        xp_callers
+    );
 }
 
 #[test]
@@ -1659,29 +1834,53 @@ fn test_count_cross_project_callers_out_of_bounds() {
 #[test]
 fn test_classify_ptx_role_emitter() {
     use crate::services::agent_context::query::ptx_flow::{classify_ptx_role, PtxRole};
-    assert_eq!(classify_ptx_role("asm!(\"nop\")", "src/kernel.rs"), Some(PtxRole::Emitter));
-    assert_eq!(classify_ptx_role("fn foo() {}", "kernel.cu"), Some(PtxRole::Emitter));
-    assert_eq!(classify_ptx_role(".version 7.0\n.target sm_86", "kernel.ptx"), Some(PtxRole::Emitter));
+    assert_eq!(
+        classify_ptx_role("asm!(\"nop\")", "src/kernel.rs"),
+        Some(PtxRole::Emitter)
+    );
+    assert_eq!(
+        classify_ptx_role("fn foo() {}", "kernel.cu"),
+        Some(PtxRole::Emitter)
+    );
+    assert_eq!(
+        classify_ptx_role(".version 7.0\n.target sm_86", "kernel.ptx"),
+        Some(PtxRole::Emitter)
+    );
 }
 
 #[test]
 fn test_classify_ptx_role_loader() {
     use crate::services::agent_context::query::ptx_flow::{classify_ptx_role, PtxRole};
-    assert_eq!(classify_ptx_role("cuModuleLoad(&module)", "src/gpu.rs"), Some(PtxRole::Loader));
-    assert_eq!(classify_ptx_role("load_ptx(data)", "src/compute.rs"), Some(PtxRole::Loader));
+    assert_eq!(
+        classify_ptx_role("cuModuleLoad(&module)", "src/gpu.rs"),
+        Some(PtxRole::Loader)
+    );
+    assert_eq!(
+        classify_ptx_role("load_ptx(data)", "src/compute.rs"),
+        Some(PtxRole::Loader)
+    );
 }
 
 #[test]
 fn test_classify_ptx_role_analyzer() {
     use crate::services::agent_context::query::ptx_flow::{classify_ptx_role, PtxRole};
-    assert_eq!(classify_ptx_role("let rp = register_pressure(ptx)", "src/diag.rs"), Some(PtxRole::Analyzer));
-    assert_eq!(classify_ptx_role("detect_ptx_barrier(src)", "src/comply.rs"), Some(PtxRole::Analyzer));
+    assert_eq!(
+        classify_ptx_role("let rp = register_pressure(ptx)", "src/diag.rs"),
+        Some(PtxRole::Analyzer)
+    );
+    assert_eq!(
+        classify_ptx_role("detect_ptx_barrier(src)", "src/comply.rs"),
+        Some(PtxRole::Analyzer)
+    );
 }
 
 #[test]
 fn test_classify_ptx_role_none() {
     use crate::services::agent_context::query::ptx_flow::classify_ptx_role;
-    assert_eq!(classify_ptx_role("fn add(a: i32, b: i32) -> i32 { a + b }", "src/math.rs"), None);
+    assert_eq!(
+        classify_ptx_role("fn add(a: i32, b: i32) -> i32 { a + b }", "src/math.rs"),
+        None
+    );
 }
 
 // ── Feature 5: PTX Diagnostics Counter Tests ───────────────────────────────
@@ -1701,7 +1900,8 @@ fn test_ptx_diagnostics_register_and_branch_counting() {
     let shared = shared_memory_size();
 }
 "#,
-    ).unwrap();
+    )
+    .unwrap();
 
     let index = AgentContextIndex::build(&proj).unwrap();
     let result = run_ptx_diagnostics(&index);

@@ -162,10 +162,8 @@ mod ruchy_unit_tests {
     fn test_ruchy_type_compound() {
         let array_type = RuchyType::Array(Box::new(RuchyType::Integer));
         let option_type = RuchyType::Option(Box::new(RuchyType::String));
-        let result_type = RuchyType::Result(
-            Box::new(RuchyType::Integer),
-            Box::new(RuchyType::String),
-        );
+        let result_type =
+            RuchyType::Result(Box::new(RuchyType::Integer), Box::new(RuchyType::String));
         let func_type = RuchyType::Function(
             vec![RuchyType::Integer, RuchyType::Integer],
             Box::new(RuchyType::Integer),
@@ -382,14 +380,20 @@ mod ruchy_unit_tests {
         let mut analyzer = RuchyComplexityAnalyzer::new();
 
         analyzer.defined_functions.insert("public_api".to_string());
-        analyzer.defined_functions.insert("private_helper".to_string());
+        analyzer
+            .defined_functions
+            .insert("private_helper".to_string());
         analyzer.exports.insert("public_api".to_string());
 
         let dead_code = analyzer.get_dead_code();
 
         // Exported function should not be marked as dead code
-        assert!(!dead_code.unused_functions.contains(&"public_api".to_string()));
-        assert!(dead_code.unused_functions.contains(&"private_helper".to_string()));
+        assert!(!dead_code
+            .unused_functions
+            .contains(&"public_api".to_string()));
+        assert!(dead_code
+            .unused_functions
+            .contains(&"private_helper".to_string()));
     }
 
     #[test]
@@ -403,7 +407,9 @@ mod ruchy_unit_tests {
         let dead_code = analyzer.get_dead_code();
 
         assert!(!dead_code.unused_variables.contains(&"used_var".to_string()));
-        assert!(dead_code.unused_variables.contains(&"unused_var".to_string()));
+        assert!(dead_code
+            .unused_variables
+            .contains(&"unused_var".to_string()));
     }
 
     #[test]
@@ -420,33 +426,42 @@ mod ruchy_unit_tests {
     fn test_analyzer_infer_literal_type() {
         let analyzer = RuchyComplexityAnalyzer::new();
 
-        assert_eq!(analyzer.infer_literal_type(&RuchyToken::Integer(42)), RuchyType::Integer);
-        assert_eq!(analyzer.infer_literal_type(&RuchyToken::Float(3.14)), RuchyType::Float);
+        assert_eq!(
+            analyzer.infer_literal_type(&RuchyToken::Integer(42)),
+            RuchyType::Integer
+        );
+        assert_eq!(
+            analyzer.infer_literal_type(&RuchyToken::Float(3.14)),
+            RuchyType::Float
+        );
         assert_eq!(
             analyzer.infer_literal_type(&RuchyToken::String("hello".to_string())),
             RuchyType::String
         );
-        assert_eq!(analyzer.infer_literal_type(&RuchyToken::True), RuchyType::Bool);
-        assert_eq!(analyzer.infer_literal_type(&RuchyToken::False), RuchyType::Bool);
-        assert_eq!(analyzer.infer_literal_type(&RuchyToken::Bool(true)), RuchyType::Bool);
+        assert_eq!(
+            analyzer.infer_literal_type(&RuchyToken::True),
+            RuchyType::Bool
+        );
+        assert_eq!(
+            analyzer.infer_literal_type(&RuchyToken::False),
+            RuchyType::Bool
+        );
+        assert_eq!(
+            analyzer.infer_literal_type(&RuchyToken::Bool(true)),
+            RuchyType::Bool
+        );
     }
 
     #[test]
     fn test_analyzer_infer_binary_type_arithmetic() {
         let analyzer = RuchyComplexityAnalyzer::new();
 
-        let result = analyzer.infer_binary_type(
-            &RuchyToken::Plus,
-            &RuchyType::Integer,
-            &RuchyType::Integer,
-        );
+        let result =
+            analyzer.infer_binary_type(&RuchyToken::Plus, &RuchyType::Integer, &RuchyType::Integer);
         assert_eq!(result, RuchyType::Integer);
 
-        let result = analyzer.infer_binary_type(
-            &RuchyToken::Plus,
-            &RuchyType::Float,
-            &RuchyType::Float,
-        );
+        let result =
+            analyzer.infer_binary_type(&RuchyToken::Plus, &RuchyType::Float, &RuchyType::Float);
         assert_eq!(result, RuchyType::Float);
     }
 
@@ -461,11 +476,8 @@ mod ruchy_unit_tests {
         );
         assert_eq!(result, RuchyType::Bool);
 
-        let result = analyzer.infer_binary_type(
-            &RuchyToken::Less,
-            &RuchyType::Integer,
-            &RuchyType::Integer,
-        );
+        let result =
+            analyzer.infer_binary_type(&RuchyToken::Less, &RuchyType::Integer, &RuchyType::Integer);
         assert_eq!(result, RuchyType::Bool);
     }
 
@@ -473,18 +485,12 @@ mod ruchy_unit_tests {
     fn test_analyzer_infer_binary_type_logical() {
         let analyzer = RuchyComplexityAnalyzer::new();
 
-        let result = analyzer.infer_binary_type(
-            &RuchyToken::And,
-            &RuchyType::Bool,
-            &RuchyType::Bool,
-        );
+        let result =
+            analyzer.infer_binary_type(&RuchyToken::And, &RuchyType::Bool, &RuchyType::Bool);
         assert_eq!(result, RuchyType::Bool);
 
-        let result = analyzer.infer_binary_type(
-            &RuchyToken::Or,
-            &RuchyType::Bool,
-            &RuchyType::Bool,
-        );
+        let result =
+            analyzer.infer_binary_type(&RuchyToken::Or, &RuchyType::Bool, &RuchyType::Bool);
         assert_eq!(result, RuchyType::Bool);
     }
 
@@ -492,11 +498,8 @@ mod ruchy_unit_tests {
     fn test_analyzer_infer_binary_type_string_concat() {
         let analyzer = RuchyComplexityAnalyzer::new();
 
-        let result = analyzer.infer_binary_type(
-            &RuchyToken::Plus,
-            &RuchyType::String,
-            &RuchyType::String,
-        );
+        let result =
+            analyzer.infer_binary_type(&RuchyToken::Plus, &RuchyType::String, &RuchyType::String);
         assert_eq!(result, RuchyType::String);
     }
 

@@ -548,7 +548,10 @@ mod tests {
         // Report different skip reasons
         reporter.report_skipped(std::path::Path::new("big.js"), SkipReason::LargeFile);
         reporter.report_skipped(std::path::Path::new("min.js"), SkipReason::MinifiedContent);
-        reporter.report_skipped(std::path::Path::new("vendor/lib.js"), SkipReason::VendorDirectory);
+        reporter.report_skipped(
+            std::path::Path::new("vendor/lib.js"),
+            SkipReason::VendorDirectory,
+        );
         reporter.report_skipped(std::path::Path::new("long.txt"), SkipReason::LineTooLong);
         reporter.report_skipped(std::path::Path::new("other.bin"), SkipReason::BinaryContent);
 

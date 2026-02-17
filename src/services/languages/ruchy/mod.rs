@@ -27,9 +27,9 @@ use crate::services::complexity::{
     ComplexityMetrics, FileComplexityMetrics, FunctionComplexity, HalsteadMetrics,
 };
 use anyhow::Result;
-use std::sync::LazyLock;
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
+use std::sync::LazyLock;
 
 /// Ruchy language token types based on the official Ruchy lexer specification
 /// Updated to match ruchy v1.5.0 token definitions

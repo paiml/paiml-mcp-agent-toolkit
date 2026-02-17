@@ -1,4 +1,3 @@
-
 use super::*;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -899,8 +898,7 @@ codegen-units = 1
 // Recommendations Tests
 // ==========================================================================
 
-mod recommendations_tests {
-}
+mod recommendations_tests {}
 
 // ==========================================================================
 // Thread Safety Tests

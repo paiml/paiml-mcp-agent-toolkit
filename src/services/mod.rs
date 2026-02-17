@@ -174,9 +174,9 @@ pub mod file_health; // File Health Score: max-lines enforcement and TLR analysi
 pub mod five_whys_analyzer;
 pub mod fixed_graph_builder;
 pub mod git_analysis;
-pub mod git_history; // GH-RAG: Git history RAG integration (separate index for commit messages)
 #[cfg(feature = "git-lib")]
 pub mod git_clone;
+pub mod git_history; // GH-RAG: Git history RAG integration (separate index for commit messages)
 pub mod git_test_filter; // Git-aware test filtering for targeted quality gates
 pub mod github_integration;
 pub mod hallucination_detector; // Sprint 37: Semantic entropy-based hallucination detection
@@ -273,14 +273,14 @@ mod git_clone_property_tests;
 #[cfg(test)]
 mod quality_proxy_property_tests;
 
+pub mod agent_context;
 pub mod changelog_manager;
+pub mod gaming_detector; // PMAT Work Contract: Anti-gaming detection for coverage metrics
 #[cfg(feature = "github-api")]
 pub mod github_client; // Issue #75: GitHub API integration (optional - 255 transitive deps)
 pub mod hook_manager; // Issue #75 Phase 6: Git hooks for workflow
 pub mod roadmap_service;
-pub mod telemetry_service; // Issue #75 Phase 7: CHANGELOG automation
-pub mod gaming_detector; // PMAT Work Contract: Anti-gaming detection for coverage metrics
-pub mod agent_context; // PMAT-470: RAG-powered agent context with semantic code search
+pub mod telemetry_service; // Issue #75 Phase 7: CHANGELOG automation // PMAT-470: RAG-powered agent context with semantic code search
 
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]

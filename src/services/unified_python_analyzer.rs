@@ -250,8 +250,8 @@ impl UnifiedPythonAnalyzer {
         let lines = content.lines().count();
 
         // Simple function detection (GREEN phase - basic regex)
-        let function_pattern = regex::Regex::new(r"(?m)^(?:async\s+)?def\s+(\w+)\s*\(")
-            .expect("static regex");
+        let function_pattern =
+            regex::Regex::new(r"(?m)^(?:async\s+)?def\s+(\w+)\s*\(").expect("static regex");
 
         for cap in function_pattern.captures_iter(content) {
             let name = cap

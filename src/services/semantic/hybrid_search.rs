@@ -80,7 +80,11 @@ impl HybridSearchEngine {
 
     /// Create new hybrid search engine (backward compatible - ignores api_key)
     #[deprecated(note = "Use new() without api_key - local embeddings don't require API keys")]
-    pub async fn new_with_key(_api_key: &str, db_path: &str, search_root: &Path) -> Result<Self, String> {
+    pub async fn new_with_key(
+        _api_key: &str,
+        db_path: &str,
+        search_root: &Path,
+    ) -> Result<Self, String> {
         Self::new(db_path, search_root).await
     }
 

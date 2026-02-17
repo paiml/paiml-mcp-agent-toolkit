@@ -198,9 +198,7 @@ impl<'a> LuaTreeSitterVisitor<'a> {
         // first named child is an identifier
         for child in node.children(&mut node.walk()) {
             if child.kind() == "identifier" {
-                let text = child
-                    .utf8_text(self.content.as_bytes())
-                    .unwrap_or_default();
+                let text = child.utf8_text(self.content.as_bytes()).unwrap_or_default();
                 if text == "require" {
                     return true;
                 }
@@ -233,8 +231,7 @@ impl<'a> LuaTreeSitterVisitor<'a> {
                 }
             }
             "if_statement" => {
-                let mut n =
-                    UnifiedAstNode::new(AstKind::Statement(StmtKind::If), Language::Lua);
+                let mut n = UnifiedAstNode::new(AstKind::Statement(StmtKind::If), Language::Lua);
                 n.flags.set(NodeFlags::CONTROL_FLOW);
                 self.dag.add_node(n);
 
@@ -243,8 +240,7 @@ impl<'a> LuaTreeSitterVisitor<'a> {
                 }
             }
             "for_statement" => {
-                let mut n =
-                    UnifiedAstNode::new(AstKind::Statement(StmtKind::For), Language::Lua);
+                let mut n = UnifiedAstNode::new(AstKind::Statement(StmtKind::For), Language::Lua);
                 n.flags.set(NodeFlags::CONTROL_FLOW);
                 self.dag.add_node(n);
 
@@ -253,8 +249,7 @@ impl<'a> LuaTreeSitterVisitor<'a> {
                 }
             }
             "while_statement" => {
-                let mut n =
-                    UnifiedAstNode::new(AstKind::Statement(StmtKind::While), Language::Lua);
+                let mut n = UnifiedAstNode::new(AstKind::Statement(StmtKind::While), Language::Lua);
                 n.flags.set(NodeFlags::CONTROL_FLOW);
                 self.dag.add_node(n);
 
@@ -295,10 +290,8 @@ impl<'a> LuaTreeSitterVisitor<'a> {
             }
             "function_call" => {
                 if self.is_require_call(node) {
-                    let mut n = UnifiedAstNode::new(
-                        AstKind::Import(ImportKind::Module),
-                        Language::Lua,
-                    );
+                    let mut n =
+                        UnifiedAstNode::new(AstKind::Import(ImportKind::Module), Language::Lua);
                     n.flags.set(NodeFlags::IMPORT);
                     self.dag.add_node(n);
                 }
@@ -308,8 +301,7 @@ impl<'a> LuaTreeSitterVisitor<'a> {
                 }
             }
             "elseif_statement" => {
-                let mut n =
-                    UnifiedAstNode::new(AstKind::Statement(StmtKind::If), Language::Lua);
+                let mut n = UnifiedAstNode::new(AstKind::Statement(StmtKind::If), Language::Lua);
                 n.flags.set(NodeFlags::CONTROL_FLOW);
                 self.dag.add_node(n);
 
@@ -321,10 +313,8 @@ impl<'a> LuaTreeSitterVisitor<'a> {
                 // Check for `and` / `or` operators which add to cyclomatic complexity
                 for child in node.children(&mut node.walk()) {
                     if child.kind() == "and" || child.kind() == "or" {
-                        let mut n = UnifiedAstNode::new(
-                            AstKind::Statement(StmtKind::Block),
-                            Language::Lua,
-                        );
+                        let mut n =
+                            UnifiedAstNode::new(AstKind::Statement(StmtKind::Block), Language::Lua);
                         n.flags.set(NodeFlags::CONTROL_FLOW);
                         self.dag.add_node(n);
                     }
@@ -480,7 +470,10 @@ until x == 0
 
             let (cyclomatic, _cognitive) = strategy.calculate_complexity(&dag);
             // if + elseif + for + while + repeat = 5 control flow, base 1
-            assert!(cyclomatic >= 6, "Expected cyclomatic >= 6, got {cyclomatic}");
+            assert!(
+                cyclomatic >= 6,
+                "Expected cyclomatic >= 6, got {cyclomatic}"
+            );
         }
 
         #[test]
@@ -546,7 +539,10 @@ end
             let dag = strategy.convert_tree_to_dag(&tree, code);
             let (cyclomatic, _) = strategy.calculate_complexity(&dag);
             // if + and + or = 3 control flow, base 1
-            assert!(cyclomatic >= 4, "Expected cyclomatic >= 4, got {cyclomatic}");
+            assert!(
+                cyclomatic >= 4,
+                "Expected cyclomatic >= 4, got {cyclomatic}"
+            );
         }
 
         #[test]
@@ -625,7 +621,10 @@ end
                 .nodes
                 .iter()
                 .any(|node| node.flags.has(NodeFlags::CONTROL_FLOW));
-            assert!(has_control_flow, "for-in (generic for) should add control flow");
+            assert!(
+                has_control_flow,
+                "for-in (generic for) should add control flow"
+            );
         }
     }
 

@@ -163,7 +163,8 @@ impl HooksCommand {
         let config_up_to_date = if is_pmat_managed {
             match self.generate_hook_content().await {
                 Ok(expected) => {
-                    Self::normalize_hook_content(&content) == Self::normalize_hook_content(&expected)
+                    Self::normalize_hook_content(&content)
+                        == Self::normalize_hook_content(&expected)
                 }
                 Err(_) => false, // Can't generate expected content, assume outdated
             }

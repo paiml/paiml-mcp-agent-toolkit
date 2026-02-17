@@ -3,9 +3,9 @@
 //! Tests: type construction, serde, pure functions, state machine
 
 use crate::cli::handlers::enforce_handlers::{
-    EnforcementProgress, EnforcementResult, EnforcementState, QualityProfile, QualityViolation,
     format_violations_output, handle_complete_state, handle_refactoring_state,
-    handle_violating_state,
+    handle_violating_state, EnforcementProgress, EnforcementResult, EnforcementState,
+    QualityProfile, QualityViolation,
 };
 use crate::cli::EnforceOutputFormat;
 use std::path::PathBuf;
@@ -242,7 +242,8 @@ fn test_format_violations_json() {
         },
     ];
     let profile = QualityProfile::default();
-    let output = format_violations_output(&violations, &profile, EnforceOutputFormat::Json).unwrap();
+    let output =
+        format_violations_output(&violations, &profile, EnforceOutputFormat::Json).unwrap();
     let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
     assert_eq!(parsed["summary"]["total"], 2);
 }
@@ -258,7 +259,8 @@ fn test_format_violations_text() {
         suggestion: "Reduce complexity".to_string(),
     }];
     let profile = QualityProfile::default();
-    let output = format_violations_output(&violations, &profile, EnforceOutputFormat::Summary).unwrap();
+    let output =
+        format_violations_output(&violations, &profile, EnforceOutputFormat::Summary).unwrap();
     assert!(output.contains("COMPLEXITY"));
     assert!(output.contains("high"));
     assert!(output.contains("25"));
@@ -268,6 +270,7 @@ fn test_format_violations_text() {
 fn test_format_violations_empty() {
     let violations: Vec<QualityViolation> = vec![];
     let profile = QualityProfile::default();
-    let output = format_violations_output(&violations, &profile, EnforceOutputFormat::Summary).unwrap();
+    let output =
+        format_violations_output(&violations, &profile, EnforceOutputFormat::Summary).unwrap();
     assert!(output.contains("0 violations"));
 }

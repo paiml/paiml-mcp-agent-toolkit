@@ -2,7 +2,7 @@
 //! Coverage boost tests for services - batch 4
 //! Tests for SATD detector
 
-use crate::services::satd_detector::{DebtCategory, DebtClassifier, Severity, SATDDetector};
+use crate::services::satd_detector::{DebtCategory, DebtClassifier, SATDDetector, Severity};
 use std::path::Path;
 
 #[test]

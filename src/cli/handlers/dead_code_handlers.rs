@@ -194,10 +194,15 @@ fn run_multi_language_dead_code(
     let ml_result = analyze_dead_code_multi_language(path)?;
 
     // Group dead functions by file for FileDeadCodeMetrics
-    let mut file_map: std::collections::HashMap<String, Vec<&crate::services::dead_code_multi_language::DeadFunction>> =
-        std::collections::HashMap::new();
+    let mut file_map: std::collections::HashMap<
+        String,
+        Vec<&crate::services::dead_code_multi_language::DeadFunction>,
+    > = std::collections::HashMap::new();
     for dead_fn in &ml_result.dead_functions {
-        file_map.entry(dead_fn.file.clone()).or_default().push(dead_fn);
+        file_map
+            .entry(dead_fn.file.clone())
+            .or_default()
+            .push(dead_fn);
     }
 
     let mut files: Vec<FileDeadCodeMetrics> = file_map
@@ -223,7 +228,11 @@ fn run_multi_language_dead_code(
         .collect();
 
     // Sort by score descending
-    files.sort_by(|a, b| b.dead_score.partial_cmp(&a.dead_score).unwrap_or(std::cmp::Ordering::Equal));
+    files.sort_by(|a, b| {
+        b.dead_score
+            .partial_cmp(&a.dead_score)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
 
     if let Some(limit) = filters.top_files {
         if limit > 0 && files.len() > limit {

@@ -1271,10 +1271,7 @@ mod tests {
     fn test_recompute_summary_empty_files() {
         let mut baseline = TdgBaseline::new(None);
         // Add an entry so summary has non-zero values
-        baseline.add_entry(
-            PathBuf::from("test.rs"),
-            create_test_entry(90.0, Grade::A),
-        );
+        baseline.add_entry(PathBuf::from("test.rs"), create_test_entry(90.0, Grade::A));
         assert_eq!(baseline.summary.total_files, 1);
         assert!((baseline.summary.avg_score - 90.0).abs() < 0.01);
 

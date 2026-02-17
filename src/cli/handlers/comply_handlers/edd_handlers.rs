@@ -79,7 +79,13 @@ pub fn check_edd_compliance(project_path: &Path) -> EddReport {
     let mut documented = 0;
     let mut violations = Vec::new();
 
-    scan_dir_for_edd(&src_dir, project_path, &mut total_fns, &mut documented, &mut violations);
+    scan_dir_for_edd(
+        &src_dir,
+        project_path,
+        &mut total_fns,
+        &mut documented,
+        &mut violations,
+    );
 
     let compliance_pct = if total_fns == 0 {
         100.0
@@ -250,11 +256,32 @@ fn has_math_notation(doc: &str) -> bool {
 
     // Common LaTeX commands
     let latex_commands = [
-        "\\frac", "\\sum", "\\int", "\\partial", "\\nabla",
-        "\\sqrt", "\\alpha", "\\beta", "\\gamma", "\\delta",
-        "\\epsilon", "\\theta", "\\lambda", "\\sigma", "\\omega",
-        "\\mathbf", "\\mathrm", "\\vec", "\\hat", "\\dot",
-        "\\cdot", "\\times", "\\approx", "\\equiv", "\\leq", "\\geq",
+        "\\frac",
+        "\\sum",
+        "\\int",
+        "\\partial",
+        "\\nabla",
+        "\\sqrt",
+        "\\alpha",
+        "\\beta",
+        "\\gamma",
+        "\\delta",
+        "\\epsilon",
+        "\\theta",
+        "\\lambda",
+        "\\sigma",
+        "\\omega",
+        "\\mathbf",
+        "\\mathrm",
+        "\\vec",
+        "\\hat",
+        "\\dot",
+        "\\cdot",
+        "\\times",
+        "\\approx",
+        "\\equiv",
+        "\\leq",
+        "\\geq",
     ];
 
     for cmd in &latex_commands {
@@ -313,7 +340,10 @@ mod tests {
 
     #[test]
     fn test_extract_fn_name_simple() {
-        assert_eq!(extract_fn_name("pub fn calculate(x: f64) -> f64"), "calculate");
+        assert_eq!(
+            extract_fn_name("pub fn calculate(x: f64) -> f64"),
+            "calculate"
+        );
     }
 
     #[test]

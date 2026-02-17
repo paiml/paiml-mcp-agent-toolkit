@@ -636,7 +636,7 @@ impl ConfigurationService {
                 export_format: "json".to_string(),
             },
             semantic: SemanticConfig {
-                enabled: false,       // Disabled by default
+                enabled: false,                                      // Disabled by default
                 vector_db_path: None, // Defaults to ~/.pmat/embeddings.db
                 workspace_path: None, // Defaults to current directory
                 embedding_model: "aprender-tfidf-local".to_string(), // Local embeddings (no API key)

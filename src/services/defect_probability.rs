@@ -278,9 +278,7 @@ impl DefectProbabilityCalculator {
         let mut recommendations = Vec::new();
 
         // Find the highest contributing factor
-        let max_factor = factors
-            .iter()
-            .max_by(|a, b| a.1.total_cmp(&b.1));
+        let max_factor = factors.iter().max_by(|a, b| a.1.total_cmp(&b.1));
 
         if let Some((factor_name, contribution)) = max_factor {
             if *contribution > 0.2 {

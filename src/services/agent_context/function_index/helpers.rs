@@ -126,10 +126,7 @@ pub(super) fn populate_cached_annotations(
 
     // 4. Detect fault patterns in source code
     let fault_patterns = detect_fault_patterns(functions);
-    eprintln!(
-        "  Faults: {} functions with patterns",
-        fault_patterns.len()
-    );
+    eprintln!("  Faults: {} functions with patterns", fault_patterns.len());
 
     // Apply annotations to functions
     let mut churn_applied = 0;
@@ -204,7 +201,9 @@ pub(super) fn get_file_commit_counts<'a>(
         .current_dir(project_root)
         .output();
 
-    let Ok(output) = output else { return HashMap::new() };
+    let Ok(output) = output else {
+        return HashMap::new();
+    };
     if !output.status.success() {
         return HashMap::new();
     }
@@ -447,7 +446,9 @@ fn record_call_edges(
 ) {
     let mut seen: std::collections::HashSet<usize> = std::collections::HashSet::new();
     for ident in idents {
-        let Some(callee_indices) = name_index.get(*ident) else { continue };
+        let Some(callee_indices) = name_index.get(*ident) else {
+            continue;
+        };
         for &callee_idx in callee_indices {
             if callee_idx != caller_idx && seen.insert(callee_idx) {
                 calls.entry(caller_idx).or_default().push(callee_idx);
@@ -538,7 +539,12 @@ pub(crate) fn compute_graph_metrics(
             let out_degree = calls.get(&idx).map_or(0, |v| v.len()) as u32;
             let centrality =
                 (in_degree + out_degree) as f32 / (2.0 * num_functions as f32).max(1.0);
-            GraphMetrics { pagerank: pagerank[idx], centrality, in_degree, out_degree }
+            GraphMetrics {
+                pagerank: pagerank[idx],
+                centrality,
+                in_degree,
+                out_degree,
+            }
         })
         .collect()
 }
@@ -821,7 +827,11 @@ enum DocLineKind<'a> {
 
 fn classify_doc_line(line: &str) -> DocLineKind<'_> {
     if line.starts_with("///") || line.starts_with("//!") {
-        DocLineKind::DocComment(line.trim_start_matches("///").trim_start_matches("//!").trim())
+        DocLineKind::DocComment(
+            line.trim_start_matches("///")
+                .trim_start_matches("//!")
+                .trim(),
+        )
     } else if line.starts_with("/**") || line.starts_with("/*") {
         DocLineKind::BlockCommentStart
     } else if line.starts_with('*') {

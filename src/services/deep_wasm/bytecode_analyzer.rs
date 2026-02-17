@@ -280,11 +280,13 @@ impl BytecodeAnalyzer {
     fn parse_import(import: wasmparser::Import, type_section: &[FuncType]) -> ImportAnalysis {
         let kind = Self::type_ref_kind_str(&import.ty);
         let signature = if let TypeRef::Func(type_idx) = import.ty {
-            type_section.get(type_idx as usize).map(|func_type| FunctionSignature {
-                params: func_type.params().iter().map(valtype_to_string).collect(),
-                results: func_type.results().iter().map(valtype_to_string).collect(),
-                type_index: type_idx,
-            })
+            type_section
+                .get(type_idx as usize)
+                .map(|func_type| FunctionSignature {
+                    params: func_type.params().iter().map(valtype_to_string).collect(),
+                    results: func_type.results().iter().map(valtype_to_string).collect(),
+                    type_index: type_idx,
+                })
         } else {
             None
         };
@@ -298,9 +300,8 @@ impl BytecodeAnalyzer {
 
     /// Parse name section for function name mappings
     fn parse_name_section(data: &[u8], name_map: &mut HashMap<u32, String>) {
-        let name_reader = wasmparser::NameSectionReader::new(
-            wasmparser::BinaryReader::new(data, 0),
-        );
+        let name_reader =
+            wasmparser::NameSectionReader::new(wasmparser::BinaryReader::new(data, 0));
         for section in name_reader {
             if let Ok(wasmparser::Name::Function(func_names)) = section {
                 for naming in func_names.into_iter().flatten() {
@@ -380,7 +381,9 @@ impl BytecodeAnalyzer {
                     }
                 }
                 Ok(Payload::FunctionSection(reader)) => {
-                    sections.function_section.extend(reader.into_iter().flatten());
+                    sections
+                        .function_section
+                        .extend(reader.into_iter().flatten());
                 }
                 Ok(Payload::CodeSectionEntry(body)) => sections.code_section.push(body),
                 Ok(Payload::ExportSection(reader)) => {
@@ -395,7 +398,9 @@ impl BytecodeAnalyzer {
                 }
                 Ok(Payload::ImportSection(reader)) => {
                     for import in reader.into_iter().flatten() {
-                        sections.import_section.push(Self::parse_import(import, &sections.type_section));
+                        sections
+                            .import_section
+                            .push(Self::parse_import(import, &sections.type_section));
                     }
                 }
                 Ok(Payload::CustomSection(reader)) if reader.name() == "name" => {
@@ -425,7 +430,10 @@ impl BytecodeAnalyzer {
             .max()
             .unwrap_or(0);
         let avg_complexity = if !functions.is_empty() {
-            functions.iter().map(|f| f.complexity.cyclomatic_complexity as f64).sum::<f64>()
+            functions
+                .iter()
+                .map(|f| f.complexity.cyclomatic_complexity as f64)
+                .sum::<f64>()
                 / functions.len() as f64
         } else {
             0.0
@@ -464,17 +472,28 @@ impl BytecodeAnalyzer {
             .count() as u32;
 
         let mut functions = Vec::new();
-        for (func_idx, (type_idx, body)) in
-            sections.function_section.iter().zip(sections.code_section.iter()).enumerate()
+        for (func_idx, (type_idx, body)) in sections
+            .function_section
+            .iter()
+            .zip(sections.code_section.iter())
+            .enumerate()
         {
             let func_index = import_count + func_idx as u32;
             match self.analyze_single_function(
-                func_index, *type_idx, body, &sections.type_section, &sections.name_map, &sections.export_section,
+                func_index,
+                *type_idx,
+                body,
+                &sections.type_section,
+                &sections.name_map,
+                &sections.export_section,
             )? {
                 Some(fa) => functions.push(fa),
                 None => {
                     sections.validation_errors.push(ValidationError {
-                        message: format!("Function {} references invalid type index {}", func_index, type_idx),
+                        message: format!(
+                            "Function {} references invalid type index {}",
+                            func_index, type_idx
+                        ),
                         offset: None,
                     });
                 }

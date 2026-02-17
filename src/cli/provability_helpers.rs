@@ -80,7 +80,12 @@ fn extract_function_name(line: &str) -> Option<String> {
     let line = line.trim();
     let start = line.find("fn ")? + 3;
     let end = line.get(start..)?.find(['(', '<'])?;
-    Some(line.get(start..start + end).unwrap_or_default().trim().to_string())
+    Some(
+        line.get(start..start + end)
+            .unwrap_or_default()
+            .trim()
+            .to_string(),
+    )
 }
 
 /// Filter function summaries based on confidence

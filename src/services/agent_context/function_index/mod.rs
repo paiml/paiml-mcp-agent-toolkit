@@ -9,17 +9,18 @@ pub(crate) mod sqlite_backend;
 mod types;
 
 pub use types::{
-    AgentContextIndex, FunctionEntry, GraphMetrics,
-    IndexManifest, IndexStats, QualityMetrics,
+    AgentContextIndex, FunctionEntry, GraphMetrics, IndexManifest, IndexStats, QualityMetrics,
 };
 
 // Re-export items used by sibling test modules (query/tests.rs)
 #[cfg(test)]
-pub(crate) use types::DefinitionType;
+pub(crate) use helpers::{
+    build_call_graph, build_indices, compute_graph_metrics, compute_name_frequency,
+};
 #[cfg(test)]
-pub(crate) use helpers::{build_call_graph, build_indices, compute_graph_metrics, compute_name_frequency};
+pub(crate) use types::DefinitionType;
 
 #[cfg(test)]
-mod tests;
-#[cfg(test)]
 mod sqlite_falsification_tests;
+#[cfg(test)]
+mod tests;

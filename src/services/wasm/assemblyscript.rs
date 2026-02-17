@@ -139,7 +139,8 @@ mod tests {
     #[test]
     fn test_complexity_many_functions() {
         let parser = AssemblyScriptParser::new().unwrap();
-        let content = "function a() {}\nfunction b() {}\nfunction c() {}\nfunction d() {}\nfunction e() {}";
+        let content =
+            "function a() {}\nfunction b() {}\nfunction c() {}\nfunction d() {}\nfunction e() {}";
         let complexity = parser.analyze_complexity(content).unwrap();
         // 5 functions, 5 lines -> 5*2 + 5/10 = 10
         assert_eq!(complexity.cyclomatic, 10);

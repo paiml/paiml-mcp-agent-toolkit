@@ -89,7 +89,9 @@ fn test_sanitize_id_empty() {
 fn test_sanitize_id_special_chars() {
     let gen = make_generator();
     let result = gen.sanitize_id("fn@#$%");
-    assert!(result.chars().all(|c| c.is_ascii_alphanumeric() || c == '_'));
+    assert!(result
+        .chars()
+        .all(|c| c.is_ascii_alphanumeric() || c == '_'));
 }
 
 #[test]

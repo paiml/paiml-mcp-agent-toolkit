@@ -691,11 +691,17 @@ fn print_pareto_report(entries: &[ParetoEntry]) {
 
         println!(
             "│ {:<19} │ {:>9} │ {:>6} │ {:>6.1} │ {:<21} {:>5} │",
-            entry.name.get(..entry.name.len().min(19)).unwrap_or(&entry.name),
+            entry
+                .name
+                .get(..entry.name.len().min(19))
+                .unwrap_or(&entry.name),
             entry.transitive_deps,
             entry.effort.label(),
             entry.roi,
-            entry.reason.get(..entry.reason.len().min(21)).unwrap_or(&entry.reason),
+            entry
+                .reason
+                .get(..entry.reason.len().min(21))
+                .unwrap_or(&entry.reason),
             marker
         );
     }
@@ -1014,7 +1020,11 @@ fn print_text_report(report: &DepsAuditReport) {
         println!("  │ Dependency          │ Score    │");
         println!("  ├─────────────────────┼──────────┤");
         for (name, score) in report.top_critical.iter().take(5) {
-            println!("  │ {:<19} │ {:.6} │", name.get(..name.len().min(19)).unwrap_or(name), score);
+            println!(
+                "  │ {:<19} │ {:.6} │",
+                name.get(..name.len().min(19)).unwrap_or(name),
+                score
+            );
         }
         println!("  └─────────────────────┴──────────┘");
         println!("  (Higher = more deps depend on it, harder to remove)");
@@ -1052,7 +1062,9 @@ fn print_text_report(report: &DepsAuditReport) {
             println!(
                 "  │ {:<19} │ {:<38} │",
                 dep.name.get(..dep.name.len().min(19)).unwrap_or(&dep.name),
-                dep.reason.get(..dep.reason.len().min(38)).unwrap_or(&dep.reason)
+                dep.reason
+                    .get(..dep.reason.len().min(38))
+                    .unwrap_or(&dep.reason)
             );
         }
         println!("  └─────────────────────┴────────────────────────────────────────┘");
@@ -1069,7 +1081,9 @@ fn print_text_report(report: &DepsAuditReport) {
                 "  │ {:<19} │ {:>8} │ {:<27} │",
                 dep.name.get(..dep.name.len().min(19)).unwrap_or(&dep.name),
                 dep.estimated_size_kb,
-                dep.reason.get(..dep.reason.len().min(27)).unwrap_or(&dep.reason)
+                dep.reason
+                    .get(..dep.reason.len().min(27))
+                    .unwrap_or(&dep.reason)
             );
         }
         println!("  └─────────────────────┴──────────┴─────────────────────────────┘");
@@ -1086,8 +1100,12 @@ fn print_text_report(report: &DepsAuditReport) {
             println!(
                 "  │ {:<19} │ {:<19} │ {:<17} │",
                 dep.name.get(..dep.name.len().min(19)).unwrap_or(&dep.name),
-                replacement.get(..replacement.len().min(19)).unwrap_or(replacement),
-                dep.reason.get(..dep.reason.len().min(17)).unwrap_or(&dep.reason)
+                replacement
+                    .get(..replacement.len().min(19))
+                    .unwrap_or(replacement),
+                dep.reason
+                    .get(..dep.reason.len().min(17))
+                    .unwrap_or(&dep.reason)
             );
         }
         println!("  └─────────────────────┴─────────────────────┴───────────────────┘");

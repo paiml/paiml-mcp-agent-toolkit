@@ -150,7 +150,10 @@ impl QualityMonitor {
     /// Start monitoring a directory (stub when watch feature disabled)
     #[cfg(not(feature = "watch"))]
     pub async fn start_monitoring(&mut self, path: PathBuf) -> Result<()> {
-        info!("Starting quality monitoring for: {:?} (watch disabled)", path);
+        info!(
+            "Starting quality monitoring for: {:?} (watch disabled)",
+            path
+        );
         self.analyze_directory(&path).await?;
         Ok(())
     }

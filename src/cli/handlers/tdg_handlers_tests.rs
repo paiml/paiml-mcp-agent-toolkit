@@ -512,7 +512,6 @@ mod unit_tests {
             let result = validate_minimum_grade(&score, &config);
             assert!(result.is_ok());
         }
-
     }
 
     // ========== format_tdg_output tests ==========
@@ -807,7 +806,6 @@ mod unit_tests {
             let result = load_tdg_configuration(&config);
             assert!(result.is_err());
         }
-
     }
 
     // ========== format_history_output tests ==========

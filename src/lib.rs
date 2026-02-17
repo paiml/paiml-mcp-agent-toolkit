@@ -112,19 +112,19 @@
 // Feature-gated: Experimental module (0% coverage, CLI-only usage via agent_handlers)
 #[cfg(feature = "agent-daemon")]
 pub mod agent; // Claude Code Agent Mode implementation
-// Feature-gated: Actor system only used by mcp_integration (0% coverage, ~6,905 lines)
+               // Feature-gated: Actor system only used by mcp_integration (0% coverage, ~6,905 lines)
 #[cfg(feature = "mcp-integration")]
 pub mod agents; // Agent system with Actix actors
-// Feature-gated: Experimental module (0% coverage, not production-ready)
+                // Feature-gated: Experimental module (0% coverage, not production-ready)
 #[cfg(feature = "agents-md")]
 pub mod agents_md; // AGENTS.md integration for AI agent guidance
 pub mod ast; // Unified AST module for all language parsing
-// Feature-gated: Not ready for production use (0% coverage, no external usage)
+             // Feature-gated: Not ready for production use (0% coverage, no external usage)
 #[cfg(feature = "claude-integration")]
 pub mod claude_integration; // Claude Agent SDK integration with EXTREME TDD
 pub mod cli;
 pub mod contracts; // Uniform contracts across ALL interfaces (CLI, MCP, HTTP)
-// Feature-gated: Demo/showcase functionality (opt-in, ~13,400 lines)
+                   // Feature-gated: Demo/showcase functionality (opt-in, ~13,400 lines)
 #[cfg(feature = "demo")]
 pub mod demo;
 pub mod docs_enforcement; // Documentation quality enforcement (TICKET-PMAT-7001)
@@ -133,7 +133,7 @@ pub mod graph; // Graph-theoretic analysis for dependency networks
 pub mod handlers;
 pub mod maintenance; // Roadmap and ticket maintenance system (Sprint 17)
 pub mod mcp; // MCP tools and handlers (Sprint 30: Semantic search tools)
-// Feature-gated: Experimental module (0% coverage, not production-ready)
+             // Feature-gated: Experimental module (0% coverage, not production-ready)
 #[cfg(feature = "mcp-integration")]
 pub mod mcp_integration; // MCP protocol integration
 pub mod mcp_pmcp; // Now always available with pmcp 1.0
@@ -147,7 +147,7 @@ pub mod protocol; // Unified protocol design per SPECIFICATION.md Section 3
 pub mod qdd; // Quality-Driven Development tool
 pub mod quality; // Quality gates and enforcement (Sprint 18: Gate executor)
 pub mod red_team; // Automated hallucination detection (EXTREME TDD - Sprint 47)
-// Feature-gated: Only used by mcp_integration module (~2,572 lines, 0% coverage)
+                  // Feature-gated: Only used by mcp_integration module (~2,572 lines, 0% coverage)
 #[cfg(feature = "mcp-integration")]
 pub mod resources; // Resource control and limits
 pub mod roadmap; // Roadmap-driven development with quality gates
@@ -162,7 +162,7 @@ pub mod test_performance;
 pub mod workflow; // Workflow orchestration engine
                   // #[cfg(test)]
                   // pub mod testing;
-// Feature-gated: Experimental module (0% coverage, not production-ready)
+                  // Feature-gated: Experimental module (0% coverage, not production-ready)
 #[cfg(feature = "unified-protocol")]
 pub mod unified_protocol;
 pub mod unified_quality; // Unified Quality Enforcement System
@@ -1073,7 +1073,8 @@ mod lib_unit_tests {
     fn test_write_response_to_stdout() {
         use crate::models::mcp::McpResponse;
 
-        let response = McpResponse::error(serde_json::Value::Null, -32600, "Test error".to_string());
+        let response =
+            McpResponse::error(serde_json::Value::Null, -32600, "Test error".to_string());
         let mut output = Vec::new();
         let result = write_response_to_stdout(&response, &mut output);
         assert!(result.is_ok());
@@ -1104,12 +1105,18 @@ mod lib_unit_tests {
         // get_template_metadata should return deprecated error
         let metadata_result = server.get_template_metadata("test://uri").await;
         assert!(metadata_result.is_err());
-        assert!(metadata_result.unwrap_err().to_string().contains("deprecated"));
+        assert!(metadata_result
+            .unwrap_err()
+            .to_string()
+            .contains("deprecated"));
 
         // get_template_content should return deprecated error
         let content_result = server.get_template_content("test_key").await;
         assert!(content_result.is_err());
-        assert!(content_result.unwrap_err().to_string().contains("deprecated"));
+        assert!(content_result
+            .unwrap_err()
+            .to_string()
+            .contains("deprecated"));
     }
 
     #[tokio::test]
