@@ -736,9 +736,10 @@ pub(super) fn calculate_simple_tdg(complexity: u32, satd_count: u32, loc: u32) -
     // SATD penalty (0-2 points)
     score += (satd_count as f32).min(2.0);
 
-    // LOC penalty (0-2 points for > 50 lines)
-    if loc > 50 {
-        score += ((loc - 50) as f32 / 50.0).min(2.0);
+    // LOC penalty (0-2 points for > 100 lines)
+    // Threshold raised from 50 to 100 to align with industry linter defaults
+    if loc > 100 {
+        score += ((loc - 100) as f32 / 100.0).min(2.0);
     }
 
     score.min(10.0)
