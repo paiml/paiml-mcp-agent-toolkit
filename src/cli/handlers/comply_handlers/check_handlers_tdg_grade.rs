@@ -92,6 +92,91 @@ fn load_tdg_gate_overrides(project_path: &Path) -> TdgGateOverrides {
     TdgGateOverrides { min_grade, exclude }
 }
 
+/// Check if context.db is stale — any source file modified after the DB was built.
+fn is_index_stale(project_path: &Path, db_path: &Path) -> bool {
+    let db_mtime = match std::fs::metadata(db_path).and_then(|m| m.modified()) {
+        Ok(t) => t,
+        Err(_) => return true,
+    };
+
+    // Check src/ and lib/ for newer source files
+    for dir_name in ["src", "lib"] {
+        let dir = project_path.join(dir_name);
+        if !dir.exists() {
+            continue;
+        }
+        if has_newer_source_file(&dir, db_mtime) {
+            return true;
+        }
+    }
+    false
+}
+
+/// Recursively check if any source file in `dir` is newer than `threshold`.
+fn has_newer_source_file(dir: &Path, threshold: std::time::SystemTime) -> bool {
+    let entries = match std::fs::read_dir(dir) {
+        Ok(e) => e,
+        Err(_) => return false,
+    };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.is_dir() {
+            if has_newer_source_file(&path, threshold) {
+                return true;
+            }
+        } else if is_source_file(&path) {
+            if let Ok(mtime) = entry.metadata().and_then(|m| m.modified()) {
+                if mtime > threshold {
+                    return true;
+                }
+            }
+        }
+    }
+    false
+}
+
+/// Check if a file is a source file worth tracking for staleness.
+fn is_source_file(path: &Path) -> bool {
+    path.extension()
+        .and_then(|e| e.to_str())
+        .map_or(false, |ext| {
+            matches!(
+                ext,
+                "rs" | "ts" | "tsx" | "js" | "jsx" | "py" | "go" | "java" | "kt" | "swift"
+                    | "c"
+                    | "cpp"
+                    | "cs"
+            )
+        })
+}
+
+/// Rebuild the agent context index (context.db) from source files.
+fn rebuild_index(project_path: &Path) -> bool {
+    use crate::services::agent_context::AgentContextIndex;
+
+    let index_path = project_path.join(".pmat").join("context.idx");
+    eprintln!("🔄 CB-200: context.db is stale — rebuilding index...");
+    match AgentContextIndex::build(project_path) {
+        Ok(index) => match index.save(&index_path) {
+            Ok(()) => {
+                eprintln!(
+                    "✅ CB-200: Index rebuilt ({} functions)",
+                    index.stats().total_functions
+                );
+                true
+            }
+            Err(e) => {
+                eprintln!("⚠️ CB-200: Failed to save rebuilt index: {e}");
+                false
+            }
+        },
+        Err(e) => {
+            eprintln!("⚠️ CB-200: Failed to rebuild index: {e}");
+            false
+        }
+    }
+}
+
 /// Check TDG grade gate against the SQLite index.
 pub(crate) fn check_tdg_grade_gate(
     project_path: &Path,
@@ -99,13 +184,16 @@ pub(crate) fn check_tdg_grade_gate(
 ) -> ComplianceCheck {
     let db_path = project_path.join(".pmat").join("context.db");
 
-    if !db_path.exists() {
-        return ComplianceCheck {
-            name: "CB-200: TDG Grade Gate".to_string(),
-            status: CheckStatus::Skip,
-            message: "No .pmat/context.db found — run `pmat index` first".to_string(),
-            severity: Severity::Info,
-        };
+    // Auto-rebuild if missing or stale (#222)
+    if !db_path.exists() || is_index_stale(project_path, &db_path) {
+        if !rebuild_index(project_path) && !db_path.exists() {
+            return ComplianceCheck {
+                name: "CB-200: TDG Grade Gate".to_string(),
+                status: CheckStatus::Skip,
+                message: "No .pmat/context.db found and rebuild failed — run `pmat query` to create index".to_string(),
+                severity: Severity::Info,
+            };
+        }
     }
 
     // Merge overrides from .pmat-gates.toml [tdg] section (#221)
@@ -432,7 +520,8 @@ mod tests_tdg_grade {
         let config = ComplyConfig::default();
         let result = check_tdg_grade_gate(&tmp, &config);
         assert_eq!(result.status, CheckStatus::Skip);
-        assert!(result.message.contains("run `pmat index`"));
+        // Auto-rebuild attempted but fails on non-existent path (#222)
+        assert!(result.message.contains("rebuild failed"));
     }
 
     #[test]
@@ -726,5 +815,48 @@ mod tests_tdg_grade {
         assert!(result.message.contains("1 function(s)"));
         assert!(result.message.contains("real_fn"));
         assert!(!result.message.contains("gen_fn"));
+    }
+
+    #[test]
+    fn test_is_index_stale_no_db() {
+        let tmp = tempfile::tempdir().expect("create tempdir");
+        let db_path = tmp.path().join("nonexistent.db");
+        assert!(is_index_stale(tmp.path(), &db_path));
+    }
+
+    #[test]
+    fn test_is_index_stale_fresh_db() {
+        let tmp = tempfile::tempdir().expect("create tempdir");
+        // Create a source file first, then the DB (DB is newer)
+        let src_dir = tmp.path().join("src");
+        std::fs::create_dir_all(&src_dir).expect("create src");
+        std::fs::write(src_dir.join("lib.rs"), "fn main() {}").expect("write src");
+        std::thread::sleep(std::time::Duration::from_millis(50));
+        let db_path = tmp.path().join("context.db");
+        std::fs::write(&db_path, "").expect("write db");
+        assert!(!is_index_stale(tmp.path(), &db_path));
+    }
+
+    #[test]
+    fn test_is_index_stale_outdated_db() {
+        let tmp = tempfile::tempdir().expect("create tempdir");
+        // Create the DB first, then a source file (source is newer)
+        let db_path = tmp.path().join("context.db");
+        std::fs::write(&db_path, "").expect("write db");
+        std::thread::sleep(std::time::Duration::from_millis(50));
+        let src_dir = tmp.path().join("src");
+        std::fs::create_dir_all(&src_dir).expect("create src");
+        std::fs::write(src_dir.join("lib.rs"), "fn main() {}").expect("write src");
+        assert!(is_index_stale(tmp.path(), &db_path));
+    }
+
+    #[test]
+    fn test_is_source_file() {
+        assert!(is_source_file(Path::new("foo.rs")));
+        assert!(is_source_file(Path::new("foo.py")));
+        assert!(is_source_file(Path::new("foo.ts")));
+        assert!(!is_source_file(Path::new("foo.txt")));
+        assert!(!is_source_file(Path::new("foo.toml")));
+        assert!(!is_source_file(Path::new("Makefile")));
     }
 }
