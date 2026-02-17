@@ -1134,11 +1134,11 @@ fn test_calculate_simple_tdg_boundaries() {
     let max_satd = calculate_simple_tdg(0, 10, 0);
     assert!((max_satd - 2.0).abs() < 0.01);
 
-    // LOC penalty kicks in above 100 (industry standard threshold)
-    let no_loc_penalty = calculate_simple_tdg(0, 0, 100);
+    // LOC penalty kicks in above 200
+    let no_loc_penalty = calculate_simple_tdg(0, 0, 200);
     assert!((no_loc_penalty - 0.0).abs() < 0.01);
 
-    let large_loc = calculate_simple_tdg(0, 0, 200);
+    let large_loc = calculate_simple_tdg(0, 0, 400);
     assert!(large_loc > 0.0);
 
     // Max possible: complexity=4 + satd=2 + loc=2 = 8.0
