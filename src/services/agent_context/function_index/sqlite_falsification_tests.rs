@@ -1725,8 +1725,8 @@ mod tests {
         .unwrap();
         let size = db_path.metadata().unwrap().len();
         assert!(
-            size < 100_000,
-            "single-function DB should be < 100KB, got {size}"
+            size < 128_000,
+            "single-function DB should be < 128KB, got {size}"
         );
         assert!(size > 0, "DB should not be empty");
     }

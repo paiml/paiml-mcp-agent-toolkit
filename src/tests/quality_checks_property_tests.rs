@@ -425,24 +425,23 @@ mod unit_tests {
         let rt = Runtime::new().unwrap();
         let temp_dir = TempDir::new().unwrap();
 
-        // Create a test file with high complexity content
-        // NOTE: inline code kept simple to avoid false-positive complexity gate on THIS file
-        let test_file = create_test_file(
-            temp_dir.path(),
-            "test.rs",
-            "fn f(a: i32) -> i32 { match a { 0 => 1, 1 => 2, 2 => 3, 3 => 4, 4 => 5, 5 => 6, 6 => 7, 7 => 8, 8 => 9, 9 => 10, _ => 0 } }",
-        );
+        // Create a test file with complexity exceeding built-in threshold (cyclomatic > 30).
+        // check_complexity() reads thresholds from config service, not the passed parameter.
+        // Use if-else chains (not match arms) since each `if` adds 1 to cyclomatic complexity.
+        let branches: String = (0..35)
+            .map(|i| format!("    if a == {i} {{ return {i}; }}\n"))
+            .collect();
+        let code = format!("fn f(a: i32) -> i32 {{\n{branches}    0\n}}");
+        let _test_file = create_test_file(temp_dir.path(), "test.rs", &code);
 
         rt.block_on(async {
-            // Test complexity check with low threshold to ensure violation detection
-            let complexity_violations = check_complexity(&test_file, 5).await.unwrap();
-            // Should find violations in the complex function
+            let complexity_violations = check_complexity(temp_dir.path(), 5).await.unwrap();
+            // 35 if-branches → cyclomatic ~36 > threshold 30
             assert!(
                 !complexity_violations.is_empty(),
-                "Should detect complexity violations in high-complexity function"
+                "Should detect complexity violations when cyclomatic > 30"
             );
 
-            // Verify violation structure
             for violation in &complexity_violations {
                 assert_eq!(violation.check_type, "complexity");
                 assert!(!violation.message.is_empty());
