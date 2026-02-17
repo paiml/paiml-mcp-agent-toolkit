@@ -564,20 +564,6 @@ async fn analyze_file_by_toolchain_persistent(
             }
         }
 
-        // Ruby files (tree-sitter) - TODO: implement analyze_ruby_file()
-        // #[cfg(feature = "ruby-ast")]
-        // "rb" => {
-        //     use crate::services::languages::ruby;
-        //     ruby::analyze_ruby_file(path).await.ok()
-        // }
-
-        // Ruby files (ruchy parser - alternative) - TODO: implement analyze_ruby_file()
-        // #[cfg(all(feature = "ruchy-ast", not(feature = "ruby-ast")))]
-        // "rb" => {
-        //     use crate::services::languages::ruchy;
-        //     ruchy::analyze_ruby_file(path).await.ok()
-        // }
-
         // Swift files
         #[cfg(feature = "swift-ast")]
         "swift" => {
@@ -594,49 +580,7 @@ async fn analyze_file_by_toolchain_persistent(
             }
         }
 
-        // Erlang files - TODO: implement analyze_erlang_file()
-        // #[cfg(feature = "erlang-ast")]
-        // "erl" | "hrl" => {
-        //     use crate::services::languages::erlang;
-        //     erlang::analyze_erlang_file(path).await.ok()
-        // }
-
-        // Elixir files - TODO: implement analyze_elixir_file()
-        // #[cfg(feature = "elixir-ast")]
-        // "ex" | "exs" => {
-        //     use crate::services::languages::elixir;
-        //     elixir::analyze_elixir_file(path).await.ok()
-        // }
-
-        // Haskell files - TODO: implement analyze_haskell_file()
-        // #[cfg(feature = "haskell-ast")]
-        // "hs" | "lhs" => {
-        //     use crate::services::languages::haskell;
-        //     haskell::analyze_haskell_file(path).await.ok()
-        // }
-
-        // OCaml files - TODO: implement analyze_ocaml_file()
-        // #[cfg(feature = "ocaml-ast")]
-        // "ml" | "mli" => {
-        //     use crate::services::languages::ocaml;
-        //     ocaml::analyze_ocaml_file(path).await.ok()
-        // }
-
-        // Shell script files - TODO: implement analyze_shell_file()
-        // #[cfg(feature = "shell-ast")]
-        // "sh" | "bash" | "zsh" => {
-        //     use crate::services::languages::shell;
-        //     shell::analyze_shell_file(path).await.ok()
-        // }
-
-        // WebAssembly files - TODO: implement analyze_wasm_file()
-        // #[cfg(feature = "wasm-ast")]
-        // "wat" | "wasm" => {
-        //     use crate::services::languages::wasm;
-        //     wasm::analyze_wasm_file(path).await.ok()
-        // }
-
-        // Unsupported extension
+        // Unsupported extension (Ruby, Erlang, Elixir, Haskell, OCaml, Shell, WASM pending)
         _ => None,
     }
 }
