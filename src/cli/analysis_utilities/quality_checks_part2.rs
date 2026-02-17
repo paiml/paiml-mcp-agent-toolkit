@@ -355,7 +355,8 @@ async fn check_provability(
 ) -> Result<Vec<QualityViolation>> {
     let mut violations = Vec::new();
 
-    let current_provability = calculate_provability_score(project_path).await?;
+    let (current_provability, details) =
+        calculate_provability_with_details(project_path).await?;
     if current_provability < min_provability {
         violations.push(QualityViolation {
             check_type: "provability".to_string(),
@@ -365,7 +366,7 @@ async fn check_provability(
             ),
             file: project_path.to_string_lossy().to_string(),
             line: None,
-            details: None,
+            details: Some(details),
         });
     }
 
@@ -445,6 +446,75 @@ pub async fn calculate_provability_score(project_path: &Path) -> Result<f64> {
         let total_score: f64 = summaries.iter().map(|s| s.provability_score).sum();
         Ok(total_score / summaries.len() as f64)
     }
+}
+
+/// Calculate provability score with detailed breakdown for explainability (#229).
+async fn calculate_provability_with_details(
+    project_path: &Path,
+) -> Result<(f64, ViolationDetails)> {
+    use crate::services::lightweight_provability_analyzer::LightweightProvabilityAnalyzer;
+
+    let analyzer = LightweightProvabilityAnalyzer::new();
+    let sample_functions = collect_project_functions(project_path, 50);
+
+    if sample_functions.is_empty() {
+        return Ok((0.85, ViolationDetails {
+            affected_files: vec![],
+            example_code: None,
+            fix_suggestion: Some("No functions found to analyze".into()),
+            score_factors: vec!["default_score: 0.85 (no functions sampled)".into()],
+        }));
+    }
+
+    let summaries = analyzer.analyze_incrementally(&sample_functions).await;
+    if summaries.is_empty() {
+        return Ok((0.85, ViolationDetails {
+            affected_files: vec![],
+            example_code: None,
+            fix_suggestion: Some("Analyzer returned no results".into()),
+            score_factors: vec!["default_score: 0.85 (no analysis results)".into()],
+        }));
+    }
+
+    let total: f64 = summaries.iter().map(|s| s.provability_score).sum();
+    let avg = total / summaries.len() as f64;
+
+    // Find lowest-scoring functions for explainability
+    let mut scored: Vec<_> = sample_functions.iter().zip(summaries.iter()).collect();
+    scored.sort_by(|a, b| a.1.provability_score.partial_cmp(&b.1.provability_score).unwrap());
+
+    let worst_files: Vec<String> = scored.iter()
+        .take(5)
+        .map(|(f, s)| format!("{}:{} ({:.0}%)", f.file_path, f.function_name, s.provability_score * 100.0))
+        .collect();
+
+    // Aggregate property type counts across all summaries
+    let mut property_counts: std::collections::BTreeMap<String, usize> = std::collections::BTreeMap::new();
+    for s in &summaries {
+        for prop in &s.verified_properties {
+            *property_counts.entry(format!("{:?}", prop.property_type)).or_default() += 1;
+        }
+    }
+
+    let score_factors: Vec<String> = std::iter::once(
+        format!("functions_sampled: {}", summaries.len()),
+    )
+    .chain(std::iter::once(format!("average_score: {avg:.2}")))
+    .chain(property_counts.iter().map(|(k, v)| format!("verified_{}: {}/{}", k.to_lowercase(), v, summaries.len())))
+    .collect();
+
+    let fix_suggestion = if avg < 0.5 {
+        "Reduce unsafe blocks, minimize FFI calls, extract pure functions, and lower cyclomatic complexity"
+    } else {
+        "Focus on functions with lowest scores: reduce mutation, add type guards, extract pure helpers"
+    };
+
+    Ok((avg, ViolationDetails {
+        affected_files: worst_files,
+        example_code: None,
+        fix_suggestion: Some(fix_suggestion.into()),
+        score_factors,
+    }))
 }
 
 /// Scan project source files and extract up to `max_count` function declarations
