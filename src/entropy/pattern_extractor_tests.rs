@@ -40,17 +40,24 @@ fn test_pattern_collection() {
 fn test_extract_error_handling_patterns() {
     let extractor = PatternExtractor::new(EntropyConfig::default());
     let file_path = PathBuf::from("test.rs");
+    // Need ≥3 structurally identical Result handling patterns
     let content = r#"
-        fn foo() -> Result<(), Error> {
+        fn foo() {
 match bar() -> Result<i32, Error> {
 Ok(x) => Ok(x),
 Err(e) => Err(e),
 }
         }
         fn baz() {
-match qux() -> Result<String, Error> {
-Ok(s) => println!("{}", s),
-Err(_) => (),
+match qux() -> Result<i32, Error> {
+Ok(x) => Ok(x),
+Err(e) => Err(e),
+}
+        }
+        fn quux() {
+match waldo() -> Result<i32, Error> {
+Ok(x) => Ok(x),
+Err(e) => Err(e),
 }
         }
     "#;
@@ -62,7 +69,7 @@ Err(_) => (),
 
     assert!(
         !collection.patterns.is_empty(),
-        "Should extract error handling patterns with >1 Result matches"
+        "Should extract error handling patterns with >=3 structurally identical Result matches"
     );
 }
 
@@ -70,11 +77,9 @@ Err(_) => (),
 fn test_extract_control_flow_patterns() {
     let extractor = PatternExtractor::new(EntropyConfig::default());
     let file_path = PathBuf::from("test.rs");
-    // Build content with } else if at line starts (regex requires ^\s*}\s*else\s+if)
+    // Build content with ≥3 structurally identical } else if patterns
     let mut content = String::from("fn foo(x: i32) {\n  if x > 10 {\n");
-    content.push_str("  } else if x > 5 {\n  } else if x > 0 {\n  }\n}\n");
-    content.push_str("fn bar(y: i32) {\n  if y < 0 {\n");
-    content.push_str("  } else if y == 0 {\n  } else if y < 10 {\n  }\n}\n");
+    content.push_str("  } else if x > 5 {\n  } else if x > 5 {\n  } else if x > 5 {\n  }\n}\n");
 
     let mut collection = PatternCollection::new();
     extractor
@@ -83,7 +88,7 @@ fn test_extract_control_flow_patterns() {
 
     assert!(
         !collection.patterns.is_empty(),
-        "Should extract control flow patterns with >2 else-if chains"
+        "Should extract control flow patterns with >=3 structurally identical else-if chains"
     );
 }
 
@@ -91,22 +96,22 @@ fn test_extract_control_flow_patterns() {
 fn test_extract_data_transformation_patterns() {
     let extractor = PatternExtractor::new(EntropyConfig::default());
     let file_path = PathBuf::from("test.rs");
-    // Need >8 iterator combinator calls to trigger (raised threshold for idiomatic Rust)
+    // Need >8 iterator combinator calls, with ≥3 structurally identical
     let content = r#"
-        fn process(items: Vec<i32>) -> Vec<String> {
-            items.iter().filter(|&x| *x > 0).map(|x| x.to_string()).collect()
+        fn process1() {
+            items.iter().filter(|x| x > 0).map(|x| x + 1).collect()
         }
-        fn another() {
-            data.map(|x| x * 2).filter(|x| x < 100).collect()
+        fn process2() {
+            items.iter().filter(|x| x > 0).map(|x| x + 1).collect()
         }
-        fn third() {
-            results.iter().filter_map(|x| x.ok()).map(|v| v + 1).collect()
+        fn process3() {
+            items.iter().filter(|x| x > 0).map(|x| x + 1).collect()
         }
-        fn fourth() {
-            source.iter().flat_map(|s| s.chunks(4)).filter(|c| c.len() == 4).collect()
+        fn process4() {
+            items.iter().filter(|x| x > 0).map(|x| x + 1).collect()
         }
-        fn fifth() {
-            entries.iter().map(|e| e.name()).filter(|n| !n.is_empty()).collect()
+        fn process5() {
+            items.iter().filter(|x| x > 0).map(|x| x + 1).collect()
         }
     "#;
 
@@ -117,7 +122,7 @@ fn test_extract_data_transformation_patterns() {
 
     assert!(
         !collection.patterns.is_empty(),
-        "Should extract data transformation patterns with >8 combinator calls"
+        "Should extract data transformation patterns with >=3 structurally identical combinator calls"
     );
 }
 
@@ -125,13 +130,13 @@ fn test_extract_data_transformation_patterns() {
 fn test_extract_api_call_patterns() {
     let extractor = PatternExtractor::new(EntropyConfig::default());
     let file_path = PathBuf::from("test.rs");
-    // Need >3 HTTP client calls to trigger (raised threshold, .get() removed from pattern)
+    // Need >3 HTTP calls, with ≥3 structurally identical
     let content = r#"
         async fn fetch_data() {
-            let r1 = client.post("/endpoint1", body1).await;
-            let r2 = http.post("/endpoint2", body2).await;
-            let r3 = client.put("/endpoint3", body3).await;
-            let r4 = client.delete("/endpoint4").await;
+            let r1 = client.post("/endpoint", body).await;
+            let r2 = client.post("/endpoint", body).await;
+            let r3 = client.post("/endpoint", body).await;
+            let r4 = client.post("/endpoint", body).await;
         }
     "#;
 
@@ -142,7 +147,7 @@ fn test_extract_api_call_patterns() {
 
     assert!(
         !collection.patterns.is_empty(),
-        "Should extract API call patterns with >3 HTTP calls"
+        "Should extract API call patterns with >=3 structurally identical HTTP calls"
     );
 }
 
@@ -150,15 +155,15 @@ fn test_extract_api_call_patterns() {
 fn test_extract_resource_management_patterns() {
     let extractor = PatternExtractor::new(EntropyConfig::default());
     let file_path = PathBuf::from("test.rs");
-    // Need >5 resource management calls to trigger (raised threshold for idiomatic Rust)
+    // Need >5 resource management calls, with ≥3 structurally identical
     let content = r#"
         fn foo() {
-            let lock1 = mutex1.lock();
-            let lock2 = mutex2.lock();
-            let lock3 = mutex3.lock();
-            let file1 = resource1.open();
-            let file2 = resource2.open();
-            file2.close();
+            let guard = mutex.lock();
+            let guard = mutex.lock();
+            let guard = mutex.lock();
+            let handle = resource.open();
+            let handle = resource.open();
+            let handle = resource.open();
         }
     "#;
 
@@ -169,7 +174,7 @@ fn test_extract_resource_management_patterns() {
 
     assert!(
         !collection.patterns.is_empty(),
-        "Should extract resource management patterns with >5 lock/open/close calls"
+        "Should extract resource management patterns with >=3 structurally identical calls"
     );
 }
 
@@ -177,26 +182,25 @@ fn test_extract_resource_management_patterns() {
 fn test_extract_data_validation_patterns() {
     let extractor = PatternExtractor::new(EntropyConfig::default());
     let file_path = PathBuf::from("test.rs");
-    // Need >5 compound validation checks to trigger (raised threshold)
-    // New regex requires compound conditions (&&/|| or .len() comparison)
+    // Need >5 compound validation checks, with ≥3 structurally identical
     let content = r#"
         fn validate(input: &str) -> bool {
             if input.is_empty() && input.len() > 0 {
                 return false;
             }
-            if input.len() > 100 && input.contains("bad") {
+            if input.is_empty() && input.len() > 0 {
                 return false;
             }
-            if input.starts_with("test") || input.ends_with("end") {
+            if input.is_empty() && input.len() > 0 {
                 return false;
             }
-            if data.is_empty() && data.len() < 10 {
+            if data.is_empty() && data.len() > 0 {
                 return false;
             }
-            if name.contains("x") && name.len() > 50 {
+            if name.is_empty() && name.len() > 0 {
                 return false;
             }
-            if buf.is_empty() || buf.len() > 1024 {
+            if buf.is_empty() && buf.len() > 0 {
                 return false;
             }
             true
@@ -208,10 +212,10 @@ fn test_extract_data_validation_patterns() {
         .extract_data_validation_patterns(&file_path, content, &mut collection)
         .expect("Pattern extraction should succeed");
 
-    // Should detect pattern when >5 compound validation checks found
+    // Should detect pattern when ≥3 structurally identical compound checks found
     assert!(
         !collection.patterns.is_empty(),
-        "Should extract data validation patterns with >5 compound checks"
+        "Should extract data validation patterns with >=3 structurally identical compound checks"
     );
 }
 
@@ -824,9 +828,10 @@ fn test_calculate_pattern_match_variation_score() {
 fn test_extract_file_patterns_rust() {
     let extractor = PatternExtractor::new(EntropyConfig::default());
     let file_path = PathBuf::from("test.rs");
-    // Generate enough compound validation patterns to exceed threshold
+    // Generate structurally identical compound validation patterns
+    // All lines are identical → same structural hash → grouped together
     let content = (0..8)
-        .map(|i| format!("if input_{i}.is_empty() && input_{i}.len() > 0 {{ return false; }}"))
+        .map(|_| "if input.is_empty() && input.len() > 0 { return false; }".to_string())
         .collect::<Vec<_>>()
         .join("\n");
 
@@ -835,7 +840,7 @@ fn test_extract_file_patterns_rust() {
         .extract_file_patterns(&file_path, &content, &mut collection)
         .expect("Should extract patterns");
 
-    // Should extract compound validation patterns (8 > threshold of 5)
+    // Should extract compound validation patterns (8 > threshold of 5, ≥3 identical)
     assert!(!collection.patterns.is_empty());
 }
 
@@ -910,25 +915,25 @@ fn test_extract_file_patterns_no_extension() {
 fn test_extract_patterns_with_unicode() {
     let extractor = PatternExtractor::new(EntropyConfig::default());
     let file_path = PathBuf::from("test.rs");
-    // Need >5 compound validation checks with unicode content
+    // Need >5 compound validation checks with ≥3 structurally identical (unicode content)
     let content = r#"
         // 日本語コメント
         if data.contains("こんにちは") && data.len() > 0 {
             return true;
         }
-        if data.contains("世界") || data.is_empty() {
+        if data.contains("世界") && data.len() > 0 {
             return true;
         }
-        if data.contains("テスト") && data.len() < 100 {
+        if data.contains("テスト") && data.len() > 0 {
             return true;
         }
-        if input.starts_with("日本") && input.len() > 5 {
+        if input.contains("日本") && input.len() > 0 {
             return true;
         }
-        if buf.contains("UTF-8") || buf.is_empty() {
+        if buf.contains("UTF-8") && buf.len() > 0 {
             return true;
         }
-        if name.ends_with("san") && name.len() < 50 {
+        if name.contains("san") && name.len() > 0 {
             return true;
         }
     "#;
@@ -959,13 +964,10 @@ fn test_limited_pattern_extraction() {
     let extractor = PatternExtractor::new(EntropyConfig::default());
     let file_path = PathBuf::from("test.rs");
 
-    // Create content with more than 10 compound matches to test limiting
+    // Create content with structurally identical compound matches to test limiting
     let mut content = String::new();
-    for i in 0..20 {
-        content.push_str(&format!(
-            "if input_{}.is_empty() && input_{}.len() > 0 {{ }}\n",
-            i, i
-        ));
+    for _ in 0..20 {
+        content.push_str("if input.is_empty() && input.len() > 0 { }\n");
     }
 
     let mut collection = PatternCollection::new();
@@ -973,8 +975,8 @@ fn test_limited_pattern_extraction() {
         .extract_data_validation_patterns(&file_path, &content, &mut collection)
         .expect("Should limit patterns");
 
-    // Should have extracted patterns (limited to 11 locations - breaks at i >= 10)
+    // Should have extracted patterns (limited to 10 locations by group_by_structural_hash)
     for pattern in collection.patterns.values() {
-        assert!(pattern.locations.len() <= 11);
+        assert!(pattern.locations.len() <= 10);
     }
 }

@@ -274,6 +274,93 @@ impl PurityLattice {
     }
 }
 
+/// Extracted source pattern flags to keep cognitive complexity low.
+struct SourceFlags {
+    has_statements: bool,
+    has_unsafe: bool,
+    has_unwrap: bool,
+    has_mut_ref: bool,
+    has_raw_ptr: bool,
+    has_io: bool,
+    has_index: bool,
+    has_loop: bool,
+    is_test: bool,
+    is_rust: bool,
+}
+
+impl SourceFlags {
+    fn extract(source: &str, func_id: &FunctionId) -> Self {
+        let body = source.split('{').nth(1).unwrap_or("");
+        let has_statements = body.contains(';')
+            || body.contains("let ")
+            || body.contains("return ")
+            || body.contains("if ")
+            || body.contains("match ")
+            || body.contains("for ");
+        let trimmed = source.trim();
+
+        Self {
+            has_statements: !trimmed.is_empty() && trimmed.len() >= 5 && has_statements,
+            has_unsafe: source.contains("unsafe "),
+            has_unwrap: source.contains(".unwrap()") || source.contains(".expect("),
+            has_mut_ref: source.contains("&mut "),
+            has_raw_ptr: source.contains("*const ") || source.contains("*mut "),
+            has_io: source.contains("println!")
+                || source.contains("eprintln!")
+                || source.contains("std::fs::")
+                || source.contains("std::io::")
+                || source.contains("tokio::")
+                || source.contains("async fn"),
+            has_index: source.contains('[') && source.contains(']'),
+            has_loop: source.contains("for ") || source.contains("while ") || source.contains("loop "),
+            is_test: func_id.function_name.starts_with("test_")
+                || source.contains("#[test]")
+                || source.contains("#[tokio::test]"),
+            is_rust: func_id.file_path.ends_with(".rs"),
+        }
+    }
+
+    fn infer_nullability(&self) -> NullabilityLattice {
+        if !self.is_rust || self.has_unsafe || self.has_raw_ptr {
+            NullabilityLattice::MaybeNull
+        } else {
+            NullabilityLattice::NotNull
+        }
+    }
+
+    fn infer_bounds(&self) -> IntervalLattice {
+        if self.has_unwrap {
+            IntervalLattice { lower: None, upper: None }
+        } else if self.has_index {
+            IntervalLattice { lower: Some(0), upper: None }
+        } else {
+            IntervalLattice { lower: Some(0), upper: Some(i64::MAX) }
+        }
+    }
+
+    fn infer_aliasing(&self) -> AliasLattice {
+        if self.has_raw_ptr || self.has_unsafe || self.has_mut_ref {
+            AliasLattice::MayAlias
+        } else {
+            AliasLattice::NoAlias
+        }
+    }
+
+    fn infer_purity(&self) -> PurityLattice {
+        if !self.has_io && !self.has_mut_ref && !self.has_unsafe && !self.has_loop {
+            return PurityLattice::Pure;
+        }
+        if self.has_io || self.has_unsafe {
+            return PurityLattice::WriteGlobal;
+        }
+        if self.has_mut_ref {
+            PurityLattice::WriteLocal
+        } else {
+            PurityLattice::ReadOnly
+        }
+    }
+}
+
 impl LightweightProvabilityAnalyzer {
     /// Creates a new `LightweightProvabilityAnalyzer`
     ///
@@ -398,11 +485,13 @@ impl LightweightProvabilityAnalyzer {
         let end = (start + 80).min(lines.len());
         // Extract until matching closing brace or limit
         let mut brace_depth = 0i32;
+        let mut seen_opening_brace = false;
         let mut result = String::new();
         for line in &lines[start..end] {
             for ch in line.chars() {
                 if ch == '{' {
                     brace_depth += 1;
+                    seen_opening_brace = true;
                 }
                 if ch == '}' {
                     brace_depth -= 1;
@@ -410,7 +499,7 @@ impl LightweightProvabilityAnalyzer {
             }
             result.push_str(line);
             result.push('\n');
-            if brace_depth <= 0 && result.len() > 10 {
+            if seen_opening_brace && brace_depth <= 0 && result.len() > 10 {
                 break;
             }
         }
@@ -419,112 +508,31 @@ impl LightweightProvabilityAnalyzer {
 
     /// Analyze concrete source patterns to produce differentiated property domains.
     fn analyze_source_patterns(source: &str, func_id: &FunctionId) -> PropertyDomain {
-        // Guard: empty/trivial source or empty function body → insufficient evidence
-        let body = source.split('{').nth(1).unwrap_or("");
-        let has_statements = body.contains(';')
-            || body.contains("let ")
-            || body.contains("return ")
-            || body.contains("if ")
-            || body.contains("match ")
-            || body.contains("for ");
-        if source.trim().is_empty() || source.trim().len() < 5 || !has_statements {
+        let flags = SourceFlags::extract(source, func_id);
+        if !flags.has_statements {
             return PropertyDomain {
                 nullability: NullabilityLattice::MaybeNull,
-                bounds: IntervalLattice {
-                    lower: None,
-                    upper: None,
-                },
+                bounds: IntervalLattice { lower: None, upper: None },
                 aliasing: AliasLattice::MayAlias,
                 purity: PurityLattice::Top,
             };
         }
 
-        let has_unsafe = source.contains("unsafe ");
-        let has_unwrap = source.contains(".unwrap()") || source.contains(".expect(");
-        let has_mut_ref = source.contains("&mut ");
-        let has_raw_ptr = source.contains("*const ") || source.contains("*mut ");
-        let has_io = source.contains("println!")
-            || source.contains("eprintln!")
-            || source.contains("std::fs::")
-            || source.contains("std::io::")
-            || source.contains("tokio::")
-            || source.contains("async fn");
-        let has_index = source.contains('[') && source.contains(']');
-        let is_test = func_id.function_name.starts_with("test_")
-            || source.contains("#[test]")
-            || source.contains("#[tokio::test]");
-        let is_rust = func_id.file_path.ends_with(".rs");
-        let has_loop =
-            source.contains("for ") || source.contains("while ") || source.contains("loop ");
+        let purity = flags.infer_purity();
 
-        // Nullability: Rust's type system guarantees non-null unless unsafe
-        let nullability = if !is_rust {
-            NullabilityLattice::MaybeNull
-        } else if has_unsafe || has_raw_ptr {
-            NullabilityLattice::MaybeNull
-        } else {
-            NullabilityLattice::NotNull
-        };
-
-        // Bounds: proven if no indexing/unwrap, partial if only indexing
-        let bounds = if !has_unwrap && !has_index {
-            IntervalLattice {
-                lower: Some(0),
-                upper: Some(i64::MAX),
-            }
-        } else if has_unwrap {
-            IntervalLattice {
-                lower: None,
-                upper: None,
-            }
-        } else {
-            IntervalLattice {
-                lower: Some(0),
-                upper: None,
-            }
-        };
-
-        // Aliasing: safe Rust with no &mut → no aliasing concerns
-        let aliasing = if has_raw_ptr || has_unsafe {
-            AliasLattice::MayAlias
-        } else if has_mut_ref {
-            AliasLattice::MayAlias
-        } else {
-            AliasLattice::NoAlias
-        };
-
-        // Purity: no I/O and no mutation → pure
-        let purity = if !has_io && !has_mut_ref && !has_unsafe && !has_loop {
-            PurityLattice::Pure
-        } else if !has_io && !has_unsafe {
-            if has_mut_ref {
-                PurityLattice::WriteLocal
-            } else {
-                PurityLattice::ReadOnly
-            }
-        } else if has_io && !has_unsafe {
-            PurityLattice::WriteGlobal
-        } else {
-            PurityLattice::WriteGlobal
-        };
-
-        // Tests get a boost — they're self-verifying
-        if is_test {
+        if flags.is_test {
             return PropertyDomain {
                 nullability: NullabilityLattice::NotNull,
-                bounds: IntervalLattice {
-                    lower: Some(0),
-                    upper: Some(i64::MAX),
-                },
+                bounds: IntervalLattice { lower: Some(0), upper: Some(i64::MAX) },
                 aliasing: AliasLattice::NoAlias,
                 purity,
             };
         }
 
         PropertyDomain {
-            nullability,
-            bounds,
-            aliasing,
+            nullability: flags.infer_nullability(),
+            bounds: flags.infer_bounds(),
+            aliasing: flags.infer_aliasing(),
             purity,
         }
     }

@@ -284,49 +284,16 @@ impl PatternExtractor {
         let matches: Vec<_> = result_pattern.find_iter(content).collect();
 
         if matches.len() > 1 {
-            let pattern_hash =
-                self.hash_pattern(&format!("result_handling_{}", file_path.display()));
-            let mut locations = Vec::new();
-
-            for (i, m) in matches.iter().enumerate() {
-                let line_num = content.get(..m.start()).unwrap_or_default().lines().count() + 1;
-                locations.push(Location {
-                    file: file_path.to_owned(),
-                    line: line_num,
-                    column: 1,
-                });
-
-                // Limit to prevent excessive processing
-                if i >= 10 {
-                    break;
-                }
-            }
-
-            let pattern = AstPattern {
-                pattern_type: PatternType::ErrorHandling,
-                pattern_hash,
-                frequency: matches.len().min(10),
-                locations,
-                variation_score: self.calculate_variation_score(&matches, content),
-                example_code: matches
-                    .first()
-                    .map(|m| {
-                        content
-                            .get(m.start()..m.end().min(m.start() + 100))
-                            .unwrap_or_default()
-                            .to_string()
-                    })
-                    .unwrap_or_default(),
-                estimated_loc: matches.len() * 5, // Estimate 5 lines per match
-            };
-
-            collection.add_pattern(pattern);
+            self.group_by_structural_hash(
+                &matches, content, file_path,
+                PatternType::ErrorHandling, 3, 5, collection,
+            );
         }
 
         Ok(())
     }
 
-    /// Extract data validation patterns  
+    /// Extract data validation patterns
     fn extract_data_validation_patterns(
         &self,
         file_path: &Path,
@@ -346,41 +313,10 @@ impl PatternExtractor {
 
         // Raised threshold: standalone validation calls are idiomatic, not duplication
         if matches.len() > 5 {
-            let pattern_hash = self.hash_pattern(&format!("validation_{}", file_path.display()));
-            let mut locations = Vec::new();
-
-            for (i, m) in matches.iter().enumerate() {
-                let line_num = content.get(..m.start()).unwrap_or_default().lines().count() + 1;
-                locations.push(Location {
-                    file: file_path.to_owned(),
-                    line: line_num,
-                    column: 1,
-                });
-
-                if i >= 10 {
-                    break;
-                }
-            }
-
-            let pattern = AstPattern {
-                pattern_type: PatternType::DataValidation,
-                pattern_hash,
-                frequency: matches.len().min(10),
-                locations,
-                variation_score: self.calculate_variation_score(&matches, content),
-                example_code: matches
-                    .first()
-                    .map(|m| {
-                        content
-                            .get(m.start()..m.end().min(m.start() + 80))
-                            .unwrap_or_default()
-                            .to_string()
-                    })
-                    .unwrap_or_default(),
-                estimated_loc: matches.len() * 3,
-            };
-
-            collection.add_pattern(pattern);
+            self.group_by_structural_hash(
+                &matches, content, file_path,
+                PatternType::DataValidation, 3, 3, collection,
+            );
         }
 
         Ok(())
@@ -404,41 +340,10 @@ impl PatternExtractor {
 
         // Raised threshold: individual .lock()/.open() calls are standard practice
         if matches.len() > 5 {
-            let pattern_hash = self.hash_pattern(&format!("resource_{}", file_path.display()));
-            let mut locations = Vec::new();
-
-            for (i, m) in matches.iter().enumerate() {
-                let line_num = content.get(..m.start()).unwrap_or_default().lines().count() + 1;
-                locations.push(Location {
-                    file: file_path.to_owned(),
-                    line: line_num,
-                    column: 1,
-                });
-
-                if i >= 10 {
-                    break;
-                }
-            }
-
-            let pattern = AstPattern {
-                pattern_type: PatternType::ResourceManagement,
-                pattern_hash,
-                frequency: matches.len().min(10),
-                locations,
-                variation_score: self.calculate_variation_score(&matches, content),
-                example_code: matches
-                    .first()
-                    .map(|m| {
-                        content
-                            .get(m.start()..m.end().min(m.start() + 60))
-                            .unwrap_or_default()
-                            .to_string()
-                    })
-                    .unwrap_or_default(),
-                estimated_loc: matches.len() * 4,
-            };
-
-            collection.add_pattern(pattern);
+            self.group_by_structural_hash(
+                &matches, content, file_path,
+                PatternType::ResourceManagement, 3, 4, collection,
+            );
         }
 
         Ok(())
@@ -459,33 +364,10 @@ impl PatternExtractor {
         let matches: Vec<_> = if_else_pattern.find_iter(content).collect();
 
         if matches.len() > 2 {
-            let pattern_hash = self.hash_pattern(&format!("control_flow_{}", file_path.display()));
-            let mut locations = Vec::new();
-
-            for (i, m) in matches.iter().enumerate() {
-                let line_num = content.get(..m.start()).unwrap_or_default().lines().count() + 1;
-                locations.push(Location {
-                    file: file_path.to_owned(),
-                    line: line_num,
-                    column: 1,
-                });
-
-                if i >= 8 {
-                    break;
-                }
-            }
-
-            let pattern = AstPattern {
-                pattern_type: PatternType::ControlFlow,
-                pattern_hash,
-                frequency: matches.len().min(8),
-                locations,
-                variation_score: self.calculate_variation_score(&matches, content),
-                example_code: "if-else-if chains".to_string(),
-                estimated_loc: matches.len() * 6,
-            };
-
-            collection.add_pattern(pattern);
+            self.group_by_structural_hash(
+                &matches, content, file_path,
+                PatternType::ControlFlow, 3, 6, collection,
+            );
         }
 
         Ok(())
@@ -509,33 +391,10 @@ impl PatternExtractor {
 
         // Raised threshold: individual iterator combinators are idiomatic Rust
         if matches.len() > 8 {
-            let pattern_hash = self.hash_pattern(&format!("transform_{}", file_path.display()));
-            let mut locations = Vec::new();
-
-            for (i, m) in matches.iter().enumerate() {
-                let line_num = content.get(..m.start()).unwrap_or_default().lines().count() + 1;
-                locations.push(Location {
-                    file: file_path.to_owned(),
-                    line: line_num,
-                    column: 1,
-                });
-
-                if i >= 10 {
-                    break;
-                }
-            }
-
-            let pattern = AstPattern {
-                pattern_type: PatternType::DataTransformation,
-                pattern_hash,
-                frequency: matches.len().min(10),
-                locations,
-                variation_score: self.calculate_variation_score(&matches, content),
-                example_code: "iterator transformations".to_string(),
-                estimated_loc: matches.len() * 2,
-            };
-
-            collection.add_pattern(pattern);
+            self.group_by_structural_hash(
+                &matches, content, file_path,
+                PatternType::DataTransformation, 3, 2, collection,
+            );
         }
 
         Ok(())
@@ -559,41 +418,10 @@ impl PatternExtractor {
 
         // Raised threshold: isolated HTTP calls are not duplication
         if matches.len() > 3 {
-            let pattern_hash = self.hash_pattern(&format!("api_call_{}", file_path.display()));
-            let mut locations = Vec::new();
-
-            for (i, m) in matches.iter().enumerate() {
-                let line_num = content.get(..m.start()).unwrap_or_default().lines().count() + 1;
-                locations.push(Location {
-                    file: file_path.to_owned(),
-                    line: line_num,
-                    column: 1,
-                });
-
-                if i >= 10 {
-                    break;
-                }
-            }
-
-            let pattern = AstPattern {
-                pattern_type: PatternType::ApiCall,
-                pattern_hash,
-                frequency: matches.len().min(10),
-                locations,
-                variation_score: self.calculate_variation_score(&matches, content),
-                example_code: matches
-                    .first()
-                    .map(|m| {
-                        content
-                            .get(m.start()..m.end().min(m.start() + 50))
-                            .unwrap_or_default()
-                            .to_string()
-                    })
-                    .unwrap_or_default(),
-                estimated_loc: matches.len() * 3,
-            };
-
-            collection.add_pattern(pattern);
+            self.group_by_structural_hash(
+                &matches, content, file_path,
+                PatternType::ApiCall, 3, 3, collection,
+            );
         }
 
         Ok(())
@@ -678,13 +506,108 @@ impl PatternExtractor {
 
     /// Create a hash for a pattern to identify similar ones
     fn hash_pattern(&self, ast_data: &str) -> String {
-        // Simplified hashing - real implementation would normalize AST first
         use std::collections::hash_map::DefaultHasher;
         use std::hash::{Hash, Hasher};
 
         let mut hasher = DefaultHasher::new();
         ast_data.hash(&mut hasher);
         format!("{:x}", hasher.finish())
+    }
+
+    /// Normalize a code snippet for structural comparison.
+    /// Strips variable names, normalizes whitespace, replaces identifiers with
+    /// placeholders so that structurally identical code produces the same hash
+    /// regardless of variable naming.
+    fn normalize_code_snippet(snippet: &str) -> String {
+        use regex::Regex;
+
+        let trimmed = snippet.trim();
+        // Replace string literals with placeholder
+        let re_string = Regex::new(r#""[^"]*""#).expect("valid regex");
+        let normalized = re_string.replace_all(trimmed, "\"STR\"");
+        // Replace numeric literals with placeholder
+        let re_num = Regex::new(r"\b\d+\b").expect("valid regex");
+        let normalized = re_num.replace_all(&normalized, "N");
+        // Replace identifiers with placeholder, preserving keywords.
+        // Split on word boundaries, check each token against keyword set.
+        let re_ident = Regex::new(r"\b[a-zA-Z_]\w*\b").expect("valid regex");
+        let keywords: std::collections::HashSet<&str> = [
+            "if", "else", "match", "for", "while", "let", "mut", "fn", "return",
+            "true", "false", "self", "Ok", "Err", "Some", "None", "Result",
+            "Option", "Vec", "String", "impl", "pub", "struct", "enum", "async",
+            "await", "unsafe", "use", "mod", "const", "static", "type", "where",
+            "trait", "loop", "break", "continue", "ref", "in", "as", "crate",
+            "super", "dyn", "move", "extern", "STR", "N",
+        ].into_iter().collect();
+        let normalized = re_ident.replace_all(&normalized, |caps: &regex::Captures| {
+            let word = caps.get(0).expect("group 0").as_str();
+            if keywords.contains(word) {
+                word.to_string()
+            } else {
+                "IDENT".to_string()
+            }
+        });
+        // Collapse whitespace
+        let re_ws = Regex::new(r"\s+").expect("valid regex");
+        re_ws.replace_all(&normalized, " ").to_string()
+    }
+
+    /// Extract the current line containing a regex match for structural comparison.
+    fn extract_match_context(content: &str, m: &regex::Match) -> String {
+        let line_start = content[..m.start()].rfind('\n').map_or(0, |p| p + 1);
+        let line_end = content[m.end()..].find('\n').map_or(content.len(), |p| m.end() + p);
+        content.get(line_start..line_end).unwrap_or_default().to_string()
+    }
+
+    /// Group matches by structural hash and produce AstPatterns for groups with ≥ min_group_size
+    /// structurally identical matches.
+    fn group_by_structural_hash(
+        &self,
+        matches: &[regex::Match],
+        content: &str,
+        file_path: &Path,
+        pattern_type: PatternType,
+        min_group_size: usize,
+        loc_per_match: usize,
+        collection: &mut PatternCollection,
+    ) {
+        let mut groups: HashMap<String, Vec<(usize, String)>> = HashMap::new();
+
+        for m in matches.iter().take(20) {
+            let context = Self::extract_match_context(content, m);
+            let normalized = Self::normalize_code_snippet(&context);
+            let structural_hash = self.hash_pattern(&normalized);
+            let line_num = content.get(..m.start()).unwrap_or_default().lines().count() + 1;
+            groups.entry(structural_hash).or_default().push((line_num, context));
+        }
+
+        for (hash, group) in &groups {
+            if group.len() >= min_group_size {
+                let locations: Vec<Location> = group.iter().take(10).map(|(line, _)| {
+                    Location {
+                        file: file_path.to_owned(),
+                        line: *line,
+                        column: 1,
+                    }
+                }).collect();
+
+                let example_code = group.first()
+                    .map(|(_, ctx)| ctx.chars().take(100).collect::<String>())
+                    .unwrap_or_default();
+
+                let pattern = AstPattern {
+                    pattern_type,
+                    pattern_hash: hash.clone(),
+                    frequency: group.len().min(10),
+                    locations,
+                    variation_score: 0.0, // Structurally identical = no variation
+                    example_code,
+                    estimated_loc: group.len() * loc_per_match,
+                };
+
+                collection.add_pattern(pattern);
+            }
+        }
     }
 
     // Ruchy-specific pattern extraction methods
