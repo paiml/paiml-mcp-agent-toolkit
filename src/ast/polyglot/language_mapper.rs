@@ -308,8 +308,7 @@ impl LanguageMapper for KotlinMapper {
     }
 
     async fn map_source(&self, source: &str, path: &Path) -> Result<Vec<UnifiedNode>> {
-        // For now, use the base mapper implementation
-        // TODO: Add Kotlin-specific analysis when kotlin-ast feature is enabled
+        // Kotlin-specific analysis deferred until kotlin-ast feature is available
         self.base.map_source(source, path).await
     }
 

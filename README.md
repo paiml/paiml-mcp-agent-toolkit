@@ -13,7 +13,7 @@
 [![Rust](https://img.shields.io/badge/rust-1.83+-orange.svg)](https://www.rust-lang.org)
 [![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.PMAT-blue)](https://zenodo.org/records/pmat)
 
-[Getting Started](#getting-started) | [Features](#features) | [Examples](#examples) | [Documentation](https://paiml.github.io/pmat-book/)
+[Installation](#installation) | [Usage](#usage) | [Features](#features) | [Examples](#examples) | [Documentation](https://paiml.github.io/pmat-book/)
 
 </div>
 
@@ -46,9 +46,7 @@ Part of the [PAIML Stack](https://github.com/paiml), following Toyota Way qualit
 
 Every result includes TDG grade, Big-O complexity, git churn, code clones, pattern diversity, fault annotations, call graph, and syntax-highlighted source.
 
-## Getting Started
-
-Add to your system:
+## Installation
 
 ```bash
 # Install from crates.io
@@ -59,7 +57,7 @@ git clone https://github.com/paiml/paiml-mcp-agent-toolkit
 cd paiml-mcp-agent-toolkit && cargo install --path .
 ```
 
-### Basic Usage
+## Usage
 
 ```bash
 # Generate AI-ready context
@@ -76,11 +74,7 @@ pmat repo-score .
 
 # Run mutation testing
 pmat mutate --target src/
-```
 
-### MCP Server Mode
-
-```bash
 # Start MCP server for Claude Code, Cline, etc.
 pmat mcp
 ```
@@ -392,6 +386,10 @@ PMAT is built on the PAIML Sovereign Stack - pure-Rust, SIMD-accelerated librari
 - [MCP Tools](docs/mcp/TOOLS.md) - MCP integration guide
 - [Specifications](docs/specifications/) - Technical specs
 - 🤖 [Coursera Hugging Face AI Development Specialization](https://www.coursera.org/specializations/hugging-face-ai-development) - Build Production AI systems with Hugging Face in Pure Rust
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, testing, and pull request guidelines.
 
 ## License
 
