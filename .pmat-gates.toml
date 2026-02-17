@@ -54,6 +54,19 @@ exclude = [
     "src/cli/command_structure.rs",
 ]
 
+[entropy]
+# Entropy analysis configuration (#227)
+enabled = true
+# Minimum pattern diversity score (0.0-1.0). Files below this threshold are flagged.
+min_pattern_diversity = 0.30
+# Max allowed violations before entropy gate fails (null = any violation fails)
+# max_violations = 10
+# Additional paths to exclude from entropy checks
+exclude = [
+    "examples/**",
+    "benches/**",
+]
+
 [dead_code]
 # Library crates have higher "dead code" due to public APIs used by external consumers
 # 30% threshold accounts for public APIs not called internally
