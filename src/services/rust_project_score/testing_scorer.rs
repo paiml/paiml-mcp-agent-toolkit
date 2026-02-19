@@ -867,11 +867,10 @@ pub fn e() {}
         let scorer = TestingScorer::new();
         let recommendations = scorer.recommendations(temp_dir.path());
 
-        // Should recommend all testing areas
+        // Should recommend testing areas (mutation moved to code_quality_scorer)
         assert!(recommendations.iter().any(|r| r.contains("coverage")));
         assert!(recommendations.iter().any(|r| r.contains("integration")));
         assert!(recommendations.iter().any(|r| r.contains("doc test")));
-        assert!(recommendations.iter().any(|r| r.contains("mutation")));
     }
 
     #[test]

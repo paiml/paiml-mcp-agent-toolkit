@@ -100,25 +100,29 @@ impl DocumentationScorer {
         cache: Option<&FileCache>,
     ) -> ScorerResult<()> {
         if let Some(cache) = cache {
-            // Use cache: get all .rs files in directory
             for (_path, content) in cache.get_rust_files_in_dir(dir) {
                 self.analyze_doc_coverage(content, total, documented);
             }
         } else {
-            // Fallback: read from filesystem
-            if let Ok(entries) = std::fs::read_dir(dir) {
-                for entry in entries.flatten() {
-                    let path = entry.path();
+            self.count_documented_items_from_fs(dir, total, documented)?;
+        }
+        Ok(())
+    }
 
-                    if path.is_dir() {
-                        self.count_documented_items(&path, total, documented, None)?;
-                    } else if let Some(ext) = path.extension() {
-                        if ext == "rs" {
-                            if let Ok(content) = std::fs::read_to_string(&path) {
-                                self.analyze_doc_coverage(&content, total, documented);
-                            }
-                        }
-                    }
+    fn count_documented_items_from_fs(
+        &self,
+        dir: &Path,
+        total: &mut usize,
+        documented: &mut usize,
+    ) -> ScorerResult<()> {
+        let Ok(entries) = std::fs::read_dir(dir) else { return Ok(()) };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                self.count_documented_items_from_fs(&path, total, documented)?;
+            } else if path.extension().is_some_and(|ext| ext == "rs") {
+                if let Ok(content) = std::fs::read_to_string(&path) {
+                    self.analyze_doc_coverage(&content, total, documented);
                 }
             }
         }
@@ -236,65 +240,47 @@ impl DocumentationScorer {
     /// **Kaizen Round 4**: Cache-aware - uses FileCache if available for CHANGELOG.md
     /// **Kaizen Round 5**: Also checks workspace root for monorepo structures
     fn score_changelog(&self, project_path: &Path, cache: Option<&FileCache>) -> ScorerResult<f64> {
+        let content = self.read_best_changelog(project_path, cache)?;
+        let Some(content) = content else { return Ok(0.0) };
+        let version_count = count_version_entries(&content);
+        Ok(Self::changelog_version_score(version_count))
+    }
+
+    fn changelog_version_score(version_count: usize) -> f64 {
+        match () {
+            _ if version_count >= 2 => 3.0,
+            _ if version_count >= 1 => 2.0,
+            _ => 1.0,
+        }
+    }
+
+    fn read_best_changelog(&self, project_path: &Path, cache: Option<&FileCache>) -> ScorerResult<Option<String>> {
         let changelog_path = project_path.join("CHANGELOG.md");
+        let ws_changelog = project_path.parent().map(|p| p.join("CHANGELOG.md"));
 
-        // Also check workspace root (parent directory) for monorepo structures
-        let workspace_changelog = project_path.parent().map(|p| p.join("CHANGELOG.md"));
+        let content = self.read_changelog_file(&changelog_path, cache);
+        let ws_content = ws_changelog.as_ref().and_then(|p| self.read_changelog_file(p, None));
 
-        // Find the best CHANGELOG.md to use
-        let (actual_path, content) = if changelog_path.exists() {
-            // Project CHANGELOG exists - use it
-            let content = if let Some(cache) = cache {
-                cache
-                    .get(&changelog_path)
-                    .cloned()
-                    .ok_or_else(|| ScorerError::IoError("CHANGELOG.md not in cache".to_string()))?
-            } else {
-                std::fs::read_to_string(&changelog_path)
-                    .map_err(|e| ScorerError::IoError(e.to_string()))?
-            };
-            (changelog_path.clone(), content)
-        } else if let Some(ws_path) = workspace_changelog.as_ref() {
-            if ws_path.exists() {
-                // Workspace CHANGELOG exists - use it
-                let content = std::fs::read_to_string(ws_path)
-                    .map_err(|e| ScorerError::IoError(e.to_string()))?;
-                (ws_path.clone(), content)
-            } else {
-                return Ok(0.0);
-            }
-        } else {
-            return Ok(0.0);
-        };
-
-        // If project CHANGELOG exists but is minimal, also check workspace root
-        let mut best_content = content;
-        if let Some(ws_path) = workspace_changelog {
-            if ws_path.exists() && actual_path != ws_path {
-                if let Ok(ws_content) = std::fs::read_to_string(&ws_path) {
-                    // Use workspace content if it has more version entries
-                    let proj_versions = count_version_entries(&best_content);
-                    let ws_versions = count_version_entries(&ws_content);
-                    if ws_versions > proj_versions {
-                        best_content = ws_content;
-                    }
+        match (content, ws_content) {
+            (Some(c), Some(ws)) => {
+                if count_version_entries(&ws) > count_version_entries(&c) {
+                    Ok(Some(ws))
+                } else {
+                    Ok(Some(c))
                 }
             }
+            (Some(c), None) => Ok(Some(c)),
+            (None, Some(ws)) => Ok(Some(ws)),
+            (None, None) => Ok(None),
         }
+    }
 
-        let content = best_content;
-
-        // Check for version entries (e.g., [0.1.0], ## 0.1.0)
-        let version_count = count_version_entries(&content);
-
-        // Tiered scoring based on changelog quality
-        if version_count >= 2 {
-            Ok(3.0) // Multiple versions documented
-        } else if version_count >= 1 {
-            Ok(2.0) // At least one version
-        } else {
-            Ok(1.0) // CHANGELOG exists but minimal content
+    fn read_changelog_file(&self, path: &std::path::PathBuf, cache: Option<&FileCache>) -> Option<String> {
+        if !path.exists() { return None; }
+        if let Some(cache) = cache {
+            return cache.get(path).cloned();
         }
+        std::fs::read_to_string(path).ok()
     }
 
     /// Internal scoring logic that accepts optional cache
@@ -399,9 +385,14 @@ impl Scorer for DocumentationScorer {
 
         // Check changelog (no cache - backward compatibility)
         if let Ok(score) = self.score_changelog(project_path, None) {
-            if score < 3.0 {
+            if score == 0.0 {
                 recommendations.push(
                     "Add CHANGELOG.md: Document version history and changes between releases"
+                        .to_string(),
+                );
+            } else if score < 3.0 {
+                recommendations.push(
+                    "Expand CHANGELOG.md: Add more version entries for full documentation credit"
                         .to_string(),
                 );
             }

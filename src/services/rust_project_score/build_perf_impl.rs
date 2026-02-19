@@ -351,6 +351,39 @@ impl BuildPerfScorer {
 
         Ok(CategoryScore::new(total_earned, self.max_points))
     }
+
+    fn recommend_lto(&self, path: &Path, recs: &mut Vec<String>) {
+        if self.score_lto(path, None).unwrap_or(0.0) < 2.0 {
+            recs.push("Enable LTO: Add `lto = true` or `lto = \"thin\"` to [profile.release] for 10-20% smaller binaries".into());
+        }
+    }
+
+    fn recommend_cargo_lock(&self, path: &Path, recs: &mut Vec<String>) {
+        if self.score_cargo_lock(path, None).unwrap_or(0.0) < 2.0 {
+            recs.push("Add Cargo.lock: Commit Cargo.lock for reproducible builds (required for binaries)".into());
+        }
+    }
+
+    fn recommend_cargo_config(&self, path: &Path, recs: &mut Vec<String>) {
+        if self.score_cargo_config(path, None).unwrap_or(0.0) < 2.0 {
+            recs.push("Add .cargo/config.toml: Configure build settings for consistent builds across machines".into());
+        }
+    }
+
+    fn recommend_codegen_units(&self, path: &Path, recs: &mut Vec<String>) {
+        if self.score_codegen_units(path, None).unwrap_or(0.0) < 2.0 {
+            recs.push("Optimize codegen-units: Add `codegen-units = 1` to [profile.release] for better optimization".into());
+        }
+    }
+
+    fn recommend_build_system(&self, path: &Path, recs: &mut Vec<String>) {
+        let score = self.score_build_system(path, None).unwrap_or(0.0);
+        if score == 0.0 {
+            recs.push("Add build automation: Create a Makefile or justfile for common build tasks".into());
+        } else if score < 2.0 {
+            recs.push("Enhance build automation: Add justfile alongside Makefile for full credit".into());
+        }
+    }
 }
 
 impl Default for BuildPerfScorer {
@@ -391,55 +424,13 @@ impl Scorer for BuildPerfScorer {
     }
 
     fn recommendations(&self, project_path: &Path) -> Vec<String> {
-        let mut recommendations = Vec::new();
-
-        // LTO recommendation
-        if let Ok(score) = self.score_lto(project_path, None) {
-            if score < 2.0 {
-                recommendations.push(
-                    "Enable LTO: Add `lto = true` or `lto = \"thin\"` to [profile.release] for 10-20% smaller binaries".to_string(),
-                );
-            }
-        }
-
-        // Cargo.lock recommendation
-        if let Ok(score) = self.score_cargo_lock(project_path, None) {
-            if score < 2.0 {
-                recommendations.push(
-                    "Add Cargo.lock: Commit Cargo.lock for reproducible builds (required for binaries)".to_string(),
-                );
-            }
-        }
-
-        // Cargo config recommendation
-        if let Ok(score) = self.score_cargo_config(project_path, None) {
-            if score < 2.0 {
-                recommendations.push(
-                    "Add .cargo/config.toml: Configure build settings for consistent builds across machines".to_string(),
-                );
-            }
-        }
-
-        // Codegen units recommendation
-        if let Ok(score) = self.score_codegen_units(project_path, None) {
-            if score < 2.0 {
-                recommendations.push(
-                    "Optimize codegen-units: Add `codegen-units = 1` to [profile.release] for better optimization".to_string(),
-                );
-            }
-        }
-
-        // Build system recommendation
-        if let Ok(score) = self.score_build_system(project_path, None) {
-            if score < 2.0 {
-                recommendations.push(
-                    "Add build automation: Create a Makefile or justfile for common build tasks"
-                        .to_string(),
-                );
-            }
-        }
-
-        recommendations
+        let mut recs = Vec::new();
+        self.recommend_lto(project_path, &mut recs);
+        self.recommend_cargo_lock(project_path, &mut recs);
+        self.recommend_cargo_config(project_path, &mut recs);
+        self.recommend_codegen_units(project_path, &mut recs);
+        self.recommend_build_system(project_path, &mut recs);
+        recs
     }
 }
 
