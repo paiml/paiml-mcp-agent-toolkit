@@ -509,12 +509,30 @@ pub struct CategoryScore {
 
     /// Maximum possible points
     pub max: f64,
+
+    /// Whether this category is applicable to the project type.
+    /// Non-applicable categories (e.g., Rust Tooling for a pure Lean project)
+    /// are excluded from normalized grade calculation.
+    pub applicable: bool,
 }
 
 impl CategoryScore {
-    /// Create a new category score
+    /// Create a new category score (applicable by default)
     pub fn new(earned: f64, max: f64) -> Self {
-        Self { earned, max }
+        Self {
+            earned,
+            max,
+            applicable: true,
+        }
+    }
+
+    /// Create a non-applicable score (scorer errored / not relevant)
+    pub fn not_applicable(max: f64) -> Self {
+        Self {
+            earned: 0.0,
+            max,
+            applicable: false,
+        }
     }
 
     /// Calculate percentage (0-100)

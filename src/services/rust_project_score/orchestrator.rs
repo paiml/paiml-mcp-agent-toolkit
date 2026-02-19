@@ -3,17 +3,17 @@
 //!
 //! Aggregates all 10 category scorers into a unified project score.
 //!
-//! Categories (159 points total):
-//! - Rust Tooling Compliance (25pts)
+//! Categories (dynamically computed from scorer max_points):
+//! - Rust Tooling & CI/CD (130pts)
 //! - Code Quality (26pts)
 //! - Testing Excellence (20pts)
 //! - Documentation (15pts)
 //! - Performance & Benchmarking (10pts)
 //! - Dependency Health (12pts)
-//! - Formal Verification (8pts)
+//! - Formal Verification (16pts)
 //! - Known Defects (20pts)
-//! - GPU/SIMD Quality (10pts) - v2.2
-//! - Build Performance (15pts) - NEW in v2.3
+//! - GPU/SIMD Quality (10pts)
+//! - Build Performance (15pts)
 
 use super::build_perf_scorer::BuildPerfScorer;
 use super::code_quality_scorer::CodeQualityScorer;
@@ -66,9 +66,9 @@ impl RustProjectScoreOrchestrator {
         format!("Rust Project Score v{}", SPEC_VERSION)
     }
 
-    /// Get maximum possible points (159)
+    /// Get maximum possible points (sum of all scorer max_points)
     pub fn max_points(&self) -> f64 {
-        159.0
+        self.scorers.iter().map(|s| s.max_points()).sum()
     }
 
     /// Get all scorer names
@@ -111,10 +111,12 @@ impl RustProjectScoreOrchestrator {
         project_path: &Path,
         mode: ScoringMode,
     ) -> ScorerResult<ProjectScore> {
-        // Verify project has Cargo.toml or lakefile.lean
+        // Verify project has Cargo.toml or lakefile.lean (root or lean/ subdir)
         let is_rust = project_path.join("Cargo.toml").exists();
         let is_lean = project_path.join("lakefile.lean").exists()
-            || project_path.join("lean-toolchain").exists();
+            || project_path.join("lean-toolchain").exists()
+            || project_path.join("lean").join("lakefile.lean").exists()
+            || project_path.join("lean").join("lean-toolchain").exists();
         if !is_rust && !is_lean {
             return Err(ScorerError::InvalidProject(
                 "No Cargo.toml or lakefile.lean found - not a valid project".to_string(),
@@ -183,12 +185,12 @@ impl RustProjectScoreOrchestrator {
                     }
                     Err(_) => {
                         // Scorer failed (e.g., no Cargo.toml for Rust-specific scorer)
-                        // Return zero score instead of failing the entire scoring run
-                        let zero_score = CategoryScore {
-                            earned: 0.0,
-                            max: scorer.max_points(),
-                        };
-                        Some((scorer.name().to_string(), zero_score, Vec::new()))
+                        // Mark as not applicable — excluded from normalized grade
+                        Some((
+                            scorer.name().to_string(),
+                            CategoryScore::not_applicable(scorer.max_points()),
+                            Vec::new(),
+                        ))
                     }
                 }
             })
@@ -209,11 +211,31 @@ impl RustProjectScoreOrchestrator {
         // Calculate total earned
         let total_earned: f64 = category_map.values().map(|cs| cs.earned).sum();
 
-        // Calculate percentage
-        let percentage = (total_earned / self.max_points()) * 100.0;
+        // Calculate normalized percentage: average of per-category percentages
+        // for APPLICABLE categories only. Non-applicable categories (e.g., Rust
+        // Tooling for a pure Lean project) are excluded so they don't penalize
+        // projects where the category is irrelevant.
+        let applicable: Vec<&CategoryScore> =
+            category_map.values().filter(|cs| cs.applicable).collect();
+        let num_applicable = applicable.len() as f64;
+        let percentage = if num_applicable > 0.0 {
+            let sum_pcts: f64 = applicable
+                .iter()
+                .map(|cs| {
+                    if cs.max > 0.0 {
+                        (cs.earned / cs.max) * 100.0
+                    } else {
+                        100.0
+                    }
+                })
+                .sum();
+            sum_pcts / num_applicable
+        } else {
+            0.0
+        };
 
-        // Calculate grade
-        let grade = self.calculate_grade(total_earned, self.max_points());
+        // Grade based on normalized percentage
+        let grade = Grade::from_normalized(percentage);
 
         Ok(ProjectScore {
             total_earned,
@@ -247,7 +269,7 @@ pub struct ProjectScore {
     /// Total points earned
     pub total_earned: f64,
 
-    /// Total possible points (159) - 10 categories
+    /// Total possible points - sum of all 10 category maxes
     pub total_possible: f64,
 
     /// Percentage (0-100)
@@ -276,7 +298,9 @@ mod tests {
     fn test_orchestrator_creation() {
         let orch = RustProjectScoreOrchestrator::new();
         assert_eq!(orch.name(), format!("Rust Project Score v{}", SPEC_VERSION));
-        assert_eq!(orch.max_points(), 159.0);
+        // max_points is dynamically computed from all 10 scorers
+        // 130 + 26 + 20 + 15 + 10 + 12 + 16 + 20 + 10 + 15 = 274
+        assert_eq!(orch.max_points(), 274.0);
     }
 
     #[test]

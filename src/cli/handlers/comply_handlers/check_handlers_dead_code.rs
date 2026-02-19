@@ -6,17 +6,30 @@ pub(crate) fn check_dead_code_percentage(project_path: &Path) -> ComplianceCheck
     let config = crate::models::deep_context_config::DeepContextConfig::default();
     let threshold_pct = config.dead_code_threshold * 100.0; // 15.0%
 
-    let src_dir = project_path.join("src");
-    if !src_dir.exists() {
+    // Check multiple source directory conventions
+    let source_dirs: Vec<std::path::PathBuf> = ["src", "crates", "lean", "lib"]
+        .iter()
+        .map(|d| project_path.join(d))
+        .filter(|d| d.exists() && d.is_dir())
+        .collect();
+
+    if source_dirs.is_empty() {
         return ComplianceCheck {
             name: "CB-304: Dead Code Percentage".to_string(),
             status: CheckStatus::Skip,
-            message: "No src/ directory found".to_string(),
+            message: "No source directory found (checked src/, crates/, lean/, lib/)".to_string(),
             severity: Severity::Info,
         };
     }
 
-    let (total_items, dead_items, total_lines, dead_lines) = scan_dead_code_indicators(&src_dir);
+    let (mut total_items, mut dead_items, mut total_lines, mut dead_lines) = (0, 0, 0, 0);
+    for src_dir in &source_dirs {
+        let (ti, di, tl, dl) = scan_dead_code_indicators(src_dir);
+        total_items += ti;
+        dead_items += di;
+        total_lines += tl;
+        dead_lines += dl;
+    }
 
     if total_items == 0 {
         return ComplianceCheck {
@@ -244,33 +257,46 @@ pub(crate) fn count_block_comment_code_lines(lines: &[&str]) -> usize {
 
     for line in lines {
         let trimmed = line.trim();
-        if !in_block {
-            if let Some(rest) = trimmed.strip_prefix("/*") {
-                in_block = true;
-                block_lines = 0;
-                // Check if block ends on the same line
-                if rest.contains("*/") {
-                    // Single-line block comment — only count if it has code
-                    if has_code_markers(rest) {
-                        dead_lines += 1;
-                    }
-                    in_block = false;
-                }
-            }
-        } else if trimmed.contains("*/") {
-            // End of block comment
-            in_block = false;
-            if block_lines >= 2 {
-                dead_lines += block_lines;
-            }
-        } else {
-            // Inside block comment — count lines with code patterns
-            if has_code_markers(trimmed) {
-                block_lines += 1;
-            }
-        }
+        let (new_in_block, add_dead, new_block_lines) =
+            process_block_comment_line(trimmed, in_block, block_lines);
+        in_block = new_in_block;
+        dead_lines += add_dead;
+        block_lines = new_block_lines;
     }
     dead_lines
+}
+
+/// Process a single line for block comment detection.
+/// Returns (still_in_block, dead_lines_to_add, updated_block_lines).
+fn process_block_comment_line(trimmed: &str, in_block: bool, block_lines: usize) -> (bool, usize, usize) {
+    if !in_block {
+        return handle_outside_block(trimmed);
+    }
+    handle_inside_block(trimmed, block_lines)
+}
+
+/// Handle a line when we are outside a block comment.
+fn handle_outside_block(trimmed: &str) -> (bool, usize, usize) {
+    let Some(rest) = trimmed.strip_prefix("/*") else {
+        return (false, 0, 0);
+    };
+    // Single-line block comment (opens and closes on same line)
+    if rest.contains("*/") {
+        let add = if has_code_markers(rest) { 1 } else { 0 };
+        return (false, add, 0);
+    }
+    // Block comment starts, continues on next lines
+    (true, 0, 0)
+}
+
+/// Handle a line when we are inside a block comment.
+fn handle_inside_block(trimmed: &str, block_lines: usize) -> (bool, usize, usize) {
+    if trimmed.contains("*/") {
+        let add = if block_lines >= 2 { block_lines } else { 0 };
+        return (false, add, 0);
+    }
+    let new_block_lines = if has_code_markers(trimmed) { block_lines + 1 } else { block_lines };
+    (true, 0, new_block_lines)
 }
 
 /// Check if text contains code-like markers.

@@ -292,38 +292,64 @@ pub(crate) fn check_paiml_deps_workspace(project_path: &Path) -> ComplianceCheck
     }
 }
 
+/// Detect project type and discover source files across all source directories.
+/// Returns Err(message) if project type unrecognized or no source dirs found.
+fn discover_source_files(project_path: &Path) -> Result<Vec<std::path::PathBuf>, String> {
+    let is_rust = project_path.join("Cargo.toml").exists();
+    let is_lean = project_path.join("lakefile.lean").exists()
+        || project_path.join("lean-toolchain").exists()
+        || project_path.join("lean").join("lakefile.lean").exists()
+        || project_path.join("lean").join("lean-toolchain").exists();
+
+    if !is_rust && !is_lean {
+        return Err("No Cargo.toml or lakefile.lean found".to_string());
+    }
+
+    let source_dirs: Vec<std::path::PathBuf> = ["src", "crates", "lean", "lib"]
+        .iter()
+        .map(|d| project_path.join(d))
+        .filter(|d| d.exists() && d.is_dir())
+        .collect();
+
+    if source_dirs.is_empty() {
+        return Err("No source directory found (checked src/, crates/, lean/, lib/)".to_string());
+    }
+
+    let extensions: &[&str] = if is_lean && !is_rust {
+        &["lean"]
+    } else if is_rust && is_lean {
+        &["rs", "lean"]
+    } else {
+        RUST_EXTENSIONS
+    };
+
+    let mut files = Vec::new();
+    for src_dir in &source_dirs {
+        files.extend(scan_directory(src_dir, extensions, DEFAULT_EXCLUDE_PATTERNS));
+    }
+    Ok(files)
+}
+
 /// Check file health across the project (CB-040)
 /// Validates: max-lines (500), TLR (test-to-lines ratio), complexity, health score
 /// Based on: docs/specifications/max-lines.md
 pub(crate) fn check_file_health(project_path: &Path) -> ComplianceCheck {
-    // Skip if not a Rust project
-    let cargo_toml = project_path.join("Cargo.toml");
-    if !cargo_toml.exists() {
-        return ComplianceCheck {
-            name: "File Health".to_string(),
-            status: CheckStatus::Skip,
-            message: "No Cargo.toml found - not a Rust project".to_string(),
-            severity: Severity::Info,
-        };
-    }
-
-    // Scan for source files
-    let src_dir = project_path.join("src");
-    if !src_dir.exists() {
-        return ComplianceCheck {
-            name: "File Health".to_string(),
-            status: CheckStatus::Skip,
-            message: "No src/ directory found".to_string(),
-            severity: Severity::Info,
-        };
-    }
-
-    let files = scan_directory(&src_dir, RUST_EXTENSIONS, DEFAULT_EXCLUDE_PATTERNS);
+    let files = match discover_source_files(project_path) {
+        Ok(files) => files,
+        Err(msg) => {
+            return ComplianceCheck {
+                name: "File Health".to_string(),
+                status: CheckStatus::Skip,
+                message: msg,
+                severity: Severity::Info,
+            };
+        }
+    };
     if files.is_empty() {
         return ComplianceCheck {
             name: "File Health".to_string(),
             status: CheckStatus::Pass,
-            message: "No Rust source files found".to_string(),
+            message: "No source files found".to_string(),
             severity: Severity::Info,
         };
     }

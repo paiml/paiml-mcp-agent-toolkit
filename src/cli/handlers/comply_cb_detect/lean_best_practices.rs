@@ -196,17 +196,34 @@ pub fn detect_cb1053_undocumented_theorems(project_path: &Path) -> Vec<CbPattern
         };
         let file = file_path.display().to_string();
         let lines: Vec<&str> = content.lines().collect();
+        let mut in_block_comment = 0i32;
 
         for (i, line) in lines.iter().enumerate() {
             let trimmed = line.trim();
-            if trimmed.starts_with("theorem ") || trimmed.starts_with("lemma ") {
-                // Check if preceding line is a doc comment
-                let has_doc = i > 0 && {
-                    let prev = lines[i - 1].trim();
+
+            // Skip line comments
+            if trimmed.starts_with("--") {
+                continue;
+            }
+
+            // Track block comments (including /- and /-! doc blocks)
+            let cleaned = strip_lean_block_comments(trimmed, &mut in_block_comment);
+            if in_block_comment > 0 {
+                continue;
+            }
+
+            let cleaned_trimmed = cleaned.trim();
+            if cleaned_trimmed.starts_with("theorem ") || cleaned_trimmed.starts_with("lemma ") {
+                // Check if preceding non-empty line is a doc comment
+                let has_doc = (0..i).rev().any(|j| {
+                    let prev = lines[j].trim();
+                    if prev.is_empty() {
+                        return false; // skip blanks, keep looking
+                    }
                     prev.ends_with("-/") || prev.starts_with("/--") || prev.starts_with("--")
-                };
+                });
                 if !has_doc {
-                    let name = trimmed
+                    let name = cleaned_trimmed
                         .split_whitespace()
                         .nth(1)
                         .unwrap_or("unknown");

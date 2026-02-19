@@ -214,10 +214,104 @@ impl FormalVerificationScorer {
         count
     }
 
-    /// Check if project is a Lean 4 project (lakefile.lean or lean-toolchain)
+    /// Check if project is a Lean 4 project (lakefile.lean or lean-toolchain at root or lean/)
     fn is_lean_project(&self, project_path: &Path) -> bool {
         project_path.join("lakefile.lean").exists()
             || project_path.join("lean-toolchain").exists()
+            || project_path.join("lean").join("lakefile.lean").exists()
+            || project_path.join("lean").join("lean-toolchain").exists()
+    }
+
+    /// Score Lean 4 proofs. For Lean-only projects (no Cargo.toml), Lean proofs ARE
+    /// the formal verification mechanism — scale to fill available points (13pts).
+    /// For mixed Rust+Lean projects, use the standard 3-point allocation.
+    fn score_lean(&self, project_path: &Path) -> f64 {
+        if !self.is_lean_project(project_path) {
+            return 0.0;
+        }
+
+        let is_rust = project_path.join("Cargo.toml").exists();
+        let lean_max = if is_rust {
+            LEAN_POINTS
+        } else {
+            MAX_POINTS - MIRI_POINTS
+        };
+
+        let theorems = self.count_lean_theorems(project_path);
+        let sorrys = self.count_lean_sorrys(project_path);
+
+        if theorems > 0 {
+            let proven = theorems.saturating_sub(sorrys);
+            let ratio = proven as f64 / theorems as f64;
+            lean_max * ratio
+        } else {
+            lean_max * 0.1
+        }
+    }
+
+    fn recommend_miri(&self, project_path: &Path, recs: &mut Vec<String>) {
+        let unsafe_count = self.count_unsafe_blocks(project_path, None);
+        if unsafe_count > 0 {
+            if !self.is_miri_available() {
+                recs.push("Install Miri: rustup +nightly component add miri".into());
+            } else {
+                recs.push(format!(
+                    "Run Miri on {} unsafe blocks: cargo +nightly miri test",
+                    unsafe_count
+                ));
+            }
+        }
+    }
+
+    fn recommend_kani(&self, project_path: &Path, recs: &mut Vec<String>) {
+        let unsafe_count = self.count_unsafe_blocks(project_path, None);
+        let kani_proofs = self.count_kani_proofs(project_path, None);
+        if kani_proofs == 0 && unsafe_count > 0 {
+            recs.push(
+                "Consider adding Kani proofs for unsafe code: https://model-checking.github.io/kani/"
+                    .into(),
+            );
+        } else if kani_proofs > 0 && !self.is_kani_available() {
+            recs.push("Install Kani: cargo install --locked kani-verifier".into());
+        }
+    }
+
+    fn recommend_verus(&self, project_path: &Path, recs: &mut Vec<String>) {
+        let unsafe_count = self.count_unsafe_blocks(project_path, None);
+        let verus_specs = self.count_verus_specs(project_path, None);
+        let has_vstd = self.has_vstd_dependency(project_path);
+        if verus_specs == 0 && !has_vstd && unsafe_count > 0 {
+            recs.push(
+                "Consider Verus for formal verification of unsafe code: https://verus-lang.github.io/verus/guide/"
+                    .into(),
+            );
+        } else if (verus_specs > 0 || has_vstd) && !self.is_verus_available() {
+            recs.push(
+                "Install Verus to verify specs: https://github.com/verus-lang/verus#building"
+                    .into(),
+            );
+        } else if verus_specs < 5 && has_vstd {
+            recs.push(
+                "Add more #[requires], #[ensures] specs to increase verification coverage".into(),
+            );
+        }
+    }
+
+    fn recommend_lean(&self, project_path: &Path, recs: &mut Vec<String>) {
+        if !self.is_lean_project(project_path) {
+            return;
+        }
+        let theorems = self.count_lean_theorems(project_path);
+        let sorrys = self.count_lean_sorrys(project_path);
+        if sorrys > 0 {
+            recs.push(format!(
+                "Lean 4 project has {} sorry markers — complete proofs to improve score",
+                sorrys
+            ));
+        }
+        if theorems == 0 {
+            recs.push("Lean 4 project has no theorems/lemmas — add proven propositions".into());
+        }
     }
 
     /// Count theorems and lemmas in .lean files
@@ -343,6 +437,88 @@ impl FormalVerificationScorer {
         }
     }
 
+    /// Score Miri compliance (3 points)
+    fn score_miri(
+        &self,
+        project_path: &Path,
+        mode: ScoringMode,
+        cache: Option<&FileCache>,
+    ) -> f64 {
+        let unsafe_count = self.count_unsafe_blocks(project_path, cache);
+        if unsafe_count == 0 {
+            return MIRI_POINTS; // No unsafe = full credit
+        }
+        if mode == ScoringMode::Quick || mode == ScoringMode::Fast {
+            return MIRI_POINTS * 0.3;
+        }
+        if !self.is_miri_available() {
+            return MIRI_POINTS * 0.5;
+        }
+        match self.run_miri_tests(project_path) {
+            Ok(result) if result.passed => MIRI_POINTS,
+            Ok(result) if result.has_ub_errors => 0.0,
+            Ok(_) => MIRI_POINTS * 0.5,
+            Err(_) => MIRI_POINTS * 0.3,
+        }
+    }
+
+    /// Score Kani proofs (5 points)
+    fn score_kani(
+        &self,
+        project_path: &Path,
+        mode: ScoringMode,
+        cache: Option<&FileCache>,
+    ) -> f64 {
+        let kani_proofs = self.count_kani_proofs(project_path, cache);
+        if kani_proofs == 0 {
+            return 0.0;
+        }
+        if mode == ScoringMode::Quick || mode == ScoringMode::Fast {
+            return KANI_POINTS * 0.4;
+        }
+        if !self.is_kani_available() {
+            return KANI_POINTS * 0.3;
+        }
+        match self.run_kani_verification(project_path) {
+            Ok(result) if result.all_verified => KANI_POINTS,
+            Ok(_) => KANI_POINTS * 0.5,
+            Err(_) => KANI_POINTS * 0.2,
+        }
+    }
+
+    /// Score Verus specifications (5 points)
+    fn score_verus(
+        &self,
+        project_path: &Path,
+        mode: ScoringMode,
+        cache: Option<&FileCache>,
+    ) -> f64 {
+        let verus_specs = self.count_verus_specs(project_path, cache);
+        let has_vstd = self.has_vstd_dependency(project_path);
+        if verus_specs == 0 && !has_vstd {
+            return 0.0;
+        }
+        let use_partial = mode == ScoringMode::Quick
+            || mode == ScoringMode::Fast
+            || !self.is_verus_available();
+        let spec_score = if use_partial {
+            match verus_specs {
+                0 => 0.2,
+                1..=5 => 0.4,
+                6..=20 => 0.6,
+                _ => 0.8,
+            }
+        } else {
+            match verus_specs {
+                0 => 0.3,
+                1..=5 => 0.6,
+                6..=20 => 0.8,
+                _ => 1.0,
+            }
+        };
+        VERUS_POINTS * spec_score
+    }
+
     /// Internal scoring logic with cache support
     fn score_internal(
         &self,
@@ -350,127 +526,10 @@ impl FormalVerificationScorer {
         mode: ScoringMode,
         cache: Option<&FileCache>,
     ) -> ScorerResult<CategoryScore> {
-        let mut score = 0.0;
-
-        // Count unsafe blocks to determine if Miri is relevant
-        let unsafe_count = self.count_unsafe_blocks(project_path, cache);
-        let has_unsafe = unsafe_count > 0;
-
-        // --- Miri Scoring (3 points) ---
-        if has_unsafe {
-            if mode == ScoringMode::Quick || mode == ScoringMode::Fast {
-                // Quick/Fast mode: Just check for unsafe, give partial credit
-                // Skip subprocess calls (cargo miri --version can hang)
-                score += MIRI_POINTS * 0.3;
-            } else if !self.is_miri_available() {
-                // Tool not available, give moderate credit
-                score += MIRI_POINTS * 0.5;
-            } else {
-                // Run Miri (Full mode only)
-                match self.run_miri_tests(project_path) {
-                    Ok(result) => {
-                        if result.passed {
-                            score += MIRI_POINTS;
-                        } else if result.has_ub_errors {
-                            // UB detected - Andon Cord! No points
-                        } else {
-                            // Some tests failed but no UB
-                            score += MIRI_POINTS * 0.5;
-                        }
-                    }
-                    Err(_) => {
-                        score += MIRI_POINTS * 0.3;
-                    }
-                }
-            }
-        } else {
-            // No unsafe code - full Miri points (nothing to check)
-            score += MIRI_POINTS;
-        }
-
-        // --- Kani Scoring (5 points) ---
-        let kani_proofs = self.count_kani_proofs(project_path, cache);
-
-        if kani_proofs > 0 {
-            if mode == ScoringMode::Quick || mode == ScoringMode::Fast {
-                // Quick/Fast mode: Just count proofs, give partial credit
-                // Skip subprocess calls (cargo kani --version can hang)
-                score += KANI_POINTS * 0.4;
-            } else if !self.is_kani_available() {
-                // Tool not available
-                score += KANI_POINTS * 0.3;
-            } else {
-                // Run Kani verification (Full mode only)
-                match self.run_kani_verification(project_path) {
-                    Ok(result) => {
-                        if result.all_verified {
-                            score += KANI_POINTS;
-                        } else {
-                            score += KANI_POINTS * 0.5;
-                        }
-                    }
-                    Err(_) => {
-                        score += KANI_POINTS * 0.2;
-                    }
-                }
-            }
-        }
-        // No Kani proofs = 0 points for Kani portion
-
-        // --- Verus Scoring (5 points) ---
-        let verus_specs = self.count_verus_specs(project_path, cache);
-        let has_vstd = self.has_vstd_dependency(project_path);
-
-        if verus_specs > 0 || has_vstd {
-            if mode == ScoringMode::Quick || mode == ScoringMode::Fast {
-                // Quick/Fast mode: Just count specs, give partial credit
-                // No subprocess calls for speed
-                let spec_score = match verus_specs {
-                    0 => 0.2,      // Has vstd but no specs yet
-                    1..=5 => 0.4,  // Few specs
-                    6..=20 => 0.6, // Moderate specs
-                    _ => 0.8,      // Many specs
-                };
-                score += VERUS_POINTS * spec_score;
-            } else if !self.is_verus_available() {
-                // Tool not available, give credit for having specs
-                let spec_score = match verus_specs {
-                    0 => 0.2,
-                    1..=5 => 0.4,
-                    6..=20 => 0.6,
-                    _ => 0.8,
-                };
-                score += VERUS_POINTS * spec_score;
-            } else {
-                // Full mode: Give full credit for having verifiable specs
-                // Note: Actually running verus verification is expensive,
-                // so we award points based on spec count
-                let spec_score = match verus_specs {
-                    0 => 0.3,      // Has vstd but no specs yet
-                    1..=5 => 0.6,  // Few specs
-                    6..=20 => 0.8, // Moderate specs
-                    _ => 1.0,      // Many specs - full credit
-                };
-                score += VERUS_POINTS * spec_score;
-            }
-        }
-        // No Verus specs = 0 points for Verus portion
-
-        // --- Lean 4 Scoring (3 points) ---
-        if self.is_lean_project(project_path) {
-            let theorems = self.count_lean_theorems(project_path);
-            let sorrys = self.count_lean_sorrys(project_path);
-
-            if theorems > 0 {
-                let proven = theorems.saturating_sub(sorrys);
-                let ratio = proven as f64 / theorems as f64;
-                score += LEAN_POINTS * ratio;
-            } else {
-                // Lean project with no theorems yet — minimal credit for setup
-                score += LEAN_POINTS * 0.1;
-            }
-        }
-        // Not a Lean project = 0 points for Lean portion
+        let score = self.score_miri(project_path, mode, cache)
+            + self.score_kani(project_path, mode, cache)
+            + self.score_verus(project_path, mode, cache)
+            + self.score_lean(project_path);
 
         Ok(CategoryScore::new(score.min(MAX_POINTS), self.max_points))
     }
@@ -513,75 +572,12 @@ impl Scorer for FormalVerificationScorer {
     }
 
     fn recommendations(&self, project_path: &Path) -> Vec<String> {
-        let mut recommendations = Vec::new();
-
-        // Check for unsafe blocks
-        let unsafe_count = self.count_unsafe_blocks(project_path, None);
-
-        if unsafe_count > 0 {
-            if !self.is_miri_available() {
-                recommendations.push("Install Miri: rustup +nightly component add miri".into());
-            } else {
-                recommendations.push(format!(
-                    "Run Miri on {} unsafe blocks: cargo +nightly miri test",
-                    unsafe_count
-                ));
-            }
-        }
-
-        // Check for Kani proofs
-        let kani_proofs = self.count_kani_proofs(project_path, None);
-
-        if kani_proofs == 0 && unsafe_count > 0 {
-            recommendations.push(
-                "Consider adding Kani proofs for unsafe code: https://model-checking.github.io/kani/"
-                    .into(),
-            );
-        } else if kani_proofs > 0 && !self.is_kani_available() {
-            recommendations.push("Install Kani: cargo install --locked kani-verifier".into());
-        }
-
-        // Check for Verus specs
-        let verus_specs = self.count_verus_specs(project_path, None);
-        let has_vstd = self.has_vstd_dependency(project_path);
-
-        if verus_specs == 0 && !has_vstd {
-            // Suggest Verus for projects with complex logic or unsafe code
-            if unsafe_count > 0 {
-                recommendations.push(
-                    "Consider Verus for formal verification of unsafe code: https://verus-lang.github.io/verus/guide/"
-                        .into(),
-                );
-            }
-        } else if (verus_specs > 0 || has_vstd) && !self.is_verus_available() {
-            recommendations.push(
-                "Install Verus to verify specs: https://github.com/verus-lang/verus#building"
-                    .into(),
-            );
-        } else if verus_specs < 5 && has_vstd {
-            recommendations.push(
-                "Add more #[requires], #[ensures] specs to increase verification coverage".into(),
-            );
-        }
-
-        // Check for Lean 4 proofs
-        if self.is_lean_project(project_path) {
-            let theorems = self.count_lean_theorems(project_path);
-            let sorrys = self.count_lean_sorrys(project_path);
-
-            if sorrys > 0 {
-                recommendations.push(format!(
-                    "Lean 4 project has {} sorry markers — complete proofs to improve score",
-                    sorrys
-                ));
-            }
-            if theorems == 0 {
-                recommendations
-                    .push("Lean 4 project has no theorems/lemmas — add proven propositions".into());
-            }
-        }
-
-        recommendations
+        let mut recs = Vec::new();
+        self.recommend_miri(project_path, &mut recs);
+        self.recommend_kani(project_path, &mut recs);
+        self.recommend_verus(project_path, &mut recs);
+        self.recommend_lean(project_path, &mut recs);
+        recs
     }
 }
 

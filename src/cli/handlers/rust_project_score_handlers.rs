@@ -73,9 +73,12 @@ pub async fn handle_rust_project_score(
         anyhow::bail!("Path is not a directory: {}", path.display());
     }
 
-    // Validate it has Cargo.toml or lakefile.lean (Rust or Lean project)
+    // Validate it has Cargo.toml or lakefile.lean (root or lean/ subdir)
     let is_rust = path.join("Cargo.toml").exists();
-    let is_lean = path.join("lakefile.lean").exists() || path.join("lean-toolchain").exists();
+    let is_lean = path.join("lakefile.lean").exists()
+        || path.join("lean-toolchain").exists()
+        || path.join("lean").join("lakefile.lean").exists()
+        || path.join("lean").join("lean-toolchain").exists();
     if !is_rust && !is_lean {
         anyhow::bail!(
             "Not a valid project (no Cargo.toml or lakefile.lean found): {}",
@@ -145,7 +148,10 @@ fn format_text(
         "  Score: {:.1}/{:.0}\n",
         score.total_earned, score.total_possible
     ));
-    output.push_str(&format!("  Percentage: {:.1}%\n", score.percentage));
+    output.push_str(&format!(
+        "  Normalized: {:.1}% (avg of category %)\n",
+        score.percentage
+    ));
     output.push_str(&format!("  Grade: {}\n", score.grade));
     output.push('\n');
 
@@ -157,6 +163,11 @@ fn format_text(
     categories.sort_by_key(|(name, _)| *name);
 
     for (name, category) in categories {
+        if !category.applicable {
+            output.push_str(&format!("  ⬚  {}: N/A\n", name));
+            continue;
+        }
+
         let percentage = category.percentage();
 
         let icon = if percentage >= 90.0 {
@@ -313,24 +324,15 @@ mod tests {
         let mut categories = HashMap::new();
         categories.insert(
             "Rust Tooling".to_string(),
-            CategoryScore {
-                earned: 20.0,
-                max: 25.0,
-            },
+            CategoryScore::new(20.0, 25.0),
         );
         categories.insert(
             "Code Quality".to_string(),
-            CategoryScore {
-                earned: 15.0,
-                max: 26.0,
-            },
+            CategoryScore::new(15.0, 26.0),
         );
         categories.insert(
             "Testing".to_string(),
-            CategoryScore {
-                earned: 18.0,
-                max: 20.0,
-            },
+            CategoryScore::new(18.0, 20.0),
         );
 
         ProjectScore {
@@ -422,7 +424,7 @@ mod tests {
 
         assert!(output.contains("Summary"));
         assert!(output.contains("Score:"));
-        assert!(output.contains("Percentage:"));
+        assert!(output.contains("Normalized:"));
         assert!(output.contains("Grade:"));
     }
 
@@ -465,10 +467,7 @@ mod tests {
         score.categories.clear();
         score.categories.insert(
             "Perfect".to_string(),
-            CategoryScore {
-                earned: 95.0,
-                max: 100.0,
-            },
+            CategoryScore::new(95.0, 100.0),
         );
         let output = format_text(&score, &[], false);
 
@@ -481,10 +480,7 @@ mod tests {
         score.categories.clear();
         score.categories.insert(
             "Warning".to_string(),
-            CategoryScore {
-                earned: 75.0,
-                max: 100.0,
-            },
+            CategoryScore::new(75.0, 100.0),
         );
         let output = format_text(&score, &[], false);
 
@@ -497,10 +493,7 @@ mod tests {
         score.categories.clear();
         score.categories.insert(
             "Failing".to_string(),
-            CategoryScore {
-                earned: 50.0,
-                max: 100.0,
-            },
+            CategoryScore::new(50.0, 100.0),
         );
         let output = format_text(&score, &[], false);
 
