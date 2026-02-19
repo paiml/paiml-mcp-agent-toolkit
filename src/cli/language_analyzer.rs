@@ -169,6 +169,7 @@ pub enum Language {
     Scala,
     Yaml,
     Markdown,
+    Lean,
     Unknown,
 }
 
@@ -196,6 +197,7 @@ impl Language {
             Some("scala" | "sc") => Language::Scala,
             Some("yaml" | "yml") => Language::Yaml,
             Some("md" | "mdx" | "markdown") => Language::Markdown,
+            Some("lean") => Language::Lean,
             _ => Language::Unknown,
         }
     }
@@ -1487,6 +1489,8 @@ fn create_analyzer(language: Language) -> Box<dyn LanguageAnalyzer> {
         Language::Sql => Box::new(SqlAnalyzer),
         Language::Scala => Box::new(ScalaAnalyzer),
         Language::Yaml | Language::Markdown => Box::new(PythonAnalyzer), // structural analysis only
+        // Lean: theorem/def/lemma keyword syntax similar to Python's def/class
+        Language::Lean => Box::new(PythonAnalyzer),
         Language::Unknown => unreachable!("Unknown language should be handled earlier"),
     }
 }

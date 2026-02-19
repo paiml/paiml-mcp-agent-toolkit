@@ -5,6 +5,7 @@
 //! Contains CB pattern detection functions and check_compute_brick.
 
 mod dependency_checks;
+mod lean_best_practices;
 mod lua_best_practices;
 mod markdown_best_practices;
 mod model_quality;
@@ -18,6 +19,7 @@ mod types;
 mod yaml_best_practices;
 
 pub use dependency_checks::*;
+pub use lean_best_practices::*;
 pub use lua_best_practices::*;
 pub use markdown_best_practices::*;
 pub use model_quality::*;

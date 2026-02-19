@@ -309,8 +309,8 @@ sha2 = "0.10"  # For O(1) build artifact hash caching
 default = ["core-languages", "viz"]
 
 # Convenience bundles
-core-languages = ["rust-ast", "typescript-ast", "javascript-ast", "python-ast", "lua-ast"]  # Most common: Rust + JS/TS + Python + Lua
-extended-languages = ["go-ast", "c-ast", "cpp-ast", "shell-ast", "php-ast", "swift-ast"]  # Additional languages
+core-languages = ["rust-ast", "typescript-ast", "javascript-ast", "python-ast", "lua-ast", "lean-ast"]  # Most common: Rust + JS/TS + Python + Lua + Lean
+extended-languages = ["go-ast", "c-ast", "cpp-ast", "shell-ast", "php-ast", "swift-ast", "lean-ast"]  # Additional languages
 advanced-analysis = ["analytics-simd", "mutation-testing", "tdg-explain", "demo"]  # Heavy features
 full = ["all-languages", "polyglot-ast", "advanced-analysis"]  # Equivalent to old defaults
 
@@ -320,7 +320,7 @@ full = ["all-languages", "polyglot-ast", "advanced-analysis"]  # Equivalent to o
 # - Reduces build time and dependency count
 # - org-intelligence now opt-in via --features org-intelligence
 org-intelligence = ["organizational-intelligence-plugin"]
-all-languages = ["rust-ast", "typescript-ast", "python-ast", "c-ast", "cpp-ast", "ruchy-ast", "go-ast", "wasm-ast", "deep-wasm", "shell-ast", "php-ast", "swift-ast", "lua-ast"]
+all-languages = ["rust-ast", "typescript-ast", "python-ast", "c-ast", "cpp-ast", "ruchy-ast", "go-ast", "wasm-ast", "deep-wasm", "shell-ast", "php-ast", "swift-ast", "lua-ast", "lean-ast"]
 most-languages = ["rust-ast", "typescript-ast", "python-ast", "c-ast", "cpp-ast", "go-ast", "shell-ast"]
 # Sprint 46 Phase 6: Removed java-ast, csharp-ast, ruby-ast, scala-ast (0 references)
 # Note: go-ast and shell-ast kept in most-languages (unified_go_analyzer.rs now has proper feature gates)
@@ -356,6 +356,7 @@ deep-wasm = ["gimli", "wasm-ast", "sourcemap"]
 shell-ast = []
 php-ast = []
 swift-ast = []
+lean-ast = []
 skip-slow-tests = []
 internal_tests = []
 # Feature flag for tests with broken syntax (split across include!() boundaries)

@@ -73,10 +73,12 @@ pub async fn handle_rust_project_score(
         anyhow::bail!("Path is not a directory: {}", path.display());
     }
 
-    // Validate it has Cargo.toml
-    if !path.join("Cargo.toml").exists() {
+    // Validate it has Cargo.toml or lakefile.lean (Rust or Lean project)
+    let is_rust = path.join("Cargo.toml").exists();
+    let is_lean = path.join("lakefile.lean").exists() || path.join("lean-toolchain").exists();
+    if !is_rust && !is_lean {
         anyhow::bail!(
-            "Not a valid Rust project (no Cargo.toml found): {}",
+            "Not a valid project (no Cargo.toml or lakefile.lean found): {}",
             path.display()
         );
     }

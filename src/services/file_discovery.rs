@@ -399,6 +399,7 @@ impl ProjectFileDiscovery {
                     | "mm"
                     | "dart"
                     | "lua"
+                    | "lean"
                     | "vue"
                     | "svelte"
                     // Kaizen improvement - Add important project configuration files  

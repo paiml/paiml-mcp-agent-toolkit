@@ -12,6 +12,8 @@ pub mod csharp;
 pub mod go;
 #[cfg(feature = "java-ast")]
 pub mod java;
+#[cfg(feature = "lean-ast")]
+pub mod lean;
 pub mod javascript;
 #[cfg(feature = "kotlin-ast")]
 pub mod kotlin;
@@ -44,6 +46,7 @@ pub enum Language {
     Kotlin,
     CSharp,
     Cpp,
+    Lean,
     Unknown,
 }
 
@@ -65,6 +68,7 @@ impl Language {
                 "cs" => Language::CSharp,
                 "cpp" | "cc" | "cxx" | "c++" => Language::Cpp,
                 "c" => Language::Cpp,
+                "lean" => Language::Lean,
                 _ => Language::Unknown,
             })
     }
@@ -83,6 +87,7 @@ impl Language {
             Language::Kotlin => "Kotlin",
             Language::CSharp => "C#",
             Language::Cpp => "C++",
+            Language::Lean => "Lean",
             Language::Unknown => "Unknown",
         }
     }
@@ -101,6 +106,7 @@ impl Language {
             Language::Kotlin => &["kt", "kts"],
             Language::CSharp => &["cs"],
             Language::Cpp => &["cpp", "cc", "cxx", "c++", "c"],
+            Language::Lean => &["lean"],
             Language::Unknown => &[],
         }
     }
@@ -153,6 +159,10 @@ mod tests {
         assert_eq!(
             Language::from_extension(&PathBuf::from("test.cs")),
             Language::CSharp
+        );
+        assert_eq!(
+            Language::from_extension(&PathBuf::from("test.lean")),
+            Language::Lean
         );
         assert_eq!(
             Language::from_extension(&PathBuf::from("test.unknown")),

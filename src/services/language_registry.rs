@@ -129,6 +129,11 @@ static LANGUAGE_INFO: &[LanguageInfo] = &[
         name: "PureScript",
         extensions: &["purs"],
     },
+    // Proof Assistants
+    LanguageInfo {
+        name: "Lean",
+        extensions: &["lean"],
+    },
     // Mobile Development
     LanguageInfo {
         name: "Swift",
@@ -293,6 +298,9 @@ pub enum Language {
     Elm,
     PureScript,
 
+    // Proof Assistants
+    Lean,
+
     // Mobile Development
     Swift,
     ObjectiveC,
@@ -388,6 +396,7 @@ impl Language {
             Language::ReasonML,
             Language::Elm,
             Language::PureScript,
+            Language::Lean,
             Language::Swift,
             Language::ObjectiveC,
             Language::Dart,
@@ -441,6 +450,7 @@ impl Language {
                 "build.gradle" | "settings.gradle" => return Language::Gradle,
                 "pom.xml" => return Language::Maven,
                 "requirements.txt" | "setup.py" | "pyproject.toml" => return Language::Python,
+                "lakefile.lean" | "lean-toolchain" => return Language::Lean,
                 _ => {}
             }
         }
@@ -476,7 +486,8 @@ impl Language {
             | Language::PHP
             | Language::Bash
             | Language::SQL
-            | Language::Lua => true,
+            | Language::Lua
+            | Language::Lean => true,
 
             // Configuration and markup languages (structure parsing)
             Language::JSON
@@ -522,7 +533,8 @@ impl Language {
             | Language::R
             | Language::Julia
             | Language::Matlab
-            | Language::Lua => true,
+            | Language::Lua
+            | Language::Lean => true,
 
             // Markup, config, and data languages don't have complexity
             _ => false,
@@ -589,6 +601,8 @@ impl LanguageRegistry {
             Language::ReasonML,
             Language::Elm,
             Language::PureScript,
+            // Proof Assistants (1)
+            Language::Lean,
             // Mobile Development (3)
             Language::Swift,
             Language::ObjectiveC,
@@ -951,6 +965,7 @@ mod tests {
             Language::ReasonML,
             Language::Elm,
             Language::PureScript,
+            Language::Lean,
             Language::Swift,
             Language::ObjectiveC,
             Language::Dart,

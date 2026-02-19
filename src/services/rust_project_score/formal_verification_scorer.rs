@@ -15,15 +15,17 @@ use std::path::Path;
 use std::process::Command;
 
 /// Maximum points for Formal Verification category
-const MAX_POINTS: f64 = 13.0;
+const MAX_POINTS: f64 = 16.0;
 
 /// Points breakdown:
 /// - Miri compliance: 3 points
 /// - Kani proofs: 5 points
 /// - Verus verification: 5 points
+/// - Lean 4 proof quality: 3 points
 const MIRI_POINTS: f64 = 3.0;
 const KANI_POINTS: f64 = 5.0;
 const VERUS_POINTS: f64 = 5.0;
+const LEAN_POINTS: f64 = 3.0;
 
 /// Formal Verification Scorer
 ///
@@ -212,6 +214,124 @@ impl FormalVerificationScorer {
         count
     }
 
+    /// Check if project is a Lean 4 project (lakefile.lean or lean-toolchain)
+    fn is_lean_project(&self, project_path: &Path) -> bool {
+        project_path.join("lakefile.lean").exists()
+            || project_path.join("lean-toolchain").exists()
+    }
+
+    /// Count theorems and lemmas in .lean files
+    fn count_lean_theorems(&self, project_path: &Path) -> usize {
+        let theorem_pattern =
+            Regex::new(r"^\s*(theorem|lemma|private theorem|private lemma)\s+")
+                .expect("internal error");
+        let mut count = 0;
+
+        for entry in walkdir::WalkDir::new(project_path)
+            .into_iter()
+            .filter_map(|e| e.ok())
+        {
+            if entry.path().extension().is_some_and(|ext| ext == "lean") {
+                if let Ok(content) = std::fs::read_to_string(entry.path()) {
+                    count += content
+                        .lines()
+                        .filter(|line| theorem_pattern.is_match(line))
+                        .count();
+                }
+            }
+        }
+
+        count
+    }
+
+    /// Count sorry occurrences in .lean files (incomplete proofs)
+    /// Respects block comments (/- ... -/) and line comments (--)
+    fn count_lean_sorrys(&self, project_path: &Path) -> usize {
+        let mut total = 0;
+
+        for entry in walkdir::WalkDir::new(project_path)
+            .into_iter()
+            .filter_map(|e| e.ok())
+        {
+            if entry.path().extension().is_some_and(|ext| ext == "lean") {
+                if let Ok(content) = std::fs::read_to_string(entry.path()) {
+                    let mut in_block_comment = 0i32;
+                    for line in content.lines() {
+                        let trimmed = line.trim();
+
+                        if trimmed.starts_with("--") {
+                            continue;
+                        }
+
+                        // Strip block comments inline for same-line handling
+                        let cleaned =
+                            Self::strip_lean_block_comments_inline(trimmed, &mut in_block_comment);
+
+                        if in_block_comment > 0 {
+                            continue;
+                        }
+
+                        if Self::contains_sorry_word(&cleaned) {
+                            total += 1;
+                        }
+                    }
+                }
+            }
+        }
+
+        total
+    }
+
+    /// Strips block comment content from a line, updating nesting depth.
+    fn strip_lean_block_comments_inline(line: &str, depth: &mut i32) -> String {
+        let bytes = line.as_bytes();
+        let mut result = String::with_capacity(line.len());
+        let mut i = 0;
+
+        while i < bytes.len() {
+            if i + 1 < bytes.len() && bytes[i] == b'/' && bytes[i + 1] == b'-' {
+                *depth += 1;
+                i += 2;
+                continue;
+            }
+            if i + 1 < bytes.len() && bytes[i] == b'-' && bytes[i + 1] == b'/' && *depth > 0 {
+                *depth -= 1;
+                i += 2;
+                continue;
+            }
+            if *depth == 0 {
+                result.push(bytes[i] as char);
+            }
+            i += 1;
+        }
+
+        result
+    }
+
+    /// Checks if line contains "sorry" as a standalone word.
+    fn contains_sorry_word(line: &str) -> bool {
+        let bytes = line.as_bytes();
+        let sorry = b"sorry";
+        let mut pos = 0;
+        while pos + sorry.len() <= bytes.len() {
+            if let Some(idx) = line[pos..].find("sorry") {
+                let abs_idx = pos + idx;
+                let before_ok = abs_idx == 0
+                    || !(bytes[abs_idx - 1].is_ascii_alphanumeric() || bytes[abs_idx - 1] == b'_');
+                let after_ok = abs_idx + sorry.len() >= bytes.len()
+                    || !(bytes[abs_idx + sorry.len()].is_ascii_alphanumeric()
+                        || bytes[abs_idx + sorry.len()] == b'_');
+                if before_ok && after_ok {
+                    return true;
+                }
+                pos = abs_idx + 1;
+            } else {
+                break;
+            }
+        }
+        false
+    }
+
     /// Check for vstd dependency in Cargo.toml (indicates Verus project)
     fn has_vstd_dependency(&self, project_path: &Path) -> bool {
         let cargo_toml = project_path.join("Cargo.toml");
@@ -336,6 +456,22 @@ impl FormalVerificationScorer {
         }
         // No Verus specs = 0 points for Verus portion
 
+        // --- Lean 4 Scoring (3 points) ---
+        if self.is_lean_project(project_path) {
+            let theorems = self.count_lean_theorems(project_path);
+            let sorrys = self.count_lean_sorrys(project_path);
+
+            if theorems > 0 {
+                let proven = theorems.saturating_sub(sorrys);
+                let ratio = proven as f64 / theorems as f64;
+                score += LEAN_POINTS * ratio;
+            } else {
+                // Lean project with no theorems yet — minimal credit for setup
+                score += LEAN_POINTS * 0.1;
+            }
+        }
+        // Not a Lean project = 0 points for Lean portion
+
         Ok(CategoryScore::new(score.min(MAX_POINTS), self.max_points))
     }
 }
@@ -428,6 +564,23 @@ impl Scorer for FormalVerificationScorer {
             );
         }
 
+        // Check for Lean 4 proofs
+        if self.is_lean_project(project_path) {
+            let theorems = self.count_lean_theorems(project_path);
+            let sorrys = self.count_lean_sorrys(project_path);
+
+            if sorrys > 0 {
+                recommendations.push(format!(
+                    "Lean 4 project has {} sorry markers — complete proofs to improve score",
+                    sorrys
+                ));
+            }
+            if theorems == 0 {
+                recommendations
+                    .push("Lean 4 project has no theorems/lemmas — add proven propositions".into());
+            }
+        }
+
         recommendations
     }
 }
@@ -476,7 +629,7 @@ mod tests {
     #[test]
     fn test_max_points() {
         let scorer = FormalVerificationScorer::new();
-        assert_eq!(scorer.max_points(), 13.0); // Miri (3) + Kani (5) + Verus (5)
+        assert_eq!(scorer.max_points(), 16.0); // Miri (3) + Kani (5) + Verus (5) + Lean (3)
     }
 
     #[test]

@@ -59,6 +59,9 @@ pub async fn analyze_file_by_language(
         // WebAssembly
         "wasm" => analyze_wasm_language(file_path).await,
 
+        // Proof assistants
+        "lean" => analyze_lean_language(file_path).await,
+
         _ => Ok(Vec::new()),
     }
 }
@@ -401,6 +404,22 @@ pub async fn analyze_wasm_language(
     Ok(Vec::new())
 }
 
+/// Toyota Way Single Responsibility: Handle Lean 4 file analysis
+pub async fn analyze_lean_language(
+    file_path: &std::path::Path,
+) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
+    #[cfg(feature = "lean-ast")]
+    {
+        use crate::services::languages::lean;
+        match lean::analyze_lean_file(file_path).await {
+            Ok(file_context) => Ok(file_context.items),
+            Err(_) => Ok(Vec::new()),
+        }
+    }
+    #[cfg(not(feature = "lean-ast"))]
+    Ok(Vec::new())
+}
+
 /// Detect programming language from file extension
 fn detect_language(path: &std::path::Path) -> String {
     if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
@@ -437,6 +456,9 @@ fn detect_language(path: &std::path::Path) -> String {
 
             // WebAssembly
             "wat" | "wasm" => "wasm".to_string(),
+
+            // Proof assistants
+            "lean" => "lean".to_string(),
 
             _ => "unknown".to_string(),
         }

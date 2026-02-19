@@ -158,7 +158,7 @@ impl SimpleDeepContext {
 
         let source_extensions = [
             "rs", "js", "ts", "jsx", "tsx", "py", "cpp", "c", "h", "wasm", "wat", "rb", "ruchy",
-            "go", "java", "cs", "kt", "sh", "bash", "php", "swift", "lua",
+            "go", "java", "cs", "kt", "sh", "bash", "php", "swift", "lua", "lean",
         ];
         let exclude_dirs = ["target", "node_modules", ".git", "build", "dist"];
 
@@ -1232,6 +1232,12 @@ impl SimpleDeepContext {
                 r"(?m)^\s*function\s+(\w+(?:[.:]\w+)*)\s*\(",
                 r"(?m)^\s*local\s+function\s+(\w+)\s*\(",
             ],
+            "lean" => &[
+                r"(?m)^\s*(?:noncomputable\s+|partial\s+|private\s+|protected\s+)?def\s+(\w+)",
+                r"(?m)^\s*(?:private\s+)?theorem\s+(\w+)",
+                r"(?m)^\s*(?:private\s+)?lemma\s+(\w+)",
+                r"(?m)^\s*(?:structure|class|inductive)\s+(\w+)",
+            ],
             _ => return Ok(vec![]),
         };
 
@@ -1273,6 +1279,11 @@ impl SimpleDeepContext {
             }
             "kt" => vec![r"(?m)^\s*(?:suspend\s+)?fun\s+\w+\s*\("],
             "lua" => vec![r"(?m)^\s*function\s+\w+", r"(?m)^\s*local\s+function\s+\w+"],
+            "lean" => vec![
+                r"(?m)^\s*(?:noncomputable\s+|partial\s+|private\s+|protected\s+)?def\s+\w+",
+                r"(?m)^\s*(?:private\s+)?theorem\s+\w+",
+                r"(?m)^\s*(?:private\s+)?lemma\s+\w+",
+            ],
             _ => vec![],
         };
 

@@ -111,10 +111,13 @@ impl RustProjectScoreOrchestrator {
         project_path: &Path,
         mode: ScoringMode,
     ) -> ScorerResult<ProjectScore> {
-        // Verify project has Cargo.toml
-        if !project_path.join("Cargo.toml").exists() {
+        // Verify project has Cargo.toml or lakefile.lean
+        let is_rust = project_path.join("Cargo.toml").exists();
+        let is_lean = project_path.join("lakefile.lean").exists()
+            || project_path.join("lean-toolchain").exists();
+        if !is_rust && !is_lean {
             return Err(ScorerError::InvalidProject(
-                "No Cargo.toml found - not a valid Rust project".to_string(),
+                "No Cargo.toml or lakefile.lean found - not a valid project".to_string(),
             ));
         }
 
@@ -168,16 +171,28 @@ impl RustProjectScoreOrchestrator {
         pb.enable_steady_tick(std::time::Duration::from_millis(100));
 
         // Run scorers in parallel using rayon
-        let results: Result<Vec<_>, ScorerError> = self
+        // Lean/non-Rust projects: scorers that require Cargo.toml gracefully return 0 points
+        let results: Result<Vec<_>, ScorerError> = Ok(self
             .scorers
             .par_iter()
-            .map(|scorer| {
-                let category_score =
-                    scorer.score_with_cache(project_path, mode, file_cache.as_ref())?;
-                let recommendations = scorer.recommendations(project_path);
-                Ok((scorer.name().to_string(), category_score, recommendations))
+            .filter_map(|scorer| {
+                match scorer.score_with_cache(project_path, mode, file_cache.as_ref()) {
+                    Ok(category_score) => {
+                        let recommendations = scorer.recommendations(project_path);
+                        Some((scorer.name().to_string(), category_score, recommendations))
+                    }
+                    Err(_) => {
+                        // Scorer failed (e.g., no Cargo.toml for Rust-specific scorer)
+                        // Return zero score instead of failing the entire scoring run
+                        let zero_score = CategoryScore {
+                            earned: 0.0,
+                            max: scorer.max_points(),
+                        };
+                        Some((scorer.name().to_string(), zero_score, Vec::new()))
+                    }
+                }
             })
-            .collect();
+            .collect());
 
         pb.finish_with_message("✅ Analysis complete");
 

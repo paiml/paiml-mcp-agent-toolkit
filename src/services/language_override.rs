@@ -93,6 +93,7 @@ pub fn validate_language_support(language: &str) -> Result<()> {
         "shell",
         "wasm",
         "wat",
+        "lean",
     ];
 
     if supported.contains(&language) {

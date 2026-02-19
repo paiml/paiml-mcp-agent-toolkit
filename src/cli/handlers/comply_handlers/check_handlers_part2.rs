@@ -545,6 +545,41 @@ pub(crate) fn check_scala_best_practices_with_config(
     )
 }
 
+/// Lean 4 Best Practices Detection (CB-1050 through CB-1053)
+#[allow(dead_code)]
+pub(crate) fn check_lean_best_practices(project_path: &Path) -> ComplianceCheck {
+    check_lean_best_practices_with_config(project_path, None)
+}
+
+pub(crate) fn check_lean_best_practices_with_config(
+    project_path: &Path,
+    comply_config: Option<&ComplyConfig>,
+) -> ComplianceCheck {
+    let lean_files = super::comply_cb_detect::walkdir_lean_files(project_path);
+    if lean_files.is_empty() {
+        return ComplianceCheck {
+            name: "CB-1050: Lean 4 Best Practices (CB-1050 to CB-1053)".to_string(),
+            status: CheckStatus::Pass,
+            message: "Not a Lean project (no .lean files found)".to_string(),
+            severity: Severity::Info,
+        };
+    }
+
+    let detectors: Vec<(&str, Vec<CbPatternViolation>)> = vec![
+        ("CB-1050", super::comply_cb_detect::detect_cb1050_sorry_usage(project_path)),
+        ("CB-1051", super::comply_cb_detect::detect_cb1051_axiom_usage(project_path)),
+        ("CB-1052", super::comply_cb_detect::detect_cb1052_theorem_coverage(project_path)),
+        ("CB-1053", super::comply_cb_detect::detect_cb1053_undocumented_theorems(project_path)),
+    ];
+
+    aggregate_violations(
+        "CB-1050: Lean 4 Best Practices (CB-1050 to CB-1053)",
+        &detectors,
+        comply_config,
+        true,
+    )
+}
+
 // Three-layer CLI (review/audit) extracted for file health (CB-040)
 include!("review_audit_handlers.rs");
 

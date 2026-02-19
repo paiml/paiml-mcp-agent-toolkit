@@ -441,6 +441,7 @@ mod tests {
             FalsificationMethod::FixChainLimit,
             FalsificationMethod::CrossCrateParity,
             FalsificationMethod::RegressionGate,
+            FalsificationMethod::FormalProofVerification,
         ];
         for method in methods {
             let _ = format!("{:?}", method);

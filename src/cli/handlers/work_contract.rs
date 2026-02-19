@@ -243,6 +243,17 @@ impl WorkContract {
                 result: None,
                 override_info: None,
             },
+            // v4.0 provable contracts
+            FalsifiableClaim {
+                hypothesis: "No incomplete proofs (sorry) introduced".to_string(),
+                falsification_method: FalsificationMethod::FormalProofVerification,
+                evidence_required: EvidenceType::NumericComparison {
+                    actual: 0.0,
+                    threshold: 0.0,
+                },
+                result: None,
+                override_info: None,
+            },
         ]
     }
 
@@ -477,6 +488,18 @@ pub struct ContractThresholds {
     /// Block on performance regression (v3.1 defect churn)
     #[serde(default)]
     pub block_on_regression: bool,
+
+    /// Require proof verification for Lean 4 projects (v4.0 provable contracts)
+    #[serde(default)]
+    pub require_proof_verification: bool,
+
+    /// Maximum allowed sorry count in Lean 4 files (v4.0 provable contracts)
+    #[serde(default)]
+    pub max_sorry_count: usize,
+
+    /// Minimum theorem coverage ratio (v4.0 provable contracts)
+    #[serde(default)]
+    pub min_theorem_coverage: f64,
 }
 
 impl Default for ContractThresholds {
@@ -498,6 +521,9 @@ impl Default for ContractThresholds {
             block_on_untested_variants: true,
             block_on_cross_crate_failure: false, // Off by default — requires sibling project config
             block_on_regression: false,          // Off by default — requires benchmark cache
+            require_proof_verification: false,   // Off by default — opt-in for Lean 4 projects
+            max_sorry_count: 0,                  // Zero sorrys allowed when proof verification enabled
+            min_theorem_coverage: 0.0,           // No minimum theorem coverage by default
         }
     }
 }
@@ -636,6 +662,7 @@ impl FileEntry {
             Some("py") => FileCategory::PythonSource,
             Some("ts" | "tsx" | "js" | "jsx") => FileCategory::TypeScriptSource,
             Some("go") => FileCategory::GoSource,
+            Some("lean") => FileCategory::LeanSource,
             _ => return Ok(None),
         };
 
@@ -719,6 +746,11 @@ impl FileEntry {
                 content.matches("function ").count() + content.matches("=> {").count()
             }
             FileCategory::GoSource => content.matches("func ").count(),
+            FileCategory::LeanSource => {
+                content.matches("def ").count()
+                    + content.matches("theorem ").count()
+                    + content.matches("lemma ").count()
+            }
             _ => 0,
         }
     }
@@ -741,6 +773,8 @@ pub enum FileCategory {
     TypeScriptSource,
     /// Go source
     GoSource,
+    /// Lean source (proof assistant)
+    LeanSource,
     /// Test code - excluded from coverage
     TestCode,
     /// Build scripts - optional coverage
@@ -849,6 +883,9 @@ pub enum FalsificationMethod {
 
     /// Try to find performance regressions via benchmark gate (New in v3.1 - defect churn)
     RegressionGate,
+
+    /// Try to find incomplete proofs (sorry) in Lean 4 projects (New in v4.0 - provable contracts)
+    FormalProofVerification,
 }
 
 /// Evidence types for falsification
@@ -930,7 +967,7 @@ mod tests {
     #[test]
     fn test_work_contract_default_claims() {
         let contract = WorkContract::new("test-item".to_string(), "abc123".to_string());
-        assert_eq!(contract.claims.len(), 21); // 21 Popperian falsification claims (v3.1)
+        assert_eq!(contract.claims.len(), 22); // 22 Popperian falsification claims (v4.0)
 
         // Verify all claim types are present
         let methods: Vec<_> = contract
@@ -1004,8 +1041,8 @@ mod coverage_instrumented_tests {
         let claims = WorkContract::default_claims();
         assert_eq!(
             claims.len(),
-            21,
-            "Expected 21 Popperian falsification claims"
+            22,
+            "Expected 22 Popperian falsification claims (v4.0)"
         );
     }
 
@@ -1125,7 +1162,7 @@ mod coverage_instrumented_tests {
         assert_eq!(contract.baseline_tdg, 0.0);
         assert_eq!(contract.baseline_coverage, 0.0);
         assert!(contract.baseline_rust_score.is_none());
-        assert_eq!(contract.claims.len(), 21);
+        assert_eq!(contract.claims.len(), 22);
     }
 
     #[test]

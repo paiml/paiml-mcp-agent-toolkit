@@ -71,6 +71,11 @@ pub fn detect_project_language_enhanced(path: &Path) -> LanguageDetection {
         debug!("Found go.mod - boosting Go confidence by 90");
     }
 
+    if path.join("lakefile.lean").exists() || path.join("lean-toolchain").exists() {
+        *scores.entry("lean".to_string()).or_insert(0.0) += 90.0;
+        debug!("Found lakefile.lean/lean-toolchain - boosting Lean confidence by 90");
+    }
+
     // Count files by extension
     let file_counts = count_files_by_extension(path);
     let total_files: usize = file_counts.values().sum();
@@ -299,6 +304,7 @@ fn extension_to_language(ext: &str) -> Option<&'static str> {
         "cs" => Some("csharp"),
         "sh" | "bash" => Some("bash"),
         "lua" => Some("lua"),
+        "lean" => Some("lean"),
         "sql" | "ddl" | "dml" => Some("sql"),
         "scala" | "sc" | "sbt" => Some("scala"),
         "md" | "mdx" | "markdown" => Some("markdown"),

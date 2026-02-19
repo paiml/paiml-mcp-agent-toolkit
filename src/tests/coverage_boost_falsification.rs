@@ -240,6 +240,11 @@ fn test_falsification_method_debug_all_variants() {
         FalsificationMethod::DeadCodeDetection,
         FalsificationMethod::PerFileCoverage,
         FalsificationMethod::LintPass,
+        FalsificationMethod::VariantCoverage,
+        FalsificationMethod::FixChainLimit,
+        FalsificationMethod::CrossCrateParity,
+        FalsificationMethod::RegressionGate,
+        FalsificationMethod::FormalProofVerification,
     ];
     for method in methods {
         let _ = format!("{:?}", method);

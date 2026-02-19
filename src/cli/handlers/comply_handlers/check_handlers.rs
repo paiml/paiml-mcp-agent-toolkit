@@ -316,6 +316,8 @@ async fn handle_check(
         filter_check_by_config(check_yaml_best_practices_with_config(project_path, Some(comply_config)), "cb-950", comply_config),
         // CB-1000: MLOps Model Quality (PMAT-500: GGUF, APR, SafeTensors)
         filter_check_by_config(check_model_quality_with_config(project_path, Some(comply_config)), "cb-1000", comply_config),
+        // CB-1050: Lean 4 Best Practices (proof quality, sorry count, axiom usage)
+        filter_check_by_config(check_lean_best_practices_with_config(project_path, Some(comply_config)), "cb-1050", comply_config),
     ];
 
     // CB-1100: Custom Project Scores (dynamic, from .pmat.yaml)

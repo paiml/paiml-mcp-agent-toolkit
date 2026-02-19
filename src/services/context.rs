@@ -580,6 +580,13 @@ async fn analyze_file_by_toolchain_persistent(
             }
         }
 
+        // Lean files
+        #[cfg(feature = "lean-ast")]
+        "lean" => {
+            use crate::services::languages::lean;
+            lean::analyze_lean_file(path).await.ok()
+        }
+
         // Unsupported extension (Ruby, Erlang, Elixir, Haskell, OCaml, Shell, WASM pending)
         _ => None,
     }

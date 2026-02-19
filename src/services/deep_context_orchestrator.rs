@@ -259,7 +259,7 @@ impl DeepContextOrchestrator {
         // Default source file extensions
         let source_extensions = [
             "rs", "js", "ts", "jsx", "tsx", "py", "cpp", "c", "h", "hpp",
-            "java", "go", "php", "rb", "swift"
+            "java", "go", "php", "rb", "swift", "lean"
         ];
 
         // Default exclusion directory names
