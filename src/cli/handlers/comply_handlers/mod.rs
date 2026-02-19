@@ -16,6 +16,9 @@ pub mod reproducibility_handlers;
 // CB-303: Equation-Driven Development (COMPLY-043)
 pub mod edd_handlers;
 
+// CC-001 through CC-005: Cross-Crate Duplication Detection (#232)
+pub mod cross_crate_handlers;
+
 #[cfg(test)]
 #[path = "comply_handlers_tests.rs"]
 mod tests;

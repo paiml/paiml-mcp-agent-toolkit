@@ -10,7 +10,7 @@ use std::path::Path;
 ///
 /// Handles: `siblings = ["../aprender", "../trueno"]`
 /// Minimal parser — no full TOML dependency needed for one key.
-pub(super) fn parse_workspace_siblings(content: &str) -> Vec<String> {
+pub(crate) fn parse_workspace_siblings(content: &str) -> Vec<String> {
     for line in content.lines() {
         let trimmed = line.trim();
         if let Some(rest) = trimmed.strip_prefix("siblings") {

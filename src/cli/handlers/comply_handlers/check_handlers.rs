@@ -234,6 +234,27 @@ pub async fn handle_comply_command(command: ComplyCommands) -> Result<()> {
             format,
             output,
         } => handle_audit(&path, format, output.as_deref()).await,
+
+        ComplyCommands::CrossCrate {
+            path,
+            similarity_threshold,
+            churn_window_days,
+            rules,
+            format,
+            output,
+            strict,
+        } => {
+            cross_crate_handlers::handle_cross_crate(
+                &path,
+                similarity_threshold,
+                churn_window_days,
+                rules.as_deref(),
+                format,
+                output.as_deref(),
+                strict,
+            )
+            .await
+        }
     }
 }
 

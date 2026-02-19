@@ -359,6 +359,39 @@ pub enum ComplyCommands {
         #[arg(short = 'o', long = "output")]
         output: Option<PathBuf>,
     },
+
+    /// Cross-crate duplication detection (CC-001 through CC-005)
+    /// Detects copy-paste duplication, API divergence, and churn correlation across workspace crates.
+    #[command(visible_aliases = &["cc", "xc"])]
+    CrossCrate {
+        /// Workspace root path (defaults to current directory)
+        #[arg(short = 'p', long = "path", default_value = ".")]
+        path: PathBuf,
+
+        /// Minimum similarity threshold for clone detection (0.0-1.0)
+        #[arg(long = "similarity-threshold", default_value = "0.80")]
+        similarity_threshold: f64,
+
+        /// Window in days for churn correlation (CC-004)
+        #[arg(long = "churn-window-days", default_value = "7")]
+        churn_window_days: u32,
+
+        /// Comma-separated list of rules to run (e.g., "cc001,cc002")
+        #[arg(long = "rules")]
+        rules: Option<String>,
+
+        /// Output format
+        #[arg(short = 'f', long = "format", value_enum, default_value = "text")]
+        format: ComplyOutputFormat,
+
+        /// Write output to file
+        #[arg(short = 'o', long = "output")]
+        output: Option<PathBuf>,
+
+        /// Exit with error code 1 if findings detected
+        #[arg(long)]
+        strict: bool,
+    },
 }
 
 /// Comply output formats
