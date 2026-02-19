@@ -36,7 +36,6 @@ impl TestingScorer {
     /// Score test coverage (8pts)
     /// ≥85% line coverage = full points
     fn score_coverage(&self, project_path: &Path) -> ScorerResult<f64> {
-        // Try to run cargo-llvm-cov
         let output = Command::new("cargo")
             .arg("llvm-cov")
             .arg("--all-targets")
@@ -45,40 +44,24 @@ impl TestingScorer {
             .output();
 
         match output {
-            Ok(result) => {
-                if result.status.success() {
-                    // Parse coverage from output
-                    let stdout = String::from_utf8_lossy(&result.stdout);
+            Ok(result) if result.status.success() => {
+                let stdout = String::from_utf8_lossy(&result.stdout);
+                Ok(self.parse_coverage(&stdout)
+                    .map(Self::coverage_to_score)
+                    .unwrap_or(4.0))
+            }
+            Ok(_) => Ok(0.0), // Coverage run failed
+            Err(_) => self.score_coverage_fallback(project_path, None),
+        }
+    }
 
-                    // Look for coverage percentage in output
-                    // Format varies, so we use heuristics
-                    if let Some(coverage) = self.parse_coverage(&stdout) {
-                        // Tiered scoring based on coverage percentage
-                        if coverage >= 85.0 {
-                            Ok(8.0) // ≥85% coverage
-                        } else if coverage >= 70.0 {
-                            Ok(6.0) // ≥70% coverage
-                        } else if coverage >= 50.0 {
-                            Ok(4.0) // ≥50% coverage
-                        } else if coverage >= 30.0 {
-                            Ok(2.0) // ≥30% coverage
-                        } else {
-                            Ok(0.0) // <30% coverage
-                        }
-                    } else {
-                        // Can't parse coverage - give moderate credit
-                        Ok(4.0)
-                    }
-                } else {
-                    // Coverage run failed - likely no tests
-                    Ok(0.0)
-                }
-            }
-            Err(_) => {
-                // cargo-llvm-cov not installed
-                // Fallback: check for presence of tests (no cache)
-                self.score_coverage_fallback(project_path, None)
-            }
+    fn coverage_to_score(coverage: f64) -> f64 {
+        match () {
+            _ if coverage >= 85.0 => 8.0,
+            _ if coverage >= 70.0 => 6.0,
+            _ if coverage >= 50.0 => 4.0,
+            _ if coverage >= 30.0 => 2.0,
+            _ => 0.0,
         }
     }
 
@@ -94,41 +77,23 @@ impl TestingScorer {
         if !src_path.exists() {
             return Ok(0.0);
         }
+        let has_tests = Self::any_file_contains_tests(&src_path, cache);
+        Ok(if has_tests { 4.0 } else { 0.0 })
+    }
 
-        let mut has_tests = false;
-
-        // Check for #[cfg(test)] modules in source files
+    fn any_file_contains_tests(src_path: &Path, cache: Option<&FileCache>) -> bool {
         if let Some(cache) = cache {
-            // Use cache: get all .rs files in src/ directory
-            for (_path, content) in cache.get_rust_files_in_dir(&src_path) {
-                if content.contains("#[cfg(test)]") || content.contains("#[test]") {
-                    has_tests = true;
-                    break;
-                }
-            }
-        } else {
-            // Fallback: read from filesystem
-            if let Ok(entries) = std::fs::read_dir(&src_path) {
-                for entry in entries.flatten() {
-                    if let Some(ext) = entry.path().extension() {
-                        if ext == "rs" {
-                            if let Ok(content) = std::fs::read_to_string(entry.path()) {
-                                if content.contains("#[cfg(test)]") || content.contains("#[test]") {
-                                    has_tests = true;
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+            return cache.get_rust_files_in_dir(src_path).iter().any(|(_p, content)| {
+                content.contains("#[cfg(test)]") || content.contains("#[test]")
+            });
         }
-
-        if has_tests {
-            Ok(4.0) // Moderate credit for having tests
-        } else {
-            Ok(0.0) // No tests found
-        }
+        let Ok(entries) = std::fs::read_dir(src_path) else { return false };
+        entries.flatten().any(|entry| {
+            entry.path().extension().is_some_and(|ext| ext == "rs")
+                && std::fs::read_to_string(entry.path())
+                    .map(|c| c.contains("#[cfg(test)]") || c.contains("#[test]"))
+                    .unwrap_or(false)
+        })
     }
 
     /// Parse coverage percentage from cargo-llvm-cov output
@@ -218,49 +183,35 @@ impl TestingScorer {
         cache: Option<&FileCache>,
     ) -> ScorerResult<()> {
         if let Some(cache) = cache {
-            // Use cache: get all .rs files in directory
             for (_path, content) in cache.get_rust_files_in_dir(dir) {
-                // Count occurrences of "```" in doc comments
-                for line in content.lines() {
-                    let trimmed = line.trim();
-
-                    // Check if we're in a doc comment
-                    if (trimmed.starts_with("///") || trimmed.starts_with("//!"))
-                        && trimmed.contains("```")
-                    {
-                        *count += 1;
-                    }
-                }
+                *count += Self::count_doc_test_markers(content);
             }
         } else {
-            // Fallback: read from filesystem
-            if let Ok(entries) = std::fs::read_dir(dir) {
-                for entry in entries.flatten() {
-                    let path = entry.path();
+            self.count_doc_tests_from_fs(dir, count)?;
+        }
+        Ok(())
+    }
 
-                    if path.is_dir() {
-                        self.count_doc_tests(&path, count, None)?;
-                    } else if let Some(ext) = path.extension() {
-                        if ext == "rs" {
-                            if let Ok(content) = std::fs::read_to_string(&path) {
-                                // Count occurrences of "```" in doc comments
-                                for line in content.lines() {
-                                    let trimmed = line.trim();
-
-                                    // Check if we're in a doc comment
-                                    if (trimmed.starts_with("///") || trimmed.starts_with("//!"))
-                                        && trimmed.contains("```")
-                                    {
-                                        *count += 1;
-                                    }
-                                }
-                            }
-                        }
-                    }
+    fn count_doc_tests_from_fs(&self, dir: &Path, count: &mut usize) -> ScorerResult<()> {
+        let Ok(entries) = std::fs::read_dir(dir) else { return Ok(()) };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                self.count_doc_tests_from_fs(&path, count)?;
+            } else if path.extension().is_some_and(|ext| ext == "rs") {
+                if let Ok(content) = std::fs::read_to_string(&path) {
+                    *count += Self::count_doc_test_markers(&content);
                 }
             }
         }
         Ok(())
+    }
+
+    fn count_doc_test_markers(content: &str) -> usize {
+        content.lines().filter(|line| {
+            let t = line.trim();
+            (t.starts_with("///") || t.starts_with("//!")) && t.contains("```")
+        }).count()
     }
 
     /// Internal scoring logic that accepts optional cache
@@ -375,53 +326,40 @@ impl TestingScorer {
     /// Score mutation testing (5pts)
     /// ≥80% mutation score = full points
     fn score_mutation(&self, project_path: &Path) -> ScorerResult<f64> {
-        // Try to run cargo-mutants
         let output = Command::new("cargo")
             .arg("mutants")
             .arg("--no-times")
             .current_dir(project_path)
             .output();
 
-        match output {
-            Ok(result) => {
-                let stdout = String::from_utf8_lossy(&result.stdout);
+        let Ok(result) = output else { return Ok(2.5) }; // not installed
+        let stdout = String::from_utf8_lossy(&result.stdout);
+        Ok(Self::parse_mutation_score(&stdout))
+    }
 
-                // Parse mutation score from output
-                if let Some(caught_line) = stdout.lines().find(|l| l.contains("caught")) {
-                    // Simplified parsing
-                    let caught = caught_line
-                        .split_whitespace()
-                        .next()
-                        .and_then(|s| s.parse::<f64>().ok())
-                        .unwrap_or(0.0);
+    fn parse_mutation_score(stdout: &str) -> f64 {
+        let Some(caught_line) = stdout.lines().find(|l| l.contains("caught")) else {
+            return 2.5;
+        };
+        let caught = caught_line
+            .split_whitespace()
+            .next()
+            .and_then(|s| s.parse::<f64>().ok())
+            .unwrap_or(0.0);
+        let total = stdout.lines().filter(|l| l.contains("mutant")).count() as f64;
+        if total <= 0.0 {
+            return 2.5;
+        }
+        Self::mutation_ratio_to_score(caught / total)
+    }
 
-                    let total = stdout.lines().filter(|l| l.contains("mutant")).count() as f64;
-
-                    if total > 0.0 {
-                        let ratio = caught / total;
-
-                        if ratio >= 0.80 {
-                            Ok(5.0) // ≥80% mutation score
-                        } else if ratio >= 0.70 {
-                            Ok(4.0)
-                        } else if ratio >= 0.60 {
-                            Ok(3.0)
-                        } else if ratio >= 0.50 {
-                            Ok(2.0)
-                        } else {
-                            Ok(1.0)
-                        }
-                    } else {
-                        Ok(2.5) // No mutants = moderate score
-                    }
-                } else {
-                    Ok(2.5) // Can't parse = moderate score
-                }
-            }
-            Err(_) => {
-                // cargo-mutants not installed - give moderate credit
-                Ok(2.5)
-            }
+    fn mutation_ratio_to_score(ratio: f64) -> f64 {
+        match () {
+            _ if ratio >= 0.80 => 5.0,
+            _ if ratio >= 0.70 => 4.0,
+            _ if ratio >= 0.60 => 3.0,
+            _ if ratio >= 0.50 => 2.0,
+            _ => 1.0,
         }
     }
 }
@@ -503,11 +441,7 @@ impl Scorer for TestingScorer {
             }
         }
 
-        // Check mutation testing - SKIP subprocess, always recommend
-        recommendations.push(
-            "Improve test quality: Install cargo-mutants and aim for ≥80% mutation score"
-                .to_string(),
-        );
+        // Note: mutation testing recommendation is in code_quality_scorer to avoid duplicates
 
         recommendations
     }

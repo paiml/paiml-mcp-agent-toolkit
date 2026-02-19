@@ -61,56 +61,45 @@ impl GpuSimdScorer {
 
     /// Check if project has GPU/SIMD code
     fn has_gpu_simd_code(&self, project_path: &Path, cache: Option<&FileCache>) -> bool {
-        // Check for CUDA files
-        let cuda_extensions = ["cu", "cuh", "ptx"];
-        // Use concat! to avoid self-matching during CB-021 compliance scanning
-        let simd_patterns = [
-            "std::arch::",
-            "core::arch::",
-            concat!("_mm", "256_"),
-            concat!("_mm", "512_"),
-            "arm_neon",
-        ];
-        let wgpu_patterns = ["wgpu::", "wgsl"];
-
         if let Some(file_cache) = cache {
-            // Check cached files for SIMD/WGPU patterns
-            for (path, content) in file_cache.get_rust_files_in_dir(&project_path.join("src")) {
-                let path_str = path.to_string_lossy();
-                for ext in &cuda_extensions {
-                    if path_str.ends_with(ext) {
-                        return true;
-                    }
-                }
-                for pattern in &simd_patterns {
-                    if content.contains(pattern) {
-                        return true;
-                    }
-                }
-                for pattern in &wgpu_patterns {
-                    if content.contains(pattern) {
-                        return true;
-                    }
-                }
+            if Self::check_cache_for_gpu_simd(file_cache, project_path) {
+                return true;
             }
         }
+        Self::check_directory_for_gpu_files(project_path)
+    }
 
-        // Walk directory for CUDA files
-        if let Ok(walker) = std::fs::read_dir(project_path) {
-            for entry in walker.flatten() {
-                if let Some(ext) = entry.path().extension() {
-                    let ext_str = ext.to_string_lossy().to_lowercase();
-                    if cuda_extensions.contains(&ext_str.as_str()) {
-                        return true;
-                    }
-                    if ext_str == "wgsl" {
-                        return true;
-                    }
-                }
+    fn check_cache_for_gpu_simd(cache: &FileCache, project_path: &Path) -> bool {
+        for (path, content) in cache.get_rust_files_in_dir(&project_path.join("src")) {
+            if Self::file_has_gpu_simd_indicators(&path.to_string_lossy(), content) {
+                return true;
             }
         }
-
         false
+    }
+
+    fn file_has_gpu_simd_indicators(path_str: &str, content: &str) -> bool {
+        const CUDA_EXTENSIONS: &[&str] = &["cu", "cuh", "ptx"];
+        // Use concat! to avoid self-matching during CB-021 compliance scanning
+        const SIMD_PATTERNS: &[&str] = &[
+            "std::arch::", "core::arch::",
+            concat!("_mm", "256_"), concat!("_mm", "512_"), "arm_neon",
+        ];
+        const WGPU_PATTERNS: &[&str] = &["wgpu::", "wgsl"];
+
+        CUDA_EXTENSIONS.iter().any(|ext| path_str.ends_with(ext))
+            || SIMD_PATTERNS.iter().any(|p| content.contains(p))
+            || WGPU_PATTERNS.iter().any(|p| content.contains(p))
+    }
+
+    fn check_directory_for_gpu_files(project_path: &Path) -> bool {
+        const GPU_EXTENSIONS: &[&str] = &["cu", "cuh", "ptx", "wgsl"];
+        let Ok(walker) = std::fs::read_dir(project_path) else { return false };
+        walker.flatten().any(|entry| {
+            entry.path().extension()
+                .and_then(|ext| ext.to_str())
+                .is_some_and(|ext| GPU_EXTENSIONS.contains(&ext))
+        })
     }
 }
 
@@ -155,13 +144,12 @@ impl Scorer for GpuSimdScorer {
     ) -> ScorerResult<CategoryScore> {
         // Check if project has GPU/SIMD code
         if !self.has_gpu_simd_code(project_path, cache) {
-            // N/A: Project doesn't have GPU/SIMD code
-            // Return full points (not penalized for not having GPU code)
+            // N/A: Project doesn't have GPU/SIMD code — excluded from grade
             if let Ok(mut findings) = self.last_findings.lock() {
                 findings.clear();
-                findings.push("No GPU/SIMD code detected (N/A - full points)".to_string());
+                findings.push("No GPU/SIMD code detected (N/A)".to_string());
             }
-            return Ok(CategoryScore::new(self.max_points, self.max_points));
+            return Ok(CategoryScore::not_applicable(self.max_points));
         }
 
         // Configure analyzer for scoring (not strict gate)
@@ -298,8 +286,9 @@ mod tests {
         assert!(result.is_ok());
 
         let score = result.unwrap();
-        // Should get full points for N/A (no GPU code)
-        assert_eq!(score.earned, 10.0);
+        // N/A: no GPU code — excluded from grade calculation
+        assert_eq!(score.earned, 0.0);
+        assert!(!score.applicable);
     }
 
     #[test]
