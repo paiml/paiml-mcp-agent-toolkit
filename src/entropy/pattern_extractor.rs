@@ -285,8 +285,13 @@ impl PatternExtractor {
 
         if matches.len() > 1 {
             self.group_by_structural_hash(
-                &matches, content, file_path,
-                PatternType::ErrorHandling, 3, 5, collection,
+                &matches,
+                content,
+                file_path,
+                PatternType::ErrorHandling,
+                3,
+                5,
+                collection,
             );
         }
 
@@ -314,8 +319,13 @@ impl PatternExtractor {
         // Raised threshold: standalone validation calls are idiomatic, not duplication
         if matches.len() > 5 {
             self.group_by_structural_hash(
-                &matches, content, file_path,
-                PatternType::DataValidation, 3, 3, collection,
+                &matches,
+                content,
+                file_path,
+                PatternType::DataValidation,
+                3,
+                3,
+                collection,
             );
         }
 
@@ -341,8 +351,13 @@ impl PatternExtractor {
         // Raised threshold: individual .lock()/.open() calls are standard practice
         if matches.len() > 5 {
             self.group_by_structural_hash(
-                &matches, content, file_path,
-                PatternType::ResourceManagement, 3, 4, collection,
+                &matches,
+                content,
+                file_path,
+                PatternType::ResourceManagement,
+                3,
+                4,
+                collection,
             );
         }
 
@@ -365,8 +380,13 @@ impl PatternExtractor {
 
         if matches.len() > 2 {
             self.group_by_structural_hash(
-                &matches, content, file_path,
-                PatternType::ControlFlow, 3, 6, collection,
+                &matches,
+                content,
+                file_path,
+                PatternType::ControlFlow,
+                3,
+                6,
+                collection,
             );
         }
 
@@ -392,8 +412,13 @@ impl PatternExtractor {
         // Raised threshold: individual iterator combinators are idiomatic Rust
         if matches.len() > 8 {
             self.group_by_structural_hash(
-                &matches, content, file_path,
-                PatternType::DataTransformation, 3, 2, collection,
+                &matches,
+                content,
+                file_path,
+                PatternType::DataTransformation,
+                3,
+                2,
+                collection,
             );
         }
 
@@ -419,8 +444,13 @@ impl PatternExtractor {
         // Raised threshold: isolated HTTP calls are not duplication
         if matches.len() > 3 {
             self.group_by_structural_hash(
-                &matches, content, file_path,
-                PatternType::ApiCall, 3, 3, collection,
+                &matches,
+                content,
+                file_path,
+                PatternType::ApiCall,
+                3,
+                3,
+                collection,
             );
         }
 
@@ -499,8 +529,7 @@ impl PatternExtractor {
     /// (created with per-method variation calculators), variation_score is also already set.
     /// This method is now a no-op; the old heuristic (locations.len / 10) was overriding
     /// structural hash results with meaningless values.
-    fn calculate_pattern_variations(&self, _collection: &mut PatternCollection) {
-    }
+    fn calculate_pattern_variations(&self, _collection: &mut PatternCollection) {}
 
     /// Create a hash for a pattern to identify similar ones
     fn hash_pattern(&self, ast_data: &str) -> String {
@@ -530,13 +559,14 @@ impl PatternExtractor {
         // Split on word boundaries, check each token against keyword set.
         let re_ident = Regex::new(r"\b[a-zA-Z_]\w*\b").expect("valid regex");
         let keywords: std::collections::HashSet<&str> = [
-            "if", "else", "match", "for", "while", "let", "mut", "fn", "return",
-            "true", "false", "self", "Ok", "Err", "Some", "None", "Result",
-            "Option", "Vec", "String", "impl", "pub", "struct", "enum", "async",
-            "await", "unsafe", "use", "mod", "const", "static", "type", "where",
-            "trait", "loop", "break", "continue", "ref", "in", "as", "crate",
+            "if", "else", "match", "for", "while", "let", "mut", "fn", "return", "true", "false",
+            "self", "Ok", "Err", "Some", "None", "Result", "Option", "Vec", "String", "impl",
+            "pub", "struct", "enum", "async", "await", "unsafe", "use", "mod", "const", "static",
+            "type", "where", "trait", "loop", "break", "continue", "ref", "in", "as", "crate",
             "super", "dyn", "move", "extern", "STR", "N",
-        ].into_iter().collect();
+        ]
+        .into_iter()
+        .collect();
         let normalized = re_ident.replace_all(&normalized, |caps: &regex::Captures| {
             let word = caps.get(0).expect("group 0").as_str();
             if keywords.contains(word) {
@@ -553,8 +583,13 @@ impl PatternExtractor {
     /// Extract the current line containing a regex match for structural comparison.
     fn extract_match_context(content: &str, m: &regex::Match) -> String {
         let line_start = content[..m.start()].rfind('\n').map_or(0, |p| p + 1);
-        let line_end = content[m.end()..].find('\n').map_or(content.len(), |p| m.end() + p);
-        content.get(line_start..line_end).unwrap_or_default().to_string()
+        let line_end = content[m.end()..]
+            .find('\n')
+            .map_or(content.len(), |p| m.end() + p);
+        content
+            .get(line_start..line_end)
+            .unwrap_or_default()
+            .to_string()
     }
 
     /// Group matches by structural hash and produce AstPatterns for groups with ≥ min_group_size
@@ -576,20 +611,26 @@ impl PatternExtractor {
             let normalized = Self::normalize_code_snippet(&context);
             let structural_hash = self.hash_pattern(&normalized);
             let line_num = content.get(..m.start()).unwrap_or_default().lines().count() + 1;
-            groups.entry(structural_hash).or_default().push((line_num, context));
+            groups
+                .entry(structural_hash)
+                .or_default()
+                .push((line_num, context));
         }
 
         for (hash, group) in &groups {
             if group.len() >= min_group_size {
-                let locations: Vec<Location> = group.iter().take(10).map(|(line, _)| {
-                    Location {
+                let locations: Vec<Location> = group
+                    .iter()
+                    .take(10)
+                    .map(|(line, _)| Location {
                         file: file_path.to_owned(),
                         line: *line,
                         column: 1,
-                    }
-                }).collect();
+                    })
+                    .collect();
 
-                let example_code = group.first()
+                let example_code = group
+                    .first()
                     .map(|(_, ctx)| ctx.chars().take(100).collect::<String>())
                     .unwrap_or_default();
 

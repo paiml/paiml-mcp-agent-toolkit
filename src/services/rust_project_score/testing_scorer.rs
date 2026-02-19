@@ -46,7 +46,8 @@ impl TestingScorer {
         match output {
             Ok(result) if result.status.success() => {
                 let stdout = String::from_utf8_lossy(&result.stdout);
-                Ok(self.parse_coverage(&stdout)
+                Ok(self
+                    .parse_coverage(&stdout)
                     .map(Self::coverage_to_score)
                     .unwrap_or(4.0))
             }
@@ -83,11 +84,16 @@ impl TestingScorer {
 
     fn any_file_contains_tests(src_path: &Path, cache: Option<&FileCache>) -> bool {
         if let Some(cache) = cache {
-            return cache.get_rust_files_in_dir(src_path).iter().any(|(_p, content)| {
-                content.contains("#[cfg(test)]") || content.contains("#[test]")
-            });
+            return cache
+                .get_rust_files_in_dir(src_path)
+                .iter()
+                .any(|(_p, content)| {
+                    content.contains("#[cfg(test)]") || content.contains("#[test]")
+                });
         }
-        let Ok(entries) = std::fs::read_dir(src_path) else { return false };
+        let Ok(entries) = std::fs::read_dir(src_path) else {
+            return false;
+        };
         entries.flatten().any(|entry| {
             entry.path().extension().is_some_and(|ext| ext == "rs")
                 && std::fs::read_to_string(entry.path())
@@ -193,7 +199,9 @@ impl TestingScorer {
     }
 
     fn count_doc_tests_from_fs(&self, dir: &Path, count: &mut usize) -> ScorerResult<()> {
-        let Ok(entries) = std::fs::read_dir(dir) else { return Ok(()) };
+        let Ok(entries) = std::fs::read_dir(dir) else {
+            return Ok(());
+        };
         for entry in entries.flatten() {
             let path = entry.path();
             if path.is_dir() {
@@ -208,10 +216,13 @@ impl TestingScorer {
     }
 
     fn count_doc_test_markers(content: &str) -> usize {
-        content.lines().filter(|line| {
-            let t = line.trim();
-            (t.starts_with("///") || t.starts_with("//!")) && t.contains("```")
-        }).count()
+        content
+            .lines()
+            .filter(|line| {
+                let t = line.trim();
+                (t.starts_with("///") || t.starts_with("//!")) && t.contains("```")
+            })
+            .count()
     }
 
     /// Internal scoring logic that accepts optional cache

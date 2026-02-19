@@ -1,9 +1,7 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
 
 use crate::cli::commands::ComplyOutputFormat;
-use crate::services::agent_context::{
-    parse_workspace_siblings, AgentContextIndex, FunctionEntry,
-};
+use crate::services::agent_context::{parse_workspace_siblings, AgentContextIndex, FunctionEntry};
 use crate::services::duplicate_detector::{
     DuplicateDetectionConfig, Language, MinHashGenerator, MinHashSignature,
     UniversalFeatureExtractor,
@@ -103,12 +101,12 @@ pub async fn handle_cross_crate(
         return Ok(());
     }
 
-    eprintln!(
-        "Loading functions from {} crates...",
-        crates.len()
-    );
+    eprintln!("Loading functions from {} crates...", crates.len());
     let crate_functions = load_all_crate_functions(&crates);
-    let crate_names: Vec<String> = crate_functions.iter().map(|(c, _)| c.name.clone()).collect();
+    let crate_names: Vec<String> = crate_functions
+        .iter()
+        .map(|(c, _)| c.name.clone())
+        .collect();
 
     eprintln!(
         "Analyzing {} crates: {}",
@@ -272,10 +270,7 @@ fn load_all_crate_functions(crates: &[CrateInfo]) -> Vec<(CrateInfo, Vec<Functio
                 result.push((crate_info.clone(), functions));
             }
             Err(e) => {
-                eprintln!(
-                    "  {} — skipped (no index: {})",
-                    crate_info.name, e
-                );
+                eprintln!("  {} — skipped (no index: {})", crate_info.name, e);
             }
         }
     }
@@ -338,9 +333,7 @@ fn is_generic_impl_name(name: &str) -> bool {
 
 /// Compute MinHash signatures for all functions across all crates.
 /// Filters out generic trait impls and very short functions.
-fn compute_signatures(
-    crate_functions: &[(CrateInfo, Vec<FunctionEntry>)],
-) -> Vec<SignedFunction> {
+fn compute_signatures(crate_functions: &[(CrateInfo, Vec<FunctionEntry>)]) -> Vec<SignedFunction> {
     let config = DuplicateDetectionConfig {
         normalize_identifiers: true,
         normalize_literals: true,
@@ -386,7 +379,10 @@ fn compute_signatures(
     signed
 }
 
-fn build_report(findings: Vec<CrossCrateFinding>, crates_analyzed: Vec<String>) -> CrossCrateReport {
+fn build_report(
+    findings: Vec<CrossCrateFinding>,
+    crates_analyzed: Vec<String>,
+) -> CrossCrateReport {
     let mut rules_triggered: HashMap<String, usize> = HashMap::new();
     let mut errors = 0;
     let mut warnings = 0;
@@ -465,7 +461,10 @@ tempfile = "3"
 
     #[test]
     fn test_normalize_signature_strips_pub() {
-        assert_eq!(normalize_signature("pub fn foo(x: i32) -> bool"), "fn foo(x: i32) -> bool");
+        assert_eq!(
+            normalize_signature("pub fn foo(x: i32) -> bool"),
+            "fn foo(x: i32) -> bool"
+        );
         assert_eq!(normalize_signature("pub async fn bar()"), "fn bar()");
         assert_eq!(normalize_signature("fn baz(s: &str)"), "fn baz(s: &str)");
     }
@@ -496,10 +495,7 @@ tempfile = "3"
         let func_a = make_test_func("silu_activation", &source, "src/a.rs");
         let func_b = make_test_func("silu_activation", &source, "src/b.rs");
 
-        let crate_functions = vec![
-            (crate_a, vec![func_a]),
-            (crate_b, vec![func_b]),
-        ];
+        let crate_functions = vec![(crate_a, vec![func_a]), (crate_b, vec![func_b])];
 
         let findings = detect_cc001_function_clones(&crate_functions, 0.80);
         assert!(
@@ -551,13 +547,18 @@ tempfile = "3"
             cargo_deps: vec!["crate_a".to_string()], // B depends on A
         };
 
-        let func_a = make_test_func_with_sig("rms_norm", "pub fn rms_norm(x: &[f32]) -> Vec<f32>", "src/a.rs");
-        let func_b = make_test_func_with_sig("rms_norm", "pub fn rms_norm(x: &[f64], eps: f64) -> Vec<f64>", "src/b.rs");
+        let func_a = make_test_func_with_sig(
+            "rms_norm",
+            "pub fn rms_norm(x: &[f32]) -> Vec<f32>",
+            "src/a.rs",
+        );
+        let func_b = make_test_func_with_sig(
+            "rms_norm",
+            "pub fn rms_norm(x: &[f64], eps: f64) -> Vec<f64>",
+            "src/b.rs",
+        );
 
-        let crate_functions = vec![
-            (crate_a, vec![func_a]),
-            (crate_b, vec![func_b]),
-        ];
+        let crate_functions = vec![(crate_a, vec![func_a]), (crate_b, vec![func_b])];
 
         let findings = detect_cc002_api_divergence(&crate_functions);
         assert!(
@@ -583,10 +584,7 @@ tempfile = "3"
         let func_a = make_test_func_with_sig("gelu", "pub fn gelu(x: f32) -> f32", "src/a.rs");
         let func_b = make_test_func_with_sig("gelu", "pub fn gelu(x: f32) -> f32", "src/b.rs");
 
-        let crate_functions = vec![
-            (crate_a, vec![func_a]),
-            (crate_b, vec![func_b]),
-        ];
+        let crate_functions = vec![(crate_a, vec![func_a]), (crate_b, vec![func_b])];
 
         let findings = detect_cc002_api_divergence(&crate_functions);
         assert!(
@@ -614,10 +612,7 @@ tempfile = "3"
         let func_a = make_test_func("f16_to_f32", src_a, "src/conv.rs");
         let func_b = make_test_func("f16_to_f32", src_b, "src/quant.rs");
 
-        let crate_functions = vec![
-            (crate_a, vec![func_a]),
-            (crate_b, vec![func_b]),
-        ];
+        let crate_functions = vec![(crate_a, vec![func_a]), (crate_b, vec![func_b])];
 
         let findings = detect_cc003_primitive_upstream(&crate_functions);
         assert!(
@@ -645,10 +640,7 @@ tempfile = "3"
         let func_a = make_test_func("f16_to_f32", src_a, "src/conv.rs");
         let func_b = make_test_func("f16_to_f32", src_b, "src/quant.rs");
 
-        let crate_functions = vec![
-            (crate_a, vec![func_a]),
-            (crate_b, vec![func_b]),
-        ];
+        let crate_functions = vec![(crate_a, vec![func_a]), (crate_b, vec![func_b])];
 
         let findings = detect_cc003_primitive_upstream(&crate_functions);
         assert!(
@@ -668,7 +660,10 @@ tempfile = "3"
         let crate_functions = vec![(crate_a, vec![])];
 
         let findings = detect_cc005_example_duplication(&crate_functions, 0.80);
-        assert!(findings.is_empty(), "CC-005 should gracefully skip missing examples/");
+        assert!(
+            findings.is_empty(),
+            "CC-005 should gracefully skip missing examples/"
+        );
     }
 
     #[test]
@@ -712,7 +707,10 @@ tempfile = "3"
             },
         ];
 
-        let report = build_report(findings, vec!["a".to_string(), "b".to_string(), "c".to_string()]);
+        let report = build_report(
+            findings,
+            vec!["a".to_string(), "b".to_string(), "c".to_string()],
+        );
         assert_eq!(report.summary.total_findings, 3);
         assert_eq!(report.summary.errors, 1);
         assert_eq!(report.summary.warnings, 1);

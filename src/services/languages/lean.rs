@@ -297,10 +297,9 @@ fn contains_sorry_word(line: &str) -> bool {
     while pos + sorry.len() <= bytes.len() {
         if let Some(idx) = line[pos..].find("sorry") {
             let abs_idx = pos + idx;
-            let before_ok =
-                abs_idx == 0 || !is_ident_char(bytes[abs_idx - 1]);
-            let after_ok =
-                abs_idx + sorry.len() >= bytes.len() || !is_ident_char(bytes[abs_idx + sorry.len()]);
+            let before_ok = abs_idx == 0 || !is_ident_char(bytes[abs_idx - 1]);
+            let after_ok = abs_idx + sorry.len() >= bytes.len()
+                || !is_ident_char(bytes[abs_idx + sorry.len()]);
             if before_ok && after_ok {
                 return true;
             }
@@ -568,7 +567,11 @@ structure Ring where
             .iter()
             .filter(|item| matches!(item, AstItem::Function { .. }))
             .collect();
-        assert_eq!(functions.len(), 4, "Should extract axiom, opaque, abbrev, instance");
+        assert_eq!(
+            functions.len(),
+            4,
+            "Should extract axiom, opaque, abbrev, instance"
+        );
 
         // structure = 1 struct
         let structs: Vec<_> = items
@@ -585,8 +588,14 @@ structure Ring where
             .analyze_complexity(LEAN_THEOREMS)
             .expect("Should analyze Lean complexity");
 
-        assert!(cyclomatic >= 1, "Should have at least cyclomatic complexity of 1");
-        assert!(cognitive >= 1, "Should have at least cognitive complexity of 1");
+        assert!(
+            cyclomatic >= 1,
+            "Should have at least cyclomatic complexity of 1"
+        );
+        assert!(
+            cognitive >= 1,
+            "Should have at least cognitive complexity of 1"
+        );
     }
 
     #[test]
@@ -640,29 +649,44 @@ structure Ring where
             .collect();
 
         assert_eq!(functions.len(), 2);
-        assert_eq!(functions[0], "Foo::a", "First def should be in Foo namespace");
-        assert_eq!(functions[1], "Bar::b", "Second def should be in Bar namespace");
+        assert_eq!(
+            functions[0], "Foo::a",
+            "First def should be in Foo namespace"
+        );
+        assert_eq!(
+            functions[1], "Bar::b",
+            "Second def should be in Bar namespace"
+        );
     }
 
     #[test]
     fn test_sorry_in_identifier_not_counted() {
         let source = "def sorry_helper := 42\ndef no_sorry_here := 0";
         let count = count_sorry(source);
-        assert_eq!(count, 0, "sorry as substring of identifier should not be counted");
+        assert_eq!(
+            count, 0,
+            "sorry as substring of identifier should not be counted"
+        );
     }
 
     #[test]
     fn test_sorry_in_inline_block_comment_not_counted() {
         let source = "/- sorry -/ theorem real : True := by trivial";
         let count = count_sorry(source);
-        assert_eq!(count, 0, "sorry inside inline block comment should not be counted");
+        assert_eq!(
+            count, 0,
+            "sorry inside inline block comment should not be counted"
+        );
     }
 
     #[test]
     fn test_sorry_after_inline_block_comment_counted() {
         let source = "/- comment -/ sorry";
         let count = count_sorry(source);
-        assert_eq!(count, 1, "sorry after inline block comment should be counted");
+        assert_eq!(
+            count, 1,
+            "sorry after inline block comment should be counted"
+        );
     }
 
     #[test]

@@ -253,7 +253,17 @@ fn categorize_operation(name_lower: &str) -> f64 {
     // Order matters — first match wins.
     const OPERATION_CATEGORIES: &[(&[&str], f64)] = &[
         // Memory-bound operations (AI < 1): read/write more data than compute
-        (&["rmsnorm", "layernorm", "residual", "add", "embed", "softmax"], 0.25),
+        (
+            &[
+                "rmsnorm",
+                "layernorm",
+                "residual",
+                "add",
+                "embed",
+                "softmax",
+            ],
+            0.25,
+        ),
         // Elementwise activations (memory-bound)
         (&["swiglu", "gelu", "silu", "relu"], 0.5),
         // RoPE (rotary position embedding) - moderate AI
@@ -515,15 +525,18 @@ pub struct BrickScoreMetadata {
 /// Score a single brick's performance against its budget.
 fn score_performance(mean_us: f64, budget_us: f64, brick_name: &str) -> BrickCheck {
     let budget_ratio = mean_us / budget_us;
-    let perf_points = if budget_ratio <= 1.0 {
-        4.0 // Full points for meeting budget
-    } else if budget_ratio <= 1.5 {
-        2.0 // Half points for 50% over
-    } else if budget_ratio <= 2.0 {
-        1.0 // Quarter points for 100% over
-    } else {
-        0.0 // No points for >2x over budget
+    let perf_points = match () {
+        _ if budget_ratio <= 1.0 => 4.0,
+        _ if budget_ratio <= 1.5 => 2.0,
+        _ if budget_ratio <= 2.0 => 1.0,
+        _ => 0.0,
     };
+    let recommendation = (budget_ratio > 1.0).then(|| {
+        format!(
+            "Optimize {} to meet {}µs budget (currently {:.1}µs, {:.0}% over)",
+            brick_name, budget_us, mean_us, (budget_ratio - 1.0) * 100.0
+        )
+    });
 
     BrickCheck {
         name: brick_name.to_string(),
@@ -533,17 +546,7 @@ fn score_performance(mean_us: f64, budget_us: f64, brick_name: &str) -> BrickChe
         actual: mean_us,
         threshold: budget_us,
         unit: "µs".to_string(),
-        recommendation: if budget_ratio > 1.0 {
-            Some(format!(
-                "Optimize {} to meet {}µs budget (currently {:.1}µs, {:.0}% over)",
-                brick_name,
-                budget_us,
-                mean_us,
-                (budget_ratio - 1.0) * 100.0
-            ))
-        } else {
-            None
-        },
+        recommendation,
     }
 }
 

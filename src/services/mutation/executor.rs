@@ -568,7 +568,9 @@ impl MutantExecutor {
 
         // Flush and sync to ensure data is on disk
         file.flush().await.context("Failed to flush scratch file")?;
-        file.sync_all().await.context("Failed to sync scratch file")?;
+        file.sync_all()
+            .await
+            .context("Failed to sync scratch file")?;
 
         // Close the file explicitly
         drop(file);

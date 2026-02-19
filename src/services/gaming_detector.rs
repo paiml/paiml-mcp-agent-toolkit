@@ -162,8 +162,7 @@ fn update_raw_string_state(trimmed: &str, in_raw_string: bool) -> (bool, bool) {
         return (false, false);
     }
     // Line starts a raw string; check if it also closes on the same line
-    let is_single_line =
-        trimmed.contains("\"#") && trimmed.rfind("\"#") > trimmed.find("r#\"");
+    let is_single_line = trimmed.contains("\"#") && trimmed.rfind("\"#") > trimmed.find("r#\"");
     (true, !is_single_line)
 }
 

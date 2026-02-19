@@ -127,9 +127,7 @@ fn compute_confidence_boost(lang: &str, path: &Path) -> f64 {
         10.0
     } else if (lang == "cpp" || lang == "c") && path.join("CMakeLists.txt").exists() {
         10.0
-    } else if (lang == "javascript" || lang == "typescript")
-        && path.join("package.json").exists()
-    {
+    } else if (lang == "javascript" || lang == "typescript") && path.join("package.json").exists() {
         5.0
     } else {
         0.0

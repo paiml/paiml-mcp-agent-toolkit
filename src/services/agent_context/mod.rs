@@ -58,11 +58,11 @@
 mod function_index;
 mod query;
 
+pub(crate) use function_index::helpers::parse_workspace_siblings;
+pub(crate) use function_index::sqlite_backend::persist_quality_violations;
 pub use function_index::{
     AgentContextIndex, FunctionEntry, GraphMetrics, IndexManifest, IndexStats, QualityMetrics,
 };
-pub(crate) use function_index::helpers::parse_workspace_siblings;
-pub(crate) use function_index::sqlite_backend::persist_quality_violations;
 pub use query::coverage_exclusion::{classify_exclusions, CoverageExclusion, ExclusionSummary};
 pub use query::ptx_diagnostics::{
     format_ptx_diagnostics_json, format_ptx_diagnostics_text, run_ptx_diagnostics,

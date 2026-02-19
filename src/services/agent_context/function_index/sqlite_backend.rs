@@ -850,7 +850,14 @@ pub(crate) fn has_valid_schema(conn: &Connection) -> bool {
 /// gate results queryable via `pmat sql`.
 pub(crate) fn persist_quality_violations(
     db_path: &Path,
-    violations: &[(String, String, String, Option<usize>, String, Option<String>)],
+    violations: &[(
+        String,
+        String,
+        String,
+        Option<usize>,
+        String,
+        Option<String>,
+    )],
 ) -> Result<(), String> {
     if !db_path.exists() {
         return Err(format!(
@@ -904,8 +911,15 @@ pub(crate) fn persist_quality_violations(
 
         for (check_type, severity, file_path, line, message, details_json) in violations {
             let line_val: Option<i64> = line.map(|l| l as i64);
-            stmt.execute(params![check_type, severity, file_path, line_val, message, details_json])
-                .map_err(|e| format!("Failed to insert violation: {e}"))?;
+            stmt.execute(params![
+                check_type,
+                severity,
+                file_path,
+                line_val,
+                message,
+                details_json
+            ])
+            .map_err(|e| format!("Failed to insert violation: {e}"))?;
         }
     }
 

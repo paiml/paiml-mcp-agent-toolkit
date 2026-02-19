@@ -1721,8 +1721,8 @@ fn contains_sorry_word_boundary(line: &str) -> bool {
     while pos + sorry.len() <= bytes.len() {
         if let Some(idx) = line[pos..].find("sorry") {
             let abs_idx = pos + idx;
-            let before_ok =
-                abs_idx == 0 || !(bytes[abs_idx - 1].is_ascii_alphanumeric() || bytes[abs_idx - 1] == b'_');
+            let before_ok = abs_idx == 0
+                || !(bytes[abs_idx - 1].is_ascii_alphanumeric() || bytes[abs_idx - 1] == b'_');
             let after_ok = abs_idx + sorry.len() >= bytes.len()
                 || !(bytes[abs_idx + sorry.len()].is_ascii_alphanumeric()
                     || bytes[abs_idx + sorry.len()] == b'_');
@@ -1942,7 +1942,6 @@ fn detect_new_satd_since_baseline(
     }
 
     Ok(new_satd)
-
 }
 
 /// Test dead code detection: find new unreachable code since baseline
@@ -2064,10 +2063,7 @@ fn extract_file_line_coverage(file_entry: &serde_json::Value) -> f64 {
 ///
 /// Each entry is `(filename, coverage_pct)`. Test files and generated files
 /// are excluded.
-fn collect_files_below_threshold(
-    json: &serde_json::Value,
-    threshold: f64,
-) -> Vec<(PathBuf, f64)> {
+fn collect_files_below_threshold(json: &serde_json::Value, threshold: f64) -> Vec<(PathBuf, f64)> {
     let data = match json.get("data").and_then(|d| d.as_array()) {
         Some(d) => d,
         None => return Vec::new(),
@@ -2077,7 +2073,10 @@ fn collect_files_below_threshold(
         .filter_map(|file_data| file_data.get("files").and_then(|f| f.as_array()))
         .flatten()
         .filter_map(|file| {
-            let filename = file.get("filename").and_then(|f| f.as_str()).unwrap_or("unknown");
+            let filename = file
+                .get("filename")
+                .and_then(|f| f.as_str())
+                .unwrap_or("unknown");
             if is_excluded_from_per_file_coverage(filename) {
                 return None;
             }
@@ -2097,10 +2096,7 @@ fn build_per_file_coverage_result(
     threshold: f64,
 ) -> FalsificationResult {
     if files_below_threshold.is_empty() {
-        return FalsificationResult::passed(format!(
-            "All files >= {:.1}% coverage",
-            threshold
-        ));
+        return FalsificationResult::passed(format!("All files >= {:.1}% coverage", threshold));
     }
 
     let paths: Vec<PathBuf> = files_below_threshold

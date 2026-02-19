@@ -231,10 +231,7 @@ pub fn detect_cb1053_undocumented_theorems(project_path: &Path) -> Vec<CbPattern
                         pattern_id: "CB-1053".to_string(),
                         file: file.clone(),
                         line: i + 1,
-                        description: format!(
-                            "Public theorem '{}' missing doc comment",
-                            name
-                        ),
+                        description: format!("Public theorem '{}' missing doc comment", name),
                         severity: Severity::Info,
                     });
                 }
@@ -304,7 +301,11 @@ mod tests {
     #[test]
     fn test_walkdir_lean_files_basic() {
         let dir = TempDir::new().unwrap();
-        fs::write(dir.path().join("test.lean"), "theorem t : True := by trivial").unwrap();
+        fs::write(
+            dir.path().join("test.lean"),
+            "theorem t : True := by trivial",
+        )
+        .unwrap();
         fs::write(dir.path().join("lakefile.lean"), "-- lakefile").unwrap();
 
         let files = walkdir_lean_files(dir.path());

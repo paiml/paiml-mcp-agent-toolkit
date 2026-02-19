@@ -1488,4 +1488,3 @@ fn test_format_text_coverage_diff_negative() {
     let text = format_text(&[result]);
     assert!(text.contains("-1.5%"), "missing negative diff text");
 }
-

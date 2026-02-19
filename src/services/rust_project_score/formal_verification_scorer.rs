@@ -316,9 +316,8 @@ impl FormalVerificationScorer {
 
     /// Count theorems and lemmas in .lean files
     fn count_lean_theorems(&self, project_path: &Path) -> usize {
-        let theorem_pattern =
-            Regex::new(r"^\s*(theorem|lemma|private theorem|private lemma)\s+")
-                .expect("internal error");
+        let theorem_pattern = Regex::new(r"^\s*(theorem|lemma|private theorem|private lemma)\s+")
+            .expect("internal error");
         let mut count = 0;
 
         for entry in walkdir::WalkDir::new(project_path)
@@ -438,12 +437,7 @@ impl FormalVerificationScorer {
     }
 
     /// Score Miri compliance (3 points)
-    fn score_miri(
-        &self,
-        project_path: &Path,
-        mode: ScoringMode,
-        cache: Option<&FileCache>,
-    ) -> f64 {
+    fn score_miri(&self, project_path: &Path, mode: ScoringMode, cache: Option<&FileCache>) -> f64 {
         let unsafe_count = self.count_unsafe_blocks(project_path, cache);
         if unsafe_count == 0 {
             return MIRI_POINTS; // No unsafe = full credit
@@ -463,12 +457,7 @@ impl FormalVerificationScorer {
     }
 
     /// Score Kani proofs (5 points)
-    fn score_kani(
-        &self,
-        project_path: &Path,
-        mode: ScoringMode,
-        cache: Option<&FileCache>,
-    ) -> f64 {
+    fn score_kani(&self, project_path: &Path, mode: ScoringMode, cache: Option<&FileCache>) -> f64 {
         let kani_proofs = self.count_kani_proofs(project_path, cache);
         if kani_proofs == 0 {
             return 0.0;
@@ -498,9 +487,8 @@ impl FormalVerificationScorer {
         if verus_specs == 0 && !has_vstd {
             return 0.0;
         }
-        let use_partial = mode == ScoringMode::Quick
-            || mode == ScoringMode::Fast
-            || !self.is_verus_available();
+        let use_partial =
+            mode == ScoringMode::Quick || mode == ScoringMode::Fast || !self.is_verus_available();
         let spec_score = if use_partial {
             match verus_specs {
                 0 => 0.2,

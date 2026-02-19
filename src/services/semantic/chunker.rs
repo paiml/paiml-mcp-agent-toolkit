@@ -144,7 +144,7 @@ fn parse_rust(source: &str) -> Result<Tree, String> {
 fn is_doc_comment(kind: &str, source: &str, sibling: Node) -> bool {
     let is_comment = kind == "comment"      // TypeScript, C, C++, Go
         || kind == "line_comment"           // Rust
-        || kind == "block_comment";         // Rust, C, C++
+        || kind == "block_comment"; // Rust, C, C++
 
     if !is_comment {
         return false;
@@ -189,7 +189,6 @@ fn find_doc_comment_start(node: Node, source: &str) -> usize {
 
     start_byte
 }
-
 
 /// Map Rust AST node kind to chunk type and name field
 fn rust_node_to_chunk(kind: &str) -> Option<(ChunkType, &'static str, bool)> {

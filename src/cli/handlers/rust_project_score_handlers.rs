@@ -322,18 +322,9 @@ mod tests {
 
     fn create_test_score() -> ProjectScore {
         let mut categories = HashMap::new();
-        categories.insert(
-            "Rust Tooling".to_string(),
-            CategoryScore::new(20.0, 25.0),
-        );
-        categories.insert(
-            "Code Quality".to_string(),
-            CategoryScore::new(15.0, 26.0),
-        );
-        categories.insert(
-            "Testing".to_string(),
-            CategoryScore::new(18.0, 20.0),
-        );
+        categories.insert("Rust Tooling".to_string(), CategoryScore::new(20.0, 25.0));
+        categories.insert("Code Quality".to_string(), CategoryScore::new(15.0, 26.0));
+        categories.insert("Testing".to_string(), CategoryScore::new(18.0, 20.0));
 
         ProjectScore {
             total_earned: 53.0,
@@ -465,10 +456,9 @@ mod tests {
     fn test_format_text_icons_passing() {
         let mut score = create_test_score();
         score.categories.clear();
-        score.categories.insert(
-            "Perfect".to_string(),
-            CategoryScore::new(95.0, 100.0),
-        );
+        score
+            .categories
+            .insert("Perfect".to_string(), CategoryScore::new(95.0, 100.0));
         let output = format_text(&score, &[], false);
 
         assert!(output.contains("✅"));
@@ -478,10 +468,9 @@ mod tests {
     fn test_format_text_icons_warning() {
         let mut score = create_test_score();
         score.categories.clear();
-        score.categories.insert(
-            "Warning".to_string(),
-            CategoryScore::new(75.0, 100.0),
-        );
+        score
+            .categories
+            .insert("Warning".to_string(), CategoryScore::new(75.0, 100.0));
         let output = format_text(&score, &[], false);
 
         assert!(output.contains("⚠️"));
@@ -491,10 +480,9 @@ mod tests {
     fn test_format_text_icons_failing() {
         let mut score = create_test_score();
         score.categories.clear();
-        score.categories.insert(
-            "Failing".to_string(),
-            CategoryScore::new(50.0, 100.0),
-        );
+        score
+            .categories
+            .insert("Failing".to_string(), CategoryScore::new(50.0, 100.0));
         let output = format_text(&score, &[], false);
 
         assert!(output.contains("❌"));

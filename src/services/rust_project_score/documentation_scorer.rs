@@ -115,7 +115,9 @@ impl DocumentationScorer {
         total: &mut usize,
         documented: &mut usize,
     ) -> ScorerResult<()> {
-        let Ok(entries) = std::fs::read_dir(dir) else { return Ok(()) };
+        let Ok(entries) = std::fs::read_dir(dir) else {
+            return Ok(());
+        };
         for entry in entries.flatten() {
             let path = entry.path();
             if path.is_dir() {
@@ -241,7 +243,9 @@ impl DocumentationScorer {
     /// **Kaizen Round 5**: Also checks workspace root for monorepo structures
     fn score_changelog(&self, project_path: &Path, cache: Option<&FileCache>) -> ScorerResult<f64> {
         let content = self.read_best_changelog(project_path, cache)?;
-        let Some(content) = content else { return Ok(0.0) };
+        let Some(content) = content else {
+            return Ok(0.0);
+        };
         let version_count = count_version_entries(&content);
         Ok(Self::changelog_version_score(version_count))
     }
@@ -254,12 +258,18 @@ impl DocumentationScorer {
         }
     }
 
-    fn read_best_changelog(&self, project_path: &Path, cache: Option<&FileCache>) -> ScorerResult<Option<String>> {
+    fn read_best_changelog(
+        &self,
+        project_path: &Path,
+        cache: Option<&FileCache>,
+    ) -> ScorerResult<Option<String>> {
         let changelog_path = project_path.join("CHANGELOG.md");
         let ws_changelog = project_path.parent().map(|p| p.join("CHANGELOG.md"));
 
         let content = self.read_changelog_file(&changelog_path, cache);
-        let ws_content = ws_changelog.as_ref().and_then(|p| self.read_changelog_file(p, None));
+        let ws_content = ws_changelog
+            .as_ref()
+            .and_then(|p| self.read_changelog_file(p, None));
 
         match (content, ws_content) {
             (Some(c), Some(ws)) => {
@@ -275,8 +285,14 @@ impl DocumentationScorer {
         }
     }
 
-    fn read_changelog_file(&self, path: &std::path::PathBuf, cache: Option<&FileCache>) -> Option<String> {
-        if !path.exists() { return None; }
+    fn read_changelog_file(
+        &self,
+        path: &std::path::PathBuf,
+        cache: Option<&FileCache>,
+    ) -> Option<String> {
+        if !path.exists() {
+            return None;
+        }
         if let Some(cache) = cache {
             return cache.get(path).cloned();
         }

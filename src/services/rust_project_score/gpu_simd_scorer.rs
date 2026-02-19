@@ -82,8 +82,11 @@ impl GpuSimdScorer {
         const CUDA_EXTENSIONS: &[&str] = &["cu", "cuh", "ptx"];
         // Use concat! to avoid self-matching during CB-021 compliance scanning
         const SIMD_PATTERNS: &[&str] = &[
-            "std::arch::", "core::arch::",
-            concat!("_mm", "256_"), concat!("_mm", "512_"), "arm_neon",
+            "std::arch::",
+            "core::arch::",
+            concat!("_mm", "256_"),
+            concat!("_mm", "512_"),
+            "arm_neon",
         ];
         const WGPU_PATTERNS: &[&str] = &["wgpu::", "wgsl"];
 
@@ -94,9 +97,13 @@ impl GpuSimdScorer {
 
     fn check_directory_for_gpu_files(project_path: &Path) -> bool {
         const GPU_EXTENSIONS: &[&str] = &["cu", "cuh", "ptx", "wgsl"];
-        let Ok(walker) = std::fs::read_dir(project_path) else { return false };
+        let Ok(walker) = std::fs::read_dir(project_path) else {
+            return false;
+        };
         walker.flatten().any(|entry| {
-            entry.path().extension()
+            entry
+                .path()
+                .extension()
                 .and_then(|ext| ext.to_str())
                 .is_some_and(|ext| GPU_EXTENSIONS.contains(&ext))
         })

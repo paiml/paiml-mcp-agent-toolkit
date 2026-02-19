@@ -80,10 +80,7 @@ fn main() {
             "ResourceManagement pattern repeated 8 times (saves 120 lines)",
         )
         .with_details(ViolationDetails {
-            affected_files: vec![
-                "src/config.rs".to_string(),
-                "src/settings.rs".to_string(),
-            ],
+            affected_files: vec!["src/config.rs".to_string(), "src/settings.rs".to_string()],
             example_code: Some("let guard = mutex.lock()".to_string()),
             fix_suggestion: Some("Extract shared resource guard helper".to_string()),
             score_factors: vec![
@@ -103,9 +100,8 @@ fn main() {
 
     // Demo: JSON format (clean output with ViolationDetails)
     println!("\n--- JSON Format (clean, no progress lines - #230) ---\n");
-    let json =
-        format_quality_gate_output(&results, &violations, QualityGateOutputFormat::Json)
-            .expect("formatting should work");
+    let json = format_quality_gate_output(&results, &violations, QualityGateOutputFormat::Json)
+        .expect("formatting should work");
     println!("{}", json);
 
     // Demo: Detailed format (full violation list)

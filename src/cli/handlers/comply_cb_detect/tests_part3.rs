@@ -41,11 +41,7 @@ mod cb608_tests {
     #[test]
     fn test_cb608_detects_unchecked_pcall() {
         let temp = TempDir::new().unwrap();
-        fs::write(
-            temp.path().join("app.lua"),
-            "pcall(dangerous_function)\n",
-        )
-        .unwrap();
+        fs::write(temp.path().join("app.lua"), "pcall(dangerous_function)\n").unwrap();
         let violations = detect_cb608_unchecked_nil_err(temp.path());
         assert_eq!(violations.len(), 1);
         assert!(violations[0].description.contains("pcall"));
@@ -296,7 +292,11 @@ mod cb612_tests {
     fn test_cb612_detects_busted_via_spec_files() {
         let temp = TempDir::new().unwrap();
         fs::write(temp.path().join("app.lua"), "return {}\n").unwrap();
-        fs::write(temp.path().join("app_spec.lua"), "describe('app', function() end)\n").unwrap();
+        fs::write(
+            temp.path().join("app_spec.lua"),
+            "describe('app', function() end)\n",
+        )
+        .unwrap();
         let violations = detect_cb612_test_framework(temp.path());
         assert_eq!(violations.len(), 1);
         assert_eq!(violations[0].pattern_id, "CB-612");
@@ -307,7 +307,11 @@ mod cb612_tests {
     fn test_cb612_detects_busted_via_config() {
         let temp = TempDir::new().unwrap();
         fs::write(temp.path().join("app.lua"), "return {}\n").unwrap();
-        fs::write(temp.path().join(".busted"), "return { default = { verbose = true } }\n").unwrap();
+        fs::write(
+            temp.path().join(".busted"),
+            "return { default = { verbose = true } }\n",
+        )
+        .unwrap();
         let violations = detect_cb612_test_framework(temp.path());
         assert_eq!(violations.len(), 1);
         assert!(violations[0].description.contains("busted"));
@@ -318,7 +322,11 @@ mod cb612_tests {
         let temp = TempDir::new().unwrap();
         fs::write(temp.path().join("app.lua"), "return {}\n").unwrap();
         fs::create_dir(temp.path().join("t")).unwrap();
-        fs::write(temp.path().join("t/001-basic.t"), "use Test::Nginx::Socket;\n").unwrap();
+        fs::write(
+            temp.path().join("t/001-basic.t"),
+            "use Test::Nginx::Socket;\n",
+        )
+        .unwrap();
         let violations = detect_cb612_test_framework(temp.path());
         assert_eq!(violations.len(), 1);
         assert!(violations[0].description.contains("Test::Nginx"));
@@ -328,7 +336,11 @@ mod cb612_tests {
     fn test_cb612_detects_hybrid_busted_and_test_nginx() {
         let temp = TempDir::new().unwrap();
         fs::write(temp.path().join("app.lua"), "return {}\n").unwrap();
-        fs::write(temp.path().join("handler_spec.lua"), "describe('handler', function() end)\n").unwrap();
+        fs::write(
+            temp.path().join("handler_spec.lua"),
+            "describe('handler', function() end)\n",
+        )
+        .unwrap();
         fs::create_dir(temp.path().join("t")).unwrap();
         fs::write(temp.path().join("t/001.t"), "use Test::Nginx;\n").unwrap();
         let violations = detect_cb612_test_framework(temp.path());
@@ -591,11 +603,7 @@ mod cb615_tests {
     #[test]
     fn test_cb615_skips_test_files() {
         let temp = TempDir::new().unwrap();
-        fs::write(
-            temp.path().join("test_coro.lua"),
-            "coroutine.resume(co)\n",
-        )
-        .unwrap();
+        fs::write(temp.path().join("test_coro.lua"), "coroutine.resume(co)\n").unwrap();
         let violations = detect_cb615_coroutine_checks(temp.path());
         assert!(violations.is_empty());
     }
@@ -718,7 +726,11 @@ mod cb617_tests {
             .iter()
             .filter(|v| v.description.contains("Uncached"))
             .collect();
-        assert!(!uncached.is_empty(), "Expected uncached type() violation, got {:?}", violations);
+        assert!(
+            !uncached.is_empty(),
+            "Expected uncached type() violation, got {:?}",
+            violations
+        );
         assert!(uncached[0].description.contains("type"));
     }
 
@@ -922,7 +934,11 @@ fn mean(values: &[f64]) -> f64 {
         .unwrap();
 
         let violations = detect_cb528_division_by_length(temp.path());
-        assert_eq!(violations.len(), 1, "should detect unguarded division by len");
+        assert_eq!(
+            violations.len(),
+            1,
+            "should detect unguarded division by len"
+        );
         assert!(violations[0].description.contains("Division by .len()"));
         assert_eq!(violations[0].pattern_id, "CB-528");
     }
@@ -947,7 +963,10 @@ fn mean(values: &[f64]) -> f64 {
         .unwrap();
 
         let violations = detect_cb528_division_by_length(temp.path());
-        assert!(violations.is_empty(), "should not flag when is_empty guard present");
+        assert!(
+            violations.is_empty(),
+            "should not flag when is_empty guard present"
+        );
     }
 
     #[test]
@@ -966,7 +985,10 @@ fn diversity(items: &[String], total: &[String]) -> f32 {
         .unwrap();
 
         let violations = detect_cb528_division_by_length(temp.path());
-        assert!(violations.is_empty(), "should not flag when .max(1) guard present");
+        assert!(
+            violations.is_empty(),
+            "should not flag when .max(1) guard present"
+        );
     }
 
     #[test]
@@ -1014,7 +1036,10 @@ fn mean(values: &[f64]) -> f64 {
         .unwrap();
 
         let violations = detect_cb528_division_by_length(temp.path());
-        assert!(violations.is_empty(), "should not flag when len > 0 guard present");
+        assert!(
+            violations.is_empty(),
+            "should not flag when len > 0 guard present"
+        );
     }
 }
 
@@ -1046,7 +1071,11 @@ fn cross_entropy(probs: &[f32], labels: &[usize]) -> f32 {
         .unwrap();
 
         let violations = detect_cb530_log_without_clamp(temp.path());
-        assert_eq!(violations.len(), 1, "should detect bare .ln() without guard");
+        assert_eq!(
+            violations.len(),
+            1,
+            "should detect bare .ln() without guard"
+        );
         assert!(violations[0].description.contains("ln()"));
         assert_eq!(violations[0].pattern_id, "CB-530");
     }
@@ -1071,7 +1100,10 @@ fn cross_entropy(probs: &[f32], labels: &[usize]) -> f32 {
         .unwrap();
 
         let violations = detect_cb530_log_without_clamp(temp.path());
-        assert!(violations.is_empty(), "should not flag when .max(eps) guard present");
+        assert!(
+            violations.is_empty(),
+            "should not flag when .max(eps) guard present"
+        );
     }
 
     #[test]
@@ -1094,7 +1126,10 @@ fn entropy(p: f64) -> f64 {
         // The clamp is on a preceding line — should be caught by context check
         // Actually .ln() is on safe_p which was clamped, but our detector checks same line
         // This tests that we look at preceding lines for guards
-        assert!(violations.is_empty(), "should not flag when .clamp() guard on preceding line");
+        assert!(
+            violations.is_empty(),
+            "should not flag when .clamp() guard on preceding line"
+        );
     }
 
     #[test]
@@ -1114,7 +1149,10 @@ fn log_base_2() -> f64 {
         .unwrap();
 
         let violations = detect_cb530_log_without_clamp(temp.path());
-        assert!(violations.is_empty(), "should not flag positive literal .ln()");
+        assert!(
+            violations.is_empty(),
+            "should not flag positive literal .ln()"
+        );
     }
 
     #[test]
@@ -1177,6 +1215,9 @@ fn hz_to_mel(hz: f32) -> f32 {
         .unwrap();
 
         let violations = detect_cb530_log_without_clamp(temp.path());
-        assert!(violations.is_empty(), "should not flag log of (1.0 + x) pattern");
+        assert!(
+            violations.is_empty(),
+            "should not flag log of (1.0 + x) pattern"
+        );
     }
 }

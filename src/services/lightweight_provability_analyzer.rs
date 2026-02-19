@@ -316,7 +316,9 @@ impl SourceFlags {
                 || source.contains("tokio::")
                 || source.contains("async fn"),
             has_index: source.contains('[') && source.contains(']'),
-            has_loop: source.contains("for ") || source.contains("while ") || source.contains("loop "),
+            has_loop: source.contains("for ")
+                || source.contains("while ")
+                || source.contains("loop "),
             has_iterator_chain: body.contains(".iter()")
                 || body.contains(".into_iter()")
                 || body.contains(".map(")
@@ -348,15 +350,27 @@ impl SourceFlags {
     fn infer_bounds(&self) -> IntervalLattice {
         if self.has_unwrap && !self.has_question_mark {
             // Only unwrap, no ? — panics on failure, no bounds evidence
-            IntervalLattice { lower: None, upper: None }
+            IntervalLattice {
+                lower: None,
+                upper: None,
+            }
         } else if self.has_unwrap && self.has_question_mark {
             // Mixed: some unwrap but also proper ? propagation — partial bounds
-            IntervalLattice { lower: Some(0), upper: None }
+            IntervalLattice {
+                lower: Some(0),
+                upper: None,
+            }
         } else if self.has_index {
-            IntervalLattice { lower: Some(0), upper: None }
+            IntervalLattice {
+                lower: Some(0),
+                upper: None,
+            }
         } else {
             // No unwrap — bounded behavior
-            IntervalLattice { lower: Some(0), upper: Some(i64::MAX) }
+            IntervalLattice {
+                lower: Some(0),
+                upper: Some(i64::MAX),
+            }
         }
     }
 
@@ -542,7 +556,10 @@ impl LightweightProvabilityAnalyzer {
         if !flags.has_statements {
             return PropertyDomain {
                 nullability: NullabilityLattice::MaybeNull,
-                bounds: IntervalLattice { lower: None, upper: None },
+                bounds: IntervalLattice {
+                    lower: None,
+                    upper: None,
+                },
                 aliasing: AliasLattice::MayAlias,
                 purity: PurityLattice::Top,
             };
@@ -553,7 +570,10 @@ impl LightweightProvabilityAnalyzer {
         if flags.is_test {
             return PropertyDomain {
                 nullability: NullabilityLattice::NotNull,
-                bounds: IntervalLattice { lower: Some(0), upper: Some(i64::MAX) },
+                bounds: IntervalLattice {
+                    lower: Some(0),
+                    upper: Some(i64::MAX),
+                },
                 aliasing: AliasLattice::NoAlias,
                 purity,
             };

@@ -1850,4 +1850,3 @@ mod cb950_yaml_tests {
         assert_eq!(files.len(), 1);
     }
 }
-

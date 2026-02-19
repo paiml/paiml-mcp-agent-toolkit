@@ -12,11 +12,11 @@ pub mod csharp;
 pub mod go;
 #[cfg(feature = "java-ast")]
 pub mod java;
-#[cfg(feature = "lean-ast")]
-pub mod lean;
 pub mod javascript;
 #[cfg(feature = "kotlin-ast")]
 pub mod kotlin;
+#[cfg(feature = "lean-ast")]
+pub mod lean;
 #[cfg(feature = "php-ast")]
 pub mod php;
 #[cfg(feature = "ruchy-ast")]

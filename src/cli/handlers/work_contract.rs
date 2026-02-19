@@ -522,8 +522,8 @@ impl Default for ContractThresholds {
             block_on_cross_crate_failure: false, // Off by default — requires sibling project config
             block_on_regression: false,          // Off by default — requires benchmark cache
             require_proof_verification: false,   // Off by default — opt-in for Lean 4 projects
-            max_sorry_count: 0,                  // Zero sorrys allowed when proof verification enabled
-            min_theorem_coverage: 0.0,           // No minimum theorem coverage by default
+            max_sorry_count: 0, // Zero sorrys allowed when proof verification enabled
+            min_theorem_coverage: 0.0, // No minimum theorem coverage by default
         }
     }
 }

@@ -382,8 +382,7 @@ impl<'a> TypeScriptAstVisitor<'a> {
     }
 
     fn add_function_node(&mut self, is_async: bool) {
-        let mut node =
-            UnifiedAstNode::new(AstKind::Function(FunctionKind::Regular), self.language);
+        let mut node = UnifiedAstNode::new(AstKind::Function(FunctionKind::Regular), self.language);
         if is_async {
             node.flags.set(NodeFlags::ASYNC);
         }
