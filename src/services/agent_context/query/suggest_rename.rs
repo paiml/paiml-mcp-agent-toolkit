@@ -234,6 +234,21 @@ const GENERIC_NAMES: &[&str] = &[
     "internal",
     "wrapped",
     "block",
+    "stays",
+    "works",
+    "needs",
+    "takes",
+    "makes",
+    "given",
+    "allow",
+    "their",
+    "these",
+    "about",
+    "being",
+    "first",
+    "where",
+    "which",
+    "since",
 ];
 
 /// Find all `_part_` files and suggest semantic renames.
