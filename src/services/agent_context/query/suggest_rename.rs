@@ -440,17 +440,25 @@ fn build_suggestion(
         };
     }
 
+    // Penalize if name matches parent directory (redundant: graph/graph.rs)
+    let dir_penalty = matches_parent_dir(file_path, name);
+
     let collision = check_collision(&suggested_path, index);
+    let mut final_confidence = confidence;
+    let mut final_reasoning = reasoning;
+    if collision {
+        final_confidence *= 0.5;
+    }
+    if dir_penalty {
+        final_confidence *= 0.70;
+        final_reasoning = format!("{final_reasoning} [redundant with parent dir]");
+    }
     RenameSuggestion {
         current_path: file_path.to_string(),
         suggested_name,
         suggested_path,
-        confidence: if collision {
-            confidence * 0.5
-        } else {
-            confidence
-        },
-        reasoning,
+        confidence: final_confidence,
+        reasoning: final_reasoning,
         signal,
         parent_file,
         inclusion_pattern: Some("include!".to_string()),
@@ -463,6 +471,18 @@ fn collides_with_parent(suggested_path: &str, parent_file: &Option<String>) -> b
     parent_file
         .as_ref()
         .is_some_and(|parent| suggested_path == parent)
+}
+
+/// Check if the suggested name matches the immediate parent directory.
+/// E.g., `graph/mod_part_02.rs → graph.rs` is redundant inside a `graph/` dir.
+fn matches_parent_dir(file_path: &str, suggested_name: &str) -> bool {
+    let parts: Vec<&str> = file_path.rsplitn(2, '/').collect();
+    if parts.len() < 2 {
+        return false;
+    }
+    // parts[0] = filename, parts[1] = everything before last /
+    let parent_dir = parts[1].rsplit('/').next().unwrap_or("");
+    parent_dir == suggested_name
 }
 
 // ── Signal analyzers ───────────────────────────────────────────────────────
@@ -834,20 +854,21 @@ fn longest_common_prefix(strings: &[&str]) -> String {
     if strings.is_empty() {
         return String::new();
     }
-    let first = strings[0];
+    let first: Vec<char> = strings[0].chars().collect();
     let mut prefix_len = first.len();
 
     for s in &strings[1..] {
-        prefix_len = prefix_len.min(s.len());
-        for (i, (a, b)) in first.chars().zip(s.chars()).enumerate() {
-            if a != b || i >= prefix_len {
+        let chars: Vec<char> = s.chars().collect();
+        prefix_len = prefix_len.min(chars.len());
+        for i in 0..prefix_len {
+            if first[i] != chars[i] {
                 prefix_len = i;
                 break;
             }
         }
     }
 
-    first[..prefix_len].to_string()
+    first[..prefix_len].iter().collect()
 }
 
 /// Check if a word is a common English stopword.
@@ -1158,5 +1179,25 @@ mod tests {
         assert!(!is_valid_module_name("has-hyphen"));
         assert!(!is_valid_module_name("123numeric"));
         assert!(!is_valid_module_name("has space"));
+    }
+
+    #[test]
+    fn test_matches_parent_dir() {
+        assert!(matches_parent_dir("src/graph/mod_part_02.rs", "graph"));
+        assert!(matches_parent_dir(
+            "deep/path/cache/mod_part_01.rs",
+            "cache"
+        ));
+        assert!(!matches_parent_dir("src/graph/mod_part_02.rs", "attention"));
+        assert!(!matches_parent_dir("mod_part_02.rs", "graph"));
+    }
+
+    #[test]
+    fn test_longest_common_prefix_unicode() {
+        // Verify no panic on non-ASCII (CB-506 fix)
+        assert_eq!(longest_common_prefix(&["café_a", "café_b"]), "café_");
+        assert_eq!(longest_common_prefix(&["abc", "abd"]), "ab");
+        assert_eq!(longest_common_prefix(&["xyz"]), "xyz");
+        assert_eq!(longest_common_prefix(&[]), "");
     }
 }
