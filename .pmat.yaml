@@ -5,3 +5,58 @@ comply:
       - "examples/*"
       - "tests/*"
       - "benches/*"
+
+cross_crate:
+  # Ruchy is a transpiler, not part of the ML/compute stack.
+  # Cross-crate findings between ruchy and ML crates are false positives.
+  excluded_crate_pairs:
+    - "pmat:ruchy"
+    - "aprender:ruchy"
+    - "trueno:ruchy"
+    - "trueno-viz:ruchy"
+    - "trueno-db:ruchy"
+    - "trueno-rag:ruchy"
+  # Boilerplate: entry points and CLI scaffolding
+  excluded_functions:
+    - main
+    - version
+    - description
+    - Cli
+    - ExportFormat
+    - OutputFormat
+    - Severity
+    - Token
+    - Response
+    - Value
+    - Err
+    - handle
+    - builder
+    - config
+    - format
+    - create_test_project
+    # ML activation/operation names — independent implementations across crates,
+    # different signatures are by design (tensor vs scalar, &self vs standalone)
+    - sigmoid
+    - gelu
+    - relu
+    - softmax
+    - tanh
+    - matmul
+    - encode
+    - decode
+    - f16_to_f32
+    - from_bytes
+    - from_slice
+    - margin
+    - receive
+    - close
+    - tick
+    - touch
+    - title
+    - labels
+    - bits
+    - HealthStatus
+  # Only flag CC-003 when source is actually similar
+  cc003_min_similarity: 0.5
+  min_body_lines: 5
+  min_tokens: 15

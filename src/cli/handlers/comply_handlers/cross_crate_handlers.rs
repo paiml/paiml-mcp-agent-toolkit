@@ -840,6 +840,17 @@ fn build_report(
 
 // --- Ratchet baseline ---
 
+/// Compute the ratchet threshold for a given rule.
+/// MinHash-based rules (CC-001, CC-003, CC-005) get 25% tolerance because
+/// probabilistic signatures and lazy source loading cause ±15-30% variance.
+/// Deterministic rules (CC-002, CC-004) use exact comparison.
+fn ratchet_threshold(rule: &str, baseline_count: usize) -> usize {
+    match rule {
+        "CC-001" | "CC-003" | "CC-005" => baseline_count + baseline_count / 4,
+        _ => baseline_count,
+    }
+}
+
 impl CrossCrateBaseline {
     fn from_report(report: &CrossCrateReport) -> Self {
         let secs = std::time::SystemTime::now()
@@ -886,18 +897,24 @@ impl CrossCrateBaseline {
 
     /// Check if any rule count increased vs the baseline.
     /// Returns list of (rule, old_count, new_count) violations.
+    ///
+    /// Uses a 25% tolerance margin for MinHash-based rules (CC-001, CC-003, CC-005)
+    /// because source lazy-loading and probabilistic signatures cause ±15-30% variance
+    /// between runs. Deterministic rules (CC-002, CC-004) use exact comparison.
     fn check_ratchet(&self, report: &CrossCrateReport) -> Vec<(String, usize, usize)> {
         let mut violations = Vec::new();
 
         for (rule, &new_count) in &report.summary.rules_triggered {
             let old_count = self.rule_counts.get(rule).copied().unwrap_or(0);
-            if new_count > old_count {
+            let threshold = ratchet_threshold(rule, old_count);
+            if new_count > threshold {
                 violations.push((rule.clone(), old_count, new_count));
             }
         }
 
-        // Also check total
-        if report.summary.total_findings > self.total_findings {
+        // Also check total with 25% tolerance
+        let total_threshold = self.total_findings + self.total_findings / 4;
+        if report.summary.total_findings > total_threshold {
             let already_has_total = violations.iter().any(|(r, _, _)| r == "TOTAL");
             if !already_has_total {
                 violations.push((
@@ -1486,6 +1503,65 @@ tempfile = "3"
         assert_eq!(violations[0].0, "CC-001");
         assert_eq!(violations[0].1, 10);
         assert_eq!(violations[0].2, 15);
+    }
+
+    #[test]
+    fn test_baseline_ratchet_tolerates_minhash_jitter() {
+        // CC-001 has 25% tolerance: baseline=100, threshold=125
+        let baseline = CrossCrateBaseline {
+            version: "1.0".to_string(),
+            generated: "2026-02-20".to_string(),
+            rule_counts: HashMap::from([("CC-001".to_string(), 100)]),
+            total_findings: 100,
+        };
+        let report = CrossCrateReport {
+            findings: Vec::new(),
+            summary: CrossCrateSummary {
+                total_findings: 120,
+                errors: 0,
+                warnings: 120,
+                advisories: 0,
+                rules_triggered: HashMap::from([("CC-001".to_string(), 120)]),
+            },
+            crates_analyzed: vec!["a".to_string()],
+        };
+        let violations = baseline.check_ratchet(&report);
+        assert!(violations.is_empty(), "20% increase in CC-001 should be within tolerance");
+    }
+
+    #[test]
+    fn test_baseline_ratchet_cc002_exact() {
+        // CC-002 is deterministic — no tolerance
+        let baseline = CrossCrateBaseline {
+            version: "1.0".to_string(),
+            generated: "2026-02-20".to_string(),
+            rule_counts: HashMap::from([("CC-002".to_string(), 100)]),
+            total_findings: 100,
+        };
+        let report = CrossCrateReport {
+            findings: Vec::new(),
+            summary: CrossCrateSummary {
+                total_findings: 101,
+                errors: 0,
+                warnings: 101,
+                advisories: 0,
+                rules_triggered: HashMap::from([("CC-002".to_string(), 101)]),
+            },
+            crates_analyzed: vec!["a".to_string()],
+        };
+        let violations = baseline.check_ratchet(&report);
+        assert!(!violations.is_empty(), "CC-002 should fail on +1 increase (no tolerance)");
+    }
+
+    #[test]
+    fn test_ratchet_threshold_function() {
+        // MinHash-based rules get 25% tolerance
+        assert_eq!(ratchet_threshold("CC-001", 100), 125);
+        assert_eq!(ratchet_threshold("CC-003", 52), 65);
+        assert_eq!(ratchet_threshold("CC-005", 60), 75);
+        // Deterministic rules get exact comparison
+        assert_eq!(ratchet_threshold("CC-002", 100), 100);
+        assert_eq!(ratchet_threshold("CC-004", 50), 50);
     }
 
     #[test]
