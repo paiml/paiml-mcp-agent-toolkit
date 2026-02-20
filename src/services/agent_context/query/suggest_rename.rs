@@ -19,6 +19,8 @@ pub enum RenameSignal {
     DominantType,
     /// Existing suffix expansion (_attn → attention, _ops → operations)
     ExistingSuffix,
+    /// Original filename base (before _part_ splitting) is meaningful
+    OriginalBase,
     /// >70% of functions share a keyword theme (forward, serialize, test, etc.)
     FunctionTheme,
     /// Longest common prefix across all function names (min 4 chars)
@@ -368,12 +370,13 @@ fn analyze_file_for_rename(
     let parent_file = detect_parent_file(file_path, index);
 
     // Cascading signal priority: try each analyzer in order
-    let signals: [(RenameSignal, Option<(String, f32, String)>); 5] = [
+    let signals: [(RenameSignal, Option<(String, f32, String)>); 6] = [
         (RenameSignal::DominantType, try_dominant_type(entries)),
         (
             RenameSignal::ExistingSuffix,
             try_existing_suffix(file_path, entries),
         ),
+        (RenameSignal::OriginalBase, try_original_base(file_path)),
         (RenameSignal::FunctionTheme, try_function_theme(entries)),
         (RenameSignal::CommonPrefix, try_common_prefix(entries)),
         (
@@ -594,6 +597,36 @@ fn try_existing_suffix(
     }
 
     None
+}
+
+/// Try to use the original filename base (before `_part_` splitting) as the rename.
+/// Rejects generic bases like "mod", "tests", "lib", and anything in GENERIC_NAMES.
+fn try_original_base(file_path: &str) -> Option<(String, f32, String)> {
+    let stem = Path::new(file_path)
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("");
+
+    let base = strip_part_segments(stem);
+
+    // Reject too-short, generic, or identical-to-stem bases
+    if base.len() < 4
+        || base.len() > 30
+        || base == stem
+        || base.starts_with("mod_")
+        || base.contains("_from_")
+        || matches!(base.as_str(), "mod" | "lib" | "main" | "tests" | "test")
+        || GENERIC_NAMES.contains(&base.as_str())
+        || !is_valid_module_name(&base)
+    {
+        return None;
+    }
+
+    Some((
+        base.clone(),
+        0.82,
+        format!("Original filename base ({base})"),
+    ))
 }
 
 /// Check if >70% of functions share a keyword theme.
@@ -1199,5 +1232,35 @@ mod tests {
         assert_eq!(longest_common_prefix(&["abc", "abd"]), "ab");
         assert_eq!(longest_common_prefix(&["xyz"]), "xyz");
         assert_eq!(longest_common_prefix(&[]), "");
+    }
+
+    #[test]
+    fn test_original_base() {
+        // Meaningful bases are preserved
+        let result = try_original_base("src/cuda/activations_part_03.rs");
+        assert!(result.is_some());
+        let (name, confidence, _) = result.unwrap();
+        assert_eq!(name, "activations");
+        assert!((confidence - 0.82).abs() < 0.01);
+
+        // Generic bases are rejected
+        assert!(try_original_base("src/mod_part_02.rs").is_none());
+        assert!(try_original_base("src/tests_part_03.rs").is_none());
+        assert!(try_original_base("src/lib_part_02.rs").is_none());
+
+        // Too-short bases rejected
+        assert!(try_original_base("src/q4k_part_02.rs").is_none());
+
+        // Accumulated _from_ artifacts rejected
+        assert!(try_original_base("src/cache_from_cache_from_kv_part_02.rs").is_none());
+        assert!(try_original_base("src/forward_from_model_part_02.rs").is_none());
+
+        // mod_ prefix rejected
+        assert!(try_original_base("src/mod_part_02_part_03_load.rs").is_none());
+
+        // Too-long bases rejected
+        assert!(
+            try_original_base("src/very_long_name_that_exceeds_thirty_chars_part_02.rs").is_none()
+        );
     }
 }
