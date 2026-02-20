@@ -466,11 +466,7 @@ fn levenshtein(a: &str, b: &str) -> usize {
 
 /// Truncate string to max length with ellipsis
 fn truncate_str(s: &str, max_len: usize) -> String {
-    if s.len() <= max_len {
-        s.to_string()
-    } else {
-        format!("{}...", s.get(..max_len - 3).unwrap_or(s))
-    }
+    batuta_common::display::truncate_str(s, max_len)
 }
 
 #[cfg_attr(coverage_nightly, coverage(off))]

@@ -1478,12 +1478,12 @@ fn format_explain_output(
     }
 }
 
-/// Truncate string to max length with ellipsis
+/// Truncate string to max length with ellipsis, padded with spaces when shorter
 fn truncate_string(s: &str, max_len: usize) -> String {
     if s.len() <= max_len {
         format!("{:width$}", s, width = max_len)
     } else {
-        format!("{}...", s.get(..max_len - 3).unwrap_or(s))
+        batuta_common::display::truncate_str(s, max_len)
     }
 }
 
