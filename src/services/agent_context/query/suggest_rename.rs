@@ -157,6 +157,83 @@ const GENERIC_NAMES: &[&str] = &[
     "config",
     "cache",
     "graph",
+    "value",
+    "input",
+    "head",
+    "apply",
+    "length",
+    "path",
+    "trace",
+    "tensor",
+    "mock",
+    "index",
+    "state",
+    "context",
+    "result",
+    "entry",
+    "node",
+    "layer",
+    "extract",
+    "scatter",
+    "pattern",
+    "dimension",
+    "approximate",
+    "forward",
+    "backward",
+    "transform",
+    "convert",
+    "query",
+    "search",
+    "update",
+    "write",
+    "parse",
+    "merge",
+    "using",
+    "operations",
+    "models",
+    "compute",
+    "valid",
+    "point",
+    "fields",
+    "capture",
+    "tokens",
+    "after",
+    "before",
+    "examples",
+    "stream",
+    "batch",
+    "hidden",
+    "memory",
+    "fails",
+    "elements",
+    "execution",
+    "custom",
+    "default",
+    "output",
+    "simple",
+    "basic",
+    "common",
+    "general",
+    "other",
+    "status",
+    "action",
+    "event",
+    "source",
+    "target",
+    "object",
+    "module",
+    "service",
+    "component",
+    "manager",
+    "utils",
+    "types",
+    "traits",
+    "impls",
+    "current",
+    "direct",
+    "internal",
+    "wrapped",
+    "block",
 ];
 
 /// Find all `_part_` files and suggest semantic renames.
@@ -251,7 +328,7 @@ fn disambiguate_collisions(suggestions: &mut Vec<RenameSuggestion>) {
             let new_path = replace_filename(&suggestions[idx].current_path, &new_name);
             suggestions[idx].suggested_name = new_name;
             suggestions[idx].suggested_path = new_path;
-            suggestions[idx].confidence *= 0.85;
+            suggestions[idx].confidence *= 0.80;
             suggestions[idx].reasoning = format!("{} [disambiguated]", suggestions[idx].reasoning);
         }
     }
@@ -332,6 +409,22 @@ fn build_suggestion(
 ) -> RenameSuggestion {
     let suggested_name = format!("{name}.rs");
     let suggested_path = replace_filename(file_path, &suggested_name);
+
+    // Reject if suggestion collides with parent file
+    if collides_with_parent(&suggested_path, &parent_file) {
+        return RenameSuggestion {
+            current_path: file_path.to_string(),
+            suggested_name: String::new(),
+            suggested_path: String::new(),
+            confidence: 0.10,
+            reasoning: format!("{reasoning} [same as parent]"),
+            signal: RenameSignal::NoSignal,
+            parent_file,
+            inclusion_pattern: Some("include!".to_string()),
+            definition_count,
+        };
+    }
+
     let collision = check_collision(&suggested_path, index);
     RenameSuggestion {
         current_path: file_path.to_string(),
@@ -348,6 +441,13 @@ fn build_suggestion(
         inclusion_pattern: Some("include!".to_string()),
         definition_count,
     }
+}
+
+/// Check if the suggested path matches the parent file path.
+fn collides_with_parent(suggested_path: &str, parent_file: &Option<String>) -> bool {
+    parent_file
+        .as_ref()
+        .is_some_and(|parent| suggested_path == parent)
 }
 
 // ── Signal analyzers ───────────────────────────────────────────────────────
@@ -552,7 +652,7 @@ fn try_doc_comment_consensus(entries: &[&FunctionEntry]) -> Option<(String, f32,
         return None;
     }
 
-    // Tokenize and count words (length >= 4, valid identifiers, not stopwords)
+    // Tokenize and count words (length >= 5, valid identifiers, not stopwords)
     let mut word_counts: HashMap<String, usize> = HashMap::new();
     for doc in &docs {
         let mut seen = std::collections::HashSet::new();
@@ -560,7 +660,7 @@ fn try_doc_comment_consensus(entries: &[&FunctionEntry]) -> Option<(String, f32,
             let word = word
                 .trim_matches(|c: char| !c.is_alphanumeric())
                 .to_lowercase();
-            if word.len() >= 4
+            if word.len() >= 5
                 && is_valid_module_name(&word)
                 && !is_stopword(&word)
                 && seen.insert(word.clone())
@@ -1019,5 +1119,29 @@ mod tests {
         assert_eq!(strip_part_segments("mod_part_02_part_04"), "mod");
         assert_eq!(strip_part_segments("utils_part_01_attn"), "utils_attn");
         assert_eq!(strip_part_segments("simple"), "simple");
+    }
+
+    #[test]
+    fn test_collides_with_parent() {
+        assert!(collides_with_parent(
+            "src/mod.rs",
+            &Some("src/mod.rs".to_string())
+        ));
+        assert!(!collides_with_parent(
+            "src/attention.rs",
+            &Some("src/mod.rs".to_string())
+        ));
+        assert!(!collides_with_parent("src/mod.rs", &None));
+    }
+
+    #[test]
+    fn test_is_valid_module_name() {
+        assert!(is_valid_module_name("attention_cache"));
+        assert!(is_valid_module_name("forward"));
+        assert!(is_valid_module_name("_private"));
+        assert!(!is_valid_module_name(""));
+        assert!(!is_valid_module_name("has-hyphen"));
+        assert!(!is_valid_module_name("123numeric"));
+        assert!(!is_valid_module_name("has space"));
     }
 }
