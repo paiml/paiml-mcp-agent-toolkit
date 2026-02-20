@@ -534,7 +534,10 @@ fn score_performance(mean_us: f64, budget_us: f64, brick_name: &str) -> BrickChe
     let recommendation = (budget_ratio > 1.0).then(|| {
         format!(
             "Optimize {} to meet {}µs budget (currently {:.1}µs, {:.0}% over)",
-            brick_name, budget_us, mean_us, (budget_ratio - 1.0) * 100.0
+            brick_name,
+            budget_us,
+            mean_us,
+            (budget_ratio - 1.0) * 100.0
         )
     });
 

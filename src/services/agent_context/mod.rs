@@ -81,5 +81,6 @@ pub use query::{
     enrich_results_with_coverage, enrich_results_with_duplicates, enrich_results_with_entropy,
     enrich_results_with_faults, enrich_with_churn, enrich_with_coverage, enrich_with_coverage_diff,
     format_coverage_summary, format_json, format_markdown, format_text, format_text_with_code,
-    load_workspace_coverage, CaseSensitivity, QueryOptions, QueryResult, RankBy, SearchMode,
+    load_workspace_coverage, suggest_renames, CaseSensitivity, QueryOptions, QueryResult, RankBy,
+    RenameSignal, RenameSuggestion, SearchMode,
 };

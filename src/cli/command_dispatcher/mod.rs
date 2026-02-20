@@ -151,6 +151,8 @@ impl CommandDispatcher {
                 context_lines,
                 ptx_flow,
                 ptx_diagnostics,
+                suggest_rename,
+                apply,
             } => {
                 // Default is to show code; --summary disables it
                 let show_code = !summary;
@@ -196,6 +198,8 @@ impl CommandDispatcher {
                     context_lines,
                     ptx_flow,
                     ptx_diagnostics,
+                    suggest_rename,
+                    apply,
                 )
                 .await
             }

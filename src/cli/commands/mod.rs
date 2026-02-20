@@ -400,6 +400,14 @@ pub enum Commands {
         /// Run PTX quality diagnostics (register pressure, branch density, barriers)
         #[arg(long)]
         ptx_diagnostics: bool,
+
+        /// Suggest semantic renames for _part_ files based on function index analysis
+        #[arg(long)]
+        suggest_rename: bool,
+
+        /// Apply suggested renames (git mv + update parent declarations). Requires --suggest-rename
+        #[arg(long, requires = "suggest_rename")]
+        apply: bool,
     },
 
     /// Analyze code metrics and patterns
