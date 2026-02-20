@@ -245,6 +245,10 @@ pub async fn handle_comply_command(command: ComplyCommands) -> Result<()> {
             output,
         } => handle_audit(&path, format, output.as_deref()).await,
 
+        ComplyCommands::Baseline { path } => {
+            generate_file_health_baseline(&path)
+        }
+
         ComplyCommands::CrossCrate {
             path,
             similarity_threshold,

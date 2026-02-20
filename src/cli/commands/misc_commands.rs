@@ -364,6 +364,14 @@ pub enum ComplyCommands {
         output: Option<PathBuf>,
     },
 
+    /// Generate file health baseline for ratchet enforcement
+    /// Scans source files, calculates health metrics, saves to .pmat/file-health-baseline.json
+    Baseline {
+        /// Project path (defaults to current directory)
+        #[arg(short = 'p', long = "path", default_value = ".")]
+        path: PathBuf,
+    },
+
     /// Cross-crate duplication detection (CC-001 through CC-005)
     /// Detects copy-paste duplication, API divergence, and churn correlation across workspace crates.
     #[command(visible_aliases = &["cc", "xc"])]
