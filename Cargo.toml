@@ -27,6 +27,9 @@ path = "src/bin/pmat-agent.rs"
 required-features = ["mcp-integration"]
 
 [dependencies]
+# Batuta stack shared utilities (formatting, display, system info)
+batuta-common = { path = "../batuta-common" }
+
 # Organizational Intelligence Plugin - Phase 4 integration
 organizational-intelligence-plugin = { version = "0.3.1", optional = true }
 
@@ -80,6 +83,9 @@ pollster = { version = "0.3", optional = true }  # Async runtime for wgpu
 bytemuck = { version = "1.14", optional = true }  # Safe cast for GPU buffers
 arrow = { version = "54", optional = true }  # Arrow columnar format (required for direct arrow API usage)
 # Note: parquet is managed by trueno-db dependency
+
+# Document indexing (PDF text extraction for `pmat query --docs`)
+pdf-extract = { version = "0.7", optional = true }
 
 # Serialization (pinned to avoid swc_common issue with serde::__private)
 serde = { version = "1.0", default-features = false, features = ["derive", "std"] }
@@ -312,7 +318,8 @@ default = ["core-languages", "viz"]
 core-languages = ["rust-ast", "typescript-ast", "javascript-ast", "python-ast", "lua-ast", "lean-ast"]  # Most common: Rust + JS/TS + Python + Lua + Lean
 extended-languages = ["go-ast", "c-ast", "cpp-ast", "shell-ast", "php-ast", "swift-ast", "lean-ast"]  # Additional languages
 advanced-analysis = ["analytics-simd", "mutation-testing", "tdg-explain", "demo"]  # Heavy features
-full = ["all-languages", "polyglot-ast", "advanced-analysis"]  # Equivalent to old defaults
+full = ["all-languages", "polyglot-ast", "advanced-analysis", "doc-indexing"]  # Equivalent to old defaults
+doc-indexing = ["pdf-extract"]  # PDF text extraction for `pmat query --docs`
 
 # Phase 1 Build Performance (Issue #89): Removed "org-intelligence" from default
 # - Eliminates octocrab v0.39.0 duplicate (we have v0.40.0)

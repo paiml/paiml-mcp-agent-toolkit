@@ -159,16 +159,7 @@ impl CpuLimiter {
     }
 
     fn is_cgroup_available(&self) -> bool {
-        #[cfg(target_os = "linux")]
-        {
-            std::path::Path::new("/sys/fs/cgroup/cpu").exists()
-                || std::path::Path::new("/sys/fs/cgroup/unified").exists()
-        }
-
-        #[cfg(not(target_os = "linux"))]
-        {
-            false
-        }
+        batuta_common::sys::is_cgroup_available()
     }
 
     fn apply_cgroup_limits(&self, _limits: &CpuLimits) -> Result<(), ResourceError> {

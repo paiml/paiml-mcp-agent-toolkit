@@ -518,22 +518,9 @@ async fn handle_memory_pressure(threshold: f64, watch: &Option<u64>) -> Result<(
     Ok(())
 }
 
-/// Format bytes in human-readable format
+/// Format bytes in human-readable format (delegates to batuta-common)
 fn format_bytes(bytes: usize) -> String {
-    const UNITS: &[&str] = &["B", "KB", "MB", "GB"];
-    let mut size = bytes as f64;
-    let mut unit_index = 0;
-
-    while size >= 1024.0 && unit_index < UNITS.len() - 1 {
-        size /= 1024.0;
-        unit_index += 1;
-    }
-
-    if unit_index == 0 {
-        format!("{} {}", bytes, UNITS[unit_index])
-    } else {
-        format!("{:.1} {}", size, UNITS[unit_index])
-    }
+    batuta_common::fmt::format_bytes(bytes as u64)
 }
 
 #[cfg_attr(coverage_nightly, coverage(off))]
