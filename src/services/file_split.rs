@@ -146,9 +146,9 @@ pub fn suggest_split(
         }
     }
 
-    // Collect unclustered singletons (communities with only 1 item)
+    // Collect multi-item communities as clusters, singletons as orphans
     let mut clusters = Vec::new();
-    let mut unclustered = Vec::new();
+    let mut orphan_items: Vec<(ClusterItem, usize)> = Vec::new(); // (item, local_idx)
 
     for local_indices in community_items.values() {
         let items: Vec<ClusterItem> = local_indices
@@ -159,7 +159,9 @@ pub fn suggest_split(
         let estimated_lines: usize = items.iter().map(|i| i.line_range.1 - i.line_range.0 + 1).sum();
 
         if items.len() == 1 || estimated_lines < min_cluster_lines {
-            unclustered.extend(items);
+            for (i, item) in items.into_iter().enumerate() {
+                orphan_items.push((item, local_indices[i]));
+            }
         } else {
             // Step 6: Name each cluster using signal functions
             let cluster_entries: Vec<&FunctionEntry> =
@@ -179,6 +181,14 @@ pub fn suggest_split(
         }
     }
 
+    // Step 5b: Assign orphans to nearest cluster by line proximity
+    let unclustered = assign_orphans_to_clusters(&mut clusters, orphan_items);
+
+    // Sort items within each cluster by line range
+    for cluster in &mut clusters {
+        cluster.items.sort_by_key(|i| i.line_range.0);
+    }
+
     // Sort clusters by line count descending
     clusters.sort_by(|a, b| b.estimated_lines.cmp(&a.estimated_lines));
 
@@ -196,6 +206,40 @@ pub fn suggest_split(
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
+
+/// Assign orphan items to the nearest cluster by line proximity.
+/// Returns any items that couldn't be assigned (only if no clusters exist).
+fn assign_orphans_to_clusters(
+    clusters: &mut Vec<SplitCluster>,
+    orphan_items: Vec<(ClusterItem, usize)>,
+) -> Vec<ClusterItem> {
+    if clusters.is_empty() {
+        return orphan_items.into_iter().map(|(item, _)| item).collect();
+    }
+
+    let mut unclustered = Vec::new();
+    for (item, _local_idx) in orphan_items {
+        let item_mid = (item.line_range.0 + item.line_range.1) / 2;
+        let nearest = clusters.iter_mut().min_by_key(|c| {
+            c.items
+                .iter()
+                .map(|ci| {
+                    let ci_mid = (ci.line_range.0 + ci.line_range.1) / 2;
+                    (ci_mid as isize - item_mid as isize).unsigned_abs()
+                })
+                .min()
+                .unwrap_or(usize::MAX)
+        });
+        if let Some(cluster) = nearest {
+            let line_span = item.line_range.1 - item.line_range.0 + 1;
+            cluster.estimated_lines += line_span;
+            cluster.items.push(item);
+        } else {
+            unclustered.push(item);
+        }
+    }
+    unclustered
+}
 
 fn estimate_total_lines(entries: &[&FunctionEntry]) -> usize {
     entries
@@ -237,30 +281,35 @@ fn build_intra_file_graph(
     }
 
     // Add edges from calls graph (only intra-file edges)
-    for &global_idx in func_indices {
-        let local_src = match global_to_local.get(&global_idx) {
-            Some(l) => *l,
-            None => continue,
-        };
-        if let Some(callees) = index.calls.get(&global_idx) {
-            for &callee_global in callees {
-                if let Some(&local_dst) = global_to_local.get(&callee_global) {
-                    if local_src != local_dst {
-                        if let (Some(&src_node), Some(&dst_node)) =
-                            (local_to_node.get(&local_src), local_to_node.get(&local_dst))
-                        {
-                            // Avoid duplicate edges
-                            if graph.edge_weight(src_node, dst_node).is_none() {
-                                graph.add_edge(src_node, dst_node, 1.0);
-                            }
-                        }
-                    }
-                }
-            }
+    for (src, dst) in collect_intra_file_edges(index, func_indices, global_to_local, &local_to_node) {
+        if graph.edge_weight(src, dst).is_none() {
+            graph.add_edge(src, dst, 1.0);
         }
     }
 
     (graph, node_to_local)
+}
+
+/// Collect all (src_node, dst_node) pairs for intra-file call edges.
+fn collect_intra_file_edges(
+    index: &AgentContextIndex,
+    func_indices: &[usize],
+    global_to_local: &HashMap<usize, usize>,
+    local_to_node: &HashMap<usize, crate::graph::types::NodeId>,
+) -> Vec<(crate::graph::types::NodeId, crate::graph::types::NodeId)> {
+    let mut edges = Vec::new();
+    for &global_idx in func_indices {
+        let Some(&local_src) = global_to_local.get(&global_idx) else { continue };
+        let Some(callees) = index.calls.get(&global_idx) else { continue };
+        let Some(&src_node) = local_to_node.get(&local_src) else { continue };
+        for &callee_global in callees {
+            let Some(&local_dst) = global_to_local.get(&callee_global) else { continue };
+            if local_dst == local_src { continue; }
+            let Some(&dst_node) = local_to_node.get(&local_dst) else { continue };
+            edges.push((src_node, dst_node));
+        }
+    }
+    edges
 }
 
 /// Simple connected components for small graphs (fallback when < 10 functions).
@@ -344,6 +393,17 @@ fn make_cluster_item(
     }
 }
 
+/// Generic prefixes that don't make good cluster names.
+/// These are common verbs/prepositions that pass the 4-char min-length
+/// check in try_common_prefix but don't convey semantic meaning.
+const GENERIC_PREFIX_BLOCKLIST: &[&str] = &[
+    "from", "into", "with", "make", "create", "build", "parse", "check",
+    "test", "init", "load", "save", "read", "write", "send", "recv",
+    "handle", "process", "convert", "transform", "validate", "exec",
+    "run", "call", "apply", "update", "delete", "remove", "find",
+    "get", "set", "new", "try", "is", "has", "can", "should",
+];
+
 /// Name a cluster using the suggest-rename signal cascade.
 fn name_cluster(entries: &[&FunctionEntry], file_path: &str) -> (String, String, f32) {
     // Try each signal in priority order
@@ -358,9 +418,11 @@ fn name_cluster(entries: &[&FunctionEntry], file_path: &str) -> (String, String,
         return (name, "FunctionTheme".to_string(), confidence);
     }
 
-    // 3. Common prefix
+    // 3. Common prefix (skip generic verbs/prepositions)
     if let Some((name, confidence, _reason)) = try_common_prefix(entries) {
-        return (name, "CommonPrefix".to_string(), confidence);
+        if !GENERIC_PREFIX_BLOCKLIST.contains(&name.as_str()) {
+            return (name, "CommonPrefix".to_string(), confidence);
+        }
     }
 
     // 4. Doc comment consensus
@@ -854,5 +916,50 @@ mod tests {
         };
         assert_eq!(item.name, "process");
         assert_eq!(item.line_range, (10, 30));
+    }
+
+    #[test]
+    fn test_generic_prefix_blocklist_contains_from() {
+        assert!(GENERIC_PREFIX_BLOCKLIST.contains(&"from"));
+        assert!(GENERIC_PREFIX_BLOCKLIST.contains(&"into"));
+        assert!(GENERIC_PREFIX_BLOCKLIST.contains(&"with"));
+        assert!(GENERIC_PREFIX_BLOCKLIST.contains(&"make"));
+        assert!(GENERIC_PREFIX_BLOCKLIST.contains(&"handle"));
+    }
+
+    #[test]
+    fn test_generic_prefix_blocklist_allows_good_names() {
+        assert!(!GENERIC_PREFIX_BLOCKLIST.contains(&"baseline"));
+        assert!(!GENERIC_PREFIX_BLOCKLIST.contains(&"health"));
+        assert!(!GENERIC_PREFIX_BLOCKLIST.contains(&"metrics"));
+        assert!(!GENERIC_PREFIX_BLOCKLIST.contains(&"cluster"));
+    }
+
+    #[test]
+    fn test_name_cluster_skips_generic_prefix() {
+        // Create entries where common prefix would be "from" but should be skipped
+        let e1 = make_entry("from_score", "f.rs", 1, 10);
+        let e2 = make_entry("from_files", "f.rs", 11, 20);
+        let e3 = make_entry("from_projects", "f.rs", 21, 30);
+        let entries: Vec<&FunctionEntry> = vec![&e1, &e2, &e3];
+
+        let (name, signal, _confidence) = name_cluster(&entries, "file_health.rs");
+        // Should NOT be "from" — should fall through to a better signal
+        assert_ne!(name, "from", "Generic prefix 'from' should be blocked");
+        assert_ne!(signal, "CommonPrefix", "Should skip CommonPrefix for generic verb");
+    }
+
+    #[test]
+    fn test_name_cluster_allows_specific_prefix() {
+        // Create entries where common prefix is a meaningful domain word
+        let e1 = make_entry("baseline_save", "f.rs", 1, 10);
+        let e2 = make_entry("baseline_load", "f.rs", 11, 20);
+        let e3 = make_entry("baseline_check", "f.rs", 21, 30);
+        let entries: Vec<&FunctionEntry> = vec![&e1, &e2, &e3];
+
+        let (name, signal, _confidence) = name_cluster(&entries, "file_health.rs");
+        // "baseline" should be accepted since it's not in the blocklist
+        assert_eq!(name, "baseline");
+        assert_eq!(signal, "CommonPrefix");
     }
 }
