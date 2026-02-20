@@ -56,6 +56,17 @@ cross_crate:
     - labels
     - bits
     - HealthStatus
+    # Domain-specific types that share names but have incompatible APIs
+    # (different fields, derives, or methods across crates)
+    - Color
+    - CpuStats
+    - CpuTimes
+    - print_summary
+    # Hardware capability types — pmat duplicates trueno's canonical types
+    # for TOML config compatibility; consolidation blocked by dep direction
+    - ByteBudget
+    - lanes
+    - bottleneck
   # Only flag CC-003 when source is actually similar
   cc003_min_similarity: 0.5
   min_body_lines: 5
