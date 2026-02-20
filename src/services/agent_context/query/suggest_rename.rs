@@ -627,7 +627,7 @@ pub(crate) fn to_snake_case(name: &str) -> String {
 /// Check if we need an underscore before an uppercase char in an acronym sequence.
 /// E.g., RMSNorm → rms_norm: the N needs a break because the next char is lowercase.
 fn needs_acronym_break(prev_upper: bool, chars: &[char], i: usize) -> bool {
-    prev_upper && chars.get(i + 1).map_or(false, |next| next.is_lowercase())
+    prev_upper && chars.get(i + 1).is_some_and(|next| next.is_lowercase())
 }
 
 /// Replace the filename in a path, preserving the directory.
