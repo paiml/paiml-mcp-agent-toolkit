@@ -452,6 +452,91 @@ pub fn scan_directory(root: &Path, extensions: &[&str], exclude_patterns: &[&str
     files
 }
 
+// ── Cross-Stack Health Types ───────────────────────────────────────────────
+
+/// Stack-wide health report aggregating multiple projects
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StackHealthReport {
+    /// Per-project health reports
+    pub projects: Vec<(String, FileHealthReport)>,
+    /// Average health score across the stack
+    pub stack_average_health: u8,
+    /// Top-10 worst files across all projects
+    pub stack_worst_files: Vec<(String, FileHealthMetrics)>,
+    /// Overall stack grade
+    pub stack_grade: HealthGrade,
+}
+
+impl StackHealthReport {
+    /// Build a stack health report from individual project reports.
+    pub fn from_projects(projects: Vec<(String, FileHealthReport)>) -> Self {
+        let total_health: u64 = projects.iter().map(|(_, r)| r.average_health as u64).sum();
+        let count = projects.len().max(1) as u64;
+        let stack_average_health = (total_health / count) as u8;
+        let stack_grade = HealthGrade::from_score(stack_average_health);
+
+        // Collect all files across projects, sort by health ascending
+        let mut all_files: Vec<(String, FileHealthMetrics)> = Vec::new();
+        for (project_name, report) in &projects {
+            for file in &report.critical_files {
+                all_files.push((project_name.clone(), file.clone()));
+            }
+            for file in &report.problem_files {
+                all_files.push((project_name.clone(), file.clone()));
+            }
+        }
+        all_files.sort_by_key(|(_, f)| f.health_score);
+        let stack_worst_files: Vec<_> = all_files.into_iter().take(10).collect();
+
+        Self {
+            projects,
+            stack_average_health,
+            stack_worst_files,
+            stack_grade,
+        }
+    }
+}
+
+/// Stack-level baseline aggregating per-project baselines
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StackBaseline {
+    pub version: String,
+    pub generated: String,
+    /// Per-project baselines keyed by project name
+    pub projects: HashMap<String, FileHealthBaseline>,
+}
+
+impl StackBaseline {
+    pub fn new() -> Self {
+        Self {
+            version: "1.0".to_string(),
+            generated: chrono::Utc::now().to_rfc3339(),
+            projects: HashMap::new(),
+        }
+    }
+
+    pub fn add_project(&mut self, name: String, baseline: FileHealthBaseline) {
+        self.projects.insert(name, baseline);
+    }
+
+    pub fn save(&self, path: &Path) -> std::io::Result<()> {
+        let json = serde_json::to_string_pretty(self)?;
+        fs::write(path, json)
+    }
+
+    pub fn load(path: &Path) -> std::io::Result<Self> {
+        let content = fs::read_to_string(path)?;
+        serde_json::from_str(&content)
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))
+    }
+}
+
+impl Default for StackBaseline {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// Default exclusion patterns for Rust projects
 pub const DEFAULT_EXCLUDE_PATTERNS: &[&str] = &[
     "target/",
@@ -795,5 +880,155 @@ mod tests {
         let report = FileHealthReport::from_files(PathBuf::from("."), files);
         // Should have TLR recommendation
         assert!(report.recommendations.iter().any(|r| r.contains("TLR")));
+    }
+
+    // ── StackHealthReport tests ────────────────────────────────────────────
+
+    #[test]
+    fn test_stack_health_report_empty() {
+        let report = StackHealthReport::from_projects(vec![]);
+        assert!(report.projects.is_empty());
+        assert_eq!(report.stack_average_health, 0);
+        assert!(report.stack_worst_files.is_empty());
+        assert_eq!(report.stack_grade, HealthGrade::F);
+    }
+
+    #[test]
+    fn test_stack_health_report_single_healthy_project() {
+        let files = vec![
+            FileHealthMetrics::calculate(PathBuf::from("good.rs"), 100, 50, 3.0, 1),
+        ];
+        let report = FileHealthReport::from_files(PathBuf::from("."), files);
+        let stack = StackHealthReport::from_projects(vec![("myproject".to_string(), report)]);
+
+        assert_eq!(stack.projects.len(), 1);
+        assert_eq!(stack.stack_average_health, 100);
+        assert_eq!(stack.stack_grade, HealthGrade::A);
+    }
+
+    #[test]
+    fn test_stack_health_report_mixed_projects() {
+        let good_files = vec![
+            FileHealthMetrics::calculate(PathBuf::from("good.rs"), 100, 50, 3.0, 1),
+        ];
+        let bad_files = vec![
+            FileHealthMetrics::calculate(PathBuf::from("bad.rs"), 5000, 50, 25.0, 20),
+        ];
+        let good_report = FileHealthReport::from_files(PathBuf::from("."), good_files);
+        let bad_report = FileHealthReport::from_files(PathBuf::from("."), bad_files);
+
+        let stack = StackHealthReport::from_projects(vec![
+            ("good_project".to_string(), good_report),
+            ("bad_project".to_string(), bad_report),
+        ]);
+
+        assert_eq!(stack.projects.len(), 2);
+        // Average of 100 and a low score
+        assert!(stack.stack_average_health < 100);
+        // Worst files should include the bad file
+        assert!(!stack.stack_worst_files.is_empty());
+    }
+
+    #[test]
+    fn test_stack_health_report_worst_files_capped_at_10() {
+        // Create a project with many critical files
+        let mut files = Vec::new();
+        for i in 0..15 {
+            files.push(FileHealthMetrics::calculate(
+                PathBuf::from(format!("file_{}.rs", i)),
+                5000, 10, 25.0, 20,
+            ));
+        }
+        let report = FileHealthReport::from_files(PathBuf::from("."), files);
+        let stack = StackHealthReport::from_projects(vec![("big".to_string(), report)]);
+
+        assert!(stack.stack_worst_files.len() <= 10);
+    }
+
+    #[test]
+    fn test_stack_health_report_serialization() {
+        let files = vec![
+            FileHealthMetrics::calculate(PathBuf::from("a.rs"), 100, 50, 3.0, 1),
+        ];
+        let report = FileHealthReport::from_files(PathBuf::from("."), files);
+        let stack = StackHealthReport::from_projects(vec![("proj".to_string(), report)]);
+
+        let json = serde_json::to_string(&stack).expect("serialize");
+        let deser: StackHealthReport = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(deser.stack_average_health, stack.stack_average_health);
+        assert_eq!(deser.stack_grade, stack.stack_grade);
+        assert_eq!(deser.projects.len(), 1);
+    }
+
+    // ── StackBaseline tests ────────────────────────────────────────────────
+
+    #[test]
+    fn test_stack_baseline_new() {
+        let baseline = StackBaseline::new();
+        assert_eq!(baseline.version, "1.0");
+        assert!(baseline.projects.is_empty());
+        assert!(!baseline.generated.is_empty());
+    }
+
+    #[test]
+    fn test_stack_baseline_default() {
+        let baseline = StackBaseline::default();
+        assert_eq!(baseline.version, "1.0");
+        assert!(baseline.projects.is_empty());
+    }
+
+    #[test]
+    fn test_stack_baseline_add_project() {
+        let mut stack = StackBaseline::new();
+        let project_baseline = FileHealthBaseline::new();
+        stack.add_project("aprender".to_string(), project_baseline);
+
+        assert_eq!(stack.projects.len(), 1);
+        assert!(stack.projects.contains_key("aprender"));
+    }
+
+    #[test]
+    fn test_stack_baseline_add_multiple_projects() {
+        let mut stack = StackBaseline::new();
+        stack.add_project("project_a".to_string(), FileHealthBaseline::new());
+        stack.add_project("project_b".to_string(), FileHealthBaseline::new());
+        stack.add_project("project_c".to_string(), FileHealthBaseline::new());
+
+        assert_eq!(stack.projects.len(), 3);
+    }
+
+    #[test]
+    fn test_stack_baseline_save_and_load() {
+        let mut stack = StackBaseline::new();
+        let mut proj_baseline = FileHealthBaseline::new();
+        let metrics = FileHealthMetrics::calculate(PathBuf::from("lib.rs"), 200, 100, 5.0, 1);
+        proj_baseline.add_file(&metrics);
+        stack.add_project("test_proj".to_string(), proj_baseline);
+
+        let temp_dir = std::env::temp_dir();
+        let temp_path = temp_dir.join("test_stack_baseline.json");
+
+        stack.save(&temp_path).expect("save");
+        let loaded = StackBaseline::load(&temp_path).expect("load");
+
+        assert_eq!(loaded.version, "1.0");
+        assert_eq!(loaded.projects.len(), 1);
+        assert!(loaded.projects.contains_key("test_proj"));
+
+        let _ = std::fs::remove_file(&temp_path);
+    }
+
+    #[test]
+    fn test_stack_baseline_overwrite_project() {
+        let mut stack = StackBaseline::new();
+        stack.add_project("proj".to_string(), FileHealthBaseline::new());
+
+        let mut updated = FileHealthBaseline::new();
+        let metrics = FileHealthMetrics::calculate(PathBuf::from("new.rs"), 300, 150, 5.0, 2);
+        updated.add_file(&metrics);
+        stack.add_project("proj".to_string(), updated);
+
+        assert_eq!(stack.projects.len(), 1);
+        assert!(stack.projects.get("proj").unwrap().files.contains_key("new.rs"));
     }
 }

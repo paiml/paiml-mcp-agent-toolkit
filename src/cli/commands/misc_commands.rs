@@ -199,6 +199,10 @@ pub enum ComplyCommands {
         /// Output format
         #[arg(short = 'f', long = "format", value_enum, default_value = "text")]
         format: ComplyOutputFormat,
+
+        /// Additional project paths to include in cross-stack health checks
+        #[arg(long, value_name = "PATH")]
+        include_project: Vec<PathBuf>,
     },
 
     /// Migrate project to latest PMAT standards

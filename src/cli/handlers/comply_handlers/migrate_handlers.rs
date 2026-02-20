@@ -967,4 +967,168 @@ async fn handle_report(
 }
 
 
+/// Generate file health baseline for ratchet enforcement.
+///
+/// Scans all source files, calculates health metrics, and saves
+/// to `.pmat/file-health-baseline.json` for use by pre-commit hooks.
+pub(crate) fn generate_file_health_baseline(project_path: &Path) -> Result<()> {
+    use crate::services::file_health::{FileHealthBaseline, FileHealthMetrics};
+
+    let files = match discover_source_files(project_path) {
+        Ok(f) => f,
+        Err(msg) => {
+            println!("Skipping baseline: {}", msg);
+            return Ok(());
+        }
+    };
+
+    let mut baseline = FileHealthBaseline::new();
+
+    for file_path in &files {
+        let content = match std::fs::read_to_string(file_path) {
+            Ok(c) => c,
+            Err(_) => continue,
+        };
+        let lines = content.lines().count();
+        let test_lines = estimate_test_lines(&content);
+        let avg_complexity = estimate_avg_complexity(&content);
+
+        let rel_path = file_path
+            .strip_prefix(project_path)
+            .unwrap_or(file_path);
+
+        let metrics = FileHealthMetrics::calculate(
+            rel_path.to_path_buf(),
+            lines,
+            test_lines,
+            avg_complexity,
+            0,
+        );
+        baseline.add_file(&metrics);
+    }
+
+    let pmat_dir = project_path.join(".pmat");
+    fs::create_dir_all(&pmat_dir)?;
+    let baseline_path = pmat_dir.join("file-health-baseline.json");
+    baseline.save(&baseline_path)?;
+
+    println!(
+        "File health baseline saved: {} ({} files)",
+        baseline_path.display(),
+        baseline.files.len()
+    );
+
+    Ok(())
+}
+
+/// Cross-stack file health check across multiple projects.
+///
+/// Iterates over the primary project and additional include paths,
+/// runs `check_file_health()` for each, and prints a combined report.
+pub(crate) fn check_file_health_multi(
+    primary_path: &Path,
+    include_projects: &[std::path::PathBuf],
+) -> Result<()> {
+    use crate::services::file_health::{FileHealthReport, StackHealthReport};
+
+    let mut project_reports: Vec<(String, FileHealthReport)> = Vec::new();
+
+    // Analyze primary project
+    let primary_name: String = primary_path
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("primary")
+        .to_string();
+
+    if let Ok(report) = analyze_project_health(primary_path) {
+        project_reports.push((primary_name, report));
+    }
+
+    // Analyze each included project
+    for project_path in include_projects {
+        let project_name: String = project_path
+            .file_name()
+            .and_then(|n: &std::ffi::OsStr| n.to_str())
+            .unwrap_or("unknown")
+            .to_string();
+
+        match analyze_project_health(project_path) {
+            Ok(report) => {
+                project_reports.push((project_name, report));
+            }
+            Err(e) => {
+                eprintln!("Warning: Failed to analyze {}: {}", project_path.display(), e);
+            }
+        }
+    }
+
+    if project_reports.is_empty() {
+        println!("No projects could be analyzed for file health.");
+        return Ok(());
+    }
+
+    let stack_report = StackHealthReport::from_projects(project_reports);
+
+    // Print stack health summary
+    println!("\n━━━ Stack File Health ━━━");
+    println!(
+        "Stack Grade: {:?} (avg health: {})",
+        stack_report.stack_grade, stack_report.stack_average_health
+    );
+    println!("Projects analyzed: {}", stack_report.projects.len());
+
+    for (name, report) in &stack_report.projects {
+        println!(
+            "  {} — {:?} ({} files, avg health: {})",
+            name, report.average_grade, report.total_files, report.average_health
+        );
+    }
+
+    if !stack_report.stack_worst_files.is_empty() {
+        println!("\nWorst files across stack:");
+        for (project, metrics) in &stack_report.stack_worst_files {
+            println!(
+                "  [{}] {} — {} lines, health: {}",
+                project,
+                metrics.path.display(),
+                metrics.lines,
+                metrics.health_score
+            );
+        }
+    }
+
+    Ok(())
+}
+
+/// Analyze a single project's file health.
+fn analyze_project_health(project_path: &Path) -> Result<crate::services::file_health::FileHealthReport> {
+    use crate::services::file_health::FileHealthReport;
+
+    let files = discover_source_files(project_path)
+        .map_err(|e| anyhow::anyhow!("Failed to discover source files: {}", e))?;
+
+    let mut all_metrics = Vec::new();
+    for file_path in &files {
+        let content = match std::fs::read_to_string(file_path) {
+            Ok(c) => c,
+            Err(_) => continue,
+        };
+        let lines = content.lines().count();
+        let test_lines = estimate_test_lines(&content);
+        let avg_complexity = estimate_avg_complexity(&content);
+
+        let rel_path = file_path.strip_prefix(project_path).unwrap_or(file_path);
+        let metrics = FileHealthMetrics::calculate(
+            rel_path.to_path_buf(),
+            lines,
+            test_lines,
+            avg_complexity,
+            0,
+        );
+        all_metrics.push(metrics);
+    }
+
+    Ok(FileHealthReport::from_files(project_path.to_path_buf(), all_metrics))
+}
+
 // Tests extracted to comply_handlers_tests.rs for file health compliance (CB-040)

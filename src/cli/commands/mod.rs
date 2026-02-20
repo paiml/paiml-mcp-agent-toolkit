@@ -1402,6 +1402,41 @@ pub enum Commands {
         list: PathBuf,
     },
 
+    /// Analyze and suggest semantic file splits using Louvain community detection
+    ///
+    /// Examines function call graphs within a file and clusters related functions.
+    /// Each cluster gets a semantic name based on dominant types, themes, or prefixes.
+    /// Use --execute to create split files with include!() pattern.
+    #[command(visible_aliases = &["sp"])]
+    Split {
+        /// File to analyze for splitting
+        file: PathBuf,
+
+        /// Project path (defaults to current directory)
+        #[arg(short = 'p', long, default_value = ".")]
+        path: PathBuf,
+
+        /// Execute the split (create files). Default is dry-run.
+        #[arg(long)]
+        execute: bool,
+
+        /// Output format (text, json)
+        #[arg(short = 'f', long, default_value = "text")]
+        format: String,
+
+        /// Write output to file
+        #[arg(short = 'o', long)]
+        output: Option<PathBuf>,
+
+        /// Minimum lines for a cluster to be kept (smaller clusters become unclustered)
+        #[arg(long, default_value_t = 50)]
+        min_cluster_lines: usize,
+
+        /// Louvain resolution parameter (higher = more clusters)
+        #[arg(long, default_value_t = 1.0)]
+        resolution: f64,
+    },
+
     /// CUDA-SIMD Technical Debt Gradient (100-point Popper falsification scoring)
     /// Analyzes CUDA PTX, SIMD (AVX2/AVX-512/NEON), and WGPU code for defects
     /// Integrates Toyota Production System principles with falsificationist methodology

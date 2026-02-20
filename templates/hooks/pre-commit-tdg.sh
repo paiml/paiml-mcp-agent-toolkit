@@ -164,6 +164,63 @@ else
     fi
 fi
 
+# File health check (CB-040: max-lines enforcement)
+# O(1) design: only checks staged .rs files, no index needed
+echo ""
+echo -e "${BLUE}📏 Checking file health (max-lines)...${NC}"
+
+FILE_HEALTH_FAILED=0
+STAGED_RS_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.rs$' || true)
+
+if [ -n "$STAGED_RS_FILES" ]; then
+    for file in $STAGED_RS_FILES; do
+        if [ ! -f "$file" ]; then
+            continue
+        fi
+
+        LINE_COUNT=$(wc -l < "$file")
+
+        # Check if file is new (not yet tracked)
+        if ! git ls-files --error-unmatch "$file" > /dev/null 2>&1; then
+            # New file: hard block at >500 lines
+            if [ "$LINE_COUNT" -gt 500 ]; then
+                echo -e "${RED}❌ New file exceeds 500 lines: $file ($LINE_COUNT lines)${NC}"
+                echo "   Split the file before committing. Use: pmat split $file"
+                FILE_HEALTH_FAILED=1
+            fi
+        else
+            # Existing file: strict ratchet (no growth allowed)
+            BASELINE_COUNT=$(git show HEAD:"$file" 2>/dev/null | wc -l || echo "0")
+            if [ "$LINE_COUNT" -gt "$BASELINE_COUNT" ] && [ "$BASELINE_COUNT" -gt 0 ]; then
+                GROWTH=$((LINE_COUNT - BASELINE_COUNT))
+                if [ "$LINE_COUNT" -gt 500 ]; then
+                    echo -e "${RED}❌ File grew past 500-line limit: $file ($BASELINE_COUNT → $LINE_COUNT, +$GROWTH lines)${NC}"
+                    echo "   Reduce file size or split. Use: pmat split $file"
+                    FILE_HEALTH_FAILED=1
+                elif [ "$LINE_COUNT" -gt 400 ]; then
+                    echo -e "${YELLOW}⚠️  File approaching limit: $file ($LINE_COUNT lines, +$GROWTH)${NC}"
+                fi
+            fi
+        fi
+    done
+
+    if [ $FILE_HEALTH_FAILED -eq 1 ]; then
+        echo -e "${RED}❌ File health check failed - commit blocked${NC}"
+        echo ""
+        echo "To fix:"
+        echo "  1. Split large files using: pmat split <file> --execute"
+        echo "  2. Or reduce file size by extracting modules"
+        echo ""
+        echo "To bypass (NOT RECOMMENDED):"
+        echo "  git commit --no-verify"
+        exit 1
+    fi
+
+    echo -e "${GREEN}✅ File health check passed${NC}"
+else
+    echo "   No Rust files staged"
+fi
+
 # bashrs linting check (for bash scripts and Makefile)
 echo ""
 echo -e "${BLUE}🔍 Running bashrs linting on staged files...${NC}"

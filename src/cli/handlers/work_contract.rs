@@ -500,6 +500,10 @@ pub struct ContractThresholds {
     /// Minimum theorem coverage ratio (v4.0 provable contracts)
     #[serde(default)]
     pub min_theorem_coverage: f64,
+
+    /// Block on file size regression (v4.1 file health enforcement)
+    #[serde(default = "default_true")]
+    pub block_on_file_size: bool,
 }
 
 impl Default for ContractThresholds {
@@ -524,6 +528,7 @@ impl Default for ContractThresholds {
             require_proof_verification: false,   // Off by default — opt-in for Lean 4 projects
             max_sorry_count: 0, // Zero sorrys allowed when proof verification enabled
             min_theorem_coverage: 0.0, // No minimum theorem coverage by default
+            block_on_file_size: true, // Block on file size regression by default (v4.1)
         }
     }
 }

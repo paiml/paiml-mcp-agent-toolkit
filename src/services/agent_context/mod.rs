@@ -55,8 +55,8 @@
 //!
 //! See: `docs/specifications/improve-context.md`
 
-mod function_index;
-mod query;
+pub(crate) mod function_index;
+pub(crate) mod query;
 
 pub(crate) use function_index::helpers::parse_workspace_siblings;
 pub(crate) use function_index::sqlite_backend::persist_quality_violations;

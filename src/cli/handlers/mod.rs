@@ -94,6 +94,7 @@ pub mod satd_handler;
 pub mod similarity_handler;
 pub mod spec_falsify_handler;
 pub mod spec_handlers; // master-plan-pmat-work-system.md: Spec management commands
+pub mod split_handler; // File split: semantic file splitting via Louvain
 pub mod sql_handler; // GH-218: Direct SQL access to function index database
 pub mod subagent_handlers;
 pub mod tdg_diagnostic_handler;

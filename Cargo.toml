@@ -663,6 +663,14 @@ name = "agent_context_query_demo"
 path = "examples/agent_context_query_demo.rs"
 
 [[example]]
+name = "suggest_rename_demo"
+path = "examples/suggest_rename_demo.rs"
+
+[[example]]
+name = "split_demo"
+path = "examples/split_demo.rs"
+
+[[example]]
 name = "extract_demo"
 path = "examples/extract_demo.rs"
 

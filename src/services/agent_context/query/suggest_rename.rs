@@ -497,7 +497,7 @@ fn matches_parent_dir(file_path: &str, suggested_name: &str) -> bool {
 // ── Signal analyzers ───────────────────────────────────────────────────────
 
 /// Check for a single dominant struct/enum/trait definition.
-fn try_dominant_type(entries: &[&FunctionEntry]) -> Option<(String, f32, String)> {
+pub(crate) fn try_dominant_type(entries: &[&FunctionEntry]) -> Option<(String, f32, String)> {
     let type_defs: Vec<&FunctionEntry> = entries
         .iter()
         .filter(|e| {
@@ -636,7 +636,7 @@ fn try_original_base(file_path: &str) -> Option<(String, f32, String)> {
 }
 
 /// Check if >70% of functions share a keyword theme.
-fn try_function_theme(entries: &[&FunctionEntry]) -> Option<(String, f32, String)> {
+pub(crate) fn try_function_theme(entries: &[&FunctionEntry]) -> Option<(String, f32, String)> {
     let fn_entries: Vec<&&FunctionEntry> = entries
         .iter()
         .filter(|e| e.definition_type == DefinitionType::Function)
@@ -689,7 +689,7 @@ fn try_function_theme(entries: &[&FunctionEntry]) -> Option<(String, f32, String
 }
 
 /// Find the longest common prefix across function names (min 4 chars).
-fn try_common_prefix(entries: &[&FunctionEntry]) -> Option<(String, f32, String)> {
+pub(crate) fn try_common_prefix(entries: &[&FunctionEntry]) -> Option<(String, f32, String)> {
     let fn_names: Vec<&str> = entries
         .iter()
         .filter(|e| e.definition_type == DefinitionType::Function)
@@ -716,7 +716,7 @@ fn try_common_prefix(entries: &[&FunctionEntry]) -> Option<(String, f32, String)
 }
 
 /// Extract dominant keyword from doc comments.
-fn try_doc_comment_consensus(entries: &[&FunctionEntry]) -> Option<(String, f32, String)> {
+pub(crate) fn try_doc_comment_consensus(entries: &[&FunctionEntry]) -> Option<(String, f32, String)> {
     let docs: Vec<&str> = entries
         .iter()
         .filter_map(|e| e.doc_comment.as_deref())
@@ -867,7 +867,7 @@ pub(crate) fn check_collision(suggested_path: &str, index: &AgentContextIndex) -
 }
 
 /// Find a context word from function names (most common non-trivial word).
-fn find_context_word(entries: &[&FunctionEntry]) -> Option<String> {
+pub(crate) fn find_context_word(entries: &[&FunctionEntry]) -> Option<String> {
     let mut word_counts: HashMap<String, usize> = HashMap::new();
     for entry in entries {
         if entry.definition_type != DefinitionType::Function {

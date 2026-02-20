@@ -393,6 +393,30 @@ impl CommandDispatcher {
                 // GH-215: Extract function boundaries from a single file
                 handlers::handle_extract_list(&list).await
             }
+            Commands::Split {
+                file,
+                path,
+                execute,
+                format,
+                output,
+                min_cluster_lines,
+                resolution,
+            } => {
+                let fmt = match format.as_str() {
+                    "json" => handlers::split_handler::SplitOutputFormat::Json,
+                    _ => handlers::split_handler::SplitOutputFormat::Text,
+                };
+                handlers::split_handler::handle_split(handlers::split_handler::SplitConfig {
+                    file,
+                    project_path: path,
+                    execute,
+                    format: fmt,
+                    output,
+                    min_cluster_lines,
+                    resolution,
+                })
+                .await
+            }
 
             // Quality and analysis commands delegated to reduce cognitive complexity
             cmd @ (Commands::ProjectDiag { .. }

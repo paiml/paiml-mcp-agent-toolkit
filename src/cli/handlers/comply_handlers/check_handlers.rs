@@ -179,7 +179,17 @@ pub async fn handle_comply_command(command: ComplyCommands) -> Result<()> {
             strict,
             failures_only,
             format,
-        } => handle_check(&path, strict, failures_only, format).await,
+            include_project,
+        } => {
+            let result = handle_check(&path, strict, failures_only, format).await;
+            // Cross-stack file health check if additional projects specified
+            if !include_project.is_empty() {
+                if let Err(e) = check_file_health_multi(&path, &include_project) {
+                    eprintln!("Cross-stack health check warning: {}", e);
+                }
+            }
+            result
+        }
 
         ComplyCommands::Migrate {
             path,

@@ -1377,6 +1377,7 @@ mod tests {
                 strict: false,
                 failures_only: false,
                 format: crate::cli::commands::ComplyOutputFormat::Text,
+                include_project: vec![],
             },
         };
 

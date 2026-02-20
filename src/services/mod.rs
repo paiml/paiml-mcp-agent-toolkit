@@ -171,6 +171,7 @@ pub mod file_classifier;
 mod file_classifier_property_tests;
 pub mod file_discovery;
 pub mod file_health; // File Health Score: max-lines enforcement and TLR analysis
+pub mod file_split; // File Split: semantic splitting via Louvain community detection
 pub mod five_whys_analyzer;
 pub mod fixed_graph_builder;
 pub mod git_analysis;
