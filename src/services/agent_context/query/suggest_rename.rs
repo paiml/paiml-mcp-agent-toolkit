@@ -362,6 +362,9 @@ pub(crate) fn is_part_file(path: &str) -> bool {
 
 // ── Core analysis ──────────────────────────────────────────────────────────
 
+/// Result from a signal analyzer: (suggested_name, confidence, reasoning).
+type SignalResult = Option<(String, f32, String)>;
+
 fn analyze_file_for_rename(
     file_path: &str,
     entries: &[&FunctionEntry],
@@ -370,7 +373,7 @@ fn analyze_file_for_rename(
     let parent_file = detect_parent_file(file_path, index);
 
     // Cascading signal priority: try each analyzer in order
-    let signals: [(RenameSignal, Option<(String, f32, String)>); 6] = [
+    let signals: [(RenameSignal, SignalResult); 6] = [
         (RenameSignal::DominantType, try_dominant_type(entries)),
         (
             RenameSignal::ExistingSuffix,
@@ -385,18 +388,16 @@ fn analyze_file_for_rename(
         ),
     ];
 
+    let ctx = SuggestionCtx {
+        file_path,
+        parent_file,
+        definition_count: entries.len(),
+        index,
+    };
+
     for (signal, result) in signals {
         if let Some((name, confidence, reasoning)) = result {
-            return build_suggestion(
-                file_path,
-                &name,
-                confidence,
-                reasoning,
-                signal,
-                parent_file,
-                entries.len(),
-                index,
-            );
+            return build_suggestion(&ctx, &name, confidence, reasoning, signal);
         }
     }
 
@@ -408,45 +409,50 @@ fn analyze_file_for_rename(
         confidence: 0.30,
         reasoning: "No dominant signal found".to_string(),
         signal: RenameSignal::NoSignal,
-        parent_file,
+        parent_file: ctx.parent_file,
         inclusion_pattern: Some("include!".to_string()),
-        definition_count: entries.len(),
+        definition_count: ctx.definition_count,
     }
+}
+
+/// Context passed to build_suggestion to reduce argument count.
+struct SuggestionCtx<'a> {
+    file_path: &'a str,
+    parent_file: Option<String>,
+    definition_count: usize,
+    index: &'a AgentContextIndex,
 }
 
 /// Build a RenameSuggestion from a successful signal analysis.
 fn build_suggestion(
-    file_path: &str,
+    ctx: &SuggestionCtx<'_>,
     name: &str,
     confidence: f32,
     reasoning: String,
     signal: RenameSignal,
-    parent_file: Option<String>,
-    definition_count: usize,
-    index: &AgentContextIndex,
 ) -> RenameSuggestion {
     let suggested_name = format!("{name}.rs");
-    let suggested_path = replace_filename(file_path, &suggested_name);
+    let suggested_path = replace_filename(ctx.file_path, &suggested_name);
 
     // Reject if suggestion collides with parent file
-    if collides_with_parent(&suggested_path, &parent_file) {
+    if collides_with_parent(&suggested_path, &ctx.parent_file) {
         return RenameSuggestion {
-            current_path: file_path.to_string(),
+            current_path: ctx.file_path.to_string(),
             suggested_name: String::new(),
             suggested_path: String::new(),
             confidence: 0.10,
             reasoning: format!("{reasoning} [same as parent]"),
             signal: RenameSignal::NoSignal,
-            parent_file,
+            parent_file: ctx.parent_file.clone(),
             inclusion_pattern: Some("include!".to_string()),
-            definition_count,
+            definition_count: ctx.definition_count,
         };
     }
 
     // Penalize if name matches parent directory (redundant: graph/graph.rs)
-    let dir_penalty = matches_parent_dir(file_path, name);
+    let dir_penalty = matches_parent_dir(ctx.file_path, name);
 
-    let collision = check_collision(&suggested_path, index);
+    let collision = check_collision(&suggested_path, ctx.index);
     let mut final_confidence = confidence;
     let mut final_reasoning = reasoning;
     if collision {
@@ -457,15 +463,15 @@ fn build_suggestion(
         final_reasoning = format!("{final_reasoning} [redundant with parent dir]");
     }
     RenameSuggestion {
-        current_path: file_path.to_string(),
+        current_path: ctx.file_path.to_string(),
         suggested_name,
         suggested_path,
         confidence: final_confidence,
         reasoning: final_reasoning,
         signal,
-        parent_file,
+        parent_file: ctx.parent_file.clone(),
         inclusion_pattern: Some("include!".to_string()),
-        definition_count,
+        definition_count: ctx.definition_count,
     }
 }
 
