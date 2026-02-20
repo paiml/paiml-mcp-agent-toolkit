@@ -146,6 +146,17 @@ const GENERIC_NAMES: &[&str] = &[
     "collection",
     "computation",
     "calculation",
+    "token",
+    "create",
+    "helper",
+    "data",
+    "error",
+    "errors",
+    "file",
+    "loading",
+    "config",
+    "cache",
+    "graph",
 ];
 
 /// Find all `_part_` files and suggest semantic renames.
@@ -218,22 +229,26 @@ fn disambiguate_collisions(suggestions: &mut Vec<RenameSuggestion>) {
             .push(i);
     }
 
-    // For groups with >1 entry, disambiguate using the full original stem
-    // (which is guaranteed unique per file path)
+    // For groups with >1 entry, disambiguate with numeric suffix
     for ((_, _), indices) in &groups {
         if indices.len() <= 1 {
             continue;
         }
-        for &idx in indices {
-            let s = &suggestions[idx];
-            let stem = Path::new(&s.current_path)
-                .file_stem()
-                .and_then(|f| f.to_str())
-                .unwrap_or("");
-            let base_suggested = s.suggested_name.trim_end_matches(".rs");
-            // Use the full original stem (unique per file) as disambiguator
-            let new_name = format!("{base_suggested}_from_{stem}.rs");
-            let new_path = replace_filename(&s.current_path, &new_name);
+        // Sort by current_path for deterministic numbering
+        let mut sorted_indices = indices.clone();
+        sorted_indices.sort_by(|&a, &b| {
+            suggestions[a]
+                .current_path
+                .cmp(&suggestions[b].current_path)
+        });
+
+        for (seq, &idx) in sorted_indices.iter().enumerate() {
+            let base = suggestions[idx]
+                .suggested_name
+                .trim_end_matches(".rs")
+                .to_string();
+            let new_name = format!("{base}_{}.rs", seq + 1);
+            let new_path = replace_filename(&suggestions[idx].current_path, &new_name);
             suggestions[idx].suggested_name = new_name;
             suggestions[idx].suggested_path = new_path;
             suggestions[idx].confidence *= 0.85;
@@ -960,8 +975,13 @@ mod tests {
         ];
         disambiguate_collisions(&mut suggestions);
 
-        // Both should now have unique names
+        // Both should now have unique names with numeric suffixes
         assert_ne!(suggestions[0].suggested_name, suggestions[1].suggested_name);
+        assert!(
+            suggestions[0].suggested_name.contains("dispatch_"),
+            "got: {}",
+            suggestions[0].suggested_name
+        );
         // Both should be marked as disambiguated
         assert!(suggestions[0].reasoning.contains("[disambiguated]"));
         assert!(suggestions[1].reasoning.contains("[disambiguated]"));
