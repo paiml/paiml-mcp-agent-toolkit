@@ -162,14 +162,6 @@ impl RenderConfig {
         }
     }
 
-    /// Set terminal dimensions
-    #[must_use]
-    pub fn dimensions(mut self, width: u32, height: u32) -> Self {
-        self.width = width;
-        self.height = height;
-        self
-    }
-
     /// Set theme
     #[must_use]
     pub fn theme(mut self, theme: TerminalTheme) -> Self {
@@ -182,6 +174,13 @@ impl RenderConfig {
     pub fn max_nodes(mut self, max: usize) -> Self {
         self.max_nodes = max;
         self
+    }
+}
+
+impl batuta_common::display::WithDimensions for RenderConfig {
+    fn set_dimensions(&mut self, width: u32, height: u32) {
+        self.width = width;
+        self.height = height;
     }
 }
 
@@ -334,6 +333,7 @@ impl Visualizable for VisGraph {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use batuta_common::display::WithDimensions;
 
     // ==========================================================
     // RED TESTS - These define the expected behavior
