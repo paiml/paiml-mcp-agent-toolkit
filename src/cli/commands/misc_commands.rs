@@ -380,6 +380,10 @@ pub enum ComplyCommands {
         #[arg(short = 'p', long = "path", default_value = ".")]
         path: PathBuf,
 
+        /// Explicit crate paths (comma-separated)
+        #[arg(long = "crates", value_delimiter = ',', num_args = 1..)]
+        crates: Option<Vec<PathBuf>>,
+
         /// Minimum similarity threshold for clone detection (0.0-1.0)
         #[arg(long = "similarity-threshold", default_value = "0.80")]
         similarity_threshold: f64,
@@ -403,6 +407,10 @@ pub enum ComplyCommands {
         /// Exit with error code 1 if findings detected
         #[arg(long)]
         strict: bool,
+
+        /// Save current finding counts as ratchet baseline
+        #[arg(long = "save-baseline")]
+        save_baseline: bool,
     },
 }
 

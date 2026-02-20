@@ -1,99 +1,31 @@
-// CC-003: Primitive should be upstream detection
+// CC-003: Primitive should be upstream detection (with MinHash similarity gate)
 // CC-004: Cross-crate churn correlation detection
 //
 // Included into cross_crate_handlers.rs via include!()
 
+struct CrateFuncRef<'a> {
+    crate_info: &'a CrateInfo,
+    func: &'a FunctionEntry,
+}
+
 /// CC-003: Detect when a downstream crate reimplements a function already in an upstream dep.
 ///
-/// If crate B depends on crate A and both define `f16_to_f32()`, B should import from A
-/// instead of maintaining a copy.
+/// Uses MinHash similarity to reduce false positives: only flags when the source code
+/// is actually similar (Jaccard >= cc003_min_similarity), not just same-named functions.
 fn detect_cc003_primitive_upstream(
     crate_functions: &[(CrateInfo, Vec<FunctionEntry>)],
+    config: &DetectionConfig,
 ) -> Vec<CrossCrateFinding> {
-    let mut findings = Vec::new();
+    let signatures = precompute_cc003_signatures(crate_functions, config);
+    let func_by_name = build_func_by_name(crate_functions, config);
 
-    // Build function name -> crate map
-    struct CrateFuncRef<'a> {
-        crate_info: &'a CrateInfo,
-        func: &'a FunctionEntry,
-    }
-    let mut func_by_name: HashMap<&str, Vec<CrateFuncRef<'_>>> = HashMap::new();
-    for (crate_info, functions) in crate_functions {
-        for func in functions {
-            // Skip generic trait impls
-            if is_generic_impl_name(&func.function_name) {
-                continue;
-            }
-            func_by_name
-                .entry(func.function_name.as_str())
-                .or_default()
-                .push(CrateFuncRef { crate_info, func });
-        }
-    }
+    let mut findings: Vec<CrossCrateFinding> = func_by_name
+        .iter()
+        .filter(|(_, impls)| impls.len() >= 2)
+        .flat_map(|(func_name, impls)| check_cc003_pairs(func_name, impls, config, &signatures))
+        .collect();
 
-    // For each function name that appears in multiple crates
-    for (func_name, impls) in &func_by_name {
-        if impls.len() < 2 {
-            continue;
-        }
-
-        // Check all pairs for dependency relationships
-        for i in 0..impls.len() {
-            for j in 0..impls.len() {
-                if i == j {
-                    continue;
-                }
-                let upstream = &impls[i];
-                let downstream = &impls[j];
-
-                // Skip same-crate
-                if upstream.crate_info.name == downstream.crate_info.name {
-                    continue;
-                }
-
-                // Does downstream depend on upstream?
-                let has_dep = downstream
-                    .crate_info
-                    .cargo_deps
-                    .iter()
-                    .any(|d| d == &upstream.crate_info.name);
-                if !has_dep {
-                    continue;
-                }
-
-                // Only flag if both functions have non-trivial source
-                // and the source is actually similar (not just same name)
-                let up_src = &upstream.func.source;
-                let down_src = &downstream.func.source;
-                if up_src.is_empty() || down_src.is_empty() {
-                    continue;
-                }
-                if up_src.lines().count() < 3 || down_src.lines().count() < 3 {
-                    continue;
-                }
-
-                findings.push(CrossCrateFinding {
-                    rule: "CC-003".to_string(),
-                    severity: CcSeverity::Warning,
-                    crate_a: upstream.crate_info.name.clone(),
-                    crate_b: downstream.crate_info.name.clone(),
-                    function_a: func_name.to_string(),
-                    function_b: func_name.to_string(),
-                    file_a: upstream.func.file_path.clone(),
-                    file_b: downstream.func.file_path.clone(),
-                    similarity: None,
-                    recommendation: format!(
-                        "Use {}::{} directly instead of reimplementing in {}",
-                        upstream.crate_info.name,
-                        func_name,
-                        downstream.crate_info.name
-                    ),
-                });
-            }
-        }
-    }
-
-    // Deduplicate (A->B and B->A would both trigger, but only the downstream direction matters)
+    // Deduplicate (A->B and B->A would both trigger, only downstream direction matters)
     findings.sort_by(|a, b| {
         (&a.crate_a, &a.crate_b, &a.function_a).cmp(&(&b.crate_a, &b.crate_b, &b.function_a))
     });
@@ -102,6 +34,194 @@ fn detect_cc003_primitive_upstream(
     });
 
     findings
+}
+
+/// Build function name -> crate references map, excluding generic names.
+fn build_func_by_name<'a>(
+    crate_functions: &'a [(CrateInfo, Vec<FunctionEntry>)],
+    config: &DetectionConfig,
+) -> HashMap<&'a str, Vec<CrateFuncRef<'a>>> {
+    let mut map: HashMap<&str, Vec<CrateFuncRef<'_>>> = HashMap::new();
+    for (crate_info, functions) in crate_functions {
+        for func in functions {
+            if !is_excluded_function(&func.function_name, config) {
+                map.entry(func.function_name.as_str())
+                    .or_default()
+                    .push(CrateFuncRef { crate_info, func });
+            }
+        }
+    }
+    map
+}
+
+/// Check all upstream/downstream pairs for a given function name.
+fn check_cc003_pairs(
+    func_name: &str,
+    impls: &[CrateFuncRef<'_>],
+    config: &DetectionConfig,
+    signatures: &HashMap<(&str, &str, &str), MinHashSignature>,
+) -> Vec<CrossCrateFinding> {
+    let mut findings = Vec::new();
+
+    for i in 0..impls.len() {
+        for j in 0..impls.len() {
+            if i == j {
+                continue;
+            }
+            if let Some(finding) =
+                check_cc003_single_pair(func_name, &impls[i], &impls[j], config, signatures)
+            {
+                findings.push(finding);
+            }
+        }
+    }
+
+    findings
+}
+
+/// Check a single upstream/downstream pair for CC-003 violation.
+fn check_cc003_single_pair(
+    func_name: &str,
+    upstream: &CrateFuncRef<'_>,
+    downstream: &CrateFuncRef<'_>,
+    config: &DetectionConfig,
+    signatures: &HashMap<(&str, &str, &str), MinHashSignature>,
+) -> Option<CrossCrateFinding> {
+    if upstream.crate_info.name == downstream.crate_info.name {
+        return None;
+    }
+    if is_crate_pair_excluded(
+        &upstream.crate_info.name,
+        &downstream.crate_info.name,
+        &config.excluded_crate_pairs,
+    ) {
+        return None;
+    }
+
+    // Downstream must depend on upstream
+    let has_dep = downstream
+        .crate_info
+        .cargo_deps
+        .iter()
+        .any(|d| d == &upstream.crate_info.name);
+    if !has_dep {
+        return None;
+    }
+
+    // Both must have non-trivial source
+    let up_src = &upstream.func.source;
+    let down_src = &downstream.func.source;
+    if up_src.is_empty()
+        || down_src.is_empty()
+        || up_src.lines().count() < config.min_body_lines
+        || down_src.lines().count() < config.min_body_lines
+    {
+        return None;
+    }
+
+    // MinHash similarity gate
+    let similarity = compute_cc003_similarity(
+        upstream.crate_info.name.as_str(),
+        upstream.func.file_path.as_str(),
+        downstream.crate_info.name.as_str(),
+        downstream.func.file_path.as_str(),
+        func_name,
+        config.cc003_min_similarity,
+        signatures,
+    )?;
+
+    Some(CrossCrateFinding {
+        rule: "CC-003".to_string(),
+        severity: CcSeverity::Warning,
+        crate_a: upstream.crate_info.name.clone(),
+        crate_b: downstream.crate_info.name.clone(),
+        function_a: func_name.to_string(),
+        function_b: func_name.to_string(),
+        file_a: upstream.func.file_path.clone(),
+        file_b: downstream.func.file_path.clone(),
+        similarity,
+        recommendation: format!(
+            "Use {}::{} directly instead of reimplementing in {}",
+            upstream.crate_info.name, func_name, downstream.crate_info.name
+        ),
+    })
+}
+
+/// Compute MinHash similarity between two function implementations.
+/// Returns `Some(Some(sim))` if similar enough, `Some(None)` for name-only match,
+/// `None` if below threshold.
+fn compute_cc003_similarity(
+    up_crate: &str,
+    up_file: &str,
+    down_crate: &str,
+    down_file: &str,
+    func_name: &str,
+    min_similarity: f64,
+    signatures: &HashMap<(&str, &str, &str), MinHashSignature>,
+) -> Option<Option<f64>> {
+    let up_key = (up_crate, up_file, func_name);
+    let down_key = (down_crate, down_file, func_name);
+
+    match (signatures.get(&up_key), signatures.get(&down_key)) {
+        (Some(up_sig), Some(down_sig)) => {
+            let sim = up_sig.jaccard_similarity(down_sig);
+            if sim < min_similarity {
+                None // Below threshold
+            } else {
+                Some(Some(sim))
+            }
+        }
+        _ => Some(None), // No signatures — name-only match
+    }
+}
+
+/// Pre-compute MinHash signatures for CC-003 similarity gating.
+/// Key: (crate_name, file_path, function_name) -> MinHashSignature
+fn precompute_cc003_signatures<'a>(
+    crate_functions: &'a [(CrateInfo, Vec<FunctionEntry>)],
+    config: &DetectionConfig,
+) -> HashMap<(&'a str, &'a str, &'a str), MinHashSignature> {
+    let dup_config = DuplicateDetectionConfig {
+        normalize_identifiers: true,
+        normalize_literals: true,
+        ignore_comments: true,
+        ..Default::default()
+    };
+    let extractor = UniversalFeatureExtractor::new(dup_config);
+    let hasher = MinHashGenerator::new(128);
+
+    let mut sigs = HashMap::new();
+
+    for (crate_info, functions) in crate_functions {
+        for func in functions {
+            if func.source.is_empty() || func.source.lines().count() < config.min_body_lines {
+                continue;
+            }
+            if is_excluded_function(&func.function_name, config) {
+                continue;
+            }
+            let lang = parse_language(&func.language);
+            let tokens = extractor.extract_features(&func.source, lang);
+            if tokens.len() < config.min_tokens {
+                continue;
+            }
+            let shingles = hasher.generate_shingles(&tokens, 3);
+            if shingles.is_empty() {
+                continue;
+            }
+            let minhash = hasher.compute_signature(&shingles);
+            sigs.insert(
+                (
+                    crate_info.name.as_str(),
+                    func.file_path.as_str(),
+                    func.function_name.as_str(),
+                ),
+                minhash,
+            );
+        }
+    }
+
+    sigs
 }
 
 /// CC-004: Detect shotgun surgery — correlated file changes across crate boundaries.

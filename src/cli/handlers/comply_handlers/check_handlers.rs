@@ -251,21 +251,25 @@ pub async fn handle_comply_command(command: ComplyCommands) -> Result<()> {
 
         ComplyCommands::CrossCrate {
             path,
+            crates,
             similarity_threshold,
             churn_window_days,
             rules,
             format,
             output,
             strict,
+            save_baseline,
         } => {
             cross_crate_handlers::handle_cross_crate(
                 &path,
+                crates.as_deref(),
                 similarity_threshold,
                 churn_window_days,
                 rules.as_deref(),
                 format,
                 output.as_deref(),
                 strict,
+                save_baseline,
             )
             .await
         }

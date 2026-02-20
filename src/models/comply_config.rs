@@ -54,6 +54,55 @@ pub struct PmatYamlConfig {
     /// Project-specific scoring plugins
     #[serde(default)]
     pub scoring: ScoringPluginConfig,
+
+    /// Cross-crate analysis configuration
+    #[serde(default)]
+    pub cross_crate: CrossCrateConfig,
+}
+
+/// Configuration for cross-crate duplication analysis (CC-001 through CC-005).
+///
+/// Example `.pmat.yaml`:
+/// ```yaml
+/// cross_crate:
+///   excluded_functions: [shape, dim, duration, alpha, vocab_size]
+///   excluded_crate_pairs: ["trueno:aprender"]
+///   min_body_lines: 5
+///   cc003_min_similarity: 0.5
+/// ```
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CrossCrateConfig {
+    /// Function names to exclude from clone detection (e.g., trivial accessors)
+    #[serde(default)]
+    pub excluded_functions: Vec<String>,
+
+    /// Crate pairs to exclude from analysis (format: "crate_a:crate_b")
+    #[serde(default)]
+    pub excluded_crate_pairs: Vec<String>,
+
+    /// Minimum function body lines for clone detection (default: 3)
+    #[serde(default = "default_min_body_lines")]
+    pub min_body_lines: usize,
+
+    /// Minimum token count for meaningful MinHash comparison (default: 15)
+    #[serde(default = "default_min_tokens")]
+    pub min_tokens: usize,
+
+    /// Minimum Jaccard similarity for CC-003 upstream reimplementation (default: 0.5)
+    #[serde(default = "default_cc003_similarity")]
+    pub cc003_min_similarity: f64,
+}
+
+impl Default for CrossCrateConfig {
+    fn default() -> Self {
+        Self {
+            excluded_functions: Vec::new(),
+            excluded_crate_pairs: Vec::new(),
+            min_body_lines: default_min_body_lines(),
+            min_tokens: default_min_tokens(),
+            cc003_min_similarity: default_cc003_similarity(),
+        }
+    }
 }
 
 /// Configuration for pmat comply checks
@@ -364,6 +413,15 @@ fn default_min_tdg_grade() -> String {
 }
 fn default_tdg_score() -> f64 {
     70.0
+}
+fn default_min_body_lines() -> usize {
+    3
+}
+fn default_min_tokens() -> usize {
+    15
+}
+fn default_cc003_similarity() -> f64 {
+    0.5
 }
 fn default_cache_warn_hours() -> i64 {
     1

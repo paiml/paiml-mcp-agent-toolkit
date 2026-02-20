@@ -11,8 +11,9 @@
 fn detect_cc001_function_clones(
     crate_functions: &[(CrateInfo, Vec<FunctionEntry>)],
     threshold: f64,
+    config: &DetectionConfig,
 ) -> Vec<CrossCrateFinding> {
-    let signed = compute_signatures(crate_functions);
+    let signed = compute_signatures(crate_functions, config);
     if signed.len() < 2 {
         return Vec::new();
     }
@@ -30,6 +31,15 @@ fn detect_cc001_function_clones(
 
     for i in 0..crate_names.len() {
         for j in (i + 1)..crate_names.len() {
+            // Skip excluded crate pairs
+            if is_crate_pair_excluded(
+                crate_names[i],
+                crate_names[j],
+                &config.excluded_crate_pairs,
+            ) {
+                continue;
+            }
+
             let indices_a = &by_crate[crate_names[i]];
             let indices_b = &by_crate[crate_names[j]];
 
@@ -81,6 +91,7 @@ fn detect_cc001_function_clones(
 /// this is an API divergence risk — callers may silently get wrong behavior.
 fn detect_cc002_api_divergence(
     crate_functions: &[(CrateInfo, Vec<FunctionEntry>)],
+    config: &DetectionConfig,
 ) -> Vec<CrossCrateFinding> {
     // Group public functions by name across crates
     struct FuncRef<'a> {
@@ -91,8 +102,7 @@ fn detect_cc002_api_divergence(
 
     for (crate_info, functions) in crate_functions {
         for func in functions {
-            // Skip generic trait impls
-            if is_generic_impl_name(&func.function_name) {
+            if is_excluded_function(&func.function_name, config) {
                 continue;
             }
             // Only check public functions (pub fn, pub async fn)
@@ -134,6 +144,15 @@ fn detect_cc002_api_divergence(
                     continue;
                 }
 
+                // Skip excluded crate pairs
+                if is_crate_pair_excluded(
+                    &fr_a.crate_info.name,
+                    &fr_b.crate_info.name,
+                    &config.excluded_crate_pairs,
+                ) {
+                    continue;
+                }
+
                 // Only check crates with a dependency relationship
                 let a_deps_b = fr_a
                     .crate_info
@@ -152,7 +171,7 @@ fn detect_cc002_api_divergence(
                 let norm_a = normalize_signature(&fr_a.func.signature);
                 let norm_b = normalize_signature(&fr_b.func.signature);
 
-                // Only flag if parameter counts are similar (within ±1).
+                // Only flag if parameter counts are similar (within +/-1).
                 // Completely different arities are independent APIs, not divergence.
                 let params_a = count_signature_params(&norm_a);
                 let params_b = count_signature_params(&norm_b);
