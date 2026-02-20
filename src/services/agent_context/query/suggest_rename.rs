@@ -552,7 +552,7 @@ fn try_doc_comment_consensus(entries: &[&FunctionEntry]) -> Option<(String, f32,
         return None;
     }
 
-    // Tokenize and count words (length >= 4, not stopwords)
+    // Tokenize and count words (length >= 4, valid identifiers, not stopwords)
     let mut word_counts: HashMap<String, usize> = HashMap::new();
     for doc in &docs {
         let mut seen = std::collections::HashSet::new();
@@ -560,7 +560,11 @@ fn try_doc_comment_consensus(entries: &[&FunctionEntry]) -> Option<(String, f32,
             let word = word
                 .trim_matches(|c: char| !c.is_alphanumeric())
                 .to_lowercase();
-            if word.len() >= 4 && !is_stopword(&word) && seen.insert(word.clone()) {
+            if word.len() >= 4
+                && is_valid_module_name(&word)
+                && !is_stopword(&word)
+                && seen.insert(word.clone())
+            {
                 *word_counts.entry(word).or_insert(0) += 1;
             }
         }
@@ -770,7 +774,27 @@ fn is_stopword(word: &str) -> bool {
             | "returns"
             | "return"
             | "function"
+            | "should"
+            | "given"
+            | "expect"
+            | "verify"
+            | "check"
+            | "assert"
+            | "arguments"
+            | "correctly"
+            | "properly"
     )
+}
+
+/// Check if a name is valid as a Rust module name.
+/// Must be ASCII, start with a letter or underscore, contain only alphanumerics/underscores.
+fn is_valid_module_name(name: &str) -> bool {
+    if name.is_empty() {
+        return false;
+    }
+    let first = name.as_bytes()[0];
+    let starts_valid = first.is_ascii_alphabetic() || first == b'_';
+    starts_valid && name.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_')
 }
 
 // ── Tests ──────────────────────────────────────────────────────────────────
