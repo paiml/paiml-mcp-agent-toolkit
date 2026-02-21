@@ -205,6 +205,11 @@ pmat kaizen --dry-run                  # Scan only (no changes)
 pmat kaizen                            # Apply safe auto-fixes
 pmat kaizen --commit --push            # Fix, commit, and push
 pmat kaizen --format json -o report.json  # CI/CD integration
+
+# Cross-stack mode: scan all batuta stack crates in one invocation
+pmat kaizen --cross-stack --dry-run    # Scan all crates
+pmat kaizen --cross-stack --commit     # Fix and commit per-crate
+pmat kaizen --cross-stack -f json      # Grouped JSON report
 ```
 
 ### Function Extraction (`pmat extract`)

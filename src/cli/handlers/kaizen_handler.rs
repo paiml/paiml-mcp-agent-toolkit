@@ -180,8 +180,7 @@ async fn handle_kaizen_cross_stack(path: &Path, config: &KaizenConfig) -> Result
 
     // GitHub issues (filed from the primary project)
     if !config.dry_run && config.create_issues {
-        let unfixed: Vec<&KaizenFinding> =
-            all_findings.iter().filter(|f| !f.fix_applied).collect();
+        let unfixed: Vec<&KaizenFinding> = all_findings.iter().filter(|f| !f.fix_applied).collect();
         if !unfixed.is_empty() {
             eprintln!(
                 "Kaizen: filing {} GitHub issues for unfixed findings",
@@ -219,9 +218,9 @@ struct CrossStackAccumulator {
 
 /// Check if a crate has any fixable findings
 fn crate_has_fixable(findings: &[KaizenFinding], crate_name: &str) -> bool {
-    findings.iter().any(|f| {
-        f.crate_name.as_deref() == Some(crate_name) && f.auto_fixable && !f.fix_applied
-    })
+    findings
+        .iter()
+        .any(|f| f.crate_name.as_deref() == Some(crate_name) && f.auto_fixable && !f.fix_applied)
 }
 
 /// Check if a crate had any fixes applied
