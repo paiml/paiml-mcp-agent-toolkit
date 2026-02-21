@@ -776,6 +776,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore] // Requires live context index
     fn test_compute_cohesion_single() {
         let cohesion = compute_cohesion(
             &[0],
