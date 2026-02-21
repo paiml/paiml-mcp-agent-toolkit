@@ -196,6 +196,16 @@ min_grade = "A"
 exclude = ["examples/**", "scripts/**"]
 ```
 
+### Document Search (`pmat query --docs`)
+
+Search documentation files (Markdown, text, YAML) alongside code:
+
+```bash
+pmat query "authentication" --docs          # Code + docs results
+pmat query "deployment" --docs-only         # Only documentation
+pmat query "API endpoints" --no-docs        # Exclude docs (default)
+```
+
 ### Autonomous Kaizen (`pmat kaizen`)
 
 Toyota Way continuous improvement — scan, auto-fix, commit:
@@ -377,7 +387,7 @@ PMAT is built on the PAIML Sovereign Stack - pure-Rust, SIMD-accelerated librari
 | [trueno-db](https://crates.io/crates/trueno-db) | Embedded analytics database | 0.3.13 |
 | [trueno-viz](https://crates.io/crates/trueno-viz) | Terminal graph visualization | 0.1.23 |
 | [trueno-zram-core](https://crates.io/crates/trueno-zram-core) | SIMD LZ4/ZSTD compression (optional) | 0.3.0 |
-| **pmat** | Code analysis toolkit | 3.3.0 |
+| **pmat** | Code analysis toolkit | 3.5.1 |
 
 **Key Benefits:**
 - Pure Rust (no C dependencies, no FFI)

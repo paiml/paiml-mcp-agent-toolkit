@@ -1,12 +1,46 @@
 # PMAT Examples
 
-This directory contains examples and guides for using PMAT's scaffolding commands.
+This directory contains 80+ runnable examples and guides for PMAT features.
 
 ## Quick Links
 
 - [Agent Scaffolding Guide](./agent-scaffolding.md) - Create MCP agents
 - [WASM Scaffolding Guide](./wasm-scaffolding.md) - Create WASM projects
 - [Quick Start Guide](./scaffolding-quickstart.md) - Get started in 5 minutes
+
+## Runnable Examples
+
+### Kaizen (Continuous Improvement)
+
+```bash
+# Cross-stack kaizen: scan all batuta stack crates
+cargo run --example kaizen_cross_stack_demo
+```
+
+### Document Search
+
+```bash
+# Search code + documentation with semantic ranking
+cargo run --example doc_search_demo
+```
+
+### Code Quality
+
+```bash
+cargo run --example comply_demo              # Compliance checks
+cargo run --example five_whys_demo           # Root cause analysis
+cargo run --example perfection_score_demo    # Quality scoring
+cargo run --example rust_mutation_workflow   # Mutation testing
+```
+
+### Code Analysis
+
+```bash
+cargo run --example semantic_search_demo     # Semantic code search
+cargo run --example git_history_demo         # Git history RAG
+cargo run --example complexity_demo          # Complexity analysis
+cargo run --example split_demo              # Function extraction
+```
 
 ## Available Scaffolding Commands
 
