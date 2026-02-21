@@ -163,6 +163,9 @@ pub(super) fn create_schema(conn: &Connection) -> Result<(), String> {
     )
     .map_err(|e| format!("Failed to create FTS5 table: {e}"))?;
 
+    // Document index schema (for `pmat query --docs`)
+    crate::services::agent_context::document_index::create_documents_schema(conn)?;
+
     Ok(())
 }
 

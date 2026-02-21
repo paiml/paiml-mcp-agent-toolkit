@@ -153,9 +153,12 @@ impl CommandDispatcher {
                 ptx_diagnostics,
                 suggest_rename,
                 apply,
+                no_docs,
+                docs_only,
             } => {
                 // Default is to show code; --summary disables it
                 let show_code = !summary;
+                let effective_docs = !no_docs;
                 handlers::handle_query(
                     query,
                     limit,
@@ -200,6 +203,8 @@ impl CommandDispatcher {
                     ptx_diagnostics,
                     suggest_rename,
                     apply,
+                    effective_docs,
+                    docs_only,
                 )
                 .await
             }

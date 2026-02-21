@@ -408,6 +408,14 @@ pub enum Commands {
         /// Apply suggested renames (git mv + update parent declarations). Requires --suggest-rename
         #[arg(long, requires = "suggest_rename")]
         apply: bool,
+
+        /// Disable document search results (documents are included by default)
+        #[arg(long)]
+        no_docs: bool,
+
+        /// Search only documents, skip code index
+        #[arg(long)]
+        docs_only: bool,
     },
 
     /// Analyze code metrics and patterns

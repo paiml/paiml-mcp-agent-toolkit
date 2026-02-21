@@ -56,6 +56,8 @@ mod tests {
             false,  // ptx_diagnostics
             false,  // suggest_rename
             false,  // apply
+            false,  // docs
+            false,  // docs_only
         )
         .await;
 
@@ -129,6 +131,8 @@ fn main() {
             false,  // ptx_diagnostics
             false,  // suggest_rename
             false,  // apply
+            false,  // docs
+            false,  // docs_only
         )
         .await;
 
