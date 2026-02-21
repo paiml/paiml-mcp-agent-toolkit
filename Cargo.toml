@@ -28,7 +28,7 @@ required-features = ["mcp-integration"]
 
 [dependencies]
 # Batuta stack shared utilities (formatting, display, system info)
-batuta-common = { path = "../batuta-common" }
+batuta-common = "0.1"
 
 # Organizational Intelligence Plugin - Phase 4 integration
 organizational-intelligence-plugin = { version = "0.3.1", optional = true }
