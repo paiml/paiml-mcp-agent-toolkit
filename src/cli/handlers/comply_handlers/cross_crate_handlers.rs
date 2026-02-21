@@ -100,8 +100,11 @@ struct DetectionConfig {
 
 impl DetectionConfig {
     fn from_yaml(cc: &CrossCrateConfig) -> Self {
-        let excluded_functions: HashSet<String> =
-            cc.excluded_functions.iter().map(|s| s.to_lowercase()).collect();
+        let excluded_functions: HashSet<String> = cc
+            .excluded_functions
+            .iter()
+            .map(|s| s.to_lowercase())
+            .collect();
         let excluded_crate_pairs: HashSet<(String, String)> = cc
             .excluded_crate_pairs
             .iter()
@@ -150,8 +153,15 @@ pub async fn handle_cross_crate(
 
     eprintln!("Loading functions from {} crates...", crates.len());
     let crate_functions = load_all_crate_functions(&crates);
-    let crate_names: Vec<String> = crate_functions.iter().map(|(c, _)| c.name.clone()).collect();
-    eprintln!("Analyzing {} crates: {}", crate_names.len(), crate_names.join(", "));
+    let crate_names: Vec<String> = crate_functions
+        .iter()
+        .map(|(c, _)| c.name.clone())
+        .collect();
+    eprintln!(
+        "Analyzing {} crates: {}",
+        crate_names.len(),
+        crate_names.join(", ")
+    );
 
     let enabled_rules = parse_rules_filter(rules_filter);
     let findings = run_detection_rules(
@@ -194,7 +204,11 @@ fn run_detection_rules(
     let mut findings = Vec::new();
 
     if is_rule_enabled("cc001", enabled_rules) {
-        findings.extend(detect_cc001_function_clones(crate_functions, similarity_threshold, det_config));
+        findings.extend(detect_cc001_function_clones(
+            crate_functions,
+            similarity_threshold,
+            det_config,
+        ));
     }
     if is_rule_enabled("cc002", enabled_rules) {
         findings.extend(detect_cc002_api_divergence(crate_functions, det_config));
@@ -203,15 +217,28 @@ fn run_detection_rules(
         findings.extend(detect_cc003_primitive_upstream(crate_functions, det_config));
     }
     if is_rule_enabled("cc004", enabled_rules) {
-        findings.extend(detect_cc004_churn_correlation(crate_functions, churn_window_days));
+        findings.extend(detect_cc004_churn_correlation(
+            crate_functions,
+            churn_window_days,
+        ));
     }
     if is_rule_enabled("cc005", enabled_rules) {
-        findings.extend(detect_cc005_example_duplication(crate_functions, similarity_threshold));
+        findings.extend(detect_cc005_example_duplication(
+            crate_functions,
+            similarity_threshold,
+        ));
     }
 
     // Apply suppressions and crate-pair exclusions
-    findings.retain(|f| yaml_config.comply.is_suppressed(&f.rule, &f.file_b).is_none());
-    findings.retain(|f| !is_crate_pair_excluded(&f.crate_a, &f.crate_b, &det_config.excluded_crate_pairs));
+    findings.retain(|f| {
+        yaml_config
+            .comply
+            .is_suppressed(&f.rule, &f.file_b)
+            .is_none()
+    });
+    findings.retain(|f| {
+        !is_crate_pair_excluded(&f.crate_a, &f.crate_b, &det_config.excluded_crate_pairs)
+    });
     findings
 }
 
@@ -291,7 +318,10 @@ pub fn discover_workspace_crates(
     // Priority 2: Cargo.toml [workspace] section
     let workspace_crates = discover_from_cargo_workspace(workspace_path);
     if workspace_crates.len() >= 2 {
-        eprintln!("  Discovery: found Cargo workspace with {} members", workspace_crates.len());
+        eprintln!(
+            "  Discovery: found Cargo workspace with {} members",
+            workspace_crates.len()
+        );
         return workspace_crates;
     }
 
@@ -333,7 +363,10 @@ fn discover_from_explicit(workspace_path: &Path, paths: &[PathBuf]) -> Vec<Crate
             }
         };
         if !resolved.join("Cargo.toml").exists() {
-            eprintln!("  Warning: {} has no Cargo.toml, skipping", resolved.display());
+            eprintln!(
+                "  Warning: {} has no Cargo.toml, skipping",
+                resolved.display()
+            );
             continue;
         }
         // Skip if same as workspace_path
@@ -487,9 +520,7 @@ fn invoke_batuta_oracle() -> Option<serde_json::Map<String, serde_json::Value>> 
     let stdout = String::from_utf8_lossy(&output.stdout);
     let json_start = stdout.find('{')?;
     let parsed: serde_json::Value = serde_json::from_str(&stdout[json_start..]).ok()?;
-    parsed
-        .get("projects")
-        .and_then(|p| p.as_object().cloned())
+    parsed.get("projects").and_then(|p| p.as_object().cloned())
 }
 
 /// Find the current project name by matching canonical paths.
@@ -971,10 +1002,7 @@ members = ["crate-a", "crate-b"]
             std::fs::create_dir_all(&dir).unwrap();
             std::fs::write(
                 dir.join("Cargo.toml"),
-                format!(
-                    "[package]\nname = \"{}\"\nversion = \"0.1.0\"\n",
-                    name
-                ),
+                format!("[package]\nname = \"{}\"\nversion = \"0.1.0\"\n", name),
             )
             .unwrap();
         }
@@ -1477,7 +1505,10 @@ tempfile = "3"
             crates_analyzed: vec!["a".to_string()],
         };
         let violations = baseline.check_ratchet(&report);
-        assert!(violations.is_empty(), "Decreased counts should pass ratchet");
+        assert!(
+            violations.is_empty(),
+            "Decreased counts should pass ratchet"
+        );
     }
 
     #[test]
@@ -1500,7 +1531,10 @@ tempfile = "3"
             crates_analyzed: vec!["a".to_string()],
         };
         let violations = baseline.check_ratchet(&report);
-        assert!(!violations.is_empty(), "Increased counts should fail ratchet");
+        assert!(
+            !violations.is_empty(),
+            "Increased counts should fail ratchet"
+        );
         assert_eq!(violations[0].0, "CC-001");
         assert_eq!(violations[0].1, 10);
         assert_eq!(violations[0].2, 15);
@@ -1527,7 +1561,10 @@ tempfile = "3"
             crates_analyzed: vec!["a".to_string()],
         };
         let violations = baseline.check_ratchet(&report);
-        assert!(violations.is_empty(), "20% increase in CC-001 should be within tolerance");
+        assert!(
+            violations.is_empty(),
+            "20% increase in CC-001 should be within tolerance"
+        );
     }
 
     #[test]
@@ -1551,7 +1588,10 @@ tempfile = "3"
             crates_analyzed: vec!["a".to_string()],
         };
         let violations = baseline.check_ratchet(&report);
-        assert!(!violations.is_empty(), "CC-002 should fail on +1 increase (no tolerance)");
+        assert!(
+            !violations.is_empty(),
+            "CC-002 should fail on +1 increase (no tolerance)"
+        );
     }
 
     #[test]

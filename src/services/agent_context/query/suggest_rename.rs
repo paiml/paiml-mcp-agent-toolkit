@@ -716,7 +716,9 @@ pub(crate) fn try_common_prefix(entries: &[&FunctionEntry]) -> Option<(String, f
 }
 
 /// Extract dominant keyword from doc comments.
-pub(crate) fn try_doc_comment_consensus(entries: &[&FunctionEntry]) -> Option<(String, f32, String)> {
+pub(crate) fn try_doc_comment_consensus(
+    entries: &[&FunctionEntry],
+) -> Option<(String, f32, String)> {
     let docs: Vec<&str> = entries
         .iter()
         .filter_map(|e| e.doc_comment.as_deref())

@@ -1328,6 +1328,10 @@ pub enum Commands {
         /// Skip batuta defect pattern analysis
         #[arg(long)]
         skip_defects: bool,
+
+        /// Run kaizen across all discovered batuta stack crates
+        #[arg(long)]
+        cross_stack: bool,
     },
 
     /// Rust project diagnostics (20 checks across 5 categories)

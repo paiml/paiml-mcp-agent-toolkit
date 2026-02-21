@@ -26,7 +26,10 @@ pub struct SplitConfig {
 
 /// Handle the `pmat split` command.
 pub async fn handle_split(config: SplitConfig) -> Result<()> {
-    let project_path = config.project_path.canonicalize().unwrap_or(config.project_path.clone());
+    let project_path = config
+        .project_path
+        .canonicalize()
+        .unwrap_or(config.project_path.clone());
 
     // Build or load index
     let index = AgentContextIndex::build(&project_path).map_err(|e| anyhow::anyhow!(e))?;
@@ -48,7 +51,12 @@ pub async fn handle_split(config: SplitConfig) -> Result<()> {
     }
 
     // Run split analysis
-    let plan = suggest_split(&index, &file_path, config.resolution, config.min_cluster_lines);
+    let plan = suggest_split(
+        &index,
+        &file_path,
+        config.resolution,
+        config.min_cluster_lines,
+    );
 
     match plan {
         Some(plan) => {
@@ -66,13 +74,14 @@ pub async fn handle_split(config: SplitConfig) -> Result<()> {
                 for f in &created {
                     println!("  {}", f.display());
                 }
-                println!(
-                    "\nNote: Review generated files and update the source file manually."
-                );
+                println!("\nNote: Review generated files and update the source file manually.");
             }
         }
         None => {
-            eprintln!("No functions found in {} (file may not be indexed)", file_path);
+            eprintln!(
+                "No functions found in {} (file may not be indexed)",
+                file_path
+            );
             std::process::exit(1);
         }
     }
@@ -147,7 +156,10 @@ fn output_text(plan: &SplitPlan) {
     }
 
     if !plan.impact.importing_files.is_empty() {
-        println!("Impact — {} files import this module:", plan.impact.importing_files.len());
+        println!(
+            "Impact — {} files import this module:",
+            plan.impact.importing_files.len()
+        );
         for f in &plan.impact.importing_files {
             println!("  {}", f);
         }

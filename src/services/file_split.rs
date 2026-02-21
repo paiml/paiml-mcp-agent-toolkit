@@ -18,11 +18,11 @@
 
 use crate::graph::community::LouvainDetector;
 use crate::graph::types::{NodeData, UndirectedGraph};
-use crate::services::agent_context::{AgentContextIndex, FunctionEntry};
 use crate::services::agent_context::query::suggest_rename::{
-    find_context_word, try_common_prefix, try_dominant_type, try_doc_comment_consensus,
+    find_context_word, try_common_prefix, try_doc_comment_consensus, try_dominant_type,
     try_function_theme,
 };
+use crate::services::agent_context::{AgentContextIndex, FunctionEntry};
 use serde::Serialize;
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
@@ -156,7 +156,10 @@ pub fn suggest_split(
             .map(|&li| make_cluster_item(li, &local_entries, index, func_indices, &global_to_local))
             .collect();
 
-        let estimated_lines: usize = items.iter().map(|i| i.line_range.1 - i.line_range.0 + 1).sum();
+        let estimated_lines: usize = items
+            .iter()
+            .map(|i| i.line_range.1 - i.line_range.0 + 1)
+            .sum();
 
         if items.len() == 1 || estimated_lines < min_cluster_lines {
             for (i, item) in items.into_iter().enumerate() {
@@ -242,11 +245,7 @@ fn assign_orphans_to_clusters(
 }
 
 fn estimate_total_lines(entries: &[&FunctionEntry]) -> usize {
-    entries
-        .iter()
-        .map(|e| e.end_line)
-        .max()
-        .unwrap_or(0)
+    entries.iter().map(|e| e.end_line).max().unwrap_or(0)
 }
 
 /// Build an undirected graph from intra-file call relationships.
@@ -281,7 +280,8 @@ fn build_intra_file_graph(
     }
 
     // Add edges from calls graph (only intra-file edges)
-    for (src, dst) in collect_intra_file_edges(index, func_indices, global_to_local, &local_to_node) {
+    for (src, dst) in collect_intra_file_edges(index, func_indices, global_to_local, &local_to_node)
+    {
         if graph.edge_weight(src, dst).is_none() {
             graph.add_edge(src, dst, 1.0);
         }
@@ -299,13 +299,25 @@ fn collect_intra_file_edges(
 ) -> Vec<(crate::graph::types::NodeId, crate::graph::types::NodeId)> {
     let mut edges = Vec::new();
     for &global_idx in func_indices {
-        let Some(&local_src) = global_to_local.get(&global_idx) else { continue };
-        let Some(callees) = index.calls.get(&global_idx) else { continue };
-        let Some(&src_node) = local_to_node.get(&local_src) else { continue };
+        let Some(&local_src) = global_to_local.get(&global_idx) else {
+            continue;
+        };
+        let Some(callees) = index.calls.get(&global_idx) else {
+            continue;
+        };
+        let Some(&src_node) = local_to_node.get(&local_src) else {
+            continue;
+        };
         for &callee_global in callees {
-            let Some(&local_dst) = global_to_local.get(&callee_global) else { continue };
-            if local_dst == local_src { continue; }
-            let Some(&dst_node) = local_to_node.get(&local_dst) else { continue };
+            let Some(&local_dst) = global_to_local.get(&callee_global) else {
+                continue;
+            };
+            if local_dst == local_src {
+                continue;
+            }
+            let Some(&dst_node) = local_to_node.get(&local_dst) else {
+                continue;
+            };
             edges.push((src_node, dst_node));
         }
     }
@@ -365,7 +377,9 @@ fn make_cluster_item(
             callees
                 .iter()
                 .filter_map(|&c| {
-                    global_to_local.get(&c).map(|&li| local_entries[li].function_name.clone())
+                    global_to_local
+                        .get(&c)
+                        .map(|&li| local_entries[li].function_name.clone())
                 })
                 .collect()
         })
@@ -378,7 +392,9 @@ fn make_cluster_item(
             callers
                 .iter()
                 .filter_map(|&c| {
-                    global_to_local.get(&c).map(|&li| local_entries[li].function_name.clone())
+                    global_to_local
+                        .get(&c)
+                        .map(|&li| local_entries[li].function_name.clone())
                 })
                 .collect()
         })
@@ -397,11 +413,43 @@ fn make_cluster_item(
 /// These are common verbs/prepositions that pass the 4-char min-length
 /// check in try_common_prefix but don't convey semantic meaning.
 const GENERIC_PREFIX_BLOCKLIST: &[&str] = &[
-    "from", "into", "with", "make", "create", "build", "parse", "check",
-    "test", "init", "load", "save", "read", "write", "send", "recv",
-    "handle", "process", "convert", "transform", "validate", "exec",
-    "run", "call", "apply", "update", "delete", "remove", "find",
-    "get", "set", "new", "try", "is", "has", "can", "should",
+    "from",
+    "into",
+    "with",
+    "make",
+    "create",
+    "build",
+    "parse",
+    "check",
+    "test",
+    "init",
+    "load",
+    "save",
+    "read",
+    "write",
+    "send",
+    "recv",
+    "handle",
+    "process",
+    "convert",
+    "transform",
+    "validate",
+    "exec",
+    "run",
+    "call",
+    "apply",
+    "update",
+    "delete",
+    "remove",
+    "find",
+    "get",
+    "set",
+    "new",
+    "try",
+    "is",
+    "has",
+    "can",
+    "should",
 ];
 
 /// Name a cluster using the suggest-rename signal cascade.
@@ -871,7 +919,11 @@ mod tests {
         let temp_dir = std::env::temp_dir().join("pmat_split_test2");
         let _ = std::fs::create_dir_all(&temp_dir);
         let test_file = temp_dir.join("test.rs");
-        std::fs::write(&test_file, "fn helper_fn() {}\nfn other() {}\nfn last() {}\n").unwrap();
+        std::fs::write(
+            &test_file,
+            "fn helper_fn() {}\nfn other() {}\nfn last() {}\n",
+        )
+        .unwrap();
 
         let result = execute_split(&plan, &temp_dir);
         assert!(result.is_ok());
@@ -946,7 +998,10 @@ mod tests {
         let (name, signal, _confidence) = name_cluster(&entries, "file_health.rs");
         // Should NOT be "from" — should fall through to a better signal
         assert_ne!(name, "from", "Generic prefix 'from' should be blocked");
-        assert_ne!(signal, "CommonPrefix", "Should skip CommonPrefix for generic verb");
+        assert_ne!(
+            signal, "CommonPrefix",
+            "Should skip CommonPrefix for generic verb"
+        );
     }
 
     #[test]

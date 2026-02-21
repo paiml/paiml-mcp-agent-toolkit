@@ -111,13 +111,17 @@ pub(crate) fn build_document_index(
                             result.files_indexed += 1;
                         }
                         Err(e) => {
-                            result.errors.push(format!("{relative_path}: insert failed: {e}"));
+                            result
+                                .errors
+                                .push(format!("{relative_path}: insert failed: {e}"));
                         }
                     }
                 }
             }
             Err(e) => {
-                result.errors.push(format!("{relative_path}: extraction failed: {e}"));
+                result
+                    .errors
+                    .push(format!("{relative_path}: extraction failed: {e}"));
             }
         }
     }
@@ -171,8 +175,8 @@ fn compute_document_checksum(path: &Path) -> Result<String, String> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::sqlite_docs::{create_documents_schema, document_count};
+    use super::*;
 
     fn setup_test_project() -> (tempfile::TempDir, Connection) {
         let dir = tempfile::tempdir().unwrap();

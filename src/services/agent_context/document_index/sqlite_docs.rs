@@ -93,10 +93,7 @@ pub(crate) fn insert_document_chunks(
             let rowid = tx.last_insert_rowid();
 
             // Delete any existing FTS entry for this rowid before inserting
-            let _ = tx.execute(
-                "DELETE FROM documents_fts WHERE rowid = ?1",
-                params![rowid],
-            );
+            let _ = tx.execute("DELETE FROM documents_fts WHERE rowid = ?1", params![rowid]);
 
             fts_stmt
                 .execute(params![
@@ -206,9 +203,11 @@ pub(crate) fn remove_file_documents(conn: &Connection, file_path: &str) -> Resul
 /// Get the count of indexed documents.
 #[cfg(test)]
 pub(crate) fn document_count(conn: &Connection) -> usize {
-    conn.query_row("SELECT COUNT(DISTINCT file_path) FROM documents", [], |row| {
-        row.get::<_, i64>(0)
-    })
+    conn.query_row(
+        "SELECT COUNT(DISTINCT file_path) FROM documents",
+        [],
+        |row| row.get::<_, i64>(0),
+    )
     .unwrap_or(0) as usize
 }
 
@@ -235,8 +234,8 @@ fn sanitize_fts_query(query: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::types::DocumentType;
+    use super::*;
 
     fn setup_db() -> Connection {
         let conn = Connection::open_in_memory().unwrap();
@@ -265,7 +264,9 @@ mod tests {
                 chunk_index: 0,
                 page_number: None,
                 section_heading: Some("Architecture Overview".to_string()),
-                text_content: "The system uses a microservices architecture with event-driven communication.".to_string(),
+                text_content:
+                    "The system uses a microservices architecture with event-driven communication."
+                        .to_string(),
                 file_checksum: "abc123".to_string(),
                 extraction_quality: 1.0,
             },
@@ -275,7 +276,8 @@ mod tests {
                 chunk_index: 0,
                 page_number: None,
                 section_heading: Some("API Reference".to_string()),
-                text_content: "REST API endpoints for user management and authentication.".to_string(),
+                text_content: "REST API endpoints for user management and authentication."
+                    .to_string(),
                 file_checksum: "def456".to_string(),
                 extraction_quality: 1.0,
             },

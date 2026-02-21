@@ -895,9 +895,13 @@ mod tests {
 
     #[test]
     fn test_stack_health_report_single_healthy_project() {
-        let files = vec![
-            FileHealthMetrics::calculate(PathBuf::from("good.rs"), 100, 50, 3.0, 1),
-        ];
+        let files = vec![FileHealthMetrics::calculate(
+            PathBuf::from("good.rs"),
+            100,
+            50,
+            3.0,
+            1,
+        )];
         let report = FileHealthReport::from_files(PathBuf::from("."), files);
         let stack = StackHealthReport::from_projects(vec![("myproject".to_string(), report)]);
 
@@ -908,12 +912,20 @@ mod tests {
 
     #[test]
     fn test_stack_health_report_mixed_projects() {
-        let good_files = vec![
-            FileHealthMetrics::calculate(PathBuf::from("good.rs"), 100, 50, 3.0, 1),
-        ];
-        let bad_files = vec![
-            FileHealthMetrics::calculate(PathBuf::from("bad.rs"), 5000, 50, 25.0, 20),
-        ];
+        let good_files = vec![FileHealthMetrics::calculate(
+            PathBuf::from("good.rs"),
+            100,
+            50,
+            3.0,
+            1,
+        )];
+        let bad_files = vec![FileHealthMetrics::calculate(
+            PathBuf::from("bad.rs"),
+            5000,
+            50,
+            25.0,
+            20,
+        )];
         let good_report = FileHealthReport::from_files(PathBuf::from("."), good_files);
         let bad_report = FileHealthReport::from_files(PathBuf::from("."), bad_files);
 
@@ -936,7 +948,10 @@ mod tests {
         for i in 0..15 {
             files.push(FileHealthMetrics::calculate(
                 PathBuf::from(format!("file_{}.rs", i)),
-                5000, 10, 25.0, 20,
+                5000,
+                10,
+                25.0,
+                20,
             ));
         }
         let report = FileHealthReport::from_files(PathBuf::from("."), files);
@@ -947,9 +962,13 @@ mod tests {
 
     #[test]
     fn test_stack_health_report_serialization() {
-        let files = vec![
-            FileHealthMetrics::calculate(PathBuf::from("a.rs"), 100, 50, 3.0, 1),
-        ];
+        let files = vec![FileHealthMetrics::calculate(
+            PathBuf::from("a.rs"),
+            100,
+            50,
+            3.0,
+            1,
+        )];
         let report = FileHealthReport::from_files(PathBuf::from("."), files);
         let stack = StackHealthReport::from_projects(vec![("proj".to_string(), report)]);
 
@@ -1029,6 +1048,11 @@ mod tests {
         stack.add_project("proj".to_string(), updated);
 
         assert_eq!(stack.projects.len(), 1);
-        assert!(stack.projects.get("proj").unwrap().files.contains_key("new.rs"));
+        assert!(stack
+            .projects
+            .get("proj")
+            .unwrap()
+            .files
+            .contains_key("new.rs"));
     }
 }

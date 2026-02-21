@@ -2040,9 +2040,7 @@ fn run_document_query(
     project_path: &PathBuf,
     quiet: bool,
 ) -> anyhow::Result<Vec<crate::services::agent_context::DocumentResult>> {
-    use crate::services::agent_context::document_index::{
-        build_document_index, query_documents,
-    };
+    use crate::services::agent_context::document_index::{build_document_index, query_documents};
     use crate::services::agent_context::function_index::sqlite_backend::open_db;
 
     let db_path = project_path.join(".pmat").join("context.db");

@@ -603,6 +603,7 @@ impl CommandDispatcher {
                 skip_comply,
                 skip_github,
                 skip_defects,
+                cross_stack,
             } => {
                 let config = handlers::kaizen_handler::KaizenConfig {
                     path,
@@ -619,6 +620,7 @@ impl CommandDispatcher {
                     skip_comply,
                     skip_github,
                     skip_defects,
+                    cross_stack,
                 };
                 handlers::kaizen_handler::handle_kaizen(config).await
             }

@@ -13,8 +13,13 @@ use std::path::Path;
 /// Requires the `doc-indexing` feature for full text extraction.
 /// Without it, returns metadata-only chunk (filename + size).
 #[cfg(feature = "doc-indexing")]
-pub(crate) fn extract_pdf(path: &Path, relative_path: &str, checksum: &str) -> Result<Vec<DocumentChunk>, String> {
-    let bytes = std::fs::read(path).map_err(|e| format!("Failed to read PDF {}: {e}", path.display()))?;
+pub(crate) fn extract_pdf(
+    path: &Path,
+    relative_path: &str,
+    checksum: &str,
+) -> Result<Vec<DocumentChunk>, String> {
+    let bytes =
+        std::fs::read(path).map_err(|e| format!("Failed to read PDF {}: {e}", path.display()))?;
     let text = pdf_extract::extract_text_from_mem(&bytes)
         .map_err(|e| format!("Failed to extract PDF text from {}: {e}", path.display()))?;
 
@@ -31,14 +36,22 @@ pub(crate) fn extract_pdf(path: &Path, relative_path: &str, checksum: &str) -> R
         }]);
     }
 
-    Ok(split_into_chunks(&text, relative_path, DocumentType::Pdf, checksum, 1.0))
+    Ok(split_into_chunks(
+        &text,
+        relative_path,
+        DocumentType::Pdf,
+        checksum,
+        1.0,
+    ))
 }
 
 #[cfg(not(feature = "doc-indexing"))]
-pub(crate) fn extract_pdf(path: &Path, relative_path: &str, checksum: &str) -> Result<Vec<DocumentChunk>, String> {
-    let size = std::fs::metadata(path)
-        .map(|m| m.len())
-        .unwrap_or(0);
+pub(crate) fn extract_pdf(
+    path: &Path,
+    relative_path: &str,
+    checksum: &str,
+) -> Result<Vec<DocumentChunk>, String> {
+    let size = std::fs::metadata(path).map(|m| m.len()).unwrap_or(0);
     Ok(vec![DocumentChunk {
         file_path: relative_path.to_string(),
         doc_type: DocumentType::Pdf,
@@ -47,8 +60,7 @@ pub(crate) fn extract_pdf(path: &Path, relative_path: &str, checksum: &str) -> R
         section_heading: None,
         text_content: format!(
             "PDF: {} ({} bytes) — full text extraction requires --features doc-indexing",
-            relative_path,
-            size
+            relative_path, size
         ),
         file_checksum: checksum.to_string(),
         extraction_quality: 0.1,
@@ -58,7 +70,11 @@ pub(crate) fn extract_pdf(path: &Path, relative_path: &str, checksum: &str) -> R
 /// Extract text content from SVG `<text>` and `<tspan>` elements via regex.
 ///
 /// No XML parser needed — SVG text elements are structurally simple.
-pub(crate) fn extract_svg(path: &Path, relative_path: &str, checksum: &str) -> Result<Vec<DocumentChunk>, String> {
+pub(crate) fn extract_svg(
+    path: &Path,
+    relative_path: &str,
+    checksum: &str,
+) -> Result<Vec<DocumentChunk>, String> {
     let content = std::fs::read_to_string(path)
         .map_err(|e| format!("Failed to read SVG {}: {e}", path.display()))?;
 
@@ -125,9 +141,7 @@ pub(crate) fn extract_image_metadata(
     relative_path: &str,
     checksum: &str,
 ) -> Result<Vec<DocumentChunk>, String> {
-    let size = std::fs::metadata(path)
-        .map(|m| m.len())
-        .unwrap_or(0);
+    let size = std::fs::metadata(path).map(|m| m.len()).unwrap_or(0);
 
     let filename = path
         .file_name()
@@ -302,7 +316,20 @@ pub(crate) fn is_document_file(path: &Path) -> bool {
             .and_then(|e| e.to_str())
             .map(|e| e.to_lowercase())
             .as_deref(),
-        Some("pdf" | "svg" | "png" | "jpg" | "jpeg" | "gif" | "webp" | "md" | "markdown" | "txt" | "rst" | "adoc")
+        Some(
+            "pdf"
+                | "svg"
+                | "png"
+                | "jpg"
+                | "jpeg"
+                | "gif"
+                | "webp"
+                | "md"
+                | "markdown"
+                | "txt"
+                | "rst"
+                | "adoc"
+        )
     )
 }
 
@@ -524,7 +551,9 @@ mod tests {
         // Create content larger than MAX_CHUNK_SIZE
         let mut content = String::new();
         for i in 0..500 {
-            content.push_str(&format!("Line {i}: This is a test line with some content.\n"));
+            content.push_str(&format!(
+                "Line {i}: This is a test line with some content.\n"
+            ));
         }
         assert!(content.len() > MAX_CHUNK_SIZE);
 

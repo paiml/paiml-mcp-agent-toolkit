@@ -59,6 +59,7 @@ pub(crate) mod document_index;
 pub(crate) mod function_index;
 pub(crate) mod query;
 
+pub(crate) use document_index::DocumentResult;
 pub(crate) use function_index::helpers::parse_workspace_siblings;
 pub(crate) use function_index::sqlite_backend::persist_quality_violations;
 pub use function_index::{
@@ -77,7 +78,6 @@ pub use query::raw_search::{
     is_within_indexed_function, raw_search, FileMatchCount, RawSearchOptions, RawSearchOutput,
     RawSearchResult,
 };
-pub(crate) use document_index::DocumentResult;
 pub use query::{
     build_churn_map, build_coverage_map, compute_impact_score, enrich_results_with_churn,
     enrich_results_with_coverage, enrich_results_with_duplicates, enrich_results_with_entropy,

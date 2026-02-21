@@ -40,7 +40,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Command: pmat query \"design specification\" --docs-only --limit 5\n");
 
     let output = Command::new(&pmat)
-        .args(["query", "design specification", "--docs-only", "--limit", "5"])
+        .args([
+            "query",
+            "design specification",
+            "--docs-only",
+            "--limit",
+            "5",
+        ])
         .current_dir(&project_dir)
         .output()?;
 
