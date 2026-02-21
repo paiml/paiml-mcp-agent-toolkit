@@ -212,6 +212,7 @@ fn persist_violations_to_sqlite(
         return;
     }
 
+    #[allow(clippy::type_complexity)]
     let tuples: Vec<(String, String, String, Option<usize>, String, Option<String>)> = violations
         .iter()
         .map(|v| {

@@ -66,27 +66,25 @@ pub(crate) fn extract_svg(path: &Path, relative_path: &str, checksum: &str) -> R
 
     // Match <text ...>content</text> and <tspan ...>content</tspan>
     // Simple regex approach — handles the common case without an XML parser
-    for cap in regex::Regex::new(r"<(?:text|tspan)[^>]*>([^<]+)</(?:text|tspan)>")
-        .unwrap()
-        .captures_iter(&content)
-    {
-        if let Some(m) = cap.get(1) {
-            let t = m.as_str().trim();
-            if !t.is_empty() {
-                texts.push(t.to_string());
+    if let Ok(re) = regex::Regex::new(r"<(?:text|tspan)[^>]*>([^<]+)</(?:text|tspan)>") {
+        for cap in re.captures_iter(&content) {
+            if let Some(m) = cap.get(1) {
+                let t = m.as_str().trim();
+                if !t.is_empty() {
+                    texts.push(t.to_string());
+                }
             }
         }
     }
 
     // Also extract title elements
-    for cap in regex::Regex::new(r"<title[^>]*>([^<]+)</title>")
-        .unwrap()
-        .captures_iter(&content)
-    {
-        if let Some(m) = cap.get(1) {
-            let t = m.as_str().trim();
-            if !t.is_empty() {
-                texts.push(format!("[title] {t}"));
+    if let Ok(re) = regex::Regex::new(r"<title[^>]*>([^<]+)</title>") {
+        for cap in re.captures_iter(&content) {
+            if let Some(m) = cap.get(1) {
+                let t = m.as_str().trim();
+                if !t.is_empty() {
+                    texts.push(format!("[title] {t}"));
+                }
             }
         }
     }

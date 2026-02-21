@@ -126,6 +126,7 @@ impl DetectionConfig {
 
 // --- Main handler ---
 
+#[allow(clippy::too_many_arguments)]
 pub async fn handle_cross_crate(
     workspace_path: &Path,
     explicit_crates: Option<&[PathBuf]>,
@@ -387,7 +388,7 @@ fn extract_members_array(content: &str) -> String {
         if !in_members {
             if trimmed.starts_with("members") && trimmed.contains('=') {
                 in_members = true;
-                if let Some(after_eq) = trimmed.splitn(2, '=').nth(1) {
+                if let Some((_, after_eq)) = trimmed.split_once('=') {
                     buf.push_str(after_eq);
                 }
             }

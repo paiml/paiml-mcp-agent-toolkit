@@ -519,7 +519,10 @@ mod tests {
     //  Section 17: save_to_sqlite file size (exercises humanize_bytes indirectly)
     // ═══════════════════════════════════════════════════════════════════
 
-    /// F-096: Small DB file size is reasonable (< 100KB for 1 function)
+    /// F-096: Small DB file size is reasonable (< 200KB for 1 function)
+    /// Note: Schema overhead includes functions, call_graph, graph_metrics,
+    /// metadata, entropy_violations, provability_scores, quality_violations,
+    /// documents tables, plus two FTS5 virtual tables and multiple indexes.
     #[test]
     fn f096_small_db_file_size() {
         let tmp = tempfile::TempDir::new().unwrap();
@@ -535,8 +538,8 @@ mod tests {
         .unwrap();
         let size = db_path.metadata().unwrap().len();
         assert!(
-            size < 128_000,
-            "single-function DB should be < 128KB, got {size}"
+            size < 200_000,
+            "single-function DB should be < 200KB, got {size}"
         );
         assert!(size > 0, "DB should not be empty");
     }

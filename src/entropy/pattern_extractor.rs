@@ -594,6 +594,7 @@ impl PatternExtractor {
 
     /// Group matches by structural hash and produce AstPatterns for groups with ≥ min_group_size
     /// structurally identical matches.
+    #[allow(clippy::too_many_arguments)]
     fn group_by_structural_hash(
         &self,
         matches: &[regex::Match],

@@ -851,6 +851,7 @@ pub(crate) fn has_valid_schema(conn: &Connection) -> bool {
 /// Opens the existing context.db (must already exist from index build),
 /// clears old violations, and inserts the new set. This makes all quality
 /// gate results queryable via `pmat sql`.
+#[allow(clippy::type_complexity)]
 pub(crate) fn persist_quality_violations(
     db_path: &Path,
     violations: &[(
