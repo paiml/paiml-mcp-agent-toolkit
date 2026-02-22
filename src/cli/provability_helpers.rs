@@ -201,8 +201,11 @@ pub fn format_provability_summary(
     let mut output = String::new();
 
     write_summary_header(&mut output, function_ids.len())?;
+    write_scoring_model(&mut output)?;
     write_score_distribution(&mut output, summaries)?;
+    write_property_coverage(&mut output, summaries)?;
     write_average_score(&mut output, summaries)?;
+    write_lowest_scoring_functions(&mut output, function_ids, summaries, 10)?;
     write_top_files_section(&mut output, function_ids, summaries, top_files)?;
 
     Ok(output)
@@ -211,6 +214,98 @@ pub fn format_provability_summary(
 fn write_summary_header(output: &mut String, total_functions: usize) -> Result<()> {
     writeln!(output, "# Provability Analysis Summary\n")?;
     writeln!(output, "Total functions analyzed: {total_functions}")?;
+    Ok(())
+}
+
+/// Explain the 4-factor scoring model so users understand what drives provability (#229).
+fn write_scoring_model(output: &mut String) -> Result<()> {
+    writeln!(output, "\n## Scoring Model (4 factors, equally weighted)\n")?;
+    writeln!(output, "| Factor       | 100%         | 50%          | 0%               |")?;
+    writeln!(output, "|--------------|--------------|--------------|------------------|")?;
+    writeln!(output, "| Nullability  | NotNull      | MaybeNull    | Unknown/Null     |")?;
+    writeln!(output, "| Bounds       | Both bounds  | One bound    | No bounds        |")?;
+    writeln!(output, "| Aliasing     | NoAlias      | -            | MayAlias/Unknown |")?;
+    writeln!(output, "| Purity       | Pure         | ReadOnly(70) | WriteGlobal      |")?;
+    Ok(())
+}
+
+/// Show aggregate property verification coverage across all functions (#229).
+fn write_property_coverage(output: &mut String, summaries: &[ProofSummary]) -> Result<()> {
+    use crate::services::lightweight_provability_analyzer::PropertyType;
+
+    if summaries.is_empty() {
+        return Ok(());
+    }
+
+    let total = summaries.len();
+    let mut counts: std::collections::BTreeMap<&str, usize> = std::collections::BTreeMap::new();
+    for name in &["NullSafety", "BoundsCheck", "NoAliasing", "PureFunction", "MemorySafety", "ThreadSafety"] {
+        counts.insert(name, 0);
+    }
+
+    for s in summaries {
+        for prop in &s.verified_properties {
+            let key = match prop.property_type {
+                PropertyType::NullSafety => "NullSafety",
+                PropertyType::BoundsCheck => "BoundsCheck",
+                PropertyType::NoAliasing => "NoAliasing",
+                PropertyType::PureFunction => "PureFunction",
+                PropertyType::MemorySafety => "MemorySafety",
+                PropertyType::ThreadSafety => "ThreadSafety",
+            };
+            *counts.entry(key).or_default() += 1;
+        }
+    }
+
+    writeln!(output, "\n## Verified Property Coverage\n")?;
+    for (name, count) in &counts {
+        let pct = (*count as f64 / total as f64) * 100.0;
+        writeln!(output, "- {name}: {count}/{total} ({pct:.0}%)")?;
+    }
+    Ok(())
+}
+
+/// Show the lowest-scoring functions with their verified properties (#229).
+fn write_lowest_scoring_functions(
+    output: &mut String,
+    function_ids: &[FunctionId],
+    summaries: &[ProofSummary],
+    limit: usize,
+) -> Result<()> {
+    if function_ids.is_empty() {
+        return Ok(());
+    }
+
+    let mut indexed: Vec<(usize, f64)> = summaries
+        .iter()
+        .enumerate()
+        .map(|(i, s)| (i, s.provability_score))
+        .collect();
+    indexed.sort_by(|a, b| a.1.total_cmp(&b.1));
+
+    writeln!(output, "\n## Lowest Scoring Functions\n")?;
+    for (idx, score) in indexed.iter().take(limit) {
+        let func = &function_ids[*idx];
+        let summary = &summaries[*idx];
+        let filename = extract_filename(&func.file_path);
+        let props: Vec<String> = summary
+            .verified_properties
+            .iter()
+            .map(|p| format!("{:?}({:.0}%)", p.property_type, p.confidence * 100.0))
+            .collect();
+        let props_str = if props.is_empty() {
+            "none verified".to_string()
+        } else {
+            props.join(", ")
+        };
+        writeln!(
+            output,
+            "- `{}` ({filename}:{}) — {:.0}% — verified: {props_str}",
+            func.function_name,
+            func.line_number,
+            score * 100.0,
+        )?;
+    }
     Ok(())
 }
 
@@ -401,6 +496,8 @@ fn write_function_details(
     func_id: &FunctionId,
     summary: &ProofSummary,
 ) -> Result<()> {
+    use crate::services::lightweight_provability_analyzer::PropertyType;
+
     writeln!(output, "### Function: `{}`", func_id.function_name)?;
     writeln!(output, "- **Line**: {}", func_id.line_number)?;
     writeln!(
@@ -413,11 +510,32 @@ fn write_function_details(
         "- **Analysis Time**: {}μs",
         summary.analysis_time_us
     )?;
-    writeln!(
-        output,
-        "- **Verified Properties**: {}",
-        summary.verified_properties.len()
-    )?;
+
+    // Show which properties are verified vs missing (#229)
+    let all_types = [
+        PropertyType::NullSafety,
+        PropertyType::BoundsCheck,
+        PropertyType::NoAliasing,
+        PropertyType::PureFunction,
+        PropertyType::MemorySafety,
+        PropertyType::ThreadSafety,
+    ];
+    let verified_types: Vec<&PropertyType> = summary.verified_properties.iter().map(|p| &p.property_type).collect();
+    let mut verified = Vec::new();
+    let mut missing = Vec::new();
+    for pt in &all_types {
+        if verified_types.contains(&pt) {
+            verified.push(format!("{pt:?}"));
+        } else {
+            missing.push(format!("{pt:?}"));
+        }
+    }
+    if !verified.is_empty() {
+        writeln!(output, "- **Verified**: {}", verified.join(", "))?;
+    }
+    if !missing.is_empty() {
+        writeln!(output, "- **Missing**: {}", missing.join(", "))?;
+    }
 
     Ok(())
 }
