@@ -14,6 +14,7 @@ async fn execute_provability_check(
 }
 
 /// Runs all project-wide checks
+#[allow(clippy::too_many_arguments)]
 async fn run_all_project_checks(
     project_path: &Path,
     max_dead_code: f64,
@@ -293,6 +294,7 @@ fn persist_entropy_details_to_sqlite(
 }
 
 /// Convert a single entropy QualityViolation into an entropy_violations tuple (#231).
+#[allow(clippy::type_complexity)]
 fn entropy_violation_to_tuple(
     v: &QualityViolation,
 ) -> Option<(String, String, String, usize, f64, usize, String, Option<String>)> {
