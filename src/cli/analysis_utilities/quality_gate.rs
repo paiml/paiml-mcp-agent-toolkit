@@ -715,6 +715,9 @@ async fn handle_project_quality_gate(
     // Persist violations to SQLite for `pmat sql` queryability
     persist_violations_to_sqlite(&project_path, &violations, quiet);
 
+    // Persist per-function provability scores to specialized table (#231)
+    persist_provability_to_sqlite(&project_path, quiet).await;
+
     // Format and output results
     output_project_results(&results, &violations, format, output).await?;
 

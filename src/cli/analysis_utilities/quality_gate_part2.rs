@@ -262,6 +262,127 @@ fn persist_violations_to_sqlite(
             }
         }
     }
+
+    // Persist entropy violations to specialized table (#231)
+    persist_entropy_details_to_sqlite(&db_path, violations, quiet);
+}
+
+/// Extract entropy violation details from QualityViolation and persist to `entropy_violations` (#231).
+fn persist_entropy_details_to_sqlite(
+    db_path: &std::path::Path,
+    violations: &[QualityViolation],
+    quiet: bool,
+) {
+    let entropy_tuples: Vec<_> = violations
+        .iter()
+        .filter(|v| v.check_type == "entropy")
+        .filter_map(entropy_violation_to_tuple)
+        .collect();
+
+    if entropy_tuples.is_empty() {
+        return;
+    }
+
+    if let Err(e) =
+        crate::services::agent_context::persist_entropy_violations(db_path, &entropy_tuples)
+    {
+        if !quiet {
+            eprintln!("  ⚠️  Failed to persist entropy violations: {e}");
+        }
+    }
+}
+
+/// Convert a single entropy QualityViolation into an entropy_violations tuple (#231).
+fn entropy_violation_to_tuple(
+    v: &QualityViolation,
+) -> Option<(String, String, String, usize, f64, usize, String, Option<String>)> {
+    let details = v.details.as_ref()?;
+    let (pattern_type, repetitions, variation_score) = parse_entropy_score_factors(&details.score_factors);
+    let loc_reduction = parse_loc_reduction(&v.message);
+    let pattern_hash = format!("{pattern_type}:{}", v.file);
+    Some((
+        v.file.clone(),
+        pattern_type,
+        pattern_hash,
+        repetitions,
+        variation_score,
+        loc_reduction,
+        v.severity.clone(),
+        details.example_code.clone(),
+    ))
+}
+
+/// Parse score_factors strings to extract pattern_type, repetitions, variation_score.
+fn parse_entropy_score_factors(factors: &[String]) -> (String, usize, f64) {
+    let mut pattern_type = String::new();
+    let mut repetitions: usize = 0;
+    let mut variation_score: f64 = 0.0;
+    for factor in factors {
+        if let Some(pt) = factor.strip_prefix("pattern_type: ") {
+            pattern_type = pt.to_string();
+        } else if let Some(r) = factor.strip_prefix("repetitions: ") {
+            repetitions = r.parse().unwrap_or(0);
+        } else if let Some(vs) = factor.strip_prefix("variation_score: ") {
+            variation_score = vs.parse().unwrap_or(0.0);
+        }
+    }
+    (pattern_type, repetitions, variation_score)
+}
+
+/// Parse "saves N lines" from a violation message to extract LOC reduction.
+fn parse_loc_reduction(message: &str) -> usize {
+    message
+        .find("saves ")
+        .and_then(|i| {
+            let rest = &message[i + 6..];
+            rest.split_whitespace().next()?.parse::<usize>().ok()
+        })
+        .unwrap_or(0)
+}
+
+/// Run lightweight provability analysis and persist per-function scores (#231).
+///
+/// Must be called from async context. Runs the analyzer on sampled functions
+/// and writes results to `provability_scores` table.
+pub(crate) async fn persist_provability_to_sqlite(
+    project_path: &std::path::Path,
+    quiet: bool,
+) {
+    let db_path = project_path.join(".pmat").join("context.db");
+    if !db_path.exists() {
+        return;
+    }
+
+    use crate::services::lightweight_provability_analyzer::LightweightProvabilityAnalyzer;
+
+    let analyzer = LightweightProvabilityAnalyzer::new();
+    let sample_functions = collect_project_functions(project_path, 50);
+
+    if sample_functions.is_empty() {
+        return;
+    }
+
+    let summaries = analyzer.analyze_incrementally(&sample_functions).await;
+    let scores: Vec<(String, String, f64, usize)> = sample_functions
+        .iter()
+        .zip(summaries.iter())
+        .map(|(f, s)| {
+            (
+                f.file_path.clone(),
+                f.function_name.clone(),
+                s.provability_score,
+                s.verified_properties.len(),
+            )
+        })
+        .collect();
+
+    if let Err(e) =
+        crate::services::agent_context::persist_provability_scores(&db_path, &scores)
+    {
+        if !quiet {
+            eprintln!("  ⚠️  Failed to persist provability scores: {e}");
+        }
+    }
 }
 
 // Single file quality check functions - extracted for file health (CB-040)

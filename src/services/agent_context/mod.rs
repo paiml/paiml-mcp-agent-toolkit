@@ -61,6 +61,8 @@ pub(crate) mod query;
 
 pub(crate) use document_index::DocumentResult;
 pub(crate) use function_index::helpers::parse_workspace_siblings;
+pub(crate) use function_index::sqlite_backend::persist_entropy_violations;
+pub(crate) use function_index::sqlite_backend::persist_provability_scores;
 pub(crate) use function_index::sqlite_backend::persist_quality_violations;
 pub use function_index::{
     AgentContextIndex, FunctionEntry, GraphMetrics, IndexManifest, IndexStats, QualityMetrics,

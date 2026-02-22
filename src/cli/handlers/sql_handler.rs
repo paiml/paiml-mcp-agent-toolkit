@@ -66,11 +66,19 @@ const EXAMPLE_QUERIES: &[(&str, &str)] = &[
     ),
     (
         "entropy-violations",
-        "SELECT file_path, message, details_json FROM quality_violations WHERE check_type = 'entropy' ORDER BY file_path LIMIT 20",
+        "SELECT file_path, pattern_type, repetitions, variation_score, estimated_loc_reduction, severity FROM entropy_violations ORDER BY repetitions DESC LIMIT 20",
+    ),
+    (
+        "entropy-by-severity",
+        "SELECT severity, count(*) as cnt, sum(estimated_loc_reduction) as total_loc_savings FROM entropy_violations GROUP BY severity ORDER BY cnt DESC",
     ),
     (
         "low-provability",
-        "SELECT file_path, message, details_json FROM quality_violations WHERE check_type = 'provability' LIMIT 5",
+        "SELECT file_path, function_name, provability_score, verified_properties FROM provability_scores WHERE provability_score < 0.5 ORDER BY provability_score ASC LIMIT 20",
+    ),
+    (
+        "provability-summary",
+        "SELECT CASE WHEN provability_score >= 0.8 THEN 'high' WHEN provability_score >= 0.5 THEN 'medium' ELSE 'low' END as tier, count(*) as cnt, round(avg(provability_score), 3) as avg_score FROM provability_scores GROUP BY tier ORDER BY avg_score",
     ),
     // quality_violations table — populated by `pmat quality-gate`
     (
