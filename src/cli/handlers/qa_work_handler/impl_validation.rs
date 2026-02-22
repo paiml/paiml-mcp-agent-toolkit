@@ -94,7 +94,7 @@ async fn handle_validate(
     match format {
         QaOutputFormat::Text => print_validation_text(&result),
         QaOutputFormat::Json => println!("{}", serde_json::to_string_pretty(&result)?),
-        QaOutputFormat::Yaml => println!("{}", serde_yaml::to_string(&result)?),
+        QaOutputFormat::Yaml => println!("{}", serde_yaml_ng::to_string(&result)?),
         QaOutputFormat::Markdown => print_validation_markdown(&result),
     }
 

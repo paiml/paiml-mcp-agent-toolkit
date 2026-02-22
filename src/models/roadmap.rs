@@ -333,9 +333,9 @@ where
             let mut phases = Vec::new();
             let mut index = 0;
 
-            while let Some(value) = seq.next_element::<serde_yaml::Value>()? {
+            while let Some(value) = seq.next_element::<serde_yaml_ng::Value>()? {
                 match value {
-                    serde_yaml::Value::String(s) => {
+                    serde_yaml_ng::Value::String(s) => {
                         return Err(de::Error::custom(format!(
                             "phases[{}]: invalid type. \
                             Phases must be structs with 'name' and 'status' fields.\n\n\
@@ -347,9 +347,9 @@ where
                             index, s, s
                         )));
                     }
-                    serde_yaml::Value::Mapping(_) => {
+                    serde_yaml_ng::Value::Mapping(_) => {
                         let phase: Phase =
-                            serde_yaml::from_value(value).map_err(de::Error::custom)?;
+                            serde_yaml_ng::from_value(value).map_err(de::Error::custom)?;
                         phases.push(phase);
                     }
                     _ => {
@@ -715,7 +715,7 @@ roadmap:
 
         // After removing #[serde(deny_unknown_fields)], parsing should succeed
         // Extra fields (description, phase, implementation, references) are silently ignored
-        let result: Result<Roadmap, _> = serde_yaml::from_str(yaml);
+        let result: Result<Roadmap, _> = serde_yaml_ng::from_str(yaml);
 
         assert!(
             result.is_ok(),
@@ -782,29 +782,29 @@ roadmap:
     #[test]
     fn test_github_enabled_native_bool() {
         let yaml = "roadmap_version: '1.0'\ngithub_enabled: true\nroadmap: []\n";
-        let roadmap: Roadmap = serde_yaml::from_str(yaml).unwrap();
+        let roadmap: Roadmap = serde_yaml_ng::from_str(yaml).unwrap();
         assert!(roadmap.github_enabled);
 
         let yaml = "roadmap_version: '1.0'\ngithub_enabled: false\nroadmap: []\n";
-        let roadmap: Roadmap = serde_yaml::from_str(yaml).unwrap();
+        let roadmap: Roadmap = serde_yaml_ng::from_str(yaml).unwrap();
         assert!(!roadmap.github_enabled);
     }
 
     #[test]
     fn test_github_enabled_quoted_string() {
         let yaml = "roadmap_version: '1.0'\ngithub_enabled: \"true\"\nroadmap: []\n";
-        let roadmap: Roadmap = serde_yaml::from_str(yaml).unwrap();
+        let roadmap: Roadmap = serde_yaml_ng::from_str(yaml).unwrap();
         assert!(roadmap.github_enabled);
 
         let yaml = "roadmap_version: '1.0'\ngithub_enabled: \"false\"\nroadmap: []\n";
-        let roadmap: Roadmap = serde_yaml::from_str(yaml).unwrap();
+        let roadmap: Roadmap = serde_yaml_ng::from_str(yaml).unwrap();
         assert!(!roadmap.github_enabled);
     }
 
     #[test]
     fn test_github_enabled_missing_defaults_true() {
         let yaml = "roadmap_version: '1.0'\nroadmap: []\n";
-        let roadmap: Roadmap = serde_yaml::from_str(yaml).unwrap();
+        let roadmap: Roadmap = serde_yaml_ng::from_str(yaml).unwrap();
         assert!(roadmap.github_enabled);
     }
 
@@ -984,7 +984,7 @@ roadmap:
     status: stuck
     priority: low
 "#;
-            let roadmap: Roadmap = serde_yaml::from_str(yaml).expect("Should parse with aliases");
+            let roadmap: Roadmap = serde_yaml_ng::from_str(yaml).expect("Should parse with aliases");
             assert_eq!(roadmap.roadmap.len(), 3);
             assert_eq!(roadmap.roadmap[0].status, ItemStatus::Completed);
             assert_eq!(roadmap.roadmap[1].status, ItemStatus::InProgress);

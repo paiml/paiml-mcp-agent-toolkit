@@ -37,7 +37,7 @@ fn parse_skill_file(path: &Path) -> Result<ClaudeSkill, String> {
     let yaml_content = parts[1];
     let prompt_content = parts[2..].join("---").trim().to_string();
 
-    // Parse YAML fields (simple parsing for now, can use serde_yaml later)
+    // Parse YAML fields (simple parsing for now, can use serde_yaml_ng later)
     let mut name = String::new();
     let mut description = String::new();
     let mut allowed_tools = Vec::new();

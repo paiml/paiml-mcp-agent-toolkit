@@ -391,7 +391,7 @@ fn format_md_brick_details(score: &BrickScore, failures_only: bool, output: &mut
 
 /// Format score as YAML
 fn format_yaml(score: &BrickScore) -> Result<String> {
-    serde_yaml::to_string(score).context("Failed to serialize to YAML")
+    serde_yaml_ng::to_string(score).context("Failed to serialize to YAML")
 }
 
 #[cfg_attr(coverage_nightly, coverage(off))]

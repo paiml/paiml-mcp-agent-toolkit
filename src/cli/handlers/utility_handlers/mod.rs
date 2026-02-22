@@ -32,7 +32,7 @@ pub async fn handle_list(
         OutputFormat::Yaml => {
             let templates_deref: Vec<&TemplateResource> =
                 templates.iter().map(std::convert::AsRef::as_ref).collect();
-            println!("{}", serde_yaml::to_string(&templates_deref)?);
+            println!("{}", serde_yaml_ng::to_string(&templates_deref)?);
         }
     }
     Ok(())

@@ -14,7 +14,7 @@ fn handle_epic_summary(epic_id: &str, qa_dir: &Path) -> Result<()> {
 
             if checklist_path.exists() {
                 let content = fs::read_to_string(&checklist_path)?;
-                let checklist: QaChecklist = serde_yaml::from_str(&content)?;
+                let checklist: QaChecklist = serde_yaml_ng::from_str(&content)?;
 
                 // Count items
                 let all_items: Vec<&ChecklistItem> = checklist

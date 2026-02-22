@@ -12,7 +12,7 @@ fn validate_roadmap_acceptance_criteria() {
     let yaml_content = fs::read_to_string(yaml_path).expect("Failed to read roadmap.yaml");
 
     // Try to deserialize - this will show the exact error
-    let result: Result<Roadmap, _> = serde_yaml::from_str(&yaml_content);
+    let result: Result<Roadmap, _> = serde_yaml_ng::from_str(&yaml_content);
 
     match result {
         Ok(roadmap) => {
@@ -47,8 +47,8 @@ fn validate_roadmap_with_raw_yaml() {
     let yaml_path = "../docs/roadmaps/roadmap.yaml";
     let yaml_content = fs::read_to_string(yaml_path).expect("Failed to read roadmap.yaml");
 
-    let raw_yaml: serde_yaml::Value =
-        serde_yaml::from_str(&yaml_content).expect("Failed to parse as raw YAML");
+    let raw_yaml: serde_yaml_ng::Value =
+        serde_yaml_ng::from_str(&yaml_content).expect("Failed to parse as raw YAML");
 
     if let Some(roadmap_items) = raw_yaml.get("roadmap").and_then(|v| v.as_sequence()) {
         println!(

@@ -86,7 +86,7 @@ pub async fn handle_predict_quality(
             println!("{}", serde_json::to_string_pretty(&predictions)?);
         }
         OutputFormat::Yaml => {
-            println!("{}", serde_yaml::to_string(&predictions)?);
+            println!("{}", serde_yaml_ng::to_string(&predictions)?);
         }
         _ => {
             print_predictions_table(&predictions);

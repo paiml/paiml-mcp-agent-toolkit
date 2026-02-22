@@ -173,7 +173,7 @@ pub enum RoadmapParseError {
 }
 
 impl RoadmapParseError {
-    pub fn from_serde_error(err: serde_yaml::Error, content: &str) -> Self {
+    pub fn from_serde_error(err: serde_yaml_ng::Error, content: &str) -> Self {
         let location = err.location();
         let (line, col) = location.map(|l| (l.line(), l.column())).unwrap_or((0, 0));
 
@@ -216,14 +216,14 @@ mod parsing_resilience_tests {
     #[test]
     fn test_status_alias_done_to_completed() {
         let yaml = "status: done";
-        let status: WorkStatus = serde_yaml::from_str(yaml).unwrap();
+        let status: WorkStatus = serde_yaml_ng::from_str(yaml).unwrap();
         assert_eq!(status, WorkStatus::Completed);
     }
 
     #[test]
     fn test_status_alias_wip_to_inprogress() {
         let yaml = "status: wip";
-        let status: WorkStatus = serde_yaml::from_str(yaml).unwrap();
+        let status: WorkStatus = serde_yaml_ng::from_str(yaml).unwrap();
         assert_eq!(status, WorkStatus::InProgress);
     }
 
@@ -234,7 +234,7 @@ acceptance_criteria:
   - "[VERIFIED: 97KB]"
   - "threshold: ≥85%"
 "#;
-        let parsed: RoadmapItem = serde_yaml::from_str(yaml).unwrap();
+        let parsed: RoadmapItem = serde_yaml_ng::from_str(yaml).unwrap();
         assert_eq!(parsed.acceptance_criteria.len(), 2);
     }
 
@@ -245,14 +245,14 @@ acceptance_criteria:
   - "ε < 0.001"
   - "±5% tolerance"
 "#;
-        let parsed: RoadmapItem = serde_yaml::from_str(yaml).unwrap();
+        let parsed: RoadmapItem = serde_yaml_ng::from_str(yaml).unwrap();
         assert!(parsed.acceptance_criteria[0].contains("ε"));
     }
 
     #[test]
     fn test_error_message_actionable() {
         let yaml = "status: invalid_status";
-        let err = serde_yaml::from_str::<WorkStatus>(yaml).unwrap_err();
+        let err = serde_yaml_ng::from_str::<WorkStatus>(yaml).unwrap_err();
         let error = RoadmapParseError::from_serde_error(err, yaml);
         let msg = error.to_string();
         assert!(msg.contains("Suggestion"));
@@ -297,7 +297,7 @@ pub async fn handle_work_validate(
     let preprocessed = preprocess_roadmap_yaml(&content)?;
 
     // Attempt parse
-    match serde_yaml::from_str::<Roadmap>(&preprocessed) {
+    match serde_yaml_ng::from_str::<Roadmap>(&preprocessed) {
         Ok(roadmap) => {
             println!("✅ Roadmap is valid");
             println!("   Items: {}", roadmap.items.len());

@@ -35,7 +35,7 @@ Generate GitHub Actions workflows that run quality gates on push/PR. This provid
 
 ### Integration Tests
 - [ ] `integration_workflow_installation` - Install to project
-- [ ] `integration_yaml_parsing` - Parse with serde_yaml
+- [ ] `integration_yaml_parsing` - Parse with serde_yaml_ng
 
 ## Quality Gates
 
@@ -350,13 +350,13 @@ mod tests {
 
     #[test]
     fn test_workflow_yaml_valid() {
-        use serde_yaml;
+        use serde_yaml_ng;
 
         let config = WorkflowConfig::default();
         let workflow = generate_github_workflow(&config);
 
         // Verify YAML is parseable
-        let parsed: Result<serde_yaml::Value, _> = serde_yaml::from_str(&workflow);
+        let parsed: Result<serde_yaml_ng::Value, _> = serde_yaml_ng::from_str(&workflow);
         assert!(parsed.is_ok(), "Generated YAML should be valid");
     }
 

@@ -981,7 +981,7 @@ pub fn handle_deps_audit(
             println!("{}", serde_json::to_string_pretty(&report)?);
         }
         "yaml" => {
-            println!("{}", serde_yaml::to_string(&report)?);
+            println!("{}", serde_yaml_ng::to_string(&report)?);
         }
         _ => {
             print_text_report(&report);

@@ -30,7 +30,7 @@ pub async fn handle_generate_checklist(
         .unwrap_or_else(|| qa_dir.join("checklist.yaml"));
 
     // Write checklist
-    let yaml = serde_yaml::to_string(&checklist)?;
+    let yaml = serde_yaml_ng::to_string(&checklist)?;
     fs::write(&output_path, &yaml)?;
 
     println!("\n{}", format_checklist_text(&checklist));

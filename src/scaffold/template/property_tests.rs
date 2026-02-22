@@ -66,7 +66,7 @@ proptest! {
         let rendered = template.render(&vars).unwrap();
 
         // Property: Rendered output is valid YAML
-        let parsed: serde_yaml::Value = serde_yaml::from_str(&rendered).unwrap();
+        let parsed: serde_yaml_ng::Value = serde_yaml_ng::from_str(&rendered).unwrap();
         prop_assert!(parsed.is_mapping());
 
         // Property: Contains expected structure

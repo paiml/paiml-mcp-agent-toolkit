@@ -212,7 +212,7 @@ fn format_and_print_output(
             println!("{}", serde_json::to_string_pretty(response)?);
         }
         crate::cli::OutputFormat::Yaml => {
-            println!("{}", serde_yaml::to_string(response)?);
+            println!("{}", serde_yaml_ng::to_string(response)?);
         }
         crate::cli::OutputFormat::Table => {
             println!("{response:#?}");

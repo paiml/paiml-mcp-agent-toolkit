@@ -3,7 +3,7 @@ fn print_task_status(task_id: &str, task_dir: &Path) -> Result<()> {
 
     if checklist_path.exists() {
         let content = fs::read_to_string(&checklist_path)?;
-        let checklist: QaChecklist = serde_yaml::from_str(&content)?;
+        let checklist: QaChecklist = serde_yaml_ng::from_str(&content)?;
 
         // Count checked items
         let categories = &checklist.categories;
@@ -276,7 +276,7 @@ async fn handle_spec(
 
         let output_content = match format {
             QaOutputFormat::Json => serde_json::to_string_pretty(&result)?,
-            QaOutputFormat::Yaml => serde_yaml::to_string(&result)?,
+            QaOutputFormat::Yaml => serde_yaml_ng::to_string(&result)?,
             QaOutputFormat::Markdown => format_spec_result_markdown(&result),
             QaOutputFormat::Text => format!("{:#?}", result),
         };

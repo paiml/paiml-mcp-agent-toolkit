@@ -386,7 +386,7 @@ fn format_markdown(score: &PopperScore, verbose: bool, _failures_only: bool) -> 
 
 /// Format score as YAML
 fn format_yaml(score: &PopperScore) -> Result<String> {
-    serde_yaml::to_string(score).context("Failed to serialize to YAML")
+    serde_yaml_ng::to_string(score).context("Failed to serialize to YAML")
 }
 
 #[cfg_attr(coverage_nightly, coverage(off))]
@@ -920,7 +920,7 @@ mod tests {
         let output = format_yaml(&score).unwrap();
 
         // Should be valid YAML
-        let parsed: serde_yaml::Value = serde_yaml::from_str(&output).unwrap();
+        let parsed: serde_yaml_ng::Value = serde_yaml_ng::from_str(&output).unwrap();
         assert!(parsed.is_mapping());
     }
 
@@ -942,7 +942,7 @@ mod tests {
         let output = format_yaml(&score).unwrap();
 
         // Should be able to deserialize back
-        let parsed: PopperScore = serde_yaml::from_str(&output).unwrap();
+        let parsed: PopperScore = serde_yaml_ng::from_str(&output).unwrap();
         assert_eq!(parsed.gateway_passed, score.gateway_passed);
         assert!((parsed.normalized_score - score.normalized_score).abs() < 0.01);
     }

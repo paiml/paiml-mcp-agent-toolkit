@@ -110,7 +110,7 @@ pub async fn handle_work_validate(path: Option<PathBuf>, verbose: bool, fix: boo
 
     let content = std::fs::read_to_string(&roadmap_path).context("Failed to read roadmap file")?;
 
-    match serde_yaml::from_str::<crate::models::roadmap::Roadmap>(&content) {
+    match serde_yaml_ng::from_str::<crate::models::roadmap::Roadmap>(&content) {
         Ok(roadmap) => {
             print_valid_roadmap(&roadmap, verbose, fix);
             Ok(())
@@ -209,7 +209,7 @@ pub async fn handle_work_migrate(path: Option<PathBuf>, dry_run: bool, backup: b
     println!("✅ Updated roadmap: {}", roadmap_path.display());
 
     // Verify the changes
-    if serde_yaml::from_str::<crate::models::roadmap::Roadmap>(&new_content).is_ok() {
+    if serde_yaml_ng::from_str::<crate::models::roadmap::Roadmap>(&new_content).is_ok() {
         println!("✅ Verified: updated roadmap is valid");
     } else {
         println!("⚠️  Warning: updated roadmap may have issues - check manually");
@@ -1054,7 +1054,7 @@ fn find_item_fuzzy(
 
 /// Extract line number from YAML error message
 fn extract_line_from_yaml_error(error: &str) -> Option<usize> {
-    // serde_yaml errors often contain "at line X column Y"
+    // serde_yaml_ng errors often contain "at line X column Y"
     if let Some(pos) = error.find("at line ") {
         let rest = error.get(pos + 8..).unwrap_or_default();
         if let Some(end) = rest.find(' ') {

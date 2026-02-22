@@ -513,7 +513,7 @@ mod checklist_categories_tests {
     fn test_checklist_categories_serialization() {
         let checklist = generate_checklist("TEST", QaTaskType::Feature);
 
-        let yaml = serde_yaml::to_string(&checklist.categories).expect("Serialize failed");
+        let yaml = serde_yaml_ng::to_string(&checklist.categories).expect("Serialize failed");
 
         assert!(yaml.contains("safety_ethics"));
         assert!(yaml.contains("code_quality"));

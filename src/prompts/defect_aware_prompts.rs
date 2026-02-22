@@ -74,7 +74,7 @@ impl DefectAwarePromptGenerator {
             std::fs::read_to_string(path.as_ref()).context("Failed to read OIP summary file")?;
 
         let summary: OipSummary =
-            serde_yaml::from_str(&content).context("Failed to parse OIP summary YAML")?;
+            serde_yaml_ng::from_str(&content).context("Failed to parse OIP summary YAML")?;
 
         Ok(Self {
             defect_patterns: summary.organizational_insights.top_defect_categories,

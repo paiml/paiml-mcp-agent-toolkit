@@ -73,7 +73,7 @@ pub async fn handle_validate(
     match format {
         QaOutputFormat::Text => print_validation_text(&result),
         QaOutputFormat::Json => println!("{}", serde_json::to_string_pretty(&result)?),
-        QaOutputFormat::Yaml => println!("{}", serde_yaml::to_string(&result)?),
+        QaOutputFormat::Yaml => println!("{}", serde_yaml_ng::to_string(&result)?),
         QaOutputFormat::Markdown => print_validation_markdown(&result),
     }
 
@@ -559,7 +559,7 @@ pub async fn handle_report(
     // Generate report content
     let report = match format {
         QaOutputFormat::Json => serde_json::to_string_pretty(&result)?,
-        QaOutputFormat::Yaml => serde_yaml::to_string(&result)?,
+        QaOutputFormat::Yaml => serde_yaml_ng::to_string(&result)?,
         QaOutputFormat::Markdown | QaOutputFormat::Text => {
             let mut md = String::new();
             md.push_str(&format!("# QA Report: {}\n\n", task_id));

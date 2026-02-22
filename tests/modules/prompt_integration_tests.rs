@@ -328,7 +328,7 @@ mod property_tests {
             let stdout = String::from_utf8(output.stdout).unwrap();
 
             // Parse as YAML to ensure it's valid
-            let parsed: serde_yaml::Value = serde_yaml::from_str(&stdout)
+            let parsed: serde_yaml_ng::Value = serde_yaml_ng::from_str(&stdout)
                 .unwrap_or_else(|e| panic!("Failed to parse YAML for {}: {}", prompt, e));
 
             // Verify required fields

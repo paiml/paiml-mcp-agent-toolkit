@@ -739,7 +739,7 @@ pub enum RefactoringError {
     GitHubApi(#[from] octocrab::Error),
     
     #[error("Workflow parsing failed: {0}")]
-    YamlParse(#[from] serde_yaml::Error),
+    YamlParse(#[from] serde_yaml_ng::Error),
     
     #[error("Validation failed: {0}")]
     Validation(ValidationError),

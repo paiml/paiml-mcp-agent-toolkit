@@ -1615,7 +1615,7 @@ cross_crate:
   min_tokens: 20
   cc003_min_similarity: 0.6
 "#;
-        let config: PmatYamlConfig = serde_yaml::from_str(yaml).unwrap();
+        let config: PmatYamlConfig = serde_yaml_ng::from_str(yaml).unwrap();
         assert_eq!(config.cross_crate.excluded_functions.len(), 3);
         assert_eq!(config.cross_crate.excluded_crate_pairs.len(), 1);
         assert_eq!(config.cross_crate.min_body_lines, 5);

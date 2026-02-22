@@ -176,7 +176,7 @@ fn format_json(score: &RepoScore) -> Result<String> {
 
 /// Format score as YAML
 fn format_yaml(score: &RepoScore) -> Result<String> {
-    serde_yaml::to_string(score).context("Failed to serialize to YAML")
+    serde_yaml_ng::to_string(score).context("Failed to serialize to YAML")
 }
 
 /// Format score as Markdown

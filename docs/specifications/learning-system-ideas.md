@@ -689,7 +689,7 @@ pmat workflow run comprehensive-rust-quality --param complexity_threshold=10
 
 **Implementation:**
 - New module: `server/src/workflow/templates/`
-- YAML parser (use `serde_yaml` - already in deps)
+- YAML parser (use `serde_yaml_ng` - already in deps)
 - Template engine (Handlebars - already in deps at 6.3.2)
 - Registry client (optional - can start with Git-based distribution)
 

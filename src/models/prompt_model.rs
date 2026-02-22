@@ -39,7 +39,7 @@ pub struct WorkflowPrompt {
 
     /// Optional Toyota Way principles
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub toyota_way_principles: Option<HashMap<String, serde_yaml::Value>>,
+    pub toyota_way_principles: Option<HashMap<String, serde_yaml_ng::Value>>,
 
     /// Optional quality gates
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -63,7 +63,7 @@ pub struct WorkflowPrompt {
 
     /// Optional zero tolerance settings
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub zero_tolerance: Option<HashMap<String, serde_yaml::Value>>,
+    pub zero_tolerance: Option<HashMap<String, serde_yaml_ng::Value>>,
 
     /// Optional validation rules
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -100,8 +100,8 @@ pub struct WorkflowPrompt {
 
 impl WorkflowPrompt {
     /// Load a prompt from YAML string
-    pub fn from_yaml(yaml_str: &str) -> Result<Self, serde_yaml::Error> {
-        serde_yaml::from_str(yaml_str)
+    pub fn from_yaml(yaml_str: &str) -> Result<Self, serde_yaml_ng::Error> {
+        serde_yaml_ng::from_str(yaml_str)
     }
 
     /// Render the prompt with variable substitution
@@ -126,8 +126,8 @@ impl WorkflowPrompt {
     }
 
     /// Serialize to YAML format
-    pub fn to_yaml(&self) -> Result<String, serde_yaml::Error> {
-        serde_yaml::to_string(self)
+    pub fn to_yaml(&self) -> Result<String, serde_yaml_ng::Error> {
+        serde_yaml_ng::to_string(self)
     }
 
     /// Serialize to JSON format

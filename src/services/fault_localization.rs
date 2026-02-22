@@ -534,7 +534,7 @@ impl FaultLocalizer {
     ) -> Result<String> {
         match format {
             ReportFormat::Yaml => {
-                serde_yaml::to_string(result).map_err(|e| anyhow!("Failed to generate YAML: {}", e))
+                serde_yaml_ng::to_string(result).map_err(|e| anyhow!("Failed to generate YAML: {}", e))
             }
             ReportFormat::Json => serde_json::to_string_pretty(result)
                 .map_err(|e| anyhow!("Failed to generate JSON: {}", e)),

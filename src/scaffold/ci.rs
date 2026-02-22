@@ -295,7 +295,7 @@ mod tests {
         let workflow = generate_github_workflow(&config);
 
         // Verify YAML is parseable
-        let parsed: Result<serde_yaml::Value, _> = serde_yaml::from_str(&workflow);
+        let parsed: Result<serde_yaml_ng::Value, _> = serde_yaml_ng::from_str(&workflow);
         assert!(
             parsed.is_ok(),
             "Generated YAML should be valid: {:?}",

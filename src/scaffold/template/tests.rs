@@ -86,7 +86,7 @@ fn test_template_pforge_yaml() {
     let result = template.render(&vars).unwrap();
 
     // Should be valid YAML
-    let parsed: serde_yaml::Value = serde_yaml::from_str(&result).unwrap();
+    let parsed: serde_yaml_ng::Value = serde_yaml_ng::from_str(&result).unwrap();
     assert!(parsed.get("forge").is_some());
     assert_eq!(parsed["forge"]["name"].as_str(), Some("test-agent"));
 }

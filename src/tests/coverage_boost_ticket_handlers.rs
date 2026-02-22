@@ -1123,7 +1123,7 @@ roadmap:
     acceptance_criteria: []
 "#;
 
-    let roadmap: Roadmap = serde_yaml::from_str(yaml).expect("Failed to parse");
+    let roadmap: Roadmap = serde_yaml_ng::from_str(yaml).expect("Failed to parse");
     assert!(roadmap.roadmap[0].acceptance_criteria.is_empty());
 }
 
@@ -1137,7 +1137,7 @@ roadmap:
     status: planned
 "#;
 
-    let roadmap: Roadmap = serde_yaml::from_str(yaml).expect("Failed to parse");
+    let roadmap: Roadmap = serde_yaml_ng::from_str(yaml).expect("Failed to parse");
     let item = &roadmap.roadmap[0];
     assert!(item.spec.is_none());
     assert!(item.estimated_effort.is_none());
@@ -1168,7 +1168,7 @@ roadmap:
             status
         );
 
-        let result: Result<Roadmap, _> = serde_yaml::from_str(&yaml);
+        let result: Result<Roadmap, _> = serde_yaml_ng::from_str(&yaml);
         assert!(result.is_ok(), "Failed to parse status: {}", status);
     }
 }

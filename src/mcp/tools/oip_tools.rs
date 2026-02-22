@@ -246,7 +246,7 @@ mod tests {
         };
 
         let file = NamedTempFile::new()?;
-        serde_yaml::to_writer(&file, &summary)?;
+        serde_yaml_ng::to_writer(&file, &summary)?;
         Ok(file)
     }
 

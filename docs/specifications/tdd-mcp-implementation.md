@@ -623,7 +623,7 @@ impl ProtocolHandler for CliHandler {
     async fn encode(&self, output: Self::Output) -> Result<Vec<u8>, Self::Error> {
         let formatted = match self.format {
             OutputFormat::Json => serde_json::to_string_pretty(&output)?,
-            OutputFormat::Yaml => serde_yaml::to_string(&output)?,
+            OutputFormat::Yaml => serde_yaml_ng::to_string(&output)?,
             OutputFormat::Table => format_as_table(&output),
         };
         Ok(formatted.into_bytes())

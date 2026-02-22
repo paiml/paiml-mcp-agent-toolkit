@@ -145,7 +145,7 @@ fn show_yaml_diagnostics(
         "storage": if show_storage { Some(stats) } else { None },
         "note": "Full diagnostic infrastructure in development"
     });
-    println!("{}", serde_yaml::to_string(&yaml_output)?);
+    println!("{}", serde_yaml_ng::to_string(&yaml_output)?);
     Ok(())
 }
 

@@ -120,7 +120,7 @@ mod filesystem_tests {
         fs::create_dir_all(&qa_dir).expect("Failed to create dir");
 
         let checklist = generate_checklist("SUMMARY-TEST", QaTaskType::Feature);
-        let yaml = serde_yaml::to_string(&checklist).expect("Failed to serialize");
+        let yaml = serde_yaml_ng::to_string(&checklist).expect("Failed to serialize");
         fs::write(qa_dir.join("checklist.yaml"), yaml).expect("Failed to write");
 
         let rt = tokio::runtime::Runtime::new().unwrap();
@@ -140,7 +140,7 @@ mod filesystem_tests {
             fs::create_dir_all(&qa_dir).expect("Failed to create dir");
 
             let checklist = generate_checklist(task_id, QaTaskType::Feature);
-            let yaml = serde_yaml::to_string(&checklist).expect("Failed to serialize");
+            let yaml = serde_yaml_ng::to_string(&checklist).expect("Failed to serialize");
             fs::write(qa_dir.join("checklist.yaml"), yaml).expect("Failed to write");
         }
 
@@ -188,7 +188,7 @@ mod filesystem_tests {
             item.checked = true;
         }
 
-        let yaml = serde_yaml::to_string(&checklist).expect("Serialize failed");
+        let yaml = serde_yaml_ng::to_string(&checklist).expect("Serialize failed");
         fs::write(task_dir.join("checklist.yaml"), yaml).expect("Write failed");
 
         let result = print_task_status("COMPLETE", task_dir);
@@ -204,7 +204,7 @@ mod filesystem_tests {
         checklist.categories.safety_ethics[0].checked = true;
         checklist.categories.code_quality[0].checked = true;
 
-        let yaml = serde_yaml::to_string(&checklist).expect("Serialize failed");
+        let yaml = serde_yaml_ng::to_string(&checklist).expect("Serialize failed");
         fs::write(task_dir.join("checklist.yaml"), yaml).expect("Write failed");
 
         let result = print_task_status("PROGRESS", task_dir);
@@ -217,7 +217,7 @@ mod filesystem_tests {
         let task_dir = temp_dir.path();
 
         let checklist = generate_checklist("PENDING", QaTaskType::Feature);
-        let yaml = serde_yaml::to_string(&checklist).expect("Serialize failed");
+        let yaml = serde_yaml_ng::to_string(&checklist).expect("Serialize failed");
         fs::write(task_dir.join("checklist.yaml"), yaml).expect("Write failed");
 
         let result = print_task_status("PENDING", task_dir);
@@ -280,7 +280,7 @@ mod epic_summary_tests {
                 }
             }
 
-            let yaml = serde_yaml::to_string(&checklist).expect("Serialize failed");
+            let yaml = serde_yaml_ng::to_string(&checklist).expect("Serialize failed");
             fs::write(task_dir.join("checklist.yaml"), yaml).expect("Write failed");
         }
 

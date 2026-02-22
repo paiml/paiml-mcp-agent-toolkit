@@ -188,7 +188,7 @@ pub struct CheckConfig {
 
     /// Additional check-specific options
     #[serde(default)]
-    pub options: HashMap<String, serde_yaml::Value>,
+    pub options: HashMap<String, serde_yaml_ng::Value>,
 }
 
 impl Default for CheckConfig {
@@ -660,14 +660,14 @@ impl PmatYamlConfig {
         let content =
             std::fs::read_to_string(path).map_err(|e| ConfigError::IoError(e.to_string()))?;
 
-        serde_yaml::from_str(&content).map_err(|e| ConfigError::ParseError(e.to_string()))
+        serde_yaml_ng::from_str(&content).map_err(|e| ConfigError::ParseError(e.to_string()))
     }
 
     /// Save configuration to .pmat.yaml in the given directory
     pub fn save(&self, project_path: &Path) -> Result<(), ConfigError> {
         let config_path = project_path.join(".pmat.yaml");
         let content =
-            serde_yaml::to_string(self).map_err(|e| ConfigError::SerializeError(e.to_string()))?;
+            serde_yaml_ng::to_string(self).map_err(|e| ConfigError::SerializeError(e.to_string()))?;
 
         std::fs::write(config_path, content).map_err(|e| ConfigError::IoError(e.to_string()))
     }
@@ -838,7 +838,7 @@ comply:
     complexity: 15
 "#;
 
-        let config: PmatYamlConfig = serde_yaml::from_str(yaml).unwrap();
+        let config: PmatYamlConfig = serde_yaml_ng::from_str(yaml).unwrap();
         assert!(!config.comply.is_check_enabled("cb-050"));
         assert!(config.comply.is_check_enabled("cb-128"));
         assert_eq!(config.comply.get_threshold("cb-128"), Some(2.5));
@@ -955,7 +955,7 @@ comply:
       reason: "Examples use unwrap for brevity"
       expires: "2026-12-31"
 "#;
-        let config: PmatYamlConfig = serde_yaml::from_str(yaml).unwrap();
+        let config: PmatYamlConfig = serde_yaml_ng::from_str(yaml).unwrap();
         assert_eq!(config.comply.suppressions.len(), 2);
         assert_eq!(config.comply.suppressions[0].rules, vec!["CB-954"]);
         assert_eq!(config.comply.suppressions[1].files, vec!["examples/**"]);
@@ -1013,7 +1013,7 @@ scoring:
       command: "cargo bench --bench inference"
       min_score: 50.0
 "#;
-        let config: PmatYamlConfig = serde_yaml::from_str(yaml).unwrap();
+        let config: PmatYamlConfig = serde_yaml_ng::from_str(yaml).unwrap();
         assert_eq!(config.scoring.custom_scores.len(), 2);
 
         let first = &config.scoring.custom_scores[0];

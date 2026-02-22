@@ -290,7 +290,7 @@ fn format_yaml(
     score: &crate::services::rust_project_score::orchestrator::ProjectScore,
     recommendations: &[String],
 ) -> Result<String> {
-    let yaml = serde_yaml::to_string(&serde_json::json!({
+    let yaml = serde_yaml_ng::to_string(&serde_json::json!({
         "version": "1.1",
         "total_earned": score.total_earned,
         "total_possible": score.total_possible,
@@ -576,7 +576,7 @@ mod tests {
         let output = format_yaml(&score, &recommendations).unwrap();
 
         // Should be valid YAML
-        let parsed: serde_yaml::Value = serde_yaml::from_str(&output).unwrap();
+        let parsed: serde_yaml_ng::Value = serde_yaml_ng::from_str(&output).unwrap();
         assert!(parsed.is_mapping());
     }
 

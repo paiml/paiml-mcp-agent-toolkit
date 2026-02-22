@@ -18,14 +18,14 @@ use tempfile::NamedTempFile;
 
 fuzz_target!(|data: &[u8]| {
     // Test 1: Parser should never panic on arbitrary input
-    let _ = serde_yaml::from_slice::<Roadmap>(data);
+    let _ = serde_yaml_ng::from_slice::<Roadmap>(data);
 
     // Test 2: If we can parse a roadmap, serialization should work
-    if let Ok(roadmap) = serde_yaml::from_slice::<Roadmap>(data) {
+    if let Ok(roadmap) = serde_yaml_ng::from_slice::<Roadmap>(data) {
         // Serialize back to YAML
-        if let Ok(yaml_str) = serde_yaml::to_string(&roadmap) {
+        if let Ok(yaml_str) = serde_yaml_ng::to_string(&roadmap) {
             // Re-parse to verify round-trip
-            if let Ok(roundtrip) = serde_yaml::from_str::<Roadmap>(&yaml_str) {
+            if let Ok(roundtrip) = serde_yaml_ng::from_str::<Roadmap>(&yaml_str) {
                 // Verify key fields are preserved
                 assert_eq!(roadmap.roadmap_version, roundtrip.roadmap_version);
                 assert_eq!(roadmap.github_enabled, roundtrip.github_enabled);
@@ -65,7 +65,7 @@ fuzz_target!(|data: &[u8]| {
         }
 
         // Serialization should succeed for valid roadmaps
-        if let Ok(_yaml) = serde_yaml::to_string(&roadmap) {
+        if let Ok(_yaml) = serde_yaml_ng::to_string(&roadmap) {
             // Success - valid roadmap can be serialized
         }
     }

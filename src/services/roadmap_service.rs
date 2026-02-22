@@ -89,7 +89,7 @@ impl RoadmapService {
 
     /// Parse YAML with enhanced error reporting
     fn parse_roadmap_yaml(&self, contents: &str) -> Result<Roadmap> {
-        serde_yaml::from_str(contents).map_err(|e| {
+        serde_yaml_ng::from_str(contents).map_err(|e| {
             // Extract line/column info if available
             let location_info = if let Some(location) = e.location() {
                 format!(" at line {}, column {}", location.line(), location.column())
@@ -151,7 +151,7 @@ impl RoadmapService {
                 .with_context(|| format!("Failed to create directory: {:?}", parent))?;
         }
 
-        let yaml = serde_yaml::to_string(roadmap)
+        let yaml = serde_yaml_ng::to_string(roadmap)
             .with_context(|| "Failed to serialize roadmap to YAML")?;
 
         fs::write(&self.roadmap_path, yaml)
@@ -183,7 +183,7 @@ impl RoadmapService {
             fs::create_dir_all(parent)
                 .with_context(|| format!("Failed to create directory: {:?}", parent))?;
         }
-        let yaml = serde_yaml::to_string(&roadmap)
+        let yaml = serde_yaml_ng::to_string(&roadmap)
             .with_context(|| "Failed to serialize roadmap to YAML")?;
         fs::write(&self.roadmap_path, yaml)
             .with_context(|| format!("Failed to write roadmap file: {:?}", self.roadmap_path))?;
@@ -214,7 +214,7 @@ impl RoadmapService {
             fs::create_dir_all(parent)
                 .with_context(|| format!("Failed to create directory: {:?}", parent))?;
         }
-        let yaml = serde_yaml::to_string(&roadmap)
+        let yaml = serde_yaml_ng::to_string(&roadmap)
             .with_context(|| "Failed to serialize roadmap to YAML")?;
         fs::write(&self.roadmap_path, yaml)
             .with_context(|| format!("Failed to write roadmap file: {:?}", self.roadmap_path))?;
@@ -531,7 +531,7 @@ mod tests {
 
                 // YAML should be parseable by external parser
                 let yaml_content = fs::read_to_string(service.path()).unwrap();
-                let _: serde_yaml::Value = serde_yaml::from_str(&yaml_content).unwrap();
+                let _: serde_yaml_ng::Value = serde_yaml_ng::from_str(&yaml_content).unwrap();
             }
         }
     }

@@ -118,14 +118,14 @@ mod data_structure_tests {
     fn test_qa_checklist_serialization() {
         let checklist = generate_checklist("TASK-123", QaTaskType::Feature);
 
-        let yaml = serde_yaml::to_string(&checklist).expect("YAML serialization failed");
+        let yaml = serde_yaml_ng::to_string(&checklist).expect("YAML serialization failed");
         assert!(yaml.contains("task_id: TASK-123"));
         assert!(yaml.contains("task_type: feature"));
 
         let json = serde_json::to_string(&checklist).expect("JSON serialization failed");
         assert!(json.contains("\"task_id\":\"TASK-123\""));
 
-        let parsed: QaChecklist = serde_yaml::from_str(&yaml).expect("YAML deserialization failed");
+        let parsed: QaChecklist = serde_yaml_ng::from_str(&yaml).expect("YAML deserialization failed");
         assert_eq!(parsed.task_id, checklist.task_id);
         assert_eq!(parsed.task_type, checklist.task_type);
     }
@@ -196,7 +196,7 @@ mod data_structure_tests {
             task_scores: vec![("TASK-1".into(), 90.0), ("TASK-2".into(), 70.0)],
         };
 
-        let yaml = serde_yaml::to_string(&summary).expect("YAML serialization failed");
+        let yaml = serde_yaml_ng::to_string(&summary).expect("YAML serialization failed");
         assert!(yaml.contains("epic_id: EPIC-100"));
         assert!(yaml.contains("status: InProgress"));
     }

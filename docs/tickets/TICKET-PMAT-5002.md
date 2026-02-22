@@ -79,7 +79,7 @@ fn test_template_render_pforge_yaml() {
     let result = template.render(&vars).unwrap();
 
     // Should be valid YAML
-    let parsed: serde_yaml::Value = serde_yaml::from_str(&result).unwrap();
+    let parsed: serde_yaml_ng::Value = serde_yaml_ng::from_str(&result).unwrap();
     assert_eq!(parsed["forge"]["name"], "test-agent");
 }
 ```
@@ -269,7 +269,7 @@ proptest! {
         let rendered = template.render(&vars).unwrap();
 
         // Property: Rendered output is valid YAML
-        let parsed: serde_yaml::Value = serde_yaml::from_str(&rendered).unwrap();
+        let parsed: serde_yaml_ng::Value = serde_yaml_ng::from_str(&rendered).unwrap();
         prop_assert!(parsed.is_mapping());
     }
 }

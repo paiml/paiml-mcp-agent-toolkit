@@ -405,7 +405,7 @@ mod cli_output_tests {
             s3_object_key: "test.hbs".to_string(),
         };
 
-        let yaml = serde_yaml::to_string(&template).unwrap();
+        let yaml = serde_yaml_ng::to_string(&template).unwrap();
         assert!(yaml.contains("uri: template://makefile/rust/cli"));
         assert!(yaml.contains("category: makefile"));
         assert!(yaml.contains("type: rust"));

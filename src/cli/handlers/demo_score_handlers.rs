@@ -205,7 +205,7 @@ fn format_md_findings(score: &CategoryScore, failures_only: bool, output: &mut S
 
 /// Format score as YAML
 fn format_yaml(score: &CategoryScore) -> Result<String> {
-    serde_yaml::to_string(&score).context("Failed to serialize to YAML")
+    serde_yaml_ng::to_string(&score).context("Failed to serialize to YAML")
 }
 
 /// Convert percentage to letter grade
