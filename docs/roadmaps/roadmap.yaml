@@ -2230,11 +2230,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: Feature-gate arrow/parquet in trueno-db
-  status: planned
+  status: inprogress
   priority: high
   assigned_to: null
   created: 2026-02-22T21:14:13Z
-  updated: 2026-02-22T21:14:13Z
+  updated: 2026-02-22T22:01:40.449313673+00:00
   spec: null
   acceptance_criteria:
   - trueno-db unconditionally pulls arrow (18 crates). Make arrow optional behind storage feature. trueno-graph already gates storage - chain the feature through.
@@ -2249,11 +2249,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: Upgrade criterion 0.6 to 0.8
-  status: planned
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-02-22T21:14:15Z
-  updated: 2026-02-22T21:14:15Z
+  updated: 2026-02-22T22:14:59.909506857+00:00
   spec: null
   acceptance_criteria:
   - criterion 0.6 pulls itertools 0.10 duplicate. criterion 0.8 uses itertools 0.14, eliminating the dup. Dev-dep only but speeds up cargo test compile.
@@ -2267,7 +2267,7 @@ roadmap:
   github_issue: null
   item_type: task
   title: Build batuta-template to replace handlebars and minijinja
-  status: planned
+  status: wontfix
   priority: medium
   assigned_to: null
   created: 2026-02-22T21:14:16Z
