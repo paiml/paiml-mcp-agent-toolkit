@@ -351,13 +351,18 @@ fn disambiguate_collisions(suggestions: &mut Vec<RenameSuggestion>) {
     }
 }
 
-/// Check if a file path contains `_part_` in its filename stem.
+/// Check if a file path contains a `_partN` or `_part_` split pattern in its filename stem.
 pub(crate) fn is_part_file(path: &str) -> bool {
     let filename = Path::new(path)
         .file_stem()
         .and_then(|s| s.to_str())
         .unwrap_or("");
-    filename.contains("_part_")
+    if let Some(idx) = filename.find("_part") {
+        let rest = &filename[idx + 5..];
+        rest.starts_with('_') || rest.chars().next().is_some_and(|c| c.is_ascii_digit())
+    } else {
+        false
+    }
 }
 
 // ── Core analysis ──────────────────────────────────────────────────────────
@@ -1005,10 +1010,15 @@ mod tests {
 
     #[test]
     fn test_is_part_file_positive() {
+        // Underscore-separated: _part_NN
         assert!(is_part_file("src/llm/mod_part_02.rs"));
         assert!(is_part_file("src/llm/mod_part_02_part_04.rs"));
         assert!(is_part_file("foo_part_03_attn.rs"));
         assert!(is_part_file("deep/path/utils_part_01.rs"));
+        // Digit-suffix: _partN (real-world pattern)
+        assert!(is_part_file("quality_checks_part1.rs"));
+        assert!(is_part_file("src/cli/quality_checks_part2.rs"));
+        assert!(is_part_file("tests_part3.rs"));
     }
 
     #[test]
