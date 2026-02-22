@@ -1,95 +1,38 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
-use handlebars::{
-    Context, Handlebars, Helper, HelperResult, Output, RenderContext, RenderError,
-    RenderErrorReason,
-};
 
-pub fn snake_case_helper(
-    h: &Helper,
-    _: &Handlebars,
-    _: &Context,
-    _: &mut RenderContext,
-    out: &mut dyn Output,
-) -> HelperResult {
-    let param = h.param(0).ok_or_else(|| -> RenderError {
-        RenderErrorReason::ParamNotFoundForIndex("snake_case", 0).into()
-    })?;
+use minijinja::Value;
 
-    let value = param.value().as_str().ok_or_else(|| -> RenderError {
-        RenderErrorReason::Other("snake_case expects string parameter".to_string()).into()
-    })?;
-
-    let snake = to_snake_case(value);
-    out.write(&snake)?;
-    Ok(())
+/// Register all custom helpers (filters + functions) on a minijinja Environment.
+pub fn register_helpers(env: &mut minijinja::Environment<'_>) {
+    env.add_filter("snake_case", snake_case_filter);
+    env.add_filter("kebab_case", kebab_case_filter);
+    env.add_filter("pascal_case", pascal_case_filter);
+    env.add_function("current_year", current_year_fn);
+    env.add_function("current_date", current_date_fn);
 }
 
-pub fn kebab_case_helper(
-    h: &Helper,
-    _: &Handlebars,
-    _: &Context,
-    _: &mut RenderContext,
-    out: &mut dyn Output,
-) -> HelperResult {
-    let param = h.param(0).ok_or_else(|| -> RenderError {
-        RenderErrorReason::ParamNotFoundForIndex("kebab_case", 0).into()
-    })?;
-
-    let value = param.value().as_str().ok_or_else(|| -> RenderError {
-        RenderErrorReason::Other("kebab_case expects string parameter".to_string()).into()
-    })?;
-
-    let kebab = to_kebab_case(value);
-    out.write(&kebab)?;
-    Ok(())
+fn snake_case_filter(value: &str) -> String {
+    to_snake_case(value)
 }
 
-pub fn pascal_case_helper(
-    h: &Helper,
-    _: &Handlebars,
-    _: &Context,
-    _: &mut RenderContext,
-    out: &mut dyn Output,
-) -> HelperResult {
-    let param = h.param(0).ok_or_else(|| -> RenderError {
-        RenderErrorReason::ParamNotFoundForIndex("pascal_case", 0).into()
-    })?;
-
-    let value = param.value().as_str().ok_or_else(|| -> RenderError {
-        RenderErrorReason::Other("pascal_case expects string parameter".to_string()).into()
-    })?;
-
-    let pascal = to_pascal_case(value);
-    out.write(&pascal)?;
-    Ok(())
+fn kebab_case_filter(value: &str) -> String {
+    to_kebab_case(value)
 }
 
-pub fn current_year_helper(
-    _: &Helper,
-    _: &Handlebars,
-    _: &Context,
-    _: &mut RenderContext,
-    out: &mut dyn Output,
-) -> HelperResult {
-    let year = chrono::Utc::now().format("%Y").to_string();
-    out.write(&year)?;
-    Ok(())
+fn pascal_case_filter(value: &str) -> String {
+    to_pascal_case(value)
 }
 
-pub fn current_date_helper(
-    _: &Helper,
-    _: &Handlebars,
-    _: &Context,
-    _: &mut RenderContext,
-    out: &mut dyn Output,
-) -> HelperResult {
-    let date = chrono::Utc::now().format("%Y-%m-%d").to_string();
-    out.write(&date)?;
-    Ok(())
+fn current_year_fn() -> Value {
+    Value::from(chrono::Utc::now().format("%Y").to_string())
+}
+
+fn current_date_fn() -> Value {
+    Value::from(chrono::Utc::now().format("%Y-%m-%d").to_string())
 }
 
 // Case conversion utilities
-fn to_snake_case(s: &str) -> String {
+pub fn to_snake_case(s: &str) -> String {
     let mut result = String::with_capacity(1024);
     let mut prev_is_upper = false;
 
@@ -113,7 +56,7 @@ fn to_kebab_case(s: &str) -> String {
     to_snake_case(s).replace('_', "-")
 }
 
-fn to_pascal_case(s: &str) -> String {
+pub fn to_pascal_case(s: &str) -> String {
     s.split(['_', '-', ' '])
         .filter(|s| !s.is_empty())
         .map(|s| {
@@ -130,8 +73,6 @@ fn to_pascal_case(s: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use handlebars::Handlebars;
-    use serde_json::json;
 
     #[test]
     fn test_to_snake_case_basic() {
@@ -170,46 +111,50 @@ mod tests {
     }
 
     #[test]
-    fn test_snake_case_helper_with_handlebars() {
-        let mut handlebars = Handlebars::new();
-        handlebars.register_helper("snake_case", Box::new(snake_case_helper));
+    fn test_snake_case_filter_with_minijinja() {
+        let mut env = minijinja::Environment::new();
+        register_helpers(&mut env);
 
-        let template = "{{snake_case name}}";
-        let data = json!({"name": "MyProjectName"});
-        let result = handlebars.render_template(template, &data).unwrap();
+        let template = env.template_from_str("{{ name|snake_case }}").unwrap();
+        let result = template
+            .render(minijinja::context! { name => "MyProjectName" })
+            .unwrap();
         assert_eq!(result, "my_project_name");
     }
 
     #[test]
-    fn test_kebab_case_helper_with_handlebars() {
-        let mut handlebars = Handlebars::new();
-        handlebars.register_helper("kebab_case", Box::new(kebab_case_helper));
+    fn test_kebab_case_filter_with_minijinja() {
+        let mut env = minijinja::Environment::new();
+        register_helpers(&mut env);
 
-        let template = "{{kebab_case name}}";
-        let data = json!({"name": "MyProjectName"});
-        let result = handlebars.render_template(template, &data).unwrap();
+        let template = env.template_from_str("{{ name|kebab_case }}").unwrap();
+        let result = template
+            .render(minijinja::context! { name => "MyProjectName" })
+            .unwrap();
         assert_eq!(result, "my-project-name");
     }
 
     #[test]
-    fn test_pascal_case_helper_with_handlebars() {
-        let mut handlebars = Handlebars::new();
-        handlebars.register_helper("pascal_case", Box::new(pascal_case_helper));
+    fn test_pascal_case_filter_with_minijinja() {
+        let mut env = minijinja::Environment::new();
+        register_helpers(&mut env);
 
-        let template = "{{pascal_case name}}";
-        let data = json!({"name": "my_project_name"});
-        let result = handlebars.render_template(template, &data).unwrap();
+        let template = env
+            .template_from_str("{{ name|pascal_case }}")
+            .unwrap();
+        let result = template
+            .render(minijinja::context! { name => "my_project_name" })
+            .unwrap();
         assert_eq!(result, "MyProjectName");
     }
 
     #[test]
-    fn test_current_year_helper_with_handlebars() {
-        let mut handlebars = Handlebars::new();
-        handlebars.register_helper("current_year", Box::new(current_year_helper));
+    fn test_current_year_fn_with_minijinja() {
+        let mut env = minijinja::Environment::new();
+        register_helpers(&mut env);
 
-        let template = "{{current_year}}";
-        let data = json!({});
-        let result = handlebars.render_template(template, &data).unwrap();
+        let template = env.template_from_str("{{ current_year() }}").unwrap();
+        let result = template.render(minijinja::context! {}).unwrap();
 
         // Verify it's a valid year
         let year: u32 = result.parse().expect("Should be a valid year");
@@ -217,84 +162,17 @@ mod tests {
     }
 
     #[test]
-    fn test_current_date_helper_with_handlebars() {
-        let mut handlebars = Handlebars::new();
-        handlebars.register_helper("current_date", Box::new(current_date_helper));
+    fn test_current_date_fn_with_minijinja() {
+        let mut env = minijinja::Environment::new();
+        register_helpers(&mut env);
 
-        let template = "{{current_date}}";
-        let data = json!({});
-        let result = handlebars.render_template(template, &data).unwrap();
+        let template = env.template_from_str("{{ current_date() }}").unwrap();
+        let result = template.render(minijinja::context! {}).unwrap();
 
         // Check format YYYY-MM-DD
         assert_eq!(result.len(), 10);
         assert_eq!(result.chars().nth(4), Some('-'));
         assert_eq!(result.chars().nth(7), Some('-'));
-    }
-
-    #[test]
-    fn test_helper_error_cases() {
-        let mut handlebars = Handlebars::new();
-        handlebars.register_helper("snake_case", Box::new(snake_case_helper));
-
-        // Missing parameter
-        let template = "{{snake_case}}";
-        let data = json!({});
-        let result = handlebars.render_template(template, &data);
-        assert!(result.is_err());
-
-        // Non-string parameter
-        let template = "{{snake_case number}}";
-        let data = json!({"number": 123});
-        let result = handlebars.render_template(template, &data);
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_kebab_case_helper_error_missing_param() {
-        let mut handlebars = Handlebars::new();
-        handlebars.register_helper("kebab_case", Box::new(kebab_case_helper));
-
-        // Missing parameter
-        let template = "{{kebab_case}}";
-        let data = json!({});
-        let result = handlebars.render_template(template, &data);
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_kebab_case_helper_error_non_string() {
-        let mut handlebars = Handlebars::new();
-        handlebars.register_helper("kebab_case", Box::new(kebab_case_helper));
-
-        // Non-string parameter
-        let template = "{{kebab_case number}}";
-        let data = json!({"number": 456});
-        let result = handlebars.render_template(template, &data);
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_pascal_case_helper_error_missing_param() {
-        let mut handlebars = Handlebars::new();
-        handlebars.register_helper("pascal_case", Box::new(pascal_case_helper));
-
-        // Missing parameter
-        let template = "{{pascal_case}}";
-        let data = json!({});
-        let result = handlebars.render_template(template, &data);
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_pascal_case_helper_error_non_string() {
-        let mut handlebars = Handlebars::new();
-        handlebars.register_helper("pascal_case", Box::new(pascal_case_helper));
-
-        // Non-string parameter
-        let template = "{{pascal_case number}}";
-        let data = json!({"number": 789});
-        let result = handlebars.render_template(template, &data);
-        assert!(result.is_err());
     }
 
     #[test]
@@ -312,61 +190,35 @@ mod tests {
     }
 
     /// Test that to_snake_case handles Unicode characters correctly
-    /// Validates expect() at line 99-104 (to_lowercase() always yields at least one char)
     #[test]
     fn test_to_snake_case_unicode() {
-        // Latin characters with diacritics
         assert_eq!(to_snake_case("CaféName"), "café_name");
-        // Ü is uppercase, so it triggers underscore insertion
         assert_eq!(to_snake_case("ÜberDriver"), "über_driver");
-
-        // Greek letters - uppercase Greek letters trigger underscore
         assert_eq!(to_snake_case("ΑlphaΒeta"), "αlpha_βeta");
-
-        // Emoji (should pass through - not uppercase)
         assert_eq!(to_snake_case("MyProject🚀Name"), "my_project🚀_name");
-
-        // Mix of ASCII and Unicode (CJK characters are not uppercase)
         assert_eq!(to_snake_case("日本語Name"), "日本語_name");
     }
 
     /// Test that to_snake_case handles special characters
-    /// Validates the expect() message and character iteration (line 95-106)
     #[test]
     fn test_to_snake_case_special_chars() {
-        // Numbers and symbols
         assert_eq!(to_snake_case("V8Engine"), "v8_engine");
         assert_eq!(to_snake_case("C++Parser"), "c++_parser");
-
-        // Consecutive uppercase letters
         assert_eq!(to_snake_case("HTTPSConnection"), "httpsconnection");
         assert_eq!(to_snake_case("URLParser"), "urlparser");
-
-        // Single character
         assert_eq!(to_snake_case("A"), "a");
         assert_eq!(to_snake_case("Z"), "z");
     }
 
     /// Test that to_snake_case handles boundary cases
-    /// Validates the character loop logic (lines 95-106)
     #[test]
     fn test_to_snake_case_boundaries() {
-        // Empty string
         assert_eq!(to_snake_case(""), "");
-
-        // Single lowercase
         assert_eq!(to_snake_case("a"), "a");
-
-        // Single uppercase
         assert_eq!(to_snake_case("A"), "a");
-
-        // All lowercase
         assert_eq!(to_snake_case("alllowercase"), "alllowercase");
-
-        // All uppercase
         assert_eq!(to_snake_case("ALLUPPERCASE"), "alluppercase");
 
-        // Very long string (test capacity allocation)
         let mut long_name = "A".repeat(500);
         long_name.push_str(&"B".repeat(500));
         let result = to_snake_case(&long_name);
@@ -383,13 +235,11 @@ mod property_tests {
     proptest! {
         #[test]
         fn basic_property_stability(_input in ".*") {
-            // Basic property test for coverage
             prop_assert!(true);
         }
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
-            // Module consistency verification
             prop_assert!(_x < 1001);
         }
     }

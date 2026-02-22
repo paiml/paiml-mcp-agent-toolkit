@@ -6,7 +6,7 @@ use serde_json::json;
 fn test_render_rust_cli_makefile() {
     let renderer = TemplateRenderer::new().unwrap();
 
-    let template = r#"# {{project_name}} - Rust CLI Application Makefile
+    let template = r#"# {{ project_name }} - Rust CLI Application Makefile
 
 .PHONY: all check lint test build run clean help
 
@@ -15,23 +15,23 @@ all: check lint test build
 
 # Type check
 check:
-    cargo check{{#if target}} --target {{target}}{{/if}}
+    cargo check{% if target %} --target {{ target }}{% endif %}
 
 # Lint with clippy
 lint:
-    cargo clippy --all-targets{{#if target}} --target {{target}}{{/if}} -- -D warnings
+    cargo clippy --all-targets{% if target %} --target {{ target }}{% endif %} -- -D warnings
 
 # Run tests
 test:
-    {{#if has_tests}}cargo test{{#if target}} --target {{target}}{{/if}}{{else}}@echo "No tests configured"{{/if}}
+    {% if has_tests %}cargo test{% if target %} --target {{ target }}{% endif %}{% else %}@echo "No tests configured"{% endif %}
 
 # Build release binary
 build:
-    cargo build --release{{#if target}} --target {{target}}{{/if}}
+    cargo build --release{% if target %} --target {{ target }}{% endif %}
 
 # Run the application
 run:
-    cargo run{{#if target}} --target {{target}}{{/if}}{{#if default_args}} -- {{default_args}}{{/if}}
+    cargo run{% if target %} --target {{ target }}{% endif %}{% if default_args %} -- {{ default_args }}{% endif %}
 
 # Clean build artifacts
 clean:
@@ -39,7 +39,7 @@ clean:
 
 # Show help
 help:
-    @echo "{{project_name}} - Available targets:"
+    @echo "{{ project_name }} - Available targets:"
     @echo "  all    - Run check, lint, test, and build"
     @echo "  check  - Type check the code"
     @echo "  lint   - Run clippy linter"
@@ -69,7 +69,7 @@ help:
 fn test_render_python_uv_makefile() {
     let renderer = TemplateRenderer::new().unwrap();
 
-    let template = r#"# {{project_name}} - Python UV CLI Application Makefile
+    let template = r#"# {{ project_name }} - Python UV CLI Application Makefile
 
 .PHONY: all setup check lint test build run clean help
 
@@ -79,21 +79,21 @@ all: check lint test
 # Setup virtual environment
 setup:
     uv venv
-    uv pip install -e .{{#if dev_dependencies}}
-    uv pip install {{#each dev_dependencies}}{{this}} {{/each}}{{/if}}
+    uv pip install -e .{% if dev_dependencies %}
+    uv pip install {% for dep in dev_dependencies %}{{ dep }} {% endfor %}{% endif %}
 
 # Type check with mypy
 check:
-    {{#if has_mypy}}uv run mypy {{source_dir}}{{else}}@echo "Type checking not configured"{{/if}}
+    {% if has_mypy %}uv run mypy {{ source_dir }}{% else %}@echo "Type checking not configured"{% endif %}
 
 # Lint with ruff
 lint:
-    uv run ruff check {{source_dir}}
-    uv run ruff format --check {{source_dir}}
+    uv run ruff check {{ source_dir }}
+    uv run ruff format --check {{ source_dir }}
 
 # Run tests
 test:
-    {{#if has_tests}}uv run pytest{{#if test_args}} {{test_args}}{{/if}}{{else}}@echo "No tests configured"{{/if}}
+    {% if has_tests %}uv run pytest{% if test_args %} {{ test_args }}{% endif %}{% else %}@echo "No tests configured"{% endif %}
 
 # Build distribution
 build:
@@ -101,7 +101,7 @@ build:
 
 # Run the application
 run:
-    uv run {{entry_point}}{{#if default_args}} {{default_args}}{{/if}}
+    uv run {{ entry_point }}{% if default_args %} {{ default_args }}{% endif %}
 
 # Clean build artifacts
 clean:
@@ -111,7 +111,7 @@ clean:
 
 # Show help
 help:
-    @echo "{{project_name}} - Available targets:"
+    @echo "{{ project_name }} - Available targets:"
     @echo "  all    - Run check, lint, and test"
     @echo "  setup  - Setup virtual environment"
     @echo "  check  - Type check with mypy"
@@ -148,7 +148,7 @@ help:
 fn test_render_deno_typescript_makefile() {
     let renderer = TemplateRenderer::new().unwrap();
 
-    let template = r#"# {{project_name}} - Deno TypeScript CLI Application Makefile
+    let template = r#"# {{ project_name }} - Deno TypeScript CLI Application Makefile
 
 .PHONY: all check lint test build run clean help
 
@@ -157,11 +157,11 @@ all: check lint test
 
 # Type check
 check:
-    deno check {{entry_point}}{{#if additional_files}} {{#each additional_files}}{{this}} {{/each}}{{/if}}
+    deno check {{ entry_point }}{% if additional_files %} {% for file in additional_files %}{{ file }} {% endfor %}{% endif %}
 
 # Lint
 lint:
-    deno lint{{#if lint_args}} {{lint_args}}{{/if}}
+    deno lint{% if lint_args %} {{ lint_args }}{% endif %}
 
 # Format check
 format-check:
@@ -173,23 +173,23 @@ format:
 
 # Run tests
 test:
-    {{#if has_tests}}deno test{{#if test_args}} {{test_args}}{{/if}}{{else}}@echo "No tests configured"{{/if}}
+    {% if has_tests %}deno test{% if test_args %} {{ test_args }}{% endif %}{% else %}@echo "No tests configured"{% endif %}
 
 # Build standalone executable
 build:
-    deno compile{{#if permissions}} {{permissions}}{{/if}}{{#if compile_args}} {{compile_args}}{{/if}} -o {{output_name}} {{entry_point}}
+    deno compile{% if permissions %} {{ permissions }}{% endif %}{% if compile_args %} {{ compile_args }}{% endif %} -o {{ output_name }} {{ entry_point }}
 
 # Run the application
 run:
-    deno run{{#if permissions}} {{permissions}}{{/if}} {{entry_point}}{{#if default_args}} {{default_args}}{{/if}}
+    deno run{% if permissions %} {{ permissions }}{% endif %} {{ entry_point }}{% if default_args %} {{ default_args }}{% endif %}
 
 # Clean build artifacts
 clean:
-    rm -f {{output_name}}{{#if additional_outputs}} {{#each additional_outputs}}{{this}} {{/each}}{{/if}}
+    rm -f {{ output_name }}{% if additional_outputs %} {% for output in additional_outputs %}{{ output }} {% endfor %}{% endif %}
 
 # Show help
 help:
-    @echo "{{project_name}} - Available targets:"
+    @echo "{{ project_name }} - Available targets:"
     @echo "  all          - Run check, lint, and test"
     @echo "  check        - Type check TypeScript code"
     @echo "  lint         - Lint code with deno lint"
@@ -231,57 +231,57 @@ help:
 fn test_render_readme_template() {
     let renderer = TemplateRenderer::new().unwrap();
 
-    let template = r#"# {{project_name}}
+    let template = r#"# {{ project_name }}
 
-{{description}}
+{{ description }}
 
 ## Features
 
-{{#each features}}
-- {{this}}
-{{/each}}
+{% for feature in features %}
+- {{ feature }}
+{% endfor %}
 
 ## Installation
 
 ```bash
-{{install_command}}
+{{ install_command }}
 ```
 
 ## Usage
 
 ```bash
-{{usage_example}}
+{{ usage_example }}
 ```
 
-{{#if configuration}}
+{% if configuration %}
 ## Configuration
 
-{{configuration}}
-{{/if}}
+{{ configuration }}
+{% endif %}
 
 ## Development
 
 ### Prerequisites
 
-{{#each prerequisites}}
-- {{this}}
-{{/each}}
+{% for prereq in prerequisites %}
+- {{ prereq }}
+{% endfor %}
 
 ### Building
 
 ```bash
-{{build_command}}
+{{ build_command }}
 ```
 
 ### Testing
 
 ```bash
-{{test_command}}
+{{ test_command }}
 ```
 
 ## License
 
-{{license}}
+{{ license }}
 "#;
 
     let params = json!({
@@ -325,42 +325,42 @@ fn test_render_readme_template() {
 fn test_render_gitignore_template() {
     let renderer = TemplateRenderer::new().unwrap();
 
-    let template = r#"# {{project_type}} .gitignore
+    let template = r#"# {{ project_type }} .gitignore
 
-{{#if ide_files}}
+{% if ide_files %}
 # IDE files
-{{#each ide_files}}
-{{this}}
-{{/each}}
-{{/if}}
+{% for file in ide_files %}
+{{ file }}
+{% endfor %}
+{% endif %}
 
-{{#if build_artifacts}}
+{% if build_artifacts %}
 # Build artifacts
-{{#each build_artifacts}}
-{{this}}
-{{/each}}
-{{/if}}
+{% for artifact in build_artifacts %}
+{{ artifact }}
+{% endfor %}
+{% endif %}
 
-{{#if language_specific}}
-# {{language}} specific
-{{#each language_specific}}
-{{this}}
-{{/each}}
-{{/if}}
+{% if language_specific %}
+# {{ language }} specific
+{% for pattern in language_specific %}
+{{ pattern }}
+{% endfor %}
+{% endif %}
 
-{{#if os_specific}}
+{% if os_specific %}
 # OS specific
-{{#each os_specific}}
-{{this}}
-{{/each}}
-{{/if}}
+{% for pattern in os_specific %}
+{{ pattern }}
+{% endfor %}
+{% endif %}
 
-{{#if custom_patterns}}
+{% if custom_patterns %}
 # Project specific
-{{#each custom_patterns}}
-{{this}}
-{{/each}}
-{{/if}}
+{% for pattern in custom_patterns %}
+{{ pattern }}
+{% endfor %}
+{% endif %}
 "#;
 
     let params = json!({
@@ -413,10 +413,10 @@ fn test_render_gitignore_template() {
 fn test_render_with_conditionals() {
     let renderer = TemplateRenderer::new().unwrap();
 
-    let template = r#"{{#if enable_feature}}Feature is enabled!{{else}}Feature is disabled.{{/if}}
-{{#unless disable_option}}Option is active.{{/unless}}
-{{#if (eq language "rust")}}This is a Rust project.{{/if}}
-{{#if (ne environment "production")}}Not in production.{{/if}}"#;
+    let template = r#"{% if enable_feature %}Feature is enabled!{% else %}Feature is disabled.{% endif %}
+{% if not disable_option %}Option is active.{% endif %}
+{% if language == "rust" %}This is a Rust project.{% endif %}
+{% if environment != "production" %}Not in production.{% endif %}"#;
 
     let params = json!({
         "enable_feature": true,
@@ -437,9 +437,9 @@ fn test_render_with_conditionals() {
 fn test_render_with_missing_parameters() {
     let renderer = TemplateRenderer::new().unwrap();
 
-    let template = r#"Project: {{project_name}}
-Description: {{description}}
-Version: {{version}}"#;
+    let template = r#"Project: {{ project_name }}
+Description: {{ description }}
+Version: {{ version }}"#;
 
     let params = json!({
         "project_name": "Test Project"
@@ -457,12 +457,12 @@ Version: {{version}}"#;
 fn test_render_with_nested_loops() {
     let renderer = TemplateRenderer::new().unwrap();
 
-    let template = r#"{{#each categories}}
-## {{name}}
-{{#each items}}
-- {{this}}
-{{/each}}
-{{/each}}"#;
+    let template = r#"{% for category in categories %}
+## {{ category.name }}
+{% for item in category.items %}
+- {{ item }}
+{% endfor %}
+{% endfor %}"#;
 
     let params = json!({
         "categories": [
@@ -490,11 +490,11 @@ fn test_render_with_nested_loops() {
 fn test_render_with_string_helpers() {
     let renderer = TemplateRenderer::new().unwrap();
 
-    let template = r#"Snake: {{snake_case name}}
-Kebab: {{kebab_case name}}
-Pascal: {{pascal_case name}}
-Year: {{current_year}}
-Date: {{current_date}}"#;
+    let template = r#"Snake: {{ name|snake_case }}
+Kebab: {{ name|kebab_case }}
+Pascal: {{ name|pascal_case }}
+Year: {{ current_year() }}
+Date: {{ current_date() }}"#;
 
     let params = json!({
         "name": "MyAwesomeProject"

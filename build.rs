@@ -95,7 +95,7 @@ fn verify_dependency_versions() {
     let critical_deps = [
         "tokio",      // Async runtime
         "serde",      // Serialization
-        "handlebars", // Template engine
+        "minijinja",  // Template engine
     ];
 
     for dep in &critical_deps {

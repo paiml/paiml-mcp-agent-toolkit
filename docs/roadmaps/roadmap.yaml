@@ -2211,11 +2211,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: Replace handlebars with minijinja
-  status: planned
+  status: inprogress
   priority: high
   assigned_to: null
   created: 2026-02-22T21:14:12Z
-  updated: 2026-02-22T21:14:12Z
+  updated: 2026-02-22T21:33:20.497619693+00:00
   spec: null
   acceptance_criteria:
   - aprender already uses minijinja. handlebars pulls pest parser and ~15 transitive deps. Consolidate on minijinja for lighter dep tree.

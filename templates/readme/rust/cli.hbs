@@ -1,43 +1,43 @@
-# {{project_name}}
+# {{ project_name }}
 
-{{description}}
+{{ description }}
 
 ---
 
 *Generated with [pmat (Pragmatic AI Labs MCP Agent Toolkit)](https://github.com/paiml/pmat)*
 
-{{#if features}}
+{% if features %}
 ## Features
 
-{{#each features}}
-- {{this}}
-{{/each}}
-{{/if}}
+{% for feature in features %}
+- {{ feature }}
+{% endfor %}
+{% endif %}
 
 ## Installation
 
 ### Prerequisites
 
-{{#each prerequisites}}
-- {{this}}
-{{/each}}
+{% for prerequisite in prerequisites %}
+- {{ prerequisite }}
+{% endfor %}
 
 ### From Source
 
 ```bash
-{{install_command}}
+{{ install_command }}
 ```
 
 ### Using Cargo
 
 ```bash
-cargo install {{project_name}}
+cargo install {{ project_name }}
 ```
 
 ## Usage
 
 ```bash
-{{#if usage_example}}{{usage_example}}{{else}}{{project_name}} --help{{/if}}
+{% if usage_example %}{{ usage_example }}{% else %}{{ project_name }} --help{% endif %}
 ```
 
 ## Development
@@ -45,13 +45,13 @@ cargo install {{project_name}}
 ### Building
 
 ```bash
-{{build_command}}
+{{ build_command }}
 ```
 
 ### Testing
 
 ```bash
-{{test_command}}
+{{ test_command }}
 ```
 
 ### Code Quality
@@ -64,7 +64,7 @@ make format  # Format code with rustfmt
 ## Project Structure
 
 ```
-{{project_name}}/
+{{ project_name }}/
 ├── Cargo.toml          # Project manifest
 ├── Makefile           # Build automation
 ├── README.md          # This file
@@ -76,26 +76,26 @@ make format  # Format code with rustfmt
 
 ## Configuration
 
-{{#if configuration}}
-{{configuration}}
-{{else}}
+{% if configuration %}
+{{ configuration }}
+{% else %}
 Configuration can be provided through:
 - Command-line arguments
 - Environment variables
 - Configuration file (if applicable)
 
-Run `{{project_name}} --help` for detailed options.
-{{/if}}
+Run `{{ project_name }} --help` for detailed options.
+{% endif %}
 
-{{#if author}}
+{% if author %}
 ## Author
 
-{{author}}
-{{/if}}
+{{ author }}
+{% endif %}
 
 ## License
 
-This project is licensed under the {{license}} License.
+This project is licensed under the {{ license }} License.
 
 ---
 

@@ -82,7 +82,7 @@ async fn test_get_template_content() {
         .await
         .unwrap();
 
-    // Should be a valid Handlebars template
+    // Should be a valid template
     assert!(content.contains("{{"));
     assert!(content.contains("}}"));
     assert!(content.contains("project_name"));

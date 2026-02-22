@@ -86,7 +86,7 @@ fn benchmark_template_generation(c: &mut Criterion) {
     });
 
     c.bench_function("template_render_with_helpers", |b| {
-        let template = "Project: {{pascal_case project_name}}, Year: {{current_year}}";
+        let template = "Project: {{ project_name|pascal_case }}, Year: {{ current_year() }}";
         let mut context = serde_json::Map::new();
         context.insert("project_name".to_string(), json!("test-project"));
 

@@ -199,17 +199,11 @@ mod coverage_improvement {
 
     #[test]
     fn test_various_helper_functions() {
-        use handlebars::Handlebars;
-        use pmat::utils::helpers::*;
-        use serde_json::json;
+        use pmat::utils::helpers::register_helpers;
+        use minijinja::context;
 
-        // Test helper functions with various inputs
-        let mut handlebars = Handlebars::new();
-        handlebars.register_helper("snake_case", Box::new(snake_case_helper));
-        handlebars.register_helper("kebab_case", Box::new(kebab_case_helper));
-        handlebars.register_helper("pascal_case", Box::new(pascal_case_helper));
-        handlebars.register_helper("current_year", Box::new(current_year_helper));
-        handlebars.register_helper("current_date", Box::new(current_date_helper));
+        let mut env = minijinja::Environment::new();
+        register_helpers(&mut env);
 
         // Test snake_case with various inputs
         let test_cases = vec![
@@ -220,24 +214,19 @@ mod coverage_improvement {
         ];
 
         for (input, expected) in test_cases {
-            let template = "{{snake_case name}}";
-            let data = json!({"name": input});
-            let result = handlebars.render_template(template, &data).unwrap();
+            let tmpl = env.template_from_str("{{ name|snake_case }}").unwrap();
+            let result = tmpl.render(context! { name => input }).unwrap();
             assert_eq!(result, expected);
         }
 
         // Test current year and date helpers
-        let year_template = "{{current_year}}";
-        let year_result = handlebars
-            .render_template(year_template, &json!({}))
-            .unwrap();
+        let tmpl = env.template_from_str("{{ current_year() }}").unwrap();
+        let year_result = tmpl.render(context! {}).unwrap();
         let year: u32 = year_result.parse().expect("Should be valid year");
         assert!((2024..=2100).contains(&year));
 
-        let date_template = "{{current_date}}";
-        let date_result = handlebars
-            .render_template(date_template, &json!({}))
-            .unwrap();
+        let tmpl = env.template_from_str("{{ current_date() }}").unwrap();
+        let date_result = tmpl.render(context! {}).unwrap();
         assert_eq!(date_result.len(), 10); // YYYY-MM-DD format
     }
 

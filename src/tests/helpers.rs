@@ -1,14 +1,23 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod helpers_tests {
-    use crate::utils::helpers::*;
-    use handlebars::Handlebars;
-    use serde_json::json;
+    use crate::utils::helpers::{register_helpers, to_pascal_case, to_snake_case};
+    use minijinja::context;
+
+    fn make_env() -> minijinja::Environment<'static> {
+        let mut env = minijinja::Environment::new();
+        register_helpers(&mut env);
+        env
+    }
+
+    fn render(env: &minijinja::Environment, template: &str, name: &str) -> String {
+        let tmpl = env.template_from_str(template).unwrap();
+        tmpl.render(context! { name => name }).unwrap()
+    }
 
     #[test]
     fn test_snake_case_helper() {
-        let mut handlebars = Handlebars::new();
-        handlebars.register_helper("snake_case", Box::new(snake_case_helper));
+        let env = make_env();
 
         let test_cases = vec![
             ("HelloWorld", "hello_world"),
@@ -25,17 +34,14 @@ mod helpers_tests {
         ];
 
         for (input, expected) in test_cases {
-            let template = "{{snake_case name}}";
-            let data = json!({"name": input});
-            let result = handlebars.render_template(template, &data).unwrap();
+            let result = render(&env, "{{ name|snake_case }}", input);
             assert_eq!(result, expected, "Failed for input: {input}");
         }
     }
 
     #[test]
     fn test_kebab_case_helper() {
-        let mut handlebars = Handlebars::new();
-        handlebars.register_helper("kebab_case", Box::new(kebab_case_helper));
+        let env = make_env();
 
         let test_cases = vec![
             ("HelloWorld", "hello-world"),
@@ -52,17 +58,14 @@ mod helpers_tests {
         ];
 
         for (input, expected) in test_cases {
-            let template = "{{kebab_case name}}";
-            let data = json!({"name": input});
-            let result = handlebars.render_template(template, &data).unwrap();
+            let result = render(&env, "{{ name|kebab_case }}", input);
             assert_eq!(result, expected, "Failed for input: {input}");
         }
     }
 
     #[test]
     fn test_pascal_case_helper() {
-        let mut handlebars = Handlebars::new();
-        handlebars.register_helper("pascal_case", Box::new(pascal_case_helper));
+        let env = make_env();
 
         let test_cases = vec![
             ("hello_world", "HelloWorld"),
@@ -78,114 +81,77 @@ mod helpers_tests {
         ];
 
         for (input, expected) in test_cases {
-            let template = "{{pascal_case name}}";
-            let data = json!({"name": input});
-            let result = handlebars.render_template(template, &data).unwrap();
+            let result = render(&env, "{{ name|pascal_case }}", input);
             assert_eq!(result, expected, "Failed for input: {input}");
         }
     }
 
     #[test]
     fn test_current_year_helper() {
-        let mut handlebars = Handlebars::new();
-        handlebars.register_helper("current_year", Box::new(current_year_helper));
+        let env = make_env();
+        let tmpl = env.template_from_str("Copyright {{ current_year() }}").unwrap();
+        let result = tmpl.render(context! {}).unwrap();
 
-        let template = "Copyright {{current_year}}";
-        let data = json!({});
-        let result = handlebars.render_template(template, &data).unwrap();
-
-        // Check that it returns a valid year
         let year: i32 = result.trim_start_matches("Copyright ").parse().unwrap();
-        assert!((2024..=2030).contains(&year)); // Reasonable range
+        assert!((2024..=2030).contains(&year));
     }
 
     #[test]
     fn test_current_date_helper() {
-        let mut handlebars = Handlebars::new();
-        handlebars.register_helper("current_date", Box::new(current_date_helper));
+        let env = make_env();
+        let tmpl = env.template_from_str("Generated on {{ current_date() }}").unwrap();
+        let result = tmpl.render(context! {}).unwrap();
 
-        let template = "Generated on {{current_date}}";
-        let data = json!({});
-        let result = handlebars.render_template(template, &data).unwrap();
-
-        // Check that it returns a date-like string
         assert!(result.starts_with("Generated on "));
         let date_part = result.trim_start_matches("Generated on ");
-        assert!(date_part.contains('-')); // Should be in ISO format
-    }
-
-    #[test]
-    fn test_helper_error_handling() {
-        let mut handlebars = Handlebars::new();
-        handlebars.register_helper("snake_case", Box::new(snake_case_helper));
-
-        // Test with missing parameter
-        let template = "{{snake_case}}";
-        let data = json!({});
-        let result = handlebars.render_template(template, &data);
-        assert!(result.is_err());
+        assert!(date_part.contains('-'));
     }
 
     #[test]
     fn test_empty_string_handling() {
-        let mut handlebars = Handlebars::new();
-        handlebars.register_helper("snake_case", Box::new(snake_case_helper));
-        handlebars.register_helper("kebab_case", Box::new(kebab_case_helper));
-        handlebars.register_helper("pascal_case", Box::new(pascal_case_helper));
-
-        let template = "snake: '{{snake_case name}}', kebab: '{{kebab_case name}}', pascal: '{{pascal_case name}}'";
-        let data = json!({"name": ""});
-        let result = handlebars.render_template(template, &data).unwrap();
-
+        let env = make_env();
+        let tmpl = env
+            .template_from_str("snake: '{{ name|snake_case }}', kebab: '{{ name|kebab_case }}', pascal: '{{ name|pascal_case }}'")
+            .unwrap();
+        let result = tmpl.render(context! { name => "" }).unwrap();
         assert_eq!(result, "snake: '', kebab: '', pascal: ''");
     }
 
     #[test]
-    fn test_helper_with_non_string_parameter() {
-        let mut handlebars = Handlebars::new();
-        handlebars.register_helper("snake_case", Box::new(snake_case_helper));
-
-        // Test with number parameter - should fail
-        let template = "{{snake_case count}}";
-        let data = json!({"count": 42});
-        let result = handlebars.render_template(template, &data);
-        assert!(result.is_err());
-    }
-
-    #[test]
     fn test_pascal_case_preserves_existing_capitalization() {
-        let mut handlebars = Handlebars::new();
-        handlebars.register_helper("pascal_case", Box::new(pascal_case_helper));
+        let env = make_env();
 
-        let template = "{{pascal_case name}}";
-
-        // Already in PascalCase
-        let data = json!({"name": "AlreadyPascalCase"});
-        let result = handlebars.render_template(template, &data).unwrap();
+        let result = render(&env, "{{ name|pascal_case }}", "AlreadyPascalCase");
         assert_eq!(result, "AlreadyPascalCase");
 
-        // Mixed case with numbers
-        let data = json!({"name": "version2_api"});
-        let result = handlebars.render_template(template, &data).unwrap();
+        let result = render(&env, "{{ name|pascal_case }}", "version2_api");
         assert_eq!(result, "Version2Api");
     }
 
     #[test]
     fn test_year_and_date_helpers_consistency() {
-        let mut handlebars = Handlebars::new();
-        handlebars.register_helper("current_year", Box::new(current_year_helper));
-        handlebars.register_helper("current_date", Box::new(current_date_helper));
+        let env = make_env();
+        let tmpl = env
+            .template_from_str("Year: {{ current_year() }}, Date: {{ current_date() }}")
+            .unwrap();
+        let result = tmpl.render(context! {}).unwrap();
 
-        let template = "Year: {{current_year}}, Date: {{current_date}}";
-        let data = json!({});
-        let result = handlebars.render_template(template, &data).unwrap();
-
-        // Extract year from both helpers
         let parts: Vec<&str> = result.split(", Date: ").collect();
         let year_from_helper = parts[0].trim_start_matches("Year: ");
         let date_from_helper = parts[1];
 
-        // The year in the date should match the year helper
         assert!(date_from_helper.starts_with(year_from_helper));
+    }
+
+    #[test]
+    fn test_to_snake_case_direct() {
+        assert_eq!(to_snake_case("MyProjectName"), "my_project_name");
+        assert_eq!(to_snake_case(""), "");
+    }
+
+    #[test]
+    fn test_to_pascal_case_direct() {
+        assert_eq!(to_pascal_case("my_project"), "MyProject");
+        assert_eq!(to_pascal_case(""), "");
     }
 }

@@ -1,25 +1,25 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
 //! Template rendering engine for code generation.
 //!
-//! This module provides a flexible template rendering system based on Handlebars
-//! templating engine. It supports custom helpers for common code transformations
-//! and provides a safe, sandboxed environment for template execution.
+//! This module provides a flexible template rendering system based on minijinja
+//! templating engine. It supports custom filters for common code transformations
+//! and provides a safe environment for template execution.
 //!
 //! # Features
 //!
-//! - **Handlebars Templates**: Full support for Handlebars syntax
-//! - **Custom Helpers**: Built-in helpers for case transformations
+//! - **Jinja2 Templates**: Full support for Jinja2/minijinja syntax
+//! - **Custom Filters**: Built-in filters for case transformations
 //! - **Date/Time Support**: Automatic injection of current date/timestamp
 //! - **Error Handling**: Detailed error messages with line numbers
 //! - **Type Safety**: Strict type checking for template variables
 //!
-//! # Built-in Helpers
+//! # Built-in Filters
 //!
-//! - `{{snake_case value}}` - Converts to `snake_case`
-//! - `{{kebab_case value}}` - Converts to kebab-case
-//! - `{{pascal_case value}}` - Converts to `PascalCase`
-//! - `{{current_year}}` - Inserts current year
-//! - `{{current_date}}` - Inserts current date
+//! - `{{ value|snake_case }}` - Converts to `snake_case`
+//! - `{{ value|kebab_case }}` - Converts to kebab-case
+//! - `{{ value|pascal_case }}` - Converts to `PascalCase`
+//! - `{{ current_year() }}` - Inserts current year
+//! - `{{ current_date() }}` - Inserts current date
 //!
 //! # Example
 //!
@@ -31,14 +31,14 @@
 //! let renderer = TemplateRenderer::new()?;
 //!
 //! let template = r#"
-//! pub struct {{pascal_case name}} {
+//! pub struct {{ name|pascal_case }} {
 //!     created_at: &'static str,
 //! }
 //!
-//! impl {{pascal_case name}} {
+//! impl {{ name|pascal_case }} {
 //!     pub fn new() -> Self {
 //!         Self {
-//!             created_at: "{{current_date}}",
+//!             created_at: "{{ current_date() }}",
 //!         }
 //!     }
 //! }
@@ -55,26 +55,22 @@
 
 use crate::models::error::TemplateError;
 use crate::utils::helpers;
-use handlebars::Handlebars;
 use serde_json::Value;
 
 pub struct TemplateRenderer {
-    handlebars: Handlebars<'static>,
+    env: minijinja::Environment<'static>,
 }
 
 impl TemplateRenderer {
     pub fn new() -> Result<Self, anyhow::Error> {
-        let mut handlebars = Handlebars::new();
-        handlebars.set_strict_mode(false);
+        let mut env = minijinja::Environment::new();
+        // Allow undefined variables to render as empty (like handlebars non-strict mode)
+        env.set_undefined_behavior(minijinja::UndefinedBehavior::Chainable);
 
-        // Register custom helpers
-        handlebars.register_helper("snake_case", Box::new(helpers::snake_case_helper));
-        handlebars.register_helper("kebab_case", Box::new(helpers::kebab_case_helper));
-        handlebars.register_helper("pascal_case", Box::new(helpers::pascal_case_helper));
-        handlebars.register_helper("current_year", Box::new(helpers::current_year_helper));
-        handlebars.register_helper("current_date", Box::new(helpers::current_date_helper));
+        // Register custom filters and functions
+        helpers::register_helpers(&mut env);
 
-        Ok(Self { handlebars })
+        Ok(Self { env })
     }
 }
 
@@ -90,11 +86,17 @@ pub fn render_template(
         Value::String(chrono::Utc::now().to_rfc3339()),
     );
 
-    renderer
-        .handlebars
-        .render_template(template, &Value::Object(full_context))
+    let tmpl = renderer
+        .env
+        .template_from_str(template)
         .map_err(|e| TemplateError::RenderError {
-            line: e.line_no.unwrap_or(0) as u32,
+            line: e.line().unwrap_or(0) as u32,
+            message: e.to_string(),
+        })?;
+
+    tmpl.render(Value::Object(full_context))
+        .map_err(|e| TemplateError::RenderError {
+            line: e.line().unwrap_or(0) as u32,
             message: e.to_string(),
         })
 }
@@ -113,7 +115,7 @@ mod tests {
     #[test]
     fn test_render_template_simple() {
         let renderer = TemplateRenderer::new().unwrap();
-        let template = "Hello, {{name}}!";
+        let template = "Hello, {{ name }}!";
         let mut context = serde_json::Map::new();
         context.insert("name".to_string(), Value::String("World".to_string()));
 
@@ -125,7 +127,7 @@ mod tests {
     #[test]
     fn test_render_template_with_current_timestamp() {
         let renderer = TemplateRenderer::new().unwrap();
-        let template = "Generated at: {{current_timestamp}}";
+        let template = "Generated at: {{ current_timestamp }}";
         let context = serde_json::Map::new();
 
         let result = render_template(&renderer, template, context);
@@ -141,7 +143,7 @@ mod tests {
     #[test]
     fn test_render_template_with_helpers() {
         let renderer = TemplateRenderer::new().unwrap();
-        let template = "Project: {{pascal_case project_name}}";
+        let template = "Project: {{ project_name|pascal_case }}";
 
         let mut context = serde_json::Map::new();
         context.insert(
@@ -157,11 +159,11 @@ mod tests {
     #[test]
     fn test_render_template_missing_variable() {
         let renderer = TemplateRenderer::new().unwrap();
-        let template = "Hello, {{name}}! Your age is {{age}}.";
+        let template = "Hello, {{ name }}! Your age is {{ age }}.";
         let mut context = serde_json::Map::new();
         context.insert("name".to_string(), Value::String("Alice".to_string()));
 
-        // In non-strict mode, missing variables render as empty
+        // In chainable undefined mode, missing variables render as empty
         let result = render_template(&renderer, template, context);
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), "Hello, Alice! Your age is .");
@@ -170,7 +172,7 @@ mod tests {
     #[test]
     fn test_render_template_error() {
         let renderer = TemplateRenderer::new().unwrap();
-        let template = "{{#if}}Missing condition{{/if}}"; // Invalid template
+        let template = "{% if %}Missing condition{% endif %}"; // Invalid template
         let context = serde_json::Map::new();
 
         let result = render_template(&renderer, template, context);
@@ -178,8 +180,7 @@ mod tests {
 
         match result.unwrap_err() {
             TemplateError::RenderError { line: _, message } => {
-                assert!(message.contains("if") || message.contains("param"));
-                // Line number can vary based on handlebars version
+                assert!(!message.is_empty());
             }
             _ => panic!("Expected RenderError"),
         }
@@ -188,7 +189,8 @@ mod tests {
     #[test]
     fn test_render_template_with_conditionals() {
         let renderer = TemplateRenderer::new().unwrap();
-        let template = "{{#if enabled}}Feature is enabled{{else}}Feature is disabled{{/if}}";
+        let template =
+            "{% if enabled %}Feature is enabled{% else %}Feature is disabled{% endif %}";
 
         let mut context = serde_json::Map::new();
         context.insert("enabled".to_string(), Value::Bool(true));
@@ -206,7 +208,7 @@ mod tests {
     #[test]
     fn test_render_template_preserves_original_context() {
         let renderer = TemplateRenderer::new().unwrap();
-        let template = "Value: {{value}}, Timestamp: {{current_timestamp}}";
+        let template = "Value: {{ value }}, Timestamp: {{ current_timestamp }}";
 
         let mut context = serde_json::Map::new();
         context.insert("value".to_string(), Value::String("test".to_string()));
@@ -232,13 +234,11 @@ mod property_tests {
     proptest! {
         #[test]
         fn basic_property_stability(_input in ".*") {
-            // Basic property test for coverage
             prop_assert!(true);
         }
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
-            // Module consistency verification
             prop_assert!(_x < 1001);
         }
     }

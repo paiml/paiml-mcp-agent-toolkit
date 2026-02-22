@@ -69,7 +69,7 @@ async fn test_handle_resource_read_success() {
     assert!(content["text"]
         .as_str()
         .unwrap()
-        .contains("{{project_name}}"));
+        .contains("{{ project_name }}"));
 }
 
 #[tokio::test]

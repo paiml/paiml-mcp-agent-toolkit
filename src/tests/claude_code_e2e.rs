@@ -85,7 +85,7 @@ async fn test_claude_code_rust_cli_workflow() {
             }
             "gitignore" => {
                 assert_eq!(filename, "my-rust-cli/.gitignore");
-                // The Rust gitignore template uses handlebars variables with defaults
+                // The Rust gitignore template uses template variables with defaults
                 // It may show "Build artifacts" section header or the actual patterns
                 assert!(content.contains("target/") || content.contains("Build artifacts"));
             }
