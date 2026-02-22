@@ -553,8 +553,10 @@ pub async fn check_entropy_with_excludes(
     Ok(violations)
 }
 
-/// Load max_pattern_repetition from `.pmat-gates.toml` or `.pmat-metrics.toml` (#219).
+/// Load max_pattern_repetition from config files (#219, #227).
+/// Priority: `.pmat-gates.toml` > `.pmat-metrics.toml` > `pmat.toml [quality]` > default (5).
 fn load_max_pattern_repetition(project_path: &Path) -> usize {
+    // Highest priority: .pmat-gates.toml and .pmat-metrics.toml [entropy] section
     for filename in &[".pmat-gates.toml", ".pmat-metrics.toml"] {
         let path = project_path.join(filename);
         if let Ok(content) = std::fs::read_to_string(&path) {
@@ -566,6 +568,18 @@ fn load_max_pattern_repetition(project_path: &Path) -> usize {
                 {
                     return val.max(1) as usize;
                 }
+            }
+        }
+    }
+    // Lowest priority: pmat.toml [quality] section (#227)
+    if let Ok(content) = std::fs::read_to_string(project_path.join("pmat.toml")) {
+        if let Ok(table) = content.parse::<toml::Table>() {
+            if let Some(val) = table
+                .get("quality")
+                .and_then(|t| t.get("max_pattern_repetition"))
+                .and_then(|v| v.as_integer())
+            {
+                return val.max(1) as usize;
             }
         }
     }

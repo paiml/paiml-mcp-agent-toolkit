@@ -1085,22 +1085,28 @@ fn load_provability_threshold(project_path: &Path) -> f64 {
         .unwrap_or(DEFAULT_PROVABILITY_THRESHOLD)
 }
 
-/// Load entropy min_pattern_diversity from config files (#194, #219).
+/// Load entropy min_pattern_diversity from config files (#194, #219, #227).
 ///
-/// Priority: `.pmat-gates.toml` > `.pmat-metrics.toml` > CLI default.
-/// Reads from `[entropy] min_pattern_diversity` or `[thresholds] entropy_min_diversity`.
+/// Priority: `.pmat-gates.toml` > `.pmat-metrics.toml` > `pmat.toml` > CLI default.
+/// Reads from `[entropy] min_pattern_diversity`, `[thresholds] entropy_min_diversity`,
+/// or `[quality] min_pattern_diversity`.
 /// Clamps result to 0.0-1.0 range to prevent unreachable thresholds.
 fn load_entropy_threshold(project_path: &Path, cli_value: f64) -> f64 {
     let mut result = cli_value;
 
-    // Load from .pmat-metrics.toml (lower priority)
+    // Load from pmat.toml [quality] (lowest config priority, #227)
+    if let Some(val) = read_entropy_threshold_from_pmat_toml(project_path) {
+        result = val;
+    }
+
+    // Load from .pmat-metrics.toml (medium priority)
     if let Some(val) = read_entropy_threshold_from_file(
         &project_path.join(".pmat-metrics.toml"),
     ) {
         result = val;
     }
 
-    // Load from .pmat-gates.toml (higher priority, #219)
+    // Load from .pmat-gates.toml (highest priority, #219)
     if let Some(val) = read_entropy_threshold_from_file(
         &project_path.join(".pmat-gates.toml"),
     ) {
@@ -1109,6 +1115,16 @@ fn load_entropy_threshold(project_path: &Path, cli_value: f64) -> f64 {
 
     // Clamp to valid range (#219: prevent 200% unreachable thresholds)
     result.clamp(0.0, 1.0)
+}
+
+/// Read entropy threshold from `pmat.toml [quality] min_pattern_diversity` (#227).
+fn read_entropy_threshold_from_pmat_toml(project_path: &Path) -> Option<f64> {
+    let content = std::fs::read_to_string(project_path.join("pmat.toml")).ok()?;
+    let table: toml::Table = content.parse().ok()?;
+    table
+        .get("quality")
+        .and_then(|t| t.get("min_pattern_diversity"))
+        .and_then(|v| v.as_float())
 }
 
 /// Read entropy threshold from a single TOML file.
@@ -1140,17 +1156,30 @@ struct EntropyGateConfig {
     exclude: Vec<String>,
 }
 
-/// Load entropy gate configuration from `.pmat-gates.toml` (#220).
+/// Load entropy gate configuration from `.pmat-gates.toml`, with `pmat.toml` fallback (#220, #227).
 ///
-/// Reads `[entropy]` section: `enabled`, `max_violations`, `exclude`.
+/// Priority: `.pmat-gates.toml [entropy]` > `pmat.toml [quality]` > defaults.
+/// Reads `enabled`, `max_violations`, `exclude` from `[entropy]` section.
 fn load_entropy_gate_config(project_path: &Path) -> EntropyGateConfig {
+    // Start with pmat.toml [quality] max_entropy_violations as lowest priority (#227)
+    let mut max_violations_fallback: Option<usize> = None;
+    if let Ok(content) = std::fs::read_to_string(project_path.join("pmat.toml")) {
+        if let Ok(table) = content.parse::<toml::Table>() {
+            max_violations_fallback = table
+                .get("quality")
+                .and_then(|t| t.get("max_entropy_violations"))
+                .and_then(|v| v.as_integer())
+                .map(|v| v.max(0) as usize);
+        }
+    }
+
     let path = project_path.join(".pmat-gates.toml");
     let content = match std::fs::read_to_string(&path) {
         Ok(c) => c,
         Err(_) => {
             return EntropyGateConfig {
                 enabled: true,
-                max_violations: None,
+                max_violations: max_violations_fallback,
                 exclude: Vec::new(),
             }
         }
@@ -1160,7 +1189,7 @@ fn load_entropy_gate_config(project_path: &Path) -> EntropyGateConfig {
         Err(_) => {
             return EntropyGateConfig {
                 enabled: true,
-                max_violations: None,
+                max_violations: max_violations_fallback,
                 exclude: Vec::new(),
             }
         }
@@ -1173,10 +1202,12 @@ fn load_entropy_gate_config(project_path: &Path) -> EntropyGateConfig {
         .and_then(|v| v.as_bool())
         .unwrap_or(true);
 
+    // .pmat-gates.toml overrides pmat.toml if present
     let max_violations = entropy
         .and_then(|t| t.get("max_violations"))
         .and_then(|v| v.as_integer())
-        .map(|v| v.max(0) as usize);
+        .map(|v| v.max(0) as usize)
+        .or(max_violations_fallback);
 
     let exclude = entropy
         .and_then(|t| t.get("exclude"))
