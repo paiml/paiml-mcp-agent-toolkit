@@ -15,6 +15,10 @@ allow_satd = false
 require_docs = true
 lint_compliance = true
 fail_on_violation = true
+# Entropy analysis thresholds (#227)
+min_pattern_diversity = 0.30
+max_pattern_repetition = 5
+max_entropy_violations = 25
 
 [analysis]
 include_patterns = [

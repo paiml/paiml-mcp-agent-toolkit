@@ -1,5 +1,5 @@
 roadmap_version: '1.0'
-github_enabled: "true"
+github_enabled: true
 github_repo: paiml/paiml-mcp-agent-toolkit
 roadmap:
 - id: ml-model-serialization
@@ -1996,7 +1996,7 @@ roadmap:
   updated: 2026-02-14T11:44:48Z
   spec: null
   acceptance_criteria:
-  - 'Detect file discovery that only checks a single exact path without fallback search. Motivated by aprender GH-216 where GGUF-to-APR conversion failed to find tokenizer.json when not a direct sibling. Pattern: Path::join() + .exists() without parent-dir search, glob fallback, or recursive discovery.' # pmat:ignore
+  - 'Detect file discovery that only checks a single exact path without fallback search. Motivated by aprender GH-216 where GGUF-to-APR conversion failed to find tokenizer.json when not a direct sibling. Pattern: Path::join() + .exists() without parent-dir search, glob fallback, or recursive discovery.'
   phases: []
   subtasks: []
   estimated_effort: null
@@ -2085,6 +2085,86 @@ roadmap:
   assigned_to: null
   created: 2026-02-14T18:50:02.909819568+00:00
   updated: 2026-02-14T19:10:05.708536166+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: GH-235
+  github_issue: 235
+  item_type: task
+  title: 'pmat query: add --extract-candidates flag for large file refactoring'
+  status: done
+  priority: medium
+  assigned_to: null
+  created: 2026-02-22T10:35:47.549259569+00:00
+  updated: 2026-02-22T13:08:01.953568265+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: GH-228
+  github_issue: 228
+  item_type: task
+  title: 'quality-gate: Coverage reports 75% when actual coverage is 97.7%'
+  status: done
+  priority: medium
+  assigned_to: null
+  created: 2026-02-22T12:33:08.585577412+00:00
+  updated: 2026-02-22T13:08:01.953568265+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: GH-230
+  github_issue: 230
+  item_type: task
+  title: quality-gate --format json mixes progress lines into JSON output
+  status: done
+  priority: medium
+  assigned_to: null
+  created: 2026-02-22T12:40:35.848576490+00:00
+  updated: 2026-02-22T13:08:01.953568265+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: GH-226
+  github_issue: 226
+  item_type: task
+  title: 'quality-gate entropy: No explainability — cannot identify specific repeated patterns'
+  status: done
+  priority: medium
+  assigned_to: null
+  created: 2026-02-22T13:08:01.953568265+00:00
+  updated: 2026-02-22T13:08:01.953568265+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: GH-233
+  github_issue: 233
+  item_type: task
+  title: 'pmat query --suggest-rename: _partN pattern matching bug'
+  status: done
+  priority: high
+  assigned_to: null
+  created: 2026-02-19T18:13:59+00:00
+  updated: 2026-02-22T13:30:00+00:00
   spec: null
   acceptance_criteria: []
   phases: []
