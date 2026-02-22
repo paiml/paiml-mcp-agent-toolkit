@@ -68,7 +68,7 @@ aprender = "0.26.3"  # PAIML next-gen ML (TDG 94.1/100, zero deps, SafeTensors s
 
 # High-Performance Compute (SIMD/GPU)
 trueno = { version = "0.15", optional = true }
-trueno-db = { version = "0.3.14", optional = true, default-features = false }
+trueno-db = { version = "0.3.15", optional = true, default-features = false }
 
 # Semantic Search Stack (Pure Rust - Zero API Keys)
 # See: docs/specifications/semantic-search-feature.md
