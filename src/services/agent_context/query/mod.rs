@@ -7,6 +7,7 @@ mod coverage;
 pub(crate) mod coverage_exclusion;
 mod engine;
 mod enrichment;
+pub(crate) mod extract_candidates;
 mod formatters;
 pub(crate) mod ptx_diagnostics;
 pub(crate) mod ptx_flow;

@@ -333,6 +333,9 @@ mod tests {
             coverage_exclusion: CoverageExclusion::None,
             coverage_excluded: false,
             cross_project_callers: 0,
+            io_classification: String::new(),
+            io_patterns: Vec::new(),
+            suggested_module: String::new(),
         }
     }
 

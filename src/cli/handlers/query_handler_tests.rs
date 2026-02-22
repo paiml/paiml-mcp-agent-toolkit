@@ -58,6 +58,8 @@ mod tests {
             false,  // apply
             false,  // docs
             false,  // docs_only
+            false,  // extract_candidates
+            500,    // max_module_lines
         )
         .await;
 
@@ -133,6 +135,8 @@ fn main() {
             false,  // apply
             false,  // docs
             false,  // docs_only
+            false,  // extract_candidates
+            500,    // max_module_lines
         )
         .await;
 

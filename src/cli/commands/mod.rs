@@ -416,6 +416,14 @@ pub enum Commands {
         /// Search only documents, skip code index
         #[arg(long)]
         docs_only: bool,
+
+        /// Scan functions for I/O patterns and suggest module extractions
+        #[arg(long)]
+        extract_candidates: bool,
+
+        /// Maximum lines of code per suggested extraction module (used with --extract-candidates)
+        #[arg(long, value_name = "LINES", default_value_t = 500)]
+        max_module_lines: usize,
     },
 
     /// Analyze code metrics and patterns

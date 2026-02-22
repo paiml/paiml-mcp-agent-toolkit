@@ -155,6 +155,8 @@ impl CommandDispatcher {
                 apply,
                 no_docs,
                 docs_only,
+                extract_candidates,
+                max_module_lines,
             } => {
                 // Default is to show code; --summary disables it
                 let show_code = !summary;
@@ -205,6 +207,8 @@ impl CommandDispatcher {
                     apply,
                     effective_docs,
                     docs_only,
+                    extract_candidates,
+                    max_module_lines,
                 )
                 .await
             }

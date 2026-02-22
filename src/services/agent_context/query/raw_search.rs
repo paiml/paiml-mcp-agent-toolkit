@@ -708,6 +708,9 @@ mod tests {
             coverage_exclusion: Default::default(),
             coverage_excluded: false,
             cross_project_callers: 0,
+            io_classification: String::new(),
+            io_patterns: Vec::new(),
+            suggested_module: String::new(),
         }];
 
         // Line 6 is within the function (5-7)

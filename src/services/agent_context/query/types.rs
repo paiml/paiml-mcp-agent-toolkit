@@ -206,6 +206,15 @@ pub struct QueryResult {
     /// Number of callers from different projects (workspace cross-project search)
     #[serde(default, skip_serializing_if = "is_zero_u32")]
     pub cross_project_callers: u32,
+    /// I/O classification: "PURE" or "IO"
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub io_classification: String,
+    /// Detected I/O patterns (PRINT, FS, PROCESS, etc.)
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub io_patterns: Vec<String>,
+    /// Suggested extraction module name
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub suggested_module: String,
 }
 
 fn is_zero_f32(v: &f32) -> bool {
@@ -261,6 +270,9 @@ impl QueryResult {
             coverage_exclusion: CoverageExclusion::None,
             coverage_excluded: false,
             cross_project_callers: 0,
+            io_classification: String::new(),
+            io_patterns: Vec::new(),
+            suggested_module: String::new(),
         }
     }
 

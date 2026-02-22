@@ -43,6 +43,9 @@ fn make_result(file_path: &str, function_name: &str) -> QueryResult {
         coverage_exclusion: CoverageExclusion::None,
         coverage_excluded: false,
         cross_project_callers: 0,
+        io_classification: String::new(),
+        io_patterns: Vec::new(),
+        suggested_module: String::new(),
     }
 }
 
