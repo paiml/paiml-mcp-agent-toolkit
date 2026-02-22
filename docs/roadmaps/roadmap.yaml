@@ -2230,7 +2230,7 @@ roadmap:
   github_issue: null
   item_type: task
   title: Feature-gate arrow/parquet in trueno-db
-  status: inprogress
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-02-22T21:14:13Z
