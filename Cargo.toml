@@ -64,16 +64,16 @@ libc = { version = "0.2", optional = true }
 # Migration to aprender complete (Sprint 45)
 # Graph algorithms enhanced (Sprint 46) - added 8 new centrality & structural stats
 # See: docs/specifications/aprender-ml-integration.md
-aprender = "0.25.4"  # PAIML next-gen ML (TDG 94.1/100, zero deps, SafeTensors support, text vectorization, LDA topic modeling)
+aprender = "0.26"  # PAIML next-gen ML (TDG 94.1/100, zero deps, SafeTensors support, text vectorization, LDA topic modeling)
 
 # High-Performance Compute (SIMD/GPU)
-trueno = { version = "0.14.0", optional = true }
+trueno = { version = "0.15", optional = true }
 trueno-db = { version = "0.3.13", optional = true, default-features = false }
 
 # Semantic Search Stack (Pure Rust - Zero API Keys)
 # See: docs/specifications/semantic-search-feature.md
 trueno-graph = "0.1.11"  # GPU-first graph database (CSR, PageRank, Louvain)
-trueno-rag = "0.1.10"  # Pure-Rust RAG pipeline with VectorStore (replaces TursoVectorDB rusqlite implementation)
+trueno-rag = "0.2"  # Pure-Rust RAG pipeline with VectorStore (replaces TursoVectorDB rusqlite implementation)
 trueno-viz = { version = "0.1.20", optional = true, features = ["terminal", "graph"] }  # Terminal graph visualization
 
 # Analytics GPU dependencies (optional, gated by analytics-gpu feature)
@@ -203,7 +203,7 @@ tree-sitter-rust = { version = "0.23", optional = true }
 # tree-sitter-haskell = { version = "0.23", optional = true }
 # tree-sitter-ocaml = { version = "0.23", optional = true }
 # For Ruchy language support (Ruby alternative parser)
-ruchy = { version = "4.1", optional = true }
+ruchy = { version = "4.2", optional = true }
 # logos removed - unused (PMAT-478 audit)
 # For Kotlin parsing (conditional) - DISABLED due to tree-sitter version conflict
 # tree-sitter-kotlin = { version = "0.3.8", optional = true }
