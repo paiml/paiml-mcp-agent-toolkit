@@ -72,9 +72,9 @@ trueno-db = { version = "0.3.13", optional = true, default-features = false }
 
 # Semantic Search Stack (Pure Rust - Zero API Keys)
 # See: docs/specifications/semantic-search-feature.md
-trueno-graph = "0.1.11"  # GPU-first graph database (CSR, PageRank, Louvain)
+trueno-graph = "0.1.15"  # GPU-first graph database (CSR, PageRank, Louvain)
 trueno-rag = "0.2"  # Pure-Rust RAG pipeline with VectorStore (replaces TursoVectorDB rusqlite implementation)
-trueno-viz = { version = "0.1.20", optional = true, features = ["terminal", "graph"] }  # Terminal graph visualization
+trueno-viz = { version = "0.1.24", optional = true, features = ["terminal", "graph"] }  # Terminal graph visualization
 
 # Analytics GPU dependencies (optional, gated by analytics-gpu feature)
 # Issue #79: Feature-gated architecture to prevent +3.8 MB binary bloat
@@ -97,7 +97,7 @@ handlebars = { version = "6.3", default-features = false, features = ["string_he
 
 # MCP SDK - now core dependency for MCP server functionality
 # Sprint 46 Phase 4: Switched from "full" to explicit features (saves 150-250 KB)
-pmcp = { version = "1.9.4", features = ["websocket", "http", "sse", "validation"] }
+pmcp = { version = "1.10", features = ["websocket", "http", "sse", "validation"] }
 
 # Caching
 lru = { version = "0.16", features = ["hashbrown"] }

@@ -367,11 +367,13 @@ fn build_test_index() -> AgentContextIndex {
 }
 
 #[test]
-fn test_query_empty_query_returns_error() {
+fn test_query_empty_query_browses_all() {
     let index = build_test_index();
     let result = index.query("", QueryOptions::default());
-    assert!(result.is_err());
-    assert!(result.unwrap_err().contains("empty"));
+    assert!(result.is_ok(), "Empty query should return browse results");
+    let results = result.unwrap();
+    // Browse mode returns functions sorted by PageRank
+    assert!(!results.is_empty());
 }
 
 #[test]

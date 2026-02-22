@@ -8259,9 +8259,9 @@ dependencies = [
 
 [[package]]
 name = "trueno-graph"
-version = "0.1.14"
+version = "0.1.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "876ef5b716188ef2e381fba444a52dd06f0e5ac3ebb53603bcc7bea0931a05a9"
+checksum = "43e881cfbf40c8a3655acabf40576b91596a0b500181584f5763461722835ec6"
 dependencies = [
  "anyhow",
  "aprender 0.25.4",
@@ -8317,9 +8317,9 @@ dependencies = [
 
 [[package]]
 name = "trueno-viz"
-version = "0.1.23"
+version = "0.1.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "53b27307121e938edf855717fdd0541a7d0654a8c8c795b6e325c41707ec2f53"
+checksum = "6ba82bcf1867ecdbc776777284ca7538b3e9f2a05314ad2b50a98e3291ecd0fa"
 dependencies = [
  "base64 0.22.1",
  "libc",
