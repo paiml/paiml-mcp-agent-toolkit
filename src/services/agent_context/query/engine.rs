@@ -76,15 +76,16 @@ impl AgentContextIndex {
     /// Ranked list of matching functions
     #[allow(clippy::cast_possible_truncation)]
     pub fn query(&self, query: &str, options: QueryOptions) -> Result<Vec<QueryResult>, String> {
-        if query.trim().is_empty() {
-            return Err("Query cannot be empty".to_string());
-        }
-
         let limit = if options.limit == 0 {
             10
         } else {
             options.limit
         };
+
+        // Empty query → browse all functions sorted by PageRank (for enrichment-only flags)
+        if query.trim().is_empty() {
+            return Ok(self.browse_all(limit, options.include_source));
+        }
 
         // Parse scope prefixes
         let (file_filter, fn_filter, remaining_query) = parse_query_prefixes(query);
@@ -269,6 +270,26 @@ impl AgentContextIndex {
             .collect();
 
         Ok(results)
+    }
+
+    /// Browse all functions sorted by PageRank (for enrichment-only queries).
+    fn browse_all(&self, limit: usize, include_source: bool) -> Vec<QueryResult> {
+        let mut indexed: Vec<(usize, f32)> = self
+            .graph_metrics
+            .iter()
+            .enumerate()
+            .map(|(i, m)| (i, m.pagerank))
+            .collect();
+        indexed.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+        indexed
+            .into_iter()
+            .take(limit)
+            .filter_map(|(idx, pr)| {
+                self.functions.get(idx).map(|f| {
+                    QueryResult::from_entry_with_context(f, idx, self, pr, include_source)
+                })
+            })
+            .collect()
     }
 
     /// Get function by file and name
