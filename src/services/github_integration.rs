@@ -1,4 +1,5 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
+#![cfg(feature = "http-client")]
 //! GitHub integration for fetching and parsing issues
 //!
 //! This module provides functionality to fetch GitHub issues and extract

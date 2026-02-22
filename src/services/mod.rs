@@ -179,6 +179,7 @@ pub mod git_analysis;
 pub mod git_clone;
 pub mod git_history; // GH-RAG: Git history RAG integration (separate index for commit messages)
 pub mod git_test_filter; // Git-aware test filtering for targeted quality gates
+#[cfg(feature = "http-client")]
 pub mod github_integration;
 pub mod hallucination_detector; // Sprint 37: Semantic entropy-based hallucination detection
 pub mod incremental_churn;

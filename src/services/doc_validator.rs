@@ -8,12 +8,15 @@ use anyhow::{Context, Result};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
-use std::time::{Duration, Instant};
+use std::time::Instant;
+#[cfg(feature = "http-client")]
+use std::time::Duration;
 use walkdir::WalkDir;
 
 /// Core validator that orchestrates link checking
 pub struct DocValidator {
     config: ValidatorConfig,
+    #[cfg(feature = "http-client")]
     http_client: Option<reqwest::Client>,
 }
 
@@ -243,6 +246,7 @@ fn normalize_path(path: &Path) -> PathBuf {
 impl DocValidator {
     /// Creates a new validator with default configuration
     pub fn new(config: ValidatorConfig) -> Self {
+        #[cfg(feature = "http-client")]
         let http_client = if config.http_timeout_ms > 0 {
             Some(
                 reqwest::Client::builder()
@@ -262,6 +266,7 @@ impl DocValidator {
 
         Self {
             config,
+            #[cfg(feature = "http-client")]
             http_client,
         }
     }
@@ -343,6 +348,7 @@ impl DocValidator {
     }
 
     /// Validates an HTTP/HTTPS link with retry logic
+    #[cfg(feature = "http-client")]
     async fn validate_http_link(
         &self,
         link: &Link,
@@ -408,6 +414,7 @@ impl DocValidator {
 
     /// Extract crate name from crates.io URL (Issue #101)
     /// Handles: https://crates.io/crates/{crate_name}
+    #[cfg(feature = "http-client")]
     fn extract_crates_io_crate_name(url: &str) -> Option<String> {
         // Match patterns like:
         // - https://crates.io/crates/trueno
@@ -427,7 +434,21 @@ impl DocValidator {
         None
     }
 
+    /// Fallback when http-client feature is disabled
+    #[cfg(not(feature = "http-client"))]
+    async fn validate_http_link(
+        &self,
+        _link: &Link,
+    ) -> (ValidationStatus, Option<String>, Option<u16>) {
+        (
+            ValidationStatus::Skipped,
+            Some("HTTP validation requires http-client feature".to_string()),
+            None,
+        )
+    }
+
     /// Validate a crate exists using the crates.io API (Issue #101)
+    #[cfg(feature = "http-client")]
     async fn validate_crates_io_crate(
         &self,
         client: &reqwest::Client,

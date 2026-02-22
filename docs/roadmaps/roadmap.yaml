@@ -2188,3 +2188,97 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: PMAT-498
+  github_issue: null
+  item_type: task
+  title: Feature-gate reqwest behind http-client feature
+  status: inprogress
+  priority: high
+  assigned_to: null
+  created: 2026-02-22T21:14:11Z
+  updated: 2026-02-22T21:14:19.543276160+00:00
+  spec: null
+  acceptance_criteria:
+  - reqwest pulls ~30 crates (hyper, tower, h2, rustls, ring). Feature-gate behind http-client (default on) so headless/CI builds can skip it.
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - deps
+  - sovereignty
+  notes: null
+- id: PMAT-499
+  github_issue: null
+  item_type: task
+  title: Replace handlebars with minijinja
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-02-22T21:14:12Z
+  updated: 2026-02-22T21:14:12Z
+  spec: null
+  acceptance_criteria:
+  - aprender already uses minijinja. handlebars pulls pest parser and ~15 transitive deps. Consolidate on minijinja for lighter dep tree.
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - deps
+  - sovereignty
+  notes: null
+- id: PMAT-500
+  github_issue: null
+  item_type: task
+  title: Feature-gate arrow/parquet in trueno-db
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-02-22T21:14:13Z
+  updated: 2026-02-22T21:14:13Z
+  spec: null
+  acceptance_criteria:
+  - trueno-db unconditionally pulls arrow (18 crates). Make arrow optional behind storage feature. trueno-graph already gates storage - chain the feature through.
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - deps
+  - sovereignty
+  notes: null
+- id: PMAT-501
+  github_issue: null
+  item_type: task
+  title: Upgrade criterion 0.6 to 0.8
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-02-22T21:14:15Z
+  updated: 2026-02-22T21:14:15Z
+  spec: null
+  acceptance_criteria:
+  - criterion 0.6 pulls itertools 0.10 duplicate. criterion 0.8 uses itertools 0.14, eliminating the dup. Dev-dep only but speeds up cargo test compile.
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - deps
+  notes: null
+- id: PMAT-502
+  github_issue: null
+  item_type: task
+  title: Build batuta-template to replace handlebars and minijinja
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-02-22T21:14:16Z
+  updated: 2026-02-22T21:14:16Z
+  spec: null
+  acceptance_criteria:
+  - Sovereign template engine (~500 lines) supporting Mustache/Jinja subset. Eliminates both external template deps. aprender chat templates and pmat scaffold templates are simple enough.
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - deps
+  - sovereignty
+  notes: null

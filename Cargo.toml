@@ -248,8 +248,8 @@ http-body-util = { version = "0.1", optional = true }
 # Markdown parsing
 pulldown-cmark = "0.13"
 
-# HTTP client for GitHub API
-reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+# HTTP client for GitHub API (optional - feature-gated behind http-client)
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"], optional = true }
 
 # Prometheus metrics (optional - rarely used)
 prometheus = { version = "0.14", optional = true }
@@ -312,7 +312,7 @@ sha2 = "0.10"  # For O(1) build artifact hash caching
 # - Opt-in for other languages: --features extended-languages or all-languages
 # - Opt-in for advanced analysis: --features analytics-simd, mutation-testing, demo
 # - Full suite: --features full (equivalent to old defaults)
-default = ["core-languages", "viz"]
+default = ["core-languages", "viz", "http-client"]
 
 # Convenience bundles
 core-languages = ["rust-ast", "typescript-ast", "javascript-ast", "python-ast", "lua-ast", "lean-ast"]  # Most common: Rust + JS/TS + Python + Lua + Lean
@@ -399,6 +399,10 @@ c-ast = ["tree-sitter", "tree-sitter-c", "fixedbitset"]
 cpp-ast = ["c-ast", "tree-sitter-cpp", "cpp_demangle", "gimli", "goblin"]
 # Feature to exclude demo/reporting functionality for minimal builds
 demo = ["http-server", "bytes", "http"]
+
+# HTTP client (reqwest) - for GitHub API, doc validation, git clone
+# Disable for headless/CI builds that don't need HTTP (~30 fewer crates)
+http-client = ["dep:reqwest"]
 
 # HTTP server stack (axum, tower, hyper) - for web dashboards and HTTP APIs
 http-server = ["axum", "tower", "tower-http", "hyper", "hyper-util", "http-body-util"]

@@ -414,6 +414,7 @@ fn parse_github_issue_url(url: &str) -> Result<GitHubIssueRef> {
 /// Fetch GitHub issue content using the existing GitHub integration
 ///
 /// This function has complexity <3 and follows Toyota Way principles.
+#[cfg(feature = "http-client")]
 async fn fetch_github_issue_content(issue_ref: &GitHubIssueRef) -> Result<GitHubIssueContent> {
     use crate::services::github_integration::GitHubClient;
 
@@ -433,6 +434,12 @@ async fn fetch_github_issue_content(issue_ref: &GitHubIssueRef) -> Result<GitHub
         body: issue.body.unwrap_or_default(),
         number: issue_ref.issue_number,
     })
+}
+
+/// Fallback when http-client feature is disabled
+#[cfg(not(feature = "http-client"))]
+async fn fetch_github_issue_content(_issue_ref: &GitHubIssueRef) -> Result<GitHubIssueContent> {
+    anyhow::bail!("GitHub issue fetching requires the http-client feature")
 }
 
 /// Extract target files mentioned in GitHub issue content
