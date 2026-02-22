@@ -26,23 +26,16 @@ impl CommandDispatcher {
                 output,
                 perf,
             } => {
-                let output_format = match format {
-                    crate::cli::enums::QualityGateOutputFormat::Json => OutputFormat::Json,
-                    _ => OutputFormat::Table,
-                };
-                let check_strings: Vec<String> = checks
-                    .iter()
-                    .map(|c| format!("{c:?}").to_lowercase())
-                    .collect();
-                Self::execute_quality_gate_command(
-                    Some(project_path),
+                // Pass QualityGateOutputFormat directly to preserve Junit/Markdown (#230)
+                crate::cli::analysis_utilities::handle_quality_gate(
+                    project_path,
                     file,
-                    output_format,
+                    format,
                     fail_on_violation,
-                    check_strings,
-                    Some(max_dead_code),
-                    Some(min_entropy),
-                    Some(max_complexity_p99 as usize),
+                    checks,
+                    max_dead_code,
+                    min_entropy,
+                    max_complexity_p99,
                     include_provability,
                     output,
                     perf,

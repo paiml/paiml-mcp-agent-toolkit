@@ -286,6 +286,7 @@ async fn run_all_checks(
         violations,
         results,
         perf,
+        false, // quiet=false for human-readable output
     )
     .await
 }
@@ -324,6 +325,7 @@ async fn run_individual_checks(
             violations,
             results,
             config.perf,
+            false, // quiet=false for human-readable output
         )
         .await?;
 

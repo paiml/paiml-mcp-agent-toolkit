@@ -12,7 +12,8 @@ use std::path::PathBuf;
 
 impl CommandDispatcher {
     /// Execute quality gate command (extracted for complexity reduction)
-    #[allow(clippy::too_many_arguments)]
+    /// Used by tests; production path calls analysis_utilities::handle_quality_gate directly (#230).
+    #[allow(clippy::too_many_arguments, dead_code)]
     pub(crate) async fn execute_quality_gate_command(
         project_path: Option<PathBuf>,
         file: Option<PathBuf>,

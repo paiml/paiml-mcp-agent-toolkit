@@ -664,6 +664,7 @@ async fn handle_project_quality_gate(
         &mut violations,
         &mut results,
         perf,
+        quiet,
     )
     .await?;
 
@@ -739,6 +740,7 @@ async fn run_project_checks(
     violations: &mut Vec<QualityViolation>,
     results: &mut QualityGateResults,
     perf: bool,
+    quiet: bool,
 ) -> Result<()> {
     // If checks contains All, just run that single check which will run all checks
     if checks.contains(&QualityCheckType::All) {
@@ -751,6 +753,7 @@ async fn run_project_checks(
             violations,
             results,
             perf,
+            quiet,
         )
         .await?;
     } else {
@@ -764,6 +767,7 @@ async fn run_project_checks(
             violations,
             results,
             perf,
+            quiet,
         )
         .await?;
     }
@@ -781,6 +785,7 @@ async fn run_individual_project_checks(
     violations: &mut Vec<QualityViolation>,
     results: &mut QualityGateResults,
     perf: bool,
+    quiet: bool,
 ) -> Result<()> {
     use std::time::Instant;
 
@@ -796,11 +801,14 @@ async fn run_individual_project_checks(
             violations,
             results,
             perf,
+            quiet,
         )
         .await?;
 
-        if let Some(start) = check_start {
-            print_check_performance(check, start.elapsed().as_secs_f64());
+        if !quiet {
+            if let Some(start) = check_start {
+                print_check_performance(check, start.elapsed().as_secs_f64());
+            }
         }
     }
     Ok(())
@@ -840,6 +848,7 @@ pub async fn run_single_project_check(
     violations: &mut Vec<QualityViolation>,
     results: &mut QualityGateResults,
     perf: bool,
+    quiet: bool,
 ) -> Result<()> {
     match check {
         QualityCheckType::All => {
@@ -851,6 +860,7 @@ pub async fn run_single_project_check(
                 violations,
                 results,
                 perf,
+                quiet,
             )
             .await
         }
