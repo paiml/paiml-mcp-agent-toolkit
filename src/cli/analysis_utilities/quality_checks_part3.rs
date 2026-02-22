@@ -84,8 +84,43 @@ fn write_qg_violations_list(output: &mut String, violations: &[QualityViolation]
         } else {
             writeln!(output, "  File: {}", v.file)?;
         }
+        // Show explainability details for entropy/provability violations (#226, #229)
+        write_violation_details(output, v)?;
     }
     Ok(())
+}
+
+/// Write explainability details for violations that have them (#226, #229).
+fn write_violation_details(output: &mut String, v: &QualityViolation) -> Result<()> {
+    use std::fmt::Write;
+    let Some(details) = &v.details else {
+        return Ok(());
+    };
+    // Score factors breakdown
+    if !details.score_factors.is_empty() {
+        writeln!(output, "    Factors: {}", details.score_factors.join(", "))?;
+    }
+    // Example code snippet
+    if let Some(code) = &details.example_code {
+        let trimmed = code.trim();
+        if !trimmed.is_empty() {
+            writeln!(output, "    Example: {}", truncate_line(trimmed, 100))?;
+        }
+    }
+    // Affected files (only if more than 1)
+    if details.affected_files.len() > 1 {
+        writeln!(output, "    Files: {}", details.affected_files.join(", "))?;
+    }
+    Ok(())
+}
+
+/// Truncate a line to max_len characters with ellipsis.
+fn truncate_line(s: &str, max_len: usize) -> String {
+    if s.len() <= max_len {
+        s.to_string()
+    } else {
+        format!("{}...", &s[..max_len])
+    }
 }
 
 // Helper: Format as JUnit XML
@@ -202,6 +237,8 @@ fn write_qg_violations_summary(
             } else {
                 writeln!(output, "  - {} - {}", v.file, v.message)?;
             }
+            // Show explainability details for entropy/provability violations (#226, #229)
+            write_violation_details(output, v)?;
         }
     }
     Ok(())
