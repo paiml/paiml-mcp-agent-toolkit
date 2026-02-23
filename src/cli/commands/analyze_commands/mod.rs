@@ -1,5 +1,10 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
 // Analyze commands - extracted for file health (CB-040)
+//
+// NOTE: Rust does not allow enum definitions to span multiple files.
+// This enum is organized into semantic sections with clear headers.
+// Variants are grouped: Core, Debt, TDG/Quality, Advanced, Metrics,
+// Coverage/Symbols, WASM/Specialized.
 
 use crate::cli::{
     BigOOutputFormat, ComplexityOutputFormat, ComprehensiveOutputFormat,
@@ -25,6 +30,9 @@ use super::semantic_search::ClusterMethod;
 #[derive(Subcommand)]
 #[cfg_attr(test, derive(Debug))]
 pub enum AnalyzeCommands {
+    // ── Core Analysis ──────────────────────────────────────────────
+    // Churn, Complexity, Dag, DeadCode, Defects
+
     /// Analyze code churn (change frequency)
     #[command(visible_aliases = &["ch"])]
     Churn {
@@ -262,6 +270,10 @@ pub enum AnalyzeCommands {
         output: Option<PathBuf>,
     },
 
+
+    // ── Debt Analysis ─────────────────────────────────────────────
+    // Satd, DeepContext
+
     /// Analyze Self-Admitted Technical Debt (SATD) in comments
     #[command(name = "satd", visible_aliases = &["debt", "td", "tech-debt"])]
     Satd {
@@ -394,6 +406,10 @@ pub enum AnalyzeCommands {
         #[arg(long, default_value = "10")]
         top_files: usize,
     },
+
+
+    // ── TDG & Quality Gates ───────────────────────────────────────
+    // Tdg, BuildTdg, LintHotspot, Makefile
 
     /// Analyze Technical Debt Gradient (TDG) scores
     #[command(name = "tdg")]
@@ -583,6 +599,10 @@ pub enum AnalyzeCommands {
         top_files: usize,
     },
 
+
+    // ── Advanced Analysis ─────────────────────────────────────────
+    // Provability, Duplicates, DefectPrediction
+
     /// Analyze provability properties using abstract interpretation
     Provability {
         /// Project path to analyze (defaults to current directory)
@@ -715,6 +735,10 @@ pub enum AnalyzeCommands {
         #[arg(long, default_value = "10")]
         top_files: usize,
     },
+
+
+    // ── Metrics & Comprehensive ───────────────────────────────────
+    // Comprehensive, GraphMetrics, NameSimilarity, ProofAnnotations
 
     /// Run comprehensive multi-dimensional analysis with MCP tool composition
     ///
@@ -956,6 +980,10 @@ pub enum AnalyzeCommands {
         top_files: usize,
     },
 
+
+    // ── Coverage & Symbols ────────────────────────────────────────
+    // IncrementalCoverage, CoverageImprove, SymbolTable, BigO
+
     /// Analyze incremental coverage changes with caching
     IncrementalCoverage {
         /// Project path to analyze (defaults to current directory)
@@ -1136,6 +1164,11 @@ pub enum AnalyzeCommands {
         #[arg(long, default_value = "10")]
         top_files: usize,
     },
+
+
+    // ── WASM & Specialized ────────────────────────────────────────
+    // AssemblyScript, WebAssembly, Clippy, Entropy, Wasm, DeepWasm,
+    // Mutate, Cluster, Topics, Models
 
     /// Analyze `AssemblyScript` code
     AssemblyScript {

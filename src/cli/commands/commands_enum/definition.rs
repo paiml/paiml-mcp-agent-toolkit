@@ -1,40 +1,9 @@
-#![cfg_attr(coverage_nightly, coverage(off))]
-//! Commands enum - all top-level CLI subcommands
-
-use crate::cli::diagnose::DiagnoseArgs;
-use crate::cli::handlers::cache::CacheCommand;
-use crate::cli::handlers::memory::MemoryCommand;
-use crate::cli::{
-    AnalysisType, ContextFormat, DebugOutputFormat, DemoProtocol,
-    OutputFormat, QualityCheckType, QualityGateOutputFormat,
-    QueryOutputFormat, RepoScoreOutputFormat, ReportOutputFormat,
-    TdgOutputFormat,
-};
-use clap::Subcommand;
-use serde_json::Value;
-use std::path::PathBuf;
-
-use super::analyze_commands::AnalyzeCommands;
-use super::config_hooks::HooksCommands;
-use super::misc_commands::{
-    ComplyCommands, CudaTdgCommand, CudaTdgOutputFormat, DebugCommands,
-    KaizenOutputFormat, MaintainCommands, OracleCommands,
-    PerfectionScoreOutputFormat, ProjectDiagOutputFormat, QualityGatesCommand,
-    SpecCommands, TdgCommand,
-};
-use super::org_prompt::{OrgCommands, PromptCommands};
-use super::quality_commands::{EnforceCommands, QddCommands};
-use super::refactor_scaffold::{RefactorCommands, ScaffoldCommands};
-use super::roadmap_agent::{AgentCommands, RoadmapCommands, ServeTransport, TestSuite};
-use super::semantic_search::{EmbedCommands, SemanticCommands};
-#[cfg(feature = "mutation-testing")]
-use super::semantic_search::MutateArgs;
-use super::work_commands::{QaWorkCommands, TestDiscoveryCommands, WorkCommands};
 
 /// Main command enum
 #[derive(Subcommand)]
 #[cfg_attr(test, derive(Debug))]
 pub enum Commands {
+    // ── Template commands ─────────────────────────────────────────────
     /// Generate a single template
     #[command(visible_aliases = &["gen", "g"])]
     Generate {
@@ -106,6 +75,7 @@ pub enum Commands {
         params: Vec<(String, Value)>,
     },
 
+    // ── Context & Query commands ────────────────────────────────────
     /// Generate project context (AST analysis)
     #[command(visible_aliases = &["ctx", "ast"])]
     Context {
@@ -339,6 +309,7 @@ pub enum Commands {
         max_module_lines: usize,
     },
 
+    // ── Analysis & Demo commands ───────────────────────────────────
     /// Analyze code metrics and patterns
     #[command(subcommand, visible_aliases = &["a", "an"])]
     Analyze(AnalyzeCommands),
@@ -439,6 +410,7 @@ pub enum Commands {
     #[command(subcommand, visible_aliases = &["p"])]
     Prompt(PromptCommands),
 
+    // ── Scoring commands ───────────────────────────────────────────
     /// Run quality gate checks on the codebase
     #[command(visible_aliases = &["check", "c", "verify", "gate"])]
     QualityGate {
@@ -734,6 +706,7 @@ pub enum Commands {
         sort_by: String,
     },
 
+    // ── Infrastructure commands ────────────────────────────────────
     /// Start HTTP API server with WebSocket support
     #[command(visible_aliases = &["server", "api"])]
     Serve {
@@ -932,6 +905,7 @@ pub enum Commands {
         command: AgentCommands,
     },
 
+    // ── Dev tools commands ─────────────────────────────────────────
     /// Grade technical debt and code quality (TDG - Technical Debt Grading)
     #[command(visible_aliases = &["grade", "debt-grade"])]
     Tdg {
@@ -1066,6 +1040,7 @@ pub enum Commands {
         command: WorkCommands,
     },
 
+    // ── Operations commands ────────────────────────────────────────
     /// Falsify claims in a work item, spec, or ticket against the codebase
     ///
     /// Runs the Popperian falsification protocol: extracts testable claims
