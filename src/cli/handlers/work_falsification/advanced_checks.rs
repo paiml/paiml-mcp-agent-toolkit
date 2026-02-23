@@ -1,147 +1,20 @@
-// ============================================================================
-// v4.0 provable contracts: Formal Proof Verification
-// ============================================================================
+#![cfg_attr(coverage_nightly, coverage(off))]
+//! Advanced falsification checks: formal proofs, SATD, dead code, per-file coverage, lint.
 
-/// Count sorry occurrences in Lean source, respecting comments and word boundaries.
-/// Handles: line comments (--), nested block comments (/- ... -/), inline block comments,
-/// and word-boundary checking to avoid false positives from identifiers like `sorry_helper`.
-fn count_lean_sorry_in_source(source: &str) -> usize {
-    let mut count = 0;
-    let mut in_block_comment = 0i32;
-
-    for line in source.lines() {
-        let trimmed = line.trim();
-
-        if trimmed.starts_with("--") {
-            continue;
-        }
-
-        // Strip block comments inline for same-line /- ... -/ handling
-        let cleaned = strip_lean_block_comments(trimmed, &mut in_block_comment);
-
-        if in_block_comment > 0 {
-            continue;
-        }
-
-        if contains_sorry_word_boundary(&cleaned) {
-            count += 1;
-        }
-    }
-
-    count
-}
-
-/// Strips block comment content from a line, updating nesting depth.
-fn strip_lean_block_comments(line: &str, depth: &mut i32) -> String {
-    let bytes = line.as_bytes();
-    let mut result = String::with_capacity(line.len());
-    let mut i = 0;
-
-    while i < bytes.len() {
-        if i + 1 < bytes.len() && bytes[i] == b'/' && bytes[i + 1] == b'-' {
-            *depth += 1;
-            i += 2;
-            continue;
-        }
-        if i + 1 < bytes.len() && bytes[i] == b'-' && bytes[i + 1] == b'/' && *depth > 0 {
-            *depth -= 1;
-            i += 2;
-            continue;
-        }
-        if *depth == 0 {
-            result.push(bytes[i] as char);
-        }
-        i += 1;
-    }
-
-    result
-}
-
-/// Checks if line contains "sorry" as a standalone word (not part of an identifier).
-fn contains_sorry_word_boundary(line: &str) -> bool {
-    let bytes = line.as_bytes();
-    let sorry = b"sorry";
-    let mut pos = 0;
-    while pos + sorry.len() <= bytes.len() {
-        if let Some(idx) = line[pos..].find("sorry") {
-            let abs_idx = pos + idx;
-            let before_ok = abs_idx == 0
-                || !(bytes[abs_idx - 1].is_ascii_alphanumeric() || bytes[abs_idx - 1] == b'_');
-            let after_ok = abs_idx + sorry.len() >= bytes.len()
-                || !(bytes[abs_idx + sorry.len()].is_ascii_alphanumeric()
-                    || bytes[abs_idx + sorry.len()] == b'_');
-            if before_ok && after_ok {
-                return true;
-            }
-            pos = abs_idx + 1;
-        } else {
-            break;
-        }
-    }
-    false
-}
-
-/// Test formal proof verification: count sorry occurrences in .lean files
-fn test_formal_proof_verification(
-    project_path: &Path,
-    max_sorry_count: usize,
-) -> Result<FalsificationResult> {
-    print!("Scanning .lean files for sorry... ");
-
-    let mut total_sorry = 0usize;
-    let mut sorry_files = Vec::new();
-
-    // Walk project looking for .lean files
-    for entry in walkdir::WalkDir::new(project_path)
-        .into_iter()
-        .filter_map(|e| e.ok())
-    {
-        let path = entry.path();
-        if path.extension().is_some_and(|ext| ext == "lean") {
-            if let Ok(content) = std::fs::read_to_string(path) {
-                let count = count_lean_sorry_in_source(&content);
-                if count > 0 {
-                    total_sorry += count;
-                    sorry_files.push(path.to_path_buf());
-                }
-            }
-        }
-    }
-
-    if sorry_files.is_empty() && total_sorry == 0 {
-        return Ok(FalsificationResult::passed(
-            "No .lean files with sorry found".to_string(),
-        ));
-    }
-
-    if total_sorry <= max_sorry_count {
-        Ok(FalsificationResult::passed(format!(
-            "{} sorry occurrence(s) within threshold (max: {})",
-            total_sorry, max_sorry_count
-        )))
-    } else {
-        Ok(FalsificationResult::failed(
-            format!(
-                "{} sorry occurrence(s) exceed threshold (max: {}), in: {}",
-                total_sorry,
-                max_sorry_count,
-                sorry_files
-                    .iter()
-                    .map(|p| p.display().to_string())
-                    .collect::<Vec<_>>()
-                    .join(", ")
-            ),
-            EvidenceType::FileList(sorry_files),
-        ))
-    }
-}
+use super::cache::{read_cached_metric, read_lint_cache_fallback};
+use super::churn_checks::get_changed_files;
+pub(crate) use super::formal_checks::test_formal_proof_verification;
+use crate::cli::handlers::work_contract::{EvidenceType, FalsificationResult};
+use anyhow::Result;
+use std::path::{Path, PathBuf};
+use std::process::Command;
 
 // ============================================================================
 // v2.6 comply spec: SATD, Dead Code, Per-File Coverage, Lint Gate
 // ============================================================================
 
 /// Test SATD detection: find new TODO/FIXME/HACK markers since baseline
-async fn test_satd_detection(
+pub(crate) async fn test_satd_detection(
     project_path: &Path,
     baseline_commit: &str,
 ) -> Result<FalsificationResult> {
@@ -289,7 +162,7 @@ fn detect_new_satd_since_baseline(
 }
 
 /// Test dead code detection: find new unreachable code since baseline
-async fn test_dead_code_detection(
+pub(crate) async fn test_dead_code_detection(
     project_path: &Path,
     baseline_commit: &str,
 ) -> Result<FalsificationResult> {
@@ -371,23 +244,6 @@ async fn test_dead_code_detection(
     }
 }
 
-/// Get list of changed files since baseline
-fn get_changed_files(project_path: &Path, baseline_commit: &str) -> Result<Vec<String>> {
-    let output = Command::new("git")
-        .args(["diff", "--name-only", baseline_commit, "HEAD"])
-        .current_dir(project_path)
-        .output()?;
-
-    if output.status.success() {
-        Ok(String::from_utf8_lossy(&output.stdout)
-            .lines()
-            .map(|s| s.to_string())
-            .collect())
-    } else {
-        Ok(Vec::new())
-    }
-}
-
 /// Check if a file should be skipped for per-file coverage checks.
 fn is_excluded_from_per_file_coverage(filename: &str) -> bool {
     filename.contains("/tests/") || filename.contains("_test.rs") || filename.contains("/target/")
@@ -464,7 +320,7 @@ fn build_per_file_coverage_result(
 }
 
 /// Test per-file coverage: all files must meet threshold
-async fn test_per_file_coverage(
+pub(crate) async fn test_per_file_coverage(
     project_path: &Path,
     threshold: f64,
 ) -> Result<FalsificationResult> {
@@ -488,7 +344,7 @@ async fn test_per_file_coverage(
 }
 
 /// Test lint pass: O(1) - reads from cached lint status
-async fn test_lint_pass(project_path: &Path) -> Result<FalsificationResult> {
+pub(crate) async fn test_lint_pass(project_path: &Path) -> Result<FalsificationResult> {
     print!("Reading lint cache... ");
 
     // O(1): Read from cache instead of running make lint
@@ -506,7 +362,7 @@ async fn test_lint_pass(project_path: &Path) -> Result<FalsificationResult> {
             ));
         }
 
-        // Validate 'passed' field exists — reject malformed cache (Popperian Audit v2.1)
+        // Validate 'passed' field exists -- reject malformed cache (Popperian Audit v2.1)
         let passed = match cache.value.get("passed").and_then(|v| v.as_bool()) {
             Some(p) => p,
             None => {

@@ -1,7 +1,20 @@
-#[cfg_attr(coverage_nightly, coverage(off))]
+#![cfg_attr(coverage_nightly, coverage(off))]
+
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::cli::handlers::work_falsification::cache::{
+        find_cache_file, read_cached_metric, read_deny_cache_fallback, read_lint_cache_fallback,
+    };
+    use crate::cli::handlers::work_falsification::churn_checks::{
+        detect_fix_chains, extract_large_match_variants, extract_test_section,
+    };
+    use crate::cli::handlers::work_falsification::types::{
+        CachedMetric, ClaimResult, FalsificationReport, CACHE_BLOCK_HOURS, CACHE_WARN_HOURS,
+    };
+    use crate::cli::handlers::work_contract::{
+        EvidenceType, FalsificationMethod, FalsificationResult,
+    };
+    use std::path::PathBuf;
 
     #[test]
     fn test_falsification_report_blocking() {
