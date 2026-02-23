@@ -118,7 +118,7 @@ async fn analyze_single_file_for_context(
 ) -> Option<EnhancedFileContext> {
     let file_start = std::time::Instant::now();
 
-    if let Ok(file_context) = analyze_single_file(file_path).await {
+    if let Ok(file_context) = analysis_functions::analyze_single_file(file_path).await {
         let ast_time = file_start.elapsed();
 
         if *file_count % 10 == 0 {

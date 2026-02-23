@@ -604,7 +604,7 @@ impl DeepContextAnalyzer {
         join_set: &mut tokio::task::JoinSet<AnalysisResult>,
         path: PathBuf,
     ) -> anyhow::Result<()> {
-        join_set.spawn(async move { AnalysisResult::Complexity(analyze_complexity(&path).await) });
+        join_set.spawn(async move { AnalysisResult::Complexity(analysis_functions::analyze_complexity(&path).await) });
         Ok(())
     }
 
@@ -614,7 +614,7 @@ impl DeepContextAnalyzer {
         path: PathBuf,
     ) -> anyhow::Result<()> {
         let days = self.config.period_days;
-        join_set.spawn(async move { AnalysisResult::Churn(analyze_churn(&path, days).await) });
+        join_set.spawn(async move { AnalysisResult::Churn(analysis_functions::analyze_churn(&path, days).await) });
         Ok(())
     }
 
@@ -623,7 +623,7 @@ impl DeepContextAnalyzer {
         join_set: &mut tokio::task::JoinSet<AnalysisResult>,
         path: PathBuf,
     ) -> anyhow::Result<()> {
-        join_set.spawn(async move { AnalysisResult::DeadCode(analyze_dead_code(&path).await) });
+        join_set.spawn(async move { AnalysisResult::DeadCode(analysis_functions::analyze_dead_code(&path).await) });
         Ok(())
     }
 
@@ -633,7 +633,7 @@ impl DeepContextAnalyzer {
         path: PathBuf,
     ) -> anyhow::Result<()> {
         join_set.spawn(async move {
-            AnalysisResult::DuplicateCode(analyze_duplicate_code(&path).await)
+            AnalysisResult::DuplicateCode(analysis_functions::analyze_duplicate_code(&path).await)
         });
         Ok(())
     }
@@ -645,7 +645,7 @@ impl DeepContextAnalyzer {
     ) -> anyhow::Result<()> {
         join_set.spawn(async move {
             let result = tokio::task::spawn_blocking(move || {
-                tokio::runtime::Handle::current().block_on(async { analyze_satd(&path).await })
+                tokio::runtime::Handle::current().block_on(async { analysis_functions::analyze_satd(&path).await })
             })
             .await
             .unwrap_or_else(|_| Err(anyhow::anyhow!("SATD analysis failed")));
@@ -660,7 +660,7 @@ impl DeepContextAnalyzer {
         path: PathBuf,
     ) -> anyhow::Result<()> {
         join_set
-            .spawn(async move { AnalysisResult::Provability(analyze_provability(&path).await) });
+            .spawn(async move { AnalysisResult::Provability(analysis_functions::analyze_provability(&path).await) });
         Ok(())
     }
 
@@ -670,7 +670,7 @@ impl DeepContextAnalyzer {
         path: PathBuf,
     ) -> anyhow::Result<()> {
         let dag_type = self.config.dag_type.clone();
-        join_set.spawn(async move { AnalysisResult::Dag(analyze_dag(&path, dag_type).await) });
+        join_set.spawn(async move { AnalysisResult::Dag(analysis_functions::analyze_dag(&path, dag_type).await) });
         Ok(())
     }
 
@@ -679,7 +679,7 @@ impl DeepContextAnalyzer {
         join_set: &mut tokio::task::JoinSet<AnalysisResult>,
         path: PathBuf,
     ) -> anyhow::Result<()> {
-        join_set.spawn(async move { AnalysisResult::BigO(analyze_big_o(&path).await) });
+        join_set.spawn(async move { AnalysisResult::BigO(analysis_functions::analyze_big_o(&path).await) });
         Ok(())
     }
 

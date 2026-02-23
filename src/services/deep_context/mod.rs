@@ -64,73 +64,21 @@ use crate::models::{
     tdg::{TDGScore, TDGSeverity, TDGSummary},
 };
 use crate::services::context::FileContext;
-#[cfg(feature = "shell-ast")]
-use crate::services::unified_bash_analyzer::UnifiedBashAnalyzer;
-#[cfg(feature = "go-ast")]
-use crate::services::unified_go_analyzer::UnifiedGoAnalyzer;
-#[cfg(feature = "python-ast")]
-use crate::services::unified_python_analyzer::UnifiedPythonAnalyzer;
-#[cfg(feature = "wasm-ast")]
-use crate::services::unified_wasm_analyzer::UnifiedWasmAnalyzer;
 use crate::services::{
     complexity::{ComplexityReport, FileComplexityMetrics},
     file_classifier::FileClassifierConfig,
     quality_gates::{QAVerification, QAVerificationResult},
     satd_detector::SATDAnalysisResult,
     tdg_calculator::TDGCalculator,
-    unified_rust_analyzer::UnifiedRustAnalyzer,
-    unified_typescript_analyzer::UnifiedTypeScriptAnalyzer,
 };
 use chrono::{DateTime, Utc};
 use rayon::prelude::*;
 use rustc_hash::FxHashMap;
 use serde::{Deserialize, Serialize};
-use std::cell::RefCell;
 use std::path::Path;
 use std::path::PathBuf;
 use std::time::Duration;
-use tracing::{debug, info, warn};
-
-// Thread-local cache for unified Rust analysis results
-// Stores complexity metrics extracted during AST analysis to avoid double parsing
-thread_local! {
-    static RUST_UNIFIED_CACHE: RefCell<FxHashMap<PathBuf, FileComplexityMetrics>> = RefCell::new(FxHashMap::default());
-}
-
-// Thread-local cache for unified TypeScript/JavaScript analysis results
-thread_local! {
-    static TYPESCRIPT_UNIFIED_CACHE: RefCell<FxHashMap<PathBuf, FileComplexityMetrics>> = RefCell::new(FxHashMap::default());
-}
-
-// Thread-local cache for unified Python analysis results
-thread_local! {
-    static PYTHON_UNIFIED_CACHE: RefCell<FxHashMap<PathBuf, FileComplexityMetrics>> = RefCell::new(FxHashMap::default());
-}
-
-// Thread-local cache for unified Go analysis results
-thread_local! {
-    static GO_UNIFIED_CACHE: RefCell<FxHashMap<PathBuf, FileComplexityMetrics>> = RefCell::new(FxHashMap::default());
-}
-
-// Thread-local cache for unified WebAssembly analysis results
-thread_local! {
-    static WASM_UNIFIED_CACHE: RefCell<FxHashMap<PathBuf, FileComplexityMetrics>> = RefCell::new(FxHashMap::default());
-}
-
-// Thread-local cache for unified Bash/Shell analysis results
-thread_local! {
-    static BASH_UNIFIED_CACHE: RefCell<FxHashMap<PathBuf, FileComplexityMetrics>> = RefCell::new(FxHashMap::default());
-}
-
-// Thread-local cache for unified C analysis results
-thread_local! {
-    static C_UNIFIED_CACHE: RefCell<FxHashMap<PathBuf, FileComplexityMetrics>> = RefCell::new(FxHashMap::default());
-}
-
-// Thread-local cache for unified C++ analysis results
-thread_local! {
-    static CPP_UNIFIED_CACHE: RefCell<FxHashMap<PathBuf, FileComplexityMetrics>> = RefCell::new(FxHashMap::default());
-}
+use tracing::{debug, info};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DeepContextConfig {
@@ -725,5 +673,10 @@ include!("analyzer_core.rs");
 // Analysis helper functions - extracted for file health (CB-040)
 include!("analysis_helpers.rs");
 
-// Standalone analysis functions - extracted for file health (CB-040)
-include!("analysis_functions.rs");
+// Standalone analysis functions - refactored into submodules for file health (CB-040)
+pub mod analysis_functions;
+pub use analysis_functions::{
+    analyze_churn, analyze_csharp_file, analyze_file_by_language, analyze_java_file,
+    analyze_provability, analyze_python_language, analyze_rust_language, analyze_single_file,
+    analyze_swift_file, analyze_typescript_language,
+};
