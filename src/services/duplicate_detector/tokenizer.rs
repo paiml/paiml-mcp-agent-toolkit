@@ -186,36 +186,41 @@ impl UniversalFeatureExtractor {
         self.tokenize_generic(source, PYTHON_KEYWORDS)
     }
 
+    /// Classify a character into a token
+    fn classify_char(
+        ch: char,
+        chars: &mut std::iter::Peekable<std::str::CharIndices<'_>>,
+        keywords: &[&str],
+        ignore_comments: bool,
+    ) -> Option<Token> {
+        match ch {
+            ' ' | '\t' | '\n' | '\r' if !ignore_comments => Some(Token::new(TokenKind::Whitespace)),
+            ' ' | '\t' | '\n' | '\r' => None,
+            ch if ch.is_ascii_alphabetic() || ch == '_' => {
+                let ident = Self::consume_identifier(ch, chars);
+                let kind = if keywords.contains(&ident.as_str()) {
+                    TokenKind::Keyword(ident)
+                } else {
+                    TokenKind::Identifier(ident)
+                };
+                Some(Token::new(kind))
+            }
+            ch if ch.is_ascii_digit() => {
+                Some(Token::new(TokenKind::Literal(Self::consume_number(ch, chars))))
+            }
+            _ => Some(Token::new(TokenKind::Operator(ch.to_string()))),
+        }
+    }
+
     /// Generic tokenizer for any language
     fn tokenize_generic(&self, source: &str, keywords: &[&str]) -> Vec<Token> {
         let mut tokens = Vec::new();
         let mut chars = source.char_indices().peekable();
-
         while let Some((_, ch)) = chars.next() {
-            match ch {
-                ' ' | '\t' | '\n' | '\r' => {
-                    if !self.config.ignore_comments {
-                        tokens.push(Token::new(TokenKind::Whitespace));
-                    }
-                }
-                ch if ch.is_ascii_alphabetic() || ch == '_' => {
-                    let ident = Self::consume_identifier(ch, &mut chars);
-                    let token = if keywords.contains(&ident.as_str()) {
-                        Token::new(TokenKind::Keyword(ident))
-                    } else {
-                        Token::new(TokenKind::Identifier(ident))
-                    };
-                    tokens.push(token);
-                }
-                ch if ch.is_ascii_digit() => {
-                    tokens.push(Token::new(TokenKind::Literal(Self::consume_number(ch, &mut chars))));
-                }
-                _ => {
-                    tokens.push(Token::new(TokenKind::Operator(ch.to_string())));
-                }
+            if let Some(token) = Self::classify_char(ch, &mut chars, keywords, self.config.ignore_comments) {
+                tokens.push(token);
             }
         }
-
         tokens
     }
 
