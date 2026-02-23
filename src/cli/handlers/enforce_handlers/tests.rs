@@ -1,0 +1,266 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
+//! Tests for enforce handlers
+
+// External tests - split file boundaries fixed
+#[cfg(test)]
+#[path = "../enforce_handlers_tests.rs"]
+mod enforce_tests_external;
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod tests {
+    use crate::cli::EnforceOutputFormat;
+    use crate::cli::handlers::enforce_handlers::{
+        clear_enforcement_cache, handle_complete_state, handle_refactoring_state,
+        handle_violating_state, load_quality_profile, output_result, should_continue_enforcement,
+        EnforcementConfig, EnforcementProgress, EnforcementResult, EnforcementState,
+        QualityProfile, QualityViolation,
+    };
+
+    #[test]
+    fn test_quality_profile_default() {
+        let profile = QualityProfile::default();
+        assert_eq!(profile.coverage_min, 80.0);
+        assert_eq!(profile.complexity_max, 20);
+        assert_eq!(profile.duplication_max_lines, 0);
+    }
+
+    #[test]
+    fn test_enforcement_state_serde_roundtrip() {
+        let states = vec![
+            EnforcementState::Analyzing,
+            EnforcementState::Violating,
+            EnforcementState::Refactoring,
+            EnforcementState::Validating,
+            EnforcementState::Complete,
+        ];
+        for state in states {
+            let json = serde_json::to_string(&state).unwrap();
+            let back: EnforcementState = serde_json::from_str(&json).unwrap();
+            assert_eq!(
+                std::mem::discriminant(&state),
+                std::mem::discriminant(&back)
+            );
+        }
+    }
+
+    #[test]
+    fn test_quality_violation_serde() {
+        let v = QualityViolation {
+            violation_type: "complexity".to_string(),
+            severity: "high".to_string(),
+            location: "src/main.rs:42".to_string(),
+            current: 25.0,
+            target: 20.0,
+            suggestion: "Extract method".to_string(),
+        };
+        let json = serde_json::to_string(&v).unwrap();
+        let back: QualityViolation = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.violation_type, "complexity");
+        assert_eq!(back.current, 25.0);
+    }
+
+    #[test]
+    fn test_enforcement_result_serde() {
+        let r = EnforcementResult {
+            state: EnforcementState::Complete,
+            score: 95.0,
+            target: 1.0,
+            current_file: None,
+            violations: vec![],
+            next_action: "none".to_string(),
+            progress: EnforcementProgress {
+                files_completed: 0,
+                files_remaining: 0,
+                estimated_iterations: 0,
+            },
+        };
+        let json = serde_json::to_string(&r).unwrap();
+        let back: EnforcementResult = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.score, 95.0);
+        assert!(back.violations.is_empty());
+    }
+
+    #[test]
+    fn test_should_continue_enforcement_complete_returns_false() {
+        let config = EnforcementConfig {
+            max_iterations: 10,
+            target_improvement: None,
+            max_time: None,
+            apply_suggestions: false,
+            specific_file: None,
+            include_pattern: None,
+            exclude_pattern: None,
+            single_file_mode: false,
+            dry_run: false,
+            show_progress: false,
+            format: EnforceOutputFormat::Summary,
+            ci_mode: false,
+        };
+        let start = std::time::Instant::now();
+        let result = should_continue_enforcement(EnforcementState::Complete, 0, &config, start);
+        assert!(!result, "Complete state should stop enforcement");
+    }
+
+    #[test]
+    fn test_should_continue_enforcement_max_iterations() {
+        let config = EnforcementConfig {
+            max_iterations: 5,
+            target_improvement: None,
+            max_time: None,
+            apply_suggestions: false,
+            specific_file: None,
+            include_pattern: None,
+            exclude_pattern: None,
+            single_file_mode: false,
+            dry_run: false,
+            show_progress: false,
+            format: EnforceOutputFormat::Summary,
+            ci_mode: false,
+        };
+        let start = std::time::Instant::now();
+        let result = should_continue_enforcement(EnforcementState::Analyzing, 5, &config, start);
+        assert!(!result, "Should stop at max iterations");
+    }
+
+    #[test]
+    fn test_should_continue_enforcement_analyzing_continues() {
+        let config = EnforcementConfig {
+            max_iterations: 10,
+            target_improvement: None,
+            max_time: None,
+            apply_suggestions: false,
+            specific_file: None,
+            include_pattern: None,
+            exclude_pattern: None,
+            single_file_mode: false,
+            dry_run: false,
+            show_progress: false,
+            format: EnforceOutputFormat::Summary,
+            ci_mode: false,
+        };
+        let start = std::time::Instant::now();
+        let result = should_continue_enforcement(EnforcementState::Analyzing, 0, &config, start);
+        assert!(result, "Analyzing with 0 iterations should continue");
+    }
+
+    #[test]
+    fn test_load_quality_profile_extreme() {
+        let profile = load_quality_profile("extreme", None).unwrap();
+        assert_eq!(profile.coverage_min, 80.0);
+    }
+
+    #[test]
+    fn test_load_quality_profile_default_is_extreme() {
+        let profile = load_quality_profile("default", None).unwrap();
+        assert_eq!(profile.coverage_min, 80.0);
+    }
+
+    #[test]
+    fn test_handle_complete_state() {
+        let result = handle_complete_state().unwrap();
+        assert!(matches!(result.state, EnforcementState::Complete));
+        assert!(result.violations.is_empty());
+    }
+
+    #[test]
+    fn test_handle_refactoring_state_no_file() {
+        let result = handle_refactoring_state(85.0, None).unwrap();
+        assert!(matches!(result.state, EnforcementState::Validating));
+        assert!(result.score > 85.0); // adds 0.1
+    }
+
+    #[test]
+    fn test_handle_refactoring_state_with_file() {
+        let path = std::path::PathBuf::from("src/main.rs");
+        let result = handle_refactoring_state(90.0, Some(&path)).unwrap();
+        assert!(matches!(result.state, EnforcementState::Validating));
+        assert!(result.score > 90.0);
+    }
+
+    #[test]
+    fn test_handle_violating_state_empty_violations() {
+        let result = handle_violating_state(vec![], 75.0, false, false, None).unwrap();
+        assert_eq!(result.score, 75.0);
+    }
+
+    #[test]
+    fn test_handle_violating_state_with_violations() {
+        let violations = vec![QualityViolation {
+            violation_type: "complexity".to_string(),
+            severity: "high".to_string(),
+            location: "test.rs:10".to_string(),
+            current: 25.0,
+            target: 20.0,
+            suggestion: "Refactor".to_string(),
+        }];
+        let result = handle_violating_state(violations, 60.0, false, false, None).unwrap();
+        assert_eq!(result.violations.len(), 1);
+        assert_eq!(result.score, 60.0);
+    }
+
+    #[test]
+    fn test_output_result_json() {
+        let result = EnforcementResult {
+            state: EnforcementState::Complete,
+            score: 95.0,
+            target: 1.0,
+            current_file: None,
+            violations: vec![],
+            next_action: "none".to_string(),
+            progress: EnforcementProgress {
+                files_completed: 0,
+                files_remaining: 0,
+                estimated_iterations: 0,
+            },
+        };
+        let out = output_result(&result, EnforceOutputFormat::Json, false);
+        assert!(out.is_ok());
+    }
+
+    #[test]
+    fn test_output_result_summary() {
+        let result = EnforcementResult {
+            state: EnforcementState::Analyzing,
+            score: 50.0,
+            target: 1.0,
+            current_file: None,
+            violations: vec![QualityViolation {
+                violation_type: "coverage".to_string(),
+                severity: "medium".to_string(),
+                location: "test.rs".to_string(),
+                current: 30.0,
+                target: 80.0,
+                suggestion: "Add more tests".to_string(),
+            }],
+            next_action: "analyze".to_string(),
+            progress: EnforcementProgress {
+                files_completed: 0,
+                files_remaining: 1,
+                estimated_iterations: 1,
+            },
+        };
+        let out = output_result(&result, EnforceOutputFormat::Summary, false);
+        assert!(out.is_ok());
+    }
+
+    #[test]
+    fn test_quality_profile_serde_roundtrip() {
+        let profile = QualityProfile {
+            coverage_min: 90.0,
+            complexity_max: 15,
+            duplication_max_lines: 3,
+            ..QualityProfile::default()
+        };
+        let json = serde_json::to_string(&profile).unwrap();
+        let back: QualityProfile = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.coverage_min, 90.0);
+        assert_eq!(back.complexity_max, 15);
+    }
+
+    #[test]
+    fn test_clear_enforcement_cache_none() {
+        clear_enforcement_cache(&None);
+        // Should not panic
+    }
+}
