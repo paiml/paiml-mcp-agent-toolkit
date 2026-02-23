@@ -520,82 +520,29 @@ pub struct PrioritizedRecommendation {
     pub prerequisites: Vec<String>,
 }
 
-// Helper structs for organizing AST items
-#[derive(Debug, Clone)]
-struct CategorizedAstItems {
-    functions: Vec<AstFunction>,
-    structs: Vec<AstStruct>,
-    enums: Vec<AstEnum>,
-    traits: Vec<AstTrait>,
-    impls: Vec<AstImpl>,
-    modules: Vec<AstModule>,
-    uses: Vec<AstUse>,
+/// The main analyzer for generating deep context reports.
+///
+/// Provides formatting methods (markdown, JSON, SARIF) and analysis orchestration.
+pub struct DeepContextAnalyzer {
+    config: DeepContextConfig,
 }
 
-impl CategorizedAstItems {
-    fn new() -> Self {
-        Self {
-            functions: Vec::new(),
-            structs: Vec::new(),
-            enums: Vec::new(),
-            traits: Vec::new(),
-            impls: Vec::new(),
-            modules: Vec::new(),
-            uses: Vec::new(),
-        }
+impl DeepContextAnalyzer {
+    /// Creates a new `DeepContextAnalyzer` with the given configuration
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmat::services::deep_context::{DeepContextAnalyzer, DeepContextConfig};
+    ///
+    /// let config = DeepContextConfig::default();
+    /// let analyzer = DeepContextAnalyzer::new(config);
+    /// // Analyzer is ready to perform deep context analysis
+    /// ```
+    #[must_use]
+    pub fn new(config: DeepContextConfig) -> Self {
+        Self { config }
     }
-}
-
-#[derive(Debug, Clone)]
-struct AstFunction {
-    name: String,
-    visibility: String,
-    is_async: bool,
-    line: usize,
-}
-
-#[derive(Debug, Clone)]
-struct AstStruct {
-    name: String,
-    visibility: String,
-    fields_count: usize,
-    derives: Vec<String>,
-    line: usize,
-}
-
-#[derive(Debug, Clone)]
-struct AstEnum {
-    name: String,
-    visibility: String,
-    variants_count: usize,
-    line: usize,
-}
-
-#[derive(Debug, Clone)]
-struct AstTrait {
-    name: String,
-    visibility: String,
-    line: usize,
-}
-
-#[derive(Debug, Clone)]
-struct AstImpl {
-    type_name: String,
-    trait_name: Option<String>,
-    line: usize,
-}
-
-#[derive(Debug, Clone)]
-struct AstModule {
-    name: String,
-    visibility: String,
-    line: usize,
-}
-
-#[derive(Debug, Clone)]
-struct AstUse {
-    path: String,
-    line: usize,
 }
 
 impl Default for DeepContextConfig {
@@ -664,8 +611,8 @@ struct DeepContextBuildParams<'a> {
     analysis_duration: std::time::Duration,
 }
 
-// DeepContextAnalyzer formatting methods - extracted for file health (CB-040)
-include!("analyzer_formatting.rs");
+// DeepContextAnalyzer formatting methods - split into submodules for file health (CB-040)
+mod analyzer_formatting;
 
 // DeepContextAnalyzer core analysis methods - extracted for file health (CB-040)
 include!("analyzer_core.rs");
