@@ -1,8 +1,21 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
 // Comply handlers - split for file health (CB-040)
-include!("check_handlers.rs");
-include!("check_handlers_part2.rs");
+
+use crate::cli::commands::{ComplyCommands, ComplyOutputFormat};
+use anyhow::Result;
+use chrono::Utc;
+use std::fs;
+use std::path::Path;
+
+// Check handlers split into submodules
+mod check_handlers;
+pub(crate) use check_handlers::*;
+
+// Migration, enforce, report, init, upgrade handlers
 include!("migrate_handlers.rs");
+
+// Command dispatch (needs access to both check_handlers and migrate_handlers items)
+include!("command_dispatch.rs");
 
 // CB-050/CB-060 detection logic
 pub mod comply_cb_detect;

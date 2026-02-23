@@ -1,20 +1,22 @@
 // Three-Layer CLI: Review and Audit handlers (COMPLY-045)
 //
-// Extracted from check_handlers.rs for file health (CB-040).
-// This file is include!()'d into check_handlers.rs scope.
-//
 // Layer 2 (Genchi Genbutsu): Evidence-based review
 // Layer 3 (Governance): Audit artifact generation
 
-// ============================================================
-// Layer 2 (Genchi Genbutsu): Evidence-based review (COMPLY-045)
-// ============================================================
+use crate::cli::commands::ComplyOutputFormat;
+use crate::models::comply_config::PmatYamlConfig;
+use anyhow::Result;
+use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
+use std::fs;
+use std::path::Path;
+
+use super::types::*;
+use super::check::*;
+use super::check_extended::*;
 
 /// Handle `pmat comply review` - generate evidence-based review checklist.
-///
-/// Per TPS Genchi Genbutsu: reviewer must "go and see" the evidence.
-/// Collects reproducibility, golden trace, and hypothesis-driven evidence.
-async fn handle_review(
+pub async fn handle_review(
     project_path: &Path,
     format: ComplyOutputFormat,
     output: Option<&Path>,
@@ -25,19 +27,10 @@ async fn handle_review(
     println!("PMAT Comply Review (Layer 2: Genchi Genbutsu)");
     println!("==============================================\n");
 
-    // 1. Reproducibility evidence
     let repro = reproducibility_handlers::check_reproducibility(project_path);
-
-    // 2. Golden trace evidence
     let golden = reproducibility_handlers::check_golden_trace_drift(project_path);
-
-    // 3. Muda waste evidence
     let muda = muda_handlers::calculate_muda_score(project_path);
-
-    // 4. Git state evidence
     let git_clean = check_git_clean(project_path);
-
-    // 5. Build review checklist
     let checklist = build_review_checklist(&repro, golden, &muda, git_clean);
 
     let content = match format {
@@ -59,7 +52,7 @@ async fn handle_review(
 
 /// A single review checklist item
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct ReviewItem {
+pub struct ReviewItem {
     category: String,
     question: String,
     evidence: String,
@@ -75,7 +68,6 @@ fn build_review_checklist(
 ) -> Vec<ReviewItem> {
     let mut items = Vec::new();
 
-    // Reproducibility
     items.push(ReviewItem {
         category: "Reproducibility".into(),
         question: "Can a reviewer reproduce the test suite?".into(),
@@ -88,7 +80,6 @@ fn build_review_checklist(
         },
     });
 
-    // Golden traces
     items.push(ReviewItem {
         category: "Golden Traces".into(),
         question: "Are golden traces configured and passing?".into(),
@@ -104,7 +95,6 @@ fn build_review_checklist(
         },
     });
 
-    // Waste score
     items.push(ReviewItem {
         category: "Waste Score".into(),
         question: "Is the Muda waste score within acceptable limits?".into(),
@@ -112,7 +102,6 @@ fn build_review_checklist(
         status: if muda.total_score <= 60.0 { "PASS".into() } else { "WARN".into() },
     });
 
-    // Git state
     items.push(ReviewItem {
         category: "Git State".into(),
         question: "Is the working tree clean?".into(),
@@ -120,7 +109,6 @@ fn build_review_checklist(
         status: if git_clean { "PASS".into() } else { "WARN".into() },
     });
 
-    // Dockerfile
     items.push(ReviewItem {
         category: "Environment".into(),
         question: "Is the build environment documented?".into(),
@@ -137,7 +125,6 @@ fn format_review_markdown(items: &[ReviewItem]) -> String {
     let mut out = String::new();
     out.push_str("# PMAT Comply Review Checklist\n\n");
     out.push_str("**Layer 2 (Genchi Genbutsu)**: Reviewer must verify evidence.\n\n");
-
     for item in items {
         let icon = match item.status.as_str() {
             "PASS" => "[x]",
@@ -148,7 +135,6 @@ fn format_review_markdown(items: &[ReviewItem]) -> String {
         out.push_str(&format!("- {} **{}**: {}\n", icon, item.category, item.question));
         out.push_str(&format!("  - Evidence: {}\n\n", item.evidence));
     }
-
     out
 }
 
@@ -181,10 +167,7 @@ struct AuditArtifact {
 }
 
 /// Handle `pmat comply audit` - generate governance audit artifact.
-///
-/// Per TPS Kaizen: every defect signals a process failure.
-/// Requires clean git state to produce a valid audit trail.
-async fn handle_audit(
+pub async fn handle_audit(
     project_path: &Path,
     format: ComplyOutputFormat,
     output: Option<&Path>,
@@ -192,7 +175,6 @@ async fn handle_audit(
     println!("PMAT Comply Audit (Layer 3: Governance)");
     println!("========================================\n");
 
-    // Require clean git state for audit integrity
     let git_clean = check_git_clean(project_path);
     if !git_clean {
         println!("\x1b[31mERROR: Audit requires clean git state.\x1b[0m");
@@ -201,7 +183,6 @@ async fn handle_audit(
         std::process::exit(1);
     }
 
-    // Get git SHA
     let git_sha = std::process::Command::new("git")
         .args(["rev-parse", "HEAD"])
         .current_dir(project_path)
@@ -209,14 +190,11 @@ async fn handle_audit(
         .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
         .unwrap_or_else(|_| "unknown".to_string());
 
-    // Load YAML config
     let yaml_config = PmatYamlConfig::load(project_path).unwrap_or_default();
     let comply_config = &yaml_config.comply;
 
-    // Layer 1: Run all automated checks
     let layer1_checks = collect_layer1_checks(project_path, comply_config);
 
-    // Layer 2: Build review evidence
     let repro = crate::cli::handlers::comply_handlers::reproducibility_handlers::check_reproducibility(project_path);
     let golden = crate::cli::handlers::comply_handlers::reproducibility_handlers::check_golden_trace_drift(project_path);
     let muda = crate::cli::handlers::comply_handlers::muda_handlers::calculate_muda_score(project_path);
@@ -256,7 +234,7 @@ async fn handle_audit(
 }
 
 /// Collect Layer 1 checks for the audit artifact.
-fn collect_layer1_checks(project_path: &Path, comply_config: &ComplyConfig) -> Vec<ComplianceCheck> {
+fn collect_layer1_checks(project_path: &Path, comply_config: &crate::models::comply_config::ComplyConfig) -> Vec<ComplianceCheck> {
     vec![
         filter_check_by_config(check_compute_brick(project_path), "cb-060", comply_config),
         filter_check_by_config(check_oip_tarantula_patterns(project_path), "cb-120", comply_config),
@@ -276,27 +254,20 @@ fn format_audit_markdown(artifact: &AuditArtifact) -> String {
     out.push_str(&format!("**Timestamp**: {}\n", artifact.timestamp));
     out.push_str(&format!("**Git SHA**: {}\n", artifact.git_sha));
     out.push_str(&format!("**Git Clean**: {}\n\n", artifact.git_clean));
-
     out.push_str("## Layer 1: Automated Checks (Jidoka)\n\n");
     for check in &artifact.layer1_checks {
         let icon = match check.status {
-            CheckStatus::Pass => "PASS",
-            CheckStatus::Warn => "WARN",
-            CheckStatus::Fail => "FAIL",
-            CheckStatus::Skip => "SKIP",
+            CheckStatus::Pass => "PASS", CheckStatus::Warn => "WARN", CheckStatus::Fail => "FAIL", CheckStatus::Skip => "SKIP",
         };
         out.push_str(&format!("- [{}] **{}**: {}\n", icon, check.name, check.message));
     }
-
     out.push_str("\n## Layer 2: Review Evidence (Genchi Genbutsu)\n\n");
     for item in &artifact.layer2_review {
         out.push_str(&format!("- [{}] **{}**: {}\n", item.status, item.category, item.evidence));
     }
-
     out.push_str("\n## Summary\n\n");
     out.push_str(&format!("- Reproducibility: {}\n", artifact.reproducibility_level));
     out.push_str(&format!("- Muda Score: {:.1}/100\n", artifact.muda_score));
     out.push_str(&format!("- Golden Traces: {}\n", artifact.golden_traces));
-
     out
 }

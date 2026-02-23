@@ -4,7 +4,7 @@
 // and basic check_* functions (version, config, hooks, quality, CB patterns).
 
 use crate::cli::commands::ComplyOutputFormat;
-use crate::cli::handlers::comply_handlers::comply_cb_detect::{
+use crate::cli::handlers::comply_cb_detect::{
     detect_bricks_without_assertions, detect_cb001_wgsl_no_bounds_check,
     detect_cb002_wgsl_barrier_divergence, detect_cb020_unsafe_without_safety,
     detect_cb021_simd_without_target_feature, detect_profiler_anomalies,
@@ -13,8 +13,6 @@ use crate::cli::handlers::comply_handlers::comply_cb_detect::{
     detect_cb124_coverage_threshold,
     detect_cb125_coverage_exclusion_gaming, detect_cb126_slow_tests,
     detect_cb127_slow_coverage,
-    detect_cb081_dependency_count, DependencyCountReport,
-    detect_cb130_agent_context_adoption,
 };
 use crate::models::comply_config::PmatYamlConfig;
 use anyhow::Result;
@@ -38,7 +36,7 @@ use super::check_best_practices::{
 };
 
 /// Check project compliance with current PMAT version
-pub(crate) async fn handle_check(
+pub async fn handle_check(
     project_path: &Path,
     strict: bool,
     failures_only: bool,
@@ -141,7 +139,7 @@ pub(crate) async fn handle_check(
     Ok(())
 }
 
-pub(crate) fn check_version_currency(project_version: &str) -> ComplianceCheck {
+pub fn check_version_currency(project_version: &str) -> ComplianceCheck {
     let behind = calculate_versions_behind(project_version);
     if behind == 0 {
         ComplianceCheck { name: "Version Currency".into(), status: CheckStatus::Pass, message: format!("Project is on latest version (v{})", PMAT_VERSION), severity: Severity::Info }
@@ -152,7 +150,7 @@ pub(crate) fn check_version_currency(project_version: &str) -> ComplianceCheck {
     }
 }
 
-pub(crate) fn check_config_files(project_path: &Path) -> ComplianceCheck {
+pub fn check_config_files(project_path: &Path) -> ComplianceCheck {
     let config_files = [".pmat/project.toml", ".pmat-metrics.toml"];
     let missing: Vec<&str> = config_files.iter().filter(|f| !project_path.join(f).exists()).copied().collect();
     if missing.is_empty() {
@@ -162,7 +160,7 @@ pub(crate) fn check_config_files(project_path: &Path) -> ComplianceCheck {
     }
 }
 
-pub(crate) fn check_hooks_installed(project_path: &Path) -> ComplianceCheck {
+pub fn check_hooks_installed(project_path: &Path) -> ComplianceCheck {
     let pre_commit = project_path.join(".git").join("hooks").join("pre-commit");
     if pre_commit.exists() {
         if let Ok(content) = fs::read_to_string(&pre_commit) {
@@ -176,7 +174,7 @@ pub(crate) fn check_hooks_installed(project_path: &Path) -> ComplianceCheck {
     }
 }
 
-pub(crate) fn check_hooks_o1_capable(project_path: &Path) -> ComplianceCheck {
+pub fn check_hooks_o1_capable(project_path: &Path) -> ComplianceCheck {
     let cache_dir = project_path.join(".pmat").join("hooks-cache");
     if cache_dir.exists() {
         if cache_dir.join("tree-hash.json").exists() || cache_dir.join("gates").exists() {
@@ -188,7 +186,7 @@ pub(crate) fn check_hooks_o1_capable(project_path: &Path) -> ComplianceCheck {
     }
 }
 
-pub(crate) fn check_hooks_cache_health(project_path: &Path) -> ComplianceCheck {
+pub fn check_hooks_cache_health(project_path: &Path) -> ComplianceCheck {
     let metrics_path = project_path.join(".pmat").join("hooks-cache").join("metrics.json");
     if !metrics_path.exists() {
         return ComplianceCheck { name: "CB-031: Cache Health".into(), status: CheckStatus::Skip, message: "No cache metrics available yet".into(), severity: Severity::Info };
@@ -215,7 +213,7 @@ pub(crate) fn check_hooks_cache_health(project_path: &Path) -> ComplianceCheck {
     }
 }
 
-pub(crate) fn check_quality_thresholds(project_path: &Path) -> ComplianceCheck {
+pub fn check_quality_thresholds(project_path: &Path) -> ComplianceCheck {
     if project_path.join(".pmat-metrics.toml").exists() {
         ComplianceCheck { name: "Quality Thresholds".into(), status: CheckStatus::Pass, message: "Quality thresholds configured".into(), severity: Severity::Info }
     } else {
@@ -223,18 +221,39 @@ pub(crate) fn check_quality_thresholds(project_path: &Path) -> ComplianceCheck {
     }
 }
 
-pub(crate) fn check_deprecated_features(_project_path: &Path) -> ComplianceCheck {
+pub fn check_deprecated_features(_project_path: &Path) -> ComplianceCheck {
     ComplianceCheck { name: "Deprecated Features".into(), status: CheckStatus::Pass, message: "No deprecated features detected".into(), severity: Severity::Info }
 }
 
-pub(crate) fn collect_cb_violations(project_path: &Path, has_probar: bool, has_brick_dir: bool) -> (Vec<String>, usize, usize) {
-    let mut all_issues: Vec<String> = Vec::new();
+/// Append formatted violation to the issues list
+fn append_violation(issues: &mut Vec<String>, v: &crate::cli::handlers::comply_cb_detect::CbPatternViolation) {
+    issues.push(format!("{}: {} ({}:{})", v.pattern_id, v.description, v.file, v.line));
+}
+
+/// Collect violations from multiple detection functions, counting by severity
+fn collect_violations_with_counts(
+    detections: &[(Vec<crate::cli::handlers::comply_cb_detect::CbPatternViolation>, bool)],
+) -> (Vec<String>, usize, usize) {
+    let mut all_issues = Vec::new();
     let (mut critical_count, mut warning_count) = (0, 0);
-    for v in &detect_cb020_unsafe_without_safety(project_path) { all_issues.push(format!("{}: {} ({}:{})", v.pattern_id, v.description, v.file, v.line)); warning_count += 1; }
-    for v in &detect_cb021_simd_without_target_feature(project_path) { all_issues.push(format!("{}: {} ({}:{})", v.pattern_id, v.description, v.file, v.line)); warning_count += 1; }
-    for v in &detect_bricks_without_assertions(project_path) { all_issues.push(format!("{}: {} ({}:{})", v.pattern_id, v.description, v.file, v.line)); warning_count += 1; }
-    for v in &detect_cb001_wgsl_no_bounds_check(project_path) { all_issues.push(format!("{}: {} ({}:{})", v.pattern_id, v.description, v.file, v.line)); critical_count += 1; }
-    for v in &detect_cb002_wgsl_barrier_divergence(project_path) { all_issues.push(format!("{}: {} ({}:{})", v.pattern_id, v.description, v.file, v.line)); critical_count += 1; }
+    for (violations, is_critical) in detections {
+        for v in violations {
+            append_violation(&mut all_issues, v);
+            if *is_critical { critical_count += 1; } else { warning_count += 1; }
+        }
+    }
+    (all_issues, critical_count, warning_count)
+}
+
+pub fn collect_cb_violations(project_path: &Path, has_probar: bool, has_brick_dir: bool) -> (Vec<String>, usize, usize) {
+    let detections = vec![
+        (detect_cb020_unsafe_without_safety(project_path), false),
+        (detect_cb021_simd_without_target_feature(project_path), false),
+        (detect_bricks_without_assertions(project_path), false),
+        (detect_cb001_wgsl_no_bounds_check(project_path), true),
+        (detect_cb002_wgsl_barrier_divergence(project_path), true),
+    ];
+    let (mut all_issues, mut critical_count, mut warning_count) = collect_violations_with_counts(&detections);
     for a in &detect_profiler_anomalies(project_path) {
         all_issues.push(format!("PROFILER-{}: {} has {}={:.1}% (threshold: {:.1}%)", a.anomaly_type, a.brick_name, a.anomaly_type.to_lowercase(), a.value, a.threshold));
         if a.anomaly_type == "LOW_EFFICIENCY" { critical_count += 1; } else { warning_count += 1; }
@@ -247,7 +266,7 @@ pub(crate) fn collect_cb_violations(project_path: &Path, has_probar: bool, has_b
     (all_issues, critical_count, warning_count)
 }
 
-pub(crate) fn build_cb_result(all_issues: Vec<String>, critical_count: usize, warning_count: usize) -> ComplianceCheck {
+pub fn build_cb_result(all_issues: Vec<String>, critical_count: usize, warning_count: usize) -> ComplianceCheck {
     if critical_count > 0 {
         ComplianceCheck { name: "ComputeBrick Compliance".into(), status: CheckStatus::Fail, message: format!("{} critical, {} warnings:\n{}", critical_count, warning_count, format_violation_list(&all_issues)), severity: Severity::Critical }
     } else if warning_count > 0 {
@@ -257,7 +276,7 @@ pub(crate) fn build_cb_result(all_issues: Vec<String>, critical_count: usize, wa
     }
 }
 
-pub(crate) fn check_compute_brick(project_path: &Path) -> ComplianceCheck {
+pub fn check_compute_brick(project_path: &Path) -> ComplianceCheck {
     let cargo_toml = project_path.join("Cargo.toml");
     let brick_dir = project_path.join("src").join("brick");
     let has_probar = cargo_toml.exists() && fs::read_to_string(&cargo_toml).map(|s| s.contains("probar") || s.contains("jugar-probar")).unwrap_or(false);
@@ -270,16 +289,17 @@ pub(crate) fn check_compute_brick(project_path: &Path) -> ComplianceCheck {
     build_cb_result(all_issues, critical_count, warning_count)
 }
 
-pub(crate) fn check_oip_tarantula_patterns(project_path: &Path) -> ComplianceCheck {
-    let mut all_issues: Vec<String> = Vec::new();
-    let (mut critical_count, mut warning_count) = (0, 0);
-    for v in &detect_cb120_nan_unsafe_comparison(project_path) { all_issues.push(format!("{}: {} ({}:{})", v.pattern_id, v.description, v.file, v.line)); critical_count += 1; }
-    for v in &detect_cb121_lock_poisoning(project_path) { all_issues.push(format!("{}: {} ({}:{})", v.pattern_id, v.description, v.file, v.line)); warning_count += 1; }
-    for v in &detect_cb122_serde_safety(project_path) { all_issues.push(format!("{}: {} ({}:{})", v.pattern_id, v.description, v.file, v.line)); critical_count += 1; }
-    for v in &detect_cb123_undocumented_ignore(project_path) { all_issues.push(format!("{}: {} ({}:{})", v.pattern_id, v.description, v.file, v.line)); warning_count += 1; }
+pub fn check_oip_tarantula_patterns(project_path: &Path) -> ComplianceCheck {
+    let detections = vec![
+        (detect_cb120_nan_unsafe_comparison(project_path), true),
+        (detect_cb121_lock_poisoning(project_path), false),
+        (detect_cb122_serde_safety(project_path), true),
+        (detect_cb123_undocumented_ignore(project_path), false),
+    ];
+    let (mut all_issues, mut critical_count, mut warning_count) = collect_violations_with_counts(&detections);
     for v in &detect_cb124_coverage_threshold(project_path) {
-        all_issues.push(format!("{}: {} ({}:{})", v.pattern_id, v.description, v.file, v.line));
-        match v.severity { crate::cli::handlers::comply_handlers::comply_cb_detect::Severity::Error => critical_count += 1, _ => warning_count += 1 }
+        append_violation(&mut all_issues, v);
+        match v.severity { crate::cli::handlers::comply_cb_detect::Severity::Error => critical_count += 1, _ => warning_count += 1 }
     }
     if critical_count > 0 || warning_count > 0 {
         ComplianceCheck { name: "OIP Tarantula Patterns (CB-120 to CB-124)".into(), status: CheckStatus::Warn, message: format!("[Advisory] {} issues, {} warnings:\n{}", critical_count, warning_count, format_violation_list(&all_issues)), severity: Severity::Warning }
@@ -288,35 +308,61 @@ pub(crate) fn check_oip_tarantula_patterns(project_path: &Path) -> ComplianceChe
     }
 }
 
-pub(crate) fn check_coverage_quality_patterns(project_path: &Path) -> ComplianceCheck {
-    let mut all_issues: Vec<String> = Vec::new();
-    let (mut critical_count, mut error_count, mut warning_count) = (0, 0, 0);
-    let cb_sev = crate::cli::handlers::comply_handlers::comply_cb_detect::Severity::Critical;
-    let cb_err = crate::cli::handlers::comply_handlers::comply_cb_detect::Severity::Error;
-    for v in &detect_cb125_coverage_exclusion_gaming(project_path) {
-        all_issues.push(format!("{}: {} ({}:{})", v.pattern_id, v.description, v.file, v.line));
-        if v.severity == cb_sev { critical_count += 1; } else if v.severity == cb_err { error_count += 1; } else { warning_count += 1; }
+/// Collect violations from multiple detection functions, classifying by original severity into 3 levels
+fn collect_triaged_violations(
+    violation_sets: &[Vec<crate::cli::handlers::comply_cb_detect::CbPatternViolation>],
+) -> (Vec<String>, usize, usize, usize) {
+    use crate::cli::handlers::comply_cb_detect::Severity as CbSev;
+    let mut all_issues = Vec::new();
+    let (mut critical, mut error, mut warning) = (0, 0, 0);
+    for violations in violation_sets {
+        for v in violations {
+            append_violation(&mut all_issues, v);
+            match v.severity {
+                CbSev::Critical => critical += 1,
+                CbSev::Error => error += 1,
+                _ => warning += 1,
+            }
+        }
     }
-    for v in &detect_cb126_slow_tests(project_path) {
-        all_issues.push(format!("{}: {} ({}:{})", v.pattern_id, v.description, v.file, v.line));
-        if v.severity == cb_sev { critical_count += 1; } else if v.severity == cb_err { error_count += 1; } else { warning_count += 1; }
-    }
-    for v in &detect_cb127_slow_coverage(project_path) {
-        all_issues.push(format!("{}: {} ({}:{})", v.pattern_id, v.description, v.file, v.line));
-        if v.severity == cb_sev { critical_count += 1; } else if v.severity == cb_err { error_count += 1; } else { warning_count += 1; }
-    }
-    if critical_count > 0 {
-        ComplianceCheck { name: "Coverage Quality Patterns (CB-125 to CB-127)".into(), status: CheckStatus::Fail, message: format!("{} critical, {} errors, {} warnings:\n{}", critical_count, error_count, warning_count, format_violation_list(&all_issues)), severity: Severity::Critical }
-    } else if error_count > 0 {
-        ComplianceCheck { name: "Coverage Quality Patterns (CB-125 to CB-127)".into(), status: CheckStatus::Fail, message: format!("{} errors, {} warnings:\n{}", error_count, warning_count, format_violation_list(&all_issues)), severity: Severity::Error }
-    } else if warning_count > 0 {
-        ComplianceCheck { name: "Coverage Quality Patterns (CB-125 to CB-127)".into(), status: CheckStatus::Warn, message: format!("{} warnings:\n{}", warning_count, format_violation_list(&all_issues)), severity: Severity::Warning }
+    (all_issues, critical, error, warning)
+}
+
+/// Build a ComplianceCheck from triaged violation counts
+fn build_triaged_check(
+    name: &str,
+    all_issues: Vec<String>,
+    critical: usize,
+    error: usize,
+    warning: usize,
+    pass_message: &str,
+) -> ComplianceCheck {
+    if critical > 0 {
+        ComplianceCheck { name: name.into(), status: CheckStatus::Fail, message: format!("{} critical, {} errors, {} warnings:\n{}", critical, error, warning, format_violation_list(&all_issues)), severity: Severity::Critical }
+    } else if error > 0 {
+        ComplianceCheck { name: name.into(), status: CheckStatus::Fail, message: format!("{} errors, {} warnings:\n{}", error, warning, format_violation_list(&all_issues)), severity: Severity::Error }
+    } else if warning > 0 {
+        ComplianceCheck { name: name.into(), status: CheckStatus::Warn, message: format!("{} warnings:\n{}", warning, format_violation_list(&all_issues)), severity: Severity::Warning }
     } else {
-        ComplianceCheck { name: "Coverage Quality Patterns (CB-125 to CB-127)".into(), status: CheckStatus::Pass, message: "No coverage quality issues detected".into(), severity: Severity::Info }
+        ComplianceCheck { name: name.into(), status: CheckStatus::Pass, message: pass_message.into(), severity: Severity::Info }
     }
 }
 
-pub(crate) fn check_cargo_lock(project_path: &Path) -> ComplianceCheck {
+pub fn check_coverage_quality_patterns(project_path: &Path) -> ComplianceCheck {
+    let violation_sets = vec![
+        detect_cb125_coverage_exclusion_gaming(project_path),
+        detect_cb126_slow_tests(project_path),
+        detect_cb127_slow_coverage(project_path),
+    ];
+    let (all_issues, critical, error, warning) = collect_triaged_violations(&violation_sets);
+    build_triaged_check(
+        "Coverage Quality Patterns (CB-125 to CB-127)",
+        all_issues, critical, error, warning,
+        "No coverage quality issues detected",
+    )
+}
+
+pub fn check_cargo_lock(project_path: &Path) -> ComplianceCheck {
     if !project_path.join("Cargo.toml").exists() {
         return ComplianceCheck { name: "Cargo.lock Present".into(), status: CheckStatus::Skip, message: "Not a Rust project (no Cargo.toml)".into(), severity: Severity::Info };
     }
@@ -327,7 +373,7 @@ pub(crate) fn check_cargo_lock(project_path: &Path) -> ComplianceCheck {
     }
 }
 
-pub(crate) fn check_msrv(project_path: &Path) -> ComplianceCheck {
+pub fn check_msrv(project_path: &Path) -> ComplianceCheck {
     let cargo_toml = project_path.join("Cargo.toml");
     if !cargo_toml.exists() { return ComplianceCheck { name: "MSRV Defined".into(), status: CheckStatus::Skip, message: "No Cargo.toml found".into(), severity: Severity::Info }; }
     let content = fs::read_to_string(&cargo_toml).unwrap_or_default();
@@ -338,7 +384,7 @@ pub(crate) fn check_msrv(project_path: &Path) -> ComplianceCheck {
     }
 }
 
-pub(crate) fn check_ci_configured(project_path: &Path) -> ComplianceCheck {
+pub fn check_ci_configured(project_path: &Path) -> ComplianceCheck {
     let github_workflows = project_path.join(".github").join("workflows");
     if github_workflows.exists() && github_workflows.is_dir() {
         let wf_count = fs::read_dir(&github_workflows).map(|e| e.filter_map(|e| e.ok()).count()).unwrap_or(0);

@@ -1,14 +1,19 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
+
 // CC-001: Cross-crate function clone detection
 // CC-002: API signature divergence detection
-//
-// Included into cross_crate_handlers.rs via include!()
+
+use super::helpers::{compute_signatures, is_crate_pair_excluded, is_excluded_function};
+use super::types::{CcSeverity, CrateInfo, CrossCrateFinding, DetectionConfig};
+use crate::services::agent_context::FunctionEntry;
+use std::collections::{HashMap, HashSet};
 
 /// CC-001: Detect functions that are copy-pasted across crate boundaries.
 ///
 /// Uses MinHash signatures on function source to find near-duplicates.
 /// Only reports cross-crate pairs (same-crate duplicates are handled by
 /// `pmat comply check` CB pattern detection).
-fn detect_cc001_function_clones(
+pub(super) fn detect_cc001_function_clones(
     crate_functions: &[(CrateInfo, Vec<FunctionEntry>)],
     threshold: f64,
     config: &DetectionConfig,
@@ -89,7 +94,7 @@ fn detect_cc001_function_clones(
 ///
 /// When two crates define `rms_norm()` with different parameter types or return types,
 /// this is an API divergence risk — callers may silently get wrong behavior.
-fn detect_cc002_api_divergence(
+pub(super) fn detect_cc002_api_divergence(
     crate_functions: &[(CrateInfo, Vec<FunctionEntry>)],
     config: &DetectionConfig,
 ) -> Vec<CrossCrateFinding> {
@@ -227,7 +232,7 @@ fn count_signature_params(sig: &str) -> usize {
 
 /// Normalize a function signature for comparison.
 /// Strips `pub`, `async`, visibility modifiers, and normalizes whitespace.
-fn normalize_signature(sig: &str) -> String {
+pub(super) fn normalize_signature(sig: &str) -> String {
     let mut s = sig.to_string();
     // Strip visibility
     for prefix in &["pub(crate) ", "pub(super) ", "pub "] {

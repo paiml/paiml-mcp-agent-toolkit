@@ -4,7 +4,6 @@
 // a configurable minimum TDG grade (default A).
 
 use crate::models::comply_config::ComplyConfig;
-use serde::{Deserialize, Serialize};
 use std::path::Path;
 
 use super::types::*;
@@ -74,7 +73,31 @@ fn rebuild_index(project_path: &Path) -> bool {
 }
 
 /// Check TDG grade gate against the SQLite index.
-pub(crate) fn check_tdg_grade_gate(project_path: &Path, comply_config: &ComplyConfig) -> ComplianceCheck {
+/// Query violations from the context database for grades below threshold
+fn query_tdg_violations(
+    db_path: &Path,
+    failing_grades: &[&str],
+) -> Result<Vec<TdgViolation>, ComplianceCheck> {
+    let conn = rusqlite::Connection::open_with_flags(db_path, rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY | rusqlite::OpenFlags::SQLITE_OPEN_NO_MUTEX)
+        .map_err(|e| ComplianceCheck { name: "CB-200: TDG Grade Gate".into(), status: CheckStatus::Skip, message: format!("Failed to open context.db: {e}"), severity: Severity::Info })?;
+    let placeholders: Vec<String> = failing_grades.iter().enumerate().map(|(i, _)| format!("?{}", i + 1)).collect();
+    let sql = format!("SELECT file_path, function_name, tdg_grade, complexity, start_line FROM functions WHERE tdg_grade IN ({})", placeholders.join(", "));
+    let mut stmt = conn.prepare(&sql)
+        .map_err(|e| ComplianceCheck { name: "CB-200: TDG Grade Gate".into(), status: CheckStatus::Skip, message: format!("Failed to query context.db: {e}"), severity: Severity::Info })?;
+    let params: Vec<&dyn rusqlite::types::ToSql> = failing_grades.iter().map(|g| g as &dyn rusqlite::types::ToSql).collect();
+    stmt.query_map(params.as_slice(), |row| Ok(TdgViolation { file_path: row.get(0)?, function_name: row.get(1)?, tdg_grade: row.get(2)?, complexity: row.get::<_, i64>(3)? as u32, start_line: row.get::<_, i64>(4)? as usize }))
+        .map(|iter| iter.filter_map(|r| r.ok()).collect())
+        .map_err(|e| ComplianceCheck { name: "CB-200: TDG Grade Gate".into(), status: CheckStatus::Skip, message: format!("Query failed: {e}"), severity: Severity::Info })
+}
+
+/// Check if a violation should be excluded (test files or glob patterns)
+fn is_tdg_violation_excluded(v: &TdgViolation, exclude_patterns: &[glob::Pattern]) -> bool {
+    if v.file_path.contains("/tests/") || v.file_path.contains("/test/") || v.file_path.ends_with("_test.rs") || v.file_path.ends_with("_tests.rs") { return true; }
+    let opts = glob::MatchOptions { case_sensitive: true, require_literal_separator: false, require_literal_leading_dot: false };
+    exclude_patterns.iter().any(|pat| pat.matches_with(&v.file_path, opts))
+}
+
+pub fn check_tdg_grade_gate(project_path: &Path, comply_config: &ComplyConfig) -> ComplianceCheck {
     let db_path = project_path.join(".pmat").join("context.db");
     if (!db_path.exists() || is_index_stale(project_path, &db_path)) && !rebuild_index(project_path) && !db_path.exists() {
         return ComplianceCheck { name: "CB-200: TDG Grade Gate".into(), status: CheckStatus::Skip, message: "No .pmat/context.db found and rebuild failed \u{2014} run `pmat query` to create index".into(), severity: Severity::Info };
@@ -85,27 +108,13 @@ pub(crate) fn check_tdg_grade_gate(project_path: &Path, comply_config: &ComplyCo
     if failing_grades.is_empty() {
         return ComplianceCheck { name: "CB-200: TDG Grade Gate".into(), status: CheckStatus::Pass, message: format!("Minimum grade {min_grade} \u{2014} no grades below threshold"), severity: Severity::Info };
     }
-    let conn = match rusqlite::Connection::open_with_flags(&db_path, rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY | rusqlite::OpenFlags::SQLITE_OPEN_NO_MUTEX) {
-        Ok(c) => c,
-        Err(e) => return ComplianceCheck { name: "CB-200: TDG Grade Gate".into(), status: CheckStatus::Skip, message: format!("Failed to open context.db: {e}"), severity: Severity::Info },
-    };
-    let placeholders: Vec<String> = failing_grades.iter().enumerate().map(|(i, _)| format!("?{}", i + 1)).collect();
-    let sql = format!("SELECT file_path, function_name, tdg_grade, complexity, start_line FROM functions WHERE tdg_grade IN ({})", placeholders.join(", "));
-    let violations = {
-        let mut stmt = match conn.prepare(&sql) { Ok(s) => s, Err(e) => return ComplianceCheck { name: "CB-200: TDG Grade Gate".into(), status: CheckStatus::Skip, message: format!("Failed to query context.db: {e}"), severity: Severity::Info } };
-        let params: Vec<&dyn rusqlite::types::ToSql> = failing_grades.iter().map(|g| g as &dyn rusqlite::types::ToSql).collect();
-        match stmt.query_map(params.as_slice(), |row| Ok(TdgViolation { file_path: row.get(0)?, function_name: row.get(1)?, tdg_grade: row.get(2)?, complexity: row.get::<_, i64>(3)? as u32, start_line: row.get::<_, i64>(4)? as usize })) {
-            Ok(iter) => iter.filter_map(|r| r.ok()).collect::<Vec<_>>(),
-            Err(e) => return ComplianceCheck { name: "CB-200: TDG Grade Gate".into(), status: CheckStatus::Skip, message: format!("Query failed: {e}"), severity: Severity::Info },
-        }
+    let violations = match query_tdg_violations(&db_path, &failing_grades) {
+        Ok(v) => v,
+        Err(check) => return check,
     };
     let all_excludes: Vec<&str> = comply_config.thresholds.tdg_exclude_paths.iter().map(|s| s.as_str()).chain(overrides.exclude.iter().map(|s| s.as_str())).collect();
     let exclude_patterns: Vec<glob::Pattern> = all_excludes.iter().filter_map(|p| glob::Pattern::new(p).ok()).collect();
-    let filtered: Vec<&TdgViolation> = violations.iter().filter(|v| {
-        if v.file_path.contains("/tests/") || v.file_path.contains("/test/") || v.file_path.ends_with("_test.rs") || v.file_path.ends_with("_tests.rs") { return false; }
-        let opts = glob::MatchOptions { case_sensitive: true, require_literal_separator: false, require_literal_leading_dot: false };
-        !exclude_patterns.iter().any(|pat| pat.matches_with(&v.file_path, opts))
-    }).collect();
+    let filtered: Vec<&TdgViolation> = violations.iter().filter(|v| !is_tdg_violation_excluded(v, &exclude_patterns)).collect();
     let count = filtered.len();
     if count == 0 {
         return ComplianceCheck { name: "CB-200: TDG Grade Gate".into(), status: CheckStatus::Pass, message: format!("All non-test functions meet minimum grade {min_grade}{}", if violations.is_empty() { String::new() } else { format!(" ({} test/excluded functions skipped)", violations.len()) }), severity: Severity::Info };
@@ -115,28 +124,36 @@ pub(crate) fn check_tdg_grade_gate(project_path: &Path, comply_config: &ComplyCo
     ComplianceCheck { name: "CB-200: TDG Grade Gate".into(), status: CheckStatus::Fail, message: format!("{count} function(s) below minimum grade {min_grade}\n{}", details.join("\n")), severity: Severity::Error }
 }
 
+/// Evaluate a single custom score definition and return the compliance check
+fn evaluate_custom_score(
+    project_path: &Path,
+    score_def: &crate::models::comply_config::CustomScoreDefinition,
+) -> ComplianceCheck {
+    let check_name = format!("CB-1100: Custom Score [{}]", score_def.id);
+    let output = match std::process::Command::new("sh").args(["-c", &score_def.command]).current_dir(project_path).output() {
+        Ok(o) => o,
+        Err(e) => return ComplianceCheck { name: check_name, status: CheckStatus::Skip, message: format!("Failed to run command: {e}"), severity: Severity::Info },
+    };
+    if !output.status.success() {
+        return ComplianceCheck { name: check_name, status: CheckStatus::Fail, message: format!("{}: command failed (exit {})", score_def.name, output.status.code().unwrap_or(-1)), severity: Severity::from(score_def.severity) };
+    }
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let actual_score = match extract_score_from_output(&stdout) {
+        Some(s) => s,
+        None => return ComplianceCheck { name: check_name, status: CheckStatus::Skip, message: format!("{}: could not parse score from command output", score_def.name), severity: Severity::Info },
+    };
+    match score_def.min_score {
+        Some(min) if actual_score < min => ComplianceCheck { name: check_name, status: CheckStatus::Fail, message: format!("{}: score {:.1} below minimum {:.1}", score_def.name, actual_score, min), severity: Severity::from(score_def.severity) },
+        Some(min) => ComplianceCheck { name: check_name, status: CheckStatus::Pass, message: format!("{}: score {:.1} (min: {:.1})", score_def.name, actual_score, min), severity: Severity::Info },
+        None => ComplianceCheck { name: check_name, status: CheckStatus::Pass, message: format!("{}: score {:.1}", score_def.name, actual_score), severity: Severity::Info },
+    }
+}
+
 /// CB-1100: Custom Project Scores
-pub(crate) fn check_custom_scores(project_path: &Path) -> Vec<ComplianceCheck> {
+pub fn check_custom_scores(project_path: &Path) -> Vec<ComplianceCheck> {
     let config = match crate::models::comply_config::PmatYamlConfig::load(project_path) { Ok(c) => c, Err(_) => return vec![] };
     if config.scoring.custom_scores.is_empty() { return vec![]; }
-    let mut checks = Vec::new();
-    for score_def in &config.scoring.custom_scores {
-        let check_name = format!("CB-1100: Custom Score [{}]", score_def.id);
-        let output = std::process::Command::new("sh").args(["-c", &score_def.command]).current_dir(project_path).output();
-        let output = match output { Ok(o) => o, Err(e) => { checks.push(ComplianceCheck { name: check_name, status: CheckStatus::Skip, message: format!("Failed to run command: {e}"), severity: Severity::Info }); continue; } };
-        if !output.status.success() { checks.push(ComplianceCheck { name: check_name, status: CheckStatus::Fail, message: format!("{}: command failed (exit {})", score_def.name, output.status.code().unwrap_or(-1)), severity: Severity::from(score_def.severity) }); continue; }
-        let stdout = String::from_utf8_lossy(&output.stdout);
-        match extract_score_from_output(&stdout) {
-            Some(actual_score) => {
-                if let Some(min) = score_def.min_score {
-                    if actual_score < min { checks.push(ComplianceCheck { name: check_name, status: CheckStatus::Fail, message: format!("{}: score {:.1} below minimum {:.1}", score_def.name, actual_score, min), severity: Severity::from(score_def.severity) }); }
-                    else { checks.push(ComplianceCheck { name: check_name, status: CheckStatus::Pass, message: format!("{}: score {:.1} (min: {:.1})", score_def.name, actual_score, min), severity: Severity::Info }); }
-                } else { checks.push(ComplianceCheck { name: check_name, status: CheckStatus::Pass, message: format!("{}: score {:.1}", score_def.name, actual_score), severity: Severity::Info }); }
-            }
-            None => { checks.push(ComplianceCheck { name: check_name, status: CheckStatus::Skip, message: format!("{}: could not parse score from command output", score_def.name), severity: Severity::Info }); }
-        }
-    }
-    checks
+    config.scoring.custom_scores.iter().map(|s| evaluate_custom_score(project_path, s)).collect()
 }
 
 fn extract_score_from_output(output: &str) -> Option<f64> {

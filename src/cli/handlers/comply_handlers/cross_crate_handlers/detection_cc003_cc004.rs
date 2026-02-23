@@ -1,18 +1,22 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
+
 // CC-003: Primitive should be upstream detection (with MinHash similarity gate)
 // CC-004: Cross-crate churn correlation detection
-//
-// Included into cross_crate_handlers.rs via include!()
 
-struct CrateFuncRef<'a> {
-    crate_info: &'a CrateInfo,
-    func: &'a FunctionEntry,
-}
+use super::helpers::{is_crate_pair_excluded, is_excluded_function, parse_language};
+use super::types::{CcSeverity, CrateFuncRef, CrateInfo, CrossCrateFinding, DetectionConfig};
+use crate::services::agent_context::FunctionEntry;
+use crate::services::duplicate_detector::{
+    DuplicateDetectionConfig, MinHashGenerator, MinHashSignature, UniversalFeatureExtractor,
+};
+use std::collections::HashMap;
+use std::path::Path;
 
 /// CC-003: Detect when a downstream crate reimplements a function already in an upstream dep.
 ///
 /// Uses MinHash similarity to reduce false positives: only flags when the source code
 /// is actually similar (Jaccard >= cc003_min_similarity), not just same-named functions.
-fn detect_cc003_primitive_upstream(
+pub(super) fn detect_cc003_primitive_upstream(
     crate_functions: &[(CrateInfo, Vec<FunctionEntry>)],
     config: &DetectionConfig,
 ) -> Vec<CrossCrateFinding> {
@@ -228,7 +232,7 @@ fn precompute_cc003_signatures<'a>(
 ///
 /// When the same file basename is modified in multiple crates within a short time window,
 /// it suggests copy-paste maintenance where a fix in one crate requires the same fix in others.
-fn detect_cc004_churn_correlation(
+pub(super) fn detect_cc004_churn_correlation(
     crate_functions: &[(CrateInfo, Vec<FunctionEntry>)],
     window_days: u32,
 ) -> Vec<CrossCrateFinding> {

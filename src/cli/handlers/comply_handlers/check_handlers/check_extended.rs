@@ -3,22 +3,20 @@
 // Originally from check_handlers.rs and migrate_handlers.rs,
 // contains the more specialized compliance check functions.
 
-use crate::cli::handlers::comply_handlers::comply_cb_detect::{
+use crate::cli::handlers::comply_cb_detect::{
     detect_cb081_dependency_count, DependencyCountReport,
 };
-use crate::services::commit_classifier::CommitClassifier;
 use crate::services::file_health::{
     FileHealthMetrics, FileHealthReport,
     scan_directory, DEFAULT_EXCLUDE_PATTERNS, RUST_EXTENSIONS,
 };
 use anyhow::Result;
-use std::fs;
 use std::path::Path;
 
 use super::types::*;
 
 /// CB-300: Muda Waste Score (COMPLY-040)
-pub(crate) fn check_muda_waste_score(project_path: &Path) -> ComplianceCheck {
+pub fn check_muda_waste_score(project_path: &Path) -> ComplianceCheck {
     use crate::cli::handlers::comply_handlers::muda_handlers;
     let report = muda_handlers::calculate_muda_score(project_path);
     let message = format!("Muda Score: {:.1}/100 ({}) - Over:{:.0} Wait:{:.0} Inv:{:.0} Proc:{:.0} Def:{:.0}",
@@ -32,7 +30,7 @@ pub(crate) fn check_muda_waste_score(project_path: &Path) -> ComplianceCheck {
 }
 
 /// CB-301: Reproducibility Level Check (COMPLY-041)
-pub(crate) fn check_reproducibility_level(project_path: &Path) -> ComplianceCheck {
+pub fn check_reproducibility_level(project_path: &Path) -> ComplianceCheck {
     use crate::cli::handlers::comply_handlers::reproducibility_handlers;
     let report = reproducibility_handlers::check_reproducibility(project_path);
     let detail_summary: String = report.details.iter().take(3).cloned().collect::<Vec<_>>().join("; ");
@@ -46,7 +44,7 @@ pub(crate) fn check_reproducibility_level(project_path: &Path) -> ComplianceChec
 }
 
 /// CB-302: Golden Trace Drift Detection (COMPLY-042)
-pub(crate) fn check_golden_trace_drift(project_path: &Path) -> ComplianceCheck {
+pub fn check_golden_trace_drift(project_path: &Path) -> ComplianceCheck {
     use crate::cli::handlers::comply_handlers::reproducibility_handlers;
     match reproducibility_handlers::check_golden_trace_drift(project_path) {
         None => ComplianceCheck { name: "CB-302: Golden Trace Drift".into(), status: CheckStatus::Skip, message: "No renacer.toml configured - golden tracing not enabled".into(), severity: Severity::Info },
@@ -56,7 +54,7 @@ pub(crate) fn check_golden_trace_drift(project_path: &Path) -> ComplianceCheck {
 }
 
 /// CB-303: Equation-Driven Development Compliance (COMPLY-043)
-pub(crate) fn check_edd_compliance(project_path: &Path) -> ComplianceCheck {
+pub fn check_edd_compliance(project_path: &Path) -> ComplianceCheck {
     use crate::cli::handlers::comply_handlers::edd_handlers;
     let report = edd_handlers::check_edd_compliance(project_path);
     if !report.is_simulation_project {
@@ -74,7 +72,7 @@ pub(crate) fn check_edd_compliance(project_path: &Path) -> ComplianceCheck {
 }
 
 /// CB-304: Dead Code Percentage
-pub(crate) fn check_dead_code_percentage(project_path: &Path) -> ComplianceCheck {
+pub fn check_dead_code_percentage(project_path: &Path) -> ComplianceCheck {
     let config = crate::models::deep_context_config::DeepContextConfig::default();
     let threshold_pct = config.dead_code_threshold * 100.0;
     let source_dirs: Vec<std::path::PathBuf> = ["src", "crates", "lean", "lib"].iter().map(|d| project_path.join(d)).filter(|d| d.exists() && d.is_dir()).collect();
@@ -116,19 +114,19 @@ fn format_dependency_message(report: &DependencyCountReport) -> String {
 
 fn append_violation_details(msg: &mut String, report: &DependencyCountReport, limit: usize) {
     for v in report.violations.iter().take(limit) {
-        let icon = if v.severity == crate::cli::handlers::comply_handlers::comply_cb_detect::Severity::Error { "\u{2717}" } else { "\u{26a0}" };
+        let icon = if v.severity == crate::cli::handlers::comply_cb_detect::Severity::Error { "\u{2717}" } else { "\u{26a0}" };
         msg.push_str(&format!("\n    {} {}", icon, v.description));
     }
 }
 
 /// CB-081: Dependency Count Check
-pub(crate) fn check_dependency_count(project_path: &Path) -> ComplianceCheck {
+pub fn check_dependency_count(project_path: &Path) -> ComplianceCheck {
     if !project_path.join("Cargo.toml").exists() {
         return ComplianceCheck { name: "CB-081: Dependency Health".into(), status: CheckStatus::Skip, message: "Not a Rust project (no Cargo.toml)".into(), severity: Severity::Info };
     }
     let report = detect_cb081_dependency_count(project_path);
     let message = format_dependency_message(&report);
-    let has_critical = report.violations.iter().any(|v| v.severity == crate::cli::handlers::comply_handlers::comply_cb_detect::Severity::Error);
+    let has_critical = report.violations.iter().any(|v| v.severity == crate::cli::handlers::comply_cb_detect::Severity::Error);
     if report.score >= 4 && !has_critical {
         ComplianceCheck { name: "CB-081: Dependency Health".into(), status: CheckStatus::Pass, message, severity: Severity::Info }
     } else if report.score >= 2 && !has_critical {
@@ -141,7 +139,7 @@ pub(crate) fn check_dependency_count(project_path: &Path) -> ComplianceCheck {
 }
 
 /// Detect project type and discover source files across all source directories.
-pub(crate) fn discover_source_files(project_path: &Path) -> Result<Vec<std::path::PathBuf>, String> {
+pub fn discover_source_files(project_path: &Path) -> Result<Vec<std::path::PathBuf>, String> {
     let is_rust = project_path.join("Cargo.toml").exists();
     let is_lean = project_path.join("lakefile.lean").exists() || project_path.join("lean-toolchain").exists() || project_path.join("lean").join("lakefile.lean").exists() || project_path.join("lean").join("lean-toolchain").exists();
     if !is_rust && !is_lean { return Err("No Cargo.toml or lakefile.lean found".into()); }
@@ -154,27 +152,26 @@ pub(crate) fn discover_source_files(project_path: &Path) -> Result<Vec<std::path
 }
 
 /// Check file health across the project (CB-040)
-pub(crate) fn check_file_health(project_path: &Path) -> ComplianceCheck {
-    let files = match discover_source_files(project_path) {
-        Ok(f) => f,
-        Err(msg) => return ComplianceCheck { name: "File Health".into(), status: CheckStatus::Skip, message: msg, severity: Severity::Info },
-    };
-    if files.is_empty() { return ComplianceCheck { name: "File Health".into(), status: CheckStatus::Pass, message: "No source files found".into(), severity: Severity::Info }; }
-    let mut metrics: Vec<FileHealthMetrics> = Vec::new();
-    let (mut critical_count, mut problem_count, mut over_500_count) = (0, 0, 0);
-    for file_path in &files {
-        let content = match std::fs::read_to_string(file_path) { Ok(c) => c, Err(_) => continue };
-        let lines = content.lines().count();
-        let is_test_file = file_path.to_string_lossy().contains("/tests/") || file_path.file_name().map(|f| f.to_string_lossy().starts_with("test")).unwrap_or(false);
-        let critical_threshold = if is_test_file { 4000 } else { 2000 };
-        let problem_threshold = if is_test_file { 2000 } else { 1000 };
-        if lines > critical_threshold { critical_count += 1; } else if lines > problem_threshold { problem_count += 1; }
-        if lines > 500 { over_500_count += 1; }
-        let test_lines = estimate_test_lines(&content);
-        let avg_complexity = estimate_avg_complexity(&content);
-        metrics.push(FileHealthMetrics::calculate(file_path.clone(), lines, test_lines, avg_complexity, 0));
-    }
-    let report = FileHealthReport::from_files(project_path.to_path_buf(), metrics);
+/// Analyze a single file for health metrics, returning (critical, problem, over_500) increments
+fn classify_file_health(file_path: &std::path::PathBuf, content: &str) -> (usize, usize, usize) {
+    let lines = content.lines().count();
+    let is_test_file = file_path.to_string_lossy().contains("/tests/")
+        || file_path.file_name().map(|f| f.to_string_lossy().starts_with("test")).unwrap_or(false);
+    let critical_threshold = if is_test_file { 4000 } else { 2000 };
+    let problem_threshold = if is_test_file { 2000 } else { 1000 };
+    let critical = usize::from(lines > critical_threshold);
+    let problem = usize::from(lines <= critical_threshold && lines > problem_threshold);
+    let over_500 = usize::from(lines > 500);
+    (critical, problem, over_500)
+}
+
+/// Build the final ComplianceCheck from file health counts
+fn build_file_health_check(
+    report: &FileHealthReport,
+    critical_count: usize,
+    problem_count: usize,
+    over_500_count: usize,
+) -> ComplianceCheck {
     if critical_count > 0 {
         ComplianceCheck { name: "File Health".into(), status: CheckStatus::Fail, message: format!("CRITICAL: {} files >2000 lines, {} files >1000 lines, {} files >500 lines (avg health: {}%, grade: {})", critical_count, problem_count, over_500_count, report.average_health, report.average_grade.as_str()), severity: Severity::Critical }
     } else if problem_count > 0 || over_500_count > 5 {
@@ -184,7 +181,28 @@ pub(crate) fn check_file_health(project_path: &Path) -> ComplianceCheck {
     }
 }
 
-pub(crate) fn estimate_test_lines(content: &str) -> usize {
+pub fn check_file_health(project_path: &Path) -> ComplianceCheck {
+    let files = match discover_source_files(project_path) {
+        Ok(f) => f,
+        Err(msg) => return ComplianceCheck { name: "File Health".into(), status: CheckStatus::Skip, message: msg, severity: Severity::Info },
+    };
+    if files.is_empty() { return ComplianceCheck { name: "File Health".into(), status: CheckStatus::Pass, message: "No source files found".into(), severity: Severity::Info }; }
+    let mut metrics: Vec<FileHealthMetrics> = Vec::new();
+    let (mut critical_count, mut problem_count, mut over_500_count) = (0, 0, 0);
+    for file_path in &files {
+        let content = match std::fs::read_to_string(file_path) { Ok(c) => c, Err(_) => continue };
+        let (c, p, o) = classify_file_health(file_path, &content);
+        critical_count += c; problem_count += p; over_500_count += o;
+        let lines = content.lines().count();
+        let test_lines = estimate_test_lines(&content);
+        let avg_complexity = estimate_avg_complexity(&content);
+        metrics.push(FileHealthMetrics::calculate(file_path.clone(), lines, test_lines, avg_complexity, 0));
+    }
+    let report = FileHealthReport::from_files(project_path.to_path_buf(), metrics);
+    build_file_health_check(&report, critical_count, problem_count, over_500_count)
+}
+
+pub fn estimate_test_lines(content: &str) -> usize {
     let mut test_lines = 0;
     let mut in_test_module = false;
     let mut brace_depth = 0;
@@ -211,7 +229,7 @@ fn count_line_complexity(trimmed: &str) -> u32 {
     count
 }
 
-pub(crate) fn estimate_avg_complexity(content: &str) -> f32 {
+pub fn estimate_avg_complexity(content: &str) -> f32 {
     let mut total_complexity = 1u32;
     let mut function_count = 0u32;
     for line in content.lines() {
@@ -224,4 +242,4 @@ pub(crate) fn estimate_avg_complexity(content: &str) -> f32 {
 }
 
 // Sovereign stack patterns and PAIML deps checks (from migrate_handlers.rs)
-include!("check_sovereign.rs");
+pub use super::check_sovereign::*;

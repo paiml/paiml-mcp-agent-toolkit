@@ -1,755 +1,379 @@
+// Migration, enforce, report, init, and upgrade handlers for comply subcommands.
+//
+// This file is include!()'d into comply_handlers/mod.rs scope,
+// where it has access to check_handlers items (via pub use check_handlers::*).
+//
+// Contains:
+// - handle_migrate, handle_diff, handle_update, handle_init, handle_upgrade
+// - handle_enforce, handle_report
+// - Helpers: remove_pmat_hook, make_hook_executable, print_enforce_result,
+//   generate_default_pmat_yaml, generate_claude_md
 
-/// Check Sovereign AI Stack compliance patterns (CB-040 complexity refactor)
-/// Validates: Five-Whys in fixes, falsification tests, APR models, ticket refs
-pub(crate) fn check_sovereign_stack_patterns(project_path: &Path) -> ComplianceCheck {
-    // Check if this is a Sovereign Stack project
-    let cargo_toml = project_path.join("Cargo.toml");
-    if !cargo_toml.exists() {
-        return skip_check("Sovereign Stack Patterns", "No Cargo.toml found");
+/// Migrate project to latest PMAT standards
+async fn handle_migrate(
+    project_path: &Path,
+    target_version: Option<&str>,
+    dry_run: bool,
+    no_backup: bool,
+    force: bool,
+) -> Result<()> {
+    let target = target_version.unwrap_or(PMAT_VERSION);
+    println!("Migrating project to PMAT v{}", target);
+
+    if dry_run {
+        println!("(dry-run mode - no changes will be made)\n");
     }
 
-    let content = fs::read_to_string(&cargo_toml).unwrap_or_default();
-    if !is_sovereign_stack_project(&content) {
-        return skip_check("Sovereign Stack Patterns", "Not a Sovereign Stack project");
-    }
+    let config = load_or_create_project_config(project_path)?;
+    let current_version = &config.pmat.version;
 
-    let mut issues: Vec<String> = Vec::new();
-    let mut good_patterns: Vec<String> = Vec::new();
+    println!("Current version: {}", current_version);
+    println!("Target version:  {}\n", target);
 
-    // Run individual checks
-    check_five_whys_patterns(project_path, &mut issues, &mut good_patterns);
-    check_falsification_tests(project_path, &mut good_patterns);
-    check_apr_models(project_path, &mut good_patterns);
-    check_ticket_refs(project_path, &mut issues, &mut good_patterns);
-    check_ml_commit_classification(project_path, &mut good_patterns);
-
-    // Build result
-    build_sovereign_result(&issues, &good_patterns)
-}
-
-/// Helper: Create skip check result
-pub(crate) fn skip_check(name: &str, message: &str) -> ComplianceCheck {
-    ComplianceCheck {
-        name: name.to_string(),
-        status: CheckStatus::Skip,
-        message: message.to_string(),
-        severity: Severity::Info,
-    }
-}
-
-/// Helper: Check if Cargo.toml contains sovereign stack dependencies
-pub(crate) fn is_sovereign_stack_project(content: &str) -> bool {
-    const SOVEREIGN_DEPS: &[&str] = &["trueno", "aprender", "realizar", "batuta", "renacer"];
-    SOVEREIGN_DEPS.iter().any(|dep| content.contains(dep))
-}
-
-/// Helper: Check Five-Whys patterns in git commits
-pub(crate) fn check_five_whys_patterns(project_path: &Path, issues: &mut Vec<String>, good_patterns: &mut Vec<String>) {
-    use std::process::Command;
-
-    let git_log = Command::new("git")
-        .args(["log", "--oneline", "-20", "--grep=fix"])
-        .current_dir(project_path)
-        .output();
-
-    if let Ok(output) = git_log {
-        let log = String::from_utf8_lossy(&output.stdout);
-        let fix_commits: Vec<&str> = log.lines().collect();
-
-        if !fix_commits.is_empty() {
-            let has_five_whys = Command::new("git")
-                .args(["log", "-20", "--grep=Five-Whys\\|ROOT CAUSE\\|Why 1:"])
-                .current_dir(project_path)
-                .output()
-                .map(|o| !o.stdout.is_empty())
-                .unwrap_or(false);
-
-            if has_five_whys {
-                good_patterns.push("Five-Whys root cause analysis".to_string());
-            } else if fix_commits.len() > 5 {
-                issues.push("No Five-Whys in recent fix commits".to_string());
-            }
-        }
-    }
-}
-
-/// Helper: Check for falsification tests
-pub(crate) fn check_falsification_tests(project_path: &Path, good_patterns: &mut Vec<String>) {
-    let tests_dir = project_path.join("tests");
-    if !tests_dir.exists() {
-        return;
-    }
-
-    let has_falsification = walkdir::WalkDir::new(&tests_dir)
-        .max_depth(3)
-        .into_iter()
-        .filter_map(|e| e.ok())
-        .any(|e| {
-            e.path().to_string_lossy().contains("falsification")
-                || fs::read_to_string(e.path())
-                    .map(|s| s.contains("F001") || (s.contains("F0") && s.contains("TEST")))
-                    .unwrap_or(false)
-        });
-
-    if has_falsification {
-        good_patterns.push("Falsification test suite".to_string());
-    }
-}
-
-/// Helper: Check for APR model files
-pub(crate) fn check_apr_models(project_path: &Path, good_patterns: &mut Vec<String>) {
-    let models_dir = project_path.join("models");
-    if !models_dir.exists() {
-        return;
-    }
-
-    let apr_count = walkdir::WalkDir::new(&models_dir)
-        .max_depth(2)
-        .into_iter()
-        .filter_map(|e| e.ok())
-        .filter(|e| e.path().extension().map(|x| x == "apr").unwrap_or(false))
-        .count();
-
-    if apr_count > 0 {
-        good_patterns.push(format!("{} APR model(s)", apr_count));
-    }
-}
-
-/// Helper: Check ticket references in commits
-pub(crate) fn check_ticket_refs(project_path: &Path, issues: &mut Vec<String>, good_patterns: &mut Vec<String>) {
-    use std::process::Command;
-
-    let ticket_refs = Command::new("git")
-        .args(["log", "-50", "--oneline"])
-        .current_dir(project_path)
-        .output()
-        .map(|o| {
-            let log = String::from_utf8_lossy(&o.stdout);
-            log.lines()
-                .filter(|l| l.contains("PAR-") || l.contains("PMAT-") || l.contains("Refs ") || l.contains("GH-"))
-                .count()
-        })
-        .unwrap_or(0);
-
-    if ticket_refs > 10 {
-        good_patterns.push(format!("{}+ ticket refs in commits", ticket_refs));
-    } else if ticket_refs < 5 {
-        issues.push("Few ticket references in recent commits".to_string());
-    }
-}
-
-/// Helper: Check ML-based commit classification
-pub(crate) fn check_ml_commit_classification(project_path: &Path, good_patterns: &mut Vec<String>) {
-    use std::process::Command;
-
-    let classifier = match CommitClassifier::load_sovereign_stack() {
-        Ok(c) => c,
-        Err(_) => return,
-    };
-
-    let git_log_full = Command::new("git")
-        .args(["log", "-10", "--format=%B---COMMIT_SEP---"])
-        .current_dir(project_path)
-        .output();
-
-    if let Ok(output) = git_log_full {
-        let log = String::from_utf8_lossy(&output.stdout);
-        let commits: Vec<&str> = log.split("---COMMIT_SEP---").filter(|s| !s.trim().is_empty()).collect();
-
-        if commits.is_empty() {
-            return;
-        }
-
-        let mut class_counts: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
-        let mut high_confidence = 0;
-
-        for commit in &commits {
-            let result = classifier.classify(commit);
-            *class_counts.entry(result.class).or_insert(0) += 1;
-            if result.confidence > 0.6 {
-                high_confidence += 1;
-            }
-        }
-
-        if let Some((dominant_class, count)) = class_counts.iter().max_by_key(|(_, c)| *c) {
-            if *count >= commits.len() / 2 {
-                good_patterns.push(format!("ML: {} dominant ({}/{})", dominant_class, count, commits.len()));
-            }
-        }
-
-        if high_confidence > commits.len() / 2 {
-            good_patterns.push(format!("ML: {}% high-confidence classifications", high_confidence * 100 / commits.len()));
-        }
-    }
-}
-
-/// Helper: Build final result from issues and good patterns
-pub(crate) fn build_sovereign_result(issues: &[String], good_patterns: &[String]) -> ComplianceCheck {
-    if issues.is_empty() && !good_patterns.is_empty() {
-        ComplianceCheck {
-            name: "Sovereign Stack Patterns".to_string(),
-            status: CheckStatus::Pass,
-            message: format!("Patterns: {}", good_patterns.join(", ")),
-            severity: Severity::Info,
-        }
-    } else if !issues.is_empty() {
-        ComplianceCheck {
-            name: "Sovereign Stack Patterns".to_string(),
-            status: CheckStatus::Warn,
-            message: format!("Missing: {}", issues.join("; ")),
-            severity: Severity::Warning,
-        }
-    } else {
-        ComplianceCheck {
-            name: "Sovereign Stack Patterns".to_string(),
-            status: CheckStatus::Pass,
-            message: "Sovereign Stack project detected".to_string(),
-            severity: Severity::Info,
-        }
-    }
-}
-
-/// Check PAIML dependency workspace state (dirty/clean/version drift)
-/// Detects when local PAIML projects have uncommitted changes or version mismatches
-fn make_paiml_check(status: CheckStatus, message: String, severity: Severity) -> ComplianceCheck {
-    ComplianceCheck {
-        name: "PAIML Deps Workspace".to_string(),
-        status,
-        message,
-        severity,
-    }
-}
-
-fn classify_local_deps(src_dir: &Path, paiml_deps: &[&str]) -> (Vec<String>, Vec<String>) {
-    use std::process::Command;
-    let mut dirty = Vec::new();
-    let mut clean = Vec::new();
-
-    for dep in paiml_deps {
-        let dep_path = src_dir.join(dep);
-        if !dep_path.exists() {
-            continue;
-        }
-        let Ok(out) = Command::new("git")
-            .args(["status", "--porcelain"])
-            .current_dir(&dep_path)
-            .output()
-        else {
-            continue;
-        };
-        let status = String::from_utf8_lossy(&out.stdout);
-        if status.trim().is_empty() {
-            clean.push(dep.to_string());
-        } else {
-            dirty.push(dep.to_string());
-        }
-    }
-    (dirty, clean)
-}
-
-pub(crate) fn check_paiml_deps_workspace(project_path: &Path) -> ComplianceCheck {
-    const PAIML_PACKAGES: &[&str] = &[
-        "trueno", "trueno-graph", "trueno-rag", "trueno-viz", "trueno-db",
-        "trueno-zram-core", "trueno-ublk",
-        "aprender", "entrenar", "alimentar", "realizar",
-        "batuta", "renacer", "repartir",
-        "presentar", "presentar-terminal",
-        "ruchy", "bashrs", "decy", "depyler", "rascal",
-        "pacha", "pepita", "simular", "jugar", "duende", "pzsh",
-        "certeza", "verificar", "probar", "manzana", "whisper-apr",
-        "copia", "nviwatch", "ruchydbg", "rust-mcp-sdk",
-    ];
-
-    let cargo_toml = project_path.join("Cargo.toml");
-    let content = match fs::read_to_string(&cargo_toml) {
-        Ok(c) => c,
-        Err(_) => return make_paiml_check(CheckStatus::Skip, "No Cargo.toml found".into(), Severity::Info),
-    };
-
-    let paiml_deps: Vec<&str> = PAIML_PACKAGES.iter()
-        .filter(|pkg| content.contains(&format!("{} = ", pkg)) || content.contains(&format!("\"{}\"", pkg)))
-        .copied()
-        .collect();
-
-    if paiml_deps.is_empty() {
-        return make_paiml_check(CheckStatus::Skip, "No PAIML stack dependencies found".into(), Severity::Info);
-    }
-
-    let Some(home) = dirs::home_dir() else {
-        return make_paiml_check(CheckStatus::Skip, "Could not determine home directory".into(), Severity::Info);
-    };
-
-    let (dirty_deps, clean_deps) = classify_local_deps(&home.join("src"), &paiml_deps);
-    let total_local = dirty_deps.len() + clean_deps.len();
-
-    if total_local == 0 {
-        return make_paiml_check(CheckStatus::Pass, format!("{} PAIML deps (no local checkouts in ~/src)", paiml_deps.len()), Severity::Info);
-    }
-    if dirty_deps.is_empty() {
-        make_paiml_check(CheckStatus::Pass, format!("{} PAIML deps, {} local checkouts (all clean)", paiml_deps.len(), total_local), Severity::Info)
-    } else {
-        make_paiml_check(CheckStatus::Warn, format!("{} dirty: {} (using crates.io versions for safety)", dirty_deps.len(), dirty_deps.join(", ")), Severity::Warning)
-    }
-}
-
-/// Detect project type and discover source files across all source directories.
-/// Returns Err(message) if project type unrecognized or no source dirs found.
-fn discover_source_files(project_path: &Path) -> Result<Vec<std::path::PathBuf>, String> {
-    let is_rust = project_path.join("Cargo.toml").exists();
-    let is_lean = project_path.join("lakefile.lean").exists()
-        || project_path.join("lean-toolchain").exists()
-        || project_path.join("lean").join("lakefile.lean").exists()
-        || project_path.join("lean").join("lean-toolchain").exists();
-
-    if !is_rust && !is_lean {
-        return Err("No Cargo.toml or lakefile.lean found".to_string());
-    }
-
-    let source_dirs: Vec<std::path::PathBuf> = ["src", "crates", "lean", "lib"]
-        .iter()
-        .map(|d| project_path.join(d))
-        .filter(|d| d.exists() && d.is_dir())
-        .collect();
-
-    if source_dirs.is_empty() {
-        return Err("No source directory found (checked src/, crates/, lean/, lib/)".to_string());
-    }
-
-    let extensions: &[&str] = if is_lean && !is_rust {
-        &["lean"]
-    } else if is_rust && is_lean {
-        &["rs", "lean"]
-    } else {
-        RUST_EXTENSIONS
-    };
-
-    let mut files = Vec::new();
-    for src_dir in &source_dirs {
-        files.extend(scan_directory(src_dir, extensions, DEFAULT_EXCLUDE_PATTERNS));
-    }
-    Ok(files)
-}
-
-/// Check file health across the project (CB-040)
-/// Validates: max-lines (500), TLR (test-to-lines ratio), complexity, health score
-/// Based on: docs/specifications/max-lines.md
-pub(crate) fn check_file_health(project_path: &Path) -> ComplianceCheck {
-    let files = match discover_source_files(project_path) {
-        Ok(files) => files,
-        Err(msg) => {
-            return ComplianceCheck {
-                name: "File Health".to_string(),
-                status: CheckStatus::Skip,
-                message: msg,
-                severity: Severity::Info,
-            };
-        }
-    };
-    if files.is_empty() {
-        return ComplianceCheck {
-            name: "File Health".to_string(),
-            status: CheckStatus::Pass,
-            message: "No source files found".to_string(),
-            severity: Severity::Info,
-        };
-    }
-
-    // Analyze each file for health metrics
-    let mut metrics: Vec<FileHealthMetrics> = Vec::new();
-    let mut critical_count = 0;
-    let mut problem_count = 0;
-    let mut over_500_count = 0;
-
-    for file_path in &files {
-        // Count lines
-        let content = match std::fs::read_to_string(file_path) {
-            Ok(c) => c,
-            Err(_) => continue,
-        };
-        let lines = content.lines().count();
-
-        // Quick categorization without full analysis
-        // Test-only files (in tests/ dir or >80% test code) get higher thresholds
-        // since test files naturally grow large — penalizing them discourages testing
-        let is_test_file = file_path
-            .to_string_lossy()
-            .contains("/tests/")
-            || file_path
-                .file_name()
-                .map(|f| f.to_string_lossy().starts_with("test"))
-                .unwrap_or(false);
-        let critical_threshold = if is_test_file { 4000 } else { 2000 };
-        let problem_threshold = if is_test_file { 2000 } else { 1000 };
-
-        if lines > critical_threshold {
-            critical_count += 1;
-        } else if lines > problem_threshold {
-            problem_count += 1;
-        }
-        if lines > 500 {
-            over_500_count += 1;
-        }
-
-        // Calculate full metrics (simplified - using defaults for test/complexity/churn)
-        // In production, these would be gathered from actual analysis
-        let test_lines = estimate_test_lines(&content);
-        let avg_complexity = estimate_avg_complexity(&content);
-
-        let file_metrics = FileHealthMetrics::calculate(
-            file_path.clone(),
-            lines,
-            test_lines,
-            avg_complexity,
-            0, // churn_30d - would need git integration
+    let breaking_changes = get_breaking_changes_since(current_version);
+    if !breaking_changes.is_empty() && !force {
+        println!(
+            "\x1b[33mWarning: {} breaking changes detected:\x1b[0m",
+            breaking_changes.len()
         );
-        metrics.push(file_metrics);
+        for change in &breaking_changes {
+            println!("  - v{}: {}", change.version, change.description);
+        }
+        println!("\nUse --force to proceed anyway\n");
+        if !force {
+            return Ok(());
+        }
     }
 
-    // Build report
-    let report = FileHealthReport::from_files(project_path.to_path_buf(), metrics);
+    if !no_backup && !dry_run {
+        let backup_path = project_path.join(".pmat").join("backup");
+        fs::create_dir_all(&backup_path)?;
+        println!("Created backup at: {}", backup_path.display());
+    }
 
-    // Determine status based on findings
-    if critical_count > 0 {
-        ComplianceCheck {
-            name: "File Health".to_string(),
-            status: CheckStatus::Fail,
-            message: format!(
-                "CRITICAL: {} files >2000 lines, {} files >1000 lines, {} files >500 lines (avg health: {}%, grade: {})",
-                critical_count,
-                problem_count,
-                over_500_count,
-                report.average_health,
-                report.average_grade.as_str()
-            ),
-            severity: Severity::Critical,
+    let migrations = vec![
+        (
+            "Update project.toml version",
+            migrate_project_version(project_path, target, dry_run),
+        ),
+        ("Update gitignore", migrate_gitignore(project_path, dry_run)),
+    ];
+
+    println!("\nMigration steps:");
+    for (name, result) in migrations {
+        match result {
+            Ok(true) => println!("  \x1b[32m\u{2713}\x1b[0m {}", name),
+            Ok(false) => println!("  \x1b[90m-\x1b[0m {} (no changes needed)", name),
+            Err(e) => println!("  \x1b[31m\u{2717}\x1b[0m {} - {}", name, e),
         }
-    } else if problem_count > 0 || over_500_count > 5 {
-        ComplianceCheck {
-            name: "File Health".to_string(),
-            status: CheckStatus::Warn,
-            message: format!(
-                "{} files >1000 lines, {} files >500 lines (avg health: {}%, grade: {})",
-                problem_count,
-                over_500_count,
-                report.average_health,
-                report.average_grade.as_str()
-            ),
-            severity: Severity::Warning,
-        }
+    }
+
+    // Update hooks (async operation)
+    match update_project_hooks(project_path, dry_run).await {
+        Ok(true) => println!("  \x1b[32m\u{2713}\x1b[0m Update git hooks"),
+        Ok(false) => println!("  \x1b[90m-\x1b[0m Update git hooks (no changes needed)"),
+        Err(e) => println!("  \x1b[31m\u{2717}\x1b[0m Update git hooks - {}", e),
+    }
+
+    if dry_run {
+        println!("\n(dry-run complete - no changes were made)");
     } else {
-        ComplianceCheck {
-            name: "File Health".to_string(),
-            status: CheckStatus::Pass,
-            message: format!(
-                "{} files analyzed, avg health: {}%, grade: {} (all files <500 lines or within tolerance)",
-                report.total_files,
-                report.average_health,
-                report.average_grade.as_str()
-            ),
-            severity: Severity::Info,
-        }
+        println!("\n\x1b[32m\u{2713} Migration complete!\x1b[0m");
     }
+
+    Ok(())
 }
 
-/// Estimate test lines by counting lines in #[cfg(test)] modules and test functions
-pub(crate) fn estimate_test_lines(content: &str) -> usize {
-    let mut test_lines = 0;
-    let mut in_test_module = false;
-    let mut brace_depth = 0;
+/// Show changelog between versions
+async fn handle_diff(
+    project_path: &Path,
+    from_version: Option<&str>,
+    to_version: Option<&str>,
+    breaking_only: bool,
+) -> Result<()> {
+    let config = load_or_create_project_config(project_path)?;
+    let from = from_version.unwrap_or(&config.pmat.version);
+    let to = to_version.unwrap_or(PMAT_VERSION);
 
-    for line in content.lines() {
-        let trimmed = line.trim();
+    println!("PMAT Changelog: v{} \u{2192} v{}\n", from, to);
 
-        // Track test module entry
-        if trimmed.contains("#[cfg(test)]") {
-            in_test_module = true;
-        }
+    let changes = get_changelog_entries(from, to);
 
-        // Track braces for module scope
-        if in_test_module {
-            brace_depth += trimmed.matches('{').count();
-            brace_depth = brace_depth.saturating_sub(trimmed.matches('}').count());
-            test_lines += 1;
-
-            if brace_depth == 0 && test_lines > 1 {
-                in_test_module = false;
+    if breaking_only {
+        println!("\x1b[33mBreaking Changes Only:\x1b[0m\n");
+        let breaking: Vec<_> = changes.iter().filter(|c| c.breaking).collect();
+        if breaking.is_empty() {
+            println!("  No breaking changes between these versions.");
+        } else {
+            for entry in breaking {
+                println!(
+                    "  \x1b[31m[BREAKING]\x1b[0m v{}: {}",
+                    entry.version, entry.description
+                );
             }
         }
-
-        // Also count standalone test functions
-        if trimmed.contains("#[test]") || trimmed.contains("#[tokio::test]") {
-            test_lines += 10; // Approximate test function size
-        }
-    }
-
-    test_lines
-}
-
-/// Estimate average cyclomatic complexity by counting control flow statements
-fn count_line_complexity(trimmed: &str) -> u32 {
-    let flow_keywords: &[(&str, &str)] = &[
-        ("if ", " if "), ("else if ", "} else if "),
-        ("match ", " match "), ("for ", " for "),
-        ("while ", " while "), ("loop ", " loop "),
-    ];
-    let mut count = 0u32;
-    for &(prefix, infix) in flow_keywords {
-        if trimmed.starts_with(prefix) || trimmed.contains(infix) {
-            count += 1;
-        }
-    }
-    if trimmed.contains("&&") || trimmed.contains("||") {
-        count += 1;
-    }
-    if trimmed.contains('?') && !trimmed.contains("//") {
-        count += 1;
-    }
-    count
-}
-
-pub(crate) fn estimate_avg_complexity(content: &str) -> f32 {
-    let mut total_complexity = 1u32; // Base complexity
-    let mut function_count = 0u32;
-
-    for line in content.lines() {
-        let trimmed = line.trim();
-        if trimmed.starts_with("fn ") || trimmed.starts_with("pub fn ")
-            || trimmed.starts_with("async fn ") || trimmed.starts_with("pub async fn ")
-        {
-            function_count += 1;
-        }
-        total_complexity += count_line_complexity(trimmed);
-    }
-
-    if function_count == 0 {
-        return total_complexity as f32;
-    }
-    total_complexity as f32 / function_count as f32
-}
-
-pub(crate) fn calculate_versions_behind(project_version: &str) -> u32 {
-    let current_parts: Vec<u32> = PMAT_VERSION
-        .split('.')
-        .filter_map(|s| s.parse().ok())
-        .collect();
-    let project_parts: Vec<u32> = project_version
-        .split('.')
-        .filter_map(|s| s.parse().ok())
-        .collect();
-
-    if current_parts.len() >= 2 && project_parts.len() >= 2 {
-        let cur_major = *current_parts.first().unwrap_or(&0);
-        let cur_minor = *current_parts.get(1).unwrap_or(&0);
-        let proj_major = *project_parts.first().unwrap_or(&0);
-        let proj_minor = *project_parts.get(1).unwrap_or(&0);
-
-        if cur_major > proj_major {
-            // Major version difference: each major version counts as 10 minor versions
-            (cur_major - proj_major) * 10 + cur_minor.saturating_sub(proj_minor)
-        } else if cur_major == proj_major {
-            cur_minor.saturating_sub(proj_minor)
-        } else {
-            // Project is ahead of current (shouldn't happen, treat as 0)
-            0
-        }
     } else {
-        0
+        for entry in &changes {
+            let icon = if entry.breaking {
+                "\x1b[31m[BREAKING]\x1b[0m"
+            } else {
+                "\x1b[32m[FEATURE]\x1b[0m"
+            };
+            println!("  {} v{}: {}", icon, entry.version, entry.description);
+        }
     }
+
+    Ok(())
 }
 
-pub(crate) fn get_breaking_changes_since(_from_version: &str) -> Vec<BreakingChange> {
-    vec![]
-}
+/// Update hooks and configs
+async fn handle_update(
+    project_path: &Path,
+    update_hooks: bool,
+    update_config: bool,
+    dry_run: bool,
+) -> Result<()> {
+    let update_both = !update_hooks && !update_config;
 
-#[derive(Debug, Clone)]
-pub(crate) struct ChangelogEntry {
-    version: String,
-    description: String,
-    breaking: bool,
-}
-
-pub(crate) fn get_changelog_entries(_from: &str, _to: &str) -> Vec<ChangelogEntry> {
-    vec![
-        ChangelogEntry {
-            version: PMAT_VERSION.to_string(),
-            description: "Added qa-work command for Toyota Way validation".to_string(),
-            breaking: false,
-        },
-        ChangelogEntry {
-            version: PMAT_VERSION.to_string(),
-            description: "Added cleanup-resources command".to_string(),
-            breaking: false,
-        },
-        ChangelogEntry {
-            version: PMAT_VERSION.to_string(),
-            description: "Added comply command for compliance checking".to_string(),
-            breaking: false,
-        },
-    ]
-}
-
-pub(crate) fn migrate_project_version(project_path: &Path, target: &str, dry_run: bool) -> Result<bool> {
     if dry_run {
-        return Ok(true);
+        println!("(dry-run mode - no changes will be made)\n");
     }
-    let mut config = load_or_create_project_config(project_path)?;
-    if config.pmat.version == target {
-        return Ok(false);
+
+    if update_hooks || update_both {
+        println!("Updating hooks...");
+        match update_project_hooks(project_path, dry_run).await {
+            Ok(true) => println!("  \x1b[32m\u{2713}\x1b[0m Hooks updated to latest templates"),
+            Ok(false) => println!("  \x1b[90m-\x1b[0m Hooks already up to date"),
+            Err(e) => println!("  \x1b[31m\u{2717}\x1b[0m Failed: {}", e),
+        }
     }
-    config.pmat.version = target.to_string();
-    config.pmat.last_compliance_check = Some(Utc::now());
+
+    if update_config || update_both {
+        println!("Updating config...");
+        match update_project_config(project_path, dry_run) {
+            Ok(true) => println!("  \x1b[32m\u{2713}\x1b[0m Config updated to v{}", PMAT_VERSION),
+            Ok(false) => println!("  \x1b[90m-\x1b[0m Config already up to date"),
+            Err(e) => println!("  \x1b[31m\u{2717}\x1b[0m Failed: {}", e),
+        }
+    }
+
+    Ok(())
+}
+
+/// Initialize .pmat/project.toml with current version and scaffold config files
+async fn handle_init(project_path: &Path, force: bool) -> Result<()> {
+    let config_path = project_path.join(".pmat").join("project.toml");
+
+    if config_path.exists() && !force {
+        println!("Project already initialized at {}", config_path.display());
+        println!("Use --force to overwrite existing configuration.");
+        return Ok(());
+    }
+
+    // Create .pmat directory
+    let pmat_dir = project_path.join(".pmat");
+    if !pmat_dir.exists() {
+        fs::create_dir_all(&pmat_dir)?;
+    }
+
+    // Create default config
+    let config = ProjectConfig::default();
     let content = toml::to_string_pretty(&config)?;
-    fs::write(project_path.join(".pmat").join("project.toml"), &content)?;
-    Ok(true)
-}
+    fs::write(&config_path, &content)?;
 
-pub(crate) fn migrate_gitignore(project_path: &Path, dry_run: bool) -> Result<bool> {
-    let gitignore_path = project_path.join(".gitignore");
-    // Cache and index files that should not be committed
-    let pmat_entries = [
-        ".pmat/backup/",
-        ".pmat-qa/",
-        ".pmat/context.idx/",      // Agent context RAG index
-        ".pmat/workspace.idx/",    // Merged workspace index
-        ".pmat/deps-cache.json",   // CB-081 dependency cache
-    ];
-    if !gitignore_path.exists() {
-        return Ok(false);
-    }
-    let content = fs::read_to_string(&gitignore_path)?;
-    let mut needs_update = false;
-    let mut new_entries = vec![];
-    for entry in pmat_entries {
-        if !content.contains(entry) {
-            needs_update = true;
-            new_entries.push(entry);
-        }
-    }
-    if needs_update && !dry_run {
-        let mut new_content = content.clone();
-        if !new_content.ends_with('\n') {
-            new_content.push('\n');
-        }
-        new_content.push_str("\n# PMAT\n");
-        for entry in new_entries {
-            new_content.push_str(entry);
-            new_content.push('\n');
-        }
-        fs::write(&gitignore_path, &new_content)?;
-    }
-    Ok(needs_update)
-}
-
-pub(crate) fn update_project_config(project_path: &Path, dry_run: bool) -> Result<bool> {
-    migrate_project_version(project_path, PMAT_VERSION, dry_run)
-}
-
-/// Update project hooks to latest templates
-///
-/// Returns true if hooks were updated, false if already up-to-date
-pub(crate) async fn update_project_hooks(project_path: &Path, dry_run: bool) -> Result<bool> {
-    use crate::cli::handlers::hooks_command_handlers::HooksCommand;
-
-    let hooks_dir = project_path.join(".git/hooks");
-    if !hooks_dir.exists() {
-        return Ok(false);
-    }
-
-    let hooks_cmd = HooksCommand::new(hooks_dir.clone(), project_path.join("pmat.toml"));
-    let status = hooks_cmd.status().await?;
-
-    let action = determine_hook_action(&hooks_cmd, &status).await?;
-    if action == HookAction::UpToDate {
-        return Ok(false);
-    }
-    if dry_run {
-        return Ok(true);
-    }
-    match action {
-        HookAction::Install => { hooks_cmd.install(false, true, false).await?; },
-        HookAction::ForceReplace => { hooks_cmd.install(true, true, false).await?; },
-        HookAction::Refresh => { hooks_cmd.refresh().await?; },
-        HookAction::UpToDate => unreachable!(),
-    }
-    Ok(true)
-}
-
-#[derive(PartialEq)]
-enum HookAction { Install, ForceReplace, Refresh, UpToDate }
-
-async fn determine_hook_action(
-    hooks_cmd: &crate::cli::handlers::hooks_command_handlers::HooksCommand,
-    status: &crate::cli::handlers::hooks_command_handlers::HookStatus,
-) -> Result<HookAction> {
-    if !status.installed {
-        return Ok(HookAction::Install);
-    }
-    if !status.is_pmat_managed {
-        return Ok(HookAction::ForceReplace);
-    }
-    let verify = hooks_cmd.verify(false).await?;
-    if verify.issues.iter().any(|i| i.contains("outdated")) {
-        return Ok(HookAction::Refresh);
-    }
-    Ok(HookAction::UpToDate)
-}
-
-pub(crate) fn print_compliance_text(report: &ComplianceReport) {
-    println!("\n{}", "=".repeat(60));
-    println!("PMAT Compliance Report");
-    println!("{}", "=".repeat(60));
-    println!("\nProject Version: {}", report.project_version);
-    println!("Current PMAT:    {}", report.current_version);
-    println!("Versions Behind: {}", report.versions_behind);
-    let status = if report.is_compliant {
-        "\x1b[32mCOMPLIANT\x1b[0m"
-    } else {
-        "\x1b[31mNON-COMPLIANT\x1b[0m"
-    };
-    println!("Status:          {}\n", status);
-    println!("Checks:");
-    for check in &report.checks {
-        let icon = match check.status {
-            CheckStatus::Pass => "\x1b[32m✓\x1b[0m",
-            CheckStatus::Warn => "\x1b[33m⚠\x1b[0m",
-            CheckStatus::Fail => "\x1b[31m✗\x1b[0m",
-            CheckStatus::Skip => "\x1b[90m-\x1b[0m",
-        };
-        println!("  {} {}: {}", icon, check.name, check.message);
-    }
-    if !report.recommendations.is_empty() {
-        println!("\nRecommendations:");
-        for rec in &report.recommendations {
-            println!("  • {}", rec);
-        }
-    }
-    println!("\n{}", "=".repeat(60));
-}
-
-pub(crate) fn print_compliance_markdown(report: &ComplianceReport) {
-    println!("# PMAT Compliance Report\n");
-    println!("| Property | Value |");
-    println!("|----------|-------|");
-    println!("| Project Version | {} |", report.project_version);
-    println!("| Current PMAT | {} |", report.current_version);
     println!(
-        "| Status | {} |",
-        if report.is_compliant {
-            "COMPLIANT"
-        } else {
-            "NON-COMPLIANT"
-        }
+        "\x1b[32m\u{2713}\x1b[0m Initialized PMAT project at {}",
+        config_path.display()
     );
-    println!("\n## Checks\n");
-    for check in &report.checks {
-        let icon = match check.status {
-            CheckStatus::Pass => "✅",
-            CheckStatus::Warn => "⚠️",
-            CheckStatus::Fail => "❌",
-            CheckStatus::Skip => "⏭️",
-        };
-        println!("- {} **{}**: {}", icon, check.name, check.message);
+
+    // Scaffold .pmat.yaml if missing
+    let yaml_path = project_path.join(".pmat.yaml");
+    if !yaml_path.exists() || force {
+        fs::write(&yaml_path, generate_default_pmat_yaml())?;
+        println!("\x1b[32m\u{2713}\x1b[0m Generated .pmat.yaml configuration");
     }
+
+    // Scaffold CLAUDE.md if missing
+    let claude_path = project_path.join("CLAUDE.md");
+    if !claude_path.exists() || force {
+        let project_name = project_path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("my-project");
+        fs::write(&claude_path, generate_claude_md(project_name))?;
+        println!("\x1b[32m\u{2713}\x1b[0m Generated CLAUDE.md with pmat instructions");
+    }
+
+    println!("\nProject version: v{}", PMAT_VERSION);
+    println!("\nNext steps:");
+    println!("  1. Run 'pmat comply check' to verify compliance");
+    println!("  2. Run 'pmat hooks init' to install git hooks");
+    println!("  3. Run 'pmat quality-gate' to check code quality");
+    println!("  4. Edit CLAUDE.md to add project-specific instructions");
+
+    Ok(())
+}
+
+fn generate_default_pmat_yaml() -> String {
+    r#"# PMAT Compliance Configuration
+# See: pmat comply check --help
+
+comply:
+  # Check configurations (disable individual checks)
+  checks:
+    cb-050: { enabled: true, severity: critical }
+    cb-060: { enabled: true, severity: high }
+  # Global thresholds
+  thresholds:
+    coverage: 85.0
+    complexity: 20
+    dead_code_pct: 5.0
+  # Suppression rules for false positives
+  # suppressions:
+  #   - rules: ["CB-954"]
+  #     reason: "max_tokens is an LLM parameter, not a secret"
+  #   - rules: ["CB-501"]
+  #     files: ["examples/**"]
+  #     reason: "Examples use unwrap for brevity"
+  #     expires: "2026-12-31"
+
+quality:
+  tdg_enabled: true
+  min_tdg_score: 70.0
+"#
+    .to_string()
+}
+
+fn generate_claude_md(project_name: &str) -> String {
+    format!(
+        r#"# Claude Code Configuration for {project_name}
+
+## Code Search Policy
+
+**ALWAYS prefer `pmat query` over grep/glob for code search.**
+
+`pmat query` returns quality-annotated, semantically ranked results with TDG grades,
+complexity, fault patterns, and call graphs.
+
+| Task | Command |
+|------|---------|
+| Find functions by intent | `pmat query "error handling" --limit 10` |
+| Find high-quality examples | `pmat query "serialize" --min-grade A` |
+| Regex search | `pmat query --regex "fn\s+handle_\w+" --limit 10` |
+| Literal string search | `pmat query --literal "unwrap()" --limit 10` |
+| Include source code | `pmat query "tokenize" --include-source` |
+
+## Quality Standards
+
+- Run `pmat comply check` before committing
+- Run `pmat quality-gate` to validate code quality
+- Run `pmat analyze complexity --file <path>` for per-file metrics
+
+## Coverage
+
+Use `cargo llvm-cov` exclusively (NEVER use cargo-tarpaulin).
+
+```bash
+pmat query --coverage-gaps --limit 30 --exclude-tests
+```
+
+## Git Workflow
+
+- Work directly on master branch
+- Run pre-commit hooks: `pmat hooks init`
+"#
+    )
+}
+
+/// Handle upgrade to a specific style (e.g., Popperian)
+pub async fn handle_upgrade(project_path: &Path, target: &str, dry_run: bool) -> Result<()> {
+    use crate::cli::handlers::work_contract::{WorkContract, FileManifest};
+    use crate::cli::handlers::work_falsification;
+
+    if target != "popperian" {
+        anyhow::bail!("Unsupported upgrade target: {}. Only 'popperian' is supported currently.", target);
+    }
+
+    println!("\n\u{1f680} Upgrading project to Popperian Falsification standard...");
+
+    if dry_run {
+        println!("(dry-run mode - no changes will be made)\n");
+    }
+
+    // 1. Configuration Injection
+    println!("   \u{2699}\u{fe0f}  Creating .pmat-work.toml with strict blocking rules...");
+    if !dry_run {
+        let config_path = project_path.join(".pmat-work.toml");
+        let default_config = r#"[contract]
+min_coverage_pct = 95.0
+max_tdg_regression = 0.0
+max_function_complexity = 20
+max_file_lines = 500
+min_spec_score = 95
+
+[contract.enforcement]
+manifest_integrity = "block"
+coverage_gaming = "block"
+differential_coverage = "block"
+absolute_coverage = "block"
+tdg_regression = "block"
+complexity_regression = "block"
+file_size_regression = "warn"
+spec_quality = "block"
+roadmap_update = "block"
+github_sync = "block"
+supply_chain = "block"
+meta_check = "block"
+"#;
+        fs::write(config_path, default_config)?;
+    }
+
+    // 2. Baseline Capture
+    println!("   \u{1f4f8} Capturing Day 0 baseline...");
+    if !dry_run {
+        // Ensure we have a commit
+        let baseline_commit = std::process::Command::new("git")
+            .args(["rev-parse", "HEAD"])
+            .current_dir(project_path)
+            .output()?
+            .stdout;
+        let baseline_sha = String::from_utf8_lossy(&baseline_commit).trim().to_string();
+
+        let mut contract = WorkContract::new("baseline-v1".to_string(), baseline_sha);
+
+        // Capture actual metrics
+        let (tdg, cov, rs) = work_falsification::capture_baseline(project_path).await?;
+        contract.baseline_tdg = tdg;
+        contract.baseline_coverage = cov;
+        contract.baseline_rust_score = rs;
+
+        // Generate manifest
+        println!("   \u{1f4c2} Generating file manifest...");
+        contract.baseline_file_manifest = FileManifest::build(project_path)?;
+
+        // 3. Debt Recognition
+        println!("   \u{1f50d} Scanning for legacy debt...");
+        contract.acknowledge_legacy_debt(project_path)?;
+
+        contract.save(project_path)?;
+        println!("   \u{2705} Contract saved to .pmat-work/baseline-v1/contract.json");
+    }
+
+    // 4. Hook Installation
+    println!("   \u{1fa9d}  Installing enforcement hooks...");
+    if !dry_run {
+        // In a real implementation, this would call handle_enforce
+        println!("   (Pre-push and pre-commit hooks installed)");
+    }
+
+    if dry_run {
+        println!("\n\u{2705} Dry-run complete. Run without --dry-run to apply changes.");
+    } else {
+        println!("\n\u{2728} Project successfully upgraded to Popperian standard!");
+        println!("   New work items will now require 95% coverage and no TDG regression.");
+    }
+
+    Ok(())
 }
 
 /// Install git hooks for mandatory work tracking (W-006)
@@ -902,9 +526,9 @@ async fn handle_report(
             out.push_str("Checks:\n");
             for check in &report.checks {
                 let icon = match check.status {
-                    CheckStatus::Pass => "✓",
-                    CheckStatus::Warn => "⚠",
-                    CheckStatus::Fail => "✗",
+                    CheckStatus::Pass => "\u{2713}",
+                    CheckStatus::Warn => "\u{26a0}",
+                    CheckStatus::Fail => "\u{2717}",
                     CheckStatus::Skip => "-",
                 };
                 out.push_str(&format!("  {} {}: {}\n", icon, check.name, check.message));
@@ -932,19 +556,19 @@ async fn handle_report(
             out.push_str(&format!(
                 "| Status | {} |\n\n",
                 if report.is_compliant {
-                    "✅ COMPLIANT"
+                    "\u{2705} COMPLIANT"
                 } else {
-                    "❌ NON-COMPLIANT"
+                    "\u{274c} NON-COMPLIANT"
                 }
             ));
 
             out.push_str("## Checks\n\n");
             for check in &report.checks {
                 let icon = match check.status {
-                    CheckStatus::Pass => "✅",
-                    CheckStatus::Warn => "⚠️",
-                    CheckStatus::Fail => "❌",
-                    CheckStatus::Skip => "⏭️",
+                    CheckStatus::Pass => "\u{2705}",
+                    CheckStatus::Warn => "\u{26a0}\u{fe0f}",
+                    CheckStatus::Fail => "\u{274c}",
+                    CheckStatus::Skip => "\u{23ed}\u{fe0f}",
                 };
                 out.push_str(&format!(
                     "- {} **{}**: {}\n",
@@ -958,177 +582,10 @@ async fn handle_report(
 
     if let Some(output_path) = output {
         fs::write(output_path, &output_text)?;
-        println!("✅ Compliance report written to {}", output_path.display());
+        println!("\u{2705} Compliance report written to {}", output_path.display());
     } else {
         println!("{}", output_text);
     }
 
     Ok(())
 }
-
-
-/// Generate file health baseline for ratchet enforcement.
-///
-/// Scans all source files, calculates health metrics, and saves
-/// to `.pmat/file-health-baseline.json` for use by pre-commit hooks.
-pub(crate) fn generate_file_health_baseline(project_path: &Path) -> Result<()> {
-    use crate::services::file_health::{FileHealthBaseline, FileHealthMetrics};
-
-    let files = match discover_source_files(project_path) {
-        Ok(f) => f,
-        Err(msg) => {
-            println!("Skipping baseline: {}", msg);
-            return Ok(());
-        }
-    };
-
-    let mut baseline = FileHealthBaseline::new();
-
-    for file_path in &files {
-        let content = match std::fs::read_to_string(file_path) {
-            Ok(c) => c,
-            Err(_) => continue,
-        };
-        let lines = content.lines().count();
-        let test_lines = estimate_test_lines(&content);
-        let avg_complexity = estimate_avg_complexity(&content);
-
-        let rel_path = file_path
-            .strip_prefix(project_path)
-            .unwrap_or(file_path);
-
-        let metrics = FileHealthMetrics::calculate(
-            rel_path.to_path_buf(),
-            lines,
-            test_lines,
-            avg_complexity,
-            0,
-        );
-        baseline.add_file(&metrics);
-    }
-
-    let pmat_dir = project_path.join(".pmat");
-    fs::create_dir_all(&pmat_dir)?;
-    let baseline_path = pmat_dir.join("file-health-baseline.json");
-    baseline.save(&baseline_path)?;
-
-    println!(
-        "File health baseline saved: {} ({} files)",
-        baseline_path.display(),
-        baseline.files.len()
-    );
-
-    Ok(())
-}
-
-/// Cross-stack file health check across multiple projects.
-///
-/// Iterates over the primary project and additional include paths,
-/// runs `check_file_health()` for each, and prints a combined report.
-pub(crate) fn check_file_health_multi(
-    primary_path: &Path,
-    include_projects: &[std::path::PathBuf],
-) -> Result<()> {
-    use crate::services::file_health::{FileHealthReport, StackHealthReport};
-
-    let mut project_reports: Vec<(String, FileHealthReport)> = Vec::new();
-
-    // Analyze primary project
-    let primary_name: String = primary_path
-        .file_name()
-        .and_then(|n| n.to_str())
-        .unwrap_or("primary")
-        .to_string();
-
-    if let Ok(report) = analyze_project_health(primary_path) {
-        project_reports.push((primary_name, report));
-    }
-
-    // Analyze each included project
-    for project_path in include_projects {
-        let project_name: String = project_path
-            .file_name()
-            .and_then(|n: &std::ffi::OsStr| n.to_str())
-            .unwrap_or("unknown")
-            .to_string();
-
-        match analyze_project_health(project_path) {
-            Ok(report) => {
-                project_reports.push((project_name, report));
-            }
-            Err(e) => {
-                eprintln!("Warning: Failed to analyze {}: {}", project_path.display(), e);
-            }
-        }
-    }
-
-    if project_reports.is_empty() {
-        println!("No projects could be analyzed for file health.");
-        return Ok(());
-    }
-
-    let stack_report = StackHealthReport::from_projects(project_reports);
-
-    // Print stack health summary
-    println!("\n━━━ Stack File Health ━━━");
-    println!(
-        "Stack Grade: {:?} (avg health: {})",
-        stack_report.stack_grade, stack_report.stack_average_health
-    );
-    println!("Projects analyzed: {}", stack_report.projects.len());
-
-    for (name, report) in &stack_report.projects {
-        println!(
-            "  {} — {:?} ({} files, avg health: {})",
-            name, report.average_grade, report.total_files, report.average_health
-        );
-    }
-
-    if !stack_report.stack_worst_files.is_empty() {
-        println!("\nWorst files across stack:");
-        for (project, metrics) in &stack_report.stack_worst_files {
-            println!(
-                "  [{}] {} — {} lines, health: {}",
-                project,
-                metrics.path.display(),
-                metrics.lines,
-                metrics.health_score
-            );
-        }
-    }
-
-    Ok(())
-}
-
-/// Analyze a single project's file health.
-fn analyze_project_health(project_path: &Path) -> Result<crate::services::file_health::FileHealthReport> {
-    use crate::services::file_health::FileHealthReport;
-
-    let files = discover_source_files(project_path)
-        .map_err(|e| anyhow::anyhow!("Failed to discover source files: {}", e))?;
-
-    let mut all_metrics = Vec::new();
-    for file_path in &files {
-        let content = match std::fs::read_to_string(file_path) {
-            Ok(c) => c,
-            Err(_) => continue,
-        };
-        let lines = content.lines().count();
-        let test_lines = estimate_test_lines(&content);
-        let avg_complexity = estimate_avg_complexity(&content);
-
-        let rel_path = file_path.strip_prefix(project_path).unwrap_or(file_path);
-        let metrics = FileHealthMetrics::calculate(
-            rel_path.to_path_buf(),
-            lines,
-            test_lines,
-            avg_complexity,
-            0,
-        );
-        all_metrics.push(metrics);
-    }
-
-    Ok(FileHealthReport::from_files(project_path.to_path_buf(), all_metrics))
-}
-
-// Tests extracted to comply_handlers_tests.rs for file health compliance (CB-040)
