@@ -1,24 +1,24 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
-//! HTTP handler functions for uniform contract endpoints
+//! HTTP endpoint handler functions
 
-use super::error::AppError;
-use super::openapi::generate_openapi_spec;
-use super::router::AppState;
+use axum::{
+    extract::{Json, State},
+};
+use serde_json::{json, Value};
+
 use crate::contracts::{
     AnalyzeComplexityContract, AnalyzeDeadCodeContract, AnalyzeLintHotspotContract,
     AnalyzeSatdContract, AnalyzeTdgContract, QualityGateContract, RefactorAutoContract,
 };
-use axum::{
-    extract::{Json, State},
-    response::Json as JsonResponse,
-};
-use serde_json::{json, Value};
+
+use super::openapi::generate_openapi_spec;
+use super::types::{AppError, AppState};
 
 /// Analyze complexity endpoint
 pub(super) async fn analyze_complexity(
     State(state): State<AppState>,
     Json(mut params): Json<Value>,
-) -> Result<JsonResponse<Value>, AppError> {
+) -> Result<Json<Value>, AppError> {
     // Apply backward compatibility mapping
     params = super::super::adapter::BackwardCompatibility::map_json_params(params);
 
@@ -33,14 +33,14 @@ pub(super) async fn analyze_complexity(
         .await
         .map_err(AppError::from)?;
 
-    Ok(JsonResponse(result))
+    Ok(Json(result))
 }
 
 /// Analyze SATD endpoint
 pub(super) async fn analyze_satd(
     State(state): State<AppState>,
     Json(mut params): Json<Value>,
-) -> Result<JsonResponse<Value>, AppError> {
+) -> Result<Json<Value>, AppError> {
     params = super::super::adapter::BackwardCompatibility::map_json_params(params);
 
     let contract: AnalyzeSatdContract = serde_json::from_value(params)
@@ -52,14 +52,14 @@ pub(super) async fn analyze_satd(
         .await
         .map_err(AppError::from)?;
 
-    Ok(JsonResponse(result))
+    Ok(Json(result))
 }
 
 /// Analyze dead code endpoint
 pub(super) async fn analyze_dead_code(
     State(state): State<AppState>,
     Json(mut params): Json<Value>,
-) -> Result<JsonResponse<Value>, AppError> {
+) -> Result<Json<Value>, AppError> {
     params = super::super::adapter::BackwardCompatibility::map_json_params(params);
 
     let contract: AnalyzeDeadCodeContract = serde_json::from_value(params)
@@ -71,14 +71,14 @@ pub(super) async fn analyze_dead_code(
         .await
         .map_err(AppError::from)?;
 
-    Ok(JsonResponse(result))
+    Ok(Json(result))
 }
 
 /// Analyze TDG endpoint
 pub(super) async fn analyze_tdg(
     State(state): State<AppState>,
     Json(mut params): Json<Value>,
-) -> Result<JsonResponse<Value>, AppError> {
+) -> Result<Json<Value>, AppError> {
     params = super::super::adapter::BackwardCompatibility::map_json_params(params);
 
     let contract: AnalyzeTdgContract = serde_json::from_value(params)
@@ -90,14 +90,14 @@ pub(super) async fn analyze_tdg(
         .await
         .map_err(AppError::from)?;
 
-    Ok(JsonResponse(result))
+    Ok(Json(result))
 }
 
 /// Analyze lint hotspot endpoint
 pub(super) async fn analyze_lint_hotspot(
     State(state): State<AppState>,
     Json(mut params): Json<Value>,
-) -> Result<JsonResponse<Value>, AppError> {
+) -> Result<Json<Value>, AppError> {
     params = super::super::adapter::BackwardCompatibility::map_json_params(params);
 
     let contract: AnalyzeLintHotspotContract = serde_json::from_value(params)
@@ -109,14 +109,14 @@ pub(super) async fn analyze_lint_hotspot(
         .await
         .map_err(AppError::from)?;
 
-    Ok(JsonResponse(result))
+    Ok(Json(result))
 }
 
 /// Quality gate endpoint
 pub(super) async fn quality_gate(
     State(state): State<AppState>,
     Json(mut params): Json<Value>,
-) -> Result<JsonResponse<Value>, AppError> {
+) -> Result<Json<Value>, AppError> {
     params = super::super::adapter::BackwardCompatibility::map_json_params(params);
 
     let contract: QualityGateContract = serde_json::from_value(params)
@@ -128,14 +128,14 @@ pub(super) async fn quality_gate(
         .await
         .map_err(AppError::from)?;
 
-    Ok(JsonResponse(result))
+    Ok(Json(result))
 }
 
 /// Refactor auto endpoint
 pub(super) async fn refactor_auto(
     State(state): State<AppState>,
     Json(mut params): Json<Value>,
-) -> Result<JsonResponse<Value>, AppError> {
+) -> Result<Json<Value>, AppError> {
     params = super::super::adapter::BackwardCompatibility::map_json_params(params);
 
     let contract: RefactorAutoContract = serde_json::from_value(params)
@@ -147,12 +147,12 @@ pub(super) async fn refactor_auto(
         .await
         .map_err(AppError::from)?;
 
-    Ok(JsonResponse(result))
+    Ok(Json(result))
 }
 
 /// Health check endpoint
-pub(super) async fn health_check() -> JsonResponse<Value> {
-    JsonResponse(json!({
+pub(super) async fn health_check() -> Json<Value> {
+    Json(json!({
         "status": "healthy",
         "service": "pmat",
         "version": env!("CARGO_PKG_VERSION"),
@@ -161,6 +161,6 @@ pub(super) async fn health_check() -> JsonResponse<Value> {
 }
 
 /// `OpenAPI` specification endpoint
-pub(super) async fn openapi_spec() -> JsonResponse<Value> {
-    JsonResponse(generate_openapi_spec())
+pub(super) async fn openapi_spec() -> Json<Value> {
+    Json(generate_openapi_spec())
 }

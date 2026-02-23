@@ -1,11 +1,6 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
-//! HTTP router creation and application state
+//! HTTP router creation with all endpoints
 
-use super::handlers::{
-    analyze_complexity, analyze_dead_code, analyze_lint_hotspot, analyze_satd, analyze_tdg,
-    health_check, openapi_spec, quality_gate, refactor_auto,
-};
-use crate::contracts::service::ContractService;
 use anyhow::Result;
 use axum::{
     routing::{get, post},
@@ -14,11 +9,13 @@ use axum::{
 use std::sync::Arc;
 use tower_http::cors::CorsLayer;
 
-/// HTTP server state with contract service
-#[derive(Clone)]
-pub(super) struct AppState {
-    pub(super) service: Arc<ContractService>,
-}
+use crate::contracts::service::ContractService;
+
+use super::handlers::{
+    analyze_complexity, analyze_dead_code, analyze_lint_hotspot, analyze_satd, analyze_tdg,
+    health_check, openapi_spec, quality_gate, refactor_auto,
+};
+use super::types::AppState;
 
 /// Create HTTP router with all endpoints using uniform contracts
 pub fn create_router() -> Result<Router> {

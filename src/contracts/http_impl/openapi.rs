@@ -1,5 +1,5 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
-//! OpenAPI specification generation for uniform contract endpoints
+//! OpenAPI specification generation
 
 use serde_json::{json, Value};
 

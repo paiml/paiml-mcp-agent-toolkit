@@ -60,16 +60,14 @@
 use crate::models::{
     churn::CodeChurnAnalysis,
     dag::DependencyGraph,
-    project_meta::{BuildInfo, ProjectOverview},
-    tdg::{TDGScore, TDGSeverity, TDGSummary},
+    tdg::TDGScore,
 };
 use crate::services::context::FileContext;
 use crate::services::{
     complexity::{ComplexityReport, FileComplexityMetrics},
     file_classifier::FileClassifierConfig,
-    quality_gates::{QAVerification, QAVerificationResult},
+    quality_gates::QAVerificationResult,
     satd_detector::SATDAnalysisResult,
-    tdg_calculator::TDGCalculator,
 };
 use chrono::{DateTime, Utc};
 use rayon::prelude::*;
@@ -595,27 +593,13 @@ impl DeepContextConfig {
     }
 }
 
-/// Parameters for building deep context
-struct DeepContextBuildParams<'a> {
-    project_path: &'a Path,
-    file_tree: AnnotatedFileTree,
-    analyses: ParallelAnalysisResults,
-    cross_refs: FxHashMap<String, Vec<CrossLangReference>>,
-    quality_scorecard: QualityScorecard,
-    template_provenance: Option<TemplateProvenance>,
-    defect_summary: DefectSummary,
-    hotspots: Vec<DefectHotspot>,
-    recommendations: Vec<PrioritizedRecommendation>,
-    build_info: Option<BuildInfo>,
-    project_overview: Option<ProjectOverview>,
-    analysis_duration: std::time::Duration,
-}
+// DeepContextBuildParams moved to analyzer_core::params
 
 // DeepContextAnalyzer formatting methods - split into submodules for file health (CB-040)
 mod analyzer_formatting;
 
-// DeepContextAnalyzer core analysis methods - extracted for file health (CB-040)
-include!("analyzer_core.rs");
+// DeepContextAnalyzer core analysis methods - split into submodules for file health (CB-040)
+mod analyzer_core;
 
 // Analysis helper functions - extracted for file health (CB-040)
 include!("analysis_helpers.rs");

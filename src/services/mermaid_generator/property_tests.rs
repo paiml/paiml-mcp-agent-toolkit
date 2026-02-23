@@ -1,4 +1,4 @@
-#[cfg_attr(coverage_nightly, coverage(off))]
+#![cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use crate::models::dag::{DependencyGraph, Edge, EdgeType, NodeInfo, NodeType};

@@ -1,5 +1,6 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Tests for simple deep context
-// Extracted for file health compliance (CB-040)
+// Incorporated from simple_deep_context_tests.rs for module health compliance (CB-040)
 
 use super::*;
 
@@ -179,7 +180,7 @@ if (x > 0 && y < 10) {
     #[test]
     fn test_simple_analysis_config_clone() {
         let config = SimpleAnalysisConfig {
-            project_path: PathBuf::from("/test/path"),
+            project_path: std::path::PathBuf::from("/test/path"),
             include_features: vec!["feature1".to_string()],
             include_patterns: vec!["**/*.rs".to_string()],
             exclude_patterns: vec!["test".to_string()],
@@ -196,7 +197,7 @@ if (x > 0 && y < 10) {
     #[test]
     fn test_simple_analysis_config_debug() {
         let config = SimpleAnalysisConfig {
-            project_path: PathBuf::from("/test"),
+            project_path: std::path::PathBuf::from("/test"),
             include_features: vec![],
             include_patterns: vec![],
             exclude_patterns: vec![],
@@ -221,7 +222,7 @@ if (x > 0 && y < 10) {
     #[test]
     fn test_file_complexity_detail_clone() {
         let detail = FileComplexityDetail {
-            file_path: PathBuf::from("test.rs"),
+            file_path: std::path::PathBuf::from("test.rs"),
             function_count: 5,
             high_complexity_functions: 1,
             avg_complexity: 2.0,
@@ -237,7 +238,7 @@ if (x > 0 && y < 10) {
     #[test]
     fn test_file_complexity_detail_debug() {
         let detail = FileComplexityDetail {
-            file_path: PathBuf::from("debug.rs"),
+            file_path: std::path::PathBuf::from("debug.rs"),
             function_count: 3,
             high_complexity_functions: 0,
             avg_complexity: 1.0,
@@ -687,7 +688,7 @@ const other = () => {"#;
             recommendations: vec!["Consider refactoring".to_string()],
             file_complexity_details: vec![
                 FileComplexityDetail {
-                    file_path: PathBuf::from("src/main.rs"),
+                    file_path: std::path::PathBuf::from("src/main.rs"),
                     function_count: 10,
                     high_complexity_functions: 2,
                     avg_complexity: 6.0,
@@ -695,7 +696,7 @@ const other = () => {"#;
                     function_names: vec!["main".to_string(), "helper".to_string()],
                 },
                 FileComplexityDetail {
-                    file_path: PathBuf::from("src/lib.rs"),
+                    file_path: std::path::PathBuf::from("src/lib.rs"),
                     function_count: 5,
                     high_complexity_functions: 1,
                     avg_complexity: 4.5,
@@ -752,7 +753,7 @@ const other = () => {"#;
             recommendations: vec!["Consider refactoring".to_string(), "Add tests".to_string()],
             file_complexity_details: vec![
                 FileComplexityDetail {
-                    file_path: PathBuf::from("complex.rs"),
+                    file_path: std::path::PathBuf::from("complex.rs"),
                     function_count: 15,
                     high_complexity_functions: 3,
                     avg_complexity: 8.0,
@@ -760,7 +761,7 @@ const other = () => {"#;
                     function_names: vec![],
                 },
                 FileComplexityDetail {
-                    file_path: PathBuf::from("medium.rs"),
+                    file_path: std::path::PathBuf::from("medium.rs"),
                     function_count: 10,
                     high_complexity_functions: 2,
                     avg_complexity: 5.0,
@@ -797,7 +798,7 @@ const other = () => {"#;
             },
             recommendations: vec![],
             file_complexity_details: vec![FileComplexityDetail {
-                file_path: PathBuf::from("test.rs"),
+                file_path: std::path::PathBuf::from("test.rs"),
                 function_count: 5,
                 high_complexity_functions: 1,
                 avg_complexity: 3.0,
@@ -1024,7 +1025,7 @@ fn complex(x: i32) -> i32 {
 
     #[test]
     fn test_file_complexity_metrics_debug() {
-        use super::FileComplexityMetrics;
+        use super::super::types::FileComplexityMetrics;
 
         let metrics = FileComplexityMetrics {
             function_count: 10,
@@ -1236,7 +1237,7 @@ fn complex(x: i32) -> i32 {
     #[tokio::test]
     async fn test_analyze_file_complexity_nonexistent_file() {
         let analyzer = SimpleDeepContext;
-        let path = Path::new("/tmp/definitely_does_not_exist_abc123.rs");
+        let path = std::path::Path::new("/tmp/definitely_does_not_exist_abc123.rs");
         let metrics = analyzer.analyze_file_complexity(path).await.unwrap();
         assert_eq!(metrics.function_count, 0);
         assert_eq!(metrics.avg_complexity, 0.0);

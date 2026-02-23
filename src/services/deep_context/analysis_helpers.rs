@@ -1,5 +1,5 @@
 // Analysis helper functions - extracted for file health (CB-040)
-async fn analyze_ast_contexts(
+pub(crate) async fn analyze_ast_contexts(
     path: &std::path::Path,
     _config: Option<FileClassifierConfig>,
 ) -> anyhow::Result<Vec<EnhancedFileContext>> {
