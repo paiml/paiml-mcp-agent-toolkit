@@ -4,13 +4,11 @@
 //! Discovers and monitors AGENTS.md files in project hierarchies with caching.
 
 mod core;
+mod tests;
+mod tests_part2;
 mod types;
 
-#[cfg(test)]
-mod tests;
-
-// Re-export all public types and the discovery struct
-pub use core::AgentsMdDiscovery;
 pub use types::{
-    AgentsMdFile, AgentsMdHierarchy, DiscoveryConfig, FileChange, FileChangeType, HierarchyNode,
+    AgentsMdDiscovery, AgentsMdFile, AgentsMdHierarchy, DiscoveryConfig, FileChange,
+    FileChangeType, HierarchyNode,
 };

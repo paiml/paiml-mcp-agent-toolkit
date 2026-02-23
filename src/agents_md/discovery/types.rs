@@ -1,10 +1,25 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
-//! Types for AGENTS.md Discovery System
+//! Type definitions for the AGENTS.md discovery system.
 
-use super::super::AgentsMdDocument;
+use crate::agents_md::AgentsMdDocument;
+use notify::RecommendedWatcher;
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::time::SystemTime;
+use dashmap::DashMap;
+
+/// Discovery system for AGENTS.md files
+pub struct AgentsMdDiscovery {
+    /// Cache of discovered files
+    pub(super) cache: Arc<DashMap<PathBuf, AgentsMdFile>>,
+
+    /// File watcher
+    pub(super) watcher: Option<RecommendedWatcher>,
+
+    /// Configuration
+    pub(super) config: DiscoveryConfig,
+}
 
 /// Discovery configuration
 #[derive(Debug, Clone)]

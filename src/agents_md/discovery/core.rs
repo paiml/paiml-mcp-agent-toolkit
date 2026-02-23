@@ -1,7 +1,10 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
-//! Core AgentsMdDiscovery struct and main implementation
+//! Core implementation of AgentsMdDiscovery.
 
-use super::types::{AgentsMdFile, AgentsMdHierarchy, DiscoveryConfig, FileChange, HierarchyNode};
+use super::types::{
+    AgentsMdDiscovery, AgentsMdFile, AgentsMdHierarchy, DiscoveryConfig, FileChange,
+    FileChangeType, HierarchyNode,
+};
 use crate::utils::path_validator::PathValidator;
 use anyhow::Result;
 use dashmap::DashMap;
@@ -12,16 +15,91 @@ use std::sync::Arc;
 use std::time::SystemTime;
 use tokio::sync::mpsc;
 
-/// Discovery system for AGENTS.md files
-pub struct AgentsMdDiscovery {
-    /// Cache of discovered files
-    pub(super) cache: Arc<DashMap<PathBuf, AgentsMdFile>>,
+fn event_to_change_type(kind: &EventKind) -> Option<FileChangeType> {
+    match kind {
+        EventKind::Create(_) => Some(FileChangeType::Created),
+        EventKind::Modify(_) => Some(FileChangeType::Modified),
+        EventKind::Remove(_) => Some(FileChangeType::Removed),
+        _ => None,
+    }
+}
 
-    /// File watcher
-    pub(super) watcher: Option<RecommendedWatcher>,
+fn update_cache_for_change(
+    cache: &DashMap<PathBuf, AgentsMdFile>,
+    path: &Path,
+    change: &FileChangeType,
+) {
+    if matches!(change, FileChangeType::Removed) {
+        cache.remove(path);
+        return;
+    }
+    if let Ok(metadata) = std::fs::metadata(path) {
+        if let Ok(modified) = metadata.modified() {
+            cache.insert(
+                path.to_path_buf(),
+                AgentsMdFile {
+                    path: path.to_path_buf(),
+                    parent: path.parent().unwrap_or(path).to_path_buf(),
+                    depth: 0,
+                    modified,
+                    content: None,
+                    document: None,
+                },
+            );
+        }
+    }
+}
 
-    /// Configuration
-    pub(super) config: DiscoveryConfig,
+fn process_watch_event(
+    event: &NotifyEvent,
+    file_name: &str,
+    cache: &DashMap<PathBuf, AgentsMdFile>,
+    tx: &mpsc::Sender<FileChange>,
+) {
+    let Some(change) = event_to_change_type(&event.kind) else {
+        return;
+    };
+    for path in &event.paths {
+        if path.file_name() != Some(std::ffi::OsStr::new(file_name)) {
+            continue;
+        }
+        update_cache_for_change(cache, path, &change);
+        let _ = tx.blocking_send(FileChange {
+            path: path.clone(),
+            change_type: change.clone(),
+            timestamp: SystemTime::now(),
+        });
+    }
+}
+
+fn should_ignore_dir(dir: &Path, ignore_patterns: &[String]) -> bool {
+    dir.file_name()
+        .and_then(|n| n.to_str())
+        .map_or(false, |name| ignore_patterns.iter().any(|p| name == p))
+}
+
+fn try_discover_agents_file(
+    dir: &Path,
+    file_name: &str,
+    depth: usize,
+    cache: &DashMap<PathBuf, AgentsMdFile>,
+) -> Option<AgentsMdFile> {
+    let agents_path = dir.join(file_name);
+    if PathValidator::ensure_file(&agents_path).is_err() {
+        return None;
+    }
+    let metadata = std::fs::metadata(&agents_path).ok()?;
+    let modified = metadata.modified().ok()?;
+    let file = AgentsMdFile {
+        path: agents_path.clone(),
+        parent: dir.to_path_buf(),
+        depth,
+        modified,
+        content: None,
+        document: None,
+    };
+    cache.insert(agents_path, file.clone());
+    Some(file)
 }
 
 impl Default for AgentsMdDiscovery {
@@ -135,26 +213,8 @@ impl AgentsMdDiscovery {
 
         let watcher =
             notify::recommended_watcher(move |event: Result<NotifyEvent, notify::Error>| {
-                let Ok(event) = event else { return };
-                let is_relevant = matches!(
-                    event.kind,
-                    EventKind::Create(_) | EventKind::Modify(_) | EventKind::Remove(_)
-                );
-                if !is_relevant {
-                    return;
-                }
-                for path in &event.paths {
-                    if path.file_name() != Some(std::ffi::OsStr::new(&config.file_name)) {
-                        continue;
-                    }
-                    let change = classify_event_kind(event.kind);
-                    let Some(change) = change else { continue };
-                    update_cache_for_change(&cache, path, change);
-                    let _ = tx.blocking_send(FileChange {
-                        path: path.clone(),
-                        change_type: change,
-                        timestamp: SystemTime::now(),
-                    });
+                if let Ok(event) = event {
+                    process_watch_event(&event, &config.file_name, &cache, &tx);
                 }
             })?;
 
@@ -179,7 +239,7 @@ impl AgentsMdDiscovery {
     }
 
     /// Cache a discovered file
-    pub(super) fn cache_file(&self, path: &Path, depth: usize) {
+    fn cache_file(&self, path: &Path, depth: usize) {
         if let Ok(metadata) = std::fs::metadata(path) {
             if let Ok(modified) = metadata.modified() {
                 self.cache.insert(
@@ -198,54 +258,27 @@ impl AgentsMdDiscovery {
     }
 
     /// Recursive discovery
-    pub(super) fn discover_recursive(&self, dir: &Path, depth: usize, files: &mut Vec<AgentsMdFile>) {
+    fn discover_recursive(&self, dir: &Path, depth: usize, files: &mut Vec<AgentsMdFile>) {
         if depth > self.config.max_depth {
             return;
         }
-
-        if self.is_ignored_dir(dir) {
+        if should_ignore_dir(dir, &self.config.ignore_patterns) {
             return;
         }
-
-        self.try_collect_agents_file(dir, depth, files);
-
+        if let Some(file) = try_discover_agents_file(dir, &self.config.file_name, depth, &self.cache) {
+            files.push(file);
+        }
         // Recurse into subdirectories
         let Ok(entries) = std::fs::read_dir(dir) else { return };
         for entry in entries.flatten() {
-            let Ok(file_type) = entry.file_type() else { continue };
-            if file_type.is_dir() {
+            if entry.file_type().map_or(false, |ft| ft.is_dir()) {
                 self.discover_recursive(&entry.path(), depth + 1, files);
             }
         }
     }
 
-    fn is_ignored_dir(&self, dir: &Path) -> bool {
-        dir.file_name()
-            .and_then(|n| n.to_str())
-            .map_or(false, |name| self.config.ignore_patterns.iter().any(|p| name == p))
-    }
-
-    fn try_collect_agents_file(&self, dir: &Path, depth: usize, files: &mut Vec<AgentsMdFile>) {
-        let agents_path = dir.join(&self.config.file_name);
-        if PathValidator::ensure_file(&agents_path).is_err() {
-            return;
-        }
-        let Ok(metadata) = std::fs::metadata(&agents_path) else { return };
-        let Ok(modified) = metadata.modified() else { return };
-        let file = AgentsMdFile {
-            path: agents_path.clone(),
-            parent: dir.to_path_buf(),
-            depth,
-            modified,
-            content: None,
-            document: None,
-        };
-        files.push(file.clone());
-        self.cache.insert(agents_path, file);
-    }
-
     /// Find common root of files
-    pub(super) fn find_common_root(&self, files: &[AgentsMdFile]) -> PathBuf {
+    fn find_common_root(&self, files: &[AgentsMdFile]) -> PathBuf {
         if files.is_empty() {
             return PathBuf::new();
         }
@@ -267,7 +300,7 @@ impl AgentsMdDiscovery {
 
     /// Insert file into hierarchy tree
     #[allow(clippy::only_used_in_recursion)]
-    pub(super) fn insert_into_tree(&self, node: &mut HierarchyNode, file: &AgentsMdFile) {
+    fn insert_into_tree(&self, node: &mut HierarchyNode, file: &AgentsMdFile) {
         if file.parent == node.path {
             node.agents_file = Some(file.clone());
             return;
@@ -293,37 +326,4 @@ impl AgentsMdDiscovery {
             }
         }
     }
-}
-
-fn classify_event_kind(kind: EventKind) -> Option<super::types::FileChangeType> {
-    match kind {
-        EventKind::Create(_) => Some(super::types::FileChangeType::Created),
-        EventKind::Modify(_) => Some(super::types::FileChangeType::Modified),
-        EventKind::Remove(_) => Some(super::types::FileChangeType::Removed),
-        _ => None,
-    }
-}
-
-fn update_cache_for_change(
-    cache: &DashMap<PathBuf, AgentsMdFile>,
-    path: &Path,
-    change: super::types::FileChangeType,
-) {
-    if matches!(change, super::types::FileChangeType::Removed) {
-        cache.remove(path);
-        return;
-    }
-    let Ok(metadata) = std::fs::metadata(path) else { return };
-    let Ok(modified) = metadata.modified() else { return };
-    cache.insert(
-        path.to_path_buf(),
-        AgentsMdFile {
-            path: path.to_path_buf(),
-            parent: path.parent().unwrap_or(path).to_path_buf(),
-            depth: 0,
-            modified,
-            content: None,
-            document: None,
-        },
-    );
 }
