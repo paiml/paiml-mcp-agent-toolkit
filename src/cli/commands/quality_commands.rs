@@ -1,4 +1,9 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Quality commands (QDD, Enforce) - extracted for file health (CB-040)
+
+use crate::cli::{EnforceOutputFormat, QualityProfile};
+use clap::Subcommand;
+use std::path::PathBuf;
 
 /// Quality-Driven Development (QDD) subcommands
 #[derive(Subcommand)]

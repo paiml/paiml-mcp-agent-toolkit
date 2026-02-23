@@ -1,4 +1,11 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Semantic search commands - extracted for file health (CB-040)
+
+use crate::cli::OutputFormat;
+#[cfg(feature = "mutation-testing")]
+use clap::Args;
+use clap::Subcommand;
+use std::path::PathBuf;
 
 /// Embed subcommands for semantic search
 #[derive(Subcommand)]

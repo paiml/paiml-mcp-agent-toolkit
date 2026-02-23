@@ -1,4 +1,9 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Roadmap and Agent commands - extracted for file health (CB-040)
+
+use crate::cli::{OutputFormat, QualityGateOutputFormat};
+use clap::Subcommand;
+use std::path::PathBuf;
 
 /// Roadmap management subcommands
 #[derive(Subcommand)]

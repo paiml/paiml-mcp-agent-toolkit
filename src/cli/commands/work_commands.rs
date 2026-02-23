@@ -1,4 +1,10 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Work commands - extracted for file health (CB-040)
+
+use clap::Subcommand;
+use std::path::PathBuf;
+use super::misc_commands::AnnotateOutputFormat;
+
 /// Work subcommands for unified GitHub/YAML workflow
 /// CRUD: Create (add), Read (list/status), Update (edit/start/complete), Delete (delete)
 #[derive(Debug, Clone, Subcommand)]

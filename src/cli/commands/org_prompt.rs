@@ -1,4 +1,10 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Org and Prompt commands - extracted for file health (CB-040)
+
+use crate::cli::PromptOutputFormat;
+use clap::Subcommand;
+use std::path::PathBuf;
+use serde_json::Value;
 
 /// Organizational intelligence subcommands (Phase 4: OIP Integration)
 #[derive(Subcommand)]

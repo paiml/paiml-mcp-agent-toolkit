@@ -1,4 +1,25 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Analyze commands - extracted for file health (CB-040)
+
+use crate::cli::{
+    BigOOutputFormat, ComplexityOutputFormat, ComprehensiveOutputFormat,
+    DagType, DeadCodeOutputFormat, DeepContextCacheStrategy,
+    DeepContextDagType, DeepContextOutputFormat, DefectPredictionOutputFormat, DefectsOutputFormat,
+    DuplicateOutputFormat, DuplicateType, EntropyOutputFormat,
+    EntropySeverity, GraphMetricType, GraphMetricsOutputFormat,
+    IncrementalCoverageOutputFormat, LintHotspotOutputFormat, MakefileOutputFormat,
+    NameSimilarityOutputFormat, OutputFormat, ProofAnnotationOutputFormat,
+    PropertyTypeFilter, ProvabilityOutputFormat, SatdOutputFormat, SatdSeverity,
+    SearchScope, SymbolTableOutputFormat, SymbolTypeFilter,
+    TdgOutputFormat, VerificationMethodFilter, WasmOutputFormat,
+};
+use crate::cli::handlers::coverage_improve_handler::CoverageImproveOutputFormat;
+#[cfg(feature = "deep-wasm")]
+use crate::cli::{DeepWasmFocus, DeepWasmLanguage, DeepWasmOutputFormat};
+use crate::models::churn::ChurnOutputFormat;
+use clap::Subcommand;
+use std::path::PathBuf;
+use super::semantic_search::ClusterMethod;
 
 /// Analyze subcommands
 #[derive(Subcommand)]

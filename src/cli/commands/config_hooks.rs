@@ -1,4 +1,9 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Config and Hooks commands - extracted for file health (CB-040)
+
+use crate::cli::OutputFormat;
+use clap::Subcommand;
+
 /// Configuration management commands
 #[derive(Subcommand, Clone)]
 #[cfg_attr(test, derive(Debug))]

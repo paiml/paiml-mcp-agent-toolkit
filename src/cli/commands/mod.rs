@@ -6,28 +6,13 @@
 
 use crate::cli::diagnose::DiagnoseArgs;
 use crate::cli::handlers::cache::CacheCommand;
-use crate::cli::handlers::coverage_improve_handler::CoverageImproveOutputFormat;
 use crate::cli::handlers::memory::MemoryCommand;
 use crate::cli::{
-    AnalysisType, BigOOutputFormat, ComplexityOutputFormat, ComprehensiveOutputFormat,
-    ContextFormat, DagType, DeadCodeOutputFormat, DebugOutputFormat, DeepContextCacheStrategy,
-    DeepContextDagType, DeepContextOutputFormat, DefectPredictionOutputFormat, DefectsOutputFormat,
-    DemoProtocol, DuplicateOutputFormat, DuplicateType, EnforceOutputFormat, EntropyOutputFormat,
-    EntropySeverity, ExplainLevel, GraphMetricType, GraphMetricsOutputFormat,
-    IncrementalCoverageOutputFormat, LintHotspotOutputFormat, MakefileOutputFormat,
-    NameSimilarityOutputFormat, OutputFormat, PromptOutputFormat, ProofAnnotationOutputFormat,
-    PropertyTypeFilter, ProvabilityOutputFormat, QualityCheckType, QualityGateOutputFormat,
-    QualityProfile, QueryOutputFormat, RefactorAutoOutputFormat, RefactorDocsOutputFormat,
-    RefactorMode, RefactorOutputFormat, RepoScoreOutputFormat, ReportOutputFormat,
-    SatdOutputFormat, SatdSeverity, SearchScope, SymbolTableOutputFormat, SymbolTypeFilter,
-    TdgOutputFormat, VerificationMethodFilter, WasmOutputFormat,
+    AnalysisType, ContextFormat, DebugOutputFormat, DemoProtocol,
+    OutputFormat, QualityCheckType, QualityGateOutputFormat,
+    QueryOutputFormat, RepoScoreOutputFormat, ReportOutputFormat,
+    TdgOutputFormat,
 };
-
-#[cfg(feature = "deep-wasm")]
-use crate::cli::{DeepWasmFocus, DeepWasmLanguage, DeepWasmOutputFormat};
-use crate::models::churn::ChurnOutputFormat;
-#[cfg(feature = "mutation-testing")]
-use clap::Args;
 use clap::{Parser, Subcommand};
 use serde_json::Value;
 use std::path::PathBuf;
@@ -1530,29 +1515,38 @@ pub enum Commands {
     },
 }
 
-// Misc command types - extracted for file health (CB-040)
-include!("misc_commands.rs");
+// Misc command types
+pub mod misc_commands;
+pub use misc_commands::*;
 
-// Analyze commands - extracted for file health (CB-040)
-include!("analyze_commands.rs");
+// Analyze commands
+pub mod analyze_commands;
+pub use analyze_commands::*;
 
-// Quality commands (QDD, Enforce) - extracted for file health (CB-040)
-include!("quality_commands.rs");
+// Quality commands (QDD, Enforce)
+pub mod quality_commands;
+pub use quality_commands::*;
 
-// Refactor and Scaffold commands - extracted for file health (CB-040)
-include!("refactor_scaffold.rs");
+// Refactor and Scaffold commands
+pub mod refactor_scaffold;
+pub use refactor_scaffold::*;
 
-// Roadmap and Agent commands - extracted for file health (CB-040)
-include!("roadmap_agent.rs");
+// Roadmap and Agent commands
+pub mod roadmap_agent;
+pub use roadmap_agent::*;
 
-// Config and Hooks commands - extracted for file health (CB-040)
-include!("config_hooks.rs");
+// Config and Hooks commands
+pub mod config_hooks;
+pub use config_hooks::*;
 
-// Semantic search commands - extracted for file health (CB-040)
-include!("semantic_search.rs");
+// Semantic search commands
+pub mod semantic_search;
+pub use semantic_search::*;
 
-// Org and Prompt commands - extracted for file health (CB-040)
-include!("org_prompt.rs");
+// Org and Prompt commands
+pub mod org_prompt;
+pub use org_prompt::*;
 
-// Work commands - extracted for file health (CB-040)
-include!("work_commands.rs");
+// Work commands
+pub mod work_commands;
+pub use work_commands::*;

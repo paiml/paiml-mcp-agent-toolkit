@@ -1,4 +1,13 @@
+#![cfg_attr(coverage_nightly, coverage(off))]
 // Refactor and Scaffold commands - extracted for file health (CB-040)
+
+use crate::cli::{
+    ExplainLevel, QualityProfile, RefactorAutoOutputFormat, RefactorDocsOutputFormat,
+    RefactorMode, RefactorOutputFormat,
+};
+use clap::Subcommand;
+use std::path::PathBuf;
+use serde_json::Value;
 
 /// Refactor subcommands
 #[derive(Subcommand)]
