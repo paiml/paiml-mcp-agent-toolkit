@@ -1,5 +1,5 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
-//! Core data types for symbol table analysis
+//! Core types for symbol table analysis
 
 use serde::Serialize;
 use std::path::PathBuf;

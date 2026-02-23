@@ -1,7 +1,8 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
 use std::fmt::Write;
 
-use crate::tdg::TdgScore;
+use super::super::TdgScore;
+use super::helpers::progress_bar;
 
 /// Format TDG score for human-readable console output.
 ///
@@ -180,12 +181,4 @@ pub fn format_human(score: &TdgScore) -> String {
     .expect("Writing to String buffer cannot fail");
 
     output
-}
-
-pub(super) fn progress_bar(value: f32, max_value: f32, width: usize) -> String {
-    let ratio = (value / max_value).clamp(0.0, 1.0);
-    let filled = (ratio * width as f32) as usize;
-    let empty = width - filled;
-
-    format!("{}{}", "█".repeat(filled), "░".repeat(empty))
 }

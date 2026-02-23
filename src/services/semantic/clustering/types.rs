@@ -1,5 +1,6 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
-// Clustering type definitions for PMAT-SEARCH-007
+// Clustering type definitions for Code Embeddings
+// PMAT-SEARCH-007: K-means, Hierarchical, and DBSCAN clustering
 
 /// Clustering method specification
 #[derive(Debug, Clone)]

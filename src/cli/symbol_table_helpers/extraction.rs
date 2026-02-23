@@ -1,11 +1,12 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
-//! Symbol extraction from AST items and deep context
+//! Symbol extraction from AST and deep context
 
-use super::filters::{passes_query_filter, passes_type_filter};
-use super::types::SymbolInfo;
 use crate::services::context::AstItem;
 use crate::services::deep_context::DeepContext;
 use std::path::PathBuf;
+
+use super::filters::{passes_query_filter, passes_type_filter};
+use super::types::SymbolInfo;
 
 /// Extract symbol information from an AST item
 ///

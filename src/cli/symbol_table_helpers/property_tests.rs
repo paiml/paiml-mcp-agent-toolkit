@@ -1,13 +1,10 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
-//! Property-based tests for symbol table helpers
-
-#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
-    use crate::cli::symbol_table_helpers::{
-        count_by_type, count_by_visibility, format_symbol_table_csv, passes_query_filter,
-        passes_type_filter, SymbolInfo,
-    };
+    use super::super::filters::{passes_query_filter, passes_type_filter};
+    use super::super::formatting::format_symbol_table_csv;
+    use super::super::stats::{count_by_type, count_by_visibility};
+    use super::super::types::SymbolInfo;
     use crate::cli::SymbolTypeFilter;
     use proptest::prelude::*;
 

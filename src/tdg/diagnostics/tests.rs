@@ -1,13 +1,13 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
-    use std::time::{Duration, SystemTime};
-
-    use crate::tdg::diagnostics::{
-        AdaptiveDiagnostics, DiagnosticTool, EnforcementStats, HealthStatus,
-        PerformanceDiagnostics, ResourceDiagnostics, SchedulerDiagnostics, StorageDiagnostics,
-        SystemDiagnostics,
+    use super::super::tool::DiagnosticTool;
+    use super::super::types::{
+        AdaptiveDiagnostics, EnforcementStats, HealthStatus, PerformanceDiagnostics,
+        ResourceDiagnostics, SchedulerDiagnostics, StorageDiagnostics, SystemDiagnostics,
     };
+    use std::time::{Duration, SystemTime};
 
     #[test]
     fn test_diagnostic_tool_creation() {

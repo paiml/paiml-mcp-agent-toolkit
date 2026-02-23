@@ -1,13 +1,15 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
 
-pub mod comparison;
-pub mod human;
-pub mod json;
-pub mod markdown;
-pub mod project;
+mod comparison;
+pub(crate) mod helpers;
+mod human;
+mod json;
+mod markdown;
+mod project;
 
 #[cfg(test)]
 mod tests;
+
 #[cfg(test)]
 mod tests_coverage;
 

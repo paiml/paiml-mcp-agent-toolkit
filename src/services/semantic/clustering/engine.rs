@@ -1,5 +1,6 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
-// Clustering engine implementation for PMAT-SEARCH-007
+// Clustering engine implementation for Code Embeddings
+// PMAT-SEARCH-007: K-means, Hierarchical, and DBSCAN clustering
 
 use super::super::TursoVectorDB;
 use super::types::{
@@ -45,7 +46,7 @@ impl ClusteringEngine {
 
     /// Convert Vec<Vec<f32>> to aprender Matrix
     /// Helper for Phase 2 migration to aprender
-    pub(super) fn vectors_to_matrix(vectors: &[Vec<f32>]) -> Result<Matrix<f32>, String> {
+    fn vectors_to_matrix(vectors: &[Vec<f32>]) -> Result<Matrix<f32>, String> {
         if vectors.is_empty() {
             return Err("Cannot convert empty vector set".to_string());
         }
@@ -221,7 +222,7 @@ impl ClusteringEngine {
     }
 
     /// Compute distance between two clusters
-    pub(super) fn cluster_distance(
+    pub(crate) fn cluster_distance(
         &self,
         cluster1: &[usize],
         cluster2: &[usize],
@@ -320,7 +321,7 @@ impl ClusteringEngine {
     }
 
     /// Average distance to points in same cluster
-    pub(super) fn intra_cluster_distance(
+    pub(crate) fn intra_cluster_distance(
         &self,
         vectors: &[Vec<f32>],
         labels: &[usize],
@@ -345,7 +346,7 @@ impl ClusteringEngine {
     }
 
     /// Average distance to nearest cluster
-    pub(super) fn nearest_cluster_distance(
+    pub(crate) fn nearest_cluster_distance(
         &self,
         vectors: &[Vec<f32>],
         labels: &[usize],
@@ -386,7 +387,7 @@ impl ClusteringEngine {
     }
 
     /// Compute Euclidean distance between two vectors
-    pub(super) fn euclidean_distance(&self, v1: &[f32], v2: &[f32]) -> f64 {
+    pub(crate) fn euclidean_distance(&self, v1: &[f32], v2: &[f32]) -> f64 {
         if v1.len() != v2.len() {
             return f64::MAX;
         }

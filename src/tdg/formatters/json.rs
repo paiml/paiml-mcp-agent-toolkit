@@ -1,5 +1,5 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
-use crate::tdg::TdgScore;
+use super::super::TdgScore;
 
 /// Format TDG score as JSON output.
 ///

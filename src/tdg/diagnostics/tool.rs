@@ -1,7 +1,8 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
+/// DiagnosticTool implementation for the TDG System
 use anyhow::Result;
 use chrono::{DateTime, Local};
-use std::time::Instant;
+use std::time::{Instant, SystemTime};
 
 use super::super::{
     AdaptiveThresholdManager, PlatformResourceController, SimpleFairScheduler, TieredStore,
@@ -76,7 +77,7 @@ impl DiagnosticTool {
         let health = self.assess_health(&storage_diag, &resource_diag, &performance_diag);
 
         Ok(SystemDiagnostics {
-            timestamp: std::time::SystemTime::now(),
+            timestamp: SystemTime::now(),
             uptime,
             storage: storage_diag,
             scheduler: scheduler_diag,

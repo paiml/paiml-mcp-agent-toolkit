@@ -1,7 +1,8 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
 use std::fmt::Write;
 
-use crate::tdg::{Grade, TdgScore};
+use super::super::TdgScore;
+use super::helpers::{format_metric_name, grade_description};
 
 /// Format TDG score as Markdown output.
 ///
@@ -119,33 +120,4 @@ pub fn format_markdown(score: &TdgScore) -> String {
         .expect("Writing to String buffer cannot fail");
 
     output
-}
-
-pub(super) fn format_metric_name(metric: &crate::tdg::MetricCategory) -> &'static str {
-    match metric {
-        crate::tdg::MetricCategory::StructuralComplexity => "Structural Complexity",
-        crate::tdg::MetricCategory::SemanticComplexity => "Semantic Complexity",
-        crate::tdg::MetricCategory::Duplication => "Code Duplication",
-        crate::tdg::MetricCategory::Coupling => "Coupling",
-        crate::tdg::MetricCategory::Documentation => "Documentation",
-        crate::tdg::MetricCategory::Consistency => "Consistency",
-    }
-}
-
-pub(super) fn grade_description(grade: Grade) -> &'static str {
-    match grade {
-        Grade::APLus => {
-            "**A+** (95-100): Exceptional code quality. Production-ready with excellent practices."
-        }
-        Grade::A => "**A** (90-94): High quality code with minor room for improvement.",
-        Grade::AMinus => "**A-** (85-89): Good code quality with some areas for enhancement.",
-        Grade::BPlus => "**B+** (80-84): Above average code that meets most quality standards.",
-        Grade::B => "**B** (75-79): Average code quality with moderate technical debt.",
-        Grade::BMinus => "**B-** (70-74): Below average with noticeable issues to address.",
-        Grade::CPlus => "**C+** (65-69): Poor code quality requiring significant attention.",
-        Grade::C => "**C** (60-64): Very poor quality with major issues throughout.",
-        Grade::CMinus => "**C-** (55-59): Problematic code that needs extensive refactoring.",
-        Grade::D => "**D** (50-54): Severely problematic code with critical issues.",
-        Grade::F => "**F** (0-49): Failing grade indicating code that is not production-ready.",
-    }
 }

@@ -1,10 +1,11 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
-//! Symbol table output formatting
+//! Output formatting functions for symbol tables
+
+use crate::services::deep_context::DeepContext;
+use std::path::PathBuf;
 
 use super::stats::{count_by_type, count_by_visibility};
 use super::types::SymbolInfo;
-use crate::services::deep_context::DeepContext;
-use std::path::PathBuf;
 
 /// Format symbol table summary
 #[must_use]

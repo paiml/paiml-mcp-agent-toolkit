@@ -1,5 +1,5 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
-//! Symbol counting and statistics
+//! Statistics and aggregation functions for symbol tables
 
 use super::types::SymbolInfo;
 

@@ -1,7 +1,8 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
 use std::fmt::Write;
 
-use crate::tdg::{Comparison, Grade};
+use super::super::Comparison;
+use super::helpers::grade_delta;
 
 /// Format comparison between two TDG scores.
 ///
@@ -215,34 +216,4 @@ pub fn format_comparison(comparison: &Comparison) -> String {
     .expect("Writing to String buffer cannot fail");
 
     output
-}
-
-pub(super) fn grade_delta(from: Grade, to: Grade) -> String {
-    let from_val = grade_to_number(from);
-    let to_val = grade_to_number(to);
-    let delta = to_val - from_val;
-
-    if delta > 0 {
-        format!("↑{delta}")
-    } else if delta < 0 {
-        format!("↓{}", delta.abs())
-    } else {
-        "=".to_string()
-    }
-}
-
-pub(super) fn grade_to_number(grade: Grade) -> i32 {
-    match grade {
-        Grade::APLus => 11,
-        Grade::A => 10,
-        Grade::AMinus => 9,
-        Grade::BPlus => 8,
-        Grade::B => 7,
-        Grade::BMinus => 6,
-        Grade::CPlus => 5,
-        Grade::C => 4,
-        Grade::CMinus => 3,
-        Grade::D => 2,
-        Grade::F => 1,
-    }
 }

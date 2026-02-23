@@ -1,4 +1,5 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
+/// Diagnostic type definitions for the Transactional Hashed TDG System
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::time::{Duration, SystemTime};

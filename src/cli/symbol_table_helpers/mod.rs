@@ -1,15 +1,16 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
 //! Helper functions for symbol table analysis to reduce complexity
 
-mod extraction;
-mod filters;
-mod formatting;
-mod property_tests;
-mod stats;
+pub mod extraction;
+pub mod filters;
+pub mod formatting;
+pub mod stats;
+pub mod types;
+
+#[cfg(test)]
 mod tests;
-mod tests_boundary;
-mod tests_context;
-mod types;
+#[cfg(test)]
+mod property_tests;
 
 pub use extraction::{extract_symbol_from_ast_item, extract_symbols_from_context};
 pub use filters::{passes_query_filter, passes_type_filter};

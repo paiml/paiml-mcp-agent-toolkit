@@ -4,12 +4,14 @@
 //
 // GREEN Phase: Implement algorithms
 
-pub mod engine;
+mod engine;
+#[cfg(test)]
+mod tests;
+#[cfg(test)]
+mod tests_part2;
+#[cfg(test)]
+mod tests_part3;
 pub mod types;
-
-mod tests_algorithms;
-mod tests_distance_metrics;
-mod tests_quality;
 
 pub use engine::ClusteringEngine;
 pub use types::{

@@ -1,5 +1,5 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
-//! Symbol filtering predicates
+//! Filter functions for symbol table queries
 
 /// Check if a symbol passes the type filter
 ///

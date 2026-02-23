@@ -1,7 +1,7 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
 use std::fmt::Write;
 
-use crate::tdg::{Grade, ProjectScore};
+use super::super::{Grade, ProjectScore};
 
 /// Format project-level TDG score.
 ///

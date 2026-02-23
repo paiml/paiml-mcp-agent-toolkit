@@ -2,12 +2,12 @@
 
 #[cfg(test)]
 mod tests {
-    use crate::tdg::formatters::{
+    use super::super::helpers::{
+        format_metric_name, grade_delta, grade_description, grade_to_number, progress_bar,
+    };
+    use super::super::{
         format_comparison, format_human, format_json, format_markdown, format_project,
     };
-    use crate::tdg::formatters::comparison::{grade_delta, grade_to_number};
-    use crate::tdg::formatters::human::progress_bar;
-    use crate::tdg::formatters::markdown::{format_metric_name, grade_description};
     use crate::tdg::language_simple::Language;
     use crate::tdg::{Comparison, Grade, MetricCategory, PenaltyAttribution, ProjectScore, TdgScore};
     use std::collections::HashSet;
