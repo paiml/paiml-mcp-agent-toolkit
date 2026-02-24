@@ -1,0 +1,112 @@
+// Impl blocks for findings, recommendations, analysis, and metadata types.
+// Included by models.rs - shares parent module scope (no `use` imports here).
+
+// ============================================================================
+// PopperFinding - Implementation
+// ============================================================================
+
+impl PopperFinding {
+    /// Create a positive finding
+    pub fn positive(message: &str) -> Self {
+        Self {
+            severity: FindingSeverity::Positive,
+            message: message.to_string(),
+            location: None,
+            impact: 0.0,
+        }
+    }
+
+    /// Create an informational finding
+    pub fn info(message: &str) -> Self {
+        Self {
+            severity: FindingSeverity::Info,
+            message: message.to_string(),
+            location: None,
+            impact: 0.0,
+        }
+    }
+
+    /// Create a warning finding
+    pub fn warning(message: &str, impact: f64) -> Self {
+        Self {
+            severity: FindingSeverity::Warning,
+            message: message.to_string(),
+            location: None,
+            impact,
+        }
+    }
+
+    /// Create a critical finding
+    pub fn critical(message: &str, impact: f64) -> Self {
+        Self {
+            severity: FindingSeverity::Critical,
+            message: message.to_string(),
+            location: None,
+            impact,
+        }
+    }
+}
+
+// ============================================================================
+// PopperRecommendation - Implementation
+// ============================================================================
+
+impl PopperRecommendation {
+    /// Create a new recommendation
+    pub fn new(
+        category: &str,
+        description: &str,
+        priority: RecommendationPriority,
+        potential_percent: f64,
+    ) -> Self {
+        Self {
+            category: category.to_string(),
+            description: description.to_string(),
+            priority,
+            potential_percent,
+            command: None,
+        }
+    }
+
+    /// Add command to recommendation
+    pub fn with_command(mut self, cmd: &str) -> Self {
+        self.command = Some(cmd.to_string());
+        self
+    }
+}
+
+// ============================================================================
+// AnalysisStatus - Implementation
+// ============================================================================
+
+impl fmt::Display for AnalysisStatus {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            AnalysisStatus::Pass => write!(f, "PASS"),
+            AnalysisStatus::Partial => write!(f, "PARTIAL"),
+            AnalysisStatus::Fail => write!(f, "FAIL"),
+        }
+    }
+}
+
+// ============================================================================
+// PopperMetadata - Implementation
+// ============================================================================
+
+impl PopperMetadata {
+    /// Create new metadata
+    pub fn new(project_name: String) -> Self {
+        Self {
+            timestamp: chrono::Utc::now().to_rfc3339(),
+            project_name,
+            version: "1.1.0".to_string(),
+            project_path: None,
+        }
+    }
+
+    /// Set project path
+    pub fn with_path(mut self, path: PathBuf) -> Self {
+        self.project_path = Some(path);
+        self
+    }
+}
