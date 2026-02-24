@@ -4,6 +4,9 @@
 mod debug_exec;
 mod dispatch;
 mod dispatch_ext;
+mod dispatch_ext_advanced;
+mod dispatch_ext_scoring;
+mod dispatch_ext_tools;
 mod forward;
 mod maintain;
 mod scaffold;

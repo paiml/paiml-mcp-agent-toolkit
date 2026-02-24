@@ -105,32 +105,26 @@ jobs:
             const fs = require('fs');
             const report = JSON.parse(fs.readFileSync('hallucination_report.json', 'utf8'));
 
-            let comment = '## 🔬 README Hallucination Detection Results\n\n';
-            comment += `📄 Files validated: ${report.files_validated}\n`;
-            comment += `✅ Verified claims: ${report.verified_claims}\n`;
-            comment += `❌ Contradictions: ${report.contradictions}\n`;
-            comment += `⚠️ Unverified claims: ${report.unverified_claims}\n\n`;
+            let comment = '## README Hallucination Detection Results\n\n';
+            comment += `Files validated: ${report.files_validated}\n`;
+            comment += `Verified claims: ${report.verified_claims}\n`;
+            comment += `Contradictions: ${report.contradictions}\n`;
+            comment += `Unverified claims: ${report.unverified_claims}\n\n`;
 
-            if (report.contradictions > 0) {
-              comment += '### ❌ Contradictions Found (Hallucinations Detected)\n\n';
-
-              for (const file of report.results) {
-                const contradictions = file.claims.filter(c => c.status === 'Contradiction');
-                if (contradictions.length > 0) {
-                  comment += `**${file.file}:**\n\n`;
-                  for (const claim of contradictions) {
-                    comment += `- Line ${claim.line_number}: "${claim.claim_text}"\n`;
-                    comment += `  - Status: ${claim.status}\n`;
-                    comment += `  - Confidence: ${claim.confidence.toFixed(2)}\n`;
-                    if (claim.evidence) {
-                      comment += `  - Evidence: ${claim.evidence}\n`;
-                    }
-                    comment += '\n';
-                  }
-                }
+            const items = report.results.flatMap(f =>
+              f.claims.filter(c => c.status === 'Contradiction').map(c => ({...c, file: f.file}))
+            );
+            if (items.length > 0) {
+              comment += '### Contradictions Found (Hallucinations Detected)\n\n';
+              let cur = '';
+              for (const c of items) {
+                if (c.file !== cur) { cur = c.file; comment += `**${c.file}:**\n\n`; }
+                comment += `- Line ${c.line_number}: "${c.claim_text}"\n`;
+                comment += `  - Status: ${c.status}, Confidence: ${c.confidence.toFixed(2)}\n`;
+                if (c.evidence) comment += `  - Evidence: ${c.evidence}\n`;
+                comment += '\n';
               }
-
-              comment += '\n💥 **Action Required**: Fix hallucinated claims before merging.\n';
+              comment += '\n**Action Required**: Fix hallucinated claims before merging.\n';
             }
 
             github.rest.issues.createComment({

@@ -52,6 +52,7 @@ pub(crate) const LUA_STD_GLOBALS: &[&str] = &[
 /// Directories to skip when walking for Lua files.
 pub(crate) const SKIP_DIRS: &[&str] = &[
     ".git",
+    ".claude",
     "node_modules",
     "target",
     ".pmat",

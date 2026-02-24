@@ -271,6 +271,9 @@ algorithm-competition-corpus/
 .pmat-work/
 .pmat-baseline.json
 
+# Claude Code worktrees (ephemeral, auto-managed)
+.claude/worktrees/
+
 # Generated reports
 satd-report.json
 golden_traces/

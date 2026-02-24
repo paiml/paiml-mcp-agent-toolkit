@@ -16,6 +16,7 @@ use std::path::{Path, PathBuf};
 /// Directories to skip when walking for model files.
 const SKIP_DIRS: &[&str] = &[
     ".git",
+    ".claude",
     "node_modules",
     "target",
     ".pmat",

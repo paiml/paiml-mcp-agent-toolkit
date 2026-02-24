@@ -522,49 +522,34 @@ prompt: |
   ```bash
   echo "🔧 Linting bash scripts with bashrs..."
 
-  if ! command -v bashrs &> /dev/null; then
-      echo "⚠️  bashrs not installed - skipping"
+  command -v bashrs &> /dev/null || { echo "⚠️  bashrs not installed - skipping"; exit 0; }
+
+  # Lint bash scripts
+  BASH_FILES=$(find . -name "*.sh" -type f)
+  if [ -n "$BASH_FILES" ]; then
+      echo "Found $(echo "$BASH_FILES" | wc -l) bash scripts"
+      LINT_FAILED=0
+      for file in $BASH_FILES; do
+          bashrs lint "$file" > /dev/null 2>&1 && continue
+          echo "❌ Lint failed: $file"
+          bashrs lint "$file"
+          LINT_FAILED=1
+      done
+      [ "$LINT_FAILED" -eq 0 ] && echo "✅ All bash scripts pass bashrs linting"
+      [ "$LINT_FAILED" -ne 0 ] && echo "Fix bashrs linting errors before proceeding." && exit 1
   else
-      # Find all bash scripts
-      BASH_FILES=$(find . -name "*.sh" -type f)
+      echo "ℹ️  No bash scripts found"
+  fi
 
-      if [ -z "$BASH_FILES" ]; then
-          echo "ℹ️  No bash scripts found"
+  # Lint Makefiles
+  if [ -f Makefile ]; then
+      echo "Linting Makefile..."
+      if bashrs lint Makefile > /dev/null 2>&1; then
+          echo "✅ Makefile passes bashrs linting"
       else
-          echo "Found $(echo "$BASH_FILES" | wc -l) bash scripts"
-
-          # Lint each file
-          LINT_FAILED=0
-          for file in $BASH_FILES; do
-              bashrs lint "$file" > /dev/null 2>&1
-              if [ $? -ne 0 ]; then
-                  echo "❌ Lint failed: $file"
-                  bashrs lint "$file"
-                  LINT_FAILED=1
-              fi
-          done
-
-          if [ "$LINT_FAILED" -eq 0 ]; then
-              echo "✅ All bash scripts pass bashrs linting"
-          else
-              echo ""
-              echo "Fix bashrs linting errors before proceeding."
-              exit 1
-          fi
-      fi
-
-      # Lint Makefiles
-      if [ -f Makefile ]; then
-          echo ""
-          echo "Linting Makefile..."
-          bashrs lint Makefile > /dev/null 2>&1
-          if [ $? -eq 0 ]; then
-              echo "✅ Makefile passes bashrs linting"
-          else
-              echo "❌ Makefile linting failed:"
-              bashrs lint Makefile
-              exit 1
-          fi
+          echo "❌ Makefile linting failed:"
+          bashrs lint Makefile
+          exit 1
       fi
   fi
   ```

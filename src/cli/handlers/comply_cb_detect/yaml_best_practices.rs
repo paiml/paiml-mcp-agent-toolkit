@@ -12,6 +12,7 @@ use std::path::{Path, PathBuf};
 /// Directories to skip when walking for YAML files.
 const SKIP_DIRS: &[&str] = &[
     ".git",
+    ".claude",
     "node_modules",
     "target",
     ".pmat",
@@ -101,6 +102,7 @@ const SECRET_KEY_ALLOWLIST: &[&str] = &[
     "added_tokens",
     "additional_special_tokens",
     "token_type_ids",
+    "min_tokens",
     "min_token_l2",
     "saves_per_token",
     "tokens_per_batch",
