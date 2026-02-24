@@ -35,8 +35,13 @@ include!("proof_coverage.rs");
 // Churn handlers - extracted for file health (CB-040)
 include!("churn.rs");
 
-// Quality gate handlers - extracted for file health (CB-040)
-include!("quality_gate.rs");
+// Quality gate handlers - split for file health (CB-040)
+include!("quality_gate_satd.rs");
+include!("quality_gate_entry.rs");
+include!("quality_gate_single_file.rs");
+include!("quality_gate_project.rs");
+include!("quality_gate_execute.rs");
+include!("quality_gate_config.rs");
 include!("quality_gate_part2a.rs");
 include!("quality_gate_part2b.rs");
 include!("quality_gate_part2c.rs");
