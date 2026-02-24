@@ -3,7 +3,7 @@
 mod coverage_tests {
     use super::*;
     use crate::entropy::entropy_calculator::EntropyMetrics;
-    use crate::entropy::pattern_extractor::{AstPattern, Location, PatternCollection};
+    use crate::entropy::pattern_extractor::{AstPattern, PatternCollection};
     use std::collections::HashMap;
 
     // Severity tests

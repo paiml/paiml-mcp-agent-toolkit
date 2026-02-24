@@ -362,4 +362,3 @@
         assert_eq!(m.total_loc, 1);
         assert_eq!(m.function_count, 1);
     }
-}
