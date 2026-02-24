@@ -21,8 +21,8 @@ pub trait ComplexityRule: Send + Sync {
 
 /// Cyclomatic complexity rule implementation
 pub struct CyclomaticComplexityRule {
-    warn_threshold: u16,
-    error_threshold: u16,
+    pub(crate) warn_threshold: u16,
+    pub(crate) error_threshold: u16,
 }
 
 impl CyclomaticComplexityRule {
@@ -77,8 +77,8 @@ impl ComplexityRule for CyclomaticComplexityRule {
 
 /// Cognitive complexity rule implementation
 pub struct CognitiveComplexityRule {
-    warn_threshold: u16,
-    error_threshold: u16,
+    pub(crate) warn_threshold: u16,
+    pub(crate) error_threshold: u16,
 }
 
 impl CognitiveComplexityRule {

@@ -66,7 +66,7 @@ impl DuplicateDetectionEngine {
     }
 
     /// Extract code fragments from a single file
-    fn extract_fragments(
+    pub(crate) fn extract_fragments(
         &self,
         path: &Path,
         content: &str,
@@ -189,7 +189,7 @@ impl DuplicateDetectionEngine {
     }
 
     /// Check if line starts a function
-    fn is_function_start(&self, line: &str, lang: Language) -> bool {
+    pub(crate) fn is_function_start(&self, line: &str, lang: Language) -> bool {
         match lang {
             Language::Rust => line.contains("fn ") && line.contains('('),
             Language::TypeScript | Language::JavaScript => {
@@ -207,7 +207,7 @@ impl DuplicateDetectionEngine {
     }
 
     /// Check if line ends a function
-    fn is_function_end(&self, line: &str, lang: Language) -> bool {
+    pub(crate) fn is_function_end(&self, line: &str, lang: Language) -> bool {
         match lang {
             Language::Rust
             | Language::TypeScript
@@ -227,7 +227,7 @@ impl DuplicateDetectionEngine {
     }
 
     /// Find clone pairs using LSH for efficient similarity search
-    fn find_clone_pairs(
+    pub(crate) fn find_clone_pairs(
         &self,
         fragments: &[CodeFragment],
     ) -> Result<Vec<(FragmentId, FragmentId, f64)>> {
@@ -288,7 +288,7 @@ impl DuplicateDetectionEngine {
     }
 
     /// Group similar fragments into clone groups
-    fn group_clones(
+    pub(crate) fn group_clones(
         &self,
         clone_pairs: Vec<(FragmentId, FragmentId, f64)>,
     ) -> Result<Vec<CloneGroup>> {
@@ -373,7 +373,7 @@ impl DuplicateDetectionEngine {
     }
 
     /// Find representative in Union-Find structure
-    fn find_representative(
+    pub(crate) fn find_representative(
         representative: &HashMap<FragmentId, FragmentId>,
         id: FragmentId,
     ) -> FragmentId {
@@ -389,7 +389,7 @@ impl DuplicateDetectionEngine {
     }
 
     /// Compute summary statistics
-    fn compute_summary(
+    pub(crate) fn compute_summary(
         &self,
         fragments: &[CodeFragment],
         groups: &[CloneGroup],
@@ -422,7 +422,7 @@ impl DuplicateDetectionEngine {
     }
 
     /// Compute duplication hotspots
-    fn compute_hotspots(&self, groups: &[CloneGroup]) -> Vec<DuplicationHotspot> {
+    pub(crate) fn compute_hotspots(&self, groups: &[CloneGroup]) -> Vec<DuplicationHotspot> {
         let mut file_stats: HashMap<PathBuf, (usize, HashSet<usize>)> = HashMap::new();
 
         for group in groups {

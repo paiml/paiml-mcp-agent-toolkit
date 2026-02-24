@@ -2,6 +2,12 @@
 // Extracted for file health compliance (CB-040)
 
 use super::*;
+#[allow(unused_imports)]
+use std::collections::HashMap;
+#[allow(unused_imports)]
+use std::path::Path;
+#[allow(unused_imports)]
+use uuid::Uuid;
 
 mod tests {
     use super::*;

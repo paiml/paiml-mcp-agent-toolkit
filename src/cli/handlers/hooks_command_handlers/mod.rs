@@ -15,7 +15,13 @@ pub(crate) mod tdg_hooks;
 mod types;
 
 pub use command_dispatch::handle_hooks_command;
+pub(crate) use command_dispatch::{
+    print_installed_status, print_verification_fixes, print_verification_issues,
+};
 pub use hooks_command::HooksCommand;
+pub(crate) use tdg_hooks::{
+    install_tdg_hooks, install_tdg_post_commit_hook, install_tdg_pre_commit_hook,
+};
 pub use types::{
     HookInstallResult, HookRefreshResult, HookRunResult, HookStatus, HookUninstallResult,
     HookVerificationResult,

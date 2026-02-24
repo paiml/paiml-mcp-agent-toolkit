@@ -46,7 +46,7 @@ impl ClusteringEngine {
 
     /// Convert Vec<Vec<f32>> to aprender Matrix
     /// Helper for Phase 2 migration to aprender
-    fn vectors_to_matrix(vectors: &[Vec<f32>]) -> Result<Matrix<f32>, String> {
+    pub(crate) fn vectors_to_matrix(vectors: &[Vec<f32>]) -> Result<Matrix<f32>, String> {
         if vectors.is_empty() {
             return Err("Cannot convert empty vector set".to_string());
         }

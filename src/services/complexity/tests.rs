@@ -1,5 +1,6 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
 use super::*;
+use std::path::Path;
 
 // ===================
 // ComplexityMetrics Tests

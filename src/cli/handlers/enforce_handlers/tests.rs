@@ -1,6 +1,34 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
 //! Tests for enforce handlers
 
+// Imports at file-level scope so `use super::*` in included test files works
+#[allow(unused_imports)]
+use super::{
+    check_improvement_targets, clear_enforcement_cache, execute_enforcement_iteration,
+    finalize_enforcement_run, format_violations_output, handle_analyzing_enforcement_state,
+    handle_analyzing_state, handle_complete_enforcement_state, handle_complete_state,
+    handle_enforcement_iteration, handle_refactoring_enforcement_state, handle_refactoring_state,
+    handle_special_modes, handle_validating_enforcement_state,
+    handle_violating_enforcement_state_proxy, handle_violating_state,
+    initialize_enforcement_environment, load_quality_profile, output_result,
+    print_enforcement_header, print_enforcement_summary, print_progress_bar,
+    run_complexity_analysis, run_coverage_analysis, run_dead_code_analysis,
+    run_duplication_analysis, run_satd_analysis, run_tdg_analysis, should_continue_enforcement,
+    should_stop_for_target_improvement, EnforcementConfig, EnforcementIterationResult,
+    EnforcementLoopResult, EnforcementProgress, EnforcementResult, EnforcementState,
+    QualityProfile, QualityViolation,
+};
+
+#[allow(unused_imports)]
+use crate::cli::EnforceOutputFormat;
+
+#[allow(unused_imports)]
+use std::collections::HashMap;
+#[allow(unused_imports)]
+use std::path::{Path, PathBuf};
+#[allow(unused_imports)]
+use std::time::{Duration, Instant};
+
 // External tests - split file boundaries fixed
 #[cfg(test)]
 #[path = "../enforce_handlers_tests.rs"]

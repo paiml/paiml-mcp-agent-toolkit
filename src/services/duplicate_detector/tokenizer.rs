@@ -368,7 +368,7 @@ impl UniversalFeatureExtractor {
     }
 
     /// Canonicalize identifier names
-    fn canonicalize_identifier(&self, name: &str) -> String {
+    pub(crate) fn canonicalize_identifier(&self, name: &str) -> String {
         if let Some(canonical) = self.identifier_map.get(name) {
             canonical.clone()
         } else {

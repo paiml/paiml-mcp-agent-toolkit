@@ -122,7 +122,7 @@ async fn handle_status(hooks_cmd: &HooksCommand) -> Result<()> {
 }
 
 /// Print detailed status for installed hook
-fn print_installed_status(status: &HookStatus) {
+pub(crate) fn print_installed_status(status: &HookStatus) {
     println!(
         "  PMAT-managed: {}",
         if status.is_pmat_managed {
@@ -179,7 +179,7 @@ async fn handle_verify(hooks_cmd: &HooksCommand, fix: bool) -> Result<()> {
 }
 
 /// Print verification issues
-fn print_verification_issues(result: &HookVerificationResult) {
+pub(crate) fn print_verification_issues(result: &HookVerificationResult) {
     if !result.issues.is_empty() {
         println!("  Issues found:");
         for issue in &result.issues {
@@ -189,7 +189,7 @@ fn print_verification_issues(result: &HookVerificationResult) {
 }
 
 /// Print verification fixes applied
-fn print_verification_fixes(result: &HookVerificationResult) {
+pub(crate) fn print_verification_fixes(result: &HookVerificationResult) {
     if !result.fixes_applied.is_empty() {
         println!("  Fixes applied:");
         for fix_msg in &result.fixes_applied {

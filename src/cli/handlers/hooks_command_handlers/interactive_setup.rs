@@ -77,7 +77,7 @@ impl HooksCommand {
     }
 
     /// Detect project type from files in directory
-    fn detect_project_type(&self) -> String {
+    pub(crate) fn detect_project_type(&self) -> String {
         let current_dir = std::env::current_dir().ok();
 
         if let Some(dir) = current_dir {
@@ -99,7 +99,7 @@ impl HooksCommand {
     }
 
     /// Update config values in existing TOML content
-    fn update_config_values(
+    pub(crate) fn update_config_values(
         &self,
         content: &str,
         max_complexity: u32,
@@ -129,7 +129,7 @@ impl HooksCommand {
     }
 
     /// Extract current value from TOML content
-    fn extract_current_value(&self, content: &str, key: &str) -> String {
+    pub(crate) fn extract_current_value(&self, content: &str, key: &str) -> String {
         content
             .lines()
             .find(|line| line.contains(key))
@@ -139,7 +139,7 @@ impl HooksCommand {
     }
 
     /// Generate new config content with specified values
-    fn generate_config_content(
+    pub(crate) fn generate_config_content(
         &self,
         max_complexity: u32,
         max_cognitive: u32,

@@ -24,7 +24,7 @@ pub async fn install_tdg_hooks_wrapper() -> Result<()> {
 }
 
 /// Install TDG enforcement hooks
-async fn install_tdg_hooks(project_root: &Path) -> Result<()> {
+pub(crate) async fn install_tdg_hooks(project_root: &Path) -> Result<()> {
     let git_dir = project_root.join(".git");
     let hooks_dir = git_dir.join("hooks");
 
@@ -60,7 +60,7 @@ async fn install_tdg_hooks(project_root: &Path) -> Result<()> {
 }
 
 /// Install pre-commit hook with TDG enforcement
-fn install_tdg_pre_commit_hook(hooks_dir: &Path, config: &TdgHooksConfig) -> Result<()> {
+pub(crate) fn install_tdg_pre_commit_hook(hooks_dir: &Path, config: &TdgHooksConfig) -> Result<()> {
     let hook_path = hooks_dir.join("pre-commit");
 
     // Read template
@@ -110,7 +110,7 @@ fn install_tdg_pre_commit_hook(hooks_dir: &Path, config: &TdgHooksConfig) -> Res
 }
 
 /// Install post-commit hook for baseline auto-update
-fn install_tdg_post_commit_hook(hooks_dir: &Path, config: &TdgHooksConfig) -> Result<()> {
+pub(crate) fn install_tdg_post_commit_hook(hooks_dir: &Path, config: &TdgHooksConfig) -> Result<()> {
     let hook_path = hooks_dir.join("post-commit");
 
     // Read template

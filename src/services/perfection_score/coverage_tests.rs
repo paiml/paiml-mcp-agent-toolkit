@@ -2,10 +2,12 @@
 /// EXTREME TDD coverage tests for perfection_score module
 #[cfg(test)]
 mod coverage_tests {
+    #[allow(unused_imports)]
     use super::super::calculator::PerfectionScoreCalculator;
     use super::super::types::{
         CategoryScore, CategoryWeights, PerfectionScoreResult, MAX_PERFECTION_SCORE,
     };
+    #[allow(unused_imports)]
     use proptest::prelude::*;
     use std::fs;
     use tempfile::TempDir;

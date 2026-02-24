@@ -2,6 +2,12 @@
 // Extracted for file health compliance (CB-040)
 
 use super::*;
+#[allow(unused_imports)]
+use crate::cli::commands::HooksCommands;
+#[allow(unused_imports)]
+use crate::tdg::TdgHooksConfig;
+#[allow(unused_imports)]
+use std::path::PathBuf;
 
 mod tests {
     use super::*;

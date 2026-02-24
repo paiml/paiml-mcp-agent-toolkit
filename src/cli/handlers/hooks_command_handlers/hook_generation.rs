@@ -47,7 +47,7 @@ impl HooksCommand {
     }
 
     /// Generate hook header section
-    fn generate_hook_header(&self) -> String {
+    pub(crate) fn generate_hook_header(&self) -> String {
         format!(
             r#"#!/bin/bash
 # Generated pre-commit hook (auto-managed by PMAT)
@@ -80,7 +80,7 @@ export PMAT_TASK_ID_PATTERN="PMAT-[0-9]{{4}}"
     }
 
     /// Generate quality check sections
-    fn generate_quality_checks(&self) -> String {
+    pub(crate) fn generate_quality_checks(&self) -> String {
         r#"# Check if pmat is available
 if ! command -v pmat &> /dev/null; then
     echo "⚠️  Warning: pmat not found in PATH"

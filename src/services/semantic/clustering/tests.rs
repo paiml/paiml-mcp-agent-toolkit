@@ -3,10 +3,12 @@
 mod tests {
     use super::super::super::TursoVectorDB;
     use super::super::engine::ClusteringEngine;
+    #[allow(unused_imports)]
     use super::super::types::{
         Cluster, ClusterFilters, ClusterMember, ClusterResult, ClusteringMethod, Dendrogram,
         DendrogramMerge, Linkage, OutlierPoint,
     };
+    #[allow(unused_imports)]
     use std::collections::HashMap;
     use std::sync::Arc;
 

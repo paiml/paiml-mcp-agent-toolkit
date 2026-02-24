@@ -3,6 +3,7 @@
 
 use super::output::xml_escape;
 use super::types::{OutputFormat, ValidateReadmeCmd};
+#[allow(unused_imports)]
 use crate::services::hallucination_detector::ValidationStatus;
 use std::io::Write;
 use std::path::PathBuf;

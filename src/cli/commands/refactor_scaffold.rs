@@ -288,6 +288,14 @@ pub enum RefactorCommands {
 #[cfg(test)]
 mod tests {
     use super::*;
+    // Types from sibling command modules and CLI enums
+    use crate::cli::commands::{
+        AgentCommands, AnalyzeCommands, Cli, Commands, DiagnosticOutputFormat, Mode,
+        RoadmapCommands, ServeTransport, StorageCommand, TdgCommand, TestSuite,
+    };
+    use crate::cli::{ComplexityOutputFormat, ContextFormat, OutputFormat};
+    use crate::models::churn::ChurnOutputFormat;
+    use clap::Parser;
 
     #[test]
     fn test_mode_enum() {

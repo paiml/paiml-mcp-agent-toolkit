@@ -2,6 +2,7 @@
 //! Edge case tests for README validation: no evidence, negative claims, mixed results, formatting
 
 use super::types::{OutputFormat, ValidateReadmeCmd};
+#[allow(unused_imports)]
 use crate::services::hallucination_detector::{
     Claim, ClaimType, Entity, Evidence, ValidationResult, ValidationStatus,
 };

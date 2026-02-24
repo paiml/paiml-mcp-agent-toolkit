@@ -25,11 +25,15 @@ pub use config::{
     EnforcementConfig,
 };
 pub use enforcement::{
-    check_improvement_targets, execute_main_loop, finalize_enforcement_run,
-    handle_enforcement_iteration, run_enforcement_step, should_continue_enforcement,
+    check_improvement_targets, execute_enforcement_iteration, execute_main_loop,
+    finalize_enforcement_run, handle_enforcement_iteration, handle_special_modes,
+    run_enforcement_step, should_continue_enforcement, should_stop_for_target_improvement,
 };
 pub use handler::route_enforce_command;
-pub use output::{format_violations_output, output_result, print_progress_bar};
+pub use output::{
+    format_violations_output, output_result, print_enforcement_header,
+    print_enforcement_summary, print_progress_bar,
+};
 pub use states::{
     handle_analyzing_enforcement_state, handle_analyzing_state, handle_complete_enforcement_state,
     handle_complete_state, handle_refactoring_enforcement_state, handle_refactoring_state,
