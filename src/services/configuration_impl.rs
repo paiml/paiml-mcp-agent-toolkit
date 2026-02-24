@@ -1,0 +1,298 @@
+// ConfigurationService implementation — core service logic
+// Included by configuration_service.rs — shares parent module scope
+
+/// Configuration service providing centralized config management
+pub struct ConfigurationService {
+    config: Arc<RwLock<PmatConfig>>,
+    config_path: PathBuf,
+    metrics: Arc<RwLock<ServiceMetrics>>,
+    watchers: Arc<RwLock<Vec<Box<dyn ConfigWatcher + Send + Sync>>>>,
+}
+
+/// Trait for configuration change watchers
+pub trait ConfigWatcher {
+    fn on_config_changed(&self, config: &PmatConfig) -> Result<()>;
+}
+
+impl ConfigurationService {
+    /// Create a new configuration service
+    #[must_use]
+    pub fn new(config_path: Option<PathBuf>) -> Self {
+        let default_path = config_path.unwrap_or_else(|| {
+            std::env::current_dir()
+                .unwrap_or_default()
+                .join("pmat.toml")
+        });
+
+        let default_config = Self::default_config();
+
+        Self {
+            config: Arc::new(RwLock::new(default_config)),
+            config_path: default_path,
+            metrics: Arc::new(RwLock::new(ServiceMetrics::default())),
+            watchers: Arc::new(RwLock::new(Vec::new())),
+        }
+    }
+
+    /// Load configuration from file
+    pub async fn load(&self) -> Result<()> {
+        if self.config_path.exists() {
+            let content = tokio::fs::read_to_string(&self.config_path).await?;
+            let config: PmatConfig = toml::from_str(&content)?;
+
+            {
+                let mut config_lock = self
+                    .config
+                    .write()
+                    .map_err(|_| anyhow::anyhow!("Failed to acquire config write lock"))?;
+                *config_lock = config.clone();
+            }
+
+            // Notify watchers
+            self.notify_watchers(&config)?;
+
+            // Update metrics
+            {
+                let mut metrics = self
+                    .metrics
+                    .write()
+                    .map_err(|_| anyhow::anyhow!("Failed to acquire metrics lock"))?;
+                metrics.record_request(std::time::Duration::from_millis(1), true);
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Save configuration to file
+    pub async fn save(&self) -> Result<()> {
+        let config = {
+            self.config
+                .read()
+                .map_err(|_| anyhow::anyhow!("Failed to acquire config read lock"))?
+                .clone()
+        };
+
+        let content = toml::to_string_pretty(&config)?;
+        tokio::fs::write(&self.config_path, content).await?;
+
+        // Update metrics
+        {
+            let mut metrics = self
+                .metrics
+                .write()
+                .map_err(|_| anyhow::anyhow!("Failed to acquire metrics lock"))?;
+            metrics.record_request(std::time::Duration::from_millis(1), true);
+        }
+
+        Ok(())
+    }
+
+    /// Get current configuration
+    pub fn get_config(&self) -> Result<PmatConfig> {
+        Ok(self
+            .config
+            .read()
+            .map_err(|_| anyhow::anyhow!("Failed to acquire config read lock"))?
+            .clone())
+    }
+
+    /// Update configuration
+    pub async fn update_config<F>(&self, updater: F) -> Result<()>
+    where
+        F: FnOnce(&mut PmatConfig) -> Result<()>,
+    {
+        let config_clone = {
+            let mut config = self
+                .config
+                .write()
+                .map_err(|_| anyhow::anyhow!("Failed to acquire config write lock"))?;
+
+            updater(&mut config)?;
+            config.clone()
+        }; // Guard is dropped here
+
+        // Save to file
+        self.save().await?;
+
+        // Notify watchers
+        self.notify_watchers(&config_clone)?;
+
+        Ok(())
+    }
+
+    /// Add configuration watcher
+    pub fn add_watcher(&self, watcher: Box<dyn ConfigWatcher + Send + Sync>) -> Result<()> {
+        let mut watchers = self
+            .watchers
+            .write()
+            .map_err(|_| anyhow::anyhow!("Failed to acquire watchers lock"))?;
+        watchers.push(watcher);
+        Ok(())
+    }
+
+    /// Get specific configuration section
+    pub fn get_quality_config(&self) -> Result<QualityConfig> {
+        Ok(self.get_config()?.quality)
+    }
+
+    pub fn get_analysis_config(&self) -> Result<AnalysisConfig> {
+        Ok(self.get_config()?.analysis)
+    }
+
+    pub fn get_performance_config(&self) -> Result<PerformanceConfig> {
+        Ok(self.get_config()?.performance)
+    }
+
+    pub fn get_mcp_config(&self) -> Result<McpConfig> {
+        Ok(self.get_config()?.mcp)
+    }
+
+    pub fn get_roadmap_config(&self) -> Result<RoadmapConfig> {
+        Ok(self.get_config()?.roadmap)
+    }
+
+    pub fn get_telemetry_config(&self) -> Result<TelemetryConfig> {
+        Ok(self.get_config()?.telemetry)
+    }
+
+    /// Get semantic search configuration (PMAT-SEARCH-011, PMAT-SEARCH-012)
+    pub fn get_semantic_config(&self) -> Result<SemanticConfig> {
+        Ok(self.get_config()?.semantic)
+    }
+
+    /// Get semantic configuration with environment variable fallbacks
+    ///
+    /// Priority order:
+    /// 1. Config file values (if explicitly set)
+    /// 2. Environment variables
+    /// 3. Defaults
+    ///
+    /// Environment variables:
+    /// - PMAT_VECTOR_DB_PATH: Path to vector database
+    /// - PMAT_WORKSPACE: Workspace path for code indexing
+    ///
+    /// NOTE: No API keys required - uses local embeddings via aprender/trueno-rag
+    pub fn get_semantic_config_with_env_fallback(&self) -> Result<SemanticConfig> {
+        let mut config = self.get_semantic_config()?;
+
+        // Vector DB path fallback: config file > env var > default
+        if config.vector_db_path.is_none() {
+            config.vector_db_path = std::env::var("PMAT_VECTOR_DB_PATH").ok().or_else(|| {
+                // Default: ~/.pmat/embeddings.db
+                dirs::home_dir().map(|home| {
+                    home.join(".pmat")
+                        .join("embeddings.db")
+                        .to_string_lossy()
+                        .to_string()
+                })
+            });
+        }
+
+        // Workspace path fallback: config file > env var > current directory
+        if config.workspace_path.is_none() {
+            config.workspace_path = std::env::var("PMAT_WORKSPACE")
+                .ok()
+                .map(PathBuf::from)
+                .or_else(|| std::env::current_dir().ok());
+        }
+
+        Ok(config)
+    }
+
+    /// Notify all watchers of configuration changes
+    fn notify_watchers(&self, config: &PmatConfig) -> Result<()> {
+        let watchers = self
+            .watchers
+            .read()
+            .map_err(|_| anyhow::anyhow!("Failed to acquire watchers lock"))?;
+
+        for watcher in watchers.iter() {
+            if let Err(e) = watcher.on_config_changed(config) {
+                tracing::warn!("Configuration watcher failed: {}", e);
+            }
+        }
+
+        Ok(())
+    }
+}
+
+impl ConfigurationService {
+    /// Start the configuration service
+    pub async fn start(&self) -> Result<()> {
+        // Load configuration from file if it exists
+        self.load().await?;
+
+        // Update metrics
+        {
+            let mut metrics = self
+                .metrics
+                .write()
+                .map_err(|_| anyhow::anyhow!("Failed to acquire metrics lock"))?;
+            metrics.record_request(Duration::from_millis(10), true);
+        }
+
+        tracing::info!(
+            "Configuration service started with config at: {:?}",
+            self.config_path
+        );
+        Ok(())
+    }
+
+    /// Stop the configuration service
+    pub async fn stop(&self) -> Result<()> {
+        // Save current configuration
+        self.save().await?;
+
+        // Update metrics
+        {
+            let mut metrics = self
+                .metrics
+                .write()
+                .map_err(|_| anyhow::anyhow!("Failed to acquire metrics lock"))?;
+            metrics.record_request(Duration::from_millis(5), true);
+        }
+
+        tracing::info!("Configuration service stopped");
+        Ok(())
+    }
+
+    /// Get service status
+    pub async fn status(&self) -> Result<String> {
+        let config_exists = self.config_path.exists();
+        let _config = self.get_config()?;
+
+        Ok(format!(
+            "Configuration service: {} (file: {}, sections: {})",
+            if config_exists { "loaded" } else { "default" },
+            self.config_path.display(),
+            8 // Number of main config sections (system, quality, analysis, performance, mcp, roadmap, telemetry, semantic)
+        ))
+    }
+
+    /// Get service metrics
+    pub async fn get_metrics(&self) -> Result<ServiceMetrics> {
+        Ok(self
+            .metrics
+            .read()
+            .map_err(|_| anyhow::anyhow!("Failed to acquire metrics lock"))?
+            .clone())
+    }
+
+    /// Check service health
+    pub async fn health_check(&self) -> Result<bool> {
+        // Check if we can read the configuration
+        self.get_config().map(|_| true)
+    }
+}
+
+// Global configuration service instance (singleton pattern)
+lazy_static::lazy_static! {
+    static ref CONFIGURATION: Arc<ConfigurationService> = Arc::new(ConfigurationService::new(None));
+}
+
+/// Get the global configuration service instance - THE ONE way to access configuration
+#[must_use]
+pub fn configuration() -> Arc<ConfigurationService> {
+    CONFIGURATION.clone()
+}

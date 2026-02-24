@@ -1,0 +1,259 @@
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_default_config() {
+        let config = PmatYamlConfig::default();
+        assert!(config.comply.is_check_enabled("cb-050"));
+        assert!(config.comply.is_check_enabled("cb-060"));
+        assert_eq!(config.comply.thresholds.coverage, 95.0);
+        assert_eq!(config.comply.thresholds.complexity, 20);
+    }
+
+    #[test]
+    fn test_severity_should_fail() {
+        let config = ComplyConfig::default();
+
+        // Critical always fails
+        assert!(config.should_fail(CheckSeverity::Critical, false));
+        assert!(config.should_fail(CheckSeverity::Critical, true));
+
+        // Error always fails
+        assert!(config.should_fail(CheckSeverity::Error, false));
+        assert!(config.should_fail(CheckSeverity::Error, true));
+
+        // Warning fails only in strict mode
+        assert!(!config.should_fail(CheckSeverity::Warning, false));
+        assert!(config.should_fail(CheckSeverity::Warning, true));
+
+        // Info never fails
+        assert!(!config.should_fail(CheckSeverity::Info, false));
+        assert!(!config.should_fail(CheckSeverity::Info, true));
+    }
+
+    #[test]
+    fn test_yaml_parsing() {
+        let yaml = r#"
+comply:
+  checks:
+    cb-050:
+      enabled: false
+      severity: warning
+    cb-128:
+      enabled: true
+      threshold: 2.5
+  thresholds:
+    coverage: 90.0
+    complexity: 15
+"#;
+
+        let config: PmatYamlConfig = serde_yaml_ng::from_str(yaml).unwrap();
+        assert!(!config.comply.is_check_enabled("cb-050"));
+        assert!(config.comply.is_check_enabled("cb-128"));
+        assert_eq!(config.comply.get_threshold("cb-128"), Some(2.5));
+        assert_eq!(config.comply.thresholds.coverage, 90.0);
+        assert_eq!(config.comply.thresholds.complexity, 15);
+    }
+
+    #[test]
+    fn test_unknown_check_defaults_to_enabled() {
+        let config = ComplyConfig::default();
+        // Unknown check should default to enabled
+        assert!(config.is_check_enabled("cb-999"));
+        assert_eq!(config.get_severity("cb-999"), CheckSeverity::Warning);
+    }
+
+    #[test]
+    fn test_check_config_default() {
+        let check = CheckConfig::default();
+        assert!(check.enabled);
+        assert_eq!(check.severity, CheckSeverity::Warning);
+        assert!(check.threshold.is_none());
+    }
+
+    #[test]
+    fn test_suppression_by_rule_id() {
+        let config = ComplyConfig {
+            suppressions: vec![SuppressionYamlRule {
+                rules: vec!["CB-954".to_string()],
+                files: vec![],
+                reason: "max_tokens is an LLM parameter".to_string(),
+                expires: None,
+            }],
+            ..Default::default()
+        };
+        // CB-954 should be suppressed regardless of file
+        assert!(config
+            .is_suppressed("CB-954", "playbooks/config.yaml")
+            .is_some());
+        // CB-950 should NOT be suppressed
+        assert!(config
+            .is_suppressed("CB-950", "playbooks/config.yaml")
+            .is_none());
+    }
+
+    #[test]
+    fn test_suppression_case_insensitive() {
+        let config = ComplyConfig {
+            suppressions: vec![SuppressionYamlRule {
+                rules: vec!["cb-954".to_string()],
+                files: vec![],
+                reason: "test".to_string(),
+                expires: None,
+            }],
+            ..Default::default()
+        };
+        assert!(config.is_suppressed("CB-954", "file.yaml").is_some());
+    }
+
+    #[test]
+    fn test_suppression_with_file_glob() {
+        let config = ComplyConfig {
+            suppressions: vec![SuppressionYamlRule {
+                rules: vec!["CB-501".to_string()],
+                files: vec!["examples/**".to_string()],
+                reason: "Examples use unwrap for brevity".to_string(),
+                expires: None,
+            }],
+            ..Default::default()
+        };
+        // File matching glob should be suppressed
+        assert!(config.is_suppressed("CB-501", "examples/demo.rs").is_some());
+        // File NOT matching glob should NOT be suppressed
+        assert!(config.is_suppressed("CB-501", "src/main.rs").is_none());
+    }
+
+    #[test]
+    fn test_suppression_expired() {
+        let config = ComplyConfig {
+            suppressions: vec![SuppressionYamlRule {
+                rules: vec!["CB-516".to_string()],
+                files: vec![],
+                reason: "Temporary suppression".to_string(),
+                expires: Some("2020-01-01".to_string()), // Long expired
+            }],
+            ..Default::default()
+        };
+        // Expired suppression should NOT apply
+        assert!(config.is_suppressed("CB-516", "src/lib.rs").is_none());
+    }
+
+    #[test]
+    fn test_suppression_not_expired() {
+        let config = ComplyConfig {
+            suppressions: vec![SuppressionYamlRule {
+                rules: vec!["CB-516".to_string()],
+                files: vec![],
+                reason: "Future suppression".to_string(),
+                expires: Some("2099-12-31".to_string()),
+            }],
+            ..Default::default()
+        };
+        assert!(config.is_suppressed("CB-516", "src/lib.rs").is_some());
+    }
+
+    #[test]
+    fn test_suppression_yaml_parsing() {
+        let yaml = r#"
+comply:
+  suppressions:
+    - rules: ["CB-954"]
+      reason: "max_tokens is an LLM parameter"
+    - rules: ["CB-501"]
+      files: ["examples/**"]
+      reason: "Examples use unwrap for brevity"
+      expires: "2026-12-31"
+"#;
+        let config: PmatYamlConfig = serde_yaml_ng::from_str(yaml).unwrap();
+        assert_eq!(config.comply.suppressions.len(), 2);
+        assert_eq!(config.comply.suppressions[0].rules, vec!["CB-954"]);
+        assert_eq!(config.comply.suppressions[1].files, vec!["examples/**"]);
+        assert_eq!(
+            config.comply.suppressions[1].expires,
+            Some("2026-12-31".to_string())
+        );
+    }
+
+    #[test]
+    fn test_suppression_returns_reason() {
+        let config = ComplyConfig {
+            suppressions: vec![SuppressionYamlRule {
+                rules: vec!["CB-954".to_string()],
+                files: vec![],
+                reason: "LLM parameter, not a secret".to_string(),
+                expires: None,
+            }],
+            ..Default::default()
+        };
+        let reason = config.is_suppressed("CB-954", "file.yaml");
+        assert_eq!(reason, Some("LLM parameter, not a secret".to_string()));
+    }
+
+    #[test]
+    fn test_suppression_multiple_rules() {
+        let config = ComplyConfig {
+            suppressions: vec![SuppressionYamlRule {
+                rules: vec!["CB-501".to_string(), "CB-507".to_string()],
+                files: vec![],
+                reason: "Accepted risk".to_string(),
+                expires: None,
+            }],
+            ..Default::default()
+        };
+        assert!(config.is_suppressed("CB-501", "any.rs").is_some());
+        assert!(config.is_suppressed("CB-507", "any.rs").is_some());
+        assert!(config.is_suppressed("CB-502", "any.rs").is_none());
+    }
+
+    #[test]
+    fn test_scoring_plugin_yaml_parsing() {
+        let yaml = r#"
+scoring:
+  custom_scores:
+    - id: model-accuracy
+      name: "APR Model Accuracy"
+      command: "cargo test --test accuracy"
+      max_score: 100.0
+      min_score: 90.0
+      severity: error
+      weight: 2.0
+    - id: inference-speed
+      name: "Inference Speed"
+      command: "cargo bench --bench inference"
+      min_score: 50.0
+"#;
+        let config: PmatYamlConfig = serde_yaml_ng::from_str(yaml).unwrap();
+        assert_eq!(config.scoring.custom_scores.len(), 2);
+
+        let first = &config.scoring.custom_scores[0];
+        assert_eq!(first.id, "model-accuracy");
+        assert_eq!(first.min_score, Some(90.0));
+        assert_eq!(first.severity, CheckSeverity::Error);
+        assert!((first.weight - 2.0).abs() < 0.001);
+
+        let second = &config.scoring.custom_scores[1];
+        assert_eq!(second.id, "inference-speed");
+        assert_eq!(second.max_score, 100.0); // default
+        assert!((second.weight - 1.0).abs() < 0.001); // default
+    }
+
+    #[test]
+    fn test_default_config_has_scoring() {
+        let config = PmatYamlConfig::default();
+        assert!(config.scoring.custom_scores.is_empty());
+    }
+
+    #[test]
+    fn test_default_min_tdg_grade_is_a() {
+        let config = ComplyConfig::default();
+        assert_eq!(config.thresholds.min_tdg_grade, "A");
+    }
+
+    #[test]
+    fn test_cb200_default_severity_is_error() {
+        let config = ComplyConfig::default();
+        assert_eq!(config.get_severity("cb-200"), CheckSeverity::Error);
+    }
+}
