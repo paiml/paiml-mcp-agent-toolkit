@@ -1,0 +1,5 @@
+# Prevent rust-analyzer from consuming 70+ GB of RAM
+# Only analyze default features (core-languages, viz, http-client)
+# To analyze other features, temporarily add them here
+[cargo]
+features = []
