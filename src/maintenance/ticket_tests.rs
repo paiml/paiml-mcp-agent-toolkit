@@ -1,0 +1,195 @@
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_header() {
+        let header = "# TICKET-PMAT-5011: Ticket Management System";
+        let (id, title) = parse_header(header).unwrap();
+
+        assert_eq!(id, "TICKET-PMAT-5011");
+        assert_eq!(title, "Ticket Management System");
+    }
+
+    #[test]
+    fn test_parse_status() {
+        assert_eq!(parse_status("RED").unwrap(), TicketStatus::Red);
+        assert_eq!(parse_status("Green").unwrap(), TicketStatus::Green);
+        assert_eq!(parse_status("COMPLETE").unwrap(), TicketStatus::Complete);
+        assert!(parse_status("INVALID").is_err());
+    }
+
+    #[test]
+    fn test_parse_priority() {
+        assert_eq!(parse_priority("P0").unwrap(), Priority::P0);
+        assert_eq!(parse_priority("p1").unwrap(), Priority::P1);
+        assert!(parse_priority("P3").is_err());
+    }
+
+    #[test]
+    fn test_parse_complexity() {
+        assert_eq!(parse_complexity("8").unwrap(), 8);
+        assert!(parse_complexity("invalid").is_err());
+    }
+
+    #[test]
+    fn test_parse_dependencies() {
+        let deps = parse_dependencies("TICKET-PMAT-5010, TICKET-PMAT-5009");
+        assert_eq!(deps.len(), 2);
+        assert_eq!(deps[0], "TICKET-PMAT-5010");
+
+        let no_deps = parse_dependencies("None");
+        assert_eq!(no_deps.len(), 0);
+    }
+
+    #[test]
+    fn test_validate_ticket_valid() {
+        let ticket = TicketFile {
+            id: "TICKET-PMAT-5011".into(),
+            title: "Test".into(),
+            status: TicketStatus::Red,
+            priority: Priority::P0,
+            complexity: 8,
+            estimated_time: "4 hours".into(),
+            dependencies: vec![],
+            sprint: "Sprint 17".into(),
+            objective: "Test objective".into(),
+            success_criteria: vec!["Criterion 1".into()],
+            file_path: PathBuf::new(),
+        };
+
+        assert!(ticket.validate().is_ok());
+    }
+
+    #[test]
+    fn test_validate_ticket_invalid_complexity() {
+        let ticket = TicketFile {
+            id: "TICKET-PMAT-5011".into(),
+            title: "Test".into(),
+            status: TicketStatus::Red,
+            priority: Priority::P0,
+            complexity: 15,
+            estimated_time: "4 hours".into(),
+            dependencies: vec![],
+            sprint: "Sprint 17".into(),
+            objective: "Test objective".into(),
+            success_criteria: vec!["Criterion 1".into()],
+            file_path: PathBuf::new(),
+        };
+
+        assert!(ticket.validate().is_err());
+    }
+
+    #[test]
+    fn integration_parse_ticket_5010() {
+        let ticket_path =
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("docs/tickets/TICKET-PMAT-5010.md");
+
+        if !ticket_path.exists() {
+            eprintln!("Skipping: ticket file not found at {:?}", ticket_path);
+            return;
+        }
+
+        let ticket = TicketFile::from_file(&ticket_path).unwrap();
+
+        assert_eq!(ticket.id, "TICKET-PMAT-5010");
+        assert_eq!(ticket.title, "Roadmap Parsing and Validation");
+        assert_eq!(ticket.priority, Priority::P0);
+        assert!(ticket.complexity <= 10);
+        assert!(!ticket.objective.is_empty());
+        assert!(!ticket.success_criteria.is_empty());
+
+        // Validate structure
+        assert!(ticket.validate().is_ok());
+    }
+
+    #[test]
+    fn integration_list_all_tickets() {
+        let tickets_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("docs/tickets");
+
+        if !tickets_dir.exists() {
+            eprintln!("Skipping: tickets dir not found at {:?}", tickets_dir);
+            return;
+        }
+
+        let tickets = list_tickets(&tickets_dir).unwrap();
+
+        // Should have at least some tickets (Sprint 16 + Sprint 17 started)
+        assert!(!tickets.is_empty());
+        assert!(
+            tickets.len() >= 5,
+            "Expected at least 5 tickets, found {}",
+            tickets.len()
+        );
+
+        // Verify we can parse real tickets without errors
+        for ticket in &tickets {
+            assert!(
+                ticket.validate().is_ok(),
+                "Ticket {} failed validation",
+                ticket.id
+            );
+        }
+    }
+
+    #[test]
+    fn test_ticket_exists() {
+        let tickets_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("docs/tickets");
+
+        if !tickets_dir.exists() {
+            eprintln!("Skipping: tickets dir not found at {:?}", tickets_dir);
+            return;
+        }
+
+        assert!(ticket_exists(&tickets_dir, "TICKET-PMAT-5010"));
+        assert!(!ticket_exists(&tickets_dir, "TICKET-PMAT-9999"));
+    }
+}
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod property_tests {
+    use super::*;
+    use proptest::prelude::*;
+
+    proptest! {
+        #[test]
+        fn prop_valid_complexity_range(complexity in 1u8..=10) {
+            let ticket = TicketFile {
+                id: "TICKET-PMAT-0001".into(),
+                title: "Test".into(),
+                status: TicketStatus::Red,
+                priority: Priority::P0,
+                complexity,
+                estimated_time: "1 hour".into(),
+                dependencies: vec![],
+                sprint: "Sprint 1".into(),
+                objective: "Test".into(),
+                success_criteria: vec!["Test".into()],
+                file_path: PathBuf::new(),
+            };
+
+            prop_assert!(ticket.validate().is_ok());
+        }
+
+        #[test]
+        fn prop_invalid_complexity_rejected(complexity in 11u8..=255) {
+            let ticket = TicketFile {
+                id: "TICKET-PMAT-0001".into(),
+                title: "Test".into(),
+                status: TicketStatus::Red,
+                priority: Priority::P0,
+                complexity,
+                estimated_time: "1 hour".into(),
+                dependencies: vec![],
+                sprint: "Sprint 1".into(),
+                objective: "Test".into(),
+                success_criteria: vec!["Test".into()],
+                file_path: PathBuf::new(),
+            };
+
+            prop_assert!(ticket.validate().is_err());
+        }
+    }
+}
