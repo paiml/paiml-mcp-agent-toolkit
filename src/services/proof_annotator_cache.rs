@@ -1,0 +1,51 @@
+// ProofCache implementation methods
+// Included from proof_annotator.rs - do NOT add `use` imports or `#!` attributes here.
+
+impl ProofCache {
+    #[must_use]
+    pub fn new() -> Self {
+        Self {
+            cache: std::collections::HashMap::new(),
+            file_times: std::collections::HashMap::new(),
+        }
+    }
+
+    #[must_use]
+    pub fn get(&self, key: &str) -> Option<&Vec<ProofAnnotation>> {
+        self.cache.get(key)
+    }
+
+    pub fn insert(&mut self, key: String, annotations: Vec<ProofAnnotation>) {
+        self.cache.insert(key, annotations);
+    }
+
+    #[must_use]
+    pub fn is_file_cached(&self, path: &Path) -> bool {
+        if let Ok(metadata) = std::fs::metadata(path) {
+            if let Ok(modified) = metadata.modified() {
+                if let Some(cached_time) = self.file_times.get(path) {
+                    return modified <= *cached_time;
+                }
+            }
+        }
+        false
+    }
+
+    pub fn update_file_time(&mut self, path: std::path::PathBuf) {
+        if let Ok(metadata) = std::fs::metadata(&path) {
+            if let Ok(modified) = metadata.modified() {
+                self.file_times.insert(path, modified);
+            }
+        }
+    }
+
+    pub fn clear(&mut self) {
+        self.cache.clear();
+        self.file_times.clear();
+    }
+
+    #[must_use]
+    pub fn size(&self) -> usize {
+        self.cache.len()
+    }
+}
