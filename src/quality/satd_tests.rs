@@ -1,0 +1,341 @@
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_detect_todo_patterns() {
+        let detector = SatdDetector::new();
+        let source = "// TODO: implement this\n// FIXME: broken code";
+
+        let result = detector.detect(source);
+        assert_eq!(result.count, 2);
+        assert!(result.patterns.contains(&"TODO".to_string()));
+        assert!(result.patterns.contains(&"FIXME".to_string()));
+    }
+
+    #[test]
+    fn test_no_satd_in_clean_code() {
+        let detector = SatdDetector::new();
+        let source = "fn clean_function() {\n    println!(\"Clean code\");\n}";
+
+        let result = detector.detect(source);
+        assert_eq!(result.count, 0);
+        assert!(result.patterns.is_empty());
+    }
+
+    /// Test that all SATD regex patterns compile successfully
+    /// Validates expect() calls at lines 7-15 (static SATD_PATTERNS initialization)
+    #[test]
+    fn test_satd_patterns_compile_successfully() {
+        // Access the static patterns to trigger lazy initialization
+        let patterns = &*SATD_PATTERNS;
+
+        // Verify all 9 patterns were initialized
+        assert_eq!(patterns.len(), 9);
+
+        // Verify all expected SATD keywords are present
+        let pattern_names: Vec<&str> = patterns.iter().map(|(name, _)| *name).collect();
+        assert!(pattern_names.contains(&"TODO"));
+        assert!(pattern_names.contains(&"FIXME"));
+        assert!(pattern_names.contains(&"HACK"));
+        assert!(pattern_names.contains(&"XXX"));
+        assert!(pattern_names.contains(&"REFACTOR"));
+        assert!(pattern_names.contains(&"OPTIMIZE"));
+        assert!(pattern_names.contains(&"REVIEW"));
+        assert!(pattern_names.contains(&"DEPRECATED"));
+        assert!(pattern_names.contains(&"TEMPORARY"));
+    }
+
+    /// Test that SATD patterns match word boundaries correctly
+    /// Validates the correctness of patterns initialized with expect() at lines 7-15
+    #[test]
+    fn test_satd_patterns_word_boundary_matching() {
+        let detector = SatdDetector::new();
+
+        // Should match TODO as a word
+        let source1 = "// TODO: implement this";
+        let result1 = detector.detect(source1);
+        assert_eq!(result1.count, 1);
+        assert!(result1.patterns.contains(&"TODO".to_string()));
+
+        // Should NOT match TODO as part of another word
+        let source2 = "// TODOIST is a task manager";
+        let result2 = detector.detect(source2);
+        assert_eq!(result2.count, 0);
+
+        // Should match XXX as a word
+        let source3 = "XXX: critical issue";
+        let result3 = detector.detect(source3);
+        assert_eq!(result3.count, 1);
+        assert!(result3.patterns.contains(&"XXX".to_string()));
+    }
+
+    /// Test that detector initialization is stable and doesn't panic
+    /// Validates the expect() calls in SATD_PATTERNS never panic with valid patterns
+    #[test]
+    fn test_detector_initialization_stability() {
+        // Create multiple instances to ensure initialization is deterministic
+        for _ in 0..10 {
+            let detector = SatdDetector::new();
+            assert_eq!(detector.patterns.len(), 9);
+        }
+
+        // Test default() method
+        let default_detector = SatdDetector::default();
+        assert_eq!(default_detector.patterns.len(), 9);
+
+        // Verify default and new produce equivalent results
+        let detector1 = SatdDetector::new();
+        let detector2 = SatdDetector::default();
+        assert_eq!(detector1.patterns.len(), detector2.patterns.len());
+    }
+
+    /// Test that all SATD patterns match their respective keywords correctly
+    /// Validates that each pattern initialized at lines 7-15 works as expected
+    #[test]
+    fn test_all_satd_patterns_match_correctly() {
+        let detector = SatdDetector::new();
+
+        // Test each SATD pattern
+        let test_cases = vec![
+            ("// TODO: fix this", "TODO"),
+            ("// FIXME: broken", "FIXME"),
+            ("// HACK: workaround", "HACK"),
+            ("// XXX: warning", "XXX"),
+            ("// REFACTOR: improve", "REFACTOR"),
+            ("// OPTIMIZE: performance", "OPTIMIZE"),
+            ("// REVIEW: check this", "REVIEW"),
+            ("// DEPRECATED: old api", "DEPRECATED"),
+            ("// TEMPORARY: remove later", "TEMPORARY"),
+        ];
+
+        for (source, expected_pattern) in test_cases {
+            let result = detector.detect(source);
+            assert_eq!(
+                result.count, 1,
+                "Expected 1 match for '{expected_pattern}' in '{source}'"
+            );
+            assert!(
+                result.patterns.contains(&expected_pattern.to_string()),
+                "Expected pattern '{expected_pattern}' not found"
+            );
+        }
+    }
+
+    /// Test that SATD detector handles multiple patterns in the same source
+    /// Validates that all patterns work correctly together
+    #[test]
+    fn test_multiple_satd_patterns_in_source() {
+        let detector = SatdDetector::new();
+
+        let source = r#"
+            // TODO: implement feature A
+            // FIXME: bug in function B
+            // HACK: temporary workaround
+            // TODO: also implement feature C
+        "#;
+
+        let result = detector.detect(source);
+
+        // Should detect 4 total matches (2 TODO + 1 FIXME + 1 HACK)
+        assert_eq!(result.count, 4);
+
+        // Should identify 3 unique patterns
+        assert_eq!(result.patterns.len(), 3);
+        assert!(result.patterns.contains(&"TODO".to_string()));
+        assert!(result.patterns.contains(&"FIXME".to_string()));
+        assert!(result.patterns.contains(&"HACK".to_string()));
+    }
+
+    #[test]
+    fn test_extract_comments_line_comments() {
+        let detector = SatdDetector::new();
+        let source =
+            "fn foo() {\n    let x = 1; // inline comment\n    // full line comment\n    bar();\n}";
+        let comments = detector.extract_comments(source);
+        assert!(comments.contains("// inline comment"));
+        assert!(comments.contains("// full line comment"));
+        assert!(!comments.contains("fn foo"));
+        assert!(!comments.contains("bar()"));
+    }
+
+    #[test]
+    fn test_extract_comments_block_comments() {
+        let detector = SatdDetector::new();
+        let source = "/* multi-line\n   block comment */\nfn foo() {}\n/* single line block */";
+        let comments = detector.extract_comments(source);
+        assert!(comments.contains("multi-line"));
+        assert!(comments.contains("block comment"));
+        assert!(comments.contains("single line block"));
+        assert!(!comments.contains("fn foo"));
+    }
+
+    #[test]
+    fn test_extract_comments_mixed() {
+        let detector = SatdDetector::new();
+        let source =
+            "// line comment\n/* block */\ncode();\n// another line\n/* start\nmiddle\nend */";
+        let comments = detector.extract_comments(source);
+        assert!(comments.contains("// line comment"));
+        assert!(comments.contains("/* block */"));
+        assert!(comments.contains("// another line"));
+        assert!(comments.contains("middle"));
+        assert!(!comments.contains("code()"));
+    }
+
+    #[test]
+    fn test_extract_comments_no_comments() {
+        let detector = SatdDetector::new();
+        let source = "fn main() {\n    println!(\"hello\");\n}";
+        let comments = detector.extract_comments(source);
+        assert!(comments.is_empty());
+    }
+
+    #[test]
+    fn test_detect_in_comments_only() {
+        let detector = SatdDetector::new();
+        let source = "let msg = \"TODO: not a comment\";\n// FIXME: real comment";
+        let result = detector.detect_in_comments(source);
+        assert_eq!(result.count, 1);
+        assert!(result.patterns.contains(&"FIXME".to_string()));
+    }
+
+    #[test]
+    fn test_detect_in_comments_block_with_satd() {
+        let detector = SatdDetector::new();
+        let source =
+            "fn foo() {}\n/* HACK: temporary workaround\n   TODO: fix later */\nfn bar() {}";
+        let result = detector.detect_in_comments(source);
+        assert_eq!(result.count, 2);
+        assert!(result.patterns.contains(&"HACK".to_string()));
+        assert!(result.patterns.contains(&"TODO".to_string()));
+    }
+
+    #[test]
+    fn test_extract_comments_block_single_line_with_close() {
+        let detector = SatdDetector::new();
+        let source = "/* closed on same line */ code();";
+        let comments = detector.extract_comments(source);
+        assert!(comments.contains("closed on same line"));
+    }
+
+    // === Extended Pattern Tests ===
+
+    #[test]
+    fn test_with_extended_creates_extended_detector() {
+        let detector = SatdDetector::with_extended();
+        assert!(detector.is_extended());
+        assert!(detector.patterns.len() > 9);
+    }
+
+    #[test]
+    fn test_is_extended_standard_detector() {
+        let detector = SatdDetector::new();
+        assert!(!detector.is_extended());
+    }
+
+    #[test]
+    fn test_extended_detects_placeholder() {
+        let detector = SatdDetector::with_extended();
+        let source = "// placeholder implementation";
+        let result = detector.detect(source);
+        assert!(result.count > 0);
+        assert!(result.patterns.contains(&"PLACEHOLDER".to_string()));
+    }
+
+    #[test]
+    fn test_extended_detects_stub() {
+        let detector = SatdDetector::with_extended();
+        let source = "// stub for testing";
+        let result = detector.detect(source);
+        assert!(result.count > 0);
+        assert!(result.patterns.contains(&"STUB".to_string()));
+    }
+
+    #[test]
+    fn test_extended_detects_for_now() {
+        let detector = SatdDetector::with_extended();
+        let source = "// this works for now";
+        let result = detector.detect(source);
+        assert!(result.count > 0);
+        assert!(result.patterns.contains(&"FOR_NOW".to_string()));
+    }
+
+    #[test]
+    fn test_extended_detects_mock_dummy_fake() {
+        let detector = SatdDetector::with_extended();
+        let source = "// using mock data and dummy values with fake response";
+        let result = detector.detect(source);
+        assert!(result.count >= 3);
+        assert!(result.patterns.contains(&"MOCK".to_string()));
+    }
+
+    #[test]
+    fn test_extended_detects_hardcoded() {
+        let detector = SatdDetector::with_extended();
+        let source = "// hardcoded value";
+        let result = detector.detect(source);
+        assert!(result.patterns.contains(&"HARDCODED".to_string()));
+    }
+
+    #[test]
+    fn test_extended_detects_simplified() {
+        let detector = SatdDetector::with_extended();
+        let source = "// simplified version of the algorithm";
+        let result = detector.detect(source);
+        assert!(result.patterns.contains(&"SIMPLIFIED".to_string()));
+    }
+
+    #[test]
+    fn test_extended_detects_wip() {
+        let detector = SatdDetector::with_extended();
+        let source = "// WIP: not finished yet";
+        let result = detector.detect(source);
+        assert!(result.patterns.contains(&"WIP".to_string()));
+    }
+
+    #[test]
+    fn test_extended_detects_skip_bypass() {
+        let detector = SatdDetector::with_extended();
+        let source = "// skip validation for now";
+        let result = detector.detect(source);
+        assert!(result.count > 0);
+    }
+
+    #[test]
+    fn test_extended_case_insensitive() {
+        let detector = SatdDetector::with_extended();
+        let source = "// PLACEHOLDER Stub HARDCODED Simplified";
+        let result = detector.detect(source);
+        assert!(result.count >= 4);
+    }
+
+    #[test]
+    fn test_extended_detect_in_comments() {
+        let detector = SatdDetector::with_extended();
+        let source = "let x = 1; // placeholder for now\ncode();";
+        let result = detector.detect_in_comments(source);
+        assert!(result.count > 0);
+        assert!(result.patterns.contains(&"PLACEHOLDER".to_string()));
+        assert!(result.patterns.contains(&"FOR_NOW".to_string()));
+    }
+
+    #[test]
+    fn test_extract_comments_unclosed_block() {
+        let detector = SatdDetector::new();
+        let source = "fn foo() {\n    /* unclosed block\n    still in comment\n}";
+        let comments = detector.extract_comments(source);
+        assert!(comments.contains("unclosed block"));
+        assert!(comments.contains("still in comment"));
+    }
+
+    #[test]
+    fn test_extract_comments_block_opening_on_own_line() {
+        let detector = SatdDetector::new();
+        let source = "/*\n  block content\n  more content\n*/\ncode();";
+        let comments = detector.extract_comments(source);
+        assert!(comments.contains("block content"));
+        assert!(comments.contains("more content"));
+    }
+}
