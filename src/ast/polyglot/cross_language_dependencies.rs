@@ -1,10 +1,6 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
-//! Cross-language dependency detection and analysis
-//!
-//! This module provides functionality to detect and analyze dependencies
-//! between nodes in different programming languages. It can identify
-//! relationships such as inheritance, implementation, and usage across
-//! language boundaries.
+//! Cross-language dependency detection and analysis.
+//! Detects relationships (inheritance, implementation, usage) across language boundaries.
 
 use crate::ast::polyglot::unified_node::{NodeReference, ReferenceKind};
 use crate::ast::polyglot::{Language, NodeKind, UnifiedNode};
@@ -16,22 +12,16 @@ use std::collections::{HashMap, HashSet};
 pub struct CrossLanguageDependency {
     /// The source node ID
     pub source_id: String,
-
     /// The target node ID
     pub target_id: String,
-
     /// The source language
     pub source_language: Language,
-
     /// The target language
     pub target_language: Language,
-
     /// The type of dependency
     pub kind: ReferenceKind,
-
     /// Confidence score for the dependency (0.0-1.0)
     pub confidence: f64,
-
     /// Additional metadata about the dependency
     pub metadata: HashMap<String, String>,
 }
@@ -41,15 +31,25 @@ pub struct CrossLanguageDependency {
 pub struct CrossLanguageDependencies {
     /// Map of node IDs to nodes
     nodes: HashMap<String, UnifiedNode>,
-
     /// Map of fully qualified names to node IDs
     fqn_map: HashMap<String, HashSet<String>>,
-
     /// Language-specific name resolvers
     name_resolvers: HashMap<Language, Box<dyn NameResolver>>,
-
     /// Detected cross-language dependencies
     dependencies: Vec<CrossLanguageDependency>,
+}
+
+/// Trait for language-specific name resolution
+pub trait NameResolver: Send + Sync {
+    /// Check if this resolver can resolve a reference
+    fn can_resolve(
+        &self,
+        source_language: Language,
+        target_language: Language,
+        source: &UnifiedNode,
+        reference: &crate::ast::polyglot::unified_node::NodeReference,
+        target: &UnifiedNode,
+    ) -> bool;
 }
 
 impl CrossLanguageDependencies {
@@ -71,13 +71,10 @@ impl CrossLanguageDependencies {
     /// Add nodes to the dependency detector
     pub fn add_nodes(&mut self, nodes: Vec<UnifiedNode>) {
         for node in nodes {
-            // Add to FQN map
             self.fqn_map
                 .entry(node.fqn.clone())
                 .or_default()
                 .insert(node.id.clone());
-
-            // Add to node map
             self.nodes.insert(node.id.clone(), node);
         }
     }
@@ -95,7 +92,6 @@ impl CrossLanguageDependencies {
     pub fn detect_all(&mut self) -> &Vec<CrossLanguageDependency> {
         self.dependencies.clear();
 
-        // Group nodes by language
         let mut nodes_by_language: HashMap<Language, Vec<String>> = HashMap::new();
         for (id, node) in &self.nodes {
             nodes_by_language
@@ -104,34 +100,27 @@ impl CrossLanguageDependencies {
                 .push(id.clone());
         }
 
-        // Compare nodes between different languages
         let languages: Vec<Language> = nodes_by_language.keys().cloned().collect();
-
-        // Create a list of dependencies to add (to avoid borrowing self mutably while iterating)
         let mut new_dependencies = Vec::new();
 
         for (i, lang1) in languages.iter().enumerate() {
             for lang2 in languages.iter().skip(i + 1) {
                 if lang1 != lang2 {
-                    if let (Some(node_ids1), Some(node_ids2)) =
+                    if let (Some(ids1), Some(ids2)) =
                         (nodes_by_language.get(lang1), nodes_by_language.get(lang2))
                     {
-                        // Get dependencies between these language groups
-                        let deps = self
-                            .detect_between_language_groups(node_ids1, *lang1, node_ids2, *lang2);
+                        let deps =
+                            self.detect_between_language_groups(ids1, *lang1, ids2, *lang2);
                         new_dependencies.extend(deps);
                     }
                 }
             }
         }
 
-        // Add the collected dependencies
         self.dependencies.extend(new_dependencies);
-
-        // Resolve unresolved references (moved outside)
         self.resolve_references();
 
-        // Deduplicate dependencies (same source_id + target_id + kind = duplicate)
+        // Deduplicate dependencies
         let mut seen = std::collections::HashSet::new();
         self.dependencies.retain(|dep| {
             let key = (dep.source_id.clone(), dep.target_id.clone(), dep.kind);
@@ -139,214 +128,6 @@ impl CrossLanguageDependencies {
         });
 
         &self.dependencies
-    }
-
-    /// Detect dependencies between nodes of two specific language groups
-    /// This function avoids borrowing self mutably while iterating
-    fn detect_between_language_groups(
-        &self,
-        node_ids1: &[String],
-        lang1: Language,
-        node_ids2: &[String],
-        lang2: Language,
-    ) -> Vec<CrossLanguageDependency> {
-        let mut dependencies = Vec::new();
-
-        for id1 in node_ids1 {
-            let Some(source) = self.nodes.get(id1) else {
-                continue;
-            };
-            for reference in &source.references {
-                self.find_matching_targets(
-                    source,
-                    reference,
-                    node_ids2,
-                    lang1,
-                    lang2,
-                    &mut dependencies,
-                );
-            }
-        }
-
-        dependencies
-    }
-
-    /// Check each target node for a reference match and collect dependencies
-    fn find_matching_targets(
-        &self,
-        source: &UnifiedNode,
-        reference: &NodeReference,
-        node_ids2: &[String],
-        lang1: Language,
-        lang2: Language,
-        dependencies: &mut Vec<CrossLanguageDependency>,
-    ) {
-        for id2 in node_ids2 {
-            let Some(target) = self.nodes.get(id2) else {
-                continue;
-            };
-            if self.is_reference_match(source, reference, target, lang1, lang2) {
-                dependencies.push(CrossLanguageDependency {
-                    source_id: source.id.clone(),
-                    target_id: target.id.clone(),
-                    source_language: lang1,
-                    target_language: lang2,
-                    kind: reference.kind,
-                    confidence: 1.0,
-                    metadata: HashMap::new(),
-                });
-            }
-        }
-    }
-
-    /// Detect dependencies between nodes of two specific languages
-    #[allow(dead_code)]
-    fn detect_between_languages(
-        &mut self,
-        nodes1: &[&UnifiedNode],
-        lang1: Language,
-        nodes2: &[&UnifiedNode],
-        lang2: Language,
-    ) {
-        // For each node in first language
-        for &source in nodes1 {
-            // For each reference in the node
-            for reference in &source.references {
-                // For each node in second language
-                for &target in nodes2 {
-                    // Check if reference matches target
-                    if self.is_reference_match(source, reference, target, lang1, lang2) {
-                        self.add_dependency(source, target, reference.kind, 1.0);
-                    }
-                }
-            }
-        }
-    }
-
-    /// Check if a reference from one node matches a target node
-    fn is_reference_match(
-        &self,
-        source: &UnifiedNode,
-        reference: &crate::ast::polyglot::unified_node::NodeReference,
-        target: &UnifiedNode,
-        source_lang: Language,
-        target_lang: Language,
-    ) -> bool {
-        // Direct ID match
-        if !reference.target_id.is_empty() && reference.target_id == target.id {
-            return true;
-        }
-
-        // Name match
-        if reference.target_name == target.name || reference.target_name == target.fqn {
-            return true;
-        }
-
-        // Try to resolve using language-specific resolver
-        if let Some(resolver) = self.name_resolvers.get(&source_lang) {
-            if resolver.can_resolve(source_lang, target_lang, source, reference, target) {
-                return true;
-            }
-        }
-
-        false
-    }
-
-    /// Add a dependency between two nodes
-    #[allow(dead_code)]
-    fn add_dependency(
-        &mut self,
-        source: &UnifiedNode,
-        target: &UnifiedNode,
-        kind: ReferenceKind,
-        confidence: f64,
-    ) {
-        let dependency = CrossLanguageDependency {
-            source_id: source.id.clone(),
-            target_id: target.id.clone(),
-            source_language: source.language,
-            target_language: target.language,
-            kind,
-            confidence,
-            metadata: HashMap::new(),
-        };
-
-        self.dependencies.push(dependency);
-    }
-
-    /// Resolve unresolved references
-    fn resolve_references(&mut self) {
-        let name_map = self.build_name_map();
-        let to_resolve = self.collect_unresolved_references();
-        let new_dependencies = Self::resolve_against_name_map(&self.nodes, &name_map, &to_resolve);
-        self.dependencies.extend(new_dependencies);
-    }
-
-    /// Build a lookup map from node names and FQNs to node IDs
-    fn build_name_map(&self) -> HashMap<String, Vec<String>> {
-        let mut name_map: HashMap<String, Vec<String>> = HashMap::new();
-        for (id, node) in &self.nodes {
-            name_map
-                .entry(node.name.clone())
-                .or_default()
-                .push(id.clone());
-            name_map
-                .entry(node.fqn.clone())
-                .or_default()
-                .push(id.clone());
-        }
-        name_map
-    }
-
-    /// Collect all unresolved references (empty target_id) from nodes
-    fn collect_unresolved_references(&self) -> Vec<(String, String, ReferenceKind)> {
-        let mut to_resolve = Vec::new();
-        for (source_id, source) in &self.nodes {
-            for reference in &source.references {
-                if reference.target_id.is_empty() {
-                    to_resolve.push((
-                        source_id.clone(),
-                        reference.target_name.clone(),
-                        reference.kind,
-                    ));
-                }
-            }
-        }
-        to_resolve
-    }
-
-    /// Match unresolved references against the name map, producing cross-language dependencies
-    fn resolve_against_name_map(
-        nodes: &HashMap<String, UnifiedNode>,
-        name_map: &HashMap<String, Vec<String>>,
-        to_resolve: &[(String, String, ReferenceKind)],
-    ) -> Vec<CrossLanguageDependency> {
-        let mut new_dependencies = Vec::new();
-        for (source_id, target_name, kind) in to_resolve {
-            let Some(source) = nodes.get(source_id) else {
-                continue;
-            };
-            let Some(target_ids) = name_map.get(target_name) else {
-                continue;
-            };
-            for target_id in target_ids {
-                let Some(target) = nodes.get(target_id) else {
-                    continue;
-                };
-                if source.language != target.language {
-                    new_dependencies.push(CrossLanguageDependency {
-                        source_id: source_id.clone(),
-                        target_id: target_id.clone(),
-                        source_language: source.language,
-                        target_language: target.language,
-                        kind: *kind,
-                        confidence: 0.8, // Lower confidence for name-based resolution
-                        metadata: HashMap::new(),
-                    });
-                }
-            }
-        }
-        new_dependencies
     }
 
     /// Get all dependencies
@@ -391,226 +172,22 @@ impl CrossLanguageDependencies {
             })
             .collect()
     }
-
-    /// Generate a dependency graph in DOT format
-    pub fn to_dot(&self) -> String {
-        let mut dot = String::from("digraph CrossLanguageDependencies {\n");
-
-        // Add nodes
-        for node in self.nodes.values() {
-            let shape = match node.kind {
-                NodeKind::Class => "box",
-                NodeKind::Interface | NodeKind::Trait => "ellipse",
-                NodeKind::Method | NodeKind::Function => "octagon",
-                _ => "plaintext",
-            };
-
-            let label = format!("{} ({})", node.name, node.language.name());
-            dot.push_str(&format!(
-                "    \"{}\" [label=\"{}\" shape={} style=filled fillcolor={}];\n",
-                node.id,
-                label,
-                shape,
-                self.language_color(node.language)
-            ));
-        }
-
-        // Add edges
-        for dep in &self.dependencies {
-            let style = match dep.kind {
-                ReferenceKind::Inherits => "bold",
-                ReferenceKind::Implements => "dashed",
-                _ => "solid",
-            };
-
-            let label = format!("{:?}", dep.kind);
-            dot.push_str(&format!(
-                "    \"{}\" -> \"{}\" [label=\"{}\" style={}];\n",
-                dep.source_id, dep.target_id, label, style
-            ));
-        }
-
-        dot.push_str("}\n");
-        dot
-    }
-
-    /// Get color for a language in DOT format
-    fn language_color(&self, language: Language) -> &'static str {
-        match language {
-            Language::Java => "\"#b07219\"",       // Java brown
-            Language::Kotlin => "\"#A97BFF\"",     // Kotlin purple
-            Language::Scala => "\"#c22d40\"",      // Scala red
-            Language::TypeScript => "\"#2b7489\"", // TypeScript blue
-            Language::JavaScript => "\"#f1e05a\"", // JavaScript yellow
-            Language::Python => "\"#3572A5\"",     // Python blue
-            Language::Rust => "\"#dea584\"",       // Rust orange
-            Language::Go => "\"#00ADD8\"",         // Go blue
-            Language::Cpp => "\"#f34b7d\"",        // C++ pink
-            _ => "\"#bbbbbb\"",                    // Gray for others
-        }
-    }
 }
 
-/// Trait for language-specific name resolution
-pub trait NameResolver: Send + Sync {
-    /// Check if this resolver can resolve a reference
-    fn can_resolve(
-        &self,
-        source_language: Language,
-        target_language: Language,
-        source: &UnifiedNode,
-        reference: &crate::ast::polyglot::unified_node::NodeReference,
-        target: &UnifiedNode,
-    ) -> bool;
-}
+// Detection: detect_between_language_groups, find_matching_targets,
+// detect_between_languages, is_reference_match, add_dependency
+include!("cross_language_dependencies_detection.rs");
 
-/// Java-to-Kotlin name resolver
-pub struct JavaKotlinResolver;
+// Resolution: resolve_references, build_name_map,
+// collect_unresolved_references, resolve_against_name_map
+include!("cross_language_dependencies_resolution.rs");
 
-impl NameResolver for JavaKotlinResolver {
-    fn can_resolve(
-        &self,
-        source_language: Language,
-        target_language: Language,
-        _source: &UnifiedNode,
-        reference: &crate::ast::polyglot::unified_node::NodeReference,
-        target: &UnifiedNode,
-    ) -> bool {
-        // Only handle Java->Kotlin and Kotlin->Java
-        if !((source_language == Language::Java && target_language == Language::Kotlin)
-            || (source_language == Language::Kotlin && target_language == Language::Java))
-        {
-            return false;
-        }
+// DOT graph generation: to_dot, language_color
+include!("cross_language_dependencies_dot.rs");
 
-        // Direct name match
-        if reference.target_name == target.name {
-            return true;
-        }
+// Language-specific resolvers: JavaKotlinResolver, JavaScalaResolver, TypeScriptJavaResolver
+include!("cross_language_dependencies_resolvers.rs");
 
-        // FQN match
-        if reference.target_name == target.fqn {
-            return true;
-        }
-
-        // Java package name conversion (com.example -> com.example)
-        let src_parts: Vec<&str> = reference.target_name.split('.').collect();
-        let tgt_parts: Vec<&str> = target.fqn.split('.').collect();
-
-        if src_parts.len() == tgt_parts.len() {
-            // Check if all parts except the last match exactly
-            if src_parts[0..src_parts.len() - 1] == tgt_parts[0..tgt_parts.len() - 1] {
-                // Check if the last part (class/method name) matches
-                if src_parts.last().expect("internal error")
-                    == tgt_parts.last().expect("internal error")
-                {
-                    return true;
-                }
-            }
-        }
-
-        false
-    }
-}
-
-/// Java-to-Scala name resolver
-pub struct JavaScalaResolver;
-
-impl NameResolver for JavaScalaResolver {
-    fn can_resolve(
-        &self,
-        source_language: Language,
-        target_language: Language,
-        _source: &UnifiedNode,
-        reference: &crate::ast::polyglot::unified_node::NodeReference,
-        target: &UnifiedNode,
-    ) -> bool {
-        // Only handle Java->Scala and Scala->Java
-        if !((source_language == Language::Java && target_language == Language::Scala)
-            || (source_language == Language::Scala && target_language == Language::Java))
-        {
-            return false;
-        }
-
-        // Direct name match
-        if reference.target_name == target.name {
-            return true;
-        }
-
-        // FQN match
-        if reference.target_name == target.fqn {
-            return true;
-        }
-
-        // Scala package name conversion (com.example -> com.example)
-        let src_parts: Vec<&str> = reference.target_name.split('.').collect();
-        let tgt_parts: Vec<&str> = target.fqn.split('.').collect();
-
-        if src_parts.len() == tgt_parts.len() {
-            // Check if all parts except the last match exactly
-            if src_parts[0..src_parts.len() - 1] == tgt_parts[0..tgt_parts.len() - 1] {
-                // Check if the last part (class/method name) matches
-                if src_parts.last().expect("internal error")
-                    == tgt_parts.last().expect("internal error")
-                {
-                    return true;
-                }
-            }
-        }
-
-        false
-    }
-}
-
-/// TypeScript-to-Java name resolver
-pub struct TypeScriptJavaResolver;
-
-impl NameResolver for TypeScriptJavaResolver {
-    fn can_resolve(
-        &self,
-        source_language: Language,
-        target_language: Language,
-        _source: &UnifiedNode,
-        reference: &crate::ast::polyglot::unified_node::NodeReference,
-        target: &UnifiedNode,
-    ) -> bool {
-        // Only handle TypeScript->Java and Java->TypeScript
-        if !((source_language == Language::TypeScript && target_language == Language::Java)
-            || (source_language == Language::Java && target_language == Language::TypeScript))
-        {
-            return false;
-        }
-
-        // Direct name match
-        if reference.target_name == target.name {
-            return true;
-        }
-
-        // Handle common naming conventions in web applications
-        // e.g., UserService.ts might reference com.example.UserService
-        if target.fqn.ends_with(&reference.target_name) {
-            return true;
-        }
-
-        // Handle TypeScript interface to Java class mapping (IUser -> User)
-        if source_language == Language::TypeScript
-            && reference.target_name.starts_with('I')
-            && reference.target_name.len() > 1
-        {
-            let name_without_i = reference.target_name.get(1..).unwrap_or_default();
-            if name_without_i == target.name {
-                return true;
-            }
-            if target.fqn.ends_with(name_without_i) {
-                return true;
-            }
-        }
-
-        false
-    }
-}
-
-// Tests extracted to cross_language_dependencies_tests.rs for file health compliance (CB-040)
 #[cfg(test)]
 #[path = "cross_language_dependencies_tests.rs"]
 mod tests;
