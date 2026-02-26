@@ -32,6 +32,17 @@ include!("work_contract_profile.rs");
 // Stack Manifests: third-party tool stacks, TOFU security, command restrictions
 include!("work_contract_stack.rs");
 
+// Rescue Protocol: strategies, dispatch, rescue records (Meyer §11)
+include!("work_contract_rescue.rs");
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod rescue_tests {
+    use super::*;
+
+    include!("work_contract_rescue_tests.rs");
+}
+
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod dbc_tests {
