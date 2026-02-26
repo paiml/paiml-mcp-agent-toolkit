@@ -134,7 +134,9 @@ pub(crate) async fn handle_check(
     }
 
     let _ = update_last_check_timestamp(project_path);
-    if strict && !is_compliant { std::process::exit(1); }
+    // Always exit 1 when there are failures (NON-COMPLIANT)
+    if !is_compliant { std::process::exit(1); }
+    // In strict mode, warnings also cause failure (exit 2)
     if strict && warnings > 0 { std::process::exit(2); }
     Ok(())
 }

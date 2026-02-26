@@ -184,10 +184,14 @@ pub fn walkdir_rs_files(dir: &Path) -> Result<Vec<std::path::PathBuf>, std::io::
 }
 
 /// Check if a file is entirely test code based on naming conventions.
+/// Matches: *_tests.rs, *_test.rs, tests.rs, tests_*.rs, *_tests_*.rs (include!() fragments)
 pub fn is_test_file(path: &Path) -> bool {
     let name = path.file_stem().and_then(|s| s.to_str()).unwrap_or("");
     name.ends_with("_tests")
         || name.ends_with("_test")
         || name == "tests"
+        || name.starts_with("tests_")
+        || name.contains("_tests_")   // include!() test fragments like executor_tests_basic
+        || name.starts_with("test_")
         || path.components().any(|c| c.as_os_str() == "tests")
 }
