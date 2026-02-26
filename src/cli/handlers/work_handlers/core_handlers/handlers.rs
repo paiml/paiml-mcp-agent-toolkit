@@ -124,6 +124,25 @@ pub async fn handle_work_start(
     println!();
 
     let mut roadmap = service.load()?;
+
+    // §11.4: Warn if another work item is already in-progress
+    let active_items: Vec<_> = roadmap
+        .roadmap
+        .iter()
+        .filter(|item| matches!(item.status, ItemStatus::InProgress) && item.id != id)
+        .collect();
+    if !active_items.is_empty() {
+        println!(
+            "⚠️  {} other item(s) already in-progress:",
+            active_items.len()
+        );
+        for item in &active_items {
+            println!("   - {} ({})", item.id, item.title);
+        }
+        println!("   Consider completing them first with `pmat work complete`.");
+        println!();
+    }
+
     let is_github_issue = id.parse::<u64>().is_ok();
 
     let mut item = if is_github_issue {
@@ -555,6 +574,19 @@ fn run_final_invariant_check(project_path: &std::path::Path, item_id: &str) -> R
 
     // Only run invariant check for v5.0 contracts with invariant clauses
     if let Ok(contract) = WorkContract::load(project_path, item_id) {
+        // §12.1: Contract quality check — warn if too many claims excluded
+        if let Some(quality) = &contract.contract_quality {
+            let pct = quality.score * 100.0;
+            if pct < 50.0 {
+                println!(
+                    "⚠️  Contract quality LOW: {:.0}% ({}) — {}/{} claims active",
+                    pct, quality.rating, quality.active_claims, quality.applicable_claims
+                );
+                println!("   Consider removing --without exclusions for stronger guarantees.");
+                println!();
+            }
+        }
+
         if contract.is_dbc() && !contract.invariant.is_empty() {
             println!("🔍 Evaluating invariants (final check)...");
 

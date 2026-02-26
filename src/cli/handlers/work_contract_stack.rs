@@ -268,6 +268,32 @@ impl StackManifest {
         clauses
     }
 
+    /// Resolve the `extends` field into base profile claims.
+    ///
+    /// If `extends` is "rust", "universal", or "pmat", the base profile's
+    /// claims are prepended before the stack's own claims. Stack claims
+    /// with the same ID as a base claim override the base.
+    pub fn resolve_base_claims(&self, config: &DbcConfig) -> Vec<ContractClause> {
+        let base_claims = match self.extends.as_deref() {
+            Some("universal") => claims_for_profile(&ContractProfile::Universal, config),
+            Some("rust") => claims_for_profile(&ContractProfile::Rust, config),
+            Some("pmat") => claims_for_profile(&ContractProfile::Pmat, config),
+            _ => Vec::new(),
+        };
+
+        let stack_claims = self.to_contract_clauses();
+
+        // Stack claims override base claims with the same ID
+        let stack_ids: std::collections::HashSet<&str> =
+            stack_claims.iter().map(|c| c.id.as_str()).collect();
+        let mut merged: Vec<ContractClause> = base_claims
+            .into_iter()
+            .filter(|c| !stack_ids.contains(c.id.as_str()))
+            .collect();
+        merged.extend(stack_claims);
+        merged
+    }
+
     /// Total claim count
     pub fn claim_count(&self) -> usize {
         self.require_claims.len() + self.invariant_claims.len() + self.ensure_claims.len()

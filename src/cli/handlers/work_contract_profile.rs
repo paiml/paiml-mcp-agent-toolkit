@@ -339,10 +339,15 @@ pub fn claims_for_profile(
                 .filter(|c| claim_ids.contains(&c.id))
                 .collect()
         }
-        ContractProfile::Stack { .. } => {
-            // Stack claims come from manifest parsing (Phase 2)
-            // For now, return universal as base
-            universal_claims(max_file_lines)
+        ContractProfile::Stack { manifest_path } => {
+            // §2.6: Load manifest, resolve extends field, merge base + stack claims
+            match std::fs::read_to_string(manifest_path) {
+                Ok(content) => match StackManifest::parse(&content) {
+                    Ok(manifest) => manifest.resolve_base_claims(config),
+                    Err(_) => universal_claims(max_file_lines),
+                },
+                Err(_) => universal_claims(max_file_lines),
+            }
         }
     }
 }
