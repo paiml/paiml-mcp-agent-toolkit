@@ -23,6 +23,12 @@ include!("work_contract_manifest.rs");
 // Falsification: FalsifiableClaim, OverrideInfo, FalsificationMethod, EvidenceType, FalsificationResult
 include!("work_contract_falsification.rs");
 
+// Design by Contract: ContractClause, ClauseKind, ClauseSource, ClauseThreshold, ThresholdOp
+include!("work_contract_dbc.rs");
+
+// Contract Profiles: ContractProfile, DbcConfig, claim generation, toolchain checking
+include!("work_contract_profile.rs");
+
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {

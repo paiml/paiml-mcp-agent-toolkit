@@ -1,9 +1,16 @@
-/// Popperian Work Contract
+/// Popperian Work Contract with Meyer Design by Contract triad
 ///
 /// Every claim made by `pmat work complete` must be falsifiable.
 /// If ANY claim cannot be verified, work is BLOCKED.
+///
+/// v5.0: Claims are classified into require/ensure/invariant (Meyer triad).
+/// v4.0: Flat claims list (backward-compatible).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WorkContract {
+    /// Contract version ("5.0" for triad, "4.0" for flat)
+    #[serde(default = "default_contract_version")]
+    pub version: String,
+
     /// Work item ID
     pub work_item_id: String,
 
@@ -30,15 +37,57 @@ pub struct WorkContract {
     /// Quality thresholds for this contract
     pub thresholds: ContractThresholds,
 
-    // === FALSIFICATION CLAIMS ===
+    // === FALSIFICATION CLAIMS (v4.0 flat list, retained for backward compat) ===
     /// Claims that must survive falsification
     pub claims: Vec<FalsifiableClaim>,
+
+    // === MEYER TRIAD (v5.0 — Design by Contract) ===
+    /// Contract profile that generated these claims
+    #[serde(default)]
+    pub profile: Option<ContractProfile>,
+
+    /// Preconditions: must hold at work start
+    #[serde(default)]
+    pub require: Vec<ContractClause>,
+
+    /// Postconditions: must hold at work complete
+    #[serde(default)]
+    pub ensure: Vec<ContractClause>,
+
+    /// Invariants: must hold at every checkpoint
+    #[serde(default)]
+    pub invariant: Vec<ContractClause>,
+
+    /// Claims explicitly excluded via --without
+    #[serde(default)]
+    pub excluded_claims: Vec<ExcludedClaim>,
+
+    /// Current iteration number (for subcontracting)
+    #[serde(default = "default_iteration")]
+    pub iteration: u32,
+
+    /// Postconditions inherited from prior iteration
+    #[serde(default)]
+    pub inherited_postconditions: Vec<ContractClause>,
+
+    /// Contract quality metric
+    #[serde(default)]
+    pub contract_quality: Option<ContractQuality>,
+}
+
+fn default_contract_version() -> String {
+    "4.0".to_string()
+}
+
+fn default_iteration() -> u32 {
+    1
 }
 
 impl WorkContract {
-    /// Create a new work contract with baseline capture
+    /// Create a new work contract with baseline capture (v4.0 flat claims, backward compat)
     pub fn new(work_item_id: String, baseline_commit: String) -> Self {
         Self {
+            version: "4.0".to_string(),
             work_item_id,
             created_at: chrono::Utc::now(),
             baseline_commit,
@@ -48,7 +97,83 @@ impl WorkContract {
             baseline_file_manifest: FileManifest::default(),
             thresholds: ContractThresholds::default(),
             claims: Self::default_claims(),
+            // v5.0 triad fields (empty for v4.0 contracts)
+            profile: None,
+            require: Vec::new(),
+            ensure: Vec::new(),
+            invariant: Vec::new(),
+            excluded_claims: Vec::new(),
+            iteration: 1,
+            inherited_postconditions: Vec::new(),
+            contract_quality: None,
         }
+    }
+
+    /// Create a v5.0 contract with Design by Contract triad.
+    ///
+    /// Detects the project profile, generates claims, verifies toolchain,
+    /// applies exclusions, and calculates contract quality.
+    pub fn with_dbc(
+        work_item_id: String,
+        baseline_commit: String,
+        project_path: &Path,
+        without: &[String],
+    ) -> Result<Self, anyhow::Error> {
+        // Detect profile (or load from config)
+        let config = DbcConfig::load(project_path);
+        let profile = config.profile_override.clone()
+            .unwrap_or_else(|| ContractProfile::detect(project_path));
+
+        // Generate claims for the detected profile
+        let all_clauses = claims_for_profile(&profile, &config);
+        let applicable_count = all_clauses.len();
+
+        // Classify into triad
+        let (require, ensure, invariant) = classify_claims(&all_clauses);
+
+        // Apply explicit exclusions
+        let (require, excluded_r) = apply_exclusions(require, without);
+        let (ensure, excluded_e) = apply_exclusions(ensure, without);
+        let (invariant, excluded_i) = apply_exclusions(invariant, without);
+        let excluded_claims: Vec<ExcludedClaim> =
+            [excluded_r, excluded_e, excluded_i].concat();
+
+        let active_count = require.len() + ensure.len() + invariant.len();
+        let quality = ContractQuality::calculate(active_count, applicable_count);
+
+        // Also generate the flat v4.0 claims for backward compat
+        let flat_claims = Self::default_claims();
+
+        Ok(Self {
+            version: "5.0".to_string(),
+            work_item_id,
+            created_at: chrono::Utc::now(),
+            baseline_commit,
+            baseline_tdg: 0.0,
+            baseline_coverage: 0.0,
+            baseline_rust_score: None,
+            baseline_file_manifest: FileManifest::default(),
+            thresholds: ContractThresholds::default(),
+            claims: flat_claims,
+            profile: Some(profile),
+            require,
+            ensure,
+            invariant,
+            excluded_claims,
+            iteration: 1,
+            inherited_postconditions: Vec::new(),
+            contract_quality: Some(quality),
+        })
+    }
+
+    /// Check if this is a v5.0 (triad) contract
+    pub fn is_dbc(&self) -> bool {
+        self.version == "5.0" && self.profile.is_some()
+    }
+
+    /// Get total active claim count across the triad
+    pub fn triad_claim_count(&self) -> usize {
+        self.require.len() + self.ensure.len() + self.invariant.len()
     }
 
     /// Generate default falsifiable claims
