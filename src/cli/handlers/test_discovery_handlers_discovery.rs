@@ -52,9 +52,10 @@ async fn handle_discovery_run(
     println!("\n📈 Parsing test results...");
     let failures = parse_test_output(&stdout, &stderr)?;
 
-    // Create discovery report
+    // Create discovery report (check both stdout and stderr for summary lines)
+    let combined_for_count = format!("{}\n{}", stdout, stderr);
     let report = DiscoveryReport {
-        total_tests: count_total_tests(&stdout)?,
+        total_tests: count_total_tests(&combined_for_count)?,
         failures: failures.len(),
         test_failures: failures.clone(),
         timestamp: chrono::Utc::now().to_rfc3339(),
@@ -111,18 +112,26 @@ fn parse_test_output(stdout: &str, stderr: &str) -> Result<Vec<TestFailure>> {
         }
 
         // nextest format: "    FAIL [   0.123s] crate::binary test_name"
-        if trimmed.starts_with("FAIL") {
-            // Extract test name after the timing bracket
-            if let Some(after_bracket) = trimmed.split(']').nth(1) {
+        // Also: "        (N/M) FAIL [   0.123s] crate::binary test_name" (with progress prefix)
+        let nextest_line = trimmed
+            .strip_prefix('(')
+            .and_then(|s| s.split(')').nth(1))
+            .map(str::trim)
+            .unwrap_or(trimmed);
+        if nextest_line.starts_with("FAIL") {
+            if let Some(after_bracket) = nextest_line.split(']').nth(1) {
                 let name = after_bracket.trim().to_string();
-                failures.push(TestFailure {
-                    name,
-                    file: PathBuf::from("unknown"),
-                    line: None,
-                    reason: "FAILED".to_string(),
-                    category: FailureCategory::Unknown,
-                    duration_ms: None,
-                });
+                // Deduplicate: nextest may print FAIL lines in both stdout and stderr
+                if !failures.iter().any(|f| f.name == name) {
+                    failures.push(TestFailure {
+                        name,
+                        file: PathBuf::from("unknown"),
+                        line: None,
+                        reason: "FAILED".to_string(),
+                        category: FailureCategory::Unknown,
+                        duration_ms: None,
+                    });
+                }
             }
         }
     }
