@@ -297,9 +297,68 @@ pub(super) async fn run_contract_tests(
         let unoverrideable = filter_unoverriden_failures(&failures, override_claims.as_ref());
         print_blocked_result(&report, &unoverrideable, id);
         println!("   📋 Receipt: {}", receipt_path.display());
+
+        // §6.2: Rescue protocol — attempt diagnosis for each failed postcondition
+        attempt_rescue_for_failures(project_path, &contract.work_item_id, &contract.profile, &unoverrideable);
+
         anyhow::bail!(
             "Work blocked: {} falsification(s) found. Fix issues or use --override-claims with --ticket.",
             unoverrideable.len()
         )
+    }
+}
+
+/// Attempt rescue protocol for failed postconditions (DbC §6.2).
+///
+/// For each blocking failure, determines the rescue strategy and executes
+/// a diagnosis. Rescue never modifies code — it produces actionable guidance.
+fn attempt_rescue_for_failures(
+    project_path: &Path,
+    work_item_id: &str,
+    profile: &Option<crate::cli::handlers::work_contract::ContractProfile>,
+    failures: &[&crate::cli::handlers::work_falsification::types::ClaimResult],
+) {
+    use crate::cli::handlers::work_contract::{
+        DbcConfig, execute_rescue, is_rescue_enabled, rescue_strategy_for, RescueRecord,
+    };
+
+    let config = DbcConfig::load(project_path);
+    if !is_rescue_enabled(profile, &config) {
+        return;
+    }
+
+    // §6.2: Check rescue attempt limit (max 3 per work item)
+    let existing_rescues = RescueRecord::load_all(project_path, work_item_id);
+    if existing_rescues.len() >= 3 {
+        println!();
+        println!("⚠️  Rescue attempt limit reached (3/3). Manual resolution required.");
+        return;
+    }
+
+    let mut any_rescue = false;
+    for failure in failures {
+        if let Some(strategy) = rescue_strategy_for(&failure.method) {
+            if !any_rescue {
+                println!();
+                println!("🚑 Rescue Protocol (DbC §6.2):");
+                any_rescue = true;
+            }
+
+            let record = execute_rescue(project_path, work_item_id, &failure.hypothesis, &strategy);
+            println!("   [{}] Strategy: {}", failure.hypothesis, strategy);
+            println!("      {}", record.diagnosis.summary);
+            for action in &record.diagnosis.suggested_actions {
+                println!("      → {}", action);
+            }
+
+            // Persist rescue record for audit trail
+            if let Ok(path) = record.save(project_path) {
+                println!("      📋 Rescue record: {}", path.display());
+            }
+        }
+    }
+    if any_rescue {
+        println!("   Attempt {}/{} for this work item.", existing_rescues.len() + 1, 3);
+        println!();
     }
 }
