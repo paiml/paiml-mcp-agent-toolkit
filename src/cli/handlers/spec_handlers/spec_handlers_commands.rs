@@ -70,14 +70,23 @@ pub async fn handle_spec_comply(
         ));
     }
 
-    // Count citations from claims (rough estimate)
-    let citation_claims = spec
-        .claims
-        .iter()
-        .filter(|c| c.text.contains('[') && c.text.contains(']'))
-        .count();
-    if citation_claims < 5 {
-        fixes.push("- Add peer-reviewed citations (minimum 5 required)".to_string());
+    // Count unique citations [1], [2], etc. from full spec content
+    let citation_count = {
+        let mut seen = std::collections::HashSet::new();
+        let re = regex::Regex::new(r"\[(\d+)\]").expect("internal error");
+        for caps in re.captures_iter(&spec.raw_content) {
+            if let Some(m) = caps.get(1) {
+                seen.insert(m.as_str().to_string());
+            }
+        }
+        seen.len()
+    };
+    if citation_count < 5 {
+        fixes.push(format!(
+            "- Add {} more peer-reviewed citations (found {}, minimum 5 required)",
+            5 - citation_count,
+            citation_count
+        ));
     }
 
     if fixes.is_empty() {

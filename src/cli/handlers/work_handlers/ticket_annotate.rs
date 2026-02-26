@@ -149,12 +149,25 @@ fn calculate_spec_score_simple(spec: &crate::services::spec_parser::ParsedSpec) 
         score += 10.0;
     }
     score += (spec.code_examples.len().min(5) * 4) as f64;
-    score += (spec.acceptance_criteria.len().min(10) * 3) as f64;
-    score += (spec.claims.len().min(20)) as f64;
+    score += (spec.acceptance_criteria.len().min(10)) as f64 * 2.5;
+    score += (spec.claims.len().min(15)) as f64;
     if !spec.title.is_empty() {
         score += 5.0;
     }
     score += (spec.test_requirements.len().min(5) * 3) as f64;
+    // Citations: 2 pts each up to 5
+    let citations = {
+        let mut seen = std::collections::HashSet::new();
+        if let Ok(re) = regex::Regex::new(r"\[(\d+)\]") {
+            for caps in re.captures_iter(&spec.raw_content) {
+                if let Some(m) = caps.get(1) {
+                    seen.insert(m.as_str().to_string());
+                }
+            }
+        }
+        seen.len()
+    };
+    score += (citations.min(5) * 2) as f64;
     score.min(100.0)
 }
 

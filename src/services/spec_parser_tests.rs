@@ -195,6 +195,7 @@ The API SHALL be backwards compatible.
             code_examples: vec![],
             acceptance_criteria: vec![],
             test_requirements: vec![],
+            raw_content: String::new(),
         };
         let cloned = spec.clone();
         assert_eq!(spec.title, cloned.title);
@@ -212,6 +213,7 @@ The API SHALL be backwards compatible.
             code_examples: vec![],
             acceptance_criteria: vec![],
             test_requirements: vec![],
+            raw_content: String::new(),
         };
         let json = serde_json::to_string(&spec).unwrap();
         let deserialized: ParsedSpec = serde_json::from_str(&json).unwrap();

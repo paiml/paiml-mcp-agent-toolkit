@@ -1,5 +1,17 @@
+fn count_citations(content: &str) -> usize {
+    // Count unique citation references like [1], [2], etc. in body text
+    let mut seen = std::collections::HashSet::new();
+    let re = regex::Regex::new(r"\[(\d+)\]").expect("internal error");
+    for caps in re.captures_iter(content) {
+        if let Some(m) = caps.get(1) {
+            seen.insert(m.as_str().to_string());
+        }
+    }
+    seen.len()
+}
+
 fn calculate_spec_score(spec: &ParsedSpec) -> f64 {
-    // Simplified scoring based on spec requirements
+    // Scoring based on spec requirements (100 pts total)
     let mut score = 0.0;
 
     // Issue refs (10 pts)
@@ -10,11 +22,11 @@ fn calculate_spec_score(spec: &ParsedSpec) -> f64 {
     // Code examples (20 pts, 4 pts each up to 5)
     score += (spec.code_examples.len().min(5) * 4) as f64;
 
-    // Acceptance criteria (30 pts, 3 pts each up to 10)
-    score += (spec.acceptance_criteria.len().min(10) * 3) as f64;
+    // Acceptance criteria (25 pts, 2.5 pts each up to 10)
+    score += (spec.acceptance_criteria.len().min(10)) as f64 * 2.5;
 
-    // Claims (20 pts based on count)
-    score += (spec.claims.len().min(20)) as f64;
+    // Claims (15 pts based on count, cap at 15)
+    score += (spec.claims.len().min(15)) as f64;
 
     // Title exists (5 pts)
     if !spec.title.is_empty() {
@@ -23,6 +35,10 @@ fn calculate_spec_score(spec: &ParsedSpec) -> f64 {
 
     // Test requirements (15 pts, 3 pts each up to 5)
     score += (spec.test_requirements.len().min(5) * 3) as f64;
+
+    // Peer-reviewed citations (10 pts, 2 pts each up to 5)
+    let citations = count_citations(&spec.raw_content);
+    score += (citations.min(5) * 2) as f64;
 
     score.min(100.0)
 }

@@ -24,6 +24,10 @@ pub struct ParsedSpec {
 
     /// Test requirements mentioned
     pub test_requirements: Vec<TestRequirement>,
+
+    /// Raw content of the specification (for citation counting, etc.)
+    #[serde(skip)]
+    pub raw_content: String,
 }
 
 /// A falsifiable claim extracted from the specification

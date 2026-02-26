@@ -235,6 +235,7 @@ impl SpecParser {
             code_examples: Vec::new(),
             acceptance_criteria: Vec::new(),
             test_requirements: Vec::new(),
+            raw_content: content.to_string(),
         };
 
         // Extract frontmatter
@@ -334,10 +335,14 @@ impl SpecParser {
                 match key.as_str() {
                     "title" => spec.title = value,
                     "status" => spec.status = Some(value),
-                    "issue" | "issues" | "related" => {
+                    "issue" | "issues" | "related" | "issue_refs" | "issue-refs" => {
                         // Parse issue references from frontmatter
-                        for part in value.split([',', ' ']) {
-                            let part = part.trim();
+                        // Handle YAML array syntax: ["#75", "#96", "#223"]
+                        let cleaned = value
+                            .trim_start_matches('[')
+                            .trim_end_matches(']');
+                        for part in cleaned.split(',') {
+                            let part = part.trim().trim_matches('"').trim_matches('\'').trim();
                             if !part.is_empty() && !spec.issue_refs.contains(&part.to_string()) {
                                 spec.issue_refs.push(part.to_string());
                             }

@@ -20,6 +20,7 @@ mod tests {
             code_examples: vec![],
             acceptance_criteria: vec![],
             test_requirements: vec![],
+            raw_content: String::new(),
         }
     }
 
@@ -33,6 +34,7 @@ mod tests {
             code_examples: vec![],
             acceptance_criteria: vec![],
             test_requirements: vec![],
+            raw_content: String::new(),
         }
     }
 
@@ -75,6 +77,10 @@ mod tests {
                     code_path: Some(format!("src/test_{}.rs", i)),
                 })
                 .collect(),
+            // Include 5+ citations for full score
+            raw_content: "See [1] and [2] for background. As noted in [3], \
+                          this follows [4] methodology per [5] recommendations."
+                .to_string(),
         }
     }
 
@@ -107,6 +113,7 @@ mod tests {
                 line: 1,
             }],
             test_requirements: vec![],
+            raw_content: String::new(),
         }
     }
 
@@ -198,8 +205,8 @@ mod tests {
             },
         ];
         let score = calculate_spec_score(&spec);
-        // 3 criteria * 3 pts each = 9 pts
-        assert_eq!(score, 9.0);
+        // 3 criteria * 2.5 pts each = 7.5 pts
+        assert_eq!(score, 7.5);
     }
 
     #[test]
@@ -214,8 +221,8 @@ mod tests {
             })
             .collect();
         let score = calculate_spec_score(&spec);
-        // Max 10 criteria * 3 pts each = 30 pts
-        assert_eq!(score, 30.0);
+        // Max 10 criteria * 2.5 pts each = 25 pts
+        assert_eq!(score, 25.0);
     }
 
     #[test]
@@ -238,9 +245,9 @@ mod tests {
     }
 
     #[test]
-    fn test_calculate_spec_score_claims_capped_at_20() {
+    fn test_calculate_spec_score_claims_capped_at_15() {
         let mut spec = create_empty_spec();
-        // Add 30 claims, but only 20 should count
+        // Add 30 claims, but only 15 should count
         spec.claims = (0..30)
             .map(|i| ValidationClaim {
                 id: format!("C-{}", i),
@@ -253,8 +260,8 @@ mod tests {
             })
             .collect();
         let score = calculate_spec_score(&spec);
-        // Max 20 claims = 20 pts
-        assert_eq!(score, 20.0);
+        // Max 15 claims = 15 pts
+        assert_eq!(score, 15.0);
     }
 
     #[test]
@@ -300,9 +307,10 @@ mod tests {
         // Title: 5
         // Issue refs: 10
         // Code examples (5): 20
-        // Acceptance criteria (10): 30
-        // Claims (20): 20
+        // Acceptance criteria (10): 25
+        // Claims (20, capped at 15): 15
         // Test requirements (5): 15
+        // Citations (5): 10
         // Total: 100
         assert_eq!(score, 100.0);
     }
