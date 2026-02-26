@@ -209,6 +209,7 @@ mod tests {
                 create_github: false,
                 profile: None,
                 without: None,
+                iteration: 1,
             },
         };
 

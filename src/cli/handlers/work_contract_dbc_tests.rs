@@ -731,7 +731,7 @@ fn test_work_contract_with_dbc_is_v5() {
     std::fs::create_dir_all(dir.path().join(".git")).unwrap();
 
     let contract =
-        WorkContract::with_dbc("TEST-1".to_string(), "abc123".to_string(), dir.path(), &[])
+        WorkContract::with_dbc("TEST-1".to_string(), "abc123".to_string(), dir.path(), &[], 1)
             .unwrap();
 
     assert_eq!(contract.version, "5.0");
@@ -753,7 +753,7 @@ fn test_work_contract_with_dbc_rust_profile() {
     std::fs::write(dir.path().join("Cargo.toml"), "[package]\nname = \"test\"").unwrap();
 
     let contract =
-        WorkContract::with_dbc("TEST-2".to_string(), "abc123".to_string(), dir.path(), &[])
+        WorkContract::with_dbc("TEST-2".to_string(), "abc123".to_string(), dir.path(), &[], 1)
             .unwrap();
 
     assert_eq!(
@@ -772,7 +772,7 @@ fn test_work_contract_with_dbc_pmat_profile() {
     std::fs::write(dir.path().join(".pmat").join("context.db"), "").unwrap();
 
     let contract =
-        WorkContract::with_dbc("TEST-3".to_string(), "abc123".to_string(), dir.path(), &[])
+        WorkContract::with_dbc("TEST-3".to_string(), "abc123".to_string(), dir.path(), &[], 1)
             .unwrap();
 
     assert_eq!(
@@ -789,7 +789,7 @@ fn test_work_contract_with_dbc_exclusions() {
 
     let without = vec!["ensure.git_sync".to_string()];
     let contract =
-        WorkContract::with_dbc("TEST-4".to_string(), "abc123".to_string(), dir.path(), &without)
+        WorkContract::with_dbc("TEST-4".to_string(), "abc123".to_string(), dir.path(), &without, 1)
             .unwrap();
 
     assert_eq!(contract.triad_claim_count(), 5); // 6 - 1 excluded
@@ -819,7 +819,7 @@ fn test_work_contract_with_dbc_config_override() {
     .unwrap();
 
     let contract =
-        WorkContract::with_dbc("TEST-5".to_string(), "abc123".to_string(), dir.path(), &[])
+        WorkContract::with_dbc("TEST-5".to_string(), "abc123".to_string(), dir.path(), &[], 1)
             .unwrap();
 
     assert_eq!(
@@ -837,7 +837,7 @@ fn test_work_contract_v5_round_trip() {
     std::fs::create_dir_all(dir.path().join(".git")).unwrap();
 
     let contract =
-        WorkContract::with_dbc("TEST-RT".to_string(), "abc123".to_string(), dir.path(), &[])
+        WorkContract::with_dbc("TEST-RT".to_string(), "abc123".to_string(), dir.path(), &[], 1)
             .unwrap();
 
     // Save
@@ -1107,7 +1107,7 @@ fn test_iteration_persists_through_save_load() {
     std::fs::create_dir_all(dir.path().join(".git")).unwrap();
 
     let mut contract =
-        WorkContract::with_dbc("TEST-IT".to_string(), "abc123".to_string(), dir.path(), &[])
+        WorkContract::with_dbc("TEST-IT".to_string(), "abc123".to_string(), dir.path(), &[], 1)
             .unwrap();
     // Simulate iteration increment
     contract.iteration = 2;

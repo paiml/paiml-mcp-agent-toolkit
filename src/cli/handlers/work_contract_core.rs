@@ -118,11 +118,29 @@ impl WorkContract {
         baseline_commit: String,
         project_path: &Path,
         without: &[String],
+        iteration: u32,
     ) -> Result<Self, anyhow::Error> {
         // Detect profile (or load from config)
         let config = DbcConfig::load(project_path);
         let profile = config.profile_override.clone()
             .unwrap_or_else(|| ContractProfile::detect(project_path));
+
+        // §2.4: Verify toolchain preconditions (fail-fast, no silent skipping)
+        let missing_tools = check_toolchain(&profile, project_path);
+        if !missing_tools.is_empty() {
+            let missing_names: Vec<_> = missing_tools.iter().map(|t| t.name.as_str()).collect();
+            anyhow::bail!(
+                "Toolchain precondition failure for {} profile: {} missing tool(s): {}\n\
+                 Options:\n\
+                 1. Install missing tools\n\
+                 2. Downgrade: pmat work start <id> --profile universal\n\
+                 3. Exclude: pmat work start <id> --without {}",
+                profile.name(),
+                missing_tools.len(),
+                missing_names.join(", "),
+                missing_tools.iter().map(|t| t.claim_id.as_str()).collect::<Vec<_>>().join(","),
+            );
+        }
 
         // Generate claims for the detected profile
         let all_clauses = claims_for_profile(&profile, &config);
@@ -144,7 +162,7 @@ impl WorkContract {
         // Also generate the flat v4.0 claims for backward compat
         let flat_claims = Self::default_claims();
 
-        Ok(Self {
+        let mut contract = Self {
             version: "5.0".to_string(),
             work_item_id,
             created_at: chrono::Utc::now(),
@@ -160,10 +178,36 @@ impl WorkContract {
             ensure,
             invariant,
             excluded_claims,
-            iteration: 1,
+            iteration,
             inherited_postconditions: Vec::new(),
             contract_quality: Some(quality),
-        })
+        };
+
+        // §5.3-5.4: Subcontracting validation for iteration > 1
+        if iteration > 1 {
+            let prior_iteration = iteration - 1;
+            // Load the prior contract to inherit postconditions
+            if let Ok(prior) = Self::load(project_path, &contract.work_item_id) {
+                if prior.iteration == prior_iteration {
+                    // Validate monotonic postcondition strengthening
+                    if let Err(violation) = validate_subcontracting(&prior.ensure, &contract.ensure) {
+                        anyhow::bail!(
+                            "Subcontracting violation (iteration {} vs {}): {}\n\
+                             Postconditions must not weaken between iterations.\n\
+                             Fix: strengthen or maintain all postconditions from iteration {}.",
+                            prior_iteration,
+                            iteration,
+                            violation,
+                            prior_iteration,
+                        );
+                    }
+                    // Inherit postconditions from prior iteration
+                    contract.inherited_postconditions = prior.ensure.clone();
+                }
+            }
+        }
+
+        Ok(contract)
     }
 
     /// Check if this is a v5.0 (triad) contract

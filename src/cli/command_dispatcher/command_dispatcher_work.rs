@@ -30,6 +30,7 @@ impl CommandDispatcher {
                 create_github,
                 profile,
                 without,
+                iteration,
             } => {
                 work_handlers::handle_work_start(
                     id.clone(),
@@ -39,6 +40,7 @@ impl CommandDispatcher {
                     *create_github,
                     profile.clone(),
                     without.clone().unwrap_or_default(),
+                    *iteration,
                 )
                 .await
             }

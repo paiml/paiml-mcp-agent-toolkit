@@ -147,6 +147,10 @@ pub enum WorkCommands {
         /// Exclude specific DbC claims (comma-separated, e.g. "ensure.coverage,ensure.supply_chain")
         #[arg(long, value_delimiter = ',')]
         without: Option<Vec<String>>,
+
+        /// Iteration number for subcontracting (inherits postconditions from prior iteration)
+        #[arg(long, default_value = "1")]
+        iteration: u32,
     },
 
     /// Continue work on existing issue/ticket

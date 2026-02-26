@@ -114,6 +114,7 @@ pub async fn handle_work_start(
     create_github: bool,
     profile_override: Option<String>,
     without: Vec<String>,
+    iteration: u32,
 ) -> Result<()> {
     let project_path = path.unwrap_or_else(|| PathBuf::from("."));
     let roadmap_path = project_path.join("docs/roadmaps/roadmap.yaml");
@@ -142,7 +143,7 @@ pub async fn handle_work_start(
     service.save(&roadmap)?;
     println!("✅ Updated roadmap: {}", roadmap_path.display());
 
-    create_work_contract(&project_path, &item.id, profile_override.as_deref(), &without).await;
+    create_work_contract(&project_path, &item.id, profile_override.as_deref(), &without, iteration).await;
 
     if with_spec {
         create_spec_if_needed(&project_path, &item, &id, is_github_issue)?;

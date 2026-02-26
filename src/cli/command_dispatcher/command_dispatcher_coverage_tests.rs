@@ -860,6 +860,7 @@ mod coverage_tests {
             create_github: false,
             profile: None,
             without: None,
+            iteration: 1,
         };
 
         let result = CommandDispatcher::execute_work_command(&command).await;

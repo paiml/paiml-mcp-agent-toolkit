@@ -22,6 +22,7 @@ pub(super) async fn create_work_contract(
     item_id: &str,
     profile_override: Option<&str>,
     without: &[String],
+    iteration: u32,
 ) {
     println!();
     println!("📋 Creating Work Contract (Popperian Falsification)...");
@@ -44,6 +45,7 @@ pub(super) async fn create_work_contract(
         baseline_commit.clone(),
         project_path,
         without,
+        iteration,
     ) {
         Ok(c) => c,
         Err(e) => {
