@@ -1,9 +1,10 @@
 ---
 title: "Design by Contract for pmat work"
-version: "1.0.0"
-status: "Draft"
+version: "1.1.0"
+status: "Implemented"
 created: "2026-02-26"
 updated: "2026-02-26"
+issue_refs: ["#75", "#96", "#223"]
 references:
   - "Meyer 1992 — Applying Design by Contract"
   - "Popper 1934 — The Logic of Scientific Discovery"
@@ -21,7 +22,7 @@ epic: "PMAT-DBC"
 
 ## Executive Summary
 
-Extend `pmat work` with Meyer's Design by Contract (DbC) triad — **require** (preconditions), **ensure** (postconditions), **invariant** (class invariants) — layered on top of the existing Popperian falsification infrastructure. This is not a replacement: Popper tells us *what* to test (falsifiable claims), Meyer tells us *when* and *how* to structure those tests across the work lifecycle.
+Extend `pmat work` with Meyer's Design by Contract (DbC) triad [1] — **require** (preconditions), **ensure** (postconditions), **invariant** (class invariants) — layered on top of the existing Popperian falsification infrastructure [2]. This is not a replacement: Popper tells us *what* to test (falsifiable claims), Meyer tells us *when* and *how* to structure those tests across the work lifecycle.
 
 ### Philosophical Foundation
 
@@ -34,10 +35,10 @@ Extend `pmat work` with Meyer's Design by Contract (DbC) triad — **require** (
 
 ### Design Principles
 
-1. **No Defensive Programming** (Meyer Ch. 7): Do not silently tolerate violations. If a precondition fails, the work session is invalid — do not attempt to "fix it up."
-2. **No Hidden Clauses** (Meyer Ch. 6): Every contract term is explicit in `.pmat-work/{id}/contract.json`. No implicit quality expectations.
-3. **Subcontracting** (Meyer Ch. 12): Later iterations may weaken preconditions (accept more) or strengthen postconditions (guarantee more), never the reverse.
-4. **Rescue, Not Retry** (Meyer Ch. 11): When a postcondition fails at completion, enter a structured rescue state with one remediation attempt before escalating.
+1. **No Defensive Programming** (Meyer Ch. 7) [1]: Do not silently tolerate violations. If a precondition fails, the work session is invalid — do not attempt to "fix it up."
+2. **No Hidden Clauses** (Meyer Ch. 6) [1]: Every contract term is explicit in `.pmat-work/{id}/contract.json`. No implicit quality expectations.
+3. **Subcontracting** (Meyer Ch. 12) [1]: Later iterations may weaken preconditions (accept more) or strengthen postconditions (guarantee more), never the reverse.
+4. **Rescue, Not Retry** (Meyer Ch. 11) [1]: When a postcondition fails at completion, enter a structured rescue state with one remediation attempt before escalating.
 5. **Opt-In by Default**: DbC is activated per-project via contract profiles. External projects get a minimal universal profile; the full 22-claim PMAT profile is only applied to batuta stack projects. No claim is evaluated unless the project has opted into it or the profile enables it.
 
 ---
@@ -626,6 +627,8 @@ Each existing `FalsificationMethod` is reclassified into the Meyer triad based o
 
 ## 4. Lifecycle Integration
 
+The lifecycle model maps Meyer's call-boundary semantics [1] to the `pmat work` subcommands. Preconditions are evaluated at `work start`, invariants at `work checkpoint`, and postconditions at `work complete`. This mirrors the transaction-boundary approach validated by formal verification research in smart contracts [11].
+
 ### 4.1 `pmat work start` — Precondition Evaluation
 
 ```
@@ -719,7 +722,7 @@ This means `ensure.git_sync` is the only postcondition evaluated *after* the com
 
 ## 5. Subcontracting (Iteration Refinement)
 
-Meyer's subcontracting rule (§12) enforces monotonic improvement: later iterations must guarantee at least as much as earlier ones. We borrow this as a **policy rule** — not because work iterations substitute for each other (they don't — this is not class inheritance), but because ratcheting quality forward prevents regression across long-lived work items.
+Meyer's subcontracting rule (§12) [1] enforces monotonic improvement: later iterations must guarantee at least as much as earlier ones. We borrow this as a **policy rule** — not because work iterations substitute for each other (they don't — this is not class inheritance), but because ratcheting quality forward prevents regression across long-lived work items. The static threshold comparison approach is validated by ContractEval [7] as a lightweight form of SMT-based contract verification.
 
 ### 5.1 Rules
 
@@ -865,7 +868,7 @@ Subcontracting validation: PASSED
 
 ## 6. Rescue Protocol
 
-Meyer §11 defines exception handling as rescue + retry, not defensive programming. When a postcondition violation occurs at `work complete`, the system enters a structured rescue state.
+Meyer §11 [1] defines exception handling as rescue + retry, not defensive programming. When a postcondition violation occurs at `work complete`, the system enters a structured rescue state. The trigger/predicate/enforcement model follows AgentSpec's runtime enforcement pattern [9].
 
 ### 6.1 Rescue Strategies
 
@@ -1532,6 +1535,34 @@ Contracts are scoped per work item (`.pmat-work/{item-id}/`). When two developer
 18. **Security smoke test** — verify malicious manifest patterns are rejected at parse time and trust time
 19. **Contract quality score >= 0.7** — see contract quality metric below
 
+## Acceptance Criteria
+
+- [x] `WorkContract` struct has `require`, `ensure`, `invariant` Vec fields (Meyer triad)
+- [x] `ContractProfile` enum with Universal, Rust, Pmat, Stack, Custom variants
+- [x] `ContractProfile::detect()` auto-detects from project structure (Cargo.toml, .pmat/, .git)
+- [x] `claims_for_profile()` generates correct claims per profile tier (6/14/25)
+- [x] `classify_claims()` partitions claims into require/ensure/invariant by ClauseKind
+- [x] `--without` flag excludes claims and records ExcludedClaim with audit trail
+- [x] `check_toolchain()` verifies required tools and fails fast with actionable error
+- [x] `pmat work checkpoint` evaluates invariants: file size, lint, compile checks
+- [x] `evaluate_final_invariants()` blocks `work complete` when invariants fail
+- [x] `CheckpointRecord` saved to `.pmat-work/{id}/checkpoints/` with UUID filename
+- [x] `--iteration` flag flows through CLI → dispatcher → handler → `WorkContract`
+- [x] `validate_subcontracting()` enforces monotonic postcondition strengthening
+- [x] `RescueStrategy` enum maps `FalsificationMethod` to rescue approach
+- [x] `execute_rescue()` produces structured `RescueDiagnosis` with suggested actions
+- [x] Rescue protocol triggered on falsification failure during `work complete`
+- [x] Rescue attempt limit enforced at 3 per work item
+- [x] `StackManifest::parse()` loads `.dbc-stack.toml` with require/invariant/ensure blocks
+- [x] `validate_command()` rejects pipe-to-shell, backtick, `$()` substitution patterns
+- [x] `resolve_base_claims()` resolves `extends` field merging base + stack claims
+- [x] `ContractQuality` checked at completion, warning printed if score < 50%
+- [x] `pmat work start` warns when other items are already in-progress
+- [x] `pmat falsify docs/specifications/dbc.md` passes with 0 falsified claims
+- [x] 131+ `work_contract` tests passing across all 4 phases
+- [ ] External project smoke test: Go project with `.dbc-stack.toml` full lifecycle
+- [ ] Security smoke test: malicious manifest patterns rejected at parse + trust time
+
 ### 12.1 Contract Quality Metric
 
 A contract that passes all claims is not necessarily a *good* contract — a contract with most claims excluded via `--without` is technically valid but weak. To close this gap (motivated by VerifyThisBench [Ref 10]), we define a **contract quality score**:
@@ -1564,17 +1595,17 @@ This metric answers "are we writing good contracts?" — not just "do our contra
 
 ## 13. References
 
-1. Meyer, B. (1992). "Applying Design by Contract." *IEEE Computer*, 25(10), 40-51.
-2. Popper, K. (1934). *The Logic of Scientific Discovery*. Routledge.
-3. Liskov, B. & Wing, J. (1994). "A Behavioral Notion of Subtyping." *ACM TOPLAS*, 16(6).
-4. Ohno, T. (1988). *Toyota Production System: Beyond Large-Scale Production*. Productivity Press.
+1. Meyer, B. (1992). "Applying Design by Contract." *IEEE Computer*, 25(10), 40-51. DOI: 10.1109/2.161279
+2. Popper, K. (1934). *The Logic of Scientific Discovery*. Routledge. ISBN: 978-0415278447
+3. Liskov, B. & Wing, J. (1994). "A Behavioral Notion of Subtyping." *ACM TOPLAS*, 16(6), 1811-1841. DOI: 10.1145/197320.197383
+4. Ohno, T. (1988). *Toyota Production System: Beyond Large-Scale Production*. Productivity Press. ISBN: 978-0915299140
 5. PAIML (2025). "Popper Falsifiability Score Specification v1.1." Internal.
 6. PAIML (2025). "Master Plan: PMAT Unified Work System v1.0." Internal.
-7. Cheng, Y. et al. (2025). "ContractEval: Evaluating Contract-Satisfying Assertions in LLM Code Generation." *arXiv:2510.12047*. — Validates that static threshold comparison (Section 5.2) is a lightweight form of SMT-based contract verification.
-8. Endres, M. et al. (2025). "Beyond Postconditions: LLMs Inferring Formal Contracts for Automatic Software Verification." *arXiv:2510.12702*. — Demonstrates LLM-based precondition/postcondition/invariant inference; informs Phase 3+ research directions (Section 7.3).
-9. Gu, L. et al. (2025). "AgentSpec: Customizable Runtime Enforcement for LLM Agents." *arXiv:2503.18666*. — AgentSpec's trigger/predicate/enforcement model independently validates the claim structure (ClauseKind/FalsificationMethod/blocking+rescue) in this spec.
-10. Mugnier, S. et al. (2025). "VerifyThisBench: Generating Verified Code, Specs, and Proofs with LLMs." *arXiv:2505.19271*. — Supports co-generation of contracts alongside work items rather than retrofitting; motivates contract quality metrics.
-11. Tolmach, P. et al. (2025). "Formal Verification in Solidity and Move." *arXiv:2502.13929*. — Confirms invariant checking at transaction boundaries (checkpoint model) as the standard approach in contract verification.
+7. Cheng, Y. et al. (2025). "ContractEval: Evaluating Contract-Satisfying Assertions in LLM Code Generation." *arXiv:2510.12047*. DOI: 10.48550/arXiv.2510.12047
+8. Endres, M. et al. (2025). "Beyond Postconditions: LLMs Inferring Formal Contracts for Automatic Software Verification." *arXiv:2510.12702*. DOI: 10.48550/arXiv.2510.12702
+9. Gu, L. et al. (2025). "AgentSpec: Customizable Runtime Enforcement for LLM Agents." *arXiv:2503.18666*. DOI: 10.48550/arXiv.2503.18666
+10. Mugnier, S. et al. (2025). "VerifyThisBench: Generating Verified Code, Specs, and Proofs with LLMs." *arXiv:2505.19271*. DOI: 10.48550/arXiv.2505.19271
+11. Tolmach, P. et al. (2025). "Formal Verification in Solidity and Move." *arXiv:2502.13929*. DOI: 10.48550/arXiv.2502.13929
 
 ---
 
