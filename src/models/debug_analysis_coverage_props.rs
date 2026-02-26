@@ -215,7 +215,7 @@
             Priority::Low,
         ])) {
             let json = serde_json::to_string(&priority).unwrap();
-            let roundtrip: Priority = serde_json::from_str(&json).unwrap();
+            let roundtrip: Priority = serde_json::from_str(&json).expect("serde roundtrip");
             prop_assert_eq!(roundtrip, priority);
         }
     }

@@ -143,7 +143,7 @@ proptest! {
         hotspots in prop::collection::vec(arb_hotspot(), 1..5)
     ) {
         let result = format_tdg_sarif(&hotspots, &std::path::PathBuf::from("/")).unwrap();
-        let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&result).expect("serde roundtrip");
         let results = parsed["runs"][0]["results"].as_array().unwrap();
 
         for (i, result) in results.iter().enumerate() {

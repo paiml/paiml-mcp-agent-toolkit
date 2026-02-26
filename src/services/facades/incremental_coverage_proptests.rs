@@ -85,7 +85,7 @@ proptest! {
         };
 
         let json = serde_json::to_string(&result).unwrap();
-        let deserialized: IncrementalCoverageResult = serde_json::from_str(&json).unwrap();
+        let deserialized: IncrementalCoverageResult = serde_json::from_str(&json).expect("serde roundtrip");
 
         prop_assert_eq!(result.total_files, deserialized.total_files);
         prop_assert_eq!(result.covered_files, deserialized.covered_files);
