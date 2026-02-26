@@ -34,7 +34,7 @@ mod complexity_handlers_tests;
 /// helper methods to reduce the complexity of the main handler function.
 /// Following Toyota Way single responsibility principle.
 #[derive(Debug, Clone)]
-struct ComplexityConfig {
+pub(crate) struct ComplexityConfig {
     project_path: PathBuf,
     toolchain: Option<String>,
     max_cyclomatic: u16,

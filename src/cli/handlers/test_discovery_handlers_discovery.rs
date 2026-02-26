@@ -18,14 +18,14 @@ async fn handle_discovery_run(
     println!();
 
     // Build the command
+    // cargo test --format json requires nightly; nextest uses --message-format libtest-json (experimental).
+    // Use the standard human-readable output and parse "test result:" summary lines instead.
     let mut cmd = if use_nextest {
         let mut c = Command::new("cargo");
         c.arg("nextest")
             .arg("run")
             .arg("--workspace")
             .arg("--no-fail-fast")
-            .arg("--message-format")
-            .arg("json")
             .current_dir(project_path);
         c
     } else {
@@ -33,9 +33,6 @@ async fn handle_discovery_run(
         c.arg("test")
             .arg("--workspace")
             .arg("--no-fail-fast")
-            .arg("--")
-            .arg("--format")
-            .arg("json")
             .current_dir(project_path);
         c
     };
@@ -81,45 +78,111 @@ async fn handle_discovery_run(
     Ok(())
 }
 
-/// Parse test output to extract failures
-fn parse_test_output(stdout: &str, _stderr: &str) -> Result<Vec<TestFailure>> {
+/// Parse test output to extract failures from human-readable cargo test / nextest output.
+/// Matches lines like:
+///   "test some::module::test_name ... FAILED"       (cargo test)
+///   "    FAIL [   0.123s] crate test_name"           (nextest)
+fn parse_test_output(stdout: &str, stderr: &str) -> Result<Vec<TestFailure>> {
     let mut failures = Vec::new();
+    let combined = format!("{}\n{}", stdout, stderr);
 
-    // Parse JSON lines from nextest/cargo test
-    for line in stdout.lines() {
-        if let Ok(json) = serde_json::from_str::<serde_json::Value>(line) {
-            // Check if this is a test failure event
-            if json.get("type").and_then(|t| t.as_str()) == Some("test")
-                && json.get("event").and_then(|e| e.as_str()) == Some("failed")
-            {
-                let name = json
-                    .get("name")
-                    .and_then(|n| n.as_str())
-                    .unwrap_or("unknown")
-                    .to_string();
+    for line in combined.lines() {
+        let trimmed = line.trim();
 
-                let reason = json
-                    .get("stdout")
-                    .and_then(|s| s.as_str())
-                    .or_else(|| json.get("message").and_then(|m| m.as_str()))
-                    .unwrap_or("Unknown failure")
-                    .to_string();
+        // cargo test format: "test path::to::test ... FAILED"
+        if trimmed.starts_with("test ") && trimmed.ends_with("FAILED") {
+            let name = trimmed
+                .strip_prefix("test ")
+                .unwrap_or(trimmed)
+                .split(" ... ")
+                .next()
+                .unwrap_or("unknown")
+                .trim()
+                .to_string();
+            failures.push(TestFailure {
+                name,
+                file: PathBuf::from("unknown"),
+                line: None,
+                reason: "FAILED".to_string(),
+                category: FailureCategory::Unknown,
+                duration_ms: None,
+            });
+            continue;
+        }
 
-                let category = categorize_failure(&reason);
-
+        // nextest format: "    FAIL [   0.123s] crate::binary test_name"
+        if trimmed.starts_with("FAIL") {
+            // Extract test name after the timing bracket
+            if let Some(after_bracket) = trimmed.split(']').nth(1) {
+                let name = after_bracket.trim().to_string();
                 failures.push(TestFailure {
                     name,
-                    file: PathBuf::from("unknown"), // Will be resolved later
+                    file: PathBuf::from("unknown"),
                     line: None,
-                    reason,
-                    category,
-                    duration_ms: json.get("exec_time").and_then(|d| d.as_u64()),
+                    reason: "FAILED".to_string(),
+                    category: FailureCategory::Unknown,
+                    duration_ms: None,
                 });
             }
         }
     }
 
+    // Try to refine failure reasons from the "failures:" section at the bottom
+    refine_failure_reasons(&combined, &mut failures);
+
     Ok(failures)
+}
+
+/// Extract detailed failure reasons from the "failures:" block printed by cargo test
+fn refine_failure_reasons(output: &str, failures: &mut [TestFailure]) {
+    let mut current_test: Option<String> = None;
+    let mut current_reason = String::new();
+
+    for trimmed in output
+        .lines()
+        .map(str::trim)
+        .skip_while(|l| *l != "failures:")
+        .skip(1)
+    {
+        // End of failures section
+        if trimmed.starts_with("test result:") || trimmed == "failures:" {
+            flush_failure_reason(&current_test, &current_reason, failures);
+            break;
+        }
+        // New test failure header: "---- test_name stdout ----"
+        if trimmed.starts_with("---- ") && trimmed.ends_with(" ----") {
+            flush_failure_reason(&current_test, &current_reason, failures);
+            let inner = trimmed
+                .strip_prefix("---- ")
+                .and_then(|s| s.strip_suffix(" ----"))
+                .unwrap_or("")
+                .replace(" stdout", "");
+            current_test = Some(inner);
+            current_reason.clear();
+        } else if current_test.is_some() {
+            current_reason.push_str(trimmed);
+            current_reason.push('\n');
+        }
+    }
+}
+
+fn flush_failure_reason(
+    current_test: &Option<String>,
+    current_reason: &str,
+    failures: &mut [TestFailure],
+) {
+    let name = match current_test {
+        Some(n) => n,
+        None => return,
+    };
+    let reason = current_reason.trim();
+    if reason.is_empty() {
+        return;
+    }
+    if let Some(f) = failures.iter_mut().find(|f| f.name == *name) {
+        f.reason = reason.to_string();
+        f.category = categorize_failure(&f.reason);
+    }
 }
 
 /// Categorize failure by examining the error message
@@ -137,11 +200,39 @@ fn categorize_failure(reason: &str) -> FailureCategory {
     }
 }
 
-/// Count total tests from output
-fn count_total_tests(_stdout: &str) -> Result<usize> {
-    // Simple implementation - count test events
-    // TODO: Improve this to get accurate count
-    Ok(0)
+/// Count total tests from human-readable output.
+/// Parses "test result: ok. N passed; M failed; I ignored" summary lines.
+fn count_total_tests(stdout: &str) -> Result<usize> {
+    let mut total = 0usize;
+    for line in stdout.lines() {
+        let trimmed = line.trim();
+        // cargo test: "test result: ok. 123 passed; 0 failed; 5 ignored; 0 measured; 0 filtered out"
+        // nextest:    "Summary [   1.234s] 123 tests run: 120 passed, 3 failed, 5 skipped"
+        if trimmed.starts_with("test result:") {
+            // Extract numbers: passed + failed + ignored
+            let passed = extract_number_before(trimmed, " passed").unwrap_or(0);
+            let failed = extract_number_before(trimmed, " failed").unwrap_or(0);
+            let ignored = extract_number_before(trimmed, " ignored").unwrap_or(0);
+            total += passed + failed + ignored;
+        } else if trimmed.starts_with("Summary") && trimmed.contains("tests run") {
+            // nextest summary: "Summary [   1.234s] 123 tests run: 120 passed, 3 failed, 5 skipped"
+            if let Some(count) = extract_number_before(trimmed, " tests run") {
+                total += count;
+            }
+        }
+    }
+    Ok(total)
+}
+
+/// Extract the number immediately before a suffix in a string.
+/// e.g. extract_number_before("123 passed; 4 failed", " passed") => Some(123)
+fn extract_number_before(s: &str, suffix: &str) -> Option<usize> {
+    let idx = s.find(suffix)?;
+    let before = &s[..idx];
+    // Walk backwards to find the start of the number
+    let num_str: String = before.chars().rev().take_while(|c| c.is_ascii_digit()).collect();
+    let num_str: String = num_str.chars().rev().collect();
+    num_str.parse().ok()
 }
 
 /// Print categorized summary

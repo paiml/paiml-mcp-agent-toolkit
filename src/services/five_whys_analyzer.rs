@@ -121,52 +121,229 @@ impl FiveWhysAnalyzer {
         Ok(question)
     }
 
-    /// Gather evidence from all PMAT services
+    /// Gather evidence from real project data.
+    /// Scans SATD markers, measures git churn, reads TDG baseline, and estimates complexity.
     async fn gather_evidence(&self, path: &Path) -> Result<Vec<Evidence>> {
         let mut evidence = Vec::new();
 
-        // For GREEN phase: Generate synthetic evidence
-        // In REFACTOR phase: Integrate real PMAT services
-
-        // Complexity evidence (synthetic)
-        if path.exists() {
-            evidence.push(Evidence::new(
-                EvidenceSource::Complexity,
-                path.to_path_buf(),
-                "cyclomatic_complexity".to_string(),
-                json!({"value": 25, "threshold": 20}),
-                "Moderate complexity detected (25 > 20 threshold)".to_string(),
-            ));
+        // Real SATD evidence: count TODO/FIXME/HACK/WORKAROUND in source
+        if let Some(satd_ev) = Self::gather_satd_evidence(path) {
+            evidence.push(satd_ev);
         }
 
-        // SATD evidence (synthetic)
-        evidence.push(Evidence::new(
+        // Real Git churn evidence: count commits in last 30 days
+        if let Some(churn_ev) = Self::gather_git_churn_evidence(path) {
+            evidence.push(churn_ev);
+        }
+
+        // Real TDG evidence: read baseline if available
+        if let Some(tdg_ev) = Self::gather_tdg_evidence(path) {
+            evidence.push(tdg_ev);
+        }
+
+        // Real complexity evidence: count Rust source files and estimate complexity
+        if let Some(cx_ev) = Self::gather_complexity_evidence(path) {
+            evidence.push(cx_ev);
+        }
+
+        Ok(evidence)
+    }
+
+    /// Count SATD markers (TODO, FIXME, HACK, WORKAROUND, XXX) in source files.
+    fn gather_satd_evidence(path: &Path) -> Option<Evidence> {
+        let src_dir = path.join("src");
+        let dir = if src_dir.is_dir() { &src_dir } else { path };
+        let count = Self::count_satd_markers(dir);
+        let description = if count == 0 {
+            "No SATD markers found — codebase is clean of admitted technical debt".to_string()
+        } else {
+            format!(
+                "Found {} TODO/FIXME/HACK markers indicating known technical debt",
+                count
+            )
+        };
+        Some(Evidence::new(
             EvidenceSource::SATD,
             path.to_path_buf(),
             "todo_markers".to_string(),
-            json!({"count": 3}),
-            "Found 3 TODO/FIXME markers indicating known technical debt".to_string(),
-        ));
+            json!({"count": count}),
+            description,
+        ))
+    }
 
-        // TDG evidence (synthetic)
-        evidence.push(Evidence::new(
-            EvidenceSource::TDG,
-            path.to_path_buf(),
-            "tdg_score".to_string(),
-            json!(45.0),
-            "Low test coverage (45/100) indicates fragile code".to_string(),
-        ));
+    const SATD_EXTENSIONS: &'static [&'static str] =
+        &["rs", "py", "ts", "js", "go", "lua", "c", "cpp", "java"];
+    const SATD_MARKERS: &'static [&'static str] =
+        &["TODO", "FIXME", "HACK", "WORKAROUND", "XXX"];
 
-        // Git churn evidence (synthetic)
-        evidence.push(Evidence::new(
+    fn count_satd_markers(dir: &Path) -> usize {
+        let entries = match std::fs::read_dir(dir) {
+            Ok(e) => e,
+            Err(_) => return 0,
+        };
+        entries
+            .flatten()
+            .map(|entry| entry.path())
+            .map(|p| {
+                if p.is_dir() {
+                    return Self::count_satd_markers(&p);
+                }
+                let is_source = p
+                    .extension()
+                    .and_then(|e| e.to_str())
+                    .map_or(false, |e| Self::SATD_EXTENSIONS.contains(&e));
+                if !is_source {
+                    return 0;
+                }
+                std::fs::read_to_string(&p)
+                    .unwrap_or_default()
+                    .lines()
+                    .filter(|line| Self::SATD_MARKERS.iter().any(|m| line.contains(m)))
+                    .count()
+            })
+            .sum()
+    }
+
+    /// Count git commits in last 30 days.
+    fn gather_git_churn_evidence(path: &Path) -> Option<Evidence> {
+        let output = std::process::Command::new("git")
+            .args(["rev-list", "--count", "--since=30.days", "HEAD"])
+            .current_dir(path)
+            .output()
+            .ok()?;
+        if !output.status.success() {
+            return None;
+        }
+        let count: u64 = String::from_utf8_lossy(&output.stdout)
+            .trim()
+            .parse()
+            .unwrap_or(0);
+        let description = if count > 20 {
+            format!(
+                "High churn: {} commits in 30 days indicates active/unstable area",
+                count
+            )
+        } else if count > 5 {
+            format!("Moderate churn: {} commits in 30 days", count)
+        } else {
+            format!("Low churn: {} commits in 30 days — stable code", count)
+        };
+        Some(Evidence::new(
             EvidenceSource::GitChurn,
             path.to_path_buf(),
             "commit_count".to_string(),
-            json!({"commit_count": 15, "days": 30}),
-            "High churn: 15 commits in 30 days indicates instability".to_string(),
-        ));
+            json!({"commit_count": count, "days": 30}),
+            description,
+        ))
+    }
 
-        Ok(evidence)
+    /// Read TDG baseline average score if available.
+    fn gather_tdg_evidence(path: &Path) -> Option<Evidence> {
+        let baseline_path = path.join(".pmat/baseline.json");
+        let content = std::fs::read_to_string(&baseline_path).ok()?;
+        let data: serde_json::Value = serde_json::from_str(&content).ok()?;
+        let avg_score = data
+            .get("summary")
+            .and_then(|s| s.get("avg_score"))
+            .and_then(|v| v.as_f64())
+            .unwrap_or(0.0);
+        let total_files = data
+            .get("summary")
+            .and_then(|s| s.get("total_files"))
+            .and_then(|v| v.as_u64())
+            .unwrap_or(0);
+        let description = if avg_score >= 80.0 {
+            format!(
+                "Strong TDG baseline: {:.1}/100 across {} files",
+                avg_score, total_files
+            )
+        } else if avg_score >= 50.0 {
+            format!(
+                "Moderate TDG score: {:.1}/100 across {} files — room for improvement",
+                avg_score, total_files
+            )
+        } else if total_files == 0 {
+            "No TDG baseline available — run `pmat tdg` to generate".to_string()
+        } else {
+            format!(
+                "Low TDG score: {:.1}/100 across {} files — significant debt",
+                avg_score, total_files
+            )
+        };
+        Some(Evidence::new(
+            EvidenceSource::TDG,
+            path.to_path_buf(),
+            "tdg_score".to_string(),
+            json!(avg_score),
+            description,
+        ))
+    }
+
+    /// Estimate complexity by counting Rust source lines and deeply-nested functions.
+    fn gather_complexity_evidence(path: &Path) -> Option<Evidence> {
+        let src_dir = path.join("src");
+        if !src_dir.is_dir() {
+            return None;
+        }
+        let (total_lines, deep_nesting_count) = Self::count_lines_and_nesting(&src_dir);
+        let estimated_avg_complexity = if total_lines > 0 {
+            // Rough heuristic: deep nesting count per 1000 lines
+            (deep_nesting_count as f64 / total_lines as f64 * 1000.0).round() as u64
+        } else {
+            0
+        };
+        let description = format!(
+            "{} source lines, {} deeply-nested blocks (est. complexity density: {}/1000 lines)",
+            total_lines, deep_nesting_count, estimated_avg_complexity
+        );
+        Some(Evidence::new(
+            EvidenceSource::Complexity,
+            path.to_path_buf(),
+            "estimated_complexity".to_string(),
+            json!({"total_lines": total_lines, "deep_nesting": deep_nesting_count, "threshold": 20}),
+            description,
+        ))
+    }
+
+    fn count_lines_and_nesting(dir: &Path) -> (usize, usize) {
+        let entries = match std::fs::read_dir(dir) {
+            Ok(e) => e,
+            Err(_) => return (0, 0),
+        };
+        entries
+            .flatten()
+            .map(|entry| entry.path())
+            .fold((0usize, 0usize), |(lines, deep), p| {
+                if p.is_dir() {
+                    let (l, d) = Self::count_lines_and_nesting(&p);
+                    return (lines + l, deep + d);
+                }
+                let is_rs = p.extension().and_then(|e| e.to_str()) == Some("rs");
+                if !is_rs {
+                    return (lines, deep);
+                }
+                let (l, d) = Self::count_file_nesting(&p);
+                (lines + l, deep + d)
+            })
+    }
+
+    fn count_file_nesting(path: &Path) -> (usize, usize) {
+        let content = match std::fs::read_to_string(path) {
+            Ok(c) => c,
+            Err(_) => return (0, 0),
+        };
+        let mut brace_depth = 0i32;
+        let mut deep = 0usize;
+        let mut line_count = 0usize;
+        for line in content.lines() {
+            line_count += 1;
+            brace_depth += line.matches('{').count() as i32;
+            brace_depth -= line.matches('}').count() as i32;
+            if brace_depth > 5 {
+                deep += 1;
+            }
+        }
+        (line_count, deep)
     }
 
     /// Generate hypothesis based on evidence
@@ -176,63 +353,88 @@ impl FiveWhysAnalyzer {
         evidence: &[Evidence],
         depth: u8,
     ) -> Result<String> {
-        // Analyze evidence to form hypothesis
-        let has_high_complexity = evidence.iter().any(|e| {
-            e.source == EvidenceSource::Complexity
-                && e.value.get("value").and_then(|v| v.as_f64()).unwrap_or(0.0) > 20.0
-        });
+        let signals = EvidenceSignals::from_evidence(evidence);
+        Ok(signals.hypothesis_for_depth(depth))
+    }
+}
 
-        let has_satd = evidence.iter().any(|e| e.source == EvidenceSource::SATD);
+/// Extracted evidence signals to reduce cognitive complexity in hypothesis generation.
+struct EvidenceSignals {
+    high_complexity: bool,
+    satd_present: bool,
+    low_tdg: bool,
+    high_churn: bool,
+}
 
-        let has_low_tdg = evidence
-            .iter()
-            .any(|e| e.source == EvidenceSource::TDG && e.value.as_f64().unwrap_or(100.0) < 50.0);
+impl EvidenceSignals {
+    fn from_evidence(evidence: &[Evidence]) -> Self {
+        Self {
+            high_complexity: evidence.iter().any(|e| {
+                e.source == EvidenceSource::Complexity
+                    && e.value
+                        .get("deep_nesting")
+                        .or_else(|| e.value.get("value"))
+                        .and_then(|v| v.as_f64())
+                        .unwrap_or(0.0)
+                        > 20.0
+            }),
+            satd_present: evidence.iter().any(|e| e.source == EvidenceSource::SATD),
+            low_tdg: evidence.iter().any(|e| {
+                e.source == EvidenceSource::TDG && e.value.as_f64().unwrap_or(100.0) < 50.0
+            }),
+            high_churn: evidence.iter().any(|e| {
+                e.source == EvidenceSource::GitChurn
+                    && e.value
+                        .get("commit_count")
+                        .and_then(|v| v.as_u64())
+                        .unwrap_or(0)
+                        > 10
+            }),
+        }
+    }
 
-        let has_high_churn = evidence.iter().any(|e| {
-            e.source == EvidenceSource::GitChurn
-                && e.value
-                    .get("commit_count")
-                    .and_then(|v| v.as_u64())
-                    .unwrap_or(0)
-                    > 10
-        });
-
-        // Form hypothesis based on evidence patterns
-        let hypothesis = match depth {
-            1 => {
-                if has_high_complexity {
-                    "Code complexity exceeds acceptable thresholds".to_string()
-                } else if has_satd {
-                    "Known technical debt markers present in codebase".to_string()
-                } else {
-                    "Issue manifested due to code quality factors".to_string()
-                }
-            }
-            2 => {
-                if has_low_tdg {
-                    "Insufficient test coverage allowed defect to slip through".to_string()
-                } else if has_high_complexity {
-                    "Complex control flow makes code difficult to understand and maintain"
-                        .to_string()
-                } else {
-                    "Code structure contributed to the problem".to_string()
-                }
-            }
-            3 => {
-                if has_high_churn {
-                    "Frequent changes indicate unstable or poorly understood code".to_string()
-                } else if has_satd {
-                    "Technical debt accumulated, indicating deferred maintenance".to_string()
-                } else {
-                    "Architectural constraints led to current state".to_string()
-                }
-            }
+    fn hypothesis_for_depth(&self, depth: u8) -> String {
+        match depth {
+            1 => self.depth_1_hypothesis(),
+            2 => self.depth_2_hypothesis(),
+            3 => self.depth_3_hypothesis(),
             4 => "Requirements or constraints were not fully specified".to_string(),
             _ => "Root cause: Systematic process gap in development workflow".to_string(),
-        };
-
-        Ok(hypothesis)
+        }
     }
+
+    fn depth_1_hypothesis(&self) -> String {
+        if self.high_complexity {
+            "Code complexity exceeds acceptable thresholds".to_string()
+        } else if self.satd_present {
+            "Known technical debt markers present in codebase".to_string()
+        } else {
+            "Issue manifested due to code quality factors".to_string()
+        }
+    }
+
+    fn depth_2_hypothesis(&self) -> String {
+        if self.low_tdg {
+            "Insufficient test coverage allowed defect to slip through".to_string()
+        } else if self.high_complexity {
+            "Complex control flow makes code difficult to understand and maintain".to_string()
+        } else {
+            "Code structure contributed to the problem".to_string()
+        }
+    }
+
+    fn depth_3_hypothesis(&self) -> String {
+        if self.high_churn {
+            "Frequent changes indicate unstable or poorly understood code".to_string()
+        } else if self.satd_present {
+            "Technical debt accumulated, indicating deferred maintenance".to_string()
+        } else {
+            "Architectural constraints led to current state".to_string()
+        }
+    }
+}
+
+impl FiveWhysAnalyzer {
 
     /// Calculate confidence score based on evidence strength
     pub fn calculate_confidence(&self, evidence: &[Evidence]) -> Result<f64> {
@@ -246,9 +448,11 @@ impl FiveWhysAnalyzer {
         for ev in evidence {
             let (evidence_weight, severity_multiplier) = match ev.source {
                 EvidenceSource::Complexity => {
-                    let value = ev
+                    // Accept both "deep_nesting" (real evidence) and "value" (legacy/tests)
+                    let metric = ev
                         .value
-                        .get("value")
+                        .get("deep_nesting")
+                        .or_else(|| ev.value.get("value"))
                         .and_then(|v| v.as_f64())
                         .unwrap_or(0.0);
                     let threshold = ev
@@ -256,7 +460,11 @@ impl FiveWhysAnalyzer {
                         .get("threshold")
                         .and_then(|v| v.as_f64())
                         .unwrap_or(20.0);
-                    let severity = (value - threshold).max(0.0) / threshold;
+                    let severity = if threshold > 0.0 {
+                        (metric - threshold).max(0.0) / threshold
+                    } else {
+                        0.0
+                    };
                     (0.25, 1.0 + severity.min(1.0))
                 }
                 EvidenceSource::SATD => {

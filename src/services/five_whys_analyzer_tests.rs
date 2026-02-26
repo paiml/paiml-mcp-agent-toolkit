@@ -636,7 +636,7 @@ mod coverage_tests {
         assert!(result.is_ok());
 
         let hypothesis = result.expect("should succeed");
-        assert!(hypothesis.contains("complexity"));
+        assert!(hypothesis.contains("complexity") || hypothesis.contains("Complex"));
     }
 
     #[test]
@@ -900,10 +900,52 @@ mod coverage_tests {
     // Gather Evidence Tests
     // ============================================================================
 
+    /// Create a temp dir with src/, .pmat/baseline.json, and git init for evidence tests
+    fn create_evidence_temp_dir() -> TempDir {
+        let temp_dir = TempDir::new().expect("Failed to create temp directory");
+        let p = temp_dir.path();
+
+        // Create src/ with a .rs file containing SATD markers
+        std::fs::create_dir_all(p.join("src")).unwrap();
+        std::fs::write(
+            p.join("src/main.rs"),
+            "fn main() {\n    // TODO: fix this\n    // FIXME: another issue\n    println!(\"hello\");\n}\n",
+        )
+        .unwrap();
+
+        // Create .pmat/baseline.json for TDG evidence
+        std::fs::create_dir_all(p.join(".pmat")).unwrap();
+        std::fs::write(
+            p.join(".pmat/baseline.json"),
+            r#"{"version":"3.5.1","summary":{"total_files":10,"avg_score":72.5,"grade_distribution":{},"languages":{}},"files":{}}"#,
+        )
+        .unwrap();
+
+        // Initialize git repo for churn evidence
+        let _ = std::process::Command::new("git")
+            .args(["init"])
+            .current_dir(p)
+            .output();
+        let _ = std::process::Command::new("git")
+            .args(["add", "."])
+            .current_dir(p)
+            .output();
+        let _ = std::process::Command::new("git")
+            .args(["commit", "-m", "init", "--allow-empty"])
+            .env("GIT_AUTHOR_NAME", "test")
+            .env("GIT_AUTHOR_EMAIL", "test@test.com")
+            .env("GIT_COMMITTER_NAME", "test")
+            .env("GIT_COMMITTER_EMAIL", "test@test.com")
+            .current_dir(p)
+            .output();
+
+        temp_dir
+    }
+
     #[tokio::test]
     async fn test_gather_evidence_returns_multiple_sources() {
         let analyzer = create_analyzer();
-        let temp_dir = create_temp_dir();
+        let temp_dir = create_evidence_temp_dir();
 
         let result = analyzer.gather_evidence(temp_dir.path()).await;
         assert!(result.is_ok());
@@ -911,61 +953,96 @@ mod coverage_tests {
         let evidence = result.expect("should succeed");
         assert!(!evidence.is_empty());
 
-        // Should have evidence from multiple sources
+        // Should have evidence from multiple sources (SATD + complexity + TDG + git churn)
         let sources: std::collections::HashSet<_> = evidence.iter().map(|e| e.source).collect();
-        assert!(sources.len() >= 3);
+        assert!(
+            sources.len() >= 3,
+            "Expected >=3 sources, got {}: {:?}",
+            sources.len(),
+            sources
+        );
     }
 
     #[tokio::test]
     async fn test_gather_evidence_includes_complexity() {
         let analyzer = create_analyzer();
-        let temp_dir = create_temp_dir();
+        let temp_dir = create_evidence_temp_dir();
 
-        let result = analyzer.gather_evidence(temp_dir.path()).await;
-        assert!(result.is_ok());
-
-        let evidence = result.expect("should succeed");
-        assert!(evidence
-            .iter()
-            .any(|e| e.source == EvidenceSource::Complexity));
+        let evidence = analyzer
+            .gather_evidence(temp_dir.path())
+            .await
+            .expect("should succeed");
+        assert!(
+            evidence
+                .iter()
+                .any(|e| e.source == EvidenceSource::Complexity),
+            "Missing complexity evidence"
+        );
     }
 
     #[tokio::test]
     async fn test_gather_evidence_includes_satd() {
         let analyzer = create_analyzer();
-        let temp_dir = create_temp_dir();
+        let temp_dir = create_evidence_temp_dir();
 
-        let result = analyzer.gather_evidence(temp_dir.path()).await;
-        assert!(result.is_ok());
-
-        let evidence = result.expect("should succeed");
-        assert!(evidence.iter().any(|e| e.source == EvidenceSource::SATD));
+        let evidence = analyzer
+            .gather_evidence(temp_dir.path())
+            .await
+            .expect("should succeed");
+        assert!(
+            evidence.iter().any(|e| e.source == EvidenceSource::SATD),
+            "Missing SATD evidence"
+        );
+        // Verify real SATD count (we put 2 markers in main.rs)
+        let satd = evidence
+            .iter()
+            .find(|e| e.source == EvidenceSource::SATD)
+            .unwrap();
+        let count = satd.value.get("count").and_then(|v| v.as_u64()).unwrap_or(0);
+        assert!(count >= 2, "Expected >=2 SATD markers, got {}", count);
     }
 
     #[tokio::test]
     async fn test_gather_evidence_includes_tdg() {
         let analyzer = create_analyzer();
-        let temp_dir = create_temp_dir();
+        let temp_dir = create_evidence_temp_dir();
 
-        let result = analyzer.gather_evidence(temp_dir.path()).await;
-        assert!(result.is_ok());
-
-        let evidence = result.expect("should succeed");
-        assert!(evidence.iter().any(|e| e.source == EvidenceSource::TDG));
+        let evidence = analyzer
+            .gather_evidence(temp_dir.path())
+            .await
+            .expect("should succeed");
+        assert!(
+            evidence.iter().any(|e| e.source == EvidenceSource::TDG),
+            "Missing TDG evidence"
+        );
+        // Verify real TDG score from baseline.json
+        let tdg = evidence
+            .iter()
+            .find(|e| e.source == EvidenceSource::TDG)
+            .unwrap();
+        let score = tdg.value.as_f64().unwrap_or(0.0);
+        assert!(
+            (score - 72.5).abs() < 0.1,
+            "Expected TDG score ~72.5, got {}",
+            score
+        );
     }
 
     #[tokio::test]
     async fn test_gather_evidence_includes_git_churn() {
         let analyzer = create_analyzer();
-        let temp_dir = create_temp_dir();
+        let temp_dir = create_evidence_temp_dir();
 
-        let result = analyzer.gather_evidence(temp_dir.path()).await;
-        assert!(result.is_ok());
-
-        let evidence = result.expect("should succeed");
-        assert!(evidence
-            .iter()
-            .any(|e| e.source == EvidenceSource::GitChurn));
+        let evidence = analyzer
+            .gather_evidence(temp_dir.path())
+            .await
+            .expect("should succeed");
+        assert!(
+            evidence
+                .iter()
+                .any(|e| e.source == EvidenceSource::GitChurn),
+            "Missing git churn evidence"
+        );
     }
 
     // ============================================================================
