@@ -214,7 +214,7 @@ impl Clone for TDGCalculator {
             provability_analyzer: self.provability_analyzer.clone(),
             ast_engine: self.ast_engine.clone(),
             project_root: self.project_root.clone(),
-            cached_churn_analysis: Arc::new(Mutex::new(None)),
+            cached_churn_analysis: Arc::clone(&self.cached_churn_analysis),
         }
     }
 }

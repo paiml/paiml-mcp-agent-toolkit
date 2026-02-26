@@ -80,15 +80,34 @@ impl GitAnalysisService {
         project_path: &Path,
         since_date: &str,
     ) -> Result<Vec<FileChurnMetrics>, TemplateError> {
-        let output = Command::new("git")
-            .arg("log")
-            .arg("--since")
-            .arg(since_date)
-            .arg("--pretty=format:%H|%an|%aI")
-            .arg("--numstat")
-            .current_dir(project_path)
-            .output()
-            .map_err(TemplateError::Io)?;
+        // Spawn git log with timeout to prevent runaway processes (#245)
+        let (tx, rx) = std::sync::mpsc::channel();
+        let project_dir = project_path.to_path_buf();
+        let since = since_date.to_string();
+        std::thread::spawn(move || {
+            let result = Command::new("git")
+                .arg("log")
+                .arg("--since")
+                .arg(&since)
+                .arg("--pretty=format:%H|%an|%aI")
+                .arg("--numstat")
+                .current_dir(&project_dir)
+                .output();
+            let _ = tx.send(result);
+        });
+
+        let timeout = std::time::Duration::from_secs(60);
+        let output = match rx.recv_timeout(timeout) {
+            Ok(result) => result.map_err(TemplateError::Io)?,
+            Err(_) => {
+                tracing::warn!(
+                    "git log --numstat timed out after {}s for {}",
+                    timeout.as_secs(),
+                    project_path.display()
+                );
+                return Ok(Vec::new());
+            }
+        };
 
         if !output.status.success() {
             let error_msg = String::from_utf8_lossy(&output.stderr);
