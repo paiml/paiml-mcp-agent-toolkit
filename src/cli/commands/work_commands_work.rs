@@ -165,7 +165,7 @@ pub enum WorkCommands {
     },
 
     /// Run invariant checkpoint (DbC §4.2)
-    #[command(visible_aliases = &["ck", "check"])]
+    #[command(visible_aliases = &["ck", "cp"])]
     Checkpoint {
         /// Issue number or ticket ID
         id: String,
