@@ -5,6 +5,19 @@ comply:
       - "examples/*"
       - "tests/*"
       - "benches/*"
+  suppressions:
+    # Kubernetes manifests inherently have deep nesting (9-10 levels)
+    - rules: ["CB-951"]
+      files: ["deploy/kubernetes/deployment.yaml"]
+      reason: "Kubernetes manifests require deep nesting by design"
+    # GitHub Actions workflows have deep nesting for matrix/step/with patterns
+    - rules: ["CB-951"]
+      files: [".github/workflows/property-tests.yml", ".github/workflows/pr-checks.yml"]
+      reason: "GitHub Actions matrix + step nesting is inherent"
+    # CB-954 false positive: roadmap description text, not a secret
+    - rules: ["CB-954"]
+      files: ["docs/roadmaps/roadmap.yaml"]
+      reason: "Long description text falsely matched as secret pattern"
 
 cross_crate:
   # Ruchy is a transpiler, not part of the ML/compute stack.
