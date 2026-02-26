@@ -8,16 +8,16 @@ use serde::{Deserialize, Serialize};
 use std::path::Path;
 
 /// Current PMAT version (from Cargo.toml)
-pub const PMAT_VERSION: &str = env!("CARGO_PKG_VERSION");
+pub(crate) const PMAT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// Project compliance information stored in .pmat/project.toml
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ProjectConfig {
+pub(crate) struct ProjectConfig {
     pub pmat: PmatSection,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PmatSection {
+pub(crate) struct PmatSection {
     pub version: String,
     #[serde(default)]
     pub last_compliance_check: Option<DateTime<Utc>>,
@@ -39,7 +39,7 @@ impl Default for ProjectConfig {
 
 /// Compliance check result
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ComplianceReport {
+pub(crate) struct ComplianceReport {
     pub project_version: String,
     pub current_version: String,
     pub is_compliant: bool,
@@ -51,7 +51,7 @@ pub struct ComplianceReport {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ComplianceCheck {
+pub(crate) struct ComplianceCheck {
     pub name: String,
     pub status: CheckStatus,
     pub message: String,
@@ -59,7 +59,7 @@ pub struct ComplianceCheck {
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
-pub enum CheckStatus {
+pub(crate) enum CheckStatus {
     Pass,
     Warn,
     Fail,
@@ -67,7 +67,7 @@ pub enum CheckStatus {
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
-pub enum Severity {
+pub(crate) enum Severity {
     Info,
     Warning,
     Error,
@@ -87,7 +87,7 @@ impl From<ConfigSeverity> for Severity {
 
 /// Filter a check result based on YAML configuration.
 /// Returns Skip status if the check is disabled in .pmat.yaml
-pub fn filter_check_by_config(
+pub(crate) fn filter_check_by_config(
     check: ComplianceCheck,
     check_id: &str,
     config: &ComplyConfig,
@@ -108,14 +108,14 @@ pub fn filter_check_by_config(
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BreakingChange {
+pub(crate) struct BreakingChange {
     pub version: String,
     pub description: String,
     pub migration_guide: Option<String>,
 }
 
 /// Format a list of violations for display (indented, one per line).
-pub fn format_violation_list(issues: &[String]) -> String {
+pub(crate) fn format_violation_list(issues: &[String]) -> String {
     issues
         .iter()
         .map(|i| format!("    - {}", i))
@@ -124,7 +124,7 @@ pub fn format_violation_list(issues: &[String]) -> String {
 }
 
 /// Helper: Create skip check result
-pub fn skip_check(name: &str, message: &str) -> ComplianceCheck {
+pub(crate) fn skip_check(name: &str, message: &str) -> ComplianceCheck {
     ComplianceCheck {
         name: name.to_string(),
         status: CheckStatus::Skip,
@@ -133,7 +133,7 @@ pub fn skip_check(name: &str, message: &str) -> ComplianceCheck {
     }
 }
 
-pub fn calculate_versions_behind(project_version: &str) -> u32 {
+pub(crate) fn calculate_versions_behind(project_version: &str) -> u32 {
     let current_parts: Vec<u32> = PMAT_VERSION.split('.').filter_map(|s| s.parse().ok()).collect();
     let project_parts: Vec<u32> = project_version.split('.').filter_map(|s| s.parse().ok()).collect();
     if current_parts.len() >= 2 && project_parts.len() >= 2 {
@@ -153,18 +153,18 @@ pub fn calculate_versions_behind(project_version: &str) -> u32 {
     }
 }
 
-pub fn get_breaking_changes_since(_from_version: &str) -> Vec<BreakingChange> {
+pub(crate) fn get_breaking_changes_since(_from_version: &str) -> Vec<BreakingChange> {
     vec![]
 }
 
 #[derive(Debug, Clone)]
-pub struct ChangelogEntry {
+pub(crate) struct ChangelogEntry {
     pub version: String,
     pub description: String,
     pub breaking: bool,
 }
 
-pub fn get_changelog_entries(_from: &str, _to: &str) -> Vec<ChangelogEntry> {
+pub(crate) fn get_changelog_entries(_from: &str, _to: &str) -> Vec<ChangelogEntry> {
     vec![
         ChangelogEntry { version: PMAT_VERSION.to_string(), description: "Added qa-work command for Toyota Way validation".to_string(), breaking: false },
         ChangelogEntry { version: PMAT_VERSION.to_string(), description: "Added cleanup-resources command".to_string(), breaking: false },
@@ -172,7 +172,7 @@ pub fn get_changelog_entries(_from: &str, _to: &str) -> Vec<ChangelogEntry> {
     ]
 }
 
-pub fn load_or_create_project_config(project_path: &Path) -> anyhow::Result<ProjectConfig> {
+pub(crate) fn load_or_create_project_config(project_path: &Path) -> anyhow::Result<ProjectConfig> {
     let config_path = project_path.join(".pmat").join("project.toml");
     if config_path.exists() {
         let content = std::fs::read_to_string(&config_path)?;
@@ -187,7 +187,7 @@ pub fn load_or_create_project_config(project_path: &Path) -> anyhow::Result<Proj
     }
 }
 
-pub fn update_last_check_timestamp(project_path: &Path) -> anyhow::Result<()> {
+pub(crate) fn update_last_check_timestamp(project_path: &Path) -> anyhow::Result<()> {
     let config_path = project_path.join(".pmat").join("project.toml");
     if let Ok(mut config) = load_or_create_project_config(project_path) {
         config.pmat.last_compliance_check = Some(Utc::now());
@@ -197,7 +197,7 @@ pub fn update_last_check_timestamp(project_path: &Path) -> anyhow::Result<()> {
     Ok(())
 }
 
-pub fn print_compliance_text(report: &ComplianceReport) {
+pub(crate) fn print_compliance_text(report: &ComplianceReport) {
     println!("\n{}", "=".repeat(60));
     println!("PMAT Compliance Report");
     println!("{}", "=".repeat(60));
@@ -223,7 +223,7 @@ pub fn print_compliance_text(report: &ComplianceReport) {
     println!("\n{}", "=".repeat(60));
 }
 
-pub fn print_compliance_markdown(report: &ComplianceReport) {
+pub(crate) fn print_compliance_markdown(report: &ComplianceReport) {
     println!("# PMAT Compliance Report\n");
     println!("| Property | Value |");
     println!("|----------|-------|");
@@ -242,7 +242,7 @@ pub fn print_compliance_markdown(report: &ComplianceReport) {
     }
 }
 
-pub fn migrate_project_version(project_path: &Path, target: &str, dry_run: bool) -> anyhow::Result<bool> {
+pub(crate) fn migrate_project_version(project_path: &Path, target: &str, dry_run: bool) -> anyhow::Result<bool> {
     if dry_run { return Ok(true); }
     let mut config = load_or_create_project_config(project_path)?;
     if config.pmat.version == target { return Ok(false); }
@@ -253,7 +253,7 @@ pub fn migrate_project_version(project_path: &Path, target: &str, dry_run: bool)
     Ok(true)
 }
 
-pub fn migrate_gitignore(project_path: &Path, dry_run: bool) -> anyhow::Result<bool> {
+pub(crate) fn migrate_gitignore(project_path: &Path, dry_run: bool) -> anyhow::Result<bool> {
     let gitignore_path = project_path.join(".gitignore");
     let pmat_entries = [".pmat/backup/", ".pmat-qa/", ".pmat/context.idx/", ".pmat/workspace.idx/", ".pmat/deps-cache.json"];
     if !gitignore_path.exists() { return Ok(false); }
@@ -273,12 +273,12 @@ pub fn migrate_gitignore(project_path: &Path, dry_run: bool) -> anyhow::Result<b
     Ok(needs_update)
 }
 
-pub fn update_project_config(project_path: &Path, dry_run: bool) -> anyhow::Result<bool> {
+pub(crate) fn update_project_config(project_path: &Path, dry_run: bool) -> anyhow::Result<bool> {
     migrate_project_version(project_path, PMAT_VERSION, dry_run)
 }
 
 /// Update project hooks to latest templates
-pub async fn update_project_hooks(project_path: &Path, dry_run: bool) -> anyhow::Result<bool> {
+pub(crate) async fn update_project_hooks(project_path: &Path, dry_run: bool) -> anyhow::Result<bool> {
     use crate::cli::handlers::hooks_command_handlers::HooksCommand;
     let hooks_dir = project_path.join(".git/hooks");
     if !hooks_dir.exists() { return Ok(false); }
@@ -297,9 +297,9 @@ pub async fn update_project_hooks(project_path: &Path, dry_run: bool) -> anyhow:
 }
 
 #[derive(PartialEq)]
-pub enum HookAction { Install, ForceReplace, Refresh, UpToDate }
+pub(crate) enum HookAction { Install, ForceReplace, Refresh, UpToDate }
 
-pub async fn determine_hook_action(
+pub(crate) async fn determine_hook_action(
     hooks_cmd: &crate::cli::handlers::hooks_command_handlers::HooksCommand,
     status: &crate::cli::handlers::hooks_command_handlers::HookStatus,
 ) -> anyhow::Result<HookAction> {

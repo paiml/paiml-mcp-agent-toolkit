@@ -97,7 +97,7 @@ fn is_tdg_violation_excluded(v: &TdgViolation, exclude_patterns: &[glob::Pattern
     exclude_patterns.iter().any(|pat| pat.matches_with(&v.file_path, opts))
 }
 
-pub fn check_tdg_grade_gate(project_path: &Path, comply_config: &ComplyConfig) -> ComplianceCheck {
+pub(crate) fn check_tdg_grade_gate(project_path: &Path, comply_config: &ComplyConfig) -> ComplianceCheck {
     let db_path = project_path.join(".pmat").join("context.db");
     if (!db_path.exists() || is_index_stale(project_path, &db_path)) && !rebuild_index(project_path) && !db_path.exists() {
         return ComplianceCheck { name: "CB-200: TDG Grade Gate".into(), status: CheckStatus::Skip, message: "No .pmat/context.db found and rebuild failed \u{2014} run `pmat query` to create index".into(), severity: Severity::Info };
@@ -150,7 +150,7 @@ fn evaluate_custom_score(
 }
 
 /// CB-1100: Custom Project Scores
-pub fn check_custom_scores(project_path: &Path) -> Vec<ComplianceCheck> {
+pub(crate) fn check_custom_scores(project_path: &Path) -> Vec<ComplianceCheck> {
     let config = match crate::models::comply_config::PmatYamlConfig::load(project_path) { Ok(c) => c, Err(_) => return vec![] };
     if config.scoring.custom_scores.is_empty() { return vec![]; }
     config.scoring.custom_scores.iter().map(|s| evaluate_custom_score(project_path, s)).collect()

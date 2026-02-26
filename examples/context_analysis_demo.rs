@@ -94,13 +94,15 @@ async function fetchUserDetails(id: number): Promise<any> {
     fs::write(&ts_file, ts_content).expect("Failed to write TypeScript file");
 
     println!(
-        "Running: cargo run -- context --project-path {} --format llm-optimized",
+        "Running: cargo run --bin pmat -- context --project-path {} --format llm-optimized",
         temp_dir.path().display()
     );
 
     let output = Command::new("cargo")
         .args([
             "run",
+            "--bin",
+            "pmat",
             "--",
             "context",
             "--project-path",
@@ -218,13 +220,15 @@ function formatOrderResponse(processedOrder) {
     fs::write(&js_file, js_content).expect("Failed to write JavaScript file");
 
     println!(
-        "Running: cargo run -- context --project-path {} --format llm-optimized",
+        "Running: cargo run --bin pmat -- context --project-path {} --format llm-optimized",
         temp_dir.path().display()
     );
 
     let output = Command::new("cargo")
         .args([
             "run",
+            "--bin",
+            "pmat",
             "--",
             "context",
             "--project-path",
@@ -390,13 +394,15 @@ fn test_wasm_context() {
     fs::write(&wasm_file, wasm_content).expect("Failed to write WASM file");
 
     println!(
-        "Running: cargo run -- context --project-path {} --format llm-optimized",
+        "Running: cargo run --bin pmat -- context --project-path {} --format llm-optimized",
         temp_dir.path().display()
     );
 
     let output = Command::new("cargo")
         .args([
             "run",
+            "--bin",
+            "pmat",
             "--",
             "context",
             "--project-path",
@@ -548,13 +554,15 @@ export const debounce = <T extends (...args: any[]) => void>(
     fs::write(&simple_ts_file, simple_ts_content).expect("Failed to write simple TypeScript file");
 
     println!(
-        "Running: cargo run -- context --project-path {} --format llm-optimized",
+        "Running: cargo run --bin pmat -- context --project-path {} --format llm-optimized",
         temp_dir.path().display()
     );
 
     let output = Command::new("cargo")
         .args([
             "run",
+            "--bin",
+            "pmat",
             "--",
             "context",
             "--project-path",
@@ -610,11 +618,13 @@ fn test_comprehensive_language_test() {
         return;
     }
 
-    println!("Running: cargo run -- context --project-path comprehensive_language_test --format llm-optimized");
+    println!("Running: cargo run --bin pmat -- context --project-path comprehensive_language_test --format llm-optimized");
 
     let output = Command::new("cargo")
         .args([
             "run",
+            "--bin",
+            "pmat",
             "--",
             "context",
             "--project-path",

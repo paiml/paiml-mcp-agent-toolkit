@@ -91,17 +91,6 @@ impl QueryProfile {
     }
 }
 
-/// Timing breakdown for git history search phases
-pub(super) struct GitHistoryProfile {
-    pub(super) git_log_ms: u128,
-    pub(super) parse_ms: u128,
-    pub(super) index_ms: u128,
-    pub(super) search_ms: u128,
-    pub(super) annotate_ms: u128,
-    pub(super) total_ms: u128,
-    pub(super) commit_count: usize,
-}
-
 /// Quality annotations for a file referenced in git history
 #[derive(Default, Clone)]
 pub(super) struct FileAnnotation {

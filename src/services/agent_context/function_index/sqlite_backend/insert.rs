@@ -11,7 +11,7 @@ use rusqlite::{params, Connection};
 use std::collections::{HashMap, HashSet};
 
 /// Insert all functions into the database within a transaction.
-pub fn insert_functions(conn: &Connection, functions: &[FunctionEntry]) -> Result<(), String> {
+pub(crate) fn insert_functions(conn: &Connection, functions: &[FunctionEntry]) -> Result<(), String> {
     let tx = conn
         .unchecked_transaction()
         .map_err(|e| format!("Failed to begin transaction: {e}"))?;
@@ -91,7 +91,7 @@ pub fn insert_functions(conn: &Connection, functions: &[FunctionEntry]) -> Resul
 }
 
 /// Insert call graph edges into the database.
-pub fn insert_call_graph(
+pub(crate) fn insert_call_graph(
     conn: &Connection,
     calls: &HashMap<usize, Vec<usize>>,
 ) -> Result<(), String> {
@@ -122,7 +122,7 @@ pub fn insert_call_graph(
 }
 
 /// Insert graph metrics (PageRank, centrality) into the database.
-pub fn insert_graph_metrics(
+pub(crate) fn insert_graph_metrics(
     conn: &Connection,
     metrics: &[GraphMetrics],
 ) -> Result<(), String> {
@@ -157,7 +157,7 @@ pub fn insert_graph_metrics(
 }
 
 /// Insert metadata key-value pairs.
-pub fn insert_metadata(conn: &Connection, manifest: &IndexManifest) -> Result<(), String> {
+pub(crate) fn insert_metadata(conn: &Connection, manifest: &IndexManifest) -> Result<(), String> {
     conn.execute(
         "INSERT OR REPLACE INTO metadata (key, value) VALUES ('version', ?1)",
         params![SCHEMA_VERSION],
@@ -199,7 +199,7 @@ pub fn insert_metadata(conn: &Connection, manifest: &IndexManifest) -> Result<()
 }
 
 /// Store coverage_off_files set as JSON in metadata for O(1) query-time lookup.
-pub fn insert_coverage_off_files(
+pub(crate) fn insert_coverage_off_files(
     conn: &Connection,
     files: &HashSet<String>,
 ) -> Result<(), String> {

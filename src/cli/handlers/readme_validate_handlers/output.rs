@@ -5,7 +5,7 @@
 
 use super::types::ValidateReadmeCmd;
 // Re-export OutputFormat from types for use in execution.rs
-pub use super::types::OutputFormat;
+pub(crate) use super::types::OutputFormat;
 use crate::services::hallucination_detector::{ValidationResult, ValidationStatus};
 use anyhow::Result;
 use std::path::PathBuf;

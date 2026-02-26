@@ -9,10 +9,10 @@ use rusqlite::{Connection, OpenFlags};
 use std::path::Path;
 
 /// Database schema version for migration tracking
-pub const SCHEMA_VERSION: &str = "2.0.0";
+pub(crate) const SCHEMA_VERSION: &str = "2.0.0";
 
 /// Open or create a SQLite index database at the given path.
-pub fn open_db(db_path: &Path) -> Result<Connection, String> {
+pub(crate) fn open_db(db_path: &Path) -> Result<Connection, String> {
     let conn = Connection::open_with_flags(
         db_path,
         OpenFlags::SQLITE_OPEN_READ_WRITE
@@ -44,7 +44,7 @@ pub fn open_db(db_path: &Path) -> Result<Connection, String> {
 }
 
 /// Create all tables and indexes if they don't exist.
-pub fn create_schema(conn: &Connection) -> Result<(), String> {
+pub(crate) fn create_schema(conn: &Connection) -> Result<(), String> {
     conn.execute_batch(
         "CREATE TABLE IF NOT EXISTS functions (
             id INTEGER PRIMARY KEY,
@@ -162,7 +162,7 @@ pub fn create_schema(conn: &Connection) -> Result<(), String> {
 }
 
 /// Check if the database has a valid v2.0 schema (all required tables exist).
-pub fn has_valid_schema(conn: &Connection) -> bool {
+pub(crate) fn has_valid_schema(conn: &Connection) -> bool {
     let count: i64 = conn
         .query_row(
             "SELECT count(*) FROM sqlite_master WHERE type='table' AND name IN ('functions', 'metadata', 'call_graph', 'graph_metrics')",

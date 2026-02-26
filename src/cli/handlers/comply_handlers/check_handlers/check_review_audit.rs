@@ -16,7 +16,7 @@ use super::check::*;
 use super::check_extended::*;
 
 /// Handle `pmat comply review` - generate evidence-based review checklist.
-pub async fn handle_review(
+pub(crate) async fn handle_review(
     project_path: &Path,
     format: ComplyOutputFormat,
     output: Option<&Path>,
@@ -52,7 +52,7 @@ pub async fn handle_review(
 
 /// A single review checklist item
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ReviewItem {
+pub(crate) struct ReviewItem {
     category: String,
     question: String,
     evidence: String,
@@ -167,7 +167,7 @@ struct AuditArtifact {
 }
 
 /// Handle `pmat comply audit` - generate governance audit artifact.
-pub async fn handle_audit(
+pub(crate) async fn handle_audit(
     project_path: &Path,
     format: ComplyOutputFormat,
     output: Option<&Path>,

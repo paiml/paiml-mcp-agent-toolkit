@@ -8,7 +8,7 @@ use std::fs;
 use std::path::Path;
 
 /// Wrapper function for TDG hooks installation
-pub async fn install_tdg_hooks_wrapper() -> Result<()> {
+pub(crate) async fn install_tdg_hooks_wrapper() -> Result<()> {
     let project_root = std::env::current_dir()?;
     install_tdg_hooks(&project_root).await?;
 

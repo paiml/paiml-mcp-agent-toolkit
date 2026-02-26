@@ -15,7 +15,7 @@ use super::check_extended::{
 use crate::services::file_health::FileHealthMetrics;
 
 /// Check Sovereign AI Stack compliance patterns (CB-040 complexity refactor)
-pub fn check_sovereign_stack_patterns(project_path: &Path) -> ComplianceCheck {
+pub(crate) fn check_sovereign_stack_patterns(project_path: &Path) -> ComplianceCheck {
     let cargo_toml = project_path.join("Cargo.toml");
     if !cargo_toml.exists() {
         return skip_check("Sovereign Stack Patterns", "No Cargo.toml found");
@@ -34,12 +34,12 @@ pub fn check_sovereign_stack_patterns(project_path: &Path) -> ComplianceCheck {
     build_sovereign_result(&issues, &good_patterns)
 }
 
-pub fn is_sovereign_stack_project(content: &str) -> bool {
+pub(crate) fn is_sovereign_stack_project(content: &str) -> bool {
     const SOVEREIGN_DEPS: &[&str] = &["trueno", "aprender", "realizar", "batuta", "renacer"];
     SOVEREIGN_DEPS.iter().any(|dep| content.contains(dep))
 }
 
-pub fn check_five_whys_patterns(project_path: &Path, issues: &mut Vec<String>, good_patterns: &mut Vec<String>) {
+pub(crate) fn check_five_whys_patterns(project_path: &Path, issues: &mut Vec<String>, good_patterns: &mut Vec<String>) {
     use std::process::Command;
     let git_log = Command::new("git").args(["log", "--oneline", "-20", "--grep=fix"]).current_dir(project_path).output();
     if let Ok(output) = git_log {
@@ -53,7 +53,7 @@ pub fn check_five_whys_patterns(project_path: &Path, issues: &mut Vec<String>, g
     }
 }
 
-pub fn check_falsification_tests(project_path: &Path, good_patterns: &mut Vec<String>) {
+pub(crate) fn check_falsification_tests(project_path: &Path, good_patterns: &mut Vec<String>) {
     let tests_dir = project_path.join("tests");
     if !tests_dir.exists() { return; }
     let has_falsification = walkdir::WalkDir::new(&tests_dir).max_depth(3).into_iter().filter_map(|e| e.ok()).any(|e| {
@@ -62,14 +62,14 @@ pub fn check_falsification_tests(project_path: &Path, good_patterns: &mut Vec<St
     if has_falsification { good_patterns.push("Falsification test suite".into()); }
 }
 
-pub fn check_apr_models(project_path: &Path, good_patterns: &mut Vec<String>) {
+pub(crate) fn check_apr_models(project_path: &Path, good_patterns: &mut Vec<String>) {
     let models_dir = project_path.join("models");
     if !models_dir.exists() { return; }
     let apr_count = walkdir::WalkDir::new(&models_dir).max_depth(2).into_iter().filter_map(|e| e.ok()).filter(|e| e.path().extension().map(|x| x == "apr").unwrap_or(false)).count();
     if apr_count > 0 { good_patterns.push(format!("{} APR model(s)", apr_count)); }
 }
 
-pub fn check_ticket_refs(project_path: &Path, issues: &mut Vec<String>, good_patterns: &mut Vec<String>) {
+pub(crate) fn check_ticket_refs(project_path: &Path, issues: &mut Vec<String>, good_patterns: &mut Vec<String>) {
     use std::process::Command;
     let ticket_refs = Command::new("git").args(["log", "-50", "--oneline"]).current_dir(project_path).output()
         .map(|o| { let log = String::from_utf8_lossy(&o.stdout); log.lines().filter(|l| l.contains("PAR-") || l.contains("PMAT-") || l.contains("Refs ") || l.contains("GH-")).count() }).unwrap_or(0);
@@ -77,7 +77,7 @@ pub fn check_ticket_refs(project_path: &Path, issues: &mut Vec<String>, good_pat
     else if ticket_refs < 5 { issues.push("Few ticket references in recent commits".into()); }
 }
 
-pub fn check_ml_commit_classification(project_path: &Path, good_patterns: &mut Vec<String>) {
+pub(crate) fn check_ml_commit_classification(project_path: &Path, good_patterns: &mut Vec<String>) {
     use std::process::Command;
     let classifier = match CommitClassifier::load_sovereign_stack() { Ok(c) => c, Err(_) => return };
     let git_log_full = Command::new("git").args(["log", "-10", "--format=%B---COMMIT_SEP---"]).current_dir(project_path).output();
@@ -99,7 +99,7 @@ pub fn check_ml_commit_classification(project_path: &Path, good_patterns: &mut V
     }
 }
 
-pub fn build_sovereign_result(issues: &[String], good_patterns: &[String]) -> ComplianceCheck {
+pub(crate) fn build_sovereign_result(issues: &[String], good_patterns: &[String]) -> ComplianceCheck {
     if issues.is_empty() && !good_patterns.is_empty() {
         ComplianceCheck { name: "Sovereign Stack Patterns".into(), status: CheckStatus::Pass, message: format!("Patterns: {}", good_patterns.join(", ")), severity: Severity::Info }
     } else if !issues.is_empty() {
@@ -127,7 +127,7 @@ fn classify_local_deps(src_dir: &Path, paiml_deps: &[&str]) -> (Vec<String>, Vec
     (dirty, clean)
 }
 
-pub fn check_paiml_deps_workspace(project_path: &Path) -> ComplianceCheck {
+pub(crate) fn check_paiml_deps_workspace(project_path: &Path) -> ComplianceCheck {
     const PAIML_PACKAGES: &[&str] = &[
         "trueno", "trueno-graph", "trueno-rag", "trueno-viz", "trueno-db", "trueno-zram-core", "trueno-ublk",
         "aprender", "entrenar", "alimentar", "realizar", "batuta", "renacer", "repartir",
@@ -157,7 +157,7 @@ pub fn check_paiml_deps_workspace(project_path: &Path) -> ComplianceCheck {
 }
 
 /// Generate file health baseline for ratchet enforcement.
-pub fn generate_file_health_baseline(project_path: &Path) -> Result<()> {
+pub(crate) fn generate_file_health_baseline(project_path: &Path) -> Result<()> {
     use crate::services::file_health::{FileHealthBaseline, FileHealthMetrics};
     let files = match discover_source_files(project_path) { Ok(f) => f, Err(msg) => { println!("Skipping baseline: {}", msg); return Ok(()); } };
     let mut baseline = FileHealthBaseline::new();
@@ -179,7 +179,7 @@ pub fn generate_file_health_baseline(project_path: &Path) -> Result<()> {
 }
 
 /// Cross-stack file health check across multiple projects.
-pub fn check_file_health_multi(primary_path: &Path, include_projects: &[std::path::PathBuf]) -> Result<()> {
+pub(crate) fn check_file_health_multi(primary_path: &Path, include_projects: &[std::path::PathBuf]) -> Result<()> {
     use crate::services::file_health::{FileHealthReport, StackHealthReport};
     let mut project_reports: Vec<(String, FileHealthReport)> = Vec::new();
     let primary_name: String = primary_path.file_name().and_then(|n| n.to_str()).unwrap_or("primary").to_string();

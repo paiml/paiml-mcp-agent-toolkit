@@ -9,7 +9,7 @@ use std::path::Path;
 
 use super::types::*;
 // Re-export check_tdg_grade_gate and check_custom_scores from their submodules
-pub use super::check_tdg_grade::{check_tdg_grade_gate, check_custom_scores};
+pub(crate) use super::check_tdg_grade::{check_tdg_grade_gate, check_custom_scores};
 
 fn is_cb_suppressed(v: &CbPatternViolation, config: Option<&ComplyConfig>) -> bool {
     config.is_some_and(|c| c.is_suppressed(&v.pattern_id, &v.file).is_some())
@@ -50,7 +50,7 @@ fn aggregate_violations(check_name: &str, detectors: &[(&str, Vec<CbPatternViola
     ComplianceCheck { name: check_name.into(), status, message: format!("[Advisory] {} errors, {} warnings, {} info{}:\n{}", counts[0], counts[1], counts[2], suffix, display.join("\n")), severity: Severity::Warning }
 }
 
-pub fn check_shell_makefile_quality(project_path: &Path) -> ComplianceCheck {
+pub(crate) fn check_shell_makefile_quality(project_path: &Path) -> ComplianceCheck {
     use comply_cb_detect::{detect_cb400_git_hooks_quality, detect_cb401_makefile_quality, detect_cb402_shell_script_quality};
     let mut all_issues: Vec<String> = Vec::new();
     let (mut warning_count, mut error_count) = (0, 0);
@@ -63,7 +63,7 @@ pub fn check_shell_makefile_quality(project_path: &Path) -> ComplianceCheck {
     else { ComplianceCheck { name: "CB-400: Shell & Makefile Quality".into(), status: CheckStatus::Warn, message: format!("bashrs: {} warnings:\n{}", warning_count, format_violation_list(&all_issues)), severity: Severity::Warning } }
 }
 
-pub fn check_agent_context_adoption(project_path: &Path) -> ComplianceCheck {
+pub(crate) fn check_agent_context_adoption(project_path: &Path) -> ComplianceCheck {
     let report = comply_cb_detect::detect_cb130_agent_context_adoption(project_path);
     let mut issues: Vec<String> = Vec::new();
     let mut warning_count = 0;
@@ -77,9 +77,9 @@ pub fn check_agent_context_adoption(project_path: &Path) -> ComplianceCheck {
 }
 
 #[allow(dead_code)]
-pub fn check_rust_best_practices(project_path: &Path) -> ComplianceCheck { check_rust_best_practices_with_config(project_path, None) }
+pub(crate) fn check_rust_best_practices(project_path: &Path) -> ComplianceCheck { check_rust_best_practices_with_config(project_path, None) }
 
-pub fn check_rust_best_practices_with_config(project_path: &Path, comply_config: Option<&ComplyConfig>) -> ComplianceCheck {
+pub(crate) fn check_rust_best_practices_with_config(project_path: &Path, comply_config: Option<&ComplyConfig>) -> ComplianceCheck {
     if !project_path.join("Cargo.toml").exists() { return ComplianceCheck { name: "CB-500: Rust Best Practices (CB-500 to CB-530)".into(), status: CheckStatus::Pass, message: "Not a Rust project (no Cargo.toml found)".into(), severity: Severity::Info }; }
     let detectors: Vec<(&str, Vec<CbPatternViolation>)> = vec![
         ("CB-500", comply_cb_detect::detect_cb500_publish_hygiene(project_path)), ("CB-501", comply_cb_detect::detect_cb501_unwrap_density(project_path)),
@@ -102,9 +102,9 @@ pub fn check_rust_best_practices_with_config(project_path: &Path, comply_config:
 }
 
 #[allow(dead_code)]
-pub fn check_lua_best_practices(project_path: &Path) -> ComplianceCheck { check_lua_best_practices_with_config(project_path, None) }
+pub(crate) fn check_lua_best_practices(project_path: &Path) -> ComplianceCheck { check_lua_best_practices_with_config(project_path, None) }
 
-pub fn check_lua_best_practices_with_config(project_path: &Path, comply_config: Option<&ComplyConfig>) -> ComplianceCheck {
+pub(crate) fn check_lua_best_practices_with_config(project_path: &Path, comply_config: Option<&ComplyConfig>) -> ComplianceCheck {
     if comply_cb_detect::walkdir_lua_files(project_path).is_empty() { return ComplianceCheck { name: "CB-600: Lua Best Practices (CB-600 to CB-619)".into(), status: CheckStatus::Pass, message: "Not a Lua project (no .lua files found)".into(), severity: Severity::Info }; }
     let detectors: Vec<(&str, Vec<CbPatternViolation>)> = vec![
         ("CB-600", comply_cb_detect::detect_cb600_implicit_globals(project_path)), ("CB-601", comply_cb_detect::detect_cb601_nil_unsafe_access(project_path)),
@@ -122,48 +122,48 @@ pub fn check_lua_best_practices_with_config(project_path: &Path, comply_config: 
 }
 
 #[allow(dead_code)]
-pub fn check_sql_best_practices(project_path: &Path) -> ComplianceCheck { check_sql_best_practices_with_config(project_path, None) }
-pub fn check_sql_best_practices_with_config(project_path: &Path, comply_config: Option<&ComplyConfig>) -> ComplianceCheck {
+pub(crate) fn check_sql_best_practices(project_path: &Path) -> ComplianceCheck { check_sql_best_practices_with_config(project_path, None) }
+pub(crate) fn check_sql_best_practices_with_config(project_path: &Path, comply_config: Option<&ComplyConfig>) -> ComplianceCheck {
     if comply_cb_detect::walkdir_sql_files(project_path).is_empty() { return ComplianceCheck { name: "CB-700: SQL Best Practices (CB-700 to CB-705)".into(), status: CheckStatus::Pass, message: "Not a SQL project (no .sql files found)".into(), severity: Severity::Info }; }
     let detectors: Vec<(&str, Vec<CbPatternViolation>)> = vec![("CB-700", comply_cb_detect::detect_cb700_select_star(project_path)), ("CB-701", comply_cb_detect::detect_cb701_missing_where(project_path)), ("CB-702", comply_cb_detect::detect_cb702_implicit_join(project_path)), ("CB-703", comply_cb_detect::detect_cb703_sql_injection(project_path)), ("CB-704", comply_cb_detect::detect_cb704_missing_index_hint(project_path)), ("CB-705", comply_cb_detect::detect_cb705_n_plus_1_query(project_path))];
     aggregate_violations("CB-700: SQL Best Practices (CB-700 to CB-705)", &detectors, comply_config, true)
 }
 
 #[allow(dead_code)]
-pub fn check_markdown_best_practices(project_path: &Path) -> ComplianceCheck { check_markdown_best_practices_with_config(project_path, None) }
-pub fn check_markdown_best_practices_with_config(project_path: &Path, comply_config: Option<&ComplyConfig>) -> ComplianceCheck {
+pub(crate) fn check_markdown_best_practices(project_path: &Path) -> ComplianceCheck { check_markdown_best_practices_with_config(project_path, None) }
+pub(crate) fn check_markdown_best_practices_with_config(project_path: &Path, comply_config: Option<&ComplyConfig>) -> ComplianceCheck {
     if comply_cb_detect::walkdir_markdown_files(project_path).is_empty() { return ComplianceCheck { name: "CB-900: Markdown Best Practices (CB-900 to CB-904)".into(), status: CheckStatus::Pass, message: "No Markdown files found".into(), severity: Severity::Info }; }
     let detectors: Vec<(&str, Vec<CbPatternViolation>)> = vec![("CB-900", comply_cb_detect::detect_cb900_broken_internal_link(project_path)), ("CB-901", comply_cb_detect::detect_cb901_heading_hierarchy_skip(project_path)), ("CB-902", comply_cb_detect::detect_cb902_missing_alt_text(project_path)), ("CB-903", comply_cb_detect::detect_cb903_bare_url(project_path)), ("CB-904", comply_cb_detect::detect_cb904_long_line(project_path))];
     aggregate_violations("CB-900: Markdown Best Practices (CB-900 to CB-904)", &detectors, comply_config, false)
 }
 
 #[allow(dead_code)]
-pub fn check_yaml_best_practices(project_path: &Path) -> ComplianceCheck { check_yaml_best_practices_with_config(project_path, None) }
-pub fn check_yaml_best_practices_with_config(project_path: &Path, comply_config: Option<&ComplyConfig>) -> ComplianceCheck {
+pub(crate) fn check_yaml_best_practices(project_path: &Path) -> ComplianceCheck { check_yaml_best_practices_with_config(project_path, None) }
+pub(crate) fn check_yaml_best_practices_with_config(project_path: &Path, comply_config: Option<&ComplyConfig>) -> ComplianceCheck {
     if comply_cb_detect::walkdir_yaml_files(project_path).is_empty() { return ComplianceCheck { name: "CB-950: YAML Best Practices (CB-950 to CB-954)".into(), status: CheckStatus::Pass, message: "No YAML files found".into(), severity: Severity::Info }; }
     let detectors: Vec<(&str, Vec<CbPatternViolation>)> = vec![("CB-950", comply_cb_detect::detect_cb950_truthy_ambiguity(project_path)), ("CB-951", comply_cb_detect::detect_cb951_excessive_nesting(project_path)), ("CB-952", comply_cb_detect::detect_cb952_missing_required_fields(project_path)), ("CB-953", comply_cb_detect::detect_cb953_unpinned_action(project_path)), ("CB-954", comply_cb_detect::detect_cb954_plaintext_secret(project_path))];
     aggregate_violations("CB-950: YAML Best Practices (CB-950 to CB-954)", &detectors, comply_config, true)
 }
 
 #[allow(dead_code)]
-pub fn check_model_quality(project_path: &Path) -> ComplianceCheck { check_model_quality_with_config(project_path, None) }
-pub fn check_model_quality_with_config(project_path: &Path, comply_config: Option<&ComplyConfig>) -> ComplianceCheck {
+pub(crate) fn check_model_quality(project_path: &Path) -> ComplianceCheck { check_model_quality_with_config(project_path, None) }
+pub(crate) fn check_model_quality_with_config(project_path: &Path, comply_config: Option<&ComplyConfig>) -> ComplianceCheck {
     if comply_cb_detect::walkdir_model_files(project_path).is_empty() { return ComplianceCheck { name: "CB-1000: MLOps Model Quality (CB-1000 to CB-1008)".into(), status: CheckStatus::Pass, message: "No model files found (*.gguf, *.apr, *.safetensors)".into(), severity: Severity::Info }; }
     let detectors: Vec<(&str, Vec<CbPatternViolation>)> = vec![("CB-1000", comply_cb_detect::detect_cb1000_missing_model_card(project_path)), ("CB-1001", comply_cb_detect::detect_cb1001_oversized_tensor_count(project_path)), ("CB-1002", comply_cb_detect::detect_cb1002_missing_tokenizer(project_path)), ("CB-1004", comply_cb_detect::detect_cb1004_missing_architecture(project_path)), ("CB-1005", comply_cb_detect::detect_cb1005_quantization_mismatch(project_path)), ("CB-1006", comply_cb_detect::detect_cb1006_sharded_without_index(project_path)), ("CB-1007", comply_cb_detect::detect_cb1007_excessive_file_size(project_path)), ("CB-1008", comply_cb_detect::detect_cb1008_apr_missing_crc(project_path))];
     aggregate_violations("CB-1000: MLOps Model Quality (CB-1000 to CB-1008)", &detectors, comply_config, true)
 }
 
 #[allow(dead_code)]
-pub fn check_scala_best_practices(project_path: &Path) -> ComplianceCheck { check_scala_best_practices_with_config(project_path, None) }
-pub fn check_scala_best_practices_with_config(project_path: &Path, comply_config: Option<&ComplyConfig>) -> ComplianceCheck {
+pub(crate) fn check_scala_best_practices(project_path: &Path) -> ComplianceCheck { check_scala_best_practices_with_config(project_path, None) }
+pub(crate) fn check_scala_best_practices_with_config(project_path: &Path, comply_config: Option<&ComplyConfig>) -> ComplianceCheck {
     if comply_cb_detect::walkdir_scala_files(project_path).is_empty() { return ComplianceCheck { name: "CB-800: Scala Best Practices (CB-800 to CB-805)".into(), status: CheckStatus::Pass, message: "Not a Scala project (no .scala files found)".into(), severity: Severity::Info }; }
     let detectors: Vec<(&str, Vec<CbPatternViolation>)> = vec![("CB-800", comply_cb_detect::detect_cb800_mutable_collection(project_path)), ("CB-801", comply_cb_detect::detect_cb801_null_usage(project_path)), ("CB-802", comply_cb_detect::detect_cb802_wildcard_import(project_path)), ("CB-803", comply_cb_detect::detect_cb803_return_statement(project_path)), ("CB-804", comply_cb_detect::detect_cb804_var_declaration(project_path)), ("CB-805", comply_cb_detect::detect_cb805_blocking_in_future(project_path))];
     aggregate_violations("CB-800: Scala Best Practices (CB-800 to CB-805)", &detectors, comply_config, true)
 }
 
 #[allow(dead_code)]
-pub fn check_lean_best_practices(project_path: &Path) -> ComplianceCheck { check_lean_best_practices_with_config(project_path, None) }
-pub fn check_lean_best_practices_with_config(project_path: &Path, comply_config: Option<&ComplyConfig>) -> ComplianceCheck {
+pub(crate) fn check_lean_best_practices(project_path: &Path) -> ComplianceCheck { check_lean_best_practices_with_config(project_path, None) }
+pub(crate) fn check_lean_best_practices_with_config(project_path: &Path, comply_config: Option<&ComplyConfig>) -> ComplianceCheck {
     if comply_cb_detect::walkdir_lean_files(project_path).is_empty() { return ComplianceCheck { name: "CB-1050: Lean 4 Best Practices (CB-1050 to CB-1053)".into(), status: CheckStatus::Pass, message: "Not a Lean project (no .lean files found)".into(), severity: Severity::Info }; }
     let detectors: Vec<(&str, Vec<CbPatternViolation>)> = vec![("CB-1050", comply_cb_detect::detect_cb1050_sorry_usage(project_path)), ("CB-1051", comply_cb_detect::detect_cb1051_axiom_usage(project_path)), ("CB-1052", comply_cb_detect::detect_cb1052_theorem_coverage(project_path)), ("CB-1053", comply_cb_detect::detect_cb1053_undocumented_theorems(project_path))];
     aggregate_violations("CB-1050: Lean 4 Best Practices (CB-1050 to CB-1053)", &detectors, comply_config, true)

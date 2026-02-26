@@ -18,7 +18,7 @@ use std::path::Path;
 ///
 /// Uses atomic write: builds a temporary DB, then renames into place.
 /// This prevents concurrent readers from seeing a partial/empty file.
-pub fn save_to_sqlite(
+pub(crate) fn save_to_sqlite(
     db_path: &Path,
     functions: &[FunctionEntry],
     calls: &HashMap<usize, Vec<usize>>,
@@ -60,7 +60,7 @@ pub fn save_to_sqlite(
     Ok(())
 }
 
-pub fn humanize_bytes(bytes: u64) -> String {
+pub(crate) fn humanize_bytes(bytes: u64) -> String {
     if bytes < 1024 {
         format!("{bytes} B")
     } else if bytes < 1024 * 1024 {

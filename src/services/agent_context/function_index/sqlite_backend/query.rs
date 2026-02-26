@@ -12,7 +12,7 @@ use rusqlite::{params, Connection};
 ///
 /// Returns (function_id (0-based), bm25_score) pairs sorted by relevance.
 #[allow(clippy::cast_possible_truncation)]
-pub fn fts5_search(
+pub(crate) fn fts5_search(
     conn: &Connection,
     query: &str,
     limit: usize,
@@ -62,7 +62,7 @@ pub fn fts5_search(
 /// Convert a natural language query to FTS5 match syntax.
 ///
 /// Splits into tokens, filters keywords/stop words, joins with implicit AND.
-pub fn tokenize_query_for_fts5(query: &str) -> String {
+pub(crate) fn tokenize_query_for_fts5(query: &str) -> String {
     query
         .split(|c: char| !c.is_alphanumeric() && c != '_')
         .filter(|s| s.len() >= 2 && !is_keyword(s))
@@ -74,7 +74,7 @@ pub fn tokenize_query_for_fts5(query: &str) -> String {
 /// Query call graph for a single function from SQLite (on-demand).
 ///
 /// Returns 0-based callee indices for `get_calls()`.
-pub fn query_callees(conn: &Connection, func_idx: usize) -> Result<Vec<usize>, String> {
+pub(crate) fn query_callees(conn: &Connection, func_idx: usize) -> Result<Vec<usize>, String> {
     let caller_id = (func_idx + 1) as i64;
     let mut stmt = conn
         .prepare_cached("SELECT callee_id FROM call_graph WHERE caller_id = ?1")
@@ -92,7 +92,7 @@ pub fn query_callees(conn: &Connection, func_idx: usize) -> Result<Vec<usize>, S
 /// Query call graph for a single function from SQLite (on-demand).
 ///
 /// Returns 0-based caller indices for `get_called_by()`.
-pub fn query_callers(conn: &Connection, func_idx: usize) -> Result<Vec<usize>, String> {
+pub(crate) fn query_callers(conn: &Connection, func_idx: usize) -> Result<Vec<usize>, String> {
     let callee_id = (func_idx + 1) as i64;
     let mut stmt = conn
         .prepare_cached("SELECT caller_id FROM call_graph WHERE callee_id = ?1")

@@ -16,7 +16,7 @@ use std::path::Path;
 use super::types::*;
 
 /// CB-300: Muda Waste Score (COMPLY-040)
-pub fn check_muda_waste_score(project_path: &Path) -> ComplianceCheck {
+pub(crate) fn check_muda_waste_score(project_path: &Path) -> ComplianceCheck {
     use crate::cli::handlers::comply_handlers::muda_handlers;
     let report = muda_handlers::calculate_muda_score(project_path);
     let message = format!("Muda Score: {:.1}/100 ({}) - Over:{:.0} Wait:{:.0} Inv:{:.0} Proc:{:.0} Def:{:.0}",
@@ -30,7 +30,7 @@ pub fn check_muda_waste_score(project_path: &Path) -> ComplianceCheck {
 }
 
 /// CB-301: Reproducibility Level Check (COMPLY-041)
-pub fn check_reproducibility_level(project_path: &Path) -> ComplianceCheck {
+pub(crate) fn check_reproducibility_level(project_path: &Path) -> ComplianceCheck {
     use crate::cli::handlers::comply_handlers::reproducibility_handlers;
     let report = reproducibility_handlers::check_reproducibility(project_path);
     let detail_summary: String = report.details.iter().take(3).cloned().collect::<Vec<_>>().join("; ");
@@ -44,7 +44,7 @@ pub fn check_reproducibility_level(project_path: &Path) -> ComplianceCheck {
 }
 
 /// CB-302: Golden Trace Drift Detection (COMPLY-042)
-pub fn check_golden_trace_drift(project_path: &Path) -> ComplianceCheck {
+pub(crate) fn check_golden_trace_drift(project_path: &Path) -> ComplianceCheck {
     use crate::cli::handlers::comply_handlers::reproducibility_handlers;
     match reproducibility_handlers::check_golden_trace_drift(project_path) {
         None => ComplianceCheck { name: "CB-302: Golden Trace Drift".into(), status: CheckStatus::Skip, message: "No renacer.toml configured - golden tracing not enabled".into(), severity: Severity::Info },
@@ -54,7 +54,7 @@ pub fn check_golden_trace_drift(project_path: &Path) -> ComplianceCheck {
 }
 
 /// CB-303: Equation-Driven Development Compliance (COMPLY-043)
-pub fn check_edd_compliance(project_path: &Path) -> ComplianceCheck {
+pub(crate) fn check_edd_compliance(project_path: &Path) -> ComplianceCheck {
     use crate::cli::handlers::comply_handlers::edd_handlers;
     let report = edd_handlers::check_edd_compliance(project_path);
     if !report.is_simulation_project {
@@ -72,7 +72,7 @@ pub fn check_edd_compliance(project_path: &Path) -> ComplianceCheck {
 }
 
 /// CB-304: Dead Code Percentage
-pub fn check_dead_code_percentage(project_path: &Path) -> ComplianceCheck {
+pub(crate) fn check_dead_code_percentage(project_path: &Path) -> ComplianceCheck {
     let config = crate::models::deep_context_config::DeepContextConfig::default();
     let threshold_pct = config.dead_code_threshold * 100.0;
     let source_dirs: Vec<std::path::PathBuf> = ["src", "crates", "lean", "lib"].iter().map(|d| project_path.join(d)).filter(|d| d.exists() && d.is_dir()).collect();
@@ -120,7 +120,7 @@ fn append_violation_details(msg: &mut String, report: &DependencyCountReport, li
 }
 
 /// CB-081: Dependency Count Check
-pub fn check_dependency_count(project_path: &Path) -> ComplianceCheck {
+pub(crate) fn check_dependency_count(project_path: &Path) -> ComplianceCheck {
     if !project_path.join("Cargo.toml").exists() {
         return ComplianceCheck { name: "CB-081: Dependency Health".into(), status: CheckStatus::Skip, message: "Not a Rust project (no Cargo.toml)".into(), severity: Severity::Info };
     }
@@ -139,7 +139,7 @@ pub fn check_dependency_count(project_path: &Path) -> ComplianceCheck {
 }
 
 /// Detect project type and discover source files across all source directories.
-pub fn discover_source_files(project_path: &Path) -> Result<Vec<std::path::PathBuf>, String> {
+pub(crate) fn discover_source_files(project_path: &Path) -> Result<Vec<std::path::PathBuf>, String> {
     let is_rust = project_path.join("Cargo.toml").exists();
     let is_lean = project_path.join("lakefile.lean").exists() || project_path.join("lean-toolchain").exists() || project_path.join("lean").join("lakefile.lean").exists() || project_path.join("lean").join("lean-toolchain").exists();
     if !is_rust && !is_lean { return Err("No Cargo.toml or lakefile.lean found".into()); }
@@ -181,7 +181,7 @@ fn build_file_health_check(
     }
 }
 
-pub fn check_file_health(project_path: &Path) -> ComplianceCheck {
+pub(crate) fn check_file_health(project_path: &Path) -> ComplianceCheck {
     let files = match discover_source_files(project_path) {
         Ok(f) => f,
         Err(msg) => return ComplianceCheck { name: "File Health".into(), status: CheckStatus::Skip, message: msg, severity: Severity::Info },
@@ -202,7 +202,7 @@ pub fn check_file_health(project_path: &Path) -> ComplianceCheck {
     build_file_health_check(&report, critical_count, problem_count, over_500_count)
 }
 
-pub fn estimate_test_lines(content: &str) -> usize {
+pub(crate) fn estimate_test_lines(content: &str) -> usize {
     let mut test_lines = 0;
     let mut in_test_module = false;
     let mut brace_depth = 0;
@@ -229,7 +229,7 @@ fn count_line_complexity(trimmed: &str) -> u32 {
     count
 }
 
-pub fn estimate_avg_complexity(content: &str) -> f32 {
+pub(crate) fn estimate_avg_complexity(content: &str) -> f32 {
     let mut total_complexity = 1u32;
     let mut function_count = 0u32;
     for line in content.lines() {
@@ -242,4 +242,4 @@ pub fn estimate_avg_complexity(content: &str) -> f32 {
 }
 
 // Sovereign stack patterns and PAIML deps checks (from migrate_handlers.rs)
-pub use super::check_sovereign::*;
+pub(crate) use super::check_sovereign::*;

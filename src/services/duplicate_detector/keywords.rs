@@ -1,7 +1,7 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
 //! Keyword lists for each supported language.
 
-pub const TYPESCRIPT_KEYWORDS: &[&str] = &[
+pub(crate) const TYPESCRIPT_KEYWORDS: &[&str] = &[
     "function",
     "const",
     "let",
@@ -21,12 +21,12 @@ pub const TYPESCRIPT_KEYWORDS: &[&str] = &[
     "await",
 ];
 
-pub const PYTHON_KEYWORDS: &[&str] = &[
+pub(crate) const PYTHON_KEYWORDS: &[&str] = &[
     "def", "class", "if", "elif", "else", "for", "while", "return", "import", "from", "try",
     "except", "finally", "with", "as", "async", "await",
 ];
 
-pub const C_CPP_KEYWORDS: &[&str] = &[
+pub(crate) const C_CPP_KEYWORDS: &[&str] = &[
     "auto",
     "break",
     "case",
@@ -92,7 +92,7 @@ pub const C_CPP_KEYWORDS: &[&str] = &[
     "false",
 ];
 
-pub const KOTLIN_KEYWORDS: &[&str] = &[
+pub(crate) const KOTLIN_KEYWORDS: &[&str] = &[
     "abstract",
     "actual",
     "annotation",

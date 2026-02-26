@@ -8,7 +8,7 @@ use crate::tdg::hooks_cache::{CacheCheckResult, HooksCacheManager};
 use anyhow::Result;
 
 /// Handle hooks cache subcommand
-pub async fn handle_cache(action: &HooksCacheAction) -> Result<()> {
+pub(super) async fn handle_cache(action: &HooksCacheAction) -> Result<()> {
     let project_root = std::env::current_dir()?;
     let manager = HooksCacheManager::new(&project_root);
 

@@ -1,4 +1,4 @@
-pub fn detect_language(path: &std::path::Path) -> String {
+pub(super) fn detect_language(path: &std::path::Path) -> String {
     if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
         match ext {
             // Core languages with full support
