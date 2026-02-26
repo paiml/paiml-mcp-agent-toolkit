@@ -191,7 +191,7 @@ impl FiveWhysAnalyzer {
                 let is_source = p
                     .extension()
                     .and_then(|e| e.to_str())
-                    .map_or(false, |e| Self::SATD_EXTENSIONS.contains(&e));
+                    .is_some_and(|e| Self::SATD_EXTENSIONS.contains(&e));
                 if !is_source {
                     return 0;
                 }
