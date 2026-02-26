@@ -2,6 +2,10 @@
 // CategoryScores - 6 Scoring Categories
 // ============================================================================
 
+fn default_applicable() -> bool {
+    true
+}
+
 /// Six scoring categories (106 points total)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CategoryScores {
@@ -65,6 +69,7 @@ pub struct CategoryScore {
     /// Whether this category is applicable to the project type.
     /// Non-applicable categories (e.g., Rust Tooling for a pure Lean project)
     /// are excluded from normalized grade calculation.
+    #[serde(default = "default_applicable")]
     pub applicable: bool,
 }
 
