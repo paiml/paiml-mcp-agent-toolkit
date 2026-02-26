@@ -63,7 +63,7 @@ pub fn execute_tests(config: &GateConfig, project_dir: &Path) -> Result<GateResu
     let output = Command::new("cargo")
         .arg("test")
         .arg("--lib")
-        .env("RUST_MIN_STACK", "8388608") // Required for clap parsing tests
+        .env("RUST_MIN_STACK", "33554432") // 32MB stack for clap parsing tests
         .current_dir(project_dir)
         .output()?;
     let duration = start.elapsed();
@@ -131,7 +131,7 @@ pub fn execute_coverage(config: &GateConfig, project_dir: &Path) -> Result<GateR
         .arg("llvm-cov")
         .arg("--lib")
         .arg("--summary-only")
-        .env("RUST_MIN_STACK", "8388608") // Required for clap parsing tests
+        .env("RUST_MIN_STACK", "33554432") // 32MB stack for clap parsing tests
         .current_dir(project_dir)
         .output()?;
     let duration = start.elapsed();
@@ -139,18 +139,21 @@ pub fn execute_coverage(config: &GateConfig, project_dir: &Path) -> Result<GateR
     // Clean up coverage artifacts to prevent zram bloat (TICKET-PMAT-9)
     cleanup_coverage_artifacts(project_dir);
 
-    if !output.status.success() {
+    // Try to parse coverage even on test failure (flaky tests shouldn't block coverage)
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    let coverage = parse_coverage_from_output(&stdout);
+
+    // If no coverage data found AND exit was non-zero, report failure
+    if coverage == 0.0 && !output.status.success() {
+        let err_snippet = stderr.lines().rev().take(3).collect::<Vec<_>>();
         return Ok(GateResult {
             name: "coverage".to_string(),
             passed: false,
             duration,
-            message: "✗ Coverage check failed to run".to_string(),
+            message: format!("✗ Coverage check failed to run: {}", err_snippet.join(" | ")),
         });
     }
-
-    // Parse coverage percentage from output
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    let coverage = parse_coverage_from_output(&stdout);
 
     let passed = coverage >= config.min_coverage;
     let message = if passed {
