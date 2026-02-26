@@ -31,6 +31,14 @@ include!("work_contract_profile.rs");
 
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
+mod dbc_tests {
+    use super::*;
+
+    include!("work_contract_dbc_tests.rs");
+}
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
 mod tests {
     use super::*;
 
