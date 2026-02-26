@@ -1575,3 +1575,24 @@ This metric answers "are we writing good contracts?" — not just "do our contra
 9. Gu, L. et al. (2025). "AgentSpec: Customizable Runtime Enforcement for LLM Agents." *arXiv:2503.18666*. — AgentSpec's trigger/predicate/enforcement model independently validates the claim structure (ClauseKind/FalsificationMethod/blocking+rescue) in this spec.
 10. Mugnier, S. et al. (2025). "VerifyThisBench: Generating Verified Code, Specs, and Proofs with LLMs." *arXiv:2505.19271*. — Supports co-generation of contracts alongside work items rather than retrofitting; motivates contract quality metrics.
 11. Tolmach, P. et al. (2025). "Formal Verification in Solidity and Move." *arXiv:2502.13929*. — Confirms invariant checking at transaction boundaries (checkpoint model) as the standard approach in contract verification.
+
+---
+
+## Appendix D: Falsification Report (2026-02-26)
+
+Systematic falsification of this specification against the implementation found **10 gaps**. Resolution status:
+
+| Gap | Section | Severity | Description | Status |
+|-----|---------|----------|-------------|--------|
+| 1 | §2.4 | CRITICAL | Toolchain check NOT enforced — `with_dbc()` silently skipped missing tools | **FIXED** — `check_toolchain()` now called, fails fast with actionable error |
+| 2 | §4.2/4.3 | CRITICAL | Invariants always passed — checkpoint stubs returned `passed: true` | **FIXED** — Real checks: file size via git diff, lint via clippy, compile via cargo check |
+| 3 | §5.3-5.4 | CRITICAL | `--iteration` flag NOT wired — CLI/dispatcher/handler disconnected | **FIXED** — Iteration flows through CLI → dispatcher → handler → contract |
+| 4 | §5.3 | HIGH | `validate_subcontracting()` never called — monotonic strengthening not enforced | **FIXED** — Called when iteration > 1, loads prior contract, validates postconditions |
+| 5 | §6.2 | HIGH | Rescue protocol NOT executed during completion — types existed but unused | **FIXED** — Rescue runs on falsification failure, produces diagnosis + suggested actions |
+| 6 | §6.2 | MEDIUM | No rescue attempt limit enforcement — spec says max 3 | **FIXED** — Enforced at 3 per work item, blocks further rescue after limit |
+| 7 | §7.2 | MEDIUM | Universal claims don't detect build/test commands — uses MetaFalsification | **DEFERRED** — Requires deeper refactoring of falsification runner |
+| 8 | §2.6 | HIGH | Stack manifest `extends` parsed but never resolved | **FIXED** — `resolve_base_claims()` loads base profile, merges with override semantics |
+| 9 | §11.4 | LOW | No "only one active work item" enforcement | **FIXED** — Warning printed during `work start` if other items are in-progress |
+| 10 | §12.1 | LOW | Contract quality NOT checked during completion | **FIXED** — Low quality (<50%) triggers warning about --without exclusions |
+
+**Methodology**: Explore agent diffed spec sections against implementation code paths. Each gap was verified by tracing the spec claim to its expected code location and confirming the behavior was missing or stubbed.
