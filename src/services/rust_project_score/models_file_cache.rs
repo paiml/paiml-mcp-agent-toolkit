@@ -79,6 +79,19 @@ impl FileCache {
             cache.files.insert(clippy_toml, content);
         }
 
+        // Read .cargo/config.toml (build performance scoring)
+        let cargo_config_toml = project_path.join(".cargo/config.toml");
+        if cargo_config_toml.exists() {
+            let content = std::fs::read_to_string(&cargo_config_toml)?;
+            cache.files.insert(cargo_config_toml, content);
+        }
+        // Also check legacy .cargo/config (no extension)
+        let cargo_config = project_path.join(".cargo/config");
+        if cargo_config.exists() {
+            let content = std::fs::read_to_string(&cargo_config)?;
+            cache.files.insert(cargo_config, content);
+        }
+
         // **Kaizen Round 6**: Parallel directory walking for 2-3x speedup
         // Collect directories to walk
         let dirs_to_walk: Vec<PathBuf> = vec![
