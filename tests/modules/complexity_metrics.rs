@@ -199,8 +199,8 @@ mod coverage_improvement {
 
     #[test]
     fn test_various_helper_functions() {
-        use pmat::utils::helpers::register_helpers;
         use minijinja::context;
+        use pmat::utils::helpers::register_helpers;
 
         let mut env = minijinja::Environment::new();
         register_helpers(&mut env);

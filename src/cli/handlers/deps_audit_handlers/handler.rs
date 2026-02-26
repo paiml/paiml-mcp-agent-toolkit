@@ -38,8 +38,13 @@ pub fn handle_deps_audit(
         .map(|(name, version, is_dev)| analyze_dep(name, version, *is_dev))
         .collect();
 
+    // Collect names of regular deps to skip duplicates from dev-deps
+    let regular_dep_names: std::collections::HashSet<&str> =
+        deps.iter().map(|(n, _, _)| n.as_str()).collect();
+
     let dev_analyses: Vec<_> = dev_deps
         .iter()
+        .filter(|(name, _, _)| !regular_dep_names.contains(name.as_str()))
         .map(|(name, version, _)| analyze_dep(name, version, true))
         .collect();
 

@@ -93,9 +93,9 @@ fn verify_dependency_versions() {
 
     // Critical dependencies for your MCP server
     let critical_deps = [
-        "tokio",      // Async runtime
-        "serde",      // Serialization
-        "minijinja",  // Template engine
+        "tokio",     // Async runtime
+        "serde",     // Serialization
+        "minijinja", // Template engine
     ];
 
     for dep in &critical_deps {
