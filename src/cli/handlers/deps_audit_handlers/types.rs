@@ -112,7 +112,7 @@ pub enum SortMode {
 }
 
 impl SortMode {
-    pub fn from_str(s: &str) -> Self {
+    pub fn parse(s: &str) -> Self {
         match s.to_lowercase().as_str() {
             "size" | "binary" | "kb" => SortMode::Size,
             "pagerank" | "rank" | "critical" => SortMode::PageRank,

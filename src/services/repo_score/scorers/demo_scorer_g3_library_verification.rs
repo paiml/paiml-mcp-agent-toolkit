@@ -63,11 +63,10 @@ impl DemoScorer {
                             return true;
                         }
                     }
-                } else if path.is_dir() {
-                    if Box::pin(self.verify_library_usage(&path, libs)).await {
+                } else if path.is_dir()
+                    && Box::pin(self.verify_library_usage(&path, libs)).await {
                         return true;
                     }
-                }
             }
         }
         false

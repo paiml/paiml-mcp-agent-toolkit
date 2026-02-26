@@ -155,48 +155,48 @@ mod coverage_instrumented_tests {
     }
 
     // ====================================================================
-    // SortMode::from_str
+    // SortMode::parse
     // ====================================================================
 
     #[test]
     fn test_ci_sort_mode_size_variants() {
-        assert_eq!(SortMode::from_str("size"), SortMode::Size);
-        assert_eq!(SortMode::from_str("binary"), SortMode::Size);
-        assert_eq!(SortMode::from_str("kb"), SortMode::Size);
+        assert_eq!(SortMode::parse("size"), SortMode::Size);
+        assert_eq!(SortMode::parse("binary"), SortMode::Size);
+        assert_eq!(SortMode::parse("kb"), SortMode::Size);
     }
 
     #[test]
     fn test_ci_sort_mode_pagerank_variants() {
-        assert_eq!(SortMode::from_str("pagerank"), SortMode::PageRank);
-        assert_eq!(SortMode::from_str("rank"), SortMode::PageRank);
-        assert_eq!(SortMode::from_str("critical"), SortMode::PageRank);
+        assert_eq!(SortMode::parse("pagerank"), SortMode::PageRank);
+        assert_eq!(SortMode::parse("rank"), SortMode::PageRank);
+        assert_eq!(SortMode::parse("critical"), SortMode::PageRank);
     }
 
     #[test]
     fn test_ci_sort_mode_name_variants() {
-        assert_eq!(SortMode::from_str("name"), SortMode::Name);
-        assert_eq!(SortMode::from_str("alpha"), SortMode::Name);
-        assert_eq!(SortMode::from_str("alphabetical"), SortMode::Name);
+        assert_eq!(SortMode::parse("name"), SortMode::Name);
+        assert_eq!(SortMode::parse("alpha"), SortMode::Name);
+        assert_eq!(SortMode::parse("alphabetical"), SortMode::Name);
     }
 
     #[test]
     fn test_ci_sort_mode_category_variants() {
-        assert_eq!(SortMode::from_str("category"), SortMode::Category);
-        assert_eq!(SortMode::from_str("cat"), SortMode::Category);
+        assert_eq!(SortMode::parse("category"), SortMode::Category);
+        assert_eq!(SortMode::parse("cat"), SortMode::Category);
     }
 
     #[test]
     fn test_ci_sort_mode_default_transitive() {
-        assert_eq!(SortMode::from_str("transitive"), SortMode::Transitive);
-        assert_eq!(SortMode::from_str("anything_else"), SortMode::Transitive);
-        assert_eq!(SortMode::from_str(""), SortMode::Transitive);
+        assert_eq!(SortMode::parse("transitive"), SortMode::Transitive);
+        assert_eq!(SortMode::parse("anything_else"), SortMode::Transitive);
+        assert_eq!(SortMode::parse(""), SortMode::Transitive);
     }
 
     #[test]
     fn test_ci_sort_mode_case_insensitive() {
-        assert_eq!(SortMode::from_str("SIZE"), SortMode::Size);
-        assert_eq!(SortMode::from_str("PageRank"), SortMode::PageRank);
-        assert_eq!(SortMode::from_str("NAME"), SortMode::Name);
+        assert_eq!(SortMode::parse("SIZE"), SortMode::Size);
+        assert_eq!(SortMode::parse("PageRank"), SortMode::PageRank);
+        assert_eq!(SortMode::parse("NAME"), SortMode::Name);
     }
 
     // ====================================================================

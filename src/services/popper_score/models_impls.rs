@@ -91,7 +91,7 @@ impl PopperGrade {
         GRADE_THRESHOLDS
             .iter()
             .find(|(threshold, _)| score >= *threshold)
-            .map(|(_, grade)| grade.clone())
+            .map(|(_, grade)| *grade)
             .unwrap_or(PopperGrade::F)
     }
 

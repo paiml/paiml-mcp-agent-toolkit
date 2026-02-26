@@ -55,7 +55,7 @@ fn score_from_unsafe(unsafe_blocks: usize, documented: usize) -> f64 {
 
 fn for_each_rs_content_cached(cache: &FileCache, src_path: &Path, mut f: impl FnMut(&str)) {
     for (_path, content) in cache.get_rust_files_in_dir(src_path) {
-        f(&content);
+        f(content);
     }
 }
 

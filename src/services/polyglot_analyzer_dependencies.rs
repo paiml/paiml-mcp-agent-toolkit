@@ -5,7 +5,7 @@ const SKIPPED_DIRS: &[&str] = &[
 fn is_skipped_dir(path: &Path) -> bool {
     path.file_name()
         .and_then(|n| n.to_str())
-        .map_or(false, |name| SKIPPED_DIRS.contains(&name))
+        .is_some_and(|name| SKIPPED_DIRS.contains(&name))
 }
 
 fn build_config_dependency_pairs(languages: &[&String], config_file: &str) -> Vec<CrossLanguageDependency> {

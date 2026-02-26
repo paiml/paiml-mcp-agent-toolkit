@@ -106,6 +106,7 @@ pub async fn handle_work_init(
 }
 
 /// Handle work start command
+#[allow(clippy::too_many_arguments)]
 pub async fn handle_work_start(
     id: String,
     with_spec: bool,

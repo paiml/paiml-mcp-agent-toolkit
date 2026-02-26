@@ -49,7 +49,7 @@ pub fn handle_deps_audit(
     apply_graph_analysis(&mut all_deps, &graph_analysis);
 
     // Sort based on user preference
-    let sort_mode = SortMode::from_str(sort_by);
+    let sort_mode = SortMode::parse(sort_by);
     all_deps.sort_by(|a, b| match sort_mode {
         SortMode::Transitive => b.transitive_count.cmp(&a.transitive_count),
         SortMode::Size => b.estimated_size_kb.cmp(&a.estimated_size_kb),
