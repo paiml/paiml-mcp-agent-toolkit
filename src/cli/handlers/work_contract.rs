@@ -29,12 +29,23 @@ include!("work_contract_dbc.rs");
 // Contract Profiles: ContractProfile, DbcConfig, claim generation, toolchain checking
 include!("work_contract_profile.rs");
 
+// Stack Manifests: third-party tool stacks, TOFU security, command restrictions
+include!("work_contract_stack.rs");
+
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod dbc_tests {
     use super::*;
 
     include!("work_contract_dbc_tests.rs");
+}
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod stack_tests {
+    use super::*;
+
+    include!("work_contract_stack_tests.rs");
 }
 
 #[cfg_attr(coverage_nightly, coverage(off))]
