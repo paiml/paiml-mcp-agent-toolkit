@@ -1327,7 +1327,7 @@ pub fn infer_clauses_from_diff(
 
 **Files modified**:
 - New: `src/cli/handlers/work_contract_stack.rs` — StackManifest parser, command restriction validation
-- New: `src/cli/handlers/work_trust.rs` — Trust model, TOFU flow, content hash tracking
+- `src/cli/handlers/work_contract_stack.rs` — Trust model (TOFU flow, content hash tracking) integrated into stack module
 - `src/cli/handlers/work_contract_profile.rs` — Stack detection, extends resolution
 - `src/cli/commands/work_commands*.rs` — `trust-stack` subcommand
 
@@ -1393,7 +1393,7 @@ pub fn infer_clauses_from_diff(
 9. Record rescue attempts in falsification receipt
 
 **Files modified**:
-- New: `src/cli/handlers/work_rescue.rs` — Rescue strategies and dispatch
+- `src/cli/handlers/work_contract_rescue.rs` — Rescue strategies, dispatch, and RescueRecord persistence
 - `src/cli/handlers/work_handlers/core_handlers/handlers.rs` — Rescue integration
 - `src/cli/handlers/work_ledger_types.rs` — RescueRecord
 - `src/cli/handlers/work_falsification/runner.rs` — Rescue hooks
