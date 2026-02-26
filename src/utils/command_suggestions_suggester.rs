@@ -127,7 +127,7 @@ impl CommandSuggester {
             "pmat context",
             "",
             "# Run quality gates",
-            "pmat quality-gate --strict",
+            "pmat quality-gate",
             "",
             "# Start agent daemon",
             "pmat agent start",
