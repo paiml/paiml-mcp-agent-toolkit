@@ -16,8 +16,13 @@ use crate::cli::handlers::work_quality_handlers::run_quality_gates;
 use super::helpers::filter_unoverriden_failures;
 use super::resolution::{print_blocked_result, print_warning_failures};
 
-/// Create a work contract with baseline metrics (helper for handle_work_start)
-pub(super) async fn create_work_contract(project_path: &Path, item_id: &str) {
+/// Create a work contract with baseline metrics and DbC triad (helper for handle_work_start)
+pub(super) async fn create_work_contract(
+    project_path: &Path,
+    item_id: &str,
+    profile_override: Option<&str>,
+    without: &[String],
+) {
     println!();
     println!("📋 Creating Work Contract (Popperian Falsification)...");
 
@@ -28,13 +33,45 @@ pub(super) async fn create_work_contract(project_path: &Path, item_id: &str) {
         .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
         .unwrap_or_else(|_| "unknown".to_string());
 
-    let mut contract = WorkContract::new(item_id.to_string(), baseline_commit);
+    // Write --profile override to config.toml if specified
+    if let Some(profile_str) = profile_override {
+        write_profile_override(project_path, item_id, profile_str);
+    }
 
+    // Create v5.0 contract with DbC triad
+    let mut contract = match WorkContract::with_dbc(
+        item_id.to_string(),
+        baseline_commit.clone(),
+        project_path,
+        without,
+    ) {
+        Ok(c) => c,
+        Err(e) => {
+            println!("   ⚠️  DbC contract creation failed: {}", e);
+            println!("   Falling back to v4.0 flat contract");
+            WorkContract::new(item_id.to_string(), baseline_commit)
+        }
+    };
+
+    // Display profile and triad info
+    if contract.is_dbc() {
+        print_dbc_summary(&contract, without);
+    }
+
+    // Capture baseline metrics
+    println!("   📊 Capturing baseline metrics...");
     match capture_baseline(project_path).await {
         Ok((tdg, coverage, rust_score)) => {
             contract.baseline_tdg = tdg;
             contract.baseline_coverage = coverage;
             contract.baseline_rust_score = rust_score;
+            println!(
+                "      TDG: {:.1}, Coverage: {:.1}%",
+                tdg, coverage
+            );
+            if let Some(rs) = rust_score {
+                println!("      Rust Score: {:.1}/134", rs);
+            }
         }
         Err(e) => {
             println!("   ⚠️  Could not capture baseline metrics: {}", e);
@@ -43,6 +80,65 @@ pub(super) async fn create_work_contract(project_path: &Path, item_id: &str) {
 
     build_and_attach_manifest(project_path, &mut contract);
     save_contract(project_path, &contract);
+}
+
+/// Display DbC triad summary after contract creation
+fn print_dbc_summary(contract: &WorkContract, without: &[String]) {
+    if let Some(profile) = &contract.profile {
+        println!(
+            "\n   Profile: {} ({})",
+            profile.name(),
+            if contract.version == "5.0" { "DbC v5.0" } else { "v4.0" }
+        );
+    }
+
+    println!(
+        "   require:   {} clauses (checked at start)",
+        contract.require.len()
+    );
+    println!(
+        "   invariant: {} clauses (checked at each checkpoint)",
+        contract.invariant.len()
+    );
+    println!(
+        "   ensure:    {} clauses (checked at completion)",
+        contract.ensure.len()
+    );
+
+    if !contract.excluded_claims.is_empty() {
+        println!(
+            "   excluded:  {} claims (via --without)",
+            contract.excluded_claims.len()
+        );
+    }
+
+    if let Some(quality) = &contract.contract_quality {
+        println!(
+            "   quality:   {:.0}% ({}) [{}/{}]",
+            quality.score * 100.0,
+            quality.rating,
+            quality.active_claims,
+            quality.applicable_claims
+        );
+    }
+
+    if !without.is_empty() {
+        for id in without {
+            println!("   --without {}", id);
+        }
+    }
+}
+
+/// Write profile override to .pmat-work/config.toml
+fn write_profile_override(project_path: &Path, _item_id: &str, profile_str: &str) {
+    let config_dir = project_path.join(".pmat-work");
+    if std::fs::create_dir_all(&config_dir).is_ok() {
+        let config_path = config_dir.join("config.toml");
+        let content = format!("[dbc]\nprofile = \"{}\"\n", profile_str);
+        if std::fs::write(&config_path, content).is_ok() {
+            println!("   Profile override: {} (written to config.toml)", profile_str);
+        }
+    }
 }
 
 /// Build file manifest and attach to contract (helper for create_work_contract)

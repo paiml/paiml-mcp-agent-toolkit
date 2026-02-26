@@ -858,6 +858,8 @@ mod coverage_tests {
             epic: false,
             path: Some(temp_dir.path().to_path_buf()),
             create_github: false,
+            profile: None,
+            without: None,
         };
 
         let result = CommandDispatcher::execute_work_command(&command).await;

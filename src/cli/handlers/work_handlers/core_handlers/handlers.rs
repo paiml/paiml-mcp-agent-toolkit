@@ -112,6 +112,8 @@ pub async fn handle_work_start(
     epic: bool,
     path: Option<PathBuf>,
     create_github: bool,
+    profile_override: Option<String>,
+    without: Vec<String>,
 ) -> Result<()> {
     let project_path = path.unwrap_or_else(|| PathBuf::from("."));
     let roadmap_path = project_path.join("docs/roadmaps/roadmap.yaml");
@@ -140,7 +142,7 @@ pub async fn handle_work_start(
     service.save(&roadmap)?;
     println!("✅ Updated roadmap: {}", roadmap_path.display());
 
-    create_work_contract(&project_path, &item.id).await;
+    create_work_contract(&project_path, &item.id, profile_override.as_deref(), &without).await;
 
     if with_spec {
         create_spec_if_needed(&project_path, &item, &id, is_github_issue)?;

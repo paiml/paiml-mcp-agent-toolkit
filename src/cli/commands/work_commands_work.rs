@@ -139,6 +139,14 @@ pub enum WorkCommands {
         /// Force create GitHub issue for YAML ticket
         #[arg(long)]
         create_github: bool,
+
+        /// DbC contract profile override (universal, rust, pmat)
+        #[arg(long)]
+        profile: Option<String>,
+
+        /// Exclude specific DbC claims (comma-separated, e.g. "ensure.coverage,ensure.supply_chain")
+        #[arg(long, value_delimiter = ',')]
+        without: Option<Vec<String>>,
     },
 
     /// Continue work on existing issue/ticket

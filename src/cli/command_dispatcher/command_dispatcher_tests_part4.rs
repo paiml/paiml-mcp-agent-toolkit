@@ -528,6 +528,8 @@ mod additional_command_tests {
             epic: true,
             path: Some(temp_dir.path().to_path_buf()),
             create_github: false,
+            profile: None,
+            without: None,
         };
         let result = CommandDispatcher::execute_work_command(&command).await;
         assert!(result.is_ok() || result.is_err());

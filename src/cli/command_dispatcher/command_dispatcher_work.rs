@@ -28,6 +28,8 @@ impl CommandDispatcher {
                 epic,
                 path,
                 create_github,
+                profile,
+                without,
             } => {
                 work_handlers::handle_work_start(
                     id.clone(),
@@ -35,6 +37,8 @@ impl CommandDispatcher {
                     *epic,
                     path.clone(),
                     *create_github,
+                    profile.clone(),
+                    without.clone().unwrap_or_default(),
                 )
                 .await
             }

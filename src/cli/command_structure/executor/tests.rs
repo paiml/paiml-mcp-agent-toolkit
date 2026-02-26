@@ -207,6 +207,8 @@ mod tests {
                 epic: false,
                 path: None,
                 create_github: false,
+                profile: None,
+                without: None,
             },
         };
 
