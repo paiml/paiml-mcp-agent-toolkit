@@ -15,12 +15,9 @@ mod types;
 
 pub use types::{OutputFormat, ValidateReadmeCmd};
 
-#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests;
-#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests_edge_cases;
-#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests_output;

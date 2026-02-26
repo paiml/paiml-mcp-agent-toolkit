@@ -57,5 +57,4 @@ include!("documentation_scorer_changelog.rs");
 include!("documentation_scorer_trait_impl.rs");
 
 // Tests
-#[cfg_attr(coverage_nightly, coverage(off))]
 include!("documentation_scorer_tests.rs");

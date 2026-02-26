@@ -56,9 +56,7 @@ include!("testing_scorer_analysis.rs");
 include!("testing_scorer_trait_impl.rs");
 
 // Tests - Part 1: Creation, coverage, integration, and doc tests
-#[cfg_attr(coverage_nightly, coverage(off))]
 include!("testing_scorer_tests.rs");
 
 // Tests - Part 2: Scoring modes, recommendations, and config warnings
-#[cfg_attr(coverage_nightly, coverage(off))]
 include!("testing_scorer_tests_part2.rs");

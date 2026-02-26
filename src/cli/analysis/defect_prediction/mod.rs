@@ -31,7 +31,6 @@ pub(crate) use output_formats::{
     format_defect_csv, format_defect_output, format_defect_sarif,
 };
 
-#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod coverage_tests;
 

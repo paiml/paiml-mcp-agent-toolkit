@@ -272,6 +272,11 @@ MIT
         assert_eq!(count_version_entries("## 0.1.0\n## 0.2.0"), 2);
         assert_eq!(count_version_entries("no versions here"), 0);
         assert_eq!(count_version_entries("[2.0.0]"), 1);
+        // Higher major versions (e.g., ruchy v4.x, pmat v3.x)
+        assert_eq!(count_version_entries("## [3.212.0]\n## [3.211.0]"), 2);
+        assert_eq!(count_version_entries("## [4.2.0] - 2026-02-01\n## [4.0.0] - 2026-01-10"), 2);
+        assert_eq!(count_version_entries("[10.0.0]"), 1);
+        assert_eq!(count_version_entries("## 5.0.0"), 1);
     }
 
     #[test]

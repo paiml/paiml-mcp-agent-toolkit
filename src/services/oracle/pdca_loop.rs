@@ -31,6 +31,5 @@ pub struct PdcaLoop {
 include!("pdca_loop_execution.rs");
 
 // Tests for PDCA loop functionality
-#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 include!("pdca_loop_tests.rs");

@@ -1,16 +1,57 @@
-/// Count version entries in changelog content (e.g., [0.1.0], ## 0.1.0)
+/// Count version entries in changelog content (e.g., [0.1.0], ## 4.2.0)
+///
+/// Matches lines containing `[N.` or `## N.` where N is any digit sequence,
+/// supporting semver major versions beyond 0/1/2.
 fn count_version_entries(content: &str) -> usize {
     content
         .lines()
         .filter(|line| {
-            line.contains("[0.")
-                || line.contains("[1.")
-                || line.contains("[2.")
-                || line.contains("## 0.")
-                || line.contains("## 1.")
-                || line.contains("## 2.")
+            let trimmed = line.trim();
+            // Match `## [N.x.y]` or `## N.x.y` patterns (keepachangelog format)
+            // Also match `[N.x.y]` standalone (link reference definitions)
+            has_version_bracket(trimmed) || has_version_heading(trimmed)
         })
         .count()
+}
+
+/// Check if line contains a bracketed version like `[1.2.3]` or `[0.1.0]`
+fn has_version_bracket(line: &str) -> bool {
+    let bytes = line.as_bytes();
+    for i in 0..bytes.len().saturating_sub(2) {
+        if bytes[i] == b'[' && bytes[i + 1].is_ascii_digit() {
+            // Look for a dot after the digits
+            let mut j = i + 2;
+            while j < bytes.len() && bytes[j].is_ascii_digit() {
+                j += 1;
+            }
+            if j < bytes.len() && bytes[j] == b'.' {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+/// Check if line contains a heading version like `## 0.1.0` (without brackets)
+fn has_version_heading(line: &str) -> bool {
+    if let Some(rest) = line.strip_prefix("## ") {
+        let rest = rest.trim();
+        // First char must be a digit, followed eventually by a dot
+        let mut chars = rest.chars();
+        if let Some(c) = chars.next() {
+            if c.is_ascii_digit() {
+                for ch in chars {
+                    if ch == '.' {
+                        return true;
+                    }
+                    if !ch.is_ascii_digit() {
+                        return false;
+                    }
+                }
+            }
+        }
+    }
+    false
 }
 
 impl DocumentationScorer {

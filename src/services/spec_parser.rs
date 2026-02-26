@@ -30,5 +30,4 @@ include!("spec_parser_impl.rs");
 include!("spec_parser_validation.rs");
 
 // --- Tests ---
-#[cfg_attr(coverage_nightly, coverage(off))]
 include!("spec_parser_tests.rs");

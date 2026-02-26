@@ -38,11 +38,9 @@ pub mod storage_backend;
 #[cfg(feature = "http-server")]
 pub mod web_dashboard;
 
-#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod normalization_tests;
 
-#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod complexity_entropy_integration_tests;
 
@@ -50,11 +48,9 @@ mod complexity_entropy_integration_tests;
 // #[cfg(test)]
 // mod integration_test_sprint30;
 
-#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod core_tests;
 
-#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod core_property_tests;
 

@@ -81,9 +81,14 @@ impl PhpScriptAnalyzer {
 
     /// Extracts method definitions from PHP classes (complexity ≤10)
     fn extract_methods(&mut self, source: &str) -> Result<(), String> {
+        let mut current_class: Option<String> = None;
         for (line_num, line) in source.lines().enumerate() {
             let trimmed = line.trim();
-            if let Some(item) = parse_php_method_line(trimmed, line_num, &self.current_class) {
+            // Track current class scope
+            if trimmed.starts_with("class ") && trimmed.contains('{') {
+                current_class = self.extract_class_name(trimmed);
+            }
+            if let Some(item) = parse_php_method_line(trimmed, line_num, &current_class) {
                 self.items.push(item);
                 self.method_count += 1;
             }

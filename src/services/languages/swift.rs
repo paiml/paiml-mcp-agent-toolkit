@@ -37,5 +37,4 @@ include!("swift_analysis.rs");
 include!("swift_complexity.rs");
 
 // Unit tests for Swift analysis and complexity
-#[cfg_attr(coverage_nightly, coverage(off))]
 include!("swift_tests.rs");

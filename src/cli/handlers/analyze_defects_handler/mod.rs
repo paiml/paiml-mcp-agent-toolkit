@@ -12,14 +12,11 @@ pub mod types;
 pub use handler::handle_analyze_defects;
 pub use types::{DefectReport, DefectSummary, OutputFormat, SeverityCount};
 
-#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests_unit;
 
-#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests_output;
 
-#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests_integration;

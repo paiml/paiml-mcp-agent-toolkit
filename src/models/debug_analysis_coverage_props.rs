@@ -29,8 +29,8 @@
         ));
 
         let summary = EvidenceSummary::from_whys(&[why]);
-        // Missing threshold means no violation is counted (requires both value and threshold)
-        assert_eq!(summary.complexity_violations, 0);
+        // Missing threshold defaults to 20.0; value 25 > 20 = violation
+        assert_eq!(summary.complexity_violations, 1);
     }
 
     #[test]
