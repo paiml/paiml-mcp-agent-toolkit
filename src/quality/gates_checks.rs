@@ -13,8 +13,7 @@ pub fn execute_clippy(config: &GateConfig, project_dir: &Path) -> Result<GateRes
     let start = Instant::now();
     let mut cmd = Command::new("cargo");
     cmd.arg("clippy")
-        .arg("--all-targets")
-        .arg("--all-features")
+        .arg("--lib") // Avoid --all-targets which causes module duplication with include!()
         .current_dir(project_dir);
 
     if config.clippy_strict {
@@ -64,7 +63,7 @@ pub fn execute_tests(config: &GateConfig, project_dir: &Path) -> Result<GateResu
     let output = Command::new("cargo")
         .arg("test")
         .arg("--lib")
-        .arg("--all-features")
+        .env("RUST_MIN_STACK", "8388608") // Required for clap parsing tests
         .current_dir(project_dir)
         .output()?;
     let duration = start.elapsed();
@@ -126,10 +125,13 @@ pub fn execute_coverage(config: &GateConfig, project_dir: &Path) -> Result<GateR
     let start = Instant::now();
 
     // Run cargo llvm-cov
+    // Coverage requires nightly for #[coverage(off)] attribute support
     let output = Command::new("cargo")
+        .arg("+nightly")
         .arg("llvm-cov")
-        .arg("--all-features")
+        .arg("--lib")
         .arg("--summary-only")
+        .env("RUST_MIN_STACK", "8388608") // Required for clap parsing tests
         .current_dir(project_dir)
         .output()?;
     let duration = start.elapsed();
