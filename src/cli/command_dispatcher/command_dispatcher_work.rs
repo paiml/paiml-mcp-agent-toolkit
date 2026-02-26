@@ -45,6 +45,9 @@ impl CommandDispatcher {
             WorkCommands::Continue { id, path } => {
                 work_handlers::handle_work_continue(id.clone(), path.clone()).await
             }
+            WorkCommands::Checkpoint { id, path } => {
+                work_handlers::handle_work_checkpoint(id.clone(), path.clone()).await
+            }
             WorkCommands::Complete {
                 id,
                 skip_quality,

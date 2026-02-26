@@ -291,6 +291,93 @@ impl std::fmt::Display for SubcontractingViolation {
     }
 }
 
+/// Checkpoint record — captures invariant evaluation at a point in time (DbC §8.2)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CheckpointRecord {
+    /// Unique checkpoint ID
+    pub checkpoint_id: String,
+    /// Work item this checkpoint belongs to
+    pub work_item_id: String,
+    /// Timestamp of the checkpoint
+    pub timestamp: chrono::DateTime<chrono::Utc>,
+    /// Git SHA at checkpoint time
+    pub git_sha: String,
+    /// Contract iteration number
+    pub iteration: u32,
+    /// Results of each invariant evaluation
+    pub invariant_results: Vec<InvariantResult>,
+    /// Whether all invariants held
+    pub all_invariants_hold: bool,
+}
+
+/// Result of evaluating a single invariant clause
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct InvariantResult {
+    /// Clause ID that was evaluated
+    pub clause_id: String,
+    /// Whether the invariant held
+    pub passed: bool,
+    /// Human-readable explanation
+    pub explanation: String,
+}
+
+impl CheckpointRecord {
+    /// Create a new checkpoint record from invariant evaluation results
+    pub fn new(
+        work_item_id: String,
+        git_sha: String,
+        iteration: u32,
+        invariant_results: Vec<InvariantResult>,
+    ) -> Self {
+        let all_hold = invariant_results.iter().all(|r| r.passed);
+        Self {
+            checkpoint_id: uuid::Uuid::new_v4().to_string(),
+            work_item_id,
+            timestamp: chrono::Utc::now(),
+            git_sha,
+            iteration,
+            invariant_results,
+            all_invariants_hold: all_hold,
+        }
+    }
+
+    /// Save checkpoint to .pmat-work/{item-id}/checkpoints/
+    pub fn save(&self, project_path: &Path) -> Result<PathBuf> {
+        let checkpoint_dir = project_path
+            .join(".pmat-work")
+            .join(&self.work_item_id)
+            .join("checkpoints");
+        std::fs::create_dir_all(&checkpoint_dir)?;
+
+        let filename = format!("checkpoint-{}.json", self.checkpoint_id);
+        let checkpoint_path = checkpoint_dir.join(filename);
+        let json = serde_json::to_string_pretty(self)?;
+        std::fs::write(&checkpoint_path, &json)?;
+        Ok(checkpoint_path)
+    }
+
+    /// Load all checkpoints for a work item, sorted by timestamp
+    pub fn load_all(project_path: &Path, work_item_id: &str) -> Vec<Self> {
+        let checkpoint_dir = project_path
+            .join(".pmat-work")
+            .join(work_item_id)
+            .join("checkpoints");
+
+        let mut records = Vec::new();
+        if let Ok(entries) = std::fs::read_dir(&checkpoint_dir) {
+            for entry in entries.flatten() {
+                if let Ok(content) = std::fs::read_to_string(entry.path()) {
+                    if let Ok(record) = serde_json::from_str::<CheckpointRecord>(&content) {
+                        records.push(record);
+                    }
+                }
+            }
+        }
+        records.sort_by_key(|r| r.timestamp);
+        records
+    }
+}
+
 /// Validate that a child contract does not weaken parent postconditions.
 /// Returns Ok(()) if subcontracting rules hold, or the first violation found.
 pub fn validate_subcontracting(

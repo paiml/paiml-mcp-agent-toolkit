@@ -160,6 +160,17 @@ pub enum WorkCommands {
         path: Option<PathBuf>,
     },
 
+    /// Run invariant checkpoint (DbC §4.2)
+    #[command(visible_aliases = &["ck", "check"])]
+    Checkpoint {
+        /// Issue number or ticket ID
+        id: String,
+
+        /// Project path (default: current directory)
+        #[arg(short, long)]
+        path: Option<PathBuf>,
+    },
+
     /// Complete work on issue/ticket
     #[command(visible_aliases = &["done", "finish", "f"])]
     Complete {

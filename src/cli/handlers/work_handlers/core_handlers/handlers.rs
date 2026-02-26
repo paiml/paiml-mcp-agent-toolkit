@@ -260,6 +260,57 @@ pub async fn handle_work_continue(id: String, path: Option<PathBuf>) -> Result<(
     Ok(())
 }
 
+/// Handle work checkpoint command (DbC §4.2 — invariant evaluation)
+///
+/// Evaluates all invariant clauses from the contract at the current point in time.
+/// Results are persisted to `.pmat-work/{id}/checkpoints/` for audit trail.
+/// Invariant failures are reported but do not halt work — they accumulate
+/// and block completion at `work complete`.
+pub async fn handle_work_checkpoint(id: String, path: Option<PathBuf>) -> Result<()> {
+    let project_path = path.unwrap_or_else(|| PathBuf::from("."));
+
+    println!("🔍 Running invariant checkpoint for: {}", id);
+    println!();
+
+    let record = super::checkpoint::run_checkpoint(&project_path, &id)?;
+
+    // Display results
+    if record.invariant_results.is_empty() {
+        println!("   ℹ️  No invariant clauses in contract (v4.0 or no invariants defined)");
+        println!("   Use --profile rust or --profile pmat for invariant checking");
+        println!();
+        return Ok(());
+    }
+
+    for result in &record.invariant_results {
+        let emoji = if result.passed { "✓" } else { "✗" };
+        println!("  [{}] {} {}", result.clause_id, emoji, result.explanation);
+    }
+    println!();
+
+    let checkpoint_path = record.save(&project_path)?;
+
+    if record.all_invariants_hold {
+        println!(
+            "✅ All invariants hold. Checkpoint recorded. ({}/{})",
+            record.invariant_results.len(),
+            record.invariant_results.len()
+        );
+    } else {
+        let failed_count = record.invariant_results.iter().filter(|r| !r.passed).count();
+        println!(
+            "⚠️  {} invariant(s) violated. Fix before completion.",
+            failed_count
+        );
+    }
+
+    println!("   Iteration: {}  |  Git SHA: {}", record.iteration, &record.git_sha[..8.min(record.git_sha.len())]);
+    println!("   📋 Checkpoint: {}", checkpoint_path.display());
+    println!();
+
+    Ok(())
+}
+
 /// Handle standalone falsification (does NOT complete the work item)
 ///
 /// Runs the full Popperian falsification protocol and produces a receipt,
@@ -308,6 +359,9 @@ pub async fn handle_work_complete(
         .with_context(|| format!("Item not found: {}", id))?;
 
     run_quality_check(&project_path, skip_quality).await?;
+
+    // DbC §4.3: Final invariant check before postcondition evaluation
+    run_final_invariant_check(&project_path, &item.id)?;
 
     // O(1) freshness check: skip re-running falsification if a fresh receipt exists
     let ledger = FalsificationLedger::new(&project_path);
@@ -488,5 +542,50 @@ pub async fn handle_work_sync(
     }
 
     println!();
+    Ok(())
+}
+
+/// Run final invariant check before completion (DbC §4.3).
+///
+/// Evaluates all invariant clauses and persists a checkpoint record.
+/// If any invariant fails, completion is blocked.
+fn run_final_invariant_check(project_path: &std::path::Path, item_id: &str) -> Result<()> {
+    use crate::cli::handlers::work_contract::WorkContract;
+
+    // Only run invariant check for v5.0 contracts with invariant clauses
+    if let Ok(contract) = WorkContract::load(project_path, item_id) {
+        if contract.is_dbc() && !contract.invariant.is_empty() {
+            println!("🔍 Evaluating invariants (final check)...");
+
+            let (results, all_pass) =
+                super::checkpoint::evaluate_final_invariants(project_path, &contract);
+
+            for result in &results {
+                let emoji = if result.passed { "✓" } else { "✗" };
+                println!("  [{}] {} {}", result.clause_id, emoji, result.explanation);
+            }
+
+            if all_pass {
+                println!(
+                    "   ✅ All invariants hold ({}/{})",
+                    results.len(),
+                    results.len()
+                );
+                println!();
+            } else {
+                let failed: Vec<_> = results.iter().filter(|r| !r.passed).collect();
+                println!();
+                anyhow::bail!(
+                    "Invariant violation: {} invariant(s) failed. Fix before completing.\n  {}",
+                    failed.len(),
+                    failed
+                        .iter()
+                        .map(|r| format!("{}: {}", r.clause_id, r.explanation))
+                        .collect::<Vec<_>>()
+                        .join("\n  ")
+                );
+            }
+        }
+    }
     Ok(())
 }

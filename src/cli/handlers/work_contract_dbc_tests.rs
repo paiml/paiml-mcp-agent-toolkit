@@ -919,3 +919,200 @@ fn test_profile_detect_stack() {
         other => panic!("Expected Stack, got {:?}", other),
     }
 }
+
+// === CheckpointRecord tests ===
+
+#[test]
+fn test_checkpoint_record_new_all_pass() {
+    let results = vec![
+        InvariantResult {
+            clause_id: "invariant.lint".to_string(),
+            passed: true,
+            explanation: "Lint clean".to_string(),
+        },
+        InvariantResult {
+            clause_id: "invariant.complexity".to_string(),
+            passed: true,
+            explanation: "Max complexity: 18 (limit: 20)".to_string(),
+        },
+    ];
+
+    let record = CheckpointRecord::new(
+        "PMAT-500".to_string(),
+        "abc123def".to_string(),
+        1,
+        results,
+    );
+
+    assert!(record.all_invariants_hold);
+    assert_eq!(record.work_item_id, "PMAT-500");
+    assert_eq!(record.git_sha, "abc123def");
+    assert_eq!(record.iteration, 1);
+    assert_eq!(record.invariant_results.len(), 2);
+    assert!(!record.checkpoint_id.is_empty());
+}
+
+#[test]
+fn test_checkpoint_record_new_with_failure() {
+    let results = vec![
+        InvariantResult {
+            clause_id: "invariant.lint".to_string(),
+            passed: true,
+            explanation: "Lint clean".to_string(),
+        },
+        InvariantResult {
+            clause_id: "invariant.complexity".to_string(),
+            passed: false,
+            explanation: "Max complexity: 32 exceeds limit 20".to_string(),
+        },
+    ];
+
+    let record = CheckpointRecord::new(
+        "PMAT-500".to_string(),
+        "def456".to_string(),
+        1,
+        results,
+    );
+
+    assert!(!record.all_invariants_hold);
+    assert_eq!(record.invariant_results.len(), 2);
+}
+
+#[test]
+fn test_checkpoint_record_empty_invariants() {
+    let record = CheckpointRecord::new(
+        "PMAT-500".to_string(),
+        "abc123".to_string(),
+        1,
+        vec![],
+    );
+
+    assert!(record.all_invariants_hold); // vacuously true
+    assert!(record.invariant_results.is_empty());
+}
+
+#[test]
+fn test_checkpoint_record_save_and_load() {
+    let dir = tempfile::tempdir().unwrap();
+
+    let results = vec![
+        InvariantResult {
+            clause_id: "invariant.lint".to_string(),
+            passed: true,
+            explanation: "Lint clean".to_string(),
+        },
+    ];
+
+    let record = CheckpointRecord::new(
+        "TEST-CK".to_string(),
+        "abc123".to_string(),
+        1,
+        results,
+    );
+
+    // Save
+    let path = record.save(dir.path()).unwrap();
+    assert!(path.exists());
+    assert!(path.to_string_lossy().contains("checkpoints"));
+
+    // Load all
+    let loaded = CheckpointRecord::load_all(dir.path(), "TEST-CK");
+    assert_eq!(loaded.len(), 1);
+    assert_eq!(loaded[0].work_item_id, "TEST-CK");
+    assert_eq!(loaded[0].checkpoint_id, record.checkpoint_id);
+    assert!(loaded[0].all_invariants_hold);
+}
+
+#[test]
+fn test_checkpoint_record_load_multiple() {
+    let dir = tempfile::tempdir().unwrap();
+
+    // Save two checkpoints
+    let r1 = CheckpointRecord::new(
+        "TEST-MULTI".to_string(),
+        "sha1".to_string(),
+        1,
+        vec![InvariantResult {
+            clause_id: "invariant.lint".to_string(),
+            passed: true,
+            explanation: "ok".to_string(),
+        }],
+    );
+    r1.save(dir.path()).unwrap();
+
+    let r2 = CheckpointRecord::new(
+        "TEST-MULTI".to_string(),
+        "sha2".to_string(),
+        1,
+        vec![InvariantResult {
+            clause_id: "invariant.lint".to_string(),
+            passed: false,
+            explanation: "lint failed".to_string(),
+        }],
+    );
+    r2.save(dir.path()).unwrap();
+
+    let loaded = CheckpointRecord::load_all(dir.path(), "TEST-MULTI");
+    assert_eq!(loaded.len(), 2);
+    // Sorted by timestamp, first should pass, second should fail
+    assert!(loaded[0].all_invariants_hold);
+    assert!(!loaded[1].all_invariants_hold);
+}
+
+#[test]
+fn test_checkpoint_record_load_nonexistent() {
+    let dir = tempfile::tempdir().unwrap();
+    let loaded = CheckpointRecord::load_all(dir.path(), "NONEXISTENT");
+    assert!(loaded.is_empty());
+}
+
+#[test]
+fn test_checkpoint_serialization_round_trip() {
+    let results = vec![
+        InvariantResult {
+            clause_id: "invariant.complexity".to_string(),
+            passed: true,
+            explanation: "Max complexity: 15".to_string(),
+        },
+    ];
+
+    let record = CheckpointRecord::new(
+        "PMAT-RT".to_string(),
+        "deadbeef".to_string(),
+        2,
+        results,
+    );
+
+    let json = serde_json::to_string_pretty(&record).unwrap();
+    let deserialized: CheckpointRecord = serde_json::from_str(&json).unwrap();
+
+    assert_eq!(deserialized.checkpoint_id, record.checkpoint_id);
+    assert_eq!(deserialized.work_item_id, "PMAT-RT");
+    assert_eq!(deserialized.iteration, 2);
+    assert_eq!(deserialized.invariant_results.len(), 1);
+    assert!(deserialized.all_invariants_hold);
+}
+
+// === Subcontracting with iteration ===
+
+#[test]
+fn test_iteration_field_default() {
+    let contract = WorkContract::new("TEST".to_string(), "abc".to_string());
+    assert_eq!(contract.iteration, 1);
+}
+
+#[test]
+fn test_iteration_persists_through_save_load() {
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::create_dir_all(dir.path().join(".git")).unwrap();
+
+    let mut contract =
+        WorkContract::with_dbc("TEST-IT".to_string(), "abc123".to_string(), dir.path(), &[])
+            .unwrap();
+    // Simulate iteration increment
+    contract.iteration = 2;
+    contract.save(dir.path()).unwrap();
+
+    let loaded = WorkContract::load(dir.path(), "TEST-IT").unwrap();
+    assert_eq!(loaded.iteration, 2);
+}
