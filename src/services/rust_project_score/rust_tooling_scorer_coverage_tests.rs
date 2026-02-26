@@ -455,8 +455,8 @@ bench:
         .score_ci_cd_integration(temp_dir.path(), None)
         .unwrap();
     assert_eq!(
-        score, 6.0,
-        "Should get 6pts (3 for Makefile + 3 for targets)"
+        score, 8.0,
+        "Should get 8pts (5 for Makefile + 3 for targets) (#244)"
     );
 }
 
@@ -485,7 +485,7 @@ bench:
     let score = scorer
         .score_ci_cd_integration(temp_dir.path(), None)
         .unwrap();
-    assert_eq!(score, 6.0, "Should get 6pts (clippy: counts as lint)");
+    assert_eq!(score, 8.0, "Should get 8pts (5 for Makefile + 3 for clippy targets) (#244)");
 }
 
 #[test]

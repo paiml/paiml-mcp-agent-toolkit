@@ -69,6 +69,9 @@ fn score_workflows(workflows_dir: &Path) -> ScorerResult<f64> {
 }
 
 /// Score build automation (justfile/Makefile/xtask, 8pts)
+///
+/// #244: Makefile given equal base score as justfile (5.0). The Windows argument
+/// is weak for Rust projects that already require Unix-like toolchains.
 fn score_build_automation(project_path: &Path) -> f64 {
     let justfile = project_path.join("justfile");
     let makefile = project_path.join("Makefile");
@@ -79,7 +82,7 @@ fn score_build_automation(project_path: &Path) -> f64 {
     } else if xtask.exists() {
         (5.0, String::new())
     } else if makefile.exists() {
-        (3.0, std::fs::read_to_string(&makefile).unwrap_or_default())
+        (5.0, std::fs::read_to_string(&makefile).unwrap_or_default())
     } else {
         return 0.0;
     };
@@ -108,8 +111,7 @@ impl RustToolingScorer {
     /// - +2pts: Dedicated spell-check or linting workflow
     ///
     /// **Build Automation** (9pts):
-    /// - +5pts: justfile or cargo-xtask exists (Rust-native, cross-platform)
-    /// - +3pts: Makefile exists (problematic on Windows, downgraded per TPS)
+    /// - +5pts: justfile, cargo-xtask, or Makefile exists
     /// - +3pts: Common targets (build, test, lint, bench)
     /// - +2pts: CI uses automation targets (consistency)
     ///

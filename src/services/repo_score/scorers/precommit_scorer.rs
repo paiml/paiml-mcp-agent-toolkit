@@ -150,10 +150,13 @@ impl PrecommitScorer {
             || content_lower.contains("black")
             || content_lower.contains("prettier");
 
-        let has_testing = content_lower.contains("test")
+        let has_testing = content_lower.contains("cargo test")
+            || content_lower.contains("cargo nextest")
             || content_lower.contains("pytest")
-            || content_lower.contains("cargo test")
-            || content_lower.contains("npm test");
+            || content_lower.contains("npm test")
+            || content_lower.contains("make test")
+            || content_lower.contains("yarn test")
+            || content_lower.contains("go test");
 
         if has_linting && !has_testing {
             Ok(SubcategoryScore {

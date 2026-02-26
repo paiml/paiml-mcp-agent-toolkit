@@ -184,7 +184,5 @@ fn test_json_with_analyses() {
 }
 
 // ===========================================================================
-// format_as_sarif
+// format_as_sarif — tests in coverage_boost_analyzer_formatting_sarif.rs
 // ===========================================================================
-
-#[test]

@@ -78,6 +78,12 @@ impl HygieneScorer {
                         if let Ok(size) = parts[2].parse::<u64>() {
                             if size > ONE_MB {
                                 let filename = parts[3..].join(" ");
+                                // #239: Only penalize files that exist in the current tree.
+                                // Files removed from HEAD should not incur penalty.
+                                let file_path = repo_path.join(&filename);
+                                if !file_path.exists() {
+                                    continue;
+                                }
                                 let size_mb = size as f64 / ONE_MB as f64;
                                 large_files_found.push((filename.clone(), size_mb));
                                 deductions += 1.0; // 1 point per large file, max 5

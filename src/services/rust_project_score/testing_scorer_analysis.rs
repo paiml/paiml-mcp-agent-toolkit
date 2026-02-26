@@ -126,18 +126,15 @@ impl TestingScorer {
         let mut total_earned = 0.0;
 
         // Score coverage (8pts)
-        // FAST MODE: Skip expensive cargo llvm-cov, use fallback
+        // FAST MODE: Skip expensive cargo llvm-cov, use heuristic estimation (#243)
         if mode.is_full() {
             match self.score_coverage(project_path) {
                 Ok(score) => total_earned += score,
                 Err(e) => return Err(e),
             }
         } else {
-            // Fast mode: Use fallback with cache (filesystem check only)
-            match self.score_coverage_fallback(project_path, cache) {
-                Ok(score) => total_earned += score,
-                Err(e) => return Err(e),
-            }
+            // Fast mode: Estimate from project metadata (#243)
+            total_earned += self.estimate_coverage_fast(project_path, cache);
         }
 
         // Score integration tests (4pts) - Fast (filesystem check, no cache benefit)
@@ -153,15 +150,15 @@ impl TestingScorer {
         }
 
         // Score mutation testing (5pts)
-        // FAST MODE: Skip expensive cargo mutants
+        // FAST MODE: Skip expensive cargo mutants, estimate from metadata (#243)
         if mode.is_full() {
             match self.score_mutation(project_path) {
                 Ok(score) => total_earned += score,
                 Err(e) => return Err(e),
             }
         } else {
-            // Fast mode: Give moderate credit (2.5pts) without running
-            total_earned += 2.5;
+            // Fast mode: Estimate from project metadata (#243)
+            total_earned += self.estimate_mutation_fast(project_path);
         }
 
         Ok(CategoryScore::new(total_earned, self.max_points))

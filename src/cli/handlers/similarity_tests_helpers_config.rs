@@ -1,11 +1,4 @@
-    use super::*;
-    use crate::cli::{DuplicateOutputFormat, DuplicateType};
-    use crate::services::similarity::{
-        CloneType, ComprehensiveReport, EntropyBlock, EntropyReport, Location, Metrics, Priority,
-        RefactoringHint, SimilarBlock,
-    };
-    use std::path::PathBuf;
-    use tempfile::TempDir;
+    // Imports provided by parent include (similarity_handler_tests.rs)
 
     // Helper functions to create test data
 

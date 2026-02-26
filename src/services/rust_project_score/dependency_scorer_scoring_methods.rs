@@ -212,15 +212,18 @@ impl DependencyScorer {
 }
 
 /// Helper: Map dependency count to score tier (extracted for complexity reduction)
+///
+/// #242: Relaxed thresholds — previous >30=0 was too harsh for large projects.
+/// Large feature-rich libraries (ML, web frameworks) legitimately need 30-50 deps.
 fn score_dependency_count_tier(dependency_count: usize) -> ScorerResult<f64> {
-    if dependency_count <= 10 {
-        Ok(5.0) // Minimal dependencies - excellent
-    } else if dependency_count <= 20 {
-        Ok(4.0) // Moderate dependencies - good
+    if dependency_count <= 15 {
+        Ok(5.0) // Lean dependencies - excellent
     } else if dependency_count <= 30 {
+        Ok(4.0) // Moderate dependencies - good
+    } else if dependency_count <= 50 {
         Ok(2.0) // Many dependencies - acceptable
     } else {
-        Ok(0.0) // Excessive dependencies - poor
+        Ok(1.0) // Heavy dependencies - still gives some credit
     }
 }
 

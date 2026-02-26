@@ -534,8 +534,8 @@ test:
             .score_ci_cd_integration(temp_dir.path(), None)
             .unwrap();
         assert_eq!(
-            score, 3.0,
-            "Should get 3pts for Makefile (downgraded, Windows-problematic)"
+            score, 5.0,
+            "Should get 5pts for Makefile (#244: equal to justfile)"
         );
     }
 

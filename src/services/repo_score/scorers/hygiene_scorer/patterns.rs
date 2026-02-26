@@ -4,10 +4,14 @@
 
 pub(crate) fn matches_pattern(path: &str, pattern: &str) -> bool {
     if pattern.ends_with('/') {
-        path.contains(pattern)
+        // #241: Match directory patterns against path components, not substrings.
+        // "out/" should match "/out/foo" but NOT "/dropout/foo".
+        let dir_name = pattern.trim_end_matches('/');
+        path.split('/').any(|component| component == dir_name)
     } else if let Some(ext) = pattern.strip_prefix('*') {
         path.ends_with(ext)
     } else {
-        path.contains(pattern)
+        // Match exact filename against path components
+        path.split('/').any(|component| component == pattern)
     }
 }

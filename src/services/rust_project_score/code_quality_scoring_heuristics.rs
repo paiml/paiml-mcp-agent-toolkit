@@ -59,11 +59,15 @@ fn for_each_rs_content_cached(cache: &FileCache, src_path: &Path, mut f: impl Fn
     }
 }
 
-fn for_each_rs_content_fs(src_path: &Path, mut f: impl FnMut(&str)) {
+fn for_each_rs_content_fs(src_path: &Path, f: &mut impl FnMut(&str)) {
+    // #237 bug 3: Must be recursive — read_dir is non-recursive and missed 98%+ of code
     if let Ok(entries) = std::fs::read_dir(src_path) {
         for entry in entries.flatten() {
-            if entry.path().extension().is_some_and(|ext| ext == "rs") {
-                if let Ok(content) = std::fs::read_to_string(entry.path()) {
+            let path = entry.path();
+            if path.is_dir() {
+                for_each_rs_content_fs(&path, f);
+            } else if path.extension().is_some_and(|ext| ext == "rs") {
+                if let Ok(content) = std::fs::read_to_string(&path) {
                     f(&content);
                 }
             }
@@ -83,14 +87,14 @@ impl CodeQualityScorer {
         }
 
         let mut deep_nesting_count = 0;
-        let accumulate = |content: &str| {
+        let mut accumulate = |content: &str| {
             deep_nesting_count += count_deep_nesting(content);
         };
 
         if let Some(cache) = cache {
             for_each_rs_content_cached(cache, &src_path, accumulate);
         } else {
-            for_each_rs_content_fs(&src_path, accumulate);
+            for_each_rs_content_fs(&src_path, &mut accumulate);
         }
 
         Ok(score_from_nesting(deep_nesting_count))
@@ -104,7 +108,7 @@ impl CodeQualityScorer {
 
         let mut total_unsafe = 0;
         let mut total_documented = 0;
-        let accumulate = |content: &str| {
+        let mut accumulate = |content: &str| {
             let (ub, doc) = analyze_unsafe_in_content(content);
             total_unsafe += ub;
             total_documented += doc;
@@ -113,7 +117,7 @@ impl CodeQualityScorer {
         if let Some(cache) = cache {
             for_each_rs_content_cached(cache, &src_path, accumulate);
         } else {
-            for_each_rs_content_fs(&src_path, accumulate);
+            for_each_rs_content_fs(&src_path, &mut accumulate);
         }
 
         Ok(score_from_unsafe(total_unsafe, total_documented))
@@ -126,14 +130,14 @@ impl CodeQualityScorer {
         }
 
         let mut dead_code_count = 0;
-        let accumulate = |content: &str| {
+        let mut accumulate = |content: &str| {
             dead_code_count += count_dead_code_attrs(content);
         };
 
         if let Some(cache) = cache {
             for_each_rs_content_cached(cache, &src_path, accumulate);
         } else {
-            for_each_rs_content_fs(&src_path, accumulate);
+            for_each_rs_content_fs(&src_path, &mut accumulate);
         }
 
         if dead_code_count == 0 { Ok(2.0) }

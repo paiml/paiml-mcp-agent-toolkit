@@ -71,6 +71,62 @@ impl TestingScorer {
         })
     }
 
+    /// Fast-mode coverage estimation from project metadata (#243)
+    ///
+    /// Checks for coverage infrastructure (tools, config, artifacts) and gives
+    /// proportional credit without running the expensive coverage tool.
+    fn estimate_coverage_fast(&self, project_path: &Path, cache: Option<&FileCache>) -> f64 {
+        let mut score: f64 = 0.0;
+
+        // Check if cargo-llvm-cov is configured in Cargo.toml or Makefile
+        let cargo_content = cache
+            .and_then(|c| c.get(&project_path.join("Cargo.toml")))
+            .cloned()
+            .or_else(|| std::fs::read_to_string(project_path.join("Cargo.toml")).ok())
+            .unwrap_or_default();
+        let makefile_content =
+            std::fs::read_to_string(project_path.join("Makefile")).unwrap_or_default();
+
+        // Coverage tool configured in build system
+        if makefile_content.contains("llvm-cov") || makefile_content.contains("coverage") {
+            score += 3.0;
+        }
+
+        // Coverage artifacts exist (lcov.info, .pmat/coverage-cache.json)
+        if project_path.join("lcov.info").exists()
+            || project_path.join(".pmat/coverage-cache.json").exists()
+        {
+            score += 2.0;
+        }
+
+        // Has inline tests (basic check)
+        if cargo_content.contains("#[cfg(test)]")
+            || Self::any_file_contains_tests(&project_path.join("src"), cache)
+        {
+            score += 1.0;
+        }
+
+        // Cap at 6.0 — reserve top 2 points for verified >85% coverage in full mode
+        score.min(6.0)
+    }
+
+    /// Fast-mode mutation testing estimation from project metadata (#243)
+    fn estimate_mutation_fast(&self, project_path: &Path) -> f64 {
+        // Check if cargo-mutants is configured
+        let makefile_content =
+            std::fs::read_to_string(project_path.join("Makefile")).unwrap_or_default();
+        let has_mutants_config = project_path.join("mutants.toml").exists()
+            || project_path.join(".config/mutants.toml").exists()
+            || makefile_content.contains("cargo mutants")
+            || makefile_content.contains("mutant");
+
+        if has_mutants_config {
+            3.5 // Good credit for having mutation testing infrastructure
+        } else {
+            2.0 // Minimal credit
+        }
+    }
+
     /// Parse coverage percentage from cargo-llvm-cov output
     fn parse_coverage(&self, output: &str) -> Option<f64> {
         // Try to find coverage percentage in various formats

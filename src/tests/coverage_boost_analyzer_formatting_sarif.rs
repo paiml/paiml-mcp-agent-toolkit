@@ -222,7 +222,5 @@ fn test_sarif_tool_version_matches_metadata() {
 }
 
 // ===========================================================================
-// format_enhanced_ast_section (public helper)
+// format_enhanced_ast_section — additional tests TBD
 // ===========================================================================
-
-#[test]

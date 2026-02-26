@@ -80,8 +80,8 @@ tokio = "1.0"
             .score_dependency_count(temp_dir.path(), None)
             .unwrap();
 
-        // 15 dependencies = moderate, good points
-        assert_eq!(result, 4.0);
+        // 15 dependencies = lean, full points (#242: relaxed thresholds)
+        assert_eq!(result, 5.0);
     }
 
     #[test]
@@ -98,8 +98,8 @@ tokio = "1.0"
             .score_dependency_count(temp_dir.path(), None)
             .unwrap();
 
-        // 25 dependencies = many, acceptable points
-        assert_eq!(result, 2.0);
+        // 25 dependencies = moderate, good points (#242: relaxed thresholds)
+        assert_eq!(result, 4.0);
     }
 
     #[test]
@@ -116,8 +116,8 @@ tokio = "1.0"
             .score_dependency_count(temp_dir.path(), None)
             .unwrap();
 
-        // 35 dependencies = excessive, poor points
-        assert_eq!(result, 0.0);
+        // 35 dependencies = many, acceptable points (#242: relaxed thresholds)
+        assert_eq!(result, 2.0);
     }
 
     #[test]

@@ -16,11 +16,23 @@ fn format_text(
     output.push_str("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
     output.push('\n');
 
-    // Summary
+    // Summary — exclude N/A categories from totals (#237)
+    let applicable_earned: f64 = score
+        .categories
+        .values()
+        .filter(|cat| cat.applicable)
+        .map(|cat| cat.earned)
+        .sum();
+    let applicable_possible: f64 = score
+        .categories
+        .values()
+        .filter(|cat| cat.applicable)
+        .map(|cat| cat.max)
+        .sum();
     output.push_str("📌  Summary\n");
     output.push_str(&format!(
         "  Score: {:.1}/{:.0}\n",
-        score.total_earned, score.total_possible
+        applicable_earned, applicable_possible
     ));
     output.push_str(&format!(
         "  Normalized: {:.1}% (avg of category %)\n",
@@ -87,11 +99,23 @@ fn format_markdown(
     // Header
     output.push_str(&format!("# 🦀 Rust Project Score v{}\n\n", SPEC_VERSION));
 
-    // Summary
+    // Summary — exclude N/A categories from totals (#237)
+    let applicable_earned: f64 = score
+        .categories
+        .values()
+        .filter(|cat| cat.applicable)
+        .map(|cat| cat.earned)
+        .sum();
+    let applicable_possible: f64 = score
+        .categories
+        .values()
+        .filter(|cat| cat.applicable)
+        .map(|cat| cat.max)
+        .sum();
     output.push_str("## 📌 Summary\n\n");
     output.push_str(&format!(
         "- **Score**: {:.1}/{:.0}\n",
-        score.total_earned, score.total_possible
+        applicable_earned, applicable_possible
     ));
     output.push_str(&format!("- **Percentage**: {:.1}%\n", score.percentage));
     output.push_str(&format!("- **Grade**: {}\n\n", score.grade));

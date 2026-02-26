@@ -27,8 +27,8 @@ mod tests_part2 {
             .score_with_mode(temp_dir.path(), ScoringMode::Fast)
             .unwrap();
 
-        // Fast mode: coverage fallback(4) + integration(0) + doc_tests(0) + mutation(2.5) = 6.5
-        assert!(result.earned >= 6.0);
+        // Fast mode: coverage estimate(1: has tests) + integration(0) + doc_tests(0) + mutation estimate(2: no config) = 3.0
+        assert!(result.earned >= 3.0);
         assert_eq!(result.max, 20.0);
     }
 
