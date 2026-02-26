@@ -248,28 +248,13 @@ pmat-*.tar.gz
 *-x86_64-apple-darwin.tar.gz
 *-aarch64-apple-darwin.tar.gz
 /.pmat-metrics/
-.pmat/baseline.json
 
-# PMAT
-.pmat/backup/
+# PMAT artifacts (machine-generated, auto-rebuilt) — recursive for subcrates
+**/.pmat/
 .pmat-qa/
-.pmat/dead-code-cache.json
-algorithm-competition-corpus/
-
-# Agent Context (machine-generated, auto-rebuilt)
-.pmat/context.idx/
-.pmat/context.db
-.pmat/workspace.idx/
-.pmat/workspace.db
-.pmat/deps-cache.json
-.pmat/bug-hunter-cache/
-.pmat/hooks-cache/
-.pmat/metrics/
-.pmat/project.toml
-
-# PMAT Work (ephemeral tickets)
 .pmat-work/
 .pmat-baseline.json
+algorithm-competition-corpus/
 
 # Claude Code worktrees (ephemeral, auto-managed)
 .claude/worktrees/

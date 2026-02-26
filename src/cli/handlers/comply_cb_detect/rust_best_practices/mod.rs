@@ -12,10 +12,11 @@ mod utilities;
 
 // Re-export all public detection functions
 
-// Publishing and project configuration (CB-500, CB-503, CB-504, CB-505, CB-509)
+// Publishing and project configuration (CB-500, CB-503, CB-504, CB-505, CB-509, CB-529)
 pub use publish::{
     detect_cb500_publish_hygiene, detect_cb503_clippy_config, detect_cb504_deny_config,
     detect_cb505_workspace_lint_hygiene, detect_cb509_feature_gate_coverage,
+    detect_cb529_pmat_tracked_in_git,
 };
 
 // Type safety and value correctness (CB-501, CB-502, CB-506, CB-508, CB-515, CB-516)

@@ -910,6 +910,126 @@ setmetatable(M, { __call = function(_, ...) return M.new(...) end })
 }
 
 // ============================================================================
+// CB-529: .pmat/ Tracked in Git
+// ============================================================================
+mod cb529_tests {
+    use super::*;
+    use std::fs;
+    use std::path::Path;
+    use std::process::Command;
+    use tempfile::TempDir;
+
+    fn init_git_repo(dir: &Path) {
+        Command::new("git")
+            .args(["init", "--initial-branch=main"])
+            .current_dir(dir)
+            .output()
+            .expect("git init");
+        Command::new("git")
+            .args(["config", "user.email", "test@test.com"])
+            .current_dir(dir)
+            .output()
+            .expect("git config email");
+        Command::new("git")
+            .args(["config", "user.name", "Test"])
+            .current_dir(dir)
+            .output()
+            .expect("git config name");
+    }
+
+    fn git_add_commit(dir: &Path, files: &[&str]) {
+        for f in files {
+            Command::new("git")
+                .args(["add", f])
+                .current_dir(dir)
+                .output()
+                .expect("git add");
+        }
+        Command::new("git")
+            .args(["commit", "-m", "init", "--allow-empty"])
+            .current_dir(dir)
+            .output()
+            .expect("git commit");
+    }
+
+    #[test]
+    fn test_cb529_detects_root_pmat_files() {
+        let temp = TempDir::new().unwrap();
+        let root = temp.path();
+        init_git_repo(root);
+
+        fs::create_dir_all(root.join(".pmat")).unwrap();
+        fs::write(root.join(".pmat/context.db"), "fake").unwrap();
+        fs::write(root.join("Cargo.toml"), "[package]\nname = \"test\"\n").unwrap();
+        git_add_commit(root, &[".pmat/context.db", "Cargo.toml"]);
+
+        let violations = detect_cb529_pmat_tracked_in_git(root);
+        assert_eq!(violations.len(), 1);
+        assert_eq!(violations[0].pattern_id, "CB-529");
+        assert!(violations[0].file.contains(".pmat/context.db"));
+        assert_eq!(violations[0].severity, Severity::Error);
+    }
+
+    #[test]
+    fn test_cb529_detects_subcrate_pmat_files() {
+        let temp = TempDir::new().unwrap();
+        let root = temp.path();
+        init_git_repo(root);
+
+        fs::create_dir_all(root.join("crates/foo/.pmat")).unwrap();
+        fs::write(root.join("crates/foo/.pmat/context.idx"), "data").unwrap();
+        fs::write(root.join("crates/foo/.pmat/dead-code-cache.json"), "{}").unwrap();
+        git_add_commit(
+            root,
+            &[
+                "crates/foo/.pmat/context.idx",
+                "crates/foo/.pmat/dead-code-cache.json",
+            ],
+        );
+
+        let violations = detect_cb529_pmat_tracked_in_git(root);
+        assert_eq!(violations.len(), 2);
+        assert!(violations.iter().all(|v| v.pattern_id == "CB-529"));
+        assert!(violations.iter().all(|v| v.file.contains("/.pmat/")));
+    }
+
+    #[test]
+    fn test_cb529_passes_clean_repo() {
+        let temp = TempDir::new().unwrap();
+        let root = temp.path();
+        init_git_repo(root);
+
+        fs::write(root.join("Cargo.toml"), "[package]\nname = \"test\"\n").unwrap();
+        fs::write(root.join("README.md"), "# Test\n").unwrap();
+        git_add_commit(root, &["Cargo.toml", "README.md"]);
+
+        let violations = detect_cb529_pmat_tracked_in_git(root);
+        assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn test_cb529_ignores_pmat_in_filenames() {
+        let temp = TempDir::new().unwrap();
+        let root = temp.path();
+        init_git_repo(root);
+
+        // A file named "some.pmat_config" is NOT a .pmat/ directory artifact
+        fs::write(root.join("some.pmat_config"), "data").unwrap();
+        git_add_commit(root, &["some.pmat_config"]);
+
+        let violations = detect_cb529_pmat_tracked_in_git(root);
+        assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn test_cb529_not_git_repo() {
+        let temp = TempDir::new().unwrap();
+        let violations = detect_cb529_pmat_tracked_in_git(temp.path());
+        assert!(violations.is_empty());
+    }
+}
+
+// ============================================================================
 // CB-528: Division-by-length Without Empty Guard
 // ============================================================================
 mod cb528_tests {

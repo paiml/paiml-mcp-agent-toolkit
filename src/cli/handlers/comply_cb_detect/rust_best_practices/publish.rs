@@ -6,6 +6,7 @@
 //! - CB-504: Deny Configuration
 //! - CB-505: Workspace Lint Hygiene
 //! - CB-509: Feature Gate Coverage
+//! - CB-529: .pmat/ Tracked in Git
 
 use super::utilities::walkdir_files_with_ext;
 use crate::cli::handlers::comply_cb_detect::types::*;
@@ -211,4 +212,57 @@ pub fn detect_cb509_feature_gate_coverage(project_path: &Path) -> Vec<CbPatternV
     } else {
         Vec::new()
     }
+}
+
+/// CB-529: .pmat/ Tracked in Git — artifact/cache files that ship to crates.io
+///
+/// Detects `.pmat/` directories tracked in git, including in workspace subcrate dirs.
+/// These are build artifacts (context.db, context.idx, dead-code-cache.json, etc.)
+/// that bloat published crates and leak local development state.
+pub fn detect_cb529_pmat_tracked_in_git(project_path: &Path) -> Vec<CbPatternViolation> {
+    let output = match std::process::Command::new("git")
+        .args(["ls-files", "--cached"])
+        .current_dir(project_path)
+        .output()
+    {
+        Ok(o) if o.status.success() => o,
+        _ => return Vec::new(), // Not a git repo or git not available
+    };
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let mut violations = Vec::new();
+
+    for tracked_file in stdout.lines() {
+        let trimmed = tracked_file.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+        // Match any path containing a .pmat/ directory segment
+        if contains_pmat_segment(trimmed) {
+            violations.push(CbPatternViolation {
+                pattern_id: "CB-529".to_string(),
+                file: trimmed.to_string(),
+                line: 0,
+                description: format!(
+                    ".pmat/ artifact tracked in git — will ship to crates.io. \
+                     Fix: git rm --cached '{}' && add '**/.pmat/' to .gitignore",
+                    trimmed
+                ),
+                severity: Severity::Error,
+            });
+        }
+    }
+
+    violations
+}
+
+/// Check if a path contains a `.pmat/` directory segment (not just a prefix).
+/// Matches: `.pmat/foo`, `crates/bar/.pmat/baz`, but NOT `some.pmat_file`.
+fn contains_pmat_segment(path: &str) -> bool {
+    // At start of path
+    if path.starts_with(".pmat/") {
+        return true;
+    }
+    // Nested (e.g., crates/foo/.pmat/context.db)
+    path.contains("/.pmat/")
 }

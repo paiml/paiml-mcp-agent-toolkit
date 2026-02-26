@@ -97,7 +97,8 @@ pub(crate) fn check_rust_best_practices_with_config(project_path: &Path, comply_
         ("CB-522", comply_cb_detect::detect_cb522_untested_path_normalization(project_path)), ("CB-523", comply_cb_detect::detect_cb523_external_config_over_embedded(project_path)),
         ("CB-524", comply_cb_detect::detect_cb524_incomplete_enum_match(project_path)), ("CB-525", comply_cb_detect::detect_cb525_hardcoded_field_names(project_path)),
         ("CB-526", comply_cb_detect::detect_cb526_single_path_resolution(project_path)), ("CB-527", comply_cb_detect::detect_cb527_incomplete_pattern_list(project_path)),
-        ("CB-528", comply_cb_detect::detect_cb528_division_by_length(project_path)), ("CB-530", comply_cb_detect::detect_cb530_log_without_clamp(project_path)),
+        ("CB-528", comply_cb_detect::detect_cb528_division_by_length(project_path)), ("CB-529", comply_cb_detect::detect_cb529_pmat_tracked_in_git(project_path)),
+        ("CB-530", comply_cb_detect::detect_cb530_log_without_clamp(project_path)),
     ];
     aggregate_violations("CB-500: Rust Best Practices (CB-500 to CB-530)", &detectors, comply_config, false)
 }
