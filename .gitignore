@@ -40,7 +40,7 @@ yarn-debug.log*
 yarn-error.log*
 
 # Testing
-coverage/
+/coverage/
 coverage*.json
 *.lcov
 lcov.info
