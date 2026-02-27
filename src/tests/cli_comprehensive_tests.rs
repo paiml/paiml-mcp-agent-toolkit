@@ -458,14 +458,14 @@ fn test_analyze_churn_full_options() {
     let cli = Cli::try_parse_from(&args).unwrap();
     match cli.command {
         Commands::Analyze(AnalyzeCommands::Churn {
-            project_path,
+            path,
             days,
             format,
             output,
             top_files,
             ..
         }) => {
-            assert_eq!(project_path, PathBuf::from("/tmp/repo"));
+            assert_eq!(path, PathBuf::from("/tmp/repo"));
             assert_eq!(days, 60);
             assert_eq!(format, ChurnOutputFormat::Csv);
             assert_eq!(output, Some(PathBuf::from("churn.csv")));
@@ -609,7 +609,8 @@ fn test_analyze_dag_full_options() {
     match cli.command {
         Commands::Analyze(AnalyzeCommands::Dag {
             dag_type,
-            project_path,
+            path,
+            project_path: _,
             output,
             max_depth,
             target_nodes: _,
@@ -620,7 +621,7 @@ fn test_analyze_dag_full_options() {
             enhanced: _,
         }) => {
             assert_eq!(dag_type, DagType::ImportGraph);
-            assert_eq!(project_path, PathBuf::from("/project"));
+            assert_eq!(path, PathBuf::from("/project"));
             assert_eq!(output, Some(PathBuf::from("dependencies.mmd")));
             assert_eq!(max_depth, Some(5));
             assert!(filter_external);

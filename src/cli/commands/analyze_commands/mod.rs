@@ -36,9 +36,13 @@ pub enum AnalyzeCommands {
     /// Analyze code churn (change frequency)
     #[command(visible_aliases = &["ch"])]
     Churn {
-        /// Project path to analyze
+        /// Path to analyze (file or directory)
         #[arg(short = 'p', long, default_value = ".")]
-        project_path: PathBuf,
+        path: PathBuf,
+
+        /// DEPRECATED: Use --path instead
+        #[arg(long, hide = true)]
+        project_path: Option<PathBuf>,
 
         /// Number of days to analyze
         #[arg(short = 'd', long, default_value_t = 30)]
@@ -153,9 +157,13 @@ pub enum AnalyzeCommands {
         #[arg(long, value_enum, default_value = "full-dependency")]
         dag_type: DagType,
 
-        /// Project path to analyze
+        /// Path to analyze (file or directory)
         #[arg(short = 'p', long, default_value = ".")]
-        project_path: PathBuf,
+        path: PathBuf,
+
+        /// DEPRECATED: Use --path instead
+        #[arg(long, hide = true)]
+        project_path: Option<PathBuf>,
 
         /// Output file path
         #[arg(short, long)]
@@ -346,9 +354,13 @@ pub enum AnalyzeCommands {
     /// Generate comprehensive deep context analysis with defect detection
     #[command(name = "deep-context", visible_aliases = &["context", "ctx", "deep"])]
     DeepContext {
-        /// Project path to analyze (defaults to current directory)
+        /// Path to analyze (defaults to current directory)
         #[arg(long, short = 'p', default_value = ".")]
-        project_path: PathBuf,
+        path: PathBuf,
+
+        /// DEPRECATED: Use --path instead
+        #[arg(long, hide = true)]
+        project_path: Option<PathBuf>,
 
         /// Output file path
         #[arg(short, long)]
@@ -503,9 +515,13 @@ pub enum AnalyzeCommands {
     /// Find the file with highest defect density (lint violations per line)
     #[command(name = "lint-hotspot")]
     LintHotspot {
-        /// Project path to analyze
+        /// Path to analyze (file or directory)
         #[arg(short = 'p', long, default_value = ".")]
-        project_path: PathBuf,
+        path: PathBuf,
+
+        /// DEPRECATED: Use --path instead
+        #[arg(long, hide = true)]
+        project_path: Option<PathBuf>,
 
         /// Analyze a specific file instead of finding the hotspot
         #[arg(long)]
@@ -605,9 +621,13 @@ pub enum AnalyzeCommands {
 
     /// Analyze provability properties using abstract interpretation
     Provability {
-        /// Project path to analyze (defaults to current directory)
+        /// Path to analyze (defaults to current directory)
         #[arg(long, short = 'p', default_value = ".")]
-        project_path: PathBuf,
+        path: PathBuf,
+
+        /// DEPRECATED: Use --path instead
+        #[arg(long, hide = true)]
+        project_path: Option<PathBuf>,
 
         /// Specific functions to analyze (comma-separated)
         #[arg(long, value_delimiter = ',')]
@@ -640,9 +660,13 @@ pub enum AnalyzeCommands {
 
     /// Detect duplicate code using vectorized `MinHash` and AST embeddings
     Duplicates {
-        /// Project path to analyze (defaults to current directory)
+        /// Path to analyze (defaults to current directory)
         #[arg(long, short = 'p', default_value = ".")]
-        project_path: PathBuf,
+        path: PathBuf,
+
+        /// DEPRECATED: Use --path instead
+        #[arg(long, hide = true)]
+        project_path: Option<PathBuf>,
 
         /// Detection type: exact, renamed, gapped, semantic, or all
         #[arg(long, default_value = "all")]
@@ -687,9 +711,13 @@ pub enum AnalyzeCommands {
 
     /// Predict defect probability using ML-based analysis
     DefectPrediction {
-        /// Project path to analyze (defaults to current directory)
+        /// Path to analyze (defaults to current directory)
         #[arg(long, short = 'p', default_value = ".")]
-        project_path: PathBuf,
+        path: PathBuf,
+
+        /// DEPRECATED: Use --path instead
+        #[arg(long, hide = true)]
+        project_path: Option<PathBuf>,
 
         /// Minimum confidence threshold for predictions
         #[arg(long, default_value = "0.5")]
@@ -751,9 +779,13 @@ pub enum AnalyzeCommands {
     ///
     /// MCP Workflow: Use after complexity analysis to get detailed insights on problematic files
     Comprehensive {
-        /// Project path to analyze (defaults to current directory)
+        /// Path to analyze (defaults to current directory)
         #[arg(long, short = 'p', default_value = ".")]
-        project_path: PathBuf,
+        path: PathBuf,
+
+        /// DEPRECATED: Use --path instead
+        #[arg(long, hide = true)]
+        project_path: Option<PathBuf>,
 
         /// Single file to analyze (overrides project path)
         #[arg(long, conflicts_with = "files")]
@@ -826,9 +858,13 @@ pub enum AnalyzeCommands {
 
     /// Analyze graph metrics and centrality measures
     GraphMetrics {
-        /// Project path to analyze (defaults to current directory)
+        /// Path to analyze (defaults to current directory)
         #[arg(long, short = 'p', default_value = ".")]
-        project_path: PathBuf,
+        path: PathBuf,
+
+        /// DEPRECATED: Use --path instead
+        #[arg(long, hide = true)]
+        project_path: Option<PathBuf>,
 
         /// Metrics to compute
         #[arg(long, value_delimiter = ',', default_value = "all")]
@@ -885,9 +921,13 @@ pub enum AnalyzeCommands {
 
     /// Analyze name similarity with embeddings
     NameSimilarity {
-        /// Project path to analyze (defaults to current directory)
+        /// Path to analyze (defaults to current directory)
         #[arg(long, short = 'p', default_value = ".")]
-        project_path: PathBuf,
+        path: PathBuf,
+
+        /// DEPRECATED: Use --path instead
+        #[arg(long, hide = true)]
+        project_path: Option<PathBuf>,
 
         /// Name to search for
         query: String,
@@ -939,9 +979,13 @@ pub enum AnalyzeCommands {
 
     /// Collect proof annotations from multiple sources
     ProofAnnotations {
-        /// Project path to analyze (defaults to current directory)
+        /// Path to analyze (defaults to current directory)
         #[arg(long, short = 'p', default_value = ".")]
-        project_path: PathBuf,
+        path: PathBuf,
+
+        /// DEPRECATED: Use --path instead
+        #[arg(long, hide = true)]
+        project_path: Option<PathBuf>,
 
         /// Output format
         #[arg(long, short = 'f', value_enum, default_value = "summary")]
@@ -986,9 +1030,13 @@ pub enum AnalyzeCommands {
 
     /// Analyze incremental coverage changes with caching
     IncrementalCoverage {
-        /// Project path to analyze (defaults to current directory)
+        /// Path to analyze (defaults to current directory)
         #[arg(long, short = 'p', default_value = ".")]
-        project_path: PathBuf,
+        path: PathBuf,
+
+        /// DEPRECATED: Use --path instead
+        #[arg(long, hide = true)]
+        project_path: Option<PathBuf>,
 
         /// Base commit or branch for comparison
         #[arg(long, short = 'b', default_value = "main")]
@@ -1038,9 +1086,13 @@ pub enum AnalyzeCommands {
     /// Improve test coverage to target percentage using PMAT tools and Extreme TDD
     #[command(visible_aliases = &["improve-coverage", "cov-improve"])]
     CoverageImprove {
-        /// Project path to analyze (defaults to current directory)
+        /// Path to analyze (defaults to current directory)
         #[arg(long, short = 'p', default_value = ".")]
-        project_path: PathBuf,
+        path: PathBuf,
+
+        /// DEPRECATED: Use --path instead
+        #[arg(long, hide = true)]
+        project_path: Option<PathBuf>,
 
         /// Target coverage percentage (0-100)
         #[arg(long, short = 't', default_value = "95.0")]
@@ -1077,9 +1129,13 @@ pub enum AnalyzeCommands {
 
     /// Analyze symbol table with cross-references and usage patterns
     SymbolTable {
-        /// Project path to analyze (defaults to current directory)
+        /// Path to analyze (defaults to current directory)
         #[arg(long, short = 'p', default_value = ".")]
-        project_path: PathBuf,
+        path: PathBuf,
+
+        /// DEPRECATED: Use --path instead
+        #[arg(long, hide = true)]
+        project_path: Option<PathBuf>,
 
         /// Output format
         #[arg(long, short = 'f', value_enum, default_value = "summary")]
@@ -1124,9 +1180,13 @@ pub enum AnalyzeCommands {
 
     /// Analyze algorithmic complexity (Big-O) of functions
     BigO {
-        /// Project path to analyze (defaults to current directory)
+        /// Path to analyze (defaults to current directory)
         #[arg(long, short = 'p', default_value = ".")]
-        project_path: PathBuf,
+        path: PathBuf,
+
+        /// DEPRECATED: Use --path instead
+        #[arg(long, hide = true)]
+        project_path: Option<PathBuf>,
 
         /// Output format
         #[arg(long, short = 'f', value_enum, default_value = "summary")]
@@ -1172,9 +1232,13 @@ pub enum AnalyzeCommands {
 
     /// Analyze `AssemblyScript` code
     AssemblyScript {
-        /// Project path to analyze (defaults to current directory)
+        /// Path to analyze (defaults to current directory)
         #[arg(long, short = 'p', default_value = ".")]
-        project_path: PathBuf,
+        path: PathBuf,
+
+        /// DEPRECATED: Use --path instead
+        #[arg(long, hide = true)]
+        project_path: Option<PathBuf>,
 
         /// Output format
         #[arg(long, short = 'f', value_enum, default_value = "summary")]
@@ -1211,9 +1275,13 @@ pub enum AnalyzeCommands {
 
     /// Analyze WebAssembly binary and text format
     WebAssembly {
-        /// Project path to analyze (defaults to current directory)  
+        /// Path to analyze (defaults to current directory)
         #[arg(long, short = 'p', default_value = ".")]
-        project_path: PathBuf,
+        path: PathBuf,
+
+        /// DEPRECATED: Use --path instead
+        #[arg(long, hide = true)]
+        project_path: Option<PathBuf>,
 
         /// Output format
         #[arg(long, short = 'f', value_enum, default_value = "summary")]
@@ -1254,9 +1322,13 @@ pub enum AnalyzeCommands {
 
     /// Automated clippy fixes with confidence-based filtering
     Clippy {
-        /// Project path to analyze (defaults to current directory)
+        /// Path to analyze (defaults to current directory)
         #[arg(long, short = 'p', default_value = ".")]
-        project_path: PathBuf,
+        path: PathBuf,
+
+        /// DEPRECATED: Use --path instead
+        #[arg(long, hide = true)]
+        project_path: Option<PathBuf>,
 
         /// Confidence level for automated fixes (high, medium, low)
         #[arg(long, short = 'c', default_value = "high")]
@@ -1284,9 +1356,13 @@ pub enum AnalyzeCommands {
     /// Identifies repetitive AST patterns that can be refactored into reusable components.
     /// Provides specific fix suggestions and estimated LOC reduction for each violation.
     Entropy {
-        /// Project path to analyze
+        /// Path to analyze (file or directory)
         #[arg(short = 'p', long, default_value = ".")]
-        project_path: PathBuf,
+        path: PathBuf,
+
+        /// DEPRECATED: Use --path instead
+        #[arg(long, hide = true)]
+        project_path: Option<PathBuf>,
 
         /// Output format
         #[arg(long, value_enum, default_value = "summary")]

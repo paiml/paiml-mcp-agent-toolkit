@@ -1,6 +1,7 @@
 /// Route graph metrics analysis command
 pub(super) async fn route_graph_metrics_analysis(cmd: AnalyzeCommands) -> Result<()> {
     if let AnalyzeCommands::GraphMetrics {
+        path,
         project_path,
         metrics,
         pagerank_seeds,
@@ -17,8 +18,9 @@ pub(super) async fn route_graph_metrics_analysis(cmd: AnalyzeCommands) -> Result
         min_centrality,
     } = cmd
     {
+        let path = project_path.unwrap_or(path);
         crate::cli::handlers::advanced_analysis_handlers::handle_analyze_graph_metrics(
-            project_path,
+            path,
             metrics,
             pagerank_seeds,
             damping_factor,
@@ -42,6 +44,7 @@ pub(super) async fn route_graph_metrics_analysis(cmd: AnalyzeCommands) -> Result
 /// Route name similarity analysis command
 pub(super) async fn route_name_similarity_analysis(cmd: AnalyzeCommands) -> Result<()> {
     if let AnalyzeCommands::NameSimilarity {
+        path,
         project_path,
         query,
         top_k,
@@ -57,8 +60,9 @@ pub(super) async fn route_name_similarity_analysis(cmd: AnalyzeCommands) -> Resu
         case_sensitive,
     } = cmd
     {
+        let path = project_path.unwrap_or(path);
         crate::cli::handlers::name_similarity_analysis::handle_analyze_name_similarity(
-            project_path,
+            path,
             query,
             top_k,
             phonetic,
@@ -81,6 +85,7 @@ pub(super) async fn route_name_similarity_analysis(cmd: AnalyzeCommands) -> Resu
 /// Route proof annotations analysis command
 pub(super) async fn route_proof_annotations_analysis(cmd: AnalyzeCommands) -> Result<()> {
     if let AnalyzeCommands::ProofAnnotations {
+        path,
         project_path,
         format,
         high_confidence_only,
@@ -93,8 +98,9 @@ pub(super) async fn route_proof_annotations_analysis(cmd: AnalyzeCommands) -> Re
         top_files: _top_files,
     } = cmd
     {
+        let path = project_path.unwrap_or(path);
         crate::cli::handlers::proof_annotations_handler::handle_analyze_proof_annotations(
-            project_path,
+            path,
             format,
             high_confidence_only,
             include_evidence,
@@ -113,6 +119,7 @@ pub(super) async fn route_proof_annotations_analysis(cmd: AnalyzeCommands) -> Re
 /// Route incremental coverage analysis command
 pub(super) async fn route_incremental_coverage_analysis(cmd: AnalyzeCommands) -> Result<()> {
     if let AnalyzeCommands::IncrementalCoverage {
+        path,
         project_path,
         base_branch,
         target_branch,
@@ -129,8 +136,9 @@ pub(super) async fn route_incremental_coverage_analysis(cmd: AnalyzeCommands) ->
     {
         use crate::cli::handlers::incremental_coverage_handler::IncrementalCoverageConfig;
 
+        let path = project_path.unwrap_or(path);
         let config = IncrementalCoverageConfig {
-            project_path,
+            project_path: path,
             base_branch,
             target_branch,
             format,
@@ -156,6 +164,7 @@ pub(super) async fn route_incremental_coverage_analysis(cmd: AnalyzeCommands) ->
 /// Route symbol table analysis command
 pub(super) async fn route_symbol_table_analysis(cmd: AnalyzeCommands) -> Result<()> {
     if let AnalyzeCommands::SymbolTable {
+        path,
         project_path,
         format,
         filter,
@@ -169,8 +178,9 @@ pub(super) async fn route_symbol_table_analysis(cmd: AnalyzeCommands) -> Result<
         top_files: _top_files,
     } = cmd
     {
+        let path = project_path.unwrap_or(path);
         crate::cli::handlers::advanced_analysis_handlers::handle_analyze_symbol_table(
-            project_path,
+            path,
             format,
             filter,
             query,
@@ -190,6 +200,7 @@ pub(super) async fn route_symbol_table_analysis(cmd: AnalyzeCommands) -> Result<
 /// Route Big O analysis command
 pub(super) async fn route_big_o_analysis(cmd: AnalyzeCommands) -> Result<()> {
     if let AnalyzeCommands::BigO {
+        path,
         project_path,
         format,
         confidence_threshold,
@@ -202,8 +213,9 @@ pub(super) async fn route_big_o_analysis(cmd: AnalyzeCommands) -> Result<()> {
         top_files,
     } = cmd
     {
+        let path = project_path.unwrap_or(path);
         crate::cli::handlers::big_o_handlers::handle_analyze_big_o(
-            project_path,
+            path,
             format,
             confidence_threshold,
             analyze_space,
@@ -223,6 +235,7 @@ pub(super) async fn route_big_o_analysis(cmd: AnalyzeCommands) -> Result<()> {
 /// Route `AssemblyScript` analysis command
 pub(super) async fn route_assemblyscript_analysis(cmd: AnalyzeCommands) -> Result<()> {
     if let AnalyzeCommands::AssemblyScript {
+        path,
         project_path,
         format,
         wasm_complexity,
@@ -234,8 +247,9 @@ pub(super) async fn route_assemblyscript_analysis(cmd: AnalyzeCommands) -> Resul
         top_files: _top_files,
     } = cmd
     {
+        let path = project_path.unwrap_or(path);
         crate::cli::handlers::wasm_handlers::handle_analyze_assemblyscript(
-            project_path,
+            path,
             format,
             wasm_complexity,
             memory_analysis,
@@ -253,6 +267,7 @@ pub(super) async fn route_assemblyscript_analysis(cmd: AnalyzeCommands) -> Resul
 /// Route WebAssembly analysis command
 pub(super) async fn route_webassembly_analysis(cmd: AnalyzeCommands) -> Result<()> {
     if let AnalyzeCommands::WebAssembly {
+        path,
         project_path,
         format,
         include_binary,
@@ -265,8 +280,9 @@ pub(super) async fn route_webassembly_analysis(cmd: AnalyzeCommands) -> Result<(
         top_files: _top_files,
     } = cmd
     {
+        let path = project_path.unwrap_or(path);
         crate::cli::handlers::wasm_handlers::handle_analyze_webassembly(
-            project_path,
+            path,
             format,
             include_binary,
             include_text,

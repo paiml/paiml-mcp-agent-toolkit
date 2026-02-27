@@ -39,7 +39,8 @@ mod tests {
     fn test_map_analyze_command_unsupported_variant() {
         // Churn is not handled by the adapter, hits the _ => bail!() arm
         let cmd = AnalyzeCommands::Churn {
-            project_path: PathBuf::from("."),
+            path: PathBuf::from("."),
+            project_path: Some(PathBuf::from(".")),
             days: 30,
             format: crate::models::churn::ChurnOutputFormat::Summary,
             output: None,

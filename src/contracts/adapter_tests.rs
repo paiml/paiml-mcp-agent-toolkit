@@ -540,7 +540,8 @@ mod tests {
             use crate::models::churn::ChurnOutputFormat;
 
             let cmd = AnalyzeCommands::Churn {
-                project_path: PathBuf::from("."),
+                path: PathBuf::from("."),
+                project_path: Some(PathBuf::from(".")),
                 days: 30,
                 format: ChurnOutputFormat::Summary,
                 output: None,
@@ -1025,7 +1026,8 @@ mod tests {
         fn test_lint_hotspot_with_valid_path_succeeds() {
             let temp_dir = create_temp_dir();
             let cmd = AnalyzeCommands::LintHotspot {
-                project_path: temp_dir.path().to_path_buf(),
+                path: PathBuf::from("."),
+                project_path: Some(temp_dir.path().to_path_buf()),
                 file: None,
                 format: LintHotspotOutputFormat::Summary,
                 max_density: 5.0,
@@ -1053,7 +1055,8 @@ mod tests {
             let output_path = temp_dir.path().join("lint_output.json");
 
             let cmd = AnalyzeCommands::LintHotspot {
-                project_path: temp_dir.path().to_path_buf(),
+                path: PathBuf::from("."),
+                project_path: Some(temp_dir.path().to_path_buf()),
                 file: Some(test_file),
                 format: LintHotspotOutputFormat::Json,
                 max_density: 3.0,
@@ -1076,7 +1079,8 @@ mod tests {
         #[test]
         fn test_lint_hotspot_with_invalid_path_fails() {
             let cmd = AnalyzeCommands::LintHotspot {
-                project_path: PathBuf::from("/nonexistent/path"),
+                path: PathBuf::from("."),
+                project_path: Some(PathBuf::from("/nonexistent/path")),
                 file: None,
                 format: LintHotspotOutputFormat::Summary,
                 max_density: 5.0,
@@ -1100,7 +1104,8 @@ mod tests {
         fn test_lint_hotspot_boundary_confidence_zero() {
             let temp_dir = create_temp_dir();
             let cmd = AnalyzeCommands::LintHotspot {
-                project_path: temp_dir.path().to_path_buf(),
+                path: PathBuf::from("."),
+                project_path: Some(temp_dir.path().to_path_buf()),
                 file: None,
                 format: LintHotspotOutputFormat::Summary,
                 max_density: 5.0,
@@ -1124,7 +1129,8 @@ mod tests {
         fn test_lint_hotspot_boundary_confidence_one() {
             let temp_dir = create_temp_dir();
             let cmd = AnalyzeCommands::LintHotspot {
-                project_path: temp_dir.path().to_path_buf(),
+                path: PathBuf::from("."),
+                project_path: Some(temp_dir.path().to_path_buf()),
                 file: None,
                 format: LintHotspotOutputFormat::Summary,
                 max_density: 5.0,
@@ -1148,7 +1154,8 @@ mod tests {
         fn test_lint_hotspot_boundary_zero_max_density() {
             let temp_dir = create_temp_dir();
             let cmd = AnalyzeCommands::LintHotspot {
-                project_path: temp_dir.path().to_path_buf(),
+                path: PathBuf::from("."),
+                project_path: Some(temp_dir.path().to_path_buf()),
                 file: None,
                 format: LintHotspotOutputFormat::Summary,
                 max_density: 0.0,
@@ -1173,7 +1180,8 @@ mod tests {
         #[test]
         fn test_unsupported_command_fails() {
             let cmd = AnalyzeCommands::Churn {
-                project_path: PathBuf::from("."),
+                path: PathBuf::from("."),
+                project_path: Some(PathBuf::from(".")),
                 days: 30,
                 format: ChurnOutputFormat::Summary,
                 output: None,

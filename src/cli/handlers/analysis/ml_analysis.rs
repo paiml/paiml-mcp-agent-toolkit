@@ -103,7 +103,8 @@ mod coverage_tests {
     #[tokio::test]
     async fn test_handle_defect_prediction_basic() {
         let cmd = AnalyzeCommands::DefectPrediction {
-            project_path: PathBuf::from("/nonexistent/path/for/defect/test"),
+            path: PathBuf::from("/nonexistent/path/for/defect/test"),
+            project_path: None,
             confidence_threshold: 0.5,
             min_lines: 10,
             include_low_confidence: false,
@@ -126,7 +127,8 @@ mod coverage_tests {
     #[tokio::test]
     async fn test_handle_defect_prediction_high_risk_with_recommendations() {
         let cmd = AnalyzeCommands::DefectPrediction {
-            project_path: PathBuf::from("/tmp/test-defect"),
+            path: PathBuf::from("/tmp/test-defect"),
+            project_path: None,
             confidence_threshold: 0.7,
             min_lines: 5,
             include_low_confidence: false,
@@ -148,7 +150,8 @@ mod coverage_tests {
     #[tokio::test]
     async fn test_handle_defect_prediction_include_low_confidence() {
         let cmd = AnalyzeCommands::DefectPrediction {
-            project_path: PathBuf::from("/nonexistent"),
+            path: PathBuf::from("/nonexistent"),
+            project_path: None,
             confidence_threshold: 0.3,
             min_lines: 20,
             include_low_confidence: true,
@@ -170,7 +173,8 @@ mod coverage_tests {
     #[tokio::test]
     async fn test_handle_defect_prediction_markdown() {
         let cmd = AnalyzeCommands::DefectPrediction {
-            project_path: PathBuf::from("/tmp/test-defect-md"),
+            path: PathBuf::from("/tmp/test-defect-md"),
+            project_path: None,
             confidence_threshold: 0.5,
             min_lines: 10,
             include_low_confidence: false,

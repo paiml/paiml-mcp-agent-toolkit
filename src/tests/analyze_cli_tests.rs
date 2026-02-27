@@ -24,14 +24,14 @@ mod tests {
                 Commands::Analyze(analyze_cmd) => match analyze_cmd {
                     AnalyzeCommands::Churn {
                         days,
-                        project_path,
+                        path,
                         format,
                         output,
                         top_files,
                         ..
                     } => {
                         assert_eq!(days, 30);
-                        assert_eq!(project_path, PathBuf::from("."));
+                        assert_eq!(path, PathBuf::from("."));
                         assert_eq!(format, ChurnOutputFormat::Summary);
                         assert!(output.is_none());
                         assert_eq!(top_files, 10);
@@ -74,7 +74,7 @@ mod tests {
                         ..
                     } => {
                         assert_eq!(days, 90);
-                        assert_eq!(project_path, PathBuf::from("/tmp/test"));
+                        assert_eq!(project_path, Some(PathBuf::from("/tmp/test")));
                         assert_eq!(format, ChurnOutputFormat::Markdown);
                         assert_eq!(output, Some(PathBuf::from("report.md")));
                         assert_eq!(top_files, 10);
@@ -132,14 +132,14 @@ mod tests {
             match cli.command {
                 Commands::Analyze(AnalyzeCommands::Churn {
                     days,
-                    project_path,
+                    path,
                     format,
                     output,
                     top_files,
                     ..
                 }) => {
                     assert_eq!(days, 7);
-                    assert_eq!(project_path, PathBuf::from("/tmp"));
+                    assert_eq!(path, PathBuf::from("/tmp"));
                     assert_eq!(format, ChurnOutputFormat::Csv);
                     assert_eq!(output, Some(PathBuf::from("out.csv")));
                     assert_eq!(top_files, 10);

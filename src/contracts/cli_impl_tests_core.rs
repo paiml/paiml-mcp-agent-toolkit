@@ -224,7 +224,8 @@
         let temp_dir = create_test_dir();
 
         let cmd = AnalyzeCommands::LintHotspot {
-            project_path: temp_dir.path().to_path_buf(),
+            path: PathBuf::from("."),
+            project_path: Some(temp_dir.path().to_path_buf()),
             file: None,
             format: crate::cli::LintHotspotOutputFormat::Summary,
             max_density: 5.0,
@@ -255,7 +256,8 @@
 
         // Using Churn command which falls into the _ => &None branch
         let cmd = AnalyzeCommands::Churn {
-            project_path: temp_dir.path().to_path_buf(),
+            path: PathBuf::from("."),
+            project_path: Some(temp_dir.path().to_path_buf()),
             days: 30,
             format: crate::models::churn::ChurnOutputFormat::Summary,
             output: None,
@@ -368,7 +370,8 @@
         let output_path = temp_dir.path().join("lint.json");
 
         let cmd = AnalyzeCommands::LintHotspot {
-            project_path: temp_dir.path().to_path_buf(),
+            path: PathBuf::from("."),
+            project_path: Some(temp_dir.path().to_path_buf()),
             file: None,
             format: crate::cli::LintHotspotOutputFormat::Json,
             max_density: 5.0,
@@ -460,7 +463,8 @@
         let temp_dir = create_test_dir();
 
         let cmd = AnalyzeCommands::Churn {
-            project_path: temp_dir.path().to_path_buf(),
+            path: PathBuf::from("."),
+            project_path: Some(temp_dir.path().to_path_buf()),
             days: 30,
             format: crate::models::churn::ChurnOutputFormat::Summary,
             output: None,
@@ -481,7 +485,8 @@
 
         let cmd = AnalyzeCommands::Dag {
             dag_type: crate::cli::DagType::FullDependency,
-            project_path: temp_dir.path().to_path_buf(),
+            path: PathBuf::from("."),
+            project_path: Some(temp_dir.path().to_path_buf()),
             output: None,
             max_depth: None,
             target_nodes: None,

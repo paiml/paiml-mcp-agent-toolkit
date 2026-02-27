@@ -2,10 +2,10 @@
 // worker pool management, and individual mutant execution.
 
 async fn initialize_worker_monitoring(
-    monitor: &super::worker_monitor::WorkerMonitor,
+    monitor: Arc<super::worker_monitor::WorkerMonitor>,
 ) {
     monitor.initialize_workers().await;
-    let monitor_clone = Arc::new(monitor.clone());
+    let monitor_clone = Arc::clone(&monitor);
     let monitoring_interval = std::time::Duration::from_secs(10);
     let _monitoring_task = super::worker_monitor::WorkerMonitor::run_monitoring_task(
         monitor_clone,
@@ -145,7 +145,7 @@ impl DistributedExecutor {
 
         // Initialize worker monitoring if enabled
         if let Some(ref monitor) = self.worker_monitor {
-            initialize_worker_monitoring(monitor).await;
+            initialize_worker_monitoring(Arc::clone(monitor)).await;
         }
 
         // Create channels for work distribution

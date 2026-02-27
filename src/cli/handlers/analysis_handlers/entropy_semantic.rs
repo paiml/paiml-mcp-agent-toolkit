@@ -11,6 +11,7 @@ use std::path::Path;
 /// Refactored to reduce complexity from 25 to <20 by extracting helper functions
 pub(super) async fn route_entropy_analysis(cmd: AnalyzeCommands) -> Result<()> {
     if let AnalyzeCommands::Entropy {
+        path,
         project_path,
         format,
         output,
@@ -22,10 +23,11 @@ pub(super) async fn route_entropy_analysis(cmd: AnalyzeCommands) -> Result<()> {
     {
         use crate::entropy::EntropyAnalyzer;
 
+        let path = project_path.unwrap_or(path);
         let config = create_entropy_config(min_severity, include_tests);
         let analyzer = EntropyAnalyzer::with_config(config);
 
-        let analysis_path = file.unwrap_or(project_path);
+        let analysis_path = file.unwrap_or(path);
         let report = analyzer.analyze(&analysis_path).await?;
 
         let output_content = format_entropy_report(&report, format, top_violations)?;

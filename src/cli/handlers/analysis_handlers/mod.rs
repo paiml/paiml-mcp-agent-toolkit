@@ -272,6 +272,7 @@ async fn route_specialized_analysis(cmd: AnalyzeCommands) -> Result<()> {
             platform_routes::route_incremental_coverage_analysis(cmd).await
         }
         AnalyzeCommands::CoverageImprove {
+            path,
             project_path,
             target,
             max_iterations,
@@ -282,8 +283,9 @@ async fn route_specialized_analysis(cmd: AnalyzeCommands) -> Result<()> {
             output,
             format,
         } => {
+            let path = project_path.unwrap_or(path);
             crate::cli::handlers::coverage_improve_handler::handle_coverage_improve(
-                project_path,
+                path,
                 target,
                 max_iterations,
                 fast,

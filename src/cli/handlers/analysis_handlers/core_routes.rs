@@ -51,6 +51,7 @@ pub(super) async fn route_complexity_analysis(cmd: AnalyzeCommands) -> Result<()
 /// Route churn analysis command
 pub(super) async fn route_churn_analysis(cmd: AnalyzeCommands) -> Result<()> {
     if let AnalyzeCommands::Churn {
+        path,
         project_path,
         days,
         format,
@@ -60,8 +61,9 @@ pub(super) async fn route_churn_analysis(cmd: AnalyzeCommands) -> Result<()> {
         exclude,
     } = cmd
     {
+        let path = project_path.unwrap_or(path);
         crate::cli::handlers::complexity_handlers::handle_analyze_churn(
-            project_path,
+            path,
             days,
             format,
             output,
@@ -168,6 +170,7 @@ pub(super) async fn route_defects_analysis(cmd: AnalyzeCommands) -> Result<()> {
 pub(super) async fn route_dag_analysis(cmd: AnalyzeCommands) -> Result<()> {
     if let AnalyzeCommands::Dag {
         dag_type,
+        path,
         project_path,
         output,
         max_depth,
@@ -179,9 +182,10 @@ pub(super) async fn route_dag_analysis(cmd: AnalyzeCommands) -> Result<()> {
         enhanced,
     } = cmd
     {
+        let path = project_path.unwrap_or(path);
         crate::cli::handlers::complexity_handlers::handle_analyze_dag(
             dag_type,
-            project_path,
+            path,
             output,
             max_depth,
             target_nodes,

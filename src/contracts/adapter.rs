@@ -171,6 +171,7 @@ impl ContractAdapter {
                 critical_only,
             ),
             AnalyzeCommands::LintHotspot {
+                path,
                 project_path,
                 file,
                 max_density,
@@ -181,8 +182,13 @@ impl ContractAdapter {
                 top_files,
                 ..
             } => {
+                let resolved_path = if let Some(deprecated_path) = project_path {
+                    deprecated_path.clone()
+                } else {
+                    path.clone()
+                };
                 let params = LintHotspotMapParams {
-                    project_path,
+                    project_path: &resolved_path,
                     file,
                     max_density,
                     min_confidence,

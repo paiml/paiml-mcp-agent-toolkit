@@ -166,6 +166,16 @@ impl ClusteringEngine {
         }
 
         let n = vectors.len();
+
+        // Guard: O(n²) distance matrix + O(n³) agglomerative merge
+        // Cap at 5000 to prevent memory exhaustion and timeouts (PMAT-505)
+        const MAX_HIERARCHICAL_SIZE: usize = 5000;
+        if n > MAX_HIERARCHICAL_SIZE {
+            return Err(format!(
+                "Hierarchical clustering input too large: {n} vectors (max: {MAX_HIERARCHICAL_SIZE}). \
+                 Use k-means for large datasets."
+            ));
+        }
         let mut merges = Vec::new();
         let mut clusters: Vec<Vec<usize>> = (0..n).map(|i| vec![i]).collect();
 

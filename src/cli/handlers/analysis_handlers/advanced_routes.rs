@@ -10,6 +10,7 @@ use std::path::Path;
 /// Route deep context analysis command
 pub(super) async fn route_deep_context_analysis(cmd: AnalyzeCommands) -> Result<()> {
     if let AnalyzeCommands::DeepContext {
+        path,
         project_path,
         output,
         format,
@@ -27,11 +28,12 @@ pub(super) async fn route_deep_context_analysis(cmd: AnalyzeCommands) -> Result<
         top_files,
     } = cmd
     {
+        let path = project_path.unwrap_or(path);
         let converted_dag_type = convert_deep_context_dag_type(dag_type);
         let converted_cache_strategy = convert_cache_strategy(cache_strategy);
 
         crate::cli::handlers::advanced_analysis_handlers::handle_analyze_deep_context(
-            project_path,
+            path,
             output,
             format,
             full,
@@ -199,6 +201,7 @@ pub(super) async fn route_build_tdg_analysis(cmd: AnalyzeCommands) -> Result<()>
 /// Route lint hotspot analysis command
 pub(super) async fn route_lint_hotspot_analysis(cmd: AnalyzeCommands) -> Result<()> {
     if let AnalyzeCommands::LintHotspot {
+        path,
         project_path,
         file,
         format,
@@ -215,8 +218,9 @@ pub(super) async fn route_lint_hotspot_analysis(cmd: AnalyzeCommands) -> Result<
         exclude,
     } = cmd
     {
+        let path = project_path.unwrap_or(path);
         crate::cli::handlers::lint_hotspot_handlers::handle_analyze_lint_hotspot(
-            project_path,
+            path,
             file,
             format,
             max_density,
@@ -240,6 +244,7 @@ pub(super) async fn route_lint_hotspot_analysis(cmd: AnalyzeCommands) -> Result<
 /// Route comprehensive analysis command
 pub(super) async fn route_comprehensive_analysis(cmd: AnalyzeCommands) -> Result<()> {
     if let AnalyzeCommands::Comprehensive {
+        path,
         project_path,
         file,
         files,
@@ -259,8 +264,9 @@ pub(super) async fn route_comprehensive_analysis(cmd: AnalyzeCommands) -> Result
         top_files: _,
     } = cmd
     {
+        let path = project_path.unwrap_or(path);
         crate::cli::handlers::advanced_analysis_handlers::handle_analyze_comprehensive(
-            project_path,
+            path,
             file,
             files,
             format,
@@ -286,6 +292,7 @@ pub(super) async fn route_comprehensive_analysis(cmd: AnalyzeCommands) -> Result
 /// Route duplicates analysis command
 pub(super) async fn route_duplicates_analysis(cmd: AnalyzeCommands) -> Result<()> {
     if let AnalyzeCommands::Duplicates {
+        path,
         project_path,
         detection_type,
         threshold,
@@ -299,8 +306,9 @@ pub(super) async fn route_duplicates_analysis(cmd: AnalyzeCommands) -> Result<()
         top_files,
     } = cmd
     {
+        let path = project_path.unwrap_or(path);
         let config = crate::cli::handlers::duplication_analysis::DuplicateAnalysisConfig {
-            project_path,
+            project_path: path,
             detection_type,
             threshold: f64::from(threshold),
             min_lines,
@@ -321,6 +329,7 @@ pub(super) async fn route_duplicates_analysis(cmd: AnalyzeCommands) -> Result<()
 /// Route defect prediction analysis command
 pub(super) async fn route_defect_prediction_analysis(cmd: AnalyzeCommands) -> Result<()> {
     if let AnalyzeCommands::DefectPrediction {
+        path,
         project_path,
         confidence_threshold,
         min_lines,
@@ -337,8 +346,9 @@ pub(super) async fn route_defect_prediction_analysis(cmd: AnalyzeCommands) -> Re
     {
         use crate::cli::handlers::defect_prediction_handler::DefectPredictionConfig;
 
+        let path = project_path.unwrap_or(path);
         let config = DefectPredictionConfig {
-            project_path,
+            project_path: path,
             confidence_threshold,
             min_lines,
             include_low_confidence,
@@ -362,6 +372,7 @@ pub(super) async fn route_defect_prediction_analysis(cmd: AnalyzeCommands) -> Re
 /// Route provability analysis command
 pub(super) async fn route_provability_analysis(cmd: AnalyzeCommands) -> Result<()> {
     if let AnalyzeCommands::Provability {
+        path,
         project_path,
         functions,
         analysis_depth,
@@ -374,8 +385,9 @@ pub(super) async fn route_provability_analysis(cmd: AnalyzeCommands) -> Result<(
     {
         use crate::cli::handlers::provability_handler::ProvabilityConfig;
 
+        let path = project_path.unwrap_or(path);
         let config = ProvabilityConfig {
-            project_path,
+            project_path: path,
             functions,
             analysis_depth,
             format,
@@ -394,6 +406,7 @@ pub(super) async fn route_provability_analysis(cmd: AnalyzeCommands) -> Result<(
 /// Route clippy analysis command (complexity: 4)
 pub(super) async fn route_clippy_analysis(cmd: AnalyzeCommands) -> Result<()> {
     if let AnalyzeCommands::Clippy {
+        path,
         project_path,
         confidence,
         dry_run,
@@ -402,6 +415,7 @@ pub(super) async fn route_clippy_analysis(cmd: AnalyzeCommands) -> Result<()> {
         perf: _perf,
     } = cmd
     {
+        let path = project_path.unwrap_or(path);
         // Call the auto_clippy_fix MCP tool function directly
         use crate::mcp_pmcp::tools::auto_clippy_fix::auto_clippy_fix;
 
@@ -413,7 +427,7 @@ pub(super) async fn route_clippy_analysis(cmd: AnalyzeCommands) -> Result<()> {
         };
 
         let result = auto_clippy_fix(
-            Some(project_path.to_string_lossy().to_string()),
+            Some(path.to_string_lossy().to_string()),
             confidence_level,
             Some(dry_run),
             codes,

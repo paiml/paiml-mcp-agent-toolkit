@@ -154,7 +154,8 @@
         };
 
         let churn = AnalyzeCommands::Churn {
-            project_path: PathBuf::from("."),
+            path: PathBuf::from("."),
+            project_path: None,
             days: 30,
             format: ChurnOutputFormat::Json,
             output: None,
@@ -181,12 +182,12 @@
 
         match churn {
             AnalyzeCommands::Churn {
-                project_path,
+                path,
                 days,
                 top_files,
                 ..
             } => {
-                assert_eq!(project_path, PathBuf::from("."));
+                assert_eq!(path, PathBuf::from("."));
                 assert_eq!(days, 30);
                 assert_eq!(top_files, 10);
             }

@@ -2331,3 +2331,83 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: PMAT-504
+  github_issue: null
+  item_type: task
+  title: Unify --path vs --project-path flag across analyze subcommands
+  status: inprogress
+  priority: high
+  assigned_to: null
+  created: 2026-02-27T08:00:55Z
+  updated: 2026-02-27T08:03:00.429932958+00:00
+  spec: null
+  acceptance_criteria:
+  - Some analyze subcommands use --path (complexity, satd, dead-code, defects) while others use --project-path (churn, dag, duplicates, defect-prediction, graph-metrics, provability). Standardize to --path with --project-path as alias for backwards compat.
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - cli
+  - ux
+  - consistency
+  notes: null
+- id: PMAT-505
+  github_issue: null
+  item_type: task
+  title: Fix semantic_search_demo hanging on hierarchical clustering
+  status: inprogress
+  priority: high
+  assigned_to: null
+  created: 2026-02-27T08:00:57Z
+  updated: 2026-02-27T08:41:16.004021926+00:00
+  spec: null
+  acceptance_criteria:
+  - semantic_search_demo hangs during hierarchical clustering due to O(n^2) distance matrix computation in debug mode. Need to either limit cluster size, add timeout, or skip hierarchical clustering when item count exceeds threshold.
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - performance
+  - demo
+  - bug
+  notes: null
+- id: PMAT-506
+  github_issue: null
+  item_type: task
+  title: Fix dogfood_types example compilation with mutation-testing feature
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2026-02-27T08:00:59Z
+  updated: 2026-02-27T08:41:26.416144688+00:00
+  spec: null
+  acceptance_criteria:
+  - dogfood_types example fails to compile because it requires the mutation-testing feature which depends on syn with visit-mut feature. Need to either gate the example behind the feature or fix the dependency.
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - build
+  - example
+  - feature-gate
+  notes: null
+- id: PMAT-507
+  github_issue: null
+  item_type: task
+  title: Suppress AST analysis warnings for include\!() fragment files
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2026-02-27T08:01:01Z
+  updated: 2026-02-27T08:41:32.486341934+00:00
+  spec: null
+  acceptance_criteria:
+  - include\!() fragment files (test splits like part1.rs, part2.rs) trigger 'AST analysis failed' warnings in tree-sitter because they are not standalone Rust files. Need to detect and skip these files in tree-sitter analysis paths.
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - ux
+  - warnings
+  - tree-sitter
+  notes: null

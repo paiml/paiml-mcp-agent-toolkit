@@ -111,7 +111,8 @@ mod coverage_tests {
     #[tokio::test]
     async fn test_handle_duplicates_basic() {
         let cmd = AnalyzeCommands::Duplicates {
-            project_path: PathBuf::from("/nonexistent/path/for/dup/test"),
+            path: PathBuf::from("/nonexistent/path/for/dup/test"),
+            project_path: None,
             detection_type: DuplicateType::All,
             threshold: 0.85,
             min_lines: 5,
@@ -133,7 +134,8 @@ mod coverage_tests {
     #[tokio::test]
     async fn test_handle_duplicates_exact_with_filters() {
         let cmd = AnalyzeCommands::Duplicates {
-            project_path: PathBuf::from("/tmp/test-dup"),
+            path: PathBuf::from("/tmp/test-dup"),
+            project_path: None,
             detection_type: DuplicateType::Exact,
             threshold: 0.9,
             min_lines: 3,
@@ -154,7 +156,8 @@ mod coverage_tests {
     #[tokio::test]
     async fn test_handle_duplicates_semantic() {
         let cmd = AnalyzeCommands::Duplicates {
-            project_path: PathBuf::from("/nonexistent"),
+            path: PathBuf::from("/nonexistent"),
+            project_path: None,
             detection_type: DuplicateType::Semantic,
             threshold: 0.75,
             min_lines: 10,
@@ -177,7 +180,8 @@ mod coverage_tests {
         use crate::cli::enums::{NameSimilarityOutputFormat, SearchScope};
 
         let cmd = AnalyzeCommands::NameSimilarity {
-            project_path: PathBuf::from("/nonexistent/path/for/name/test"),
+            path: PathBuf::from("/nonexistent/path/for/name/test"),
+            project_path: None,
             query: "handle_request".to_string(),
             top_k: 10,
             phonetic: false,
@@ -202,7 +206,8 @@ mod coverage_tests {
         use crate::cli::enums::{NameSimilarityOutputFormat, SearchScope};
 
         let cmd = AnalyzeCommands::NameSimilarity {
-            project_path: PathBuf::from("/tmp/test-similarity"),
+            path: PathBuf::from("/tmp/test-similarity"),
+            project_path: None,
             query: "processData".to_string(),
             top_k: 20,
             phonetic: true,
@@ -227,7 +232,8 @@ mod coverage_tests {
         use crate::cli::enums::{NameSimilarityOutputFormat, SearchScope};
 
         let cmd = AnalyzeCommands::NameSimilarity {
-            project_path: PathBuf::from("/nonexistent"),
+            path: PathBuf::from("/nonexistent"),
+            project_path: None,
             query: "Config".to_string(),
             top_k: 5,
             phonetic: false,

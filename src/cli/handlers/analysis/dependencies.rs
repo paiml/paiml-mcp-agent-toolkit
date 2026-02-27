@@ -121,7 +121,8 @@ mod coverage_tests {
     async fn test_handle_dag_call_graph() {
         let cmd = AnalyzeCommands::Dag {
             dag_type: DagType::CallGraph,
-            project_path: PathBuf::from("/nonexistent/path/for/dag/test"),
+            path: PathBuf::from("/nonexistent/path/for/dag/test"),
+            project_path: None,
             output: None,
             max_depth: None,
             target_nodes: None,
@@ -142,7 +143,8 @@ mod coverage_tests {
     async fn test_handle_dag_import_graph_with_options() {
         let cmd = AnalyzeCommands::Dag {
             dag_type: DagType::ImportGraph,
-            project_path: PathBuf::from("/tmp/test-dag"),
+            path: PathBuf::from("/tmp/test-dag"),
+            project_path: None,
             output: Some(PathBuf::from("/tmp/dag-output.mmd")),
             max_depth: Some(5),
             target_nodes: Some(100),
@@ -162,7 +164,8 @@ mod coverage_tests {
     async fn test_handle_dag_full_dependency() {
         let cmd = AnalyzeCommands::Dag {
             dag_type: DagType::FullDependency,
-            project_path: PathBuf::from("/nonexistent"),
+            path: PathBuf::from("/nonexistent"),
+            project_path: None,
             output: None,
             max_depth: Some(3),
             target_nodes: None,
@@ -183,7 +186,8 @@ mod coverage_tests {
         use crate::cli::enums::{GraphMetricType, GraphMetricsOutputFormat};
 
         let cmd = AnalyzeCommands::GraphMetrics {
-            project_path: PathBuf::from("/nonexistent/path/for/graph/test"),
+            path: PathBuf::from("/nonexistent/path/for/graph/test"),
+            project_path: None,
             metrics: vec![GraphMetricType::All],
             pagerank_seeds: vec![],
             damping_factor: 0.85,
@@ -209,7 +213,8 @@ mod coverage_tests {
         use crate::cli::enums::{GraphMetricType, GraphMetricsOutputFormat};
 
         let cmd = AnalyzeCommands::GraphMetrics {
-            project_path: PathBuf::from("/tmp/test-graph"),
+            path: PathBuf::from("/tmp/test-graph"),
+            project_path: None,
             metrics: vec![GraphMetricType::PageRank, GraphMetricType::Betweenness],
             pagerank_seeds: vec!["main".to_string(), "process_data".to_string()],
             damping_factor: 0.9,
@@ -235,7 +240,8 @@ mod coverage_tests {
         use crate::cli::enums::SymbolTableOutputFormat;
 
         let cmd = AnalyzeCommands::SymbolTable {
-            project_path: PathBuf::from("/nonexistent/path/for/symbol/test"),
+            path: PathBuf::from("/nonexistent/path/for/symbol/test"),
+            project_path: None,
             format: SymbolTableOutputFormat::Summary,
             filter: None,
             query: None,
@@ -258,7 +264,8 @@ mod coverage_tests {
         use crate::cli::enums::{SymbolTableOutputFormat, SymbolTypeFilter};
 
         let cmd = AnalyzeCommands::SymbolTable {
-            project_path: PathBuf::from("/tmp/test-symbols"),
+            path: PathBuf::from("/tmp/test-symbols"),
+            project_path: None,
             format: SymbolTableOutputFormat::Json,
             filter: Some(SymbolTypeFilter::Functions),
             query: Some("handle_".to_string()),

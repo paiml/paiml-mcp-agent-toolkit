@@ -138,7 +138,8 @@
         create_test_file(&temp_dir, "main.rs", "fn main() { println!(\"test\"); }");
 
         let cmd = AnalyzeCommands::LintHotspot {
-            project_path: temp_dir.path().to_path_buf(),
+            path: PathBuf::from("."),
+            project_path: Some(temp_dir.path().to_path_buf()),
             file: None,
             format: crate::cli::LintHotspotOutputFormat::Summary,
             max_density: 10.0,
@@ -264,7 +265,8 @@
         let handler = ContractCliHandler::new().expect("Handler creation should succeed");
 
         let cmd = AnalyzeCommands::LintHotspot {
-            project_path: PathBuf::from("/nonexistent/lint/path"),
+            path: PathBuf::from("."),
+            project_path: Some(PathBuf::from("/nonexistent/lint/path")),
             file: None,
             format: crate::cli::LintHotspotOutputFormat::Summary,
             max_density: 5.0,
@@ -597,7 +599,8 @@
         create_test_file(&temp_dir, "lint.rs", "fn test() { let x = 1; }");
 
         let cmd = AnalyzeCommands::LintHotspot {
-            project_path: temp_dir.path().to_path_buf(),
+            path: PathBuf::from("."),
+            project_path: Some(temp_dir.path().to_path_buf()),
             file: None,
             format: crate::cli::LintHotspotOutputFormat::Json,
             max_density: 2.0,
@@ -625,7 +628,8 @@
         let file_path = create_test_file(&temp_dir, "specific.rs", "fn main() {}");
 
         let cmd = AnalyzeCommands::LintHotspot {
-            project_path: temp_dir.path().to_path_buf(),
+            path: PathBuf::from("."),
+            project_path: Some(temp_dir.path().to_path_buf()),
             file: Some(file_path),
             format: crate::cli::LintHotspotOutputFormat::Summary,
             max_density: 5.0,

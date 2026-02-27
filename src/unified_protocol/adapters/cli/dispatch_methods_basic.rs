@@ -6,6 +6,7 @@ impl CliAdapter {
     ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
         match analyze_cmd {
             AnalyzeCommands::Churn {
+                path,
                 project_path,
                 days,
                 format,
@@ -13,7 +14,10 @@ impl CliAdapter {
                 top_files,
                 include: _,
                 exclude: _,
-            } => Self::decode_analyze_churn(project_path, *days, format, output, *top_files),
+            } => {
+                let resolved = project_path.as_deref().unwrap_or(path);
+                Self::decode_analyze_churn(resolved, *days, format, output, *top_files)
+            }
             AnalyzeCommands::Complexity {
                 path,
                 project_path,
@@ -118,6 +122,7 @@ impl CliAdapter {
                 *verbose,
             ),
             AnalyzeCommands::LintHotspot {
+                path,
                 project_path,
                 file,
                 format,
@@ -132,20 +137,23 @@ impl CliAdapter {
                 top_files,
                 include: _,
                 exclude: _,
-            } => Self::decode_analyze_lint_hotspot(
-                project_path,
-                file,
-                format,
-                max_density,
-                min_confidence,
-                enforce,
-                dry_run,
-                enforcement_metadata,
-                output,
-                perf,
-                clippy_flags,
-                top_files,
-            ),
+            } => {
+                let resolved = project_path.as_ref().unwrap_or(path);
+                Self::decode_analyze_lint_hotspot(
+                    resolved,
+                    file,
+                    format,
+                    max_density,
+                    min_confidence,
+                    enforce,
+                    dry_run,
+                    enforcement_metadata,
+                    output,
+                    perf,
+                    clippy_flags,
+                    top_files,
+                )
+            }
             _ => Err(ProtocolError::UnsupportedProtocol(
                 "Command not supported in basic analysis dispatch".to_string(),
             )),
@@ -159,6 +167,7 @@ impl CliAdapter {
     ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
         match analyze_cmd {
             AnalyzeCommands::DeepContext {
+                path,
                 project_path,
                 output,
                 format,
@@ -174,8 +183,10 @@ impl CliAdapter {
                 parallel,
                 verbose,
                 top_files: _,
-            } => Self::decode_analyze_deep_context(
-                project_path,
+            } => {
+                let resolved = project_path.as_deref().unwrap_or(path);
+                Self::decode_analyze_deep_context(
+                resolved,
                 output,
                 format,
                 *full,
@@ -189,8 +200,10 @@ impl CliAdapter {
                 cache_strategy,
                 parallel,
                 *verbose,
-            ),
+            )
+            }
             AnalyzeCommands::Comprehensive {
+                path,
                 project_path,
                 file,
                 files,
@@ -208,8 +221,10 @@ impl CliAdapter {
                 perf,
                 executive_summary,
                 top_files,
-            } => Self::decode_analyze_comprehensive(
-                project_path,
+            } => {
+                let resolved = project_path.as_ref().unwrap_or(path);
+                Self::decode_analyze_comprehensive(
+                resolved,
                 file,
                 files,
                 format,
@@ -226,8 +241,10 @@ impl CliAdapter {
                 perf,
                 executive_summary,
                 top_files,
-            ),
+            )
+            }
             AnalyzeCommands::DefectPrediction {
+                path,
                 project_path,
                 confidence_threshold,
                 min_lines,
@@ -240,8 +257,10 @@ impl CliAdapter {
                 output,
                 perf,
                 top_files,
-            } => Self::decode_analyze_defect_prediction(
-                project_path,
+            } => {
+                let resolved = project_path.as_ref().unwrap_or(path);
+                Self::decode_analyze_defect_prediction(
+                resolved,
                 confidence_threshold,
                 min_lines,
                 include_low_confidence,
@@ -253,8 +272,10 @@ impl CliAdapter {
                 output,
                 perf,
                 top_files,
-            ),
+            )
+            }
             AnalyzeCommands::Duplicates {
+                path,
                 project_path,
                 detection_type,
                 threshold,
@@ -266,20 +287,24 @@ impl CliAdapter {
                 exclude,
                 output,
                 top_files,
-            } => Self::decode_analyze_duplicates(
-                project_path,
-                detection_type,
-                threshold,
-                min_lines,
-                max_tokens,
-                format,
-                perf,
-                include,
-                exclude,
-                output,
-                top_files,
-            ),
+            } => {
+                let resolved = project_path.as_ref().unwrap_or(path);
+                Self::decode_analyze_duplicates(
+                    resolved,
+                    detection_type,
+                    threshold,
+                    min_lines,
+                    max_tokens,
+                    format,
+                    perf,
+                    include,
+                    exclude,
+                    output,
+                    top_files,
+                )
+            }
             AnalyzeCommands::BigO {
+                path,
                 project_path,
                 format,
                 confidence_threshold,
@@ -290,18 +315,21 @@ impl CliAdapter {
                 perf,
                 high_complexity_only,
                 top_files,
-            } => Self::decode_analyze_big_o(
-                project_path,
-                format,
-                confidence_threshold,
-                analyze_space,
-                include,
-                exclude,
-                output,
-                perf,
-                high_complexity_only,
-                top_files,
-            ),
+            } => {
+                let resolved = project_path.as_deref().unwrap_or(path);
+                Self::decode_analyze_big_o(
+                    resolved,
+                    format,
+                    confidence_threshold,
+                    analyze_space,
+                    include,
+                    exclude,
+                    output,
+                    perf,
+                    high_complexity_only,
+                    top_files,
+                )
+            }
             _ => Err(ProtocolError::UnsupportedProtocol(
                 "Command not supported in advanced analysis dispatch".to_string(),
             )),

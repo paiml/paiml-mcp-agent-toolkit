@@ -53,7 +53,12 @@ impl TdgAnalyzer {
         for file in files {
             match self.analyze_file(&file) {
                 Ok(score) => scores.push(score),
-                Err(e) => eprintln!("Warning: Failed to analyze {}: {}", file.display(), e),
+                Err(e) => {
+                    // Suppress warnings for include!() fragment files (PMAT-507)
+                    if !crate::cli::language_analyzer::is_include_fragment(&file) {
+                        eprintln!("Warning: Failed to analyze {}: {}", file.display(), e);
+                    }
+                }
             }
         }
 

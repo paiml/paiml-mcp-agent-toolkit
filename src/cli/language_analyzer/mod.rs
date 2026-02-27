@@ -38,8 +38,26 @@ pub async fn analyze_file_complexity(path: &Path, content: &str) -> Result<FileC
     analyze_with_heuristics(path, content, language)
 }
 
+/// Detect include!() fragment files that aren't standalone Rust (PMAT-507)
+pub fn is_include_fragment(path: &Path) -> bool {
+    let name = path.file_stem().and_then(|s| s.to_str()).unwrap_or("");
+    // Test split fragments: *_tests_part*.rs, *_tests_*.rs, tests_part*.rs
+    // Also: part1.rs, part2.rs, part3.rs, part4.rs in test directories
+    let is_part_file = name.starts_with("part") && name.len() <= 6;
+    let is_test_fragment = name.contains("_tests_") || name.contains("_tests/");
+    // HTML/template fragments included into parent modules
+    let is_template_fragment =
+        name.starts_with("html_") || name == "runner_pipeline";
+    is_part_file || is_test_fragment || is_template_fragment
+}
+
 async fn try_ast_analysis(path: &Path, language: Language) -> Option<FileComplexityMetrics> {
     if language != Language::Rust {
+        return None;
+    }
+
+    // Skip include!() fragment files — they aren't standalone Rust
+    if is_include_fragment(path) {
         return None;
     }
 
