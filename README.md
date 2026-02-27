@@ -7,11 +7,11 @@
 
 [![Crates.io](https://img.shields.io/crates/v/pmat.svg)](https://crates.io/crates/pmat)
 [![Documentation](https://docs.rs/pmat/badge.svg)](https://docs.rs/pmat)
-[![Tests](https://img.shields.io/badge/tests-20700%2B%20passing-brightgreen)](https://github.com/paiml/paiml-mcp-agent-toolkit)
+[![Tests](https://img.shields.io/badge/tests-21200%2B%20passing-brightgreen)](https://github.com/paiml/paiml-mcp-agent-toolkit)
 [![Coverage](https://img.shields.io/badge/coverage-99.66%25-brightgreen)](https://github.com/paiml/paiml-mcp-agent-toolkit)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Rust](https://img.shields.io/badge/rust-1.83+-orange.svg)](https://www.rust-lang.org)
-[![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.PMAT-blue)](https://zenodo.org/records/pmat)
+[![Rust](https://img.shields.io/badge/rust-1.80+-orange.svg)](https://www.rust-lang.org)
+[![CHANGELOG](https://img.shields.io/badge/changelog-Keep%20a%20Changelog-blue)](CHANGELOG.md)
 
 [Installation](#installation) | [Usage](#usage) | [Features](#features) | [Examples](#examples) | [Documentation](https://paiml.github.io/pmat-book/)
 
@@ -30,10 +30,11 @@
 - **Git History RAG** - Semantic search across commit history with RRF fusion
 - **Semantic Search** - Natural language code discovery
 - **Compliance Governance** - 30+ checks across code quality, best practices, and reproducibility
+- **Design by Contract** - Toyota Way contract profiles with checkpoint validation and rescue protocols
 - **Autonomous Kaizen** - Toyota Way continuous improvement with auto-fix and commit
 - **MCP Integration** - 19 tools for Claude Code, Cline, and AI agents
 - **Quality Gates** - Pre-commit hooks, CI/CD integration, `.pmat-gates.toml` config
-- **18+ Languages** - Rust, TypeScript, Python, Go, Java, C/C++, Lua, and more
+- **20+ Languages** - Rust, TypeScript, Python, Go, Java, C/C++, Lua, Lean, and more
 
 Part of the [PAIML Stack](https://github.com/paiml), following Toyota Way quality principles (Jidoka, Genchi Genbutsu, Kaizen).
 
@@ -380,14 +381,14 @@ PMAT is built on the PAIML Sovereign Stack - pure-Rust, SIMD-accelerated librari
 
 | Library | Purpose | Version |
 |---------|---------|---------|
-| [aprender](https://crates.io/crates/aprender) | ML library (text similarity, clustering, topic modeling) | 0.25.4 |
-| [trueno](https://crates.io/crates/trueno) | SIMD compute library for matrix operations | 0.14.5 |
-| [trueno-graph](https://crates.io/crates/trueno-graph) | GPU-first graph database (PageRank, Louvain, CSR) | 0.1.14 |
-| [trueno-rag](https://crates.io/crates/trueno-rag) | RAG pipeline with VectorStore | 0.1.12 |
-| [trueno-db](https://crates.io/crates/trueno-db) | Embedded analytics database | 0.3.13 |
-| [trueno-viz](https://crates.io/crates/trueno-viz) | Terminal graph visualization | 0.1.23 |
+| [aprender](https://crates.io/crates/aprender) | ML library (text similarity, clustering, topic modeling) | 0.27.1 |
+| [trueno](https://crates.io/crates/trueno) | SIMD compute library for matrix operations | 0.16.1 |
+| [trueno-graph](https://crates.io/crates/trueno-graph) | GPU-first graph database (PageRank, Louvain, CSR) | 0.1.17 |
+| [trueno-rag](https://crates.io/crates/trueno-rag) | RAG pipeline with VectorStore | 0.2.2 |
+| [trueno-db](https://crates.io/crates/trueno-db) | Embedded analytics database | 0.3.15 |
+| [trueno-viz](https://crates.io/crates/trueno-viz) | Terminal graph visualization | 0.2.1 |
 | [trueno-zram-core](https://crates.io/crates/trueno-zram-core) | SIMD LZ4/ZSTD compression (optional) | 0.3.0 |
-| **pmat** | Code analysis toolkit | 3.5.1 |
+| **pmat** | Code analysis toolkit | 3.6.0 |
 
 **Key Benefits:**
 - Pure Rust (no C dependencies, no FFI)

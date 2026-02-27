@@ -7,6 +7,65 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.6.0] - 2026-02-27
+
+### Added
+- **Design by Contract (DbC) System (PMAT-DBC)**: Full Toyota Way contract profiles
+  - Phase 1: Contract types, profiles (Rust, Python, TypeScript), and subcontracting rules
+  - Phase 2: Stack manifest parser with TOFU security model
+  - Phase 3: Checkpoint handler with invariant evaluation and final checks
+  - Phase 4: Rescue protocol with strategy dispatch and rescue records
+  - 56 tests for DbC types, profiles, and subcontracting
+  - `pmat work start --profile rust` with `--without` exclusion flags
+- **Document Search**: `pmat query --docs`, `--docs-only`, `--no-docs` for searching documentation alongside code
+- **Cross-Crate Compliance**: `pmat comply cross-crate` with batuta oracle, suppression, and ratchet
+  - MinHash-based 98% clone reduction across workspace crates
+- **Semantic File Renaming**: `pmat query --suggest-rename` for AI-suggested file renames
+  - Generic name penalty, parent collision detection, disambiguation scoring
+  - OriginalBase signal restores pre-split filenames
+- **Lean 4 Language Support**: First-class analysis with CB-1050 compliance and mixed-repo scoring
+- **`pmat split` Command**: File splitting with cross-stack file health and pre-commit enforcement
+- **`pmat kaizen --cross-stack`**: Cross-stack continuous improvement
+- **Entropy Explainability**: ViolationDetails with scoring breakdown, configurable thresholds via `pmat.toml [quality]`
+- **Provability Explainability**: Score breakdown with factor analysis (0.47 → 0.60+)
+- **SQLite Quality Storage**: Persist quality gate violations, entropy violations, and provability scores to SQLite
+- **CB-529 Compliance Check**: Detect `.pmat/` files accidentally tracked in git
+- **`--extract-candidates` Flag**: I/O classification and module extraction for refactoring
+- **Feature-Gated reqwest** (PMAT-498): `http-client` feature gate reduces default binary size
+- **Minijinja Templating** (PMAT-499): Replaced handlebars with minijinja, saving 17 crate dependencies
+
+### Fixed
+- **PMAT-504**: Unified `--path` across all 19 analyze subcommands (`--project-path` kept as hidden alias)
+- **PMAT-505**: Hierarchical clustering size guard (max 5000 vectors) prevents O(n²) hang
+- **PMAT-506**: Added `syn visit-mut` feature for mutation testing dogfood_types example
+- **PMAT-507**: Comprehensive `include!()` fragment detection suppresses false AST warnings
+  - Covers `*_tests_*`, `*_tests`, `tests_*`, `part*`, `html_*`, benchmark fragments
+- **505 compilation errors** from PMAT-503 module splits resolved
+- **128 compiler warnings** eliminated (zero warnings achieved)
+- **CategoryScore deserialization** fails on JSON without `applicable` field
+- **Five Whys fabricated evidence** and test-discovery silent failure
+- **Quality gates**: Fixed clippy/tests/coverage flags, nightly coverage(off) on macros
+- **Comply check**: Exit code 0 on NON-COMPLIANT, CB-501 test file misclassification
+- **Perfection score**: Prevent runaway git log subprocess explosion (#245)
+- **7 scoring bugs** in rust-project-score and repo-score (#237-#244)
+- **Provability brace-counting bug** and entropy false-positive pattern grouping
+- **Quality gate violations** reduced 345 → 95 (complexity, SATD, entropy)
+- **GPU/SIMD scorer** returns N/A for no-GPU projects
+- **Unicode safety** in longest_common_prefix + parent-dir redundancy penalty (CB-506)
+
+### Changed
+- **PMAT-503 Mega-Refactor**: Split 148 large files (>500 lines) into focused submodules using `include!()` pattern
+  - Maintains backward-compatible public API
+  - Improves testability and reduces cognitive load per file
+- **Dependency updates**: trueno-db 0.3.15 with parquet-io feature gate (PMAT-500)
+- **Sovereign stack**: Updated aprender 0.27.1, trueno 0.16.1, trueno-graph 0.1.17, trueno-rag 0.2.2, trueno-viz 0.2.1
+- **56 transitive dependencies** updated (syn, clap, futures, rustls, uuid, tempfile, etc.)
+
+### Improved
+- **Tests**: 21,200+ passing (up from 20,485), 187 ignored
+- **Compliance**: Full `pmat comply check` COMPLIANT status maintained
+- **Suggest-rename quality**: Expanded generic blocklist, verb form rejection, ultra-short word filtering
+
 ## [3.0.4] - 2026-02-10
 
 ### Added
