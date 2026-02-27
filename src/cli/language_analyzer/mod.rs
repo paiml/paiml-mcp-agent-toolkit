@@ -39,16 +39,23 @@ pub async fn analyze_file_complexity(path: &Path, content: &str) -> Result<FileC
 }
 
 /// Detect include!() fragment files that aren't standalone Rust (PMAT-507)
+///
+/// These files are included via `include!()` into a parent module and are not
+/// valid standalone Rust. Attempting `syn::parse_file()` on them always fails.
 pub fn is_include_fragment(path: &Path) -> bool {
     let name = path.file_stem().and_then(|s| s.to_str()).unwrap_or("");
-    // Test split fragments: *_tests_part*.rs, *_tests_*.rs, tests_part*.rs
-    // Also: part1.rs, part2.rs, part3.rs, part4.rs in test directories
+    // Part files: part1.rs, part2.rs, etc.
     let is_part_file = name.starts_with("part") && name.len() <= 6;
-    let is_test_fragment = name.contains("_tests_") || name.contains("_tests/");
+    // Test fragments: *_tests_*.rs (split fragments), *_tests.rs (included test modules)
+    let is_test_fragment = name.contains("_tests_")
+        || (name.ends_with("_tests") && name != "tests")
+        || name.starts_with("tests_");
     // HTML/template fragments included into parent modules
-    let is_template_fragment =
-        name.starts_with("html_") || name == "runner_pipeline";
-    is_part_file || is_test_fragment || is_template_fragment
+    let is_template_fragment = name.starts_with("html_") || name == "runner_pipeline";
+    // Benchmark fragments
+    let is_bench_fragment =
+        path.components().any(|c| c.as_os_str() == "benchmarks") && name.starts_with("measure_");
+    is_part_file || is_test_fragment || is_template_fragment || is_bench_fragment
 }
 
 async fn try_ast_analysis(path: &Path, language: Language) -> Option<FileComplexityMetrics> {
