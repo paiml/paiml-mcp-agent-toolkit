@@ -115,7 +115,7 @@ impl CommandSuggester {
     pub fn get_help_examples() -> String {
         let examples = vec![
             "# Analyze code complexity",
-            "pmat analyze complexity --project-path .",
+            "pmat analyze complexity --path .",
             "",
             "# Find technical debt",
             "pmat analyze satd --path .",

@@ -17,7 +17,7 @@ pub(super) mod helpers {
     use crate::services::facades::satd_facade::{SatdAnalysisResult, SatdSeverity, SatdViolation};
     use std::path::PathBuf;
 
-    pub fn create_basic_result() -> ComprehensiveAnalysisResult {
+    pub(crate) fn create_basic_result() -> ComprehensiveAnalysisResult {
         ComprehensiveAnalysisResult {
             complexity: None,
             dead_code: None,
@@ -33,7 +33,7 @@ pub(super) mod helpers {
         }
     }
 
-    pub fn create_full_result() -> ComprehensiveAnalysisResult {
+    pub(crate) fn create_full_result() -> ComprehensiveAnalysisResult {
         ComprehensiveAnalysisResult {
             complexity: Some(ComplexityAnalysisResult {
                 total_files: 5,
@@ -94,7 +94,7 @@ pub(super) mod helpers {
         }
     }
 
-    pub fn create_default_config() -> ComprehensiveAnalysisConfig {
+    pub(crate) fn create_default_config() -> ComprehensiveAnalysisConfig {
         ComprehensiveAnalysisConfig {
             project_path: PathBuf::from("/test/project"),
             file: None,

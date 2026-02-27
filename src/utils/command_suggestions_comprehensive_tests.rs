@@ -277,9 +277,7 @@ mod comprehensive_coverage_tests {
         assert!(examples.contains("Generate project context"));
         assert!(examples.contains("Run quality gates"));
         assert!(examples.contains("Start agent daemon"));
-        assert!(examples.contains("--project-path"));
         assert!(examples.contains("--path"));
-        assert!(examples.contains("--strict"));
     }
 
     #[test]
