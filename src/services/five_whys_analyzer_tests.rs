@@ -917,7 +917,7 @@ mod coverage_tests {
         std::fs::create_dir_all(p.join(".pmat")).unwrap();
         std::fs::write(
             p.join(".pmat/baseline.json"),
-            r#"{"version":"3.6.0","summary":{"total_files":10,"avg_score":72.5,"grade_distribution":{},"languages":{}},"files":{}}"#,
+            r#"{"version":"3.6.1","summary":{"total_files":10,"avg_score":72.5,"grade_distribution":{},"languages":{}},"files":{}}"#,
         )
         .unwrap();
 

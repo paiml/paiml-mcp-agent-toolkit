@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.6.1] - 2026-02-27
+
+### Fixed
+- **cargo publish**: Track `query/coverage/` module excluded by overly broad `.gitignore` pattern
+- **Flaky CLI integration tests**: All E2E binary subprocess tests marked `#[ignore]`
+
 ## [3.6.0] - 2026-02-27
 
 ### Added
