@@ -80,6 +80,11 @@ export PMAT_TASK_ID_PATTERN="PMAT-[0-9]{{4}}"
     }
 
     /// Generate quality check sections
+    ///
+    /// The generated hook is project-type aware:
+    /// - Non-code repos (no source files at all) get a fast pass
+    /// - Mixed repos only check staged source files
+    /// - SATD and docs checks only run when source files exist in the repo
     pub(crate) fn generate_quality_checks(&self) -> String {
         r#"# Check if pmat is available
 if ! command -v pmat &> /dev/null; then
@@ -89,6 +94,20 @@ if ! command -v pmat &> /dev/null; then
 fi
 
 echo "📊 Running quality gate checks..."
+
+# Detect if this repo has any source files at all (not just staged ones).
+# Non-code repos (docs, configs, YAML, contracts) get a fast pass.
+HAS_SOURCE_FILES=$(find . -maxdepth 4 -type f \( -name '*.rs' -o -name '*.py' -o -name '*.ts' -o -name '*.tsx' -o -name '*.js' -o -name '*.jsx' -o -name '*.go' -o -name '*.c' -o -name '*.cpp' -o -name '*.lua' -o -name '*.php' -o -name '*.swift' \) -not -path './.git/*' -not -path '*/target/*' -not -path '*/node_modules/*' -print -quit 2>/dev/null)
+
+if [ -z "$HAS_SOURCE_FILES" ]; then
+    echo "  Project type: non-code (docs/configs/YAML)"
+    echo "  Complexity check... ⏭️  (no source files in repo)"
+    echo "  SATD check... ⏭️  (no source files in repo)"
+    echo ""
+    echo "✅ All quality gates passed!"
+    echo ""
+    exit 0
+fi
 
 # 1. Complexity analysis (only staged source files, not entire project)
 # Supports: Rust, Python, TypeScript, JavaScript, Go, C, C++, Lua, PHP, Swift
@@ -132,13 +151,14 @@ else
     echo "⚠️  ($SATD_COUNT SATD comments, threshold: $PMAT_MAX_SATD_COMMENTS)"
 fi
 
-# 3. Documentation synchronization
-echo -n "  Documentation check... "
-if [ -f "docs/execution/roadmap.md" ] && [ -f "CHANGELOG.md" ]; then
-    echo "✅"
-else
-    echo "⚠️"
-    echo "   Warning: Required documentation files missing"
+# 3. Documentation synchronization (only if docs structure exists)
+if [ -d "docs/execution" ] || [ -f "CHANGELOG.md" ]; then
+    echo -n "  Documentation check... "
+    if [ -f "docs/execution/roadmap.md" ] && [ -f "CHANGELOG.md" ]; then
+        echo "✅"
+    else
+        echo "⚠️  (docs/execution/roadmap.md or CHANGELOG.md missing)"
+    fi
 fi
 
 # 4. Task ID validation (if commit message available)

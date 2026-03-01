@@ -884,6 +884,28 @@ mod coverage_tests {
     }
 
     #[test]
+    fn test_generate_quality_checks_handles_non_code_repos() {
+        let temp_dir = TempDir::new().unwrap();
+        let hooks_dir = temp_dir.path().join("hooks");
+        let config_path = temp_dir.path().join("pmat.toml");
+
+        let cmd = HooksCommand::new(hooks_dir, config_path);
+        let checks = cmd.generate_quality_checks();
+
+        // Non-code repos (no source files) should get a fast pass
+        assert!(checks.contains("HAS_SOURCE_FILES"));
+        assert!(checks.contains("non-code"));
+        assert!(checks.contains("no source files in repo"));
+
+        // Complexity check should only run on staged source files
+        assert!(checks.contains("STAGED_SRC"));
+        assert!(checks.contains("no source files staged"));
+
+        // Docs check should be conditional on docs structure existing
+        assert!(checks.contains("docs/execution"));
+    }
+
+    #[test]
     fn test_generate_config_content() {
         let temp_dir = TempDir::new().unwrap();
         let hooks_dir = temp_dir.path().join("hooks");
