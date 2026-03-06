@@ -49,25 +49,22 @@ impl EnhancedAstVisitor {
                 } else if r.path.is_ident("self") {
                     "pub(self)".to_string()
                 } else {
-                    format!("pub(in {})", quote::quote!(#r.path))
+                    #[cfg(feature = "rust-ast")]
+                    { format!("pub(in {})", quote::quote!(#r.path)) }
+                    #[cfg(not(feature = "rust-ast"))]
+                    { format!("pub(in {:?})", r.path) }
                 }
             }
             Visibility::Inherited => "private".to_string(),
         }
     }
 
-    /// Gets line number from span
-    fn get_line(&self, span: proc_macro2::Span) -> usize {
-        // In real proc_macro2, spans don't carry line info by default
-        // We'll use a heuristic based on the span's debug representation
-        // For production, we'd integrate with proc_macro2's unstable features
-        // or use a source map approach
-        let debug_str = format!("{span:?}");
-
+    /// Gets line number from a span debug representation
+    fn get_line_from_span_debug(&self, span_debug: &str) -> usize {
         // Extract line number from debug representation if available
         // Format is typically "Span { start: Loc { line: X, ... }, ... }"
-        if let Some(line_start) = debug_str.find("line: ") {
-            let line_str = &debug_str[line_start + 6..];
+        if let Some(line_start) = span_debug.find("line: ") {
+            let line_str = &span_debug[line_start + 6..];
             if let Some(comma_pos) = line_str.find(',') {
                 if let Ok(line) = line_str[..comma_pos].parse::<usize>() {
                     return line;
@@ -77,6 +74,17 @@ impl EnhancedAstVisitor {
 
         // Fallback to sequential numbering
         self.items.len() + 1
+    }
+
+    /// Gets line number from a Spanned item
+    fn get_line<S: Spanned>(&self, item: &S) -> usize {
+        // In real proc_macro2, spans don't carry line info by default
+        // We'll use a heuristic based on the span's debug representation
+        // For production, we'd integrate with proc_macro2's unstable features
+        // or use a source map approach
+        let span = item.span();
+        let debug_str = format!("{span:?}");
+        self.get_line_from_span_debug(&debug_str)
     }
 
     /// Creates a qualified name for the current module context
@@ -94,7 +102,7 @@ impl<'ast> Visit<'ast> for EnhancedAstVisitor {
         let name = self.get_qualified_name(&node.sig.ident.to_string());
         let visibility = self.get_visibility(&node.vis);
         let is_async = node.sig.asyncness.is_some();
-        let line = self.get_line(node.span());
+        let line = self.get_line(node);
 
         self.items.push(AstItem::Function {
             name,
@@ -110,7 +118,7 @@ impl<'ast> Visit<'ast> for EnhancedAstVisitor {
         let name = self.get_qualified_name(&node.ident.to_string());
         let visibility = self.get_visibility(&node.vis);
         let fields_count = node.fields.len();
-        let line = self.get_line(node.span());
+        let line = self.get_line(node);
 
         // Extract derives
         let mut derives = Vec::new();
@@ -118,9 +126,17 @@ impl<'ast> Visit<'ast> for EnhancedAstVisitor {
             if attr.path().is_ident("derive") {
                 if let Ok(syn::Meta::List(meta_list)) = attr.parse_args::<syn::Meta>() {
                     // Extract derive macro names
-                    let tokens = quote::quote!(#meta_list);
-                    let derive_str = tokens.to_string();
-                    derives.push(derive_str);
+                    #[cfg(feature = "rust-ast")]
+                    {
+                        let tokens = quote::quote!(#meta_list);
+                        let derive_str = tokens.to_string();
+                        derives.push(derive_str);
+                    }
+                    #[cfg(not(feature = "rust-ast"))]
+                    {
+                        let derive_str = format!("{:?}", meta_list);
+                        derives.push(derive_str);
+                    }
                 }
             }
         }
@@ -140,7 +156,7 @@ impl<'ast> Visit<'ast> for EnhancedAstVisitor {
         let name = self.get_qualified_name(&node.ident.to_string());
         let visibility = self.get_visibility(&node.vis);
         let variants_count = node.variants.len();
-        let line = self.get_line(node.span());
+        let line = self.get_line(node);
 
         self.items.push(AstItem::Enum {
             name,
@@ -155,7 +171,7 @@ impl<'ast> Visit<'ast> for EnhancedAstVisitor {
     fn visit_item_trait(&mut self, node: &'ast ItemTrait) {
         let name = self.get_qualified_name(&node.ident.to_string());
         let visibility = self.get_visibility(&node.vis);
-        let line = self.get_line(node.span());
+        let line = self.get_line(node);
 
         self.items.push(AstItem::Trait {
             name,
@@ -167,12 +183,21 @@ impl<'ast> Visit<'ast> for EnhancedAstVisitor {
     }
 
     fn visit_item_impl(&mut self, node: &'ast ItemImpl) {
+        #[cfg(feature = "rust-ast")]
         let type_name = quote::quote!(#node.self_ty).to_string();
+        #[cfg(not(feature = "rust-ast"))]
+        let type_name = format!("{:?}", node.self_ty);
+        #[cfg(feature = "rust-ast")]
         let trait_name = node
             .trait_
             .as_ref()
             .map(|(_, path, _)| quote::quote!(#path).to_string());
-        let line = self.get_line(node.span());
+        #[cfg(not(feature = "rust-ast"))]
+        let trait_name = node
+            .trait_
+            .as_ref()
+            .map(|(_, path, _)| format!("{:?}", path));
+        let line = self.get_line(node);
 
         self.items.push(AstItem::Impl {
             type_name,
@@ -186,7 +211,7 @@ impl<'ast> Visit<'ast> for EnhancedAstVisitor {
     fn visit_item_mod(&mut self, node: &'ast ItemMod) {
         let name = node.ident.to_string();
         let visibility = self.get_visibility(&node.vis);
-        let line = self.get_line(node.span());
+        let line = self.get_line(node);
 
         self.items.push(AstItem::Module {
             name: self.get_qualified_name(&name),
@@ -201,8 +226,11 @@ impl<'ast> Visit<'ast> for EnhancedAstVisitor {
     }
 
     fn visit_item_use(&mut self, node: &'ast ItemUse) {
+        #[cfg(feature = "rust-ast")]
         let path = quote::quote!(#node.tree).to_string();
-        let line = self.get_line(node.span());
+        #[cfg(not(feature = "rust-ast"))]
+        let path = format!("{:?}", node.tree);
+        let line = self.get_line(node);
 
         self.items.push(AstItem::Use { path, line });
 

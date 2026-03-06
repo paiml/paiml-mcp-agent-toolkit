@@ -14,6 +14,7 @@ pub mod cuda_simd_scores; // Score types extracted for file health (CB-040)
 pub mod diagnostics;
 pub mod explain;
 pub mod explain_formatters;
+#[cfg(feature = "rust-ast")]
 pub mod function_analyzer;
 pub mod grade;
 pub mod hooks_config;
@@ -75,6 +76,7 @@ pub use explain::{
 };
 pub use explain_formatters::{format_explain_json, format_explain_text};
 pub use formatters::{format_human, format_json, format_markdown};
+#[cfg(feature = "rust-ast")]
 pub use function_analyzer::FunctionAnalyzer;
 pub use grade::{Grade, MetricCategory, PenaltyAttribution};
 pub use hooks_config::{

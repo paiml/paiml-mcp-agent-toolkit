@@ -11,12 +11,16 @@ use std::sync::Arc;
 
 use crate::ast::core::{AstDag, Language, UnifiedAstNode};
 
+#[cfg(feature = "c-ast")]
 pub mod c_cpp;
 #[cfg(feature = "lua-ast")]
 pub mod lua;
 pub mod others;
+#[cfg(feature = "python-ast")]
 pub mod python;
+#[cfg(feature = "rust-ast")]
 pub mod rust;
+#[cfg(feature = "typescript-ast")]
 pub mod typescript;
 
 /// Trait for language-specific AST parsing strategies
@@ -54,14 +58,25 @@ impl LanguageRegistry {
     #[must_use]
     pub fn new() -> Self {
         #[allow(unused_mut)]
-        let mut strategies: Vec<Arc<dyn LanguageStrategy>> = vec![
-            Arc::new(rust::RustStrategy::new()),
-            Arc::new(python::PythonStrategy::new()),
-            Arc::new(typescript::TypeScriptStrategy::new()),
-            Arc::new(typescript::JavaScriptStrategy::new()),
-            Arc::new(c_cpp::CStrategy::new()),
-            Arc::new(c_cpp::CppStrategy::new()),
-        ];
+        let mut strategies: Vec<Arc<dyn LanguageStrategy>> = vec![];
+
+        #[cfg(feature = "rust-ast")]
+        strategies.push(Arc::new(rust::RustStrategy::new()));
+
+        #[cfg(feature = "python-ast")]
+        strategies.push(Arc::new(python::PythonStrategy::new()));
+
+        #[cfg(feature = "typescript-ast")]
+        {
+            strategies.push(Arc::new(typescript::TypeScriptStrategy::new()));
+            strategies.push(Arc::new(typescript::JavaScriptStrategy::new()));
+        }
+
+        #[cfg(feature = "c-ast")]
+        {
+            strategies.push(Arc::new(c_cpp::CStrategy::new()));
+            strategies.push(Arc::new(c_cpp::CppStrategy::new()));
+        }
 
         #[cfg(feature = "lua-ast")]
         strategies.push(Arc::new(lua::LuaStrategy::new()));
@@ -107,19 +122,28 @@ mod coverage_tests {
     #[test]
     fn test_registry_new() {
         let registry = LanguageRegistry::new();
-        // 6 default strategies: Rust, Python, TypeScript, JavaScript, C, C++
-        // +1 when lua-ast feature is enabled
-        let expected = if cfg!(feature = "lua-ast") { 7 } else { 6 };
+        let mut expected = 0;
+        if cfg!(feature = "rust-ast") { expected += 1; }
+        if cfg!(feature = "python-ast") { expected += 1; }
+        if cfg!(feature = "typescript-ast") { expected += 2; } // TS + JS
+        if cfg!(feature = "c-ast") { expected += 2; } // C + C++
+        if cfg!(feature = "lua-ast") { expected += 1; }
         assert_eq!(registry.strategies.len(), expected);
     }
 
     #[test]
     fn test_registry_default() {
         let registry = LanguageRegistry::default();
-        let expected = if cfg!(feature = "lua-ast") { 7 } else { 6 };
+        let mut expected = 0;
+        if cfg!(feature = "rust-ast") { expected += 1; }
+        if cfg!(feature = "python-ast") { expected += 1; }
+        if cfg!(feature = "typescript-ast") { expected += 2; }
+        if cfg!(feature = "c-ast") { expected += 2; }
+        if cfg!(feature = "lua-ast") { expected += 1; }
         assert_eq!(registry.strategies.len(), expected);
     }
 
+    #[cfg(feature = "rust-ast")]
     #[test]
     fn test_find_strategy_rust() {
         let registry = LanguageRegistry::new();
@@ -129,6 +153,7 @@ mod coverage_tests {
         assert_eq!(strategy.unwrap().language(), Language::Rust);
     }
 
+    #[cfg(feature = "python-ast")]
     #[test]
     fn test_find_strategy_python() {
         let registry = LanguageRegistry::new();
@@ -138,6 +163,7 @@ mod coverage_tests {
         assert_eq!(strategy.unwrap().language(), Language::Python);
     }
 
+    #[cfg(feature = "typescript-ast")]
     #[test]
     fn test_find_strategy_typescript() {
         let registry = LanguageRegistry::new();
@@ -147,6 +173,7 @@ mod coverage_tests {
         assert_eq!(strategy.unwrap().language(), Language::TypeScript);
     }
 
+    #[cfg(feature = "typescript-ast")]
     #[test]
     fn test_find_strategy_tsx() {
         let registry = LanguageRegistry::new();
@@ -156,6 +183,7 @@ mod coverage_tests {
         assert_eq!(strategy.unwrap().language(), Language::TypeScript);
     }
 
+    #[cfg(feature = "typescript-ast")]
     #[test]
     fn test_find_strategy_javascript() {
         let registry = LanguageRegistry::new();
@@ -165,6 +193,7 @@ mod coverage_tests {
         assert_eq!(strategy.unwrap().language(), Language::JavaScript);
     }
 
+    #[cfg(feature = "typescript-ast")]
     #[test]
     fn test_find_strategy_jsx() {
         let registry = LanguageRegistry::new();
@@ -174,6 +203,7 @@ mod coverage_tests {
         assert_eq!(strategy.unwrap().language(), Language::JavaScript);
     }
 
+    #[cfg(feature = "typescript-ast")]
     #[test]
     fn test_find_strategy_mjs() {
         let registry = LanguageRegistry::new();
@@ -183,6 +213,7 @@ mod coverage_tests {
         assert_eq!(strategy.unwrap().language(), Language::JavaScript);
     }
 
+    #[cfg(feature = "c-ast")]
     #[test]
     fn test_find_strategy_c() {
         let registry = LanguageRegistry::new();
@@ -192,6 +223,7 @@ mod coverage_tests {
         assert_eq!(strategy.unwrap().language(), Language::C);
     }
 
+    #[cfg(feature = "c-ast")]
     #[test]
     fn test_find_strategy_c_header() {
         let registry = LanguageRegistry::new();
@@ -201,6 +233,7 @@ mod coverage_tests {
         assert_eq!(strategy.unwrap().language(), Language::C);
     }
 
+    #[cfg(feature = "c-ast")]
     #[test]
     fn test_find_strategy_cpp() {
         let registry = LanguageRegistry::new();
@@ -210,6 +243,7 @@ mod coverage_tests {
         assert_eq!(strategy.unwrap().language(), Language::Cpp);
     }
 
+    #[cfg(feature = "c-ast")]
     #[test]
     fn test_find_strategy_cpp_cc() {
         let registry = LanguageRegistry::new();
@@ -219,6 +253,7 @@ mod coverage_tests {
         assert_eq!(strategy.unwrap().language(), Language::Cpp);
     }
 
+    #[cfg(feature = "c-ast")]
     #[test]
     fn test_find_strategy_cpp_hpp() {
         let registry = LanguageRegistry::new();
@@ -244,6 +279,7 @@ mod coverage_tests {
         assert!(strategy.is_none());
     }
 
+    #[cfg(feature = "rust-ast")]
     #[test]
     fn test_get_strategy_rust() {
         let registry = LanguageRegistry::new();
@@ -252,6 +288,7 @@ mod coverage_tests {
         assert_eq!(strategy.unwrap().language(), Language::Rust);
     }
 
+    #[cfg(feature = "python-ast")]
     #[test]
     fn test_get_strategy_python() {
         let registry = LanguageRegistry::new();
@@ -260,6 +297,7 @@ mod coverage_tests {
         assert_eq!(strategy.unwrap().language(), Language::Python);
     }
 
+    #[cfg(feature = "typescript-ast")]
     #[test]
     fn test_get_strategy_typescript() {
         let registry = LanguageRegistry::new();
@@ -268,6 +306,7 @@ mod coverage_tests {
         assert_eq!(strategy.unwrap().language(), Language::TypeScript);
     }
 
+    #[cfg(feature = "typescript-ast")]
     #[test]
     fn test_get_strategy_javascript() {
         let registry = LanguageRegistry::new();
@@ -276,6 +315,7 @@ mod coverage_tests {
         assert_eq!(strategy.unwrap().language(), Language::JavaScript);
     }
 
+    #[cfg(feature = "c-ast")]
     #[test]
     fn test_get_strategy_c() {
         let registry = LanguageRegistry::new();
@@ -284,6 +324,7 @@ mod coverage_tests {
         assert_eq!(strategy.unwrap().language(), Language::C);
     }
 
+    #[cfg(feature = "c-ast")]
     #[test]
     fn test_get_strategy_cpp() {
         let registry = LanguageRegistry::new();
@@ -361,6 +402,7 @@ mod coverage_tests {
         assert!(strategy.is_none());
     }
 
+    #[cfg(feature = "rust-ast")]
     #[test]
     fn test_find_strategy_full_path() {
         let registry = LanguageRegistry::new();
@@ -370,6 +412,7 @@ mod coverage_tests {
         assert_eq!(strategy.unwrap().language(), Language::Rust);
     }
 
+    #[cfg(feature = "rust-ast")]
     #[test]
     fn test_find_strategy_relative_path() {
         let registry = LanguageRegistry::new();
@@ -379,6 +422,7 @@ mod coverage_tests {
         assert_eq!(strategy.unwrap().language(), Language::Rust);
     }
 
+    #[cfg(feature = "rust-ast")]
     #[test]
     fn test_find_strategy_hidden_file() {
         let registry = LanguageRegistry::new();

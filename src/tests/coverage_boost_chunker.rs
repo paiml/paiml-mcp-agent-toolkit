@@ -711,7 +711,7 @@ mod c_disabled_tests {
         let source = "int main() { return 0; }";
         let result = chunk_code(source, Language::C);
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("c-ast feature is disabled"));
+        assert!(result.unwrap_err().contains("not enabled"));
     }
 }
 
@@ -800,7 +800,7 @@ mod cpp_disabled_tests {
         let source = "int main() { return 0; }";
         let result = chunk_code(source, Language::Cpp);
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("cpp-ast feature is disabled"));
+        assert!(result.unwrap_err().contains("not enabled"));
     }
 }
 

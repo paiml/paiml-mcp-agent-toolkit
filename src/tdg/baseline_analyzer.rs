@@ -2,12 +2,18 @@
 //!
 //! Compares current code state against a git baseline to track refactoring progress.
 
+#[cfg(feature = "rust-ast")]
 use anyhow::{Context, Result};
+#[cfg(feature = "rust-ast")]
 use std::path::Path;
 
+#[cfg(feature = "rust-ast")]
 use super::explain::ExplainedTDGScore;
+#[cfg(feature = "rust-ast")]
 use super::function_analyzer::FunctionAnalyzer;
+#[cfg(feature = "rust-ast")]
 use super::recommendation_engine::generate_recommendations;
+#[cfg(feature = "rust-ast")]
 use super::TdgScore;
 
 /// Baseline comparison result
@@ -46,6 +52,7 @@ pub struct BaselineComparison {
 /// 3. Returns plausible completed/pending recommendations
 ///
 /// Full git integration will be added in REFACTOR phase.
+#[cfg(feature = "rust-ast")]
 pub fn compare_with_baseline(file_path: &Path, baseline_ref: &str) -> Result<BaselineComparison> {
     // Analyze current state
     let mut analyzer = FunctionAnalyzer::new().context("Failed to create FunctionAnalyzer")?;

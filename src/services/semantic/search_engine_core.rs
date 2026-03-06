@@ -91,6 +91,7 @@ impl SemanticSearchEngine {
                         ChunkType::Trait => "trait",
                         ChunkType::TypeAlias => "type",
                         ChunkType::Impl => "impl",
+                        ChunkType::TestModule => "test_module",
                     };
                     if r.chunk_type != chunk_type_str {
                         return false;

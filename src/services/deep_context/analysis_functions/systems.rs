@@ -147,6 +147,7 @@ pub async fn analyze_wasm_language(
 }
 
 /// Toyota Way Single Responsibility: Handle Lean 4 file analysis
+#[allow(unused_variables)]
 pub async fn analyze_lean_language(
     file_path: &std::path::Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {

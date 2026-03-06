@@ -4,6 +4,7 @@
 //! This module provides a factory for creating language-specific mappers
 //! that can transform language-specific ASTs into the unified representation.
 
+#[cfg(feature = "polyglot-typescript")]
 use crate::ast::polyglot::language_mapper::TypeScriptMapper;
 // Sprint 46 Phase 6: Feature-gated unused mapper imports
 #[cfg(feature = "csharp-ast")]

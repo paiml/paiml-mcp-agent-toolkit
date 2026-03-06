@@ -44,6 +44,7 @@ impl StrategySelector {
     /// Get all supported extensions
     #[must_use]
     pub fn supported_extensions() -> Vec<&'static str> {
+        #[allow(unused_mut)]
         let mut extensions = vec!["rs"]; // Rust is always supported
 
         #[cfg(feature = "typescript-ast")]

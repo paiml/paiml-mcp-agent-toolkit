@@ -35,6 +35,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 use crate::services::complexity::{ComplexityMetrics, FileComplexityMetrics, FunctionComplexity};
 use crate::services::context::AstItem;
+#[cfg(feature = "typescript-ast")]
 use crate::services::enhanced_typescript_visitor::EnhancedTypeScriptVisitor;
 
 #[cfg(feature = "typescript-ast")]

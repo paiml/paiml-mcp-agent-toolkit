@@ -41,6 +41,8 @@ pub enum ChunkType {
     TypeAlias,
     /// Rust impl block
     Impl,
+    /// Rust #[cfg(test)] module
+    TestModule,
 }
 
 impl ChunkType {
@@ -55,6 +57,7 @@ impl ChunkType {
             ChunkType::Trait => "trait",
             ChunkType::TypeAlias => "type_alias",
             ChunkType::Impl => "impl",
+            ChunkType::TestModule => "test_module",
         }
     }
 }
@@ -95,12 +98,24 @@ pub fn chunk_code(source: &str, language: Language) -> Result<Vec<CodeChunk>, St
     }
 
     match language {
+        #[cfg(feature = "rust-ast")]
         Language::Rust => chunk_rust_file(source),
+        #[cfg(feature = "typescript-ast")]
         Language::TypeScript => chunk_typescript_file(source),
+        #[cfg(feature = "python-ast")]
         Language::Python => chunk_python_file(source),
+        #[cfg(feature = "c-ast")]
         Language::C => chunk_c_file(source),
+        #[cfg(feature = "c-ast")]
         Language::Cpp => chunk_cpp_file(source),
+        #[cfg(feature = "tree-sitter")]
         Language::Go => chunk_go_file(source),
+        #[cfg(feature = "tree-sitter")]
         Language::Lua => chunk_lua_file(source),
+        #[allow(unreachable_patterns)]
+        _ => Err(format!(
+            "language {:?} not enabled; enable the corresponding feature",
+            language.as_str()
+        )),
     }
 }

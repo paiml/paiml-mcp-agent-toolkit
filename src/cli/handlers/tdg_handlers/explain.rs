@@ -17,8 +17,6 @@ pub(super) async fn handle_explain_mode(
     config: &TdgCommandConfig,
 ) -> Result<()> {
     use crate::tdg::explain::ExplainedTDGScore;
-    use crate::tdg::function_analyzer::FunctionAnalyzer;
-    use crate::tdg::recommendation_engine::generate_recommendations;
 
     // First get the base TDG score
     let score = execute_tdg_analysis(analyzer, config).await?;
@@ -26,8 +24,11 @@ pub(super) async fn handle_explain_mode(
     // Create explained score
     let mut explained = ExplainedTDGScore::new(score.clone());
 
-    // Analyze function-level complexity (only for single files)
+    // Analyze function-level complexity (only for single files, requires rust-ast)
+    #[cfg(feature = "rust-ast")]
     if config.path.is_file() && config.path.extension().is_some_and(|e| e == "rs") {
+        use crate::tdg::function_analyzer::FunctionAnalyzer;
+        use crate::tdg::recommendation_engine::generate_recommendations;
         let mut func_analyzer = FunctionAnalyzer::new()?;
         let functions = func_analyzer.analyze_file(&config.path)?;
 
