@@ -35,20 +35,21 @@ impl PatternExtractor {
         use std::collections::HashMap;
         use tokio::process::Command;
 
-        // Execute pmat context command to get actual project context
-        let output = Command::new("pmat")
+        // Execute pmat context command to get actual project context.
+        // Falls back to directory scanning if pmat binary is unavailable
+        // (e.g., clean-room CI where it's not on PATH).
+        let output = match Command::new("pmat")
             .arg("context")
             .arg(project_path)
             .arg("--format")
             .arg("json")
             .arg("--skip-expensive-metrics")
             .output()
-            .await?;
-
-        if !output.status.success() {
-            // Fall back to directory scanning if pmat context fails
-            return self.scan_directory_fallback(project_path).await;
-        }
+            .await
+        {
+            Ok(o) if o.status.success() => o,
+            _ => return self.scan_directory_fallback(project_path).await,
+        };
 
         let context_json = String::from_utf8(output.stdout)?;
 
