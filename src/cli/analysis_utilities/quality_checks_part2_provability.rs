@@ -286,6 +286,7 @@ fn parse_fn_declaration(trimmed: &str) -> Option<String> {
 ///         file: "src/main.rs".to_string(),
 ///         line: Some(42),
 ///         message: "Function exceeds complexity threshold".to_string(),
+///         details: None,
 ///     },
 ///     QualityViolation {
 ///         check_type: "dead_code".to_string(),
@@ -293,6 +294,7 @@ fn parse_fn_declaration(trimmed: &str) -> Option<String> {
 ///         file: "src/lib.rs".to_string(),
 ///         line: Some(10),
 ///         message: "Unused function detected".to_string(),
+///         details: None,
 ///     },
 /// ];
 ///
@@ -308,7 +310,7 @@ fn parse_fn_declaration(trimmed: &str) -> Option<String> {
 /// // Test summary format
 /// let summary = format_quality_gate_output(&results, &violations, QualityGateOutputFormat::Summary).unwrap();
 /// assert!(summary.contains("Status: FAILED"));
-/// ```ignore
+/// ```
 pub fn format_quality_gate_output(
     results: &QualityGateResults,
     violations: &[QualityViolation],

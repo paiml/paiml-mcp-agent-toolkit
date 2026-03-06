@@ -35,7 +35,7 @@ pub type Result<T> = std::result::Result<T, GitError>;
 ///
 /// # Example
 /// ```
-/// use paiml_mcp_agent_toolkit::maintenance::git::extract_ticket_ids;
+/// use pmat::maintenance::git::extract_ticket_ids;
 ///
 /// let message = "feat: TICKET-PMAT-5013 - Auto-update hooks (GREEN)";
 /// let ids = extract_ticket_ids(message);

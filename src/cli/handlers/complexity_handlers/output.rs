@@ -202,7 +202,7 @@ pub(super) fn generate_satd_sarif(result: &SATDAnalysisResult) -> serde_json::Va
 /// // Note: Files are sorted by SATD count, then alphabetically
 /// assert!(summary.contains("- 1 SATD items"));
 /// assert!(summary.contains("- 1 SATD items"));
-/// ```ignore
+/// ```
 #[must_use]
 pub fn format_satd_summary(result: &SATDAnalysisResult, metrics: bool) -> String {
     use std::fmt::Write;

@@ -5,6 +5,17 @@
 use std::fs;
 use tempfile::TempDir;
 
+/// Find the pmat binary in the target directory.
+/// Works regardless of CARGO_TARGET_DIR or custom target paths.
+#[cfg(test)]
+fn pmat_bin_path() -> std::path::PathBuf {
+    let test_exe = std::env::current_exe().expect("current_exe");
+    // test binary is at <target>/debug/deps/pmat-<hash>
+    // pmat binary is at <target>/debug/pmat
+    let target_debug = test_exe.parent().unwrap().parent().unwrap();
+    target_debug.join("pmat")
+}
+
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod red_phase_tests {
@@ -25,7 +36,7 @@ const validateInput = () => { return true; };
         fs::write(temp_dir.path().join("test.ts"), ts_content).unwrap();
 
         // Run pmat context and capture output
-        let output = std::process::Command::new("./target/debug/pmat")
+        let output = std::process::Command::new(pmat_bin_path())
             .args([
                 "context",
                 "--project-path",
@@ -70,7 +81,7 @@ const validateInput = () => { return true; };
         )
         .unwrap();
 
-        let output = std::process::Command::new("./target/debug/pmat")
+        let output = std::process::Command::new(pmat_bin_path())
             .args([
                 "context",
                 "--project-path",
@@ -118,7 +129,7 @@ const validateInput = () => { return true; };
 
         fs::write(temp_dir.path().join("complex.js"), complex_function).unwrap();
 
-        let output = std::process::Command::new("./target/debug/pmat")
+        let output = std::process::Command::new(pmat_bin_path())
             .args([
                 "context",
                 "--project-path",
@@ -191,7 +202,7 @@ function leakyFunction() {
 
         fs::write(temp_dir.path().join("debt.js"), code_with_debt).unwrap();
 
-        let output = std::process::Command::new("./target/debug/pmat")
+        let output = std::process::Command::new(pmat_bin_path())
             .args([
                 "context",
                 "--project-path",
@@ -238,7 +249,7 @@ function leakyFunction() {
         fs::write(temp_dir.path().join("duplicate.js"),
             "function copy1() { return 42; }\nfunction copy2() { return 42; }\nfunction copy3() { return 42; }").unwrap();
 
-        let output = std::process::Command::new("./target/debug/pmat")
+        let output = std::process::Command::new(pmat_bin_path())
             .args([
                 "context",
                 "--project-path",
@@ -290,7 +301,7 @@ export { usedFunction };
 
         fs::write(temp_dir.path().join("mixed.js"), code_with_dead).unwrap();
 
-        let output = std::process::Command::new("./target/debug/pmat")
+        let output = std::process::Command::new(pmat_bin_path())
             .args([
                 "context",
                 "--project-path",
@@ -346,7 +357,7 @@ export { usedFunction };
 
         fs::write(temp_dir.path().join("math.wat"), wasm_content).unwrap();
 
-        let output = std::process::Command::new("./target/debug/pmat")
+        let output = std::process::Command::new(pmat_bin_path())
             .args([
                 "context",
                 "--project-path",

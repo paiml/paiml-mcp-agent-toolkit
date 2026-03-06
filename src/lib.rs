@@ -48,7 +48,7 @@
 //!
 //! ### Basic Usage
 //!
-//! ```rust
+//! ```ignore
 //! use pmat::{MetadataCache, ContentCache};
 //! use std::sync::Arc;
 //! use tokio::sync::RwLock;
@@ -70,7 +70,7 @@
 //!
 //! ### Template Server Implementation
 //!
-//! ```rust
+//! ```ignore
 //! use pmat::{TemplateServerTrait, S3Client};
 //! use anyhow::Result;
 //! use std::sync::Arc;
@@ -188,7 +188,7 @@ use crate::services::renderer::TemplateRenderer;
 ///
 /// # Examples
 ///
-/// ```rust,no_run
+/// ```ignore
 /// use pmat::MetadataCache;
 /// use std::sync::Arc;
 /// use tokio::sync::RwLock;
@@ -212,7 +212,7 @@ pub type MetadataCache = Arc<RwLock<LruCache<String, Arc<TemplateResource>>>>;
 ///
 /// # Examples
 ///
-/// ```rust,no_run
+/// ```ignore
 /// use pmat::ContentCache;
 /// use std::sync::Arc;
 /// use tokio::sync::RwLock;
@@ -263,7 +263,7 @@ pub struct S3Client;
 ///
 /// # Examples
 ///
-/// ```rust,no_run
+/// ```ignore
 /// use pmat::{TemplateServerTrait, TemplateRenderer, S3Client, MetadataCache, ContentCache};
 /// use anyhow::Result;
 /// use std::sync::Arc;

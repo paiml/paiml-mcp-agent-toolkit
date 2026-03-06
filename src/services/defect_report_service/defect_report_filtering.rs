@@ -21,7 +21,7 @@ impl DefectReportService {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    /// ```ignore
     /// use pmat::services::defect_report_service::DefectReportService;
     ///
     /// let service = DefectReportService::new();

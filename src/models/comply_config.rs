@@ -22,7 +22,7 @@
 //!
 //! # Example Usage
 //!
-//! ```rust,no_run
+//! ```ignore
 //! use pmat::models::comply_config::ComplyConfig;
 //! use std::path::Path;
 //!

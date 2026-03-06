@@ -74,6 +74,9 @@ fn format_churn_as_json(analysis: &crate::models::churn::CodeChurnAnalysis) -> R
 ///         hotspot_files: vec![PathBuf::from("src/main.rs")],
 ///         stable_files: vec![PathBuf::from("src/lib.rs")],
 ///         author_contributions: [("dev1".to_string(), 15), ("dev2".to_string(), 8)].iter().cloned().collect(),
+///         mean_churn_score: 0.6,
+///         variance_churn_score: 0.0225,
+///         stddev_churn_score: 0.15,
 ///     },
 /// };
 ///
@@ -81,7 +84,7 @@ fn format_churn_as_json(analysis: &crate::models::churn::CodeChurnAnalysis) -> R
 /// assert!(analysis.files.len() == 2);
 /// assert_eq!(analysis.period_days, 30);
 /// assert_eq!(analysis.summary.total_files_changed, 2);
-/// ```ignore
+/// ```
 // Helper function to format churn analysis as summary
 pub fn format_churn_as_summary(
     analysis: &crate::models::churn::CodeChurnAnalysis,

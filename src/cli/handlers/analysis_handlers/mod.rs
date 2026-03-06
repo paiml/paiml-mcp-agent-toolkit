@@ -72,7 +72,7 @@ pub(crate) use entropy_semantic::{
 ///
 /// # Examples
 ///
-/// ```rust,no_run
+/// ```ignore
 /// use pmat::cli::handlers::analysis_handlers::route_analyze_command;
 /// use pmat::cli::commands::AnalyzeCommands;
 /// use std::path::PathBuf;

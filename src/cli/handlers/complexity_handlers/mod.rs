@@ -141,7 +141,7 @@ impl ComplexityConfig {
 /// ).await?;
 /// # Ok(())
 /// # }
-/// ```ignore
+/// ```
 ///
 /// ```no_run
 /// // Example 2: AI agent builds refactoring pipeline
@@ -180,7 +180,7 @@ impl ComplexityConfig {
 /// // 4. Chain to other pmat tools (dead-code, duplicates, etc.)
 /// # Ok(())
 /// # }
-/// ```ignore
+/// ```
 ///
 /// # Threshold Filtering Examples
 ///
@@ -213,7 +213,7 @@ impl ComplexityConfig {
 /// // - File with functions [21, 30, 40] complexity -> INCLUDED (all above 20)
 /// # Ok(())
 /// # }
-/// ```ignore
+/// ```
 ///
 /// ```no_run
 /// // Example: Combined threshold filtering
@@ -244,7 +244,7 @@ impl ComplexityConfig {
 /// // - A file needs at least ONE function with cyclomatic > 15 OR cognitive > 12 to be included
 /// # Ok(())
 /// # }
-/// ```ignore
+/// ```
 ///
 /// # Parameters
 ///
@@ -272,7 +272,7 @@ impl ComplexityConfig {
 ///
 /// # Exit with code 1 if violations exceed threshold
 /// pmat analyze complexity --max-cyclomatic 10 --fail-on-violation
-/// ```ignore
+/// ```
 ///
 /// # Returns
 ///
@@ -408,7 +408,7 @@ pub async fn handle_analyze_complexity(
 ///
 /// assert!(result.is_ok());
 /// # });
-/// ```ignore
+/// ```
 pub async fn handle_analyze_dag(
     _dag_type: DagType,
     project_path: PathBuf,

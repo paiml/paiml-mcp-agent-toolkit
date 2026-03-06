@@ -73,7 +73,7 @@ pub(super) async fn write_analysis_output(content: &str, output: Option<PathBuf>
 /// let output = format_big_o_summary(&report);
 /// assert!(output.contains("Top Files by Complexity"));
 /// assert!(output.contains("utils.rs"));
-/// ```ignore
+/// ```
 #[must_use]
 pub fn format_big_o_summary(report: &BigOAnalysisReport) -> String {
     let mut output = String::with_capacity(1024);

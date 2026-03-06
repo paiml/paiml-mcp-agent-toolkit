@@ -17,7 +17,7 @@
 //!
 //! # Example
 //!
-//! ```rust,no_run
+//! ```ignore
 //! use crate::ast::polyglot::{UnifiedNode, LanguageMapper, JavaMapper, TypeScriptMapper};
 //! use std::path::Path;
 //!

@@ -91,7 +91,7 @@ pub struct FilePrediction {
 /// assert!(output.contains("Total files analyzed: 100"));
 /// assert!(output.contains("## Top Files by Defect Risk"));
 /// assert!(output.contains("1. `main.rs` - 90.0% risk (high)"));
-/// ```ignore
+/// ```
 pub fn format_defect_summary(report: &DefectPredictionReport, top_files: usize) -> Result<String> {
     use std::fmt::Write;
     let mut output = String::new();

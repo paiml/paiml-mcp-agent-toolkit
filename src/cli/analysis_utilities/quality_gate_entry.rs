@@ -63,7 +63,7 @@
 /// //   Average time per check: 0.08s
 /// # Ok(())
 /// # }
-/// ```ignore
+/// ```
 #[allow(clippy::too_many_arguments)]
 pub async fn handle_quality_gate(
     project_path: PathBuf,

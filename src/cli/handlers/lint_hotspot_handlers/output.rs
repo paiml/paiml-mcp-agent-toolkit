@@ -85,7 +85,7 @@ pub(crate) fn format_output(
 /// assert!(output.contains("1. `main.rs` - 0.05 violations/SLOC"));
 /// assert!(output.contains("## Hottest File Details"));
 /// assert!(output.contains("**File**: src/main.rs"));
-/// ```ignore
+/// ```
 pub fn format_summary(
     result: &LintHotspotResult,
     perf: bool,

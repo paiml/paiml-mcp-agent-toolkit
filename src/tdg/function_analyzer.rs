@@ -8,7 +8,7 @@
 //! use pmat::tdg::function_analyzer::FunctionAnalyzer;
 //! use std::path::Path;
 //!
-//! let analyzer = FunctionAnalyzer::new();
+//! let mut analyzer = FunctionAnalyzer::new().unwrap();
 //! let functions = analyzer.analyze_file(Path::new("src/lib.rs")).unwrap();
 //!
 //! for func in functions {

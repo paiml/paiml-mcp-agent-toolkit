@@ -130,6 +130,9 @@ fn build_churn_response(
 ///         hotspot_files: vec![PathBuf::from("src/main.rs")],
 ///         stable_files: vec![PathBuf::from("README.md")],
 ///         author_contributions: HashMap::new(),
+///         mean_churn_score: 0.0,
+///         variance_churn_score: 0.0,
+///         stddev_churn_score: 0.0,
 ///     },
 /// };
 ///
@@ -192,6 +195,9 @@ pub fn format_churn_summary(analysis: &crate::models::churn::CodeChurnAnalysis) 
 ///         hotspot_files: vec![],
 ///         stable_files: vec![],
 ///         author_contributions: HashMap::new(),
+///         mean_churn_score: 0.0,
+///         variance_churn_score: 0.0,
+///         stddev_churn_score: 0.0,
 ///     },
 /// };
 ///
@@ -279,6 +285,9 @@ pub fn format_churn_as_markdown(analysis: &crate::models::churn::CodeChurnAnalys
 ///         hotspot_files: vec![],
 ///         stable_files: vec![],
 ///         author_contributions: HashMap::new(),
+///         mean_churn_score: 0.0,
+///         variance_churn_score: 0.0,
+///         stddev_churn_score: 0.0,
 ///     },
 /// };
 ///

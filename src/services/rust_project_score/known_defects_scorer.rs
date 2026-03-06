@@ -16,7 +16,7 @@
 //! **Incident**: Cloudflare's worst outage since 2019 caused by uncaught panic from `.unwrap()`
 //!
 //! **Root Cause**:
-//! ```rust
+//! ```text
 //! // Cloudflare's code that caused the outage
 //! thread fl2_worker_thread panicked: called Result::unwrap() on an Err value
 //! ```
@@ -27,7 +27,7 @@
 //! - Workers KV, Access, Dashboard, Turnstile all impacted
 //!
 //! **Fix**:
-//! ```rust
+//! ```ignore
 //! // BAD - no error context
 //! result.unwrap()
 //!

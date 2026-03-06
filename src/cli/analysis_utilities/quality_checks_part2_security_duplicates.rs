@@ -93,7 +93,7 @@ fn scan_content_for_pattern(
 /// }
 /// # Ok(())
 /// # }
-/// ```ignore
+/// ```
 ///
 /// # Property Tests
 ///
