@@ -7,6 +7,10 @@ server/assets/vendor/
 *-min.js
 *-min.css
 
+# Exception: demo assets required for compilation (include_bytes!)
+!assets/demo/style.min.css
+!assets/demo/app.min.js
+
 # Rust
 /target
 /target/
