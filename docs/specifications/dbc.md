@@ -1,9 +1,9 @@
 ---
 title: "Design by Contract for pmat work"
-version: "1.1.0"
+version: "1.2.0"
 status: "Implemented"
 created: "2026-02-26"
-updated: "2026-02-26"
+updated: "2026-03-07"
 issue_refs: ["#75", "#96", "#223"]
 references:
   - "Meyer 1992 — Applying Design by Contract"
@@ -15,6 +15,11 @@ references:
   - "arxiv:2503.18666 — AgentSpec"
   - "arxiv:2505.19271 — VerifyThisBench"
   - "arxiv:2502.13929 — Formal Verification in Solidity and Move"
+  - "arxiv:2602.22302 — Agent Behavioral Contracts (ABC)"
+  - "arxiv:2601.08815 — Agent Contracts: Resource-Bounded Autonomous AI"
+  - "arxiv:2508.03665 — DbC Inspired Neurosymbolic Layer"
+  - "arxiv:2510.01072 — Lessons Learned Verifying Rust Std Lib"
+  - "provable-contracts — PAIML formal contract lint/scoring system"
 epic: "PMAT-DBC"
 ---
 
@@ -1593,7 +1598,275 @@ This metric answers "are we writing good contracts?" — not just "do our contra
 
 ---
 
-## 13. References
+## 13. `provable-contracts` Lint/Quality Gate Integration
+
+The `provable-contracts` crate (PAIML) provides a formal contract quality system that directly maps to the Meyer triad. This section documents the lint rules, scoring dimensions, and quality gates that should inform `pmat work` contract evaluation.
+
+### 13.1 Three-Gate Pipeline
+
+`pv lint` runs three sequential gates across all YAML contracts in a directory. Gates are ordered by severity — if validation fails, audit and score are skipped (fail-fast).
+
+| Gate | Purpose | Pass criteria | Maps to Meyer |
+|------|---------|---------------|---------------|
+| **validate** | Schema completeness (PV-VAL-*) | 0 errors | Precondition: contract is well-formed |
+| **audit** | Traceability chain (paper→equation→obligation→test→proof) | 0 blocking findings | Invariant: provenance chain intact |
+| **score** | 5-dimension quality score vs threshold | All contracts >= `--min-score` | Postcondition: quality guarantee met |
+
+```
+Gate 1: validate.............. PASS (107 contracts, 0 errors, 9 warnings) [0ms]
+Gate 2: audit................. PASS (107 contracts, 0 findings) [0ms]
+Gate 3: score................. PASS (107 contracts, min=0.27, mean=0.50, threshold=0.00) [0ms]
+Result: PASS (3/3 gates passed) [68ms]
+```
+
+### 13.2 Rule Catalog (21 Rules, 5 Categories)
+
+Rule ID format: `PV-<CATEGORY>-NNN`. Categories: VAL (validation), AUD (audit), SCR (score), PRV (provability), TRD (trend).
+
+#### Validation Rules (PV-VAL-*)
+
+| Rule | Default Severity | Description |
+|------|:----------------:|-------------|
+| PV-VAL-001 | Error | Schema validation error (parse failure or missing section) |
+| PV-VAL-002 | Error | Missing `metadata.version` |
+| PV-VAL-003 | Warning | Missing `metadata.created` |
+| PV-VAL-004 | Error | Empty equation formula |
+| PV-VAL-005 | Error | Empty proof obligation property |
+| PV-VAL-006 | Warning | Duplicate formal predicate in proof obligations |
+
+#### Audit Rules (PV-AUD-*)
+
+| Rule | Default Severity | Description |
+|------|:----------------:|-------------|
+| PV-AUD-001 | Warning | Obligation without falsification test |
+| PV-AUD-002 | Info | Missing paper reference |
+| PV-AUD-003 | Warning | Obligation ID not referenced by any test |
+| PV-AUD-004 | Warning | Equation without domain specification |
+| PV-AUD-005 | Warning | Missing tolerance for numerical obligation |
+
+#### Score Rules (PV-SCR-*)
+
+| Rule | Default Severity | Description |
+|------|:----------------:|-------------|
+| PV-SCR-001 | Error | Composite score below threshold |
+| PV-SCR-002 | Warning | Missing binding entry for equation |
+| PV-SCR-003 | Info | Kani coverage below 50% |
+| PV-SCR-004 | Info | Lean coverage at 0% |
+
+#### Provability Rules (PV-PRV-*)
+
+| Rule | Default Severity | Description |
+|------|:----------------:|-------------|
+| PV-PRV-001 | Error | Kernel contract without Kani harnesses |
+| PV-PRV-002 | Error | Kernel contract without falsification tests |
+| PV-PRV-003 | Warning | Kani harness count < obligation count |
+| PV-PRV-004 | Info | No Lean theorems (L5 not attempted) |
+
+#### Trend Rules (PV-TRD-*)
+
+| Rule | Default Severity | Description |
+|------|:----------------:|-------------|
+| PV-TRD-001 | Warning | Mean score dropped >5% from 7-day rolling average |
+| PV-TRD-002 | Info | Error count increased from previous snapshot |
+
+### 13.3 Five-Dimension Contract Scoring
+
+Each contract is scored across 5 dimensions with configurable weights:
+
+| Dimension | Weight | What it measures |
+|-----------|:------:|-----------------|
+| **D1: Specification depth** | 20% | Equations (30%), domains (15%), invariants (15%), kernel structure (15%), tolerances (10%), references (10%), depends_on (5%) |
+| **D2: Falsification coverage** | 25% | Ratio of falsification tests to proof obligations |
+| **D3: Kani coverage** | 25% | Weighted by strategy: Exhaustive (1.0), BoundedInt (0.9), StubFloat (0.8), Compositional (0.7), None (0.5) |
+| **D4: Lean coverage** | 10% | Ratio of proved obligations with Lean status != NotApplicable |
+| **D5: Binding coverage** | 20% | Binding implementation status: Implemented (1.0), Partial (0.5), NotImplemented (0.0) |
+
+**Composite score**: weighted sum of D1–D5. **Grade**: A (>=0.90), B (>=0.75), C (>=0.60), D (>=0.40), F (<0.40).
+
+### 13.4 SARIF Output for CI/CD Integration
+
+`pv lint` produces OASIS SARIF v2.1.0 output for integration with GitHub Code Scanning, VS Code SARIF Viewer, and CI pipelines:
+
+```yaml
+# GitHub Actions integration
+- name: Contract quality gate
+  run: pv lint contracts/ --min-score 0.50 --format sarif > lint.sarif
+- name: Upload SARIF
+  uses: github/codeql-action/upload-sarif@v3
+  with:
+    sarif_file: lint.sarif
+```
+
+Each finding maps to a SARIF `result` with rule ID, severity level, file location, and optional suppressions. The full 21-rule catalog is embedded in the SARIF `tool.driver.rules` array.
+
+### 13.5 Drift Detection and Trend Tracking
+
+**Contract drift**: A contract is "stale" when modified after the binding file was last updated. Drift score: `1.0 - (stale_contracts / total_bound_contracts)`. Detected via `git log -1 --format=%ct` timestamps.
+
+**Quality trends**: Timestamped snapshots recorded in `.pv/trend/`. Rolling 7-snapshot window detects score drops >5% (PV-TRD-001). Format:
+
+```
+Date                 Score  Errors  Warnings  Result
+------------------------------------------------------------
+2026-03-07T18:35:16  0.50   0       12        PASS
+2026-03-06T14:20:00  0.52   0       10        PASS
+Trend: -0.020 score over 7 snapshots (declining)
+```
+
+### 13.6 Diff-Aware Linting
+
+`pv lint contracts/ --diff HEAD~5` only lints contracts changed since a git ref. Transitive dependents are expanded: if contract A changed and contract B has `depends_on: [A]`, both are linted. This maps to the subcontracting model (Section 5) — changes in parent obligations propagate to dependents.
+
+### 13.7 Configuration via `.pv.toml`
+
+```toml
+[lint]
+min_score = 0.60
+strict = false           # Promote warnings to errors
+contracts_dir = "contracts/"
+binding = "contracts/aprender/binding.yaml"
+
+[lint.rules]
+PV-AUD-003 = "error"     # Promote to error
+PV-SCR-004 = "off"       # Disable Lean check
+
+[lint.suppress]
+rules = ["PV-AUD-002"]   # Suppress missing-paper-ref
+files = ["registry"]     # Suppress findings in registry files
+
+[lint.trend]
+enabled = true
+retention_days = 90
+drift_threshold = 0.05   # 5% drop triggers PV-TRD-001
+
+[lint.cache]
+enabled = true           # Content-addressable cache in .pv/cache/lint/
+```
+
+Config search order: `./.pv.toml` → git repo root → `$HOME/.config/pv/config.toml`. CLI flags override config values.
+
+### 13.8 Mapping to `pmat work` DbC
+
+The `provable-contracts` lint pipeline maps directly to the `pmat work` contract lifecycle:
+
+| `pv lint` concept | `pmat work` equivalent | Integration point |
+|-------------------|----------------------|-------------------|
+| Gate 1: validate | `require.*` preconditions | `work start` — contract must be well-formed |
+| Gate 2: audit | `invariant.*` checks | `work checkpoint` — traceability chain checked |
+| Gate 3: score | `ensure.*` postconditions | `work complete` — quality score threshold met |
+| PV-TRD-* drift | `ensure.tdg_regression` | Trend tracking detects quality regression |
+| SARIF output | Falsification receipt | Machine-readable audit trail |
+| `.pv.toml` config | `.pmat-work/config.toml` | Per-project quality configuration |
+| Content-addressable cache | `.pmat/context.db` cache | Incremental evaluation |
+| Diff-aware lint | Subcontracting propagation | Changed contracts propagate to dependents |
+| Finding suppression | `--without` exclusions | Explicit, auditable exclusions |
+
+**Future integration**: `pmat work complete` could invoke `pv lint` as an additional postcondition for batuta stack projects with YAML contracts, providing formal verification scoring alongside the existing 25-claim evaluation.
+
+---
+
+## 14. Research-Informed Improvements
+
+This section documents improvements informed by academic research (arXiv 2025–2026), batuta oracle, and web searches conducted on 2026-03-07.
+
+### 14.1 Agent Behavioral Contracts (ABC) — Drift Bounds
+
+The ABC framework [Ref 12] introduces **(p, delta, k)-satisfaction** as a probabilistic compliance notion, and proves the **Drift Bounds Theorem**: contracts with recovery rate gamma > alpha (natural drift rate) bound behavioral drift to `D* = alpha/gamma` in expectation.
+
+**Application to `pmat work`**: The rescue protocol (Section 6) is analogous to ABC's recovery mechanism. The drift bound concept should be integrated into trend tracking (Section 13.5): if `pmat work` checkpoints detect invariant violations at rate alpha and rescue succeeds at rate gamma, the expected drift is bounded. This provides a theoretical guarantee that the rescue protocol is effective when gamma > alpha.
+
+**Proposed improvement**: Add a `drift_bound` metric to checkpoint history, computed as `invariant_violations / total_checkpoints` divided by `rescue_successes / rescue_attempts`. Display as: `Drift bound: 0.23 (bounded, gamma=0.85 > alpha=0.20)`.
+
+### 14.2 LLM-Inferred Contracts — NL2Contract
+
+The "Beyond Postconditions" paper [Ref 8] introduces NL2Contract: translating informal natural language into formal functional contracts. Results show LLMs generate sound contracts for all possible inputs, and contracts are sufficiently expressive for discriminating buggy from correct behavior.
+
+**Application to `pmat work`**: Phase 4+ contract inference (Section 7.3) should adopt the NL2Contract pipeline:
+1. Extract function signatures and docstrings from changed files
+2. Generate precondition + postcondition + invariant candidates via LLM
+3. Validate candidates against existing tests (ContractEval [Ref 7] benchmark)
+4. Promote high-confidence candidates to active contract clauses
+
+**Proposed improvement**: Add `ClauseSource::LlmInferred { confidence: f64, model: String }` variant. Only promote clauses with confidence >= 0.85 and at least 3 passing test witnesses.
+
+### 14.3 Kani Bounded Model Checking — Recent Advances
+
+Kani v0.66+ (2026) adds:
+- **BoundedArbitrary trait** for bounded proofs with explicit input space limits
+- **Loop invariant support** in while-let loops, enabling verification beyond bounded iteration counts
+- **Multiple SMT solver support** (bitwuzla, cvc5, z3) for cross-validation
+- **`--prove-safety-only`** flag for focused safety verification
+- **ESBMC integration** via Goto-Transcoder, expanding the verification ecosystem [Ref 17]
+
+**Application to `pmat work`**: The Pmat profile's `ensure.formal_proofs` claim (Section 2.2) should leverage:
+1. BoundedArbitrary for generating Kani harnesses from contract obligations
+2. Multi-solver cross-validation (run same harness with z3 AND bitwuzla) for higher confidence
+3. The Kani autoharness feature for automated contract verification from the Rust standard library verification initiative [Ref 16]
+
+**Proposed improvement**: Add `kani_strategy: MultiSolver` to Kani harness config. PV-PRV-003 (harness count < obligation count) could be auto-fixed by generating autoharnesses.
+
+### 14.4 Lean 4 — Industrial Verification Roadmap
+
+Lean FRO Year 3 roadmap (Aug 2025 – Jul 2026) targets:
+- Next-generation simplifier scaled to industrial use cases
+- VeriBench [Ref 18] demonstrates end-to-end verification from natural language → Lean 4 proofs
+- ACM SIGPLAN Programming Languages Software Award (2025) validates industrial relevance
+
+**Application to `pmat work`**: The `ensure.formal_proofs` claim and PV-PRV-004 (no Lean theorems) should track proof obligation status per the 5-level verification ladder used by `provable-contracts`:
+
+| Level | Name | Verification method |
+|:-----:|------|-------------------|
+| L1 | Unit test | Property tested with specific inputs |
+| L2 | Property test | Probar/proptest with random sampling |
+| L3 | Bounded proof | Kani exhaustive within bounds |
+| L4 | Symbolic proof | Kani with loop invariants, unbounded |
+| L5 | Formal proof | Lean 4 theorem with machine-checked proof |
+
+### 14.5 Proposed New Lint Rules for `pmat work`
+
+Based on the `provable-contracts` rule catalog and research, the following rules are proposed for `pmat work` contract validation:
+
+| Rule | Severity | Description | Source |
+|------|:--------:|-------------|--------|
+| DBC-VAL-001 | Error | Contract JSON fails schema validation | §13.2 PV-VAL-001 |
+| DBC-VAL-002 | Error | Missing `require` or `ensure` section (degenerate contract) | Meyer triad |
+| DBC-AUD-001 | Warning | Ensure clause without corresponding test | §13.2 PV-AUD-001 |
+| DBC-AUD-002 | Warning | Invariant clause never checkpointed (no checkpoint records) | §4.2 |
+| DBC-SCR-001 | Error | Contract quality score below threshold (<0.5) | §12.1 |
+| DBC-SCR-002 | Warning | More than 30% of claims excluded via `--without` | §12.1 |
+| DBC-PRV-001 | Info | No Kani harnesses for contracts with formal proof obligations | §13.2 PV-PRV-001 |
+| DBC-TRD-001 | Warning | Contract quality dropped >10% across iterations | §13.5 PV-TRD-001 |
+| DBC-TRD-002 | Info | Rescue success rate < 50% across last 5 completions | §14.1 ABC drift |
+| DBC-DRF-001 | Warning | Behavioral drift bound exceeded (gamma < alpha) | §14.1 ABC |
+
+### 14.6 Codebase-Level Scoring
+
+Beyond individual contract scoring (Section 13.3), `provable-contracts` scores entire codebases with 5 dimensions:
+
+| Dimension | What it measures |
+|-----------|-----------------|
+| **Contract coverage** | What fraction of critical modules have contracts |
+| **Binding completeness** | What fraction of contract equations are bound to code |
+| **Mean contract score** | Average quality across all contracts |
+| **Proof depth distribution** | Distribution across L1–L5 verification levels |
+| **Drift** | Freshness of bindings relative to contracts |
+
+**Composite**: weighted sum with gap analysis highlighting highest-impact improvements.
+
+**Application to `pmat work`**: A codebase-level quality score should be computed at `work complete` time for the Pmat profile, aggregating across all active work contracts. This provides a portfolio view — not just "did this ticket pass?" but "is the codebase getting better?"
+
+### 14.7 Security Considerations from ABC Framework
+
+The ABC paper [Ref 12] demonstrates that contracted agents detect 5.2–6.8 soft violations per session that uncontracted baselines miss entirely. The `pmat work` stack manifest security model (Section 2.5) aligns with this finding: the TOFU trust model and command restriction parser serve as the "contract enforcement" layer for third-party tooling.
+
+**Proposed improvement**: Extend the stack manifest security model with:
+1. **Runtime violation counting** — track how many stack commands fail per session
+2. **Anomaly detection** — flag stack commands whose execution time deviates >3 sigma from historical
+3. **Content hash chain** — each trust decision links to the previous via hash chain, preventing trust history tampering
+
+---
+
+## 15. References
 
 1. Meyer, B. (1992). "Applying Design by Contract." *IEEE Computer*, 25(10), 40-51. DOI: 10.1109/2.161279
 2. Popper, K. (1934). *The Logic of Scientific Discovery*. Routledge. ISBN: 978-0415278447
@@ -1606,6 +1879,15 @@ This metric answers "are we writing good contracts?" — not just "do our contra
 9. Gu, L. et al. (2025). "AgentSpec: Customizable Runtime Enforcement for LLM Agents." *arXiv:2503.18666*. DOI: 10.48550/arXiv.2503.18666
 10. Mugnier, S. et al. (2025). "VerifyThisBench: Generating Verified Code, Specs, and Proofs with LLMs." *arXiv:2505.19271*. DOI: 10.48550/arXiv.2505.19271
 11. Tolmach, P. et al. (2025). "Formal Verification in Solidity and Move." *arXiv:2502.13929*. DOI: 10.48550/arXiv.2502.13929
+12. ABC Authors (2026). "Agent Behavioral Contracts: Formal Specification and Runtime Enforcement for Reliable Autonomous AI Agents." *arXiv:2602.22302*. DOI: 10.48550/arXiv.2602.22302
+13. Agent Contracts Authors (2026). "Agent Contracts: A Formal Framework for Resource-Bounded Autonomous AI Systems." *arXiv:2601.08815*. DOI: 10.48550/arXiv.2601.08815
+14. Tafese, T. et al. (2025). "A Tale of Two Case Studies: A Unified Exploration of Rust Verification." *FMCAD 2025*.
+15. PAIML (2026). "`provable-contracts`: Formal contract lint, scoring, and quality gates." Internal. Source: `crates/provable-contracts/src/lint/`, `crates/provable-contracts/src/scoring/`.
+16. Lessons Learned Authors (2025). "Lessons Learned So Far From Verifying the Rust Standard Library." *arXiv:2510.01072*.
+17. Rust Foundation (2025). "Expanding the Rust Formal Verification Ecosystem: Welcoming ESBMC."
+18. VeriBench Authors (2025). "VeriBench: End-to-End Formal Verification Benchmark for AI Code Generation in Lean 4." *OpenReview*.
+19. DbC Neurosymbolic Authors (2025). "A DbC Inspired Neurosymbolic Layer for Trustworthy Agent Design." *arXiv:2508.03665*.
+20. OASIS (2023). "Static Analysis Results Interchange Format (SARIF) Version 2.1.0 Plus Errata 01." *OASIS Standard*.
 
 ---
 
