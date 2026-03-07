@@ -2411,3 +2411,20 @@ roadmap:
   - warnings
   - tree-sitter
   notes: null
+- id: PMAT-508
+  github_issue: null
+  item_type: task
+  title: First-class C++/CUDA/PTX for pmat query (improved-cpp-pmat-query.md)
+  status: done
+  priority: high
+  assigned_to: null
+  created: 2026-03-07T17:00:55Z
+  updated: 2026-03-07T18:30:00+00:00
+  spec: docs/specifications/improved-cpp-pmat-query.md
+  acceptance_criteria:
+  - 'Done: Phases 0-8.4 implemented. Deferred: 8.5 (.ptx indexing, no .ptx in source trees), 9 (cross-lang, P3).'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
