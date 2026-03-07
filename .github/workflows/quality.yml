@@ -41,7 +41,7 @@ jobs:
       uses: actions/cache@v4
       with:
         path: target
-        key: ${{ runner.os }}-target-${{ hashFiles('**/Cargo.lock') }}
+        key: ${{ runner.os }}-target-v2-${{ hashFiles('**/Cargo.lock') }}
 
     - name: Build PMAT binary
 
