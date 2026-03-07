@@ -85,5 +85,16 @@ pub(super) fn is_keyword(word: &str) -> bool {
             | "not"
             | "nil"
             | "goto"
+            // C/C++ keywords
+            | "char" | "short" | "long" | "float" | "double" | "signed" | "unsigned"
+            | "auto" | "register" | "volatile" | "inline" | "virtual" | "override"
+            | "switch" | "case" | "default" | "typedef" | "sizeof" | "alignof"
+            | "namespace" | "using" | "template" | "typename" | "constexpr"
+            | "noexcept" | "nullptr" | "delete" | "operator" | "friend"
+            | "private" | "protected" | "public" | "explicit" | "mutable"
+            | "static_cast" | "dynamic_cast" | "const_cast" | "reinterpret_cast"
+            // CUDA keywords
+            | "__global__" | "__device__" | "__host__" | "__shared__"
+            | "threadIdx" | "blockIdx" | "blockDim" | "gridDim"
     )
 }

@@ -22,6 +22,15 @@ pub(crate) fn is_generic_callee(name: &str) -> bool {
             | "pcall" | "xpcall" | "select" | "rawget" | "rawset" | "rawlen"
             | "tostring" | "tonumber" | "setmetatable" | "getmetatable"
             | "table" | "string" | "math" | "coroutine" | "unpack"
+            // C/C++ stdlib and common patterns (prevent noise edges)
+            | "main" | "malloc" | "free" | "calloc" | "realloc"
+            | "printf" | "fprintf" | "sprintf" | "snprintf"
+            | "memcpy" | "memset" | "memmove" | "memcmp"
+            | "strlen" | "strcmp" | "strncmp" | "strcpy" | "strcat"
+            | "sizeof" | "assert" | "abort" | "exit"
+            | "begin" | "end" | "size" | "empty" | "data" | "clear" | "resize"
+            | "front" | "back" | "swap" | "find" | "erase" | "count"
+            | "move" | "forward" | "make_shared" | "make_unique"
     )
 }
 
