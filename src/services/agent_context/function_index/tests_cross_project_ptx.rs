@@ -172,6 +172,20 @@ fn test_is_test_chunk() {
     // Test function names
     assert!(is_test_chunk("test_handle_error", "src/handler.rs"));
     assert!(is_test_chunk("test_parse", "src/lib.rs"));
+    // C++ test files
+    assert!(is_test_chunk("foo", "src/handler_test.cpp"));
+    assert!(is_test_chunk("foo", "src/handler_test.cc"));
+    assert!(is_test_chunk("bar", "src/handler_unittest.cpp"));
+    assert!(is_test_chunk("baz", "tests/unit/test_attention.cpp"));
+    // C++ gtest macros
+    assert!(is_test_chunk("TEST_F", "src/handler.cpp"));
+    assert!(is_test_chunk("TEST_P", "src/handler.cpp"));
+    // JS/TS test files
+    assert!(is_test_chunk("foo", "src/handler.test.ts"));
+    assert!(is_test_chunk("foo", "src/handler.spec.js"));
+    // Python/Go test files
+    assert!(is_test_chunk("foo", "src/handler_test.py"));
+    assert!(is_test_chunk("foo", "src/handler_test.go"));
     // Non-test code
     assert!(!is_test_chunk("handle_error", "src/handler.rs"));
     assert!(!is_test_chunk("build", "src/lib.rs"));

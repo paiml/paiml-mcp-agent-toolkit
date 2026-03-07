@@ -39,15 +39,33 @@ pub(crate) fn is_generic_callee(name: &str) -> bool {
 /// Used to exclude test code from the index at build time, reducing index size
 /// by 25-70% for test-heavy repos.
 pub(crate) fn is_test_chunk(chunk_name: &str, file_path: &str) -> bool {
-    // File-level: skip *_test.rs, *_tests.rs, tests/ directories
+    // File-level: skip test directories and test file suffixes
     if file_path.contains("/tests/")
+        || file_path.contains("/test/")
+        || file_path.starts_with("tests/")
+        || file_path.starts_with("test/")
         || file_path.ends_with("_test.rs")
         || file_path.ends_with("_tests.rs")
+        || file_path.ends_with("_test.cpp")
+        || file_path.ends_with("_test.cc")
+        || file_path.ends_with("_test.c")
+        || file_path.ends_with("_unittest.cpp")
+        || file_path.ends_with("_unittest.cc")
+        || file_path.ends_with(".test.ts")
+        || file_path.ends_with(".test.js")
+        || file_path.ends_with(".spec.ts")
+        || file_path.ends_with(".spec.js")
+        || file_path.ends_with("_test.py")
+        || file_path.ends_with("_test.go")
     {
         return true;
     }
-    // Function-level: skip test_ prefixed functions
-    if chunk_name.starts_with("test_") {
+    // Function-level: skip test_ prefixed and TEST_F/TEST/TEST_P (gtest)
+    if chunk_name.starts_with("test_")
+        || chunk_name.starts_with("TEST_F")
+        || chunk_name.starts_with("TEST_P")
+        || (chunk_name.starts_with("TEST") && chunk_name.len() > 4 && chunk_name.as_bytes()[4] == b'(')
+    {
         return true;
     }
     false
