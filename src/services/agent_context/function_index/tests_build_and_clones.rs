@@ -475,6 +475,75 @@ fn test_detect_fault_patterns_cuda_ptx() {
     assert!(f.contains(&"CUDA_SHMEM".to_string()));
     assert!(f.contains(&"CUDA_SYNC".to_string()));
     assert!(f.contains(&"INLINE_PTX".to_string()));
+    // PTX instruction tags from asm volatile("bar.sync 0;")
+    assert!(f.contains(&"PTX:bar.sync".to_string()));
+}
+
+#[test]
+fn test_detect_fault_patterns_ptx_instructions() {
+    let funcs = vec![FunctionEntry {
+        file_path: "mma.cuh".to_string(),
+        function_name: "mma_A".to_string(),
+        signature: "__device__ void mma_A()".to_string(),
+        doc_comment: None,
+        source: concat!(
+            "static __device__ void mma_A(int* x, const int* A, const int* B) {\n",
+            "    asm(\"mma.sync.aligned.m16n8k32.row.col.s32.s8.s8.s32 \"\n",
+            "        \"{%0, %1, %2, %3}, {%4, %5}, {%6}, {%0, %1, %2, %3};\"\n",
+            "        : \"=r\"(x[0]) : \"r\"(A[0]));\n",
+            "}\n"
+        )
+        .to_string(),
+        start_line: 1,
+        end_line: 5,
+        language: "C++".to_string(),
+        quality: QualityMetrics::default(),
+        checksum: "mma".to_string(),
+        definition_type: DefinitionType::default(),
+        commit_count: 0,
+        churn_score: 0.0,
+        clone_count: 0,
+        pattern_diversity: 0.0,
+        fault_annotations: Vec::new(),
+    }];
+
+    let faults = detect_fault_patterns(&funcs);
+    let f = &faults[&0];
+    assert!(f.contains(&"INLINE_PTX".to_string()));
+    assert!(f.contains(&"PTX:mma.sync".to_string()));
+}
+
+#[test]
+fn test_detect_fault_patterns_ptx_cp_async() {
+    let funcs = vec![FunctionEntry {
+        file_path: "cp_async.cuh".to_string(),
+        function_name: "async_copy".to_string(),
+        signature: "__device__ void async_copy()".to_string(),
+        doc_comment: None,
+        source: concat!(
+            "__device__ void async_copy(void* dst, const void* src) {\n",
+            "    asm volatile(\"cp.async.cg.shared.global [%0], [%1], 16;\"\n",
+            "                 :: \"r\"(dst), \"l\"(src));\n",
+            "}\n"
+        )
+        .to_string(),
+        start_line: 1,
+        end_line: 4,
+        language: "C++".to_string(),
+        quality: QualityMetrics::default(),
+        checksum: "cpa".to_string(),
+        definition_type: DefinitionType::default(),
+        commit_count: 0,
+        churn_score: 0.0,
+        clone_count: 0,
+        pattern_diversity: 0.0,
+        fault_annotations: Vec::new(),
+    }];
+
+    let faults = detect_fault_patterns(&funcs);
+    let f = &faults[&0];
+    assert!(f.contains(&"INLINE_PTX".to_string()));
+    assert!(f.contains(&"PTX:cp.async".to_string()));
 }
 
 #[test]

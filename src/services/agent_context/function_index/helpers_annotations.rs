@@ -256,6 +256,9 @@ pub(super) fn detect_fault_patterns(functions: &[FunctionEntry]) -> HashMap<usiz
             }
         }
 
+        // Extract inline PTX instruction mnemonics as searchable tags
+        extract_ptx_instruction_tags(src, &mut faults);
+
         if !faults.is_empty() {
             faults.sort();
             faults.dedup();
@@ -264,6 +267,37 @@ pub(super) fn detect_fault_patterns(functions: &[FunctionEntry]) -> HashMap<usiz
     }
 
     result
+}
+
+/// Extract PTX instruction mnemonics from inline asm() blocks as searchable tags.
+///
+/// Parses `asm("instruction.modifier ...")` and `asm volatile("...")` blocks
+/// to extract PTX opcode mnemonics like `mma.sync`, `cp.async`, `bar.sync`.
+fn extract_ptx_instruction_tags(source: &str, faults: &mut Vec<String>) {
+    // Known PTX instruction prefixes to search for in asm() string literals
+    const PTX_OPCODES: &[&str] = &[
+        "mma.sync",
+        "ldmatrix",
+        "movmatrix",
+        "cp.async",
+        "bar.sync",
+        "bar.arrive",
+        "membar",
+        "ld.shared",
+        "st.shared",
+        "ld.global",
+        "st.global",
+        "atom.shared",
+        "red.shared",
+        "shfl.sync",
+        "vote.sync",
+        "match.sync",
+    ];
+    for opcode in PTX_OPCODES {
+        if source.contains(opcode) {
+            faults.push(format!("PTX:{opcode}"));
+        }
+    }
 }
 
 /// Compute name frequency for generic name demotion.
