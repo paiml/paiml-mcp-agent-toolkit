@@ -1,4 +1,4 @@
-// Tests for work_contract_lint.rs (DBC spec §13.3)
+// Tests for work_contract_lint.rs (DBC spec §13.3, §14.5)
 
 #[test]
 fn test_lint_severity_display() {
@@ -188,4 +188,135 @@ fn test_lint_report_serialization() {
     let deserialized: LintReport = serde_json::from_str(&json).unwrap();
     assert_eq!(deserialized.findings.len(), 1);
     assert!(deserialized.passed);
+}
+
+// === Tests for new rules (§14.5) ===
+
+#[test]
+fn test_lint_scr_002_no_exclusions() {
+    let contract = WorkContract::new("test".to_string(), "abc".to_string());
+    let tmp = tempfile::tempdir().unwrap();
+    let report = lint_contract(&contract, tmp.path(), 0.0);
+
+    let scr002 = report.findings.iter().find(|f| f.rule_id == "DBC-SCR-002");
+    assert!(scr002.is_none(), "DBC-SCR-002 should not fire without exclusions");
+}
+
+#[test]
+fn test_lint_trd_001_no_trend_data() {
+    let contract = WorkContract::new("test".to_string(), "abc".to_string());
+    let tmp = tempfile::tempdir().unwrap();
+    let report = lint_contract(&contract, tmp.path(), 0.0);
+
+    let trd001 = report.findings.iter().find(|f| f.rule_id == "DBC-TRD-001");
+    assert!(trd001.is_none(), "DBC-TRD-001 should not fire without trend data");
+}
+
+#[test]
+fn test_lint_trd_002_no_rescue_data() {
+    let contract = WorkContract::new("test".to_string(), "abc".to_string());
+    let tmp = tempfile::tempdir().unwrap();
+    let report = lint_contract(&contract, tmp.path(), 0.0);
+
+    let trd002 = report.findings.iter().find(|f| f.rule_id == "DBC-TRD-002");
+    assert!(trd002.is_none(), "DBC-TRD-002 should not fire without rescue data");
+}
+
+// === SARIF Output Tests (§13.4) ===
+
+#[test]
+fn test_sarif_output_structure() {
+    let report = LintReport {
+        findings: vec![LintFinding {
+            rule_id: "DBC-VAL-001".to_string(),
+            severity: LintSeverity::Warning,
+            message: "test finding".to_string(),
+            clause_id: None,
+        }],
+        passed: true,
+        error_count: 0,
+        warning_count: 1,
+        info_count: 0,
+    };
+
+    let sarif = lint_report_to_sarif(&report, ".pmat-work/TEST/contract.json");
+
+    assert_eq!(sarif["version"], "2.1.0");
+    assert!(sarif["$schema"].as_str().unwrap().contains("sarif-schema"));
+    assert_eq!(sarif["runs"].as_array().unwrap().len(), 1);
+
+    let run = &sarif["runs"][0];
+    assert_eq!(run["tool"]["driver"]["name"], "pmat-dbc-lint");
+    assert_eq!(run["results"].as_array().unwrap().len(), 1);
+    assert_eq!(run["results"][0]["ruleId"], "DBC-VAL-001");
+    assert_eq!(run["results"][0]["level"], "warning");
+}
+
+#[test]
+fn test_sarif_output_empty_report() {
+    let report = LintReport {
+        findings: vec![],
+        passed: true,
+        error_count: 0,
+        warning_count: 0,
+        info_count: 0,
+    };
+
+    let sarif = lint_report_to_sarif(&report, "contract.json");
+    assert_eq!(sarif["runs"][0]["results"].as_array().unwrap().len(), 0);
+}
+
+#[test]
+fn test_sarif_rule_catalog_completeness() {
+    let sarif = lint_report_to_sarif(
+        &LintReport {
+            findings: vec![],
+            passed: true,
+            error_count: 0,
+            warning_count: 0,
+            info_count: 0,
+        },
+        "c.json",
+    );
+    let rules = sarif["runs"][0]["tool"]["driver"]["rules"]
+        .as_array()
+        .unwrap();
+    assert_eq!(rules.len(), 13, "SARIF should embed all 13 rules");
+
+    // Verify all rule IDs are present
+    let rule_ids: Vec<&str> = rules.iter().map(|r| r["id"].as_str().unwrap()).collect();
+    assert!(rule_ids.contains(&"DBC-VAL-001"));
+    assert!(rule_ids.contains(&"DBC-SCR-002"));
+    assert!(rule_ids.contains(&"DBC-TRD-001"));
+    assert!(rule_ids.contains(&"DBC-TRD-002"));
+    assert!(rule_ids.contains(&"DBC-DRF-001"));
+}
+
+#[test]
+fn test_sarif_severity_mapping() {
+    let report = LintReport {
+        findings: vec![
+            LintFinding {
+                rule_id: "DBC-VAL-004".to_string(),
+                severity: LintSeverity::Error,
+                message: "err".to_string(),
+                clause_id: None,
+            },
+            LintFinding {
+                rule_id: "DBC-AUD-003".to_string(),
+                severity: LintSeverity::Info,
+                message: "info".to_string(),
+                clause_id: None,
+            },
+        ],
+        passed: false,
+        error_count: 1,
+        warning_count: 0,
+        info_count: 1,
+    };
+
+    let sarif = lint_report_to_sarif(&report, "c.json");
+    let results = sarif["runs"][0]["results"].as_array().unwrap();
+    assert_eq!(results[0]["level"], "error");
+    assert_eq!(results[1]["level"], "note"); // Info maps to "note" in SARIF
 }

@@ -26,6 +26,17 @@ pub async fn handle_work_score(
     let trend =
         crate::cli::handlers::work_contract::load_quality_trend(&project_path, &id);
 
+    // SARIF output (§13.4)
+    if format == "sarif" {
+        let contract_path = format!(".pmat-work/{}/contract.json", id);
+        let sarif = crate::cli::handlers::work_contract::lint_report_to_sarif(
+            &lint_report,
+            &contract_path,
+        );
+        println!("{}", serde_json::to_string_pretty(&sarif)?);
+        return Ok(());
+    }
+
     if format == "json" {
         let output = serde_json::json!({
             "work_item_id": id,

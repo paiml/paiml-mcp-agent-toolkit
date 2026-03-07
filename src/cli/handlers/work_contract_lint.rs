@@ -1,8 +1,9 @@
 // DBC Lint Rules for pmat work contracts
-// Spec: docs/specifications/dbc.md §13.3
+// Spec: docs/specifications/dbc.md §13.3, §14.5
 //
-// 10 rules modeled after provable-contracts PV-* rules, adapted for
+// 13 rules modeled after provable-contracts PV-* rules, adapted for
 // pmat work's Popperian falsification + Meyer DBC triad.
+// Includes SARIF v2.1.0 output (§13.4).
 
 /// Severity levels for lint findings
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -52,7 +53,7 @@ pub struct LintReport {
 
 /// Run all DBC lint rules against a work contract.
 ///
-/// Returns a LintReport with findings from all 10 rules.
+/// Returns a LintReport with findings from all 13 rules.
 /// The contract passes if there are zero error-severity findings.
 pub fn lint_contract(
     contract: &WorkContract,
@@ -74,12 +75,15 @@ pub fn lint_contract(
 
     // Gate 3: Score rules (DBC-SCR-*)
     lint_scr_001(contract, project_path, min_score, &mut findings);
+    lint_scr_002(contract, &mut findings);
 
     // Gate 4: Provability rules (DBC-PRV-*)
     lint_prv_001(contract, &mut findings);
 
-    // Gate 5: Drift rules (DBC-DRF-*)
+    // Gate 5: Drift/Trend rules (DBC-DRF-*, DBC-TRD-*)
     lint_drf_001(contract, project_path, &mut findings);
+    lint_trd_001(contract, project_path, &mut findings);
+    lint_trd_002(contract, project_path, &mut findings);
 
     let error_count = findings
         .iter()
@@ -287,3 +291,158 @@ fn lint_drf_001(
         });
     }
 }
+
+/// DBC-SCR-002: More than 30% of claims excluded via --without (§14.5)
+fn lint_scr_002(contract: &WorkContract, findings: &mut Vec<LintFinding>) {
+    if !contract.is_dbc() || contract.excluded_claims.is_empty() {
+        return;
+    }
+    let total = contract.triad_claim_count() + contract.excluded_claims.len();
+    if total == 0 {
+        return;
+    }
+    let exclusion_pct = contract.excluded_claims.len() as f64 / total as f64;
+    if exclusion_pct > 0.30 {
+        findings.push(LintFinding {
+            rule_id: "DBC-SCR-002".to_string(),
+            severity: LintSeverity::Warning,
+            message: format!(
+                "{:.0}% of claims excluded ({}/{}). Consider closing toolchain gaps.",
+                exclusion_pct * 100.0,
+                contract.excluded_claims.len(),
+                total
+            ),
+            clause_id: None,
+        });
+    }
+}
+
+/// DBC-TRD-001: Contract quality dropped >10% across iterations (§14.5)
+fn lint_trd_001(
+    contract: &WorkContract,
+    project_path: &Path,
+    findings: &mut Vec<LintFinding>,
+) {
+    let trend = load_quality_trend(project_path, &contract.work_item_id);
+    if trend.drift_detected {
+        findings.push(LintFinding {
+            rule_id: "DBC-TRD-001".to_string(),
+            severity: LintSeverity::Warning,
+            message: format!(
+                "Quality trend declining: {:.2} delta from rolling avg {:.2} ({})",
+                trend.delta_from_average, trend.rolling_average, trend.direction
+            ),
+            clause_id: None,
+        });
+    }
+}
+
+/// DBC-TRD-002: Rescue success rate below 50% (§14.5, ABC drift bounds)
+fn lint_trd_002(
+    contract: &WorkContract,
+    project_path: &Path,
+    findings: &mut Vec<LintFinding>,
+) {
+    let rescue_records = RescueRecord::load_all(project_path, &contract.work_item_id);
+    if rescue_records.len() < 2 {
+        return; // Not enough data
+    }
+    // FixSuggested is the only "successful" outcome
+    let successes = rescue_records
+        .iter()
+        .filter(|r| matches!(r.outcome, RescueOutcome::FixSuggested))
+        .count();
+    let rate = successes as f64 / rescue_records.len() as f64;
+    if rate < 0.50 {
+        findings.push(LintFinding {
+            rule_id: "DBC-TRD-002".to_string(),
+            severity: LintSeverity::Info,
+            message: format!(
+                "Rescue success rate {:.0}% ({}/{}) — below 50% threshold",
+                rate * 100.0,
+                successes,
+                rescue_records.len()
+            ),
+            clause_id: None,
+        });
+    }
+}
+
+// === SARIF Output (DBC spec §13.4) ===
+
+/// Convert a LintReport to SARIF v2.1.0 JSON.
+///
+/// Produces OASIS SARIF output for CI/CD integration with GitHub Code Scanning,
+/// VS Code SARIF Viewer, etc.
+pub fn lint_report_to_sarif(report: &LintReport, contract_path: &str) -> serde_json::Value {
+    let results: Vec<serde_json::Value> = report
+        .findings
+        .iter()
+        .map(|f| {
+            serde_json::json!({
+                "ruleId": f.rule_id,
+                "level": match f.severity {
+                    LintSeverity::Error => "error",
+                    LintSeverity::Warning => "warning",
+                    LintSeverity::Info => "note",
+                },
+                "message": { "text": f.message },
+                "locations": [{
+                    "physicalLocation": {
+                        "artifactLocation": { "uri": contract_path },
+                    }
+                }],
+            })
+        })
+        .collect();
+
+    let rules: Vec<serde_json::Value> = RULE_CATALOG
+        .iter()
+        .map(|(id, severity, desc)| {
+            serde_json::json!({
+                "id": id,
+                "shortDescription": { "text": desc },
+                "defaultConfiguration": {
+                    "level": match *severity {
+                        "error" => "error",
+                        "warning" => "warning",
+                        _ => "note",
+                    }
+                }
+            })
+        })
+        .collect();
+
+    serde_json::json!({
+        "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json",
+        "version": "2.1.0",
+        "runs": [{
+            "tool": {
+                "driver": {
+                    "name": "pmat-dbc-lint",
+                    "version": env!("CARGO_PKG_VERSION"),
+                    "informationUri": "https://github.com/paiml/paiml-mcp-agent-toolkit",
+                    "rules": rules,
+                }
+            },
+            "results": results,
+        }]
+    })
+}
+
+/// Rule catalog for SARIF embedding (id, default_severity, description)
+const RULE_CATALOG: &[(&str, &str, &str)] = &[
+    ("DBC-VAL-001", "warning", "Missing preconditions (require empty)"),
+    ("DBC-VAL-002", "error", "Missing postconditions (ensure empty)"),
+    ("DBC-VAL-003", "warning", "Missing invariants (invariant empty)"),
+    ("DBC-VAL-004", "error", "Empty claim hypothesis"),
+    ("DBC-AUD-001", "warning", "Postcondition without falsification test"),
+    ("DBC-AUD-002", "info", "Invariant without checkpoint evaluation"),
+    ("DBC-AUD-003", "info", "Claim defined but never verified"),
+    ("DBC-SCR-001", "error", "Contract score below threshold"),
+    ("DBC-SCR-002", "warning", "More than 30% of claims excluded"),
+    ("DBC-PRV-001", "error", "Subcontracting violation detected"),
+    ("DBC-DRF-001", "warning", "Contract drift exceeds bound"),
+    ("DBC-TRD-001", "warning", "Quality trend declining"),
+    ("DBC-TRD-002", "info", "Rescue success rate below 50%"),
+];
