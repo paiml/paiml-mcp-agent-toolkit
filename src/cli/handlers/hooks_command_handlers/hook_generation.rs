@@ -79,6 +79,25 @@ export PMAT_TASK_ID_PATTERN="PMAT-[0-9]{{4}}"
         )
     }
 
+    /// Generate the cargo fmt --check gate for Rust projects
+    fn generate_format_check() -> &'static str {
+        r#"# 0. Format check (Rust only — cargo fmt --check on staged .rs files)
+STAGED_RS=$(git diff --cached --name-only --diff-filter=ACMR -- '*.rs' 2>/dev/null)
+if [ -n "$STAGED_RS" ] && command -v cargo &> /dev/null && [ -f Cargo.toml ]; then
+    echo -n "  Format check... "
+    FMT_OUTPUT=$(cargo fmt -- --check 2>&1)
+    if [ $? -eq 0 ]; then
+        echo "✅"
+    else
+        echo "❌"
+        echo "   Unformatted Rust code detected. Run 'cargo fmt' before committing."
+        echo "$FMT_OUTPUT" | grep "^Diff in" | head -5
+        exit 1
+    fi
+fi
+"#
+    }
+
     /// Generate quality check sections
     ///
     /// The generated hook is project-type aware:
@@ -86,7 +105,7 @@ export PMAT_TASK_ID_PATTERN="PMAT-[0-9]{{4}}"
     /// - Mixed repos only check staged source files
     /// - SATD and docs checks only run when source files exist in the repo
     pub(crate) fn generate_quality_checks(&self) -> String {
-        r#"# Check if pmat is available
+        let mut hook = String::from(r#"# Check if pmat is available
 if ! command -v pmat &> /dev/null; then
     echo "⚠️  Warning: pmat not found in PATH"
     echo "   Install with: cargo install pmat"
@@ -109,6 +128,9 @@ if [ -z "$HAS_SOURCE_FILES" ]; then
     exit 0
 fi
 
+"#);
+        hook.push_str(Self::generate_format_check());
+        hook.push_str(r#"
 # 1. Complexity analysis (only staged source files, not entire project)
 # Supports: Rust, Python, TypeScript, JavaScript, Go, C, C++, Lua, PHP, Swift
 STAGED_SRC=$(git diff --cached --name-only --diff-filter=ACMR -- '*.rs' '*.py' '*.ts' '*.tsx' '*.js' '*.jsx' '*.go' '*.c' '*.cpp' '*.lua' '*.php' '*.swift' 2>/dev/null | head -20)
@@ -178,6 +200,7 @@ echo ""
 
 # Success
 exit 0
-"#.to_string()
+"#);
+        hook
     }
 }
