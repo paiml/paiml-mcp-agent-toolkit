@@ -223,6 +223,9 @@ pub async fn context_summary(paths: &[PathBuf], _level: Option<&str>) -> Result<
         total_lines: &mut usize,
         languages: &mut HashSet<String>,
     ) -> Result<()> {
+        if !dir.is_dir() {
+            return Ok(());
+        }
         for entry in fs::read_dir(dir)? {
             let path = entry?.path();
 

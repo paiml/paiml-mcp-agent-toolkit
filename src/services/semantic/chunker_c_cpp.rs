@@ -176,7 +176,18 @@ fn extract_cpp_template(node: Node, source: &str, chunks: &mut Vec<CodeChunk>, s
     let mut cursor = node.walk();
     for child in node.children(&mut cursor) {
         match child.kind() {
-            "function_definition" => extract_cpp_func_def(child, source, chunks, scope),
+            "function_definition" => {
+                // Use template_declaration node for content (includes template<...> prefix)
+                if let Some(bare_name) = extract_cpp_function_name(child, source) {
+                    let qualified = qualify_name(scope, &bare_name);
+                    let start_byte = find_doc_comment_start(node, source);
+                    let content = source
+                        .get(start_byte..node.end_byte())
+                        .unwrap_or_default()
+                        .to_string();
+                    push_chunk(chunks, ChunkType::Function, qualified, "cpp", node, content);
+                }
+            }
             "class_specifier" | "struct_specifier" => {
                 extract_cpp_items_qualified(child, source, chunks, scope);
             }
