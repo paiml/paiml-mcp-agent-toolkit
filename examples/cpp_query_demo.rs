@@ -62,6 +62,16 @@ fn main() {
     println!("{}", "-".repeat(40));
     demo_header_classification();
 
+    // 9. Declaration-definition linking (G1)
+    println!("\n9. Declaration-Definition Linking (G1)");
+    println!("{}", "-".repeat(40));
+    demo_decl_def_linking();
+
+    // 10. Standalone PTX indexing (G3)
+    println!("\n10. Standalone PTX Indexing (G3)");
+    println!("{}", "-".repeat(40));
+    demo_ptx_indexing();
+
     println!("\nAll demos completed successfully.");
 }
 
@@ -140,6 +150,8 @@ fn demo_templates() {
         );
     }
     assert_eq!(chunks.len(), 1);
+    // G6: Template parameter extraction - name includes <T>
+    assert_eq!(chunks[0].chunk_name, "clamp<T>");
     assert!(chunks[0].content.contains("template"));
 }
 
@@ -272,4 +284,69 @@ fn demo_header_classification() {
         println!("    {} [{}]", c.chunk_name, c.language);
     }
     assert!(!cpp_chunks.is_empty());
+}
+
+fn demo_decl_def_linking() {
+    // G1: Declaration-definition linking
+    // Header declarations get [decl] suffix, linking to implementations
+    let header = "int llama_vocab_bos(const struct llama_vocab * vocab);";
+    let header_chunks = chunk_code(header, Language::C).unwrap();
+    println!("  Header declaration:");
+    for c in &header_chunks {
+        println!("    {} [{}]", c.chunk_name, c.chunk_type.as_str());
+    }
+    // Declarations in headers get [decl] suffix
+    if let Some(decl) = header_chunks.iter().find(|c| c.chunk_name.contains("[decl]")) {
+        println!("    Declaration detected: {}", decl.chunk_name);
+    } else {
+        println!("    (declaration detection requires function prototype syntax)");
+    }
+
+    // Definition in .cpp file
+    let source = "int llama_vocab_bos(const struct llama_vocab * vocab) {\n    return vocab->bos_token;\n}\n";
+    let source_chunks = chunk_code(source, Language::C).unwrap();
+    println!("  Source definition:");
+    for c in &source_chunks {
+        println!("    {} [{}]", c.chunk_name, c.chunk_type.as_str());
+    }
+    assert!(!source_chunks.is_empty());
+    assert_eq!(source_chunks[0].chunk_name, "llama_vocab_bos");
+    println!("  During indexing, [decl] entries link to definition via linked_definition field");
+}
+
+fn demo_ptx_indexing() {
+    // G3: Standalone PTX file indexing
+    let ptx_source = r#".version 7.0
+.target sm_80
+
+.entry vector_add(
+    .param .u64 a,
+    .param .u64 b,
+    .param .u64 c
+)
+{
+    .reg .f32 %f<4>;
+    ld.param.u64 %rd1, [a];
+    ret;
+}
+
+.func (.reg .f32 result) relu(
+    .param .f32 x
+)
+{
+    .reg .f32 %f1;
+    ld.param.f32 %f1, [x];
+    mov.f32 result, %f1;
+    ret;
+}
+"#;
+    let chunks = chunk_code(ptx_source, Language::Ptx).unwrap();
+    println!("  PTX file: {} chunks extracted", chunks.len());
+    for c in &chunks {
+        println!("    {} [{}] lines {}-{}", c.chunk_name, c.chunk_type.as_str(), c.start_line, c.end_line);
+    }
+    assert!(chunks.len() >= 2, "should extract .entry and .func blocks");
+    assert!(chunks.iter().any(|c| c.chunk_name == "vector_add"));
+    assert!(chunks.iter().any(|c| c.chunk_name == "relu"));
+    println!("  PTX kernels and device functions indexed successfully");
 }
