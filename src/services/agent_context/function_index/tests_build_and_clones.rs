@@ -441,6 +441,43 @@ fn test_detect_fault_patterns_more() {
 }
 
 #[test]
+fn test_detect_fault_patterns_cuda_ptx() {
+    let funcs = vec![FunctionEntry {
+        file_path: "kernel.cu".to_string(),
+        function_name: "softmax_kernel".to_string(),
+        signature: "__global__ void softmax_kernel(float* out, const float* in, int n)".to_string(),
+        doc_comment: None,
+        source: concat!(
+            "__global__ void softmax_kernel(float* out, const float* in, int n) {\n",
+            "    __shared__ float sdata[256];\n",
+            "    int tid = threadIdx.x;\n",
+            "    sdata[tid] = in[tid];\n",
+            "    __syncthreads();\n",
+            "    asm volatile(\"bar.sync 0;\");\n",
+            "}\n"
+        )
+        .to_string(),
+        start_line: 1,
+        end_line: 7,
+        language: "C++".to_string(),
+        quality: QualityMetrics::default(),
+        checksum: "cuda".to_string(),
+        definition_type: DefinitionType::default(),
+        commit_count: 0,
+        churn_score: 0.0,
+        clone_count: 0,
+        pattern_diversity: 0.0,
+        fault_annotations: Vec::new(),
+    }];
+
+    let faults = detect_fault_patterns(&funcs);
+    let f = &faults[&0];
+    assert!(f.contains(&"CUDA_SHMEM".to_string()));
+    assert!(f.contains(&"CUDA_SYNC".to_string()));
+    assert!(f.contains(&"INLINE_PTX".to_string()));
+}
+
+#[test]
 fn test_name_index_capped_at_100() {
     // Create 150 functions all named "new"
     let functions: Vec<FunctionEntry> = (0..150)

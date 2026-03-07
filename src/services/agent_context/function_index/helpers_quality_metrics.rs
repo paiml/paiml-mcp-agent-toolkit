@@ -34,12 +34,36 @@ pub(super) fn detect_language(path: &Path) -> Option<Language> {
         "rs" => Some(Language::Rust),
         "ts" | "tsx" | "js" | "jsx" => Some(Language::TypeScript),
         "py" => Some(Language::Python),
-        "c" | "h" => Some(Language::C),
+        "c" => Some(Language::C),
+        "h" => Some(Language::C), // Default; classify_header() upgrades to Cpp with content
         "cpp" | "cc" | "cxx" | "hpp" | "cu" | "cuh" => Some(Language::Cpp),
         "go" => Some(Language::Go),
         "lua" => Some(Language::Lua),
         _ => None,
     }
+}
+
+/// Classify a .h header as C or C++ based on content heuristics
+pub(super) fn classify_header_language(content: &str) -> Language {
+    // C++ indicators in non-comment context
+    const CPP_INDICATORS: &[&str] = &[
+        "extern \"C\"",
+        "class ",
+        "namespace ",
+        "template<",
+        "template <",
+        "virtual ",
+        "constexpr ",
+        "nullptr",
+        "std::",
+        "public:",
+        "private:",
+        "protected:",
+    ];
+    if CPP_INDICATORS.iter().any(|kw| content.contains(kw)) {
+        return Language::Cpp;
+    }
+    Language::C
 }
 
 /// Extract quality metrics from a code chunk

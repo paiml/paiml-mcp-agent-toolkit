@@ -149,7 +149,7 @@ impl AgentContextIndex {
             if !path.is_file() {
                 continue;
             }
-            let language = match detect_language(path) {
+            let mut language = match detect_language(path) {
                 Some(lang) => lang,
                 None => continue,
             };
@@ -170,6 +170,13 @@ impl AgentContextIndex {
                 Ok(c) => c,
                 Err(_) => continue,
             };
+
+            // Upgrade .h files from C to C++ based on content heuristics
+            if language == crate::services::semantic::Language::C
+                && path.extension().and_then(|e| e.to_str()) == Some("h")
+            {
+                language = classify_header_language(&content);
+            }
 
             let checksum = compute_file_sha256(&content);
             file_checksums.insert(relative_path.clone(), checksum.clone());

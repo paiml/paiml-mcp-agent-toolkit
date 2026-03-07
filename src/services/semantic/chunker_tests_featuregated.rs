@@ -122,6 +122,157 @@
         assert!(chunks[0].content.contains("template"));
     }
 
+    #[cfg(feature = "cpp-ast")]
+    #[test]
+    fn test_cpp_namespace_qualified_names() {
+        let source = r#"namespace llama {
+namespace model {
+    int load_weights(const char* path) {
+        return 0;
+    }
+} // namespace model
+} // namespace llama
+"#;
+        let chunks = chunk_code(source, Language::Cpp).unwrap();
+        let func = chunks.iter().find(|c| c.chunk_type == ChunkType::Function);
+        assert!(func.is_some(), "Should find function in namespace");
+        assert_eq!(func.unwrap().chunk_name, "llama::model::load_weights");
+    }
+
+    #[cfg(feature = "cpp-ast")]
+    #[test]
+    fn test_cpp_class_method_qualified() {
+        // Multi-line method body ensures tree-sitter-cpp emits function_definition
+        let source = "class Transformer {\npublic:\n    void forward(float* input, int n) {\n        for (int i = 0; i < n; i++) {\n            input[i] *= 2.0f;\n        }\n    }\n};\n";
+        let chunks = chunk_code(source, Language::Cpp).unwrap();
+        // Class itself is always extracted
+        let class_chunk = chunks.iter().find(|c| c.chunk_type == ChunkType::Class);
+        assert!(class_chunk.is_some(), "Should find class");
+        assert_eq!(class_chunk.unwrap().chunk_name, "Transformer");
+        // Method may or may not be extracted separately depending on tree-sitter-cpp node type
+        // At minimum, the class content should contain the method
+        assert!(class_chunk.unwrap().content.contains("forward"));
+    }
+
+    #[cfg(feature = "cpp-ast")]
+    #[test]
+    fn test_cpp_cuda_global_kernel() {
+        // tree-sitter-cpp handles CUDA attributes as decorated functions
+        let source = r#"__global__ void softmax_kernel(float* output, const float* input, int n) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < n) {
+        output[idx] = expf(input[idx]);
+    }
+}
+"#;
+        let chunks = chunk_code(source, Language::Cpp).unwrap();
+        assert!(!chunks.is_empty(), "Should parse CUDA __global__ kernel");
+        let kernel = chunks
+            .iter()
+            .find(|c| c.chunk_type == ChunkType::Function);
+        assert!(kernel.is_some());
+        assert_eq!(kernel.unwrap().chunk_name, "softmax_kernel");
+    }
+
+    #[cfg(feature = "cpp-ast")]
+    #[test]
+    fn test_cpp_cuda_device_function() {
+        let source = r#"__device__ float warp_reduce_sum(float val) {
+    for (int offset = 16; offset > 0; offset /= 2) {
+        val += __shfl_down_sync(0xffffffff, val, offset);
+    }
+    return val;
+}
+"#;
+        let chunks = chunk_code(source, Language::Cpp).unwrap();
+        assert_eq!(chunks.len(), 1);
+        assert_eq!(chunks[0].chunk_name, "warp_reduce_sum");
+    }
+
+    #[cfg(feature = "cpp-ast")]
+    #[test]
+    fn test_cpp_cuda_shared_memory() {
+        let source = r#"__global__ void reduce_kernel(float* out, const float* in, int n) {
+    __shared__ float sdata[256];
+    int tid = threadIdx.x;
+    sdata[tid] = in[tid];
+    __syncthreads();
+    if (tid == 0) {
+        float sum = 0;
+        for (int i = 0; i < 256; i++) sum += sdata[i];
+        out[0] = sum;
+    }
+}
+"#;
+        let chunks = chunk_code(source, Language::Cpp).unwrap();
+        assert_eq!(chunks.len(), 1);
+        assert!(chunks[0].content.contains("__shared__"));
+        assert!(chunks[0].content.contains("__syncthreads"));
+    }
+
+    #[cfg(feature = "cpp-ast")]
+    #[test]
+    fn test_cpp_inline_ptx_assembly() {
+        let source = r#"__device__ void barrier_sync() {
+    asm volatile("bar.sync 0;");
+}
+"#;
+        let chunks = chunk_code(source, Language::Cpp).unwrap();
+        assert_eq!(chunks.len(), 1);
+        assert!(chunks[0].content.contains("asm volatile"));
+        assert!(chunks[0].content.contains("bar.sync"));
+    }
+
+    #[cfg(feature = "cpp-ast")]
+    #[test]
+    fn test_cpp_extern_c_functions() {
+        // tree-sitter-cpp handles extern "C" blocks
+        let source = r#"extern "C" {
+    int llama_decode(void* ctx, int n_tokens) {
+        return 0;
+    }
+}
+"#;
+        let chunks = chunk_code(source, Language::Cpp).unwrap();
+        let func = chunks
+            .iter()
+            .find(|c| c.chunk_type == ChunkType::Function);
+        assert!(func.is_some(), "Should find function inside extern C block");
+        assert_eq!(func.unwrap().chunk_name, "llama_decode");
+    }
+
+    #[cfg(feature = "cpp-ast")]
+    #[test]
+    fn test_cpp_multiple_namespaces() {
+        let source = r#"namespace ns1 {
+    void func_a() {}
+}
+namespace ns2 {
+    void func_b() {}
+}
+"#;
+        let chunks = chunk_code(source, Language::Cpp).unwrap();
+        let names: Vec<&str> = chunks
+            .iter()
+            .filter(|c| c.chunk_type == ChunkType::Function)
+            .map(|c| c.chunk_name.as_str())
+            .collect();
+        assert!(names.contains(&"ns1::func_a"));
+        assert!(names.contains(&"ns2::func_b"));
+    }
+
+    #[cfg(feature = "cpp-ast")]
+    #[test]
+    fn test_cpp_nested_namespace_class() {
+        let source = "namespace outer {\nnamespace inner {\n    class Widget {\n    public:\n        void render() {}\n    };\n}\n}\n";
+        let chunks = chunk_code(source, Language::Cpp).unwrap();
+        let class_chunk = chunks.iter().find(|c| c.chunk_type == ChunkType::Class);
+        assert!(class_chunk.is_some());
+        assert_eq!(class_chunk.unwrap().chunk_name, "outer::inner::Widget");
+        // Class content should contain the method even if not extracted separately
+        assert!(class_chunk.unwrap().content.contains("render"));
+    }
+
     #[cfg(not(feature = "cpp-ast"))]
     #[test]
     fn test_cpp_feature_disabled() {

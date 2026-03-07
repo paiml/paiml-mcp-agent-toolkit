@@ -287,6 +287,17 @@ fn test_count_params() {
     assert_eq!(count_params("fn foo(x: i32, y: String)"), 2);
     assert_eq!(count_params("fn foo(x: i32, y: String, z: bool)"), 3);
     assert_eq!(count_params("no parens"), 0);
+    // C++ regression: comment with ')' before '(' must not panic (PyTorch crash)
+    // find('(') now locates the first '(' which may be in a comment — the key invariant
+    // is NO PANIC, not perfect param counting on multiline comment+signature strings
+    let _ = count_params("// 1) out = exp(a - val)\nvoid softmax(float* x, int n)");
+    // C++ with nested parens in types
+    assert_eq!(count_params("void foo(std::vector<int> v, int n)"), 2);
+    // CUDA kernel signature
+    assert_eq!(
+        count_params("__global__ void kernel(float* out, const float* in, int n)"),
+        3
+    );
 }
 
 #[test]
@@ -339,4 +350,69 @@ fn test_detect_language_all_types() {
     assert_eq!(detect_language(Path::new("test.go")), Some(Language::Go));
     assert_eq!(detect_language(Path::new("test.md")), None);
     assert_eq!(detect_language(Path::new("test.toml")), None);
+    // CUDA extensions
+    assert_eq!(detect_language(Path::new("kernel.cu")), Some(Language::Cpp));
+    assert_eq!(
+        detect_language(Path::new("kernel.cuh")),
+        Some(Language::Cpp)
+    );
+}
+
+#[test]
+fn test_classify_header_language_pure_c() {
+    let content = r#"
+#ifndef GGML_H
+#define GGML_H
+#include <stdint.h>
+struct ggml_tensor { int ne[4]; void* data; };
+int ggml_init(int n);
+void ggml_free(void);
+#endif
+"#;
+    assert_eq!(classify_header_language(content), Language::C);
+}
+
+#[test]
+fn test_classify_header_language_extern_c() {
+    let content = r#"
+#ifndef LLAMA_H
+#define LLAMA_H
+#ifdef __cplusplus
+extern "C" {
+#endif
+int llama_decode(void* ctx, int n);
+#ifdef __cplusplus
+}
+#endif
+#endif
+"#;
+    assert_eq!(classify_header_language(content), Language::Cpp);
+}
+
+#[test]
+fn test_classify_header_language_cpp_class() {
+    let content = r#"
+#pragma once
+namespace whisper {
+class Context {
+public:
+    void decode();
+private:
+    int n_;
+};
+}
+"#;
+    assert_eq!(classify_header_language(content), Language::Cpp);
+}
+
+#[test]
+fn test_classify_header_language_template() {
+    let content = r#"
+#pragma once
+template <typename T>
+T clamp(T val, T lo, T hi) {
+    return (val < lo) ? lo : (val > hi) ? hi : val;
+}
+"#;
+    assert_eq!(classify_header_language(content), Language::Cpp);
 }
