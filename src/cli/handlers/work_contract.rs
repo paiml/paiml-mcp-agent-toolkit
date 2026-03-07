@@ -35,6 +35,12 @@ include!("work_contract_stack.rs");
 // Rescue Protocol: strategies, dispatch, rescue records (Meyer §11)
 include!("work_contract_rescue.rs");
 
+// Contract Scoring: 5-dimension quality scoring (DBC spec §13.4-13.5)
+include!("work_contract_scoring.rs");
+
+// DBC Lint Rules: 10-rule quality gate (DBC spec §13.3)
+include!("work_contract_lint.rs");
+
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod rescue_tests {
@@ -57,6 +63,22 @@ mod stack_tests {
     use super::*;
 
     include!("work_contract_stack_tests.rs");
+}
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod scoring_tests {
+    use super::*;
+
+    include!("work_contract_scoring_tests.rs");
+}
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod lint_tests {
+    use super::*;
+
+    include!("work_contract_lint_tests.rs");
 }
 
 #[cfg_attr(coverage_nightly, coverage(off))]

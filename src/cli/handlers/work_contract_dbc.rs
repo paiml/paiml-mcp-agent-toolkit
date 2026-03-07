@@ -308,6 +308,9 @@ pub struct CheckpointRecord {
     pub invariant_results: Vec<InvariantResult>,
     /// Whether all invariants held
     pub all_invariants_hold: bool,
+    /// Drift bound D* at checkpoint time (DBC spec §13.5)
+    #[serde(default)]
+    pub drift_bound: Option<f64>,
 }
 
 /// Result of evaluating a single invariant clause
@@ -338,6 +341,7 @@ impl CheckpointRecord {
             iteration,
             invariant_results,
             all_invariants_hold: all_hold,
+            drift_bound: None,
         }
     }
 

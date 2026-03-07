@@ -73,6 +73,10 @@ pub struct WorkContract {
     /// Contract quality metric
     #[serde(default)]
     pub contract_quality: Option<ContractQuality>,
+
+    /// 5-dimension contract score (DBC spec §13.4)
+    #[serde(default)]
+    pub contract_score: Option<ContractScore>,
 }
 
 fn default_contract_version() -> String {
@@ -106,6 +110,7 @@ impl WorkContract {
             iteration: 1,
             inherited_postconditions: Vec::new(),
             contract_quality: None,
+            contract_score: None,
         }
     }
 
@@ -181,6 +186,7 @@ impl WorkContract {
             iteration,
             inherited_postconditions: Vec::new(),
             contract_quality: Some(quality),
+            contract_score: None,
         };
 
         // §5.3-5.4: Subcontracting validation for iteration > 1
