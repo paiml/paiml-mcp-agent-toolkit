@@ -8,6 +8,7 @@ server/assets/vendor/
 *-min.css
 
 # Rust
+/target
 /target/
 **/target/
 **/*.rs.bk
