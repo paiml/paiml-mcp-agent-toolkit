@@ -416,3 +416,101 @@ T clamp(T val, T lo, T hi) {
 "#;
     assert_eq!(classify_header_language(content), Language::Cpp);
 }
+
+#[test]
+fn test_cpp_complexity_penalty_preprocessor() {
+    let source = r#"
+void foo() {
+    #ifdef __CUDA_ARCH__
+        #if __CUDA_ARCH__ >= 800
+            do_sm80();
+        #endif
+    #endif
+}
+"#;
+    let penalty = cpp_complexity_penalty(source);
+    // #ifdef at depth 1 (+1), #if at depth 2 (+2) = 3
+    assert!(penalty >= 3, "preprocessor nesting penalty: got {penalty}");
+}
+
+#[test]
+fn test_cpp_complexity_penalty_macro_heavy() {
+    let source = r#"
+void init_model() {
+    GGML_ASSERT(ctx != NULL);
+    GGML_LOG_INFO("loading model");
+    GGML_ASSERT(n_vocab > 0);
+    GGML_CHECK(buf != NULL);
+    GGML_ASSERT(embd > 0);
+    GGML_LOG_WARN("deprecated path");
+}
+"#;
+    let penalty = cpp_complexity_penalty(source);
+    // 6 GGML_ macro calls > 5 threshold → +3
+    assert!(penalty >= 3, "macro-heavy penalty: got {penalty}");
+}
+
+#[test]
+fn test_cpp_complexity_penalty_cuda_kernel() {
+    let source = r#"
+__global__ void softmax_kernel(float* output, const float* input, int n) {
+    __shared__ float shared_max[32];
+    int tid = threadIdx.x;
+    if (tid < n) {
+        output[tid] = expf(input[tid]);
+    }
+    __syncthreads();
+}
+"#;
+    let penalty = cpp_complexity_penalty(source);
+    // __shared__ (+2) + __syncthreads (+3) + thread divergence (__global__ + if) (+2) = 7
+    assert!(penalty >= 7, "CUDA kernel penalty: got {penalty}");
+}
+
+#[test]
+fn test_cpp_complexity_penalty_template_nesting() {
+    let source = r#"
+template <typename T>
+template <int N>
+void MatMul<T>::compute(T* out) {
+    for (int i = 0; i < N; i++) {
+        out[i] = a[i] * b[i];
+    }
+}
+"#;
+    let penalty = cpp_complexity_penalty(source);
+    // 2 template<> → 1 extra level → +2
+    assert!(penalty >= 2, "template nesting penalty: got {penalty}");
+}
+
+#[test]
+fn test_cpp_complexity_penalty_sfinae() {
+    let source = r#"
+template <typename T, typename = std::enable_if<std::is_arithmetic<T>::value>>
+T add(T a, T b) { return a + b; }
+"#;
+    let penalty = cpp_complexity_penalty(source);
+    // enable_if → +3
+    assert!(penalty >= 3, "SFINAE penalty: got {penalty}");
+}
+
+#[test]
+fn test_cpp_complexity_penalty_warp_primitives() {
+    let source = r#"
+__device__ float warp_reduce(float val) {
+    val += __shfl_xor_sync(0xffffffff, val, 16);
+    val += __shfl_xor_sync(0xffffffff, val, 8);
+    return val;
+}
+"#;
+    let penalty = cpp_complexity_penalty(source);
+    // __shfl_ → +2
+    assert!(penalty >= 2, "warp primitive penalty: got {penalty}");
+}
+
+#[test]
+fn test_cpp_complexity_penalty_simple_function() {
+    // A simple C++ function should have zero penalty
+    let source = "int add(int a, int b) { return a + b; }";
+    assert_eq!(cpp_complexity_penalty(source), 0);
+}

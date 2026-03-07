@@ -72,7 +72,13 @@ pub(super) fn extract_quality_metrics(chunk: &CodeChunk, _full_content: &str) ->
     let loc = chunk.content.lines().count() as u32;
 
     // Count control flow complexity (simple heuristic)
-    let complexity = count_complexity(&chunk.content);
+    let mut complexity = count_complexity(&chunk.content);
+
+    // Add C++/CUDA-specific complexity penalties (Phase 4 + Phase 7)
+    let lang = chunk.language.as_str();
+    if lang == "cpp" || lang == "c" || lang == "cuda" {
+        complexity += cpp_complexity_penalty(&chunk.content);
+    }
 
     // Count SATD markers
     let satd_count = count_satd_markers(&chunk.content);
@@ -110,14 +116,24 @@ pub(super) fn count_complexity(source: &str) -> u32 {
     for line in source.lines() {
         let trimmed = line.trim();
 
-        // Control flow keywords
+        // Control flow keywords (Rust + C/C++)
         if trimmed.starts_with("if ")
+            || trimmed.starts_with("if(")
             || trimmed.starts_with("else if ")
+            || trimmed.starts_with("} else if ")
             || trimmed.contains(" if ")
             || trimmed.starts_with("match ")
+            || trimmed.starts_with("switch ")
+            || trimmed.starts_with("switch(")
             || trimmed.starts_with("while ")
+            || trimmed.starts_with("while(")
             || trimmed.starts_with("for ")
+            || trimmed.starts_with("for(")
             || trimmed.starts_with("loop ")
+            || trimmed.starts_with("do {")
+            || trimmed.starts_with("do{")
+            || trimmed.starts_with("catch ")
+            || trimmed.starts_with("catch(")
             || trimmed.contains("&&")
             || trimmed.contains("||")
             || trimmed.contains("? ")
@@ -125,13 +141,95 @@ pub(super) fn count_complexity(source: &str) -> u32 {
             complexity += 1;
         }
 
-        // Match arms
+        // C++ case labels: "case FOO:"
+        if trimmed.starts_with("case ") && trimmed.contains(':') && !trimmed.starts_with("//") {
+            complexity += 1;
+        }
+
+        // Match arms (Rust)
         if trimmed.contains("=>") && !trimmed.starts_with("//") {
             complexity += 1;
         }
     }
 
     complexity
+}
+
+/// C++/CUDA-specific complexity penalties (Phase 4 + Phase 7 of cpp-pmat-query spec).
+///
+/// Adds penalties for patterns that increase cognitive complexity beyond
+/// standard control flow: preprocessor conditionals, macro-heavy code,
+/// template nesting, SFINAE, and CUDA synchronization primitives.
+#[allow(clippy::cast_possible_truncation)]
+pub(super) fn cpp_complexity_penalty(source: &str) -> u32 {
+    let mut penalty = 0u32;
+
+    // Preprocessor conditionals: +1 per nesting level
+    let mut ifdef_depth = 0u32;
+    let mut macro_call_count = 0u32;
+
+    for line in source.lines() {
+        let trimmed = line.trim();
+
+        // Preprocessor conditional nesting
+        if trimmed.starts_with("#if") || trimmed.starts_with("#ifdef") || trimmed.starts_with("#ifndef") {
+            ifdef_depth += 1;
+            penalty += ifdef_depth; // +1 per nesting level
+        } else if trimmed.starts_with("#endif") {
+            ifdef_depth = ifdef_depth.saturating_sub(1);
+        }
+
+        // Count macro calls (UPPER_CASE identifiers with parens, common C/C++ convention)
+        if trimmed.contains("GGML_") || trimmed.contains("TORCH_") || trimmed.contains("AT_")
+            || trimmed.contains("CUDA_") || trimmed.contains("CHECK_") {
+            macro_call_count += 1;
+        }
+    }
+
+    // Macro-heavy function: +3 for >5 macro calls
+    if macro_call_count > 5 {
+        penalty += 3;
+    }
+
+    // SFINAE / concepts: +3
+    if source.contains("enable_if") || source.contains("requires ") || source.contains("SFINAE") {
+        penalty += 3;
+    }
+
+    // Template nesting: +2 per nested template<>
+    let template_depth = source.matches("template<").count() + source.matches("template <").count();
+    if template_depth > 1 {
+        penalty += (template_depth as u32 - 1) * 2;
+    }
+
+    // const_cast / reinterpret_cast: +2 each
+    if source.contains("const_cast<") || source.contains("reinterpret_cast<") {
+        penalty += 2;
+    }
+
+    // CUDA kernel penalties (Phase 7)
+    // __shared__ memory: +2 (synchronization complexity)
+    if source.contains("__shared__") {
+        penalty += 2;
+    }
+
+    // __syncthreads(): +3 (barrier coordination)
+    if source.contains("__syncthreads()") {
+        penalty += 3;
+    }
+
+    // Warp primitives: +2
+    if source.contains("__shfl_") || source.contains("__ballot_") || source.contains("__any_sync")
+        || source.contains("__all_sync") {
+        penalty += 2;
+    }
+
+    // Thread divergence in kernel (if inside __global__ function): +2
+    if source.contains("__global__") && (source.contains("if (") || source.contains("if(")) {
+        penalty += 2;
+    }
+
+    penalty
 }
 
 /// Count SATD markers in implementation comments only.
