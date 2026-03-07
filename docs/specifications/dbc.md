@@ -1864,9 +1864,56 @@ The ABC paper [Ref 12] demonstrates that contracted agents detect 5.2–6.8 soft
 2. **Anomaly detection** — flag stack commands whose execution time deviates >3 sigma from historical
 3. **Content hash chain** — each trust decision links to the previous via hash chain, preventing trust history tampering
 
+### 14.8 Automated Proof Generation — AutoVerus and VeruSAGE
+
+AutoVerus [Ref 21] demonstrates multi-agent LLM proof generation for Rust in Verus, achieving >90% success on 150 proof tasks with >50% solved in <30 seconds. VeruSAGE [Ref 22] scales to 849 proof tasks from 8 real-world Verus-verified systems, with best results at >80% completion.
+
+**Application to `pmat work`**: The rescue protocol (Section 6) for `ensure.formal_proofs` could invoke AutoVerus-style multi-phase proof generation:
+1. **Phase 1**: Generate preliminary proof from contract obligation
+2. **Phase 2**: Refine with generic verification tips
+3. **Phase 3**: Debug guided by Kani/Verus verification errors
+
+This transforms rescue from "suggest manual action" to "attempt automated proof repair."
+
+### 14.9 Pre-merge vs Post-merge Quality Gates
+
+Sun et al. [Ref 23] find pre-merge checks show a 5:3 failure rate advantage despite running 15x more frequently, and post-merge "bad" failures have team-wide impact vs individual-scope pre-merge "good" failures.
+
+**Application to `pmat work`**: This validates the three-boundary architecture:
+- `work start` (pre-work gate): cheapest, catches misconfigurations early
+- `work checkpoint` (mid-work invariant): catches drift before completion
+- `work complete` (post-work gate): most expensive, but catches everything
+
+The pre-commit hook checkpoint trigger (Section 4.2) is the "pre-merge" equivalent — its high frequency and low cost make it the highest-ROI enforcement point.
+
+### 14.10 Rust Standard Library Contract Coverage Benchmark
+
+The Rust std lib verification initiative [Ref 16] provides a concrete benchmark: of 9,078 unsafe functions in core, only 361 (3.98%) have Kani function contracts after 50+ contributors' work. This establishes realistic expectations for contract coverage targets.
+
+**Application to `pmat work`**: The codebase-level scoring (Section 14.6) should use these benchmarks to set realistic targets:
+- **5% contract coverage** = Grade D (initial adoption)
+- **15% contract coverage** = Grade C (active verification)
+- **30% contract coverage** = Grade B (comprehensive verification)
+- **50%+ contract coverage** = Grade A (exceptional — exceeds Rust std lib)
+
+### 14.11 Literature Gaps (Research Opportunities)
+
+The comprehensive survey identified four gaps in the academic literature:
+
+| Gap | Status | Opportunity for PMAT |
+|-----|--------|---------------------|
+| **SARIF + Formal Methods** | No 2025-2026 papers bridge SARIF with formal verification output | `pv lint --format sarif` is a novel contribution |
+| **Numbered lint rule catalogs for contracts** | No systematic PV-* style catalog exists in literature | The 21-rule PV-* catalog (Section 13.2) is a novel contribution |
+| **DBC quality gates in CI/CD** | Only ABC paper (agents, not general software) | `pmat work` DbC pipeline is a novel application |
+| **Contract scoring taxonomy** | NL2Contract defines metrics but no A-F grading | The 5-dimension scoring (Section 13.3) with grade system is novel |
+
+These gaps position `provable-contracts` + `pmat work` as pioneering work in formal contract quality engineering.
+
 ---
 
 ## 15. References
+
+### Original References (1-11)
 
 1. Meyer, B. (1992). "Applying Design by Contract." *IEEE Computer*, 25(10), 40-51. DOI: 10.1109/2.161279
 2. Popper, K. (1934). *The Logic of Scientific Discovery*. Routledge. ISBN: 978-0415278447
@@ -1888,6 +1935,17 @@ The ABC paper [Ref 12] demonstrates that contracted agents detect 5.2–6.8 soft
 18. VeriBench Authors (2025). "VeriBench: End-to-End Formal Verification Benchmark for AI Code Generation in Lean 4." *OpenReview*.
 19. DbC Neurosymbolic Authors (2025). "A DbC Inspired Neurosymbolic Layer for Trustworthy Agent Design." *arXiv:2508.03665*.
 20. OASIS (2023). "Static Analysis Results Interchange Format (SARIF) Version 2.1.0 Plus Errata 01." *OASIS Standard*.
+
+### Added in v1.2.0 (2026-03-07)
+
+21. Yang, C. et al. (2025). "AutoVerus: Automated Proof Generation for Rust Code." *OOPSLA 2025*. *arXiv:2409.13082*.
+22. Yang, C. et al. (2025). "VeruSAGE: A Study of Agent-Based Verification for Rust Systems." *arXiv:2512.18436*.
+23. Sun, S. et al. (2025). "Good and Bad Failures in Industrial CI/CD — Balancing Cost and Quality Assurance." *arXiv:2504.11839*.
+24. Abeywickrama, D. et al. (2025). "Towards Continuous Assurance with Formal Verification and Assurance Cases." *arXiv:2511.14805*.
+25. Liu, Y. et al. (2025). "PropertyGPT: LLM-driven Formal Verification via Retrieval-Augmented Property Generation." *NDSS 2025 Distinguished Paper*. *arXiv:2405.02580*.
+26. Faria, J. et al. (2026). "Automatic Generation of Formal Specification and Verification Annotations Using LLMs and Test Oracles." *arXiv:2601.12845*.
+27. Bursuc, S. et al. (2025). "A Benchmark for VeriCoding: Formally Verified Program Synthesis." *arXiv:2509.22908*.
+28. Sun, C. et al. (2025). "VeriStruct: AI-assisted Automated Verification of Data-Structure Modules in Verus." *arXiv:2510.25015*.
 
 ---
 
