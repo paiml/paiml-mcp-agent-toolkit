@@ -44,7 +44,7 @@ jobs:
         key: ${{ runner.os }}-target-${{ hashFiles('**/Cargo.lock') }}
 
     - name: Build PMAT binary
-      working-directory: ./server
+
       run: cargo build --release --bin pmat
 
     - name: Install PMAT
@@ -54,7 +54,7 @@ jobs:
 
     # Quality Gate 1: Critical Defects (BLOCKING)
     - name: "Gate 1: Check for critical defects"
-      working-directory: ./server
+
       run: |
         echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
         echo "🔴 GATE 1: Critical Defects (Known Defects v2.1)"
@@ -67,7 +67,7 @@ jobs:
 
     # Quality Gate 2: TDG Analysis (BLOCKING)
     - name: "Gate 2: Technical Debt Grading"
-      working-directory: ./server
+
       run: |
         echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
         echo "📊 GATE 2: Technical Debt Grading"
@@ -80,7 +80,7 @@ jobs:
 
     # Quality Gate 3: Clippy (BLOCKING)
     - name: "Gate 3: Clippy lints"
-      working-directory: ./server
+
       run: |
         echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
         echo "🔧 GATE 3: Clippy Lints"
@@ -93,7 +93,7 @@ jobs:
 
     # Quality Gate 4: Rustfmt (BLOCKING)
     - name: "Gate 4: Code formatting"
-      working-directory: ./server
+
       run: |
         echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
         echo "📝 GATE 4: Code Formatting"
@@ -109,7 +109,7 @@ jobs:
 
     # Quality Gate 5: Tests (BLOCKING)
     - name: "Gate 5: Run tests"
-      working-directory: ./server
+
       run: |
         echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
         echo "🧪 GATE 5: Unit & Integration Tests (Parallel with nextest)"
@@ -122,7 +122,7 @@ jobs:
 
     # Quality Gate 6: Rust Project Score (WARNING)
     - name: "Gate 6: Rust Project Score"
-      working-directory: ./server
+
       continue-on-error: true
       run: |
         echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -140,7 +140,7 @@ jobs:
 
     # Quality Gate 7: Security Audit
     - name: "Gate 7: Security audit"
-      working-directory: ./server
+
       continue-on-error: true
       run: |
         echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

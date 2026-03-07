@@ -85,9 +85,8 @@ jobs:
       - name: Run unit tests
         run: |
           echo "🧪 Running minimal smoke tests..."
-          cd server
           # Run only a few fast tests as smoke test
-          cargo test --lib cli::analysis::tests::test_mod_basic -- --nocapture
+          cargo test --package pmat --lib cli::analysis::tests::test_mod_basic -- --nocapture
         timeout-minutes: 3
         env:
           RUST_BACKTRACE: 1
@@ -148,15 +147,13 @@ jobs:
       - name: Run documentation sync tests
         run: |
           echo "📚 Running documentation synchronization tests..."
-          cd server
-          cargo nextest run --test cli_documentation_sync || cargo test --test cli_documentation_sync
+          cargo nextest run --package pmat --test cli_documentation_sync || cargo test --package pmat --test cli_documentation_sync
           # Note: MCP tests are skipped in CI (they spawn MCP server processes which can hang)
           echo "⏭️ Skipping MCP documentation sync tests in CI (they run locally)"
-          cargo nextest run --test documentation_examples || cargo test --test documentation_examples
+          cargo nextest run --package pmat --test documentation_examples || cargo test --package pmat --test documentation_examples
       
       - name: Verify all documentation tests pass
         run: |
-          cd server
           echo "✅ Documentation sync tests completed successfully"
           echo "Note: MCP server tests are skipped in CI and run locally for validation"
 
