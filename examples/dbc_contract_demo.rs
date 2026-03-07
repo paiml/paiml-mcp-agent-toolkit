@@ -6,13 +6,17 @@
 //! - Subcontracting: monotonic postcondition strengthening
 //! - Stack Manifests: third-party tool integration
 //! - Rescue Protocol: automated recovery from failures
+//! - 5-Dimension Contract Scoring (DBC spec v1.2.0)
+//! - ABC Drift Bounds Theorem
+//! - DBC-* Lint Rules (10-rule quality gate)
+//! - Quality Trend Tracking with drift detection
 //!
 //! Run with: cargo run --example dbc_contract_demo
 
 use pmat::cli::handlers::work_contract::{
     ClauseKind, ClauseSource, ClauseThreshold, CommandRestriction, ContractClause, ContractProfile,
-    ContractQuality, DbcConfig, ExcludedClaim, FalsificationMethod, StackManifest,
-    SubcontractingViolation, ThresholdOp,
+    ContractQuality, DbcConfig, ExcludedClaim, FalsificationMethod, ScoreGrade, ScoringWeights,
+    StackManifest, SubcontractingViolation, ThresholdOp, WorkContract,
 };
 
 fn main() {
@@ -250,12 +254,104 @@ threshold = { metric = "perf_score", op = "Gte", value = 0.9 }
         }
     }
 
+    // === 7. 5-Dimension Contract Scoring (DBC spec v1.2.0 §13.4) ===
+    println!("=== 7. 5-Dimension Contract Scoring ===\n");
+
+    let weights = ScoringWeights::default();
+    println!("  Scoring Weights:");
+    println!("    spec_depth:      {:.2}", weights.spec_depth);
+    println!("    falsification:   {:.2}", weights.falsification);
+    println!("    invariant_health:{:.2}", weights.invariant_health);
+    println!("    subcontracting:  {:.2}", weights.subcontracting);
+    println!("    traceability:    {:.2}", weights.traceability);
+    let sum = weights.spec_depth + weights.falsification + weights.invariant_health
+        + weights.subcontracting + weights.traceability;
+    println!("    SUM:             {:.2} (must = 1.0)\n", sum);
+
+    // Score a default contract
+    let contract = WorkContract::new("DEMO-001".to_string(), "abc123".to_string());
+    let tmp = std::env::temp_dir().join("pmat-dbc-demo");
+    let _ = std::fs::create_dir_all(&tmp);
+    let score = pmat::cli::handlers::work_contract::score_contract(&contract, &tmp);
+    println!("  Default v4.0 contract score:");
+    println!("    spec_depth:      {:.2}", score.spec_depth);
+    println!("    falsification:   {:.2}", score.falsification_coverage);
+    println!("    invariant_health:{:.2}", score.invariant_health);
+    println!("    subcontracting:  {:.2}", score.subcontracting);
+    println!("    traceability:    {:.2}", score.traceability);
+    println!("    TOTAL:           {:.2}  Grade: {}\n", score.total, score.grade);
+
+    // Grade boundaries
+    println!("  Grade Scale:");
+    for (threshold, expected) in [(0.95, "A"), (0.80, "B"), (0.65, "C"), (0.45, "D"), (0.20, "F")] {
+        let grade = ScoreGrade::from_score(threshold);
+        println!("    {:.0}% -> {} (expected: {})", threshold * 100.0, grade, expected);
+    }
+    println!();
+
+    // === 8. ABC Drift Bounds Theorem (DBC spec §13.5) ===
+    println!("=== 8. ABC Drift Bounds Theorem ===\n");
+
+    let drift = pmat::cli::handlers::work_contract::compute_drift_metrics(&contract, &tmp);
+    println!("  Fresh contract drift metrics:");
+    println!("    hours_since_creation:    {:.1}", drift.hours_since_creation);
+    println!("    hours_since_checkpoint:  {:.1}", drift.hours_since_checkpoint);
+    println!("    drift_rate (alpha):      {:.3}", drift.drift_rate);
+    println!("    recovery_rate (gamma):   {:.3}", drift.recovery_rate);
+    println!("    bounded_drift (D*=a/g):  {:.3}", drift.bounded_drift);
+    println!("    is_stale:                {}", drift.is_stale);
+    println!("  Formula: D* = alpha / gamma (arXiv:2602.22302)\n");
+
+    // === 9. DBC-* Lint Rules (DBC spec §13.3) ===
+    println!("=== 9. DBC Lint Rules (10-rule quality gate) ===\n");
+
+    let report = pmat::cli::handlers::work_contract::lint_contract(&contract, &tmp, 0.0);
+    println!("  Lint report for default contract:");
+    println!("    Passed:   {}", report.passed);
+    println!("    Errors:   {}", report.error_count);
+    println!("    Warnings: {}", report.warning_count);
+    println!("    Info:     {}", report.info_count);
+    for finding in &report.findings {
+        println!("    [{}] {}: {}", finding.severity, finding.rule_id, finding.message);
+    }
+    println!();
+
+    println!("  Rule Catalog:");
+    println!("    DBC-VAL-001  Warning  Missing preconditions");
+    println!("    DBC-VAL-002  Error    Missing postconditions");
+    println!("    DBC-VAL-003  Warning  Missing invariants");
+    println!("    DBC-VAL-004  Error    Empty claim hypothesis");
+    println!("    DBC-AUD-001  Warning  Postcondition without falsification test");
+    println!("    DBC-AUD-002  Info     Invariant without checkpoint evaluation");
+    println!("    DBC-AUD-003  Info     Claim defined but never verified");
+    println!("    DBC-SCR-001  Error    Contract score below threshold");
+    println!("    DBC-PRV-001  Error    Subcontracting violation detected");
+    println!("    DBC-DRF-001  Warning  Contract drift exceeds bound");
+    println!();
+
+    // === 10. Quality Trend Tracking (DBC spec §13.6) ===
+    println!("=== 10. Quality Trend Tracking ===\n");
+
+    let trend = pmat::cli::handlers::work_contract::load_quality_trend(&tmp, "DEMO-001");
+    println!("  Trend for DEMO-001:");
+    println!("    Snapshots:       {}", trend.snapshots.len());
+    println!("    Rolling average: {:.2}", trend.rolling_average);
+    println!("    Direction:       {}", trend.direction);
+    println!("    Drift detected:  {}", trend.drift_detected);
+
+    // Clean up temp dir
+    let _ = std::fs::remove_dir_all(&tmp);
+
     println!("\n✅ Design by Contract demo completed!");
-    println!("\n💡 Key Concepts:");
+    println!("\n Key Concepts:");
     println!("   - Meyer's Triad: require/invariant/ensure");
     println!("   - Popperian Falsification: every claim is testable");
     println!("   - Liskov Subcontracting: postconditions can only strengthen");
     println!("   - Stack Manifests: third-party tool integration via TOML");
     println!("   - TOFU Trust: content-hash verification for stack security");
     println!("   - Command Restrictions: no pipe-to-shell, no substitution");
+    println!("   - 5-Dimension Scoring: spec/falsification/invariant/subcontracting/traceability");
+    println!("   - ABC Drift Theorem: D* = alpha/gamma bounds contract staleness");
+    println!("   - DBC-* Lint Rules: 10-rule quality gate (VAL/AUD/SCR/PRV/DRF)");
+    println!("   - Trend Tracking: 7-snapshot rolling window with drift detection");
 }
