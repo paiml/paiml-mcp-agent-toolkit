@@ -5,8 +5,8 @@ use anyhow::{Context, Result};
 use std::path::Path;
 
 use crate::cli::handlers::work_contract::{
-    CheckpointRecord, ClauseKind, ContractClause, FalsificationMethod, InvariantResult,
-    WorkContract, compute_drift_metrics, score_contract, record_trend_snapshot,
+    compute_drift_metrics, record_trend_snapshot, score_contract, CheckpointRecord, ClauseKind,
+    ContractClause, FalsificationMethod, InvariantResult, WorkContract,
 };
 
 /// Evaluate invariant clauses and produce a CheckpointRecord.

@@ -177,6 +177,9 @@ impl CommandDispatcher {
                 )
                 .await
             }
+            WorkCommands::CodebaseScore { path, format } => {
+                work_handlers::handle_work_codebase_score(path.clone(), format.clone()).await
+            }
         }
     }
 

@@ -296,7 +296,10 @@ fn demo_decl_def_linking() {
         println!("    {} [{}]", c.chunk_name, c.chunk_type.as_str());
     }
     // Declarations in headers get [decl] suffix
-    if let Some(decl) = header_chunks.iter().find(|c| c.chunk_name.contains("[decl]")) {
+    if let Some(decl) = header_chunks
+        .iter()
+        .find(|c| c.chunk_name.contains("[decl]"))
+    {
         println!("    Declaration detected: {}", decl.chunk_name);
     } else {
         println!("    (declaration detection requires function prototype syntax)");
@@ -343,7 +346,13 @@ fn demo_ptx_indexing() {
     let chunks = chunk_code(ptx_source, Language::Ptx).unwrap();
     println!("  PTX file: {} chunks extracted", chunks.len());
     for c in &chunks {
-        println!("    {} [{}] lines {}-{}", c.chunk_name, c.chunk_type.as_str(), c.start_line, c.end_line);
+        println!(
+            "    {} [{}] lines {}-{}",
+            c.chunk_name,
+            c.chunk_type.as_str(),
+            c.start_line,
+            c.end_line
+        );
     }
     assert!(chunks.len() >= 2, "should extract .entry and .func blocks");
     assert!(chunks.iter().any(|c| c.chunk_name == "vector_add"));

@@ -105,7 +105,8 @@ fi
     /// - Mixed repos only check staged source files
     /// - SATD and docs checks only run when source files exist in the repo
     pub(crate) fn generate_quality_checks(&self) -> String {
-        let mut hook = String::from(r#"# Check if pmat is available
+        let mut hook = String::from(
+            r#"# Check if pmat is available
 if ! command -v pmat &> /dev/null; then
     echo "⚠️  Warning: pmat not found in PATH"
     echo "   Install with: cargo install pmat"
@@ -128,7 +129,8 @@ if [ -z "$HAS_SOURCE_FILES" ]; then
     exit 0
 fi
 
-"#);
+"#,
+        );
         hook.push_str(Self::generate_format_check());
         hook.push_str(r#"
 # 1. Complexity analysis (only staged source files, not entire project)

@@ -90,7 +90,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Command: pmat analyze cluster --method hierarchical --k 3 --path examples/\n");
 
     let output = Command::new(&pmat)
-        .args(["analyze", "cluster", "--method", "hierarchical", "--k", "3", "--path", hier_dir.to_str().unwrap_or("examples")])
+        .args([
+            "analyze",
+            "cluster",
+            "--method",
+            "hierarchical",
+            "--k",
+            "3",
+            "--path",
+            hier_dir.to_str().unwrap_or("examples"),
+        ])
         .current_dir(&test_dir)
         .output()?;
 

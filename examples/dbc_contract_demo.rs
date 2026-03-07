@@ -8,8 +8,10 @@
 //! - Rescue Protocol: automated recovery from failures
 //! - 5-Dimension Contract Scoring (DBC spec v1.2.0)
 //! - ABC Drift Bounds Theorem
-//! - DBC-* Lint Rules (10-rule quality gate)
+//! - DBC-* Lint Rules (13-rule quality gate)
 //! - Quality Trend Tracking with drift detection
+//! - Lint Configuration: rule overrides, suppression, strict mode (§13.7)
+//! - Codebase-Level Scoring: portfolio quality aggregation (§14.6)
 //!
 //! Run with: cargo run --example dbc_contract_demo
 
@@ -264,8 +266,11 @@ threshold = { metric = "perf_score", op = "Gte", value = 0.9 }
     println!("    invariant_health:{:.2}", weights.invariant_health);
     println!("    subcontracting:  {:.2}", weights.subcontracting);
     println!("    traceability:    {:.2}", weights.traceability);
-    let sum = weights.spec_depth + weights.falsification + weights.invariant_health
-        + weights.subcontracting + weights.traceability;
+    let sum = weights.spec_depth
+        + weights.falsification
+        + weights.invariant_health
+        + weights.subcontracting
+        + weights.traceability;
     println!("    SUM:             {:.2} (must = 1.0)\n", sum);
 
     // Score a default contract
@@ -279,13 +284,27 @@ threshold = { metric = "perf_score", op = "Gte", value = 0.9 }
     println!("    invariant_health:{:.2}", score.invariant_health);
     println!("    subcontracting:  {:.2}", score.subcontracting);
     println!("    traceability:    {:.2}", score.traceability);
-    println!("    TOTAL:           {:.2}  Grade: {}\n", score.total, score.grade);
+    println!(
+        "    TOTAL:           {:.2}  Grade: {}\n",
+        score.total, score.grade
+    );
 
     // Grade boundaries
     println!("  Grade Scale:");
-    for (threshold, expected) in [(0.95, "A"), (0.80, "B"), (0.65, "C"), (0.45, "D"), (0.20, "F")] {
+    for (threshold, expected) in [
+        (0.95, "A"),
+        (0.80, "B"),
+        (0.65, "C"),
+        (0.45, "D"),
+        (0.20, "F"),
+    ] {
         let grade = ScoreGrade::from_score(threshold);
-        println!("    {:.0}% -> {} (expected: {})", threshold * 100.0, grade, expected);
+        println!(
+            "    {:.0}% -> {} (expected: {})",
+            threshold * 100.0,
+            grade,
+            expected
+        );
     }
     println!();
 
@@ -294,16 +313,22 @@ threshold = { metric = "perf_score", op = "Gte", value = 0.9 }
 
     let drift = pmat::cli::handlers::work_contract::compute_drift_metrics(&contract, &tmp);
     println!("  Fresh contract drift metrics:");
-    println!("    hours_since_creation:    {:.1}", drift.hours_since_creation);
-    println!("    hours_since_checkpoint:  {:.1}", drift.hours_since_checkpoint);
+    println!(
+        "    hours_since_creation:    {:.1}",
+        drift.hours_since_creation
+    );
+    println!(
+        "    hours_since_checkpoint:  {:.1}",
+        drift.hours_since_checkpoint
+    );
     println!("    drift_rate (alpha):      {:.3}", drift.drift_rate);
     println!("    recovery_rate (gamma):   {:.3}", drift.recovery_rate);
     println!("    bounded_drift (D*=a/g):  {:.3}", drift.bounded_drift);
     println!("    is_stale:                {}", drift.is_stale);
     println!("  Formula: D* = alpha / gamma (arXiv:2602.22302)\n");
 
-    // === 9. DBC-* Lint Rules (DBC spec §13.3) ===
-    println!("=== 9. DBC Lint Rules (10-rule quality gate) ===\n");
+    // === 9. DBC-* Lint Rules (DBC spec §13.3, §14.5) ===
+    println!("=== 9. DBC Lint Rules (13-rule quality gate) ===\n");
 
     let report = pmat::cli::handlers::work_contract::lint_contract(&contract, &tmp, 0.0);
     println!("  Lint report for default contract:");
@@ -312,11 +337,43 @@ threshold = { metric = "perf_score", op = "Gte", value = 0.9 }
     println!("    Warnings: {}", report.warning_count);
     println!("    Info:     {}", report.info_count);
     for finding in &report.findings {
-        println!("    [{}] {}: {}", finding.severity, finding.rule_id, finding.message);
+        println!(
+            "    [{}] {}: {}",
+            finding.severity, finding.rule_id, finding.message
+        );
     }
     println!();
 
-    println!("  Rule Catalog:");
+    // Apply lint config (§13.7)
+    let lint_config = pmat::cli::handlers::work_contract::LintConfig::default();
+    let filtered = pmat::cli::handlers::work_contract::apply_lint_config(&report, &lint_config);
+    println!(
+        "  Lint config applied (default): {} findings (unchanged)\n",
+        filtered.findings.len()
+    );
+
+    // Strict mode demo
+    let mut strict_config = pmat::cli::handlers::work_contract::LintConfig::default();
+    strict_config.strict = true;
+    let strict_report =
+        pmat::cli::handlers::work_contract::apply_lint_config(&report, &strict_config);
+    println!(
+        "  Strict mode: {} errors (warnings promoted)",
+        strict_report.error_count
+    );
+
+    // Suppress demo
+    let mut suppress_config = pmat::cli::handlers::work_contract::LintConfig::default();
+    suppress_config.suppress.push("DBC-AUD-003".to_string());
+    let suppressed =
+        pmat::cli::handlers::work_contract::apply_lint_config(&report, &suppress_config);
+    println!(
+        "  Suppressed DBC-AUD-003: {} findings (was {})\n",
+        suppressed.findings.len(),
+        report.findings.len()
+    );
+
+    println!("  Rule Catalog (13 rules):");
     println!("    DBC-VAL-001  Warning  Missing preconditions");
     println!("    DBC-VAL-002  Error    Missing postconditions");
     println!("    DBC-VAL-003  Warning  Missing invariants");
@@ -325,8 +382,11 @@ threshold = { metric = "perf_score", op = "Gte", value = 0.9 }
     println!("    DBC-AUD-002  Info     Invariant without checkpoint evaluation");
     println!("    DBC-AUD-003  Info     Claim defined but never verified");
     println!("    DBC-SCR-001  Error    Contract score below threshold");
+    println!("    DBC-SCR-002  Warning  More than 30% of claims excluded");
     println!("    DBC-PRV-001  Error    Subcontracting violation detected");
     println!("    DBC-DRF-001  Warning  Contract drift exceeds bound");
+    println!("    DBC-TRD-001  Warning  Quality trend declining");
+    println!("    DBC-TRD-002  Info     Rescue success rate below 50%");
     println!();
 
     // === 10. Quality Trend Tracking (DBC spec §13.6) ===
@@ -339,10 +399,49 @@ threshold = { metric = "perf_score", op = "Gte", value = 0.9 }
     println!("    Direction:       {}", trend.direction);
     println!("    Drift detected:  {}", trend.drift_detected);
 
+    // === 11. Codebase-Level Scoring (DBC spec §14.6) ===
+    println!("=== 11. Codebase-Level Scoring ===\n");
+
+    // Create a second contract to demo portfolio scoring
+    let contract2 = WorkContract::new("DEMO-002".to_string(), "def456".to_string());
+    let work_dir1 = tmp.join(".pmat-work").join("DEMO-001");
+    let work_dir2 = tmp.join(".pmat-work").join("DEMO-002");
+    let _ = std::fs::create_dir_all(&work_dir1);
+    let _ = std::fs::create_dir_all(&work_dir2);
+    let _ = std::fs::write(
+        work_dir1.join("contract.json"),
+        serde_json::to_string_pretty(&contract).unwrap(),
+    );
+    let _ = std::fs::write(
+        work_dir2.join("contract.json"),
+        serde_json::to_string_pretty(&contract2).unwrap(),
+    );
+
+    let codebase = pmat::cli::handlers::work_contract::compute_codebase_score(&tmp);
+    println!("  Portfolio scoring (2 contracts):");
+    println!("    Contracts:       {}", codebase.contract_count);
+    println!(
+        "    Coverage (>=C):  {:.0}%",
+        codebase.contract_coverage * 100.0
+    );
+    println!("    Mean score:      {:.2}", codebase.mean_score);
+    println!(
+        "    Min/Max:         {:.2} / {:.2}",
+        codebase.min_score, codebase.max_score
+    );
+    println!(
+        "    Lint pass rate:  {:.0}%",
+        codebase.lint_pass_rate * 100.0
+    );
+    println!(
+        "    COMPOSITE:       {:.2}  Grade: {}\n",
+        codebase.composite, codebase.grade
+    );
+
     // Clean up temp dir
     let _ = std::fs::remove_dir_all(&tmp);
 
-    println!("\n✅ Design by Contract demo completed!");
+    println!("Design by Contract demo completed!");
     println!("\n Key Concepts:");
     println!("   - Meyer's Triad: require/invariant/ensure");
     println!("   - Popperian Falsification: every claim is testable");
@@ -352,6 +451,8 @@ threshold = { metric = "perf_score", op = "Gte", value = 0.9 }
     println!("   - Command Restrictions: no pipe-to-shell, no substitution");
     println!("   - 5-Dimension Scoring: spec/falsification/invariant/subcontracting/traceability");
     println!("   - ABC Drift Theorem: D* = alpha/gamma bounds contract staleness");
-    println!("   - DBC-* Lint Rules: 10-rule quality gate (VAL/AUD/SCR/PRV/DRF)");
+    println!("   - DBC-* Lint Rules: 13-rule quality gate (VAL/AUD/SCR/PRV/DRF/TRD)");
     println!("   - Trend Tracking: 7-snapshot rolling window with drift detection");
+    println!("   - Lint Config: rule overrides, suppression, strict mode (§13.7)");
+    println!("   - Codebase Scoring: portfolio-level quality aggregation (§14.6)");
 }

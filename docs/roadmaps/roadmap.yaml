@@ -2415,7 +2415,7 @@ roadmap:
   github_issue: null
   item_type: task
   title: First-class C++/CUDA/PTX for pmat query (improved-cpp-pmat-query.md)
-  status: done
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-03-07T17:00:55Z
@@ -2423,6 +2423,55 @@ roadmap:
   spec: docs/specifications/improved-cpp-pmat-query.md
   acceptance_criteria:
   - 'Done: Phases 0-8.4 implemented. Deferred: 8.5 (.ptx indexing, no .ptx in source trees), 9 (cross-lang, P3).'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-DBC-12
+  github_issue: null
+  item_type: task
+  title: 'New task: PMAT-DBC-12'
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2026-03-07T19:29:17.095523672+00:00
+  updated: 2026-03-07T19:29:17.095523672+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-DBC-13
+  github_issue: null
+  item_type: task
+  title: 'New task: PMAT-DBC-13'
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2026-03-07T22:04:29.937654709+00:00
+  updated: 2026-03-07T22:04:29.937654709+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-509
+  github_issue: null
+  item_type: task
+  title: pre-commit hook must gate on cargo fmt --check
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-03-07T22:06:19Z
+  updated: 2026-03-07T22:06:19Z
+  spec: null
+  acceptance_criteria:
+  - 'The PMAT-generated pre-commit hook runs complexity, SATD, and commit message checks but does NOT run ''cargo fmt --check''. This causes repeated CI L1 failures across the sovereign stack (trueno, provable-contracts, bashrs, pmat itself) when Claude Code instances push unformatted code. Fix: add a cargo fmt --check gate to the pre-commit hook template. It should only run on staged .rs files (fast path) and block the commit if formatting differs.'
   phases: []
   subtasks: []
   estimated_effort: null

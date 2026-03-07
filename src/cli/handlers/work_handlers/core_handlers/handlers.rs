@@ -445,7 +445,9 @@ pub async fn handle_work_complete(
     println!("✅ Commit metadata: {}", meta_file.display());
 
     // DBC spec §13.4: Final contract scoring
-    if let Ok(contract) = crate::cli::handlers::work_contract::WorkContract::load(&project_path, &item.id) {
+    if let Ok(contract) =
+        crate::cli::handlers::work_contract::WorkContract::load(&project_path, &item.id)
+    {
         let score = crate::cli::handlers::work_contract::score_contract(&contract, &project_path);
         println!("   Contract Score: {:.2} ({})", score.total, score.grade);
     }

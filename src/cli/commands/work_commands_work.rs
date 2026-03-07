@@ -316,6 +316,18 @@ pub enum WorkCommands {
         #[arg(short, long)]
         path: Option<PathBuf>,
 
+        /// Output format (text, json, or sarif)
+        #[arg(short, long, default_value = "text")]
+        format: String,
+    },
+
+    /// Aggregate quality score across all work contracts (DBC spec §14.6)
+    #[command(visible_aliases = &["cbs", "portfolio"])]
+    CodebaseScore {
+        /// Project path (default: current directory)
+        #[arg(short, long)]
+        path: Option<PathBuf>,
+
         /// Output format (text or json)
         #[arg(short, long, default_value = "text")]
         format: String,

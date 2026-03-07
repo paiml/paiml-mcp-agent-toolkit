@@ -1,5 +1,0 @@
-# pmat has a large CLI type (25+ subcommands with many options).
-# Clap's derive generates deep call stacks for try_parse_from().
-# Default 2MB thread stack overflows on Linux; 8MB is sufficient.
-[env]
-RUST_MIN_STACK = { value = "8388608", force = true }
