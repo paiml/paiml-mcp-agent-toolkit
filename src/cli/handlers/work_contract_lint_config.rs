@@ -190,15 +190,12 @@ pub fn apply_lint_config(report: &LintReport, config: &LintConfig) -> LintReport
         .iter()
         .filter_map(|f| {
             let default_severity = f.severity;
-            match config.effective_severity(&f.rule_id, default_severity) {
-                None => None, // Suppressed
-                Some(new_severity) => Some(LintFinding {
-                    rule_id: f.rule_id.clone(),
-                    severity: new_severity,
-                    message: f.message.clone(),
-                    clause_id: f.clause_id.clone(),
-                }),
-            }
+            config.effective_severity(&f.rule_id, default_severity).map(|new_severity| LintFinding {
+                rule_id: f.rule_id.clone(),
+                severity: new_severity,
+                message: f.message.clone(),
+                clause_id: f.clause_id.clone(),
+            })
         })
         .collect();
 
@@ -259,10 +256,8 @@ pub fn changed_contracts_since(project_path: &Path, git_ref: &str) -> Vec<String
         // Match .pmat-work/<ID>/contract.json or .pmat-work/<ID>/checkpoints/*
         if let Some(rest) = line.strip_prefix(".pmat-work/") {
             if let Some(id) = rest.split('/').next() {
-                if id != "ledger.jsonl" && id != "trusted-stacks.json" {
-                    if !changed_ids.contains(&id.to_string()) {
-                        changed_ids.push(id.to_string());
-                    }
+                if id != "ledger.jsonl" && id != "trusted-stacks.json" && !changed_ids.contains(&id.to_string()) {
+                    changed_ids.push(id.to_string());
                 }
             }
         }

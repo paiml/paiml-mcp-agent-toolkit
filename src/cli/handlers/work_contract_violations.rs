@@ -120,7 +120,7 @@ impl CommandTiming {
 }
 
 /// Runtime violation tracker for a work session
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct ViolationTracker {
     /// Violations recorded in this session
     pub violations: Vec<RuntimeViolation>,
@@ -128,14 +128,6 @@ pub struct ViolationTracker {
     pub timings: HashMap<String, CommandTiming>,
 }
 
-impl Default for ViolationTracker {
-    fn default() -> Self {
-        Self {
-            violations: Vec::new(),
-            timings: HashMap::new(),
-        }
-    }
-}
 
 impl ViolationTracker {
     /// Record a command failure violation
