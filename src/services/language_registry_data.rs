@@ -18,7 +18,7 @@ static LANGUAGE_INFO: &[LanguageInfo] = &[
     },
     LanguageInfo {
         name: "C++",
-        extensions: &["cpp", "cc", "cxx", "hpp", "hxx", "C", "H"],
+        extensions: &["cpp", "cc", "cxx", "hpp", "hxx", "cu", "cuh", "C", "H"],
     },
     LanguageInfo {
         name: "Go",

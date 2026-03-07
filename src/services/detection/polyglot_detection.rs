@@ -128,7 +128,7 @@ impl PolyglotDetector {
                 "js" => Some("JavaScript".to_string()),
                 "py" => Some("Python".to_string()),
                 "c" => Some("C".to_string()),
-                "cpp" | "cxx" | "cc" => Some("C++".to_string()),
+                "cpp" | "cxx" | "cc" | "cu" | "cuh" => Some("C++".to_string()),
                 "java" => Some("Java".to_string()),
                 "kt" => Some("Kotlin".to_string()),
                 "go" => Some("Go".to_string()),

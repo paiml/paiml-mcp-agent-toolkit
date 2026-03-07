@@ -115,7 +115,7 @@ fn detect_language_for_duplication(
         (&[".js", ".jsx"], Language::JavaScript),
         (&[".py"], Language::Python),
         (&[".c"], Language::C),
-        (&[".cpp", ".cc", ".cxx"], Language::Cpp),
+        (&[".cpp", ".cc", ".cxx", ".cu", ".cuh"], Language::Cpp),
         (&[".kt"], Language::Kotlin),
     ];
     ext_langs

@@ -55,7 +55,7 @@ impl Language {
             Some("js") => Language::JavaScript,
             Some("jsx") => Language::JavaScript,
             Some("go") => Language::Go,
-            Some("cpp") | Some("cc") | Some("cxx") | Some("hpp") | Some("hxx") | Some("h") => {
+            Some("cpp") | Some("cc") | Some("cxx") | Some("hpp") | Some("hxx") | Some("h") | Some("cu") | Some("cuh") => {
                 Language::Cpp
             }
             _ => Language::Unsupported,

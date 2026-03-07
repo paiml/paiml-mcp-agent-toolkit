@@ -128,6 +128,7 @@ fn count_barriers(source: &str) -> u32 {
 fn is_ptx_relevant(source: &str, file_path: &str) -> bool {
     file_path.ends_with(".ptx")
         || file_path.ends_with(".cu")
+        || file_path.ends_with(".cuh")
         || source.contains(".version ")
         || source.contains(".target sm_")
         || source.contains("__global__")

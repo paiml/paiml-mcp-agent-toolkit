@@ -71,7 +71,7 @@ impl DuplicationDefectAnalyzer {
             Some("js") => Language::JavaScript,
             Some("py") => Language::Python,
             Some("c") => Language::C,
-            Some("cpp" | "cc") => Language::Cpp,
+            Some("cpp" | "cc" | "cxx" | "cu" | "cuh") => Language::Cpp,
             Some("kt") => Language::Kotlin,
             _ => Language::Rust, // Default
         }
