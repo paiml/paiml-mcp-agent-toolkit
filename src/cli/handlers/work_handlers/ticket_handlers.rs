@@ -89,6 +89,7 @@ include!("ticket_validate_migrate.rs");
 include!("ticket_crud.rs");
 include!("ticket_annotate.rs");
 include!("ticket_annotate_output.rs");
+include!("ticket_score.rs");
 
 
 // Tests extracted to work_handlers_tests.rs for file health compliance (CB-040)

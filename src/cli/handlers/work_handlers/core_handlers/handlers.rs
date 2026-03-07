@@ -332,12 +332,22 @@ pub async fn handle_work_checkpoint(id: String, path: Option<PathBuf>) -> Result
         );
     }
 
-    println!(
-        "   Iteration: {}  |  Git SHA: {}",
-        record.iteration,
-        &record.git_sha[..8.min(record.git_sha.len())]
-    );
-    println!("   📋 Checkpoint: {}", checkpoint_path.display());
+    // Display drift bound if available (DBC spec §13.5)
+    if let Some(drift_bound) = record.drift_bound {
+        println!(
+            "   Iteration: {}  |  Git SHA: {}  |  Drift: {:.2}",
+            record.iteration,
+            &record.git_sha[..8.min(record.git_sha.len())],
+            drift_bound
+        );
+    } else {
+        println!(
+            "   Iteration: {}  |  Git SHA: {}",
+            record.iteration,
+            &record.git_sha[..8.min(record.git_sha.len())]
+        );
+    }
+    println!("   Checkpoint: {}", checkpoint_path.display());
     println!();
 
     Ok(())
@@ -433,6 +443,12 @@ pub async fn handle_work_complete(
         .join(".pmat-metrics")
         .join("commit-*-meta.json");
     println!("✅ Commit metadata: {}", meta_file.display());
+
+    // DBC spec §13.4: Final contract scoring
+    if let Ok(contract) = crate::cli::handlers::work_contract::WorkContract::load(&project_path, &item.id) {
+        let score = crate::cli::handlers::work_contract::score_contract(&contract, &project_path);
+        println!("   Contract Score: {:.2} ({})", score.total, score.grade);
+    }
 
     update_changelog(&project_path, &item);
 

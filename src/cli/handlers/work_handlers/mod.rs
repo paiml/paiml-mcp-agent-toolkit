@@ -11,6 +11,9 @@ pub use core_handlers::{
     FalsificationResult, GitHubIssueInfo,
 };
 
+// Re-export ticket handlers that are used by the command dispatcher
+// (handle_work_score lives in ticket_score.rs, included by ticket_handlers.rs)
+
 // Imports needed by ticket_handlers.rs (included below via include!())
 // These mirror what was previously available via include!("core_handlers.rs")
 use crate::models::roadmap::ItemStatus;

@@ -163,6 +163,20 @@ impl CommandDispatcher {
                 )
                 .await
             }
+            WorkCommands::Score {
+                id,
+                min_score,
+                path,
+                format,
+            } => {
+                work_handlers::handle_work_score(
+                    id.clone(),
+                    *min_score,
+                    path.clone(),
+                    format.clone(),
+                )
+                .await
+            }
         }
     }
 

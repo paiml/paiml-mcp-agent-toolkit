@@ -6,7 +6,7 @@ use std::path::Path;
 
 use crate::cli::handlers::work_contract::{
     CheckpointRecord, ClauseKind, ContractClause, FalsificationMethod, InvariantResult,
-    WorkContract,
+    WorkContract, compute_drift_metrics, score_contract, record_trend_snapshot,
 };
 
 /// Evaluate invariant clauses and produce a CheckpointRecord.
@@ -27,12 +27,20 @@ pub(super) fn run_checkpoint(project_path: &Path, work_item_id: &str) -> Result<
     // Evaluate all invariant clauses
     let invariant_results = evaluate_invariants(project_path, &contract.invariant, &contract);
 
-    let record = CheckpointRecord::new(
+    // Compute drift metrics and attach to checkpoint (DBC spec §13.5)
+    let drift = compute_drift_metrics(&contract, project_path);
+
+    let mut record = CheckpointRecord::new(
         work_item_id.to_string(),
-        git_sha,
+        git_sha.clone(),
         contract.iteration,
         invariant_results,
     );
+    record.drift_bound = Some(drift.bounded_drift);
+
+    // Record trend snapshot for drift detection (DBC spec §13.6)
+    let score = score_contract(&contract, project_path);
+    let _ = record_trend_snapshot(&contract, &score, &drift, &git_sha, project_path);
 
     Ok(record)
 }

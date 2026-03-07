@@ -301,4 +301,23 @@ pub enum WorkCommands {
     /// List all valid status values with descriptions
     #[command(visible_aliases = &["values", "statuses"])]
     ListStatuses,
+
+    /// Score a work contract (DBC spec 5-dimension quality + lint)
+    #[command(visible_aliases = &["sc", "quality-score"])]
+    Score {
+        /// Work item ID
+        id: String,
+
+        /// Minimum score threshold (0.0-1.0, default: 0.0)
+        #[arg(long, default_value = "0.0")]
+        min_score: f64,
+
+        /// Project path (default: current directory)
+        #[arg(short, long)]
+        path: Option<PathBuf>,
+
+        /// Output format (text or json)
+        #[arg(short, long, default_value = "text")]
+        format: String,
+    },
 }
