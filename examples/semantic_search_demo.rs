@@ -80,14 +80,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Demo 4: Hierarchical Clustering
+    // Note: hierarchical clustering is O(n^2) in memory, so we run it on a
+    // small subdirectory to avoid hanging on large codebases (19K+ functions).
     println!("\n═══════════════════════════════════════════════════════════════");
     println!("  Demo 4: Hierarchical Clustering (Agglomerative)");
     println!("═══════════════════════════════════════════════════════════════\n");
 
-    println!("Command: pmat analyze cluster --method hierarchical --k 5\n");
+    let hier_dir = test_dir.join("examples");
+    println!("Command: pmat analyze cluster --method hierarchical --k 3 --path examples/\n");
 
     let output = Command::new(&pmat)
-        .args(["analyze", "cluster", "--method", "hierarchical", "--k", "5"])
+        .args(["analyze", "cluster", "--method", "hierarchical", "--k", "3", "--path", hier_dir.to_str().unwrap_or("examples")])
         .current_dir(&test_dir)
         .output()?;
 

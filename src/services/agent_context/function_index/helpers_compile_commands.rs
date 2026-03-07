@@ -1,9 +1,7 @@
-/// compile_commands.json integration for C/C++ include path discovery.
+/// Include paths extracted from compile_commands.json.
 ///
 /// Reads `compile_commands.json` (or `build/compile_commands.json`) to extract
 /// `-I` include paths, enabling better header file discovery and linking.
-
-/// Include paths extracted from compile_commands.json
 #[derive(Debug, Default)]
 pub(super) struct CompileCommands {
     /// Unique include directories from -I flags
