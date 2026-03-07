@@ -20,3 +20,6 @@ include!("helpers_call_graph.rs");
 
 // --- Quality metrics: complexity, SATD, Big-O, TDG, doc comments, filesystem helpers ---
 include!("helpers_quality_metrics.rs");
+
+// --- compile_commands.json integration for C/C++ include paths ---
+include!("helpers_compile_commands.rs");

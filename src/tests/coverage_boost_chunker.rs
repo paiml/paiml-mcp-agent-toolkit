@@ -767,7 +767,7 @@ public:
         let chunks = chunk_code(source, Language::Cpp).unwrap();
         assert_eq!(chunks.len(), 1);
         assert_eq!(chunks[0].chunk_type, ChunkType::Function);
-        assert_eq!(chunks[0].chunk_name, "identity");
+        assert_eq!(chunks[0].chunk_name, "identity<T>");
         assert!(chunks[0].content.contains("template"));
     }
 

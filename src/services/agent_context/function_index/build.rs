@@ -53,6 +53,9 @@ impl AgentContextIndex {
         let mut file_checksums: HashMap<String, String> = HashMap::new();
         let mut coverage_off_files = HashSet::new();
 
+        // Load compile_commands.json for C/C++ include path discovery
+        let _compile_commands = load_compile_commands(&project_root);
+
         // Walk the project directory respecting .gitignore (fixes issue #146)
         for entry in WalkBuilder::new(&project_root)
             .hidden(true)

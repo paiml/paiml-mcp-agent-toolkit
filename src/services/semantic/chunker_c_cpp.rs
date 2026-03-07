@@ -227,19 +227,26 @@ fn extract_cpp_func_def(node: Node, source: &str, chunks: &mut Vec<CodeChunk>, s
 }
 
 fn extract_cpp_template(node: Node, source: &str, chunks: &mut Vec<CodeChunk>, scope: &[String]) {
+    // Extract template parameter list for tracking (e.g., "<typename T, int N>")
+    let template_params = extract_template_params(node, source);
+
     let mut cursor = node.walk();
     for child in node.children(&mut cursor) {
         match child.kind() {
             "function_definition" => {
                 // Use template_declaration node for content (includes template<...> prefix)
                 if let Some(bare_name) = extract_cpp_function_name(child, source) {
-                    let qualified = qualify_name(scope, &bare_name);
+                    let name_with_params = if template_params.is_empty() {
+                        qualify_name(scope, &bare_name)
+                    } else {
+                        format!("{}<{}>", qualify_name(scope, &bare_name), template_params)
+                    };
                     let start_byte = find_doc_comment_start(node, source);
                     let content = source
                         .get(start_byte..node.end_byte())
                         .unwrap_or_default()
                         .to_string();
-                    push_chunk(chunks, ChunkType::Function, qualified, "cpp", node, content);
+                    push_chunk(chunks, ChunkType::Function, name_with_params, "cpp", node, content);
                 }
             }
             "class_specifier" | "struct_specifier" => {
@@ -248,6 +255,31 @@ fn extract_cpp_template(node: Node, source: &str, chunks: &mut Vec<CodeChunk>, s
             _ => {}
         }
     }
+}
+
+/// Extract template parameter names from a template_declaration node.
+/// Returns e.g., "T, N" from "template<typename T, int N>".
+fn extract_template_params(node: Node, source: &str) -> String {
+    let mut cursor = node.walk();
+    for child in node.children(&mut cursor) {
+        if child.kind() == "template_parameter_list" {
+            let params_src = source
+                .get(child.start_byte()..child.end_byte())
+                .unwrap_or("");
+            // Extract just the parameter names from "<typename T, int N, ...>"
+            let inner = params_src
+                .trim_start_matches('<')
+                .trim_end_matches('>');
+            // Extract the last identifier from each comma-separated param
+            let params: Vec<&str> = inner
+                .split(',')
+                .filter_map(|p| p.split_whitespace().last())
+                .filter(|p| !p.is_empty() && !p.starts_with('.'))
+                .collect();
+            return params.join(", ");
+        }
+    }
+    String::new()
 }
 
 fn recurse_children(node: Node, source: &str, chunks: &mut Vec<CodeChunk>, scope: &[String]) {

@@ -244,6 +244,10 @@ pub(super) fn detect_fault_patterns(functions: &[FunctionEntry]) -> HashMap<usiz
         ("asm(\"", "INLINE_PTX"),
         ("__syncthreads()", "CUDA_SYNC"),
         ("__shared__", "CUDA_SHMEM"),
+        // Cross-language boundary patterns (Phase 9)
+        ("extern \"C\"", "EXTERN_C"),
+        ("__global__", "CUDA_KERNEL"),
+        ("__device__", "CUDA_DEVICE"),
     ];
 
     for (i, func) in functions.iter().enumerate() {
@@ -350,121 +354,118 @@ pub(super) fn classify_cpp_macros(source: &str, faults: &mut Vec<String>) {
 /// from source-level patterns without full PTX parsing. Based on defect
 /// classes from `detection_ptx.rs` (GPUVerify SDV semantics).
 pub(super) fn detect_inline_ptx_defects(source: &str, faults: &mut Vec<String>) {
-    // Only analyze functions containing inline PTX
     if !source.contains("asm(") && !source.contains("asm volatile") {
         return;
     }
 
-    // PTX_MISSING_BARRIER: st.shared followed by ld.shared without bar.sync
-    // Simplified heuristic: shared memory write + read with no barrier between
     let has_shared_store = source.contains("st.shared") || source.contains("__shared__");
     let has_shared_load = source.contains("ld.shared");
     let has_barrier = source.contains("bar.sync") || source.contains("__syncthreads");
+
     if has_shared_store && has_shared_load && !has_barrier {
         faults.push("PTX_MISSING_BARRIER".to_string());
     }
 
-    // PTX_BARRIER_DIV: Branch/if before bar.sync (thread divergence deadlock risk)
-    // Look for pattern: if/branch followed by barrier in asm block
     if has_barrier {
-        let lines: Vec<&str> = source.lines().collect();
-        let mut in_branch = false;
-        for line in &lines {
-            let trimmed = line.trim();
-            if trimmed.starts_with("if ") || trimmed.starts_with("if(")
-                || trimmed.contains("@!%p") || trimmed.contains("@%p") {
-                in_branch = true;
-            }
-            if in_branch && (trimmed.contains("bar.sync") || trimmed.contains("__syncthreads")) {
-                faults.push("PTX_BARRIER_DIV".to_string());
-                break;
-            }
-            if trimmed == "}" || trimmed.starts_with("else") {
-                in_branch = false;
-            }
-        }
+        detect_ptx_barrier_divergence(source, faults);
+        detect_ptx_early_exit(source, faults);
     }
 
-    // PTX_REG_SPILL: High register usage indicator
-    // Look for many register declarations in inline PTX
+    detect_ptx_register_issues(source, faults);
+    detect_ptx_shared_u64(source, faults);
+    detect_ptx_local_spills(source, faults);
+    detect_ptx_pred_overflow(source, faults);
+    detect_ptx_empty_loop(source, faults);
+    detect_ptx_redundant_mov(source, faults);
+}
+
+fn detect_ptx_barrier_divergence(source: &str, faults: &mut Vec<String>) {
+    let mut in_branch = false;
+    for line in source.lines() {
+        let t = line.trim();
+        if t.starts_with("if ") || t.starts_with("if(") || t.contains("@!%p") || t.contains("@%p") {
+            in_branch = true;
+        }
+        if in_branch && (t.contains("bar.sync") || t.contains("__syncthreads")) {
+            faults.push("PTX_BARRIER_DIV".to_string());
+            return;
+        }
+        if t == "}" || t.starts_with("else") {
+            in_branch = false;
+        }
+    }
+}
+
+fn detect_ptx_early_exit(source: &str, faults: &mut Vec<String>) {
+    let mut seen_return = false;
+    for line in source.lines() {
+        let t = line.trim();
+        if t.starts_with("return") && t.contains(';') {
+            seen_return = true;
+        }
+        if seen_return && (t.contains("bar.sync") || t.contains("__syncthreads")) {
+            faults.push("PTX_EARLY_EXIT".to_string());
+            return;
+        }
+    }
+}
+
+fn detect_ptx_register_issues(source: &str, faults: &mut Vec<String>) {
     let reg_count = source.matches("\"=r\"").count() + source.matches("\"+r\"").count();
     if reg_count > 8 {
         faults.push("PTX_HIGH_REGS".to_string());
     }
+}
 
-    // PTX_SHARED_U64: 64-bit register for shared memory address (should be 32-bit)
-    // Pattern: shared memory accessed via 64-bit register ("l" constraint with shared)
-    if source.contains("st.shared") || source.contains("ld.shared") {
-        // Check for 64-bit addressing of shared memory (cvta.shared or "l" constraint)
-        if source.contains("cvta.shared") || source.contains("cvta.to.shared") {
-            faults.push("PTX_SHARED_U64".to_string());
-        }
+fn detect_ptx_shared_u64(source: &str, faults: &mut Vec<String>) {
+    let has_shared = source.contains("st.shared") || source.contains("ld.shared");
+    if has_shared && (source.contains("cvta.shared") || source.contains("cvta.to.shared")) {
+        faults.push("PTX_SHARED_U64".to_string());
     }
+}
 
-    // PTX_EARLY_EXIT: Thread exits before reaching barrier (PARITY-114)
-    // Pattern: return/ret before __syncthreads or bar.sync
-    if has_barrier {
-        let lines: Vec<&str> = source.lines().collect();
-        let mut seen_early_return = false;
-        for line in &lines {
-            let trimmed = line.trim();
-            if trimmed.starts_with("return") && trimmed.contains(';') {
-                seen_early_return = true;
-            }
-            if seen_early_return && (trimmed.contains("bar.sync") || trimmed.contains("__syncthreads")) {
-                faults.push("PTX_EARLY_EXIT".to_string());
-                break;
-            }
-        }
-    }
-
-    // PTX_REG_SPILL: Register spills to local memory
-    // Pattern: .local declarations in inline PTX indicate spills
+fn detect_ptx_local_spills(source: &str, faults: &mut Vec<String>) {
     if source.contains(".local") && (source.contains("st.local") || source.contains("ld.local")) {
         faults.push("PTX_REG_SPILL".to_string());
     }
+}
 
-    // PTX_PRED_OVERFLOW: >8 predicate registers (hardware limit)
-    // Pattern: excessive predicate register declarations (%p0..%p9+)
+fn detect_ptx_pred_overflow(source: &str, faults: &mut Vec<String>) {
     let pred_count = (0..16).filter(|i| source.contains(&format!("%p{i}"))).count();
     if pred_count > 8 {
         faults.push("PTX_PRED_OVERFLOW".to_string());
     }
+}
 
-    // PTX_EMPTY_LOOP: Loop body with no computation
-    // Pattern: for/while loop with only barrier or empty body in CUDA context
-    if source.contains("__global__") || source.contains("__device__") {
-        let lines: Vec<&str> = source.lines().collect();
-        for (i, line) in lines.iter().enumerate() {
-            let trimmed = line.trim();
-            if (trimmed.starts_with("for") || trimmed.starts_with("while"))
-                && i + 1 < lines.len()
-            {
-                let next = lines[i + 1].trim();
-                if next == "{}" || next == "{ }" || next == ";" {
-                    faults.push("PTX_EMPTY_LOOP".to_string());
-                    break;
-                }
+fn detect_ptx_empty_loop(source: &str, faults: &mut Vec<String>) {
+    if !source.contains("__global__") && !source.contains("__device__") {
+        return;
+    }
+    let lines: Vec<&str> = source.lines().collect();
+    for (i, line) in lines.iter().enumerate() {
+        let t = line.trim();
+        if (t.starts_with("for") || t.starts_with("while")) && i + 1 < lines.len() {
+            let next = lines[i + 1].trim();
+            if next == "{}" || next == "{ }" || next == ";" {
+                faults.push("PTX_EMPTY_LOOP".to_string());
+                return;
             }
         }
     }
+}
 
-    // PTX_REDUNDANT_MOV: Redundant register move chains
-    // Pattern: mov instruction where source == destination register
+fn detect_ptx_redundant_mov(source: &str, faults: &mut Vec<String>) {
     for line in source.lines() {
-        let trimmed = line.trim();
-        if trimmed.contains("mov.") {
-            // Parse: mov.type %dest, %src; — detect %rN, %rN patterns
-            if let Some(args) = trimmed.split_whitespace().nth(1) {
-                let parts: Vec<&str> = args.split(',').map(str::trim).collect();
-                if parts.len() == 2 {
-                    let dest = parts[0].trim_end_matches(';');
-                    let src = parts[1].trim_end_matches(';');
-                    if dest == src && dest.starts_with('%') {
-                        faults.push("PTX_REDUNDANT_MOV".to_string());
-                        break;
-                    }
-                }
+        let t = line.trim();
+        if !t.contains("mov.") { continue; }
+        let Some(args) = t.split_whitespace().nth(1) else { continue };
+        let parts: Vec<&str> = args.split(',').map(str::trim).collect();
+        if parts.len() == 2 {
+            let dest = parts[0].trim_end_matches(';');
+            let src = parts[1].trim_end_matches(';');
+            if dest == src && dest.starts_with('%') {
+                faults.push("PTX_REDUNDANT_MOV".to_string());
+                return;
             }
         }
     }
