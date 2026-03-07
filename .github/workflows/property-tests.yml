@@ -63,7 +63,6 @@ jobs:
     
     - name: Run property tests with coverage
       run: |
-        cd server
         cargo llvm-cov \
           --lcov \
           --output-path coverage/lcov.info \
@@ -81,7 +80,6 @@ jobs:
     
     - name: Enforce coverage threshold
       run: |
-        cd server
         # Count files with property tests vs total files
         total_files=$(find src -name "*.rs" -type f | wc -l)
         files_with_tests=$(grep -r "proptest!" src --include="*.rs" -l 2>/dev/null | wc -l || echo "0")
@@ -105,22 +103,18 @@ jobs:
     
     - name: Run AST property tests
       run: |
-        cd server
         cargo test --test ast_property_tests --release -- --nocapture
     
     - name: Run refactoring property tests
       run: |
-        cd server
         cargo test --test refactoring_property_tests --release -- --nocapture
     
     - name: Run property test coverage report
       run: |
-        cd server
         cargo test --test property_test_coverage --release -- --nocapture
     
     - name: Check for property test failures
       run: |
-        cd server
         # Run all property tests and ensure they pass
         cargo test --tests --release -- property 2>&1 | tee test_output.log
         
@@ -132,7 +126,6 @@ jobs:
     
     - name: Performance validation
       run: |
-        cd server
         # Run property tests with timing to ensure they complete within 5 minutes
         timeout 300 cargo test --tests --release -- property || {
           echo "Property tests exceeded 5 minute timeout"
@@ -155,7 +148,6 @@ jobs:
     
     - name: Run fuzz tests
       run: |
-        cd server
         # Create fuzz directory if it doesn't exist
         mkdir -p fuzz/fuzz_targets
         
@@ -201,12 +193,10 @@ jobs:
     
     - name: Run property tests
       run: |
-        cd server
         cargo test --tests -- property
     
     - name: Validate determinism across platforms
       run: |
-        cd server
         # Run the same property test multiple times and ensure consistent results
         for i in {1..5}; do
           cargo test --test ast_property_tests test_hash_deterministic --release

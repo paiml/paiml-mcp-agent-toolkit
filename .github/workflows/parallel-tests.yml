@@ -39,12 +39,11 @@ jobs:
     - name: Setup Rust cache
       uses: Swatinem/rust-cache@v2
       with:
-        workspaces: "server -> target"
+        workspaces: ". -> target"
         cache-on-failure: "true"
         shared-key: "test-shard-${{ matrix.shard }}"
 
     - name: Run test shard ${{ matrix.shard }}
-      working-directory: ./server
       run: |
         echo "🧪 Running test shard ${{ matrix.shard }}/4"
         cargo nextest run \

@@ -31,7 +31,7 @@ jobs:
           
       - name: Install pmat
         run: |
-          cargo install --path server --locked --force
+          cargo install --path . --locked --force
           
       - name: Run quality gate
         run: |

@@ -188,7 +188,6 @@ jobs:
       
       - name: Run property-based tests
         run: |
-          cd server
           # Run property tests in lib
           cargo test --lib --release -- property_tests --nocapture
           # Run the integration property test
@@ -291,7 +290,6 @@ jobs:
           SKIP_SLOW_TESTS: "false"  # Override to run slow tests
           CI: "false"  # Override CI flag for these specific tests
         run: |
-          cd server
           # Run only the MCP integration tests that need more time
           cargo test --test bin_integration --release -- --nocapture
           cargo test --test mcp_documentation_sync --release -- --nocapture

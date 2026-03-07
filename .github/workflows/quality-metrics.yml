@@ -45,7 +45,7 @@ jobs:
           key: ${{ runner.os }}-cargo-build-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Install PMAT
-        run: cargo install --path server --force
+        run: cargo install --path . --force
 
       - name: Record lint metric
         id: lint
