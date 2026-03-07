@@ -4,6 +4,8 @@
 //! - Namespace-qualified function indexing
 //! - CUDA kernel detection (__global__, __device__, __shared__)
 //! - Inline PTX fault annotations (INLINE_PTX, CUDA_SYNC, CUDA_SHMEM)
+//! - PTX instruction tags (PTX:mma.sync, PTX:cp.async, etc.)
+//! - C++/CUDA complexity penalties (Phase 4 + Phase 7)
 //! - Header classification (.h files auto-detected as C or C++)
 //!
 //! Run with: `cargo run --example cpp_query_demo`
@@ -35,8 +37,18 @@ fn main() {
     println!("{}", "-".repeat(40));
     demo_templates();
 
-    // 4. Header classification
-    println!("\n4. Header Classification");
+    // 4. PTX instruction tags
+    println!("\n4. PTX Instruction Tags");
+    println!("{}", "-".repeat(40));
+    demo_ptx_instructions();
+
+    // 5. C++/CUDA complexity penalties
+    println!("\n5. C++/CUDA Complexity Penalties");
+    println!("{}", "-".repeat(40));
+    demo_complexity_penalties();
+
+    // 6. Header classification
+    println!("\n6. Header Classification");
     println!("{}", "-".repeat(40));
     demo_header_classification();
 
@@ -116,6 +128,73 @@ fn demo_templates() {
     }
     assert_eq!(chunks.len(), 1);
     assert!(chunks[0].content.contains("template"));
+}
+
+fn demo_ptx_instructions() {
+    // PTX instruction extraction from inline asm() blocks.
+    // During indexing, detect_fault_patterns + extract_ptx_instruction_tags
+    // will emit tags like PTX:mma.sync, PTX:cp.async, PTX:bar.sync etc.
+    let source = r#"static __device__ void mma_A(int* out, const char* src) {
+    asm("ldmatrix.sync.aligned.m8n8.x4.b16 {%0, %1, %2, %3}, [%4];"
+        : "=r"(out[0]), "=r"(out[1]), "=r"(out[2]), "=r"(out[3])
+        : "l"(src));
+}
+"#;
+    let chunks = chunk_code(source, Language::Cpp).unwrap();
+    for chunk in &chunks {
+        println!(
+            "  {} [{}] lines {}-{}",
+            chunk.chunk_name,
+            chunk.chunk_type.as_str(),
+            chunk.start_line,
+            chunk.end_line
+        );
+        // In the full indexer, fault annotations would include:
+        // INLINE_PTX, PTX:ldmatrix
+        println!("    Contains inline PTX: {}", chunk.content.contains("asm("));
+        println!(
+            "    PTX opcode: ldmatrix (searchable via `pmat query \"ldmatrix\" --faults`)"
+        );
+    }
+    assert!(!chunks.is_empty());
+    assert!(chunks[0].content.contains("ldmatrix"));
+}
+
+fn demo_complexity_penalties() {
+    // C++/CUDA complexity penalties are applied during indexing.
+    // Here we demonstrate the penalty patterns that affect TDG scores.
+
+    // Simple C++ function: no extra penalty
+    println!("  Simple function: no C++ penalty");
+
+    // CUDA kernel patterns that add complexity penalties:
+    println!("  CUDA kernel penalties:");
+    println!("    __shared__ memory usage:  +2 (synchronization complexity)");
+    println!("    __syncthreads() barrier:  +3 (barrier coordination)");
+    println!("    __shfl_* warp primitives: +2 (low-level parallelism)");
+    println!("    Thread divergence in kernel: +2 (if inside __global__)");
+
+    // C++ patterns:
+    println!("  C++ cognitive penalties:");
+    println!("    #ifdef nesting:           +1 per level");
+    println!("    Macro-heavy (>5 calls):   +3");
+    println!("    SFINAE/enable_if:         +3");
+    println!("    Template nesting:         +2 per extra level");
+    println!("    const_cast/reinterpret:   +2");
+
+    // Verify via chunk_code that CUDA kernel has expected content
+    let source = r#"__global__ void softmax(float* out, const float* in, int n) {
+    __shared__ float sdata[256];
+    if (threadIdx.x < n) { sdata[threadIdx.x] = in[threadIdx.x]; }
+    __syncthreads();
+}"#;
+    let chunks = chunk_code(source, Language::Cpp).unwrap();
+    assert!(!chunks.is_empty());
+    let kernel = &chunks[0];
+    // During indexing, this kernel gets: +2 (shared) + +3 (sync) + +2 (divergence) = +7
+    assert!(kernel.content.contains("__shared__"));
+    assert!(kernel.content.contains("__syncthreads"));
+    println!("  Example: softmax kernel would get +7 penalty during indexing");
 }
 
 fn demo_header_classification() {

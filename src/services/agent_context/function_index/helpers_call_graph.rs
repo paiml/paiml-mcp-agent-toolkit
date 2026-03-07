@@ -27,7 +27,7 @@ pub(crate) fn is_generic_callee(name: &str) -> bool {
             | "printf" | "fprintf" | "sprintf" | "snprintf"
             | "memcpy" | "memset" | "memmove" | "memcmp"
             | "strlen" | "strcmp" | "strncmp" | "strcpy" | "strcat"
-            | "sizeof" | "assert" | "abort" | "exit"
+            | "sizeof" | "abort" | "exit"
             | "begin" | "end" | "size" | "empty" | "data" | "clear" | "resize"
             | "front" | "back" | "swap" | "find" | "erase" | "count"
             | "move" | "forward" | "make_shared" | "make_unique"
