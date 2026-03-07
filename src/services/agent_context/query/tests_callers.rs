@@ -24,7 +24,7 @@ fn test_called_by_test_summarization() {
             churn_score: 0.0,
             clone_count: 0,
             pattern_diversity: 0.0,
-            fault_annotations: Vec::new(),
+            fault_annotations: Vec::new(), linked_definition: None,
         });
         callers.push(index.functions.len() - 1);
     }
@@ -67,7 +67,7 @@ fn test_called_by_production_cap() {
             churn_score: 0.0,
             clone_count: 0,
             pattern_diversity: 0.0,
-            fault_annotations: Vec::new(),
+            fault_annotations: Vec::new(), linked_definition: None,
         });
         callers.push(index.functions.len() - 1);
         index

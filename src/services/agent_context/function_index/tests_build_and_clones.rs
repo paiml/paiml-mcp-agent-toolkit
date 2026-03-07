@@ -158,7 +158,7 @@ fn test_detect_code_clones_with_duplicates() {
             churn_score: 0.0,
             clone_count: 0,
             pattern_diversity: 0.0,
-            fault_annotations: Vec::new(),
+            fault_annotations: Vec::new(), linked_definition: None,
         },
         FunctionEntry {
             file_path: "b.rs".to_string(),
@@ -177,7 +177,7 @@ fn test_detect_code_clones_with_duplicates() {
             churn_score: 0.0,
             clone_count: 0,
             pattern_diversity: 0.0,
-            fault_annotations: Vec::new(),
+            fault_annotations: Vec::new(), linked_definition: None,
         },
         FunctionEntry {
             file_path: "c.rs".to_string(),
@@ -195,7 +195,7 @@ fn test_detect_code_clones_with_duplicates() {
             churn_score: 0.0,
             clone_count: 0,
             pattern_diversity: 0.0,
-            fault_annotations: Vec::new(),
+            fault_annotations: Vec::new(), linked_definition: None,
         },
     ];
 
@@ -226,7 +226,7 @@ fn test_detect_code_clones_no_duplicates() {
             churn_score: 0.0,
             clone_count: 0,
             pattern_diversity: 0.0,
-            fault_annotations: Vec::new(),
+            fault_annotations: Vec::new(), linked_definition: None,
         },
         FunctionEntry {
             file_path: "b.rs".to_string(),
@@ -244,7 +244,7 @@ fn test_detect_code_clones_no_duplicates() {
             churn_score: 0.0,
             clone_count: 0,
             pattern_diversity: 0.0,
-            fault_annotations: Vec::new(),
+            fault_annotations: Vec::new(), linked_definition: None,
         },
     ];
 
@@ -274,7 +274,7 @@ fn test_compute_file_pattern_diversity() {
             churn_score: 0.0,
             clone_count: 0,
             pattern_diversity: 0.0,
-            fault_annotations: Vec::new(),
+            fault_annotations: Vec::new(), linked_definition: None,
         },
         FunctionEntry {
             file_path: "a.rs".to_string(),
@@ -295,7 +295,7 @@ fn test_compute_file_pattern_diversity() {
             churn_score: 0.0,
             clone_count: 0,
             pattern_diversity: 0.0,
-            fault_annotations: Vec::new(),
+            fault_annotations: Vec::new(), linked_definition: None,
         },
         FunctionEntry {
             file_path: "a.rs".to_string(),
@@ -316,7 +316,7 @@ fn test_compute_file_pattern_diversity() {
             churn_score: 0.0,
             clone_count: 0,
             pattern_diversity: 0.0,
-            fault_annotations: Vec::new(),
+            fault_annotations: Vec::new(), linked_definition: None,
         },
     ];
     let mut file_index = HashMap::new();
@@ -358,7 +358,7 @@ fn test_detect_fault_patterns() {
             churn_score: 0.0,
             clone_count: 0,
             pattern_diversity: 0.0,
-            fault_annotations: Vec::new(),
+            fault_annotations: Vec::new(), linked_definition: None,
         },
         FunctionEntry {
             file_path: "b.rs".to_string(),
@@ -376,7 +376,7 @@ fn test_detect_fault_patterns() {
             churn_score: 0.0,
             clone_count: 0,
             pattern_diversity: 0.0,
-            fault_annotations: Vec::new(),
+            fault_annotations: Vec::new(), linked_definition: None,
         },
         FunctionEntry {
             file_path: "c.rs".to_string(),
@@ -394,7 +394,7 @@ fn test_detect_fault_patterns() {
             churn_score: 0.0,
             clone_count: 0,
             pattern_diversity: 0.0,
-            fault_annotations: Vec::new(),
+            fault_annotations: Vec::new(), linked_definition: None,
         },
     ];
 
@@ -425,7 +425,7 @@ fn test_detect_fault_patterns_more() {
             quality: QualityMetrics::default(), checksum: "a".to_string(),
             definition_type: DefinitionType::default(),
             commit_count: 0, churn_score: 0.0, clone_count: 0,
-            pattern_diversity: 0.0, fault_annotations: Vec::new(),
+            pattern_diversity: 0.0, fault_annotations: Vec::new(), linked_definition: None,
         },
     ];
 
@@ -467,7 +467,7 @@ fn test_detect_fault_patterns_cuda_ptx() {
         churn_score: 0.0,
         clone_count: 0,
         pattern_diversity: 0.0,
-        fault_annotations: Vec::new(),
+        fault_annotations: Vec::new(), linked_definition: None,
     }];
 
     let faults = detect_fault_patterns(&funcs);
@@ -504,7 +504,7 @@ fn test_detect_fault_patterns_ptx_instructions() {
         churn_score: 0.0,
         clone_count: 0,
         pattern_diversity: 0.0,
-        fault_annotations: Vec::new(),
+        fault_annotations: Vec::new(), linked_definition: None,
     }];
 
     let faults = detect_fault_patterns(&funcs);
@@ -537,7 +537,7 @@ fn test_detect_fault_patterns_ptx_cp_async() {
         churn_score: 0.0,
         clone_count: 0,
         pattern_diversity: 0.0,
-        fault_annotations: Vec::new(),
+        fault_annotations: Vec::new(), linked_definition: None,
     }];
 
     let faults = detect_fault_patterns(&funcs);
@@ -566,7 +566,7 @@ fn test_name_index_capped_at_100() {
             churn_score: 0.0,
             clone_count: 0,
             pattern_diversity: 0.0,
-            fault_annotations: Vec::new(),
+            fault_annotations: Vec::new(), linked_definition: None,
         })
         .collect();
 

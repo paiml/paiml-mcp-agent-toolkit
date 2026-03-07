@@ -29,7 +29,7 @@ fn make_test_index() -> AgentContextIndex {
         churn_score: 0.0,
         clone_count: 0,
         pattern_diversity: 0.0,
-        fault_annotations: Vec::new(),
+        fault_annotations: Vec::new(), linked_definition: None,
     };
     let mut name_index = HashMap::new();
     name_index.insert("main".to_string(), vec![0usize]);
@@ -212,7 +212,7 @@ fn test_call_graph_excludes_generic_names() {
             churn_score: 0.0,
             clone_count: 0,
             pattern_diversity: 0.0,
-            fault_annotations: Vec::new(),
+            fault_annotations: Vec::new(), linked_definition: None,
         },
         FunctionEntry {
             file_path: "b.rs".to_string(),
@@ -231,7 +231,7 @@ fn test_call_graph_excludes_generic_names() {
             churn_score: 0.0,
             clone_count: 0,
             pattern_diversity: 0.0,
-            fault_annotations: Vec::new(),
+            fault_annotations: Vec::new(), linked_definition: None,
         },
         FunctionEntry {
             file_path: "c.rs".to_string(),
@@ -249,7 +249,7 @@ fn test_call_graph_excludes_generic_names() {
             churn_score: 0.0,
             clone_count: 0,
             pattern_diversity: 0.0,
-            fault_annotations: Vec::new(),
+            fault_annotations: Vec::new(), linked_definition: None,
         },
     ];
 

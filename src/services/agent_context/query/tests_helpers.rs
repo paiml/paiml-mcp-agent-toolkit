@@ -32,7 +32,7 @@ fn create_test_entry(name: &str, complexity: u32, tdg_score: f32) -> FunctionEnt
         churn_score: 0.0,
         clone_count: 0,
         pattern_diversity: 0.0,
-        fault_annotations: Vec::new(),
+        fault_annotations: Vec::new(), linked_definition: None,
     }
 }
 
@@ -64,7 +64,7 @@ fn build_test_index() -> AgentContextIndex {
             churn_score: 0.6,
             clone_count: 0,
             pattern_diversity: 0.0,
-            fault_annotations: Vec::new(),
+            fault_annotations: Vec::new(), linked_definition: None,
         },
         FunctionEntry {
             file_path: "src/handler.rs".to_string(),
@@ -93,7 +93,7 @@ fn build_test_index() -> AgentContextIndex {
             churn_score: 0.8,
             clone_count: 0,
             pattern_diversity: 0.0,
-            fault_annotations: Vec::new(),
+            fault_annotations: Vec::new(), linked_definition: None,
         },
         FunctionEntry {
             file_path: "src/utils.rs".to_string(),
@@ -121,7 +121,7 @@ fn build_test_index() -> AgentContextIndex {
             churn_score: 0.1,
             clone_count: 0,
             pattern_diversity: 0.0,
-            fault_annotations: Vec::new(),
+            fault_annotations: Vec::new(), linked_definition: None,
         },
         FunctionEntry {
             file_path: "tests/test_handler.rs".to_string(),
@@ -149,7 +149,7 @@ fn build_test_index() -> AgentContextIndex {
             churn_score: 0.2,
             clone_count: 0,
             pattern_diversity: 0.0,
-            fault_annotations: Vec::new(),
+            fault_annotations: Vec::new(), linked_definition: None,
         },
         FunctionEntry {
             file_path: "src/utils.rs".to_string(),
@@ -177,7 +177,7 @@ fn build_test_index() -> AgentContextIndex {
             churn_score: 0.05,
             clone_count: 0,
             pattern_diversity: 0.0,
-            fault_annotations: Vec::new(),
+            fault_annotations: Vec::new(), linked_definition: None,
         },
     ];
 

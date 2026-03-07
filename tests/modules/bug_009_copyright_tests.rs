@@ -240,7 +240,7 @@ void test_function() {
     temp
 }
 
-fn analyze_cpp_file_for_functions(_path: &std::path::Path) -> Result<Vec<String>, String> {
+fn analyze_cpp_file_for_functions(path: &std::path::Path) -> Result<Vec<String>, String> {
     #[cfg(feature = "cpp-ast")]
     {
         use pmat::services::ast::languages::cpp::analyze_cpp_file;
@@ -274,7 +274,7 @@ fn analyze_cpp_file_for_functions(_path: &std::path::Path) -> Result<Vec<String>
     }
 }
 
-fn analyze_c_file_for_functions(_path: &std::path::Path) -> Result<Vec<String>, String> {
+fn analyze_c_file_for_functions(path: &std::path::Path) -> Result<Vec<String>, String> {
     #[cfg(feature = "c-ast")]
     {
         use pmat::services::ast::languages::c::analyze_c_file;

@@ -111,6 +111,7 @@ mod tests {
             clone_count: 0,
             pattern_diversity: 0.0,
             fault_annotations: vec![],
+            linked_definition: None,
         }
     }
 

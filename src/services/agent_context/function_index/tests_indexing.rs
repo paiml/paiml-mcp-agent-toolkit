@@ -19,7 +19,7 @@ fn test_build_indices() {
             churn_score: 0.0,
             clone_count: 0,
             pattern_diversity: 0.0,
-            fault_annotations: Vec::new(),
+            fault_annotations: Vec::new(), linked_definition: None,
         },
         FunctionEntry {
             file_path: "a.rs".to_string(),
@@ -37,7 +37,7 @@ fn test_build_indices() {
             churn_score: 0.0,
             clone_count: 0,
             pattern_diversity: 0.0,
-            fault_annotations: Vec::new(),
+            fault_annotations: Vec::new(), linked_definition: None,
         },
     ];
     let indices = build_indices(&functions);
@@ -67,7 +67,7 @@ fn test_build_call_graph() {
             churn_score: 0.0,
             clone_count: 0,
             pattern_diversity: 0.0,
-            fault_annotations: Vec::new(),
+            fault_annotations: Vec::new(), linked_definition: None,
         },
         FunctionEntry {
             file_path: "a.rs".to_string(),
@@ -85,7 +85,7 @@ fn test_build_call_graph() {
             churn_score: 0.0,
             clone_count: 0,
             pattern_diversity: 0.0,
-            fault_annotations: Vec::new(),
+            fault_annotations: Vec::new(), linked_definition: None,
         },
     ];
     let indices = build_indices(&functions);
@@ -118,7 +118,7 @@ fn test_get_calls_and_called_by() {
             churn_score: 0.0,
             clone_count: 0,
             pattern_diversity: 0.0,
-            fault_annotations: Vec::new(),
+            fault_annotations: Vec::new(), linked_definition: None,
         },
         FunctionEntry {
             file_path: "a.rs".to_string(),
@@ -136,7 +136,7 @@ fn test_get_calls_and_called_by() {
             churn_score: 0.0,
             clone_count: 0,
             pattern_diversity: 0.0,
-            fault_annotations: Vec::new(),
+            fault_annotations: Vec::new(), linked_definition: None,
         },
     ];
 
@@ -203,7 +203,7 @@ fn test_find_function_index() {
         churn_score: 0.0,
         clone_count: 0,
         pattern_diversity: 0.0,
-        fault_annotations: Vec::new(),
+        fault_annotations: Vec::new(), linked_definition: None,
     }];
 
     let indices = build_indices(&functions);
