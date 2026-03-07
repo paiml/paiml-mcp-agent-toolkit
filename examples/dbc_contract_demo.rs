@@ -438,6 +438,44 @@ threshold = { metric = "perf_score", op = "Gte", value = 0.9 }
         codebase.composite, codebase.grade
     );
 
+    // === 12. Runtime Violation Tracking (DBC spec §14.7) ===
+    println!("=== 12. Runtime Violation Tracking ===\n");
+
+    let mut tracker = pmat::cli::handlers::work_contract::ViolationTracker::default();
+
+    // Simulate command executions
+    for _ in 0..5 {
+        tracker.record_execution("DEMO-001", "cargo test", 1000);
+    }
+    println!("  Recorded 5 normal executions of 'cargo test'");
+
+    // Simulate a failure
+    tracker.record_failure("DEMO-001", "cargo clippy", 1, "lint warnings found");
+    println!("  Recorded 1 command failure");
+
+    // Trust chain demo
+    let entry1 =
+        pmat::cli::handlers::work_contract::TrustChainEntry::new(".dbc-stack.toml", "abc123", "");
+    let entry2 = pmat::cli::handlers::work_contract::TrustChainEntry::new(
+        ".dbc-stack.toml",
+        "def456",
+        &entry1.chain_hash,
+    );
+    println!(
+        "  Trust chain: 2 entries, verified: {}/{}",
+        entry1.verify(),
+        entry2.verify()
+    );
+
+    let summary = tracker.summary(2.0);
+    println!(
+        "  Session: {} violations ({} failures, {} anomalies), elevated: {}\n",
+        summary.total_violations,
+        summary.command_failures,
+        summary.timing_anomalies,
+        summary.elevated
+    );
+
     // Clean up temp dir
     let _ = std::fs::remove_dir_all(&tmp);
 
@@ -455,4 +493,5 @@ threshold = { metric = "perf_score", op = "Gte", value = 0.9 }
     println!("   - Trend Tracking: 7-snapshot rolling window with drift detection");
     println!("   - Lint Config: rule overrides, suppression, strict mode (§13.7)");
     println!("   - Codebase Scoring: portfolio-level quality aggregation (§14.6)");
+    println!("   - Violation Tracking: runtime failure counting + anomaly detection (§14.7)");
 }

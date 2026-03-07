@@ -44,6 +44,9 @@ include!("work_contract_lint.rs");
 // Lint Configuration + Diff-Aware Linting + Codebase Scoring (DBC spec §13.6, §13.7, §14.6)
 include!("work_contract_lint_config.rs");
 
+// Runtime Violation Tracking + Trust Hash Chain (DBC spec §14.7)
+include!("work_contract_violations.rs");
+
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod rescue_tests {
@@ -90,6 +93,14 @@ mod lint_config_tests {
     use super::*;
 
     include!("work_contract_lint_config_tests.rs");
+}
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod violations_tests {
+    use super::*;
+
+    include!("work_contract_violations_tests.rs");
 }
 
 #[cfg_attr(coverage_nightly, coverage(off))]
