@@ -2176,7 +2176,7 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'New task: GH-232'
-  status: inprogress
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-02-22T14:44:27.476290763+00:00
@@ -2192,7 +2192,7 @@ roadmap:
   github_issue: null
   item_type: task
   title: Feature-gate reqwest behind http-client feature
-  status: inprogress
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-02-22T21:14:11Z
@@ -2211,7 +2211,7 @@ roadmap:
   github_issue: null
   item_type: task
   title: Replace handlebars with minijinja
-  status: inprogress
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-02-22T21:14:12Z
@@ -2335,7 +2335,7 @@ roadmap:
   github_issue: null
   item_type: task
   title: Unify --path vs --project-path flag across analyze subcommands
-  status: inprogress
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-02-27T08:00:55Z
@@ -2355,7 +2355,7 @@ roadmap:
   github_issue: null
   item_type: task
   title: Fix semantic_search_demo hanging on hierarchical clustering
-  status: inprogress
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-02-27T08:00:57Z
@@ -2375,7 +2375,7 @@ roadmap:
   github_issue: null
   item_type: task
   title: Fix dogfood_types example compilation with mutation-testing feature
-  status: inprogress
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-02-27T08:00:59Z
@@ -2395,7 +2395,7 @@ roadmap:
   github_issue: null
   item_type: task
   title: Suppress AST analysis warnings for include\!() fragment files
-  status: inprogress
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-02-27T08:01:01Z
