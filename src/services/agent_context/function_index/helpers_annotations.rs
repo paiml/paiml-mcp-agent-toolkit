@@ -239,6 +239,11 @@ pub(super) fn detect_fault_patterns(functions: &[FunctionEntry]) -> HashMap<usiz
         ("unimplemented!", "UNIMPL"),
         ("todo!", "TODO_MACRO"),
         ("unreachable!", "UNREACHABLE"),
+        // CUDA/PTX fault patterns
+        ("asm volatile", "INLINE_PTX"),
+        ("asm(\"", "INLINE_PTX"),
+        ("__syncthreads()", "CUDA_SYNC"),
+        ("__shared__", "CUDA_SHMEM"),
     ];
 
     for (i, func) in functions.iter().enumerate() {
