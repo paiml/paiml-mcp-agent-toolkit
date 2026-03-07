@@ -100,56 +100,103 @@ fn extract_cpp_function_name<'a>(node: Node<'a>, source: &str) -> Option<String>
     Some(source[name_node.byte_range()].to_string())
 }
 
-/// Extract function definitions from a C++ template declaration
-fn extract_cpp_template_functions(node: Node, source: &str, chunks: &mut Vec<CodeChunk>) {
-    let mut cursor = node.walk();
-    for child in node.children(&mut cursor) {
-        if child.kind() != "function_definition" {
-            continue;
-        }
-        if let Some(name) = extract_cpp_function_name(child, source) {
-            let start_byte = find_doc_comment_start(node, source);
-            let content = source
-                .get(start_byte..node.end_byte())
-                .unwrap_or_default()
-                .to_string();
-            push_chunk(chunks, ChunkType::Function, name, "cpp", node, content);
-        }
-    }
+/// Extract items from C++ AST with namespace/class qualification
+fn extract_cpp_items(node: Node, source: &str, chunks: &mut Vec<CodeChunk>) {
+    extract_cpp_items_qualified(node, source, chunks, &[]);
 }
 
-/// Extract items from C++ AST
-fn extract_cpp_items(node: Node, source: &str, chunks: &mut Vec<CodeChunk>) {
+/// Recursive C++ item extraction with scope tracking for qualified names
+fn extract_cpp_items_qualified(
+    node: Node,
+    source: &str,
+    chunks: &mut Vec<CodeChunk>,
+    scope: &[String],
+) {
     match node.kind() {
-        "class_specifier" => {
-            if let Some(name_node) = node.child_by_field_name("name") {
-                let name = source[name_node.byte_range()].to_string();
-                let content = source[node.byte_range()].to_string();
-                push_chunk(chunks, ChunkType::Class, name, "cpp", node, content);
-            }
-            return; // Don't recurse - class extracted as whole
+        "namespace_definition" => {
+            extract_cpp_namespace(node, source, chunks, scope);
+            return;
+        }
+        "class_specifier" | "struct_specifier" => {
+            extract_cpp_class(node, source, chunks, scope);
+            return;
         }
         "function_definition" => {
-            if let Some(name) = extract_cpp_function_name(node, source) {
-                let start_byte = find_doc_comment_start(node, source);
-                let content = source
-                    .get(start_byte..node.end_byte())
-                    .unwrap_or_default()
-                    .to_string();
-                push_chunk(chunks, ChunkType::Function, name, "cpp", node, content);
-            }
-            return; // Don't recurse into function body
+            extract_cpp_func_def(node, source, chunks, scope);
+            return;
         }
         "template_declaration" => {
-            extract_cpp_template_functions(node, source, chunks);
-            return; // Don't recurse - template extracted as whole
+            extract_cpp_template(node, source, chunks, scope);
+            return;
         }
         _ => {}
     }
 
-    // Recursively process children
+    recurse_children(node, source, chunks, scope);
+}
+
+fn extract_cpp_namespace(node: Node, source: &str, chunks: &mut Vec<CodeChunk>, scope: &[String]) {
+    let ns_name = node
+        .child_by_field_name("name")
+        .map(|n| source[n.byte_range()].to_string());
+    let Some(body) = node.child_by_field_name("body") else { return };
+    let mut new_scope = scope.to_vec();
+    if let Some(name) = ns_name {
+        new_scope.push(name);
+    }
+    recurse_children(body, source, chunks, &new_scope);
+}
+
+fn extract_cpp_class(node: Node, source: &str, chunks: &mut Vec<CodeChunk>, scope: &[String]) {
+    let Some(name_node) = node.child_by_field_name("name") else { return };
+    let bare_name = source[name_node.byte_range()].to_string();
+    let qualified = qualify_name(scope, &bare_name);
+    let content = source[node.byte_range()].to_string();
+    push_chunk(chunks, ChunkType::Class, qualified, "cpp", node, content);
+
+    if let Some(body) = node.child_by_field_name("body") {
+        let mut class_scope = scope.to_vec();
+        class_scope.push(bare_name);
+        recurse_children(body, source, chunks, &class_scope);
+    }
+}
+
+fn extract_cpp_func_def(node: Node, source: &str, chunks: &mut Vec<CodeChunk>, scope: &[String]) {
+    let Some(bare_name) = extract_cpp_function_name(node, source) else { return };
+    let qualified = qualify_name(scope, &bare_name);
+    let start_byte = find_doc_comment_start(node, source);
+    let content = source
+        .get(start_byte..node.end_byte())
+        .unwrap_or_default()
+        .to_string();
+    push_chunk(chunks, ChunkType::Function, qualified, "cpp", node, content);
+}
+
+fn extract_cpp_template(node: Node, source: &str, chunks: &mut Vec<CodeChunk>, scope: &[String]) {
     let mut cursor = node.walk();
     for child in node.children(&mut cursor) {
-        extract_cpp_items(child, source, chunks);
+        match child.kind() {
+            "function_definition" => extract_cpp_func_def(child, source, chunks, scope),
+            "class_specifier" | "struct_specifier" => {
+                extract_cpp_items_qualified(child, source, chunks, scope);
+            }
+            _ => {}
+        }
+    }
+}
+
+fn recurse_children(node: Node, source: &str, chunks: &mut Vec<CodeChunk>, scope: &[String]) {
+    let mut cursor = node.walk();
+    for child in node.children(&mut cursor) {
+        extract_cpp_items_qualified(child, source, chunks, scope);
+    }
+}
+
+/// Build a qualified name from scope segments
+fn qualify_name(scope: &[String], name: &str) -> String {
+    if scope.is_empty() {
+        name.to_string()
+    } else {
+        format!("{}::{}", scope.join("::"), name)
     }
 }
