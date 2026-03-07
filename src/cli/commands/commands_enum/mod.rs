@@ -35,9 +35,8 @@ use crate::cli::diagnose::DiagnoseArgs;
 use crate::cli::handlers::cache::CacheCommand;
 use crate::cli::handlers::memory::MemoryCommand;
 use crate::cli::{
-    AnalysisType, ContextFormat, DebugOutputFormat, DemoProtocol,
-    OutputFormat, QualityCheckType, QualityGateOutputFormat,
-    QueryOutputFormat, RepoScoreOutputFormat, ReportOutputFormat,
+    AnalysisType, ContextFormat, DebugOutputFormat, DemoProtocol, OutputFormat, QualityCheckType,
+    QualityGateOutputFormat, QueryOutputFormat, RepoScoreOutputFormat, ReportOutputFormat,
     TdgOutputFormat,
 };
 use clap::Subcommand;
@@ -47,18 +46,17 @@ use std::path::PathBuf;
 use super::analyze_commands::AnalyzeCommands;
 use super::config_hooks::HooksCommands;
 use super::misc_commands::{
-    ComplyCommands, CudaTdgCommand, CudaTdgOutputFormat, DebugCommands,
-    KaizenOutputFormat, MaintainCommands, OracleCommands,
-    PerfectionScoreOutputFormat, ProjectDiagOutputFormat, QualityGatesCommand,
-    SpecCommands, TdgCommand,
+    ComplyCommands, CudaTdgCommand, CudaTdgOutputFormat, DebugCommands, KaizenOutputFormat,
+    MaintainCommands, OracleCommands, PerfectionScoreOutputFormat, ProjectDiagOutputFormat,
+    QualityGatesCommand, SpecCommands, TdgCommand,
 };
 use super::org_prompt::{OrgCommands, PromptCommands};
 use super::quality_commands::{EnforceCommands, QddCommands};
 use super::refactor_scaffold::{RefactorCommands, ScaffoldCommands};
 use super::roadmap_agent::{AgentCommands, RoadmapCommands, ServeTransport, TestSuite};
-use super::semantic_search::{EmbedCommands, SemanticCommands};
 #[cfg(feature = "mutation-testing")]
 use super::semantic_search::MutateArgs;
+use super::semantic_search::{EmbedCommands, SemanticCommands};
 use super::work_commands::{QaWorkCommands, TestDiscoveryCommands, WorkCommands};
 
 include!("definition.rs");

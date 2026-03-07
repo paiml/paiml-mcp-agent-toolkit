@@ -144,9 +144,7 @@ fn format_explain_output_table(
             "│  📊 Functions by Complexity (threshold: {:2})                  │\n",
             config.threshold
         ));
-        output.push_str(
-            "├───────────────────────────────────────────────────────────────┤\n",
-        );
+        output.push_str("├───────────────────────────────────────────────────────────────┤\n");
 
         for func in explained.functions.iter().take(10) {
             let severity_icon = match func.severity {
@@ -172,22 +170,14 @@ fn format_explain_output_table(
             ));
         }
     } else {
-        output.push_str(
-            "│  ✅ No functions above complexity threshold                   │\n",
-        );
+        output.push_str("│  ✅ No functions above complexity threshold                   │\n");
     }
 
     // Recommendations
     if !explained.recommendations.is_empty() {
-        output.push_str(
-            "│                                                               │\n",
-        );
-        output.push_str(
-            "│  💡 Recommendations                                           │\n",
-        );
-        output.push_str(
-            "├───────────────────────────────────────────────────────────────┤\n",
-        );
+        output.push_str("│                                                               │\n");
+        output.push_str("│  💡 Recommendations                                           │\n");
+        output.push_str("├───────────────────────────────────────────────────────────────┤\n");
 
         for (i, rec) in explained.recommendations.iter().take(5).enumerate() {
             output.push_str(&format!(

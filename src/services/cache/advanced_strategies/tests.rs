@@ -2,10 +2,10 @@
 
 #[cfg(test)]
 mod tests {
-    use crate::services::cache::advanced_strategies::eviction::EvictionMethods;
-    use crate::services::cache::advanced_strategies::types::*;
     use crate::services::cache::advanced_strategies::adaptive_cache::AdaptiveCache;
+    use crate::services::cache::advanced_strategies::eviction::EvictionMethods;
     use crate::services::cache::advanced_strategies::predictor::CachePredictor;
+    use crate::services::cache::advanced_strategies::types::*;
 
     use anyhow::Result;
     use chrono::Utc;

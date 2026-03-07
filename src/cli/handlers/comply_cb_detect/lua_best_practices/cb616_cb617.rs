@@ -2,9 +2,9 @@
 //! CB-616: Lua Type Annotation Awareness
 //! and CB-617: OpenResty-Specific Lua Checks.
 
+use super::super::types::*;
 use super::constants::OPENRESTY_CACHEABLE_GLOBALS;
 use super::helpers::{is_lua_test_file, walkdir_lua_files};
-use super::super::types::*;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -56,7 +56,12 @@ pub fn detect_cb616_type_annotations(project_path: &Path) -> Vec<CbPatternViolat
         annotated_functions += stats.annotated;
     }
 
-    build_annotation_violations(luals_count, ldoc_count, total_functions, annotated_functions)
+    build_annotation_violations(
+        luals_count,
+        ldoc_count,
+        total_functions,
+        annotated_functions,
+    )
 }
 
 /// Stats from scanning a single file for annotations.
@@ -69,7 +74,12 @@ struct AnnotationStats {
 
 /// Count annotation patterns and functions in a single file.
 fn count_annotation_stats(content: &str) -> AnnotationStats {
-    let mut stats = AnnotationStats { luals: 0, ldoc: 0, functions: 0, annotated: 0 };
+    let mut stats = AnnotationStats {
+        luals: 0,
+        ldoc: 0,
+        functions: 0,
+        annotated: 0,
+    };
     let mut prev_was_annotation = false;
 
     for line in content.lines() {
@@ -120,7 +130,9 @@ fn build_annotation_violations(
     let mut violations = Vec::new();
 
     let system = match (luals_count > 0, ldoc_count > 0) {
-        (true, true) => Some(format!("LuaLS/sumneko ({luals_count} annotations) + LDoc ({ldoc_count} annotations)")),
+        (true, true) => Some(format!(
+            "LuaLS/sumneko ({luals_count} annotations) + LDoc ({ldoc_count} annotations)"
+        )),
         (true, false) => Some(format!("LuaLS/sumneko ({luals_count} annotations)")),
         (false, true) => Some(format!("LDoc ({ldoc_count} annotations)")),
         (false, false) => None,
@@ -164,8 +176,10 @@ fn build_annotation_violations(
 fn is_openresty_project(files: &[PathBuf]) -> bool {
     files.iter().take(50).any(|f| {
         fs::read_to_string(f).is_ok_and(|c| {
-            c.contains("require(\"resty") || c.contains("require('resty")
-                || c.contains("ngx.") || c.contains("nginx.conf")
+            c.contains("require(\"resty")
+                || c.contains("require('resty")
+                || c.contains("ngx.")
+                || c.contains("nginx.conf")
         })
     })
 }
@@ -203,11 +217,7 @@ pub fn detect_cb617_openresty_checks(project_path: &Path) -> Vec<CbPatternViolat
 }
 
 /// Check if stdlib globals are used in handler functions without local caching.
-fn check_stdlib_caching(
-    content: &str,
-    rel: &str,
-    violations: &mut Vec<CbPatternViolation>,
-) {
+fn check_stdlib_caching(content: &str, rel: &str, violations: &mut Vec<CbPatternViolation>) {
     // Collect locally cached names at module level
     let cached: std::collections::HashSet<&str> = content
         .lines()
@@ -239,7 +249,13 @@ fn extract_local_cache_name(line: &str) -> Option<&str> {
     let rhs = rest[eq_pos + 1..].trim();
     // Check if RHS is exactly a known cacheable global (no parens/brackets after)
     for g in OPENRESTY_CACHEABLE_GLOBALS {
-        if rhs == *g || (rhs.starts_with(g) && rhs[g.len()..].chars().next().map_or(true, |c| c == ' ' || c == '\n')) {
+        if rhs == *g
+            || (rhs.starts_with(g)
+                && rhs[g.len()..]
+                    .chars()
+                    .next()
+                    .map_or(true, |c| c == ' ' || c == '\n'))
+        {
             return Some(*g);
         }
     }
@@ -248,10 +264,16 @@ fn extract_local_cache_name(line: &str) -> Option<&str> {
 
 /// Check if a function definition is an OpenResty handler.
 fn is_handler_function(line: &str) -> bool {
-    let handlers = ["access", "header_filter", "body_filter", "log", "rewrite", "content"];
+    let handlers = [
+        "access",
+        "header_filter",
+        "body_filter",
+        "log",
+        "rewrite",
+        "content",
+    ];
     handlers.iter().any(|h| {
-        line.contains(&format!("function _M.{h}"))
-            || line.contains(&format!("function _M:{h}"))
+        line.contains(&format!("function _M.{h}")) || line.contains(&format!("function _M:{h}"))
     })
 }
 

@@ -36,7 +36,7 @@ pub use complexity::RuchyComplexityAnalyzer;
 pub use lexer::RuchyLexer;
 pub use parser::analyze_ruchy_file;
 pub use types::{
-    ActorInfo, DeadlockWarning, MessageFlow, RuchyAst, RuchyActorAnalysis, RuchyDeadCode,
+    ActorInfo, DeadlockWarning, MessageFlow, RuchyActorAnalysis, RuchyAst, RuchyDeadCode,
     RuchyImport, RuchyToken, RuchyType,
 };
 

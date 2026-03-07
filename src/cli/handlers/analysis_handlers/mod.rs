@@ -16,8 +16,8 @@ use anyhow::Result;
 pub(crate) use advanced_routes::{convert_cache_strategy, convert_deep_context_dag_type};
 #[cfg(test)]
 pub(crate) use entropy_semantic::{
-    create_entropy_config, format_markdown_violations,
-    format_violation_list, get_top_violations, output_entropy_results,
+    create_entropy_config, format_markdown_violations, format_violation_list, get_top_violations,
+    output_entropy_results,
 };
 
 /// Router for all analysis commands - central dispatch for CLI analyze subcommands.
@@ -186,9 +186,7 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
 
         // Deep WASM analysis (feature-gated)
         #[cfg(feature = "deep-wasm")]
-        AnalyzeCommands::DeepWasm { .. } => {
-            platform_routes::route_deep_wasm_analysis(cmd).await
-        }
+        AnalyzeCommands::DeepWasm { .. } => platform_routes::route_deep_wasm_analysis(cmd).await,
 
         // Mutation testing (feature-gated)
         #[cfg(feature = "mutation-testing")]
@@ -241,9 +239,7 @@ async fn route_advanced_analysis(cmd: AnalyzeCommands) -> Result<()> {
 /// Route quality analysis commands
 async fn route_quality_analysis(cmd: AnalyzeCommands) -> Result<()> {
     match cmd {
-        AnalyzeCommands::Duplicates { .. } => {
-            advanced_routes::route_duplicates_analysis(cmd).await
-        }
+        AnalyzeCommands::Duplicates { .. } => advanced_routes::route_duplicates_analysis(cmd).await,
         AnalyzeCommands::DefectPrediction { .. } => {
             advanced_routes::route_defect_prediction_analysis(cmd).await
         }

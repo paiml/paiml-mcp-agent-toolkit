@@ -2,7 +2,9 @@
 //! Integration and property-based tests for defect helpers
 
 use super::format_json::format_defect_json;
-use super::format_markdown::{calculate_risk_counts, format_defect_markdown, format_defect_summary};
+use super::format_markdown::{
+    calculate_risk_counts, format_defect_markdown, format_defect_summary,
+};
 use super::format_sarif::format_defect_sarif;
 use crate::services::defect_probability::{DefectScore, RiskLevel};
 use std::path::Path;
@@ -106,8 +108,7 @@ mod integration_tests {
     #[test]
     fn test_markdown_sections_order() {
         let predictions = create_test_predictions();
-        let markdown =
-            format_defect_markdown(&predictions, true).expect("Should format markdown");
+        let markdown = format_defect_markdown(&predictions, true).expect("Should format markdown");
 
         // Verify sections appear in correct order
         let summary_pos = markdown.find("## Summary").expect("Should have summary");

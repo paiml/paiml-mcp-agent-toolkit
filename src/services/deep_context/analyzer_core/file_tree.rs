@@ -5,8 +5,8 @@ use std::path::PathBuf;
 use rustc_hash::FxHashMap;
 
 use crate::models::dag::DependencyGraph;
-use crate::services::deep_context::{AnnotatedFileTree, AnnotatedNode, NodeAnnotations, NodeType};
 use crate::services::deep_context::DeepContextAnalyzer;
+use crate::services::deep_context::{AnnotatedFileTree, AnnotatedNode, NodeAnnotations, NodeType};
 
 impl DeepContextAnalyzer {
     pub(crate) async fn discover_project_structure(
@@ -16,11 +16,8 @@ impl DeepContextAnalyzer {
         let mut total_files = 0;
         let mut total_size_bytes = 0;
 
-        let root = self.build_file_tree_recursive(
-            project_path,
-            &mut total_files,
-            &mut total_size_bytes,
-        )?;
+        let root =
+            self.build_file_tree_recursive(project_path, &mut total_files, &mut total_size_bytes)?;
 
         Ok(AnnotatedFileTree {
             root,

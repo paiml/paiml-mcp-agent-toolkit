@@ -485,7 +485,10 @@ bench:
     let score = scorer
         .score_ci_cd_integration(temp_dir.path(), None)
         .unwrap();
-    assert_eq!(score, 8.0, "Should get 8pts (5 for Makefile + 3 for clippy targets) (#244)");
+    assert_eq!(
+        score, 8.0,
+        "Should get 8pts (5 for Makefile + 3 for clippy targets) (#244)"
+    );
 }
 
 #[test]

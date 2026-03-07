@@ -1,17 +1,17 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
-    use crate::cli::BigOOutputFormat;
     use crate::cli::handlers::big_o_handlers::filters::{
         apply_high_complexity_filter, apply_report_filters, apply_top_files_filter,
         calculate_file_complexity_scores, get_complexity_class_score, get_top_file_paths,
         group_functions_by_file, is_high_complexity_class,
     };
     use crate::cli::handlers::big_o_handlers::handlers::build_analysis_config;
+    use crate::cli::handlers::big_o_handlers::output::format_big_o_detailed;
     use crate::cli::handlers::big_o_handlers::output::{
         format_analysis_output, format_big_o_summary, write_analysis_output,
     };
-    use crate::cli::handlers::big_o_handlers::output::format_big_o_detailed;
+    use crate::cli::BigOOutputFormat;
     use crate::models::complexity_bound::{BigOClass, ComplexityBound};
     use crate::services::big_o_analyzer::{
         BigOAnalysisReport, BigOAnalyzer, ComplexityDistribution, FunctionComplexity, PatternMatch,

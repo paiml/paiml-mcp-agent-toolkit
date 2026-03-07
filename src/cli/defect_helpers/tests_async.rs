@@ -55,7 +55,12 @@ mod analyze_defect_probability_tests {
     async fn test_analyze_defect_probability_high_risk_only_filter() {
         let files = vec![
             (PathBuf::from("low.rs"), "fn main() {}".to_string(), 1),
-            (PathBuf::from("high.rs"), "fn complex() { if true { if true { for i in 0..10 { match x { _ => {} } } } } }".to_string(), 1),
+            (
+                PathBuf::from("high.rs"),
+                "fn complex() { if true { if true { for i in 0..10 { match x { _ => {} } } } } }"
+                    .to_string(),
+                1,
+            ),
         ];
         let config = DefectPredictionConfig {
             confidence_threshold: 0.0,
@@ -154,7 +159,8 @@ mod analyze_defect_probability_tests {
             "        // More logic",
             "    }",
             "}",
-        ].join("\n");
+        ]
+        .join("\n");
         let complex_code = &complex_code;
 
         let files = vec![(PathBuf::from("complex.rs"), complex_code.to_string(), 20)];

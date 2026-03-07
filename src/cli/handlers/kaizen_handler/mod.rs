@@ -18,7 +18,9 @@ use serde::Serialize;
 use std::path::{Path, PathBuf};
 
 // Re-export submodule items used within the crate
-pub(crate) use fixing::{apply_safe_fixes, apply_safe_fixes_for_crate, spawn_agents, spawn_agents_for_crate};
+pub(crate) use fixing::{
+    apply_safe_fixes, apply_safe_fixes_for_crate, spawn_agents, spawn_agents_for_crate,
+};
 pub(crate) use git_ops::{commit_changes, create_github_issues, push_changes};
 pub(crate) use prioritization::{enrich_with_tarantula, sort_findings};
 pub(crate) use reporting::output_report;

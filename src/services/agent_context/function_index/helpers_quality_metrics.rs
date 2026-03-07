@@ -39,6 +39,7 @@ pub(super) fn detect_language(path: &Path) -> Option<Language> {
         "cpp" | "cc" | "cxx" | "hpp" | "cu" | "cuh" => Some(Language::Cpp),
         "go" => Some(Language::Go),
         "lua" => Some(Language::Lua),
+        "ptx" => Some(Language::Ptx),
         _ => None,
     }
 }

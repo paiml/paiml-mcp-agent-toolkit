@@ -1,10 +1,10 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
 //! Core diagram generation logic for the Mermaid generator
 
+use super::types::MermaidGenerator;
 use crate::models::dag::{DependencyGraph, NodeType};
 use crate::services::fixed_graph_builder::{FixedGraphBuilder, GraphConfig};
 use std::fmt::Write;
-use super::types::MermaidGenerator;
 
 impl MermaidGenerator {
     #[must_use]

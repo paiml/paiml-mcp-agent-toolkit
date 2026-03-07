@@ -109,8 +109,7 @@ impl CrossLanguageDependencies {
                     if let (Some(ids1), Some(ids2)) =
                         (nodes_by_language.get(lang1), nodes_by_language.get(lang2))
                     {
-                        let deps =
-                            self.detect_between_language_groups(ids1, *lang1, ids2, *lang2);
+                        let deps = self.detect_between_language_groups(ids1, *lang1, ids2, *lang2);
                         new_dependencies.extend(deps);
                     }
                 }

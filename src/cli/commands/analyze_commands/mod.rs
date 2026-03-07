@@ -6,25 +6,23 @@
 // Variants are grouped: Core, Debt, TDG/Quality, Advanced, Metrics,
 // Coverage/Symbols, WASM/Specialized.
 
-use crate::cli::{
-    BigOOutputFormat, ComplexityOutputFormat, ComprehensiveOutputFormat,
-    DagType, DeadCodeOutputFormat, DeepContextCacheStrategy,
-    DeepContextDagType, DeepContextOutputFormat, DefectPredictionOutputFormat, DefectsOutputFormat,
-    DuplicateOutputFormat, DuplicateType, EntropyOutputFormat,
-    EntropySeverity, GraphMetricType, GraphMetricsOutputFormat,
-    IncrementalCoverageOutputFormat, LintHotspotOutputFormat, MakefileOutputFormat,
-    NameSimilarityOutputFormat, OutputFormat, ProofAnnotationOutputFormat,
-    PropertyTypeFilter, ProvabilityOutputFormat, SatdOutputFormat, SatdSeverity,
-    SearchScope, SymbolTableOutputFormat, SymbolTypeFilter,
-    TdgOutputFormat, VerificationMethodFilter, WasmOutputFormat,
-};
+use super::semantic_search::ClusterMethod;
 use crate::cli::handlers::coverage_improve_handler::CoverageImproveOutputFormat;
+use crate::cli::{
+    BigOOutputFormat, ComplexityOutputFormat, ComprehensiveOutputFormat, DagType,
+    DeadCodeOutputFormat, DeepContextCacheStrategy, DeepContextDagType, DeepContextOutputFormat,
+    DefectPredictionOutputFormat, DefectsOutputFormat, DuplicateOutputFormat, DuplicateType,
+    EntropyOutputFormat, EntropySeverity, GraphMetricType, GraphMetricsOutputFormat,
+    IncrementalCoverageOutputFormat, LintHotspotOutputFormat, MakefileOutputFormat,
+    NameSimilarityOutputFormat, OutputFormat, ProofAnnotationOutputFormat, PropertyTypeFilter,
+    ProvabilityOutputFormat, SatdOutputFormat, SatdSeverity, SearchScope, SymbolTableOutputFormat,
+    SymbolTypeFilter, TdgOutputFormat, VerificationMethodFilter, WasmOutputFormat,
+};
 #[cfg(feature = "deep-wasm")]
 use crate::cli::{DeepWasmFocus, DeepWasmLanguage, DeepWasmOutputFormat};
 use crate::models::churn::ChurnOutputFormat;
 use clap::Subcommand;
 use std::path::PathBuf;
-use super::semantic_search::ClusterMethod;
 
 /// Analyze subcommands
 #[derive(Subcommand)]
@@ -32,7 +30,6 @@ use super::semantic_search::ClusterMethod;
 pub enum AnalyzeCommands {
     // ── Core Analysis ──────────────────────────────────────────────
     // Churn, Complexity, Dag, DeadCode, Defects
-
     /// Analyze code churn (change frequency)
     #[command(visible_aliases = &["ch"])]
     Churn {
@@ -278,10 +275,8 @@ pub enum AnalyzeCommands {
         output: Option<PathBuf>,
     },
 
-
     // ── Debt Analysis ─────────────────────────────────────────────
     // Satd, DeepContext
-
     /// Analyze Self-Admitted Technical Debt (SATD) in comments
     #[command(name = "satd", visible_aliases = &["debt", "td", "tech-debt"])]
     Satd {
@@ -419,10 +414,8 @@ pub enum AnalyzeCommands {
         top_files: usize,
     },
 
-
     // ── TDG & Quality Gates ───────────────────────────────────────
     // Tdg, BuildTdg, LintHotspot, Makefile
-
     /// Analyze Technical Debt Gradient (TDG) scores
     #[command(name = "tdg")]
     Tdg {
@@ -615,10 +608,8 @@ pub enum AnalyzeCommands {
         top_files: usize,
     },
 
-
     // ── Advanced Analysis ─────────────────────────────────────────
     // Provability, Duplicates, DefectPrediction
-
     /// Analyze provability properties using abstract interpretation
     Provability {
         /// Path to analyze (defaults to current directory)
@@ -764,10 +755,8 @@ pub enum AnalyzeCommands {
         top_files: usize,
     },
 
-
     // ── Metrics & Comprehensive ───────────────────────────────────
     // Comprehensive, GraphMetrics, NameSimilarity, ProofAnnotations
-
     /// Run comprehensive multi-dimensional analysis with MCP tool composition
     ///
     /// Perfect for AI agents to get complete code health metrics. Combines:
@@ -1024,10 +1013,8 @@ pub enum AnalyzeCommands {
         top_files: usize,
     },
 
-
     // ── Coverage & Symbols ────────────────────────────────────────
     // IncrementalCoverage, CoverageImprove, SymbolTable, BigO
-
     /// Analyze incremental coverage changes with caching
     IncrementalCoverage {
         /// Path to analyze (defaults to current directory)
@@ -1225,11 +1212,9 @@ pub enum AnalyzeCommands {
         top_files: usize,
     },
 
-
     // ── WASM & Specialized ────────────────────────────────────────
     // AssemblyScript, WebAssembly, Clippy, Entropy, Wasm, DeepWasm,
     // Mutate, Cluster, Topics, Models
-
     /// Analyze `AssemblyScript` code
     AssemblyScript {
         /// Path to analyze (defaults to current directory)

@@ -2,9 +2,7 @@
 
 use regex::RegexSet;
 
-use super::types::{
-    AstContext, AstNodeType, DebtCategory, DebtClassifier, DebtPattern, Severity,
-};
+use super::types::{AstContext, AstNodeType, DebtCategory, DebtClassifier, DebtPattern, Severity};
 
 impl Default for DebtClassifier {
     fn default() -> Self {

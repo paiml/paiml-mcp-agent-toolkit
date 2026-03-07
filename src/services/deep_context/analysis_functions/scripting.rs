@@ -4,17 +4,17 @@
 
 use std::path::Path;
 
-#[cfg(feature = "python-ast")]
-use crate::services::unified_python_analyzer::UnifiedPythonAnalyzer;
 #[cfg(feature = "shell-ast")]
 use crate::services::unified_bash_analyzer::UnifiedBashAnalyzer;
+#[cfg(feature = "python-ast")]
+use crate::services::unified_python_analyzer::UnifiedPythonAnalyzer;
 use crate::services::unified_typescript_analyzer::UnifiedTypeScriptAnalyzer;
 
-use super::metrics::TYPESCRIPT_UNIFIED_CACHE;
-#[cfg(feature = "python-ast")]
-use super::metrics::PYTHON_UNIFIED_CACHE;
 #[cfg(feature = "shell-ast")]
 use super::metrics::BASH_UNIFIED_CACHE;
+#[cfg(feature = "python-ast")]
+use super::metrics::PYTHON_UNIFIED_CACHE;
+use super::metrics::TYPESCRIPT_UNIFIED_CACHE;
 
 /// Toyota Way Single Responsibility: Handle TypeScript/JavaScript file analysis
 /// OPTIMIZATION: Uses UnifiedTypeScriptAnalyzer to parse file once and extract both AST and complexity

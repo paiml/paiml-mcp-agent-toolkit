@@ -28,9 +28,7 @@ pub use output::format_summary;
 
 use crate::cli::LintHotspotOutputFormat;
 use anyhow::Result;
-use metrics::{
-    calculate_enforcement_metadata, check_quality_gates, generate_refactor_chain,
-};
+use metrics::{calculate_enforcement_metadata, check_quality_gates, generate_refactor_chain};
 use output::format_output;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};

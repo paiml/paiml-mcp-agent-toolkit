@@ -121,7 +121,9 @@ pub(crate) fn write_risk_distribution_table(
 }
 
 /// Calculate risk counts (cognitive complexity <=6)
-pub(crate) fn calculate_risk_counts(predictions: &[(String, DefectScore)]) -> (usize, usize, usize) {
+pub(crate) fn calculate_risk_counts(
+    predictions: &[(String, DefectScore)],
+) -> (usize, usize, usize) {
     let high_risk = predictions
         .iter()
         .filter(|(_, s)| s.probability > 0.7)
@@ -141,7 +143,12 @@ pub(crate) fn calculate_risk_counts(predictions: &[(String, DefectScore)]) -> (u
 }
 
 /// Write a single risk row (cognitive complexity <=3)
-pub(crate) fn write_risk_row(output: &mut String, label: &str, count: usize, total: f64) -> Result<()> {
+pub(crate) fn write_risk_row(
+    output: &mut String,
+    label: &str,
+    count: usize,
+    total: f64,
+) -> Result<()> {
     writeln!(
         output,
         "| {} | {} | {:.1}% |",

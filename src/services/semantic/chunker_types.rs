@@ -8,6 +8,7 @@ pub enum Language {
     Cpp,
     Go,
     Lua,
+    Ptx,
 }
 
 impl Language {
@@ -20,6 +21,7 @@ impl Language {
             Language::Cpp => "cpp",
             Language::Go => "go",
             Language::Lua => "lua",
+            Language::Ptx => "ptx",
         }
     }
 }
@@ -112,6 +114,7 @@ pub fn chunk_code(source: &str, language: Language) -> Result<Vec<CodeChunk>, St
         Language::Go => chunk_go_file(source),
         #[cfg(feature = "tree-sitter")]
         Language::Lua => chunk_lua_file(source),
+        Language::Ptx => chunk_ptx_file(source),
         #[allow(unreachable_patterns)]
         _ => Err(format!(
             "language {:?} not enabled; enable the corresponding feature",

@@ -39,6 +39,9 @@ include!("chunker_c_cpp.rs");
 #[cfg(feature = "tree-sitter")]
 include!("chunker_go_lua.rs");
 
+// --- PTX assembly chunking (regex-based, no tree-sitter needed) ---
+include!("chunker_ptx.rs");
+
 // --- Text chunking with trueno-rag ---
 include!("chunker_text.rs");
 

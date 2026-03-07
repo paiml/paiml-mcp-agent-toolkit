@@ -23,8 +23,7 @@ fn create_test_mutant(id: &str) -> Mutant {
 #[test]
 fn test_mutation_state_creation() {
     let mutants = vec![create_test_mutant("m1"), create_test_mutant("m2")];
-    let state =
-        MutationState::new(std::path::Path::new("/project"), mutants, 60, true, Some(4));
+    let state = MutationState::new(std::path::Path::new("/project"), mutants, 60, true, Some(4));
 
     assert_eq!(state.pending_mutants.len(), 2);
     assert!(state.completed_mutants.is_empty());
@@ -37,8 +36,7 @@ fn test_mutation_state_creation() {
 #[test]
 fn test_mutation_state_add_result() {
     let mutants = vec![create_test_mutant("m1"), create_test_mutant("m2")];
-    let mut state =
-        MutationState::new(std::path::Path::new("/project"), mutants, 60, false, None);
+    let mut state = MutationState::new(std::path::Path::new("/project"), mutants, 60, false, None);
 
     let result = MutationResult {
         mutant: create_test_mutant("m1"),
@@ -59,8 +57,7 @@ fn test_mutation_state_add_result() {
 #[test]
 fn test_mutation_state_completion() {
     let mutants = vec![create_test_mutant("m1")];
-    let mut state =
-        MutationState::new(std::path::Path::new("/project"), mutants, 60, false, None);
+    let mut state = MutationState::new(std::path::Path::new("/project"), mutants, 60, false, None);
 
     let result = MutationResult {
         mutant: create_test_mutant("m1"),
@@ -78,8 +75,7 @@ fn test_mutation_state_completion() {
 
 #[test]
 fn test_mutation_state_empty() {
-    let state =
-        MutationState::new(std::path::Path::new("/project"), vec![], 60, false, None);
+    let state = MutationState::new(std::path::Path::new("/project"), vec![], 60, false, None);
 
     assert!(state.is_complete());
     assert_eq!(state.total_mutants(), 0);
@@ -88,8 +84,7 @@ fn test_mutation_state_empty() {
 
 #[test]
 fn test_mutation_state_config() {
-    let state =
-        MutationState::new(std::path::Path::new("/project"), vec![], 120, true, Some(8));
+    let state = MutationState::new(std::path::Path::new("/project"), vec![], 120, true, Some(8));
 
     assert_eq!(state.config.timeout_secs, 120);
     assert!(state.config.parallel);

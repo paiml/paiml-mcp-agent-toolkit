@@ -3,8 +3,8 @@
 
 use crate::cli::PromptOutputFormat;
 use clap::Subcommand;
-use std::path::PathBuf;
 use serde_json::Value;
+use std::path::PathBuf;
 
 /// Organizational intelligence subcommands (Phase 4: OIP Integration)
 #[derive(Subcommand)]
@@ -319,4 +319,3 @@ mod property_tests {
         }
     }
 }
-

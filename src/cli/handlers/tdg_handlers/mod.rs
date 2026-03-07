@@ -24,9 +24,7 @@ use std::process::Command;
 // Re-export submodule functions for test access via `use super::*`
 #[cfg(test)]
 #[allow(unused_imports)]
-pub(crate) use display::{
-    display_gate_result_table, format_explain_output, format_history_output,
-};
+pub(crate) use display::{display_gate_result_table, format_explain_output, format_history_output};
 #[cfg(test)]
 #[allow(unused_imports)]
 pub(crate) use formatting::{
@@ -35,7 +33,6 @@ pub(crate) use formatting::{
 #[cfg(test)]
 #[allow(unused_imports)]
 pub(crate) use quality_gates::{execute_tdg_analysis, validate_minimum_grade};
-
 
 /// Discover git working directory from a path (shell fallback when git-lib disabled)
 fn discover_git_workdir(path: &Path) -> Option<PathBuf> {

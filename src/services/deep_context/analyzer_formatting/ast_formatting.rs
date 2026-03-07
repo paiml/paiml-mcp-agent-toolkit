@@ -479,5 +479,4 @@ impl DeepContextAnalyzer {
 
         Ok(())
     }
-
 }

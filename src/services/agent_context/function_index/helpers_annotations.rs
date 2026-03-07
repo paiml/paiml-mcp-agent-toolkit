@@ -391,6 +391,126 @@ pub(super) fn detect_inline_ptx_defects(source: &str, faults: &mut Vec<String>) 
     if reg_count > 8 {
         faults.push("PTX_HIGH_REGS".to_string());
     }
+
+    // PTX_SHARED_U64: 64-bit register for shared memory address (should be 32-bit)
+    // Pattern: shared memory accessed via 64-bit register ("l" constraint with shared)
+    if source.contains("st.shared") || source.contains("ld.shared") {
+        // Check for 64-bit addressing of shared memory (cvta.shared or "l" constraint)
+        if source.contains("cvta.shared") || source.contains("cvta.to.shared") {
+            faults.push("PTX_SHARED_U64".to_string());
+        }
+    }
+
+    // PTX_EARLY_EXIT: Thread exits before reaching barrier (PARITY-114)
+    // Pattern: return/ret before __syncthreads or bar.sync
+    if has_barrier {
+        let lines: Vec<&str> = source.lines().collect();
+        let mut seen_early_return = false;
+        for line in &lines {
+            let trimmed = line.trim();
+            if trimmed.starts_with("return") && trimmed.contains(';') {
+                seen_early_return = true;
+            }
+            if seen_early_return && (trimmed.contains("bar.sync") || trimmed.contains("__syncthreads")) {
+                faults.push("PTX_EARLY_EXIT".to_string());
+                break;
+            }
+        }
+    }
+
+    // PTX_REG_SPILL: Register spills to local memory
+    // Pattern: .local declarations in inline PTX indicate spills
+    if source.contains(".local") && (source.contains("st.local") || source.contains("ld.local")) {
+        faults.push("PTX_REG_SPILL".to_string());
+    }
+
+    // PTX_PRED_OVERFLOW: >8 predicate registers (hardware limit)
+    // Pattern: excessive predicate register declarations (%p0..%p9+)
+    let pred_count = (0..16).filter(|i| source.contains(&format!("%p{i}"))).count();
+    if pred_count > 8 {
+        faults.push("PTX_PRED_OVERFLOW".to_string());
+    }
+
+    // PTX_EMPTY_LOOP: Loop body with no computation
+    // Pattern: for/while loop with only barrier or empty body in CUDA context
+    if source.contains("__global__") || source.contains("__device__") {
+        let lines: Vec<&str> = source.lines().collect();
+        for (i, line) in lines.iter().enumerate() {
+            let trimmed = line.trim();
+            if (trimmed.starts_with("for") || trimmed.starts_with("while"))
+                && i + 1 < lines.len()
+            {
+                let next = lines[i + 1].trim();
+                if next == "{}" || next == "{ }" || next == ";" {
+                    faults.push("PTX_EMPTY_LOOP".to_string());
+                    break;
+                }
+            }
+        }
+    }
+
+    // PTX_REDUNDANT_MOV: Redundant register move chains
+    // Pattern: mov instruction where source == destination register
+    for line in source.lines() {
+        let trimmed = line.trim();
+        if trimmed.contains("mov.") {
+            // Parse: mov.type %dest, %src; — detect %rN, %rN patterns
+            if let Some(args) = trimmed.split_whitespace().nth(1) {
+                let parts: Vec<&str> = args.split(',').map(str::trim).collect();
+                if parts.len() == 2 {
+                    let dest = parts[0].trim_end_matches(';');
+                    let src = parts[1].trim_end_matches(';');
+                    if dest == src && dest.starts_with('%') {
+                        faults.push("PTX_REDUNDANT_MOV".to_string());
+                        break;
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// Link C/C++ declarations (prototypes in headers) to their definitions (implementations).
+///
+/// For each function with a `[decl]` suffix in its name, find the corresponding
+/// definition (same name without `[decl]`) and set `linked_definition` to point
+/// to the definition's location. Also marks the declaration's `definition_type`
+/// as `Declaration`.
+pub(super) fn link_declarations_to_definitions(functions: &mut [FunctionEntry]) {
+    // Build index: bare_name → Vec<(index, file_path, start_line)> for definitions
+    let mut def_index: HashMap<String, Vec<(usize, String, usize)>> = HashMap::new();
+    for (i, func) in functions.iter().enumerate() {
+        if !func.function_name.ends_with(" [decl]") {
+            def_index
+                .entry(func.function_name.clone())
+                .or_default()
+                .push((i, func.file_path.clone(), func.start_line));
+        }
+    }
+
+    // Link declarations to definitions
+    let mut linked = 0;
+    for func in functions.iter_mut() {
+        if func.function_name.ends_with(" [decl]") {
+            let bare_name = func.function_name.trim_end_matches(" [decl]");
+            func.definition_type = DefinitionType::Declaration;
+            if let Some(defs) = def_index.get(bare_name) {
+                // Pick the definition in a different file (header→impl linking)
+                let best = defs
+                    .iter()
+                    .find(|(_, path, _)| path != &func.file_path)
+                    .or_else(|| defs.first());
+                if let Some((_, path, line)) = best {
+                    func.linked_definition = Some(format!("{path}:{line}"));
+                    linked += 1;
+                }
+            }
+        }
+    }
+
+    if linked > 0 {
+        eprintln!("  Decl-def links: {linked} declarations linked to definitions");
+    }
 }
 
 /// Compute name frequency for generic name demotion.

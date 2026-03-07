@@ -1,6 +1,7 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
 //! CB-600: Implicit Globals and CB-601: Nil-Unsafe Access detection.
 
+use super::super::types::*;
 use super::detection_helpers::{
     collect_known_locals, count_braces, extract_implicit_global, starts_with_lua_keyword,
 };
@@ -8,7 +9,6 @@ use super::helpers::{
     compute_lua_production_lines, count_consecutive_field_access, is_in_lua_string,
     is_lua_test_file, walkdir_lua_files,
 };
-use super::super::types::*;
 use std::fs;
 use std::path::Path;
 

@@ -54,8 +54,7 @@ fn create_test_predictions() -> Vec<(String, DefectScore)> {
 #[test]
 fn test_format_defect_markdown_empty() {
     let predictions: Vec<(String, DefectScore)> = vec![];
-    let result =
-        format_defect_markdown(&predictions, false).expect("Should format empty markdown");
+    let result = format_defect_markdown(&predictions, false).expect("Should format empty markdown");
 
     assert!(result.contains("# Defect Prediction Report"));
     assert!(result.contains("## Summary"));
@@ -86,8 +85,7 @@ fn test_format_defect_markdown_without_recommendations() {
 #[test]
 fn test_format_defect_markdown_risk_table() {
     let predictions = create_test_predictions();
-    let result =
-        format_defect_markdown(&predictions, false).expect("Should format markdown");
+    let result = format_defect_markdown(&predictions, false).expect("Should format markdown");
 
     assert!(result.contains("### Risk Distribution"));
     assert!(result.contains("| Risk Level | Count | Percentage |"));
@@ -99,8 +97,7 @@ fn test_format_defect_markdown_risk_table() {
 #[test]
 fn test_format_defect_markdown_detailed_predictions() {
     let predictions = create_test_predictions();
-    let result =
-        format_defect_markdown(&predictions, false).expect("Should format markdown");
+    let result = format_defect_markdown(&predictions, false).expect("Should format markdown");
 
     assert!(result.contains("## Detailed Predictions"));
     assert!(result.contains("**Probability**:"));

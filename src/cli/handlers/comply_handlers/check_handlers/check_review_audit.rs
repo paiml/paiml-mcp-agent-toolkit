@@ -11,9 +11,9 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
 
-use super::types::*;
 use super::check::*;
 use super::check_extended::*;
+use super::types::*;
 
 /// Handle `pmat comply review` - generate evidence-based review checklist.
 pub(crate) async fn handle_review(
@@ -21,8 +21,8 @@ pub(crate) async fn handle_review(
     format: ComplyOutputFormat,
     output: Option<&Path>,
 ) -> Result<()> {
-    use crate::cli::handlers::comply_handlers::reproducibility_handlers;
     use crate::cli::handlers::comply_handlers::muda_handlers;
+    use crate::cli::handlers::comply_handlers::reproducibility_handlers;
 
     println!("PMAT Comply Review (Layer 2: Genchi Genbutsu)");
     println!("==============================================\n");
@@ -99,22 +99,40 @@ fn build_review_checklist(
         category: "Waste Score".into(),
         question: "Is the Muda waste score within acceptable limits?".into(),
         evidence: format!("Score: {:.1}/100 ({})", muda.total_score, muda.grade),
-        status: if muda.total_score <= 60.0 { "PASS".into() } else { "WARN".into() },
+        status: if muda.total_score <= 60.0 {
+            "PASS".into()
+        } else {
+            "WARN".into()
+        },
     });
 
     items.push(ReviewItem {
         category: "Git State".into(),
         question: "Is the working tree clean?".into(),
-        evidence: if git_clean { "Clean working tree".into() } else { "Uncommitted changes present".into() },
-        status: if git_clean { "PASS".into() } else { "WARN".into() },
+        evidence: if git_clean {
+            "Clean working tree".into()
+        } else {
+            "Uncommitted changes present".into()
+        },
+        status: if git_clean {
+            "PASS".into()
+        } else {
+            "WARN".into()
+        },
     });
 
     items.push(ReviewItem {
         category: "Environment".into(),
         question: "Is the build environment documented?".into(),
-        evidence: format!("Dockerfile: {} | CI: {}",
-            repro.has_dockerfile, repro.has_ci_config),
-        status: if repro.has_dockerfile || repro.has_ci_config { "PASS".into() } else { "WARN".into() },
+        evidence: format!(
+            "Dockerfile: {} | CI: {}",
+            repro.has_dockerfile, repro.has_ci_config
+        ),
+        status: if repro.has_dockerfile || repro.has_ci_config {
+            "PASS".into()
+        } else {
+            "WARN".into()
+        },
     });
 
     items
@@ -132,7 +150,10 @@ fn format_review_markdown(items: &[ReviewItem]) -> String {
             "WARN" => "[-]",
             _ => "[ ]",
         };
-        out.push_str(&format!("- {} **{}**: {}\n", icon, item.category, item.question));
+        out.push_str(&format!(
+            "- {} **{}**: {}\n",
+            icon, item.category, item.question
+        ));
         out.push_str(&format!("  - Evidence: {}\n\n", item.evidence));
     }
     out
@@ -195,9 +216,16 @@ pub(crate) async fn handle_audit(
 
     let layer1_checks = collect_layer1_checks(project_path, comply_config);
 
-    let repro = crate::cli::handlers::comply_handlers::reproducibility_handlers::check_reproducibility(project_path);
-    let golden = crate::cli::handlers::comply_handlers::reproducibility_handlers::check_golden_trace_drift(project_path);
-    let muda = crate::cli::handlers::comply_handlers::muda_handlers::calculate_muda_score(project_path);
+    let repro =
+        crate::cli::handlers::comply_handlers::reproducibility_handlers::check_reproducibility(
+            project_path,
+        );
+    let golden =
+        crate::cli::handlers::comply_handlers::reproducibility_handlers::check_golden_trace_drift(
+            project_path,
+        );
+    let muda =
+        crate::cli::handlers::comply_handlers::muda_handlers::calculate_muda_score(project_path);
     let layer2_review = build_review_checklist(&repro, golden, &muda, git_clean);
 
     let artifact = AuditArtifact {
@@ -218,9 +246,7 @@ pub(crate) async fn handle_audit(
 
     let content = match format {
         ComplyOutputFormat::Json => serde_json::to_string_pretty(&artifact)?,
-        ComplyOutputFormat::Markdown | ComplyOutputFormat::Text => {
-            format_audit_markdown(&artifact)
-        }
+        ComplyOutputFormat::Markdown | ComplyOutputFormat::Text => format_audit_markdown(&artifact),
     };
 
     if let Some(out_path) = output {
@@ -234,14 +260,37 @@ pub(crate) async fn handle_audit(
 }
 
 /// Collect Layer 1 checks for the audit artifact.
-fn collect_layer1_checks(project_path: &Path, comply_config: &crate::models::comply_config::ComplyConfig) -> Vec<ComplianceCheck> {
+fn collect_layer1_checks(
+    project_path: &Path,
+    comply_config: &crate::models::comply_config::ComplyConfig,
+) -> Vec<ComplianceCheck> {
     vec![
         filter_check_by_config(check_compute_brick(project_path), "cb-060", comply_config),
-        filter_check_by_config(check_oip_tarantula_patterns(project_path), "cb-120", comply_config),
-        filter_check_by_config(check_coverage_quality_patterns(project_path), "cb-125", comply_config),
-        filter_check_by_config(check_muda_waste_score(project_path), "cb-300", comply_config),
-        filter_check_by_config(check_reproducibility_level(project_path), "cb-301", comply_config),
-        filter_check_by_config(check_golden_trace_drift(project_path), "cb-302", comply_config),
+        filter_check_by_config(
+            check_oip_tarantula_patterns(project_path),
+            "cb-120",
+            comply_config,
+        ),
+        filter_check_by_config(
+            check_coverage_quality_patterns(project_path),
+            "cb-125",
+            comply_config,
+        ),
+        filter_check_by_config(
+            check_muda_waste_score(project_path),
+            "cb-300",
+            comply_config,
+        ),
+        filter_check_by_config(
+            check_reproducibility_level(project_path),
+            "cb-301",
+            comply_config,
+        ),
+        filter_check_by_config(
+            check_golden_trace_drift(project_path),
+            "cb-302",
+            comply_config,
+        ),
         filter_check_by_config(check_edd_compliance(project_path), "cb-303", comply_config),
     ]
 }
@@ -257,16 +306,28 @@ fn format_audit_markdown(artifact: &AuditArtifact) -> String {
     out.push_str("## Layer 1: Automated Checks (Jidoka)\n\n");
     for check in &artifact.layer1_checks {
         let icon = match check.status {
-            CheckStatus::Pass => "PASS", CheckStatus::Warn => "WARN", CheckStatus::Fail => "FAIL", CheckStatus::Skip => "SKIP",
+            CheckStatus::Pass => "PASS",
+            CheckStatus::Warn => "WARN",
+            CheckStatus::Fail => "FAIL",
+            CheckStatus::Skip => "SKIP",
         };
-        out.push_str(&format!("- [{}] **{}**: {}\n", icon, check.name, check.message));
+        out.push_str(&format!(
+            "- [{}] **{}**: {}\n",
+            icon, check.name, check.message
+        ));
     }
     out.push_str("\n## Layer 2: Review Evidence (Genchi Genbutsu)\n\n");
     for item in &artifact.layer2_review {
-        out.push_str(&format!("- [{}] **{}**: {}\n", item.status, item.category, item.evidence));
+        out.push_str(&format!(
+            "- [{}] **{}**: {}\n",
+            item.status, item.category, item.evidence
+        ));
     }
     out.push_str("\n## Summary\n\n");
-    out.push_str(&format!("- Reproducibility: {}\n", artifact.reproducibility_level));
+    out.push_str(&format!(
+        "- Reproducibility: {}\n",
+        artifact.reproducibility_level
+    ));
     out.push_str(&format!("- Muda Score: {:.1}/100\n", artifact.muda_score));
     out.push_str(&format!("- Golden Traces: {}\n", artifact.golden_traces));
     out

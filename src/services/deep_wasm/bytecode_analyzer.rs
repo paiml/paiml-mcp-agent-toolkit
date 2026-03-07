@@ -153,7 +153,9 @@ pub struct BytecodeAnalyzer {
 
 impl BytecodeAnalyzer {
     pub fn new() -> Self {
-        Self { deep_analysis: true }
+        Self {
+            deep_analysis: true,
+        }
     }
 
     pub fn with_deep_analysis(deep_analysis: bool) -> Self {

@@ -83,8 +83,7 @@ async fn test_handle_analyze_defects_specific_file() {
     std::fs::create_dir_all(&src_dir).expect("create dir");
 
     // Create two files, only scan one
-    std::fs::write(src_dir.join("clean.rs"), "fn clean() { let x = Some(42); }")
-        .expect("write");
+    std::fs::write(src_dir.join("clean.rs"), "fn clean() { let x = Some(42); }").expect("write");
     std::fs::write(
         src_dir.join("dirty.rs"),
         "fn dirty() { let x = Some(42).unwrap(); }",

@@ -3,8 +3,8 @@
 use crate::models::churn::CodeChurnAnalysis;
 use crate::models::dag::DependencyGraph;
 use crate::services::complexity::ComplexityReport;
-use crate::services::satd_detector::SATDAnalysisResult;
 use crate::services::deep_context::EnhancedFileContext;
+use crate::services::satd_detector::SATDAnalysisResult;
 
 /// Structure for collecting parallel analysis results
 #[derive(Default)]

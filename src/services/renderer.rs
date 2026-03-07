@@ -86,13 +86,14 @@ pub fn render_template(
         Value::String(chrono::Utc::now().to_rfc3339()),
     );
 
-    let tmpl = renderer
-        .env
-        .template_from_str(template)
-        .map_err(|e| TemplateError::RenderError {
-            line: e.line().unwrap_or(0) as u32,
-            message: e.to_string(),
-        })?;
+    let tmpl =
+        renderer
+            .env
+            .template_from_str(template)
+            .map_err(|e| TemplateError::RenderError {
+                line: e.line().unwrap_or(0) as u32,
+                message: e.to_string(),
+            })?;
 
     tmpl.render(Value::Object(full_context))
         .map_err(|e| TemplateError::RenderError {
@@ -189,8 +190,7 @@ mod tests {
     #[test]
     fn test_render_template_with_conditionals() {
         let renderer = TemplateRenderer::new().unwrap();
-        let template =
-            "{% if enabled %}Feature is enabled{% else %}Feature is disabled{% endif %}";
+        let template = "{% if enabled %}Feature is enabled{% else %}Feature is disabled{% endif %}";
 
         let mut context = serde_json::Map::new();
         context.insert("enabled".to_string(), Value::Bool(true));

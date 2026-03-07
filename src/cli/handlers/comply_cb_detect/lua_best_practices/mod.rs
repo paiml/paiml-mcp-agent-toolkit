@@ -5,9 +5,6 @@
 //! Based on: LuaTaint (Xiang et al. 2025), FLuaScan (Gao et al. 2023),
 //! Luau type system (Brown et al. 2021/2023), luacheck W111/W113/W211.
 
-mod constants;
-mod helpers;
-mod detection_helpers;
 mod cb600_cb601;
 mod cb602_cb603;
 mod cb604_cb605;
@@ -17,12 +14,13 @@ mod cb611_cb612_cb613;
 mod cb614_cb615;
 mod cb616_cb617;
 mod cb618_cb619;
+mod constants;
+mod detection_helpers;
+mod helpers;
 
 // Re-export helpers (pub)
 pub use helpers::{
-    compute_lua_production_lines,
-    count_consecutive_field_access,
-    is_lua_test_file,
+    compute_lua_production_lines, count_consecutive_field_access, is_lua_test_file,
     walkdir_lua_files,
 };
 
@@ -57,7 +55,9 @@ pub use cb611_cb612_cb613::{
 pub use cb614_cb615::{detect_cb614_global_protection, detect_cb615_coroutine_checks};
 
 // Re-export CB-616/617
-pub use cb616_cb617::{detect_cb616_type_annotations, detect_cb617_openresty_checks, LuaAnnotationSystem};
+pub use cb616_cb617::{
+    detect_cb616_type_annotations, detect_cb617_openresty_checks, LuaAnnotationSystem,
+};
 
 // Re-export CB-618/619
 pub use cb618_cb619::{detect_cb618_ffi_safety, detect_cb619_oop_patterns, LuaOopPattern};

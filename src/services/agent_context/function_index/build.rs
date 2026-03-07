@@ -152,6 +152,7 @@ impl AgentContextIndex {
                     clone_count: 0,
                     pattern_diversity: 0.0,
                     fault_annotations: Vec::new(),
+                    linked_definition: None,
                 };
 
                 functions.push(entry);
@@ -180,6 +181,9 @@ impl AgentContextIndex {
 
         // Populate cached annotations (churn, duplicates, entropy, faults)
         populate_cached_annotations(&mut functions, &indices.file_index, &project_root);
+
+        // Link C/C++ declarations to definitions (header → implementation)
+        link_declarations_to_definitions(&mut functions);
 
         // Calculate average TDG score
         let avg_tdg = if !functions.is_empty() {

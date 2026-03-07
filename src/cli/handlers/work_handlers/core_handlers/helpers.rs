@@ -2,8 +2,8 @@
 // Utility helper functions for work command handlers
 // (parsing, spec template, override name mapping, validation)
 
-use crate::models::roadmap::RoadmapItem;
 use crate::cli::handlers::work_falsification::ClaimResult;
+use crate::models::roadmap::RoadmapItem;
 use anyhow::Result;
 use std::path::PathBuf;
 
@@ -34,10 +34,7 @@ pub(super) fn parse_acceptance_criteria(body: &str) -> Vec<String> {
 }
 
 /// Create specification template
-pub(super) fn create_specification_template(
-    spec_path: &PathBuf,
-    item: &RoadmapItem,
-) -> Result<()> {
+pub(super) fn create_specification_template(spec_path: &PathBuf, item: &RoadmapItem) -> Result<()> {
     use std::fs;
 
     if let Some(parent) = spec_path.parent() {

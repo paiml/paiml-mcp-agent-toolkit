@@ -88,7 +88,9 @@ impl SimpleDeepContext {
                 r"(?:public|private|protected)\s+(?:static\s+)?(?:\w+(?:<[^>]*>)?\s+)+(\w+)\s*\([^)]*\)\s*\{",
             ],
             "go" => &[r"(?m)^func\s+(?:\([^)]*\)\s+)?(\w+)\s*\("],
-            "c" | "cpp" | "cc" | "cxx" | "cu" | "cuh" => &[r"(?m)^\s*\w+(?:\s*\**)?\s+(\w+)\s*\([^)]*\)\s*\{"],
+            "c" | "cpp" | "cc" | "cxx" | "cu" | "cuh" => {
+                &[r"(?m)^\s*\w+(?:\s*\**)?\s+(\w+)\s*\([^)]*\)\s*\{"]
+            }
             "rb" | "ruchy" => &[r"(?m)^\s*def\s+(\w+)"],
             "kt" => &[r"(?m)^\s*(?:suspend\s+)?fun\s+(\w+)\s*\("],
             "cs" => &[

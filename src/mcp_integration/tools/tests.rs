@@ -4,11 +4,11 @@
 mod tests {
     use crate::agents::registry::AgentRegistry;
     use crate::mcp::tools::agent_context_tools::IndexManager;
-    use crate::mcp_integration::McpTool;
     use crate::mcp_integration::tools::{
         AnalyzeTool, FindSimilarToolAdapter, GetFunctionToolAdapter, IndexStatsToolAdapter,
         OrchestrateTool, QualityGateTool, QueryCodeToolAdapter, TransformTool, ValidateTool,
     };
+    use crate::mcp_integration::McpTool;
     use serde_json::json;
     use std::sync::Arc;
 

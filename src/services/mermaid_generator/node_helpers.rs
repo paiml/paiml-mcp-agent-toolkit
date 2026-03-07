@@ -1,9 +1,9 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
 //! Helper methods for generating Mermaid node and edge output
 
+use super::types::MermaidGenerator;
 use crate::models::dag::{DependencyGraph, NodeInfo, NodeType};
 use std::fmt::Write;
-use super::types::MermaidGenerator;
 
 impl MermaidGenerator {
     pub(super) fn generate_nodes(&self, graph: &DependencyGraph, output: &mut String) {

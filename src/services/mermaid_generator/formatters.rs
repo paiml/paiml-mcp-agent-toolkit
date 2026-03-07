@@ -1,8 +1,8 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
 //! Formatting utilities for Mermaid diagram output
 
-use crate::models::dag::{EdgeType, NodeType};
 use super::types::MermaidGenerator;
+use crate::models::dag::{EdgeType, NodeType};
 
 impl MermaidGenerator {
     #[inline]

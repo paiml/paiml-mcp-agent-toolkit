@@ -1,12 +1,10 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
 //! CB-606: Missing Module Return and CB-607: Colon/Dot Confusion detection.
 
+use super::super::types::*;
 use super::constants::LUA_STD_TABLES;
 use super::detection_helpers::{extract_method_call, extract_module_table_var};
-use super::helpers::{
-    compute_lua_production_lines, is_lua_test_file, walkdir_lua_files,
-};
-use super::super::types::*;
+use super::helpers::{compute_lua_production_lines, is_lua_test_file, walkdir_lua_files};
 use std::fs;
 use std::path::Path;
 

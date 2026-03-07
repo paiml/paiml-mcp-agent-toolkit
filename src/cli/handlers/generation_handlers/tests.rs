@@ -430,8 +430,7 @@ fn test_build_agent_context_empty_name_fails() {
 
 #[test]
 fn test_build_agent_context_invalid_name_fails() {
-    let result =
-        build_agent_context("agent-with-dash", "mcp-server", &[], "strict", None, None);
+    let result = build_agent_context("agent-with-dash", "mcp-server", &[], "strict", None, None);
     assert!(result.is_err());
 }
 

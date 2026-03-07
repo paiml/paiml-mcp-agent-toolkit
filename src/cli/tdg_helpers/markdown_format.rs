@@ -108,10 +108,7 @@ pub(super) fn write_hotspot_basic_info(output: &mut String, hotspot: &TDGHotspot
 }
 
 /// Write component breakdown for a hotspot
-pub(super) fn write_component_breakdown(
-    output: &mut String,
-    hotspot: &TDGHotspot,
-) -> Result<()> {
+pub(super) fn write_component_breakdown(output: &mut String, hotspot: &TDGHotspot) -> Result<()> {
     use std::fmt::Write;
 
     writeln!(output, "#### Component Breakdown:")?;

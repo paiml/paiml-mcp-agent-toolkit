@@ -4,10 +4,11 @@
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod coverage_tests {
+    use super::super::handlers::{health_check, openapi_spec};
+    use super::super::openapi::generate_openapi_spec;
     use super::super::router::create_router;
     use super::super::types::{AppError, AppState};
-    use super::super::openapi::generate_openapi_spec;
-    use super::super::handlers::{health_check, openapi_spec};
+    use crate::contracts::service::ContractService;
     use axum::{
         body::Body,
         http::{Request, StatusCode},
@@ -16,7 +17,6 @@ mod coverage_tests {
     use serde_json::{json, Value};
     use std::sync::Arc;
     use tower::ServiceExt;
-    use crate::contracts::service::ContractService;
 
     // ==========================================================================
     // Test: create_router function
@@ -303,10 +303,7 @@ mod coverage_tests {
     async fn test_router_has_all_routes() {
         let router = create_router().expect("Failed to create router");
 
-        let routes = vec![
-            ("/health", "GET"),
-            ("/api/openapi", "GET"),
-        ];
+        let routes = vec![("/health", "GET"), ("/api/openapi", "GET")];
 
         for (path, method) in routes {
             let request = Request::builder()

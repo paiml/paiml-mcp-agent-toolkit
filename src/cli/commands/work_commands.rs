@@ -2,9 +2,9 @@
 // Work commands - extracted for file health (CB-040)
 // Split into submodules via include!() for maintainability
 
+use super::misc_commands::AnnotateOutputFormat;
 use clap::Subcommand;
 use std::path::PathBuf;
-use super::misc_commands::AnnotateOutputFormat;
 
 // --- WorkCommands enum (CRUD + workflow subcommands) ---
 include!("work_commands_work.rs");
@@ -89,21 +89,33 @@ mod work_commands_tests {
 
     #[test]
     fn test_to_roadmap_priority_low() {
-        assert!(matches!(WorkPriority::Low.to_roadmap_priority(), Priority::Low));
+        assert!(matches!(
+            WorkPriority::Low.to_roadmap_priority(),
+            Priority::Low
+        ));
     }
 
     #[test]
     fn test_to_roadmap_priority_medium() {
-        assert!(matches!(WorkPriority::Medium.to_roadmap_priority(), Priority::Medium));
+        assert!(matches!(
+            WorkPriority::Medium.to_roadmap_priority(),
+            Priority::Medium
+        ));
     }
 
     #[test]
     fn test_to_roadmap_priority_high() {
-        assert!(matches!(WorkPriority::High.to_roadmap_priority(), Priority::High));
+        assert!(matches!(
+            WorkPriority::High.to_roadmap_priority(),
+            Priority::High
+        ));
     }
 
     #[test]
     fn test_to_roadmap_priority_critical() {
-        assert!(matches!(WorkPriority::Critical.to_roadmap_priority(), Priority::Critical));
+        assert!(matches!(
+            WorkPriority::Critical.to_roadmap_priority(),
+            Priority::Critical
+        ));
     }
 }

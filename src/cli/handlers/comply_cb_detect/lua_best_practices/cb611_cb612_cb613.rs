@@ -2,10 +2,8 @@
 //! CB-611: Weak Table Misuse, CB-612: Test Framework Detection,
 //! and CB-613: Require Cycle Detection.
 
-use super::helpers::{
-    compute_lua_production_lines, is_lua_test_file, walkdir_lua_files,
-};
 use super::super::types::*;
+use super::helpers::{compute_lua_production_lines, is_lua_test_file, walkdir_lua_files};
 use std::fs;
 use std::path::{Path, PathBuf};
 

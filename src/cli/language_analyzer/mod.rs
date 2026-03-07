@@ -210,10 +210,7 @@ mod tests {
 
     #[test]
     fn test_language_detection() {
-        assert_eq!(
-            Language::from_path(Path::new("test.rs")),
-            Language::Rust
-        );
+        assert_eq!(Language::from_path(Path::new("test.rs")), Language::Rust);
         assert_eq!(
             Language::from_path(Path::new("test.js")),
             Language::JavaScript
@@ -222,10 +219,7 @@ mod tests {
             Language::from_path(Path::new("test.ts")),
             Language::TypeScript
         );
-        assert_eq!(
-            Language::from_path(Path::new("test.py")),
-            Language::Python
-        );
+        assert_eq!(Language::from_path(Path::new("test.py")), Language::Python);
         assert_eq!(
             Language::from_path(Path::new("test.txt")),
             Language::Unknown

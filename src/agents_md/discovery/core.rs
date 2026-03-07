@@ -265,11 +265,15 @@ impl AgentsMdDiscovery {
         if should_ignore_dir(dir, &self.config.ignore_patterns) {
             return;
         }
-        if let Some(file) = try_discover_agents_file(dir, &self.config.file_name, depth, &self.cache) {
+        if let Some(file) =
+            try_discover_agents_file(dir, &self.config.file_name, depth, &self.cache)
+        {
             files.push(file);
         }
         // Recurse into subdirectories
-        let Ok(entries) = std::fs::read_dir(dir) else { return };
+        let Ok(entries) = std::fs::read_dir(dir) else {
+            return;
+        };
         for entry in entries.flatten() {
             if entry.file_type().map_or(false, |ft| ft.is_dir()) {
                 self.discover_recursive(&entry.path(), depth + 1, files);

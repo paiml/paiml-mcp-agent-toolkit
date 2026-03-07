@@ -125,7 +125,8 @@ mod data_structure_tests {
         let json = serde_json::to_string(&checklist).expect("JSON serialization failed");
         assert!(json.contains("\"task_id\":\"TASK-123\""));
 
-        let parsed: QaChecklist = serde_yaml_ng::from_str(&yaml).expect("YAML deserialization failed");
+        let parsed: QaChecklist =
+            serde_yaml_ng::from_str(&yaml).expect("YAML deserialization failed");
         assert_eq!(parsed.task_id, checklist.task_id);
         assert_eq!(parsed.task_type, checklist.task_type);
     }

@@ -205,9 +205,9 @@ impl UniversalFeatureExtractor {
                 };
                 Some(Token::new(kind))
             }
-            ch if ch.is_ascii_digit() => {
-                Some(Token::new(TokenKind::Literal(Self::consume_number(ch, chars))))
-            }
+            ch if ch.is_ascii_digit() => Some(Token::new(TokenKind::Literal(
+                Self::consume_number(ch, chars),
+            ))),
             _ => Some(Token::new(TokenKind::Operator(ch.to_string()))),
         }
     }
@@ -217,7 +217,9 @@ impl UniversalFeatureExtractor {
         let mut tokens = Vec::new();
         let mut chars = source.char_indices().peekable();
         while let Some((_, ch)) = chars.next() {
-            if let Some(token) = Self::classify_char(ch, &mut chars, keywords, self.config.ignore_comments) {
+            if let Some(token) =
+                Self::classify_char(ch, &mut chars, keywords, self.config.ignore_comments)
+            {
                 tokens.push(token);
             }
         }
@@ -225,7 +227,10 @@ impl UniversalFeatureExtractor {
     }
 
     /// Consume an identifier starting with the given character
-    fn consume_identifier(first: char, chars: &mut std::iter::Peekable<std::str::CharIndices<'_>>) -> String {
+    fn consume_identifier(
+        first: char,
+        chars: &mut std::iter::Peekable<std::str::CharIndices<'_>>,
+    ) -> String {
         let mut ident = String::new();
         ident.push(first);
         while let Some((_, ch)) = chars.peek() {
@@ -240,7 +245,10 @@ impl UniversalFeatureExtractor {
     }
 
     /// Consume a number literal starting with the given digit
-    fn consume_number(first: char, chars: &mut std::iter::Peekable<std::str::CharIndices<'_>>) -> String {
+    fn consume_number(
+        first: char,
+        chars: &mut std::iter::Peekable<std::str::CharIndices<'_>>,
+    ) -> String {
         let mut number = String::new();
         number.push(first);
         while let Some((_, ch)) = chars.peek() {

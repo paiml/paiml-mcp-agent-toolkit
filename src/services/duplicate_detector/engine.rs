@@ -239,7 +239,9 @@ impl DuplicateDetectionEngine {
         let clone_pairs: Vec<(FragmentId, FragmentId, f64)> = candidate_pairs
             .into_par_iter()
             .filter_map(|(i, j)| {
-                let similarity = fragments[i].signature.jaccard_similarity(&fragments[j].signature);
+                let similarity = fragments[i]
+                    .signature
+                    .jaccard_similarity(&fragments[j].signature);
                 (similarity >= threshold).then(|| (fragments[i].id, fragments[j].id, similarity))
             })
             .collect();
@@ -268,7 +270,9 @@ impl DuplicateDetectionEngine {
     }
 
     /// Collect candidate pairs from LSH buckets
-    fn collect_candidate_pairs(lsh_buckets: &[HashMap<u64, Vec<usize>>]) -> HashSet<(usize, usize)> {
+    fn collect_candidate_pairs(
+        lsh_buckets: &[HashMap<u64, Vec<usize>>],
+    ) -> HashSet<(usize, usize)> {
         let mut candidate_pairs = HashSet::new();
         for band_buckets in lsh_buckets {
             for bucket in band_buckets.values().filter(|b| b.len() >= 2) {

@@ -1,11 +1,11 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
 
+use super::super::types::QueryResult;
 use super::enrichment::enrich_with_coverage;
 use super::parsing::build_coverage_map;
 use super::profdata::{
     load_coverage_from_cache, run_cargo_llvm_cov_and_cache, write_negative_coverage_cache,
 };
-use super::super::types::QueryResult;
 use super::types::CoverageCache;
 use std::collections::HashMap;
 use std::path::Path;

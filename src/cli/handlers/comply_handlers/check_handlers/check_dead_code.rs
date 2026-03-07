@@ -16,8 +16,12 @@ pub(crate) fn scan_dead_code_indicators(src_dir: &Path) -> (usize, usize, usize,
     let source_files = collect_production_rs_files(src_dir);
 
     for path in &source_files {
-        let Ok(content) = fs::read_to_string(path) else { continue };
-        if is_heavily_cfg_gated(&content) { continue; }
+        let Ok(content) = fs::read_to_string(path) else {
+            continue;
+        };
+        if is_heavily_cfg_gated(&content) {
+            continue;
+        }
         let lines: Vec<&str> = content.lines().collect();
         let file_result = analyze_file_dead_code(&lines);
         total_items += file_result.0;
@@ -67,7 +71,12 @@ pub(crate) fn analyze_file_dead_code(lines: &[&str]) -> (usize, usize, usize, us
     let block_comment_lines = count_block_comment_code_lines(lines);
     let line_comment_lines = count_commented_code_lines(lines);
     let estimated_dead_lines = allow_dead_count * 10 + line_comment_lines + block_comment_lines;
-    (total_items, dead_items, prod_lines.len(), estimated_dead_lines)
+    (
+        total_items,
+        dead_items,
+        prod_lines.len(),
+        estimated_dead_lines,
+    )
 }
 
 /// Filter out test module lines, returning only production lines.
@@ -76,8 +85,13 @@ pub(crate) fn filter_production_lines<'a>(lines: &[&'a str]) -> Vec<&'a str> {
     let mut in_test_module = false;
     for line in lines {
         let trimmed = line.trim();
-        if trimmed == "#[cfg(test)]" { in_test_module = true; continue; }
-        if !in_test_module { result.push(*line); }
+        if trimmed == "#[cfg(test)]" {
+            in_test_module = true;
+            continue;
+        }
+        if !in_test_module {
+            result.push(*line);
+        }
     }
     result
 }
@@ -93,20 +107,36 @@ pub(crate) fn count_dead_items(lines: &[&str]) -> (usize, usize, usize) {
     for line in lines {
         let trimmed = line.trim();
         macro_depth = update_macro_depth(trimmed, macro_depth);
-        if macro_depth.is_some() { continue; }
-        classify_item_line(trimmed, &mut total, &mut dead, &mut annotations, &mut next_is_dead);
+        if macro_depth.is_some() {
+            continue;
+        }
+        classify_item_line(
+            trimmed,
+            &mut total,
+            &mut dead,
+            &mut annotations,
+            &mut next_is_dead,
+        );
     }
     (total, dead, annotations)
 }
 
 /// Classify a single line for item counting.
-pub(crate) fn classify_item_line(trimmed: &str, total: &mut usize, dead: &mut usize, annotations: &mut usize, next_is_dead: &mut bool) {
+pub(crate) fn classify_item_line(
+    trimmed: &str,
+    total: &mut usize,
+    dead: &mut usize,
+    annotations: &mut usize,
+    next_is_dead: &mut bool,
+) {
     if is_dead_code_annotation(trimmed) {
         *next_is_dead = true;
         *annotations += 1;
     } else if is_code_item_declaration(trimmed) {
         *total += 1;
-        if *next_is_dead { *dead += 1; }
+        if *next_is_dead {
+            *dead += 1;
+        }
         *next_is_dead = false;
     } else if !trimmed.is_empty() && !trimmed.starts_with("//") && !trimmed.starts_with('#') {
         *next_is_dead = false;
@@ -115,12 +145,22 @@ pub(crate) fn classify_item_line(trimmed: &str, total: &mut usize, dead: &mut us
 
 /// Track brace depth inside macro_rules! blocks.
 pub(crate) fn update_macro_depth(trimmed: &str, current: Option<i32>) -> Option<i32> {
-    let mut depth = if trimmed.starts_with("macro_rules!") { Some(current.unwrap_or(0)) } else { current };
+    let mut depth = if trimmed.starts_with("macro_rules!") {
+        Some(current.unwrap_or(0))
+    } else {
+        current
+    };
     if let Some(ref mut d) = depth {
         for ch in trimmed.chars() {
-            match ch { '{' => *d += 1, '}' => *d -= 1, _ => {} }
+            match ch {
+                '{' => *d += 1,
+                '}' => *d -= 1,
+                _ => {}
+            }
         }
-        if *d <= 0 && trimmed.contains('}') { return None; }
+        if *d <= 0 && trimmed.contains('}') {
+            return None;
+        }
     }
     depth
 }
@@ -133,10 +173,19 @@ pub(crate) fn is_dead_code_annotation(trimmed: &str) -> bool {
 /// Check if a line declares a code item (fn, struct, enum, trait, const, static).
 pub(crate) fn is_code_item_declaration(trimmed: &str) -> bool {
     const ITEM_PREFIXES: &[&str] = &[
-        "pub fn ", "pub async fn ", "fn ", "async fn ",
-        "pub struct ", "struct ", "pub enum ", "enum ",
-        "pub trait ", "pub fn ", "pub(crate) struct ",
-        "pub const ", "pub static ",
+        "pub fn ",
+        "pub async fn ",
+        "fn ",
+        "async fn ",
+        "pub struct ",
+        "struct ",
+        "pub enum ",
+        "enum ",
+        "pub trait ",
+        "pub fn ",
+        "pub(crate) struct ",
+        "pub const ",
+        "pub static ",
     ];
     ITEM_PREFIXES.iter().any(|p| trimmed.starts_with(p))
 }
@@ -148,7 +197,8 @@ pub(crate) fn count_block_comment_code_lines(lines: &[&str]) -> usize {
     let mut block_lines = 0usize;
     for line in lines {
         let trimmed = line.trim();
-        let (new_in_block, add_dead, new_block_lines) = process_block_comment_line(trimmed, in_block, block_lines);
+        let (new_in_block, add_dead, new_block_lines) =
+            process_block_comment_line(trimmed, in_block, block_lines);
         in_block = new_in_block;
         dead_lines += add_dead;
         block_lines = new_block_lines;
@@ -156,26 +206,46 @@ pub(crate) fn count_block_comment_code_lines(lines: &[&str]) -> usize {
     dead_lines
 }
 
-fn process_block_comment_line(trimmed: &str, in_block: bool, block_lines: usize) -> (bool, usize, usize) {
-    if !in_block { return handle_outside_block(trimmed); }
+fn process_block_comment_line(
+    trimmed: &str,
+    in_block: bool,
+    block_lines: usize,
+) -> (bool, usize, usize) {
+    if !in_block {
+        return handle_outside_block(trimmed);
+    }
     handle_inside_block(trimmed, block_lines)
 }
 
 fn handle_outside_block(trimmed: &str) -> (bool, usize, usize) {
-    let Some(rest) = trimmed.strip_prefix("/*") else { return (false, 0, 0); };
-    if rest.contains("*/") { let add = if has_code_markers(rest) { 1 } else { 0 }; return (false, add, 0); }
+    let Some(rest) = trimmed.strip_prefix("/*") else {
+        return (false, 0, 0);
+    };
+    if rest.contains("*/") {
+        let add = if has_code_markers(rest) { 1 } else { 0 };
+        return (false, add, 0);
+    }
     (true, 0, 0)
 }
 
 fn handle_inside_block(trimmed: &str, block_lines: usize) -> (bool, usize, usize) {
-    if trimmed.contains("*/") { let add = if block_lines >= 2 { block_lines } else { 0 }; return (false, add, 0); }
-    let new_block_lines = if has_code_markers(trimmed) { block_lines + 1 } else { block_lines };
+    if trimmed.contains("*/") {
+        let add = if block_lines >= 2 { block_lines } else { 0 };
+        return (false, add, 0);
+    }
+    let new_block_lines = if has_code_markers(trimmed) {
+        block_lines + 1
+    } else {
+        block_lines
+    };
     (true, 0, new_block_lines)
 }
 
 /// Check if text contains code-like markers.
 pub(crate) fn has_code_markers(text: &str) -> bool {
-    const MARKERS: &[&str] = &["fn ", "let ", "if ", "return ", ";", "struct ", "impl ", "pub "];
+    const MARKERS: &[&str] = &[
+        "fn ", "let ", "if ", "return ", ";", "struct ", "impl ", "pub ",
+    ];
     MARKERS.iter().any(|m| text.contains(m))
 }
 
@@ -184,21 +254,34 @@ pub(crate) fn count_commented_code_lines(lines: &[&str]) -> usize {
     let mut dead_lines = 0usize;
     let mut run = 0usize;
     for line in lines {
-        if is_commented_out_code(line.trim()) { run += 1; } else { dead_lines += flush_comment_run(run); run = 0; }
+        if is_commented_out_code(line.trim()) {
+            run += 1;
+        } else {
+            dead_lines += flush_comment_run(run);
+            run = 0;
+        }
     }
     dead_lines + flush_comment_run(run)
 }
 
 /// Flush a run of consecutive code comments (count if >= 3).
 pub(crate) fn flush_comment_run(run: usize) -> usize {
-    if run >= 3 { run } else { 0 }
+    if run >= 3 {
+        run
+    } else {
+        0
+    }
 }
 
 /// Check if a comment line looks like commented-out code.
 pub(crate) fn is_commented_out_code(trimmed: &str) -> bool {
-    let body = if let Some(b) = trimmed.strip_prefix("// ") { b }
-    else if let Some(b) = trimmed.strip_prefix("//\t") { b }
-    else { return false; };
+    let body = if let Some(b) = trimmed.strip_prefix("// ") {
+        b
+    } else if let Some(b) = trimmed.strip_prefix("//\t") {
+        b
+    } else {
+        return false;
+    };
     const CODE_MARKERS: &[&str] = &["fn ", "let ", "if ", "return ", ";", "{", "}"];
     CODE_MARKERS.iter().any(|m| body.contains(m))
 }
@@ -228,7 +311,15 @@ mod dead_code_tests {
 
     #[test]
     fn test_filter_production_lines_basic() {
-        let lines = vec!["fn main() {}", "let x = 1;", "#[cfg(test)]", "mod tests {", "    #[test]", "    fn test_something() {}", "}"];
+        let lines = vec![
+            "fn main() {}",
+            "let x = 1;",
+            "#[cfg(test)]",
+            "mod tests {",
+            "    #[test]",
+            "    fn test_something() {}",
+            "}",
+        ];
         let result = filter_production_lines(&lines);
         assert_eq!(result.len(), 2);
     }
@@ -250,7 +341,11 @@ mod dead_code_tests {
 
     #[test]
     fn test_count_dead_items_with_dead() {
-        let lines = vec!["#[allow(dead_code)]", "fn unused() {}", "pub fn active() {}"];
+        let lines = vec![
+            "#[allow(dead_code)]",
+            "fn unused() {}",
+            "pub fn active() {}",
+        ];
         let (total, dead, _) = count_dead_items(&lines);
         assert!(total >= 2);
         assert!(dead >= 1);
@@ -258,16 +353,34 @@ mod dead_code_tests {
 
     #[test]
     fn test_classify_item_line_function() {
-        let mut total = 0; let mut dead = 0; let mut annotations = 0; let mut next_is_dead = false;
-        classify_item_line("pub fn test() {}", &mut total, &mut dead, &mut annotations, &mut next_is_dead);
+        let mut total = 0;
+        let mut dead = 0;
+        let mut annotations = 0;
+        let mut next_is_dead = false;
+        classify_item_line(
+            "pub fn test() {}",
+            &mut total,
+            &mut dead,
+            &mut annotations,
+            &mut next_is_dead,
+        );
         assert_eq!(total, 1);
         assert_eq!(dead, 0);
     }
 
     #[test]
     fn test_classify_item_line_dead_annotation() {
-        let mut total = 0; let mut dead = 0; let mut annotations = 0; let mut next_is_dead = false;
-        classify_item_line("#[allow(dead_code)]", &mut total, &mut dead, &mut annotations, &mut next_is_dead);
+        let mut total = 0;
+        let mut dead = 0;
+        let mut annotations = 0;
+        let mut next_is_dead = false;
+        classify_item_line(
+            "#[allow(dead_code)]",
+            &mut total,
+            &mut dead,
+            &mut annotations,
+            &mut next_is_dead,
+        );
         assert_eq!(annotations, 1);
         assert!(next_is_dead);
     }

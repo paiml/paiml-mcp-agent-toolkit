@@ -102,7 +102,16 @@ pub(crate) fn persist_quality_violations(
 #[allow(clippy::type_complexity)]
 pub(crate) fn persist_entropy_violations(
     db_path: &Path,
-    violations: &[(String, String, String, usize, f64, usize, String, Option<String>)],
+    violations: &[(
+        String,
+        String,
+        String,
+        usize,
+        f64,
+        usize,
+        String,
+        Option<String>,
+    )],
 ) -> Result<(), String> {
     if !db_path.exists() || violations.is_empty() {
         return Ok(());

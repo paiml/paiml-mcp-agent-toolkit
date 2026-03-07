@@ -9,7 +9,9 @@ mod tests {
         format_comparison, format_human, format_json, format_markdown, format_project,
     };
     use crate::tdg::language_simple::Language;
-    use crate::tdg::{Comparison, Grade, MetricCategory, PenaltyAttribution, ProjectScore, TdgScore};
+    use crate::tdg::{
+        Comparison, Grade, MetricCategory, PenaltyAttribution, ProjectScore, TdgScore,
+    };
     use std::collections::HashSet;
     use std::path::PathBuf;
 

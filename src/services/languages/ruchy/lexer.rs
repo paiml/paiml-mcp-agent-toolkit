@@ -86,10 +86,7 @@ impl RuchyLexer {
                 is_float = true;
                 num_str.push(ch);
                 self.advance();
-            } else if (ch == 'e' || ch == 'E')
-                && !num_str.contains('e')
-                && !num_str.contains('E')
-            {
+            } else if (ch == 'e' || ch == 'E') && !num_str.contains('e') && !num_str.contains('E') {
                 num_str.push(ch);
                 self.advance();
                 if let Some(sign) = self.current_char {

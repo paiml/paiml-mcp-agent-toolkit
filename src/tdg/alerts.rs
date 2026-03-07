@@ -62,11 +62,23 @@ impl AlertSeverity {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum NotificationChannel {
     Dashboard,
-    Email { recipients: Vec<String> },
-    Webhook { url: String, method: String },
-    Slack { webhook_url: String, channel: String },
-    PagerDuty { integration_key: String },
-    Log { level: String },
+    Email {
+        recipients: Vec<String>,
+    },
+    Webhook {
+        url: String,
+        method: String,
+    },
+    Slack {
+        webhook_url: String,
+        channel: String,
+    },
+    PagerDuty {
+        integration_key: String,
+    },
+    Log {
+        level: String,
+    },
 }
 
 /// Active alert instance

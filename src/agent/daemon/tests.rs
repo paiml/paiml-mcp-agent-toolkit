@@ -3,10 +3,10 @@
 #[cfg(test)]
 mod tests {
     use super::super::*;
-    use std::time::{Duration, SystemTime};
     use std::sync::Arc;
-    use tokio::sync::RwLock;
+    use std::time::{Duration, SystemTime};
     use tempfile::TempDir;
+    use tokio::sync::RwLock;
 
     #[test]
     fn test_daemon_config_default() {
@@ -27,7 +27,8 @@ mod tests {
         assert_eq!(settings.shutdown_timeout, Duration::from_secs(10));
         // working_directory should be current dir or "."
         assert!(
-            settings.working_directory.exists() || settings.working_directory == std::path::PathBuf::from(".")
+            settings.working_directory.exists()
+                || settings.working_directory == std::path::PathBuf::from(".")
         );
     }
 
@@ -43,8 +44,14 @@ mod tests {
             shutdown_timeout: Duration::from_secs(30),
         };
 
-        assert_eq!(settings.pid_file, Some(std::path::PathBuf::from("/var/run/pmat.pid")));
-        assert_eq!(settings.log_file, Some(std::path::PathBuf::from("/var/log/pmat.log")));
+        assert_eq!(
+            settings.pid_file,
+            Some(std::path::PathBuf::from("/var/run/pmat.pid"))
+        );
+        assert_eq!(
+            settings.log_file,
+            Some(std::path::PathBuf::from("/var/log/pmat.log"))
+        );
         assert_eq!(
             settings.working_directory,
             std::path::PathBuf::from("/home/user/project")
@@ -616,8 +623,12 @@ mod tests {
         let mut daemon = AgentDaemon::new(config);
 
         // Set up mock components
-        daemon.quality_monitor = Some(crate::agent::quality_monitor::QualityMonitorEngine::new(Default::default()));
-        daemon.mcp_server = Some(crate::agent::mcp_server::ClaudeCodeAgentMcpServer::new(Default::default()));
+        daemon.quality_monitor = Some(crate::agent::quality_monitor::QualityMonitorEngine::new(
+            Default::default(),
+        ));
+        daemon.mcp_server = Some(crate::agent::mcp_server::ClaudeCodeAgentMcpServer::new(
+            Default::default(),
+        ));
 
         let result = daemon.shutdown_components().await;
         assert!(result.is_ok());

@@ -44,11 +44,11 @@ mod coverage_instrumented_tests {
     use std::collections::{HashMap, HashSet};
 
     use super::super::classify::{analyze_dep, get_heavy_deps, get_removable, get_replacements};
-    use super::super::graph::{analyze_dependency_graph, apply_graph_analysis, count_transitive_deps};
-    use super::super::pareto::estimate_effort;
-    use super::super::types::{
-        DepAnalysis, DepCategory, GraphAnalysis, ParetoEffort, SortMode,
+    use super::super::graph::{
+        analyze_dependency_graph, apply_graph_analysis, count_transitive_deps,
     };
+    use super::super::pareto::estimate_effort;
+    use super::super::types::{DepAnalysis, DepCategory, GraphAnalysis, ParetoEffort, SortMode};
     use trueno_graph::NodeId;
 
     // ====================================================================

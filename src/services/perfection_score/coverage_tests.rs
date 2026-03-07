@@ -386,5 +386,4 @@ edition = "2021"
         assert!(json.contains("\"max_score\""));
         assert!(json.contains("\"grade\""));
     }
-
 }

@@ -19,7 +19,14 @@ pub async fn handle_configuration(
     let config_service = create_config_service(config_path);
     execute_configuration_command(
         &config_service,
-        ConfigurationCommand { show, edit, validate, reset, section, set },
+        ConfigurationCommand {
+            show,
+            edit,
+            validate,
+            reset,
+            section,
+            set,
+        },
     )
     .await
 }

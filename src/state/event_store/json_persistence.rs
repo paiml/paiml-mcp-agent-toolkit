@@ -6,8 +6,8 @@ use std::sync::Arc;
 use tokio::fs::{File, OpenOptions};
 use tokio::io::AsyncWriteExt;
 
-use super::store::EventStoreError;
 use super::persistence::EventPersistence;
+use super::store::EventStoreError;
 
 // ============================================================================
 // JSON File Persistence (Production - Uses serde_json instead of bincode)

@@ -6,9 +6,7 @@ mod tests {
         PromptRegistry, ResourceContent, ResourceContentType, ResourceRegistry, ResourceTemplate,
         ToolRegistry,
     };
-    use crate::mcp_integration::types::{
-        error_codes, McpError, ServerInfo, MCP_VERSION,
-    };
+    use crate::mcp_integration::types::{error_codes, McpError, ServerInfo, MCP_VERSION};
 
     #[test]
     fn test_server_info() {
@@ -40,14 +38,14 @@ mod tests {
 #[cfg(test)]
 mod coverage_tests {
     use crate::mcp_integration::registry::{
-        ContentPart, McpPrompt, McpResource, McpTool, PromptArgument, PromptContent,
-        PromptMessage, PromptMetadata, PromptRegistry, ResourceContent, ResourceContentType,
-        ResourceRegistry, ResourceTemplate, ToolMetadata, ToolRegistry,
+        ContentPart, McpPrompt, McpResource, McpTool, PromptArgument, PromptContent, PromptMessage,
+        PromptMetadata, PromptRegistry, ResourceContent, ResourceContentType, ResourceRegistry,
+        ResourceTemplate, ToolMetadata, ToolRegistry,
     };
     use crate::mcp_integration::types::{
-        error_codes, McpError, McpNotification, McpRequest, McpResponse, RequestId,
-        ServerCapabilities, ServerInfo, ToolsCapability, PromptsCapability, ResourcesCapability,
-        LoggingCapabilities, MCP_VERSION,
+        error_codes, LoggingCapabilities, McpError, McpNotification, McpRequest, McpResponse,
+        PromptsCapability, RequestId, ResourcesCapability, ServerCapabilities, ServerInfo,
+        ToolsCapability, MCP_VERSION,
     };
     use async_trait::async_trait;
     use serde_json::Value;

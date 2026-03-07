@@ -20,9 +20,7 @@ use std::path::PathBuf;
 
 // Re-export submodule items for tests
 #[cfg(test)]
-pub(crate) use analysis::{
-    analyze_single_file, analyze_multiple_files, has_complexity_violations,
-};
+pub(crate) use analysis::{analyze_multiple_files, analyze_single_file, has_complexity_violations};
 
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
@@ -429,8 +427,8 @@ pub async fn handle_analyze_dag(
     eprintln!("🔄 Generating dependency analysis graph...");
 
     // Analyze project to get context
-    let toolchain = crate::cli::detect_primary_language(&project_path)
-        .unwrap_or_else(|| "rust".to_string());
+    let toolchain =
+        crate::cli::detect_primary_language(&project_path).unwrap_or_else(|| "rust".to_string());
     let project_context = analyze_project(&project_path, &toolchain).await?;
 
     eprintln!("📁 Analyzed {} files", project_context.files.len());

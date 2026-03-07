@@ -1,7 +1,7 @@
 // Rust-specific analysis functions - extracted for file health (CB-040)
 
-use crate::services::unified_rust_analyzer::UnifiedRustAnalyzer;
 use super::metrics::RUST_UNIFIED_CACHE;
+use crate::services::unified_rust_analyzer::UnifiedRustAnalyzer;
 
 /// Toyota Way Single Responsibility: Handle Rust file analysis
 /// OPTIMIZATION: Uses UnifiedRustAnalyzer to parse file once and extract both AST and complexity

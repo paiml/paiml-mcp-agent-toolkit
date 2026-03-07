@@ -31,8 +31,8 @@ pub use enforcement::{
 };
 pub use handler::route_enforce_command;
 pub use output::{
-    format_violations_output, output_result, print_enforcement_header,
-    print_enforcement_summary, print_progress_bar,
+    format_violations_output, output_result, print_enforcement_header, print_enforcement_summary,
+    print_progress_bar,
 };
 pub use states::{
     handle_analyzing_enforcement_state, handle_analyzing_state, handle_complete_enforcement_state,

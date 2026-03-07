@@ -1,7 +1,7 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
 
-use super::*;
 use super::markdown_format::calculate_component_score;
+use super::*;
 use crate::models::tdg::{TDGHotspot, TDGSummary};
 use proptest::prelude::*;
 

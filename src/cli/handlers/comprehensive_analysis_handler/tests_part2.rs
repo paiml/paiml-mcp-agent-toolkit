@@ -2,11 +2,11 @@
 
 #[cfg(test)]
 mod tests_part2 {
-    use crate::cli::ComprehensiveOutputFormat;
     use crate::cli::handlers::comprehensive_analysis_handler::output::{
         format_complexity_section, format_dead_code_section, format_satd_section,
     };
     use crate::cli::handlers::comprehensive_analysis_handler::types::ComprehensiveAnalysisConfig;
+    use crate::cli::ComprehensiveOutputFormat;
     use crate::services::facades::complexity_facade::{
         ComplexityAnalysisResult, ComplexityViolation,
     };

@@ -30,7 +30,7 @@ pub(crate) use schema::{has_valid_schema, open_db};
 pub(crate) use save::save_to_sqlite;
 
 // From query (used by build.rs and query engine)
-pub(crate) use query::{fts5_search, query_callers, query_callees};
+pub(crate) use query::{fts5_search, query_callees, query_callers};
 
 // From load (used by build.rs and query engine)
 pub(crate) use load::{
@@ -47,9 +47,6 @@ pub(crate) use persist::{
 // and internal tests via `use sqlite_backend::*`
 #[cfg(test)]
 #[allow(unused_imports)]
-pub(super) use schema::create_schema;
-#[cfg(test)]
-#[allow(unused_imports)]
 pub(super) use insert::{
     insert_call_graph, insert_coverage_off_files, insert_functions, insert_graph_metrics,
     insert_metadata,
@@ -58,12 +55,15 @@ pub(super) use insert::{
 #[allow(unused_imports)]
 #[allow(dead_code)]
 pub(crate) use load::load_functions;
+#[cfg(test)]
+#[allow(unused_imports)]
+pub(super) use schema::create_schema;
 
 #[cfg(test)]
 #[allow(unused_imports)]
 mod tests {
-    use super::*;
     use super::types::*;
+    use super::*;
     use rusqlite::Connection;
     use std::collections::{HashMap, HashSet};
 

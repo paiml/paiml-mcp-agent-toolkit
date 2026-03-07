@@ -9,16 +9,18 @@ pub(crate) fn matches_pattern(path: &str, pattern: &str) -> bool {
         // Only match as a non-terminal component (i.e., there's a path after it).
         let dir_name = pattern.trim_end_matches('/');
         let components: Vec<&str> = path.split('/').collect();
-        components.iter().enumerate().any(|(i, component)| {
-            *component == dir_name && i < components.len() - 1
-        })
+        components
+            .iter()
+            .enumerate()
+            .any(|(i, component)| *component == dir_name && i < components.len() - 1)
     } else if let Some(ext) = pattern.strip_prefix('*') {
         path.ends_with(ext)
     } else if pattern.starts_with('.') {
         // Dotfile/extension patterns: match as suffix on any path component
         // ".sublime-project" matches "project.sublime-project"
         // ".DS_Store" matches ".DS_Store"
-        path.split('/').any(|component| component.ends_with(pattern) || component == pattern)
+        path.split('/')
+            .any(|component| component.ends_with(pattern) || component == pattern)
     } else {
         // Exact filename match against path components
         path.split('/').any(|component| component == pattern)

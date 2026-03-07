@@ -74,9 +74,7 @@ pub async fn handle_agent_command(command: AgentCommands) -> Result<()> {
             file,
             format,
         } => handle_agent_quality_gate(project, file, format).await,
-        AgentCommands::McpServer { config, debug } => {
-            handle_agent_mcp_server(config, debug).await
-        }
+        AgentCommands::McpServer { config, debug } => handle_agent_mcp_server(config, debug).await,
     }
 }
 

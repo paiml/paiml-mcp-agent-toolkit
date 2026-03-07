@@ -21,14 +21,13 @@ impl CommandExecutor {
                 dry_run,
                 format,
             } => {
-                let config =
-                    crate::cli::handlers::roadmap_handler::RoadmapMaintenanceConfig::new(
-                        validate,
-                        health,
-                        fix,
-                        generate_tickets,
-                        dry_run,
-                    );
+                let config = crate::cli::handlers::roadmap_handler::RoadmapMaintenanceConfig::new(
+                    validate,
+                    health,
+                    fix,
+                    generate_tickets,
+                    dry_run,
+                );
                 crate::cli::handlers::handle_maintain_roadmap(roadmap, tickets_dir, config, format)
                     .await
             }

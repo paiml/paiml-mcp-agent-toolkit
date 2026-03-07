@@ -11,21 +11,21 @@
 // - check_sovereign: Sovereign stack patterns and PAIML deps
 // - check_review_audit: Review and audit handlers (COMPLY-045)
 
-pub(crate) mod types;
 pub(crate) mod check;
 pub(crate) mod check_best_practices;
 pub(crate) mod check_dead_code;
-pub(crate) mod check_tdg_grade;
 pub(crate) mod check_extended;
-pub(crate) mod check_sovereign;
 pub(crate) mod check_review_audit;
+pub(crate) mod check_sovereign;
+pub(crate) mod check_tdg_grade;
+pub(crate) mod types;
 
 // Re-export items needed by the parent comply_handlers module scope
 // (for migrate_handlers.rs and command_dispatch.rs which are include!()'d there)
-pub(crate) use types::*;
 pub(crate) use check::*;
-pub(crate) use check_review_audit::{handle_review, handle_audit};
-pub(crate) use check_sovereign::{generate_file_health_baseline, check_file_health_multi};
+pub(crate) use check_review_audit::{handle_audit, handle_review};
+pub(crate) use check_sovereign::{check_file_health_multi, generate_file_health_baseline};
+pub(crate) use types::*;
 
 // Additional re-exports needed by test files that reference functions
 // via crate::cli::handlers::comply_handlers::<function_name>.
@@ -34,11 +34,8 @@ pub(crate) use check_sovereign::{generate_file_health_baseline, check_file_healt
 pub(crate) use check_dead_code::*;
 #[cfg(test)]
 pub(crate) use check_extended::{
-    check_muda_waste_score, check_reproducibility_level, check_golden_trace_drift,
-    check_edd_compliance, check_dead_code_percentage,
-    check_file_health,
+    check_dead_code_percentage, check_edd_compliance, check_file_health, check_golden_trace_drift,
+    check_muda_waste_score, check_reproducibility_level,
 };
 #[cfg(test)]
-pub(crate) use check_sovereign::{
-    check_sovereign_stack_patterns, check_paiml_deps_workspace,
-};
+pub(crate) use check_sovereign::{check_paiml_deps_workspace, check_sovereign_stack_patterns};

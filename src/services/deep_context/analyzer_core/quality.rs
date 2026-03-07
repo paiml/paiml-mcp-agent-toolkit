@@ -8,13 +8,13 @@ use rustc_hash::FxHashMap;
 use tracing::debug;
 
 use crate::services::complexity::ComplexityReport;
+use crate::services::deep_context::analyzer_core::types::ParallelAnalysisResults;
+use crate::services::deep_context::DeepContextAnalyzer;
 use crate::services::deep_context::{
     AstSummary, ComplexityMetricsForQA, ComplexitySummaryForQA, DeadCodeAnalysis, DeadCodeSummary,
     DeepContext, DeepContextResult, DefectSummary, FileComplexityMetricsForQA,
     FunctionComplexityForQA, Impact, PrioritizedRecommendation, Priority, QualityScorecard,
 };
-use crate::services::deep_context::analyzer_core::types::ParallelAnalysisResults;
-use crate::services::deep_context::DeepContextAnalyzer;
 use crate::services::quality_gates::{QAVerification, QAVerificationResult};
 
 impl DeepContextAnalyzer {
@@ -330,12 +330,11 @@ impl DeepContextAnalyzer {
         context: &DeepContext,
     ) -> anyhow::Result<DeepContextResult> {
         // Create complexity metrics from analysis results or fallback
-        let complexity_metrics =
-            if let Some(report) = context.analyses.complexity_report.as_ref() {
-                Some(self.convert_complexity_report_to_qa(report))
-            } else {
-                self.create_fallback_complexity_metrics(context)
-            };
+        let complexity_metrics = if let Some(report) = context.analyses.complexity_report.as_ref() {
+            Some(self.convert_complexity_report_to_qa(report))
+        } else {
+            self.create_fallback_complexity_metrics(context)
+        };
 
         // Create dead code analysis from the results
         let dead_code_analysis = if let Some(ref dead_code) = context.analyses.dead_code_results {

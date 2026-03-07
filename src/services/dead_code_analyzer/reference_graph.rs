@@ -1,8 +1,6 @@
 //! Reference graph building, dynamic dispatch resolution, and reachability analysis.
 
-use super::types::{
-    ReferenceEdge, ReferenceNode, ReferenceType,
-};
+use super::types::{ReferenceEdge, ReferenceNode, ReferenceType};
 use crate::models::dag::DependencyGraph;
 use crate::models::unified_ast::{AstDag, NodeKey};
 

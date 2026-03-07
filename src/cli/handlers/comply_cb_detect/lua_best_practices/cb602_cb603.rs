@@ -1,13 +1,13 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
 //! CB-602: pcall Error Handling and CB-603: Deprecated/Dangerous API detection.
 
+use super::super::types::*;
 use super::constants::{LUA_DANGEROUS_APIS, LUA_DEPRECATED_APIS};
 use super::detection_helpers::{extract_pcall_status_var, has_status_check};
 use super::helpers::{
     compute_lua_production_lines, is_in_lua_string, is_lua_test_file, is_suppressed,
     walkdir_lua_files,
 };
-use super::super::types::*;
 use std::fs;
 use std::path::Path;
 

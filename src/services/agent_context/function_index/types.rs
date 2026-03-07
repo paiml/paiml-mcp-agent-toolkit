@@ -41,6 +41,8 @@ pub enum DefinitionType {
     Enum,
     Trait,
     TypeAlias,
+    /// C/C++ forward declaration (header file prototype)
+    Declaration,
 }
 
 /// A function/type entry in the index
@@ -85,6 +87,9 @@ pub struct FunctionEntry {
     /// Fault pattern annotations from batuta
     #[serde(default)]
     pub fault_annotations: Vec<String>,
+    /// Linked definition file:line for declarations (e.g., header → implementation)
+    #[serde(default)]
+    pub linked_definition: Option<String>,
 }
 
 /// Index manifest with metadata

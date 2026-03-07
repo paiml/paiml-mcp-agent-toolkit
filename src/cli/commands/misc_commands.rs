@@ -1,10 +1,10 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
 // Misc command types - extracted for file health (CB-040)
 
+use super::config_hooks::{ConfigCommands, ConfigFormat};
 use crate::cli::{OutputFormat, TdgOutputFormat};
 use clap::Subcommand;
 use std::path::PathBuf;
-use super::config_hooks::{ConfigCommands, ConfigFormat};
 
 // CUDA-SIMD TDG and Oracle command types
 include!("misc_commands_cuda_oracle.rs");

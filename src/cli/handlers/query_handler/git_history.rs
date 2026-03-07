@@ -2,9 +2,7 @@
 
 use super::options::*;
 use crate::services::agent_context::AgentContextIndex;
-use crate::services::git_history::{
-    ChangeType, CommitInfo, FileChange, GitSearchResult,
-};
+use crate::services::git_history::{ChangeType, CommitInfo, FileChange, GitSearchResult};
 use std::collections::HashMap;
 
 /// Timing breakdown for git history search phases

@@ -268,7 +268,6 @@ mod active_tests {
     }
 }
 
-
 /// NOTE: Temporarily disabled due to struct definition mismatches
 #[cfg(all(test, feature = "broken-tests"))]
 mod coverage_tests {

@@ -3,7 +3,6 @@
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
-    use crate::cli::ComprehensiveOutputFormat;
     use crate::cli::handlers::comprehensive_analysis_handler::helpers::{
         create_analysis_request, determine_analysis_path, init_timing,
     };
@@ -11,6 +10,7 @@ mod property_tests {
         format_as_json, format_as_markdown,
     };
     use crate::cli::handlers::comprehensive_analysis_handler::types::ComprehensiveAnalysisConfig;
+    use crate::cli::ComprehensiveOutputFormat;
     use crate::services::facades::analysis_orchestrator::{
         AnalysisSummary, ComprehensiveAnalysisResult,
     };

@@ -8,9 +8,9 @@ use anyhow::{Context, Result};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
-use std::time::Instant;
 #[cfg(feature = "http-client")]
 use std::time::Duration;
+use std::time::Instant;
 use walkdir::WalkDir;
 
 /// Core validator that orchestrates link checking

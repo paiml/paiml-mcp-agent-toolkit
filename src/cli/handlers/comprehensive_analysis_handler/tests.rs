@@ -3,8 +3,8 @@
 /// Shared test helpers used by test submodules
 #[cfg(test)]
 pub(super) mod helpers {
-    use crate::cli::ComprehensiveOutputFormat;
     use crate::cli::handlers::comprehensive_analysis_handler::types::ComprehensiveAnalysisConfig;
+    use crate::cli::ComprehensiveOutputFormat;
     use crate::services::facades::analysis_orchestrator::{
         AnalysisSummary, ComprehensiveAnalysisResult,
     };
@@ -120,7 +120,6 @@ pub(super) mod helpers {
 #[cfg(test)]
 mod tests {
     use super::helpers::*;
-    use crate::cli::ComprehensiveOutputFormat;
     use crate::cli::handlers::comprehensive_analysis_handler::helpers::{
         create_additional_config, create_analysis_request, determine_analysis_path, init_timing,
         print_performance_breakdown,
@@ -130,6 +129,7 @@ mod tests {
         format_result,
     };
     use crate::cli::handlers::comprehensive_analysis_handler::types::ComprehensiveAnalysisConfig;
+    use crate::cli::ComprehensiveOutputFormat;
     use crate::services::facades::analysis_orchestrator::{
         AnalysisSummary, ComprehensiveAnalysisResult,
     };
@@ -461,21 +461,39 @@ mod tests {
 
     #[test]
     fn test_comprehensive_output_format_variants() {
-        let json = format_result(create_basic_result(), ComprehensiveOutputFormat::Json, false);
+        let json = format_result(
+            create_basic_result(),
+            ComprehensiveOutputFormat::Json,
+            false,
+        );
         assert!(json.is_ok());
 
-        let md = format_result(create_basic_result(), ComprehensiveOutputFormat::Markdown, true);
+        let md = format_result(
+            create_basic_result(),
+            ComprehensiveOutputFormat::Markdown,
+            true,
+        );
         assert!(md.is_ok());
 
-        let sarif = format_result(create_basic_result(), ComprehensiveOutputFormat::Sarif, false);
+        let sarif = format_result(
+            create_basic_result(),
+            ComprehensiveOutputFormat::Sarif,
+            false,
+        );
         assert!(sarif.is_ok());
 
-        let summary =
-            format_result(create_basic_result(), ComprehensiveOutputFormat::Summary, false);
+        let summary = format_result(
+            create_basic_result(),
+            ComprehensiveOutputFormat::Summary,
+            false,
+        );
         assert!(summary.is_ok());
 
-        let detailed =
-            format_result(create_basic_result(), ComprehensiveOutputFormat::Detailed, true);
+        let detailed = format_result(
+            create_basic_result(),
+            ComprehensiveOutputFormat::Detailed,
+            true,
+        );
         assert!(detailed.is_ok());
     }
 

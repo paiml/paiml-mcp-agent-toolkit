@@ -50,9 +50,7 @@ impl CommandExecutor {
                 service,
                 reset,
                 test_event,
-            } => {
-                crate::cli::handlers::handle_telemetry(system, service, reset, test_event).await
-            }
+            } => crate::cli::handlers::handle_telemetry(system, service, reset, test_event).await,
             Commands::Config {
                 show,
                 edit,

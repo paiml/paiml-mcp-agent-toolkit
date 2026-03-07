@@ -102,7 +102,7 @@ impl DeepContextAnalyzer {
             "O(log n)" => "\u{1f49a}",   // Logarithmic memory - very good
             "O(n)" => "\u{1f499}",       // Linear memory - good
             "O(n log n)" => "\u{1f49b}", // Linearithmic memory - okay
-            "O(n\u{b2})" => "\u{1f7e0}",      // Quadratic memory - warning
+            "O(n\u{b2})" => "\u{1f7e0}", // Quadratic memory - warning
             _ => "\u{1f494}",            // High memory usage - critical
         };
         result.push(format!("{emoji}{mem_complexity}"));
@@ -120,14 +120,14 @@ impl DeepContextAnalyzer {
     /// Get emoji for Big-O complexity notation
     fn get_big_o_emoji(&self, big_o: &str) -> &'static str {
         match big_o {
-            "O(1)" => "\u{1f3af}",            // Constant - excellent
-            "O(log n)" => "\u{26a1}",        // Logarithmic - very good
-            "O(n)" => "\u{1f4ca}",            // Linear - good
-            "O(n log n)" => "\u{1f4c8}",      // Linearithmic - acceptable
-            "O(n\u{b2})" => "\u{26a0}\u{fe0f}",           // Quadratic - warning
-            "O(n\u{b3})" => "\u{1f6a8}",           // Cubic - danger
+            "O(1)" => "\u{1f3af}",                   // Constant - excellent
+            "O(log n)" => "\u{26a1}",                // Logarithmic - very good
+            "O(n)" => "\u{1f4ca}",                   // Linear - good
+            "O(n log n)" => "\u{1f4c8}",             // Linearithmic - acceptable
+            "O(n\u{b2})" => "\u{26a0}\u{fe0f}",      // Quadratic - warning
+            "O(n\u{b3})" => "\u{1f6a8}",             // Cubic - danger
             "O(2\u{207f})" | "O(n!)" => "\u{1f4a5}", // Exponential/Factorial - critical
-            _ => "\u{2753}",                 // Unknown
+            _ => "\u{2753}",                         // Unknown
         }
     }
 }

@@ -1,9 +1,7 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
 //! HTTP endpoint handler functions
 
-use axum::{
-    extract::{Json, State},
-};
+use axum::extract::{Json, State};
 use serde_json::{json, Value};
 
 use crate::contracts::{

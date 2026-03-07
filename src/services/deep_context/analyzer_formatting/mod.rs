@@ -14,7 +14,7 @@ mod sarif;
 use super::{
     AnalysisResults, AnnotatedFileTree, AnnotatedNode, CrossLangReference, DeepContext,
     DeepContextAnalyzer, DefectHotspot, DefectSummary, EnhancedFileContext, NodeAnnotations,
-    NodeType, Priority, PrioritizedRecommendation, QualityScorecard,
+    NodeType, PrioritizedRecommendation, Priority, QualityScorecard,
 };
 
 impl DeepContextAnalyzer {

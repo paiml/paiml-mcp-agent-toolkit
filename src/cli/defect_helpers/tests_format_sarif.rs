@@ -69,8 +69,7 @@ fn test_format_defect_sarif_empty() {
 fn test_format_defect_sarif_with_predictions() {
     let predictions = create_test_predictions();
     let project_path = Path::new("/test/project");
-    let result =
-        format_defect_sarif(&predictions, project_path).expect("Should format SARIF");
+    let result = format_defect_sarif(&predictions, project_path).expect("Should format SARIF");
 
     assert!(result.contains("\"version\": \"2.1.0\""));
     assert!(result.contains("src/high_risk.rs"));
@@ -84,8 +83,7 @@ fn test_format_defect_sarif_high_risk_level() {
         create_mock_defect_score(0.85, 0.9),
     )];
     let project_path = Path::new("/test/project");
-    let result =
-        format_defect_sarif(&predictions, project_path).expect("Should format SARIF");
+    let result = format_defect_sarif(&predictions, project_path).expect("Should format SARIF");
 
     assert!(result.contains("\"ruleId\": \"high-defect-probability\""));
     assert!(result.contains("\"level\": \"error\""));
@@ -98,8 +96,7 @@ fn test_format_defect_sarif_medium_risk_level() {
         create_mock_defect_score(0.55, 0.8),
     )];
     let project_path = Path::new("/test/project");
-    let result =
-        format_defect_sarif(&predictions, project_path).expect("Should format SARIF");
+    let result = format_defect_sarif(&predictions, project_path).expect("Should format SARIF");
 
     assert!(result.contains("\"ruleId\": \"medium-defect-probability\""));
     assert!(result.contains("\"level\": \"warning\""));
@@ -112,8 +109,7 @@ fn test_format_defect_sarif_low_risk_level() {
         create_mock_defect_score(0.25, 0.9),
     )];
     let project_path = Path::new("/test/project");
-    let result =
-        format_defect_sarif(&predictions, project_path).expect("Should format SARIF");
+    let result = format_defect_sarif(&predictions, project_path).expect("Should format SARIF");
 
     assert!(result.contains("\"ruleId\": \"low-defect-probability\""));
     assert!(result.contains("\"level\": \"note\""));
@@ -123,8 +119,7 @@ fn test_format_defect_sarif_low_risk_level() {
 fn test_format_defect_sarif_contains_rules() {
     let predictions = create_test_predictions();
     let project_path = Path::new("/test/project");
-    let result =
-        format_defect_sarif(&predictions, project_path).expect("Should format SARIF");
+    let result = format_defect_sarif(&predictions, project_path).expect("Should format SARIF");
 
     assert!(result.contains("\"id\": \"high-defect-probability\""));
     assert!(result.contains("\"id\": \"medium-defect-probability\""));
@@ -139,8 +134,7 @@ fn test_format_defect_sarif_location_format() {
         create_mock_defect_score(0.75, 0.9),
     )];
     let project_path = Path::new("/test/project");
-    let result =
-        format_defect_sarif(&predictions, project_path).expect("Should format SARIF");
+    let result = format_defect_sarif(&predictions, project_path).expect("Should format SARIF");
 
     assert!(result.contains("\"locations\""));
     assert!(result.contains("\"physicalLocation\""));

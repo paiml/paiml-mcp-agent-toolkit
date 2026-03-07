@@ -169,7 +169,11 @@ impl DeepContextAnalyzer {
     ) -> anyhow::Result<()> {
         use std::fmt::Write;
 
-        let connector = if is_last { "\u{2514}\u{2500}\u{2500} " } else { "\u{251c}\u{2500}\u{2500} " };
+        let connector = if is_last {
+            "\u{2514}\u{2500}\u{2500} "
+        } else {
+            "\u{251c}\u{2500}\u{2500} "
+        };
         let extension = if is_last { "    " } else { "\u{2502}   " };
 
         let node_display = self.format_node_display(node)?;

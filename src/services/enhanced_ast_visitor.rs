@@ -50,9 +50,13 @@ impl EnhancedAstVisitor {
                     "pub(self)".to_string()
                 } else {
                     #[cfg(feature = "rust-ast")]
-                    { format!("pub(in {})", quote::quote!(#r.path)) }
+                    {
+                        format!("pub(in {})", quote::quote!(#r.path))
+                    }
                     #[cfg(not(feature = "rust-ast"))]
-                    { format!("pub(in {:?})", r.path) }
+                    {
+                        format!("pub(in {:?})", r.path)
+                    }
                 }
             }
             Visibility::Inherited => "private".to_string(),

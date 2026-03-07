@@ -10,8 +10,7 @@ pub(super) mod types;
 mod tests;
 
 pub use enrichment::{
-    compute_impact_score, enrich_with_coverage, enrich_with_coverage_diff,
-    format_coverage_summary,
+    compute_impact_score, enrich_with_coverage, enrich_with_coverage_diff, format_coverage_summary,
 };
 pub use loader::{enrich_results_with_coverage, load_workspace_coverage};
 pub use parsing::build_coverage_map;

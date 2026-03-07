@@ -134,8 +134,14 @@ pub(crate) fn skip_check(name: &str, message: &str) -> ComplianceCheck {
 }
 
 pub(crate) fn calculate_versions_behind(project_version: &str) -> u32 {
-    let current_parts: Vec<u32> = PMAT_VERSION.split('.').filter_map(|s| s.parse().ok()).collect();
-    let project_parts: Vec<u32> = project_version.split('.').filter_map(|s| s.parse().ok()).collect();
+    let current_parts: Vec<u32> = PMAT_VERSION
+        .split('.')
+        .filter_map(|s| s.parse().ok())
+        .collect();
+    let project_parts: Vec<u32> = project_version
+        .split('.')
+        .filter_map(|s| s.parse().ok())
+        .collect();
     if current_parts.len() >= 2 && project_parts.len() >= 2 {
         let cur_major = *current_parts.first().unwrap_or(&0);
         let cur_minor = *current_parts.get(1).unwrap_or(&0);
@@ -166,9 +172,21 @@ pub(crate) struct ChangelogEntry {
 
 pub(crate) fn get_changelog_entries(_from: &str, _to: &str) -> Vec<ChangelogEntry> {
     vec![
-        ChangelogEntry { version: PMAT_VERSION.to_string(), description: "Added qa-work command for Toyota Way validation".to_string(), breaking: false },
-        ChangelogEntry { version: PMAT_VERSION.to_string(), description: "Added cleanup-resources command".to_string(), breaking: false },
-        ChangelogEntry { version: PMAT_VERSION.to_string(), description: "Added comply command for compliance checking".to_string(), breaking: false },
+        ChangelogEntry {
+            version: PMAT_VERSION.to_string(),
+            description: "Added qa-work command for Toyota Way validation".to_string(),
+            breaking: false,
+        },
+        ChangelogEntry {
+            version: PMAT_VERSION.to_string(),
+            description: "Added cleanup-resources command".to_string(),
+            breaking: false,
+        },
+        ChangelogEntry {
+            version: PMAT_VERSION.to_string(),
+            description: "Added comply command for compliance checking".to_string(),
+            breaking: false,
+        },
     ]
 }
 
@@ -180,7 +198,9 @@ pub(crate) fn load_or_create_project_config(project_path: &Path) -> anyhow::Resu
     } else {
         let config = ProjectConfig::default();
         let pmat_dir = project_path.join(".pmat");
-        if !pmat_dir.exists() { std::fs::create_dir_all(&pmat_dir)?; }
+        if !pmat_dir.exists() {
+            std::fs::create_dir_all(&pmat_dir)?;
+        }
         let content = toml::to_string_pretty(&config)?;
         std::fs::write(&config_path, &content)?;
         Ok(config)
@@ -204,7 +224,11 @@ pub(crate) fn print_compliance_text(report: &ComplianceReport) {
     println!("\nProject Version: {}", report.project_version);
     println!("Current PMAT:    {}", report.current_version);
     println!("Versions Behind: {}", report.versions_behind);
-    let status = if report.is_compliant { "\x1b[32mCOMPLIANT\x1b[0m" } else { "\x1b[31mNON-COMPLIANT\x1b[0m" };
+    let status = if report.is_compliant {
+        "\x1b[32mCOMPLIANT\x1b[0m"
+    } else {
+        "\x1b[31mNON-COMPLIANT\x1b[0m"
+    };
     println!("Status:          {}\n", status);
     println!("Checks:");
     for check in &report.checks {
@@ -218,7 +242,9 @@ pub(crate) fn print_compliance_text(report: &ComplianceReport) {
     }
     if !report.recommendations.is_empty() {
         println!("\nRecommendations:");
-        for rec in &report.recommendations { println!("  \u{2022} {}", rec); }
+        for rec in &report.recommendations {
+            println!("  \u{2022} {}", rec);
+        }
     }
     println!("\n{}", "=".repeat(60));
 }
@@ -229,7 +255,14 @@ pub(crate) fn print_compliance_markdown(report: &ComplianceReport) {
     println!("|----------|-------|");
     println!("| Project Version | {} |", report.project_version);
     println!("| Current PMAT | {} |", report.current_version);
-    println!("| Status | {} |", if report.is_compliant { "COMPLIANT" } else { "NON-COMPLIANT" });
+    println!(
+        "| Status | {} |",
+        if report.is_compliant {
+            "COMPLIANT"
+        } else {
+            "NON-COMPLIANT"
+        }
+    );
     println!("\n## Checks\n");
     for check in &report.checks {
         let icon = match check.status {
@@ -242,10 +275,18 @@ pub(crate) fn print_compliance_markdown(report: &ComplianceReport) {
     }
 }
 
-pub(crate) fn migrate_project_version(project_path: &Path, target: &str, dry_run: bool) -> anyhow::Result<bool> {
-    if dry_run { return Ok(true); }
+pub(crate) fn migrate_project_version(
+    project_path: &Path,
+    target: &str,
+    dry_run: bool,
+) -> anyhow::Result<bool> {
+    if dry_run {
+        return Ok(true);
+    }
     let mut config = load_or_create_project_config(project_path)?;
-    if config.pmat.version == target { return Ok(false); }
+    if config.pmat.version == target {
+        return Ok(false);
+    }
     config.pmat.version = target.to_string();
     config.pmat.last_compliance_check = Some(Utc::now());
     let content = toml::to_string_pretty(&config)?;
@@ -255,19 +296,35 @@ pub(crate) fn migrate_project_version(project_path: &Path, target: &str, dry_run
 
 pub(crate) fn migrate_gitignore(project_path: &Path, dry_run: bool) -> anyhow::Result<bool> {
     let gitignore_path = project_path.join(".gitignore");
-    let pmat_entries = [".pmat/backup/", ".pmat-qa/", ".pmat/context.idx/", ".pmat/workspace.idx/", ".pmat/deps-cache.json"];
-    if !gitignore_path.exists() { return Ok(false); }
+    let pmat_entries = [
+        ".pmat/backup/",
+        ".pmat-qa/",
+        ".pmat/context.idx/",
+        ".pmat/workspace.idx/",
+        ".pmat/deps-cache.json",
+    ];
+    if !gitignore_path.exists() {
+        return Ok(false);
+    }
     let content = std::fs::read_to_string(&gitignore_path)?;
     let mut needs_update = false;
     let mut new_entries = vec![];
     for entry in pmat_entries {
-        if !content.contains(entry) { needs_update = true; new_entries.push(entry); }
+        if !content.contains(entry) {
+            needs_update = true;
+            new_entries.push(entry);
+        }
     }
     if needs_update && !dry_run {
         let mut new_content = content.clone();
-        if !new_content.ends_with('\n') { new_content.push('\n'); }
+        if !new_content.ends_with('\n') {
+            new_content.push('\n');
+        }
         new_content.push_str("\n# PMAT\n");
-        for entry in new_entries { new_content.push_str(entry); new_content.push('\n'); }
+        for entry in new_entries {
+            new_content.push_str(entry);
+            new_content.push('\n');
+        }
         std::fs::write(&gitignore_path, &new_content)?;
     }
     Ok(needs_update)
@@ -278,34 +335,60 @@ pub(crate) fn update_project_config(project_path: &Path, dry_run: bool) -> anyho
 }
 
 /// Update project hooks to latest templates
-pub(crate) async fn update_project_hooks(project_path: &Path, dry_run: bool) -> anyhow::Result<bool> {
+pub(crate) async fn update_project_hooks(
+    project_path: &Path,
+    dry_run: bool,
+) -> anyhow::Result<bool> {
     use crate::cli::handlers::hooks_command_handlers::HooksCommand;
     let hooks_dir = project_path.join(".git/hooks");
-    if !hooks_dir.exists() { return Ok(false); }
+    if !hooks_dir.exists() {
+        return Ok(false);
+    }
     let hooks_cmd = HooksCommand::new(hooks_dir.clone(), project_path.join("pmat.toml"));
     let status = hooks_cmd.status().await?;
     let action = determine_hook_action(&hooks_cmd, &status).await?;
-    if action == HookAction::UpToDate { return Ok(false); }
-    if dry_run { return Ok(true); }
+    if action == HookAction::UpToDate {
+        return Ok(false);
+    }
+    if dry_run {
+        return Ok(true);
+    }
     match action {
-        HookAction::Install => { hooks_cmd.install(false, true, false).await?; },
-        HookAction::ForceReplace => { hooks_cmd.install(true, true, false).await?; },
-        HookAction::Refresh => { hooks_cmd.refresh().await?; },
+        HookAction::Install => {
+            hooks_cmd.install(false, true, false).await?;
+        }
+        HookAction::ForceReplace => {
+            hooks_cmd.install(true, true, false).await?;
+        }
+        HookAction::Refresh => {
+            hooks_cmd.refresh().await?;
+        }
         HookAction::UpToDate => unreachable!(),
     }
     Ok(true)
 }
 
 #[derive(PartialEq)]
-pub(crate) enum HookAction { Install, ForceReplace, Refresh, UpToDate }
+pub(crate) enum HookAction {
+    Install,
+    ForceReplace,
+    Refresh,
+    UpToDate,
+}
 
 pub(crate) async fn determine_hook_action(
     hooks_cmd: &crate::cli::handlers::hooks_command_handlers::HooksCommand,
     status: &crate::cli::handlers::hooks_command_handlers::HookStatus,
 ) -> anyhow::Result<HookAction> {
-    if !status.installed { return Ok(HookAction::Install); }
-    if !status.is_pmat_managed { return Ok(HookAction::ForceReplace); }
+    if !status.installed {
+        return Ok(HookAction::Install);
+    }
+    if !status.is_pmat_managed {
+        return Ok(HookAction::ForceReplace);
+    }
     let verify = hooks_cmd.verify(false).await?;
-    if verify.issues.iter().any(|i| i.contains("outdated")) { return Ok(HookAction::Refresh); }
+    if verify.issues.iter().any(|i| i.contains("outdated")) {
+        return Ok(HookAction::Refresh);
+    }
     Ok(HookAction::UpToDate)
 }

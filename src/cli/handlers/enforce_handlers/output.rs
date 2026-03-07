@@ -99,7 +99,11 @@ pub fn print_enforcement_header(project_path: &std::path::Path) {
 }
 
 /// Print enforcement summary
-pub fn print_enforcement_summary(current_score: f64, iteration: u32, duration: std::time::Duration) {
+pub fn print_enforcement_summary(
+    current_score: f64,
+    iteration: u32,
+    duration: std::time::Duration,
+) {
     eprintln!("\n🏁 Enforcement Complete");
     eprintln!("📊 Final Score: {current_score:.2}/1.00");
     eprintln!("🔄 Iterations: {iteration}");

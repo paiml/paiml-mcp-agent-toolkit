@@ -2,12 +2,12 @@
 //! Type definitions for the AGENTS.md discovery system.
 
 use crate::agents_md::AgentsMdDocument;
+use dashmap::DashMap;
 use notify::RecommendedWatcher;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::SystemTime;
-use dashmap::DashMap;
 
 /// Discovery system for AGENTS.md files
 pub struct AgentsMdDiscovery {

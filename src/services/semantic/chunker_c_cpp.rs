@@ -58,11 +58,43 @@ fn extract_c_items(node: Node, source: &str, chunks: &mut Vec<CodeChunk>) {
         return;
     }
 
+    // Check for function declaration (prototype without body, e.g., in .h headers)
+    if node.kind() == "declaration" {
+        if let Some(name) = extract_c_declaration_name(node, source) {
+            let content = source
+                .get(node.start_byte()..node.end_byte())
+                .unwrap_or_default()
+                .to_string();
+            // Only index declarations that look like function prototypes (have parentheses)
+            if content.contains('(') {
+                chunks.push(CodeChunk {
+                    file_path: String::new(),
+                    chunk_type: ChunkType::Function,
+                    chunk_name: format!("{name} [decl]"),
+                    language: "c".to_string(),
+                    start_line: node.start_position().row + 1,
+                    end_line: node.end_position().row + 1,
+                    content: content.clone(),
+                    content_checksum: compute_checksum(&content),
+                });
+            }
+        }
+        return;
+    }
+
     // Recursively process children
     let mut cursor = node.walk();
     for child in node.children(&mut cursor) {
         extract_c_items(child, source, chunks);
     }
+}
+
+/// Extract function name from a C declaration node (prototype)
+fn extract_c_declaration_name(node: Node, source: &str) -> Option<String> {
+    let declarator = node.child_by_field_name("declarator")?;
+    // declaration -> declarator -> function_declarator -> declarator -> identifier
+    find_function_declarator_name(declarator, source)
+        .map(|n| source[n.byte_range()].to_string())
 }
 
 /// Extract chunks from C++ code
@@ -127,6 +159,28 @@ fn extract_cpp_items_qualified(
         }
         "template_declaration" => {
             extract_cpp_template(node, source, chunks, scope);
+            return;
+        }
+        "declaration" => {
+            // Function declaration/prototype (no body)
+            if let Some(name) = extract_cpp_declaration_name(node, source, scope) {
+                let content = source
+                    .get(node.start_byte()..node.end_byte())
+                    .unwrap_or_default()
+                    .to_string();
+                if content.contains('(') {
+                    chunks.push(CodeChunk {
+                        file_path: String::new(),
+                        chunk_type: ChunkType::Function,
+                        chunk_name: format!("{name} [decl]"),
+                        language: "cpp".to_string(),
+                        start_line: node.start_position().row + 1,
+                        end_line: node.end_position().row + 1,
+                        content: content.clone(),
+                        content_checksum: compute_checksum(&content),
+                    });
+                }
+            }
             return;
         }
         _ => {}
@@ -210,4 +264,12 @@ fn qualify_name(scope: &[String], name: &str) -> String {
     } else {
         format!("{}::{}", scope.join("::"), name)
     }
+}
+
+/// Extract function name from a C++ declaration node (prototype) with scope qualification
+fn extract_cpp_declaration_name(node: Node, source: &str, scope: &[String]) -> Option<String> {
+    let declarator = node.child_by_field_name("declarator")?;
+    let name_node = find_function_declarator_name(declarator, source)?;
+    let bare_name = source[name_node.byte_range()].to_string();
+    Some(qualify_name(scope, &bare_name))
 }

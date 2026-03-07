@@ -1,11 +1,11 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
 
-use super::*;
 use super::markdown_format::{
     calculate_component_score, write_component_breakdown, write_hotspot_basic_info,
     write_single_hotspot, write_tdg_header, write_tdg_hotspots, write_tdg_summary,
 };
 use super::sarif_format::generate_tdg_rules;
+use super::*;
 use crate::models::tdg::{TDGHotspot, TDGSummary};
 use std::path::PathBuf;
 
@@ -393,10 +393,7 @@ mod sarif_format_tests {
             .unwrap();
         assert_eq!(rules.len(), 3);
 
-        let rule_ids: Vec<&str> = rules
-            .iter()
-            .map(|r| r["id"].as_str().unwrap())
-            .collect();
+        let rule_ids: Vec<&str> = rules.iter().map(|r| r["id"].as_str().unwrap()).collect();
         assert!(rule_ids.contains(&"critical-tdg"));
         assert!(rule_ids.contains(&"high-tdg"));
         assert!(rule_ids.contains(&"moderate-tdg"));
@@ -607,31 +604,22 @@ mod internal_helpers_tests {
         let rules = generate_tdg_rules();
         assert_eq!(rules.len(), 3);
 
-        let rule_ids: Vec<&str> = rules
-            .iter()
-            .map(|r| r["id"].as_str().unwrap())
-            .collect();
+        let rule_ids: Vec<&str> = rules.iter().map(|r| r["id"].as_str().unwrap()).collect();
         assert!(rule_ids.contains(&"critical-tdg"));
         assert!(rule_ids.contains(&"high-tdg"));
         assert!(rule_ids.contains(&"moderate-tdg"));
 
         // Check severity levels
         assert_eq!(
-            rules[0]["defaultConfiguration"]["level"]
-                .as_str()
-                .unwrap(),
+            rules[0]["defaultConfiguration"]["level"].as_str().unwrap(),
             "error"
         );
         assert_eq!(
-            rules[1]["defaultConfiguration"]["level"]
-                .as_str()
-                .unwrap(),
+            rules[1]["defaultConfiguration"]["level"].as_str().unwrap(),
             "warning"
         );
         assert_eq!(
-            rules[2]["defaultConfiguration"]["level"]
-                .as_str()
-                .unwrap(),
+            rules[2]["defaultConfiguration"]["level"].as_str().unwrap(),
             "note"
         );
     }
@@ -659,11 +647,7 @@ mod edge_case_tests {
             "complexity",
             5.0,
         )];
-        let result = format_tdg_json(
-            &create_test_summary(),
-            &hotspots,
-            false,
-        );
+        let result = format_tdg_json(&create_test_summary(), &hotspots, false);
         assert!(result.is_ok());
     }
 
@@ -692,7 +676,12 @@ mod edge_case_tests {
 
     #[test]
     fn test_hotspot_with_very_high_score() {
-        let hotspots = vec![create_test_hotspot("src/test.rs", 999.99, "complexity", 1000.0)];
+        let hotspots = vec![create_test_hotspot(
+            "src/test.rs",
+            999.99,
+            "complexity",
+            1000.0,
+        )];
         let result = format_tdg_sarif(&hotspots, &PathBuf::from("/"));
         assert!(result.is_ok());
         let sarif_str = result.unwrap();
@@ -724,15 +713,9 @@ mod edge_case_tests {
 
     #[test]
     fn test_special_chars_in_factor() {
-        let hotspots = vec![
-            create_test_hotspot("src/test.rs", 2.0, "factor<>\"'&", 5.0),
-        ];
+        let hotspots = vec![create_test_hotspot("src/test.rs", 2.0, "factor<>\"'&", 5.0)];
         // JSON should properly escape special characters
-        let result = format_tdg_json(
-            &create_test_summary(),
-            &hotspots,
-            false,
-        );
+        let result = format_tdg_json(&create_test_summary(), &hotspots, false);
         assert!(result.is_ok());
         let json_str = result.unwrap();
         // Verify it's still valid JSON

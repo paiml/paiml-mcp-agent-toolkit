@@ -103,10 +103,7 @@ fn format_summary_report(report: &crate::entropy::EntropyReport, top_violations:
 }
 
 /// Format markdown report
-fn format_markdown_report(
-    report: &crate::entropy::EntropyReport,
-    top_violations: usize,
-) -> String {
+fn format_markdown_report(report: &crate::entropy::EntropyReport, top_violations: usize) -> String {
     let max_violations = if top_violations == 0 {
         usize::MAX
     } else {

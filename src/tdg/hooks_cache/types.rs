@@ -114,7 +114,8 @@ impl std::fmt::Display for CacheMissReason {
                 write!(
                     f,
                     "Cache stale ({}h old, max {}h)",
-                    age_hours, super::MAX_CACHE_AGE_HOURS
+                    age_hours,
+                    super::MAX_CACHE_AGE_HOURS
                 )
             }
             CacheMissReason::VersionChanged { old, new } => {

@@ -16,11 +16,7 @@
 
 #![cfg_attr(coverage_nightly, coverage(off))]
 
-use crate::models::{
-    churn::CodeChurnAnalysis,
-    dag::DependencyGraph,
-    tdg::TDGScore,
-};
+use crate::models::{churn::CodeChurnAnalysis, dag::DependencyGraph, tdg::TDGScore};
 use crate::services::context::FileContext;
 use crate::services::{
     complexity::{ComplexityReport, FileComplexityMetrics},
@@ -162,8 +158,8 @@ include!("deep_context_quality_types.rs");
 
 // --- Submodules ---
 
-mod analyzer_formatting;
 mod analyzer_core;
+mod analyzer_formatting;
 
 // Analysis helper functions
 include!("analysis_helpers.rs");

@@ -113,7 +113,6 @@ pub trait StorageBackend: Send + Sync {
 // NOTE: Sled backend removed - unmaintained, replaced by LibsqlBackend (default)
 // See: https://github.com/paiml/paiml-mcp-agent-toolkit/issues/XX
 
-
 include!("storage_backend_libsql.rs");
 
 include!("storage_backend_inmemory.rs");

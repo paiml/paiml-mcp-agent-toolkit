@@ -73,6 +73,7 @@ pub(crate) fn load_functions(conn: &Connection) -> Result<Vec<FunctionEntry>, St
                 clone_count: row.get::<_, i64>(19)? as u32,
                 pattern_diversity: row.get::<_, f64>(20)? as f32,
                 fault_annotations,
+                linked_definition: None,
             })
         })
         .map_err(|e| format!("Failed to query functions: {e}"))?;
@@ -132,6 +133,7 @@ pub(crate) fn load_functions_lightweight(conn: &Connection) -> Result<Vec<Functi
                 clone_count: row.get::<_, i64>(18)? as u32,
                 pattern_diversity: row.get::<_, f64>(19)? as f32,
                 fault_annotations,
+                linked_definition: None,
             })
         })
         .map_err(|e| format!("Failed to query functions (lightweight): {e}"))?;

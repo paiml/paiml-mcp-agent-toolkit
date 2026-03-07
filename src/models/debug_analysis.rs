@@ -147,8 +147,16 @@ pub struct EvidenceSummary {
 
 impl EvidenceSummary {
     fn process_complexity_evidence(&mut self, evidence: &Evidence) {
-        let value = evidence.value.get("value").and_then(|v| v.as_f64()).unwrap_or(0.0);
-        let threshold = evidence.value.get("threshold").and_then(|t| t.as_f64()).unwrap_or(20.0);
+        let value = evidence
+            .value
+            .get("value")
+            .and_then(|v| v.as_f64())
+            .unwrap_or(0.0);
+        let threshold = evidence
+            .value
+            .get("threshold")
+            .and_then(|t| t.as_f64())
+            .unwrap_or(20.0);
         if value > threshold {
             self.complexity_violations += 1;
         }
@@ -172,7 +180,11 @@ impl EvidenceSummary {
                 }
             }
             EvidenceSource::GitChurn => {
-                let commits = evidence.value.get("commit_count").and_then(|c| c.as_u64()).unwrap_or(0);
+                let commits = evidence
+                    .value
+                    .get("commit_count")
+                    .and_then(|c| c.as_u64())
+                    .unwrap_or(0);
                 if commits > 10 {
                     self.git_churn_high = true;
                 }

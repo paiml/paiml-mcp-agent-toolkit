@@ -299,11 +299,7 @@ impl RuchyParserState {
         self.brace_count -= trimmed.chars().filter(|&c| c == '}').count() as i32;
     }
 
-    pub(super) fn finalize_function(
-        &mut self,
-        metrics: &mut FileComplexityMetrics,
-        line_end: u32,
-    ) {
+    pub(super) fn finalize_function(&mut self, metrics: &mut FileComplexityMetrics, line_end: u32) {
         metrics.functions.push(FunctionComplexity {
             name: self.function_name.clone(),
             line_start: self.function_start,

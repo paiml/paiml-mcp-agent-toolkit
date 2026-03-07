@@ -205,7 +205,7 @@ fn collect_imports(root: Node, source: &str, language: Language) -> Vec<String> 
         Language::TypeScript => &["import_statement"],
         Language::Go => &["import_declaration"],
         Language::C | Language::Cpp => &["preproc_include"],
-        Language::Lua => return Vec::new(),
+        Language::Lua | Language::Ptx => return Vec::new(),
     };
 
     let mut imports = Vec::new();

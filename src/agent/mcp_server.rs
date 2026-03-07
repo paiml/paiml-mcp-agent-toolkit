@@ -176,4 +176,5 @@ include!("mcp_server_monitoring.rs");
 include!("mcp_server_quality.rs");
 
 #[cfg(test)]
+#[path = "mcp_server_tests.rs"]
 mod tests;

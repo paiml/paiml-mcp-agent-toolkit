@@ -55,10 +55,10 @@
 //! }
 //! ```
 
-pub mod types;
+pub mod analysis;
 pub mod cfg_detection;
 pub mod reference_graph;
-pub mod analysis;
+pub mod types;
 
 // Re-export all public items from submodules
 pub use types::{
@@ -70,9 +70,6 @@ pub use types::{
 pub use analysis::DeadCodeAnalyzer;
 #[cfg(test)]
 pub(crate) use analysis::{
-    calculate_dead_percentage,
-    classify_dead_functions_pure,
-    collect_functions_from_context,
-    compute_reachability,
-    detect_function_calls_in_lines,
+    calculate_dead_percentage, classify_dead_functions_pure, collect_functions_from_context,
+    compute_reachability, detect_function_calls_in_lines,
 };

@@ -112,51 +112,50 @@ pub enum RuchyToken {
 }
 
 // Static maps for O(1) keyword and token lookups
-pub(super) static KEYWORD_MAP: LazyLock<HashMap<&'static str, RuchyToken>> =
-    LazyLock::new(|| {
-        use RuchyToken::{
-            Actor, As, Async, Await, Break, Class, Const, Continue, Else, Enum, Export, False,
-            For, From, Fun, If, Impl, Import, In, Let, Match, Mod, Pub, Receive, Return, Send,
-            Spawn, Struct, Trait, True, Type, Use, Var, Where, While,
-        };
-        let mut map = HashMap::new();
-        map.insert("fun", Fun);
-        map.insert("if", If);
-        map.insert("else", Else);
-        map.insert("while", While);
-        map.insert("for", For);
-        map.insert("match", Match);
-        map.insert("return", Return);
-        map.insert("let", Let);
-        map.insert("const", Const);
-        map.insert("var", Var);
-        map.insert("class", Class);
-        map.insert("struct", Struct);
-        map.insert("enum", Enum);
-        map.insert("trait", Trait);
-        map.insert("impl", Impl);
-        map.insert("actor", Actor);
-        map.insert("async", Async);
-        map.insert("await", Await);
-        map.insert("spawn", Spawn);
-        map.insert("send", Send);
-        map.insert("receive", Receive);
-        map.insert("break", Break);
-        map.insert("continue", Continue);
-        map.insert("in", In);
-        map.insert("as", As);
-        map.insert("pub", Pub);
-        map.insert("mod", Mod);
-        map.insert("use", Use);
-        map.insert("where", Where);
-        map.insert("type", Type);
-        map.insert("import", Import);
-        map.insert("from", From);
-        map.insert("export", Export);
-        map.insert("true", True);
-        map.insert("false", False);
-        map
-    });
+pub(super) static KEYWORD_MAP: LazyLock<HashMap<&'static str, RuchyToken>> = LazyLock::new(|| {
+    use RuchyToken::{
+        Actor, As, Async, Await, Break, Class, Const, Continue, Else, Enum, Export, False, For,
+        From, Fun, If, Impl, Import, In, Let, Match, Mod, Pub, Receive, Return, Send, Spawn,
+        Struct, Trait, True, Type, Use, Var, Where, While,
+    };
+    let mut map = HashMap::new();
+    map.insert("fun", Fun);
+    map.insert("if", If);
+    map.insert("else", Else);
+    map.insert("while", While);
+    map.insert("for", For);
+    map.insert("match", Match);
+    map.insert("return", Return);
+    map.insert("let", Let);
+    map.insert("const", Const);
+    map.insert("var", Var);
+    map.insert("class", Class);
+    map.insert("struct", Struct);
+    map.insert("enum", Enum);
+    map.insert("trait", Trait);
+    map.insert("impl", Impl);
+    map.insert("actor", Actor);
+    map.insert("async", Async);
+    map.insert("await", Await);
+    map.insert("spawn", Spawn);
+    map.insert("send", Send);
+    map.insert("receive", Receive);
+    map.insert("break", Break);
+    map.insert("continue", Continue);
+    map.insert("in", In);
+    map.insert("as", As);
+    map.insert("pub", Pub);
+    map.insert("mod", Mod);
+    map.insert("use", Use);
+    map.insert("where", Where);
+    map.insert("type", Type);
+    map.insert("import", Import);
+    map.insert("from", From);
+    map.insert("export", Export);
+    map.insert("true", True);
+    map.insert("false", False);
+    map
+});
 
 pub(super) static SINGLE_CHAR_TOKEN_MAP: LazyLock<HashMap<char, RuchyToken>> =
     LazyLock::new(|| {

@@ -123,11 +123,21 @@ mod coverage_tests {
     fn test_registry_new() {
         let registry = LanguageRegistry::new();
         let mut expected = 0;
-        if cfg!(feature = "rust-ast") { expected += 1; }
-        if cfg!(feature = "python-ast") { expected += 1; }
-        if cfg!(feature = "typescript-ast") { expected += 2; } // TS + JS
-        if cfg!(feature = "c-ast") { expected += 2; } // C + C++
-        if cfg!(feature = "lua-ast") { expected += 1; }
+        if cfg!(feature = "rust-ast") {
+            expected += 1;
+        }
+        if cfg!(feature = "python-ast") {
+            expected += 1;
+        }
+        if cfg!(feature = "typescript-ast") {
+            expected += 2;
+        } // TS + JS
+        if cfg!(feature = "c-ast") {
+            expected += 2;
+        } // C + C++
+        if cfg!(feature = "lua-ast") {
+            expected += 1;
+        }
         assert_eq!(registry.strategies.len(), expected);
     }
 
@@ -135,11 +145,21 @@ mod coverage_tests {
     fn test_registry_default() {
         let registry = LanguageRegistry::default();
         let mut expected = 0;
-        if cfg!(feature = "rust-ast") { expected += 1; }
-        if cfg!(feature = "python-ast") { expected += 1; }
-        if cfg!(feature = "typescript-ast") { expected += 2; }
-        if cfg!(feature = "c-ast") { expected += 2; }
-        if cfg!(feature = "lua-ast") { expected += 1; }
+        if cfg!(feature = "rust-ast") {
+            expected += 1;
+        }
+        if cfg!(feature = "python-ast") {
+            expected += 1;
+        }
+        if cfg!(feature = "typescript-ast") {
+            expected += 2;
+        }
+        if cfg!(feature = "c-ast") {
+            expected += 2;
+        }
+        if cfg!(feature = "lua-ast") {
+            expected += 1;
+        }
         assert_eq!(registry.strategies.len(), expected);
     }
 

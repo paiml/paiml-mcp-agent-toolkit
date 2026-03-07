@@ -76,8 +76,7 @@ mod helper_function_tests {
     fn test_write_risk_distribution_table() {
         let predictions = create_test_predictions();
         let mut output = String::new();
-        write_risk_distribution_table(&mut output, &predictions)
-            .expect("Should write risk table");
+        write_risk_distribution_table(&mut output, &predictions).expect("Should write risk table");
 
         assert!(output.contains("### Risk Distribution"));
         assert!(output.contains("| Risk Level | Count | Percentage |"));
@@ -208,8 +207,7 @@ mod write_recommendations_tests {
     #[test]
     fn test_write_recommendations_high_risk() {
         let mut output = String::new();
-        write_recommendations(&mut output, 0.85)
-            .expect("Should write high risk recommendations");
+        write_recommendations(&mut output, 0.85).expect("Should write high risk recommendations");
 
         assert!(output.contains("#### Recommendations:"));
         assert!(output.contains("High priority for code review"));
@@ -220,8 +218,7 @@ mod write_recommendations_tests {
     #[test]
     fn test_write_recommendations_medium_risk() {
         let mut output = String::new();
-        write_recommendations(&mut output, 0.55)
-            .expect("Should write medium risk recommendations");
+        write_recommendations(&mut output, 0.55).expect("Should write medium risk recommendations");
 
         assert!(output.contains("#### Recommendations:"));
         assert!(output.contains("Schedule for regular review"));
@@ -232,8 +229,7 @@ mod write_recommendations_tests {
     #[test]
     fn test_write_recommendations_low_risk() {
         let mut output = String::new();
-        write_recommendations(&mut output, 0.25)
-            .expect("Should write low risk recommendations");
+        write_recommendations(&mut output, 0.25).expect("Should write low risk recommendations");
 
         assert!(output.contains("#### Recommendations:"));
         assert!(output.contains("Monitor during regular maintenance"));
@@ -282,8 +278,7 @@ mod edge_case_tests {
     #[test]
     fn test_format_summary_single_prediction() {
         let predictions = vec![("single.rs".to_string(), create_mock_defect_score(0.5, 0.8))];
-        let result =
-            format_defect_summary(&predictions).expect("Should format single prediction");
+        let result = format_defect_summary(&predictions).expect("Should format single prediction");
 
         assert!(result.contains("**Total files analyzed**: 1"));
     }
@@ -301,8 +296,7 @@ mod edge_case_tests {
                 create_mock_defect_score(0.40, 0.9),
             ),
         ];
-        let result =
-            format_defect_markdown(&predictions, false).expect("Should format markdown");
+        let result = format_defect_markdown(&predictions, false).expect("Should format markdown");
 
         assert!(result.contains("# Defect Prediction Report"));
     }
@@ -314,8 +308,8 @@ mod edge_case_tests {
             create_mock_defect_score(0.75, 0.9),
         )];
         let project_path = Path::new("/test");
-        let result = format_defect_sarif(&predictions, project_path)
-            .expect("Should handle special chars");
+        let result =
+            format_defect_sarif(&predictions, project_path).expect("Should handle special chars");
 
         assert!(result.contains("path with spaces"));
     }

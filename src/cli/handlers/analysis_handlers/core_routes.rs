@@ -63,13 +63,7 @@ pub(super) async fn route_churn_analysis(cmd: AnalyzeCommands) -> Result<()> {
     {
         let path = project_path.unwrap_or(path);
         crate::cli::handlers::complexity_handlers::handle_analyze_churn(
-            path,
-            days,
-            format,
-            output,
-            top_files,
-            include,
-            exclude,
+            path, days, format, output, top_files, include, exclude,
         )
         .await
     } else {

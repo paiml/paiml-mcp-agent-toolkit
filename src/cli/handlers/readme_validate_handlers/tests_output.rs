@@ -137,11 +137,7 @@ fn test_print_text_summary_failures_only() {
         PathBuf::from("test.md"),
         vec![
             create_test_validation_result("PMAT can analyze", ValidationStatus::Verified, 0.95),
-            create_test_validation_result(
-                "PMAT can compile",
-                ValidationStatus::Contradiction,
-                0.2,
-            ),
+            create_test_validation_result("PMAT can compile", ValidationStatus::Contradiction, 0.2),
         ],
     )];
 

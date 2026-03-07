@@ -2,7 +2,9 @@
 
 use super::baseline::save_ratchet_baseline;
 use super::detection_cc001_cc002::{detect_cc001_function_clones, detect_cc002_api_divergence};
-use super::detection_cc003_cc004::{detect_cc003_primitive_upstream, detect_cc004_churn_correlation};
+use super::detection_cc003_cc004::{
+    detect_cc003_primitive_upstream, detect_cc004_churn_correlation,
+};
 use super::detection_cc005::detect_cc005_example_duplication;
 use super::discovery::discover_workspace_crates;
 use super::helpers::{
@@ -10,9 +12,7 @@ use super::helpers::{
     parse_rules_filter,
 };
 use super::output::{format_markdown, format_text};
-use super::types::{
-    CrossCrateBaseline, CrossCrateFinding, CrossCrateReport, DetectionConfig,
-};
+use super::types::{CrossCrateBaseline, CrossCrateFinding, CrossCrateReport, DetectionConfig};
 use crate::cli::commands::ComplyOutputFormat;
 use crate::models::comply_config::PmatYamlConfig;
 use anyhow::Result;
@@ -86,7 +86,10 @@ fn print_discovery_help() {
 }
 
 fn run_detection_rules(
-    crate_functions: &[(super::types::CrateInfo, Vec<crate::services::agent_context::FunctionEntry>)],
+    crate_functions: &[(
+        super::types::CrateInfo,
+        Vec<crate::services::agent_context::FunctionEntry>,
+    )],
     enabled_rules: &Option<HashSet<String>>,
     det_config: &DetectionConfig,
     yaml_config: &PmatYamlConfig,

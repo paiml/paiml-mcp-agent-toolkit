@@ -139,9 +139,7 @@ mod tests {
         let mut env = minijinja::Environment::new();
         register_helpers(&mut env);
 
-        let template = env
-            .template_from_str("{{ name|pascal_case }}")
-            .unwrap();
+        let template = env.template_from_str("{{ name|pascal_case }}").unwrap();
         let result = template
             .render(minijinja::context! { name => "my_project_name" })
             .unwrap();

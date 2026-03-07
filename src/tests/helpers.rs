@@ -89,7 +89,9 @@ mod helpers_tests {
     #[test]
     fn test_current_year_helper() {
         let env = make_env();
-        let tmpl = env.template_from_str("Copyright {{ current_year() }}").unwrap();
+        let tmpl = env
+            .template_from_str("Copyright {{ current_year() }}")
+            .unwrap();
         let result = tmpl.render(context! {}).unwrap();
 
         let year: i32 = result.trim_start_matches("Copyright ").parse().unwrap();
@@ -99,7 +101,9 @@ mod helpers_tests {
     #[test]
     fn test_current_date_helper() {
         let env = make_env();
-        let tmpl = env.template_from_str("Generated on {{ current_date() }}").unwrap();
+        let tmpl = env
+            .template_from_str("Generated on {{ current_date() }}")
+            .unwrap();
         let result = tmpl.render(context! {}).unwrap();
 
         assert!(result.starts_with("Generated on "));

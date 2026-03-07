@@ -5,9 +5,9 @@ use crate::models::roadmap::{ItemStatus, Priority, RoadmapItem};
 use crate::services::roadmap_service::RoadmapService;
 use anyhow::Result;
 
-use crate::cli::handlers::work_falsification::{ClaimResult, FalsificationReport};
 use super::github::{create_github_issue_from_item, fetch_github_issue};
 use super::helpers::parse_acceptance_criteria;
+use crate::cli::handlers::work_falsification::{ClaimResult, FalsificationReport};
 
 /// Resolve a GitHub issue into a RoadmapItem (helper for handle_work_start)
 pub(super) async fn resolve_github_issue(

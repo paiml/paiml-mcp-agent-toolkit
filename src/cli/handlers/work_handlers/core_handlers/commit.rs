@@ -130,11 +130,7 @@ pub(super) fn update_changelog(project_path: &PathBuf, item: &RoadmapItem) {
 }
 
 /// Print completion next steps with commit metadata (helper for handle_work_complete)
-pub(super) fn print_complete_next_steps(
-    item: &RoadmapItem,
-    id: &str,
-    metadata: &CommitMetadata,
-) {
+pub(super) fn print_complete_next_steps(item: &RoadmapItem, id: &str, metadata: &CommitMetadata) {
     println!("🎯 Next steps:");
     let rust_score_line = metadata
         .rust_project_score

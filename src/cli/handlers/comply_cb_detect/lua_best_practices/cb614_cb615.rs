@@ -2,8 +2,8 @@
 //! CB-614: Global Protection and Sandbox Pattern Detection
 //! and CB-615: Coroutine Complexity Scoring.
 
-use super::helpers::{is_lua_test_file, walkdir_lua_files};
 use super::super::types::*;
+use super::helpers::{is_lua_test_file, walkdir_lua_files};
 use std::fs;
 use std::path::{Path, PathBuf};
 

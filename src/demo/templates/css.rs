@@ -297,4 +297,3 @@ pub const CSS_DARK_THEME: &str = r#"
             `);
         }
 "#;
-

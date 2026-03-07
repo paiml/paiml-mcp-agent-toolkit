@@ -192,7 +192,12 @@ impl LanguageStrategy for CppStrategy {
     fn can_parse(&self, path: &Path) -> bool {
         path.extension()
             .and_then(|ext| ext.to_str())
-            .is_some_and(|ext| matches!(ext, "cpp" | "cc" | "cxx" | "hpp" | "hh" | "hxx" | "cu" | "cuh"))
+            .is_some_and(|ext| {
+                matches!(
+                    ext,
+                    "cpp" | "cc" | "cxx" | "hpp" | "hh" | "hxx" | "cu" | "cuh"
+                )
+            })
     }
 
     #[cfg(feature = "cpp-ast")]

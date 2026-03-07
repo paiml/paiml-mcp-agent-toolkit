@@ -110,7 +110,10 @@ pub(crate) fn install_tdg_pre_commit_hook(hooks_dir: &Path, config: &TdgHooksCon
 }
 
 /// Install post-commit hook for baseline auto-update
-pub(crate) fn install_tdg_post_commit_hook(hooks_dir: &Path, config: &TdgHooksConfig) -> Result<()> {
+pub(crate) fn install_tdg_post_commit_hook(
+    hooks_dir: &Path,
+    config: &TdgHooksConfig,
+) -> Result<()> {
     let hook_path = hooks_dir.join("post-commit");
 
     // Read template

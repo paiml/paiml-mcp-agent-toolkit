@@ -2,6 +2,9 @@
 
 #[cfg(test)]
 mod tests {
+    use crate::cli::handlers::work_contract::{
+        EvidenceType, FalsificationMethod, FalsificationResult,
+    };
     use crate::cli::handlers::work_falsification::cache::{
         find_cache_file, read_cached_metric, read_deny_cache_fallback, read_lint_cache_fallback,
     };
@@ -10,9 +13,6 @@ mod tests {
     };
     use crate::cli::handlers::work_falsification::types::{
         CachedMetric, ClaimResult, FalsificationReport, CACHE_BLOCK_HOURS, CACHE_WARN_HOURS,
-    };
-    use crate::cli::handlers::work_contract::{
-        EvidenceType, FalsificationMethod, FalsificationResult,
     };
     use std::path::PathBuf;
 
@@ -141,12 +141,19 @@ mod tests {
         let tmp = std::env::temp_dir().join("pmat-test-deny-fallback");
         let pmat_dir = tmp.join(".pmat");
         let _ = std::fs::create_dir_all(&pmat_dir);
-        std::fs::write(pmat_dir.join("deny-cache.txt"), "all checks passed\n0 warnings").unwrap();
+        std::fs::write(
+            pmat_dir.join("deny-cache.txt"),
+            "all checks passed\n0 warnings",
+        )
+        .unwrap();
 
         let result = read_deny_cache_fallback(&tmp);
         assert!(result.is_some());
         let cache = result.unwrap();
-        assert_eq!(cache.value.get("passed").and_then(|v| v.as_bool()), Some(true));
+        assert_eq!(
+            cache.value.get("passed").and_then(|v| v.as_bool()),
+            Some(true)
+        );
 
         let _ = std::fs::remove_dir_all(&tmp);
     }
@@ -156,14 +163,28 @@ mod tests {
         let tmp = std::env::temp_dir().join("pmat-test-lint-fallback");
         let pmat_dir = tmp.join(".pmat");
         let _ = std::fs::create_dir_all(&pmat_dir);
-        std::fs::write(pmat_dir.join("lint-cache.txt"), "error[E0001]: unused var\nerror[E0002]: missing type").unwrap();
+        std::fs::write(
+            pmat_dir.join("lint-cache.txt"),
+            "error[E0001]: unused var\nerror[E0002]: missing type",
+        )
+        .unwrap();
 
         let result = read_lint_cache_fallback(&tmp);
         assert!(result.is_some());
         let cache = result.unwrap();
-        assert_eq!(cache.value.get("passed").and_then(|v| v.as_bool()), Some(false));
+        assert_eq!(
+            cache.value.get("passed").and_then(|v| v.as_bool()),
+            Some(false)
+        );
         // "error" appears twice (once per line)
-        assert!(cache.value.get("error_count").and_then(|v| v.as_u64()).unwrap() >= 2);
+        assert!(
+            cache
+                .value
+                .get("error_count")
+                .and_then(|v| v.as_u64())
+                .unwrap()
+                >= 2
+        );
 
         let _ = std::fs::remove_dir_all(&tmp);
     }
@@ -416,10 +437,8 @@ mod tests {
 
     #[test]
     fn test_evidence_type_variants() {
-        let file_list = EvidenceType::FileList(vec![
-            PathBuf::from("file1.rs"),
-            PathBuf::from("file2.rs"),
-        ]);
+        let file_list =
+            EvidenceType::FileList(vec![PathBuf::from("file1.rs"), PathBuf::from("file2.rs")]);
         let _ = format!("{:?}", file_list);
 
         let counter_example = EvidenceType::CounterExample {

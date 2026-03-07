@@ -1,9 +1,7 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
 //! Types and data structures for the falsification system.
 
-use crate::cli::handlers::work_contract::{
-    FalsificationMethod, FalsificationResult,
-};
+use crate::cli::handlers::work_contract::{FalsificationMethod, FalsificationResult};
 use serde::{Deserialize, Serialize};
 
 /// Cache staleness thresholds (per spec v2.7)

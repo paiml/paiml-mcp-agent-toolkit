@@ -173,8 +173,7 @@ impl FiveWhysAnalyzer {
 
     const SATD_EXTENSIONS: &'static [&'static str] =
         &["rs", "py", "ts", "js", "go", "lua", "c", "cpp", "java"];
-    const SATD_MARKERS: &'static [&'static str] =
-        &["TODO", "FIXME", "HACK", "WORKAROUND", "XXX"];
+    const SATD_MARKERS: &'static [&'static str] = &["TODO", "FIXME", "HACK", "WORKAROUND", "XXX"];
 
     fn count_satd_markers(dir: &Path) -> usize {
         let entries = match std::fs::read_dir(dir) {
@@ -435,7 +434,6 @@ impl EvidenceSignals {
 }
 
 impl FiveWhysAnalyzer {
-
     /// Calculate confidence score based on evidence strength
     pub fn calculate_confidence(&self, evidence: &[Evidence]) -> Result<f64> {
         if evidence.is_empty() {

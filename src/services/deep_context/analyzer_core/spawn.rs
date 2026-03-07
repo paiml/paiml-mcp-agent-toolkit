@@ -4,8 +4,10 @@ use std::path::PathBuf;
 
 use tracing::debug;
 
+use crate::services::deep_context::analyzer_core::types::{
+    AnalysisResult, ParallelAnalysisResults,
+};
 use crate::services::deep_context::AnalysisType;
-use crate::services::deep_context::analyzer_core::types::{AnalysisResult, ParallelAnalysisResults};
 use crate::services::deep_context::DeepContextAnalyzer;
 
 impl DeepContextAnalyzer {
@@ -103,8 +105,7 @@ impl DeepContextAnalyzer {
         let days = self.config.period_days;
         join_set.spawn(async move {
             AnalysisResult::Churn(
-                crate::services::deep_context::analysis_functions::analyze_churn(&path, days)
-                    .await,
+                crate::services::deep_context::analysis_functions::analyze_churn(&path, days).await,
             )
         });
         Ok(())
@@ -162,8 +163,7 @@ impl DeepContextAnalyzer {
     ) -> anyhow::Result<()> {
         join_set.spawn(async move {
             AnalysisResult::Provability(
-                crate::services::deep_context::analysis_functions::analyze_provability(&path)
-                    .await,
+                crate::services::deep_context::analysis_functions::analyze_provability(&path).await,
             )
         });
         Ok(())

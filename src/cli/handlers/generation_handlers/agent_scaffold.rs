@@ -211,7 +211,10 @@ async fn execute_scaffold_operation(
 }
 
 /// Print dry run information
-pub(super) fn print_dry_run_info(context: &crate::scaffold::agent::AgentContext, output_path: &Path) {
+pub(super) fn print_dry_run_info(
+    context: &crate::scaffold::agent::AgentContext,
+    output_path: &Path,
+) {
     eprintln!("🔍 Dry run mode - would generate the following:");
     eprintln!("  Agent: {}", context.name);
     eprintln!("  Template: {:?}", context.template_type);

@@ -42,7 +42,4 @@ pub use metrics::{
 };
 
 // Tests extracted to deep_context_tests.rs for file health compliance (CB-040)
-// TEMPORARILY DISABLED: Test file is missing
-#[cfg(all(test, feature = "broken-tests"))]
-#[path = "../deep_context_tests.rs"]
-mod tests;
+// TEMPORARILY DISABLED: Test file is missing (deep_context_tests.rs does not exist)

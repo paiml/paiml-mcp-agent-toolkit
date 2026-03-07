@@ -304,11 +304,7 @@ where
         }
     }
 
-    pub(crate) async fn insert_l1(
-        &self,
-        key: K,
-        entry: AdaptiveCacheEntry<V>,
-    ) -> Result<()> {
+    pub(crate) async fn insert_l1(&self, key: K, entry: AdaptiveCacheEntry<V>) -> Result<()> {
         let mut cache = self.l1_cache.write();
 
         // Check if we need to evict
@@ -325,11 +321,7 @@ where
         Ok(())
     }
 
-    pub(crate) async fn insert_l2(
-        &self,
-        key: K,
-        entry: AdaptiveCacheEntry<V>,
-    ) -> Result<()> {
+    pub(crate) async fn insert_l2(&self, key: K, entry: AdaptiveCacheEntry<V>) -> Result<()> {
         let mut cache = self.l2_cache.write();
 
         let max_size = *self
@@ -345,11 +337,7 @@ where
         Ok(())
     }
 
-    pub(crate) async fn insert_l3(
-        &self,
-        key: K,
-        entry: AdaptiveCacheEntry<V>,
-    ) -> Result<()> {
+    pub(crate) async fn insert_l3(&self, key: K, entry: AdaptiveCacheEntry<V>) -> Result<()> {
         let mut cache = self.l3_cache.write();
 
         let max_size = *self
@@ -365,10 +353,7 @@ where
         Ok(())
     }
 
-    pub(crate) fn calculate_tier_size(
-        &self,
-        cache: &FxHashMap<K, AdaptiveCacheEntry<V>>,
-    ) -> usize {
+    pub(crate) fn calculate_tier_size(&self, cache: &FxHashMap<K, AdaptiveCacheEntry<V>>) -> usize {
         cache.values().map(|entry| entry.size).sum()
     }
 

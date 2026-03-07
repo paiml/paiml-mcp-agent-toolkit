@@ -244,6 +244,10 @@ static LANGUAGE_INFO: &[LanguageInfo] = &[
         extensions: &["s", "S", "asm"],
     },
     LanguageInfo {
+        name: "PTX",
+        extensions: &["ptx"],
+    },
+    LanguageInfo {
         name: "Unknown",
         extensions: &[],
     },

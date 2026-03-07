@@ -2,11 +2,11 @@
 //! CB-608: Unchecked nil,err Return Pattern, CB-609: assert() in Library Code,
 //! and CB-610: Smarter String Concatenation (accumulator pattern) detection.
 
+use super::super::types::*;
 use super::constants::NIL_ERR_FUNCTIONS;
 use super::helpers::{
     compute_lua_production_lines, is_in_lua_string, is_lua_test_file, walkdir_lua_files,
 };
-use super::super::types::*;
 use std::fs;
 use std::path::Path;
 

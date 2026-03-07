@@ -134,7 +134,10 @@ fn demo_templates() {
             chunk.start_line,
             chunk.end_line
         );
-        println!("    Content includes template<>: {}", chunk.content.contains("template"));
+        println!(
+            "    Content includes template<>: {}",
+            chunk.content.contains("template")
+        );
     }
     assert_eq!(chunks.len(), 1);
     assert!(chunks[0].content.contains("template"));
@@ -161,10 +164,11 @@ fn demo_ptx_instructions() {
         );
         // In the full indexer, fault annotations would include:
         // INLINE_PTX, PTX:ldmatrix
-        println!("    Contains inline PTX: {}", chunk.content.contains("asm("));
         println!(
-            "    PTX opcode: ldmatrix (searchable via `pmat query \"ldmatrix\" --faults`)"
+            "    Contains inline PTX: {}",
+            chunk.content.contains("asm(")
         );
+        println!("    PTX opcode: ldmatrix (searchable via `pmat query \"ldmatrix\" --faults`)");
     }
     assert!(!chunks.is_empty());
     assert!(chunks[0].content.contains("ldmatrix"));

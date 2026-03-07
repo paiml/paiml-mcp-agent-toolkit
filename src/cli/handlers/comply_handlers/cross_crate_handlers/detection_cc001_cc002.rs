@@ -37,11 +37,8 @@ pub(super) fn detect_cc001_function_clones(
     for i in 0..crate_names.len() {
         for j in (i + 1)..crate_names.len() {
             // Skip excluded crate pairs
-            if is_crate_pair_excluded(
-                crate_names[i],
-                crate_names[j],
-                &config.excluded_crate_pairs,
-            ) {
+            if is_crate_pair_excluded(crate_names[i], crate_names[j], &config.excluded_crate_pairs)
+            {
                 continue;
             }
 
@@ -50,7 +47,9 @@ pub(super) fn detect_cc001_function_clones(
 
             for &idx_a in indices_a {
                 for &idx_b in indices_b {
-                    let sim = signed[idx_a].minhash.jaccard_similarity(&signed[idx_b].minhash);
+                    let sim = signed[idx_a]
+                        .minhash
+                        .jaccard_similarity(&signed[idx_b].minhash);
                     if sim >= threshold {
                         let severity = if sim >= 0.95 {
                             CcSeverity::Error
@@ -129,10 +128,8 @@ pub(super) fn detect_cc002_api_divergence(
 
         // Count distinct crates — if a name appears in 3+ crates, it's
         // a natural polymorphic pattern, not an API divergence risk.
-        let distinct_crates: HashSet<&str> = impls
-            .iter()
-            .map(|fr| fr.crate_info.name.as_str())
-            .collect();
+        let distinct_crates: HashSet<&str> =
+            impls.iter().map(|fr| fr.crate_info.name.as_str()).collect();
         if distinct_crates.len() > 2 {
             continue;
         }

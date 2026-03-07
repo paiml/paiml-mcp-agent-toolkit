@@ -8,16 +8,12 @@ use crate::services::roadmap_service::RoadmapService;
 use anyhow::{Context, Result};
 use std::path::PathBuf;
 
-use crate::cli::handlers::work_ledger::FalsificationLedger;
-use super::commit::{
-    auto_commit_work_files, capture_commit_metadata, update_changelog,
-};
+use super::commit::{auto_commit_work_files, capture_commit_metadata, update_changelog};
 use super::contract::{create_work_contract, run_contract_falsification, run_quality_check};
 use super::github::detect_github_repo;
-use super::helpers::{
-    create_specification_template, validate_override_accountability,
-};
+use super::helpers::{create_specification_template, validate_override_accountability};
 use super::resolution::{resolve_github_issue, resolve_yaml_ticket};
+use crate::cli::handlers::work_ledger::FalsificationLedger;
 
 /// Handle work init command
 pub async fn handle_work_init(
@@ -163,7 +159,14 @@ pub async fn handle_work_start(
     service.save(&roadmap)?;
     println!("✅ Updated roadmap: {}", roadmap_path.display());
 
-    create_work_contract(&project_path, &item.id, profile_override.as_deref(), &without, iteration).await;
+    create_work_contract(
+        &project_path,
+        &item.id,
+        profile_override.as_deref(),
+        &without,
+        iteration,
+    )
+    .await;
 
     if with_spec {
         create_spec_if_needed(&project_path, &item, &id, is_github_issue)?;
@@ -318,14 +321,22 @@ pub async fn handle_work_checkpoint(id: String, path: Option<PathBuf>) -> Result
             record.invariant_results.len()
         );
     } else {
-        let failed_count = record.invariant_results.iter().filter(|r| !r.passed).count();
+        let failed_count = record
+            .invariant_results
+            .iter()
+            .filter(|r| !r.passed)
+            .count();
         println!(
             "⚠️  {} invariant(s) violated. Fix before completion.",
             failed_count
         );
     }
 
-    println!("   Iteration: {}  |  Git SHA: {}", record.iteration, &record.git_sha[..8.min(record.git_sha.len())]);
+    println!(
+        "   Iteration: {}  |  Git SHA: {}",
+        record.iteration,
+        &record.git_sha[..8.min(record.git_sha.len())]
+    );
     println!("   📋 Checkpoint: {}", checkpoint_path.display());
     println!();
 
@@ -395,8 +406,7 @@ pub async fn handle_work_complete(
         println!("   Skipping re-run (receipt still valid)");
         println!();
     } else {
-        run_contract_falsification(&project_path, &item.id, &override_claims, &ticket, &id)
-            .await?;
+        run_contract_falsification(&project_path, &item.id, &override_claims, &ticket, &id).await?;
     }
 
     // Mark as completed
@@ -419,7 +429,9 @@ pub async fn handle_work_complete(
     if let Some(rust_score) = metadata.rust_project_score {
         println!("      ✅ Rust Project Score: {:.1}/134", rust_score);
     }
-    let meta_file = project_path.join(".pmat-metrics").join("commit-*-meta.json");
+    let meta_file = project_path
+        .join(".pmat-metrics")
+        .join("commit-*-meta.json");
     println!("✅ Commit metadata: {}", meta_file.display());
 
     update_changelog(&project_path, &item);

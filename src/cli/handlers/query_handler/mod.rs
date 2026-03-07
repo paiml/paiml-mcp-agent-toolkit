@@ -35,12 +35,12 @@ include!("query_execution.rs");
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::git_history::{
         classify_commit_type, compute_decay_score, compute_impact_risk, format_timestamp,
         parse_git_log,
     };
     use super::options::{FileAnnotation, FileHotspot};
+    use super::*;
     use tempfile::TempDir;
 
     include!("query_tests.rs");

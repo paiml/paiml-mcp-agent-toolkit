@@ -20,7 +20,6 @@ include!("automation_automator.rs");
 // impl GitSafetyNet + impl RollbackManager
 include!("automation_git.rs");
 
-
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {

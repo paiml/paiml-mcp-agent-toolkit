@@ -9,27 +9,18 @@
 //! - `agent_scaffold`: Agent scaffolding with context builders
 //! - `wasm_scaffold`: WASM project scaffolding
 
-mod template_handlers;
 mod agent_scaffold;
+mod template_handlers;
 mod wasm_scaffold;
 
-pub use template_handlers::{
-    handle_generate,
-    handle_scaffold,
-    handle_validate,
-};
+pub use template_handlers::{handle_generate, handle_scaffold, handle_validate};
 
 pub use agent_scaffold::{
-    handle_list_agent_templates,
-    handle_scaffold_agent,
-    handle_validate_agent_template,
+    handle_list_agent_templates, handle_scaffold_agent, handle_validate_agent_template,
     ScaffoldAgentParams,
 };
 
-pub use wasm_scaffold::{
-    handle_scaffold_wasm,
-    ScaffoldWasmParams,
-};
+pub use wasm_scaffold::{handle_scaffold_wasm, ScaffoldWasmParams};
 
 #[cfg(test)]
 mod tests;

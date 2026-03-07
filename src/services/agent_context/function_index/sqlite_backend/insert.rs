@@ -11,7 +11,10 @@ use rusqlite::{params, Connection};
 use std::collections::{HashMap, HashSet};
 
 /// Insert all functions into the database within a transaction.
-pub(crate) fn insert_functions(conn: &Connection, functions: &[FunctionEntry]) -> Result<(), String> {
+pub(crate) fn insert_functions(
+    conn: &Connection,
+    functions: &[FunctionEntry],
+) -> Result<(), String> {
     let tx = conn
         .unchecked_transaction()
         .map_err(|e| format!("Failed to begin transaction: {e}"))?;

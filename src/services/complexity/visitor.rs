@@ -1,7 +1,7 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
 //! Zero-allocation complexity visitor for AST traversal.
 
-use super::types::{ComplexityMetrics, FunctionComplexity, ClassComplexity};
+use super::types::{ClassComplexity, ComplexityMetrics, FunctionComplexity};
 
 /// Zero-allocation complexity visitor for AST traversal
 pub struct ComplexityVisitor<'a> {

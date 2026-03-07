@@ -79,6 +79,7 @@ impl Language {
             Language::Julia,
             Language::Matlab,
             Language::Assembly,
+            Language::PTX,
         ] {
             if lang.extensions().contains(&ext.as_str()) {
                 return lang;

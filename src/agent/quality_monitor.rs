@@ -158,23 +158,60 @@ pub enum QualityEvent {
 /// Types of quality changes
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum QualityChange {
-    ComplexityIncrease { file: String, old_complexity: f64, new_complexity: f64 },
-    ComplexityDecrease { file: String, old_complexity: f64, new_complexity: f64 },
-    SatdAdded { file: String, count: usize },
-    SatdRemoved { file: String, count: usize },
-    FileAdded { file: String },
-    FileRemoved { file: String },
-    QualityImproved { old_score: f64, new_score: f64 },
-    QualityDegraded { old_score: f64, new_score: f64 },
+    ComplexityIncrease {
+        file: String,
+        old_complexity: f64,
+        new_complexity: f64,
+    },
+    ComplexityDecrease {
+        file: String,
+        old_complexity: f64,
+        new_complexity: f64,
+    },
+    SatdAdded {
+        file: String,
+        count: usize,
+    },
+    SatdRemoved {
+        file: String,
+        count: usize,
+    },
+    FileAdded {
+        file: String,
+    },
+    FileRemoved {
+        file: String,
+    },
+    QualityImproved {
+        old_score: f64,
+        new_score: f64,
+    },
+    QualityDegraded {
+        old_score: f64,
+        new_score: f64,
+    },
 }
 
 /// Quality violations that trigger alerts
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum QualityViolation {
-    ComplexityThreshold { file: String, function: String, complexity: u32 },
-    QualityScoreBelow { current_score: f64, threshold: f64 },
-    TooManySatdIssues { count: usize, threshold: usize },
-    QualityTrendNegative { trend: f64, duration: Duration },
+    ComplexityThreshold {
+        file: String,
+        function: String,
+        complexity: u32,
+    },
+    QualityScoreBelow {
+        current_score: f64,
+        threshold: f64,
+    },
+    TooManySatdIssues {
+        count: usize,
+        threshold: usize,
+    },
+    QualityTrendNegative {
+        trend: f64,
+        duration: Duration,
+    },
 }
 
 /// Quality trend analysis

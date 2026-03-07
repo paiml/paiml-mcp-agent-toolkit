@@ -86,7 +86,9 @@ fn extract_comma_separated_idents(s: &str) -> Vec<String> {
 
 /// Collect all known local identifiers from a Lua file's production lines.
 /// This includes: function parameters, for-loop variables, and local declarations.
-pub(super) fn collect_known_locals(prod_lines: &[(usize, String)]) -> std::collections::HashSet<String> {
+pub(super) fn collect_known_locals(
+    prod_lines: &[(usize, String)],
+) -> std::collections::HashSet<String> {
     use std::collections::HashSet;
     let mut locals = HashSet::new();
 
@@ -188,7 +190,11 @@ pub fn extract_pcall_status_var(line: &str) -> Option<String> {
 }
 
 /// Check if pcall status variable is checked within 5 lines after index `idx`.
-pub(super) fn has_status_check(prod_lines: &[(usize, String)], idx: usize, status_var: Option<&str>) -> bool {
+pub(super) fn has_status_check(
+    prod_lines: &[(usize, String)],
+    idx: usize,
+    status_var: Option<&str>,
+) -> bool {
     let lookahead_end = std::cmp::min(idx + 6, prod_lines.len());
     prod_lines[idx + 1..lookahead_end]
         .iter()

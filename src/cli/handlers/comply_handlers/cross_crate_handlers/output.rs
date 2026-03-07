@@ -65,10 +65,7 @@ pub(super) fn format_text(report: &CrossCrateReport) -> String {
             }
 
             if rule_findings.len() > 20 {
-                out.push_str(&format!(
-                    "  ... and {} more\n",
-                    rule_findings.len() - 20
-                ));
+                out.push_str(&format!("  ... and {} more\n", rule_findings.len() - 20));
             }
             out.push('\n');
         }
@@ -100,8 +97,12 @@ pub(super) fn format_markdown(report: &CrossCrateReport) -> String {
         return out;
     }
 
-    out.push_str("| Rule | Severity | Crate A | Crate B | Function | Similarity | Recommendation |\n");
-    out.push_str("|------|----------|---------|---------|----------|------------|----------------|\n");
+    out.push_str(
+        "| Rule | Severity | Crate A | Crate B | Function | Similarity | Recommendation |\n",
+    );
+    out.push_str(
+        "|------|----------|---------|---------|----------|------------|----------------|\n",
+    );
 
     for f in &report.findings {
         let sim_str = f
@@ -111,13 +112,7 @@ pub(super) fn format_markdown(report: &CrossCrateReport) -> String {
 
         out.push_str(&format!(
             "| {} | {} | {} | {} | {} | {} | {} |\n",
-            f.rule,
-            f.severity,
-            f.crate_a,
-            f.crate_b,
-            f.function_a,
-            sim_str,
-            f.recommendation,
+            f.rule, f.severity, f.crate_a, f.crate_b, f.function_a, sim_str, f.recommendation,
         ));
     }
 

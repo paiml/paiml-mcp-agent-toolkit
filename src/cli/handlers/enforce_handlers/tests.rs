@@ -37,13 +37,13 @@ mod enforce_tests_external;
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
-    use crate::cli::EnforceOutputFormat;
     use crate::cli::handlers::enforce_handlers::{
         clear_enforcement_cache, handle_complete_state, handle_refactoring_state,
         handle_violating_state, load_quality_profile, output_result, should_continue_enforcement,
         EnforcementConfig, EnforcementProgress, EnforcementResult, EnforcementState,
         QualityProfile, QualityViolation,
     };
+    use crate::cli::EnforceOutputFormat;
 
     #[test]
     fn test_quality_profile_default() {

@@ -156,10 +156,7 @@ fn format_issue_body(finding: &KaizenFinding) -> String {
     body
 }
 
-pub(crate) fn severity_to_labels(
-    severity: FindingSeverity,
-    source: FindingSource,
-) -> Vec<String> {
+pub(crate) fn severity_to_labels(severity: FindingSeverity, source: FindingSource) -> Vec<String> {
     let mut labels = vec!["kaizen".to_string()];
     labels.push(match severity {
         FindingSeverity::Critical => "priority:critical".to_string(),

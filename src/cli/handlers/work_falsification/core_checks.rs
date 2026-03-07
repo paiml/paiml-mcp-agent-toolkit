@@ -1,9 +1,7 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
 //! Core falsification checks: manifest, coverage, TDG, complexity, spec, roadmap, git.
 
-use crate::cli::handlers::work_contract::{
-    EvidenceType, FalsificationResult, FileManifest,
-};
+use crate::cli::handlers::work_contract::{EvidenceType, FalsificationResult, FileManifest};
 use anyhow::{Context, Result};
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -34,8 +32,7 @@ pub(crate) fn test_manifest_integrity(
 pub(crate) fn test_coverage_gaming(project_path: &Path) -> Result<FalsificationResult> {
     print!("Scanning for gaming patterns... ");
 
-    let detection_result =
-        crate::services::gaming_detector::detect_coverage_gaming(project_path)?;
+    let detection_result = crate::services::gaming_detector::detect_coverage_gaming(project_path)?;
 
     if !detection_result.has_critical_violations() {
         Ok(FalsificationResult::passed(format!(
@@ -487,4 +484,3 @@ pub(crate) fn test_github_sync(project_path: &Path) -> Result<FalsificationResul
         ))
     }
 }
-

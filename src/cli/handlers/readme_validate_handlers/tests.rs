@@ -414,4 +414,3 @@ Supported languages:
     let result = cmd.execute();
     assert!(result.is_ok());
 }
-

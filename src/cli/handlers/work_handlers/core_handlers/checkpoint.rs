@@ -14,10 +14,7 @@ use crate::cli::handlers::work_contract::{
 /// This is the core of `pmat work checkpoint`. Each invariant clause is
 /// evaluated against the current project state. The result is persisted
 /// to `.pmat-work/{id}/checkpoints/` for audit trail.
-pub(super) fn run_checkpoint(
-    project_path: &Path,
-    work_item_id: &str,
-) -> Result<CheckpointRecord> {
+pub(super) fn run_checkpoint(project_path: &Path, work_item_id: &str) -> Result<CheckpointRecord> {
     let contract = WorkContract::load(project_path, work_item_id).with_context(|| {
         format!(
             "No contract found for '{}'. Run 'pmat work start {}' first.",
@@ -76,9 +73,7 @@ fn evaluate_single_invariant(
                 explanation: format!("{}: deferred to completion", clause.description),
             }
         }
-        FalsificationMethod::ManifestIntegrity => {
-            check_compiles_invariant(project_path, clause)
-        }
+        FalsificationMethod::ManifestIntegrity => check_compiles_invariant(project_path, clause),
         // SATD, dead code, fix chain — checked at completion for now
         _ => InvariantResult {
             clause_id: clause.id.clone(),
@@ -138,10 +133,7 @@ fn check_file_size_invariant(
         InvariantResult {
             clause_id: clause.id.clone(),
             passed: true,
-            explanation: format!(
-                "All changed files within {} line limit",
-                max_lines
-            ),
+            explanation: format!("All changed files within {} line limit", max_lines),
         }
     } else {
         InvariantResult {

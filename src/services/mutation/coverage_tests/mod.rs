@@ -6,11 +6,11 @@
 
 use super::*;
 
-mod types_tests;
-mod operators_tests;
-mod scoring_tests;
 mod engine_tests;
 mod language_tests;
-mod state_tests;
-mod rust_adapter_tests;
+mod operators_tests;
 mod property_tests;
+mod rust_adapter_tests;
+mod scoring_tests;
+mod state_tests;
+mod types_tests;

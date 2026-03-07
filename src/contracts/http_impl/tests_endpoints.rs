@@ -4,8 +4,8 @@
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod endpoint_tests {
-    use super::super::router::create_router;
     use super::super::openapi::generate_openapi_spec;
+    use super::super::router::create_router;
     use axum::{
         body::Body,
         http::{Request, StatusCode},

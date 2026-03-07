@@ -232,8 +232,7 @@ async fn handle_run(
     // O(1) cache check if enabled
     if use_cache {
         let project_root = std::env::current_dir()?;
-        let cache_manager =
-            crate::tdg::hooks_cache::HooksCacheManager::new(&project_root);
+        let cache_manager = crate::tdg::hooks_cache::HooksCacheManager::new(&project_root);
 
         // Initialize cache if it doesn't exist
         if !project_root.join(".pmat/hooks-cache").exists() {
@@ -311,8 +310,7 @@ async fn handle_run(
     // Update cache if enabled
     if use_cache {
         let project_root = std::env::current_dir()?;
-        let cache_manager =
-            crate::tdg::hooks_cache::HooksCacheManager::new(&project_root);
+        let cache_manager = crate::tdg::hooks_cache::HooksCacheManager::new(&project_root);
 
         let cache_result = if result.success {
             crate::tdg::hooks_cache::CacheResult::Pass

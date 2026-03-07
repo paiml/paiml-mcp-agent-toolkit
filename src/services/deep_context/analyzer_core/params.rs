@@ -5,11 +5,11 @@ use std::path::Path;
 use rustc_hash::FxHashMap;
 
 use crate::models::project_meta::{BuildInfo, ProjectOverview};
-use crate::services::deep_context::{
-    AnnotatedFileTree, CrossLangReference, DefectHotspot, DefectSummary,
-    PrioritizedRecommendation, QualityScorecard, TemplateProvenance,
-};
 use crate::services::deep_context::analyzer_core::types::ParallelAnalysisResults;
+use crate::services::deep_context::{
+    AnnotatedFileTree, CrossLangReference, DefectHotspot, DefectSummary, PrioritizedRecommendation,
+    QualityScorecard, TemplateProvenance,
+};
 
 /// Parameters for building deep context
 pub(crate) struct DeepContextBuildParams<'a> {

@@ -5,10 +5,10 @@ mod tests {
     use crate::services::agent_context::query::coverage::enrichment::{
         compute_impact_score, enrich_with_coverage, format_coverage_summary,
     };
+    use crate::services::agent_context::query::coverage::parsing::try_load_lcov_info;
     use crate::services::agent_context::query::coverage::parsing::{
         build_coverage_map, parse_lcov_to_coverage_map, segments_to_line_hits,
     };
-    use crate::services::agent_context::query::coverage::parsing::try_load_lcov_info;
     use crate::services::agent_context::query::types::QueryResult;
     use std::collections::HashMap;
     use std::path::Path;

@@ -8,9 +8,9 @@ pub mod stats;
 pub mod types;
 
 #[cfg(test)]
-mod tests;
-#[cfg(test)]
 mod property_tests;
+#[cfg(test)]
+mod tests;
 
 pub use extraction::{extract_symbol_from_ast_item, extract_symbols_from_context};
 pub use filters::{passes_query_filter, passes_type_filter};

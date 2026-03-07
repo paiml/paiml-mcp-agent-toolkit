@@ -2,8 +2,8 @@
 // cross references, defect predictions, and recommendations
 
 use super::{
-    CrossLangReference, DeepContext, DeepContextAnalyzer, DefectHotspot, DefectSummary, Priority,
-    PrioritizedRecommendation,
+    CrossLangReference, DeepContext, DeepContextAnalyzer, DefectHotspot, DefectSummary,
+    PrioritizedRecommendation, Priority,
 };
 use crate::models::churn::CodeChurnAnalysis;
 use rayon::prelude::*;

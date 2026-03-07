@@ -6,15 +6,15 @@ use chrono::Utc;
 use rustc_hash::FxHashMap;
 use tracing::{debug, info};
 
+use crate::services::deep_context::analyzer_core::params::DeepContextBuildParams;
+use crate::services::deep_context::analyzer_core::types::ParallelAnalysisResults;
+use crate::services::deep_context::DeepContextAnalyzer;
 use crate::services::deep_context::{
     AnalysisResults, AnnotatedFileTree, CrossLangReference, DeepContext, DefectHotspot,
     DefectSummary, PrioritizedRecommendation, QualityScorecard, TemplateProvenance,
 };
-use crate::services::deep_context::analyzer_core::params::DeepContextBuildParams;
-use crate::services::deep_context::analyzer_core::types::ParallelAnalysisResults;
 use crate::services::deep_context::{CacheStats, ContextMetadata};
 use crate::services::quality_gates::QAVerificationResult;
-use crate::services::deep_context::DeepContextAnalyzer;
 
 impl DeepContextAnalyzer {
     pub async fn analyze_project(&self, project_path: &PathBuf) -> anyhow::Result<DeepContext> {

@@ -98,10 +98,7 @@ pub(crate) fn calculate_enforcement_metadata(
 }
 
 /// Generate refactor chain for automated fixes
-pub(crate) fn generate_refactor_chain(
-    hotspot: &LintHotspot,
-    min_confidence: f64,
-) -> RefactorChain {
+pub(crate) fn generate_refactor_chain(hotspot: &LintHotspot, min_confidence: f64) -> RefactorChain {
     let mut steps = Vec::new();
     let mut total_impact = 0;
 
@@ -138,10 +135,7 @@ pub(crate) fn generate_refactor_chain(
 }
 
 /// Check quality gates
-pub(crate) fn check_quality_gates(
-    hotspot: &LintHotspot,
-    max_density: f64,
-) -> QualityGateStatus {
+pub(crate) fn check_quality_gates(hotspot: &LintHotspot, max_density: f64) -> QualityGateStatus {
     let mut violations = Vec::new();
 
     if hotspot.defect_density > max_density {

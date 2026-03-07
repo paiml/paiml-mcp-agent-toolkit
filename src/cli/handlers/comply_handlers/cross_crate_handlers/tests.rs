@@ -1,6 +1,8 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
 
-use super::detection_cc001_cc002::{detect_cc001_function_clones, detect_cc002_api_divergence, normalize_signature};
+use super::detection_cc001_cc002::{
+    detect_cc001_function_clones, detect_cc002_api_divergence, normalize_signature,
+};
 use super::discovery::{discover_workspace_crates, read_cargo_deps, read_crate_name};
 use super::types::*;
 use crate::services::agent_context::FunctionEntry;

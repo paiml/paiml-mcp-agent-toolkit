@@ -1,12 +1,12 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
 //! CB-604: Unused Variables and CB-605: String Concat in Loop detection.
 
+use super::super::types::*;
 use super::detection_helpers::collect_local_declarations;
 use super::helpers::{
     compute_lua_production_lines, contains_concat_operator, contains_identifier, is_in_lua_string,
     is_lua_test_file, walkdir_lua_files,
 };
-use super::super::types::*;
 use std::fs;
 use std::path::Path;
 

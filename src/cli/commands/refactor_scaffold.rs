@@ -2,12 +2,12 @@
 // Refactor and Scaffold commands - extracted for file health (CB-040)
 
 use crate::cli::{
-    ExplainLevel, QualityProfile, RefactorAutoOutputFormat, RefactorDocsOutputFormat,
-    RefactorMode, RefactorOutputFormat,
+    ExplainLevel, QualityProfile, RefactorAutoOutputFormat, RefactorDocsOutputFormat, RefactorMode,
+    RefactorOutputFormat,
 };
 use clap::Subcommand;
-use std::path::PathBuf;
 use serde_json::Value;
+use std::path::PathBuf;
 
 include!("refactor_commands_def.rs");
 

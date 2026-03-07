@@ -80,6 +80,7 @@ pub enum Language {
     Julia,    // Scientific computing
     Matlab,   // Engineering
     Assembly, // Low-level
+    PTX,      // GPU kernel assembly (NVIDIA)
 
     Unknown,
 }

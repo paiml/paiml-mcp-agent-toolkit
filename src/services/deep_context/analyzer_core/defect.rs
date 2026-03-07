@@ -5,12 +5,12 @@ use rustc_hash::FxHashMap;
 use tracing::debug;
 
 use crate::models::tdg::{TDGScore, TDGSeverity, TDGSummary};
+use crate::services::deep_context::analyzer_core::types::ParallelAnalysisResults;
+use crate::services::deep_context::DeepContextAnalyzer;
 use crate::services::deep_context::{
     DefectFactor, DefectHotspot, DefectSummary, FileLocation, Impact, Priority,
     RefactoringEstimate, TechnicalDebtCategory, TechnicalDebtSeverity,
 };
-use crate::services::deep_context::analyzer_core::types::ParallelAnalysisResults;
-use crate::services::deep_context::DeepContextAnalyzer;
 use crate::services::tdg_calculator::TDGCalculator;
 
 impl DeepContextAnalyzer {

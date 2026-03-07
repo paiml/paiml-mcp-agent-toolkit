@@ -4,7 +4,9 @@ use super::baseline::ratchet_threshold;
 use super::detection_cc003_cc004::detect_cc003_primitive_upstream;
 use super::detection_cc005::detect_cc005_example_duplication;
 use super::discovery::parse_workspace_members_with_globs;
-use super::helpers::{build_report, is_crate_pair_excluded, is_excluded_function, parse_rules_filter};
+use super::helpers::{
+    build_report, is_crate_pair_excluded, is_excluded_function, parse_rules_filter,
+};
 use super::types::*;
 use crate::models::comply_config::PmatYamlConfig;
 use crate::services::agent_context::FunctionEntry;

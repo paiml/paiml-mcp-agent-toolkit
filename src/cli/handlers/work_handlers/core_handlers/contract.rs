@@ -5,9 +5,7 @@ use anyhow::Result;
 use std::path::{Path, PathBuf};
 
 use crate::cli::handlers::work_contract::{FileManifest, WorkContract};
-use crate::cli::handlers::work_falsification::{
-    capture_baseline, run_falsification_tests,
-};
+use crate::cli::handlers::work_falsification::{capture_baseline, run_falsification_tests};
 use crate::cli::handlers::work_ledger::{
     FalsificationLedger, FalsificationReceipt, FalsificationTrigger,
 };
@@ -67,10 +65,7 @@ pub(super) async fn create_work_contract(
             contract.baseline_tdg = tdg;
             contract.baseline_coverage = coverage;
             contract.baseline_rust_score = rust_score;
-            println!(
-                "      TDG: {:.1}, Coverage: {:.1}%",
-                tdg, coverage
-            );
+            println!("      TDG: {:.1}, Coverage: {:.1}%", tdg, coverage);
             if let Some(rs) = rust_score {
                 println!("      Rust Score: {:.1}/134", rs);
             }
@@ -90,7 +85,11 @@ fn print_dbc_summary(contract: &WorkContract, without: &[String]) {
         println!(
             "\n   Profile: {} ({})",
             profile.name(),
-            if contract.version == "5.0" { "DbC v5.0" } else { "v4.0" }
+            if contract.version == "5.0" {
+                "DbC v5.0"
+            } else {
+                "v4.0"
+            }
         );
     }
 
@@ -138,7 +137,10 @@ fn write_profile_override(project_path: &Path, _item_id: &str, profile_str: &str
         let config_path = config_dir.join("config.toml");
         let content = format!("[dbc]\nprofile = \"{}\"\n", profile_str);
         if std::fs::write(&config_path, content).is_ok() {
-            println!("   Profile override: {} (written to config.toml)", profile_str);
+            println!(
+                "   Profile override: {} (written to config.toml)",
+                profile_str
+            );
         }
     }
 }
@@ -191,9 +193,7 @@ pub(super) async fn run_quality_check(project_path: &PathBuf, skip_quality: bool
                 println!("✅ All quality gates passed");
                 println!();
             } else {
-                anyhow::bail!(
-                    "Quality gates failed. Fix issues or use --skip-quality to bypass."
-                );
+                anyhow::bail!("Quality gates failed. Fix issues or use --skip-quality to bypass.");
             }
         }
         Err(e) => {
@@ -299,7 +299,12 @@ pub(super) async fn run_contract_tests(
         println!("   📋 Receipt: {}", receipt_path.display());
 
         // §6.2: Rescue protocol — attempt diagnosis for each failed postcondition
-        attempt_rescue_for_failures(project_path, &contract.work_item_id, &contract.profile, &unoverrideable);
+        attempt_rescue_for_failures(
+            project_path,
+            &contract.work_item_id,
+            &contract.profile,
+            &unoverrideable,
+        );
 
         anyhow::bail!(
             "Work blocked: {} falsification(s) found. Fix issues or use --override-claims with --ticket.",
@@ -319,7 +324,7 @@ fn attempt_rescue_for_failures(
     failures: &[&crate::cli::handlers::work_falsification::types::ClaimResult],
 ) {
     use crate::cli::handlers::work_contract::{
-        DbcConfig, execute_rescue, is_rescue_enabled, rescue_strategy_for, RescueRecord,
+        execute_rescue, is_rescue_enabled, rescue_strategy_for, DbcConfig, RescueRecord,
     };
 
     let config = DbcConfig::load(project_path);
@@ -358,7 +363,11 @@ fn attempt_rescue_for_failures(
         }
     }
     if any_rescue {
-        println!("   Attempt {}/{} for this work item.", existing_rescues.len() + 1, 3);
+        println!(
+            "   Attempt {}/{} for this work item.",
+            existing_rescues.len() + 1,
+            3
+        );
         println!();
     }
 }

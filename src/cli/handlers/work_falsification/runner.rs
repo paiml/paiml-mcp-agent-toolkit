@@ -4,10 +4,10 @@
 //! Orchestrates running all falsification tests against a work contract
 //! and produces a FalsificationReport.
 
+use super::advanced_checks;
+use super::churn_checks;
 use super::core_checks;
 use super::supply_chain_checks;
-use super::churn_checks;
-use super::advanced_checks;
 use super::types::{ClaimResult, FalsificationReport};
 use crate::cli::handlers::work_contract::{
     EvidenceType, FalsifiableClaim, FalsificationMethod, FalsificationResult, WorkContract,
@@ -141,7 +141,9 @@ async fn dispatch_falsification_test(
         FalsificationMethod::ManifestIntegrity => {
             core_checks::test_manifest_integrity(project_path, &contract.baseline_file_manifest)
         }
-        FalsificationMethod::MetaFalsification => supply_chain_checks::test_meta_falsification(project_path),
+        FalsificationMethod::MetaFalsification => {
+            supply_chain_checks::test_meta_falsification(project_path)
+        }
         FalsificationMethod::CoverageGaming => core_checks::test_coverage_gaming(project_path),
         FalsificationMethod::DifferentialCoverage => {
             core_checks::test_differential_coverage(project_path, &contract.baseline_commit).await
@@ -153,20 +155,15 @@ async fn dispatch_falsification_test(
         FalsificationMethod::TdgRegression => {
             core_checks::test_tdg_regression(project_path, contract.baseline_tdg).await
         }
-        FalsificationMethod::ComplexityRegression => {
-            core_checks::test_complexity_regression(
-                project_path,
-                contract.thresholds.max_function_complexity,
-            )
-        }
+        FalsificationMethod::ComplexityRegression => core_checks::test_complexity_regression(
+            project_path,
+            contract.thresholds.max_function_complexity,
+        ),
         FalsificationMethod::SupplyChainIntegrity => {
             supply_chain_checks::test_supply_chain_integrity(project_path).await
         }
         FalsificationMethod::FileSizeRegression => {
-            core_checks::test_file_size_regression(
-                project_path,
-                contract.thresholds.max_file_lines,
-            )
+            core_checks::test_file_size_regression(project_path, contract.thresholds.max_file_lines)
         }
         FalsificationMethod::SpecQuality => core_checks::test_spec_quality(
             project_path,

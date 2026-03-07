@@ -1,8 +1,8 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
 //! CB-618: Lua FFI Safety Checks and CB-619: Lua OOP Pattern Recognition.
 
-use super::helpers::{is_lua_test_file, walkdir_lua_files};
 use super::super::types::*;
+use super::helpers::{is_lua_test_file, walkdir_lua_files};
 use std::fs;
 use std::path::Path;
 
@@ -27,7 +27,8 @@ pub fn detect_cb618_ffi_safety(project_path: &Path) -> Vec<CbPatternViolation> {
             Ok(c) => c,
             Err(_) => continue,
         };
-        if !content.contains("require(\"ffi\")") && !content.contains("require('ffi')")
+        if !content.contains("require(\"ffi\")")
+            && !content.contains("require('ffi')")
             && !content.contains("require \"ffi\"")
         {
             continue;
@@ -57,11 +58,7 @@ pub fn detect_cb618_ffi_safety(project_path: &Path) -> Vec<CbPatternViolation> {
 }
 
 /// Check FFI-related patterns in a single file.
-fn check_ffi_patterns(
-    content: &str,
-    rel: &str,
-    violations: &mut Vec<CbPatternViolation>,
-) {
+fn check_ffi_patterns(content: &str, rel: &str, violations: &mut Vec<CbPatternViolation>) {
     for (i, line) in content.lines().enumerate() {
         let trimmed = line.trim();
         if trimmed.starts_with("--") {
