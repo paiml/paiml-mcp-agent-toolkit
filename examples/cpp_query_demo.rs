@@ -47,8 +47,18 @@ fn main() {
     println!("{}", "-".repeat(40));
     demo_complexity_penalties();
 
-    // 6. Header classification
-    println!("\n6. Header Classification");
+    // 6. Macro classification
+    println!("\n6. C++ Macro Classification (Phase 6)");
+    println!("{}", "-".repeat(40));
+    demo_macro_classification();
+
+    // 7. PTX defect detection
+    println!("\n7. Inline PTX Defect Detection (Phase 8.4)");
+    println!("{}", "-".repeat(40));
+    demo_ptx_defects();
+
+    // 8. Header classification
+    println!("\n8. Header Classification");
     println!("{}", "-".repeat(40));
     demo_header_classification();
 
@@ -195,6 +205,46 @@ fn demo_complexity_penalties() {
     assert!(kernel.content.contains("__shared__"));
     assert!(kernel.content.contains("__syncthreads"));
     println!("  Example: softmax kernel would get +7 penalty during indexing");
+}
+
+fn demo_macro_classification() {
+    // During indexing, known C/C++ macro families are classified:
+    // - MACRO:ASSERT — GGML_ASSERT, TORCH_CHECK, AT_ASSERT, CUDA_CHECK
+    // - MACRO:DISPATCH — AT_DISPATCH_ALL_TYPES, AT_DISPATCH_FLOATING_TYPES
+    // - MACRO:LOG — GGML_LOG_INFO, TORCH_WARN
+    println!("  Known macro families classified during indexing:");
+    println!("    MACRO:ASSERT   — Boundary validation (GGML_ASSERT, TORCH_CHECK)");
+    println!("    MACRO:DISPATCH — Type-generic dispatch (AT_DISPATCH_ALL_TYPES)");
+    println!("    MACRO:LOG      — Logging (GGML_LOG_INFO, TORCH_WARN)");
+    println!();
+    println!("  Search via: pmat query \"GGML_ASSERT\" --faults --limit 10");
+    println!("  Results show MACRO:ASSERT annotation on matching functions");
+}
+
+fn demo_ptx_defects() {
+    // Phase 8.4: Inline PTX defect detection
+    // Detects safety issues in asm() blocks without full PTX parsing
+    println!("  PTX defect patterns detected in inline asm():");
+    println!("    PTX_MISSING_BARRIER — st.shared + ld.shared without bar.sync");
+    println!("    PTX_BARRIER_DIV    — Branch before barrier (deadlock risk)");
+    println!("    PTX_HIGH_REGS      — >8 register outputs (spill risk)");
+    println!();
+
+    // Demonstrate with inline PTX content
+    let source = r#"__device__ void risky(float* sdata) {
+    asm volatile("st.shared.f32 [%0], %1;" : : "l"(sdata), "f"(val));
+    asm volatile("ld.shared.f32 %0, [%1];" : "=f"(result) : "l"(sdata));
+}"#;
+    let has_shared_store = source.contains("st.shared");
+    let has_shared_load = source.contains("ld.shared");
+    let has_barrier = source.contains("bar.sync");
+    let missing = has_shared_store && has_shared_load && !has_barrier;
+    println!("  Example: shared store+load without barrier");
+    println!("    st.shared present: {has_shared_store}");
+    println!("    ld.shared present: {has_shared_load}");
+    println!("    bar.sync present: {has_barrier}");
+    println!("    PTX_MISSING_BARRIER: {missing}");
+    assert!(missing, "should detect missing barrier");
 }
 
 fn demo_header_classification() {
