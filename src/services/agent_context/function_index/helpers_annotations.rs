@@ -259,6 +259,12 @@ pub(super) fn detect_fault_patterns(functions: &[FunctionEntry]) -> HashMap<usiz
         // Extract inline PTX instruction mnemonics as searchable tags
         extract_ptx_instruction_tags(src, &mut faults);
 
+        // Phase 6: C/C++ macro classification (built-in known patterns)
+        classify_cpp_macros(src, &mut faults);
+
+        // Phase 8.4: Inline PTX defect patterns (barrier/shared memory safety)
+        detect_inline_ptx_defects(src, &mut faults);
+
         if !faults.is_empty() {
             faults.sort();
             faults.dedup();
@@ -297,6 +303,93 @@ fn extract_ptx_instruction_tags(source: &str, faults: &mut Vec<String>) {
         if source.contains(opcode) {
             faults.push(format!("PTX:{opcode}"));
         }
+    }
+}
+
+/// Phase 6: Classify known C/C++ macro patterns as fault annotations.
+///
+/// Detects common macro families (assertions, dispatch, logging) used in
+/// ML infrastructure codebases (GGML, PyTorch, CUDA) and emits searchable
+/// classification tags like `MACRO:ASSERT`, `MACRO:DISPATCH`, `MACRO:LOG`.
+pub(super) fn classify_cpp_macros(source: &str, faults: &mut Vec<String>) {
+    // Assertion macros — indicate boundary validation
+    const ASSERT_MACROS: &[&str] = &[
+        "GGML_ASSERT", "GGML_ABORT", "TORCH_CHECK", "TORCH_INTERNAL_ASSERT",
+        "AT_ASSERT", "CUDA_CHECK", "CHECK_CUDA", "CUBLAS_CHECK",
+    ];
+    // Dispatch macros — indicate type-generic dispatch complexity
+    const DISPATCH_MACROS: &[&str] = &[
+        "AT_DISPATCH_ALL_TYPES", "AT_DISPATCH_FLOATING_TYPES",
+        "AT_DISPATCH_INTEGRAL_TYPES", "AT_DISPATCH_COMPLEX_TYPES",
+        "GGML_DISPATCH_BOOL", "CUDA_DISPATCH",
+    ];
+    // Logging macros
+    const LOG_MACROS: &[&str] = &[
+        "GGML_LOG_INFO", "GGML_LOG_WARN", "GGML_LOG_ERROR",
+        "TORCH_WARN", "TORCH_LOG",
+    ];
+
+    let has_assert = ASSERT_MACROS.iter().any(|m| source.contains(m));
+    let has_dispatch = DISPATCH_MACROS.iter().any(|m| source.contains(m));
+    let has_log = LOG_MACROS.iter().any(|m| source.contains(m));
+
+    if has_assert {
+        faults.push("MACRO:ASSERT".to_string());
+    }
+    if has_dispatch {
+        faults.push("MACRO:DISPATCH".to_string());
+    }
+    if has_log {
+        faults.push("MACRO:LOG".to_string());
+    }
+}
+
+/// Phase 8.4: Detect inline PTX defect patterns in CUDA source.
+///
+/// Lightweight static analysis for PTX safety issues that can be detected
+/// from source-level patterns without full PTX parsing. Based on defect
+/// classes from `detection_ptx.rs` (GPUVerify SDV semantics).
+pub(super) fn detect_inline_ptx_defects(source: &str, faults: &mut Vec<String>) {
+    // Only analyze functions containing inline PTX
+    if !source.contains("asm(") && !source.contains("asm volatile") {
+        return;
+    }
+
+    // PTX_MISSING_BARRIER: st.shared followed by ld.shared without bar.sync
+    // Simplified heuristic: shared memory write + read with no barrier between
+    let has_shared_store = source.contains("st.shared") || source.contains("__shared__");
+    let has_shared_load = source.contains("ld.shared");
+    let has_barrier = source.contains("bar.sync") || source.contains("__syncthreads");
+    if has_shared_store && has_shared_load && !has_barrier {
+        faults.push("PTX_MISSING_BARRIER".to_string());
+    }
+
+    // PTX_BARRIER_DIV: Branch/if before bar.sync (thread divergence deadlock risk)
+    // Look for pattern: if/branch followed by barrier in asm block
+    if has_barrier {
+        let lines: Vec<&str> = source.lines().collect();
+        let mut in_branch = false;
+        for line in &lines {
+            let trimmed = line.trim();
+            if trimmed.starts_with("if ") || trimmed.starts_with("if(")
+                || trimmed.contains("@!%p") || trimmed.contains("@%p") {
+                in_branch = true;
+            }
+            if in_branch && (trimmed.contains("bar.sync") || trimmed.contains("__syncthreads")) {
+                faults.push("PTX_BARRIER_DIV".to_string());
+                break;
+            }
+            if trimmed == "}" || trimmed.starts_with("else") {
+                in_branch = false;
+            }
+        }
+    }
+
+    // PTX_REG_SPILL: High register usage indicator
+    // Look for many register declarations in inline PTX
+    let reg_count = source.matches("\"=r\"").count() + source.matches("\"+r\"").count();
+    if reg_count > 8 {
+        faults.push("PTX_HIGH_REGS".to_string());
     }
 }
 

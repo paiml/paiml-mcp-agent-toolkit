@@ -604,3 +604,97 @@ fn test_build_filters_test_functions() {
         "test_ function should be filtered"
     );
 }
+
+#[test]
+fn test_classify_cpp_macros_assert() {
+    let mut faults = Vec::new();
+    let source = r#"void validate(ggml_context* ctx) {
+    GGML_ASSERT(ctx != NULL);
+    GGML_ASSERT(ctx->n_tensors > 0);
+}"#;
+    classify_cpp_macros(source, &mut faults);
+    assert!(faults.contains(&"MACRO:ASSERT".to_string()), "faults={faults:?}");
+    assert!(!faults.contains(&"MACRO:DISPATCH".to_string()));
+}
+
+#[test]
+fn test_classify_cpp_macros_dispatch() {
+    let mut faults = Vec::new();
+    let source = r#"void compute(at::Tensor input) {
+    AT_DISPATCH_ALL_TYPES(input.scalar_type(), "compute", [&] {
+        auto data = input.data_ptr<scalar_t>();
+    });
+}"#;
+    classify_cpp_macros(source, &mut faults);
+    assert!(faults.contains(&"MACRO:DISPATCH".to_string()), "faults={faults:?}");
+}
+
+#[test]
+fn test_classify_cpp_macros_logging() {
+    let mut faults = Vec::new();
+    let source = r#"void init() {
+    GGML_LOG_INFO("initializing model");
+    GGML_LOG_WARN("deprecated API");
+}"#;
+    classify_cpp_macros(source, &mut faults);
+    assert!(faults.contains(&"MACRO:LOG".to_string()), "faults={faults:?}");
+}
+
+#[test]
+fn test_classify_cpp_macros_none() {
+    let mut faults = Vec::new();
+    let source = "int add(int a, int b) { return a + b; }";
+    classify_cpp_macros(source, &mut faults);
+    assert!(faults.is_empty(), "simple function should have no macro faults");
+}
+
+#[test]
+fn test_detect_inline_ptx_defects_missing_barrier() {
+    let mut faults = Vec::new();
+    let source = r#"__device__ void unsafe_shared(float* sdata) {
+    asm volatile("st.shared.f32 [%0], %1;" : : "l"(sdata), "f"(val));
+    asm volatile("ld.shared.f32 %0, [%1];" : "=f"(result) : "l"(sdata));
+}"#;
+    detect_inline_ptx_defects(source, &mut faults);
+    assert!(faults.contains(&"PTX_MISSING_BARRIER".to_string()), "faults={faults:?}");
+}
+
+#[test]
+fn test_detect_inline_ptx_defects_barrier_divergence() {
+    let mut faults = Vec::new();
+    let source = r#"__device__ void divergent_barrier(int tid) {
+    asm volatile("st.shared.f32 [%0], %1;" : : "l"(sdata), "f"(val));
+    if (tid < 16) {
+        asm volatile("bar.sync 0;");
+    }
+}"#;
+    detect_inline_ptx_defects(source, &mut faults);
+    assert!(faults.contains(&"PTX_BARRIER_DIV".to_string()), "faults={faults:?}");
+}
+
+#[test]
+fn test_detect_inline_ptx_defects_high_regs() {
+    let mut faults = Vec::new();
+    // 10 register outputs -> PTX_HIGH_REGS
+    let source = r#"__device__ void many_regs() {
+    asm("mma.sync.aligned.m16n8k16 {%0,%1,%2,%3,%4,%5,%6,%7,%8,%9}, ..."
+        : "=r"(d0), "=r"(d1), "=r"(d2), "=r"(d3), "=r"(d4),
+          "=r"(d5), "=r"(d6), "=r"(d7), "=r"(d8), "=r"(d9)
+        : "r"(a0));
+}"#;
+    detect_inline_ptx_defects(source, &mut faults);
+    assert!(faults.contains(&"PTX_HIGH_REGS".to_string()), "faults={faults:?}");
+}
+
+#[test]
+fn test_detect_inline_ptx_defects_safe() {
+    let mut faults = Vec::new();
+    // Safe: has barrier between store and load
+    let source = r#"__device__ void safe_shared(float* sdata) {
+    asm volatile("st.shared.f32 [%0], %1;" : : "l"(sdata), "f"(val));
+    asm volatile("bar.sync 0;");
+    asm volatile("ld.shared.f32 %0, [%1];" : "=f"(result) : "l"(sdata));
+}"#;
+    detect_inline_ptx_defects(source, &mut faults);
+    assert!(!faults.contains(&"PTX_MISSING_BARRIER".to_string()), "should not flag when barrier present");
+}
