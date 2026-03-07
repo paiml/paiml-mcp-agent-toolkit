@@ -66,7 +66,7 @@ impl Language {
                 "java" => Language::Java,
                 "kt" | "kts" => Language::Kotlin,
                 "cs" => Language::CSharp,
-                "cpp" | "cc" | "cxx" | "c++" => Language::Cpp,
+                "cpp" | "cc" | "cxx" | "c++" | "cu" | "cuh" => Language::Cpp,
                 "c" => Language::Cpp,
                 "lean" => Language::Lean,
                 _ => Language::Unknown,

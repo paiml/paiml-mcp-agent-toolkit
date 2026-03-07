@@ -27,7 +27,7 @@ fn detect_chunker_language(path: &Path) -> Result<Language> {
         "ts" | "tsx" | "js" | "jsx" | "mjs" => Ok(Language::TypeScript),
         "py" | "pyi" => Ok(Language::Python),
         "c" | "h" => Ok(Language::C),
-        "cpp" | "cc" | "cxx" | "hpp" | "hxx" => Ok(Language::Cpp),
+        "cpp" | "cc" | "cxx" | "hpp" | "hxx" | "cu" | "cuh" => Ok(Language::Cpp),
         "go" => Ok(Language::Go),
         "lua" => Ok(Language::Lua),
         _ => bail!("Unsupported file extension '.{ext}' for extract. Supported: rs, ts, py, c, cpp, go, lua"),

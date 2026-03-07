@@ -402,7 +402,7 @@ impl SemanticSearchEngine {
             "ts" | "tsx" => Some(Language::TypeScript),
             "py" => Some(Language::Python),
             "c" | "h" => Some(Language::C),
-            "cpp" | "cc" | "cxx" | "hpp" => Some(Language::Cpp),
+            "cpp" | "cc" | "cxx" | "hpp" | "cu" | "cuh" => Some(Language::Cpp),
             "go" => Some(Language::Go),
             _ => None,
         }

@@ -35,7 +35,7 @@ impl Language {
             Some("go") => Language::Go,
             Some("java") => Language::Java,
             Some("c" | "h") => Language::C,
-            Some("cpp" | "cc" | "cxx" | "hpp") => Language::Cpp,
+            Some("cpp" | "cc" | "cxx" | "hpp" | "cu" | "cuh") => Language::Cpp,
             Some("rb") => Language::Ruby,
             Some("swift") => Language::Swift,
             Some("kt" | "kts") => Language::Kotlin,

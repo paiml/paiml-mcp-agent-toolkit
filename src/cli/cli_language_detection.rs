@@ -74,7 +74,7 @@ fn count_extension(ext: &str, lang_counts: &mut std::collections::HashMap<&'stat
         "js" | "jsx" => *lang_counts.entry("javascript").or_insert(0) += 1,
         "py" => *lang_counts.entry("python-uv").or_insert(0) += 1,
         "c" | "h" => *lang_counts.entry("c").or_insert(0) += 1, // PMAT-BUG-003 fix
-        "cpp" | "cc" | "cxx" | "hpp" | "hxx" => *lang_counts.entry("cpp").or_insert(0) += 1, // PMAT-BUG-004 fix
+        "cpp" | "cc" | "cxx" | "hpp" | "hxx" | "cu" | "cuh" => *lang_counts.entry("cpp").or_insert(0) += 1, // PMAT-BUG-004 fix
         "kt" | "kts" => *lang_counts.entry("kotlin").or_insert(0) += 1,
         "sh" | "bash" => *lang_counts.entry("bash").or_insert(0) += 1,
         "lua" => *lang_counts.entry("lua").or_insert(0) += 1,

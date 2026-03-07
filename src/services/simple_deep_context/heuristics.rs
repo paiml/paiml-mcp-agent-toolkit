@@ -88,7 +88,7 @@ impl SimpleDeepContext {
                 r"(?:public|private|protected)\s+(?:static\s+)?(?:\w+(?:<[^>]*>)?\s+)+(\w+)\s*\([^)]*\)\s*\{",
             ],
             "go" => &[r"(?m)^func\s+(?:\([^)]*\)\s+)?(\w+)\s*\("],
-            "c" | "cpp" | "cc" | "cxx" => &[r"(?m)^\s*\w+(?:\s*\**)?\s+(\w+)\s*\([^)]*\)\s*\{"],
+            "c" | "cpp" | "cc" | "cxx" | "cu" | "cuh" => &[r"(?m)^\s*\w+(?:\s*\**)?\s+(\w+)\s*\([^)]*\)\s*\{"],
             "rb" | "ruchy" => &[r"(?m)^\s*def\s+(\w+)"],
             "kt" => &[r"(?m)^\s*(?:suspend\s+)?fun\s+(\w+)\s*\("],
             "cs" => &[
@@ -111,7 +111,7 @@ impl SimpleDeepContext {
 
         // Filter language-specific keywords
         let keywords: &[&str] = match extension {
-            "c" | "cpp" | "cc" | "cxx" => &["if", "for", "while", "switch", "catch"],
+            "c" | "cpp" | "cc" | "cxx" | "cu" | "cuh" => &["if", "for", "while", "switch", "catch"],
             "cs" => &["if", "while", "for", "foreach", "switch"],
             _ => &[],
         };
@@ -139,7 +139,7 @@ impl SimpleDeepContext {
             ],
             "java" => vec![r"(public|private|protected)\s+\w+\s+\w+\s*\("],
             "go" => vec![r"(?m)^func\s+(\(\w+\s+\*?\w+\)\s+)?\w+\s*\("],
-            "c" | "cpp" | "cc" | "cxx" => vec![r"(?m)^\w+\s+\w+\s*\([^)]*\)\s*\{"],
+            "c" | "cpp" | "cc" | "cxx" | "cu" | "cuh" => vec![r"(?m)^\w+\s+\w+\s*\([^)]*\)\s*\{"],
             "cs" => {
                 vec![r"(public|private|protected|internal)?\s*(static|async)?\s*\w+\s+\w+\s*\("]
             }
@@ -287,7 +287,7 @@ impl SimpleDeepContext {
             "js" | "ts" => vec![
                 "if ", "else ", "for ", "while ", "do ", "switch ", "case ", "catch ", "finally ",
             ],
-            "java" | "c" | "cpp" | "go" => vec![
+            "java" | "c" | "cpp" | "cu" | "go" => vec![
                 "if ", "else ", "for ", "while ", "do ", "switch ", "case ", "catch ", "finally ",
             ],
             "lua" => vec![

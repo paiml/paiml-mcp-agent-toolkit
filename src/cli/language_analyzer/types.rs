@@ -40,7 +40,7 @@ impl Language {
             Some("ts" | "tsx") => Language::TypeScript,
             Some("py") => Language::Python,
             Some("c" | "h") => Language::C,
-            Some("cpp" | "cc" | "cxx" | "hpp" | "hxx" | "h++" | "c++") => Language::CPP,
+            Some("cpp" | "cc" | "cxx" | "hpp" | "hxx" | "h++" | "c++" | "cu" | "cuh") => Language::CPP,
             Some("go") => Language::Go,
             Some("sh" | "bash") => Language::Bash,
             Some("java") => Language::Java,

@@ -94,7 +94,7 @@ impl AstStrategy for CppAstStrategy {
     }
 
     fn supports_extension(&self, ext: &str) -> bool {
-        matches!(ext, "cpp" | "cc" | "cxx" | "hpp" | "hxx")
+        matches!(ext, "cpp" | "cc" | "cxx" | "hpp" | "hxx" | "cu" | "cuh")
     }
 }
 

@@ -180,8 +180,8 @@ impl TdgAnalyzer {
         if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
             matches!(
                 ext,
-                "rs" | "py" | "js" | "ts" | "jsx" | "tsx" | "go" | 
-                "java" | "c" | "h" | "cpp" | "cc" | "cxx" | "hpp" |
+                "rs" | "py" | "js" | "ts" | "jsx" | "tsx" | "go" |
+                "java" | "c" | "h" | "cpp" | "cc" | "cxx" | "hpp" | "cu" | "cuh" |
                 "rb" | "swift" | "kt" | "kts"
             )
         } else {

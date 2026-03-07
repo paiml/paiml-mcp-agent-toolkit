@@ -35,7 +35,7 @@ pub(super) fn detect_language(path: &Path) -> Option<Language> {
         "ts" | "tsx" | "js" | "jsx" => Some(Language::TypeScript),
         "py" => Some(Language::Python),
         "c" | "h" => Some(Language::C),
-        "cpp" | "cc" | "cxx" | "hpp" => Some(Language::Cpp),
+        "cpp" | "cc" | "cxx" | "hpp" | "cu" | "cuh" => Some(Language::Cpp),
         "go" => Some(Language::Go),
         "lua" => Some(Language::Lua),
         _ => None,

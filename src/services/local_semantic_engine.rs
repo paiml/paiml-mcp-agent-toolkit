@@ -54,7 +54,7 @@ impl LocalSemanticEngine {
                 "go" => "go",
                 "java" => "java",
                 "c" | "h" => "c",
-                "cpp" | "hpp" | "cc" => "cpp",
+                "cpp" | "hpp" | "cc" | "cxx" | "cu" | "cuh" => "cpp",
                 "rb" => "ruby",
                 "php" => "php",
                 "swift" => "swift",

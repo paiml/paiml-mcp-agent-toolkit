@@ -167,7 +167,7 @@ impl SemanticNamer {
             "go" => "go",
             "java" => "java",
             "c" | "h" => "c",
-            "cpp" | "cc" | "cxx" | "hpp" | "hxx" => "cpp",
+            "cpp" | "cc" | "cxx" | "hpp" | "hxx" | "cu" | "cuh" => "cpp",
             "kt" | "kts" => "kotlin",
             _ => "unknown",
         }

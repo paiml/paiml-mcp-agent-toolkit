@@ -124,7 +124,7 @@ fn match_extension_to_language(
         "js" | "jsx" => Some(Language::JavaScript),
         "py" => Some(Language::Python),
         "c" | "h" => Some(Language::C),
-        "cpp" | "cc" | "cxx" | "hpp" | "hxx" => Some(Language::Cpp),
+        "cpp" | "cc" | "cxx" | "hpp" | "hxx" | "cu" | "cuh" => Some(Language::Cpp),
         "kt" | "kts" => Some(Language::Kotlin),
         _ => None,
     })

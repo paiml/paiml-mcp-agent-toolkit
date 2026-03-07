@@ -102,7 +102,7 @@ async fn analyze_file_by_toolchain(
 
         // C++ files
         #[cfg(feature = "cpp-ast")]
-        "cpp" | "cc" | "cxx" | "hpp" | "hxx" | "hh" => {
+        "cpp" | "cc" | "cxx" | "hpp" | "hxx" | "hh" | "cu" | "cuh" => {
             use crate::services::ast::languages::cpp;
             cpp::analyze_cpp_file(path).await.ok()
         }
@@ -216,7 +216,7 @@ async fn analyze_file_by_toolchain_persistent(
 
         // C++ files
         #[cfg(feature = "cpp-ast")]
-        "cpp" | "cc" | "cxx" | "hpp" | "hxx" | "hh" => {
+        "cpp" | "cc" | "cxx" | "hpp" | "hxx" | "hh" | "cu" | "cuh" => {
             use crate::services::ast::languages::cpp;
             cpp::analyze_cpp_file(path).await.ok()
         }

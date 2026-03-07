@@ -194,55 +194,56 @@ pub async fn context_summary(paths: &[PathBuf], _level: Option<&str>) -> Result<
     let mut total_lines = 0;
     let mut languages = HashSet::new();
 
-    // Recursively traverse directory
+    fn detect_lang(ext: &str) -> Option<&'static str> {
+        match ext {
+            "rs" => Some("Rust"),
+            "py" => Some("Python"),
+            "js" => Some("JavaScript"),
+            "ts" => Some("TypeScript"),
+            "java" => Some("Java"),
+            "cpp" | "cc" | "cxx" | "cu" | "cuh" => Some("C++"),
+            "c" | "h" => Some("C"),
+            "go" => Some("Go"),
+            "rb" => Some("Ruby"),
+            "php" => Some("PHP"),
+            "swift" => Some("Swift"),
+            "kt" => Some("Kotlin"),
+            "sh" => Some("Shell"),
+            _ => None,
+        }
+    }
+
+    fn is_excluded_dir(name: &str) -> bool {
+        name.starts_with('.') || name == "target" || name == "node_modules"
+    }
+
     fn traverse_dir(
         dir: &Path,
         total_files: &mut usize,
         total_lines: &mut usize,
         languages: &mut HashSet<String>,
     ) -> Result<()> {
-        if dir.is_dir() {
-            for entry in fs::read_dir(dir)? {
-                let entry = entry?;
-                let path = entry.path();
+        for entry in fs::read_dir(dir)? {
+            let path = entry?.path();
 
-                if path.is_dir() {
-                    // Skip hidden directories and common exclusions
-                    if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
-                        if name.starts_with('.') || name == "target" || name == "node_modules" {
-                            continue;
-                        }
-                    }
+            if path.is_dir() {
+                let dominated = path.file_name().and_then(|n| n.to_str()).is_some_and(is_excluded_dir);
+                if !dominated {
                     traverse_dir(&path, total_files, total_lines, languages)?;
-                } else if path.is_file() {
-                    // Detect language by extension
-                    if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
-                        let language = match ext {
-                            "rs" => "Rust",
-                            "py" => "Python",
-                            "js" => "JavaScript",
-                            "ts" => "TypeScript",
-                            "java" => "Java",
-                            "cpp" | "cc" | "cxx" => "C++",
-                            "c" | "h" => "C",
-                            "go" => "Go",
-                            "rb" => "Ruby",
-                            "php" => "PHP",
-                            "swift" => "Swift",
-                            "kt" => "Kotlin",
-                            "sh" => "Shell",
-                            _ => continue, // Skip unknown extensions
-                        };
-
-                        languages.insert(language.to_string());
-                        *total_files += 1;
-
-                        // Count lines
-                        if let Ok(content) = fs::read_to_string(&path) {
-                            *total_lines += content.lines().count();
-                        }
-                    }
                 }
+                continue;
+            }
+
+            let ext = match path.extension().and_then(|e| e.to_str()) {
+                Some(e) => e,
+                None => continue,
+            };
+            let Some(language) = detect_lang(ext) else { continue };
+
+            languages.insert(language.to_string());
+            *total_files += 1;
+            if let Ok(content) = fs::read_to_string(&path) {
+                *total_lines += content.lines().count();
             }
         }
         Ok(())

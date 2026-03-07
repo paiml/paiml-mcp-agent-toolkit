@@ -49,7 +49,7 @@ impl Language {
             "py" => Some(Language::Python),
             "rs" => Some(Language::Rust),
             "go" => Some(Language::Go),
-            "cpp" | "cc" | "cxx" | "c++" | "h" | "hpp" => Some(Language::Cpp),
+            "cpp" | "cc" | "cxx" | "c++" | "h" | "hpp" | "cu" | "cuh" => Some(Language::Cpp),
             "cs" => Some(Language::CSharp),
             "rb" => Some(Language::Ruby),
             "swift" => Some(Language::Swift),

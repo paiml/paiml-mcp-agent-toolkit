@@ -315,7 +315,7 @@ sha2 = "0.10"  # For O(1) build artifact hash caching
 default = ["core-languages", "viz", "http-client"]
 
 # Convenience bundles
-core-languages = ["rust-ast", "typescript-ast", "javascript-ast", "python-ast", "lua-ast", "lean-ast"]  # Most common: Rust + JS/TS + Python + Lua + Lean
+core-languages = ["rust-ast", "typescript-ast", "javascript-ast", "python-ast", "lua-ast", "lean-ast", "c-ast", "cpp-ast"]  # Most common: Rust + JS/TS + Python + Lua + Lean + C/C++
 extended-languages = ["go-ast", "c-ast", "cpp-ast", "shell-ast", "php-ast", "swift-ast", "lean-ast"]  # Additional languages
 advanced-analysis = ["analytics-simd", "mutation-testing", "tdg-explain", "demo"]  # Heavy features
 full = ["all-languages", "polyglot-ast", "advanced-analysis", "doc-indexing"]  # Equivalent to old defaults

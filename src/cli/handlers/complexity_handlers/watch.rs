@@ -217,6 +217,8 @@ fn is_source_code_file(path_str: &str) -> bool {
         || path_str.ends_with(".py")
         || path_str.ends_with(".c")
         || path_str.ends_with(".cpp")
+        || path_str.ends_with(".cu")
+        || path_str.ends_with(".cuh")
         || path_str.ends_with(".h")
         || path_str.ends_with(".hpp")
 }

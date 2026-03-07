@@ -209,8 +209,9 @@ pub(super) fn extract_return_type(sig: &str) -> &str {
 /// Count parameters in signature
 pub(super) fn count_params(sig: &str) -> usize {
     if let Some(start) = sig.find('(') {
-        if let Some(end) = sig.find(')') {
-            let params = &sig[start + 1..end];
+        // Find matching ')' AFTER '(' to handle C++ comments like "// 1) out = exp(a - val)"
+        if let Some(end) = sig[start..].find(')') {
+            let params = &sig[start + 1..start + end];
             if params.trim().is_empty() {
                 return 0;
             }

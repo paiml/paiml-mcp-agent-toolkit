@@ -324,7 +324,7 @@ impl HybridSearchEngine {
             "go".to_string()
         } else if path.ends_with(".c") || path.ends_with(".h") {
             "c".to_string()
-        } else if path.ends_with(".cpp") || path.ends_with(".hpp") {
+        } else if path.ends_with(".cpp") || path.ends_with(".hpp") || path.ends_with(".cc") || path.ends_with(".cxx") || path.ends_with(".cu") || path.ends_with(".cuh") {
             "cpp".to_string()
         } else {
             "unknown".to_string()

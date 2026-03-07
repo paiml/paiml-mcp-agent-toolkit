@@ -8,7 +8,7 @@ pub(super) fn detect_language(path: &std::path::Path) -> String {
             "py" | "pyi" => "python".to_string(),
             "go" => "go".to_string(),
             "c" | "h" => "c".to_string(),
-            "cpp" | "cc" | "cxx" | "hpp" | "hxx" => "cpp".to_string(),
+            "cpp" | "cc" | "cxx" | "hpp" | "hxx" | "cu" | "cuh" => "cpp".to_string(),
 
             // JVM languages
             "java" => "java".to_string(),

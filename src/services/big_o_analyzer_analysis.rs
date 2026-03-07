@@ -161,7 +161,7 @@ impl BigOAnalyzer {
                 r"(public|private|protected)?\s*(static)?\s*\w+\s+(\w+)\s*\(",
                 "java",
             ),
-            "c" | "cpp" | "cc" | "cxx" | "h" | "hpp" => (
+            "c" | "cpp" | "cc" | "cxx" | "h" | "hpp" | "cu" | "cuh" => (
                 r"(?:int|void|bool|char|float|double|long|short|unsigned|static|const)*\s+(\w+)\s*\([^)]*\)\s*\{",
                 "c",
             ),
