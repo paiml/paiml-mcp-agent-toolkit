@@ -88,7 +88,7 @@ jobs:
           pmat record-metric binary-size $BINARY_SIZE
 
       - name: Upload metrics artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: quality-metrics
           path: .pmat-metrics/
@@ -151,7 +151,7 @@ jobs:
 
       - name: Upload metrics report
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: o1-metrics-report
           path: metrics-report.md
@@ -168,7 +168,7 @@ jobs:
 
       - name: Upload rust-project-score
         if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: rust-project-score-o1
           path: rust-score-o1.md
