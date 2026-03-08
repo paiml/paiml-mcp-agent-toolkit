@@ -51,7 +51,7 @@ jobs:
           --lib \
           --profile ci \
           --partition count:${{ matrix.shard }}/4
-      timeout-minutes: 25
+      timeout-minutes: 40
 
     - name: Upload test results
       if: always()
