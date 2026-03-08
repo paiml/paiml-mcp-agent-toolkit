@@ -46,9 +46,8 @@ jobs:
     - name: Cache dependencies
       uses: Swatinem/rust-cache@v2
       with:
-        workspaces: "server -> target"
         cache-on-failure: "true"
-    
+
     - name: Count total Rust source files
       id: count_files
       run: |
@@ -120,9 +119,8 @@ jobs:
     
     - name: Run property tests
       run: |
-        cd server
         echo "🧪 Running all property tests..."
-        
+
         # Run property tests with increased case count for CI
         PROPTEST_CASES=100 cargo test --lib --bins -- proptest 2>&1 | tee property_test_output.log
         
@@ -136,7 +134,6 @@ jobs:
     
     - name: Validate property test compilation
       run: |
-        cd server
         echo "🔨 Validating all property tests compile..."
         
         # Compile tests without running to ensure they all build
@@ -151,7 +148,6 @@ jobs:
     
     - name: Check for property test patterns
       run: |
-        cd server
         echo "🔍 Analyzing property test patterns..."
         
         # Count different types of property tests
@@ -241,12 +237,9 @@ jobs:
     
     - name: Cache dependencies
       uses: Swatinem/rust-cache@v2
-      with:
-        workspaces: "server -> target"
-    
+
     - name: Run property tests with timing
       run: |
-        cd server
         echo "⏱️ Measuring property test performance..."
         
         start_time=$(date +%s)
@@ -268,7 +261,6 @@ jobs:
     
     - name: Check memory usage
       run: |
-        cd server
         echo "💾 Checking memory usage during property tests..."
         
         # Run tests with memory monitoring
