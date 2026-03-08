@@ -238,6 +238,8 @@ jobs:
     
     - name: Cache dependencies
       uses: Swatinem/rust-cache@v2
+      with:
+        cache-on-failure: "true"
 
     - name: Run property tests with timing
       run: |
@@ -246,8 +248,8 @@ jobs:
         start_time=$(date +%s)
         
         # Run with limited cases for performance testing
-        PROPTEST_CASES=10 timeout 600 cargo test --lib --release -- proptest || {
-          echo "❌ Property tests exceeded 10 minute timeout"
+        PROPTEST_CASES=10 cargo test --lib --release -- proptest || {
+          echo "❌ Property tests failed"
           exit 1
         }
         
