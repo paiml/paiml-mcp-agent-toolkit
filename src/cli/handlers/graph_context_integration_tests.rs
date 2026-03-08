@@ -183,7 +183,7 @@ mod tests {
         if !module_a_files.is_empty() {
             // All files should have a valid community_id assigned
             assert!(
-                module_a_files.iter().all(|f| f.community_id < u32::MAX),
+                module_a_files.iter().all(|f| f.community_id < usize::MAX),
                 "Module A files should have valid community IDs"
             );
         }
