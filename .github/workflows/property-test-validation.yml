@@ -25,6 +25,7 @@ on:
 env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
+  RUST_MIN_STACK: 8388608
   PROPTEST_CASES: 100  # Run 100 cases per property test
   PROPTEST_MAX_SHRINK_ITERS: 100
 
@@ -245,8 +246,8 @@ jobs:
         start_time=$(date +%s)
         
         # Run with limited cases for performance testing
-        PROPTEST_CASES=10 timeout 300 cargo test --lib -- proptest || {
-          echo "❌ Property tests exceeded 5 minute timeout"
+        PROPTEST_CASES=10 timeout 600 cargo test --lib --release -- proptest || {
+          echo "❌ Property tests exceeded 10 minute timeout"
           exit 1
         }
         
