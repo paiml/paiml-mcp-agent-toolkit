@@ -397,9 +397,14 @@ test-examples:
 		if [ -f "$$example" ]; then \
 			example_name=$$(basename "$$example" .rs); \
 			echo "  Running example: $$example_name"; \
-			cargo run --example "$$example_name" --quiet || { \
-				echo "  ❌ Example $$example_name failed"; \
-				exit 1; \
+			output=$$(cargo run --example "$$example_name" --quiet 2>&1) || { \
+				if echo "$$output" | grep -q "requires the features"; then \
+					echo "  ⏭️  Example $$example_name skipped (requires optional feature)"; \
+				else \
+					echo "$$output"; \
+					echo "  ❌ Example $$example_name failed"; \
+					exit 1; \
+				fi \
 			}; \
 		fi \
 	done
