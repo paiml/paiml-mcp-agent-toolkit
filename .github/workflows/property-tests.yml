@@ -175,6 +175,7 @@ jobs:
         cargo test --tests -- property
     
     - name: Validate determinism across platforms
+      shell: bash
       run: |
         # Run the same property test multiple times and ensure consistent results
         for i in {1..5}; do
