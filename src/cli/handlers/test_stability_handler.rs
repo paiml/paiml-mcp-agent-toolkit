@@ -46,17 +46,20 @@ pub async fn handle_test_stability(
     output: Option<&Path>,
 ) -> Result<()> {
     use crate::cli::colors as c;
+    let is_json = matches!(format, crate::cli::enums::OutputFormat::Json);
 
-    println!("{}\n", c::header("Test Stability Analysis"));
-    println!(
-        "  {}Runs:{} {}  {}Filter:{} {}\n",
-        c::BOLD,
-        c::RESET,
-        c::number(&runs.to_string()),
-        c::BOLD,
-        c::RESET,
-        c::dim(filter.unwrap_or("(all)")),
-    );
+    if !is_json {
+        println!("{}\n", c::header("Test Stability Analysis"));
+        println!(
+            "  {}Runs:{} {}  {}Filter:{} {}\n",
+            c::BOLD,
+            c::RESET,
+            c::number(&runs.to_string()),
+            c::BOLD,
+            c::RESET,
+            c::dim(filter.unwrap_or("(all)")),
+        );
+    }
 
     let start = Instant::now();
     let analysis = run_stability_analysis(path, runs, filter)?;
@@ -207,55 +210,41 @@ fn run_test_suite(path: &Path, filter: Option<&str>) -> Result<Vec<(String, bool
     let mut args = vec![
         "test".to_string(),
         "--lib".to_string(),
-        "--".to_string(),
-        "--test-threads=4".to_string(),
-        "-Z".to_string(),
-        "unstable-options".to_string(),
-        "--format=json".to_string(),
     ];
 
     if let Some(f) = filter {
-        // Insert filter before --
-        args.insert(2, f.to_string());
+        args.push(f.to_string());
     }
 
+    args.push("--".to_string());
+    args.push("--test-threads=4".to_string());
+
+    let start = std::time::Instant::now();
     let output = std::process::Command::new("cargo")
         .args(&args)
         .current_dir(path)
         .env("RUST_MIN_STACK", "8388608")
         .output()?;
+    let elapsed_ms = start.elapsed().as_secs_f64() * 1000.0;
 
     let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
     let mut results = Vec::new();
 
-    for line in stdout.lines() {
-        // Parse JSON test events
-        if let Ok(event) = serde_json::from_str::<serde_json::Value>(line) {
-            if event.get("type").and_then(|t| t.as_str()) == Some("test")
-                && event.get("event").and_then(|e| e.as_str()).is_some()
-            {
-                let name = event
-                    .get("name")
-                    .and_then(|n| n.as_str())
-                    .unwrap_or("")
-                    .to_string();
-                let event_type = event.get("event").and_then(|e| e.as_str()).unwrap_or("");
-                let exec_time = event
-                    .get("exec_time")
-                    .and_then(|t| t.as_f64())
-                    .unwrap_or(0.0)
-                    * 1000.0; // convert to ms
+    // Parse text test output (stable Rust compatible)
+    parse_text_test_output(&stdout, &mut results);
 
-                if event_type == "ok" || event_type == "failed" {
-                    results.push((name, event_type == "ok", exec_time));
-                }
-            }
-        }
+    // Also check stderr (cargo test puts some output there)
+    if results.is_empty() {
+        parse_text_test_output(&stderr, &mut results);
     }
 
-    // Fallback: if JSON parsing yielded nothing, parse text output
-    if results.is_empty() {
-        parse_text_test_output(&stdout, &mut results);
+    // If we got results but no timing, estimate from total elapsed
+    if !results.is_empty() && results.iter().all(|(_, _, d)| *d == 0.0) {
+        let per_test = elapsed_ms / results.len() as f64;
+        for r in &mut results {
+            r.2 = per_test;
+        }
     }
 
     Ok(results)

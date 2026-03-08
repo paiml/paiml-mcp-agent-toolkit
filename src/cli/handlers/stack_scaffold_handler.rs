@@ -27,7 +27,8 @@ pub struct ScaffoldResult {
 
 pub fn get_scaffold_files(template: &str) -> Vec<ScaffoldFile> {
     match template {
-        "sqi-a-minus" | _ => get_sqi_a_minus_files(),
+        "sqi-a-minus" => get_sqi_a_minus_files(),
+        _ => get_sqi_a_minus_files(),
     }
 }
 

@@ -530,11 +530,11 @@ fn print_status_table(
 
             if is_outdated {
                 println!(
-                    "    {} {} {} -> {}",
+                    "    {} {} {} -> {latest}{}",
                     c::fail(&dep.name),
                     c::dim(current),
                     c::BOLD_GREEN,
-                    format!("{latest}{}", c::RESET),
+                    c::RESET,
                 );
             } else {
                 println!("    {} {}", c::pass(&dep.name), c::dim(current),);
@@ -704,7 +704,7 @@ pub async fn handle_stack_sync(apply: bool, dry_run: bool) -> Result<()> {
         for mismatch in mismatches {
             // Simple text replacement for version strings
             // Handle both `crate = "version"` and `crate = { version = "version", ... }`
-            let old_patterns = vec![
+            let old_patterns = [
                 format!("{} = \"{}\"", mismatch.crate_name, mismatch.current_version),
                 format!("version = \"{}\"", mismatch.current_version),
             ];
