@@ -1,14 +1,13 @@
 name: Enforce Zero Branching Policy
 
-# Triggers on push to ANY branch except master
+# Triggers when a new branch is created (not on master pushes)
 on:
-  push:
-    branches-ignore:
-      - master
+  create:
 
 # Delete unauthorized branches automatically
 jobs:
   delete-unauthorized-branch:
+    if: github.ref_type == 'branch' && github.ref != 'refs/heads/master'
     runs-on: ubuntu-latest
     permissions:
       contents: write  # Required to delete branches

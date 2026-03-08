@@ -1,7 +1,10 @@
 use anyhow::{Context, Result};
+#[cfg(feature = "watch")]
 use notify::{RecommendedWatcher, RecursiveMode, Watcher};
 use serde::{Deserialize, Serialize};
-use std::path::{Path, PathBuf};
+use std::path::Path;
+#[cfg(feature = "watch")]
+use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::{broadcast, RwLock};
 
@@ -114,6 +117,7 @@ impl Default for DisplayConfig {
 pub struct ConfigManager {
     config: Arc<RwLock<DisplayConfig>>,
     update_tx: broadcast::Sender<DisplayConfig>,
+    #[cfg(feature = "watch")]
     _watcher: Option<RecommendedWatcher>,
 }
 
@@ -125,6 +129,7 @@ impl ConfigManager {
         Ok(Self {
             config,
             update_tx,
+            #[cfg(feature = "watch")]
             _watcher: None,
         })
     }
@@ -146,6 +151,7 @@ impl ConfigManager {
         Ok(())
     }
 
+    #[cfg(feature = "watch")]
     pub async fn watch(&mut self, path: PathBuf) -> Result<()> {
         let config = self.config.clone();
         let tx = self.update_tx.clone();
