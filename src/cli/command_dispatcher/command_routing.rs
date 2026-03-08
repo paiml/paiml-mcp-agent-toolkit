@@ -422,6 +422,17 @@ impl CommandDispatcher {
                     StackCommands::Sync { apply, dry_run } => {
                         handlers::stack_sync_handler::handle_stack_sync(apply, dry_run).await
                     }
+                    StackCommands::Scaffold {
+                        all,
+                        template,
+                        diff,
+                        force,
+                    } => {
+                        handlers::stack_scaffold_handler::handle_stack_scaffold(
+                            all, &template, diff, force,
+                        )
+                        .await
+                    }
                 }
             }
 

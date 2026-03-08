@@ -19,4 +19,20 @@ pub enum StackCommands {
         #[arg(long)]
         dry_run: bool,
     },
+    /// Generate SQI-compliant boilerplate files for repo hygiene
+    #[command(visible_aliases = &["sc"])]
+    Scaffold {
+        /// Apply to all stack repos (default: current repo only)
+        #[arg(long)]
+        all: bool,
+        /// Use specific template set
+        #[arg(long, default_value = "sqi-a-minus")]
+        template: String,
+        /// Show what would be added/changed without writing
+        #[arg(long)]
+        diff: bool,
+        /// Overwrite existing files
+        #[arg(long)]
+        force: bool,
+    },
 }

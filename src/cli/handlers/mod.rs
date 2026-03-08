@@ -100,6 +100,7 @@ pub mod spec_handlers; // master-plan-pmat-work-system.md: Spec management comma
 pub mod split_auto_handler; // File split --auto: automated project-wide file splitting
 pub mod split_handler; // File split: semantic file splitting via Louvain
 pub mod sql_handler; // GH-218: Direct SQL access to function index database
+pub mod stack_scaffold_handler; // Stack scaffold: SQI-compliant boilerplate generation
 pub mod stack_sync_handler; // Cross-repo dependency coordination for sovereign AI stack
 pub mod subagent_handlers;
 pub mod tdg_diagnostic_handler;
