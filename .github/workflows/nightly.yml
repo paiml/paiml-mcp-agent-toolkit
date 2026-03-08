@@ -1,0 +1,142 @@
+name: Nightly Binary Builds
+
+on:
+  schedule:
+    - cron: '0 4 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  check-activity:
+    name: Check for recent commits
+    runs-on: ubuntu-latest
+    outputs:
+      has_commits: ${{ steps.check.outputs.has_commits }}
+      sha: ${{ steps.check.outputs.sha }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for commits in last 24h
+        id: check
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "has_commits=true" >> $GITHUB_OUTPUT
+            echo "Manual trigger — skipping recency check"
+          elif git log --since="24 hours ago" --oneline | head -1 | grep -q .; then
+            echo "has_commits=true" >> $GITHUB_OUTPUT
+            echo "New commits found in last 24h"
+          else
+            echo "has_commits=false" >> $GITHUB_OUTPUT
+            echo "No new commits in last 24h — skipping build"
+          fi
+          echo "sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+  build:
+    name: Build ${{ matrix.target }}
+    needs: check-activity
+    if: needs.check-activity.outputs.has_commits == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            runner: ubuntu-latest
+          - target: x86_64-apple-darwin
+            runner: macos-latest
+          - target: aarch64-apple-darwin
+            runner: macos-latest
+          - target: x86_64-pc-windows-msvc
+            runner: windows-latest
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Cache Cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-${{ matrix.target }}-cargo-nightly-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.target }}-cargo-nightly-
+
+      - name: Build release binaries
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Package binaries (unix)
+        if: runner.os != 'Windows'
+        run: |
+          cd target/${{ matrix.target }}/release
+          tar czf pmat-${{ matrix.target }}.tar.gz pmat pmat-agent
+          mv pmat-${{ matrix.target }}.tar.gz ../../../
+
+      - name: Package binaries (windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Compress-Archive -Path "target/${{ matrix.target }}/release/pmat.exe","target/${{ matrix.target }}/release/pmat-agent.exe" -DestinationPath "pmat-${{ matrix.target }}.zip"
+
+      - name: Upload artifact (unix)
+        if: runner.os != 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: pmat-${{ matrix.target }}
+          path: pmat-${{ matrix.target }}.tar.gz
+
+      - name: Upload artifact (windows)
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: pmat-${{ matrix.target }}
+          path: pmat-${{ matrix.target }}.zip
+
+  release:
+    name: Create nightly release
+    needs: [check-activity, build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: List artifacts
+        run: ls -lhR artifacts/
+
+      - name: Create or update nightly release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: nightly
+          name: Nightly Build
+          prerelease: true
+          make_latest: false
+          body: |
+            Automated nightly build from `main` branch.
+
+            **Date:** ${{ github.event.repository.updated_at || github.event.head_commit.timestamp }}
+            **Commit:** ${{ needs.check-activity.outputs.sha }} (${{ github.sha }})
+
+            These binaries are built from the latest source and may be unstable.
+            For stable releases, see the [latest release](https://github.com/${{ github.repository }}/releases/latest).
+          files: |
+            artifacts/*
