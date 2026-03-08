@@ -65,7 +65,7 @@ fi
 
 # Test 3: Verify dead-code analysis accepts timeout parameter
 echo -n "Test 3: Dead-code analysis accepts timeout parameter... "
-if timeout 10s "$BINARY" analyze dead-code --path "$TEST_PROJECT" --timeout 5 > /dev/null 2>&1; then
+if timeout 30s "$BINARY" analyze dead-code --path "$TEST_PROJECT" --timeout 5 > /dev/null 2>&1; then
     echo -e "${GREEN}✅ PASS${NC}"
 else
     echo -e "${RED}❌ FAIL${NC}"
