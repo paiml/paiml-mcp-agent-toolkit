@@ -43,4 +43,4 @@ fail-fast = false
 [[profile.ci.overrides]]
 # E2E and coverage-boost tests spawn cargo subprocesses — need more time in CI
 filter = 'test(/e2e/) | test(/coverage_boost/) | test(/calculator/)'
-slow-timeout = { period = "300s", terminate-after = 2 }
+slow-timeout = { period = "300s", terminate-after = 3 }
