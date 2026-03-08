@@ -3,83 +3,117 @@
 
 /// Show configuration overview
 async fn show_configuration_overview(config_service: &ConfigurationService) -> Result<()> {
+    use crate::cli::colors as c;
+
     info!("Generating configuration overview");
 
     let config = config_service.get_config()?;
 
-    println!("PMAT Configuration Overview");
-    println!("{}", "=".repeat(35));
+    println!("{}", c::header("PMAT Configuration Overview"));
+    println!("{}", c::rule());
     println!();
 
-    println!("Configuration Source:");
+    println!("{}", c::subheader("Configuration Source:"));
     let config_path = std::env::current_dir()?.join("pmat.toml");
     if config_path.exists() {
-        println!("  File: {}", config_path.display());
+        println!("  {}: {}", c::label("File"), c::path(&config_path.display().to_string()));
     } else {
-        println!("  File: {} (default)", config_path.display());
+        println!("  {}: {} {}", c::label("File"), c::path(&config_path.display().to_string()), c::dim("(default)"));
     }
     println!();
 
-    println!("System Settings:");
-    println!("  Project: {}", config.system.project_name);
-    println!("  Toolchain: {}", config.system.default_toolchain);
+    println!("{}", c::subheader("System Settings:"));
+    println!("  {}: {}", c::label("Project"), c::number(&config.system.project_name));
+    println!("  {}: {}", c::label("Toolchain"), c::number(&config.system.default_toolchain));
     println!(
-        "  Parallel: {} threads",
-        config.system.max_concurrent_operations
+        "  {}: {} threads",
+        c::label("Parallel"),
+        c::number(&config.system.max_concurrent_operations.to_string())
     );
     println!();
 
-    println!("Quality Gates:");
-    println!("  Max Complexity: {}", config.quality.max_complexity);
-    println!("  Min Coverage: {}%", config.quality.min_coverage);
-    println!("  Allow SATD: {}", config.quality.allow_satd);
-    println!("  Require Docs: {}", config.quality.require_docs);
-    println!();
-
-    println!("Analysis Settings:");
-    println!("  Include: {:?}", config.analysis.include_patterns);
-    println!("  Exclude: {:?}", config.analysis.exclude_patterns);
-    println!("  Parallel: {}", config.analysis.parallel);
-    println!("  Timeout: {}s", config.analysis.timeout_seconds);
-    println!();
-
-    println!("Performance Targets:");
+    println!("{}", c::subheader("Quality Gates:"));
+    println!("  {}: {}", c::label("Max Complexity"), c::number(&config.quality.max_complexity.to_string()));
+    println!("  {}: {}", c::label("Min Coverage"), c::pct(config.quality.min_coverage as f64, 80.0, 60.0));
     println!(
-        "  Startup: {}ms",
-        config.performance.target_startup_latency_ms
+        "  {}: {}",
+        c::label("Allow SATD"),
+        if config.quality.allow_satd { format!("{}{}{}", c::GREEN, config.quality.allow_satd, c::RESET) } else { format!("{}{}{}", c::RED, config.quality.allow_satd, c::RESET) }
     );
     println!(
-        "  Throughput: {} LOC/s",
-        config.performance.target_throughput_loc_per_sec
-    );
-    println!("  Memory: {}MB", config.performance.target_memory_mb);
-    println!();
-
-    println!("MCP Server:");
-    println!("  Name: {}", config.mcp.server_name);
-    println!("  Version: {}", config.mcp.server_version);
-    println!("  Tools: {} enabled", config.mcp.enabled_tools.len());
-    println!();
-
-    println!("Roadmap:");
-    println!("  Path: {}", config.roadmap.roadmap_path.display());
-    println!("  Auto Todos: {}", config.roadmap.auto_generate_todos);
-    println!("  Quality Gates: {}", config.roadmap.enforce_quality_gates);
-    println!();
-
-    println!("Telemetry:");
-    println!("  Enabled: {}", config.telemetry.enabled);
-    println!(
-        "  Interval: {}s",
-        config.telemetry.collection_interval_seconds
+        "  {}: {}",
+        c::label("Require Docs"),
+        if config.quality.require_docs { format!("{}{}{}", c::GREEN, config.quality.require_docs, c::RESET) } else { format!("{}{}{}", c::RED, config.quality.require_docs, c::RESET) }
     );
     println!();
 
-    println!("Commands:");
-    println!("  pmat config --show --section quality    # Show quality settings");
-    println!("  pmat config --set quality.max_complexity=25  # Update setting");
-    println!("  pmat config --edit                      # Interactive edit");
-    println!("  pmat config --validate                  # Validate config");
+    println!("{}", c::subheader("Analysis Settings:"));
+    println!("  {}: {:?}", c::label("Include"), config.analysis.include_patterns);
+    println!("  {}: {:?}", c::label("Exclude"), config.analysis.exclude_patterns);
+    println!(
+        "  {}: {}",
+        c::label("Parallel"),
+        if config.analysis.parallel { format!("{}{}{}", c::GREEN, config.analysis.parallel, c::RESET) } else { format!("{}{}{}", c::RED, config.analysis.parallel, c::RESET) }
+    );
+    println!("  {}: {}s", c::label("Timeout"), c::number(&config.analysis.timeout_seconds.to_string()));
+    println!();
+
+    println!("{}", c::subheader("Performance Targets:"));
+    println!(
+        "  {}: {}ms",
+        c::label("Startup"),
+        c::number(&config.performance.target_startup_latency_ms.to_string())
+    );
+    println!(
+        "  {}: {} LOC/s",
+        c::label("Throughput"),
+        c::number(&config.performance.target_throughput_loc_per_sec.to_string())
+    );
+    println!("  {}: {}MB", c::label("Memory"), c::number(&config.performance.target_memory_mb.to_string()));
+    println!();
+
+    println!("{}", c::subheader("MCP Server:"));
+    println!("  {}: {}", c::label("Name"), c::number(&config.mcp.server_name));
+    println!("  {}: {}", c::label("Version"), c::number(&config.mcp.server_version));
+    println!("  {}: {} enabled", c::label("Tools"), c::number(&config.mcp.enabled_tools.len().to_string()));
+    println!();
+
+    println!("{}", c::subheader("Roadmap:"));
+    println!("  {}: {}", c::label("Path"), c::path(&config.roadmap.roadmap_path.display().to_string()));
+    println!(
+        "  {}: {}",
+        c::label("Auto Todos"),
+        if config.roadmap.auto_generate_todos { format!("{}{}{}", c::GREEN, config.roadmap.auto_generate_todos, c::RESET) } else { format!("{}{}{}", c::RED, config.roadmap.auto_generate_todos, c::RESET) }
+    );
+    println!(
+        "  {}: {}",
+        c::label("Quality Gates"),
+        if config.roadmap.enforce_quality_gates { format!("{}{}{}", c::GREEN, config.roadmap.enforce_quality_gates, c::RESET) } else { format!("{}{}{}", c::RED, config.roadmap.enforce_quality_gates, c::RESET) }
+    );
+    println!();
+
+    println!("{}", c::subheader("Telemetry:"));
+    println!(
+        "  {}: {}",
+        c::label("Enabled"),
+        if config.telemetry.enabled { format!("{}{}{}", c::GREEN, config.telemetry.enabled, c::RESET) } else { format!("{}{}{}", c::RED, config.telemetry.enabled, c::RESET) }
+    );
+    println!(
+        "  {}: {}s",
+        c::label("Interval"),
+        c::number(&config.telemetry.collection_interval_seconds.to_string())
+    );
+    println!();
+
+    println!("{}", c::subheader("Commands:"));
+    println!("  {} {}", c::dim("#"), c::dim("Show quality settings"));
+    println!("  pmat config --show --section quality");
+    println!("  {} {}", c::dim("#"), c::dim("Update setting"));
+    println!("  pmat config --set quality.max_complexity=25");
+    println!("  {} {}", c::dim("#"), c::dim("Interactive edit"));
+    println!("  pmat config --edit");
+    println!("  {} {}", c::dim("#"), c::dim("Validate config"));
+    println!("  pmat config --validate");
 
     Ok(())
 }
@@ -89,13 +123,15 @@ async fn show_configuration(
     config_service: &ConfigurationService,
     section: Option<String>,
 ) -> Result<()> {
+    use crate::cli::colors as c;
+
     let config = config_service.get_config()?;
 
     if let Some(section_name) = section {
         show_configuration_section(&config, &section_name)?;
     } else {
-        println!("Complete PMAT Configuration");
-        println!("{}", "=".repeat(50));
+        println!("{}", c::header("Complete PMAT Configuration"));
+        println!("{}", c::rule());
         println!();
 
         println!("Raw Configuration (TOML):");
@@ -111,37 +147,39 @@ async fn show_configuration(
 
 /// Show specific configuration section
 fn show_configuration_section(config: &PmatConfig, section: &str) -> Result<()> {
-    println!("Configuration Section: {section}");
-    println!("{}", "=".repeat(30 + section.len()));
+    use crate::cli::colors as c;
+
+    println!("{}", c::header(&format!("Configuration Section: {section}")));
+    println!("{}", c::rule());
     println!();
 
     match section.to_lowercase().as_str() {
         "system" => {
-            println!("System Configuration (TOML):");
+            println!("{}:", c::subheader("System Configuration (TOML)"));
             println!("{}", toml::to_string_pretty(&config.system)?);
         }
         "quality" => {
-            println!("Quality Configuration (TOML):");
+            println!("{}:", c::subheader("Quality Configuration (TOML)"));
             println!("{}", toml::to_string_pretty(&config.quality)?);
         }
         "analysis" => {
-            println!("Analysis Configuration (TOML):");
+            println!("{}:", c::subheader("Analysis Configuration (TOML)"));
             println!("{}", toml::to_string_pretty(&config.analysis)?);
         }
         "performance" => {
-            println!("Performance Configuration (TOML):");
+            println!("{}:", c::subheader("Performance Configuration (TOML)"));
             println!("{}", toml::to_string_pretty(&config.performance)?);
         }
         "mcp" => {
-            println!("MCP Configuration (TOML):");
+            println!("{}:", c::subheader("MCP Configuration (TOML)"));
             println!("{}", toml::to_string_pretty(&config.mcp)?);
         }
         "roadmap" => {
-            println!("Roadmap Configuration (TOML):");
+            println!("{}:", c::subheader("Roadmap Configuration (TOML)"));
             println!("{}", toml::to_string_pretty(&config.roadmap)?);
         }
         "telemetry" => {
-            println!("Telemetry Configuration (TOML):");
+            println!("{}:", c::subheader("Telemetry Configuration (TOML)"));
             println!("{}", toml::to_string_pretty(&config.telemetry)?);
         }
         _ => {

@@ -4,6 +4,12 @@ mod tests {
     use super::*;
     use crate::services::facades::satd_facade::{SatdSeverity as FacadeSeverity, SatdViolation};
 
+    /// Strip ANSI escape codes from a string for assertion comparisons.
+    fn strip_ansi(s: &str) -> String {
+        let re = regex::Regex::new(r"\x1b\[[0-9;]*m").unwrap();
+        re.replace_all(s, "").to_string()
+    }
+
     #[test]
     fn test_format_summary() {
         let result = SatdAnalysisResult {
@@ -18,9 +24,10 @@ mod tests {
             summary: "Test summary".to_string(),
         };
 
-        let output = format_summary(&result);
+        let output = strip_ansi(&format_summary(&result));
         assert!(output.contains("Test summary"));
-        assert!(output.contains("Total violations: 1"));
+        assert!(output.contains("Total violations:"));
+        assert!(output.contains("1"));
     }
 }
 

@@ -7,15 +7,16 @@
 /// Install git hooks for mandatory work tracking (W-006)
 /// Implements master-plan-pmat-work-system.md enforcement
 fn remove_pmat_hook(hook_path: &Path, markers: &[&str], hook_name: &str) -> Result<()> {
+    use crate::cli::colors as c;
     if !hook_path.exists() {
         return Ok(());
     }
     let content = fs::read_to_string(hook_path)?;
     if markers.iter().any(|m| content.contains(m)) {
         fs::remove_file(hook_path)?;
-        println!("Removed PMAT {hook_name} hook");
+        println!("{}", c::pass(&format!("Removed PMAT {hook_name} hook")));
     } else {
-        println!("{hook_name} hook exists but is not PMAT - not removed");
+        println!("{}", c::warn(&format!("{hook_name} hook exists but is not PMAT - not removed")));
     }
     Ok(())
 }
@@ -32,14 +33,15 @@ fn make_hook_executable(_path: &Path) -> Result<()> {
 }
 
 fn print_enforce_result(format: &ComplyOutputFormat, hooks_dir: &Path) -> Result<()> {
+    use crate::cli::colors as c;
     match format {
         ComplyOutputFormat::Text => {
-            println!("\nPMAT enforcement hooks installed!");
-            println!("   Pre-commit hook: {}", hooks_dir.join("pre-commit").display());
-            println!("   Pre-push hook:   {}", hooks_dir.join("pre-push").display());
+            println!("\n{}", c::pass("PMAT enforcement hooks installed!"));
+            println!("   {} {}", c::label("Pre-commit hook:"), c::path(&hooks_dir.join("pre-commit").display().to_string()));
+            println!("   {} {}", c::label("Pre-push hook:  "), c::path(&hooks_dir.join("pre-push").display().to_string()));
             println!("\nCommits will now require an active work ticket.");
             println!("Pushes will validate ComputeBrick compliance.");
-            println!("Use 'pmat comply enforce --disable' to remove hooks.");
+            println!("Use '{}' to remove hooks.", c::label("pmat comply enforce --disable"));
         }
         ComplyOutputFormat::Json => {
             let result = serde_json::json!({
@@ -79,11 +81,12 @@ async fn handle_enforce(
     }
 
     if !yes {
-        println!("This will install PMAT enforcement hooks:");
-        println!("  - pre-commit: Block commits without active work ticket");
-        println!("  - pre-push: Validate spec compliance before push");
+        use crate::cli::colors as c;
+        println!("{}", c::label("This will install PMAT enforcement hooks:"));
+        println!("  - {}: Block commits without active work ticket", c::label("pre-commit"));
+        println!("  - {}: Validate spec compliance before push", c::label("pre-push"));
         println!("\nProceed? [y/N] ");
-        println!("(Auto-proceeding due to non-interactive mode)");
+        println!("{}", c::dim("(Auto-proceeding due to non-interactive mode)"));
     }
 
     let pre_commit_content = include_str!("../../templates/pre_commit_hook.sh");
@@ -135,36 +138,36 @@ async fn handle_report(
     // Format output
     let output_text = match format {
         ComplyOutputFormat::Text => {
+            use crate::cli::colors as c;
             let mut out = String::new();
-            out.push_str(&format!("\n{}\n", "=".repeat(60)));
-            out.push_str("PMAT Compliance Report\n");
-            out.push_str(&format!("{}\n", "=".repeat(60)));
-            out.push_str(&format!("\nGenerated: {}\n", report.timestamp));
-            out.push_str(&format!("Project Version: {}\n", report.project_version));
-            out.push_str(&format!("Current PMAT: {}\n", report.current_version));
-            out.push_str(&format!(
-                "Status: {}\n\n",
-                if report.is_compliant {
-                    "COMPLIANT"
-                } else {
-                    "NON-COMPLIANT"
-                }
-            ));
+            out.push_str(&format!("\n{}\n", c::rule()));
+            out.push_str(&format!("{}\n", c::header("PMAT Compliance Report")));
+            out.push_str(&format!("{}\n", c::rule()));
+            out.push_str(&format!("\n{} {}\n", c::label("Generated:"), report.timestamp));
+            out.push_str(&format!("{} {}\n", c::label("Project Version:"), report.project_version));
+            out.push_str(&format!("{} {}\n", c::label("Current PMAT:"), report.current_version));
+            let status_str = if report.is_compliant {
+                format!("{}COMPLIANT{}", c::BOLD_GREEN, c::RESET)
+            } else {
+                format!("{}NON-COMPLIANT{}", c::BOLD_RED, c::RESET)
+            };
+            out.push_str(&format!("{} {}\n\n", c::label("Status:"), status_str));
 
-            out.push_str("Checks:\n");
+            out.push_str(&format!("{}:\n", c::label("Checks")));
             for check in &report.checks {
-                let icon = match check.status {
-                    CheckStatus::Pass => "\u{2713}",
-                    CheckStatus::Warn => "\u{26a0}",
-                    CheckStatus::Fail => "\u{2717}",
-                    CheckStatus::Skip => "-",
+                let line = format!("{}: {}", check.name, check.message);
+                let formatted = match check.status {
+                    CheckStatus::Pass => c::pass(&line),
+                    CheckStatus::Warn => c::warn(&line),
+                    CheckStatus::Fail => c::fail(&line),
+                    CheckStatus::Skip => c::skip(&line),
                 };
-                out.push_str(&format!("  {} {}: {}\n", icon, check.name, check.message));
+                out.push_str(&format!("  {}\n", formatted));
             }
 
             if include_history {
-                out.push_str("\nWork History:\n");
-                out.push_str("  (Work history not yet implemented)\n");
+                out.push_str(&format!("\n{}:\n", c::label("Work History")));
+                out.push_str(&format!("  {}\n", c::dim("(Work history not yet implemented)")));
             }
 
             out
@@ -209,8 +212,9 @@ async fn handle_report(
     };
 
     if let Some(output_path) = output {
+        use crate::cli::colors as c;
         fs::write(output_path, &output_text)?;
-        println!("\u{2705} Compliance report written to {}", output_path.display());
+        println!("{}", c::pass(&format!("Compliance report written to {}", c::path(&output_path.display().to_string()))));
     } else {
         println!("{}", output_text);
     }

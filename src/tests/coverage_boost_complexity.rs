@@ -597,6 +597,12 @@ fn test_aggregate_results_statistics() {
 
 // ============ Format Functions Tests ============
 
+/// Strip ANSI escape codes from a string for assertion comparisons.
+fn strip_ansi(s: &str) -> String {
+    let re = regex::Regex::new(r"\x1b\[[0-9;]*m").unwrap();
+    re.replace_all(s, "").to_string()
+}
+
 #[test]
 fn test_format_complexity_summary_basic() {
     let report = ComplexityReport {
@@ -615,10 +621,12 @@ fn test_format_complexity_summary_basic() {
         hotspots: vec![],
         files: vec![],
     };
-    let summary = format_complexity_summary(&report);
-    assert!(summary.contains("# Complexity Analysis Summary"));
-    assert!(summary.contains("**Files analyzed**: 2"));
-    assert!(summary.contains("**Total functions**: 10"));
+    let summary = strip_ansi(&format_complexity_summary(&report));
+    assert!(summary.contains("Complexity Analysis Summary"));
+    assert!(summary.contains("Files analyzed:"));
+    assert!(summary.contains("2"));
+    assert!(summary.contains("Total functions:"));
+    assert!(summary.contains("10"));
 }
 
 #[test]

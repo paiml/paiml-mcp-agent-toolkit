@@ -1,3 +1,4 @@
+use crate::cli::colors as c;
 use crate::cli::commands::{DiagnosticOutputFormat, StorageCommand, TdgCommand};
 use crate::tdg::{StorageBackendType, StorageConfig, TieredStorageFactory, TieredStore};
 use anyhow::Result;
@@ -103,7 +104,7 @@ async fn show_diagnostics(
 }
 
 fn show_plain_diagnostics(stats: &crate::tdg::storage::StorageStatistics, detailed: bool) {
-    println!("TDG System Diagnostics\n");
+    println!("{}\n", c::header("TDG System Diagnostics"));
     print_basic_storage_info(stats);
 
     if detailed {
@@ -112,8 +113,8 @@ fn show_plain_diagnostics(stats: &crate::tdg::storage::StorageStatistics, detail
 }
 
 fn show_human_diagnostics(stats: &crate::tdg::storage::StorageStatistics, detailed: bool) {
-    println!("=== TDG System Diagnostics ===\n");
-    println!("Storage Diagnostics:");
+    println!("{}\n", c::header("TDG System Diagnostics"));
+    println!("{}", c::subheader("Storage Diagnostics:"));
     println!("{}", stats.format_diagnostic());
 
     if detailed {
@@ -121,8 +122,11 @@ fn show_human_diagnostics(stats: &crate::tdg::storage::StorageStatistics, detail
     }
 
     println!();
-    println!("Note: Full diagnostic infrastructure is in development.");
-    println!("Currently showing storage statistics only.");
+    println!(
+        "{}",
+        c::dim("Note: Full diagnostic infrastructure is in development.")
+    );
+    println!("{}", c::dim("Currently showing storage statistics only."));
 }
 
 fn show_json_diagnostics(
@@ -173,39 +177,52 @@ fn show_table_diagnostics(stats: &crate::tdg::storage::StorageStatistics) {
 }
 
 fn print_basic_storage_info(stats: &crate::tdg::storage::StorageStatistics) {
-    println!("Storage: {} entries", stats.total_entries);
     println!(
-        "Hot: {}, Warm: {}, Cold: {}",
-        stats.hot_entries, stats.warm_entries, stats.cold_entries
+        "{} {} entries",
+        c::label("Storage:"),
+        c::number(&format!("{}", stats.total_entries))
     );
     println!(
-        "Backends - Warm: {}, Cold: {}",
-        stats.warm_backend, stats.cold_backend
+        "{} {}, {} {}, {} {}",
+        c::label("Hot:"),
+        c::number(&format!("{}", stats.hot_entries)),
+        c::label("Warm:"),
+        c::number(&format!("{}", stats.warm_entries)),
+        c::label("Cold:"),
+        c::number(&format!("{}", stats.cold_entries))
     );
     println!(
-        "Compression: {:.1}%, Memory: {} KB",
-        stats.compression_ratio * 100.0,
-        stats.hot_memory_kb
+        "{} Warm: {}, Cold: {}",
+        c::label("Backends -"),
+        stats.warm_backend,
+        stats.cold_backend
+    );
+    println!(
+        "{} {}, {} {} KB",
+        c::label("Compression:"),
+        c::number(&format!("{:.1}%", stats.compression_ratio * 100.0)),
+        c::label("Memory:"),
+        c::number(&format!("{}", stats.hot_memory_kb))
     );
 }
 
 fn show_backend_details(
     backend_stats: &std::collections::HashMap<String, std::collections::HashMap<String, String>>,
 ) {
-    println!("\nBackend Details:");
+    println!("\n{}", c::subheader("Backend Details:"));
     for (tier, stats) in backend_stats {
-        println!("{tier}: {stats:?}");
+        println!("{}: {stats:?}", c::label(tier));
     }
 }
 
 fn show_human_backend_details(
     backend_stats: &std::collections::HashMap<String, std::collections::HashMap<String, String>>,
 ) {
-    println!("\nBackend Details:");
+    println!("\n{}", c::subheader("Backend Details:"));
     for (tier, stats) in backend_stats {
-        println!("  {tier}:");
+        println!("  {}:", c::label(tier));
         for (key, value) in stats {
-            println!("    {key}: {value}");
+            println!("    {}: {}", c::label(key), value);
         }
     }
 }
@@ -226,7 +243,7 @@ async fn handle_storage_command(command: &StorageCommand, base_path: &PathBuf) -
 /// Handle stats command
 fn handle_stats(storage: &TieredStore, detailed: bool) -> Result<()> {
     let stats = storage.get_statistics();
-    println!("=== TDG Storage Statistics ===\n");
+    println!("{}\n", c::header("TDG Storage Statistics"));
     println!("{}", stats.format_diagnostic());
 
     if detailed {
@@ -239,11 +256,11 @@ fn handle_stats(storage: &TieredStore, detailed: bool) -> Result<()> {
 fn print_backend_statistics(
     backend_stats: &std::collections::HashMap<String, std::collections::HashMap<String, String>>,
 ) {
-    println!("\nBackend Statistics:");
+    println!("\n{}", c::subheader("Backend Statistics:"));
     for (tier, backend_stats) in backend_stats {
-        println!("\n{tier}:");
+        println!("\n{}:", c::label(tier));
         for (key, value) in backend_stats {
-            println!("  {key}: {value}");
+            println!("  {}: {}", c::label(key), value);
         }
     }
 }
@@ -251,7 +268,13 @@ fn print_backend_statistics(
 /// Handle cleanup command
 fn handle_cleanup(storage: &TieredStore, max_age: u64) -> Result<()> {
     let removed = storage.cleanup_hot_cache(max_age);
-    println!("Cleaned up {removed} expired hot cache entries");
+    println!(
+        "{}",
+        c::pass(&format!(
+            "Cleaned up {} expired hot cache entries",
+            c::number(&format!("{removed}"))
+        ))
+    );
     Ok(())
 }
 
@@ -260,11 +283,17 @@ fn handle_migrate(backend: &str, path: Option<&PathBuf>) -> Result<()> {
     let backend_type = parse_backend_type(backend)?;
     let (warm_config, cold_config) = create_migration_configs(backend_type, path);
 
-    println!("Migrating storage to {backend} backend...");
-    println!("⚠️  Migration requires restart to take effect");
-    println!("New configuration:");
-    println!("  Warm storage: {warm_config:?}");
-    println!("  Cold storage: {cold_config:?}");
+    println!(
+        "{}",
+        c::dim(&format!(
+            "Migrating storage to {} backend...",
+            c::label(backend)
+        ))
+    );
+    println!("{}", c::warn("Migration requires restart to take effect"));
+    println!("{}", c::subheader("New configuration:"));
+    println!("  {} {warm_config:?}", c::label("Warm storage:"));
+    println!("  {} {cold_config:?}", c::label("Cold storage:"));
 
     Ok(())
 }
@@ -305,7 +334,7 @@ fn create_migration_configs(
 /// Handle flush command
 fn handle_flush(storage: &TieredStore) -> Result<()> {
     storage.flush()?;
-    println!("✅ All pending writes flushed to storage");
+    println!("{}", c::pass("All pending writes flushed to storage"));
     Ok(())
 }
 
@@ -320,24 +349,28 @@ async fn handle_dashboard_command(
     use crate::tdg::web_dashboard::start_dashboard_server;
     use std::net::{IpAddr, SocketAddr};
 
-    println!("🚀 Starting TDG Dashboard server...");
+    println!("{}", c::header("Starting TDG Dashboard server..."));
 
     let addr: IpAddr = host.parse()?;
     let socket_addr = SocketAddr::new(addr, port);
 
-    println!("📊 Dashboard will be available at: http://{host}:{port}");
-    println!("🔄 Real-time metrics updates enabled");
+    println!(
+        "{} {}",
+        c::label("Dashboard:"),
+        c::path(&format!("http://{host}:{port}"))
+    );
+    println!("{}", c::pass("Real-time metrics updates enabled"));
 
     // Open browser if requested
     if open {
         if let Err(e) = open_browser(&format!("http://{host}:{port}")) {
-            eprintln!("⚠️  Could not open browser: {e}");
+            eprintln!("{}", c::warn(&format!("Could not open browser: {e}")));
         } else {
-            println!("🌐 Opening dashboard in browser...");
+            println!("{}", c::dim("Opening dashboard in browser..."));
         }
     }
 
-    println!("Press Ctrl+C to stop the server");
+    println!("{}", c::dim("Press Ctrl+C to stop the server"));
 
     // Start the dashboard server (this will block)
     start_dashboard_server(socket_addr)

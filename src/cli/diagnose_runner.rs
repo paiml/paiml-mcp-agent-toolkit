@@ -228,44 +228,88 @@ pub async fn handle_diagnose(args: DiagnoseArgs) -> Result<()> {
 }
 
 fn print_pretty_report(report: &DiagnosticReport) {
-    println!("PMAT Self-Diagnostic Report");
-    println!("==========================");
-    println!("Version: {}", report.version);
-    println!("Duration: {}ms", report.duration_ms);
+    use crate::cli::colors as c;
+    println!("{}", c::header("PMAT Self-Diagnostic Report"));
+    println!(
+        "  {}: {}    {}: {}ms",
+        c::label("Version"),
+        c::number(&report.version),
+        c::label("Duration"),
+        c::number(&report.duration_ms.to_string()),
+    );
     println!();
 
     for (feature, result) in &report.features {
-        let icon = match result.status {
-            FeatureStatus::Ok => "✓",
-            FeatureStatus::Degraded(_) => "⚠",
-            FeatureStatus::Failed => "✗",
-            FeatureStatus::Skipped(_) => "○",
+        let line = match result.status {
+            FeatureStatus::Ok => c::pass(&format!(
+                "{} {}({}μs){}",
+                c::path(feature),
+                c::DIM,
+                result.duration_us,
+                c::RESET
+            )),
+            FeatureStatus::Degraded(_) => c::warn(&format!(
+                "{} {}({}μs){}",
+                c::path(feature),
+                c::DIM,
+                result.duration_us,
+                c::RESET
+            )),
+            FeatureStatus::Failed => c::fail(&format!(
+                "{} {}({}μs){}",
+                c::path(feature),
+                c::DIM,
+                result.duration_us,
+                c::RESET
+            )),
+            FeatureStatus::Skipped(_) => c::skip(&format!(
+                "{} {}({}μs){}",
+                feature, c::DIM, result.duration_us, c::RESET
+            )),
         };
-
-        println!("{} {} ({}μs)", icon, feature, result.duration_us);
+        println!("{line}");
 
         if let Some(error) = &result.error {
-            println!("  └─ {error}");
+            println!("  {}└─ {error}{}", c::RED, c::RESET);
         }
     }
 
     println!();
-    println!("Summary:");
-    println!("  Total: {}", report.summary.total);
-    println!("  Passed: {}", report.summary.passed);
-    println!("  Failed: {}", report.summary.failed);
-    println!("  Success Rate: {:.1}%", report.summary.success_rate);
+    println!("{}", c::subheader("Summary:"));
+    println!("  {}: {}", c::label("Total"), c::number(&report.summary.total.to_string()));
+    println!(
+        "  {}: {}{}{}",
+        c::label("Passed"),
+        c::GREEN,
+        report.summary.passed,
+        c::RESET
+    );
+    println!(
+        "  {}: {}{}{}",
+        c::label("Failed"),
+        if report.summary.failed > 0 { c::RED } else { c::GREEN },
+        report.summary.failed,
+        c::RESET
+    );
+    println!(
+        "  {}: {}",
+        c::label("Success Rate"),
+        c::pct(report.summary.success_rate, 100.0, 80.0)
+    );
 
     if let Some(ctx) = &report.error_context {
         println!();
-        println!("Suggested Fixes:");
+        println!("{}", c::subheader("Suggested Fixes:"));
         for fix in &ctx.suggested_fixes {
             println!(
-                "- {}: {}",
-                fix.feature,
-                fix.fix_command
-                    .as_ref()
-                    .unwrap_or(&"See documentation".into())
+                "  {} {}: {}",
+                c::warn(""),
+                c::label(&fix.feature),
+                c::dim(
+                    fix.fix_command
+                        .as_ref()
+                        .unwrap_or(&"See documentation".into())
+                )
             );
         }
     }

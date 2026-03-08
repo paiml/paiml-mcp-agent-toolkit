@@ -25,11 +25,13 @@ fn print_valid_roadmap(
     verbose: bool,
     fix: bool,
 ) {
-    println!("✅ Syntax valid");
-    println!("   Version: {}", roadmap.roadmap_version);
-    println!("   Items: {}", roadmap.roadmap.len());
+    use crate::cli::colors as c;
+    println!("{}", c::pass("Syntax valid"));
+    println!("   {} {}", c::label("Version:"), roadmap.roadmap_version);
+    println!("   {} {}", c::label("Items:"), c::number(&roadmap.roadmap.len().to_string()));
     println!(
-        "   GitHub: {}",
+        "   {} {}",
+        c::label("GitHub:"),
         if roadmap.github_enabled {
             roadmap.github_repo.as_deref().unwrap_or("not configured")
         } else {
@@ -40,7 +42,7 @@ fn print_valid_roadmap(
 
     let warnings = collect_semantic_warnings(roadmap);
     if !warnings.is_empty() {
-        println!("Warnings ({}):", warnings.len());
+        println!("{}", c::subheader(&format!("Warnings ({}):", warnings.len())));
         for warning in &warnings {
             println!("   {}", warning);
         }
@@ -48,56 +50,63 @@ fn print_valid_roadmap(
     }
 
     if verbose {
-        println!("📋 Items:");
+        println!("{}", c::subheader("📋 Items:"));
         for item in &roadmap.roadmap {
-            println!("   {} [{:?}] - {}", item.id, item.status, item.title);
+            println!("   {} [{:?}] - {}", c::path(&item.id), item.status, item.title);
         }
     }
 
     if fix && !warnings.is_empty() {
-        println!("💡 Tip: Use `pmat work migrate` to auto-fix issues");
+        println!("{}", c::dim("💡 Tip: Use `pmat work migrate` to auto-fix issues"));
     }
 
-    println!("✅ Validation passed");
+    println!("{}", c::pass("Validation passed"));
 }
 
 /// Print YAML parse error with context and suggestions (helper for handle_work_validate)
 fn print_yaml_error_context(error_msg: &str, content: &str) {
-    println!("❌ Validation failed\n");
-    println!("Error: {}", error_msg);
+    use crate::cli::colors as c;
+    println!("{}", c::fail("Validation failed"));
+    println!();
+    println!("{} {}", c::label("Error:"), error_msg);
     println!();
 
     if let Some(line) = extract_line_from_yaml_error(error_msg) {
         let lines: Vec<&str> = content.lines().collect();
         if line > 0 && line <= lines.len() {
-            println!("Context (around line {}):", line);
+            println!("{}", c::subheader(&format!("Context (around line {}):", line)));
             let start = line.saturating_sub(3);
             let end = std::cmp::min(line + 2, lines.len());
             for (i, l) in lines[start..end].iter().enumerate() {
                 let line_num = start + i + 1;
-                let marker = if line_num == line { ">>>" } else { "   " };
+                let marker = if line_num == line {
+                    format!("{}>>>{}", c::RED, c::RESET)
+                } else {
+                    "   ".to_string()
+                };
                 println!("{} {:4}: {}", marker, line_num, l);
             }
             println!();
         }
     }
 
-    println!("💡 Common fixes:");
-    println!("   - Use valid status values: completed, done, wip, planned, blocked, review");
-    println!("   - Quote strings with special characters: `:`, `<`, `>`");
-    println!("   - Use proper YAML indentation (2 spaces)");
+    println!("{}", c::dim("💡 Common fixes:"));
+    println!("   {}", c::dim("- Use valid status values: completed, done, wip, planned, blocked, review"));
+    println!("   {}", c::dim("- Quote strings with special characters: `:`, `<`, `>`"));
+    println!("   {}", c::dim("- Use proper YAML indentation (2 spaces)"));
     println!();
-    println!("Run `pmat work status --list` to see all valid status values.");
+    println!("{}", c::dim("Run `pmat work status --list` to see all valid status values."));
 }
 
 /// Handle work validate command (Part B: UX Improvements)
 ///
 /// Validates roadmap.yaml syntax and content with actionable error messages.
 pub async fn handle_work_validate(path: Option<PathBuf>, verbose: bool, fix: bool) -> Result<()> {
+    use crate::cli::colors as c;
     let project_path = path.unwrap_or_else(|| PathBuf::from("."));
     let roadmap_path = project_path.join("docs/roadmaps/roadmap.yaml");
 
-    println!("🔍 Validating roadmap: {}", roadmap_path.display());
+    println!("{}", c::label(&format!("🔍 Validating roadmap: {}", c::path(&roadmap_path.display().to_string()))));
     println!();
 
     if !roadmap_path.exists() {
@@ -125,10 +134,11 @@ pub async fn handle_work_validate(path: Option<PathBuf>, verbose: bool, fix: boo
 ///
 /// Auto-fixes common roadmap.yaml issues.
 pub async fn handle_work_migrate(path: Option<PathBuf>, dry_run: bool, backup: bool) -> Result<()> {
+    use crate::cli::colors as c;
     let project_path = path.unwrap_or_else(|| PathBuf::from("."));
     let roadmap_path = project_path.join("docs/roadmaps/roadmap.yaml");
 
-    println!("🔄 Migrating roadmap: {}", roadmap_path.display());
+    println!("{}", c::label(&format!("🔄 Migrating roadmap: {}", c::path(&roadmap_path.display().to_string()))));
     println!();
 
     if !roadmap_path.exists() {
@@ -172,7 +182,7 @@ pub async fn handle_work_migrate(path: Option<PathBuf>, dry_run: bool, backup: b
         if line.trim_start().starts_with("title:") || line.trim_start().starts_with("- title:") {
             let has_special = special_chars
                 .iter()
-                .any(|c| line.contains(*c) && !line.contains("\""));
+                .any(|ch| line.contains(*ch) && !line.contains("\""));
             if has_special && !line.contains("\"") {
                 // This is a simplistic check - in practice we'd need proper YAML parsing
                 changes.push(format!("Consider quoting: {}", line.trim()));
@@ -181,18 +191,18 @@ pub async fn handle_work_migrate(path: Option<PathBuf>, dry_run: bool, backup: b
     }
 
     if changes.is_empty() {
-        println!("✅ No migrations needed - roadmap is already up to date");
+        println!("{}", c::pass("No migrations needed - roadmap is already up to date"));
         return Ok(());
     }
 
-    println!("Found {} potential changes:", changes.len());
+    println!("{} {} potential changes:", c::subheader("Found"), c::number(&changes.len().to_string()));
     for change in &changes {
         println!("   • {}", change);
     }
     println!();
 
     if dry_run {
-        println!("(Dry run - no changes made)");
+        println!("{}", c::dim("(Dry run - no changes made)"));
         return Ok(());
     }
 
@@ -200,18 +210,18 @@ pub async fn handle_work_migrate(path: Option<PathBuf>, dry_run: bool, backup: b
     if backup {
         let backup_path = roadmap_path.with_extension("yaml.bak");
         std::fs::write(&backup_path, &content)?;
-        println!("✅ Created backup: {}", backup_path.display());
+        println!("{}", c::pass(&format!("Created backup: {}", c::path(&backup_path.display().to_string()))));
     }
 
     // Write changes
     std::fs::write(&roadmap_path, &new_content)?;
-    println!("✅ Updated roadmap: {}", roadmap_path.display());
+    println!("{}", c::pass(&format!("Updated roadmap: {}", c::path(&roadmap_path.display().to_string()))));
 
     // Verify the changes
     if serde_yaml_ng::from_str::<crate::models::roadmap::Roadmap>(&new_content).is_ok() {
-        println!("✅ Verified: updated roadmap is valid");
+        println!("{}", c::pass("Verified: updated roadmap is valid"));
     } else {
-        println!("⚠️  Warning: updated roadmap may have issues - check manually");
+        println!("{}", c::warn("Warning: updated roadmap may have issues - check manually"));
     }
 
     Ok(())
@@ -221,9 +231,10 @@ pub async fn handle_work_migrate(path: Option<PathBuf>, dry_run: bool, backup: b
 ///
 /// Lists all valid status values with descriptions and aliases.
 pub async fn handle_work_list_statuses() -> Result<()> {
-    println!("📋 Valid Status Values\n");
-    println!("{:<15} {:<25} DESCRIPTION", "STATUS", "ALIASES");
-    println!("{}", "-".repeat(70));
+    use crate::cli::colors as c;
+    println!("{}\n", c::subheader("📋 Valid Status Values"));
+    println!("{}{:<15} {:<25} DESCRIPTION{}", c::BOLD, "STATUS", "ALIASES", c::RESET);
+    println!("{}", c::separator());
 
     let statuses = [
         (
@@ -259,12 +270,12 @@ pub async fn handle_work_list_statuses() -> Result<()> {
     ];
 
     for (status, aliases, description) in statuses {
-        println!("{:<15} {:<25} {}", status, aliases, description);
+        println!("{}{:<15}{} {:<25} {}", c::CYAN, status, c::RESET, aliases, description);
     }
 
     println!();
-    println!("💡 All status values are case-insensitive and support hyphens/underscores.");
-    println!("   Example: 'In-Progress', 'in_progress', 'InProgress', 'WIP' all work.");
+    println!("{}", c::dim("💡 All status values are case-insensitive and support hyphens/underscores."));
+    println!("   {}", c::dim("Example: 'In-Progress', 'in_progress', 'InProgress', 'WIP' all work."));
 
     Ok(())
 }

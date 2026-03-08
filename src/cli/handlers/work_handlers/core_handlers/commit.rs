@@ -1,6 +1,7 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
 // Commit metadata capture and changelog update helpers
 
+use crate::cli::colors as c;
 use crate::models::roadmap::RoadmapItem;
 use anyhow::Result;
 use std::path::{Path, PathBuf};
@@ -118,20 +119,26 @@ pub(super) fn update_changelog(project_path: &PathBuf, item: &RoadmapItem) {
     if let Some(category) = ChangeCategory::from_labels(&item.labels) {
         let entry = ChangelogEntry::new(category, item.title.clone(), item.github_issue);
         match crate::services::changelog_manager::add_to_changelog(project_path, entry) {
-            Ok(()) => println!("✅ Updated CHANGELOG.md"),
+            Ok(()) => println!("{}", c::pass("Updated CHANGELOG.md")),
             Err(e) => {
-                println!("⚠️  Failed to update CHANGELOG.md: {}", e);
-                println!("   You may need to update it manually");
+                println!(
+                    "{}",
+                    c::warn(&format!("Failed to update CHANGELOG.md: {}", e))
+                );
+                println!("   {}", c::dim("You may need to update it manually"));
             }
         }
     } else {
-        println!("ℹ️  No changelog category inferred from labels");
+        println!(
+            "ℹ️  {}",
+            c::dim("No changelog category inferred from labels")
+        );
     }
 }
 
 /// Print completion next steps with commit metadata (helper for handle_work_complete)
 pub(super) fn print_complete_next_steps(item: &RoadmapItem, id: &str, metadata: &CommitMetadata) {
-    println!("🎯 Next steps:");
+    println!("{}", c::subheader("🎯 Next steps:"));
     let rust_score_line = metadata
         .rust_project_score
         .map(|s| format!("Rust-Score: {:.1}/134\n", s))
@@ -192,7 +199,7 @@ pub(super) fn auto_commit_work_files(
         .status();
 
     if !matches!(add_status, Ok(s) if s.success()) {
-        println!("⚠️  Auto-commit: failed to stage files");
+        println!("{}", c::warn("Auto-commit: failed to stage files"));
         println!();
         print_complete_next_steps(item, id, metadata);
         return;
@@ -216,17 +223,21 @@ pub(super) fn auto_commit_work_files(
     match commit_status {
         Ok(s) if s.success() => {
             println!();
-            println!("✅ Auto-committed work completion files");
+            println!("{}", c::pass("Auto-committed work completion files"));
             if item.is_github_synced() {
                 println!(
-                    "🎯 Next: gh issue close {}",
+                    "{} Next: gh issue close {}",
+                    c::label("🎯"),
                     item.github_issue.expect("internal error")
                 );
             }
-            println!("🎯 Next: git push origin master");
+            println!("{} Next: git push origin master", c::label("🎯"));
         }
         _ => {
-            println!("⚠️  Auto-commit failed (nothing to commit or hook error)");
+            println!(
+                "{}",
+                c::warn("Auto-commit failed (nothing to commit or hook error)")
+            );
             println!();
             print_complete_next_steps(item, id, metadata);
         }

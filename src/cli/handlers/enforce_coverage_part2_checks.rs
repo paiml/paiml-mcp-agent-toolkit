@@ -3,6 +3,12 @@
     mod format_violations_tests {
         use super::*;
 
+        /// Strip ANSI escape codes from a string for test assertions
+        fn strip_ansi(s: &str) -> String {
+            let re = regex::Regex::new(r"\x1b\[[0-9;]*m").unwrap();
+            re.replace_all(s, "").to_string()
+        }
+
         #[test]
         fn test_format_violations_json() {
             let violations = vec![
@@ -29,9 +35,10 @@
                 format_violations_output(&violations, &profile, EnforceOutputFormat::Summary)
                     .unwrap();
 
-            assert!(output.contains("1 violations"));
-            assert!(output.contains("COMPLEXITY"));
-            assert!(output.contains("high"));
+            let plain = strip_ansi(&output);
+            assert!(plain.contains("1 violations"));
+            assert!(plain.contains("COMPLEXITY"));
+            assert!(plain.contains("high"));
         }
 
         #[test]

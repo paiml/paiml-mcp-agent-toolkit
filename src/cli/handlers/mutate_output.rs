@@ -199,75 +199,102 @@ fn output_markdown(
 
 /// Print the summary statistics block (total, killed, survived, etc.)
 fn output_text_summary(score: &MutationScore) {
-    println!("Total mutants:  {}", score.total);
+    use crate::cli::colors as c;
+
+    println!("{}: {}", c::label("Total mutants"), c::number(&score.total.to_string()));
 
     if score.total > 0 {
-        let pct = |n: usize| (n as f64 / score.total as f64) * 100.0;
+        let pct_val = |n: usize| (n as f64 / score.total as f64) * 100.0;
 
         println!(
-            "Killed:         {} ({:.1}%)",
-            score.killed,
-            pct(score.killed)
+            "{}: {} ({})",
+            c::label("Killed"),
+            c::number(&score.killed.to_string()),
+            c::pct(pct_val(score.killed), 80.0, 60.0)
         );
         println!(
-            "Survived:       {} ({:.1}%)",
-            score.survived,
-            pct(score.survived)
+            "{}: {} ({})",
+            c::label("Survived"),
+            c::number(&score.survived.to_string()),
+            {
+                // For survived, lower is better — invert the color logic
+                let sv = pct_val(score.survived);
+                if sv <= 20.0 {
+                    format!("{}{:.1}%{}", c::GREEN, sv, c::RESET)
+                } else if sv <= 40.0 {
+                    format!("{}{:.1}%{}", c::YELLOW, sv, c::RESET)
+                } else {
+                    format!("{}{:.1}%{}", c::RED, sv, c::RESET)
+                }
+            }
         );
 
         if score.compile_errors > 0 {
             println!(
-                "Compile errors: {} ({:.1}%)",
-                score.compile_errors,
-                pct(score.compile_errors)
+                "{}: {} ({:.1}%)",
+                c::label("Compile errors"),
+                c::number(&score.compile_errors.to_string()),
+                pct_val(score.compile_errors)
             );
         }
 
         if score.timeouts > 0 {
             println!(
-                "Timeouts:       {} ({:.1}%)",
-                score.timeouts,
-                pct(score.timeouts)
+                "{}: {} ({:.1}%)",
+                c::label("Timeouts"),
+                c::number(&score.timeouts.to_string()),
+                pct_val(score.timeouts)
             );
         }
 
         if score.equivalent > 0 {
             println!(
-                "Equivalent:     {} ({:.1}%)",
-                score.equivalent,
-                pct(score.equivalent)
+                "{}: {} ({:.1}%)",
+                c::label("Equivalent"),
+                c::number(&score.equivalent.to_string()),
+                pct_val(score.equivalent)
             );
         }
     }
 
     let score_percent = score.score * 100.0;
-    println!("\nMutation Score: {:.1}%\n", score_percent);
+    println!(
+        "\n{}: {}\n",
+        c::subheader("Mutation Score"),
+        c::pct(score_percent, 80.0, 60.0)
+    );
 }
 
 /// Print survived mutants with code snippets
 fn output_survived_mutants(results: &[&MutationResult]) {
+    use crate::cli::colors as c;
+
     if results.is_empty() {
         return;
     }
-    println!("Survived Mutants (needs test coverage):\n");
+    println!("{}\n", c::warn("Survived Mutants (needs test coverage)"));
     for (i, result) in results.iter().enumerate() {
         println!(
-            "{}. {}:{}:{}",
-            i + 1,
-            result.mutant.original_file.display(),
-            result.mutant.location.line,
-            result.mutant.location.column
+            "{}. {}",
+            c::number(&(i + 1).to_string()),
+            c::path(&format!(
+                "{}:{}:{}",
+                result.mutant.original_file.display(),
+                result.mutant.location.line,
+                result.mutant.location.column
+            ))
         );
-        println!("   Operator: {:?}", result.mutant.operator);
+        println!("   {}: {:?}", c::dim("Operator"), result.mutant.operator);
 
         if let Ok(snippet) =
             extract_code_snippet(&result.mutant.original_file, &result.mutant.location)
         {
-            println!("   Code: {}", snippet);
+            println!("   {}: {}", c::dim("Code"), snippet);
         }
 
         println!(
-            "   Time: {:.2}s\n",
+            "   {}: {:.2}s\n",
+            c::dim("Time"),
             result.execution_time_ms as f64 / 1000.0
         );
     }
@@ -275,19 +302,33 @@ fn output_survived_mutants(results: &[&MutationResult]) {
 
 /// Print a list of mutant results under a titled section
 fn output_mutant_section(title: &str, results: &[&MutationResult]) {
+    use crate::cli::colors as c;
+
     if results.is_empty() {
         return;
     }
-    println!("{}:\n", title);
+
+    let colored_title = if title.contains("Compile Error") {
+        c::fail(title)
+    } else if title.contains("Timeout") {
+        c::warn(title)
+    } else {
+        c::subheader(title)
+    };
+    println!("{}:\n", colored_title);
+
     for (i, result) in results.iter().enumerate() {
         println!(
-            "{}. {}:{}:{}",
-            i + 1,
-            result.mutant.original_file.display(),
-            result.mutant.location.line,
-            result.mutant.location.column
+            "{}. {}",
+            c::number(&(i + 1).to_string()),
+            c::path(&format!(
+                "{}:{}:{}",
+                result.mutant.original_file.display(),
+                result.mutant.location.line,
+                result.mutant.location.column
+            ))
         );
-        println!("   Operator: {:?}\n", result.mutant.operator);
+        println!("   {}: {:?}\n", c::dim("Operator"), result.mutant.operator);
     }
 }
 
@@ -297,6 +338,7 @@ fn output_text(
     failures_only: bool,
 ) -> Result<()> {
     use crate::services::mutation::types::MutantStatus;
+    use crate::cli::colors as c;
 
     // Sprint 62 Day 2: Filter for failures-only mode
     let filtered_results: Vec<_> = if failures_only {
@@ -314,9 +356,9 @@ fn output_text(
     };
 
     if failures_only {
-        println!("\nMutation Testing Failures\n");
+        println!("\n{}\n", c::header("Mutation Testing Failures"));
     } else {
-        println!("\nMutation Testing Results\n");
+        println!("\n{}\n", c::header("Mutation Testing Results"));
     }
 
     // Summary statistics

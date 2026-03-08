@@ -1,84 +1,111 @@
 /// Print specification section of text annotations (helper for print_annotations_text)
 fn print_text_spec_section(ann: &TicketAnnotations) {
-    println!("📋 SPECIFICATION");
+    use crate::cli::colors as c;
+    println!("{}", c::subheader("📋 SPECIFICATION"));
     if let Some(ref spec) = ann.spec_path {
-        println!("   Path:  {}", spec.display());
+        println!("   {} {}", c::label("Path:"), c::path(&spec.display().to_string()));
         if let Some(score) = ann.spec_score {
-            let status = if score >= 95.0 { "✅" } else { "❌" };
-            println!("   Score: {:.1}/100 {}", score, status);
+            let status = if score >= 95.0 {
+                format!("{}✅{}", c::GREEN, c::RESET)
+            } else {
+                format!("{}❌{}", c::RED, c::RESET)
+            };
+            println!("   {} {} {}", c::label("Score:"), c::number(&format!("{:.1}/100", score)), status);
         }
     } else {
-        println!("   ⚠️  No specification linked");
+        println!("   {}", c::warn("No specification linked"));
     }
     println!();
 }
 
 /// Print TDG section of text annotations (helper for print_annotations_text)
 fn print_text_tdg_section(ann: &TicketAnnotations) {
-    println!("📈 TDG (Technical Debt Gradient)");
+    use crate::cli::colors as c;
+    println!("{}", c::subheader("📈 TDG (Technical Debt Gradient)"));
     if let Some(tdg) = ann.avg_tdg {
         let severity = tdg_severity_label(tdg);
-        println!("   Avg Score: {:.2}/5.0 ({})", tdg, severity);
+        let sev_color = if tdg <= 2.0 {
+            c::GREEN
+        } else if tdg <= 3.5 {
+            c::YELLOW
+        } else {
+            c::RED
+        };
+        println!("   {} {} ({}{}{})", c::label("Avg Score:"), c::number(&format!("{:.2}/5.0", tdg)), sev_color, severity, c::RESET);
         for ft in &ann.file_tdg_scores {
-            println!("     {:.2} [{}] {}", ft.score, ft.severity, ft.file);
+            let ft_color = if ft.score <= 2.0 {
+                c::GREEN
+            } else if ft.score <= 3.5 {
+                c::YELLOW
+            } else {
+                c::RED
+            };
+            println!("     {}{:.2}{} [{}] {}", ft_color, ft.score, c::RESET, ft.severity, c::path(&ft.file));
         }
     } else {
-        println!("   Not calculated (no files)");
+        println!("   {}", c::dim("Not calculated (no files)"));
     }
     println!();
 }
 
 /// Print churn section of text annotations (helper for print_annotations_text)
 fn print_text_churn_section(ann: &TicketAnnotations) {
-    println!("🔄 CHURN ANALYSIS");
+    use crate::cli::colors as c;
+    println!("{}", c::subheader("🔄 CHURN ANALYSIS"));
     if let Some(churn) = ann.total_churn {
-        println!("   Total Commits: {}", churn);
+        println!("   {} {}", c::label("Total Commits:"), c::number(&churn.to_string()));
         for h in &ann.churn_hotspots {
-            println!("     ⚠️  {}", h);
+            println!("     {}", c::warn(h));
         }
     } else {
-        println!("   Run with --with-churn to analyze");
+        println!("   {}", c::dim("Run with --with-churn to analyze"));
     }
     println!();
 }
 
 /// Print tarantula and coverage sections (helper for print_annotations_text)
 fn print_text_fault_coverage_section(ann: &TicketAnnotations) {
-    println!("🔴 TARANTULA FAULT DETECTION");
+    use crate::cli::colors as c;
+    println!("{}", c::subheader("🔴 TARANTULA FAULT DETECTION"));
     if ann.repeated_fixes.is_empty() {
-        println!("   ✅ No repeated fix patterns detected");
+        println!("   {}", c::pass("No repeated fix patterns detected"));
     } else {
         for fix in &ann.repeated_fixes {
-            println!("   ⚠️  {}: {}", fix.file, fix.description);
+            println!("   {} {}: {}", c::warn(""), c::path(&fix.file), fix.description);
         }
     }
     println!();
 
-    println!("📊 COVERAGE");
+    println!("{}", c::subheader("📊 COVERAGE"));
     if let Some(cov) = ann.coverage_percent {
-        let status = if cov >= 95.0 { "✅" } else { "❌" };
-        println!("   {:.1}% {}", cov, status);
+        let status = if cov >= 95.0 {
+            format!("{}✅{}", c::GREEN, c::RESET)
+        } else {
+            format!("{}❌{}", c::RED, c::RESET)
+        };
+        println!("   {} {}", c::number(&format!("{:.1}%", cov)), status);
     } else {
-        println!("   Not available (run coverage analysis)");
+        println!("   {}", c::dim("Not available (run coverage analysis)"));
     }
 }
 
 fn print_annotations_text(ann: &TicketAnnotations) {
-    println!("📊 Quality Annotations for {}\n", ann.ticket_id);
-    println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    println!("Title:    {}", ann.title);
-    println!("Status:   {}", ann.status);
-    println!("Priority: {}", ann.priority);
+    use crate::cli::colors as c;
+    println!("{} Quality Annotations for {}\n", c::subheader("📊"), c::path(&ann.ticket_id));
+    println!("{}", c::rule());
+    println!("{}    {}", c::label("Title:"), ann.title);
+    println!("{}   {}", c::label("Status:"), ann.status);
+    println!("{} {}", c::label("Priority:"), ann.priority);
     println!();
 
     print_text_spec_section(ann);
 
-    println!("📁 RELATED FILES ({})", ann.files.len());
+    println!("{} RELATED FILES ({})", c::subheader("📁"), c::number(&ann.files.len().to_string()));
     if ann.files.is_empty() {
-        println!("   No files detected");
+        println!("   {}", c::dim("No files detected"));
     } else {
         for f in &ann.files {
-            println!("   • {}", f.display());
+            println!("   • {}", c::path(&f.display().to_string()));
         }
     }
     println!();

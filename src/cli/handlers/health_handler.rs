@@ -3,6 +3,7 @@
 //! This module provides functionality for checking overall project health
 //! by running multiple quality checks and generating consolidated reports.
 
+use crate::cli::colors;
 use crate::cli::OutputFormat;
 use anyhow::Result;
 use serde::Serialize;

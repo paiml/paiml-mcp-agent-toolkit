@@ -1,39 +1,40 @@
 /// Print validation result as text
 pub fn print_validation_text(result: &QaValidationResult) {
-    println!("Validating {}...\n", result.task_id);
+    use crate::cli::colors as c;
+    println!("Validating {}...\n", c::label(&result.task_id));
 
     for category in result.categories.values() {
         let status = if category.passed == category.total {
-            "\x1b[32m✓\x1b[0m"
+            c::pass("")
         } else if category.passed > 0 {
-            "\x1b[33m⚠\x1b[0m"
+            c::warn("")
         } else {
-            "\x1b[31m✗\x1b[0m"
+            c::fail("")
         };
 
         println!(
             "{} {} ({}/{})",
-            status, category.name, category.passed, category.total
+            status, c::subheader(&category.name), category.passed, category.total
         );
 
         for item in &category.items {
             let item_status = match item.status {
-                ValidationStatus::Passed => "  \x1b[32m✓\x1b[0m",
-                ValidationStatus::Failed => "  \x1b[31m✗\x1b[0m",
-                ValidationStatus::Warning => "  \x1b[33m⚠\x1b[0m",
-                ValidationStatus::Skipped => "  \x1b[90m-\x1b[0m",
-                ValidationStatus::Manual => "  \x1b[34m?\x1b[0m",
+                ValidationStatus::Passed => format!("  {}✓{}", c::GREEN, c::RESET),
+                ValidationStatus::Failed => format!("  {}✗{}", c::RED, c::RESET),
+                ValidationStatus::Warning => format!("  {}⚠{}", c::YELLOW, c::RESET),
+                ValidationStatus::Skipped => format!("  {}-{}", c::DIM, c::RESET),
+                ValidationStatus::Manual => format!("  {}?{}", c::BLUE, c::RESET),
             };
             println!("{}  {}: {}", item_status, item.id, item.description);
         }
         println!();
     }
 
-    println!("Overall Score: {:.1}%", result.overall_score);
+    println!("{}: {:.1}%", c::label("Overall Score"), result.overall_score);
     println!();
 
     if !result.manual_checks_required.is_empty() {
-        println!("\x1b[33mManual Checks Required:\x1b[0m");
+        println!("{}:", c::warn("Manual Checks Required"));
         for check in &result.manual_checks_required {
             println!("  - {}", check);
         }
@@ -41,9 +42,9 @@ pub fn print_validation_text(result: &QaValidationResult) {
     }
 
     if result.passed {
-        println!("\x1b[32m✓ QA Validation PASSED\x1b[0m");
+        println!("{}", c::pass("QA Validation PASSED"));
     } else {
-        println!("\x1b[31m✗ QA Validation FAILED\x1b[0m");
+        println!("{}", c::fail("QA Validation FAILED"));
     }
 }
 
@@ -91,7 +92,8 @@ pub async fn handle_report(
     output: Option<&Path>,
     format: QaOutputFormat,
 ) -> anyhow::Result<()> {
-    println!("Generating QA report for task: {}", task_id);
+    use crate::cli::colors as c;
+    println!("{} {}", c::label("Generating QA report for task:"), task_id);
 
     // First run validation
     let mut result = QaValidationResult {
@@ -189,10 +191,11 @@ pub async fn handle_report(
     // Output
     if let Some(output_path) = output {
         fs::write(output_path, &report)?;
-        println!("Report saved to: {}", output_path.display());
+        println!("{} Report saved to: {}", c::pass(""), c::path(&output_path.display().to_string()));
     } else {
         println!("{}", report);
     }
 
     Ok(())
 }
+

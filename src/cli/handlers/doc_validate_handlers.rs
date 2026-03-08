@@ -123,36 +123,72 @@ impl ValidateDocsCmd {
     }
 
     fn print_text_summary(&self, summary: &crate::services::doc_validator::ValidationSummary) {
-        println!("\n📊 Documentation Link Validation Summary");
-        println!("========================================");
+        use crate::cli::colors as c;
         println!();
-        println!("📁 Files scanned:    {}", summary.total_files);
-        println!("🔗 Links found:      {}", summary.total_links);
-        println!("✅ Valid links:      {}", summary.valid_links);
-        println!("❌ Broken links:     {}", summary.broken_links);
-        println!("⏭️  Skipped links:    {}", summary.skipped_links);
-        println!("⏱️  Duration:         {}ms", summary.duration_ms);
+        println!("{}", c::header("Documentation Link Validation Summary"));
+        println!();
+        println!(
+            "  Files scanned:    {}",
+            c::number(&summary.total_files.to_string())
+        );
+        println!(
+            "  Links found:      {}",
+            c::number(&summary.total_links.to_string())
+        );
+        println!(
+            "  Valid links:      {}{}{}",
+            c::GREEN,
+            summary.valid_links,
+            c::RESET
+        );
+        println!(
+            "  Broken links:     {}{}{}",
+            if summary.broken_links > 0 {
+                c::RED
+            } else {
+                c::GREEN
+            },
+            summary.broken_links,
+            c::RESET
+        );
+        println!(
+            "  Skipped links:    {}{}{}",
+            c::DIM,
+            summary.skipped_links,
+            c::RESET
+        );
+        println!(
+            "  Duration:         {}{}ms{}",
+            c::DIM,
+            summary.duration_ms,
+            c::RESET
+        );
         println!();
 
         if summary.broken_links > 0 {
-            println!("🔴 Broken Links:");
-            println!("================");
+            println!("{}", c::subheader("Broken Links:"));
+            println!("{}", c::rule());
             for result in &summary.results {
                 if matches!(
                     result.status,
                     ValidationStatus::NotFound | ValidationStatus::HttpError(_)
                 ) {
                     println!(
-                        "  ❌ {}:{}",
+                        "  {} {}{}{}:{}{}{}",
+                        c::fail(""),
+                        c::CYAN,
                         result.link.source_file.display(),
-                        result.link.line_number
+                        c::RESET,
+                        c::YELLOW,
+                        result.link.line_number,
+                        c::RESET
                     );
-                    println!("     Link: [{}]({})", result.link.text, result.link.target);
+                    println!("     Link: {}[{}]{}", c::DIM, result.link.text, c::RESET);
                     if let Some(msg) = &result.error_message {
-                        println!("     Error: {}", msg);
+                        println!("     Error: {}{}{}", c::RED, msg, c::RESET);
                     }
                     if let Some(code) = result.http_status_code {
-                        println!("     HTTP Status: {}", code);
+                        println!("     HTTP Status: {}{}{}", c::RED, code, c::RESET);
                     }
                     println!();
                 }
@@ -160,31 +196,39 @@ impl ValidateDocsCmd {
         }
 
         if self.verbose {
-            println!("\n📋 All Links:");
-            println!("=============");
+            println!();
+            println!("{}", c::subheader("All Links:"));
+            println!("{}", c::rule());
             for result in &summary.results {
-                let status_icon = match result.status {
-                    ValidationStatus::Valid => "✅",
-                    ValidationStatus::NotFound => "❌",
-                    ValidationStatus::HttpError(_) => "❌",
-                    ValidationStatus::NetworkError => "⚠️",
-                    ValidationStatus::InvalidLink => "⚠️",
-                    ValidationStatus::Skipped => "⏭️",
+                let (status_icon, color) = match result.status {
+                    ValidationStatus::Valid => ("✓", c::GREEN),
+                    ValidationStatus::NotFound => ("✗", c::RED),
+                    ValidationStatus::HttpError(_) => ("✗", c::RED),
+                    ValidationStatus::NetworkError => ("⚠", c::YELLOW),
+                    ValidationStatus::InvalidLink => ("⚠", c::YELLOW),
+                    ValidationStatus::Skipped => ("⏭", c::DIM),
                 };
                 println!(
-                    "  {} {}:{} -> {}",
-                    status_icon,
+                    "  {color}{status_icon}{} {}{}{}:{}{}{} → {}",
+                    c::RESET,
+                    c::CYAN,
                     result.link.source_file.display(),
+                    c::RESET,
+                    c::YELLOW,
                     result.link.line_number,
+                    c::RESET,
                     result.link.target
                 );
             }
         }
 
         if summary.broken_links == 0 {
-            println!("🎉 All documentation links are valid!");
+            println!("{}", c::pass("All documentation links are valid!"));
         } else {
-            println!("💥 Found {} broken link(s)", summary.broken_links);
+            println!(
+                "{}",
+                c::fail(&format!("Found {} broken link(s)", summary.broken_links))
+            );
         }
     }
 

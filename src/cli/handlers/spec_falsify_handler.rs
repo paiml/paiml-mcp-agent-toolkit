@@ -4,6 +4,7 @@
 //! Detects whether the target is a file path (spec falsification) or a work item ID
 //! (contract falsification) and routes accordingly.
 
+use crate::cli::colors as c;
 use anyhow::{Context, Result};
 use std::path::{Path, PathBuf};
 
@@ -86,18 +87,20 @@ async fn handle_spec_falsification(
                 .with_context(|| format!("Failed to read: {}", spec_file.display()))?;
             let claims = extractor.extract(&content, spec_file);
             println!(
-                "Spec: {} — {} claims extracted (dry run)",
-                spec_file.display(),
-                claims.len()
+                "{} {} -- {} claims extracted {}",
+                c::label("Spec:"),
+                c::path(&spec_file.display().to_string()),
+                c::number(&claims.len().to_string()),
+                c::dim("(dry run)")
             );
             for claim in &claims {
                 println!(
                     "  [{}] {} {} (line {}): {}",
-                    claim.id,
+                    c::label(&claim.id),
                     claim.priority,
                     claim.category,
-                    claim.source_line,
-                    truncate(&claim.original_text, 80),
+                    c::number(&claim.source_line.to_string()),
+                    c::dim(&truncate(&claim.original_text, 80)),
                 );
             }
             total_claims += claims.len();
@@ -128,24 +131,41 @@ async fn handle_spec_falsification(
     // Multi-spec summary
     if spec_files.len() > 1 && !dry_run {
         println!();
-        println!("=== Multi-Spec Summary ===");
-        println!("  Specs analyzed: {}", spec_files.len());
-        println!("  Total claims:   {}", total_claims);
-        println!("  Falsified:      {}", total_falsified);
+        println!("{}", c::header("Multi-Spec Summary"));
+        println!(
+            "  {} {}",
+            c::label("Specs analyzed:"),
+            c::number(&spec_files.len().to_string())
+        );
+        println!(
+            "  {} {}",
+            c::label("Total claims:  "),
+            c::number(&total_claims.to_string())
+        );
+        println!(
+            "  {} {}",
+            c::label("Falsified:     "),
+            c::number(&total_falsified.to_string())
+        );
         let health = if total_claims > 0 {
             (total_claims - total_falsified) as f64 / total_claims as f64
         } else {
             1.0
         };
-        println!("  Health:         {:.2}", health);
+        println!(
+            "  {} {}",
+            c::label("Health:        "),
+            c::pct(health * 100.0, 90.0, 70.0)
+        );
     }
 
     if dry_run {
         println!();
         println!(
-            "Dry run complete: {} claims extracted across {} specs",
-            total_claims,
-            spec_files.len()
+            "{} {} claims extracted across {} specs",
+            c::dim("Dry run complete:"),
+            c::number(&total_claims.to_string()),
+            c::number(&spec_files.len().to_string())
         );
         println!("Run without --dry-run to falsify claims against the codebase.");
     }
@@ -192,28 +212,31 @@ fn print_failures_only(report: &crate::services::spec_falsification::SpecFalsifi
 
     if falsified.is_empty() {
         println!(
-            "{}: All {} claims survived",
-            report.target_file.display(),
-            report.summary.total_claims
+            "{}: {}",
+            c::path(&report.target_file.display().to_string()),
+            c::pass(&format!(
+                "All {} claims survived",
+                report.summary.total_claims
+            ))
         );
         return;
     }
 
     println!(
         "{}: {} falsified / {} total",
-        report.target_file.display(),
-        falsified.len(),
-        report.summary.total_claims,
+        c::path(&report.target_file.display().to_string()),
+        c::number(&falsified.len().to_string()),
+        c::number(&report.summary.total_claims.to_string()),
     );
     for verdict in &falsified {
         println!(
             "  line {}: {}",
-            verdict.claim.source_line,
+            c::number(&verdict.claim.source_line.to_string()),
             truncate(&verdict.claim.original_text, 80),
         );
         for ev in &verdict.evidence {
             if ev.contradiction_score >= 0.8 {
-                println!("    \x1b[31m✗\x1b[0m {} → {}", ev.check, ev.finding);
+                println!("    {} {} -> {}", c::fail(&ev.check), c::DIM, ev.finding);
             }
         }
     }

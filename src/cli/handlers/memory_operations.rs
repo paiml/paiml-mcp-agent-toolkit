@@ -21,18 +21,22 @@ async fn handle_memory_stats(detailed: bool, format: &str) -> Result<()> {
 }
 
 async fn handle_memory_cleanup(target_pressure: f64, verbose: bool) -> Result<()> {
+    use crate::cli::colors as c;
+
     let manager = global_memory_manager()?;
 
     if verbose {
         let stats_before = manager.stats();
-        println!("Memory before cleanup:");
+        println!("{}", c::subheader("Memory before cleanup:"));
         println!(
-            "  Allocated: {}",
-            format_bytes(stats_before.total_allocated)
+            "  {}: {}",
+            c::label("Allocated"),
+            c::number(&format_bytes(stats_before.total_allocated))
         );
         println!(
-            "  Pressure:  {:.1}%",
-            stats_before.allocation_pressure * 100.0
+            "  {}: {}",
+            c::label("Pressure"),
+            c::pct(stats_before.allocation_pressure * 100.0, 80.0, 60.0)
         );
         println!();
     }
@@ -41,21 +45,22 @@ async fn handle_memory_cleanup(target_pressure: f64, verbose: bool) -> Result<()
 
     if verbose {
         let stats_after = manager.stats();
-        println!("Memory after cleanup:");
-        println!("  Allocated: {}", format_bytes(stats_after.total_allocated));
+        println!("{}", c::subheader("Memory after cleanup:"));
+        println!("  {}: {}", c::label("Allocated"), c::number(&format_bytes(stats_after.total_allocated)));
         println!(
-            "  Pressure:  {:.1}%",
-            stats_after.allocation_pressure * 100.0
+            "  {}: {}",
+            c::label("Pressure"),
+            c::pct(stats_after.allocation_pressure * 100.0, 80.0, 60.0)
         );
-        println!("  Cleaned:   {}", format_bytes(cleaned));
+        println!("  {}: {}", c::label("Cleaned"), c::number(&format_bytes(cleaned)));
 
         if stats_after.allocation_pressure <= target_pressure {
-            println!("✓ Target pressure achieved");
+            println!("{}", c::pass("Target pressure achieved"));
         } else {
-            println!("⚠ Target pressure not reached. Consider reducing workload.");
+            println!("{}", c::warn("Target pressure not reached. Consider reducing workload."));
         }
     } else {
-        println!("Cleaned {} of memory", format_bytes(cleaned));
+        println!("Cleaned {} of memory", c::number(&format_bytes(cleaned)));
     }
 
     Ok(())
@@ -66,26 +71,32 @@ async fn handle_memory_configure(
     pool_limits: &[String],
     enable_tracking: &Option<bool>,
 ) -> Result<()> {
-    println!("Memory configuration:");
+    use crate::cli::colors as c;
+
+    println!("{}", c::subheader("Memory configuration:"));
 
     if let Some(max_mb) = max_memory_mb {
-        println!("  Maximum memory: {max_mb} MB");
-        // Note: Current implementation doesn't support runtime reconfiguration
-        println!("  Note: Runtime reconfiguration not yet supported");
+        println!("  {}: {} MB", c::label("Maximum memory"), c::number(&max_mb.to_string()));
+        println!("  {}", c::dim("Note: Runtime reconfiguration not yet supported"));
     }
 
     if !pool_limits.is_empty() {
-        println!("  Pool limits:");
+        println!("  {}:", c::label("Pool limits"));
         for limit_spec in pool_limits {
             println!("    {limit_spec}");
         }
-        println!("  Note: Runtime pool reconfiguration not yet supported");
+        println!("  {}", c::dim("Note: Runtime pool reconfiguration not yet supported"));
     }
 
     if let Some(tracking) = enable_tracking {
         println!(
-            "  Memory tracking: {}",
-            if *tracking { "enabled" } else { "disabled" }
+            "  {}: {}",
+            c::label("Memory tracking"),
+            if *tracking {
+                format!("{}enabled{}", c::GREEN, c::RESET)
+            } else {
+                format!("{}disabled{}", c::RED, c::RESET)
+            }
         );
     }
 
@@ -120,7 +131,9 @@ async fn handle_memory_pools(pool: &Option<String>, efficiency: bool) -> Result<
 
 /// Print header for pool statistics
 fn print_pool_statistics_header() {
-    println!("Memory Pool Statistics");
+    use crate::cli::colors as c;
+
+    println!("{}", c::header("Memory Pool Statistics"));
     println!();
 }
 
@@ -138,22 +151,31 @@ fn print_pool_basic_stats(
     pool_name: &str,
     pool_stats: &crate::services::memory_manager::PoolStats,
 ) {
-    println!("{}:", pool_name);
-    println!("  Buffers:     {}", pool_stats.buffer_count);
-    println!("  Total Size:  {}", format_bytes(pool_stats.total_size));
-    println!("  Allocations: {}", pool_stats.allocation_count);
-    println!("  Reuses:      {}", pool_stats.reuse_count);
+    use crate::cli::colors as c;
+
+    println!("{}:", c::label(pool_name));
+    println!("  {}: {}", c::label("Buffers"), c::number(&pool_stats.buffer_count.to_string()));
+    println!("  {}: {}", c::label("Total Size"), c::number(&format_bytes(pool_stats.total_size)));
+    println!("  {}: {}", c::label("Allocations"), c::number(&pool_stats.allocation_count.to_string()));
+    println!("  {}: {}", c::label("Reuses"), c::number(&pool_stats.reuse_count.to_string()));
 }
 
 /// Print pool efficiency statistics
 fn print_pool_efficiency_stats(pool_stats: &crate::services::memory_manager::PoolStats) {
-    println!("  Reuse Ratio: {:.1}%", pool_stats.reuse_ratio * 100.0);
+    use crate::cli::colors as c;
+
+    println!("  {}: {}", c::label("Reuse Ratio"), c::pct(pool_stats.reuse_ratio * 100.0, 80.0, 60.0));
 
     let avg_buffer_size = calculate_average_buffer_size(pool_stats);
-    println!("  Avg Buffer:  {}", format_bytes(avg_buffer_size));
+    println!("  {}: {}", c::label("Avg Buffer"), c::number(&format_bytes(avg_buffer_size)));
 
     let efficiency_rating = calculate_pool_efficiency_rating(pool_stats.reuse_ratio);
-    println!("  Efficiency:  {efficiency_rating}");
+    let colored_rating = match efficiency_rating {
+        "Excellent" | "Good" => format!("{}{}{}", c::GREEN, efficiency_rating, c::RESET),
+        "Fair" => format!("{}{}{}", c::YELLOW, efficiency_rating, c::RESET),
+        _ => format!("{}{}{}", c::RED, efficiency_rating, c::RESET),
+    };
+    println!("  {}: {}", c::label("Efficiency"), colored_rating);
 }
 
 /// Calculate average buffer size for pool
@@ -166,32 +188,38 @@ fn calculate_average_buffer_size(pool_stats: &crate::services::memory_manager::P
 }
 
 async fn handle_memory_pressure(threshold: f64, watch: &Option<u64>) -> Result<()> {
+    use crate::cli::colors as c;
+
     let manager = global_memory_manager()?;
 
     if let Some(interval) = watch {
         println!(
-            "Monitoring memory pressure (threshold: {:.1}%, interval: {}s)",
-            threshold * 100.0,
-            interval
+            "Monitoring memory pressure ({}: {}, {}: {}s)",
+            c::label("threshold"),
+            c::pct(threshold * 100.0, 80.0, 60.0),
+            c::label("interval"),
+            c::number(&interval.to_string())
         );
-        println!("Press Ctrl+C to stop");
+        println!("{}", c::dim("Press Ctrl+C to stop"));
         println!();
 
         loop {
             let stats = manager.stats();
             let timestamp = chrono::Utc::now().format("%H:%M:%S");
 
-            let pressure_str = format!("{:.1}%", stats.allocation_pressure * 100.0);
+            let pressure_pct = stats.allocation_pressure * 100.0;
 
             println!(
-                "[{}] Pressure: {} | Allocated: {}",
-                timestamp,
-                pressure_str,
-                format_bytes(stats.total_allocated)
+                "[{}] {}: {} | {}: {}",
+                c::dim(&timestamp.to_string()),
+                c::label("Pressure"),
+                c::pct(pressure_pct, 80.0, 60.0),
+                c::label("Allocated"),
+                c::number(&format_bytes(stats.total_allocated))
             );
 
             if stats.allocation_pressure > threshold {
-                println!("  ⚠ Warning: Memory pressure above threshold!");
+                println!("  {}", c::warn("Memory pressure above threshold!"));
             }
 
             tokio::time::sleep(tokio::time::Duration::from_secs(*interval)).await;
@@ -200,16 +228,21 @@ async fn handle_memory_pressure(threshold: f64, watch: &Option<u64>) -> Result<(
         let stats = manager.stats();
 
         println!(
-            "Current memory pressure: {:.1}%",
-            stats.allocation_pressure * 100.0
+            "{}: {}",
+            c::label("Current memory pressure"),
+            c::pct(stats.allocation_pressure * 100.0, 80.0, 60.0)
         );
-        println!("Threshold:               {:.1}%", threshold * 100.0);
+        println!(
+            "{}: {}",
+            c::label("Threshold"),
+            c::pct(threshold * 100.0, 80.0, 60.0)
+        );
 
         if stats.allocation_pressure > threshold {
-            println!("Status: WARNING - Above threshold");
-            println!("Recommendation: Consider running 'pmat memory cleanup'");
+            println!("{}: {}", c::label("Status"), format!("{}WARNING - Above threshold{}", c::YELLOW, c::RESET));
+            println!("{}", c::dim("Recommendation: Consider running 'pmat memory cleanup'"));
         } else {
-            println!("Status: OK - Below threshold");
+            println!("{}: {}", c::label("Status"), format!("{}OK - Below threshold{}", c::GREEN, c::RESET));
         }
     }
 

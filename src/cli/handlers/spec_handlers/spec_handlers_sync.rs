@@ -115,19 +115,25 @@ fn print_sync_results(
     roadmap: &crate::models::roadmap::Roadmap,
     roadmap_path: &Path,
 ) -> anyhow::Result<()> {
+    use crate::cli::colors as c;
     if updates.is_empty() {
-        println!("✅ Specs and roadmap are in sync. No updates needed.");
+        println!("{}", c::pass("Specs and roadmap are in sync. No updates needed."));
     } else {
-        println!(
-            "{}",
-            if dry_run { "🔍 Dry run - would make these changes:" } else { "✅ Applied changes:" }
-        );
+        if dry_run {
+            println!("{}", c::dim("Dry run - would make these changes:"));
+        } else {
+            println!("{}", c::pass("Applied changes:"));
+        }
         for update in updates {
             println!("{}", update);
         }
         if !dry_run {
             roadmap_service.save(roadmap)?;
-            println!("\n💾 Saved roadmap to {}", roadmap_path.display());
+            println!(
+                "\n{} {}",
+                c::pass("Saved roadmap to"),
+                c::path(&roadmap_path.display().to_string())
+            );
         }
     }
     Ok(())
@@ -244,21 +250,47 @@ fn print_drift_markdown(orphans: &[DriftInfo]) {
 }
 
 fn print_drift_text(orphans: &[DriftInfo]) {
+    use crate::cli::colors as c;
     if orphans.is_empty() {
-        println!("✅ No drift detected. All specs are properly linked.");
+        println!("{}", c::pass("No drift detected. All specs are properly linked."));
     } else {
-        println!("⚠️  Found {} specs with drift:\n", orphans.len());
-        println!("{:<45} {:>10} {:>12}", "SPEC", "HAS_TICKET", "IN_ROADMAP");
-        println!("{}", "─".repeat(70));
+        println!(
+            "{}",
+            c::warn(&format!("Found {} specs with drift:", orphans.len()))
+        );
+        println!();
+        println!(
+            "{}{:<45}{} {:>10} {:>12}",
+            c::BOLD, "SPEC", c::RESET, "HAS_TICKET", "IN_ROADMAP"
+        );
+        println!("{}", c::separator());
         for o in orphans {
             let ticket_status = if o.has_ticket {
-                o.ticket_id.as_deref().unwrap_or("✅")
+                o.ticket_id.as_deref().unwrap_or("yes")
             } else {
-                "❌ missing"
+                "missing"
             };
-            let roadmap_status = if o.linked_in_roadmap { "✅" } else { "❌" };
-            println!("{:<45} {:>10} {:>12}", o.path.display(), ticket_status, roadmap_status);
+            let ticket_display = if o.has_ticket {
+                c::pass(ticket_status)
+            } else {
+                c::fail(ticket_status)
+            };
+            let roadmap_display = if o.linked_in_roadmap {
+                c::pass("yes")
+            } else {
+                c::fail("no")
+            };
+            println!(
+                "{:<45} {:>18} {:>20}",
+                c::path(&o.path.display().to_string()),
+                ticket_display,
+                roadmap_display
+            );
         }
-        println!("\n💡 Fix with: pmat spec sync --dry-run");
+        println!(
+            "\n{} Fix with: {}",
+            c::dim("Tip:"),
+            c::label("pmat spec sync --dry-run")
+        );
     }
 }

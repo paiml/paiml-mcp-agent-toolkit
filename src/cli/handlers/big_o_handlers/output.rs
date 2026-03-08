@@ -1,6 +1,7 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
 //! Output formatting functions for Big-O complexity analysis
 
+use crate::cli::colors as c;
 use crate::cli::BigOOutputFormat;
 use crate::models::complexity_bound::BigOClass;
 use crate::services::big_o_analyzer::{BigOAnalysisReport, BigOAnalyzer};
@@ -78,48 +79,91 @@ pub(super) async fn write_analysis_output(content: &str, output: Option<PathBuf>
 pub fn format_big_o_summary(report: &BigOAnalysisReport) -> String {
     let mut output = String::with_capacity(1024);
 
-    output.push_str("Big-O Complexity Analysis Summary\n");
-    output.push_str("=================================\n\n");
+    output.push_str(&format!(
+        "{}\n",
+        c::header("Big-O Complexity Analysis Summary")
+    ));
+    output.push('\n');
 
     output.push_str(&format!(
-        "Total Functions Analyzed: {}\n",
-        report.analyzed_functions
+        "  {}: {}\n",
+        c::label("Total Functions Analyzed"),
+        c::number(&report.analyzed_functions.to_string()),
     ));
+    let high_color = if report.high_complexity_functions.is_empty() {
+        c::GREEN
+    } else {
+        c::YELLOW
+    };
     output.push_str(&format!(
-        "High Complexity Functions: {}\n\n",
-        report.high_complexity_functions.len()
+        "  {}: {}{}{}\n\n",
+        c::label("High Complexity Functions"),
+        high_color,
+        report.high_complexity_functions.len(),
+        c::RESET,
     ));
 
-    output.push_str("Complexity Distribution:\n");
+    output.push_str(&format!("{}\n", c::subheader("Complexity Distribution:")));
     let dist = &report.complexity_distribution;
-    output.push_str(&format!("  O(1)       : {:>4} functions\n", dist.constant));
     output.push_str(&format!(
-        "  O(log n)   : {:>4} functions\n",
-        dist.logarithmic
+        "  {}O(1){}       : {} functions\n",
+        c::GREEN,
+        c::RESET,
+        c::number(&format!("{:>4}", dist.constant))
     ));
-    output.push_str(&format!("  O(n)       : {:>4} functions\n", dist.linear));
     output.push_str(&format!(
-        "  O(n log n) : {:>4} functions\n",
-        dist.linearithmic
+        "  {}O(log n){}   : {} functions\n",
+        c::GREEN,
+        c::RESET,
+        c::number(&format!("{:>4}", dist.logarithmic))
     ));
-    output.push_str(&format!("  O(n²)      : {:>4} functions\n", dist.quadratic));
-    output.push_str(&format!("  O(n³)      : {:>4} functions\n", dist.cubic));
     output.push_str(&format!(
-        "  O(2^n)     : {:>4} functions\n",
-        dist.exponential
+        "  {}O(n){}       : {} functions\n",
+        c::YELLOW,
+        c::RESET,
+        c::number(&format!("{:>4}", dist.linear))
     ));
-    output.push_str(&format!("  Unknown    : {:>4} functions\n", dist.unknown));
+    output.push_str(&format!(
+        "  {}O(n log n){} : {} functions\n",
+        c::YELLOW,
+        c::RESET,
+        c::number(&format!("{:>4}", dist.linearithmic))
+    ));
+    output.push_str(&format!(
+        "  {}O(n²){}      : {} functions\n",
+        c::RED,
+        c::RESET,
+        c::number(&format!("{:>4}", dist.quadratic))
+    ));
+    output.push_str(&format!(
+        "  {}O(n³){}      : {} functions\n",
+        c::RED,
+        c::RESET,
+        c::number(&format!("{:>4}", dist.cubic))
+    ));
+    output.push_str(&format!(
+        "  {}O(2^n){}     : {} functions\n",
+        c::BOLD_RED,
+        c::RESET,
+        c::number(&format!("{:>4}", dist.exponential))
+    ));
+    output.push_str(&format!(
+        "  {}Unknown{}    : {} functions\n",
+        c::DIM,
+        c::RESET,
+        c::number(&format!("{:>4}", dist.unknown))
+    ));
 
     if !report.recommendations.is_empty() {
-        output.push_str("\nRecommendations:\n");
+        output.push_str(&format!("\n{}\n", c::subheader("Recommendations:")));
         for rec in &report.recommendations {
-            output.push_str(&format!("• {rec}\n"));
+            output.push_str(&format!("  {} {rec}\n", c::warn("")));
         }
     }
 
     // Show top files by complexity
     if !report.high_complexity_functions.is_empty() {
-        output.push_str("\nTop Files by Complexity:\n");
+        output.push_str(&format!("\n{}\n", c::subheader("Top Files by Complexity:")));
 
         // Group functions by file
         use std::collections::HashMap;
@@ -153,12 +197,21 @@ pub fn format_big_o_summary(report: &BigOAnalysisReport) -> String {
                 .and_then(|n| n.to_str())
                 .unwrap_or(file_path.to_str().unwrap_or("unknown"));
             let function_count = file_function_counts.get(file_path).unwrap_or(&0);
+            let score_color = if *score > 20.0 {
+                c::RED
+            } else if *score > 10.0 {
+                c::YELLOW
+            } else {
+                c::GREEN
+            };
             output.push_str(&format!(
-                "  {}. {} - score: {:.1}, {} functions\n",
-                i + 1,
-                filename,
+                "  {}. {} - score: {}{:.1}{}, {} functions\n",
+                c::number(&(i + 1).to_string()),
+                c::path(filename),
+                score_color,
                 score,
-                function_count
+                c::RESET,
+                c::number(&function_count.to_string()),
             ));
         }
     }
@@ -171,44 +224,47 @@ pub(super) fn format_big_o_detailed(report: &BigOAnalysisReport) -> String {
     let mut output = format_big_o_summary(report);
 
     if !report.high_complexity_functions.is_empty() {
-        output.push_str("\nHigh Complexity Functions:\n");
-        output.push_str("==========================\n");
+        output.push_str(&format!("\n{}\n", c::header("High Complexity Functions:")));
 
         for func in &report.high_complexity_functions {
             output.push_str(&format!(
-                "\n{} ({}:{})\n",
-                func.function_name,
-                func.file_path.display(),
-                func.line_number
+                "\n{} ({}:{}{}{})\n",
+                c::label(&func.function_name),
+                c::path(&func.file_path.display().to_string()),
+                c::DIM,
+                func.line_number,
+                c::RESET,
             ));
             output.push_str(&format!(
-                "  Time Complexity: {} ({}% confidence)\n",
+                "  {}: {} ({})\n",
+                c::label("Time Complexity"),
                 func.time_complexity.notation(),
-                func.time_complexity.confidence
+                c::pct(func.time_complexity.confidence as f64, 80.0, 50.0),
             ));
             output.push_str(&format!(
-                "  Space Complexity: {} ({}% confidence)\n",
+                "  {}: {} ({})\n",
+                c::label("Space Complexity"),
                 func.space_complexity.notation(),
-                func.space_complexity.confidence
+                c::pct(func.space_complexity.confidence as f64, 80.0, 50.0),
             ));
 
             if !func.notes.is_empty() {
-                output.push_str("  Notes:\n");
+                output.push_str(&format!("  {}:\n", c::label("Notes")));
                 for note in &func.notes {
-                    output.push_str(&format!("    - {note}\n"));
+                    output.push_str(&format!("    {}─{} {note}\n", c::DIM, c::RESET));
                 }
             }
         }
     }
 
     if !report.pattern_matches.is_empty() {
-        output.push_str("\nPattern Matches:\n");
-        output.push_str("================\n");
+        output.push_str(&format!("\n{}\n", c::header("Pattern Matches:")));
 
         for pattern in &report.pattern_matches {
             output.push_str(&format!(
                 "  {} : {} occurrences\n",
-                pattern.pattern_name, pattern.occurrences
+                c::label(&pattern.pattern_name),
+                c::number(&pattern.occurrences.to_string()),
             ));
         }
     }

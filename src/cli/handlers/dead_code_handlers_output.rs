@@ -111,24 +111,37 @@ fn write_dead_code_header(
     output: &mut String,
     result: &crate::models::dead_code::DeadCodeResult,
 ) -> Result<()> {
+    use crate::cli::colors as c;
     use std::fmt::Write;
 
-    writeln!(output, "# Dead Code Analysis Summary\n")?;
-    writeln!(output, "📊 **Files analyzed**: {}", result.total_files)?;
+    writeln!(output, "{}\n", c::header("Dead Code Analysis Summary"))?;
     writeln!(
         output,
-        "☠️  **Files with dead code**: {}",
-        result.summary.files_with_dead_code
+        "  {} {}",
+        c::label("Files analyzed:"),
+        c::number(&result.total_files.to_string())
     )?;
     writeln!(
         output,
-        "📏 **Total dead lines**: {}",
-        result.summary.total_dead_lines
+        "  {} {}",
+        c::label("Files with dead code:"),
+        c::number(&result.summary.files_with_dead_code.to_string())
     )?;
     writeln!(
         output,
-        "📈 **Dead code percentage**: {:.2}%\n",
-        result.summary.dead_percentage
+        "  {} {}",
+        c::label("Total dead lines:"),
+        c::number(&result.summary.total_dead_lines.to_string())
+    )?;
+    writeln!(
+        output,
+        "  {} {}\n",
+        c::label("Dead code percentage:"),
+        c::pct(
+            f64::from(result.summary.dead_percentage),
+            5.0,
+            15.0,
+        )
     )?;
 
     Ok(())
@@ -139,16 +152,33 @@ fn write_dead_code_by_type_section(
     output: &mut String,
     summary: &crate::models::dead_code::DeadCodeSummary,
 ) -> Result<()> {
+    use crate::cli::colors as c;
     use std::fmt::Write;
 
-    writeln!(output, "## Dead Code by Type\n")?;
-    writeln!(output, "- **Dead functions**: {}", summary.dead_functions)?;
-    writeln!(output, "- **Dead classes**: {}", summary.dead_classes)?;
-    writeln!(output, "- **Dead variables**: {}", summary.dead_modules)?;
+    writeln!(output, "{}\n", c::subheader("Dead Code by Type"))?;
     writeln!(
         output,
-        "- **Unreachable blocks**: {}",
-        summary.unreachable_blocks
+        "  {} {}",
+        c::label("Dead functions:"),
+        c::number(&summary.dead_functions.to_string())
+    )?;
+    writeln!(
+        output,
+        "  {} {}",
+        c::label("Dead classes:"),
+        c::number(&summary.dead_classes.to_string())
+    )?;
+    writeln!(
+        output,
+        "  {} {}",
+        c::label("Dead variables:"),
+        c::number(&summary.dead_modules.to_string())
+    )?;
+    writeln!(
+        output,
+        "  {} {}",
+        c::label("Unreachable blocks:"),
+        c::number(&summary.unreachable_blocks.to_string())
     )?;
 
     Ok(())
@@ -159,17 +189,18 @@ fn write_top_files_section(
     output: &mut String,
     files: &[crate::models::dead_code::FileDeadCodeMetrics],
 ) -> Result<()> {
+    use crate::cli::colors as c;
     use std::fmt::Write;
 
-    writeln!(output, "\n## Top Files with Dead Code\n")?;
+    writeln!(output, "\n{}\n", c::subheader("Top Files with Dead Code"))?;
     for (i, file) in files.iter().take(10).enumerate() {
         writeln!(
             output,
-            "{}. `{}` - {:.1}% dead ({} lines)",
-            i + 1,
-            file.path,
-            file.dead_percentage,
-            file.dead_lines
+            "  {}. {} - {} dead ({} lines)",
+            c::number(&(i + 1).to_string()),
+            c::path(&file.path),
+            c::pct(f64::from(file.dead_percentage), 5.0, 15.0),
+            c::number(&file.dead_lines.to_string())
         )?;
     }
 

@@ -100,18 +100,18 @@ fn print_score_text(
     trend: &wc::QualityTrend,
     lint_config: &wc::LintConfig,
 ) {
-    println!("Contract Score: {} ({})", id, contract.version);
-    println!("==================================");
+    use crate::cli::colors as c;
+    println!("{}", c::header(&format!("Contract Score: {} ({})", id, contract.version)));
     println!();
-    println!("  5-Dimension Quality Score");
-    println!("  -------------------------");
-    println!("  spec_depth:      {:.2}  (weight: 0.20)", score.spec_depth);
-    println!("  falsification:   {:.2}  (weight: 0.25)", score.falsification_coverage);
-    println!("  invariant_health:{:.2}  (weight: 0.25)", score.invariant_health);
-    println!("  subcontracting:  {:.2}  (weight: 0.10)", score.subcontracting);
-    println!("  traceability:    {:.2}  (weight: 0.20)", score.traceability);
-    println!("  -------------------------");
-    println!("  TOTAL:           {:.2}  Grade: {}", score.total, score.grade);
+    println!("  {}", c::subheader("5-Dimension Quality Score"));
+    println!("  {}", c::separator());
+    println!("  spec_depth:      {}  {}(weight: 0.20){}", c::number(&format!("{:.2}", score.spec_depth)), c::DIM, c::RESET);
+    println!("  falsification:   {}  {}(weight: 0.25){}", c::number(&format!("{:.2}", score.falsification_coverage)), c::DIM, c::RESET);
+    println!("  invariant_health:{}  {}(weight: 0.25){}", c::number(&format!("{:.2}", score.invariant_health)), c::DIM, c::RESET);
+    println!("  subcontracting:  {}  {}(weight: 0.10){}", c::number(&format!("{:.2}", score.subcontracting)), c::DIM, c::RESET);
+    println!("  traceability:    {}  {}(weight: 0.20){}", c::number(&format!("{:.2}", score.traceability)), c::DIM, c::RESET);
+    println!("  {}", c::separator());
+    println!("  TOTAL:           {}  Grade: {}", c::number(&format!("{:.2}", score.total)), c::grade(&score.grade.to_string()));
     println!();
 
     print_drift_text(drift);
@@ -119,62 +119,67 @@ fn print_score_text(
     print_trend_text(trend);
 
     if lint_report.passed {
-        println!("Result: PASS");
+        println!("{}", c::pass("Result: PASS"));
     } else {
         println!(
-            "Result: FAIL ({} error(s), {} warning(s))",
-            lint_report.error_count, lint_report.warning_count
+            "{}", c::fail(&format!("Result: FAIL ({} error(s), {} warning(s))", lint_report.error_count, lint_report.warning_count))
         );
     }
 }
 
 fn print_drift_text(drift: &wc::DriftMetrics) {
-    println!("  Drift Metrics (ABC Theorem)");
-    println!("  ---------------------------");
-    println!("  Hours since checkpoint: {:.1}", drift.hours_since_checkpoint);
-    println!("  Drift rate (alpha):    {:.3}", drift.drift_rate);
-    println!("  Recovery rate (gamma): {:.3}", drift.recovery_rate);
-    println!("  Bounded drift (D*):    {:.3}", drift.bounded_drift);
-    let status = if drift.is_stale { "STALE (>24h without checkpoint)" } else { "Fresh" };
-    println!("  STATUS: {}", status);
+    use crate::cli::colors as c;
+    println!("  {}", c::subheader("Drift Metrics (ABC Theorem)"));
+    println!("  {}", c::separator());
+    println!("  Hours since checkpoint: {}", c::number(&format!("{:.1}", drift.hours_since_checkpoint)));
+    println!("  Drift rate (alpha):    {}", c::number(&format!("{:.3}", drift.drift_rate)));
+    println!("  Recovery rate (gamma): {}", c::number(&format!("{:.3}", drift.recovery_rate)));
+    println!("  Bounded drift (D*):    {}", c::number(&format!("{:.3}", drift.bounded_drift)));
+    if drift.is_stale {
+        println!("  STATUS: {}", c::fail("STALE (>24h without checkpoint)"));
+    } else {
+        println!("  STATUS: {}", c::pass("Fresh"));
+    }
     println!();
 }
 
 fn print_lint_text(lint_report: &wc::LintReport, lint_config: &wc::LintConfig) {
+    use crate::cli::colors as c;
     if lint_report.findings.is_empty() {
         return;
     }
-    println!("  Lint Findings ({} total)", lint_report.findings.len());
+    println!("  {} {}", c::subheader("Lint Findings"), c::dim(&format!("({} total)", lint_report.findings.len())));
     if lint_config.strict {
-        println!("  (strict mode: warnings promoted to errors)");
+        println!("  {}(strict mode: warnings promoted to errors){}", c::YELLOW, c::RESET);
     }
     if !lint_config.suppress.is_empty() {
-        println!("  ({} rule(s) suppressed)", lint_config.suppress.len());
+        println!("  {}({} rule(s) suppressed){}", c::DIM, lint_config.suppress.len(), c::RESET);
     }
-    println!("  ---------------------------");
+    println!("  {}", c::separator());
     for finding in &lint_report.findings {
-        let icon = match finding.severity {
-            wc::LintSeverity::Error => "E",
-            wc::LintSeverity::Warning => "W",
-            wc::LintSeverity::Info => "I",
+        let (icon, color) = match finding.severity {
+            wc::LintSeverity::Error => ("✗", c::RED),
+            wc::LintSeverity::Warning => ("⚠", c::YELLOW),
+            wc::LintSeverity::Info => ("ℹ", c::CYAN),
         };
-        println!("  [{}] {}: {}", icon, finding.rule_id, finding.message);
+        println!("  {color}{icon}{} {}{}{}: {}", c::RESET, c::DIM, finding.rule_id, c::RESET, finding.message);
     }
     println!();
 }
 
 fn print_trend_text(trend: &wc::QualityTrend) {
+    use crate::cli::colors as c;
     if trend.snapshots.is_empty() {
         return;
     }
     println!(
-        "  Trend: {} snapshots, rolling avg {:.2}, {}",
-        trend.snapshots.len(),
-        trend.rolling_average,
+        "  Trend: {}{}{} snapshots, rolling avg {}, {}",
+        c::BOLD_WHITE, trend.snapshots.len(), c::RESET,
+        c::number(&format!("{:.2}", trend.rolling_average)),
         trend.direction
     );
     if trend.drift_detected {
-        println!("  WARNING: Quality drift detected (>5% drop from rolling average)");
+        println!("  {}", c::warn("Quality drift detected (>5% drop from rolling average)"));
     }
     println!();
 }

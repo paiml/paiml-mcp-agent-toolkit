@@ -3,6 +3,7 @@
 // Originally from migrate_handlers.rs, these are check functions
 // for sovereign stack compliance and PAIML dependency workspace state.
 
+use crate::cli::colors as c;
 use crate::services::commit_classifier::CommitClassifier;
 use anyhow::Result;
 use std::fs;
@@ -354,7 +355,7 @@ pub(crate) fn generate_file_health_baseline(project_path: &Path, dry_run: bool) 
     let files = match discover_source_files(project_path) {
         Ok(f) => f,
         Err(msg) => {
-            println!("Skipping baseline: {}", msg);
+            println!("{}", c::skip(&format!("Skipping baseline: {}", msg)));
             return Ok(());
         }
     };
@@ -379,8 +380,10 @@ pub(crate) fn generate_file_health_baseline(project_path: &Path, dry_run: bool) 
     }
     if dry_run {
         println!(
-            "Dry run: would save file health baseline ({} files) to .pmat/file-health-baseline.json",
-            baseline.files.len()
+            "{} would save file health baseline ({} files) to {}",
+            c::dim("Dry run:"),
+            c::number(&baseline.files.len().to_string()),
+            c::path(".pmat/file-health-baseline.json")
         );
         return Ok(());
     }
@@ -389,9 +392,10 @@ pub(crate) fn generate_file_health_baseline(project_path: &Path, dry_run: bool) 
     let baseline_path = pmat_dir.join("file-health-baseline.json");
     baseline.save(&baseline_path)?;
     println!(
-        "File health baseline saved: {} ({} files)",
-        baseline_path.display(),
-        baseline.files.len()
+        "{} {} ({} files)",
+        c::pass("File health baseline saved:"),
+        c::path(&baseline_path.display().to_string()),
+        c::number(&baseline.files.len().to_string())
     );
     Ok(())
 }
@@ -431,31 +435,43 @@ pub(crate) fn check_file_health_multi(
         }
     }
     if project_reports.is_empty() {
-        println!("No projects could be analyzed for file health.");
+        println!(
+            "{}",
+            c::warn("No projects could be analyzed for file health.")
+        );
         return Ok(());
     }
     let stack_report = StackHealthReport::from_projects(project_reports);
-    println!("\n\u{2501}\u{2501}\u{2501} Stack File Health \u{2501}\u{2501}\u{2501}");
+    println!("\n{}", c::header("Stack File Health"));
     println!(
-        "Stack Grade: {:?} (avg health: {})",
-        stack_report.stack_grade, stack_report.stack_average_health
+        "{} {:?} (avg health: {})",
+        c::label("Stack Grade:"),
+        stack_report.stack_grade,
+        c::number(&stack_report.stack_average_health.to_string())
     );
-    println!("Projects analyzed: {}", stack_report.projects.len());
+    println!(
+        "{} {}",
+        c::label("Projects analyzed:"),
+        c::number(&stack_report.projects.len().to_string())
+    );
     for (name, report) in &stack_report.projects {
         println!(
             "  {} \u{2014} {:?} ({} files, avg health: {})",
-            name, report.average_grade, report.total_files, report.average_health
+            c::label(name),
+            report.average_grade,
+            c::number(&report.total_files.to_string()),
+            c::number(&report.average_health.to_string())
         );
     }
     if !stack_report.stack_worst_files.is_empty() {
-        println!("\nWorst files across stack:");
+        println!("\n{}", c::label("Worst files across stack:"));
         for (project, metrics) in &stack_report.stack_worst_files {
             println!(
                 "  [{}] {} \u{2014} {} lines, health: {}",
-                project,
-                metrics.path.display(),
-                metrics.lines,
-                metrics.health_score
+                c::label(project),
+                c::path(&metrics.path.display().to_string()),
+                c::number(&metrics.lines.to_string()),
+                c::number(&metrics.health_score.to_string())
             );
         }
     }

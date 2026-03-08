@@ -5,6 +5,7 @@
 //! quality gate results, baseline summaries).
 
 use super::{format_grade, truncate_string, TdgCommandConfig};
+use crate::cli::colors as c;
 use crate::cli::TdgOutputFormat;
 use crate::tdg::Grade;
 use anyhow::Result;
@@ -198,7 +199,7 @@ pub(crate) fn display_gate_result_table(result: &crate::tdg::GateResult) {
     println!("\n{}", result.message);
 
     if !result.violations.is_empty() {
-        println!("\n📋 Violations:");
+        println!("\n{}", c::subheader("Violations:"));
         println!("┌────────────────────────────────┬──────────────┬──────────┬────────────────────────────────┐");
         println!("│ File                           │ Type         │ Severity │ Message                        │");
         println!("├────────────────────────────────┼──────────────┼──────────┼────────────────────────────────┤");
@@ -261,7 +262,7 @@ pub(in crate::cli::handlers::tdg_handlers) fn display_grade_distribution(
         }
     }
 
-    println!("\n📊 Grade Distribution:");
+    println!("\n{}", c::subheader("Grade Distribution:"));
     let grade_order = [
         Grade::APLus,
         Grade::A,
@@ -279,7 +280,12 @@ pub(in crate::cli::handlers::tdg_handlers) fn display_grade_distribution(
         let count = grade_counts.get(&grade).unwrap_or(&0);
         if *count > 0 {
             let bar = "█".repeat((*count).min(30));
-            println!("   {:>3}: {:>4} {}", grade, count, bar);
+            println!(
+                "   {}: {} {}",
+                c::grade(&format!("{:>3}", grade)),
+                c::number(&format!("{:>4}", count)),
+                bar
+            );
         }
     }
 
@@ -292,16 +298,25 @@ fn display_f_grade_warning(f_grade_files: &[String]) {
         return;
     }
     println!(
-        "\n⚠️  F-Grade Warning: {} file(s) with F grade:",
-        f_grade_files.len()
+        "\n{}",
+        c::warn(&format!(
+            "F-Grade Warning: {} file(s) with F grade:",
+            c::number(&format!("{}", f_grade_files.len()))
+        ))
     );
     for file in f_grade_files.iter().take(10) {
-        println!("{}", file);
+        println!("{}", c::path(file));
     }
     if f_grade_files.len() > 10 {
-        println!("     ... and {} more", f_grade_files.len() - 10);
+        println!(
+            "     ... and {} more",
+            c::number(&format!("{}", f_grade_files.len() - 10))
+        );
     }
-    println!("\n   F-grades cap project score at B. Fix these to improve project grade.");
+    println!(
+        "\n   {}",
+        c::dim("F-grades cap project score at B. Fix these to improve project grade.")
+    );
 }
 
 /// Display baseline in table format
@@ -309,16 +324,30 @@ pub(in crate::cli::handlers::tdg_handlers) fn display_baseline_table(
     path: &std::path::Path,
     baseline: &crate::tdg::TdgBaseline,
 ) {
-    println!("📝 {}", path.display());
-    println!("   Version: {}", baseline.version);
+    println!("{}", c::path(&path.display().to_string()));
+    println!("   {} {}", c::label("Version:"), baseline.version);
     println!(
-        "   Created: {}",
+        "   {} {}",
+        c::label("Created:"),
         baseline.created_at.format("%Y-%m-%d %H:%M:%S")
     );
-    println!("   Files: {}", baseline.summary.total_files);
-    println!("   Avg Score: {:.1}", baseline.summary.avg_score);
+    println!(
+        "   {} {}",
+        c::label("Files:"),
+        c::number(&format!("{}", baseline.summary.total_files))
+    );
+    println!(
+        "   {} {}",
+        c::label("Avg Score:"),
+        c::number(&format!("{:.1}", baseline.summary.avg_score))
+    );
     if let Some(git_ctx) = &baseline.git_context {
-        println!("   Git: {} on {}", git_ctx.commit_sha_short, git_ctx.branch);
+        println!(
+            "   {} {} on {}",
+            c::label("Git:"),
+            c::number(&git_ctx.commit_sha_short),
+            c::path(&git_ctx.branch)
+        );
     }
     println!();
 }

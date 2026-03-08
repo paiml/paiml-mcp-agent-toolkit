@@ -2,27 +2,51 @@
 //! Output formatting for defect reports: text, JSON, and JUnit formats
 
 use super::types::DefectReport;
+use crate::cli::colors;
 use crate::services::defect_detector::{DefectPattern, Severity};
 use anyhow::{Context, Result};
 
 pub fn print_text_report(report: &DefectReport) {
-    println!("\nKnown Defects Report");
-    println!("====================");
+    println!("\n{}", colors::header("Known Defects Report"));
+    println!("{}", colors::rule());
 
-    println!("\n\u{1f4ca} Summary");
+    println!("\n\u{1f4ca} {}", colors::subheader("Summary"));
     println!(
         "  Total Files Scanned: {}",
-        report.summary.total_files_scanned
+        colors::number(&report.summary.total_files_scanned.to_string())
     );
     println!(
         "  Files with Defects: {}",
-        report.summary.files_with_defects
+        colors::number(&report.summary.files_with_defects.to_string())
     );
-    println!("  Total Defects: {}", report.summary.total_defects);
-    println!("  Critical: {}", report.summary.by_severity.critical);
-    println!("  High: {}", report.summary.by_severity.high);
-    println!("  Medium: {}", report.summary.by_severity.medium);
-    println!("  Low: {}", report.summary.by_severity.low);
+    println!(
+        "  Total Defects: {}",
+        colors::number(&report.summary.total_defects.to_string())
+    );
+    println!(
+        "  {}Critical:{} {}",
+        colors::RED,
+        colors::RESET,
+        colors::number(&report.summary.by_severity.critical.to_string())
+    );
+    println!(
+        "  {}High:{} {}",
+        colors::BOLD_RED,
+        colors::RESET,
+        colors::number(&report.summary.by_severity.high.to_string())
+    );
+    println!(
+        "  {}Medium:{} {}",
+        colors::YELLOW,
+        colors::RESET,
+        colors::number(&report.summary.by_severity.medium.to_string())
+    );
+    println!(
+        "  {}Low:{} {}",
+        colors::DIM,
+        colors::RESET,
+        colors::number(&report.summary.by_severity.low.to_string())
+    );
 
     // Group defects by severity
     let critical_defects: Vec<_> = report
@@ -42,55 +66,98 @@ pub fn print_text_report(report: &DefectReport) {
         .collect();
 
     if !critical_defects.is_empty() {
-        println!("\n\u{1f534} CRITICAL Defects ({})", critical_defects.len());
+        println!(
+            "\n\u{1f534} {}CRITICAL Defects ({}){}",
+            colors::RED,
+            critical_defects.len(),
+            colors::RESET
+        );
         for defect in critical_defects {
             print_defect_pattern(defect);
         }
     }
 
     if !high_defects.is_empty() {
-        println!("\n\u{1f7e0} HIGH Defects ({})", high_defects.len());
+        println!(
+            "\n\u{1f7e0} {}HIGH Defects ({}){}",
+            colors::BOLD_RED,
+            high_defects.len(),
+            colors::RESET
+        );
         for defect in high_defects {
             print_defect_pattern(defect);
         }
     }
 
     if !medium_defects.is_empty() {
-        println!("\n\u{1f7e1} MEDIUM Defects ({})", medium_defects.len());
+        println!(
+            "\n\u{1f7e1} {}MEDIUM Defects ({}){}",
+            colors::YELLOW,
+            medium_defects.len(),
+            colors::RESET
+        );
         for defect in medium_defects {
             print_defect_pattern(defect);
         }
     }
 
+    println!("\n{}", colors::separator());
     println!(
-        "\nExit code: {} {}",
-        report.exit_code,
+        "{} {} {}",
+        colors::subheader("Exit code:"),
+        colors::number(&report.exit_code.to_string()),
         if report.has_critical_defects {
-            "(critical defects found)"
+            format!("{}(critical defects found){}", colors::RED, colors::RESET)
         } else {
-            "(no critical defects)"
+            format!("{}(no critical defects){}", colors::GREEN, colors::RESET)
         }
     );
 }
 
 fn print_defect_pattern(defect: &DefectPattern) {
+    let severity_color = match defect.severity {
+        Severity::Critical => colors::RED,
+        Severity::High => colors::BOLD_RED,
+        Severity::Medium => colors::YELLOW,
+        Severity::Low => colors::DIM,
+    };
     println!(
-        "\n  {}: {} ({} instances)",
+        "\n  {}{}{}: {} ({} instances)",
+        severity_color,
         defect.id,
-        defect.name,
-        defect.instances.len()
+        colors::RESET,
+        colors::label(&defect.name),
+        colors::number(&defect.instances.len().to_string())
     );
 
     // Show first 10 instances
     for (i, instance) in defect.instances.iter().take(10).enumerate() {
-        println!("    - {}:{}", instance.file, instance.line);
+        println!(
+            "    - {}{}{}:{}",
+            colors::CYAN,
+            instance.file,
+            colors::RESET,
+            instance.line
+        );
         if i == 9 && defect.instances.len() > 10 {
-            println!("    ... ({} more)", defect.instances.len() - 10);
+            println!(
+                "    {} ({} more)",
+                colors::dim("..."),
+                defect.instances.len() - 10
+            );
         }
     }
 
-    println!("\n  Fix: {}", defect.fix_recommendation);
-    println!("  Evidence: {}", defect.evidence_description);
+    println!(
+        "\n  {} {}",
+        colors::label("Fix:"),
+        defect.fix_recommendation
+    );
+    println!(
+        "  {} {}",
+        colors::label("Evidence:"),
+        defect.evidence_description
+    );
 }
 
 pub fn print_json_report(report: &DefectReport) -> Result<()> {

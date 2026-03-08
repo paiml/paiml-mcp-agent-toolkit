@@ -10,6 +10,12 @@ use crate::cli::handlers::enforce_handlers::{
 use crate::cli::EnforceOutputFormat;
 use std::path::PathBuf;
 
+/// Strip ANSI escape codes from a string for test assertions
+fn strip_ansi(s: &str) -> String {
+    let re = regex::Regex::new(r"\x1b\[[0-9;]*m").unwrap();
+    re.replace_all(s, "").to_string()
+}
+
 // --- EnforcementState tests ---
 
 #[test]
@@ -261,9 +267,10 @@ fn test_format_violations_text() {
     let profile = QualityProfile::default();
     let output =
         format_violations_output(&violations, &profile, EnforceOutputFormat::Summary).unwrap();
-    assert!(output.contains("COMPLEXITY"));
-    assert!(output.contains("high"));
-    assert!(output.contains("25"));
+    let plain = strip_ansi(&output);
+    assert!(plain.contains("COMPLEXITY"));
+    assert!(plain.contains("high"));
+    assert!(plain.contains("25"));
 }
 
 #[test]
@@ -272,5 +279,6 @@ fn test_format_violations_empty() {
     let profile = QualityProfile::default();
     let output =
         format_violations_output(&violations, &profile, EnforceOutputFormat::Summary).unwrap();
-    assert!(output.contains("0 violations"));
+    let plain = strip_ansi(&output);
+    assert!(plain.contains("0 violations"));
 }

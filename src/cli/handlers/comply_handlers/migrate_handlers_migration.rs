@@ -12,24 +12,26 @@ async fn handle_migrate(
     no_backup: bool,
     force: bool,
 ) -> Result<()> {
+    use crate::cli::colors as c;
+
     let target = target_version.unwrap_or(PMAT_VERSION);
-    println!("Migrating project to PMAT v{}", target);
+    println!("{}", c::header(&format!("Migrating project to PMAT v{}", target)));
 
     if dry_run {
-        println!("(dry-run mode - no changes will be made)\n");
+        println!("{}\n", c::dim("(dry-run mode - no changes will be made)"));
     }
 
     let config = load_or_create_project_config(project_path)?;
     let current_version = &config.pmat.version;
 
-    println!("Current version: {}", current_version);
-    println!("Target version:  {}\n", target);
+    println!("{} {}", c::label("Current version:"), current_version);
+    println!("{} {}\n", c::label("Target version: "), target);
 
     let breaking_changes = get_breaking_changes_since(current_version);
     if !breaking_changes.is_empty() && !force {
         println!(
-            "\x1b[33mWarning: {} breaking changes detected:\x1b[0m",
-            breaking_changes.len()
+            "{}",
+            c::warn(&format!("{} breaking changes detected:", breaking_changes.len()))
         );
         for change in &breaking_changes {
             println!("  - v{}: {}", change.version, change.description);
@@ -43,7 +45,7 @@ async fn handle_migrate(
     if !no_backup && !dry_run {
         let backup_path = project_path.join(".pmat").join("backup");
         fs::create_dir_all(&backup_path)?;
-        println!("Created backup at: {}", backup_path.display());
+        println!("{} {}", c::pass("Created backup at:"), c::path(&backup_path.display().to_string()));
     }
 
     let migrations = vec![
@@ -54,26 +56,26 @@ async fn handle_migrate(
         ("Update gitignore", migrate_gitignore(project_path, dry_run)),
     ];
 
-    println!("\nMigration steps:");
+    println!("\n{}", c::label("Migration steps:"));
     for (name, result) in migrations {
         match result {
-            Ok(true) => println!("  \x1b[32m\u{2713}\x1b[0m {}", name),
-            Ok(false) => println!("  \x1b[90m-\x1b[0m {} (no changes needed)", name),
-            Err(e) => println!("  \x1b[31m\u{2717}\x1b[0m {} - {}", name, e),
+            Ok(true) => println!("  {}", c::pass(name)),
+            Ok(false) => println!("  {}", c::skip(&format!("{} (no changes needed)", name))),
+            Err(e) => println!("  {}", c::fail(&format!("{} - {}", name, e))),
         }
     }
 
     // Update hooks (async operation)
     match update_project_hooks(project_path, dry_run).await {
-        Ok(true) => println!("  \x1b[32m\u{2713}\x1b[0m Update git hooks"),
-        Ok(false) => println!("  \x1b[90m-\x1b[0m Update git hooks (no changes needed)"),
-        Err(e) => println!("  \x1b[31m\u{2717}\x1b[0m Update git hooks - {}", e),
+        Ok(true) => println!("  {}", c::pass("Update git hooks")),
+        Ok(false) => println!("  {}", c::skip("Update git hooks (no changes needed)")),
+        Err(e) => println!("  {}", c::fail(&format!("Update git hooks - {}", e))),
     }
 
     if dry_run {
-        println!("\n(dry-run complete - no changes were made)");
+        println!("\n{}", c::dim("(dry-run complete - no changes were made)"));
     } else {
-        println!("\n\x1b[32m\u{2713} Migration complete!\x1b[0m");
+        println!("\n{}", c::pass("Migration complete!"));
     }
 
     Ok(())
@@ -86,35 +88,45 @@ async fn handle_diff(
     to_version: Option<&str>,
     breaking_only: bool,
 ) -> Result<()> {
+    use crate::cli::colors as c;
+
     let config = load_or_create_project_config(project_path)?;
     let from = from_version.unwrap_or(&config.pmat.version);
     let to = to_version.unwrap_or(PMAT_VERSION);
 
-    println!("PMAT Changelog: v{} \u{2192} v{}\n", from, to);
+    println!("{}\n", c::header(&format!("PMAT Changelog: v{} \u{2192} v{}", from, to)));
 
     let changes = get_changelog_entries(from, to);
 
     if breaking_only {
-        println!("\x1b[33mBreaking Changes Only:\x1b[0m\n");
+        println!("{}\n", c::warn("Breaking Changes Only:"));
         let breaking: Vec<_> = changes.iter().filter(|c| c.breaking).collect();
         if breaking.is_empty() {
-            println!("  No breaking changes between these versions.");
+            println!("  {}", c::dim("No breaking changes between these versions."));
         } else {
             for entry in breaking {
                 println!(
-                    "  \x1b[31m[BREAKING]\x1b[0m v{}: {}",
+                    "  {}{}[BREAKING]{} v{}: {}",
+                    c::BOLD_RED, "", c::RESET,
                     entry.version, entry.description
                 );
             }
         }
     } else {
         for entry in &changes {
-            let icon = if entry.breaking {
-                "\x1b[31m[BREAKING]\x1b[0m"
+            if entry.breaking {
+                println!(
+                    "  {}[BREAKING]{} v{}: {}",
+                    c::BOLD_RED, c::RESET,
+                    entry.version, entry.description
+                );
             } else {
-                "\x1b[32m[FEATURE]\x1b[0m"
-            };
-            println!("  {} v{}: {}", icon, entry.version, entry.description);
+                println!(
+                    "  {}[FEATURE]{} v{}: {}",
+                    c::BOLD_GREEN, c::RESET,
+                    entry.version, entry.description
+                );
+            }
         }
     }
 
@@ -128,27 +140,29 @@ async fn handle_update(
     update_config: bool,
     dry_run: bool,
 ) -> Result<()> {
+    use crate::cli::colors as c;
+
     let update_both = !update_hooks && !update_config;
 
     if dry_run {
-        println!("(dry-run mode - no changes will be made)\n");
+        println!("{}\n", c::dim("(dry-run mode - no changes will be made)"));
     }
 
     if update_hooks || update_both {
-        println!("Updating hooks...");
+        println!("{}", c::label("Updating hooks..."));
         match update_project_hooks(project_path, dry_run).await {
-            Ok(true) => println!("  \x1b[32m\u{2713}\x1b[0m Hooks updated to latest templates"),
-            Ok(false) => println!("  \x1b[90m-\x1b[0m Hooks already up to date"),
-            Err(e) => println!("  \x1b[31m\u{2717}\x1b[0m Failed: {}", e),
+            Ok(true) => println!("  {}", c::pass("Hooks updated to latest templates")),
+            Ok(false) => println!("  {}", c::skip("Hooks already up to date")),
+            Err(e) => println!("  {}", c::fail(&format!("Failed: {}", e))),
         }
     }
 
     if update_config || update_both {
-        println!("Updating config...");
+        println!("{}", c::label("Updating config..."));
         match update_project_config(project_path, dry_run) {
-            Ok(true) => println!("  \x1b[32m\u{2713}\x1b[0m Config updated to v{}", PMAT_VERSION),
-            Ok(false) => println!("  \x1b[90m-\x1b[0m Config already up to date"),
-            Err(e) => println!("  \x1b[31m\u{2717}\x1b[0m Failed: {}", e),
+            Ok(true) => println!("  {}", c::pass(&format!("Config updated to v{}", PMAT_VERSION))),
+            Ok(false) => println!("  {}", c::skip("Config already up to date")),
+            Err(e) => println!("  {}", c::fail(&format!("Failed: {}", e))),
         }
     }
 

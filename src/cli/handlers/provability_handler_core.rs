@@ -39,7 +39,8 @@ pub struct ProvabilityConfig {
 pub async fn handle_analyze_provability(config: ProvabilityConfig) -> Result<()> {
     use crate::services::lightweight_provability_analyzer::LightweightProvabilityAnalyzer;
 
-    eprintln!("🔬 Analyzing function provability...");
+    use crate::cli::colors as c;
+    eprintln!("{}", c::dim("🔬 Analyzing function provability..."));
 
     let analyzer = LightweightProvabilityAnalyzer::new();
     let function_ids = resolve_function_targets(&config).await?;
@@ -75,7 +76,8 @@ async fn run_provability_analysis(
     function_ids: &[crate::services::lightweight_provability_analyzer::FunctionId],
 ) -> Result<Vec<ProofSummary>> {
     let summaries = analyzer.analyze_incrementally(function_ids).await;
-    eprintln!("✅ Analyzed {} functions", summaries.len());
+    use crate::cli::colors as c;
+    eprintln!("{} Analyzed {} functions", c::pass(""), c::number(&summaries.len().to_string()));
     Ok(summaries)
 }
 
@@ -121,9 +123,10 @@ fn format_provability_output(
 async fn write_provability_output(content: &str, output_path: &Option<PathBuf>) -> Result<()> {
     if let Some(output_path) = output_path {
         tokio::fs::write(output_path, content).await?;
+        use crate::cli::colors as c;
         eprintln!(
-            "✅ Provability analysis written to: {}",
-            output_path.display()
+            "{} Provability analysis written to: {}",
+            c::pass(""), c::path(&output_path.display().to_string())
         );
     } else {
         println!("{content}");

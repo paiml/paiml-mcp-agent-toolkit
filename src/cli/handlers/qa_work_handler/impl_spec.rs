@@ -1,4 +1,5 @@
 fn print_task_status(task_id: &str, task_dir: &Path) -> Result<()> {
+    use crate::cli::colors as c;
     let checklist_path = task_dir.join("checklist.yaml");
 
     if checklist_path.exists() {
@@ -21,11 +22,11 @@ fn print_task_status(task_id: &str, task_dir: &Path) -> Result<()> {
         let score = (checked as f64 / total as f64) * 100.0;
 
         let status = if checked == total {
-            "\x1b[32mComplete\x1b[0m"
+            format!("{}Complete{}", c::GREEN, c::RESET)
         } else if checked > 0 {
-            "\x1b[33mIn Progress\x1b[0m"
+            format!("{}In Progress{}", c::YELLOW, c::RESET)
         } else {
-            "\x1b[90mPending\x1b[0m"
+            format!("{}Pending{}", c::DIM, c::RESET)
         };
 
         println!(
@@ -33,7 +34,7 @@ fn print_task_status(task_id: &str, task_dir: &Path) -> Result<()> {
             task_id, status, score, checked, total
         );
     } else {
-        println!("{:<15} \x1b[90mNo checklist\x1b[0m", task_id);
+        println!("{:<15} {}", task_id, c::dim("No checklist"));
     }
 
     Ok(())
@@ -42,7 +43,7 @@ fn print_task_status(task_id: &str, task_dir: &Path) -> Result<()> {
 /// Handle spec validation command (Part D & E: pmat qa spec)
 ///
 /// Implements 100-point Popperian falsifiability scoring:
-/// - A. Falsifiability (25 pts) - GATEWAY CHECK (must score ≥60% or total=0)
+/// - A. Falsifiability (25 pts) - GATEWAY CHECK (must score >=60% or total=0)
 /// - B. Implementation (25 pts)
 /// - C. Testing (20 pts)
 /// - D. Documentation (15 pts)
@@ -56,15 +57,17 @@ async fn handle_spec(
     threshold: u32,
     gateway_threshold: u32,
 ) -> Result<()> {
+    use crate::cli::colors as c;
     use crate::services::spec_parser::{
         ClaimCategory, SpecParser, ValidationStatus as SpecValidationStatus,
     };
 
-    println!("🔬 Popperian Specification Validation");
-    println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    println!("Target: {}", target);
+    println!("{}", c::header("Popperian Specification Validation"));
+    println!("{}", c::rule());
+    println!("{}: {}", c::dim("Target"), target);
     println!(
-        "Mode: {}",
+        "{}: {}",
+        c::dim("Mode"),
         if full {
             "Full (with mutation testing)"
         } else {
@@ -75,23 +78,22 @@ async fn handle_spec(
 
     // Resolve target to specification file
     let spec_path = resolve_spec_path(target, project_path)?;
-    println!("📄 Specification: {}", spec_path.display());
+    println!("{}: {}", c::dim("Specification"), c::path(&spec_path.display().to_string()));
     println!();
 
     // Parse specification
     let parser = SpecParser::new();
     let spec = parser.parse_file(&spec_path)?;
 
-    println!("Title: {}", spec.title);
-    println!("Issue refs: {:?}", spec.issue_refs);
-    println!("Claims: {}", spec.claims.len());
-    println!("Code examples: {}", spec.code_examples.len());
-    println!("Acceptance criteria: {}", spec.acceptance_criteria.len());
+    println!("{}: {}", c::dim("Title"), spec.title);
+    println!("{}: {:?}", c::dim("Issue refs"), spec.issue_refs);
+    println!("{}: {}", c::dim("Claims"), c::number(&spec.claims.len().to_string()));
+    println!("{}: {}", c::dim("Code examples"), c::number(&spec.code_examples.len().to_string()));
+    println!("{}: {}", c::dim("Acceptance criteria"), c::number(&spec.acceptance_criteria.len().to_string()));
     println!();
 
     // Validate claims by category
-    println!("📊 Validation Results (Popperian: FALSE until PROVEN)");
-    println!("═══════════════════════════════════════════════════════");
+    println!("{}", c::header("Validation Results (Popperian: FALSE until PROVEN)"));
     println!();
 
     let mut category_scores: HashMap<String, (u32, u32)> = HashMap::new();
@@ -154,11 +156,11 @@ async fn handle_spec(
 
         // Print result
         let status_str = match status {
-            SpecValidationStatus::Proven => "\x1b[32m✓ PROVEN\x1b[0m",
-            SpecValidationStatus::Falsified => "\x1b[31m✗ FALSIFIED\x1b[0m",
-            SpecValidationStatus::Unfalsified => "\x1b[33m? UNFALSIFIED\x1b[0m",
-            SpecValidationStatus::ManualRequired => "\x1b[34m⚙ MANUAL\x1b[0m",
-            SpecValidationStatus::Skipped => "\x1b[90m- SKIPPED\x1b[0m",
+            SpecValidationStatus::Proven => format!("{}✓ PROVEN{}", c::GREEN, c::RESET),
+            SpecValidationStatus::Falsified => format!("{}✗ FALSIFIED{}", c::RED, c::RESET),
+            SpecValidationStatus::Unfalsified => format!("{}? UNFALSIFIED{}", c::YELLOW, c::RESET),
+            SpecValidationStatus::ManualRequired => format!("{}⚙ MANUAL{}", c::BLUE, c::RESET),
+            SpecValidationStatus::Skipped => format!("{}- SKIPPED{}", c::DIM, c::RESET),
         };
 
         // Use chars() to avoid Unicode boundary panics (issue #120)
@@ -168,12 +170,12 @@ async fn handle_spec(
             status_str,
             claim.id,
             truncated,
-            cat_name
+            c::dim(&cat_name)
         );
 
         if let Some(ref ev) = evidence {
             if ev.len() < 100 {
-                println!("      Evidence: {}", ev);
+                println!("      {}: {}", c::dim("Evidence"), ev);
             }
         }
     }
@@ -181,8 +183,7 @@ async fn handle_spec(
     println!();
 
     // Calculate scores
-    println!("📈 Category Scores (100-point Popperian Framework)");
-    println!("═══════════════════════════════════════════════════════");
+    println!("{}", c::header("Category Scores (100-point Popperian Framework)"));
     println!();
 
     let mut total_score: f64 = 0.0;
@@ -213,21 +214,26 @@ async fn handle_spec(
 
         if *cat == ClaimCategory::Falsifiability {
             gateway_score = cat_score;
-            print!("  🚪 ");
+            print!("  {} ", c::label("GATE"));
         } else {
             print!("     ");
         }
 
         println!(
-            "{:<15} {:>5.1}/{:<2} pts ({:.0}%) - {}/{} claims",
-            cat_name, cat_score, max_pts, pct, passed, total
+            "{:<15} {}/{} pts ({:.0}%) - {}/{} claims",
+            cat_name,
+            c::number(&format!("{:.1}", cat_score)),
+            max_pts,
+            pct,
+            passed,
+            total
         );
 
         total_score += cat_score;
     }
 
     println!();
-    println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    println!("{}", c::rule());
 
     // Gateway check (Falsifiability category must meet threshold)
     let gateway_passed = gateway_score >= gateway_threshold as f64;
@@ -235,28 +241,37 @@ async fn handle_spec(
 
     if !gateway_passed {
         println!(
-            "🚫 GATEWAY FAILED: Falsifiability score {:.1} < {} (total score forced to 0)",
-            gateway_score, gateway_threshold
+            "{} GATEWAY FAILED: Falsifiability score {:.1} < {} (total score forced to 0)",
+            c::fail(""),
+            gateway_score,
+            gateway_threshold
         );
-        println!("   Per Popper: Without falsifiable claims, the specification is non-scientific.");
+        println!(
+            "   {}",
+            c::dim("Per Popper: Without falsifiable claims, the specification is non-scientific.")
+        );
     } else {
         println!(
-            "✅ Gateway passed: Falsifiability score {:.1} >= {}",
-            gateway_score, gateway_threshold
+            "{} Gateway passed: Falsifiability score {:.1} >= {}",
+            c::pass(""),
+            gateway_score,
+            gateway_threshold
         );
     }
 
     println!();
     println!(
-        "Total Score: {:.1}/100 (threshold: {})",
-        final_score, threshold
+        "{}: {}/100 (threshold: {})",
+        c::label("Total Score"),
+        c::number(&format!("{:.1}", final_score)),
+        threshold
     );
 
     let passed = final_score >= threshold as f64;
     if passed {
-        println!("✅ PASSED");
+        println!("{}", c::pass("PASSED"));
     } else {
-        println!("❌ FAILED (score below threshold)");
+        println!("{}", c::fail("FAILED (score below threshold)"));
     }
 
     // Output to file if requested
@@ -282,7 +297,7 @@ async fn handle_spec(
         };
 
         fs::write(output_path, &output_content)?;
-        println!("\n📝 Results saved to: {}", output_path.display());
+        println!("\n{} Results saved to: {}", c::pass(""), c::path(&output_path.display().to_string()));
     }
 
     if !passed {
@@ -417,9 +432,9 @@ fn format_spec_result_markdown(result: &serde_json::Value) -> String {
         result["total_score"].as_f64().unwrap_or(0.0),
         result["threshold"],
         if result["passed"].as_bool().unwrap_or(false) {
-            "✅ PASSED"
+            "PASSED"
         } else {
-            "❌ FAILED"
+            "FAILED"
         },
         result["gateway_score"].as_f64().unwrap_or(0.0),
         if result["gateway_passed"].as_bool().unwrap_or(false) {

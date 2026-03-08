@@ -16,12 +16,15 @@ fn format_output(
 
 /// Format as summary
 fn format_summary(result: &SatdAnalysisResult) -> String {
+    use crate::cli::colors as c;
+
     let mut output = String::new();
-    output.push_str("# SATD Analysis Summary\n\n");
+    output.push_str(&format!("{}\n\n", c::header("SATD Analysis Summary")));
     output.push_str(&result.summary);
     output.push_str(&format!(
-        "\n\nTotal violations: {}\n",
-        result.violations.len()
+        "\n\n{}  {}\n",
+        c::label("Total violations:"),
+        c::number(&result.violations.len().to_string())
     ));
 
     // Group by severity
@@ -66,22 +69,46 @@ fn format_summary(result: &SatdAnalysisResult) -> String {
         })
         .count();
 
-    output.push_str("\n## Severity Distribution\n");
-    output.push_str(&format!("- Critical: {critical_count}\n"));
-    output.push_str(&format!("- High: {high_count}\n"));
-    output.push_str(&format!("- Medium: {medium_count}\n"));
-    output.push_str(&format!("- Low: {low_count}\n"));
+    output.push_str(&format!("\n{}\n", c::subheader("Severity Distribution")));
+    output.push_str(&format!(
+        "  {}{}Critical:{} {}\n",
+        c::BOLD, c::RED, c::RESET,
+        c::number(&critical_count.to_string())
+    ));
+    output.push_str(&format!(
+        "  {}{}High:{} {}\n",
+        c::BOLD, c::RED, c::RESET,
+        c::number(&high_count.to_string())
+    ));
+    output.push_str(&format!(
+        "  {}{}Medium:{} {}\n",
+        c::BOLD, c::YELLOW, c::RESET,
+        c::number(&medium_count.to_string())
+    ));
+    output.push_str(&format!(
+        "  {}{}Low:{} {}\n",
+        c::BOLD, c::GREEN, c::RESET,
+        c::number(&low_count.to_string())
+    ));
 
     if !result.violations.is_empty() {
-        output.push_str("\n## Top Violations\n");
+        output.push_str(&format!("\n{}\n", c::subheader("Top Violations")));
         for (i, violation) in result.violations.iter().take(10).enumerate() {
+            let sev_color = match violation.severity {
+                crate::services::facades::satd_facade::SatdSeverity::Critical
+                | crate::services::facades::satd_facade::SatdSeverity::High => c::RED,
+                crate::services::facades::satd_facade::SatdSeverity::Medium => c::YELLOW,
+                crate::services::facades::satd_facade::SatdSeverity::Low => c::GREEN,
+            };
             output.push_str(&format!(
-                "{}. {}:{} - {} ({:?})\n",
-                i + 1,
-                violation.file_path,
-                violation.line_number,
+                "  {}. {}:{} - {} {}{:?}{}\n",
+                c::number(&(i + 1).to_string()),
+                c::path(&violation.file_path),
+                c::dim(&violation.line_number.to_string()),
                 violation.violation_type,
-                violation.severity
+                sev_color,
+                violation.severity,
+                c::RESET
             ));
         }
     }
@@ -259,9 +286,22 @@ fn format_markdown(result: &SatdAnalysisResult, evolution: bool, days: u32) -> S
 
 /// Print metrics to stderr
 fn print_metrics(result: &SatdAnalysisResult) {
-    eprintln!("\n📊 SATD Metrics:");
-    eprintln!("  Total files analyzed: {}", result.total_files);
-    eprintln!("  Total violations: {}", result.violations.len());
+    use crate::cli::colors as c;
+
+    eprintln!(
+        "\n{} SATD Metrics:",
+        c::subheader("📊")
+    );
+    eprintln!(
+        "  {} {}",
+        c::label("Total files analyzed:"),
+        c::number(&result.total_files.to_string())
+    );
+    eprintln!(
+        "  {} {}",
+        c::label("Total violations:"),
+        c::number(&result.violations.len().to_string())
+    );
 
     let critical_count = result
         .violations
@@ -284,11 +324,19 @@ fn print_metrics(result: &SatdAnalysisResult) {
         })
         .count();
 
-    eprintln!("  Critical violations: {critical_count}");
-    eprintln!("  High violations: {high_count}");
+    eprintln!(
+        "  {}Critical violations:{} {}",
+        c::BOLD_RED, c::RESET,
+        c::number(&critical_count.to_string())
+    );
+    eprintln!(
+        "  {}High violations:{} {}",
+        c::BOLD_RED, c::RESET,
+        c::number(&high_count.to_string())
+    );
 
     if !result.violations.is_empty() {
-        eprintln!("\n  Top violation types:");
+        eprintln!("\n  {}:", c::label("Top violation types"));
         use std::collections::HashMap;
         let mut type_counts: HashMap<&str, usize> = HashMap::new();
         for violation in &result.violations {
@@ -299,7 +347,11 @@ fn print_metrics(result: &SatdAnalysisResult) {
         sorted_types.sort_by(|a, b| b.1.cmp(a.1));
 
         for (violation_type, count) in sorted_types.iter().take(5) {
-            eprintln!("    - {violation_type}: {count}");
+            eprintln!(
+                "    - {}: {}",
+                violation_type,
+                c::number(&count.to_string())
+            );
         }
     }
 }

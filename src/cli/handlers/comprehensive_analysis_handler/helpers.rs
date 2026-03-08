@@ -88,15 +88,21 @@ pub(super) fn report_completion_and_performance(
     config: &ComprehensiveAnalysisConfig,
     result: &ComprehensiveAnalysisResult,
 ) {
+    use crate::cli::colors as c_;
     if let Some(start_time) = start {
         let elapsed = start_time.elapsed();
-        eprintln!("✅ Comprehensive analysis completed in {elapsed:?}");
+        eprintln!(
+            "{} Comprehensive analysis completed in {}{elapsed:?}{}",
+            c_::pass(""),
+            c_::BOLD_WHITE,
+            c_::RESET
+        );
 
         if config.perf {
             print_performance_breakdown(result, elapsed.as_millis() as u64);
         }
     } else {
-        eprintln!("✅ Comprehensive analysis completed");
+        eprintln!("{}", c_::pass("Comprehensive analysis completed"));
     }
 }
 
@@ -171,14 +177,35 @@ pub(super) async fn enhance_with_additional_analyses(
 
 /// Print performance breakdown
 pub(super) fn print_performance_breakdown(result: &ComprehensiveAnalysisResult, total_ms: u64) {
-    eprintln!("\n⏱️  Performance Breakdown:");
-    eprintln!("  Total execution time: {total_ms}ms");
-    eprintln!("  Analysis duration: {}ms", result.duration_ms);
-    eprintln!("  Files analyzed: {}", result.summary.total_files);
-    eprintln!("  Issues found: {}", result.summary.total_issues);
+    use crate::cli::colors as c_;
+    eprintln!("\n{}", c_::subheader("⏱️  Performance Breakdown:"));
+    eprintln!(
+        "  {}: {}ms",
+        c_::label("Total execution time"),
+        c_::number(&total_ms.to_string())
+    );
+    eprintln!(
+        "  {}: {}ms",
+        c_::label("Analysis duration"),
+        c_::number(&result.duration_ms.to_string())
+    );
+    eprintln!(
+        "  {}: {}",
+        c_::label("Files analyzed"),
+        c_::number(&result.summary.total_files.to_string())
+    );
+    eprintln!(
+        "  {}: {}",
+        c_::label("Issues found"),
+        c_::number(&result.summary.total_issues.to_string())
+    );
 
     if result.summary.total_files > 0 {
         let ms_per_file = total_ms as f64 / result.summary.total_files as f64;
-        eprintln!("  Average time per file: {ms_per_file:.2}ms");
+        eprintln!(
+            "  {}: {}ms",
+            c_::label("Average time per file"),
+            c_::number(&format!("{ms_per_file:.2}"))
+        );
     }
 }

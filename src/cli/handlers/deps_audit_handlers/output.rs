@@ -1,15 +1,28 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
 
 use super::types::{DepCategory, DepsAuditReport, ParetoEffort, ParetoEntry};
+use crate::cli::colors;
 
 /// Print Pareto analysis report
 pub fn print_pareto_report(entries: &[ParetoEntry]) {
-    println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    println!("📊  Pareto Analysis: 80/20 Dependency Removal");
-    println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    println!("{}", colors::rule());
+    println!(
+        "{}📊  Pareto Analysis: 80/20 Dependency Removal{}",
+        colors::BOLD,
+        colors::RESET
+    );
+    println!("{}", colors::rule());
     println!();
-    println!("ROI = Transitive Deps Saved / Effort");
-    println!("Higher ROI = Better bang for buck");
+    println!(
+        "{}ROI = Transitive Deps Saved / Effort{}",
+        colors::DIM,
+        colors::RESET
+    );
+    println!(
+        "{}Higher ROI = Better bang for buck{}",
+        colors::DIM,
+        colors::RESET
+    );
     println!();
 
     if entries.is_empty() {
@@ -36,19 +49,25 @@ pub fn print_pareto_report(entries: &[ParetoEntry]) {
             ""
         };
 
+        let name_str = entry
+            .name
+            .get(..entry.name.len().min(19))
+            .unwrap_or(&entry.name);
+        let reason_str = entry
+            .reason
+            .get(..entry.reason.len().min(21))
+            .unwrap_or(&entry.reason);
         println!(
-            "│ {:<19} │ {:>9} │ {:>6} │ {:>6.1} │ {:<21} {:>5} │",
-            entry
-                .name
-                .get(..entry.name.len().min(19))
-                .unwrap_or(&entry.name),
+            "│ {}{:<19}{} │ {:>9} │ {:>6} │ {}{:>6.1}{} │ {:<21} {:>5} │",
+            colors::CYAN,
+            name_str,
+            colors::RESET,
             entry.transitive_deps,
             entry.effort.label(),
+            colors::BOLD,
             entry.roi,
-            entry
-                .reason
-                .get(..entry.reason.len().min(21))
-                .unwrap_or(&entry.reason),
+            colors::RESET,
+            reason_str,
             marker
         );
     }
@@ -63,70 +82,155 @@ pub fn print_pareto_report(entries: &[ParetoEntry]) {
         0
     };
 
-    println!("💡 Summary:");
+    println!("{}💡 Summary:{}", colors::BOLD, colors::RESET);
     println!(
-        "   Total transitive deps from candidates: {}",
-        total_transitive
+        "   Total transitive deps from candidates: {}{}{}",
+        colors::BOLD_WHITE,
+        total_transitive,
+        colors::RESET
     );
     println!(
-        "   Top 5 removals save: {} deps ({}% of total)",
-        top_5_savings, top_5_pct
+        "   Top 5 removals save: {}{}{} deps ({}{}{}% of total)",
+        colors::BOLD_WHITE,
+        top_5_savings,
+        colors::RESET,
+        colors::BOLD_WHITE,
+        top_5_pct,
+        colors::RESET
     );
     println!();
 
     // Actionable commands
-    println!("🔧 Quick Wins (Low Effort, High ROI):");
+    println!(
+        "{}🔧 Quick Wins (Low Effort, High ROI):{}",
+        colors::BOLD,
+        colors::RESET
+    );
     for entry in entries
         .iter()
         .filter(|e| matches!(e.effort, ParetoEffort::Low) && e.roi > 10.0)
         .take(5)
     {
         println!(
-            "   cargo rm {} # saves {} transitive deps",
-            entry.name, entry.transitive_deps
+            "   {}cargo rm {}{} # saves {}{}{} transitive deps",
+            colors::GREEN,
+            entry.name,
+            colors::RESET,
+            colors::BOLD_WHITE,
+            entry.transitive_deps,
+            colors::RESET
         );
     }
     println!();
-    println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    println!("{}", colors::rule());
 }
 
 pub fn print_text_report(report: &DepsAuditReport) {
-    println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    println!("🔍  Dependency Audit Report (with Graph Analysis)");
-    println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    println!();
-    println!("📊  Summary");
-    println!("  Direct Dependencies:   {}", report.direct_deps);
-    println!("  Transitive Deps:       {}", report.transitive_deps);
-    println!("  Total (graph nodes):   {}", report.total_deps);
-    println!("  Sovereign Stack:       {} ✅", report.sovereign_deps);
-    println!("  Replaceable:           {} 🔄", report.replaceable_deps);
-    println!("  Removable:             {} ❌", report.removable_deps);
-    println!("  Heavy (bloat):         {} ⚠️", report.heavy_deps);
-    println!("  Orphans (easy remove): {} 🎯", report.orphan_deps);
-    println!("  Bridges (connectors):  {} 🌉", report.bridge_deps);
+    println!("{}", colors::rule());
     println!(
-        "  Est. Savings:          ~{}KB (~{}MB)",
+        "{}🔍  Dependency Audit Report (with Graph Analysis){}",
+        colors::BOLD,
+        colors::RESET
+    );
+    println!("{}", colors::rule());
+    println!();
+    println!("{}📊  Summary{}", colors::BOLD, colors::RESET);
+    println!(
+        "  Direct Dependencies:   {}{}{}",
+        colors::BOLD_WHITE,
+        report.direct_deps,
+        colors::RESET
+    );
+    println!(
+        "  Transitive Deps:       {}{}{}",
+        colors::BOLD_WHITE,
+        report.transitive_deps,
+        colors::RESET
+    );
+    println!(
+        "  Total (graph nodes):   {}{}{}",
+        colors::BOLD_WHITE,
+        report.total_deps,
+        colors::RESET
+    );
+    println!(
+        "  Sovereign Stack:       {}{}{} ✅",
+        colors::GREEN,
+        report.sovereign_deps,
+        colors::RESET
+    );
+    println!(
+        "  Replaceable:           {}{}{} 🔄",
+        colors::YELLOW,
+        report.replaceable_deps,
+        colors::RESET
+    );
+    println!(
+        "  Removable:             {}{}{} ❌",
+        colors::RED,
+        report.removable_deps,
+        colors::RESET
+    );
+    println!(
+        "  Heavy (bloat):         {}{}{} ⚠️",
+        colors::YELLOW,
+        report.heavy_deps,
+        colors::RESET
+    );
+    println!(
+        "  Orphans (easy remove): {}{}{} 🎯",
+        colors::BOLD_WHITE,
+        report.orphan_deps,
+        colors::RESET
+    );
+    println!(
+        "  Bridges (connectors):  {}{}{} 🌉",
+        colors::BOLD_WHITE,
+        report.bridge_deps,
+        colors::RESET
+    );
+    let savings_color = if report.estimated_savings_kb > 0 {
+        colors::YELLOW
+    } else {
+        colors::BOLD_WHITE
+    };
+    println!(
+        "  Est. Savings:          {}~{}KB (~{}MB){}",
+        savings_color,
         report.estimated_savings_kb,
-        report.estimated_savings_kb / 1024
+        report.estimated_savings_kb / 1024,
+        colors::RESET
     );
     println!();
 
     // Top critical deps by PageRank
     if !report.top_critical.is_empty() {
-        println!("📈  Critical Dependencies (by PageRank)");
+        println!(
+            "{}📈  Critical Dependencies (by PageRank){}",
+            colors::BOLD,
+            colors::RESET
+        );
         println!("  ┌─────────────────────┬──────────┐");
         println!("  │ Dependency          │ Score    │");
         println!("  ├─────────────────────┼──────────┤");
         for (name, score) in report.top_critical.iter().take(5) {
+            let name_str = name.get(..name.len().min(19)).unwrap_or(name);
             println!(
-                "  │ {:<19} │ {:.6} │",
-                name.get(..name.len().min(19)).unwrap_or(name),
-                score
+                "  │ {}{:<19}{} │ {}{:.6}{} │",
+                colors::CYAN,
+                name_str,
+                colors::RESET,
+                colors::BOLD,
+                score,
+                colors::RESET
             );
         }
         println!("  └─────────────────────┴──────────┘");
-        println!("  (Higher = more deps depend on it, harder to remove)");
+        println!(
+            "  {}(Higher = more deps depend on it, harder to remove){}",
+            colors::DIM,
+            colors::RESET
+        );
         println!();
     }
 
@@ -153,17 +257,26 @@ pub fn print_text_report(report: &DepsAuditReport) {
         .collect();
 
     if !removable.is_empty() {
-        println!("❌  Removable Dependencies");
+        println!(
+            "{}❌  Removable Dependencies{}",
+            colors::BOLD_RED,
+            colors::RESET
+        );
         println!("  ┌─────────────────────┬────────────────────────────────────────┐");
         println!("  │ Dependency          │ Reason                                 │");
         println!("  ├─────────────────────┼────────────────────────────────────────┤");
         for dep in &removable {
+            let name_str = dep.name.get(..dep.name.len().min(19)).unwrap_or(&dep.name);
+            let reason_str = dep
+                .reason
+                .get(..dep.reason.len().min(38))
+                .unwrap_or(&dep.reason);
             println!(
-                "  │ {:<19} │ {:<38} │",
-                dep.name.get(..dep.name.len().min(19)).unwrap_or(&dep.name),
-                dep.reason
-                    .get(..dep.reason.len().min(38))
-                    .unwrap_or(&dep.reason)
+                "  │ {}{:<19}{} │ {:<38} │",
+                colors::CYAN,
+                name_str,
+                colors::RESET,
+                reason_str
             );
         }
         println!("  └─────────────────────┴────────────────────────────────────────┘");
@@ -171,18 +284,27 @@ pub fn print_text_report(report: &DepsAuditReport) {
     }
 
     if !heavy.is_empty() {
-        println!("⚠️   Heavy Dependencies (Bloat)");
+        println!(
+            "{}⚠️   Heavy Dependencies (Bloat){}",
+            colors::BOLD_YELLOW,
+            colors::RESET
+        );
         println!("  ┌─────────────────────┬──────────┬─────────────────────────────┐");
         println!("  │ Dependency          │ Size KB  │ Reason                      │");
         println!("  ├─────────────────────┼──────────┼─────────────────────────────┤");
         for dep in &heavy {
+            let name_str = dep.name.get(..dep.name.len().min(19)).unwrap_or(&dep.name);
+            let reason_str = dep
+                .reason
+                .get(..dep.reason.len().min(27))
+                .unwrap_or(&dep.reason);
             println!(
-                "  │ {:<19} │ {:>8} │ {:<27} │",
-                dep.name.get(..dep.name.len().min(19)).unwrap_or(&dep.name),
+                "  │ {}{:<19}{} │ {:>8} │ {:<27} │",
+                colors::CYAN,
+                name_str,
+                colors::RESET,
                 dep.estimated_size_kb,
-                dep.reason
-                    .get(..dep.reason.len().min(27))
-                    .unwrap_or(&dep.reason)
+                reason_str
             );
         }
         println!("  └─────────────────────┴──────────┴─────────────────────────────┘");
@@ -190,21 +312,33 @@ pub fn print_text_report(report: &DepsAuditReport) {
     }
 
     if !replaceable.is_empty() {
-        println!("🔄  Replaceable with Sovereign Stack");
+        println!(
+            "{}🔄  Replaceable with Sovereign Stack{}",
+            colors::BOLD_YELLOW,
+            colors::RESET
+        );
         println!("  ┌─────────────────────┬─────────────────────┬───────────────────┐");
         println!("  │ Dependency          │ Replacement         │ Benefit           │");
         println!("  ├─────────────────────┼─────────────────────┼───────────────────┤");
         for dep in &replaceable {
             let replacement = dep.replacement.as_deref().unwrap_or("-");
+            let name_str = dep.name.get(..dep.name.len().min(19)).unwrap_or(&dep.name);
+            let repl_str = replacement
+                .get(..replacement.len().min(19))
+                .unwrap_or(replacement);
+            let reason_str = dep
+                .reason
+                .get(..dep.reason.len().min(17))
+                .unwrap_or(&dep.reason);
             println!(
-                "  │ {:<19} │ {:<19} │ {:<17} │",
-                dep.name.get(..dep.name.len().min(19)).unwrap_or(&dep.name),
-                replacement
-                    .get(..replacement.len().min(19))
-                    .unwrap_or(replacement),
-                dep.reason
-                    .get(..dep.reason.len().min(17))
-                    .unwrap_or(&dep.reason)
+                "  │ {}{:<19}{} │ {}{:<19}{} │ {:<17} │",
+                colors::CYAN,
+                name_str,
+                colors::RESET,
+                colors::GREEN,
+                repl_str,
+                colors::RESET,
+                reason_str
             );
         }
         println!("  └─────────────────────┴─────────────────────┴───────────────────┘");
@@ -212,20 +346,29 @@ pub fn print_text_report(report: &DepsAuditReport) {
     }
 
     if !dev_only.is_empty() {
-        println!("🧪  Dev-Only Dependencies ({})", dev_only.len());
+        println!(
+            "{}🧪  Dev-Only Dependencies ({}){}",
+            colors::BOLD,
+            dev_only.len(),
+            colors::RESET
+        );
         let names: Vec<_> = dev_only.iter().map(|d| d.name.as_str()).collect();
         println!("  {}", names.join(", "));
         println!();
     }
 
     if !report.recommendations.is_empty() {
-        println!("💡  Recommendations");
+        println!("{}💡  Recommendations{}", colors::BOLD, colors::RESET);
         for (i, rec) in report.recommendations.iter().enumerate() {
             println!("  {}. {}", i + 1, rec);
         }
         println!();
     }
 
-    println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    println!("Run with --all to see Core and Sovereign deps");
+    println!("{}", colors::rule());
+    println!(
+        "{}Run with --all to see Core and Sovereign deps{}",
+        colors::DIM,
+        colors::RESET
+    );
 }

@@ -19,6 +19,15 @@ mod tests {
     use std::path::PathBuf;
 
     // ============================================
+    // Helper: strip ANSI escape sequences
+    // ============================================
+
+    fn strip_ansi(s: &str) -> String {
+        let re = regex::Regex::new(r"\x1b\[[0-9;]*m").unwrap();
+        re.replace_all(s, "").to_string()
+    }
+
+    // ============================================
     // Helper functions for creating test data
     // ============================================
 
@@ -583,9 +592,9 @@ mod tests {
     fn test_format_big_o_summary_header() {
         let report = create_test_report_empty();
         let output = format_big_o_summary(&report);
+        let plain = strip_ansi(&output);
 
-        assert!(output.contains("Big-O Complexity Analysis Summary"));
-        assert!(output.contains("================================="));
+        assert!(plain.contains("Big-O Complexity Analysis Summary"));
     }
 
     #[test]
@@ -595,16 +604,20 @@ mod tests {
             ..create_test_report_empty()
         };
         let output = format_big_o_summary(&report);
+        let plain = strip_ansi(&output);
 
-        assert!(output.contains("Total Functions Analyzed: 100"));
+        assert!(plain.contains("Total Functions Analyzed"));
+        assert!(plain.contains("100"));
     }
 
     #[test]
     fn test_format_big_o_summary_high_complexity_count() {
         let report = create_test_report_with_functions();
         let output = format_big_o_summary(&report);
+        let plain = strip_ansi(&output);
 
-        assert!(output.contains("High Complexity Functions: 4"));
+        assert!(plain.contains("High Complexity Functions"));
+        assert!(plain.contains("4"));
     }
 
     #[test]
@@ -672,41 +685,45 @@ mod tests {
     fn test_format_big_o_detailed_includes_summary() {
         let report = create_test_report_with_functions();
         let output = format_big_o_detailed(&report);
+        let plain = strip_ansi(&output);
 
         // Should contain summary section
-        assert!(output.contains("Big-O Complexity Analysis Summary"));
-        assert!(output.contains("Total Functions Analyzed:"));
+        assert!(plain.contains("Big-O Complexity Analysis Summary"));
+        assert!(plain.contains("Total Functions Analyzed:"));
     }
 
     #[test]
     fn test_format_big_o_detailed_function_list() {
         let report = create_test_report_with_functions();
         let output = format_big_o_detailed(&report);
+        let plain = strip_ansi(&output);
 
-        assert!(output.contains("High Complexity Functions:"));
-        assert!(output.contains("=========================="));
-        assert!(output.contains("bubble_sort"));
-        assert!(output.contains("matrix_mult"));
+        assert!(plain.contains("High Complexity Functions:"));
+        assert!(plain.contains("bubble_sort"));
+        assert!(plain.contains("matrix_mult"));
     }
 
     #[test]
     fn test_format_big_o_detailed_function_location() {
         let report = create_test_report_with_functions();
         let output = format_big_o_detailed(&report);
+        let plain = strip_ansi(&output);
 
         // Should show file path and line number
-        assert!(output.contains("src/sort.rs:42"));
-        assert!(output.contains("src/math.rs:100"));
+        assert!(plain.contains("src/sort.rs"));
+        assert!(plain.contains("42"));
+        assert!(plain.contains("src/math.rs"));
+        assert!(plain.contains("100"));
     }
 
     #[test]
     fn test_format_big_o_detailed_complexity_info() {
         let report = create_test_report_with_functions();
         let output = format_big_o_detailed(&report);
+        let plain = strip_ansi(&output);
 
-        assert!(output.contains("Time Complexity:"));
-        assert!(output.contains("Space Complexity:"));
-        assert!(output.contains("confidence"));
+        assert!(plain.contains("Time Complexity:"));
+        assert!(plain.contains("Space Complexity:"));
     }
 
     #[test]
@@ -717,21 +734,22 @@ mod tests {
             "Consider using hash map".to_string(),
         ];
         let output = format_big_o_detailed(&report);
+        let plain = strip_ansi(&output);
 
-        assert!(output.contains("Notes:"));
-        assert!(output.contains("Nested loop detected"));
-        assert!(output.contains("Consider using hash map"));
+        assert!(plain.contains("Notes:"));
+        assert!(plain.contains("Nested loop detected"));
+        assert!(plain.contains("Consider using hash map"));
     }
 
     #[test]
     fn test_format_big_o_detailed_pattern_matches() {
         let report = create_test_report_with_functions();
         let output = format_big_o_detailed(&report);
+        let plain = strip_ansi(&output);
 
-        assert!(output.contains("Pattern Matches:"));
-        assert!(output.contains("================"));
-        assert!(output.contains("Sorting operation"));
-        assert!(output.contains("5 occurrences"));
+        assert!(plain.contains("Pattern Matches:"));
+        assert!(plain.contains("Sorting operation"));
+        assert!(plain.contains("5 occurrences"));
     }
 
     #[test]

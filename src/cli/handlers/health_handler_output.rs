@@ -56,33 +56,68 @@ fn print_health_report(report: &HealthReport, format: &OutputFormat) -> Result<(
 /// Print health report as table
 fn print_health_table(report: &HealthReport) {
     let overall_icon = if report.healthy { "✅" } else { "❌" };
-    eprintln!("{} Project Health Report\n", overall_icon);
+    eprintln!("{} {}\n", overall_icon, colors::header("Project Health Report"));
 
     for check in &report.checks {
-        let icon = match check.status {
-            CheckStatus::Pass => "✅",
-            CheckStatus::Warn => "⚠️ ",
-            CheckStatus::Fail => "❌",
-            CheckStatus::Skip => "⏭️ ",
+        let (icon, status_color) = match check.status {
+            CheckStatus::Pass => ("✅", colors::GREEN),
+            CheckStatus::Warn => ("⚠️ ", colors::YELLOW),
+            CheckStatus::Fail => ("❌", colors::RED),
+            CheckStatus::Skip => ("⏭️ ", colors::DIM),
         };
 
-        eprintln!("{} {}: {}", icon, check.name, check.message);
+        eprintln!(
+            "{} {}{}{}: {}",
+            icon, status_color, check.name, colors::RESET, check.message
+        );
         if let Some(details) = &check.details {
-            eprintln!("   {}", details);
+            eprintln!("   {}", colors::path(details));
         }
     }
 
-    eprintln!("\n📊 Summary:");
-    eprintln!("   Total:   {}", report.summary.total_checks);
-    eprintln!("   Passed:  {}", report.summary.passed);
-    eprintln!("   Warned:  {}", report.summary.warned);
-    eprintln!("   Failed:  {}", report.summary.failed);
-    eprintln!("   Skipped: {}", report.summary.skipped);
+    eprintln!("\n📊 {}", colors::subheader("Summary:"));
+    eprintln!(
+        "   Total:   {}",
+        colors::number(&report.summary.total_checks.to_string())
+    );
+    eprintln!(
+        "   Passed:  {}{}{}",
+        colors::GREEN,
+        report.summary.passed,
+        colors::RESET
+    );
+    eprintln!(
+        "   Warned:  {}{}{}",
+        colors::YELLOW,
+        report.summary.warned,
+        colors::RESET
+    );
+    eprintln!(
+        "   Failed:  {}{}{}",
+        colors::RED,
+        report.summary.failed,
+        colors::RESET
+    );
+    eprintln!(
+        "   Skipped: {}{}{}",
+        colors::DIM,
+        report.summary.skipped,
+        colors::RESET
+    );
 
     if report.healthy {
-        eprintln!("\n✨ Project is healthy!");
+        eprintln!(
+            "\n✨ {}Project is healthy!{}",
+            colors::BOLD_GREEN,
+            colors::RESET
+        );
     } else {
-        eprintln!("\n⚠️  Project has {} issue(s)", report.summary.failed);
+        eprintln!(
+            "\n⚠️  {}Project has {} issue(s){}",
+            colors::BOLD_RED,
+            report.summary.failed,
+            colors::RESET
+        );
     }
 }
 

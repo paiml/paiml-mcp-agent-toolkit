@@ -14,9 +14,10 @@ struct TestEdit {
 
 /// Phase 3: Mark - Add #[ignore] attributes
 async fn handle_mark(input: &Path, apply: bool) -> Result<()> {
-    println!("🏷️  Marking tests as #[ignore]");
+    use crate::cli::colors as c;
+    println!("{}", c::label("Marking tests as #[ignore]"));
     if !apply {
-        println!("   (DRY RUN - use --apply to make changes)");
+        println!("   {}", c::dim("(DRY RUN - use --apply to make changes)"));
     }
     println!();
 
@@ -38,7 +39,10 @@ async fn handle_mark(input: &Path, apply: bool) -> Result<()> {
         }
     }
 
-    println!("   Found {} tests to mark across files", edits.len());
+    println!(
+        "   Found {} tests to mark across files",
+        c::number(&edits.len().to_string())
+    );
 
     // Group edits by file
     let mut by_file: std::collections::HashMap<PathBuf, Vec<TestEdit>> =
@@ -47,7 +51,11 @@ async fn handle_mark(input: &Path, apply: bool) -> Result<()> {
         by_file.entry(edit.file.clone()).or_default().push(edit);
     }
 
-    println!("   Files to modify: {}", by_file.len());
+    println!(
+        "   {}: {}",
+        c::dim("Files to modify"),
+        c::number(&by_file.len().to_string())
+    );
     println!();
 
     let mut modified_count = 0;
@@ -56,7 +64,11 @@ async fn handle_mark(input: &Path, apply: bool) -> Result<()> {
     for (file, file_edits) in &by_file {
         if !file.exists() || file.to_string_lossy() == "unknown" {
             // Try to resolve file from test name
-            println!("   ⚠️  Skipping {} (file not found)", file.display());
+            println!(
+                "   {} Skipping {} (file not found)",
+                c::warn(""),
+                c::path(&file.display().to_string())
+            );
             continue;
         }
 
@@ -64,14 +76,29 @@ async fn handle_mark(input: &Path, apply: bool) -> Result<()> {
             Ok(count) => {
                 modified_count += count;
                 if apply {
-                    println!("   ✅ Modified {} tests in {}", count, file.display());
+                    println!(
+                        "   {} Modified {} tests in {}",
+                        c::pass(""),
+                        c::number(&count.to_string()),
+                        c::path(&file.display().to_string())
+                    );
                 } else {
-                    println!("   📝 Would modify {} tests in {}", count, file.display());
+                    println!(
+                        "   {} Would modify {} tests in {}",
+                        c::dim(""),
+                        c::number(&count.to_string()),
+                        c::path(&file.display().to_string())
+                    );
                 }
             }
             Err(e) => {
                 error_count += 1;
-                println!("   ❌ Error in {}: {}", file.display(), e);
+                println!(
+                    "   {} Error in {}: {}",
+                    c::fail(""),
+                    c::path(&file.display().to_string()),
+                    e
+                );
             }
         }
     }
@@ -79,15 +106,19 @@ async fn handle_mark(input: &Path, apply: bool) -> Result<()> {
     println!();
     if apply {
         println!(
-            "✅ Marking complete: {} tests modified, {} errors",
-            modified_count, error_count
+            "{} Marking complete: {} tests modified, {} errors",
+            c::pass(""),
+            c::number(&modified_count.to_string()),
+            error_count
         );
     } else {
         println!(
-            "✅ Dry run complete: {} tests would be modified, {} errors",
-            modified_count, error_count
+            "{} Dry run complete: {} tests would be modified, {} errors",
+            c::pass(""),
+            c::number(&modified_count.to_string()),
+            error_count
         );
-        println!("   Run with --apply to make changes");
+        println!("   {}", c::dim("Run with --apply to make changes"));
     }
 
     Ok(())
@@ -144,7 +175,12 @@ fn mark_tests_in_file(file: &Path, edits: &[TestEdit], apply: bool) -> Result<us
 
 /// Phase 4: Verify - Ensure all tests pass
 async fn handle_verify(path: &Path) -> Result<()> {
-    println!("✅ Verifying tests pass in {}", path.display());
+    use crate::cli::colors as c;
+    println!(
+        "{} Verifying tests pass in {}",
+        c::pass(""),
+        c::path(&path.display().to_string())
+    );
     println!();
 
     // Run cargo test
@@ -155,8 +191,15 @@ async fn handle_verify(path: &Path) -> Result<()> {
         .arg("--include-ignored")
         .current_dir(path);
 
-    println!("📊 Running: cargo test --workspace -- --include-ignored");
-    println!("   (This includes ignored tests to verify they're marked correctly)");
+    println!(
+        "{} Running: {}",
+        c::label(""),
+        c::dim("cargo test --workspace -- --include-ignored")
+    );
+    println!(
+        "   {}",
+        c::dim("(This includes ignored tests to verify they're marked correctly)")
+    );
     println!();
 
     let output = cmd
@@ -171,18 +214,41 @@ async fn handle_verify(path: &Path) -> Result<()> {
     // Parse results
     let (passed, failed, ignored) = parse_test_summary(&stdout, &stderr);
 
-    println!("📈 Test Results:");
-    println!("   ✅ Passed: {}", passed);
-    println!("   ❌ Failed: {}", failed);
-    println!("   ⏭️  Ignored: {}", ignored);
+    println!("{}", c::subheader("Test Results:"));
+    println!(
+        "   {} Passed: {}",
+        c::pass(""),
+        c::number(&passed.to_string())
+    );
+    println!(
+        "   {} Failed: {}",
+        c::fail(""),
+        if failed > 0 {
+            format!("{}{}{}", c::BOLD_RED, failed, c::RESET)
+        } else {
+            failed.to_string()
+        }
+    );
+    println!(
+        "   {} Ignored: {}",
+        c::skip(""),
+        c::number(&ignored.to_string())
+    );
     println!();
 
     if failed > 0 {
-        println!("⚠️  {} tests still failing!", failed);
-        println!("   Run 'pmat test-discovery run' to discover remaining failures");
+        println!(
+            "{} {} tests still failing!",
+            c::warn(""),
+            failed
+        );
+        println!(
+            "   {}",
+            c::dim("Run 'pmat test-discovery run' to discover remaining failures")
+        );
         anyhow::bail!("{} tests still failing", failed);
     } else {
-        println!("✅ All tests passing or properly ignored!");
+        println!("{}", c::pass("All tests passing or properly ignored!"));
     }
 
     Ok(())

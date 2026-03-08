@@ -4,6 +4,7 @@
 
 #![cfg_attr(coverage_nightly, coverage(off))]
 
+use crate::cli::colors as c;
 use crate::cli::enums::OutputFormat;
 use crate::services::metric_trends::{MetricTrendStore, PredictionResult};
 use anyhow::Result;
@@ -53,7 +54,11 @@ pub async fn handle_predict_quality(
             .unwrap_or(0.0);
 
         if threshold_value == 0.0 {
-            eprintln!("⚠️  No threshold configured for metric: {}", metric_name);
+            eprintln!(
+                "{} No threshold configured for metric: {}",
+                c::warn(""),
+                c::label(&metric_name)
+            );
             continue;
         }
 
@@ -68,15 +73,21 @@ pub async fn handle_predict_quality(
             }
             Err(e) => {
                 eprintln!(
-                    "⚠️  Failed to predict {}: {} (need at least 7 observations)",
-                    metric_name, e
+                    "{} Failed to predict {}: {} {}",
+                    c::warn(""),
+                    c::label(&metric_name),
+                    e,
+                    c::dim("(need at least 7 observations)")
                 );
             }
         }
     }
 
     if predictions.is_empty() {
-        println!("\n✅ No metrics to predict (all metrics safe or insufficient data)");
+        println!(
+            "\n{}",
+            c::pass("No metrics to predict (all metrics safe or insufficient data)")
+        );
         return Ok(());
     }
 
@@ -98,47 +109,52 @@ pub async fn handle_predict_quality(
 
 /// Print predictions in table format
 fn print_predictions_table(predictions: &[PredictionResult]) {
-    println!("\n\x1b[1;34m🔮 Quality Metrics Predictions\x1b[0m\n");
+    println!("\n{}\n", c::header("Quality Metrics Predictions"));
 
     for pred in predictions {
-        println!("\x1b[1m{}\x1b[0m", pred.metric);
-        println!("  Current: {:.1}ms", pred.current_value);
-        println!("  Threshold: {:.1}ms", pred.threshold);
+        println!("{}", c::subheader(&pred.metric));
+        println!("  {}: {:.1}ms", c::dim("Current"), pred.current_value);
+        println!("  {}: {:.1}ms", c::dim("Threshold"), pred.threshold);
 
         if let Some(days) = pred.breach_in_days {
             if let Some(value) = pred.predicted_value {
                 let urgency = if days <= 7 {
-                    "\x1b[31m⚠️  URGENT\x1b[0m"
+                    format!("{}URGENT{}", c::BOLD_RED, c::RESET)
                 } else if days <= 14 {
-                    "\x1b[33m⚠️  WARNING\x1b[0m"
+                    format!("{}WARNING{}", c::BOLD_YELLOW, c::RESET)
                 } else {
-                    "\x1b[34mℹ️  INFO\x1b[0m"
+                    format!("{}INFO{}", c::BOLD_BLUE, c::RESET)
                 };
 
                 println!(
-                    "  Breach: {} in {} days (predicted: {:.1}ms)",
-                    urgency, days, value
+                    "  {}: {} in {} days (predicted: {:.1}ms)",
+                    c::dim("Breach"),
+                    urgency,
+                    c::number(&days.to_string()),
+                    value
                 );
                 println!(
-                    "  Confidence: {:.1}% (R²={:.3})",
-                    pred.confidence * 100.0,
+                    "  {}: {} (R²={:.3})",
+                    c::dim("Confidence"),
+                    c::pct(pred.confidence * 100.0, 80.0, 50.0),
                     pred.confidence
                 );
             }
         } else {
-            println!("  Breach: \x1b[32m✅ No breach predicted\x1b[0m");
+            println!("  {}: {}", c::dim("Breach"), c::pass("No breach predicted"));
             println!(
-                "  Confidence: {:.1}% (R²={:.3})",
-                pred.confidence * 100.0,
+                "  {}: {} (R²={:.3})",
+                c::dim("Confidence"),
+                c::pct(pred.confidence * 100.0, 80.0, 50.0),
                 pred.confidence
             );
         }
 
         // Print recommendations
         if !pred.recommendations.is_empty() {
-            println!("  Recommendations:");
+            println!("  {}:", c::dim("Recommendations"));
             for rec in &pred.recommendations {
-                println!("    • {}", rec);
+                println!("    {} {}", c::dim("•"), rec);
             }
         }
 

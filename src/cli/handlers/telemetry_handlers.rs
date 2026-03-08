@@ -4,6 +4,7 @@
 //! enabling users to view system metrics, service performance data, and
 //! system health information.
 
+use crate::cli::colors as c;
 use crate::services::telemetry_service::{telemetry, OperationMetrics, TelemetryInput};
 use anyhow::Result;
 use serde_json::json;
@@ -44,13 +45,16 @@ async fn handle_reset_command() -> Result<()> {
     #[cfg(test)]
     {
         telemetry().reset();
-        println!("🔄 Telemetry data reset successfully");
+        println!("{}", c::pass("Telemetry data reset successfully"));
         Ok(())
     }
 
     #[cfg(not(test))]
     {
-        println!("⚠️ Telemetry reset is only available in test builds");
+        println!(
+            "{}",
+            c::warn("Telemetry reset is only available in test builds")
+        );
         Ok(())
     }
 }
@@ -58,7 +62,7 @@ async fn handle_reset_command() -> Result<()> {
 /// Handle test event recording command
 async fn handle_test_event_command() -> Result<()> {
     record_test_telemetry_event().await?;
-    println!("✅ Test telemetry event recorded successfully");
+    println!("{}", c::pass("Test telemetry event recorded successfully"));
     Ok(())
 }
 
@@ -73,63 +77,84 @@ async fn handle_display_command(system: bool, service: Option<String>) -> Result
 
 /// Show comprehensive system telemetry data
 async fn show_system_telemetry() -> Result<()> {
-    info!("📊 Generating system telemetry report");
+    info!("Generating system telemetry report");
 
     let telemetry_service = telemetry();
     let system_data = telemetry_service.get_system_telemetry().await?;
 
-    println!("🔍 PMAT System Telemetry Report");
-    println!("{}", "=".repeat(50));
+    println!("{}", c::header("PMAT System Telemetry Report"));
+    println!("{}", c::rule());
     println!();
 
     // System overview
-    println!("📊 System Overview:");
-    println!("  Uptime: {} seconds", system_data.uptime_seconds);
+    println!("{}", c::subheader("System Overview:"));
     println!(
-        "  Total Operations: {}",
-        system_data.system_metrics.total_operations
+        "  {}: {} seconds",
+        c::dim("Uptime"),
+        c::number(&system_data.uptime_seconds.to_string())
     );
     println!(
-        "  Success Rate: {:.2}%",
-        system_data.system_metrics.success_rate * 100.0
+        "  {}: {}",
+        c::dim("Total Operations"),
+        c::number(&system_data.system_metrics.total_operations.to_string())
     );
     println!(
-        "  Average Duration: {} ms",
-        system_data.system_metrics.avg_duration_ms
+        "  {}: {}",
+        c::dim("Success Rate"),
+        c::pct(system_data.system_metrics.success_rate * 100.0, 90.0, 70.0)
     );
     println!(
-        "  Total Items Processed: {}",
-        system_data.system_metrics.total_items_processed
+        "  {}: {} ms",
+        c::dim("Average Duration"),
+        c::number(&system_data.system_metrics.avg_duration_ms.to_string())
+    );
+    println!(
+        "  {}: {}",
+        c::dim("Total Items Processed"),
+        c::number(&system_data.system_metrics.total_items_processed.to_string())
     );
     println!();
 
     // Service breakdown
     if !system_data.services.is_empty() {
-        println!("🔧 Service Breakdown:");
+        println!("{}", c::subheader("Service Breakdown:"));
         for (service_name, service_data) in &system_data.services {
-            println!("  📦 {service_name}");
+            println!("  {}", c::label(service_name));
             println!(
-                "    Operations: {} (Success: {}, Failed: {})",
-                service_data.total_operations,
+                "    {}: {} ({}{}{}: {}, {}{}{}: {})",
+                c::dim("Operations"),
+                c::number(&service_data.total_operations.to_string()),
+                c::GREEN,
+                "Success",
+                c::RESET,
                 service_data.successful_operations,
+                c::RED,
+                "Failed",
+                c::RESET,
                 service_data.failed_operations
             );
             println!(
-                "    Success Rate: {:.2}%",
-                service_data.success_rate * 100.0
+                "    {}: {}",
+                c::dim("Success Rate"),
+                c::pct(service_data.success_rate * 100.0, 90.0, 70.0)
             );
-            println!("    Avg Duration: {} ms", service_data.avg_duration_ms);
             println!(
-                "    Items Processed: {}",
-                service_data.total_items_processed
+                "    {}: {} ms",
+                c::dim("Avg Duration"),
+                c::number(&service_data.avg_duration_ms.to_string())
+            );
+            println!(
+                "    {}: {}",
+                c::dim("Items Processed"),
+                c::number(&service_data.total_items_processed.to_string())
             );
 
             if !service_data.operation_counts.is_empty() {
-                println!("    Top Operations:");
+                println!("    {}:", c::dim("Top Operations"));
                 let mut ops: Vec<_> = service_data.operation_counts.iter().collect();
                 ops.sort_by(|a, b| b.1.cmp(a.1));
                 for (op, count) in ops.iter().take(3) {
-                    println!("      - {op}: {count} times");
+                    println!("      - {}: {} times", c::label(op), count);
                 }
             }
             println!();
@@ -137,7 +162,7 @@ async fn show_system_telemetry() -> Result<()> {
     }
 
     // JSON output for programmatic access
-    println!("📄 Raw Data (JSON):");
+    println!("{}", c::dim("Raw Data (JSON):"));
     println!("{}", serde_json::to_string_pretty(&system_data)?);
 
     Ok(())
@@ -145,54 +170,101 @@ async fn show_system_telemetry() -> Result<()> {
 
 /// Show telemetry data for a specific service
 async fn show_service_telemetry(service_name: &str) -> Result<()> {
-    info!(service = %service_name, "📊 Generating service telemetry report");
+    info!(service = %service_name, "Generating service telemetry report");
 
     let telemetry_service = telemetry();
 
     if let Some(service_data) = telemetry_service.get_service_telemetry(service_name).await {
-        println!("🔍 Service Telemetry: {service_name}");
-        println!("{}", "=".repeat(50));
+        println!(
+            "{} {}",
+            c::header("Service Telemetry:"),
+            c::label(service_name)
+        );
+        println!("{}", c::rule());
         println!();
 
-        println!("📊 Performance Metrics:");
-        println!("  Total Operations: {}", service_data.total_operations);
+        println!("{}", c::subheader("Performance Metrics:"));
         println!(
-            "  Successful: {} ({:.2}%)",
-            service_data.successful_operations,
-            service_data.success_rate * 100.0
+            "  {}: {}",
+            c::dim("Total Operations"),
+            c::number(&service_data.total_operations.to_string())
         );
-        println!("  Failed: {}", service_data.failed_operations);
-        println!("  Average Duration: {} ms", service_data.avg_duration_ms);
-        println!("  Total Duration: {} ms", service_data.total_duration_ms);
-        println!("  Items Processed: {}", service_data.total_items_processed);
+        println!(
+            "  {}: {} ({})",
+            c::dim("Successful"),
+            c::number(&service_data.successful_operations.to_string()),
+            c::pct(service_data.success_rate * 100.0, 90.0, 70.0)
+        );
+        println!(
+            "  {}: {}",
+            c::dim("Failed"),
+            if service_data.failed_operations > 0 {
+                format!("{}{}{}", c::RED, service_data.failed_operations, c::RESET)
+            } else {
+                service_data.failed_operations.to_string()
+            }
+        );
+        println!(
+            "  {}: {} ms",
+            c::dim("Average Duration"),
+            c::number(&service_data.avg_duration_ms.to_string())
+        );
+        println!(
+            "  {}: {} ms",
+            c::dim("Total Duration"),
+            c::number(&service_data.total_duration_ms.to_string())
+        );
+        println!(
+            "  {}: {}",
+            c::dim("Items Processed"),
+            c::number(&service_data.total_items_processed.to_string())
+        );
 
         if service_data.peak_memory_bytes > 0 {
-            println!("  Peak Memory: {} bytes", service_data.peak_memory_bytes);
+            println!(
+                "  {}: {} bytes",
+                c::dim("Peak Memory"),
+                c::number(&service_data.peak_memory_bytes.to_string())
+            );
         }
 
         println!(
-            "  Last Operation: {} (timestamp)",
+            "  {}: {}",
+            c::dim("Last Operation"),
             service_data.last_operation_at
         );
         println!();
 
         if !service_data.operation_counts.is_empty() {
-            println!("🔧 Operation Breakdown:");
+            println!("{}", c::subheader("Operation Breakdown:"));
             let mut operations: Vec<_> = service_data.operation_counts.iter().collect();
             operations.sort_by(|a, b| b.1.cmp(a.1));
 
             for (operation, count) in operations {
                 let percentage = (*count as f64 / service_data.total_operations as f64) * 100.0;
-                println!("  - {operation}: {count} ({percentage:.1}%)");
+                println!(
+                    "  - {}: {} ({:.1}%)",
+                    c::label(operation),
+                    count,
+                    percentage
+                );
             }
         }
 
         println!();
-        println!("📄 Raw Data (JSON):");
+        println!("{}", c::dim("Raw Data (JSON):"));
         println!("{}", serde_json::to_string_pretty(&service_data)?);
     } else {
-        println!("❌ No telemetry data found for service: {service_name}");
-        println!("💡 Available services can be seen with: pmat telemetry --system");
+        println!(
+            "{}",
+            c::fail(&format!(
+                "No telemetry data found for service: {service_name}"
+            ))
+        );
+        println!(
+            "{}",
+            c::dim("Available services can be seen with: pmat telemetry --system")
+        );
     }
 
     Ok(())
@@ -200,38 +272,54 @@ async fn show_service_telemetry(service_name: &str) -> Result<()> {
 
 /// Show system overview (default command)
 async fn show_system_overview() -> Result<()> {
-    info!("📊 Generating system overview");
+    info!("Generating system overview");
 
     let telemetry_service = telemetry();
     let system_data = telemetry_service.get_system_telemetry().await?;
 
-    println!("🔍 PMAT System Overview");
-    println!("{}", "=".repeat(30));
+    println!("{}", c::header("PMAT System Overview"));
+    println!("{}", c::rule());
     println!();
 
-    println!("⏱️ System Status:");
-    println!("  Uptime: {} seconds", system_data.uptime_seconds);
+    println!("{}", c::subheader("System Status:"));
     println!(
-        "  Total Operations: {}",
-        system_data.system_metrics.total_operations
+        "  {}: {} seconds",
+        c::dim("Uptime"),
+        c::number(&system_data.uptime_seconds.to_string())
     );
     println!(
-        "  Success Rate: {:.1}%",
-        system_data.system_metrics.success_rate * 100.0
+        "  {}: {}",
+        c::dim("Total Operations"),
+        c::number(&system_data.system_metrics.total_operations.to_string())
+    );
+    println!(
+        "  {}: {}",
+        c::dim("Success Rate"),
+        c::pct(system_data.system_metrics.success_rate * 100.0, 90.0, 70.0)
     );
     println!();
 
     if system_data.services.is_empty() {
-        println!("📊 No service telemetry data available yet");
-        println!("💡 Use --test-event to generate sample telemetry data");
+        println!("{}", c::dim("No service telemetry data available yet"));
+        println!(
+            "{}",
+            c::dim("Use --test-event to generate sample telemetry data")
+        );
     } else {
-        println!("🔧 Active Services: {}", system_data.services.len());
+        println!(
+            "{}: {}",
+            c::subheader("Active Services"),
+            c::number(&system_data.services.len().to_string())
+        );
         for service_name in system_data.services.keys() {
-            println!("  - {service_name}");
+            println!("  - {}", c::label(service_name));
         }
         println!();
 
-        println!("💡 Use --system for detailed metrics or --service <name> for service details");
+        println!(
+            "{}",
+            c::dim("Use --system for detailed metrics or --service <name> for service details")
+        );
     }
 
     Ok(())
@@ -239,7 +327,7 @@ async fn show_system_overview() -> Result<()> {
 
 /// Record a test telemetry event for demonstration
 async fn record_test_telemetry_event() -> Result<()> {
-    debug!("🧪 Recording test telemetry event");
+    debug!("Recording test telemetry event");
 
     let test_input = TelemetryInput {
         event_type: "test_operation".to_string(),
@@ -268,12 +356,12 @@ async fn record_test_telemetry_event() -> Result<()> {
     };
 
     let output = telemetry().record_operation(test_input).await?;
-    info!(event_id = %output.event_id, "✅ Test telemetry event recorded");
+    info!(event_id = %output.event_id, "Test telemetry event recorded");
 
     Ok(())
 }
 
-/// Record telemetry for this telemetry command execution  
+/// Record telemetry for this telemetry command execution
 async fn record_telemetry_command_execution(start_time: Instant) -> Result<()> {
     let duration = start_time.elapsed();
 

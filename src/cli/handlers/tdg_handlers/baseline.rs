@@ -5,6 +5,7 @@
 
 use super::display::{display_baseline_table, display_grade_distribution};
 use super::is_analyzable_file;
+use crate::cli::colors as c;
 use crate::tdg::TdgAnalyzer;
 use anyhow::Result;
 use std::path::{Path, PathBuf};
@@ -52,11 +53,19 @@ fn extract_git_context(
     }
     match crate::models::git_context::GitContext::try_from_current_dir(path) {
         Some(ctx) => {
-            println!("   📍 Git: {} on {}", ctx.commit_sha_short, ctx.branch);
+            println!(
+                "   {} {} on {}",
+                c::label("Git:"),
+                c::number(&ctx.commit_sha_short),
+                c::path(&ctx.branch)
+            );
             Some(ctx)
         }
         None => {
-            println!("   ⚠️  Warning: Not in a git repository, git context unavailable");
+            println!(
+                "   {}",
+                c::warn("Not in a git repository, git context unavailable")
+            );
             None
         }
     }
@@ -71,11 +80,20 @@ pub(super) async fn create_baseline(
 ) -> Result<()> {
     use crate::tdg::TdgBaseline;
 
-    println!("🔨 Creating TDG baseline...");
-    println!("   Path: {}", path.display());
-    println!("   Output: {}", output.display());
+    println!("{}", c::header("Creating TDG baseline..."));
     println!(
-        "   Git context: {}",
+        "   {} {}",
+        c::label("Path:"),
+        c::path(&path.display().to_string())
+    );
+    println!(
+        "   {} {}",
+        c::label("Output:"),
+        c::path(&output.display().to_string())
+    );
+    println!(
+        "   {} {}",
+        c::label("Git context:"),
         if with_git_context { "yes" } else { "no" }
     );
 
@@ -85,15 +103,33 @@ pub(super) async fn create_baseline(
         analyze_baseline_files(analyzer, path, &mut baseline).await?;
 
     println!();
-    println!("\n✅ Analysis complete:");
-    println!("   Files analyzed: {}", files_analyzed);
-    println!("   Files skipped: {}", files_skipped);
-    println!("   Average score: {:.1}", baseline.summary.avg_score);
+    println!("\n{}", c::pass("Analysis complete:"));
+    println!(
+        "   {} {}",
+        c::label("Files analyzed:"),
+        c::number(&format!("{}", files_analyzed))
+    );
+    println!(
+        "   {} {}",
+        c::label("Files skipped:"),
+        c::number(&format!("{}", files_skipped))
+    );
+    println!(
+        "   {} {}",
+        c::label("Average score:"),
+        c::number(&format!("{:.1}", baseline.summary.avg_score))
+    );
 
     display_grade_distribution(&baseline);
 
     baseline.save(output)?;
-    println!("\n💾 Baseline saved to: {}", output.display());
+    println!(
+        "\n{}",
+        c::pass(&format!(
+            "Baseline saved to: {}",
+            c::path(&output.display().to_string())
+        ))
+    );
 
     Ok(())
 }
@@ -111,7 +147,7 @@ async fn analyze_baseline_files(
     let mut files_analyzed = 0;
     let mut files_skipped = 0;
 
-    println!("\n📊 Analyzing files...");
+    println!("\n{}", c::dim("Analyzing files..."));
 
     for entry in WalkDir::new(path)
         .follow_links(false)
@@ -152,7 +188,14 @@ async fn analyze_baseline_files(
             Err(e) => {
                 files_skipped += 1;
                 if files_skipped <= 5 {
-                    println!("   ⚠️  Skipped {}: {}", file_path.display(), e);
+                    println!(
+                        "   {}",
+                        c::warn(&format!(
+                            "Skipped {}: {}",
+                            c::path(&file_path.display().to_string()),
+                            e
+                        ))
+                    );
                 }
             }
         }
@@ -171,19 +214,29 @@ pub(super) async fn compare_baseline(
 ) -> Result<()> {
     use crate::tdg::TdgBaseline;
 
-    println!("📊 Comparing against baseline...");
-    println!("   Baseline: {}", baseline_path.display());
-    println!("   Current path: {}", current_path.display());
+    println!("{}", c::header("Comparing against baseline..."));
+    println!(
+        "   {} {}",
+        c::label("Baseline:"),
+        c::path(&baseline_path.display().to_string())
+    );
+    println!(
+        "   {} {}",
+        c::label("Current path:"),
+        c::path(&current_path.display().to_string())
+    );
 
     // Load baseline
     let old_baseline = TdgBaseline::load(baseline_path)?;
     println!(
-        "   📝 Loaded baseline: {} files, avg score {:.1}",
-        old_baseline.summary.total_files, old_baseline.summary.avg_score
+        "   {} {} files, avg score {}",
+        c::label("Loaded baseline:"),
+        c::number(&format!("{}", old_baseline.summary.total_files)),
+        c::number(&format!("{:.1}", old_baseline.summary.avg_score))
     );
 
     // Create new baseline for current state
-    println!("\n🔍 Analyzing current state...");
+    println!("\n{}", c::dim("Analyzing current state..."));
     let temp_output = std::env::temp_dir().join("pmat-current-baseline.json");
     create_baseline(analyzer, current_path, &temp_output, false).await?;
     let new_baseline = TdgBaseline::load(&temp_output)?;
@@ -192,7 +245,7 @@ pub(super) async fn compare_baseline(
     std::fs::remove_file(&temp_output).ok();
 
     // Compare
-    println!("\n📈 Computing comparison...");
+    println!("\n{}", c::dim("Computing comparison..."));
     let comparison = old_baseline.compare(&new_baseline);
 
     // Format output
@@ -246,16 +299,24 @@ fn find_baseline_files(path: &Path) -> Vec<(PathBuf, crate::tdg::TdgBaseline)> {
 
 /// List all baselines in a directory (Sprint 66 Phase 1)
 async fn list_baselines(path: &Path, format: crate::cli::TdgOutputFormat) -> Result<()> {
-    println!("📋 Listing baselines in: {}", path.display());
+    println!(
+        "{} {}",
+        c::header("Listing baselines in:"),
+        c::path(&path.display().to_string())
+    );
 
     let baselines = find_baseline_files(path);
 
     if baselines.is_empty() {
-        println!("   No baselines found");
+        println!("   {}", c::dim("No baselines found"));
         return Ok(());
     }
 
-    println!("\n📊 Found {} baseline(s):\n", baselines.len());
+    println!(
+        "\n{} {}:\n",
+        c::label("Found"),
+        c::number(&format!("{} baseline(s)", baselines.len()))
+    );
 
     match format {
         crate::cli::TdgOutputFormat::Table | crate::cli::TdgOutputFormat::Markdown => {
@@ -281,10 +342,13 @@ async fn list_baselines(path: &Path, format: crate::cli::TdgOutputFormat) -> Res
         }
         crate::cli::TdgOutputFormat::Sarif => {
             for (path, baseline) in &baselines {
-                println!("📝 {}", path.display());
+                println!("{}", c::path(&path.display().to_string()));
                 println!(
-                    "   Files: {} | Avg: {:.1}",
-                    baseline.summary.total_files, baseline.summary.avg_score
+                    "   {} {} | {} {}",
+                    c::label("Files:"),
+                    c::number(&format!("{}", baseline.summary.total_files)),
+                    c::label("Avg:"),
+                    c::number(&format!("{:.1}", baseline.summary.avg_score))
                 );
             }
         }
@@ -300,14 +364,22 @@ async fn update_baseline(
     project_path: &Path,
     with_git_context: bool,
 ) -> Result<()> {
-    println!("🔄 Updating baseline...");
-    println!("   Baseline: {}", baseline_path.display());
-    println!("   Path: {}", project_path.display());
+    println!("{}", c::header("Updating baseline..."));
+    println!(
+        "   {} {}",
+        c::label("Baseline:"),
+        c::path(&baseline_path.display().to_string())
+    );
+    println!(
+        "   {} {}",
+        c::label("Path:"),
+        c::path(&project_path.display().to_string())
+    );
 
     // Simply re-create the baseline (overwrites the file)
     create_baseline(analyzer, project_path, baseline_path, with_git_context).await?;
 
-    println!("\n✅ Baseline updated successfully");
+    println!("\n{}", c::pass("Baseline updated successfully"));
 
     Ok(())
 }

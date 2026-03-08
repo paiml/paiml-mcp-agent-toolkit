@@ -3,6 +3,7 @@
 // Layer 2 (Genchi Genbutsu): Evidence-based review
 // Layer 3 (Governance): Audit artifact generation
 
+use crate::cli::colors as c;
 use crate::cli::commands::ComplyOutputFormat;
 use crate::models::comply_config::PmatYamlConfig;
 use anyhow::Result;
@@ -24,8 +25,11 @@ pub(crate) async fn handle_review(
     use crate::cli::handlers::comply_handlers::muda_handlers;
     use crate::cli::handlers::comply_handlers::reproducibility_handlers;
 
-    println!("PMAT Comply Review (Layer 2: Genchi Genbutsu)");
-    println!("==============================================\n");
+    println!(
+        "{}",
+        c::header("PMAT Comply Review (Layer 2: Genchi Genbutsu)")
+    );
+    println!("{}\n", c::rule());
 
     let repro = reproducibility_handlers::check_reproducibility(project_path);
     let golden = reproducibility_handlers::check_golden_trace_drift(project_path);
@@ -42,7 +46,13 @@ pub(crate) async fn handle_review(
 
     if let Some(out_path) = output {
         fs::write(out_path, &content)?;
-        println!("Review checklist written to {}", out_path.display());
+        println!(
+            "{}",
+            c::pass(&format!(
+                "Review checklist written to {}",
+                c::path(&out_path.display().to_string())
+            ))
+        );
     } else {
         println!("{}", content);
     }
@@ -193,14 +203,17 @@ pub(crate) async fn handle_audit(
     format: ComplyOutputFormat,
     output: Option<&Path>,
 ) -> Result<()> {
-    println!("PMAT Comply Audit (Layer 3: Governance)");
-    println!("========================================\n");
+    println!("{}", c::header("PMAT Comply Audit (Layer 3: Governance)"));
+    println!("{}\n", c::rule());
 
     let git_clean = check_git_clean(project_path);
     if !git_clean {
-        println!("\x1b[31mERROR: Audit requires clean git state.\x1b[0m");
+        println!("{}", c::fail("ERROR: Audit requires clean git state."));
         println!("Commit or stash all changes before generating an audit artifact.");
-        println!("\nRationale: Audit artifacts must be reproducible from a specific commit.");
+        println!(
+            "\n{}",
+            c::dim("Rationale: Audit artifacts must be reproducible from a specific commit.")
+        );
         std::process::exit(1);
     }
 
@@ -251,7 +264,13 @@ pub(crate) async fn handle_audit(
 
     if let Some(out_path) = output {
         fs::write(out_path, &content)?;
-        println!("Audit artifact written to {}", out_path.display());
+        println!(
+            "{}",
+            c::pass(&format!(
+                "Audit artifact written to {}",
+                c::path(&out_path.display().to_string())
+            ))
+        );
     } else {
         println!("{}", content);
     }

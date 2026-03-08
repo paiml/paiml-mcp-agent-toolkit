@@ -11,6 +11,7 @@
 //! - Code Quality (4 checks): Clippy config, Rustfmt config, Tests present, README
 //! - Advanced (3 checks): MSRV defined, Benchmarks, CI configured
 
+use crate::cli::colors;
 use crate::cli::commands::ProjectDiagOutputFormat;
 use anyhow::Result;
 use serde::{Deserialize, Serialize};

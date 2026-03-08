@@ -10,7 +10,8 @@ async fn format_and_output_results(
     final_validation: &ValidationResult,
     context: &RefactorContext,
 ) -> Result<()> {
-    eprintln!("📋 Formatting and outputting refactoring results...");
+    use crate::cli::colors as c;
+    eprintln!("{}", c::dim("Formatting and outputting refactoring results..."));
 
     match &context.config.output.format {
         RefactorAutoOutputFormat::Json => {
@@ -24,7 +25,7 @@ async fn format_and_output_results(
         }
     }
 
-    eprintln!("✅ Results output completed");
+    eprintln!("{}", c::pass("Results output completed"));
     Ok(())
 }
 
@@ -180,65 +181,67 @@ async fn output_text_results(
     final_validation: &ValidationResult,
     context: &RefactorContext,
 ) -> Result<()> {
+    use crate::cli::colors as c;
     let summary = create_refactoring_summary(iteration_results, final_validation, context).await?;
 
-    println!("🚀 AUTOMATED REFACTORING REPORT");
-    println!("=====================================");
-    println!("📁 Project: {}", context.config.project_path.display());
+    println!("{}", c::header("AUTOMATED REFACTORING REPORT"));
+    println!("{}", c::rule());
+    println!("  {} {}", c::label("Project:"), c::path(&context.config.project_path.display().to_string()));
     println!(
-        "⏱️  Total Time: {:.2}s",
-        context.start_time.elapsed().as_secs_f64()
+        "  {} {}",
+        c::label("Total Time:"),
+        c::number(&format!("{:.2}s", context.start_time.elapsed().as_secs_f64()))
     );
-    println!("🔄 Iterations: {}", iteration_results.len());
+    println!("  {} {}", c::label("Iterations:"), c::number(&format!("{}", iteration_results.len())));
     println!();
 
-    println!("📊 FINAL RESULTS");
-    println!("=====================================");
+    println!("{}", c::header("FINAL RESULTS"));
+    println!("{}", c::rule());
     println!(
-        "Overall Success:    {}",
+        "{}",
         if final_validation.overall_success {
-            "✅ YES"
+            c::pass("Overall Success")
         } else {
-            "❌ NO"
+            c::fail("Overall Success")
         }
     );
     println!(
-        "Compilation:        {}",
+        "{}",
         if final_validation.compilation_passed {
-            "✅ PASSED"
+            c::pass("Compilation")
         } else {
-            "❌ FAILED"
+            c::fail("Compilation")
         }
     );
     println!(
-        "Tests:              {}",
+        "{}",
         if final_validation.tests_passed {
-            "✅ PASSED"
+            c::pass("Tests")
         } else {
-            "❌ FAILED"
+            c::fail("Tests")
         }
     );
     println!(
-        "Quality Improved:   {}",
+        "{}",
         if final_validation.quality_improved {
-            "✅ YES"
+            c::pass("Quality Improved")
         } else {
-            "❌ NO"
+            c::fail("Quality Improved")
         }
     );
-    println!("Total Refactorings: {}", summary.total_successful_requests);
-    println!("Quality Score:      {:.1}", summary.total_quality_score);
+    println!("{} {}", c::label("Total Refactorings:"), c::number(&format!("{}", summary.total_successful_requests)));
+    println!("{} {}", c::label("Quality Score:"), c::number(&format!("{:.1}", summary.total_quality_score)));
     println!();
 
     if !iteration_results.is_empty() {
-        println!("🔄 ITERATION BREAKDOWN");
-        println!("=====================================");
+        println!("{}", c::header("ITERATION BREAKDOWN"));
+        println!("{}", c::rule());
         for result in iteration_results {
             println!(
-                "Iteration #{}: {} successful, {} failed ({:?})",
-                result.iteration_number,
-                result.successful_requests.len(),
-                result.failed_requests.len(),
+                "  {} {} successful, {} failed ({:?})",
+                c::label(&format!("Iteration #{}:", result.iteration_number)),
+                c::number(&format!("{}", result.successful_requests.len())),
+                c::number(&format!("{}", result.failed_requests.len())),
                 result.iteration_duration
             );
         }
@@ -246,10 +249,10 @@ async fn output_text_results(
 
     if !final_validation.issues_found.is_empty() {
         println!();
-        println!("❌ ISSUES FOUND");
-        println!("=====================================");
+        println!("{}", c::header("ISSUES FOUND"));
+        println!("{}", c::rule());
         for issue in &final_validation.issues_found {
-            println!("• {issue}");
+            println!("{}", c::fail(issue));
         }
     }
 

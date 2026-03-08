@@ -6,11 +6,13 @@
 
 /// Initialize .pmat/project.toml with current version and scaffold config files
 async fn handle_init(project_path: &Path, force: bool) -> Result<()> {
+    use crate::cli::colors as c;
+
     let config_path = project_path.join(".pmat").join("project.toml");
 
     if config_path.exists() && !force {
-        println!("Project already initialized at {}", config_path.display());
-        println!("Use --force to overwrite existing configuration.");
+        println!("Project already initialized at {}", c::path(&config_path.display().to_string()));
+        println!("Use {} to overwrite existing configuration.", c::label("--force"));
         return Ok(());
     }
 
@@ -26,15 +28,14 @@ async fn handle_init(project_path: &Path, force: bool) -> Result<()> {
     fs::write(&config_path, &content)?;
 
     println!(
-        "\x1b[32m\u{2713}\x1b[0m Initialized PMAT project at {}",
-        config_path.display()
+        "{}", c::pass(&format!("Initialized PMAT project at {}", c::path(&config_path.display().to_string())))
     );
 
     // Scaffold .pmat.yaml if missing
     let yaml_path = project_path.join(".pmat.yaml");
     if !yaml_path.exists() || force {
         fs::write(&yaml_path, generate_default_pmat_yaml())?;
-        println!("\x1b[32m\u{2713}\x1b[0m Generated .pmat.yaml configuration");
+        println!("{}", c::pass("Generated .pmat.yaml configuration"));
     }
 
     // Scaffold CLAUDE.md if missing
@@ -45,15 +46,15 @@ async fn handle_init(project_path: &Path, force: bool) -> Result<()> {
             .and_then(|n| n.to_str())
             .unwrap_or("my-project");
         fs::write(&claude_path, generate_claude_md(project_name))?;
-        println!("\x1b[32m\u{2713}\x1b[0m Generated CLAUDE.md with pmat instructions");
+        println!("{}", c::pass("Generated CLAUDE.md with pmat instructions"));
     }
 
-    println!("\nProject version: v{}", PMAT_VERSION);
-    println!("\nNext steps:");
-    println!("  1. Run 'pmat comply check' to verify compliance");
-    println!("  2. Run 'pmat hooks init' to install git hooks");
-    println!("  3. Run 'pmat quality-gate' to check code quality");
-    println!("  4. Edit CLAUDE.md to add project-specific instructions");
+    println!("\n{} v{}", c::label("Project version:"), PMAT_VERSION);
+    println!("\n{}", c::label("Next steps:"));
+    println!("  1. Run '{}' to verify compliance", c::label("pmat comply check"));
+    println!("  2. Run '{}' to install git hooks", c::label("pmat hooks init"));
+    println!("  3. Run '{}' to check code quality", c::label("pmat quality-gate"));
+    println!("  4. Edit {} to add project-specific instructions", c::path("CLAUDE.md"));
 
     Ok(())
 }
@@ -131,6 +132,7 @@ pmat query --coverage-gaps --limit 30 --exclude-tests
 
 /// Handle upgrade to a specific style (e.g., Popperian)
 pub async fn handle_upgrade(project_path: &Path, target: &str, dry_run: bool) -> Result<()> {
+    use crate::cli::colors as c;
     use crate::cli::handlers::work_contract::{WorkContract, FileManifest};
     use crate::cli::handlers::work_falsification;
 
@@ -138,14 +140,14 @@ pub async fn handle_upgrade(project_path: &Path, target: &str, dry_run: bool) ->
         anyhow::bail!("Unsupported upgrade target: {}. Only 'popperian' is supported currently.", target);
     }
 
-    println!("\n\u{1f680} Upgrading project to Popperian Falsification standard...");
+    println!("\n{}", c::header("Upgrading project to Popperian Falsification standard..."));
 
     if dry_run {
-        println!("(dry-run mode - no changes will be made)\n");
+        println!("{}\n", c::dim("(dry-run mode - no changes will be made)"));
     }
 
     // 1. Configuration Injection
-    println!("   \u{2699}\u{fe0f}  Creating .pmat-work.toml with strict blocking rules...");
+    println!("   {} Creating {} with strict blocking rules...", c::label("\u{2699}\u{fe0f}"), c::path(".pmat-work.toml"));
     if !dry_run {
         let config_path = project_path.join(".pmat-work.toml");
         let default_config = r#"[contract]
@@ -173,7 +175,7 @@ meta_check = "block"
     }
 
     // 2. Baseline Capture
-    println!("   \u{1f4f8} Capturing Day 0 baseline...");
+    println!("   {} Capturing Day 0 baseline...", c::label("\u{1f4f8}"));
     if !dry_run {
         // Ensure we have a commit
         let baseline_commit = std::process::Command::new("git")
@@ -192,28 +194,28 @@ meta_check = "block"
         contract.baseline_rust_score = rs;
 
         // Generate manifest
-        println!("   \u{1f4c2} Generating file manifest...");
+        println!("   {} Generating file manifest...", c::label("\u{1f4c2}"));
         contract.baseline_file_manifest = FileManifest::build(project_path)?;
 
         // 3. Debt Recognition
-        println!("   \u{1f50d} Scanning for legacy debt...");
+        println!("   {} Scanning for legacy debt...", c::label("\u{1f50d}"));
         contract.acknowledge_legacy_debt(project_path)?;
 
         contract.save(project_path)?;
-        println!("   \u{2705} Contract saved to .pmat-work/baseline-v1/contract.json");
+        println!("   {}", c::pass(&format!("Contract saved to {}", c::path(".pmat-work/baseline-v1/contract.json"))));
     }
 
     // 4. Hook Installation
-    println!("   \u{1fa9d}  Installing enforcement hooks...");
+    println!("   {} Installing enforcement hooks...", c::label("\u{1fa9d}"));
     if !dry_run {
         // In a real implementation, this would call handle_enforce
-        println!("   (Pre-push and pre-commit hooks installed)");
+        println!("   {}", c::dim("(Pre-push and pre-commit hooks installed)"));
     }
 
     if dry_run {
-        println!("\n\u{2705} Dry-run complete. Run without --dry-run to apply changes.");
+        println!("\n{}", c::pass("Dry-run complete. Run without --dry-run to apply changes."));
     } else {
-        println!("\n\u{2728} Project successfully upgraded to Popperian standard!");
+        println!("\n{}", c::pass("Project successfully upgraded to Popperian standard!"));
         println!("   New work items will now require 95% coverage and no TDG regression.");
     }
 

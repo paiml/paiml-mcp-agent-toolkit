@@ -5,6 +5,7 @@
 use super::hooks_command::HooksCommand;
 use super::tdg_hooks::install_tdg_hooks_wrapper;
 use super::types::{HookStatus, HookVerificationResult};
+use crate::cli::colors as c;
 use crate::cli::commands::HooksCommands;
 use anyhow::Result;
 
@@ -50,16 +51,19 @@ async fn handle_install(
 ) -> Result<()> {
     // Handle TDG enforcement installation (Sprint 66 Phase 3)
     if tdg_enforcement {
-        println!("🔧 Installing PMAT hooks with TDG enforcement...");
+        println!(
+            "{}",
+            c::label("Installing PMAT hooks with TDG enforcement...")
+        );
         return install_tdg_hooks_wrapper().await;
     }
 
-    println!("🔧 Installing pre-commit hooks...");
+    println!("{}", c::label("Installing pre-commit hooks..."));
     if interactive {
-        println!("  Interactive mode enabled");
+        println!("  {}", c::dim("Interactive mode enabled"));
     }
     if force {
-        println!("  Force installation enabled");
+        println!("  {}", c::dim("Force installation enabled"));
     }
     // Don't print backup message here - only print after actual backup happens
 
@@ -67,11 +71,15 @@ async fn handle_install(
 
     if result.success {
         if result.backup_created {
-            println!("  📁 Backup created: .git/hooks/pre-commit.pmat-backup");
+            println!(
+                "  {} Backup created: {}",
+                c::pass(""),
+                c::path(".git/hooks/pre-commit.pmat-backup")
+            );
         }
-        println!("✅ {}", result.message);
+        println!("{}", c::pass(&result.message));
     } else {
-        println!("❌ {}", result.message);
+        println!("{}", c::fail(&result.message));
         return Err(anyhow::anyhow!(result.message));
     }
 
@@ -80,20 +88,20 @@ async fn handle_install(
 
 /// Handle hooks uninstall command
 async fn handle_uninstall(hooks_cmd: &HooksCommand, restore_backup: bool) -> Result<()> {
-    println!("🗑️ Uninstalling pre-commit hooks...");
+    println!("{}", c::label("Uninstalling pre-commit hooks..."));
     if restore_backup {
-        println!("  Restoring backup enabled");
+        println!("  {}", c::dim("Restoring backup enabled"));
     }
 
     let result = hooks_cmd.uninstall(restore_backup).await?;
 
     if result.success {
         if result.backup_restored {
-            println!("  📁 Backup restored");
+            println!("  {}", c::pass("Backup restored"));
         }
-        println!("✅ {}", result.message);
+        println!("{}", c::pass(&result.message));
     } else {
-        println!("❌ {}", result.message);
+        println!("{}", c::fail(&result.message));
         return Err(anyhow::anyhow!(result.message));
     }
 
@@ -104,13 +112,14 @@ async fn handle_uninstall(hooks_cmd: &HooksCommand, restore_backup: bool) -> Res
 async fn handle_status(hooks_cmd: &HooksCommand) -> Result<()> {
     let status = hooks_cmd.status().await?;
 
-    println!("📊 Pre-commit Hook Status:");
+    println!("{}", c::header("Pre-commit Hook Status:"));
     println!(
-        "  Installed: {}",
+        "  {}: {}",
+        c::dim("Installed"),
         if status.installed {
-            "✅ Yes"
+            c::pass("Yes")
         } else {
-            "❌ No"
+            c::fail("No")
         }
     );
 
@@ -124,40 +133,42 @@ async fn handle_status(hooks_cmd: &HooksCommand) -> Result<()> {
 /// Print detailed status for installed hook
 pub(crate) fn print_installed_status(status: &HookStatus) {
     println!(
-        "  PMAT-managed: {}",
+        "  {}: {}",
+        c::dim("PMAT-managed"),
         if status.is_pmat_managed {
-            "✅ Yes"
+            c::pass("Yes")
         } else {
-            "❌ No"
+            c::fail("No")
         }
     );
     println!(
-        "  Config up-to-date: {}",
+        "  {}: {}",
+        c::dim("Config up-to-date"),
         if status.config_up_to_date {
-            "✅ Yes"
+            c::pass("Yes")
         } else {
-            "⚠️ No"
+            c::warn("No")
         }
     );
 
     if let Some(last_updated) = &status.last_updated {
-        println!("  Last updated: {last_updated}");
+        println!("  {}: {last_updated}", c::dim("Last updated"));
     }
 
     if let Some(preview) = &status.hook_content_preview {
-        println!("\n  Hook preview:");
+        println!("\n  {}:", c::dim("Hook preview"));
         for line in preview.lines() {
-            println!("    {line}");
+            println!("    {}", c::dim(line));
         }
     }
 }
 
 /// Handle hooks verify command
 async fn handle_verify(hooks_cmd: &HooksCommand, fix: bool) -> Result<()> {
-    println!("🔍 Verifying pre-commit hooks...");
+    println!("{}", c::label("Verifying pre-commit hooks..."));
 
     if fix {
-        println!("  Auto-fix enabled");
+        println!("  {}", c::dim("Auto-fix enabled"));
     }
 
     let result = hooks_cmd.verify(fix).await?;
@@ -166,11 +177,14 @@ async fn handle_verify(hooks_cmd: &HooksCommand, fix: bool) -> Result<()> {
     print_verification_fixes(&result);
 
     if result.is_valid {
-        println!("✅ Pre-commit hooks verified successfully");
+        println!("{}", c::pass("Pre-commit hooks verified successfully"));
     } else {
-        println!("❌ Pre-commit hooks verification failed");
+        println!("{}", c::fail("Pre-commit hooks verification failed"));
         if !fix {
-            println!("   Run with --fix to attempt automatic repairs");
+            println!(
+                "   {}",
+                c::dim("Run with --fix to attempt automatic repairs")
+            );
         }
         return Err(anyhow::anyhow!("Hook verification failed"));
     }
@@ -181,9 +195,9 @@ async fn handle_verify(hooks_cmd: &HooksCommand, fix: bool) -> Result<()> {
 /// Print verification issues
 pub(crate) fn print_verification_issues(result: &HookVerificationResult) {
     if !result.issues.is_empty() {
-        println!("  Issues found:");
+        println!("  {}:", c::subheader("Issues found"));
         for issue in &result.issues {
-            println!("    ⚠️ {issue}");
+            println!("    {}", c::warn(issue));
         }
     }
 }
@@ -191,29 +205,32 @@ pub(crate) fn print_verification_issues(result: &HookVerificationResult) {
 /// Print verification fixes applied
 pub(crate) fn print_verification_fixes(result: &HookVerificationResult) {
     if !result.fixes_applied.is_empty() {
-        println!("  Fixes applied:");
+        println!("  {}:", c::subheader("Fixes applied"));
         for fix_msg in &result.fixes_applied {
-            println!("    🔧 {fix_msg}");
+            println!("    {}", c::pass(fix_msg));
         }
     }
 }
 
 /// Handle hooks refresh command
 async fn handle_refresh(hooks_cmd: &HooksCommand) -> Result<()> {
-    println!("🔄 Refreshing pre-commit hooks from configuration...");
+    println!(
+        "{}",
+        c::label("Refreshing pre-commit hooks from configuration...")
+    );
 
     let result = hooks_cmd.refresh().await?;
 
     if result.success {
         if result.config_changes_detected {
-            println!("  📝 Configuration changes detected");
+            println!("  {}", c::pass("Configuration changes detected"));
         }
         if result.hook_updated {
-            println!("  🔄 Hook updated with new configuration");
+            println!("  {}", c::pass("Hook updated with new configuration"));
         }
-        println!("✅ {}", result.message);
+        println!("{}", c::pass(&result.message));
     } else {
-        println!("❌ {}", result.message);
+        println!("{}", c::fail(&result.message));
         return Err(anyhow::anyhow!(result.message));
     }
 
@@ -244,13 +261,18 @@ async fn handle_run(
                 let elapsed = start_time.elapsed();
 
                 if verbose {
-                    println!("🎯 O(1) Cache HIT - Skipping full analysis");
-                    println!("   Cached result: {:?}", result);
+                    println!("{} O(1) Cache HIT - Skipping full analysis", c::pass(""));
+                    println!("   {}: {:?}", c::dim("Cached result"), result);
                     println!(
-                        "   Cached at: {}",
+                        "   {}: {}",
+                        c::dim("Cached at"),
                         cached_at.format("%Y-%m-%d %H:%M:%S UTC")
                     );
-                    println!("   Check time: {:.2}ms", elapsed.as_secs_f64() * 1000.0);
+                    println!(
+                        "   {}: {:.2}ms",
+                        c::dim("Check time"),
+                        elapsed.as_secs_f64() * 1000.0
+                    );
                 }
 
                 // Record the cache hit
@@ -258,34 +280,45 @@ async fn handle_run(
 
                 match result {
                     crate::tdg::hooks_cache::CacheResult::Pass => {
-                        println!("✅ All quality gates passed (cached)");
+                        println!(
+                            "{} {}",
+                            c::pass("All quality gates passed"),
+                            c::dim("(cached)")
+                        );
                         return Ok(());
                     }
                     crate::tdg::hooks_cache::CacheResult::Fail => {
-                        println!("❌ Quality gates failed (cached)");
+                        println!("{} {}", c::fail("Quality gates failed"), c::dim("(cached)"));
                         return Err(anyhow::anyhow!("Pre-commit checks failed (cached)"));
                     }
                     crate::tdg::hooks_cache::CacheResult::Warn => {
-                        println!("⚠️  Quality gates passed with warnings (cached)");
+                        println!(
+                            "{} {}",
+                            c::warn("Quality gates passed with warnings"),
+                            c::dim("(cached)")
+                        );
                         return Ok(());
                     }
                 }
             }
             Ok(crate::tdg::hooks_cache::CacheCheckResult::Miss { reason }) => {
                 if verbose {
-                    println!("📝 Cache MISS: {}", reason);
-                    println!("   Running full analysis...");
+                    println!("{} Cache MISS: {}", c::dim(""), reason);
+                    println!("   {}", c::dim("Running full analysis..."));
                 }
             }
             Ok(crate::tdg::hooks_cache::CacheCheckResult::Partial { .. }) => {
                 if verbose {
-                    println!("⚡ Partial cache hit - running remaining gates...");
+                    println!(
+                        "{}",
+                        c::warn("Partial cache hit - running remaining gates...")
+                    );
                 }
             }
             Err(e) => {
                 if verbose {
-                    println!("⚠️  Cache check failed: {}", e);
-                    println!("   Running full analysis...");
+                    println!("{}", c::warn(&format!("Cache check failed: {}", e)));
+                    println!("   {}", c::dim("Running full analysis..."));
                 }
             }
         }
@@ -296,11 +329,29 @@ async fn handle_run(
     let elapsed = start_time.elapsed();
 
     if verbose {
-        println!("\n📊 Results:");
-        println!("  Checks passed: {}", result.checks_passed);
-        println!("  Checks failed: {}", result.checks_failed);
-        println!("  Duration: {:.2}ms", elapsed.as_secs_f64() * 1000.0);
-        println!("\nOutput:");
+        println!();
+        println!("{}", c::subheader("Results:"));
+        println!(
+            "  {}: {}",
+            c::dim("Checks passed"),
+            c::number(&result.checks_passed.to_string())
+        );
+        println!(
+            "  {}: {}",
+            c::dim("Checks failed"),
+            if result.checks_failed > 0 {
+                format!("{}{}{}", c::RED, result.checks_failed, c::RESET)
+            } else {
+                result.checks_failed.to_string()
+            }
+        );
+        println!(
+            "  {}: {:.2}ms",
+            c::dim("Duration"),
+            elapsed.as_secs_f64() * 1000.0
+        );
+        println!();
+        println!("{}:", c::dim("Output"));
         println!("{}", result.output);
     } else {
         // Non-verbose: just print output
@@ -321,7 +372,7 @@ async fn handle_run(
         // Update cache with results
         if let Err(e) = cache_manager.update(cache_result, std::collections::HashMap::new()) {
             if verbose {
-                println!("⚠️  Failed to update cache: {}", e);
+                println!("{}", c::warn(&format!("Failed to update cache: {}", e)));
             }
         }
 
@@ -330,10 +381,12 @@ async fn handle_run(
     }
 
     if result.success {
-        println!("\n✅ All pre-commit checks passed");
+        println!();
+        println!("{}", c::pass("All pre-commit checks passed"));
         Ok(())
     } else {
-        println!("\n❌ Pre-commit checks failed");
+        println!();
+        println!("{}", c::fail("Pre-commit checks failed"));
         Err(anyhow::anyhow!("Pre-commit checks failed"))
     }
 }

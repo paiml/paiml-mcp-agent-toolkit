@@ -160,46 +160,54 @@ fn format_summary(report: &DiagnosticReport, failures_only: bool) -> String {
 
     // Header
     output.push_str(&format!(
-        "\n  Project Diagnostics: {}\n",
-        report.project_path
+        "\n  {}\n",
+        colors::header(&format!("Project Diagnostics: {}", colors::path(&report.project_path)))
     ));
-    output.push_str(&format!("  {}\n\n", "=".repeat(60)));
+    output.push_str(&format!("  {}\n\n", colors::rule()));
 
     // Overall score
     let status_icon = match report.overall_status {
-        HealthStatus::Green => "[GREEN]",
-        HealthStatus::Yellow => "[YELLOW]",
-        HealthStatus::Red => "[RED]",
-        HealthStatus::Skip => "[SKIP]",
+        HealthStatus::Green => format!("{}GREEN{}", colors::BOLD_GREEN, colors::RESET),
+        HealthStatus::Yellow => format!("{}YELLOW{}", colors::BOLD_YELLOW, colors::RESET),
+        HealthStatus::Red => format!("{}RED{}", colors::BOLD_RED, colors::RESET),
+        HealthStatus::Skip => format!("{}SKIP{}", colors::DIM, colors::RESET),
     };
     output.push_str(&format!(
-        "  Overall: {} {:.1}/{:.1} ({:.1}%)\n\n",
-        status_icon, report.total_score, report.max_score, report.percentage
+        "  Overall: {} {} ({})\n\n",
+        status_icon,
+        colors::score(report.total_score, report.max_score, 85.0, 60.0),
+        colors::pct(report.percentage, 85.0, 60.0)
     ));
 
     // Category summaries
     for cat in &report.categories {
-        output.push_str(&format!("  {} [{}/{}]\n", cat.name, cat.passed, cat.total));
+        output.push_str(&format!(
+            "  {} [{}/{}]\n",
+            colors::label(&cat.name),
+            colors::number(&cat.passed.to_string()),
+            cat.total
+        ));
     }
     output.push('\n');
 
     // Individual checks
-    output.push_str("  Checks:\n");
-    output.push_str(&format!("  {}\n", "-".repeat(60)));
+    output.push_str(&format!("  {}\n", colors::subheader("Checks:")));
+    output.push_str(&format!("  {}\n", colors::separator()));
 
     for check in &report.checks {
         if failures_only && check.status == HealthStatus::Green {
             continue;
         }
 
-        let icon = match check.status {
-            HealthStatus::Green => "[OK]",
-            HealthStatus::Yellow => "[WARN]",
-            HealthStatus::Red => "[FAIL]",
-            HealthStatus::Skip => "[SKIP]",
+        let line = format!("{} - {}", check.name, check.message);
+        let formatted = match check.status {
+            HealthStatus::Green => colors::pass(&line),
+            HealthStatus::Yellow => colors::warn(&line),
+            HealthStatus::Red => colors::fail(&line),
+            HealthStatus::Skip => colors::skip(&line),
         };
 
-        output.push_str(&format!("  {} {} - {}\n", icon, check.name, check.message));
+        output.push_str(&format!("  {}\n", formatted));
     }
 
     output.push('\n');
@@ -271,39 +279,57 @@ fn format_andon(report: &DiagnosticReport) -> String {
 
     // Andon-style visualization (Toyota Way)
     output.push('\n');
-    output.push_str("  ╔══════════════════════════════════════════════════════════════╗\n");
-    output.push_str("  ║                    PROJECT DIAGNOSTICS                       ║\n");
-    output.push_str("  ║                      (Andon Board)                           ║\n");
-    output.push_str("  ╠══════════════════════════════════════════════════════════════╣\n");
+    output.push_str(&format!("  {}╔══════════════════════════════════════════════════════════════╗{}\n", colors::BOLD, colors::RESET));
+    output.push_str(&format!("  {}║                    PROJECT DIAGNOSTICS                       ║{}\n", colors::BOLD, colors::RESET));
+    output.push_str(&format!("  {}║                      (Andon Board)                           ║{}\n", colors::BOLD, colors::RESET));
+    output.push_str(&format!("  {}╠══════════════════════════════════════════════════════════════╣{}\n", colors::BOLD, colors::RESET));
 
     // Score display
     let bar_width = 40;
     let filled = ((report.percentage / 100.0) * bar_width as f64) as usize;
     let empty = bar_width - filled;
-    let progress_bar = format!("{}{}", "#".repeat(filled), "-".repeat(empty));
+    let bar_color = if report.percentage >= 85.0 {
+        colors::GREEN
+    } else if report.percentage >= 60.0 {
+        colors::YELLOW
+    } else {
+        colors::RED
+    };
+    let progress_bar = format!(
+        "{}{}{}{}",
+        bar_color,
+        "#".repeat(filled),
+        colors::DIM,
+        "-".repeat(empty)
+    );
 
     output.push_str(&format!(
-        "  ║  Score: [{progress_bar}] {:.1}%  ║\n",
-        report.percentage
+        "  {}║{}  Score: [{progress_bar}{}] {}  {}║{}\n",
+        colors::BOLD, colors::RESET,
+        colors::RESET,
+        colors::pct(report.percentage, 85.0, 60.0),
+        colors::BOLD, colors::RESET
     ));
-    output.push_str("  ╠══════════════════════════════════════════════════════════════╣\n");
+    output.push_str(&format!("  {}╠══════════════════════════════════════════════════════════════╣{}\n", colors::BOLD, colors::RESET));
 
     // Category lights
     for cat in &report.categories {
         let light = if cat.failed > 0 {
-            "[RED]  "
+            format!("{}●{} ", colors::RED, colors::RESET)
         } else if cat.warned > 0 {
-            "[YELLOW]"
+            format!("{}●{} ", colors::YELLOW, colors::RESET)
         } else {
-            "[GREEN]"
+            format!("{}●{} ", colors::GREEN, colors::RESET)
         };
         output.push_str(&format!(
-            "  ║  {} {:20} {}/{} checks passed          ║\n",
-            light, cat.name, cat.passed, cat.total
+            "  {}║{}  {} {:20} {}/{} checks passed          {}║{}\n",
+            colors::BOLD, colors::RESET,
+            light, cat.name, cat.passed, cat.total,
+            colors::BOLD, colors::RESET
         ));
     }
 
-    output.push_str("  ╠══════════════════════════════════════════════════════════════╣\n");
+    output.push_str(&format!("  {}╠══════════════════════════════════════════════════════════════╣{}\n", colors::BOLD, colors::RESET));
 
     // Failed checks (Andon cord triggers)
     let failures: Vec<_> = report
@@ -313,15 +339,31 @@ fn format_andon(report: &DiagnosticReport) -> String {
         .collect();
 
     if failures.is_empty() {
-        output.push_str("  ║  No critical issues - production ready                       ║\n");
+        output.push_str(&format!(
+            "  {}║{}  {}No critical issues - production ready{}                       {}║{}\n",
+            colors::BOLD, colors::RESET,
+            colors::GREEN, colors::RESET,
+            colors::BOLD, colors::RESET
+        ));
     } else {
-        output.push_str("  ║  ANDON CORD TRIGGERED - Issues require attention:            ║\n");
+        output.push_str(&format!(
+            "  {}║{}  {}ANDON CORD TRIGGERED{} - Issues require attention:            {}║{}\n",
+            colors::BOLD, colors::RESET,
+            colors::BOLD_RED, colors::RESET,
+            colors::BOLD, colors::RESET
+        ));
         for check in failures.iter().take(5) {
-            output.push_str(&format!("  ║    - {:<54} ║\n", check.name));
+            output.push_str(&format!(
+                "  {}║{}    {}●{} {:<54} {}║{}\n",
+                colors::BOLD, colors::RESET,
+                colors::RED, colors::RESET,
+                check.name,
+                colors::BOLD, colors::RESET
+            ));
         }
     }
 
-    output.push_str("  ╚══════════════════════════════════════════════════════════════╝\n");
+    output.push_str(&format!("  {}╚══════════════════════════════════════════════════════════════╝{}\n", colors::BOLD, colors::RESET));
     output.push('\n');
 
     output

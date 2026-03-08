@@ -30,7 +30,9 @@ async fn show_health_report(
 
 /// Print health report in console format
 fn print_health_console(sprints: &[SprintInfo]) {
-    eprintln!("📊 Roadmap Health Report\n");
+    use crate::cli::colors as c;
+    eprintln!("{}", c::header("Roadmap Health Report"));
+    eprintln!();
 
     for sprint in sprints {
         let progress = if sprint.total_tickets > 0 {
@@ -39,16 +41,21 @@ fn print_health_console(sprints: &[SprintInfo]) {
             0.0
         };
 
-        let status_emoji = match sprint.status {
-            SprintStatus::Complete => "✅",
-            SprintStatus::InProgress => "🔄",
-            SprintStatus::NotStarted => "⏳",
+        let (status_icon, color) = match sprint.status {
+            SprintStatus::Complete => ("✓", c::GREEN),
+            SprintStatus::InProgress => ("◉", c::YELLOW),
+            SprintStatus::NotStarted => ("○", c::DIM),
         };
 
-        eprintln!("{status_emoji} {}", sprint.name);
+        eprintln!("{color}{status_icon}{} {}{}", c::RESET, c::BOLD, sprint.name);
         eprintln!(
-            "   Progress: {}/{} ({:.0}%)",
-            sprint.completed_tickets, sprint.total_tickets, progress
+            "{}   Progress: {}{}/{}{} ({})",
+            c::RESET,
+            c::BOLD_WHITE,
+            sprint.completed_tickets,
+            c::RESET,
+            sprint.total_tickets,
+            c::pct(progress, 80.0, 50.0)
         );
         eprintln!();
     }

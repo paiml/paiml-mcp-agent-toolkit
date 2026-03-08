@@ -2,6 +2,7 @@
 //! Toyota Way: Single Responsibility and DRY principles
 
 #![cfg_attr(coverage_nightly, coverage(off))]
+use crate::cli::colors as c;
 use crate::cli::commands::{QddCodeType, QddCommands, QddOutputFormat, QddQualityProfile};
 use crate::qdd::{
     CodeType, CreateSpec, Parameter, QddOperation, QddResult, QddTool, QualityProfile, RefactorSpec,
@@ -150,12 +151,28 @@ async fn execute_create_operation(
 
 /// Display creation results
 fn display_create_results(profile: QddQualityProfile, result: &QddResult) {
-    println!("🎯 QDD Code Creation Successful!");
-    println!("✅ Quality Profile: {profile:?}");
-    println!("📊 Quality Score: {:.1}", result.quality_score.overall);
-    println!("🔧 Complexity: {}", result.quality_score.complexity);
-    println!("📈 Coverage: {:.1}%", result.quality_score.coverage);
-    println!("🏗️  TDG Score: {}", result.quality_score.tdg);
+    println!("{}", c::header("QDD Code Creation Successful!"));
+    println!("{}", c::pass(&format!("Quality Profile: {profile:?}")));
+    println!(
+        "  {} {}",
+        c::label("Quality Score:"),
+        c::number(&format!("{:.1}", result.quality_score.overall))
+    );
+    println!(
+        "  {} {}",
+        c::label("Complexity:"),
+        c::number(&format!("{}", result.quality_score.complexity))
+    );
+    println!(
+        "  {} {}",
+        c::label("Coverage:"),
+        c::pct(result.quality_score.coverage, 80.0, 60.0)
+    );
+    println!(
+        "  {} {}",
+        c::label("TDG Score:"),
+        c::number(&format!("{}", result.quality_score.tdg))
+    );
     println!();
 }
 
@@ -167,13 +184,19 @@ fn output_generated_code(output_file: Option<PathBuf>, result: &QddResult) -> Re
             result.code, result.tests, result.documentation
         );
         std::fs::write(&output_path, full_content)?;
-        println!("💾 Generated code written to: {}", output_path.display());
+        println!(
+            "{}",
+            c::pass(&format!(
+                "Generated code written to: {}",
+                c::path(&output_path.display().to_string())
+            ))
+        );
     } else {
-        println!("📝 Generated Code:");
+        println!("{}", c::subheader("Generated Code:"));
         println!("{}", result.code);
-        println!("\n🧪 Generated Tests:");
+        println!("\n{}", c::subheader("Generated Tests:"));
         println!("{}", result.tests);
-        println!("\n📚 Generated Documentation:");
+        println!("\n{}", c::subheader("Generated Documentation:"));
         println!("{}", result.documentation);
     }
     Ok(())
@@ -256,20 +279,35 @@ fn handle_dry_run(
     profile: QddQualityProfile,
     quality_profile: &QualityProfile,
 ) -> Result<()> {
-    println!("🔍 DRY RUN: Would refactor file: {}", file.display());
+    println!(
+        "{}",
+        c::dim(&format!(
+            "DRY RUN: Would refactor file: {}",
+            c::path(&file.display().to_string())
+        ))
+    );
     if let Some(func) = function {
-        println!("🎯 Target function: {func}");
+        println!("  {} {}", c::label("Target function:"), func);
     }
-    println!("📊 Quality profile: {profile:?}");
     println!(
-        "🔧 Max complexity: {}",
-        quality_profile.thresholds.max_complexity
+        "  {} {}",
+        c::label("Quality profile:"),
+        format!("{profile:?}")
     );
     println!(
-        "📈 Min coverage: {}%",
-        quality_profile.thresholds.min_coverage
+        "  {} {}",
+        c::label("Max complexity:"),
+        c::number(&format!("{}", quality_profile.thresholds.max_complexity))
     );
-    println!("⚠️  Use without --dry-run to execute refactoring");
+    println!(
+        "  {} {}",
+        c::label("Min coverage:"),
+        c::pct(quality_profile.thresholds.min_coverage as f64, 80.0, 60.0)
+    );
+    println!(
+        "{}",
+        c::warn("Use without --dry-run to execute refactoring")
+    );
     Ok(())
 }
 
@@ -290,23 +328,49 @@ fn display_refactor_results(
     profile: QddQualityProfile,
     result: &QddResult,
 ) {
-    println!("🎯 QDD Refactoring Successful!");
-    println!("📁 File: {}", file.display());
+    println!("{}", c::header("QDD Refactoring Successful!"));
+    println!(
+        "  {} {}",
+        c::label("File:"),
+        c::path(&file.display().to_string())
+    );
     if let Some(func) = function {
-        println!("🔧 Function: {func}");
+        println!("  {} {}", c::label("Function:"), func);
     }
-    println!("✅ Quality Profile: {profile:?}");
-    println!("📊 Quality Score: {:.1}", result.quality_score.overall);
-    println!("🔧 Complexity: {}", result.quality_score.complexity);
-    println!("📈 Coverage: {:.1}%", result.quality_score.coverage);
-    println!("🏗️  TDG Score: {}", result.quality_score.tdg);
+    println!("{}", c::pass(&format!("Quality Profile: {profile:?}")));
+    println!(
+        "  {} {}",
+        c::label("Quality Score:"),
+        c::number(&format!("{:.1}", result.quality_score.overall))
+    );
+    println!(
+        "  {} {}",
+        c::label("Complexity:"),
+        c::number(&format!("{}", result.quality_score.complexity))
+    );
+    println!(
+        "  {} {}",
+        c::label("Coverage:"),
+        c::pct(result.quality_score.coverage, 80.0, 60.0)
+    );
+    println!(
+        "  {} {}",
+        c::label("TDG Score:"),
+        c::number(&format!("{}", result.quality_score.tdg))
+    );
     println!();
 }
 
 /// Save refactored code to file
 fn save_refactored_code(output_path: &Path, code: &str) -> Result<()> {
     std::fs::write(output_path, code)?;
-    println!("💾 Refactored code written to: {}", output_path.display());
+    println!(
+        "{}",
+        c::pass(&format!(
+            "Refactored code written to: {}",
+            c::path(&output_path.display().to_string())
+        ))
+    );
     Ok(())
 }
 
@@ -314,8 +378,9 @@ fn save_refactored_code(output_path: &Path, code: &str) -> Result<()> {
 fn display_rollback_info(result: &QddResult) {
     if !result.rollback_plan.checkpoints.is_empty() {
         println!(
-            "🔄 {} rollback checkpoints available",
-            result.rollback_plan.checkpoints.len()
+            "  {} {} rollback checkpoints available",
+            c::label("Rollback:"),
+            c::number(&format!("{}", result.rollback_plan.checkpoints.len()))
         );
     }
 }
@@ -336,42 +401,56 @@ async fn handle_qdd_validate(
 
     // For now, implement as a simple quality check
     // In a full implementation, this would use the QDD validation engine
-    println!("🔍 QDD Quality Validation");
-    println!("📁 Path: {}", path.display());
-    println!("✅ Quality Profile: {profile:?}");
-    println!("📊 Thresholds:");
+    println!("{}", c::header("QDD Quality Validation"));
     println!(
-        "  🔧 Max Complexity: {}",
-        quality_profile.thresholds.max_complexity
+        "  {} {}",
+        c::label("Path:"),
+        c::path(&path.display().to_string())
+    );
+    println!("{}", c::pass(&format!("Quality Profile: {profile:?}")));
+    println!("{}", c::subheader("Thresholds:"));
+    println!(
+        "  {} {}",
+        c::label("Max Complexity:"),
+        c::number(&format!("{}", quality_profile.thresholds.max_complexity))
     );
     println!(
-        "  📈 Min Coverage: {}%",
-        quality_profile.thresholds.min_coverage
+        "  {} {}",
+        c::label("Min Coverage:"),
+        c::pct(quality_profile.thresholds.min_coverage as f64, 80.0, 60.0)
     );
-    println!("  🏗️  Max TDG: {}", quality_profile.thresholds.max_tdg);
-    println!("  🚫 Zero SATD: {}", quality_profile.thresholds.zero_satd);
+    println!(
+        "  {} {}",
+        c::label("Max TDG:"),
+        c::number(&format!("{}", quality_profile.thresholds.max_tdg))
+    );
+    println!(
+        "  {} {}",
+        c::label("Zero SATD:"),
+        c::number(&format!("{}", quality_profile.thresholds.zero_satd))
+    );
 
     // Simple validation placeholder
     let validation_passed = true; // Would implement actual validation
 
     match format {
         QddOutputFormat::Summary => {
-            println!("\n📋 Validation Summary:");
+            println!("\n{}", c::subheader("Validation Summary:"));
             println!(
-                "Status: {}",
+                "{}",
                 if validation_passed {
-                    "✅ PASSED"
+                    c::pass("PASSED")
                 } else {
-                    "❌ FAILED"
+                    c::fail("FAILED")
                 }
             );
         }
         QddOutputFormat::Detailed => {
-            println!("\n📋 Detailed Validation Results:");
-            println!("✅ Quality checks: PASSED");
-            println!("✅ Complexity check: PASSED");
-            println!("✅ Coverage check: PASSED");
-            println!("✅ Technical debt: PASSED");
+            println!("\n{}", c::subheader("Detailed Validation Results:"));
+            println!("{}", c::pass("Quality checks: PASSED"));
+            println!("{}", c::pass("Complexity check: PASSED"));
+            println!("{}", c::pass("Coverage check: PASSED"));
+            println!("{}", c::pass("Technical debt: PASSED"));
         }
         QddOutputFormat::Json => {
             let json_result = serde_json::json!({
@@ -404,8 +483,11 @@ async fn handle_qdd_validate(
 
     if let Some(output_path) = output {
         println!(
-            "\n💾 Validation report written to: {}",
-            output_path.display()
+            "\n{}",
+            c::pass(&format!(
+                "Validation report written to: {}",
+                c::path(&output_path.display().to_string())
+            ))
         );
     }
 

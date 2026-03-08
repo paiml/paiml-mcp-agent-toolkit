@@ -1,7 +1,7 @@
 // memory_display.rs - Display, formatting, and recommendation logic for memory stats
 // Included by memory.rs via include!() - shares parent module scope
 
-/// Build pool statistics output data  
+/// Build pool statistics output data
 fn build_pool_stats_output(
     pool_stats: &rustc_hash::FxHashMap<
         crate::services::memory_manager::PoolType,
@@ -117,29 +117,37 @@ fn print_memory_stats_table(stats: &MemoryStatsOutput, detailed: bool) -> Result
 
 /// Print the memory statistics header
 fn print_header() {
-    println!("PMAT Memory Statistics");
+    use crate::cli::colors as c;
+
+    println!("{}", c::header("PMAT Memory Statistics"));
     println!();
 }
 
 /// Print overall memory usage statistics
 fn print_overall_stats(stats: &MemoryStatsOutput) {
-    println!("Overall Memory Usage:");
-    println!("  Total Allocated: {}", format_bytes(stats.total_allocated));
-    println!("  Peak Usage:      {}", format_bytes(stats.peak_usage));
+    use crate::cli::colors as c;
+
+    println!("{}", c::subheader("Overall Memory Usage:"));
+    println!("  {}: {}", c::label("Total Allocated"), c::number(&format_bytes(stats.total_allocated)));
+    println!("  {}: {}", c::label("Peak Usage"), c::number(&format_bytes(stats.peak_usage)));
     println!(
-        "  Pressure:        {:.1}%",
-        stats.allocation_pressure * 100.0
+        "  {}: {}",
+        c::label("Pressure"),
+        c::pct(stats.allocation_pressure * 100.0, 80.0, 60.0)
     );
     println!(
-        "  String Intern:   {}",
-        format_bytes(stats.string_intern_size)
+        "  {}: {}",
+        c::label("String Intern"),
+        c::number(&format_bytes(stats.string_intern_size))
     );
     println!();
 }
 
 /// Print pool-specific statistics
 fn print_pool_stats(pool_stats: &HashMap<String, PoolStatsOutput>) {
-    println!("Pool Statistics:");
+    use crate::cli::colors as c;
+
+    println!("{}", c::subheader("Pool Statistics:"));
     for (pool_name, stats) in pool_stats {
         print_single_pool_stats(pool_name, stats);
     }
@@ -147,24 +155,41 @@ fn print_pool_stats(pool_stats: &HashMap<String, PoolStatsOutput>) {
 
 /// Print statistics for a single pool
 fn print_single_pool_stats(pool_name: &str, stats: &PoolStatsOutput) {
-    println!("  {}:", pool_name);
-    println!("    Buffers:     {}", stats.buffer_count);
-    println!("    Size:        {}", format_bytes(stats.total_size));
-    println!("    Allocations: {}", stats.allocation_count);
-    println!("    Reuses:      {}", stats.reuse_count);
+    use crate::cli::colors as c;
+
+    println!("  {}:", c::label(pool_name));
+    println!("    {}: {}", c::label("Buffers"), c::number(&stats.buffer_count.to_string()));
+    println!("    {}: {}", c::label("Size"), c::number(&format_bytes(stats.total_size)));
+    println!("    {}: {}", c::label("Allocations"), c::number(&stats.allocation_count.to_string()));
+    println!("    {}: {}", c::label("Reuses"), c::number(&stats.reuse_count.to_string()));
+
+    let colored_rating = match stats.efficiency_rating.as_str() {
+        "Excellent" | "Good" => format!("{}{}{}", c::GREEN, stats.efficiency_rating, c::RESET),
+        "Fair" => format!("{}{}{}", c::YELLOW, stats.efficiency_rating, c::RESET),
+        _ => format!("{}{}{}", c::RED, stats.efficiency_rating, c::RESET),
+    };
     println!(
-        "    Efficiency:  {} ({:.1}%)",
-        &stats.efficiency_rating,
-        stats.reuse_ratio * 100.0
+        "    {}: {} ({})",
+        c::label("Efficiency"),
+        colored_rating,
+        c::pct(stats.reuse_ratio * 100.0, 80.0, 60.0)
     );
     println!();
 }
 
 /// Print recommendations
 fn print_recommendations(recommendations: &[String]) {
-    println!("Recommendations:");
+    use crate::cli::colors as c;
+
+    println!("{}", c::subheader("Recommendations:"));
     for rec in recommendations {
-        println!("  • {}", rec);
+        if rec.starts_with("CRITICAL:") {
+            println!("  {}", c::fail(rec));
+        } else if rec.starts_with("WARNING:") {
+            println!("  {}", c::warn(rec));
+        } else {
+            println!("  {}", c::dim(rec));
+        }
     }
 }
 

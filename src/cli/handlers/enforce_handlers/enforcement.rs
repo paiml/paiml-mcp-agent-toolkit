@@ -17,6 +17,7 @@ use super::types::{
     EnforcementIterationResult, EnforcementLoopResult, EnforcementProgress, EnforcementResult,
     EnforcementState, QualityProfile, QualityViolation,
 };
+use crate::cli::colors as c;
 use crate::cli::EnforceOutputFormat;
 use anyhow::Result;
 use std::path::{Path, PathBuf};
@@ -81,7 +82,7 @@ pub fn should_continue_enforcement(
 
     if let Some(max_seconds) = config.max_time {
         if start_time.elapsed().as_secs() > max_seconds {
-            eprintln!("⏱️  Time limit reached");
+            eprintln!("{}", c::warn("Time limit reached"));
             return false;
         }
     }
@@ -131,7 +132,7 @@ pub fn check_improvement_targets(
     current_score: f64,
 ) -> bool {
     if should_stop_for_target_improvement(config.target_improvement, result_score, current_score) {
-        eprintln!("✅ Target improvement achieved");
+        eprintln!("{}", c::pass("Target improvement achieved"));
         true
     } else {
         false
@@ -158,7 +159,11 @@ pub async fn handle_enforcement_iteration(
     config: &EnforcementConfig,
     iteration: u32,
 ) -> Result<EnforcementIterationResult> {
-    eprintln!("\n🔄 Iteration {iteration}");
+    eprintln!(
+        "\n{} {}",
+        c::label("Iteration"),
+        c::number(&iteration.to_string())
+    );
 
     let result =
         execute_enforcement_iteration(project_path, profile, current_state, config).await?;
@@ -274,38 +279,42 @@ async fn list_all_violations(
     profile: &QualityProfile,
     format: EnforceOutputFormat,
 ) -> Result<()> {
-    eprintln!("📋 Listing all quality violations...");
+    eprintln!("{}", c::header("Listing all quality violations..."));
 
     let project_path_buf = project_path.to_path_buf();
     let mut all_violations: Vec<QualityViolation> = Vec::new();
 
     // Run all analyses using extracted functions - COMPLEXITY REDUCED FROM 48 TO ≤10
-    eprintln!("  🔍 Analyzing complexity...");
+    eprintln!("  {} Analyzing complexity...", c::dim(">>"));
     let complexity_violations = run_complexity_analysis(&project_path_buf, profile).await?;
     all_violations.extend(complexity_violations);
 
-    eprintln!("  🔍 Analyzing technical debt (SATD)...");
+    eprintln!("  {} Analyzing technical debt (SATD)...", c::dim(">>"));
     let satd_violations = run_satd_analysis(&project_path_buf, profile).await?;
     all_violations.extend(satd_violations);
 
-    eprintln!("  🔍 Analyzing technical debt gradient...");
+    eprintln!("  {} Analyzing technical debt gradient...", c::dim(">>"));
     let tdg_violations = run_tdg_analysis(project_path_buf.as_path(), profile).await?;
     all_violations.extend(tdg_violations);
 
-    eprintln!("  🔍 Analyzing dead code...");
+    eprintln!("  {} Analyzing dead code...", c::dim(">>"));
     let dead_code_violations = run_dead_code_analysis(project_path_buf.as_path(), profile).await?;
     all_violations.extend(dead_code_violations);
 
-    eprintln!("  🔍 Analyzing code duplication...");
+    eprintln!("  {} Analyzing code duplication...", c::dim(">>"));
     let duplication_violations =
         run_duplication_analysis(project_path_buf.as_path(), profile).await?;
     all_violations.extend(duplication_violations);
 
-    eprintln!("  🔍 Checking test coverage...");
+    eprintln!("  {} Checking test coverage...", c::dim(">>"));
     let coverage_violations = run_coverage_analysis(project_path_buf.as_path(), profile).await?;
     all_violations.extend(coverage_violations);
 
-    eprintln!("\n📊 Found {} violations", all_violations.len());
+    eprintln!(
+        "\n{} {} violations",
+        c::label("Found"),
+        c::number(&all_violations.len().to_string())
+    );
 
     // Use extracted formatting function
     let formatted_output = format_violations_output(&all_violations, profile, format)?;
@@ -321,7 +330,7 @@ async fn validate_current_state(
     format: EnforceOutputFormat,
     ci_mode: bool,
 ) -> Result<()> {
-    eprintln!("✅ Validating current quality state...");
+    eprintln!("{}", c::label("Validating current quality state..."));
 
     // Run the analysis step to get current state
     let result = run_enforcement_step(
@@ -370,9 +379,22 @@ async fn validate_current_state(
     output_result(&validation_result, format, false)?;
 
     if ci_mode && !passes {
-        eprintln!("\n❌ Quality validation failed!");
-        eprintln!("   Score: {:.2}/{:.2}", result.score, result.target);
-        eprintln!("   Violations: {}", validation_result.violations.len());
+        eprintln!("\n{}", c::fail("Quality validation failed!"));
+        eprintln!(
+            "   {} {}{:.2}{}/{}{:.2}{}",
+            c::label("Score:"),
+            c::BOLD_WHITE,
+            result.score,
+            c::RESET,
+            c::DIM,
+            result.target,
+            c::RESET
+        );
+        eprintln!(
+            "   {} {}",
+            c::label("Violations:"),
+            c::number(&validation_result.violations.len().to_string())
+        );
         std::process::exit(1);
     }
 

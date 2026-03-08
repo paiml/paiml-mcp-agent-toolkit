@@ -19,17 +19,22 @@ pub async fn handle_spec_score(
     };
 
     if let Some(output_path) = output {
+        use crate::cli::colors as c;
         fs::write(output_path, &output_text)?;
-        println!("✅ Spec score written to {}", output_path.display());
+        println!("{}", c::pass(&format!("Spec score written to {}", c::path(&output_path.display().to_string()))));
     } else {
         println!("{}", output_text);
     }
 
     // Fail if below 95 threshold (S-002)
     if score < 95.0 {
+        use crate::cli::colors as c;
         println!(
-            "\n⚠️  Spec score {:.1} is below 95 threshold. Run `pmat spec comply` to fix.",
-            score
+            "\n{}",
+            c::warn(&format!(
+                "Spec score {:.1} is below 95 threshold. Run `pmat spec comply` to fix.",
+                score
+            ))
         );
         std::process::exit(1);
     }
@@ -90,19 +95,23 @@ pub async fn handle_spec_comply(
     }
 
     if fixes.is_empty() {
-        println!("✅ Spec already meets all requirements!");
+        use crate::cli::colors as c;
+        println!("{}", c::pass("Spec already meets all requirements!"));
         return Ok(());
     }
 
-    println!("📋 Spec Compliance Issues Found:\n");
-    for fix in &fixes {
-        println!("{}", fix);
-    }
+    {
+        use crate::cli::colors as c;
+        println!("{}\n", c::header("Spec Compliance Issues Found:"));
+        for fix in &fixes {
+            println!("{}", fix);
+        }
 
-    if dry_run {
-        println!("\n(Dry run - no changes made)");
-    } else {
-        println!("\n⚠️  Auto-fix not yet implemented. Please apply fixes manually.");
+        if dry_run {
+            println!("\n{}", c::dim("(Dry run - no changes made)"));
+        } else {
+            println!("\n{}", c::warn("Auto-fix not yet implemented. Please apply fixes manually."));
+        }
     }
 
     Ok(())
@@ -234,17 +243,20 @@ epic: "{epic_name}"
     }
 
     fs::write(&file_path, template)?;
-    println!("✅ Created specification: {}", file_path.display());
-    println!("\nNext steps:");
-    println!("  1. Edit the specification with your requirements");
-    println!(
-        "  2. Run `pmat spec score {}` to validate",
-        file_path.display()
-    );
-    println!(
-        "  3. Run `pmat spec comply {}` to fix issues",
-        file_path.display()
-    );
+    {
+        use crate::cli::colors as c;
+        println!("{}", c::pass(&format!("Created specification: {}", c::path(&file_path.display().to_string()))));
+        println!("\n{}", c::label("Next steps:"));
+        println!("  1. Edit the specification with your requirements");
+        println!(
+            "  2. Run `{}` to validate",
+            c::label(&format!("pmat spec score {}", file_path.display()))
+        );
+        println!(
+            "  3. Run `{}` to fix issues",
+            c::label(&format!("pmat spec comply {}", file_path.display()))
+        );
+    }
 
     Ok(())
 }
@@ -302,17 +314,27 @@ fn print_spec_list(
 ) -> anyhow::Result<()> {
     match format {
         SpecOutputFormat::Text => {
-            println!("📚 Specifications in {}\n", dir.display());
-            println!("{:<50} {:>8} {:>8}", "SPECIFICATION", "SCORE", "STATUS");
-            println!("{}", "─".repeat(70));
+            use crate::cli::colors as c;
+            println!("{}\n", c::header(&format!("Specifications in {}", c::path(&dir.display().to_string()))));
+            println!(
+                "{}{:<50}{} {:>8} {:>8}",
+                c::BOLD, "SPECIFICATION", c::RESET, "SCORE", "STATUS"
+            );
+            println!("{}", c::separator());
             for (path, title, score, passing) in results {
-                let status = if *passing { "✅ PASS" } else { "❌ FAIL" };
-                println!("{:<50} {:>7.1} {:>8}", spec_display_name(path, title), score, status);
+                let status = if *passing {
+                    c::pass("PASS")
+                } else {
+                    c::fail("FAIL")
+                };
+                let score_str = c::pct(*score, 95.0, 80.0);
+                println!("{:<50} {:>15} {}", spec_display_name(path, title), score_str, status);
             }
             println!(
-                "\nTotal: {} specs, {} passing",
-                results.len(),
-                results.iter().filter(|(_, _, _, p)| *p).count()
+                "\n{} {} specs, {} passing",
+                c::label("Total:"),
+                c::number(&results.len().to_string()),
+                c::number(&results.iter().filter(|(_, _, _, p)| *p).count().to_string())
             );
         }
         SpecOutputFormat::Json => {

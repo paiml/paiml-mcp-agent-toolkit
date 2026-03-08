@@ -8,10 +8,12 @@ pub async fn handle_bug_report(
     interactive: bool,
     clear: bool,
 ) -> Result<()> {
+    use crate::cli::colors as c;
+
     // Handle clear flag
     if clear {
         clear_error()?;
-        println!("✅ Cleared captured error");
+        println!("{}", c::pass("Cleared captured error"));
         return Ok(());
     }
 
@@ -21,10 +23,10 @@ pub async fn handle_bug_report(
          or the error capture may not be enabled.",
     )?;
 
-    println!("📋 Captured error from: {}", error.command);
-    println!("🔍 PMAT Version: {}", error.version);
-    println!("💻 OS: {}", error.os);
-    println!("📅 Timestamp: {}", error.timestamp);
+    println!("{} Captured error from: {}", c::label(""), c::path(&error.command));
+    println!("  {}: {}", c::dim("PMAT Version"), error.version);
+    println!("  {}: {}", c::dim("OS"), error.os);
+    println!("  {}: {}", c::dim("Timestamp"), error.timestamp);
     println!();
 
     // Generate issue markdown
@@ -42,18 +44,18 @@ pub async fn handle_bug_report(
     let issue_body = parts.get(1).unwrap_or(&"");
 
     if dry_run {
-        println!("📝 Generated Issue (dry-run):\n");
-        println!("Title: {}", issue_title);
-        println!("---");
+        println!("{} Generated Issue (dry-run):\n", c::label(""));
+        println!("{}: {}", c::dim("Title"), issue_title);
+        println!("{}", c::separator());
         println!("{}", issue_body);
         return Ok(());
     }
 
     // Interactive confirmation
     if interactive {
-        println!("📝 Generated Issue:\n");
-        println!("Title: {}", issue_title);
-        println!("---");
+        println!("{} Generated Issue:\n", c::label(""));
+        println!("{}: {}", c::dim("Title"), issue_title);
+        println!("{}", c::separator());
         println!("{}", issue_body);
         println!();
 
@@ -66,7 +68,7 @@ pub async fn handle_bug_report(
         let input = input.trim().to_lowercase();
 
         if input == "n" || input == "no" {
-            println!("❌ Cancelled");
+            println!("{}", c::fail("Cancelled"));
             return Ok(());
         }
     }
@@ -82,6 +84,8 @@ pub async fn handle_bug_report(
 
 /// Create GitHub issue using gh CLI
 fn create_github_issue(title: &str, body: &str) -> Result<()> {
+    use crate::cli::colors as c;
+
     // Check if gh is available
     let gh_check = Command::new("gh").arg("--version").output();
 
@@ -91,7 +95,7 @@ fn create_github_issue(title: &str, body: &str) -> Result<()> {
         ));
     }
 
-    println!("🔄 Creating GitHub issue...");
+    println!("{}", c::label("Creating GitHub issue..."));
 
     // Create issue
     let output = Command::new("gh")
@@ -116,7 +120,7 @@ fn create_github_issue(title: &str, body: &str) -> Result<()> {
     }
 
     let stdout = String::from_utf8_lossy(&output.stdout);
-    println!("✅ Created: {}", stdout.trim());
+    println!("{} Created: {}", c::pass(""), c::path(stdout.trim()));
 
     Ok(())
 }

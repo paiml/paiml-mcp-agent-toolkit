@@ -47,10 +47,11 @@ pub(super) async fn format_and_write_output(
 
 /// Write top files with SATD section
 pub(super) fn write_top_files_with_satd_section(output: &mut String, result: &SATDAnalysisResult) {
+    use crate::cli::colors as c;
     use std::collections::HashMap;
     use std::fmt::Write;
 
-    writeln!(output, "\n## Top Files with SATD\n").expect("internal error");
+    writeln!(output, "\n{}\n", c::subheader("Top Files with SATD")).expect("internal error");
 
     // Group items by file and count them
     let mut file_counts: HashMap<&std::path::Path, usize> = HashMap::new();
@@ -65,16 +66,23 @@ pub(super) fn write_top_files_with_satd_section(output: &mut String, result: &SA
     // Show top 10 files with their SATD counts
     for (i, (file, count)) in sorted_files.iter().take(10).enumerate() {
         let filename = file.file_name().unwrap_or_default().to_string_lossy();
-        writeln!(output, "{}. `{}` - {} SATD items", i + 1, filename, count)
-            .expect("internal error");
+        writeln!(
+            output,
+            "  {}. {} - {} SATD items",
+            c::number(&(i + 1).to_string()),
+            c::path(&filename),
+            c::number(&count.to_string())
+        )
+        .expect("internal error");
     }
 }
 
 /// Write critical SATD items section
 pub(super) fn write_critical_items_section(output: &mut String, result: &SATDAnalysisResult) {
+    use crate::cli::colors as c;
     use std::fmt::Write;
 
-    writeln!(output, "\n## Critical Items\n").expect("internal error");
+    writeln!(output, "\n{}\n", c::subheader("Critical Items")).expect("internal error");
     for item in result
         .items
         .iter()
@@ -83,9 +91,12 @@ pub(super) fn write_critical_items_section(output: &mut String, result: &SATDAna
     {
         writeln!(
             output,
-            "- `{}:{}` - {}",
-            item.file.file_name().unwrap_or_default().to_string_lossy(),
-            item.line,
+            "  {}{}!{} {}:{} - {}",
+            c::BOLD,
+            c::RED,
+            c::RESET,
+            c::path(&item.file.file_name().unwrap_or_default().to_string_lossy()),
+            c::dim(&item.line.to_string()),
             item.text
         )
         .expect("internal error");
@@ -194,51 +205,75 @@ pub(super) fn generate_satd_sarif(result: &SATDAnalysisResult) -> serde_json::Va
 ///
 /// let summary = format_satd_summary(&result, false);
 ///
-/// assert!(summary.contains("# SATD Analysis Summary"));
-/// assert!(summary.contains("**Files analyzed**: 10"));
-/// assert!(summary.contains("**Files with SATD**: 2"));
-/// assert!(summary.contains("**Total SATD items**: 2"));
-/// assert!(summary.contains("## Top Files with SATD"));
+/// assert!(summary.contains("SATD Analysis Summary"));
+/// assert!(summary.contains("Files analyzed:"));
+/// assert!(summary.contains("10"));
+/// assert!(summary.contains("Files with SATD:"));
+/// assert!(summary.contains("2"));
+/// assert!(summary.contains("Total SATD items:"));
+/// assert!(summary.contains("Top Files with SATD"));
 /// // Note: Files are sorted by SATD count, then alphabetically
-/// assert!(summary.contains("- 1 SATD items"));
-/// assert!(summary.contains("- 1 SATD items"));
+/// assert!(summary.contains("SATD items"));
+/// assert!(summary.contains("SATD items"));
 /// ```
 #[must_use]
 pub fn format_satd_summary(result: &SATDAnalysisResult, metrics: bool) -> String {
+    use crate::cli::colors as c;
     use std::fmt::Write;
     let mut output = String::new();
 
-    writeln!(&mut output, "# SATD Analysis Summary\n").expect("internal error");
+    writeln!(&mut output, "{}\n", c::header("SATD Analysis Summary")).expect("internal error");
     writeln!(
         &mut output,
-        "📊 **Files analyzed**: {}",
-        result.total_files_analyzed
+        "  {} {}",
+        c::label("Files analyzed:"),
+        c::number(&result.total_files_analyzed.to_string())
     )
     .expect("internal error");
     writeln!(
         &mut output,
-        "📁 **Files with SATD**: {}",
-        result.files_with_debt
+        "  {} {}",
+        c::label("Files with SATD:"),
+        c::number(&result.files_with_debt.to_string())
     )
     .expect("internal error");
     writeln!(
         &mut output,
-        "🔍 **Total SATD items**: {}",
-        result.items.len()
+        "  {} {}",
+        c::label("Total SATD items:"),
+        c::number(&result.items.len().to_string())
     )
     .expect("internal error");
 
     if metrics && !result.summary.by_severity.is_empty() {
-        writeln!(&mut output, "\n## By Severity\n").expect("internal error");
+        writeln!(&mut output, "\n{}\n", c::subheader("By Severity")).expect("internal error");
         for (severity, count) in &result.summary.by_severity {
-            writeln!(&mut output, "- **{severity}**: {count}").expect("internal error");
+            let sev_color = match severity.to_lowercase().as_str() {
+                "critical" | "high" => c::RED,
+                "medium" => c::YELLOW,
+                _ => c::GREEN,
+            };
+            writeln!(
+                &mut output,
+                "  {}{severity}{}: {}",
+                sev_color,
+                c::RESET,
+                c::number(&count.to_string())
+            )
+            .expect("internal error");
         }
     }
 
     if metrics && !result.summary.by_category.is_empty() {
-        writeln!(&mut output, "\n## By Category\n").expect("internal error");
+        writeln!(&mut output, "\n{}\n", c::subheader("By Category")).expect("internal error");
         for (category, count) in &result.summary.by_category {
-            writeln!(&mut output, "- **{category}**: {count}").expect("internal error");
+            writeln!(
+                &mut output,
+                "  {}: {}",
+                c::label(category),
+                c::number(&count.to_string())
+            )
+            .expect("internal error");
         }
     }
 

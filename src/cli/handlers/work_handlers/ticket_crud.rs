@@ -9,6 +9,7 @@ pub async fn handle_work_add(
     path: Option<PathBuf>,
     create_github: bool,
 ) -> Result<()> {
+    use crate::cli::colors as c;
     let project_path = path.unwrap_or_else(|| PathBuf::from("."));
     let roadmap_path = project_path.join("docs/roadmaps/roadmap.yaml");
     let service = RoadmapService::new(&roadmap_path);
@@ -55,19 +56,20 @@ pub async fn handle_work_add(
     // Save to roadmap
     service.upsert_item(item)?;
 
-    println!("✅ Created ticket: {}", next_id);
-    println!("   Title: {}", title);
-    println!("   Priority: {:?}", priority);
+    println!("{}", c::pass(&format!("Created ticket: {}", c::path(&next_id))));
+    println!("   {} {}", c::label("Title:"), title);
+    println!("   {} {:?}", c::label("Priority:"), priority);
     if let Some(desc) = description {
-        println!("   Description: {}", desc);
+        println!("   {} {}", c::label("Description:"), desc);
     }
     if let Some(t) = tags {
-        println!("   Tags: {}", t);
+        println!("   {} {}", c::label("Tags:"), t);
     }
 
     // Create GitHub issue if requested
     if create_github {
-        println!("\n⚠️  GitHub issue creation not yet implemented. Use 'pmat work sync' after creating the ticket.");
+        println!();
+        println!("{}", c::warn("GitHub issue creation not yet implemented. Use 'pmat work sync' after creating the ticket."));
     }
 
     Ok(())
@@ -82,6 +84,7 @@ pub async fn handle_work_list(
     count_only: bool,
     path: Option<PathBuf>,
 ) -> Result<()> {
+    use crate::cli::colors as c;
     let project_path = path.unwrap_or_else(|| PathBuf::from("."));
     let roadmap_path = project_path.join("docs/roadmaps/roadmap.yaml");
     let service = RoadmapService::new(&roadmap_path);
@@ -124,13 +127,16 @@ pub async fn handle_work_list(
     }
 
     if items.is_empty() {
-        println!("No tickets found matching criteria.");
+        println!("{}", c::dim("No tickets found matching criteria."));
         return Ok(());
     }
 
     // Print header
-    println!("{:<12} {:<12} {:<10} TITLE", "ID", "STATUS", "PRIORITY");
-    println!("{}", "-".repeat(70));
+    println!(
+        "{}{:<12} {:<12} {:<10} TITLE{}",
+        c::BOLD, "ID", "STATUS", "PRIORITY", c::RESET
+    );
+    println!("{}", c::separator());
 
     // Print items
     for item in items {
@@ -142,8 +148,8 @@ pub async fn handle_work_list(
             item.title.clone()
         };
         println!(
-            "{:<12} {:<12} {:<10} {}",
-            item.id, status_str, priority_str, title_truncated
+            "{}{:<12}{} {:<12} {:<10} {}",
+            c::CYAN, item.id, c::RESET, status_str, priority_str, title_truncated
         );
     }
 
@@ -162,6 +168,7 @@ pub async fn handle_work_edit(
     tags: Option<String>,
     path: Option<PathBuf>,
 ) -> Result<()> {
+    use crate::cli::colors as c;
     let project_path = path.unwrap_or_else(|| PathBuf::from("."));
     let roadmap_path = project_path.join("docs/roadmaps/roadmap.yaml");
     let service = RoadmapService::new(&roadmap_path);
@@ -207,7 +214,7 @@ pub async fn handle_work_edit(
     }
 
     if changes.is_empty() {
-        println!("⚠️  No changes specified. Use --title, --description, --priority, --status, or --tags.");
+        println!("{}", c::warn("No changes specified. Use --title, --description, --priority, --status, or --tags."));
         return Ok(());
     }
 
@@ -217,7 +224,7 @@ pub async fn handle_work_edit(
     // Save
     service.upsert_item(updated_item)?;
 
-    println!("✅ Updated ticket: {}", item.id);
+    println!("{}", c::pass(&format!("Updated ticket: {}", c::path(&item.id))));
     for change in changes {
         println!("   {}", change);
     }
@@ -229,6 +236,7 @@ pub async fn handle_work_edit(
 ///
 /// Deletes a work ticket from roadmap.yaml.
 pub async fn handle_work_delete(id: String, force: bool, path: Option<PathBuf>) -> Result<()> {
+    use crate::cli::colors as c;
     let project_path = path.unwrap_or_else(|| PathBuf::from("."));
     let roadmap_path = project_path.join("docs/roadmaps/roadmap.yaml");
     let service = RoadmapService::new(&roadmap_path);
@@ -245,18 +253,18 @@ pub async fn handle_work_delete(id: String, force: bool, path: Option<PathBuf>) 
 
     // Confirm deletion unless --force
     if !force {
-        println!("About to delete ticket:");
-        println!("  ID: {}", item.id);
-        println!("  Title: {}", item.title);
-        println!("  Status: {:?}", item.status);
+        println!("{}", c::subheader("About to delete ticket:"));
+        println!("  {} {}", c::label("ID:"), c::path(&item.id));
+        println!("  {} {}", c::label("Title:"), item.title);
+        println!("  {} {:?}", c::label("Status:"), item.status);
         println!();
-        println!("⚠️  Use --force to skip this confirmation.");
+        println!("{}", c::warn("Use --force to skip this confirmation."));
         return Ok(());
     }
 
     // Delete
     service.remove_item(&item.id)?;
-    println!("🗑️  Deleted ticket: {} - {}", item.id, item.title);
+    println!("🗑️  Deleted ticket: {} - {}", c::path(&item.id), item.title);
 
     Ok(())
 }

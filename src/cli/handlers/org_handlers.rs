@@ -7,6 +7,8 @@
 
 #![cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(feature = "org-intelligence")]
+use crate::cli::colors as c;
+#[cfg(feature = "org-intelligence")]
 use crate::cli::commands::OrgCommands;
 #[cfg(feature = "org-intelligence")]
 use anyhow::{Context, Result};
@@ -102,13 +104,19 @@ async fn handle_org_analyze(
     top_n: usize,
     min_frequency: usize,
 ) -> Result<()> {
-    println!("\n🔍 Analyzing GitHub Organization: {}", org);
-    println!("   Output: {:?}", output);
+    println!(
+        "\n{}",
+        c::header(&format!("Analyzing GitHub Organization: {}", org))
+    );
+    println!("   {} {:?}", c::label("Output:"), output);
 
     // Initialize GitHub client
     let github_token = env::var("GITHUB_TOKEN").ok();
     if github_token.is_none() {
-        println!("⚠️  GITHUB_TOKEN not set - using unauthenticated requests (lower rate limits)");
+        println!(
+            "{}",
+            c::warn("GITHUB_TOKEN not set - using unauthenticated requests (lower rate limits)")
+        );
         println!("   Set GITHUB_TOKEN environment variable for higher rate limits");
     }
 
@@ -127,29 +135,38 @@ async fn handle_org_analyze(
     let two_years_ago = Utc::now() - Duration::days(730);
     let repos = GitHubMiner::filter_by_date(all_repos.clone(), two_years_ago);
 
-    println!("\n📊 Organization Statistics:");
-    println!("   Total repositories: {}", all_repos.len());
-    println!("   Active (last 2 years): {}", repos.len());
+    println!("\n{}", c::subheader("Organization Statistics:"));
+    println!(
+        "   {} {}",
+        c::label("Total repositories:"),
+        c::number(&all_repos.len().to_string())
+    );
+    println!(
+        "   {} {}",
+        c::label("Active (last 2 years):"),
+        c::number(&repos.len().to_string())
+    );
 
     // Display top 5 repositories by stars
     let mut sorted_repos = repos.clone();
     sorted_repos.sort_by(|a, b| b.stars.cmp(&a.stars));
 
-    println!("\n⭐ Top Repositories:");
+    println!("\n{}", c::subheader("Top Repositories:"));
     for (i, repo) in sorted_repos.iter().take(5).enumerate() {
         println!(
-            "   {}. {} ({} ⭐) - {}",
-            i + 1,
-            repo.name,
-            repo.stars,
-            repo.language.as_deref().unwrap_or("Unknown")
+            "   {}. {} ({}) - {}",
+            c::number(&(i + 1).to_string()),
+            c::label(&repo.name),
+            c::number(&format!("{} stars", repo.stars)),
+            c::dim(repo.language.as_deref().unwrap_or("Unknown"))
         );
     }
 
     // Analyze repositories
     println!(
-        "\n🔍 Analyzing defect patterns in {} repositories...",
-        sorted_repos.len()
+        "\n{} Analyzing defect patterns in {} repositories...",
+        c::label(">>"),
+        c::number(&sorted_repos.len().to_string())
     );
 
     let temp_dir = TempDir::new()?;
@@ -229,19 +246,35 @@ async fn handle_org_analyze(
     // Write report to file
     report_generator.write_to_file(&report, output).await?;
 
-    println!("\n📄 Analysis Report:");
-    println!("   Repositories: {}", repos_analyzed);
-    println!("   Commits: {}", total_commits);
-    println!("   Output: {:?}", output);
+    println!("\n{}", c::subheader("Analysis Report:"));
+    println!(
+        "   {} {}",
+        c::label("Repositories:"),
+        c::number(&repos_analyzed.to_string())
+    );
+    println!(
+        "   {} {}",
+        c::label("Commits:"),
+        c::number(&total_commits.to_string())
+    );
+    println!("   {} {:?}", c::label("Output:"), output);
 
     // Phase 2: Optionally summarize results
     if summarize {
         let summary_path = output.with_extension("summary.yaml");
 
-        println!("\n📊 Generating Summary...");
-        println!("   Strip PII: {}", strip_pii);
-        println!("   Top N categories: {}", top_n);
-        println!("   Min frequency: {}", min_frequency);
+        println!("\n{}", c::subheader("Generating Summary..."));
+        println!("   {} {}", c::label("Strip PII:"), strip_pii);
+        println!(
+            "   {} {}",
+            c::label("Top N categories:"),
+            c::number(&top_n.to_string())
+        );
+        println!(
+            "   {} {}",
+            c::label("Min frequency:"),
+            c::number(&min_frequency.to_string())
+        );
 
         let config = SummaryConfig {
             strip_pii,
@@ -255,18 +288,31 @@ async fn handle_org_analyze(
 
         ReportSummarizer::save_to_file(&summary, &summary_path)?;
 
-        println!("\n✅ Summary Complete:");
+        println!("\n{}", c::pass("Summary Complete:"));
         println!(
-            "   Defect patterns: {}",
-            summary.organizational_insights.top_defect_categories.len()
+            "   {} {}",
+            c::label("Defect patterns:"),
+            c::number(
+                &summary
+                    .organizational_insights
+                    .top_defect_categories
+                    .len()
+                    .to_string()
+            )
         );
-        println!("   Output: {:?}", summary_path);
+        println!("   {} {:?}", c::label("Output:"), summary_path);
         println!(
-            "\n💡 Use with: pmat prompt generate --task \"<task>\" --context \"<context>\" --summary {:?}",
+            "\n{} Use with: pmat prompt generate --task \"<task>\" --context \"<context>\" --summary {:?}",
+            c::dim("Tip:"),
             summary_path
         );
     } else {
-        println!("\n💡 To generate summary: pmat org analyze --org {} --output {:?} --summarize --strip-pii", org, output);
+        println!(
+            "\n{} To generate summary: pmat org analyze --org {} --output {:?} --summarize --strip-pii",
+            c::dim("Tip:"),
+            org,
+            output
+        );
     }
 
     Ok(())
@@ -293,11 +339,26 @@ async fn handle_fault_localization(
         FaultLocalizer, LcovParser, ReportFormat, SbflFormula,
     };
 
-    println!("\n🔍 Tarantula Fault Localization (native implementation)");
-    println!("   Formula: {}", formula);
-    println!("   Passed tests: {}", passed_count);
-    println!("   Failed tests: {}", failed_count);
-    println!("   Top-N: {}", top_n);
+    println!(
+        "\n{}",
+        c::header("Tarantula Fault Localization (native implementation)")
+    );
+    println!("   {} {}", c::label("Formula:"), formula);
+    println!(
+        "   {} {}",
+        c::label("Passed tests:"),
+        c::number(&passed_count.to_string())
+    );
+    println!(
+        "   {} {}",
+        c::label("Failed tests:"),
+        c::number(&failed_count.to_string())
+    );
+    println!(
+        "   {} {}",
+        c::label("Top-N:"),
+        c::number(&top_n.to_string())
+    );
     println!();
 
     // Parse LCOV files
@@ -340,7 +401,7 @@ async fn handle_fault_localization(
     // Output
     if let Some(out_path) = output {
         std::fs::write(out_path, &report).context("Failed to write output file")?;
-        println!("📄 Report written to: {:?}", out_path);
+        println!("{}", c::pass(&format!("Report written to: {:?}", out_path)));
     } else {
         println!("{}", report);
     }

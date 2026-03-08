@@ -8,6 +8,7 @@ pub mod analysis;
 pub mod analysis_helpers;
 pub mod analysis_utilities;
 pub mod args;
+pub mod colors;
 pub mod command_dispatcher;
 pub mod command_structure;
 pub mod commands;

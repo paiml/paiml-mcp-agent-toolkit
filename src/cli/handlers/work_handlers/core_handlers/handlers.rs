@@ -1,6 +1,7 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
 // Public handler functions for work commands
 
+use crate::cli::colors as c;
 use crate::cli::commands::SyncDirection;
 use crate::models::roadmap::ItemStatus;
 use crate::services::hook_manager;
@@ -24,7 +25,10 @@ pub async fn handle_work_init(
     let project_path = path.unwrap_or_else(|| PathBuf::from("."));
     let roadmap_path = project_path.join("docs/roadmaps/roadmap.yaml");
 
-    println!("🚀 Initializing unified GitHub/YAML workflow...");
+    println!(
+        "{}",
+        c::label("🚀 Initializing unified GitHub/YAML workflow...")
+    );
     println!();
 
     // Create roadmap service
@@ -32,8 +36,17 @@ pub async fn handle_work_init(
 
     // Check if already initialized
     if service.exists() {
-        println!("⚠️  Roadmap already exists at: {}", roadmap_path.display());
-        println!("   Use `pmat work status` to view current items");
+        println!(
+            "{}",
+            c::warn(&format!(
+                "Roadmap already exists at: {}",
+                c::path(&roadmap_path.display().to_string())
+            ))
+        );
+        println!(
+            "   {}",
+            c::dim("Use `pmat work status` to view current items")
+        );
         return Ok(());
     }
 
@@ -54,38 +67,50 @@ pub async fn handle_work_init(
     // Initialize roadmap
     service.initialize(repo.clone())?;
 
-    println!("✅ Created roadmap: {}", roadmap_path.display());
+    println!(
+        "{}",
+        c::pass(&format!(
+            "Created roadmap: {}",
+            c::path(&roadmap_path.display().to_string())
+        ))
+    );
 
     // Install commit-msg hook
     match hook_manager::install_commit_msg_hook(&project_path) {
         Ok(()) => {
-            println!("✅ Installed commit-msg hook");
+            println!("{}", c::pass("Installed commit-msg hook"));
         }
         Err(e) => {
-            println!("⚠️  Failed to install commit-msg hook: {}", e);
-            println!("   Workflow will work, but commit messages won't be validated");
+            println!(
+                "{}",
+                c::warn(&format!("Failed to install commit-msg hook: {}", e))
+            );
+            println!(
+                "   {}",
+                c::dim("Workflow will work, but commit messages won't be validated")
+            );
         }
     }
 
     println!();
 
     // Display configuration
-    println!("📋 Configuration:");
+    println!("{}", c::subheader("📋 Configuration:"));
     println!(
         "   GitHub integration: {}",
         if github_enabled {
-            "✅ enabled"
+            format!("{}✅ enabled{}", c::GREEN, c::RESET)
         } else {
-            "❌ disabled"
+            format!("{}❌ disabled{}", c::RED, c::RESET)
         }
     );
     if let Some(r) = &repo {
-        println!("   GitHub repository: {}", r);
+        println!("   GitHub repository: {}", c::path(r));
     }
     println!();
 
     // Next steps
-    println!("🎯 Next steps:");
+    println!("{}", c::subheader("🎯 Next steps:"));
     println!("   1. Create GitHub issue or edit roadmap.yaml");
     println!("   2. Start work: pmat work start <issue-number-or-ticket-id>");
     println!("   3. Continue: pmat work continue <id>");
@@ -93,8 +118,8 @@ pub async fn handle_work_init(
     println!();
 
     if github_enabled && repo.is_none() {
-        println!("💡 Tip: Set GitHub repo with:");
-        println!("   pmat config set github.repo owner/repo");
+        println!("{}", c::dim("💡 Tip: Set GitHub repo with:"));
+        println!("   {}", c::dim("pmat config set github.repo owner/repo"));
         println!();
     }
 
@@ -117,7 +142,10 @@ pub async fn handle_work_start(
     let roadmap_path = project_path.join("docs/roadmaps/roadmap.yaml");
     let service = RoadmapService::new(&roadmap_path);
 
-    println!("🚀 Starting work on: {}", id);
+    println!(
+        "{}",
+        c::label(&format!("🚀 Starting work on: {}", c::path(&id)))
+    );
     println!();
 
     let mut roadmap = service.load()?;
@@ -130,13 +158,19 @@ pub async fn handle_work_start(
         .collect();
     if !active_items.is_empty() {
         println!(
-            "⚠️  {} other item(s) already in-progress:",
-            active_items.len()
+            "{}",
+            c::warn(&format!(
+                "{} other item(s) already in-progress:",
+                active_items.len()
+            ))
         );
         for item in &active_items {
-            println!("   - {} ({})", item.id, item.title);
+            println!("   - {} ({})", c::path(&item.id), item.title);
         }
-        println!("   Consider completing them first with `pmat work complete`.");
+        println!(
+            "   {}",
+            c::dim("Consider completing them first with `pmat work complete`.")
+        );
         println!();
     }
 
@@ -151,13 +185,22 @@ pub async fn handle_work_start(
 
     if epic {
         item.item_type = crate::models::roadmap::ItemType::Epic;
-        println!("📦 Created as epic: {}", item.title);
-        println!("   Add subtasks manually to roadmap.yaml or use future commands");
+        println!("{} Created as epic: {}", c::label("📦"), item.title);
+        println!(
+            "   {}",
+            c::dim("Add subtasks manually to roadmap.yaml or use future commands")
+        );
     }
 
     roadmap.upsert_item(item.clone());
     service.save(&roadmap)?;
-    println!("✅ Updated roadmap: {}", roadmap_path.display());
+    println!(
+        "{}",
+        c::pass(&format!(
+            "Updated roadmap: {}",
+            c::path(&roadmap_path.display().to_string())
+        ))
+    );
 
     create_work_contract(
         &project_path,
@@ -194,9 +237,18 @@ fn create_spec_if_needed(
 
     if !spec_path.exists() {
         create_specification_template(&spec_path.to_path_buf(), item)?;
-        println!("✅ Created specification: {}", spec_path.display());
+        println!(
+            "{}",
+            c::pass(&format!(
+                "Created specification: {}",
+                c::path(&spec_path.display().to_string())
+            ))
+        );
     } else {
-        println!("   Specification exists: {}", spec_path.display());
+        println!(
+            "   Specification exists: {}",
+            c::path(&spec_path.display().to_string())
+        );
     }
     Ok(())
 }
@@ -204,11 +256,19 @@ fn create_spec_if_needed(
 /// Print next steps after work start (helper for handle_work_start)
 fn print_work_start_next_steps(id: &str) {
     println!();
-    println!("🎯 Next steps:");
+    println!("{}", c::subheader("🎯 Next steps:"));
     println!("   1. Review specification (if created)");
-    println!("   2. Write failing tests (RED phase)");
-    println!("   3. Implement feature (GREEN phase)");
-    println!("   4. Refactor (REFACTOR phase)");
+    println!(
+        "   2. Write failing tests ({}RED{} phase)",
+        c::RED,
+        c::RESET
+    );
+    println!(
+        "   3. Implement feature ({}GREEN{} phase)",
+        c::GREEN,
+        c::RESET
+    );
+    println!("   4. Refactor ({}REFACTOR{} phase)", c::YELLOW, c::RESET);
     println!("   5. Continue: pmat work continue {}", id);
     println!("   6. Complete: pmat work complete {}", id);
     println!();
@@ -220,7 +280,10 @@ pub async fn handle_work_continue(id: String, path: Option<PathBuf>) -> Result<(
     let roadmap_path = project_path.join("docs/roadmaps/roadmap.yaml");
     let service = RoadmapService::new(&roadmap_path);
 
-    println!("🔄 Continuing work on: {}", id);
+    println!(
+        "{}",
+        c::label(&format!("🔄 Continuing work on: {}", c::path(&id)))
+    );
     println!();
 
     // Find item
@@ -230,53 +293,71 @@ pub async fn handle_work_continue(id: String, path: Option<PathBuf>) -> Result<(
 
     // Display progress
     let completion = item.completion_percentage();
-    println!("📊 Progress: {}% complete", completion);
-    println!("   Status: {:?}", item.status);
-    println!("   Title: {}", item.title);
+    println!(
+        "{} Progress: {}% complete",
+        c::subheader("📊"),
+        c::number(&completion.to_string())
+    );
+    println!("   {} {:?}", c::label("Status:"), item.status);
+    println!("   {} {}", c::label("Title:"), item.title);
     if let Some(spec) = &item.spec {
-        println!("   Spec: {}", spec.display());
+        println!(
+            "   {} {}",
+            c::label("Spec:"),
+            c::path(&spec.display().to_string())
+        );
     }
     println!();
 
     // Show acceptance criteria
     if !item.acceptance_criteria.is_empty() {
-        println!("📋 Acceptance Criteria:");
+        println!("{}", c::subheader("📋 Acceptance Criteria:"));
         for (i, criterion) in item.acceptance_criteria.iter().enumerate() {
-            println!("   {}. {}", i + 1, criterion);
+            println!("   {}. {}", c::number(&(i + 1).to_string()), criterion);
         }
         println!();
     }
 
     // Show phases
     if !item.phases.is_empty() {
-        println!("📌 Phases:");
+        println!("{}", c::subheader("📌 Phases:"));
         for phase in &item.phases {
             let emoji = match phase.status {
-                ItemStatus::Completed => "✅",
-                ItemStatus::InProgress => "⏳",
-                _ => "⬜",
+                ItemStatus::Completed => format!("{}✅{}", c::GREEN, c::RESET),
+                ItemStatus::InProgress => "⏳".to_string(),
+                _ => format!("{}⬜{}", c::DIM, c::RESET),
             };
-            println!("   {} {} ({}%)", emoji, phase.name, phase.completion);
+            println!(
+                "   {} {} ({}%)",
+                emoji,
+                phase.name,
+                c::number(&phase.completion.to_string())
+            );
         }
         println!();
     }
 
     // Show subtasks (for epics)
     if !item.subtasks.is_empty() {
-        println!("📦 Subtasks:");
+        println!("{}", c::subheader("📦 Subtasks:"));
         for subtask in &item.subtasks {
             let emoji = match subtask.status {
-                ItemStatus::Completed => "✅",
-                ItemStatus::InProgress => "⏳",
-                _ => "⬜",
+                ItemStatus::Completed => format!("{}✅{}", c::GREEN, c::RESET),
+                ItemStatus::InProgress => "⏳".to_string(),
+                _ => format!("{}⬜{}", c::DIM, c::RESET),
             };
-            println!("   {} {} ({}%)", emoji, subtask.title, subtask.completion);
+            println!(
+                "   {} {} ({}%)",
+                emoji,
+                subtask.title,
+                c::number(&subtask.completion.to_string())
+            );
         }
         println!();
     }
 
     // Next steps
-    println!("🎯 Next steps:");
+    println!("{}", c::subheader("🎯 Next steps:"));
     println!("   Continue working on: {}", item.title);
     println!("   When done: pmat work complete {}", id);
     println!();
@@ -293,22 +374,43 @@ pub async fn handle_work_continue(id: String, path: Option<PathBuf>) -> Result<(
 pub async fn handle_work_checkpoint(id: String, path: Option<PathBuf>) -> Result<()> {
     let project_path = path.unwrap_or_else(|| PathBuf::from("."));
 
-    println!("🔍 Running invariant checkpoint for: {}", id);
+    println!(
+        "{}",
+        c::label(&format!(
+            "🔍 Running invariant checkpoint for: {}",
+            c::path(&id)
+        ))
+    );
     println!();
 
     let record = super::checkpoint::run_checkpoint(&project_path, &id)?;
 
     // Display results
     if record.invariant_results.is_empty() {
-        println!("   ℹ️  No invariant clauses in contract (v4.0 or no invariants defined)");
-        println!("   Use --profile rust or --profile pmat for invariant checking");
+        println!(
+            "   ℹ️  {}",
+            c::dim("No invariant clauses in contract (v4.0 or no invariants defined)")
+        );
+        println!(
+            "   {}",
+            c::dim("Use --profile rust or --profile pmat for invariant checking")
+        );
         println!();
         return Ok(());
     }
 
     for result in &record.invariant_results {
-        let emoji = if result.passed { "✓" } else { "✗" };
-        println!("  [{}] {} {}", result.clause_id, emoji, result.explanation);
+        let emoji = if result.passed {
+            format!("{}✓{}", c::GREEN, c::RESET)
+        } else {
+            format!("{}✗{}", c::RED, c::RESET)
+        };
+        println!(
+            "  [{}] {} {}",
+            c::label(&result.clause_id),
+            emoji,
+            result.explanation
+        );
     }
     println!();
 
@@ -316,9 +418,12 @@ pub async fn handle_work_checkpoint(id: String, path: Option<PathBuf>) -> Result
 
     if record.all_invariants_hold {
         println!(
-            "✅ All invariants hold. Checkpoint recorded. ({}/{})",
-            record.invariant_results.len(),
-            record.invariant_results.len()
+            "{}",
+            c::pass(&format!(
+                "All invariants hold. Checkpoint recorded. ({}/{})",
+                record.invariant_results.len(),
+                record.invariant_results.len()
+            ))
         );
     } else {
         let failed_count = record
@@ -327,27 +432,39 @@ pub async fn handle_work_checkpoint(id: String, path: Option<PathBuf>) -> Result
             .filter(|r| !r.passed)
             .count();
         println!(
-            "⚠️  {} invariant(s) violated. Fix before completion.",
-            failed_count
+            "{}",
+            c::warn(&format!(
+                "{} invariant(s) violated. Fix before completion.",
+                failed_count
+            ))
         );
     }
 
     // Display drift bound if available (DBC spec §13.5)
     if let Some(drift_bound) = record.drift_bound {
         println!(
-            "   Iteration: {}  |  Git SHA: {}  |  Drift: {:.2}",
-            record.iteration,
-            &record.git_sha[..8.min(record.git_sha.len())],
-            drift_bound
+            "   {} {}  |  {} {}  |  {} {}",
+            c::label("Iteration:"),
+            c::number(&record.iteration.to_string()),
+            c::label("Git SHA:"),
+            c::dim(&record.git_sha[..8.min(record.git_sha.len())]),
+            c::label("Drift:"),
+            c::number(&format!("{:.2}", drift_bound))
         );
     } else {
         println!(
-            "   Iteration: {}  |  Git SHA: {}",
-            record.iteration,
-            &record.git_sha[..8.min(record.git_sha.len())]
+            "   {} {}  |  {} {}",
+            c::label("Iteration:"),
+            c::number(&record.iteration.to_string()),
+            c::label("Git SHA:"),
+            c::dim(&record.git_sha[..8.min(record.git_sha.len())])
         );
     }
-    println!("   Checkpoint: {}", checkpoint_path.display());
+    println!(
+        "   {} {}",
+        c::label("Checkpoint:"),
+        c::path(&checkpoint_path.display().to_string())
+    );
     println!();
 
     Ok(())
@@ -368,7 +485,10 @@ pub async fn handle_work_falsify(
 
     validate_override_accountability(&override_claims, &ticket, &id)?;
 
-    println!("🔬 Running falsification for: {}", id);
+    println!(
+        "{}",
+        c::label(&format!("🔬 Running falsification for: {}", c::path(&id)))
+    );
     println!();
 
     run_contract_falsification(&project_path, &id, &override_claims, &ticket, &id).await
@@ -393,7 +513,10 @@ pub async fn handle_work_complete(
 
     validate_override_accountability(&override_claims, &ticket, &id)?;
 
-    println!("✅ Completing work on: {}", id);
+    println!(
+        "{}",
+        c::pass(&format!("Completing work on: {}", c::path(&id)))
+    );
     println!();
 
     let mut item = service
@@ -410,10 +533,13 @@ pub async fn handle_work_complete(
     let current_sha = crate::cli::handlers::work_ledger::get_current_git_sha(&project_path);
     if ledger.has_fresh_receipt(&item.id, &current_sha)? {
         println!(
-            "✅ Fresh falsification receipt found (matches HEAD {})",
-            &current_sha[..8.min(current_sha.len())]
+            "{}",
+            c::pass(&format!(
+                "Fresh falsification receipt found (matches HEAD {})",
+                c::dim(&current_sha[..8.min(current_sha.len())])
+            ))
         );
-        println!("   Skipping re-run (receipt still valid)");
+        println!("   {}", c::dim("Skipping re-run (receipt still valid)"));
         println!();
     } else {
         run_contract_falsification(&project_path, &item.id, &override_claims, &ticket, &id).await?;
@@ -427,29 +553,61 @@ pub async fn handle_work_complete(
     roadmap.upsert_item(item.clone());
     service.save(&roadmap)?;
 
-    println!("✅ Marked as complete: {}", item.title);
-    println!("✅ Updated roadmap: {}", roadmap_path.display());
+    println!(
+        "{}",
+        c::pass(&format!("Marked as complete: {}", item.title))
+    );
+    println!(
+        "{}",
+        c::pass(&format!(
+            "Updated roadmap: {}",
+            c::path(&roadmap_path.display().to_string())
+        ))
+    );
 
     // Capture commit metadata
     println!();
-    println!("   📊 Capturing commit metadata...");
+    println!("   {} Capturing commit metadata...", c::subheader("📊"));
     let metadata = capture_commit_metadata(&project_path, &item).await?;
-    println!("      ✅ TDG Score: {:.1}/100", metadata.tdg_score);
-    println!("      ✅ Repo Score: {:.1}/100", metadata.repo_score);
+    println!(
+        "      {} TDG Score: {}",
+        c::pass(""),
+        c::number(&format!("{:.1}/100", metadata.tdg_score))
+    );
+    println!(
+        "      {} Repo Score: {}",
+        c::pass(""),
+        c::number(&format!("{:.1}/100", metadata.repo_score))
+    );
     if let Some(rust_score) = metadata.rust_project_score {
-        println!("      ✅ Rust Project Score: {:.1}/134", rust_score);
+        println!(
+            "      {} Rust Project Score: {}",
+            c::pass(""),
+            c::number(&format!("{:.1}/134", rust_score))
+        );
     }
     let meta_file = project_path
         .join(".pmat-metrics")
         .join("commit-*-meta.json");
-    println!("✅ Commit metadata: {}", meta_file.display());
+    println!(
+        "{}",
+        c::pass(&format!(
+            "Commit metadata: {}",
+            c::path(&meta_file.display().to_string())
+        ))
+    );
 
     // DBC spec §13.4: Final contract scoring
     if let Ok(contract) =
         crate::cli::handlers::work_contract::WorkContract::load(&project_path, &item.id)
     {
         let score = crate::cli::handlers::work_contract::score_contract(&contract, &project_path);
-        println!("   Contract Score: {:.2} ({})", score.total, score.grade);
+        println!(
+            "   {} {:.2} ({})",
+            c::label("Contract Score:"),
+            c::number(&format!("{:.2}", score.total)),
+            c::grade(&score.grade.to_string())
+        );
     }
 
     update_changelog(&project_path, &item);
@@ -481,14 +639,18 @@ pub async fn handle_work_status(
             .find_item(&item_id)
             .with_context(|| format!("Item not found: {}", item_id))?;
 
-        println!("📊 Status for: {}", item.id);
+        println!("{} Status for: {}", c::subheader("📊"), c::path(&item.id));
         println!();
-        println!("   Title: {}", item.title);
-        println!("   Status: {:?}", item.status);
-        println!("   Priority: {:?}", item.priority);
-        println!("   Progress: {}%", item.completion_percentage());
+        println!("   {} {}", c::label("Title:"), item.title);
+        println!("   {} {:?}", c::label("Status:"), item.status);
+        println!("   {} {:?}", c::label("Priority:"), item.priority);
+        println!(
+            "   {} {}%",
+            c::label("Progress:"),
+            c::number(&item.completion_percentage().to_string())
+        );
         if let Some(gh) = item.github_issue {
-            println!("   GitHub: #{}", gh);
+            println!("   {} #{}", c::label("GitHub:"), c::number(&gh.to_string()));
         }
         println!();
     } else {
@@ -509,23 +671,27 @@ pub async fn handle_work_status(
         };
 
         if items.is_empty() {
-            println!("📋 No items found");
+            println!("{} No items found", c::subheader("📋"));
             println!();
-            println!("   Start work with: pmat work start <id>");
+            println!("   {}", c::dim("Start work with: pmat work start <id>"));
             return Ok(());
         }
 
-        println!("📋 Roadmap items: {} total", items.len());
+        println!(
+            "{} Roadmap items: {} total",
+            c::subheader("📋"),
+            c::number(&items.len().to_string())
+        );
         println!();
 
         for item in items {
             let emoji = match item.status {
-                ItemStatus::Completed => "✅",
-                ItemStatus::InProgress => "⏳",
-                ItemStatus::Planned => "📋",
-                ItemStatus::Blocked => "🚫",
-                ItemStatus::Review => "👀",
-                ItemStatus::Cancelled => "❌",
+                ItemStatus::Completed => format!("{}✅{}", c::GREEN, c::RESET),
+                ItemStatus::InProgress => "⏳".to_string(),
+                ItemStatus::Planned => "📋".to_string(),
+                ItemStatus::Blocked => format!("{}🚫{}", c::RED, c::RESET),
+                ItemStatus::Review => "👀".to_string(),
+                ItemStatus::Cancelled => format!("{}❌{}", c::RED, c::RESET),
             };
 
             let progress = item.completion_percentage();
@@ -540,12 +706,16 @@ pub async fn handle_work_status(
 
             println!(
                 "   {} [{}] {} ({}%)",
-                emoji, display_id, item.title, progress
+                emoji,
+                c::path(&display_id),
+                item.title,
+                c::number(&progress.to_string())
             );
             if item.is_github_synced() {
                 println!(
-                    "      GitHub: #{}",
-                    item.github_issue.expect("internal error")
+                    "      {} #{}",
+                    c::label("GitHub:"),
+                    c::number(&item.github_issue.expect("internal error").to_string())
                 );
             }
         }
@@ -566,29 +736,32 @@ pub async fn handle_work_sync(
     let service = RoadmapService::new(&roadmap_path);
 
     let action = if dry_run { "Dry run" } else { "Syncing" };
-    println!("🔄 {} roadmap...", action);
+    println!("{}", c::label(&format!("🔄 {} roadmap...", action)));
     println!();
 
     let roadmap = service.load()?;
 
     match direction {
         SyncDirection::YamlToGithub => {
-            println!("📤 Direction: YAML → GitHub");
+            println!("{}", c::subheader("📤 Direction: YAML → GitHub"));
             let yaml_only = roadmap.yaml_only_items();
-            println!("   Found {} YAML-only items", yaml_only.len());
+            println!(
+                "   Found {} YAML-only items",
+                c::number(&yaml_only.len().to_string())
+            );
             for item in yaml_only {
-                println!("      - {} ({})", item.id, item.title);
+                println!("      - {} ({})", c::path(&item.id), item.title);
             }
             println!();
-            println!("   ⚠️  GitHub sync not yet implemented");
+            println!("   {}", c::warn("GitHub sync not yet implemented"));
         }
         SyncDirection::GithubToYaml => {
-            println!("📥 Direction: GitHub → YAML");
-            println!("   ⚠️  GitHub sync not yet implemented");
+            println!("{}", c::subheader("📥 Direction: GitHub → YAML"));
+            println!("   {}", c::warn("GitHub sync not yet implemented"));
         }
         SyncDirection::Full => {
-            println!("🔄 Direction: Full bidirectional sync");
-            println!("   ⚠️  GitHub sync not yet implemented");
+            println!("{}", c::subheader("🔄 Direction: Full bidirectional sync"));
+            println!("   {}", c::warn("GitHub sync not yet implemented"));
         }
     }
 
@@ -610,30 +783,51 @@ fn run_final_invariant_check(project_path: &std::path::Path, item_id: &str) -> R
             let pct = quality.score * 100.0;
             if pct < 50.0 {
                 println!(
-                    "⚠️  Contract quality LOW: {:.0}% ({}) — {}/{} claims active",
-                    pct, quality.rating, quality.active_claims, quality.applicable_claims
+                    "{}",
+                    c::warn(&format!(
+                        "Contract quality LOW: {} ({}) — {}/{} claims active",
+                        c::number(&format!("{:.0}%", pct)),
+                        quality.rating,
+                        quality.active_claims,
+                        quality.applicable_claims
+                    ))
                 );
-                println!("   Consider removing --without exclusions for stronger guarantees.");
+                println!(
+                    "   {}",
+                    c::dim("Consider removing --without exclusions for stronger guarantees.")
+                );
                 println!();
             }
         }
 
         if contract.is_dbc() && !contract.invariant.is_empty() {
-            println!("🔍 Evaluating invariants (final check)...");
+            println!("{}", c::label("🔍 Evaluating invariants (final check)..."));
 
             let (results, all_pass) =
                 super::checkpoint::evaluate_final_invariants(project_path, &contract);
 
             for result in &results {
-                let emoji = if result.passed { "✓" } else { "✗" };
-                println!("  [{}] {} {}", result.clause_id, emoji, result.explanation);
+                let emoji = if result.passed {
+                    format!("{}✓{}", c::GREEN, c::RESET)
+                } else {
+                    format!("{}✗{}", c::RED, c::RESET)
+                };
+                println!(
+                    "  [{}] {} {}",
+                    c::label(&result.clause_id),
+                    emoji,
+                    result.explanation
+                );
             }
 
             if all_pass {
                 println!(
-                    "   ✅ All invariants hold ({}/{})",
-                    results.len(),
-                    results.len()
+                    "   {}",
+                    c::pass(&format!(
+                        "All invariants hold ({}/{})",
+                        results.len(),
+                        results.len()
+                    ))
                 );
                 println!();
             } else {

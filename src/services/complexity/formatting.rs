@@ -40,57 +40,68 @@ use super::types::{ComplexityReport, Violation};
 /// let report = aggregate_results(file_metrics);
 /// let summary = format_complexity_summary(&report);
 ///
-/// assert!(summary.contains("# Complexity Analysis Summary"));
-/// assert!(summary.contains("**Files analyzed**: 2"));
-/// assert!(summary.contains("## Top Files by Complexity"));
-/// assert!(summary.contains("main.rs")); // First file (higher complexity)
-/// assert!(summary.contains("lib.rs"));  // Second file
+/// assert!(summary.contains("Complexity Analysis Summary"));
+/// assert!(summary.contains("Files analyzed"));
+/// assert!(summary.contains("Top Files by Complexity"));
+/// assert!(summary.contains("main.rs")); // First file (higher complexity, in cyan)
+/// assert!(summary.contains("lib.rs"));  // Second file (in cyan)
 /// ```
 #[must_use]
 pub fn format_complexity_summary(report: &ComplexityReport) -> String {
+    use crate::cli::colors as c;
+
     let mut output = String::new();
 
-    output.push_str("# Complexity Analysis Summary\n\n");
+    output.push_str(&format!("{}\n\n", c::header("Complexity Analysis Summary")));
 
     output.push_str(&format!(
-        "📊 **Files analyzed**: {}\n",
-        report.summary.total_files
+        "  {} {}\n",
+        c::label("Files analyzed:"),
+        c::number(&report.summary.total_files.to_string())
     ));
     output.push_str(&format!(
-        "🔧 **Total functions**: {}\n\n",
-        report.summary.total_functions
+        "  {} {}\n\n",
+        c::label("Total functions:"),
+        c::number(&report.summary.total_functions.to_string())
     ));
 
-    output.push_str("## Complexity Metrics\n\n");
+    output.push_str(&format!("{}\n\n", c::subheader("Complexity Metrics")));
     output.push_str(&format!(
-        "- **Median Cyclomatic**: {:.1}\n",
-        report.summary.median_cyclomatic
+        "  {} {}\n",
+        c::label("Median Cyclomatic:"),
+        c::number(&format!("{:.1}", report.summary.median_cyclomatic))
     ));
     output.push_str(&format!(
-        "- **Median Cognitive**: {:.1}\n",
-        report.summary.median_cognitive
+        "  {} {}\n",
+        c::label("Median Cognitive:"),
+        c::number(&format!("{:.1}", report.summary.median_cognitive))
     ));
     output.push_str(&format!(
-        "- **Max Cyclomatic**: {}\n",
-        report.summary.max_cyclomatic
+        "  {} {}\n",
+        c::label("Max Cyclomatic:"),
+        c::number(&report.summary.max_cyclomatic.to_string())
     ));
     output.push_str(&format!(
-        "- **Max Cognitive**: {}\n",
-        report.summary.max_cognitive
+        "  {} {}\n",
+        c::label("Max Cognitive:"),
+        c::number(&report.summary.max_cognitive.to_string())
     ));
     output.push_str(&format!(
-        "- **90th Percentile Cyclomatic**: {}\n",
-        report.summary.p90_cyclomatic
+        "  {} {}\n",
+        c::label("90th Percentile Cyclomatic:"),
+        c::number(&report.summary.p90_cyclomatic.to_string())
     ));
     output.push_str(&format!(
-        "- **90th Percentile Cognitive**: {}\n\n",
-        report.summary.p90_cognitive
+        "  {} {}\n\n",
+        c::label("90th Percentile Cognitive:"),
+        c::number(&report.summary.p90_cognitive.to_string())
     ));
 
     if report.summary.technical_debt_hours > 0.0 {
         output.push_str(&format!(
-            "⏱️  **Estimated Refactoring Time**: {:.1} hours\n\n",
-            report.summary.technical_debt_hours
+            "  {} {}\n\n",
+            c::label("Estimated Refactoring Time:"),
+            c::number(&format!("{:.1} hours", report.summary.technical_debt_hours))
         ));
     }
 
@@ -107,19 +118,29 @@ pub fn format_complexity_summary(report: &ComplexityReport) -> String {
         .count();
 
     if error_count > 0 || warning_count > 0 {
-        output.push_str("## Issues Found\n\n");
+        output.push_str(&format!("{}\n\n", c::subheader("Issues Found")));
         if error_count > 0 {
-            output.push_str(&format!("❌ **Errors**: {error_count}\n"));
+            output.push_str(&format!(
+                "  {}Errors:{} {}\n",
+                c::BOLD_RED,
+                c::RESET,
+                c::number(&error_count.to_string())
+            ));
         }
         if warning_count > 0 {
-            output.push_str(&format!("⚠️  **Warnings**: {warning_count}\n"));
+            output.push_str(&format!(
+                "  {}Warnings:{} {}\n",
+                c::BOLD_YELLOW,
+                c::RESET,
+                c::number(&warning_count.to_string())
+            ));
         }
         output.push('\n');
     }
 
     // Top files by complexity
     if !report.files.is_empty() {
-        output.push_str("## Top Files by Complexity\n\n");
+        output.push_str(&format!("{}\n\n", c::subheader("Top Files by Complexity")));
 
         // Sort files by total complexity (cyclomatic + cognitive)
         let mut files_with_score: Vec<_> = report
@@ -138,19 +159,19 @@ pub fn format_complexity_summary(report: &ComplexityReport) -> String {
             // Use relative path for better identification, not just filename
             let display_path = file.path.strip_prefix("./").unwrap_or(&file.path);
             output.push_str(&format!(
-                "{}. `{}` - Cyclomatic: {}, Cognitive: {}, Functions: {}\n",
-                i + 1,
-                display_path,
-                file.total_complexity.cyclomatic,
-                file.total_complexity.cognitive,
-                file.functions.len()
+                "  {}. {} - Cyclomatic: {}, Cognitive: {}, Functions: {}\n",
+                c::number(&(i + 1).to_string()),
+                c::path(display_path),
+                c::number(&file.total_complexity.cyclomatic.to_string()),
+                c::number(&file.total_complexity.cognitive.to_string()),
+                c::number(&file.functions.len().to_string())
             ));
         }
         output.push('\n');
 
         // Show all functions when there's only one file (e.g., single file analysis)
         if report.files.len() == 1 && !report.files[0].functions.is_empty() {
-            output.push_str("## Functions in File\n\n");
+            output.push_str(&format!("{}\n\n", c::subheader("Functions in File")));
 
             // Sort functions by total complexity
             let mut functions_with_score: Vec<_> = report.files[0]
@@ -167,13 +188,12 @@ pub fn format_complexity_summary(report: &ComplexityReport) -> String {
 
             for (i, (func, _)) in functions_with_score.iter().enumerate() {
                 output.push_str(&format!(
-                    "{}. `{}` (line {}-{}) - Cyclomatic: {}, Cognitive: {}\n",
-                    i + 1,
-                    func.name,
-                    func.line_start,
-                    func.line_end,
-                    func.metrics.cyclomatic,
-                    func.metrics.cognitive
+                    "  {}. {} {} - Cyclomatic: {}, Cognitive: {}\n",
+                    c::number(&(i + 1).to_string()),
+                    c::path(&func.name),
+                    c::dim(&format!("(line {}-{})", func.line_start, func.line_end)),
+                    c::number(&func.metrics.cyclomatic.to_string()),
+                    c::number(&func.metrics.cognitive.to_string())
                 ));
             }
             output.push('\n');
@@ -182,18 +202,18 @@ pub fn format_complexity_summary(report: &ComplexityReport) -> String {
 
     // Top hotspots
     if !report.hotspots.is_empty() {
-        output.push_str("## Top Complexity Hotspots\n\n");
+        output.push_str(&format!("{}\n\n", c::subheader("Top Complexity Hotspots")));
         for (i, hotspot) in report.hotspots.iter().take(5).enumerate() {
             let display_path = hotspot.file.strip_prefix("./").unwrap_or(&hotspot.file);
             let func_name = hotspot.function.as_deref().unwrap_or("<file>");
             output.push_str(&format!(
-                "{}. `{}` {}:{} - {} complexity: {}\n",
-                i + 1,
-                func_name,
-                display_path,
-                hotspot.line,
+                "  {}. {} {}:{} - {} complexity: {}\n",
+                c::number(&(i + 1).to_string()),
+                c::path(func_name),
+                c::dim(display_path),
+                c::dim(&hotspot.line.to_string()),
                 hotspot.complexity_type,
-                hotspot.complexity
+                c::number(&hotspot.complexity.to_string())
             ));
         }
     }
@@ -204,9 +224,11 @@ pub fn format_complexity_summary(report: &ComplexityReport) -> String {
 /// Format full complexity report for CLI output
 #[must_use]
 pub fn format_complexity_report(report: &ComplexityReport) -> String {
+    use crate::cli::colors as c;
+
     let mut output = format_complexity_summary(report);
 
-    output.push_str("\n## Detailed Violations\n\n");
+    output.push_str(&format!("\n{}\n\n", c::subheader("Detailed Violations")));
 
     // Group violations by file
     let mut violations_by_file: rustc_hash::FxHashMap<&str, Vec<&Violation>> =
@@ -219,7 +241,7 @@ pub fn format_complexity_report(report: &ComplexityReport) -> String {
     }
 
     for (file, violations) in violations_by_file {
-        output.push_str(&format!("### {file}\n\n"));
+        output.push_str(&format!("  {}\n\n", c::path(file)));
 
         for violation in violations {
             match violation {
@@ -231,9 +253,10 @@ pub fn format_complexity_report(report: &ComplexityReport) -> String {
                     ..
                 } => {
                     output.push_str(&format!(
-                        "❌ **{}:{}** {} - {}\n",
-                        line,
-                        function.as_deref().unwrap_or(""),
+                        "    {} {}:{} {} - {}\n",
+                        c::fail(""),
+                        c::dim(&line.to_string()),
+                        c::dim(function.as_deref().unwrap_or("")),
                         rule,
                         message
                     ));
@@ -246,9 +269,10 @@ pub fn format_complexity_report(report: &ComplexityReport) -> String {
                     ..
                 } => {
                     output.push_str(&format!(
-                        "⚠️  **{}:{}** {} - {}\n",
-                        line,
-                        function.as_deref().unwrap_or(""),
+                        "    {} {}:{} {} - {}\n",
+                        c::warn(""),
+                        c::dim(&line.to_string()),
+                        c::dim(function.as_deref().unwrap_or("")),
                         rule,
                         message
                     ));

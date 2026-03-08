@@ -1,10 +1,13 @@
 fn print_performance_metrics(report: &ComprehensiveReport, elapsed: std::time::Duration) {
-    eprintln!("\n⏱️  Performance Metrics:");
-    eprintln!("  Total time: {elapsed:?}");
-    eprintln!("  Clones found: {}", report.metrics.total_clones);
+    use crate::cli::colors as c;
+    eprintln!("\n{}", c::subheader("⏱️  Performance Metrics:"));
+    eprintln!("  Total time: {}{elapsed:?}{}", c::BOLD_WHITE, c::RESET);
+    eprintln!("  Clones found: {}", c::number(&report.metrics.total_clones.to_string()));
     eprintln!(
-        "  Analysis rate: {:.0} LOC/sec",
-        (report.exact_duplicates.len() * 1000) as f64 / elapsed.as_millis() as f64
+        "  Analysis rate: {}{:.0}{} LOC/sec",
+        c::BOLD_WHITE,
+        (report.exact_duplicates.len() * 1000) as f64 / elapsed.as_millis() as f64,
+        c::RESET,
     );
 }
 
@@ -96,21 +99,23 @@ fn format_sarif_report(report: &ComprehensiveReport) -> Result<String> {
 }
 
 fn print_summary(report: &ComprehensiveReport) {
-    eprintln!("\n✅ Analysis Complete:");
+    use crate::cli::colors as c;
+    eprintln!("\n{}", c::pass("Analysis Complete:"));
+    let dup_color = if report.metrics.duplication_percentage < 5.0 { c::GREEN } else if report.metrics.duplication_percentage < 15.0 { c::YELLOW } else { c::RED };
     eprintln!(
-        "  📊 Duplication: {:.1}%",
-        report.metrics.duplication_percentage
+        "  📊 Duplication: {}{:.1}%{}",
+        dup_color, report.metrics.duplication_percentage, c::RESET,
     );
-    eprintln!("  🔢 Total clones: {}", report.metrics.total_clones);
+    eprintln!("  🔢 Total clones: {}", c::number(&report.metrics.total_clones.to_string()));
     eprintln!(
-        "  📈 Average entropy: {:.2}",
-        report.metrics.average_entropy
+        "  📈 Average entropy: {}",
+        c::number(&format!("{:.2}", report.metrics.average_entropy)),
     );
 
     if !report.refactoring_opportunities.is_empty() {
         eprintln!(
             "  💡 Refactoring opportunities: {}",
-            report.refactoring_opportunities.len()
+            c::number(&report.refactoring_opportunities.len().to_string()),
         );
     }
 }

@@ -2,6 +2,7 @@
 //! Output and formatting for enforcement results
 
 use super::types::{EnforcementResult, EnforcementState, QualityProfile, QualityViolation};
+use crate::cli::colors as c;
 use crate::cli::EnforceOutputFormat;
 use anyhow::Result;
 
@@ -16,19 +17,41 @@ pub fn output_result(
             println!("{}", serde_json::to_string_pretty(result)?);
         }
         EnforceOutputFormat::Summary => {
-            println!("State: {:?}", result.state);
-            println!("Score: {:.2}/{:.2}", result.score, result.target);
+            println!("{} {:?}", c::label("State:"), result.state);
+            println!(
+                "{} {}{:.2}{}/{}{:.2}{}",
+                c::label("Score:"),
+                c::BOLD_WHITE,
+                result.score,
+                c::RESET,
+                c::DIM,
+                result.target,
+                c::RESET
+            );
             if let Some(file) = &result.current_file {
-                println!("Current File: {file}");
+                println!("{} {}", c::label("Current File:"), c::path(file));
             }
-            println!("Violations: {}", result.violations.len());
+            println!(
+                "{} {}",
+                c::label("Violations:"),
+                c::number(&result.violations.len().to_string())
+            );
         }
         EnforceOutputFormat::Progress => {
             if show_progress {
                 print_progress_bar(result);
             }
-            println!("State: {:?}", result.state);
-            println!("Score: {:.2}/{:.2}", result.score, result.target);
+            println!("{} {:?}", c::label("State:"), result.state);
+            println!(
+                "{} {}{:.2}{}/{}{:.2}{}",
+                c::label("Score:"),
+                c::BOLD_WHITE,
+                result.score,
+                c::RESET,
+                c::DIM,
+                result.target,
+                c::RESET
+            );
         }
         EnforceOutputFormat::Sarif => {
             // Generate SARIF output
@@ -83,19 +106,36 @@ pub fn print_progress_bar(result: &EnforcementResult) {
     let filled = (percentage as f32 / 5.0) as usize;
     let empty = 20 - filled;
 
-    println!("\n🎯 Extreme Quality Enforcement Progress");
-    println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    print!("Overall Score: {:.2}/1.00 ", result.score);
-    print!("{}", "█".repeat(filled));
-    print!("{}", "░".repeat(empty));
-    println!(" {percentage}%");
+    println!("\n{}", c::header("Extreme Quality Enforcement Progress"));
+    println!("{}", c::rule());
+    print!(
+        "{} {}{:.2}{}/1.00 ",
+        c::label("Overall Score:"),
+        c::BOLD_WHITE,
+        result.score,
+        c::RESET
+    );
+    let bar_color = if percentage >= 80 {
+        c::GREEN
+    } else if percentage >= 50 {
+        c::YELLOW
+    } else {
+        c::RED
+    };
+    print!("{}{}{}", bar_color, "\u{2588}".repeat(filled), c::RESET);
+    print!("{}{}{}", c::DIM, "\u{2591}".repeat(empty), c::RESET);
+    println!(" {}", c::pct(f64::from(percentage), 80.0, 50.0));
     println!();
 }
 
 /// Print enforcement header
 pub fn print_enforcement_header(project_path: &std::path::Path) {
-    eprintln!("🎯 Starting Extreme Quality Enforcement");
-    eprintln!("📁 Project: {}", project_path.display());
+    eprintln!("{}", c::header("Starting Extreme Quality Enforcement"));
+    eprintln!(
+        "{} {}",
+        c::label("Project:"),
+        c::path(&project_path.display().to_string())
+    );
 }
 
 /// Print enforcement summary
@@ -104,10 +144,19 @@ pub fn print_enforcement_summary(
     iteration: u32,
     duration: std::time::Duration,
 ) {
-    eprintln!("\n🏁 Enforcement Complete");
-    eprintln!("📊 Final Score: {current_score:.2}/1.00");
-    eprintln!("🔄 Iterations: {iteration}");
-    eprintln!("⏱️  Duration: {duration:?}");
+    eprintln!("\n{}", c::header("Enforcement Complete"));
+    eprintln!(
+        "{} {}{current_score:.2}{}/1.00",
+        c::label("Final Score:"),
+        c::BOLD_WHITE,
+        c::RESET
+    );
+    eprintln!(
+        "{} {}",
+        c::label("Iterations:"),
+        c::number(&iteration.to_string())
+    );
+    eprintln!("{} {duration:?}", c::label("Duration:"));
 }
 
 /// Handle CI mode exit
@@ -145,16 +194,29 @@ pub fn format_violations_output(
     } else {
         // Simple text format
         let mut output = String::new();
-        output.push_str(&format!("Found {} violations:\n\n", violations.len()));
+        output.push_str(&format!(
+            "{} {} violations:\n\n",
+            c::label("Found"),
+            c::number(&violations.len().to_string())
+        ));
 
         for violation in violations {
+            let sev_color = match violation.severity.as_str() {
+                "high" => c::BOLD_RED,
+                "medium" => c::BOLD_YELLOW,
+                _ => c::DIM_WHITE,
+            };
             output.push_str(&format!(
-                "{} [{}]: {} (current: {}, target: {})\n  -> {}\n\n",
+                "{}{}{} [{}{}{}]: {} (current: {}, target: {})\n  -> {}\n\n",
+                c::BOLD,
                 violation.violation_type.to_uppercase(),
+                c::RESET,
+                sev_color,
                 violation.severity,
-                violation.location,
-                violation.current,
-                violation.target,
+                c::RESET,
+                c::path(&violation.location),
+                c::number(&format!("{}", violation.current)),
+                c::number(&format!("{}", violation.target)),
                 violation.suggestion
             ));
         }

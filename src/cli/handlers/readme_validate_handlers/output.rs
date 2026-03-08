@@ -18,51 +18,82 @@ impl ValidateReadmeCmd {
         contradictions: usize,
         unverified: usize,
     ) {
-        println!("\n🔬 Documentation Hallucination Detection Summary");
-        println!("================================================");
+        use crate::cli::colors as c;
         println!();
-        println!("📄 Files validated:  {}", results.len());
-        println!("✅ Verified claims:  {}", verified);
-        println!("❌ Contradictions:   {}", contradictions);
-        println!("⚠️  Unverified:       {}", unverified);
+        println!(
+            "{}",
+            c::header("Documentation Hallucination Detection Summary")
+        );
+        println!();
+        println!(
+            "  Files validated:  {}",
+            c::number(&results.len().to_string())
+        );
+        println!("  Verified claims:  {}{}{}", c::GREEN, verified, c::RESET);
+        println!(
+            "  Contradictions:   {}{}{}",
+            c::RED,
+            contradictions,
+            c::RESET
+        );
+        println!(
+            "  Unverified:       {}{}{}",
+            c::YELLOW,
+            unverified,
+            c::RESET
+        );
         println!();
 
         for (target, file_results) in results {
-            println!("📖 {}", target.display());
-            println!("{}", "─".repeat(50));
+            println!("  {}", c::path(&target.display().to_string()));
+            println!("  {}", c::separator());
 
             for (idx, result) in file_results.iter().enumerate() {
-                // Skip verified claims if failures_only is true
                 if self.failures_only && matches!(result.status, ValidationStatus::Verified) {
                     continue;
                 }
 
-                let status_icon = match result.status {
-                    ValidationStatus::Verified => "✅",
-                    ValidationStatus::Contradiction => "❌",
-                    ValidationStatus::Unverified => "⚠️",
-                    ValidationStatus::NotFound => "🔍",
-                    ValidationStatus::Outdated => "⏰",
-                    ValidationStatus::Inconclusive => "❓",
+                let (status_icon, color) = match result.status {
+                    ValidationStatus::Verified => ("✓", c::GREEN),
+                    ValidationStatus::Contradiction => ("✗", c::RED),
+                    ValidationStatus::Unverified => ("⚠", c::YELLOW),
+                    ValidationStatus::NotFound => ("?", c::YELLOW),
+                    ValidationStatus::Outdated => ("⏰", c::YELLOW),
+                    ValidationStatus::Inconclusive => ("~", c::DIM),
                 };
 
                 println!(
-                    "\n{} Claim #{}: {:?}",
-                    status_icon,
+                    "\n  {color}{status_icon}{} Claim {}{}{}: {:?}",
+                    c::RESET,
+                    c::BOLD_WHITE,
                     idx + 1,
+                    c::RESET,
                     result.claim.claim_type
                 );
-                println!("   Text: \"{}\"", result.claim.text);
-                println!("   Line: {}", result.claim.line_number);
-                println!("   Status: {:?}", result.status);
-                println!("   Confidence: {:.2}", result.confidence);
+                println!("     Text: {}\"{}\"{}", c::DIM, result.claim.text, c::RESET);
+                println!(
+                    "     Line: {}{}{}",
+                    c::CYAN,
+                    result.claim.line_number,
+                    c::RESET
+                );
+                println!("     Status: {color}{:?}{}", result.status, c::RESET);
+                println!(
+                    "     Confidence: {}",
+                    c::pct(f64::from(result.confidence) * 100.0, 80.0, 50.0)
+                );
 
                 if let Some(evidence) = &result.evidence {
-                    println!("   Evidence: {}", evidence.content);
+                    println!("     Evidence: {}{}{}", c::DIM, evidence.content, c::RESET);
                 }
 
                 if self.verbose {
-                    println!("   Entities: {:?}", result.claim.entities);
+                    println!(
+                        "     Entities: {}{:?}{}",
+                        c::DIM,
+                        result.claim.entities,
+                        c::RESET
+                    );
                 }
             }
 
@@ -70,14 +101,20 @@ impl ValidateReadmeCmd {
         }
 
         if contradictions == 0 && unverified == 0 {
-            println!("🎉 All documentation claims are verified!");
+            println!("{}", c::pass("All documentation claims are verified!"));
         } else if contradictions > 0 {
             println!(
-                "💥 Found {} contradiction(s) - documentation contains hallucinations!",
-                contradictions
+                "{}",
+                c::fail(&format!(
+                    "Found {} contradiction(s) — documentation contains hallucinations!",
+                    contradictions
+                ))
             );
         } else if unverified > 0 {
-            println!("⚠️  Found {} unverified claim(s)", unverified);
+            println!(
+                "{}",
+                c::warn(&format!("Found {} unverified claim(s)", unverified))
+            );
         }
     }
 

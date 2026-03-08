@@ -1,6 +1,7 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
 //! Handler for `pmat split` command — suggests and executes semantic file splits.
 
+use crate::cli::colors as c;
 use crate::services::agent_context::AgentContextIndex;
 use crate::services::file_split::{execute_split, suggest_split, SplitPlan};
 use anyhow::Result;
@@ -44,8 +45,10 @@ pub async fn handle_split(config: SplitConfig) -> Result<()> {
         let line_count = content.lines().count();
         if line_count < 500 {
             eprintln!(
-                "Warning: {} is {} lines (under 500-line threshold). Showing plan anyway.",
-                file_path, line_count
+                "{} {} is {} lines (under 500-line threshold). Showing plan anyway.",
+                c::warn(""),
+                c::path(&file_path),
+                c::number(&line_count.to_string())
             );
         }
     }
@@ -68,19 +71,28 @@ pub async fn handle_split(config: SplitConfig) -> Result<()> {
 
             // Execute if requested
             if config.execute {
-                println!("\nExecuting split...");
+                println!("\n{}", c::label("Executing split..."));
                 let created = execute_split(&plan, &project_path)?;
-                println!("Created {} files:", created.len());
+                println!(
+                    "{} Created {} files:",
+                    c::pass(""),
+                    c::number(&created.len().to_string())
+                );
                 for f in &created {
-                    println!("  {}", f.display());
+                    println!("  {}", c::path(&f.display().to_string()));
                 }
-                println!("\nNote: Review generated files and update the source file manually.");
+                println!(
+                    "\n{}",
+                    c::dim("Note: Review generated files and update the source file manually.")
+                );
             }
         }
         None => {
             eprintln!(
-                "No functions found in {} (file may not be indexed)",
-                file_path
+                "{} No functions found in {} {}",
+                c::fail(""),
+                c::path(&file_path),
+                c::dim("(file may not be indexed)")
             );
             std::process::exit(1);
         }
@@ -108,7 +120,11 @@ fn output_json(plan: &SplitPlan, output: Option<&Path>) -> Result<()> {
     let json = serde_json::to_string_pretty(plan)?;
     if let Some(path) = output {
         std::fs::write(path, &json)?;
-        eprintln!("Written to {}", path.display());
+        eprintln!(
+            "{} Written to {}",
+            c::pass(""),
+            c::path(&path.display().to_string())
+        );
     } else {
         println!("{}", json);
     }
@@ -116,40 +132,73 @@ fn output_json(plan: &SplitPlan, output: Option<&Path>) -> Result<()> {
 }
 
 fn output_text(plan: &SplitPlan) {
-    println!("Split Plan for: {}", plan.source_file);
-    println!("Total lines: ~{}", plan.total_lines);
-    println!("Modularity: {:.3}", plan.modularity);
-    println!("Clusters: {}", plan.clusters.len());
-    println!("Unclustered items: {}", plan.unclustered.len());
+    println!(
+        "{} {}",
+        c::label("Split Plan for:"),
+        c::path(&plan.source_file)
+    );
+    println!(
+        "{}: ~{}",
+        c::dim("Total lines"),
+        c::number(&plan.total_lines.to_string())
+    );
+    println!(
+        "{}: {}",
+        c::dim("Modularity"),
+        c::number(&format!("{:.3}", plan.modularity))
+    );
+    println!(
+        "{}: {}",
+        c::dim("Clusters"),
+        c::number(&plan.clusters.len().to_string())
+    );
+    println!(
+        "{}: {}",
+        c::dim("Unclustered items"),
+        c::number(&plan.unclustered.len().to_string())
+    );
     println!();
 
     for (i, cluster) in plan.clusters.iter().enumerate() {
         println!(
-            "Cluster {} — {} (signal: {}, confidence: {:.0}%)",
-            i + 1,
-            cluster.suggested_name,
+            "{} {} ({}: {}, {}: {:.0}%)",
+            c::label(&format!("Cluster {}", i + 1)),
+            c::BOLD,
+            c::dim("signal"),
             cluster.naming_signal,
+            c::dim("confidence"),
             cluster.confidence * 100.0
         );
         println!(
-            "  ~{} lines, cohesion: {:.2}",
-            cluster.estimated_lines, cluster.cohesion
+            "  {} ~{} lines, {}: {:.2}",
+            c::dim(""),
+            cluster.estimated_lines,
+            c::dim("cohesion"),
+            cluster.cohesion
         );
+        println!("  {}", c::subheader(&cluster.suggested_name));
         for item in &cluster.items {
             println!(
-                "    {} {} (L{}-L{})",
-                item.definition_type, item.name, item.line_range.0, item.line_range.1
+                "    {} {} {} (L{}-L{})",
+                c::dim(""),
+                c::dim(&item.definition_type),
+                c::label(&item.name),
+                item.line_range.0,
+                item.line_range.1
             );
         }
         println!();
     }
 
     if !plan.unclustered.is_empty() {
-        println!("Unclustered:");
+        println!("{}", c::subheader("Unclustered:"));
         for item in &plan.unclustered {
             println!(
                 "  {} {} (L{}-L{})",
-                item.definition_type, item.name, item.line_range.0, item.line_range.1
+                c::dim(&item.definition_type),
+                c::label(&item.name),
+                item.line_range.0,
+                item.line_range.1
             );
         }
         println!();
@@ -157,11 +206,12 @@ fn output_text(plan: &SplitPlan) {
 
     if !plan.impact.importing_files.is_empty() {
         println!(
-            "Impact — {} files import this module:",
-            plan.impact.importing_files.len()
+            "{} {} files import this module:",
+            c::subheader("Impact"),
+            c::number(&plan.impact.importing_files.len().to_string())
         );
         for f in &plan.impact.importing_files {
-            println!("  {}", f);
+            println!("  {}", c::path(f));
         }
     }
 }

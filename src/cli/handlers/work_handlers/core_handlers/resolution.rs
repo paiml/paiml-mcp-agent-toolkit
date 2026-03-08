@@ -1,6 +1,7 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
 // Work item resolution helpers (GitHub issues and YAML tickets)
 
+use crate::cli::colors as c;
 use crate::models::roadmap::{ItemStatus, Priority, RoadmapItem};
 use crate::services::roadmap_service::RoadmapService;
 use anyhow::Result;
@@ -14,12 +15,19 @@ pub(super) async fn resolve_github_issue(
     roadmap: &crate::models::roadmap::Roadmap,
     issue_num: u64,
 ) -> RoadmapItem {
-    println!("📋 Type: GitHub issue #{}", issue_num);
+    println!(
+        "{} Type: GitHub issue #{}",
+        c::label("📋"),
+        c::number(&issue_num.to_string())
+    );
 
     let mut item = if let Some(ref repo) = roadmap.github_repo {
         match fetch_github_issue(repo, issue_num).await {
             Ok(gh_issue) => {
-                println!("   ✅ Fetched from GitHub: {}", gh_issue.title);
+                println!(
+                    "   {}",
+                    c::pass(&format!("Fetched from GitHub: {}", gh_issue.title))
+                );
                 let mut item = RoadmapItem::from_github_issue(issue_num, gh_issue.title.clone());
                 item.labels = gh_issue.labels.clone();
                 if let Some(body) = &gh_issue.body {
@@ -28,13 +36,19 @@ pub(super) async fn resolve_github_issue(
                 item
             }
             Err(e) => {
-                println!("   ⚠️  Failed to fetch from GitHub: {}", e);
-                println!("   Creating placeholder (will sync later)");
+                println!(
+                    "   {}",
+                    c::warn(&format!("Failed to fetch from GitHub: {}", e))
+                );
+                println!("   {}", c::dim("Creating placeholder (will sync later)"));
                 RoadmapItem::from_github_issue(issue_num, format!("Issue #{}", issue_num))
             }
         }
     } else {
-        println!("   ℹ️  GitHub not configured, creating placeholder");
+        println!(
+            "   ℹ️  {}",
+            c::dim("GitHub not configured, creating placeholder")
+        );
         RoadmapItem::from_github_issue(issue_num, format!("Issue #{}", issue_num))
     };
 
@@ -49,10 +63,10 @@ pub(super) async fn resolve_yaml_ticket(
     roadmap: &crate::models::roadmap::Roadmap,
     create_github: bool,
 ) -> Result<RoadmapItem> {
-    println!("📋 Type: YAML ticket {}", id);
+    println!("{} Type: YAML ticket {}", c::label("📋"), c::path(id));
 
     if let Some(existing) = service.find_item(id)? {
-        println!("   Found existing ticket");
+        println!("   {}", c::pass("Found existing ticket"));
         let mut item = existing;
         item.status = ItemStatus::InProgress;
         item.updated = chrono::Utc::now().to_rfc3339();
@@ -76,20 +90,32 @@ pub(super) async fn try_create_github_issue(
     item: &mut RoadmapItem,
 ) {
     if let Some(ref repo) = roadmap.github_repo {
-        println!("   🔄 Creating GitHub issue...");
+        println!("   {} Creating GitHub issue...", c::label("🔄"));
         match create_github_issue_from_item(repo, item).await {
             Ok(gh_issue) => {
-                println!("   ✅ Created GitHub issue #{}", gh_issue.number);
+                println!(
+                    "   {}",
+                    c::pass(&format!(
+                        "Created GitHub issue #{}",
+                        c::number(&gh_issue.number.to_string())
+                    ))
+                );
                 item.github_issue = Some(gh_issue.number);
                 item.id = format!("GH-{}", gh_issue.number);
             }
             Err(e) => {
-                println!("   ⚠️  Failed to create GitHub issue: {}", e);
-                println!("   Continuing with YAML-only ticket");
+                println!(
+                    "   {}",
+                    c::warn(&format!("Failed to create GitHub issue: {}", e))
+                );
+                println!("   {}", c::dim("Continuing with YAML-only ticket"));
             }
         }
     } else {
-        println!("   ⚠️  GitHub not configured, skipping issue creation");
+        println!(
+            "   {}",
+            c::warn("GitHub not configured, skipping issue creation")
+        );
     }
 }
 
@@ -98,11 +124,15 @@ pub(super) fn print_warning_failures(report: &FalsificationReport) {
     let warnings = report.warning_failures();
     if !warnings.is_empty() {
         println!();
-        println!("Warnings (non-blocking):");
+        println!("{}", c::subheader("Warnings (non-blocking):"));
         for warning in warnings {
             println!(
-                "  - [{}] {}: {}",
-                warning.index, warning.hypothesis, warning.result.explanation
+                "  - [{}] {}{}{}: {}",
+                c::number(&warning.index.to_string()),
+                c::YELLOW,
+                warning.hypothesis,
+                c::RESET,
+                warning.result.explanation
             );
         }
     }
@@ -115,15 +145,22 @@ pub(super) fn print_blocked_result(
     id: &str,
 ) {
     println!(
-        "❌ FALSIFICATION RESULT: BLOCKED ({} failure(s), {} warning(s))",
-        report.failed, report.warnings
+        "{}❌ FALSIFICATION RESULT: BLOCKED{} ({} failure(s), {} warning(s))",
+        c::BOLD_RED,
+        c::RESET,
+        c::number(&report.failed.to_string()),
+        c::number(&report.warnings.to_string())
     );
     println!();
-    println!("Failures (must fix):");
+    println!("{}", c::subheader("Failures (must fix):"));
     for failure in unoverrideable {
         println!(
-            "  - [{}] {}: {}",
-            failure.index, failure.hypothesis, failure.result.explanation
+            "  - [{}] {}{}{}: {}",
+            c::number(&failure.index.to_string()),
+            c::RED,
+            failure.hypothesis,
+            c::RESET,
+            failure.result.explanation
         );
     }
 
@@ -132,10 +169,19 @@ pub(super) fn print_blocked_result(
     println!();
     println!("Fix issues and retry: pmat work complete {}", id);
     println!();
-    println!("Or override with accountability (Popperian Protocol):");
-    println!("  1. Create debt ticket: pmat comply upgrade --target popperian");
     println!(
-        "  2. pmat work complete {} --override-claims coverage,complexity --ticket DEBT-XXX",
-        id
+        "{}",
+        c::dim("Or override with accountability (Popperian Protocol):")
+    );
+    println!(
+        "  {}",
+        c::dim("1. Create debt ticket: pmat comply upgrade --target popperian")
+    );
+    println!(
+        "  {}",
+        c::dim(&format!(
+            "2. pmat work complete {} --override-claims coverage,complexity --ticket DEBT-XXX",
+            id
+        ))
     );
 }
