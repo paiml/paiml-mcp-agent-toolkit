@@ -118,6 +118,11 @@ impl CliAdapter {
             | Commands::CudaTdg { .. } // CUDA-SIMD TDG: 100-point Popper falsification (CLI-only)
             | Commands::DepsAudit { .. } // Dependency audit for Sovereign AI stack migration (CLI-only)
             | Commands::Query { .. } // Semantic code search (CLI-only)
+            | Commands::Falsify { .. } // Falsification testing (CLI-only)
+            | Commands::Kaizen { .. } // Kaizen continuous improvement (CLI-only)
+            | Commands::Extract { .. } // Extract refactoring (CLI-only)
+            | Commands::Split { .. } // File splitting (CLI-only)
+            | Commands::Sql { .. } // SQL analytics (CLI-only)
             => Self::cli_only_command_error(),
 
             #[cfg(feature = "mutation-testing")]

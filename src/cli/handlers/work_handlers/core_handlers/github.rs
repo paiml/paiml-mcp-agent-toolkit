@@ -4,7 +4,9 @@
 use crate::models::roadmap::RoadmapItem;
 #[cfg(feature = "github-api")]
 use crate::services::github_client::GitHubClient;
-use anyhow::{Context, Result};
+#[cfg(not(feature = "github-api"))]
+use anyhow::Context;
+use anyhow::Result;
 use std::path::PathBuf;
 
 use super::types::GitHubIssueInfo;

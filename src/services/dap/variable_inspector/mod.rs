@@ -15,8 +15,6 @@ mod typescript_extraction;
 mod tests;
 
 use super::types::Variable;
-use std::path::Path;
-use tree_sitter::{Node, Parser, Tree};
 
 /// Variable Inspector for extracting variables from source code
 #[derive(Debug)]

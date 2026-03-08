@@ -19,6 +19,7 @@ use crate::tdg::{Grade, TdgAnalyzer, TdgConfig};
 use anyhow::Result;
 use std::fs;
 use std::path::{Path, PathBuf};
+#[cfg(not(feature = "git-lib"))]
 use std::process::Command;
 
 // Re-export submodule functions for test access via `use super::*`

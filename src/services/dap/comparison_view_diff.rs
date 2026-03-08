@@ -2,8 +2,8 @@
 
 /// Compare two variable maps and return diff status for each variable
 fn diff_both_maps(
-    vars_a: &HashMap<String, String>,
-    vars_b: &HashMap<String, String>,
+    vars_a: &HashMap<String, serde_json::Value>,
+    vars_b: &HashMap<String, serde_json::Value>,
 ) -> HashMap<String, DiffStatus> {
     let mut diff = HashMap::new();
     for (name, value_a) in vars_a {
@@ -22,14 +22,14 @@ fn diff_both_maps(
     diff
 }
 
-fn mark_all_as(vars: &HashMap<String, String>, status: DiffStatus) -> HashMap<String, DiffStatus> {
+fn mark_all_as(vars: &HashMap<String, serde_json::Value>, status: DiffStatus) -> HashMap<String, DiffStatus> {
     vars.keys().map(|name| (name.clone(), status.clone())).collect()
 }
 
 /// Compute variable diff between two optional variable maps
 fn compute_variable_diff(
-    vars_a: Option<&HashMap<String, String>>,
-    vars_b: Option<&HashMap<String, String>>,
+    vars_a: Option<&HashMap<String, serde_json::Value>>,
+    vars_b: Option<&HashMap<String, serde_json::Value>>,
 ) -> HashMap<String, DiffStatus> {
     match (vars_a, vars_b) {
         (Some(a), Some(b)) => diff_both_maps(a, b),

@@ -8,7 +8,7 @@ use super::types::{
 use crate::utils::path_validator::PathValidator;
 use anyhow::Result;
 use dashmap::DashMap;
-use notify::{Event as NotifyEvent, EventKind, RecommendedWatcher};
+use notify::{Event as NotifyEvent, EventKind};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;

@@ -1,5 +1,10 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
 // MCP (Model Context Protocol) integration for agent system
+
+// Re-export common dependencies for submodules using `use super::*;`
+pub use async_trait::async_trait;
+pub use serde::{Deserialize, Serialize};
+pub use serde_json::Value;
 pub mod ast_item_helpers;
 #[cfg(feature = "deep-wasm")]
 pub mod deep_wasm_tools;

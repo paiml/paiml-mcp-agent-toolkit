@@ -13,7 +13,7 @@ pub use quality_types::*;
 pub use types::*;
 
 // Import parent types needed by submodules
-use super::{Command, PathBuf};
+use super::Command;
 
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]

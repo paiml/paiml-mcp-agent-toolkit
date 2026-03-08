@@ -163,12 +163,12 @@ struct ArrowColumns<'a> {
     languages: &'a arrow::array::StringArray,
 }
 
-fn downcast_f32(batch: &arrow::record_batch::RecordBatch, col: usize, name: &str) -> Result<&arrow::array::Float32Array> {
+fn downcast_f32<'a>(batch: &'a arrow::record_batch::RecordBatch, col: usize, name: &str) -> Result<&'a arrow::array::Float32Array> {
     batch.column(col).as_any().downcast_ref::<arrow::array::Float32Array>()
         .ok_or_else(|| anyhow::anyhow!("Expected Float32Array for {}", name))
 }
 
-fn downcast_string(batch: &arrow::record_batch::RecordBatch, col: usize, name: &str) -> Result<&arrow::array::StringArray> {
+fn downcast_string<'a>(batch: &'a arrow::record_batch::RecordBatch, col: usize, name: &str) -> Result<&'a arrow::array::StringArray> {
     batch.column(col).as_any().downcast_ref::<arrow::array::StringArray>()
         .ok_or_else(|| anyhow::anyhow!("Expected StringArray for {}", name))
 }

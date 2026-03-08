@@ -199,6 +199,21 @@ impl CliInput {
             Commands::Query { .. } => {
                 CommandCategory::System // Semantic code search
             }
+            Commands::Falsify { .. } => {
+                CommandCategory::Analysis // Falsification testing
+            }
+            Commands::Kaizen { .. } => {
+                CommandCategory::Workflow // Kaizen continuous improvement
+            }
+            Commands::Extract { .. } => {
+                CommandCategory::Workflow // Extract refactoring
+            }
+            Commands::Split { .. } => {
+                CommandCategory::Workflow // File splitting
+            }
+            Commands::Sql { .. } => {
+                CommandCategory::Analysis // SQL analytics
+            }
         }
     }
 
