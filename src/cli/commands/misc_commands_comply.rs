@@ -190,6 +190,10 @@ pub enum ComplyCommands {
         /// Project path (defaults to current directory)
         #[arg(short = 'p', long = "path", default_value = ".")]
         path: PathBuf,
+
+        /// Preview what would be generated without writing files
+        #[arg(long)]
+        dry_run: bool,
     },
 
     /// Cross-crate duplication detection (CC-001 through CC-005)

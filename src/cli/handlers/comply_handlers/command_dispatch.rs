@@ -76,8 +76,8 @@ pub async fn handle_comply_command(command: ComplyCommands) -> Result<()> {
             output,
         } => handle_audit(&path, format, output.as_deref()).await,
 
-        ComplyCommands::Baseline { path } => {
-            generate_file_health_baseline(&path)
+        ComplyCommands::Baseline { path, dry_run } => {
+            generate_file_health_baseline(&path, dry_run)
         }
 
         ComplyCommands::CrossCrate {

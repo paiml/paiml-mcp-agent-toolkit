@@ -349,7 +349,7 @@ pub(crate) fn check_paiml_deps_workspace(project_path: &Path) -> ComplianceCheck
 }
 
 /// Generate file health baseline for ratchet enforcement.
-pub(crate) fn generate_file_health_baseline(project_path: &Path) -> Result<()> {
+pub(crate) fn generate_file_health_baseline(project_path: &Path, dry_run: bool) -> Result<()> {
     use crate::services::file_health::{FileHealthBaseline, FileHealthMetrics};
     let files = match discover_source_files(project_path) {
         Ok(f) => f,
@@ -376,6 +376,13 @@ pub(crate) fn generate_file_health_baseline(project_path: &Path) -> Result<()> {
             0,
         );
         baseline.add_file(&metrics);
+    }
+    if dry_run {
+        println!(
+            "Dry run: would save file health baseline ({} files) to .pmat/file-health-baseline.json",
+            baseline.files.len()
+        );
+        return Ok(());
     }
     let pmat_dir = project_path.join(".pmat");
     fs::create_dir_all(&pmat_dir)?;

@@ -42,13 +42,31 @@ fn validate_parameters(
     specs: &[crate::models::template::ParameterSpec],
     provided: &Map<String, serde_json::Value>,
 ) -> Result<(), TemplateError> {
+    // Collect all missing required params for a single helpful error
+    let missing: Vec<_> = specs
+        .iter()
+        .filter(|s| s.required && !provided.contains_key(&s.name))
+        .collect();
+    if !missing.is_empty() {
+        let params_help: Vec<String> = missing
+            .iter()
+            .map(|s| format!("  -p {}=<value>  ({})", s.name, s.description))
+            .collect();
+        return Err(TemplateError::ValidationError {
+            parameter: missing.iter().map(|s| s.name.as_str()).collect::<Vec<_>>().join(", "),
+            reason: format!(
+                "required parameter(s) missing. Add:\n{}",
+                params_help.join("\n")
+            ),
+        });
+    }
     for spec in specs {
-        check_required_parameter(spec, provided)?;
         validate_parameter_value(spec, provided)?;
     }
     Ok(())
 }
 
+#[cfg(test)]
 fn check_required_parameter(
     spec: &crate::models::template::ParameterSpec,
     provided: &Map<String, serde_json::Value>,
@@ -56,7 +74,10 @@ fn check_required_parameter(
     if spec.required && !provided.contains_key(&spec.name) {
         return Err(TemplateError::ValidationError {
             parameter: spec.name.clone(),
-            reason: "required parameter missing".to_string(),
+            reason: format!(
+                "required parameter missing. Use: -p {}=<value> ({})",
+                spec.name, spec.description
+            ),
         });
     }
     Ok(())

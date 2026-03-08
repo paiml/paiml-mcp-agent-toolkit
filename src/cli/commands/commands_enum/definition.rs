@@ -467,7 +467,7 @@ pub enum Commands {
         project_path: PathBuf,
 
         /// Output format
-        #[arg(short = 'f', long, value_enum, default_value = "json")]
+        #[arg(short = 'f', long, visible_alias = "format", value_enum, default_value = "json")]
         output_format: ReportOutputFormat,
 
         /// Generate text report (shortcut for --format text)

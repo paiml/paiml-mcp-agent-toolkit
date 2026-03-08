@@ -392,6 +392,7 @@ impl CommandDispatcher {
                 project_dir,
                 targets,
                 execute,
+                dry_run: _,
                 exclude,
                 min_age_days,
                 format,

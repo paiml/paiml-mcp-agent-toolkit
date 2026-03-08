@@ -327,8 +327,12 @@ pub enum MaintainCommands {
         targets: Vec<String>,
 
         /// Actually execute cleanup (default is dry-run)
-        #[arg(long)]
+        #[arg(long, conflicts_with = "dry_run")]
         execute: bool,
+
+        /// Preview what would be cleaned without deleting (this is the default)
+        #[arg(long)]
+        dry_run: bool,
 
         /// Exclude patterns (glob syntax)
         #[arg(long)]
