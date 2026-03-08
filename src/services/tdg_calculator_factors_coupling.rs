@@ -142,21 +142,23 @@ impl TDGCalculator {
     }
 
     fn count_imports(&self, content: &str) -> usize {
-        let patterns = [
-            r"^use\s+",
-            r"^import\s+",
-            r"^from\s+.*\s+import",
-            r"^require\(",
-        ];
+        use std::sync::OnceLock;
+
+        static IMPORT_PATTERNS: OnceLock<[regex::Regex; 4]> = OnceLock::new();
+        let patterns = IMPORT_PATTERNS.get_or_init(|| {
+            [
+                regex::Regex::new(r"^use\s+").expect("internal error"),
+                regex::Regex::new(r"^import\s+").expect("internal error"),
+                regex::Regex::new(r"^from\s+.*\s+import").expect("internal error"),
+                regex::Regex::new(r"^require\(").expect("internal error"),
+            ]
+        });
 
         content
             .lines()
             .filter(|line| {
-                patterns.iter().any(|p| {
-                    regex::Regex::new(p)
-                        .expect("internal error")
-                        .is_match(line.trim())
-                })
+                let trimmed = line.trim();
+                patterns.iter().any(|p| p.is_match(trimmed))
             })
             .count()
     }

@@ -9,6 +9,7 @@ use crate::services::rust_project_score::models::ScoringMode;
 use crate::services::rust_project_score::orchestrator::RustProjectScoreOrchestrator;
 use crate::services::tdg_calculator::TDGCalculator;
 use std::path::Path;
+use std::time::Duration;
 
 use super::types::{CategoryScore, CategoryWeights, PerfectionScoreResult};
 
@@ -37,12 +38,55 @@ impl PerfectionScoreCalculator {
         self
     }
 
-    /// Calculate perfection score for a project
+    /// Calculate perfection score for a project.
+    ///
+    /// Categories 1-4 (TDG, repo-score, rust-project-score, popper-score) run in
+    /// parallel via `tokio::join!`. The entire calculation is wrapped in a 120-second
+    /// timeout to prevent runaway CPU usage from unbounded `git log` subprocesses.
     pub async fn calculate(&self, project_path: &Path) -> anyhow::Result<PerfectionScoreResult> {
+        match tokio::time::timeout(Duration::from_secs(120), self.calculate_inner(project_path))
+            .await
+        {
+            Ok(result) => result,
+            Err(_elapsed) => {
+                eprintln!("⚠️  Perfection score calculation timed out after 120s");
+                // Return a partial result with timeout details
+                let categories = vec![
+                    CategoryScore::new("Technical Debt Grade", 0.0, self.weights.tdg)
+                        .with_details("Timed out"),
+                    CategoryScore::new("Repository Health", 0.0, self.weights.repo_score)
+                        .with_details("Timed out"),
+                    CategoryScore::new("Rust Project Quality", 0.0, self.weights.rust_score)
+                        .with_details("Timed out"),
+                    CategoryScore::new("Popperian Falsifiability", 0.0, self.weights.popper_score)
+                        .with_details("Timed out"),
+                    CategoryScore::new("Test Coverage", 0.0, self.weights.test_coverage)
+                        .with_details("Timed out"),
+                    CategoryScore::new("Mutation Testing", 0.0, self.weights.mutation)
+                        .with_details("Timed out"),
+                    CategoryScore::new("Documentation", 0.0, self.weights.documentation)
+                        .with_details("Timed out"),
+                    CategoryScore::new("Performance", 0.0, self.weights.performance)
+                        .with_details("Timed out"),
+                ];
+                Ok(PerfectionScoreResult::new(categories))
+            }
+        }
+    }
+
+    /// Inner calculation logic, called within the timeout wrapper.
+    async fn calculate_inner(&self, project_path: &Path) -> anyhow::Result<PerfectionScoreResult> {
+        // Categories 1-4 are expensive and independent — run in parallel
+        let (tdg_score, repo_score, rust_score, popper_score) = tokio::join!(
+            self.get_tdg_score(project_path),
+            self.get_repo_score(project_path),
+            self.get_rust_project_score(project_path),
+            self.get_popper_score(project_path),
+        );
+
         let mut categories = Vec::new();
 
         // 1. TDG Score (40 pts)
-        let tdg_score = self.get_tdg_score(project_path).await;
         categories.push(CategoryScore::new(
             "Technical Debt Grade",
             tdg_score,
@@ -50,7 +94,6 @@ impl PerfectionScoreCalculator {
         ));
 
         // 2. Repo Score (30 pts)
-        let repo_score = self.get_repo_score(project_path).await;
         categories.push(CategoryScore::new(
             "Repository Health",
             repo_score,
@@ -58,7 +101,6 @@ impl PerfectionScoreCalculator {
         ));
 
         // 3. Rust Project Score (30 pts)
-        let rust_score = self.get_rust_project_score(project_path).await;
         categories.push(CategoryScore::new(
             "Rust Project Quality",
             rust_score,
@@ -66,12 +108,13 @@ impl PerfectionScoreCalculator {
         ));
 
         // 4. Popper Score (25 pts)
-        let popper_score = self.get_popper_score(project_path).await;
         categories.push(CategoryScore::new(
             "Popperian Falsifiability",
             popper_score,
             self.weights.popper_score,
         ));
+
+        // Categories 5-8 are cheap filesystem checks — run sequentially
 
         // 5. Test Coverage (25 pts)
         let coverage_score = self.get_coverage_score(project_path).await;

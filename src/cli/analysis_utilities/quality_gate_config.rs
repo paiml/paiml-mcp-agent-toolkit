@@ -23,12 +23,16 @@ fn load_provability_threshold(project_path: &Path) -> f64 {
         .unwrap_or(DEFAULT_PROVABILITY_THRESHOLD)
 }
 
-/// Load entropy min_pattern_diversity from config files (#194, #219, #227).
+/// Load entropy min_pattern_diversity from config files (#194, #219, #227, #248).
 ///
 /// Priority: `.pmat-gates.toml` > `.pmat-metrics.toml` > `pmat.toml` > CLI default.
 /// Reads from `[entropy] min_pattern_diversity`, `[thresholds] entropy_min_diversity`,
 /// or `[quality] min_pattern_diversity`.
 /// Clamps result to 0.0-1.0 range to prevent unreachable thresholds.
+///
+/// For small repos (<50 source files), the threshold is automatically scaled down
+/// to avoid false positives (#248). Small codebases naturally have lower pattern
+/// diversity because there are fewer files to establish diverse patterns.
 fn load_entropy_threshold(project_path: &Path, cli_value: f64) -> f64 {
     let mut result = cli_value;
 
@@ -52,7 +56,89 @@ fn load_entropy_threshold(project_path: &Path, cli_value: f64) -> f64 {
     }
 
     // Clamp to valid range (#219: prevent 200% unreachable thresholds)
-    result.clamp(0.0, 1.0)
+    let clamped = result.clamp(0.0, 1.0);
+
+    // #248: Scale threshold for small repos to reduce false positives.
+    // Small repos (<50 files) naturally have lower pattern diversity.
+    scale_entropy_for_project_size(project_path, clamped)
+}
+
+/// Scale entropy threshold based on project size (#248).
+///
+/// Small repos (<50 source files) get a proportionally lower threshold:
+/// - <10 files: threshold * 0.5
+/// - <25 files: threshold * 0.7
+/// - <50 files: threshold * 0.85
+/// - >=50 files: no scaling (full threshold)
+fn scale_entropy_for_project_size(project_path: &Path, threshold: f64) -> f64 {
+    let file_count = count_source_files(project_path);
+
+    let scale = if file_count < 10 {
+        0.5
+    } else if file_count < 25 {
+        0.7
+    } else if file_count < 50 {
+        0.85
+    } else {
+        1.0
+    };
+
+    threshold * scale
+}
+
+/// Count source files in the project (quick heuristic, not a full walk).
+/// Only counts files in common source directories with code extensions.
+fn count_source_files(project_path: &Path) -> usize {
+    let source_dirs = ["src", "lib", "app", "pkg", "crates"];
+    let extensions = ["rs", "py", "js", "ts", "go", "java", "c", "cpp", "rb"];
+
+    let mut count = 0usize;
+    for dir_name in &source_dirs {
+        let dir = project_path.join(dir_name);
+        if dir.is_dir() {
+            count += count_files_recursive(&dir, &extensions, 0);
+        }
+    }
+    // If no standard source dirs found, count from project root (shallow)
+    if count == 0 {
+        count = count_files_recursive(project_path, &extensions, 0);
+    }
+    count
+}
+
+/// Check if a file has one of the given extensions.
+fn has_source_extension(path: &Path, extensions: &[&str]) -> bool {
+    path.extension()
+        .and_then(|e| e.to_str())
+        .is_some_and(|ext| extensions.contains(&ext))
+}
+
+/// Check if a directory should be traversed (skip hidden, target, node_modules).
+fn is_traversable_dir(path: &Path) -> bool {
+    path.file_name()
+        .and_then(|n| n.to_str())
+        .is_some_and(|name| !name.starts_with('.') && name != "target" && name != "node_modules")
+}
+
+/// Recursively count files with given extensions (max depth 10).
+fn count_files_recursive(dir: &Path, extensions: &[&str], depth: usize) -> usize {
+    if depth > 10 {
+        return 0;
+    }
+    let entries = match std::fs::read_dir(dir) {
+        Ok(e) => e,
+        Err(_) => return 0,
+    };
+    let mut count = 0;
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.is_file() && has_source_extension(&path, extensions) {
+            count += 1;
+        } else if path.is_dir() && is_traversable_dir(&path) {
+            count += count_files_recursive(&path, extensions, depth + 1);
+        }
+    }
+    count
 }
 
 /// Read entropy threshold from `pmat.toml [quality] min_pattern_diversity` (#227).

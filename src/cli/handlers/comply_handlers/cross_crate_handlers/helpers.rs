@@ -86,51 +86,75 @@ pub(super) fn is_generic_impl_name(name: &str) -> bool {
 
 /// Compute MinHash signatures for all functions across all crates.
 /// Filters out excluded functions and very short functions.
+/// Uses parallel threads for CPU-bound feature extraction.
 pub(super) fn compute_signatures(
     crate_functions: &[(CrateInfo, Vec<FunctionEntry>)],
     config: &DetectionConfig,
 ) -> Vec<SignedFunction> {
-    let dup_config = DuplicateDetectionConfig {
-        normalize_identifiers: true,
-        normalize_literals: true,
-        ignore_comments: true,
-        ..Default::default()
-    };
-    let extractor = UniversalFeatureExtractor::new(dup_config);
-    let hasher = MinHashGenerator::new(128);
+    // Collect candidate functions first (cheap filter pass)
+    let candidates: Vec<_> = crate_functions
+        .iter()
+        .flat_map(|(crate_info, functions)| {
+            functions.iter().filter_map(|func| {
+                if func.source.is_empty() || func.source.lines().count() < config.min_body_lines {
+                    return None;
+                }
+                if is_excluded_function(&func.function_name, config) {
+                    return None;
+                }
+                Some((crate_info.name.clone(), func.clone()))
+            })
+        })
+        .collect();
 
-    let mut signed = Vec::new();
+    // Process in parallel chunks for CPU-bound MinHash computation
+    let chunk_size = (candidates.len() / num_cpus::get()).max(64);
+    let chunks: Vec<_> = candidates.chunks(chunk_size).collect();
 
-    for (crate_info, functions) in crate_functions {
-        for func in functions {
-            if func.source.is_empty() || func.source.lines().count() < config.min_body_lines {
-                continue;
-            }
-            if is_excluded_function(&func.function_name, config) {
-                continue;
-            }
-            let lang = parse_language(&func.language);
-            let tokens = extractor.extract_features(&func.source, lang);
-            if tokens.len() < config.min_tokens {
-                continue;
-            }
-            let shingles = hasher.generate_shingles(&tokens, 3);
-            if shingles.is_empty() {
-                continue;
-            }
-            let minhash = hasher.compute_signature(&shingles);
-            signed.push(SignedFunction {
-                crate_name: crate_info.name.clone(),
-                function_name: func.function_name.clone(),
-                signature: func.signature.clone(),
-                file_path: func.file_path.clone(),
-                minhash,
-                language: lang,
-            });
-        }
-    }
+    let handles: Vec<_> = chunks
+        .into_iter()
+        .map(|chunk| {
+            let chunk: Vec<_> = chunk.to_vec();
+            std::thread::spawn(move || {
+                let dup_config = DuplicateDetectionConfig {
+                    normalize_identifiers: true,
+                    normalize_literals: true,
+                    ignore_comments: true,
+                    ..Default::default()
+                };
+                let extractor = UniversalFeatureExtractor::new(dup_config);
+                let hasher = MinHashGenerator::new(128);
+                let mut signed = Vec::new();
 
-    signed
+                for (crate_name, func) in &chunk {
+                    let lang = parse_language(&func.language);
+                    let tokens = extractor.extract_features(&func.source, lang);
+                    if tokens.len() < 5 {
+                        continue;
+                    }
+                    let shingles = hasher.generate_shingles(&tokens, 3);
+                    if shingles.is_empty() {
+                        continue;
+                    }
+                    let minhash = hasher.compute_signature(&shingles);
+                    signed.push(SignedFunction {
+                        crate_name: crate_name.clone(),
+                        function_name: func.function_name.clone(),
+                        signature: func.signature.clone(),
+                        file_path: func.file_path.clone(),
+                        minhash,
+                        language: lang,
+                    });
+                }
+                signed
+            })
+        })
+        .collect();
+
+    handles
+        .into_iter()
+        .flat_map(|h| h.join().unwrap_or_default())
+        .collect()
 }
 
 pub(super) fn build_report(
@@ -164,30 +188,34 @@ pub(super) fn build_report(
     }
 }
 
-/// Load functions from each crate's pmat index.
+/// Load functions from each crate's pmat index (parallel).
 pub(super) fn load_all_crate_functions(
     crates: &[CrateInfo],
 ) -> Vec<(CrateInfo, Vec<FunctionEntry>)> {
-    let mut result = Vec::new();
+    let handles: Vec<_> = crates
+        .iter()
+        .map(|crate_info| {
+            let ci = crate_info.clone();
+            std::thread::spawn(move || {
+                let index_path = ci.path.join(".pmat").join("context.idx");
+                match AgentContextIndex::load(&index_path) {
+                    Ok(mut index) => {
+                        index.load_all_source();
+                        let functions: Vec<FunctionEntry> = index.all_functions().to_vec();
+                        eprintln!("  {} — {} functions loaded", ci.name, functions.len());
+                        Some((ci, functions))
+                    }
+                    Err(e) => {
+                        eprintln!("  {} — skipped (no index: {})", ci.name, e);
+                        None
+                    }
+                }
+            })
+        })
+        .collect();
 
-    for crate_info in crates {
-        let index_path = crate_info.path.join(".pmat").join("context.idx");
-        match AgentContextIndex::load(&index_path) {
-            Ok(mut index) => {
-                index.load_all_source();
-                let functions: Vec<FunctionEntry> = index.all_functions().to_vec();
-                eprintln!(
-                    "  {} — {} functions loaded",
-                    crate_info.name,
-                    functions.len()
-                );
-                result.push((crate_info.clone(), functions));
-            }
-            Err(e) => {
-                eprintln!("  {} — skipped (no index: {})", crate_info.name, e);
-            }
-        }
-    }
-
-    result
+    handles
+        .into_iter()
+        .filter_map(|h| h.join().ok().flatten())
+        .collect()
 }

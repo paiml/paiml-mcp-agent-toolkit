@@ -57,21 +57,53 @@ impl DefectReportService {
         Ok(report)
     }
 
-    /// Collect defects from all analyzers
+    /// Collect defects from all analyzers (with per-analyzer timeout)
     async fn collect_all_defects(&self, project_path: &Path) -> Result<Vec<Defect>> {
+        use std::time::Duration;
+
         let semaphore = self.semaphore.clone();
         let project_path = project_path.to_path_buf();
 
-        // Project path is ready for analyzers
+        let analyzer_timeout = Duration::from_secs(30);
 
-        // Run all analyzers in parallel
+        // Run all analyzers in parallel with per-analyzer timeouts
         let (complexity, satd, dead_code, duplication, perf, arch) = tokio::join!(
-            self.analyze_complexity_defects(&project_path, &semaphore),
-            self.analyze_satd_defects(&project_path, &semaphore),
-            self.analyze_dead_code_defects(&project_path, &semaphore),
-            self.analyze_duplication_defects(&project_path, &semaphore),
-            self.analyze_performance_defects(&project_path, &semaphore),
-            self.analyze_architecture_defects(&project_path, &semaphore),
+            async {
+                match tokio::time::timeout(analyzer_timeout, self.analyze_complexity_defects(&project_path, &semaphore)).await {
+                    Ok(result) => result,
+                    Err(_) => { warn!("Complexity analyzer timed out after 30s"); Ok(Vec::new()) }
+                }
+            },
+            async {
+                match tokio::time::timeout(analyzer_timeout, self.analyze_satd_defects(&project_path, &semaphore)).await {
+                    Ok(result) => result,
+                    Err(_) => { warn!("SATD analyzer timed out after 30s"); Ok(Vec::new()) }
+                }
+            },
+            async {
+                match tokio::time::timeout(analyzer_timeout, self.analyze_dead_code_defects(&project_path, &semaphore)).await {
+                    Ok(result) => result,
+                    Err(_) => { warn!("Dead code analyzer timed out after 30s"); Ok(Vec::new()) }
+                }
+            },
+            async {
+                match tokio::time::timeout(analyzer_timeout, self.analyze_duplication_defects(&project_path, &semaphore)).await {
+                    Ok(result) => result,
+                    Err(_) => { warn!("Duplication analyzer timed out after 30s"); Ok(Vec::new()) }
+                }
+            },
+            async {
+                match tokio::time::timeout(analyzer_timeout, self.analyze_performance_defects(&project_path, &semaphore)).await {
+                    Ok(result) => result,
+                    Err(_) => { warn!("Performance analyzer timed out after 30s"); Ok(Vec::new()) }
+                }
+            },
+            async {
+                match tokio::time::timeout(analyzer_timeout, self.analyze_architecture_defects(&project_path, &semaphore)).await {
+                    Ok(result) => result,
+                    Err(_) => { warn!("Architecture analyzer timed out after 30s"); Ok(Vec::new()) }
+                }
+            },
         );
 
         // Merge all defects

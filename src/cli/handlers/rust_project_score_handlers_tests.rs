@@ -215,6 +215,68 @@ mod tests {
         assert_eq!(parsed["percentage"].as_f64().unwrap(), 74.6);
     }
 
+    /// Issue #240: Verify that `applicable` field is present on every category in JSON output
+    #[test]
+    fn test_format_json_categories_have_applicable_field() {
+        let score = create_test_score();
+        let recommendations = score.recommendations.clone();
+        let output = format_json(&score, &recommendations).unwrap();
+
+        let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
+        let categories = parsed["categories"].as_array().unwrap();
+        assert!(!categories.is_empty(), "categories array should not be empty");
+
+        for cat in categories {
+            let name = cat["name"].as_str().unwrap_or("unknown");
+            assert!(
+                cat.get("applicable").is_some(),
+                "category '{}' missing 'applicable' field in JSON output",
+                name
+            );
+            assert!(
+                cat["applicable"].is_boolean(),
+                "category '{}' 'applicable' field should be boolean",
+                name
+            );
+        }
+    }
+
+    /// Issue #240: Verify that non-applicable categories are correctly marked
+    #[test]
+    fn test_format_json_non_applicable_category() {
+        let mut categories = HashMap::new();
+        categories.insert("Rust Tooling".to_string(), CategoryScore::new(20.0, 25.0));
+        categories.insert(
+            "GPU/SIMD".to_string(),
+            CategoryScore::not_applicable(10.0),
+        );
+
+        let score = ProjectScore {
+            total_earned: 20.0,
+            total_possible: 35.0,
+            percentage: 80.0,
+            grade: crate::services::rust_project_score::models::Grade::BPlus,
+            categories,
+            recommendations: vec![],
+        };
+
+        let output = format_json(&score, &[]).unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
+        let cats = parsed["categories"].as_array().unwrap();
+
+        let gpu_cat = cats
+            .iter()
+            .find(|c| c["name"].as_str() == Some("GPU/SIMD"))
+            .expect("GPU/SIMD category should be in JSON output");
+        assert_eq!(gpu_cat["applicable"].as_bool(), Some(false));
+
+        let tooling_cat = cats
+            .iter()
+            .find(|c| c["name"].as_str() == Some("Rust Tooling"))
+            .expect("Rust Tooling category should be in JSON output");
+        assert_eq!(tooling_cat["applicable"].as_bool(), Some(true));
+    }
+
     #[test]
     fn test_format_markdown_contains_header() {
         let score = create_test_score();

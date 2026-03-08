@@ -192,7 +192,17 @@ impl CiScorer {
             findings.push(finding);
 
             let content_lower = content.to_lowercase();
-            has_testing = has_testing || content_lower.contains("test") || content_lower.contains("cargo test") || content_lower.contains("npm test");
+            has_testing = has_testing
+                || content_lower.contains("cargo test")
+                || content_lower.contains("cargo nextest")
+                || content_lower.contains("npm test")
+                || content_lower.contains("yarn test")
+                || content_lower.contains("pytest")
+                || content_lower.contains("go test")
+                || content_lower.contains("make test")
+                || content_lower.contains("run: test")
+                || content_lower.contains("name: test")
+                || content_lower.contains("- test\n");
             has_linting = has_linting || content_lower.contains("lint") || content_lower.contains("clippy") || content_lower.contains("eslint");
         }
 

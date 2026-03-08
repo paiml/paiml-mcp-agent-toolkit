@@ -152,19 +152,79 @@ pub(super) fn claim_to_override_name(hypothesis: &str) -> String {
         .collect()
 }
 
+/// Known aliases for override claim IDs (#249).
+/// Maps common user-friendly names to canonical claim names.
+const CLAIM_ALIASES: &[(&str, &str)] = &[
+    ("baseline-files", "manifest"),
+    ("files", "manifest"),
+    ("file-manifest", "manifest"),
+    ("tests", "coverage"),
+    ("test-coverage", "coverage"),
+    ("deps", "supply-chain"),
+    ("dependencies", "supply-chain"),
+    ("vulns", "supply-chain"),
+    ("cyclomatic", "complexity"),
+    ("loc", "file-size"),
+    ("line-count", "file-size"),
+    ("todos", "satd"),
+    ("fixmes", "satd"),
+    ("linting", "lint"),
+];
+
+/// Resolve a user-provided override claim to its canonical name (#249).
+///
+/// First checks known aliases, then checks if it already matches a known claim name.
+/// Returns `None` if the override doesn't match any known claim, triggering a warning.
+fn resolve_override_claim(user_claim: &str) -> Option<String> {
+    let lower = user_claim.to_lowercase();
+
+    // Check aliases first
+    for (alias, canonical) in CLAIM_ALIASES {
+        if lower == *alias {
+            return Some(canonical.to_string());
+        }
+    }
+
+    // Check if it matches an existing canonical name from CLAIM_PATTERNS
+    let known_names: Vec<&str> = CLAIM_PATTERNS.iter().map(|(_, name)| *name).collect();
+    if known_names.iter().any(|n| n.to_lowercase() == lower) {
+        return Some(lower);
+    }
+
+    None
+}
+
 /// Filter failures not covered by overrides
 pub(super) fn filter_unoverriden_failures<'a>(
     failures: &[&'a ClaimResult],
     override_claims: Option<&Vec<String>>,
 ) -> Vec<&'a ClaimResult> {
+    // Warn about unrecognized override claims (#249)
+    if let Some(overrides) = override_claims {
+        let known_names: Vec<&str> = CLAIM_PATTERNS.iter().map(|(_, name)| *name).collect();
+        for claim in overrides {
+            if resolve_override_claim(claim).is_none() {
+                eprintln!(
+                    "warning: --override-claims '{}' does not match any known claim ID.",
+                    claim
+                );
+                eprintln!("  Known claim IDs: {}", known_names.join(", "));
+                eprintln!(
+                    "  Hint: use one of the known IDs above, or check `pmat work falsify --help`."
+                );
+            }
+        }
+    }
+
     failures
         .iter()
         .filter(|failure| {
             let claim_name = claim_to_override_name(&failure.hypothesis);
             if let Some(overrides) = override_claims {
-                !overrides
-                    .iter()
-                    .any(|o| o.to_lowercase() == claim_name.to_lowercase())
+                !overrides.iter().any(|o| {
+                    let resolved = resolve_override_claim(o).unwrap_or_else(|| o.to_lowercase());
+                    resolved == claim_name.to_lowercase()
+                })
             } else {
                 true
             }

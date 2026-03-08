@@ -9,7 +9,9 @@ use std::process::Command;
 // Entry point
 // ---------------------------------------------------------------------------
 
-/// Scan a single crate for all finding types, tagging each with crate_name
+/// Scan a single crate for all finding types, tagging each with crate_name.
+/// Lint scans (clippy/fmt) run first sequentially (they need cargo lock),
+/// then analysis scans (comply/defects/github/custom) run in parallel threads.
 pub(crate) fn scan_crate(
     path: &Path,
     crate_name: Option<&str>,
@@ -17,22 +19,61 @@ pub(crate) fn scan_crate(
 ) -> Result<Vec<KaizenFinding>> {
     let mut findings = Vec::new();
 
+    // Phase 1: Lint scans (sequential — both use cargo)
     if !config.skip_clippy {
         findings.extend(scan_clippy(path)?);
     }
     if !config.skip_fmt {
         findings.extend(scan_rustfmt(path)?);
     }
-    if !config.skip_comply {
-        findings.extend(scan_comply(path)?);
+
+    // Phase 2: Analysis scans (parallel — independent subprocesses)
+    let path_buf = path.to_path_buf();
+    let skip_comply = config.skip_comply;
+    let skip_defects = config.skip_defects;
+    let skip_github = config.skip_github;
+
+    let p1 = path_buf.clone();
+    let p2 = path_buf.clone();
+    let p3 = path_buf.clone();
+    let p4 = path_buf.clone();
+
+    let comply_handle = std::thread::spawn(move || {
+        if skip_comply {
+            Ok(Vec::new())
+        } else {
+            scan_comply(&p1)
+        }
+    });
+    let defects_handle = std::thread::spawn(move || {
+        if skip_defects {
+            Ok(Vec::new())
+        } else {
+            scan_defects(&p2)
+        }
+    });
+    let github_handle = std::thread::spawn(move || {
+        if skip_github {
+            Ok(Vec::new())
+        } else {
+            scan_github_issues(&p3)
+        }
+    });
+    let custom_handle = std::thread::spawn(move || Ok::<_, anyhow::Error>(scan_custom_scores(&p4)));
+
+    // Collect parallel results
+    if let Ok(Ok(r)) = comply_handle.join() {
+        findings.extend(r);
     }
-    if !config.skip_defects {
-        findings.extend(scan_defects(path)?);
+    if let Ok(Ok(r)) = defects_handle.join() {
+        findings.extend(r);
     }
-    if !config.skip_github {
-        findings.extend(scan_github_issues(path)?);
+    if let Ok(Ok(r)) = github_handle.join() {
+        findings.extend(r);
     }
-    findings.extend(scan_custom_scores(path));
+    if let Ok(Ok(r)) = custom_handle.join() {
+        findings.extend(r);
+    }
 
     // Tag with crate name
     if let Some(name) = crate_name {

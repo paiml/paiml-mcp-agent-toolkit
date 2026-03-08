@@ -87,9 +87,10 @@ min_coverage_pct = 85.0
     fn test_load_entropy_threshold_no_file() {
         let temp_dir = tempfile::TempDir::new().unwrap();
         let threshold = load_entropy_threshold(temp_dir.path(), 0.3);
+        // #248: Empty temp dir has 0 source files (<10), so threshold is scaled by 0.5
         assert!(
-            (threshold - 0.3).abs() < f64::EPSILON,
-            "Should fall back to CLI value when file is missing"
+            (threshold - 0.15).abs() < f64::EPSILON,
+            "Should fall back to CLI value (0.3) scaled for small repo (0.5) = 0.15, got {threshold}"
         );
     }
 
@@ -119,9 +120,10 @@ provability_min = 0.70
         std::fs::write(temp_dir.path().join(".pmat-metrics.toml"), config_content).unwrap();
 
         let threshold = load_entropy_threshold(temp_dir.path(), 0.5);
+        // #248: Empty temp dir has 0 source files (<10), so threshold is scaled by 0.5
         assert!(
-            (threshold - 0.5).abs() < f64::EPSILON,
-            "Should fall back to CLI value when key is missing"
+            (threshold - 0.25).abs() < f64::EPSILON,
+            "Should fall back to CLI value (0.5) scaled for small repo (0.5) = 0.25, got {threshold}"
         );
     }
 
