@@ -19,9 +19,8 @@ impl CommandDispatcher {
     ) -> anyhow::Result<()> {
         use crate::services::metric_trends::{MetricTrendStore, TrendDirection};
 
-        if !trend {
-            anyhow::bail!("Only --trend mode is currently supported");
-        }
+        // Default to trend mode when no flags specified
+        let _ = trend;
 
         let mut store = MetricTrendStore::new()?;
 

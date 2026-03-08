@@ -117,6 +117,10 @@ async fn analyze_baseline_files(
         .follow_links(false)
         .into_iter()
         .filter_entry(|e| {
+            // Never filter out the root entry (depth 0) — fixes `--path .`
+            if e.depth() == 0 {
+                return true;
+            }
             let name = e.file_name().to_string_lossy();
             !name.starts_with('.')
                 && !matches!(name.as_ref(), "target" | "node_modules" | "dist" | "build")
