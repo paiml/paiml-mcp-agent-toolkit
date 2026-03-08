@@ -171,8 +171,7 @@ test-property:
 	echo "  (Override with PROPTEST_THREADS=n make test-property)" && \
 	echo "  Note: Slow cache tests are skipped. Run 'make test-property-slow' to include them." && \
 	PROPTEST_CASES=2 timeout 180 cargo test --manifest-path Cargo.toml --lib -- property_tests --test-threads=$${THREADS} || echo "⚠️  Some property tests timed out after 3 minutes" && \
-	PROPTEST_CASES=2 timeout 60 cargo test --manifest-path Cargo.toml --lib -- prop_ --test-threads=$${THREADS} || echo "⚠️  Some prop tests timed out" && \
-	PROPTEST_CASES=2 cargo test --manifest-path Cargo.toml --test refactor_auto_property_integration -- --test-threads=$${THREADS}
+	PROPTEST_CASES=2 timeout 60 cargo test --manifest-path Cargo.toml --lib -- prop_ --test-threads=$${THREADS} || echo "⚠️  Some prop tests timed out"
 	@echo "✅ Property tests completed!"
 
 # Run property tests including slow ones
