@@ -9,6 +9,11 @@ mod tests {
     use std::collections::HashMap;
     use tempfile::TempDir;
 
+    fn strip_ansi(s: &str) -> String {
+        let re = regex::Regex::new(r"\x1b\[[0-9;]*m").unwrap();
+        re.replace_all(s, "").to_string()
+    }
+
     fn create_test_score() -> ProjectScore {
         let mut categories = HashMap::new();
         categories.insert("Rust Tooling".to_string(), CategoryScore::new(20.0, 25.0));
@@ -148,9 +153,9 @@ mod tests {
         score
             .categories
             .insert("Perfect".to_string(), CategoryScore::new(95.0, 100.0));
-        let output = format_text(&score, &[], false);
+        let output = strip_ansi(&format_text(&score, &[], false));
 
-        assert!(output.contains("✅"));
+        assert!(output.contains("\u{2713}")); // ✓ checkmark
     }
 
     #[test]
@@ -160,9 +165,9 @@ mod tests {
         score
             .categories
             .insert("Warning".to_string(), CategoryScore::new(75.0, 100.0));
-        let output = format_text(&score, &[], false);
+        let output = strip_ansi(&format_text(&score, &[], false));
 
-        assert!(output.contains("⚠️"));
+        assert!(output.contains("\u{26A0}")); // ⚠ warning sign
     }
 
     #[test]
@@ -172,9 +177,9 @@ mod tests {
         score
             .categories
             .insert("Failing".to_string(), CategoryScore::new(50.0, 100.0));
-        let output = format_text(&score, &[], false);
+        let output = strip_ansi(&format_text(&score, &[], false));
 
-        assert!(output.contains("❌"));
+        assert!(output.contains("\u{2717}")); // ✗ ballot x
     }
 
     #[test]
@@ -283,7 +288,7 @@ mod tests {
         let recommendations = score.recommendations.clone();
         let output = format_markdown(&score, &recommendations, false);
 
-        assert!(output.contains("# 🦀 Rust Project Score"));
+        assert!(output.contains("# Rust Project Score"));
         assert!(output.contains(SPEC_VERSION));
     }
 
@@ -304,7 +309,7 @@ mod tests {
         let recommendations = score.recommendations.clone();
         let output = format_markdown(&score, &recommendations, false);
 
-        assert!(output.contains("## 📂 Categories"));
+        assert!(output.contains("## Categories"));
         assert!(output.contains("Rust Tooling"));
         assert!(output.contains("Code Quality"));
     }
@@ -315,7 +320,7 @@ mod tests {
         let recommendations = score.recommendations.clone();
         let output = format_markdown(&score, &recommendations, false);
 
-        assert!(output.contains("## 💡 Recommendations"));
+        assert!(output.contains("## Recommendations"));
         assert!(output.contains("- Add more tests"));
         assert!(output.contains("- Improve documentation"));
     }

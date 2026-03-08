@@ -70,9 +70,9 @@ fn format_json_output(report: &DuplicateReport) -> Result<String> {
 ///
 /// let output = format_human_output(&report).unwrap();
 ///
-/// assert!(output.contains("# Duplicate Code Analysis"));
-/// assert!(output.contains("Total duplicate blocks: 2"));
-/// assert!(output.contains("## Top Files by Duplication"));
+/// assert!(output.contains("Duplicate Code Analysis"));
+/// assert!(output.contains("Total duplicate blocks:"));
+/// assert!(output.contains("Top Files by Duplication"));
 /// assert!(output.contains("main.rs"));
 /// ```
 pub fn format_human_output(report: &DuplicateReport) -> Result<String> {
@@ -88,30 +88,34 @@ pub fn format_human_output(report: &DuplicateReport) -> Result<String> {
 
 /// Write the header section
 fn write_header(output: &mut String) -> Result<()> {
+    use crate::cli::colors as c;
     use std::fmt::Write;
-    writeln!(output, "# Duplicate Code Analysis\n")?;
+    writeln!(output, "{}", c::header("Duplicate Code Analysis"))?;
+    writeln!(output)?;
     Ok(())
 }
 
 /// Write the summary section
 fn write_summary(output: &mut String, report: &DuplicateReport) -> Result<()> {
+    use crate::cli::colors as c;
     use std::fmt::Write;
 
-    writeln!(output, "## Summary")?;
+    writeln!(output, "{}", c::subheader("Summary"))?;
     writeln!(
         output,
-        "- Total duplicate blocks: {}",
-        report.total_duplicates
+        "  Total duplicate blocks: {}",
+        c::number(&report.total_duplicates.to_string())
     )?;
     writeln!(
         output,
-        "- Duplicate lines: {} / {}",
-        report.duplicate_lines, report.total_lines
+        "  Duplicate lines: {} / {}",
+        c::number(&report.duplicate_lines.to_string()),
+        c::number(&report.total_lines.to_string())
     )?;
     writeln!(
         output,
-        "- Duplication percentage: {:.1}%\n",
-        report.duplication_percentage
+        "  Duplication percentage: {}\n",
+        c::pct(report.duplication_percentage as f64, 5.0, 15.0)
     )?;
 
     Ok(())
@@ -123,8 +127,9 @@ fn write_top_files_section(output: &mut String, report: &DuplicateReport) -> Res
         return Ok(());
     }
 
+    use crate::cli::colors as c;
     use std::fmt::Write;
-    writeln!(output, "## Top Files by Duplication\n")?;
+    writeln!(output, "{}\n", c::subheader("Top Files by Duplication"))?;
 
     let sorted_files = get_sorted_file_stats(&report.file_statistics);
     write_file_stats_list(output, &sorted_files)?;
@@ -150,18 +155,19 @@ fn write_file_stats_list(
     output: &mut String,
     sorted_files: &[(&String, &FileStats)],
 ) -> Result<()> {
+    use crate::cli::colors as c;
     use std::fmt::Write;
 
     for (i, (file_path, stats)) in sorted_files.iter().take(10).enumerate() {
         let filename = extract_filename(file_path);
         writeln!(
             output,
-            "{}. `{}` - {:.1}% duplication ({} / {} lines)",
-            i + 1,
-            filename,
-            stats.duplication_percentage,
-            stats.duplicate_lines,
-            stats.total_lines
+            "  {}. {} - {} duplication ({} / {} lines)",
+            c::number(&(i + 1).to_string()),
+            c::path(filename),
+            c::pct(stats.duplication_percentage as f64, 5.0, 15.0),
+            c::number(&stats.duplicate_lines.to_string()),
+            c::number(&stats.total_lines.to_string()),
         )?;
     }
     writeln!(output)?;
@@ -182,8 +188,9 @@ fn write_duplicate_blocks_section(output: &mut String, report: &DuplicateReport)
         return Ok(());
     }
 
+    use crate::cli::colors as c;
     use std::fmt::Write;
-    writeln!(output, "## Duplicate Blocks\n")?;
+    writeln!(output, "{}\n", c::subheader("Duplicate Blocks"))?;
 
     write_block_details(output, &report.duplicate_blocks)?;
     write_remaining_blocks_count(output, report.duplicate_blocks.len())?;
@@ -203,41 +210,58 @@ fn write_block_details(output: &mut String, duplicate_blocks: &[DuplicateBlock])
 
 /// Write block header with summary info
 fn write_block_header(output: &mut String, block_num: usize, block: &DuplicateBlock) -> Result<()> {
+    use crate::cli::colors as c;
     use std::fmt::Write;
     writeln!(
         output,
-        "### Block {} ({} lines, {} locations)",
+        "  {}Block {}{} ({} lines, {} locations)",
+        c::BOLD,
         block_num,
-        block.lines,
-        block.locations.len()
+        c::RESET,
+        c::number(&block.lines.to_string()),
+        c::number(&block.locations.len().to_string()),
     )?;
     Ok(())
 }
 
 /// Write block location information
 fn write_block_locations(output: &mut String, block: &DuplicateBlock) -> Result<()> {
+    use crate::cli::colors as c;
     use std::fmt::Write;
     for loc in &block.locations {
-        writeln!(output, "- {}:{}-{}", loc.file, loc.start_line, loc.end_line)?;
+        writeln!(
+            output,
+            "    {}{}{}:{}{}{}-{}{}{}",
+            c::CYAN, loc.file, c::RESET,
+            c::BOLD_WHITE, loc.start_line, c::RESET,
+            c::BOLD_WHITE, loc.end_line, c::RESET,
+        )?;
     }
     Ok(())
 }
 
 /// Write block content preview
 fn write_block_preview(output: &mut String, block: &DuplicateBlock) -> Result<()> {
+    use crate::cli::colors as c;
     use std::fmt::Write;
-    writeln!(output, "\nPreview:")?;
-    writeln!(output, "```")?;
-    writeln!(output, "{}", block.locations[0].content_preview)?;
-    writeln!(output, "```\n")?;
+    writeln!(output, "    {}Preview:{}", c::DIM, c::RESET)?;
+    writeln!(output, "    {}{}{}", c::DIM, block.locations[0].content_preview, c::RESET)?;
+    writeln!(output)?;
     Ok(())
 }
 
 /// Write count of remaining blocks if there are more than 20
 fn write_remaining_blocks_count(output: &mut String, total_blocks: usize) -> Result<()> {
     if total_blocks > 20 {
+        use crate::cli::colors as c;
         use std::fmt::Write;
-        writeln!(output, "... and {} more blocks", total_blocks - 20)?;
+        writeln!(
+            output,
+            "  {}... and {} more blocks{}",
+            c::DIM,
+            total_blocks - 20,
+            c::RESET
+        )?;
     }
     Ok(())
 }

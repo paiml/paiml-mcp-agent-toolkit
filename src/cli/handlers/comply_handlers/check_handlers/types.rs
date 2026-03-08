@@ -2,6 +2,7 @@
 //
 // Contains all shared types used across the check_handlers submodules.
 
+use crate::cli::colors as c;
 use crate::models::comply_config::{CheckSeverity as ConfigSeverity, ComplyConfig};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -218,35 +219,41 @@ pub(crate) fn update_last_check_timestamp(project_path: &Path) -> anyhow::Result
 }
 
 pub(crate) fn print_compliance_text(report: &ComplianceReport) {
-    println!("\n{}", "=".repeat(60));
-    println!("PMAT Compliance Report");
-    println!("{}", "=".repeat(60));
-    println!("\nProject Version: {}", report.project_version);
-    println!("Current PMAT:    {}", report.current_version);
-    println!("Versions Behind: {}", report.versions_behind);
+    println!("\n{}", c::rule());
+    println!("{}", c::header("PMAT Compliance Report"));
+    println!("{}", c::rule());
+    println!(
+        "\nProject Version: {}",
+        c::number(&report.project_version)
+    );
+    println!("Current PMAT:    {}", c::number(&report.current_version));
+    println!(
+        "Versions Behind: {}",
+        c::number(&report.versions_behind.to_string())
+    );
     let status = if report.is_compliant {
-        "\x1b[32mCOMPLIANT\x1b[0m"
+        format!("{}COMPLIANT{}", c::GREEN, c::RESET)
     } else {
-        "\x1b[31mNON-COMPLIANT\x1b[0m"
+        format!("{}NON-COMPLIANT{}", c::RED, c::RESET)
     };
     println!("Status:          {}\n", status);
-    println!("Checks:");
+    println!("{}:", c::label("Checks"));
     for check in &report.checks {
         let icon = match check.status {
-            CheckStatus::Pass => "\x1b[32m\u{2713}\x1b[0m",
-            CheckStatus::Warn => "\x1b[33m\u{26a0}\x1b[0m",
-            CheckStatus::Fail => "\x1b[31m\u{2717}\x1b[0m",
-            CheckStatus::Skip => "\x1b[90m-\x1b[0m",
+            CheckStatus::Pass => format!("{}\u{2713}{}", c::GREEN, c::RESET),
+            CheckStatus::Warn => format!("{}\u{26a0}{}", c::YELLOW, c::RESET),
+            CheckStatus::Fail => format!("{}\u{2717}{}", c::RED, c::RESET),
+            CheckStatus::Skip => format!("{}-{}", c::DIM, c::RESET),
         };
         println!("  {} {}: {}", icon, check.name, check.message);
     }
     if !report.recommendations.is_empty() {
-        println!("\nRecommendations:");
+        println!("\n{}:", c::label("Recommendations"));
         for rec in &report.recommendations {
             println!("  \u{2022} {}", rec);
         }
     }
-    println!("\n{}", "=".repeat(60));
+    println!("\n{}", c::rule());
 }
 
 pub(crate) fn print_compliance_markdown(report: &ComplianceReport) {

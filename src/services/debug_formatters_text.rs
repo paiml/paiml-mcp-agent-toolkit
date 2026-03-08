@@ -1,77 +1,91 @@
 /// Format analysis as human-readable text
 pub fn format_text(analysis: &DebugAnalysis) -> Result<String> {
+    use crate::cli::colors as c;
+
     let mut output = String::new();
 
     // Header
-    output.push_str("🔍 PMAT Five Whys Root Cause Analysis\n\n");
+    output.push_str(&format!(
+        "{}\n\n",
+        c::header("PMAT Five Whys Root Cause Analysis")
+    ));
     output.push_str(&format!("Issue: {}\n\n", analysis.issue));
-    output.push_str("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n");
+    output.push_str(&format!("{}\n\n", c::rule()));
 
     // Why iterations
     for why in &analysis.whys {
-        output.push_str(&format!("Why {}: {}\n", why.depth, why.question));
-        output.push_str(&format!("   ❓ Question: {}\n", why.question));
-        output.push_str(&format!("   💡 Hypothesis: {}\n", why.hypothesis));
+        output.push_str(&format!(
+            "{} {}\n",
+            c::label(&format!("Why {}:", why.depth)),
+            why.question
+        ));
+        output.push_str(&format!("   Question: {}\n", why.question));
+        output.push_str(&format!("   Hypothesis: {}\n", why.hypothesis));
 
         if !why.evidence.is_empty() {
-            output.push_str("   📊 Evidence:\n");
+            output.push_str(&format!("   {}Evidence:{}\n", c::BOLD, c::RESET));
             for evidence in &why.evidence {
                 output.push_str(&format!(
-                    "      • {} ({})\n",
+                    "      {} ({})\n",
                     evidence.interpretation,
-                    evidence.file.display()
+                    c::path(&evidence.file.display().to_string())
                 ));
             }
         }
 
         output.push_str(&format!(
-            "   ✅ Confidence: {:.0}%\n\n",
-            why.confidence * 100.0
+            "   Confidence: {}\n\n",
+            c::pct(why.confidence * 100.0, 80.0, 50.0)
         ));
     }
 
-    output.push_str("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n");
+    output.push_str(&format!("{}\n\n", c::rule()));
 
     // Root Cause
     if let Some(root_cause) = &analysis.root_cause {
-        output.push_str("🎯 Root Cause:\n");
+        output.push_str(&format!("{}\n", c::label("Root Cause:")));
         output.push_str(&format!("   {}\n\n", root_cause));
     }
 
     // Recommendations
     if !analysis.recommendations.is_empty() {
-        output.push_str("💡 Recommendations:\n");
+        output.push_str(&format!("{}\n", c::label("Recommendations:")));
         for (i, rec) in analysis.recommendations.iter().enumerate() {
-            let priority = match rec.priority {
-                Priority::High => "HIGH",
-                Priority::Medium => "MEDIUM",
-                Priority::Low => "LOW",
+            let priority_text = match rec.priority {
+                Priority::High => format!("{}HIGH{}", c::RED, c::RESET),
+                Priority::Medium => format!("{}MEDIUM{}", c::YELLOW, c::RESET),
+                Priority::Low => format!("{}LOW{}", c::DIM, c::RESET),
             };
-            output.push_str(&format!("   {}. [{}] {}\n", i + 1, priority, rec.action));
+            output.push_str(&format!(
+                "   {}. [{}] {}\n",
+                c::number(&(i + 1).to_string()),
+                priority_text,
+                rec.action
+            ));
         }
         output.push('\n');
     }
 
     // Evidence Summary
-    output.push_str("📊 Evidence Summary:\n");
+    output.push_str(&format!("{}\n", c::label("Evidence Summary:")));
     output.push_str(&format!(
-        "   • Complexity violations: {}\n",
-        analysis.evidence_summary.complexity_violations
+        "   Complexity violations: {}\n",
+        c::number(&analysis.evidence_summary.complexity_violations.to_string())
     ));
     output.push_str(&format!(
-        "   • SATD markers: {}\n",
-        analysis.evidence_summary.satd_markers
+        "   SATD markers: {}\n",
+        c::number(&analysis.evidence_summary.satd_markers.to_string())
     ));
     output.push_str(&format!(
-        "   • TDG score: {:.1}/100\n",
-        analysis.evidence_summary.tdg_score
+        "   TDG score: {}\n",
+        c::score(analysis.evidence_summary.tdg_score, 100.0, 80.0, 60.0)
     ));
     output.push_str(&format!(
-        "   • Git churn: {}\n",
+        "   Git churn: {}\n",
         if analysis.evidence_summary.git_churn_high {
-            "HIGH"
+            format!("{}HIGH{}", c::RED, c::RESET)
         } else {
-            "NORMAL"
+            format!("{}NORMAL{}", c::GREEN, c::RESET)
         }
     ));
 

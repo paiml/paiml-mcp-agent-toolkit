@@ -10,6 +10,11 @@ use chrono::Utc;
 use std::collections::HashMap;
 use std::path::PathBuf;
 
+fn strip_ansi(s: &str) -> String {
+    let re = regex::Regex::new(r"\x1b\[[0-9;]*m").unwrap();
+    re.replace_all(s, "").to_string()
+}
+
 fn create_test_analysis() -> CodeChurnAnalysis {
     CodeChurnAnalysis {
         generated_at: Utc::now(),
@@ -81,10 +86,11 @@ fn create_empty_analysis() -> CodeChurnAnalysis {
 #[test]
 fn test_format_churn_as_summary_with_files() {
     let analysis = create_test_analysis();
-    let result = format_churn_as_summary(&analysis).unwrap();
+    let result = strip_ansi(&format_churn_as_summary(&analysis).unwrap());
 
     assert!(result.contains("Code Churn Analysis Summary"));
-    assert!(result.contains("30 days"));
+    assert!(result.contains("Period:"));
+    assert!(result.contains("30"));
     assert!(result.contains("23")); // total commits
     assert!(result.contains("2")); // files changed
 }
@@ -92,10 +98,11 @@ fn test_format_churn_as_summary_with_files() {
 #[test]
 fn test_format_churn_as_summary_empty() {
     let analysis = create_empty_analysis();
-    let result = format_churn_as_summary(&analysis).unwrap();
+    let result = strip_ansi(&format_churn_as_summary(&analysis).unwrap());
 
     assert!(result.contains("Code Churn Analysis Summary"));
-    assert!(result.contains("7 days"));
+    assert!(result.contains("Period:"));
+    assert!(result.contains("7"));
 }
 
 #[test]

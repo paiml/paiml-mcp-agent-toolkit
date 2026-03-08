@@ -36,7 +36,7 @@ async fn handle_memory_cleanup(target_pressure: f64, verbose: bool) -> Result<()
         println!(
             "  {}: {}",
             c::label("Pressure"),
-            c::pct(stats_before.allocation_pressure * 100.0, 80.0, 60.0)
+            c::pct_inverse(stats_before.allocation_pressure * 100.0, 30.0, 60.0)
         );
         println!();
     }
@@ -50,7 +50,7 @@ async fn handle_memory_cleanup(target_pressure: f64, verbose: bool) -> Result<()
         println!(
             "  {}: {}",
             c::label("Pressure"),
-            c::pct(stats_after.allocation_pressure * 100.0, 80.0, 60.0)
+            c::pct_inverse(stats_after.allocation_pressure * 100.0, 30.0, 60.0)
         );
         println!("  {}: {}", c::label("Cleaned"), c::number(&format_bytes(cleaned)));
 
@@ -196,7 +196,7 @@ async fn handle_memory_pressure(threshold: f64, watch: &Option<u64>) -> Result<(
         println!(
             "Monitoring memory pressure ({}: {}, {}: {}s)",
             c::label("threshold"),
-            c::pct(threshold * 100.0, 80.0, 60.0),
+            c::pct_inverse(threshold * 100.0, 30.0, 60.0),
             c::label("interval"),
             c::number(&interval.to_string())
         );
@@ -213,7 +213,7 @@ async fn handle_memory_pressure(threshold: f64, watch: &Option<u64>) -> Result<(
                 "[{}] {}: {} | {}: {}",
                 c::dim(&timestamp.to_string()),
                 c::label("Pressure"),
-                c::pct(pressure_pct, 80.0, 60.0),
+                c::pct_inverse(pressure_pct, 30.0, 60.0),
                 c::label("Allocated"),
                 c::number(&format_bytes(stats.total_allocated))
             );
@@ -230,12 +230,12 @@ async fn handle_memory_pressure(threshold: f64, watch: &Option<u64>) -> Result<(
         println!(
             "{}: {}",
             c::label("Current memory pressure"),
-            c::pct(stats.allocation_pressure * 100.0, 80.0, 60.0)
+            c::pct_inverse(stats.allocation_pressure * 100.0, 30.0, 60.0)
         );
         println!(
             "{}: {}",
             c::label("Threshold"),
-            c::pct(threshold * 100.0, 80.0, 60.0)
+            c::pct_inverse(threshold * 100.0, 30.0, 60.0)
         );
 
         if stats.allocation_pressure > threshold {

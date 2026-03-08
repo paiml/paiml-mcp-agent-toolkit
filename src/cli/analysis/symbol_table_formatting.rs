@@ -121,10 +121,19 @@ fn format_human_output(table: SymbolTable, show_unreferenced: bool) -> Result<St
 
 /// Write header section (cognitive complexity ≤3)
 fn write_header(output: &mut String, total_symbols: usize) -> Result<()> {
+    use crate::cli::colors as c;
     use std::fmt::Write;
-    writeln!(output, "# Symbol Table Analysis\n")?;
-    writeln!(output, "Total symbols: {total_symbols}")?;
-    writeln!(output, "\n## Symbols by Type\n")?;
+    writeln!(
+        output,
+        "{}{}Symbol Table Analysis{}\n",
+        c::BOLD, c::UNDERLINE, c::RESET
+    )?;
+    writeln!(
+        output,
+        "  {}Total symbols:{} {}{}{}",
+        c::BOLD, c::RESET, c::BOLD_WHITE, total_symbols, c::RESET
+    )?;
+    writeln!(output, "\n{}Symbols by Type{}\n", c::BOLD, c::RESET)?;
     Ok(())
 }
 
@@ -150,16 +159,29 @@ fn group_symbols_by_type(symbols: &[Symbol]) -> HashMap<SymbolKind, Vec<&Symbol>
 
 /// Write a single symbol group (cognitive complexity ≤6)
 fn write_symbol_group(output: &mut String, kind: &SymbolKind, syms: &[&Symbol]) -> Result<()> {
+    use crate::cli::colors as c;
     use std::fmt::Write;
 
-    writeln!(output, "### {:?} ({})", kind, syms.len())?;
+    writeln!(
+        output,
+        "{}{:?}{} ({}{}{})",
+        c::BOLD, kind, c::RESET, c::BOLD_WHITE, syms.len(), c::RESET
+    )?;
 
     for sym in syms.iter().take(10) {
-        writeln!(output, "  - {} ({}:{})", sym.name, sym.file, sym.line)?;
+        writeln!(
+            output,
+            "  - {}{}{}  {}{}:{}{}",
+            c::BOLD_WHITE, sym.name, c::RESET, c::CYAN, sym.file, sym.line, c::RESET
+        )?;
     }
 
     if syms.len() > 10 {
-        writeln!(output, "  ... and {} more", syms.len() - 10)?;
+        writeln!(
+            output,
+            "  {}... and {} more{}",
+            c::DIM, syms.len() - 10, c::RESET
+        )?;
     }
 
     writeln!(output)?;
@@ -168,15 +190,16 @@ fn write_symbol_group(output: &mut String, kind: &SymbolKind, syms: &[&Symbol]) 
 
 /// Write unreferenced symbols section (cognitive complexity ≤5)
 fn write_unreferenced_symbols(output: &mut String, unreferenced: &[String]) -> Result<()> {
+    use crate::cli::colors as c;
     use std::fmt::Write;
 
     if unreferenced.is_empty() {
         return Ok(());
     }
 
-    writeln!(output, "## Unreferenced Symbols\n")?;
+    writeln!(output, "\n{}Unreferenced Symbols{}\n", c::BOLD, c::RESET)?;
     for name in unreferenced {
-        writeln!(output, "  - {name}")?;
+        writeln!(output, "  - {}{}{}", c::YELLOW, name, c::RESET)?;
     }
 
     Ok(())
@@ -184,15 +207,20 @@ fn write_unreferenced_symbols(output: &mut String, unreferenced: &[String]) -> R
 
 /// Write most referenced symbols section (cognitive complexity ≤5)
 fn write_most_referenced(output: &mut String, most_referenced: &[(String, usize)]) -> Result<()> {
+    use crate::cli::colors as c;
     use std::fmt::Write;
 
     if most_referenced.is_empty() {
         return Ok(());
     }
 
-    writeln!(output, "\n## Most Referenced Symbols\n")?;
+    writeln!(output, "\n{}Most Referenced Symbols{}\n", c::BOLD, c::RESET)?;
     for (name, count) in most_referenced {
-        writeln!(output, "  - {name}: {count} references")?;
+        writeln!(
+            output,
+            "  - {}{}{}: {}{}{} references",
+            c::BOLD_WHITE, name, c::RESET, c::BOLD_WHITE, count, c::RESET
+        )?;
     }
 
     Ok(())
@@ -200,19 +228,25 @@ fn write_most_referenced(output: &mut String, most_referenced: &[(String, usize)
 
 /// Write top files by symbol count (cognitive complexity ≤8)
 fn write_top_files_by_count(output: &mut String, symbols: &[Symbol]) -> Result<()> {
+    use crate::cli::colors as c;
     use std::fmt::Write;
 
     if symbols.is_empty() {
         return Ok(());
     }
 
-    writeln!(output, "\n## Top Files by Symbol Count\n")?;
+    writeln!(output, "\n{}Top Files by Symbol Count{}\n", c::BOLD, c::RESET)?;
 
     let sorted_files = get_sorted_file_counts(symbols);
 
     for (i, (file_path, count)) in sorted_files.iter().take(10).enumerate() {
         let filename = extract_filename(file_path);
-        writeln!(output, "{}. `{}` - {} symbols", i + 1, filename, count)?;
+        writeln!(
+            output,
+            "{}{}. {}{}{} - {}{}{} symbols",
+            c::BOLD, i + 1, c::CYAN, filename, c::RESET,
+            c::BOLD_WHITE, count, c::RESET
+        )?;
     }
 
     Ok(())

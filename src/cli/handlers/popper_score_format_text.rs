@@ -10,32 +10,45 @@ fn format_text_category(
     verbose: bool,
     failures_only: bool,
 ) {
+    use crate::cli::colors as c;
+
     if category.is_not_applicable {
-        output.push_str(&format!("  ⚪ {}: N/A\n", name));
+        output.push_str(&format!("  {}  {}: N/A{}\n", c::DIM, name, c::RESET));
         return;
     }
 
     let percentage = category.percentage();
     let icon = percentage_icon(percentage);
-    let gateway_marker = if is_gateway { " [GATEWAY]" } else { "" };
+    let gateway_marker = if is_gateway {
+        format!(" {}[GATEWAY]{}", c::BOLD_YELLOW, c::RESET)
+    } else {
+        String::new()
+    };
 
     output.push_str(&format!(
-        "  {} {}: {:.1}/{:.0} ({:.1}%){}\n",
-        icon, name, category.earned, category.max, percentage, gateway_marker
+        "  {} {}: {} ({}){}\n",
+        icon,
+        name,
+        c::score(category.earned, category.max, 80.0, 60.0),
+        c::pct(percentage, 80.0, 60.0),
+        gateway_marker
     ));
 
     if verbose && !failures_only {
         for sub in &category.sub_scores {
             let sub_icon = if sub.earned >= sub.max * 0.8 {
-                "  ✓"
+                format!("  {}✓{}", c::GREEN, c::RESET)
             } else if sub.earned >= sub.max * 0.5 {
-                "  ~"
+                format!("  {}~{}", c::YELLOW, c::RESET)
             } else {
-                "  ✗"
+                format!("  {}✗{}", c::RED, c::RESET)
             };
             output.push_str(&format!(
-                "    {} {}: {:.1}/{:.0} - {}\n",
-                sub_icon, sub.id, sub.earned, sub.max, sub.description
+                "    {} {}: {} - {}\n",
+                sub_icon,
+                sub.id,
+                c::score(sub.earned, sub.max, 80.0, 50.0),
+                sub.description
             ));
         }
     }
@@ -43,10 +56,12 @@ fn format_text_category(
 
 /// Append text-formatted recommendations to the output
 fn format_text_recommendations(output: &mut String, score: &PopperScore, failures_only: bool) {
+    use crate::cli::colors as c;
+
     if score.recommendations.is_empty() || (failures_only && score.gateway_passed) {
         return;
     }
-    output.push_str("💡  Recommendations\n");
+    output.push_str(&format!("{}\n", c::label("Recommendations")));
     for rec in &score.recommendations {
         let icon = priority_icon_text(&rec.priority);
         output.push_str(&format!(
@@ -54,7 +69,7 @@ fn format_text_recommendations(output: &mut String, score: &PopperScore, failure
             icon, rec.category, rec.description
         ));
         if let Some(cmd) = &rec.command {
-            output.push_str(&format!("     $ {}\n", cmd));
+            output.push_str(&format!("     {}$ {}{}\n", c::DIM_CYAN, cmd, c::RESET));
         }
     }
     output.push('\n');
@@ -62,38 +77,55 @@ fn format_text_recommendations(output: &mut String, score: &PopperScore, failure
 
 /// Format score as human-readable text
 fn format_text(score: &PopperScore, verbose: bool, failures_only: bool) -> String {
+    use crate::cli::colors as c;
+
     let mut output = String::new();
 
     // Header
-    output.push_str("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
+    output.push_str(&format!("{}\n", c::rule()));
     output.push_str(&format!(
-        "🔬  Popper Falsifiability Score v{}\n",
-        score.metadata.version
+        "{}\n",
+        c::header(&format!(
+            "Popper Falsifiability Score v{}",
+            score.metadata.version
+        ))
     ));
-    output.push_str("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
+    output.push_str(&format!("{}\n", c::rule()));
     output.push('\n');
 
     // Gateway status
     if score.gateway_passed {
-        output.push_str("✅  Gateway: PASSED (Falsifiability >= 60%)\n");
+        output.push_str(&format!(
+            "{} Gateway: PASSED (Falsifiability >= 60%)\n",
+            c::pass("")
+        ));
     } else {
-        output.push_str("❌  Gateway: FAILED (Falsifiability < 60%)\n");
-        output.push_str("    Without falsifiable claims, score is 0.\n");
+        output.push_str(&format!(
+            "{} Gateway: FAILED (Falsifiability < 60%)\n",
+            c::fail("")
+        ));
+        output.push_str(&format!(
+            "    {}Without falsifiable claims, score is 0.{}\n",
+            c::DIM, c::RESET
+        ));
     }
     output.push('\n');
 
     // Summary
-    output.push_str("📌  Summary\n");
+    output.push_str(&format!("{}\n", c::label("Summary")));
     output.push_str(&format!(
-        "  Score: {:.1}/{:.0}\n",
-        score.raw_score, score.max_available
+        "  Score: {}\n",
+        c::score(score.raw_score, score.max_available, 80.0, 60.0)
     ));
-    output.push_str(&format!("  Normalized: {:.1}%\n", score.normalized_score));
-    output.push_str(&format!("  Grade: {}\n", score.grade));
+    output.push_str(&format!(
+        "  Normalized: {}\n",
+        c::pct(score.normalized_score, 80.0, 60.0)
+    ));
+    output.push_str(&format!("  Grade: {}\n", c::grade(&score.grade.to_string())));
     output.push('\n');
 
     // Categories
-    output.push_str("📂  Categories\n");
+    output.push_str(&format!("{}\n", c::label("Categories")));
     for (name, category, is_gateway) in popper_category_entries(score) {
         format_text_category(
             &mut output,
@@ -107,7 +139,7 @@ fn format_text(score: &PopperScore, verbose: bool, failures_only: bool) -> Strin
     output.push('\n');
 
     // Verdict
-    output.push_str("📋  Verdict\n");
+    output.push_str(&format!("{}\n", c::label("Verdict")));
     output.push_str(&format!("  {}\n", score.analysis.verdict));
     output.push('\n');
 
@@ -115,7 +147,7 @@ fn format_text(score: &PopperScore, verbose: bool, failures_only: bool) -> Strin
     format_text_recommendations(&mut output, score, failures_only);
 
     // Footer
-    output.push_str("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
+    output.push_str(&format!("{}\n", c::rule()));
 
     output
 }

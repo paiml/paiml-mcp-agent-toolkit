@@ -193,7 +193,7 @@ fn test_format_with_empty_function_ids() {
     let result = format_provability_output(&function_ids, &summaries, &config);
     assert!(result.is_ok());
 
-    let content = result.unwrap();
+    let content = strip_ansi(&result.unwrap());
     assert!(content.contains("Total functions analyzed: 0"));
 }
 

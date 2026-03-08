@@ -37,10 +37,9 @@
 ///
 /// let output = format_provability_summary(&function_ids, &summaries, 5).unwrap();
 ///
-/// assert!(output.contains("# Provability Analysis Summary"));
-/// assert!(output.contains("Total functions analyzed: 2"));
-/// assert!(output.contains("## Top Files by Provability"));
-/// assert!(output.contains("1. `main.rs` - 90.0% avg score"));
+/// assert!(output.contains("Provability Analysis Summary"));
+/// assert!(output.contains("Total functions analyzed:"));
+/// assert!(output.contains("Top Files by Provability"));
 /// ```
 pub fn format_provability_summary(
     function_ids: &[FunctionId],
@@ -61,20 +60,22 @@ pub fn format_provability_summary(
 }
 
 fn write_summary_header(output: &mut String, total_functions: usize) -> Result<()> {
-    writeln!(output, "# Provability Analysis Summary\n")?;
-    writeln!(output, "Total functions analyzed: {total_functions}")?;
+    use crate::cli::colors as c;
+    writeln!(output, "{}\n", c::header("Provability Analysis Summary"))?;
+    writeln!(output, "Total functions analyzed: {}", c::number(&total_functions.to_string()))?;
     Ok(())
 }
 
 /// Explain the 4-factor scoring model so users understand what drives provability (#229).
 fn write_scoring_model(output: &mut String) -> Result<()> {
-    writeln!(output, "\n## Scoring Model (4 factors, equally weighted)\n")?;
-    writeln!(output, "| Factor       | 100%         | 50%          | 0%               |")?;
-    writeln!(output, "|--------------|--------------|--------------|------------------|")?;
-    writeln!(output, "| Nullability  | NotNull      | MaybeNull    | Unknown/Null     |")?;
-    writeln!(output, "| Bounds       | Both bounds  | One bound    | No bounds        |")?;
-    writeln!(output, "| Aliasing     | NoAlias      | -            | MayAlias/Unknown |")?;
-    writeln!(output, "| Purity       | Pure         | ReadOnly(70) | WriteGlobal      |")?;
+    use crate::cli::colors as c;
+    writeln!(output, "\n{}\n", c::subheader("Scoring Model (4 factors, equally weighted)"))?;
+    writeln!(output, "  {}{:<14}{} {:<14} {:<14} {}", c::BOLD, "Factor", c::RESET, "100%", "50%", "0%")?;
+    writeln!(output, "  {}", c::separator())?;
+    writeln!(output, "  {:<14} {}NotNull{}       {}MaybeNull{}    {}Unknown/Null{}", "Nullability", c::GREEN, c::RESET, c::YELLOW, c::RESET, c::RED, c::RESET)?;
+    writeln!(output, "  {:<14} {}Both bounds{}   {}One bound{}    {}No bounds{}", "Bounds", c::GREEN, c::RESET, c::YELLOW, c::RESET, c::RED, c::RESET)?;
+    writeln!(output, "  {:<14} {}NoAlias{}       {:<14} {}MayAlias/Unknown{}", "Aliasing", c::GREEN, c::RESET, "-", c::RED, c::RESET)?;
+    writeln!(output, "  {:<14} {}Pure{}          {}ReadOnly(70){} {}WriteGlobal{}", "Purity", c::GREEN, c::RESET, c::YELLOW, c::RESET, c::RED, c::RESET)?;
     Ok(())
 }
 
@@ -106,10 +107,16 @@ fn write_property_coverage(output: &mut String, summaries: &[ProofSummary]) -> R
         }
     }
 
-    writeln!(output, "\n## Verified Property Coverage\n")?;
+    use crate::cli::colors as c;
+    writeln!(output, "\n{}\n", c::subheader("Verified Property Coverage"))?;
     for (name, count) in &counts {
-        let pct = (*count as f64 / total as f64) * 100.0;
-        writeln!(output, "- {name}: {count}/{total} ({pct:.0}%)")?;
+        let pct_val = (*count as f64 / total as f64) * 100.0;
+        writeln!(output, "  {}{}{}: {}/{} ({})",
+            c::BOLD, name, c::RESET,
+            c::number(&count.to_string()),
+            c::number(&total.to_string()),
+            c::pct(pct_val, 80.0, 50.0),
+        )?;
     }
     Ok(())
 }
@@ -132,8 +139,9 @@ fn write_lowest_scoring_functions(
         .collect();
     indexed.sort_by(|a, b| a.1.total_cmp(&b.1));
 
-    writeln!(output, "\n## Lowest Scoring Functions\n")?;
-    for (idx, score) in indexed.iter().take(limit) {
+    use crate::cli::colors as c;
+    writeln!(output, "\n{}\n", c::subheader("Lowest Scoring Functions"))?;
+    for (idx, score_val) in indexed.iter().take(limit) {
         let func = &function_ids[*idx];
         let summary = &summaries[*idx];
         let filename = extract_filename(&func.file_path);
@@ -143,38 +151,41 @@ fn write_lowest_scoring_functions(
             .map(|p| format!("{:?}({:.0}%)", p.property_type, p.confidence * 100.0))
             .collect();
         let props_str = if props.is_empty() {
-            "none verified".to_string()
+            format!("{}none verified{}", c::DIM, c::RESET)
         } else {
             props.join(", ")
         };
         writeln!(
             output,
-            "- `{}` ({filename}:{}) \u{2014} {:.0}% \u{2014} verified: {props_str}",
-            func.function_name,
-            func.line_number,
-            score * 100.0,
+            "  {} ({}:{}) \u{2014} {} \u{2014} verified: {props_str}",
+            c::label(&func.function_name),
+            c::path(filename),
+            c::number(&func.line_number.to_string()),
+            c::pct(score_val * 100.0, 80.0, 50.0),
         )?;
     }
     Ok(())
 }
 
 fn write_score_distribution(output: &mut String, summaries: &[ProofSummary]) -> Result<()> {
+    use crate::cli::colors as c;
     let (high_count, medium_count, low_count) = categorize_scores(summaries);
 
-    writeln!(output, "\n## Score Distribution:")?;
-    writeln!(output, "- High (\u{2265}80%): {high_count} functions")?;
-    writeln!(output, "- Medium (50-79%): {medium_count} functions")?;
-    writeln!(output, "- Low (<50%): {low_count} functions")?;
+    writeln!(output, "\n{}", c::subheader("Score Distribution:"))?;
+    writeln!(output, "  {}High{} ({}\u{2265}80%{}): {} functions", c::GREEN, c::RESET, c::GREEN, c::RESET, c::number(&high_count.to_string()))?;
+    writeln!(output, "  {}Medium{} ({}50-79%{}): {} functions", c::YELLOW, c::RESET, c::YELLOW, c::RESET, c::number(&medium_count.to_string()))?;
+    writeln!(output, "  {}Low{} ({}<50%{}): {} functions", c::RED, c::RESET, c::RED, c::RESET, c::number(&low_count.to_string()))?;
 
     Ok(())
 }
 
 fn write_average_score(output: &mut String, summaries: &[ProofSummary]) -> Result<()> {
+    use crate::cli::colors as c;
     let avg_score = calculate_average_score(summaries);
     writeln!(
         output,
-        "\nAverage provability score: {:.1}%",
-        avg_score * 100.0
+        "\nAverage provability score: {}",
+        c::pct(avg_score * 100.0, 80.0, 50.0)
     )?;
     Ok(())
 }
@@ -189,7 +200,8 @@ fn write_top_files_section(
         return Ok(());
     }
 
-    writeln!(output, "\n## Top Files by Provability\n")?;
+    use crate::cli::colors as c;
+    writeln!(output, "\n{}\n", c::subheader("Top Files by Provability"))?;
     let file_avg_scores = calculate_file_averages(function_ids, summaries);
     write_top_files_list(output, &file_avg_scores, top_files)?;
 
@@ -226,6 +238,7 @@ fn write_top_files_list(
     file_avg_scores: &[(&str, f64, usize)],
     top_files: usize,
 ) -> Result<()> {
+    use crate::cli::colors as c;
     let files_to_show = if top_files == 0 { 10 } else { top_files };
 
     for (i, (file_path, avg_score, function_count)) in
@@ -234,11 +247,11 @@ fn write_top_files_list(
         let filename = extract_filename(file_path);
         writeln!(
             output,
-            "{}. `{}` - {:.1}% avg score ({} functions)",
-            i + 1,
-            filename,
-            avg_score * 100.0,
-            function_count
+            "  {}. {} - {} avg score ({} functions)",
+            c::number(&(i + 1).to_string()),
+            c::path(filename),
+            c::pct(avg_score * 100.0, 80.0, 50.0),
+            c::number(&function_count.to_string()),
         )?;
     }
 

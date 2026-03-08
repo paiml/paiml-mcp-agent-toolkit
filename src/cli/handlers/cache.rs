@@ -71,24 +71,58 @@ async fn handle_cache_stats(detailed: bool, format: &str, history: bool) -> Resu
             println!("{output}");
         }
         "table" => {
-            println!("PMAT Cache Strategy Statistics");
+            use crate::cli::colors as c;
+
+            println!("{}", c::header("PMAT Cache Strategy Statistics"));
+            println!("{}", c::rule());
             println!();
-            println!("Orchestrator Performance:");
-            println!("  Strategy Switches:     0");
-            println!("  Evaluations:           0");
-            println!("  Overall Effectiveness: 85.0%");
+            println!("{}", c::subheader("Orchestrator Performance:"));
+            println!(
+                "   {}: {}",
+                c::dim("Strategy Switches"),
+                c::number("0")
+            );
+            println!(
+                "   {}: {}",
+                c::dim("Evaluations"),
+                c::number("0")
+            );
+            println!(
+                "   {}: {}",
+                c::dim("Overall Effectiveness"),
+                c::pct(85.0, 70.0, 50.0)
+            );
             println!();
-            println!("Workload Analysis:");
-            println!("  Request Rate:      100.0 req/sec");
-            println!("  Working Set:       64.0 MB");
-            println!("  Cache Pressure:    30.0%");
+            println!("{}", c::subheader("Workload Analysis:"));
+            println!(
+                "   {}: {} req/sec",
+                c::dim("Request Rate"),
+                c::number("100.0")
+            );
+            println!(
+                "   {}: {} MB",
+                c::dim("Working Set"),
+                c::number("64.0")
+            );
+            println!(
+                "   {}: {}",
+                c::dim("Cache Pressure"),
+                c::pct_inverse(30.0, 50.0, 75.0)
+            );
             println!();
             if detailed {
-                println!("Detailed Analysis:");
-                println!("  Implementation: Simplified cache strategy system");
+                println!("{}", c::subheader("Detailed Analysis:"));
+                println!(
+                    "   {}: {}",
+                    c::dim("Implementation"),
+                    "Simplified cache strategy system"
+                );
             }
             if history {
-                println!("Historical Data: Not available in this implementation");
+                println!(
+                    "{}",
+                    c::dim("Historical Data: Not available in this implementation")
+                );
             }
         }
         _ => return Err(anyhow::anyhow!("Unknown format: {format}")),

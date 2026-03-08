@@ -105,19 +105,20 @@ fn write_summary_header(
     output: &mut String,
     analysis: &crate::models::churn::CodeChurnAnalysis,
 ) -> Result<()> {
+    use crate::cli::colors as c;
     use std::fmt::Write;
 
-    writeln!(output, "# Code Churn Analysis Summary\n")?;
-    writeln!(output, "**Period**: Last {} days", analysis.period_days)?;
+    writeln!(output, "{}{}Code Churn Analysis Summary{}\n", c::BOLD, c::UNDERLINE, c::RESET)?;
+    writeln!(output, "  {}Period:{} {}{}{}", c::BOLD, c::RESET, c::BOLD_WHITE, analysis.period_days, c::RESET)?;
     writeln!(
         output,
-        "**Total commits**: {}",
-        analysis.summary.total_commits
+        "  {}Total commits:{} {}{}{}",
+        c::BOLD, c::RESET, c::BOLD_WHITE, analysis.summary.total_commits, c::RESET
     )?;
     writeln!(
         output,
-        "**Files changed**: {}",
-        analysis.summary.total_files_changed
+        "  {}Files changed:{} {}{}{}",
+        c::BOLD, c::RESET, c::BOLD_WHITE, analysis.summary.total_files_changed, c::RESET
     )?;
     Ok(())
 }
@@ -127,10 +128,11 @@ fn write_summary_top_files(
     output: &mut String,
     analysis: &crate::models::churn::CodeChurnAnalysis,
 ) -> Result<()> {
+    use crate::cli::colors as c;
     use std::fmt::Write;
 
     if !analysis.files.is_empty() {
-        writeln!(output, "\n## Top Files by Churn\n")?;
+        writeln!(output, "\n{}Top Files by Churn{}\n", c::BOLD, c::RESET)?;
 
         // Sort files by churn score or commit count (descending)
         let mut sorted_files: Vec<_> = analysis.files.iter().collect();
@@ -151,14 +153,21 @@ fn write_summary_top_files(
                 .file_name()
                 .and_then(|n| n.to_str())
                 .unwrap_or(&file.relative_path);
+            let score_color = if file.churn_score > 0.5 {
+                c::RED
+            } else if file.churn_score > 0.3 {
+                c::YELLOW
+            } else {
+                c::GREEN
+            };
             writeln!(
                 output,
-                "{}. `{}` - {} commits, {} authors, score: {:.2}",
+                "  {}. {}{}{} - {}{}{} commits, {} authors, score: {}{:.2}{}",
                 i + 1,
-                filename,
-                file.commit_count,
+                c::CYAN, filename, c::RESET,
+                c::BOLD_WHITE, file.commit_count, c::RESET,
                 file.unique_authors.len(),
-                file.churn_score
+                score_color, file.churn_score, c::RESET
             )?;
         }
     }
@@ -170,12 +179,13 @@ fn write_summary_hotspot_files(
     output: &mut String,
     summary: &crate::models::churn::ChurnSummary,
 ) -> Result<()> {
+    use crate::cli::colors as c;
     use std::fmt::Write;
 
     if !summary.hotspot_files.is_empty() {
-        writeln!(output, "\n## Hotspot Files (High Churn)\n")?;
+        writeln!(output, "\n{}Hotspot Files (High Churn){}\n", c::BOLD, c::RESET)?;
         for (i, file) in summary.hotspot_files.iter().take(10).enumerate() {
-            writeln!(output, "{}. {}", i + 1, file.display())?;
+            writeln!(output, "  {}. {}{}{}", i + 1, c::CYAN, file.display(), c::RESET)?;
         }
     }
     Ok(())
@@ -186,12 +196,13 @@ fn write_summary_stable_files(
     output: &mut String,
     summary: &crate::models::churn::ChurnSummary,
 ) -> Result<()> {
+    use crate::cli::colors as c;
     use std::fmt::Write;
 
     if !summary.stable_files.is_empty() {
-        writeln!(output, "\n## Stable Files (Low Churn)\n")?;
+        writeln!(output, "\n{}Stable Files (Low Churn){}\n", c::BOLD, c::RESET)?;
         for (i, file) in summary.stable_files.iter().take(10).enumerate() {
-            writeln!(output, "{}. {}", i + 1, file.display())?;
+            writeln!(output, "  {}. {}{}{}", i + 1, c::CYAN, file.display(), c::RESET)?;
         }
     }
     Ok(())
@@ -202,14 +213,15 @@ fn write_summary_top_contributors(
     output: &mut String,
     summary: &crate::models::churn::ChurnSummary,
 ) -> Result<()> {
+    use crate::cli::colors as c;
     use std::fmt::Write;
 
     if !summary.author_contributions.is_empty() {
-        writeln!(output, "\n## Top Contributors\n")?;
+        writeln!(output, "\n{}Top Contributors{}\n", c::BOLD, c::RESET)?;
         let mut authors: Vec<_> = summary.author_contributions.iter().collect();
         authors.sort_unstable_by(|a, b| b.1.cmp(a.1));
         for (author, files) in authors.iter().take(10) {
-            writeln!(output, "- {author}: {files} files")?;
+            writeln!(output, "  {}{}{}: {}{}{} files", c::CYAN, author, c::RESET, c::BOLD_WHITE, files, c::RESET)?;
         }
     }
     Ok(())

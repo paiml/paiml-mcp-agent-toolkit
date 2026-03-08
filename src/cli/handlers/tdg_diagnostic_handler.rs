@@ -244,7 +244,37 @@ async fn handle_storage_command(command: &StorageCommand, base_path: &PathBuf) -
 fn handle_stats(storage: &TieredStore, detailed: bool) -> Result<()> {
     let stats = storage.get_statistics();
     println!("{}\n", c::header("TDG Storage Statistics"));
-    println!("{}", stats.format_diagnostic());
+    println!("{}", c::rule());
+    println!();
+
+    println!("{}", c::subheader("Storage Tiers:"));
+    println!(
+        "   {}: {} entries, {} KB",
+        c::dim("Hot (memory)"),
+        c::number(&stats.hot_entries.to_string()),
+        c::number(&stats.hot_memory_kb.to_string())
+    );
+    println!(
+        "   {}: {} entries",
+        c::dim(&format!("Warm ({} backend)", stats.warm_backend)),
+        c::number(&stats.warm_entries.to_string())
+    );
+    println!(
+        "   {}: {} entries",
+        c::dim(&format!("Cold ({} backend)", stats.cold_backend)),
+        c::number(&stats.cold_entries.to_string())
+    );
+    println!(
+        "   {}: {}",
+        c::dim("Total"),
+        c::number(&stats.total_entries.to_string())
+    );
+    println!(
+        "   {}: {}",
+        c::dim("Compression ratio"),
+        c::pct(f64::from(stats.compression_ratio) * 100.0, 50.0, 20.0)
+    );
+    println!();
 
     if detailed {
         print_backend_statistics(&stats.backend_stats);

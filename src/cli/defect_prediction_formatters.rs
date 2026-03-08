@@ -10,57 +10,83 @@ pub fn format_summary_output(
     perf: bool,
     analysis_time: std::time::Duration,
 ) -> String {
+    use crate::cli::colors as c;
+    use std::fmt::Write;
+
     let mut output = String::new();
 
-    output.push_str("Defect Prediction Analysis Summary\n");
-    output.push_str("=================================\n");
-    output.push_str(&format!("Files analyzed: {file_metrics_len}\n"));
-    output.push_str(&format!(
-        "Predictions generated: {}\n",
-        filtered_predictions.len()
-    ));
+    let _ = writeln!(
+        output,
+        "{}{}Defect Prediction Analysis Summary{}\n",
+        c::BOLD, c::UNDERLINE, c::RESET
+    );
+    let _ = writeln!(
+        output,
+        "  {}Files analyzed:{} {}{}{}",
+        c::BOLD, c::RESET, c::BOLD_WHITE, file_metrics_len, c::RESET
+    );
+    let _ = writeln!(
+        output,
+        "  {}Predictions generated:{} {}{}{}",
+        c::BOLD, c::RESET, c::BOLD_WHITE, filtered_predictions.len(), c::RESET
+    );
 
     let total = filtered_predictions.len() as f32;
-    output.push_str(&format!(
-        "High risk files: {} ({:.1}%)\n",
-        risk_dist.high_risk_count,
+    let _ = writeln!(
+        output,
+        "  {}High risk files:{} {}{}{} ({:.1}%)",
+        c::BOLD, c::RESET, c::RED, risk_dist.high_risk_count, c::RESET,
         100.0 * risk_dist.high_risk_count as f32 / total
-    ));
-    output.push_str(&format!(
-        "Medium risk files: {} ({:.1}%)\n",
-        risk_dist.medium_risk_count,
+    );
+    let _ = writeln!(
+        output,
+        "  {}Medium risk files:{} {}{}{} ({:.1}%)",
+        c::BOLD, c::RESET, c::YELLOW, risk_dist.medium_risk_count, c::RESET,
         100.0 * risk_dist.medium_risk_count as f32 / total
-    ));
-    output.push_str(&format!(
-        "Low risk files: {} ({:.1}%)\n",
-        risk_dist.low_risk_count,
+    );
+    let _ = writeln!(
+        output,
+        "  {}Low risk files:{} {}{}{} ({:.1}%)",
+        c::BOLD, c::RESET, c::GREEN, risk_dist.low_risk_count, c::RESET,
         100.0 * risk_dist.low_risk_count as f32 / total
-    ));
+    );
 
     if perf {
-        output.push_str("\nPerformance Metrics:\n");
-        output.push_str(&format!(
-            "Analysis time: {:.2}s\n",
-            analysis_time.as_secs_f64()
-        ));
-        output.push_str(&format!(
-            "Files/second: {:.1}\n",
-            file_metrics_len as f64 / analysis_time.as_secs_f64()
-        ));
+        let _ = writeln!(output, "\n{}Performance Metrics:{}", c::BOLD, c::RESET);
+        let _ = writeln!(
+            output,
+            "  {}Analysis time:{} {}{:.2}s{}",
+            c::BOLD, c::RESET, c::BOLD_WHITE, analysis_time.as_secs_f64(), c::RESET
+        );
+        let _ = writeln!(
+            output,
+            "  {}Files/second:{} {}{:.1}{}",
+            c::BOLD, c::RESET, c::BOLD_WHITE,
+            file_metrics_len as f64 / analysis_time.as_secs_f64(), c::RESET
+        );
     }
 
     if !filtered_predictions.is_empty() {
-        output.push_str("\nTop 10 High-Risk Files:\n");
+        let _ = writeln!(output, "\n{}Top 10 High-Risk Files:{}", c::BOLD, c::RESET);
         for (file_path, score) in filtered_predictions.iter().take(10) {
-            output.push_str(&format!(
-                "  {} - {:.1}% risk ({:?})\n",
-                std::path::Path::new(file_path)
-                    .file_name()
-                    .unwrap_or_default()
-                    .to_string_lossy(),
-                score.probability * 100.0,
+            let file_name = std::path::Path::new(file_path)
+                .file_name()
+                .unwrap_or_default()
+                .to_string_lossy();
+            let risk_color = if score.probability >= 0.7 {
+                c::RED
+            } else if score.probability >= 0.3 {
+                c::YELLOW
+            } else {
+                c::GREEN
+            };
+            let _ = writeln!(
+                output,
+                "  {}{}{} - {}{:.1}% risk{} ({:?})",
+                c::CYAN, file_name, c::RESET,
+                risk_color, score.probability * 100.0, c::RESET,
                 score.confidence
-            ));
+            );
         }
     }
 
@@ -124,29 +150,53 @@ pub fn format_detailed_output(
     filtered_predictions: &[(String, DefectScore)],
     include_recommendations: bool,
 ) -> String {
+    use crate::cli::colors as c;
+    use std::fmt::Write;
+
     let mut output = String::new();
 
-    output.push_str("Defect Prediction Analysis Report\n");
-    output.push_str("================================\n");
+    let _ = writeln!(
+        output,
+        "{}{}Defect Prediction Analysis Report{}\n",
+        c::BOLD, c::UNDERLINE, c::RESET
+    );
 
     for (file_path, score) in filtered_predictions {
-        output.push_str(&format!("\n{file_path}\n"));
-        output.push_str(&format!("  Risk Level: {:?}\n", score.risk_level));
-        output.push_str(&format!(
-            "  Probability: {:.1}%\n",
-            score.probability * 100.0
-        ));
-        output.push_str(&format!("  Confidence: {:.1}%\n", score.confidence * 100.0));
+        let risk_color = match score.risk_level {
+            crate::services::defect_probability::RiskLevel::High => c::RED,
+            crate::services::defect_probability::RiskLevel::Medium => c::YELLOW,
+            crate::services::defect_probability::RiskLevel::Low => c::GREEN,
+        };
+        let _ = writeln!(output, "\n{}{}{}", c::CYAN, file_path, c::RESET);
+        let _ = writeln!(
+            output,
+            "  {}Risk Level:{} {}{:?}{}",
+            c::BOLD, c::RESET, risk_color, score.risk_level, c::RESET
+        );
+        let _ = writeln!(
+            output,
+            "  {}Probability:{} {}{:.1}%{}",
+            c::BOLD, c::RESET, c::BOLD_WHITE, score.probability * 100.0, c::RESET
+        );
+        let _ = writeln!(
+            output,
+            "  {}Confidence:{} {}{:.1}%{}",
+            c::BOLD, c::RESET, c::BOLD_WHITE, score.confidence * 100.0, c::RESET
+        );
 
-        output.push_str("  Contributing Factors:\n");
+        let _ = writeln!(output, "  {}Contributing Factors:{}", c::BOLD, c::RESET);
         for (factor, contribution) in &score.contributing_factors {
-            output.push_str(&format!("    {factor}: {contribution:.3}\n"));
+            let _ = writeln!(
+                output,
+                "    {}{}{}: {}{:.3}{}",
+                c::BOLD, factor, c::RESET, c::BOLD_WHITE, contribution, c::RESET
+            );
         }
 
         if include_recommendations && !score.recommendations.is_empty() {
-            output.push_str("  Recommendations:\n");
+            let _ = writeln!(output, "  {}Recommendations:{}", c::BOLD, c::RESET);
             for rec in &score.recommendations {
-                output.push_str(&format!("    - {rec}\n"));
+                let _ = writeln!(output, "    - {rec}");
             }
         }
     }

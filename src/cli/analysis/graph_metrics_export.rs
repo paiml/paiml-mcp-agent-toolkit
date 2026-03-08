@@ -121,32 +121,35 @@ fn format_gm_as_human(result: GraphMetricsResult) -> Result<String> {
 
 // Helper: Write human header
 fn write_gm_human_header(output: &mut String) -> Result<()> {
+    use crate::cli::colors as c;
     use std::fmt::Write;
-    writeln!(output, "# Graph Metrics Analysis\n")?;
-    writeln!(output, "## Graph Statistics")?;
+    writeln!(output, "{}{}Graph Metrics Analysis{}\n", c::BOLD, c::UNDERLINE, c::RESET)?;
+    writeln!(output, "{}Graph Statistics{}", c::BOLD, c::RESET)?;
     Ok(())
 }
 
 // Helper: Write statistics
 fn write_gm_statistics(output: &mut String, result: &GraphMetricsResult) -> Result<()> {
+    use crate::cli::colors as c;
     use std::fmt::Write;
-    writeln!(output, "- Total nodes: {}", result.total_nodes)?;
-    writeln!(output, "- Total edges: {}", result.total_edges)?;
-    writeln!(output, "- Density: {:.3}", result.density)?;
-    writeln!(output, "- Average degree: {:.2}", result.average_degree)?;
-    writeln!(output, "- Max degree: {}", result.max_degree)?;
+    writeln!(output, "  {}Total nodes:{} {}{}{}", c::BOLD, c::RESET, c::BOLD_WHITE, result.total_nodes, c::RESET)?;
+    writeln!(output, "  {}Total edges:{} {}{}{}", c::BOLD, c::RESET, c::BOLD_WHITE, result.total_edges, c::RESET)?;
+    writeln!(output, "  {}Density:{} {}{:.3}{}", c::BOLD, c::RESET, c::BOLD_WHITE, result.density, c::RESET)?;
+    writeln!(output, "  {}Average degree:{} {}{:.2}{}", c::BOLD, c::RESET, c::BOLD_WHITE, result.average_degree, c::RESET)?;
+    writeln!(output, "  {}Max degree:{} {}{}{}", c::BOLD, c::RESET, c::BOLD_WHITE, result.max_degree, c::RESET)?;
     writeln!(
         output,
-        "- Connected components: {}",
-        result.connected_components
+        "  {}Connected components:{} {}{}{}",
+        c::BOLD, c::RESET, c::BOLD_WHITE, result.connected_components, c::RESET
     )?;
     Ok(())
 }
 
 // Helper: Write top nodes
 fn write_gm_top_nodes(output: &mut String, result: &GraphMetricsResult) -> Result<()> {
+    use crate::cli::colors as c;
     use std::fmt::Write;
-    writeln!(output, "\n## Top Nodes by Centrality\n")?;
+    writeln!(output, "\n{}Top Nodes by Centrality{}\n", c::BOLD, c::RESET)?;
 
     for (i, node) in result.nodes.iter().enumerate() {
         write_gm_node_details(output, i + 1, node)?;
@@ -157,20 +160,21 @@ fn write_gm_top_nodes(output: &mut String, result: &GraphMetricsResult) -> Resul
 
 // Helper: Write node details
 fn write_gm_node_details(output: &mut String, index: usize, node: &NodeMetrics) -> Result<()> {
+    use crate::cli::colors as c;
     use std::fmt::Write;
-    writeln!(output, "{}. {} ", index, node.name)?;
+    writeln!(output, "  {}. {}{}{}", index, c::CYAN, node.name, c::RESET)?;
     writeln!(
         output,
-        "   - Degree: {:.3} (in: {}, out: {})",
-        node.degree_centrality, node.in_degree, node.out_degree
+        "     {}Degree:{} {}{:.3}{} (in: {}, out: {})",
+        c::BOLD, c::RESET, c::BOLD_WHITE, node.degree_centrality, c::RESET, node.in_degree, node.out_degree
     )?;
     writeln!(
         output,
-        "   - Betweenness: {:.3}",
-        node.betweenness_centrality
+        "     {}Betweenness:{} {}{:.3}{}",
+        c::BOLD, c::RESET, c::BOLD_WHITE, node.betweenness_centrality, c::RESET
     )?;
-    writeln!(output, "   - Closeness: {:.3}", node.closeness_centrality)?;
-    writeln!(output, "   - PageRank: {:.3}", node.pagerank)?;
+    writeln!(output, "     {}Closeness:{} {}{:.3}{}", c::BOLD, c::RESET, c::BOLD_WHITE, node.closeness_centrality, c::RESET)?;
+    writeln!(output, "     {}PageRank:{} {}{:.3}{}", c::BOLD, c::RESET, c::BOLD_WHITE, node.pagerank, c::RESET)?;
     writeln!(output)?;
     Ok(())
 }

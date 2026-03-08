@@ -140,8 +140,8 @@ fn test_score_distribution_all_high() {
     let result = format_provability_output(&function_ids, &summaries, &config);
     assert!(result.is_ok());
 
-    let content = result.unwrap();
-    assert!(content.contains("High (≥80%): 2 functions"));
+    let content = strip_ansi(&result.unwrap());
+    assert!(content.contains("High (\u{2265}80%): 2 functions"));
     assert!(content.contains("Medium (50-79%): 0 functions"));
     assert!(content.contains("Low (<50%): 0 functions"));
 }
@@ -168,8 +168,8 @@ fn test_score_distribution_all_low() {
     let result = format_provability_output(&function_ids, &summaries, &config);
     assert!(result.is_ok());
 
-    let content = result.unwrap();
-    assert!(content.contains("High (≥80%): 0 functions"));
+    let content = strip_ansi(&result.unwrap());
+    assert!(content.contains("High (\u{2265}80%): 0 functions"));
     assert!(content.contains("Low (<50%): 2 functions"));
 }
 
@@ -196,6 +196,6 @@ fn test_average_score_calculation() {
     let result = format_provability_output(&function_ids, &summaries, &config);
     assert!(result.is_ok());
 
-    let content = result.unwrap();
+    let content = strip_ansi(&result.unwrap());
     assert!(content.contains("Average provability score: 70.0%"));
 }

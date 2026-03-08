@@ -7,6 +7,11 @@ mod tests {
     use super::*;
     use crate::services::defect_probability::RiskLevel;
 
+    fn strip_ansi(s: &str) -> String {
+        let re = regex::Regex::new(r"\x1b\[[0-9;]*m").unwrap();
+        re.replace_all(s, "").to_string()
+    }
+
     // ==================== Config Tests ====================
 
     #[test]

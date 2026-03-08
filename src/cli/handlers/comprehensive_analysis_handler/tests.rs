@@ -138,6 +138,11 @@ mod tests {
     };
     use std::path::PathBuf;
 
+    fn strip_ansi(s: &str) -> String {
+        let re = regex::Regex::new(r"\x1b\[[0-9;]*m").unwrap();
+        re.replace_all(s, "").to_string()
+    }
+
     #[test]
     fn test_format_as_json() {
         let result = create_basic_result();
@@ -386,8 +391,8 @@ mod tests {
     #[test]
     fn test_format_result_summary() {
         let result = create_basic_result();
-        let formatted = format_result(result, ComprehensiveOutputFormat::Summary, false).unwrap();
-        assert!(formatted.contains("## Executive Summary"));
+        let formatted = strip_ansi(&format_result(result, ComprehensiveOutputFormat::Summary, false).unwrap());
+        assert!(formatted.contains("Executive Summary"));
     }
 
     #[test]

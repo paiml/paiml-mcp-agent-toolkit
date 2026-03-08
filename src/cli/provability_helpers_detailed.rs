@@ -6,7 +6,8 @@ pub fn format_provability_detailed(
 ) -> Result<String> {
     let mut output = String::new();
 
-    writeln!(&mut output, "# Detailed Provability Analysis\n")?;
+    use crate::cli::colors as c;
+    writeln!(&mut output, "{}\n", c::header("Detailed Provability Analysis"))?;
     let by_file = group_functions_by_file(function_ids, summaries);
     write_detailed_analysis_by_file(&mut output, by_file, include_evidence)?;
 
@@ -46,7 +47,8 @@ fn write_file_section(
     functions: &[(&FunctionId, &ProofSummary)],
     include_evidence: bool,
 ) -> Result<()> {
-    writeln!(output, "## {file_path}\n")?;
+    use crate::cli::colors as c;
+    writeln!(output, "{}\n", c::subheader(&c::path(file_path)))?;
 
     for (func_id, summary) in functions {
         write_function_details(output, func_id, summary)?;
@@ -66,19 +68,20 @@ fn write_function_details(
     func_id: &FunctionId,
     summary: &ProofSummary,
 ) -> Result<()> {
+    use crate::cli::colors as c;
     use crate::services::lightweight_provability_analyzer::PropertyType;
 
-    writeln!(output, "### Function: `{}`", func_id.function_name)?;
-    writeln!(output, "- **Line**: {}", func_id.line_number)?;
+    writeln!(output, "  {}Function:{} {}", c::BOLD, c::RESET, c::label(&func_id.function_name))?;
+    writeln!(output, "    Line: {}", c::number(&func_id.line_number.to_string()))?;
     writeln!(
         output,
-        "- **Provability Score**: {:.1}%",
-        summary.provability_score * 100.0
+        "    Provability Score: {}",
+        c::pct(summary.provability_score * 100.0, 80.0, 50.0)
     )?;
     writeln!(
         output,
-        "- **Analysis Time**: {}\u{00b5}s",
-        summary.analysis_time_us
+        "    Analysis Time: {}\u{00b5}s",
+        c::number(&summary.analysis_time_us.to_string())
     )?;
 
     // Show which properties are verified vs missing (#229)
@@ -101,10 +104,10 @@ fn write_function_details(
         }
     }
     if !verified.is_empty() {
-        writeln!(output, "- **Verified**: {}", verified.join(", "))?;
+        writeln!(output, "    {}Verified:{} {}{}{}", c::BOLD, c::RESET, c::GREEN, verified.join(", "), c::RESET)?;
     }
     if !missing.is_empty() {
-        writeln!(output, "- **Missing**: {}", missing.join(", "))?;
+        writeln!(output, "    {}Missing:{} {}{}{}", c::BOLD, c::RESET, c::RED, missing.join(", "), c::RESET)?;
     }
 
     Ok(())
@@ -114,16 +117,17 @@ fn write_verified_properties(
     output: &mut String,
     properties: &[crate::services::lightweight_provability_analyzer::VerifiedProperty],
 ) -> Result<()> {
-    writeln!(output, "\n#### Verified Properties:")?;
+    use crate::cli::colors as c;
+    writeln!(output, "\n    {}Verified Properties:{}", c::BOLD, c::RESET)?;
 
     for prop in properties {
         writeln!(
             output,
-            "- **{:?}** (confidence: {:.0}%)",
-            prop.property_type,
-            prop.confidence * 100.0
+            "      {}{:?}{} (confidence: {})",
+            c::GREEN, prop.property_type, c::RESET,
+            c::pct(prop.confidence * 100.0, 80.0, 50.0),
         )?;
-        writeln!(output, "  - Evidence: {}", prop.evidence)?;
+        writeln!(output, "        Evidence: {}{}{}", c::DIM, prop.evidence, c::RESET)?;
     }
 
     Ok(())

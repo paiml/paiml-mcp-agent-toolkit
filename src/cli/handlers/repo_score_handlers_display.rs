@@ -3,22 +3,27 @@
 
 /// Format score as human-readable text
 fn format_text(score: &RepoScore, verbose: bool) -> String {
+    use crate::cli::colors as c;
+
     let mut output = String::new();
 
     // Header
-    output.push_str("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
-    output.push_str("📊  Repository Health Score\n");
-    output.push_str("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
+    output.push_str(&format!("{}\n", c::rule()));
+    output.push_str(&format!("{}\n", c::header("Repository Health Score")));
+    output.push_str(&format!("{}\n", c::rule()));
     output.push('\n');
 
     // Summary
-    output.push_str("📌  Summary\n");
-    output.push_str(&format!("  Score: {:.1}/100\n", score.total_score));
-    output.push_str(&format!("  Grade: {}\n", score.grade.as_str()));
+    output.push_str(&format!("{}\n", c::label("Summary")));
+    output.push_str(&format!(
+        "  Score: {}\n",
+        c::score(score.total_score, 100.0, 80.0, 60.0)
+    ));
+    output.push_str(&format!("  Grade: {}\n", c::grade(score.grade.as_str())));
     output.push('\n');
 
     // Categories
-    output.push_str("📂  Categories\n");
+    output.push_str(&format!("{}\n", c::label("Categories")));
     output.push_str(&format_category(
         "Documentation",
         &score.categories.documentation,
@@ -53,26 +58,25 @@ fn format_text(score: &RepoScore, verbose: bool) -> String {
 
     // Recommendations
     if !score.recommendations.is_empty() {
-        output.push_str("💡  Recommendations\n");
+        output.push_str(&format!("{}\n", c::label("Recommendations")));
         for rec in &score.recommendations {
             use crate::services::repo_score::Priority;
+            let priority_text = match rec.priority {
+                Priority::Critical => format!("{}P0{}", c::RED, c::RESET),
+                Priority::High => format!("{}P1{}", c::RED, c::RESET),
+                Priority::Medium => format!("{}P2{}", c::YELLOW, c::RESET),
+                Priority::Low => format!("{}P3{}", c::GREEN, c::RESET),
+            };
             output.push_str(&format!(
                 "  {} {}: {}\n",
-                match rec.priority {
-                    Priority::Critical => "🔴",
-                    Priority::High => "🔴",
-                    Priority::Medium => "🟡",
-                    Priority::Low => "🟢",
-                },
-                rec.category,
-                rec.description
+                priority_text, rec.category, rec.description
             ));
         }
         output.push('\n');
     }
 
     // Footer
-    output.push_str("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
+    output.push_str(&format!("{}\n", c::rule()));
 
     output
 }
@@ -83,21 +87,32 @@ fn format_category(
     category: &crate::services::repo_score::CategoryScore,
     verbose: bool,
 ) -> String {
+    use crate::cli::colors as c;
+
     let mut output = String::new();
     let status_icon = match category.status {
-        crate::services::repo_score::ScoreStatus::Pass => "✅",
-        crate::services::repo_score::ScoreStatus::Warning => "⚠️",
-        crate::services::repo_score::ScoreStatus::Fail => "❌",
+        crate::services::repo_score::ScoreStatus::Pass => {
+            format!("{}✓{}", c::GREEN, c::RESET)
+        }
+        crate::services::repo_score::ScoreStatus::Warning => {
+            format!("{}⚠{}", c::YELLOW, c::RESET)
+        }
+        crate::services::repo_score::ScoreStatus::Fail => {
+            format!("{}✗{}", c::RED, c::RESET)
+        }
     };
 
     output.push_str(&format!(
-        "  {} {:<25} {:.1}/{:.1} ({:.1}%)\n",
-        status_icon, name, category.score, category.max_score, category.percentage
+        "  {} {:<25} {} ({})\n",
+        status_icon,
+        name,
+        c::score(category.score, category.max_score, 80.0, 60.0),
+        c::pct(category.percentage, 80.0, 60.0)
     ));
 
     if verbose && !category.findings.is_empty() {
         for finding in &category.findings {
-            output.push_str(&format!("     • {}\n", finding.message));
+            output.push_str(&format!("     {}{}{}\n", c::DIM, finding.message, c::RESET));
         }
     }
 
@@ -145,9 +160,9 @@ fn format_markdown(score: &RepoScore) -> String {
 
     for (name, cat) in &categories {
         let status = match cat.status {
-            crate::services::repo_score::ScoreStatus::Pass => "✅ Pass",
-            crate::services::repo_score::ScoreStatus::Warning => "⚠️ Warning",
-            crate::services::repo_score::ScoreStatus::Fail => "❌ Fail",
+            crate::services::repo_score::ScoreStatus::Pass => "Pass",
+            crate::services::repo_score::ScoreStatus::Warning => "Warning",
+            crate::services::repo_score::ScoreStatus::Fail => "Fail",
         };
         output.push_str(&format!(
             "| {} | {:.1} | {:.1} | {:.1}% | {} |\n",
@@ -157,7 +172,7 @@ fn format_markdown(score: &RepoScore) -> String {
 
     output.push_str("\n## Recommendations\n\n");
     if score.recommendations.is_empty() {
-        output.push_str("No recommendations - excellent work! 🎉\n");
+        output.push_str("No recommendations - excellent work!\n");
     } else {
         for rec in &score.recommendations {
             output.push_str(&format!("- **{}**: {}\n", rec.category, rec.description));

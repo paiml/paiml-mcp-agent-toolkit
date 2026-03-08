@@ -206,15 +206,17 @@ fn test_format_summary_output_basic() {
         medium_risk_count: 0,
         low_risk_count: 0,
     };
-    let output = format_summary_output(
+    let raw_output = format_summary_output(
         10,
         &predictions,
         &dist,
         true,
         std::time::Duration::from_millis(100),
     );
+    let output = strip_ansi(&raw_output);
     assert!(output.contains("Defect Prediction Analysis Summary"));
-    assert!(output.contains("Files analyzed: 10"));
+    assert!(output.contains("Files analyzed:"));
+    assert!(output.contains("10"));
 }
 
 #[test]

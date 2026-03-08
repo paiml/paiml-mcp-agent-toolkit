@@ -1,6 +1,11 @@
 // Provability handler tests - Part 1: Config, prepare_filtered, format tests
 // Included from provability_handler.rs mod coverage_tests
 
+fn strip_ansi(s: &str) -> String {
+    let re = regex::Regex::new(r"\x1b\[[0-9;]*m").unwrap();
+    re.replace_all(s, "").to_string()
+}
+
 // ============================================================
 // ProvabilityConfig tests
 // ============================================================

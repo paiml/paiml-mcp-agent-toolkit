@@ -133,7 +133,7 @@ fn print_overall_stats(stats: &MemoryStatsOutput) {
     println!(
         "  {}: {}",
         c::label("Pressure"),
-        c::pct(stats.allocation_pressure * 100.0, 80.0, 60.0)
+        c::pct_inverse(stats.allocation_pressure * 100.0, 30.0, 60.0)
     );
     println!(
         "  {}: {}",

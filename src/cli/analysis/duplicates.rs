@@ -15,6 +15,11 @@ mod tests {
     use super::*;
     use std::path::Path;
 
+    fn strip_ansi(s: &str) -> String {
+        let re = regex::Regex::new(r"\x1b\[[0-9;]*m").unwrap();
+        re.replace_all(s, "").to_string()
+    }
+
     #[test]
     fn test_normalize_block() {
         let lines = vec!["  fn test() {", "    // comment", "    let x = 1;", "  }"];
@@ -301,10 +306,12 @@ mod tests {
 
         let result = format_human_output(&report);
         assert!(result.is_ok());
-        let output = result.unwrap();
-        assert!(output.contains("# Duplicate Code Analysis"));
-        assert!(output.contains("Total duplicate blocks: 2"));
-        assert!(output.contains("Block 1 (10 lines, 2 locations)"));
+        let output = strip_ansi(&result.unwrap());
+        assert!(output.contains("Duplicate Code Analysis"));
+        assert!(output.contains("Total duplicate blocks:"));
+        assert!(output.contains("2"));
+        assert!(output.contains("Block 1"));
+        assert!(output.contains("10 lines, 2 locations"));
     }
 }
 

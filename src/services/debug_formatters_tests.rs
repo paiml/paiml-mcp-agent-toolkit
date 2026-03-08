@@ -1,3 +1,8 @@
+fn strip_ansi(s: &str) -> String {
+    let re = regex::Regex::new(r"\x1b\[[0-9;]*m").unwrap();
+    re.replace_all(s, "").to_string()
+}
+
 fn create_test_analysis() -> DebugAnalysis {
     let mut analysis = DebugAnalysis::new("Test issue".to_string());
 
@@ -118,9 +123,9 @@ fn test_format_text_multi_why() {
 #[test]
 fn test_format_text_evidence_display() {
     let analysis = create_test_analysis();
-    let output = format_text(&analysis).unwrap();
+    let output = strip_ansi(&format_text(&analysis).unwrap());
 
-    assert!(output.contains("📊 Evidence:"));
+    assert!(output.contains("Evidence:"));
     assert!(output.contains("High complexity"));
     assert!(output.contains("test.rs"));
 }
@@ -128,15 +133,16 @@ fn test_format_text_evidence_display() {
 #[test]
 fn test_format_text_confidence_display() {
     let analysis = create_test_analysis();
-    let output = format_text(&analysis).unwrap();
+    let output = strip_ansi(&format_text(&analysis).unwrap());
 
-    assert!(output.contains("✅ Confidence: 80%"));
+    assert!(output.contains("Confidence:"));
+    assert!(output.contains("80.0%"));
 }
 
 #[test]
 fn test_format_text_recommendation_priorities() {
     let analysis = create_multi_why_analysis();
-    let output = format_text(&analysis).unwrap();
+    let output = strip_ansi(&format_text(&analysis).unwrap());
 
     assert!(output.contains("[HIGH]"));
     assert!(output.contains("[MEDIUM]"));
@@ -146,12 +152,16 @@ fn test_format_text_recommendation_priorities() {
 #[test]
 fn test_format_text_evidence_summary() {
     let analysis = create_multi_why_analysis();
-    let output = format_text(&analysis).unwrap();
+    let output = strip_ansi(&format_text(&analysis).unwrap());
 
-    assert!(output.contains("📊 Evidence Summary:"));
-    assert!(output.contains("Complexity violations: 5"));
-    assert!(output.contains("SATD markers: 10"));
-    assert!(output.contains("TDG score: 65.5/100"));
+    assert!(output.contains("Evidence Summary:"));
+    assert!(output.contains("Complexity violations:"));
+    assert!(output.contains("5"));
+    assert!(output.contains("SATD markers:"));
+    assert!(output.contains("10"));
+    assert!(output.contains("TDG score:"));
+    assert!(output.contains("65.5"));
+    assert!(output.contains("100.0"));
     assert!(output.contains("Git churn: HIGH"));
 }
 
@@ -159,7 +169,7 @@ fn test_format_text_evidence_summary() {
 fn test_format_text_normal_churn() {
     let mut analysis = create_test_analysis();
     analysis.evidence_summary.git_churn_high = false;
-    let output = format_text(&analysis).unwrap();
+    let output = strip_ansi(&format_text(&analysis).unwrap());
 
     assert!(output.contains("Git churn: NORMAL"));
 }

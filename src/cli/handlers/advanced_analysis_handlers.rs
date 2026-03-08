@@ -142,10 +142,17 @@ pub async fn handle_analyze_deep_context(
     let report = analyzer.analyze(config).await?;
 
     // Format and output results
-    let output_content = match format {
-        DeepContextOutputFormat::Json => analyzer.format_as_json(&report)?,
-        DeepContextOutputFormat::Markdown => analyzer.format_as_markdown(&report, top_files),
-        DeepContextOutputFormat::Sarif => {
+    let output_content = match (&format, &output) {
+        (DeepContextOutputFormat::Json, _) => analyzer.format_as_json(&report)?,
+        (DeepContextOutputFormat::Markdown, Some(_)) => {
+            // File output: real markdown
+            analyzer.format_as_markdown(&report, top_files)
+        }
+        (DeepContextOutputFormat::Markdown, None) => {
+            // Terminal output: colorized text
+            format_deep_context_text(&report, top_files)
+        }
+        (DeepContextOutputFormat::Sarif, _) => {
             // TRACKED: Implement SARIF format
             analyzer.format_as_json(&report)?
         }
@@ -375,6 +382,68 @@ pub async fn handle_analyze_symbol_table(
         perf,
     )
     .await
+}
+
+/// Format deep-context analysis as colorized terminal text
+fn format_deep_context_text(
+    report: &crate::services::simple_deep_context::SimpleAnalysisReport,
+    top_files: usize,
+) -> String {
+    use crate::cli::colors as c;
+    use std::fmt::Write;
+
+    let mut out = String::new();
+    let _ = writeln!(&mut out, "{}", c::header("Deep Context Analysis Report"));
+    let _ = writeln!(&mut out);
+
+    let _ = writeln!(&mut out, "{}\n", c::subheader("Summary"));
+    let _ = writeln!(&mut out, "  Files Analyzed:         {}", c::number(&report.file_count.to_string()));
+    let _ = writeln!(&mut out, "  Analysis Duration:      {}", c::number(&format!("{:?}", report.analysis_duration)));
+    let _ = writeln!(&mut out, "  Total Functions:        {}", c::number(&report.complexity_metrics.total_functions.to_string()));
+    let _ = writeln!(&mut out, "  High Complexity Funcs:  {}", if report.complexity_metrics.high_complexity_count > 0 { format!("{}{}{}", c::YELLOW, report.complexity_metrics.high_complexity_count, c::RESET) } else { c::number(&report.complexity_metrics.high_complexity_count.to_string()) });
+    let _ = writeln!(&mut out, "  Average Complexity:     {}\n", c::number(&format!("{:.1}", report.complexity_metrics.avg_complexity)));
+
+    if !report.file_complexity_details.is_empty() {
+        let _ = writeln!(&mut out, "{}\n", c::subheader("Top Files by Complexity"));
+        let mut sorted_files = report.file_complexity_details.clone();
+        sorted_files.sort_by(|a, b| {
+            b.complexity_score
+                .partial_cmp(&a.complexity_score)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
+        let files_to_show = if top_files == 0 { 10 } else { top_files };
+        for (i, file_detail) in sorted_files.iter().take(files_to_show).enumerate() {
+            let filename = file_detail
+                .file_path
+                .file_name()
+                .and_then(|n| n.to_str())
+                .map_or_else(
+                    || file_detail.file_path.to_string_lossy().to_string(),
+                    std::string::ToString::to_string,
+                );
+            let _ = writeln!(
+                &mut out,
+                "  {}. {} - {} avg complexity ({} functions, {} high complexity)",
+                c::number(&(i + 1).to_string()),
+                c::path(&filename),
+                c::number(&format!("{:.1}", file_detail.avg_complexity)),
+                c::number(&file_detail.function_count.to_string()),
+                if file_detail.high_complexity_functions > 0 {
+                    format!("{}{}{}", c::YELLOW, file_detail.high_complexity_functions, c::RESET)
+                } else {
+                    c::number(&file_detail.high_complexity_functions.to_string())
+                },
+            );
+        }
+        let _ = writeln!(&mut out);
+    }
+
+    let _ = writeln!(&mut out, "{}\n", c::subheader("Recommendations"));
+    for (i, rec) in report.recommendations.iter().enumerate() {
+        let _ = writeln!(&mut out, "  {}. {rec}", c::number(&(i + 1).to_string()));
+    }
+
+    out
 }
 
 // Tests extracted to advanced_analysis_handlers_tests.rs for file health compliance (CB-040)

@@ -2,6 +2,7 @@
 //!
 //! Implements P-001 through P-010 acceptance criteria.
 
+use crate::cli::colors as c;
 use crate::cli::commands::PerfectionScoreOutputFormat;
 use crate::services::perfection_score::{PerfectionScoreCalculator, PerfectionScoreResult};
 use std::fs;
@@ -31,7 +32,12 @@ pub async fn handle_perfection_score(
 
     if let Some(output_path) = output {
         fs::write(output_path, &output_text)?;
-        println!("✅ Perfection score written to {}", output_path.display());
+        println!(
+            "{}Perfection score written to {}",
+            c::GREEN,
+            output_path.display()
+        );
+        print!("{}", c::RESET);
     } else {
         println!("{}", output_text);
     }
@@ -42,21 +48,32 @@ pub async fn handle_perfection_score(
 fn format_text(result: &PerfectionScoreResult, breakdown: bool) -> String {
     let mut out = String::new();
 
-    out.push_str("🏆 PMAT Perfection Score\n");
-    out.push_str("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n");
+    out.push_str(&format!("{}\n", c::header("PMAT Perfection Score")));
+    out.push_str(&format!("{}\n\n", c::rule()));
 
     // Main score display
     out.push_str(&format!(
-        "  Total: {:.1}/{} points\n",
-        result.total_score, result.max_score
+        "  Total: {} points\n",
+        c::score(
+            result.total_score,
+            f64::from(result.max_score),
+            80.0,
+            60.0
+        )
     ));
-    out.push_str(&format!("  Grade: {}\n", result.grade));
+    out.push_str(&format!("  Grade: {}\n", c::grade(&result.grade)));
 
     if let Some(gap) = result.target_gap {
         if gap > 0.0 {
-            out.push_str(&format!("  Target Gap: {:.1} points needed\n", gap));
+            out.push_str(&format!(
+                "  Target Gap: {}{:.1} points needed{}\n",
+                c::YELLOW, gap, c::RESET
+            ));
         } else {
-            out.push_str("  ✅ Target achieved!\n");
+            out.push_str(&format!(
+                "  {}Target achieved!{}\n",
+                c::GREEN, c::RESET
+            ));
         }
     }
 
@@ -64,19 +81,30 @@ fn format_text(result: &PerfectionScoreResult, breakdown: bool) -> String {
 
     // Category breakdown
     if breakdown {
-        out.push_str("📊 Category Breakdown\n");
-        out.push_str("═══════════════════════════════════════════════════════\n\n");
+        out.push_str(&format!("{}\n", c::label("Category Breakdown")));
+        out.push_str(&format!("{}\n\n", c::separator()));
 
         for cat in &result.categories {
             let progress_bar =
                 create_progress_bar(cat.earned_points, f64::from(cat.max_points), 20);
             out.push_str(&format!(
-                "  {:25} {} {:.1}/{} pts ({})\n",
-                cat.name, progress_bar, cat.earned_points, cat.max_points, cat.grade
+                "  {:25} {} {} pts ({})\n",
+                cat.name,
+                progress_bar,
+                c::score(
+                    cat.earned_points,
+                    f64::from(cat.max_points),
+                    80.0,
+                    60.0
+                ),
+                c::grade(&cat.grade)
             ));
             if let Some(details) = &cat.details {
                 if !details.is_empty() {
-                    out.push_str(&format!("    └─ {}\n", details));
+                    out.push_str(&format!(
+                        "    {}└─ {}{}\n",
+                        c::DIM, details, c::RESET
+                    ));
                 }
             }
         }
@@ -85,14 +113,14 @@ fn format_text(result: &PerfectionScoreResult, breakdown: bool) -> String {
 
     // Recommendations
     if !result.recommendations.is_empty() {
-        out.push_str("💡 Recommendations\n");
-        out.push_str("───────────────────────────────────────────────────────\n");
+        out.push_str(&format!("{}\n", c::label("Recommendations")));
+        out.push_str(&format!("{}\n", c::separator()));
         for rec in &result.recommendations {
             out.push_str(&format!("  {}\n", rec));
         }
     }
 
-    out.push_str("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
+    out.push_str(&format!("\n{}\n", c::rule()));
 
     out
 }
@@ -116,7 +144,7 @@ fn format_markdown(result: &PerfectionScoreResult, breakdown: bool) -> String {
         if gap > 0.0 {
             out.push_str(&format!("| **Target Gap** | {:.1} points |\n", gap));
         } else {
-            out.push_str("| **Target** | ✅ Achieved |\n");
+            out.push_str("| **Target** | Achieved |\n");
         }
     }
 
@@ -152,11 +180,11 @@ fn create_progress_bar(current: f64, max: f64, width: usize) -> String {
     let empty = width - filled;
 
     let color = if percentage >= 0.8 {
-        "\x1b[32m" // Green
+        c::GREEN
     } else if percentage >= 0.6 {
-        "\x1b[33m" // Yellow
+        c::YELLOW
     } else {
-        "\x1b[31m" // Red
+        c::RED
     };
 
     format!(
@@ -164,7 +192,7 @@ fn create_progress_bar(current: f64, max: f64, width: usize) -> String {
         color,
         "█".repeat(filled),
         "░".repeat(empty),
-        "\x1b[0m"
+        c::RESET
     )
 }
 

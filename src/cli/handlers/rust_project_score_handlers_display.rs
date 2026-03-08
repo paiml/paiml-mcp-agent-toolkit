@@ -6,14 +6,18 @@ fn format_text(
     recommendations: &[String],
     _verbose: bool,
 ) -> String {
+    use crate::cli::colors as c;
     use crate::services::rust_project_score::orchestrator::SPEC_VERSION;
 
     let mut output = String::new();
 
     // Header
-    output.push_str("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
-    output.push_str(&format!("🦀  Rust Project Score v{}\n", SPEC_VERSION));
-    output.push_str("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
+    output.push_str(&format!("{}\n", c::rule()));
+    output.push_str(&format!(
+        "{}\n",
+        c::header(&format!("Rust Project Score v{}", SPEC_VERSION))
+    ));
+    output.push_str(&format!("{}\n", c::rule()));
     output.push('\n');
 
     // Summary — exclude N/A categories from totals (#237)
@@ -29,20 +33,23 @@ fn format_text(
         .filter(|cat| cat.applicable)
         .map(|cat| cat.max)
         .sum();
-    output.push_str("📌  Summary\n");
+    output.push_str(&format!("{}\n", c::label("Summary")));
     output.push_str(&format!(
-        "  Score: {:.1}/{:.0}\n",
-        applicable_earned, applicable_possible
+        "  Score: {}\n",
+        c::score(applicable_earned, applicable_possible, 80.0, 60.0)
     ));
     output.push_str(&format!(
-        "  Normalized: {:.1}% (avg of category %)\n",
-        score.percentage
+        "  Normalized: {} (avg of category %)\n",
+        c::pct(score.percentage, 80.0, 60.0)
     ));
-    output.push_str(&format!("  Grade: {}\n", score.grade));
+    output.push_str(&format!(
+        "  Grade: {}\n",
+        c::grade(&score.grade.to_string())
+    ));
     output.push('\n');
 
     // Categories
-    output.push_str("📂  Categories\n");
+    output.push_str(&format!("{}\n", c::label("Categories")));
 
     // Sort categories by name for consistent output
     let mut categories: Vec<_> = score.categories.iter().collect();
@@ -50,38 +57,41 @@ fn format_text(
 
     for (name, category) in categories {
         if !category.applicable {
-            output.push_str(&format!("  ⬚  {}: N/A\n", name));
+            output.push_str(&format!("  {}  {}: N/A{}\n", c::DIM, name, c::RESET));
             continue;
         }
 
         let percentage = category.percentage();
 
         let icon = if percentage >= 90.0 {
-            "✅"
+            format!("{}✓{}", c::GREEN, c::RESET)
         } else if percentage >= 70.0 {
-            "⚠️"
+            format!("{}⚠{}", c::YELLOW, c::RESET)
         } else {
-            "❌"
+            format!("{}✗{}", c::RED, c::RESET)
         };
 
         output.push_str(&format!(
-            "  {} {}: {:.1}/{:.0} ({:.1}%)\n",
-            icon, name, category.earned, category.max, percentage
+            "  {} {}: {} ({})\n",
+            icon,
+            name,
+            c::score(category.earned, category.max, 80.0, 60.0),
+            c::pct(percentage, 80.0, 60.0)
         ));
     }
     output.push('\n');
 
     // Recommendations
     if !recommendations.is_empty() {
-        output.push_str("💡  Recommendations\n");
+        output.push_str(&format!("{}\n", c::label("Recommendations")));
         for rec in recommendations {
-            output.push_str(&format!("  • {}\n", rec));
+            output.push_str(&format!("  {}{}{}\n", c::DIM_WHITE, rec, c::RESET));
         }
         output.push('\n');
     }
 
     // Footer
-    output.push_str("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
+    output.push_str(&format!("{}\n", c::rule()));
 
     output
 }
@@ -97,7 +107,7 @@ fn format_markdown(
     let mut output = String::new();
 
     // Header
-    output.push_str(&format!("# 🦀 Rust Project Score v{}\n\n", SPEC_VERSION));
+    output.push_str(&format!("# Rust Project Score v{}\n\n", SPEC_VERSION));
 
     // Summary — exclude N/A categories from totals (#237)
     let applicable_earned: f64 = score
@@ -112,7 +122,7 @@ fn format_markdown(
         .filter(|cat| cat.applicable)
         .map(|cat| cat.max)
         .sum();
-    output.push_str("## 📌 Summary\n\n");
+    output.push_str("## Summary\n\n");
     output.push_str(&format!(
         "- **Score**: {:.1}/{:.0}\n",
         applicable_earned, applicable_possible
@@ -121,7 +131,7 @@ fn format_markdown(
     output.push_str(&format!("- **Grade**: {}\n\n", score.grade));
 
     // Categories
-    output.push_str("## 📂 Categories\n\n");
+    output.push_str("## Categories\n\n");
     output.push_str("| Category | Score | Percentage |\n");
     output.push_str("|----------|-------|------------|\n");
 
@@ -132,11 +142,11 @@ fn format_markdown(
         let percentage = category.percentage();
 
         let icon = if percentage >= 90.0 {
-            "✅"
+            "Pass"
         } else if percentage >= 70.0 {
-            "⚠️"
+            "Warning"
         } else {
-            "❌"
+            "Fail"
         };
 
         output.push_str(&format!(
@@ -148,7 +158,7 @@ fn format_markdown(
 
     // Recommendations
     if !recommendations.is_empty() {
-        output.push_str("## 💡 Recommendations\n\n");
+        output.push_str("## Recommendations\n\n");
         for rec in recommendations {
             output.push_str(&format!("- {}\n", rec));
         }

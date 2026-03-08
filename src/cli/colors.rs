@@ -110,7 +110,7 @@ pub fn grade(g: &str) -> String {
     format!("{color}{g}{RESET}")
 }
 
-/// Format a percentage with threshold coloring
+/// Format a percentage with threshold coloring (higher is better)
 #[inline]
 pub fn pct(value: f64, good_threshold: f64, warn_threshold: f64) -> String {
     let color = if value >= good_threshold {
@@ -121,6 +121,32 @@ pub fn pct(value: f64, good_threshold: f64, warn_threshold: f64) -> String {
         RED
     };
     format!("{color}{value:.1}%{RESET}")
+}
+
+/// Format a percentage with inverted threshold coloring (lower is better, e.g. pressure)
+#[inline]
+pub fn pct_inverse(value: f64, good_threshold: f64, warn_threshold: f64) -> String {
+    let color = if value <= good_threshold {
+        GREEN
+    } else if value <= warn_threshold {
+        YELLOW
+    } else {
+        RED
+    };
+    format!("{color}{value:.1}%{RESET}")
+}
+
+/// Format a delta value (positive = green/improvement, negative = red/regression)
+#[inline]
+pub fn delta(value: f64) -> String {
+    let color = if value > 0.0 {
+        GREEN
+    } else if value < 0.0 {
+        RED
+    } else {
+        DIM
+    };
+    format!("{color}{value:+.1}{RESET}")
 }
 
 /// Format a score fraction (e.g., "14.5/15.0") with threshold coloring

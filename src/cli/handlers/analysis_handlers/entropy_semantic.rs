@@ -86,18 +86,22 @@ pub(crate) fn format_entropy_report(
 
 /// Format summary report
 fn format_summary_report(report: &crate::entropy::EntropyReport, top_violations: usize) -> String {
+    use crate::cli::colors as c;
+
     let violations = get_top_violations(&report.actionable_violations, top_violations);
 
     format!(
-        "Entropy Analysis Summary\n========================\n\n\
-         Files Analyzed: {}\n\
-         Total Violations: {}\n\
-         Potential LOC Reduction: {} lines ({:.1}%)\n\n\
-         Top Violations:\n{}\n",
-        report.total_files_analyzed,
-        report.actionable_violations.len(),
-        report.total_loc_reduction(),
-        report.reduction_percentage(),
+        "{}{}Entropy Analysis Summary{}\n\n\
+         {}Files Analyzed:{} {}{}{}\n\
+         {}Total Violations:{} {}{}{}\n\
+         {}Potential LOC Reduction:{} {}{}{} lines ({}{:.1}%{})\n\n\
+         {}Top Violations:{}\n{}\n",
+        c::BOLD, c::UNDERLINE, c::RESET,
+        c::BOLD, c::RESET, c::BOLD_WHITE, report.total_files_analyzed, c::RESET,
+        c::BOLD, c::RESET, c::BOLD_WHITE, report.actionable_violations.len(), c::RESET,
+        c::BOLD, c::RESET, c::BOLD_WHITE, report.total_loc_reduction(), c::RESET,
+        c::BOLD_WHITE, report.reduction_percentage(), c::RESET,
+        c::BOLD, c::RESET,
         format_violation_list(&violations)
     )
 }

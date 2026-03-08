@@ -5,6 +5,7 @@
 //! formats (Table, JSON, Markdown, SARIF).
 
 use super::{format_grade, TdgCommandConfig};
+use crate::cli::colors as c;
 use crate::cli::TdgOutputFormat;
 use anyhow::Result;
 
@@ -68,7 +69,7 @@ fn format_tdg_score_table(
     if let Some(file_path) = &score.file_path {
         output.push_str(&format!(
             "│  TDG Score Report: {}              │\n",
-            file_path.display()
+            c::path(&file_path.display().to_string())
         ));
     } else {
         output.push_str("│  TDG Score Report                              │\n");
@@ -76,15 +77,16 @@ fn format_tdg_score_table(
     output.push_str("├─────────────────────────────────────────────────┤\n");
 
     // Overall score
+    let grade_str = format_grade(score.grade);
     output.push_str(&format!(
-        "│  Overall Score: {:.1}/100 ({})                  │\n",
-        score.total,
-        format_grade(score.grade)
+        "│  Overall Score: {}/100 ({})                  │\n",
+        c::number(&format!("{:.1}", score.total)),
+        c::grade(&grade_str)
     ));
     output.push_str(&format!(
-        "│  Language: {:?} (confidence: {:.0}%)             │\n",
+        "│  Language: {:?} (confidence: {}%)             │\n",
         score.language,
-        score.confidence * 100.0
+        c::number(&format!("{:.0}", score.confidence * 100.0))
     ));
 
     // Sprint 65: Git context (if available)
@@ -93,11 +95,11 @@ fn format_tdg_score_table(
         output.push_str("│  🔗 Git Context:                                │\n");
         output.push_str(&format!(
             "│  ├─ Commit:  {}                     │\n",
-            &git.commit_sha_short
+            c::number(&git.commit_sha_short)
         ));
         output.push_str(&format!(
             "│  ├─ Branch:  {}                               │\n",
-            &git.branch
+            c::path(&git.branch)
         ));
         output.push_str(&format!(
             "│  └─ Author:  {}                          │\n",
@@ -109,28 +111,28 @@ fn format_tdg_score_table(
         output.push_str("│                                                 │\n");
         output.push_str("│  📊 Breakdown:                                  │\n");
         output.push_str(&format!(
-            "│  ├─ Structural:     {:.1}/25                    │\n",
-            score.structural_complexity
+            "│  ├─ Structural:     {}/25                    │\n",
+            c::score(f64::from(score.structural_complexity), 25.0, 70.0, 40.0)
         ));
         output.push_str(&format!(
-            "│  ├─ Semantic:       {:.1}/20                    │\n",
-            score.semantic_complexity
+            "│  ├─ Semantic:       {}/20                    │\n",
+            c::score(f64::from(score.semantic_complexity), 20.0, 70.0, 40.0)
         ));
         output.push_str(&format!(
-            "│  ├─ Duplication:    {:.1}/20                    │\n",
-            score.duplication_ratio
+            "│  ├─ Duplication:    {}/20                    │\n",
+            c::score(f64::from(score.duplication_ratio), 20.0, 70.0, 40.0)
         ));
         output.push_str(&format!(
-            "│  ├─ Coupling:       {:.1}/15                    │\n",
-            score.coupling_score
+            "│  ├─ Coupling:       {}/15                    │\n",
+            c::score(f64::from(score.coupling_score), 15.0, 70.0, 40.0)
         ));
         output.push_str(&format!(
-            "│  ├─ Documentation:  {:.1}/10                    │\n",
-            score.doc_coverage
+            "│  ├─ Documentation:  {}/10                    │\n",
+            c::score(f64::from(score.doc_coverage), 10.0, 70.0, 40.0)
         ));
         output.push_str(&format!(
-            "│  └─ Consistency:    {:.1}/10                    │\n",
-            score.consistency_score
+            "│  └─ Consistency:    {}/10                    │\n",
+            c::score(f64::from(score.consistency_score), 10.0, 70.0, 40.0)
         ));
     }
 
@@ -246,24 +248,26 @@ pub(crate) fn format_comparison(
         output.push_str("╭─────────────────────────────────────────────────╮\n");
         output.push_str("│  TDG Comparison                                 │\n");
         output.push_str("├─────────────────────────────────────────────────┤\n");
+        let grade1 = format_grade(comparison.source1.grade);
+        let grade2 = format_grade(comparison.source2.grade);
         output.push_str(&format!(
-            "│  Source 1: {:.1} ({})                           │\n",
-            comparison.source1.total,
-            format_grade(comparison.source1.grade)
+            "│  Source 1: {} ({})                           │\n",
+            c::number(&format!("{:.1}", comparison.source1.total)),
+            c::grade(&grade1)
         ));
         output.push_str(&format!(
-            "│  Source 2: {:.1} ({})                           │\n",
-            comparison.source2.total,
-            format_grade(comparison.source2.grade)
+            "│  Source 2: {} ({})                           │\n",
+            c::number(&format!("{:.1}", comparison.source2.total)),
+            c::grade(&grade2)
         ));
         output.push_str(&format!(
-            "│  Difference: {:+.1}                             │\n",
-            comparison.delta
+            "│  Difference: {}                             │\n",
+            c::delta(f64::from(comparison.delta))
         ));
 
         output.push_str(&format!(
             "│  Winner: {}                                      │\n",
-            comparison.winner
+            c::label(&comparison.winner)
         ));
 
         output.push_str("╰─────────────────────────────────────────────────╯\n");

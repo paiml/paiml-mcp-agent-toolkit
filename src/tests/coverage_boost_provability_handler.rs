@@ -24,6 +24,11 @@ use crate::services::lightweight_provability_analyzer::{
 };
 use std::path::PathBuf;
 
+fn strip_ansi(s: &str) -> String {
+    let re = regex::Regex::new(r"\x1b\[[0-9;]*m").unwrap();
+    re.replace_all(s, "").to_string()
+}
+
 // ============================================================
 // ProvabilityConfig Tests
 // ============================================================
@@ -946,7 +951,7 @@ fn test_format_provability_summary_basic() {
     ];
     let summaries = vec![create_summary(0.9), create_summary(0.6)];
 
-    let result = format_provability_summary(&function_ids, &summaries, 5).unwrap();
+    let result = strip_ansi(&format_provability_summary(&function_ids, &summaries, 5).unwrap());
     assert!(result.contains("Provability Analysis Summary"));
     assert!(result.contains("Total functions analyzed: 2"));
     assert!(result.contains("Score Distribution"));
@@ -957,7 +962,7 @@ fn test_format_provability_summary_empty() {
     let function_ids: Vec<FunctionId> = vec![];
     let summaries: Vec<ProofSummary> = vec![];
 
-    let result = format_provability_summary(&function_ids, &summaries, 5).unwrap();
+    let result = strip_ansi(&format_provability_summary(&function_ids, &summaries, 5).unwrap());
     assert!(result.contains("Total functions analyzed: 0"));
 }
 
@@ -1096,7 +1101,7 @@ fn test_large_function_list() {
         .collect();
     let summaries: Vec<ProofSummary> = (0..100).map(|i| create_summary(i as f64 / 100.0)).collect();
 
-    let result = format_provability_summary(&function_ids, &summaries, 10).unwrap();
+    let result = strip_ansi(&format_provability_summary(&function_ids, &summaries, 10).unwrap());
     assert!(result.contains("Total functions analyzed: 100"));
 }
 

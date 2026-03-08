@@ -20,12 +20,25 @@ fn format_json_output(result: &NameSimilarityResult) -> Result<String> {
 
 /// Format output for human reading (cognitive complexity ≤8)
 fn format_human_output(result: &NameSimilarityResult) -> Result<String> {
+    use crate::cli::colors as c;
     use std::fmt::Write;
 
     let mut output = String::new();
-    writeln!(&mut output, "# Name Similarity Analysis\n")?;
-    writeln!(&mut output, "Query: '{}'\n", result.query)?;
-    writeln!(&mut output, "Found {} matches:\n", result.matches.len())?;
+    writeln!(
+        &mut output,
+        "{}{}Name Similarity Analysis{}\n",
+        c::BOLD, c::UNDERLINE, c::RESET
+    )?;
+    writeln!(
+        &mut output,
+        "  {}Query:{} {}{}{}\n",
+        c::BOLD, c::RESET, c::BOLD_WHITE, result.query, c::RESET
+    )?;
+    writeln!(
+        &mut output,
+        "  {}Found:{} {}{}{} matches\n",
+        c::BOLD, c::RESET, c::BOLD_WHITE, result.matches.len(), c::RESET
+    )?;
 
     for (i, m) in result.matches.iter().enumerate() {
         format_human_match_entry(&mut output, i, m)?;
@@ -36,20 +49,29 @@ fn format_human_output(result: &NameSimilarityResult) -> Result<String> {
 
 /// Format a single match entry for human output (cognitive complexity ≤6)
 fn format_human_match_entry(output: &mut String, index: usize, m: &NameMatch) -> Result<()> {
+    use crate::cli::colors as c;
     use std::fmt::Write;
 
     writeln!(
         output,
-        "{}. {} (score: {:.2})",
+        "{}. {}{}{} (score: {}{:.2}{})",
         index + 1,
-        m.name,
-        m.similarity_score
+        c::BOLD_WHITE, m.name, c::RESET,
+        c::BOLD_WHITE, m.similarity_score, c::RESET
     )?;
-    writeln!(output, "   File: {}:{}", m.file, m.line)?;
-    writeln!(output, "   Type: {}", m.kind)?;
-    writeln!(output, "   Edit distance: {}", m.edit_distance)?;
+    writeln!(
+        output,
+        "   {}File:{} {}{}:{}{}",
+        c::BOLD, c::RESET, c::CYAN, m.file, m.line, c::RESET
+    )?;
+    writeln!(output, "   {}Type:{} {}", c::BOLD, c::RESET, m.kind)?;
+    writeln!(
+        output,
+        "   {}Edit distance:{} {}{}{}",
+        c::BOLD, c::RESET, c::BOLD_WHITE, m.edit_distance, c::RESET
+    )?;
     if m.phonetic_match {
-        writeln!(output, "   ✓ Phonetic match")?;
+        writeln!(output, "   {}✓ Phonetic match{}", c::GREEN, c::RESET)?;
     }
     writeln!(output)?;
 

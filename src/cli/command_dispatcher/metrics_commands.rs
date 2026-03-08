@@ -6,6 +6,7 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
 
 use super::CommandDispatcher;
+use crate::cli::colors as c;
 use crate::cli::OutputFormat;
 
 impl CommandDispatcher {
@@ -67,14 +68,14 @@ impl CommandDispatcher {
             _ => {
                 // Table output (default)
                 println!(
-                    "\n\x1b[1;34mQuality Metrics Trends ({} days)\x1b[0m\n",
-                    days
+                    "\n{}Quality Metrics Trends ({} days){}\n",
+                    c::BOLD_BLUE, days, c::RESET
                 );
 
                 // Show hot metrics ranking (PageRank)
                 let hot_metrics = store.hot_metrics();
                 if !hot_metrics.is_empty() {
-                    println!("\x1b[1;33mHot Metrics (PageRank)\x1b[0m");
+                    println!("{}Hot Metrics (PageRank){}", c::BOLD_YELLOW, c::RESET);
                     for (idx, (name, score)) in hot_metrics.iter().enumerate().take(5) {
                         println!("  {}. {} (score: {:.4})", idx + 1, name, score);
                     }
@@ -102,12 +103,18 @@ impl CommandDispatcher {
                         }
 
                         let direction_symbol = match trend_analysis.direction {
-                            TrendDirection::Improving => "\x1b[32mImproving\x1b[0m",
-                            TrendDirection::Stable => "\x1b[33mStable\x1b[0m",
-                            TrendDirection::Regressing => "\x1b[31mRegressing\x1b[0m",
+                            TrendDirection::Improving => {
+                                format!("{}Improving{}", c::GREEN, c::RESET)
+                            }
+                            TrendDirection::Stable => {
+                                format!("{}Stable{}", c::YELLOW, c::RESET)
+                            }
+                            TrendDirection::Regressing => {
+                                format!("{}Regressing{}", c::RED, c::RESET)
+                            }
                         };
 
-                        println!("\x1b[1m{}\x1b[0m", metric_name);
+                        println!("{}{}{}", c::BOLD, metric_name, c::RESET);
                         println!("  Direction: {}", direction_symbol);
                         println!("  Mean: {:.2}", trend_analysis.mean);
                         println!("  Std Dev: {:.2}", trend_analysis.std_dev);
@@ -125,7 +132,10 @@ impl CommandDispatcher {
                                 trend_analysis.slope,
                             );
                             if !recommendations.is_empty() {
-                                println!("  \x1b[1;33mRecommendations:\x1b[0m");
+                                println!(
+                                    "  {}Recommendations:{}",
+                                    c::BOLD_YELLOW, c::RESET
+                                );
                                 for rec in recommendations {
                                     println!("    - {}", rec);
                                 }
