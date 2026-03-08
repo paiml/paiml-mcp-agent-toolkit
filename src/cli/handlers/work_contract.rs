@@ -11,8 +11,11 @@ use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
-// Core: WorkContract struct, impl, DebtItem
+// Core: WorkContract struct, impl
 include!("work_contract_core.rs");
+
+// Legacy Debt: acknowledge_legacy_debt, DebtItem, write_debt_tickets
+include!("work_contract_debt.rs");
 
 // Thresholds: ContractThresholds struct, Default impl, helper fns
 include!("work_contract_thresholds.rs");
@@ -28,6 +31,9 @@ include!("work_contract_dbc.rs");
 
 // Contract Profiles: ContractProfile, DbcConfig, claim generation, toolchain checking
 include!("work_contract_profile.rs");
+
+// Claim Generators: universal_claims, rust_claims, pmat_claims
+include!("work_contract_claims.rs");
 
 // Stack Manifests: third-party tool stacks, TOFU security, command restrictions
 include!("work_contract_stack.rs");
@@ -61,6 +67,22 @@ mod dbc_tests {
     use super::*;
 
     include!("work_contract_dbc_tests.rs");
+}
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod dbc_tests_profile {
+    use super::*;
+
+    include!("work_contract_dbc_tests_profile.rs");
+}
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod dbc_tests_checkpoint {
+    use super::*;
+
+    include!("work_contract_dbc_tests_checkpoint.rs");
 }
 
 #[cfg_attr(coverage_nightly, coverage(off))]
