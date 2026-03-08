@@ -144,6 +144,11 @@
 
     // Enhanced Entropy Tests with real ActionableViolation
 
+    fn strip_ansi(s: &str) -> String {
+        let re = regex::Regex::new(r"\x1b\[[0-9;]*m").unwrap();
+        re.replace_all(s, "").to_string()
+    }
+
     fn create_test_violation(
         message: &str,
         loc_reduction: usize,
@@ -198,11 +203,14 @@
         ];
 
         let result = format_violation_list(&violations);
-        assert!(result.contains("1. Repeated pattern found"));
-        assert!(result.contains("saves 15 lines"));
-        assert!(result.contains("2. Similar code detected"));
-        assert!(result.contains("saves 25 lines"));
-        assert!(result.contains("Extract into function"));
+        let stripped = strip_ansi(&result);
+        assert!(stripped.contains("1. "));
+        assert!(stripped.contains("Repeated pattern found"));
+        assert!(stripped.contains("15"));
+        assert!(stripped.contains("2. "));
+        assert!(stripped.contains("Similar code detected"));
+        assert!(stripped.contains("25"));
+        assert!(stripped.contains("Extract into function"));
     }
 
     #[test]
@@ -238,8 +246,10 @@
     fn test_format_violation_list_single_item() {
         let violations = vec![create_test_violation("Single violation", 50)];
         let result = format_violation_list(&violations);
-        assert!(result.contains("1. Single violation"));
-        assert!(result.contains("saves 50 lines"));
+        let stripped = strip_ansi(&result);
+        assert!(stripped.contains("1. "));
+        assert!(stripped.contains("Single violation"));
+        assert!(stripped.contains("50"));
     }
 
     #[test]

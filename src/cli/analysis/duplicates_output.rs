@@ -5,10 +5,11 @@ fn format_output(
 ) -> Result<String> {
     match format {
         crate::cli::DuplicateOutputFormat::Json => format_json_output(report),
-        crate::cli::DuplicateOutputFormat::Human => format_human_output(report),
+        crate::cli::DuplicateOutputFormat::Human
+        | crate::cli::DuplicateOutputFormat::Summary
+        | crate::cli::DuplicateOutputFormat::Detailed => format_human_output(report),
         crate::cli::DuplicateOutputFormat::Sarif => format_sarif_output(report),
         crate::cli::DuplicateOutputFormat::Csv => format_csv_output(report),
-        _ => Ok("Code Similarity Analysis Summary\n\nDuplicate analysis completed.".to_string()),
     }
 }
 

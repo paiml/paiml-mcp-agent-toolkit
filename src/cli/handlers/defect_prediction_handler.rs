@@ -62,16 +62,20 @@ pub async fn handle_analyze_defect_prediction(config: DefectPredictionConfig) ->
     // Format and output results
     output_results(result, config.format, config.output).await?;
 
-    eprintln!("✅ Defect prediction analysis complete");
+    {
+        use crate::cli::colors as c;
+        eprintln!("{}", c::pass("Defect prediction analysis complete"));
+    }
     Ok(())
 }
 
 /// Print analysis header information
 fn print_analysis_header(project_path: &Path, high_risk_only: bool, include_low_confidence: bool) {
-    eprintln!("🔮 Analyzing defect probability...");
-    eprintln!("📁 Project path: {}", project_path.display());
-    eprintln!("🎯 High risk only: {high_risk_only}");
-    eprintln!("📊 Include low confidence: {include_low_confidence}");
+    use crate::cli::colors as c;
+    eprintln!("{}", c::dim("Analyzing defect probability..."));
+    eprintln!("  {}Project path:{} {}", c::BOLD, c::RESET, c::path(&project_path.display().to_string()));
+    eprintln!("  {}High risk only:{} {}{}{}", c::BOLD, c::RESET, c::BOLD_WHITE, high_risk_only, c::RESET);
+    eprintln!("  {}Include low confidence:{} {}{}{}", c::BOLD, c::RESET, c::BOLD_WHITE, include_low_confidence, c::RESET);
 }
 
 /// Output results in the requested format
@@ -110,25 +114,35 @@ fn format_result(
 
 /// Format as summary
 fn format_summary(result: &DefectPredictionResult) -> String {
+    use crate::cli::colors as c;
+    use std::fmt::Write;
+
     let mut output = String::new();
-    output.push_str("# Defect Prediction Summary\n\n");
-    output.push_str(&result.summary);
-    output.push_str("\n\n## Top Risk Files\n");
+    let _ = writeln!(output, "{}\n", c::header("Defect Prediction Summary"));
+    let _ = writeln!(output, "  {}", result.summary);
+    let _ = writeln!(output, "\n{}", c::subheader("Top Risk Files"));
 
     for (i, prediction) in result.predictions.iter().take(10).enumerate() {
-        output.push_str(&format!(
-            "{}. {} - {:.1}% risk ({:?})\n",
-            i + 1,
-            prediction.file_path,
-            prediction.defect_probability * 100.0,
-            prediction.risk_level
-        ));
+        let risk_color = match prediction.risk_level {
+            crate::services::facades::defect_prediction_facade::RiskLevel::Critical => c::RED,
+            crate::services::facades::defect_prediction_facade::RiskLevel::High => c::RED,
+            crate::services::facades::defect_prediction_facade::RiskLevel::Medium => c::YELLOW,
+            crate::services::facades::defect_prediction_facade::RiskLevel::Low => c::GREEN,
+        };
+        let _ = writeln!(
+            output,
+            "  {}. {} - {}{:.1}% risk{} ({}{:?}{})",
+            c::number(&(i + 1).to_string()),
+            c::path(&prediction.file_path),
+            risk_color, prediction.defect_probability * 100.0, c::RESET,
+            risk_color, prediction.risk_level, c::RESET,
+        );
     }
 
     if !result.recommendations.is_empty() {
-        output.push_str("\n## Recommendations\n");
+        let _ = writeln!(output, "\n{}", c::subheader("Recommendations"));
         for rec in &result.recommendations {
-            output.push_str(&format!("- {rec}\n"));
+            let _ = writeln!(output, "  - {rec}");
         }
     }
 
@@ -137,55 +151,88 @@ fn format_summary(result: &DefectPredictionResult) -> String {
 
 /// Format as detailed report
 fn format_detailed(result: &DefectPredictionResult) -> String {
+    use crate::cli::colors as c;
+    use std::fmt::Write;
+
     let mut output = String::new();
-    output.push_str("# Defect Prediction Detailed Report\n\n");
-    output.push_str(&format!(
-        "Total files analyzed: {}\n",
-        result.total_files_analyzed
-    ));
-    output.push_str(&format!("High risk files: {}\n", result.high_risk_files));
-    output.push_str(&format!(
-        "Medium risk files: {}\n",
-        result.medium_risk_files
-    ));
-    output.push_str(&format!("Low risk files: {}\n\n", result.low_risk_files));
+    let _ = writeln!(output, "{}\n", c::header("Defect Prediction Detailed Report"));
+    let _ = writeln!(
+        output,
+        "  {}Total files analyzed:{} {}{}{}",
+        c::BOLD, c::RESET, c::BOLD_WHITE, result.total_files_analyzed, c::RESET
+    );
+    let _ = writeln!(
+        output,
+        "  {}High risk files:{} {}{}{}",
+        c::BOLD, c::RESET, c::RED, result.high_risk_files, c::RESET
+    );
+    let _ = writeln!(
+        output,
+        "  {}Medium risk files:{} {}{}{}",
+        c::BOLD, c::RESET, c::YELLOW, result.medium_risk_files, c::RESET
+    );
+    let _ = writeln!(
+        output,
+        "  {}Low risk files:{} {}{}{}\n",
+        c::BOLD, c::RESET, c::GREEN, result.low_risk_files, c::RESET
+    );
 
-    output.push_str("## File Analysis\n");
+    let _ = writeln!(output, "{}", c::subheader("File Analysis"));
     for prediction in &result.predictions {
-        output.push_str(&format!("\n### {}\n", prediction.file_path));
-        output.push_str(&format!("- Risk Level: {:?}\n", prediction.risk_level));
-        output.push_str(&format!(
-            "- Defect Probability: {:.1}%\n",
-            prediction.defect_probability * 100.0
-        ));
-        output.push_str(&format!(
-            "- Confidence: {:.1}%\n",
-            prediction.confidence * 100.0
-        ));
+        let risk_color = match prediction.risk_level {
+            crate::services::facades::defect_prediction_facade::RiskLevel::Critical => c::RED,
+            crate::services::facades::defect_prediction_facade::RiskLevel::High => c::RED,
+            crate::services::facades::defect_prediction_facade::RiskLevel::Medium => c::YELLOW,
+            crate::services::facades::defect_prediction_facade::RiskLevel::Low => c::GREEN,
+        };
+        let _ = writeln!(output, "\n  {}", c::path(&prediction.file_path));
+        let _ = writeln!(
+            output,
+            "    {}Risk Level:{} {}{:?}{}",
+            c::BOLD, c::RESET, risk_color, prediction.risk_level, c::RESET
+        );
+        let _ = writeln!(
+            output,
+            "    {}Defect Probability:{} {}{:.1}%{}",
+            c::BOLD, c::RESET, c::BOLD_WHITE, prediction.defect_probability * 100.0, c::RESET
+        );
+        let _ = writeln!(
+            output,
+            "    {}Confidence:{} {}{:.1}%{}",
+            c::BOLD, c::RESET, c::BOLD_WHITE, prediction.confidence * 100.0, c::RESET
+        );
 
-        output.push_str("- Risk Metrics:\n");
-        output.push_str(&format!(
-            "  - Complexity: {:.1}\n",
-            prediction.metrics.complexity_score
-        ));
-        output.push_str(&format!(
-            "  - Churn: {:.1}\n",
-            prediction.metrics.churn_score
-        ));
-        output.push_str(&format!(
-            "  - Coupling: {:.1}\n",
-            prediction.metrics.coupling_score
-        ));
-        output.push_str(&format!("  - Size: {:.1}\n", prediction.metrics.size_score));
-        output.push_str(&format!(
-            "  - Duplication: {:.1}\n",
-            prediction.metrics.duplication_score
-        ));
+        let _ = writeln!(output, "    {}Risk Metrics:{}", c::BOLD, c::RESET);
+        let _ = writeln!(
+            output,
+            "      {}Complexity:{} {}{:.1}{}",
+            c::BOLD, c::RESET, c::BOLD_WHITE, prediction.metrics.complexity_score, c::RESET
+        );
+        let _ = writeln!(
+            output,
+            "      {}Churn:{} {}{:.1}{}",
+            c::BOLD, c::RESET, c::BOLD_WHITE, prediction.metrics.churn_score, c::RESET
+        );
+        let _ = writeln!(
+            output,
+            "      {}Coupling:{} {}{:.1}{}",
+            c::BOLD, c::RESET, c::BOLD_WHITE, prediction.metrics.coupling_score, c::RESET
+        );
+        let _ = writeln!(
+            output,
+            "      {}Size:{} {}{:.1}{}",
+            c::BOLD, c::RESET, c::BOLD_WHITE, prediction.metrics.size_score, c::RESET
+        );
+        let _ = writeln!(
+            output,
+            "      {}Duplication:{} {}{:.1}{}",
+            c::BOLD, c::RESET, c::BOLD_WHITE, prediction.metrics.duplication_score, c::RESET
+        );
 
         if !prediction.contributing_factors.is_empty() {
-            output.push_str("- Contributing Factors:\n");
+            let _ = writeln!(output, "    {}Contributing Factors:{}", c::BOLD, c::RESET);
             for factor in &prediction.contributing_factors {
-                output.push_str(&format!("  - {factor}\n"));
+                let _ = writeln!(output, "      - {factor}");
             }
         }
     }

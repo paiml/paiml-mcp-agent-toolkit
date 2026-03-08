@@ -47,7 +47,10 @@ pub async fn handle_analyze_duplicates(
     output: Option<PathBuf>,
     top_files: usize,
 ) -> Result<()> {
-    eprintln!("🔍 Advanced similarity analysis...");
+    {
+        use crate::cli::colors as c;
+        eprintln!("{}", c::dim("Analyzing code similarity..."));
+    }
 
     let start_time = std::time::Instant::now();
 
@@ -66,15 +69,18 @@ pub async fn handle_analyze_duplicates(
     print_duplicate_summary(&report);
 
     if perf {
+        use crate::cli::colors as c;
         let duration = start_time.elapsed();
-        eprintln!("\n📊 Performance Metrics:");
-        eprintln!("   Analysis time: {:.2}ms", duration.as_millis());
-        eprintln!("   Files processed: {}", report.file_statistics.len());
-        eprintln!("   Blocks analyzed: {}", report.duplicate_blocks.len());
+        eprintln!("\n{}Performance Metrics:{}", c::BOLD, c::RESET);
+        eprintln!("   {}Analysis time:{} {}{:.2}ms{}", c::BOLD, c::RESET, c::BOLD_WHITE, duration.as_millis(), c::RESET);
+        eprintln!("   {}Files processed:{} {}{}{}", c::BOLD, c::RESET, c::BOLD_WHITE, report.file_statistics.len(), c::RESET);
+        eprintln!("   {}Blocks analyzed:{} {}{}{}", c::BOLD, c::RESET, c::BOLD_WHITE, report.duplicate_blocks.len(), c::RESET);
     }
 
-    // Add analysis complete message for fuzzy and other tests
-    eprintln!("\n✅ Analysis Complete");
+    {
+        use crate::cli::colors as c;
+        eprintln!("\n{}", c::pass("Analysis Complete"));
+    }
 
     write_duplicate_output(&report, format, output).await
 }
@@ -162,10 +168,18 @@ fn recalculate_statistics_after_filtering(report: &mut DuplicateReport) {
 
 /// Print duplicate analysis summary
 fn print_duplicate_summary(report: &DuplicateReport) {
-    eprintln!("✅ Found {} duplicate blocks", report.total_duplicates);
+    use crate::cli::colors as c;
     eprintln!(
-        "📊 Duplication: {:.1}% ({} / {} lines)",
-        report.duplication_percentage, report.duplicate_lines, report.total_lines
+        "{} Found {} duplicate blocks",
+        c::pass(""),
+        c::number(&report.total_duplicates.to_string())
+    );
+    eprintln!(
+        "  {}Duplication:{} {} ({} / {} lines)",
+        c::BOLD, c::RESET,
+        c::pct(report.duplication_percentage as f64, 5.0, 15.0),
+        c::number(&report.duplicate_lines.to_string()),
+        c::number(&report.total_lines.to_string()),
     );
 }
 

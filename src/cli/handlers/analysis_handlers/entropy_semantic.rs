@@ -145,15 +145,23 @@ pub(crate) fn get_top_violations(
 pub(crate) fn format_violation_list(
     violations: &[crate::entropy::violation_detector::ActionableViolation],
 ) -> String {
+    use crate::cli::colors as c;
     violations
         .iter()
         .enumerate()
         .map(|(i, v)| {
+            let sev_color = match v.severity {
+                crate::entropy::violation_detector::Severity::High => c::RED,
+                crate::entropy::violation_detector::Severity::Medium => c::YELLOW,
+                crate::entropy::violation_detector::Severity::Low => c::GREEN,
+            };
             format!(
-                "{}. {} (saves {} lines)\n   Fix: {}",
-                i + 1,
+                "  {}. {}{:?}{} {} (saves {} lines)\n     {}Fix:{} {}",
+                c::number(&(i + 1).to_string()),
+                sev_color, v.severity, c::RESET,
                 v.message,
-                v.estimated_loc_reduction,
+                c::number(&v.estimated_loc_reduction.to_string()),
+                c::BOLD, c::RESET,
                 v.fix_suggestion
             )
         })
