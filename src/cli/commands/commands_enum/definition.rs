@@ -1178,7 +1178,7 @@ pub enum Commands {
         fix: bool,
 
         /// Output format
-        #[arg(short = 'f', long, value_enum, default_value = "text")]
+        #[arg(short = 'f', long, value_enum, default_value = "table")]
         format: OutputFormat,
 
         /// Verbose output
@@ -1309,7 +1309,7 @@ pub enum Commands {
         filter: Option<String>,
 
         /// Output format
-        #[arg(short = 'f', long, value_enum, default_value = "text")]
+        #[arg(short = 'f', long, value_enum, default_value = "table")]
         format: crate::cli::enums::OutputFormat,
 
         /// Output file

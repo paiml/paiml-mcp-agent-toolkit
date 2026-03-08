@@ -138,7 +138,7 @@ fn get_git_churn(
             "log",
             &format!("--since={} days ago", period),
             "--name-only",
-            "--format=COMMIT_SEPARATOR",
+            "--pretty=format:COMMIT_SEPARATOR",
         ])
         .current_dir(path)
         .output()?;
@@ -220,10 +220,7 @@ fn get_file_authors(
         }
     }
 
-    Ok(author_map
-        .into_iter()
-        .map(|(k, v)| (k, v.len()))
-        .collect())
+    Ok(author_map.into_iter().map(|(k, v)| (k, v.len())).collect())
 }
 
 /// Check if a file is auto-generated
@@ -448,10 +445,7 @@ mod tests {
 
     #[test]
     fn test_classify_pattern_cargo() {
-        assert_eq!(
-            classify_pattern("Cargo.toml", 10, 50),
-            "Dependency Config"
-        );
+        assert_eq!(classify_pattern("Cargo.toml", 10, 50), "Dependency Config");
     }
 
     #[test]

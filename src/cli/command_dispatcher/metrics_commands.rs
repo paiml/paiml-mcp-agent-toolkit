@@ -69,7 +69,9 @@ impl CommandDispatcher {
                 // Table output (default)
                 println!(
                     "\n{}Quality Metrics Trends ({} days){}\n",
-                    c::BOLD_BLUE, days, c::RESET
+                    c::BOLD_BLUE,
+                    days,
+                    c::RESET
                 );
 
                 // Show hot metrics ranking (PageRank)
@@ -132,10 +134,7 @@ impl CommandDispatcher {
                                 trend_analysis.slope,
                             );
                             if !recommendations.is_empty() {
-                                println!(
-                                    "  {}Recommendations:{}",
-                                    c::BOLD_YELLOW, c::RESET
-                                );
+                                println!("  {}Recommendations:{}", c::BOLD_YELLOW, c::RESET);
                                 for rec in recommendations {
                                     println!("    - {}", rec);
                                 }
