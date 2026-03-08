@@ -180,6 +180,14 @@ pub(crate) async fn handle_check(
         checks.push(filter_check_by_config(chk, "cb-1100", comply_config));
     }
 
+    // Provable contracts quality gate (CB-1200)
+    // Auto-skips if no contracts/ directory found
+    checks.push(filter_check_by_config(
+        super::check_provable_contracts::check_provable_contracts(project_path),
+        "cb-1200",
+        comply_config,
+    ));
+
     let failures = checks
         .iter()
         .filter(|c| c.status == CheckStatus::Fail)
