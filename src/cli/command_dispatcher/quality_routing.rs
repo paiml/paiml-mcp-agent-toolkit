@@ -28,6 +28,22 @@ impl CommandDispatcher {
             Commands::TestDiscovery { command } => {
                 handlers::test_discovery_handlers::handle_test_discovery_command(command).await
             }
+            Commands::TestStability {
+                path,
+                runs,
+                filter,
+                format,
+                output,
+            } => {
+                crate::cli::handlers::test_stability_handler::handle_test_stability(
+                    &path,
+                    runs,
+                    filter.as_deref(),
+                    &format,
+                    output.as_deref(),
+                )
+                .await
+            }
             Commands::DebugFiveWhys {
                 issue,
                 depth,

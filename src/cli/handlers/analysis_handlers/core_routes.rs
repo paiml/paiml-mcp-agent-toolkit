@@ -1,10 +1,33 @@
 //! Core analysis route handlers
 //!
-//! Handles: Complexity, Churn, DeadCode, Defects, Dag, Satd
+//! Handles: Bottleneck, Complexity, Churn, DeadCode, Defects, Dag, Satd
 
 use crate::cli::{self, AnalyzeCommands};
 use anyhow::Result;
 use std::path::PathBuf;
+
+/// Route bottleneck analysis command
+pub(super) async fn route_bottleneck_analysis(cmd: AnalyzeCommands) -> Result<()> {
+    if let AnalyzeCommands::Bottleneck {
+        path,
+        period,
+        threshold,
+        format,
+        output,
+    } = cmd
+    {
+        crate::cli::handlers::bottleneck_handler::handle_bottleneck(
+            &path,
+            &format,
+            period,
+            threshold,
+            output.as_deref(),
+        )
+        .await
+    } else {
+        unreachable!("Expected Bottleneck command")
+    }
+}
 
 /// Route complexity analysis command
 pub(super) async fn route_complexity_analysis(cmd: AnalyzeCommands) -> Result<()> {

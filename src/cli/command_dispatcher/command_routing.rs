@@ -276,6 +276,23 @@ impl CommandDispatcher {
             | Commands::PopperScore { .. }
             | Commands::DemoScore { .. }
             | Commands::Serve { .. }) => Self::route_scoring_command(cmd).await,
+            Commands::CiLocal {
+                path,
+                quick,
+                matrix,
+                fix,
+                format: _,
+                verbose,
+            } => {
+                crate::cli::handlers::ci_local_handler::handle_ci_local(
+                    &path,
+                    quick,
+                    matrix.as_deref(),
+                    fix,
+                    verbose,
+                )
+                .await
+            }
             Commands::Diagnose(args) => super::diagnose::handle_diagnose(args).await,
             Commands::Enforce(enforce_cmd) => handlers::route_enforce_command(enforce_cmd).await,
             Commands::Refactor(refactor_cmd) => Self::execute_refactor_command(refactor_cmd).await,
@@ -376,6 +393,7 @@ impl CommandDispatcher {
             // Quality and analysis commands delegated to reduce cognitive complexity
             cmd @ (Commands::ProjectDiag { .. }
             | Commands::TestDiscovery { .. }
+            | Commands::TestStability { .. }
             | Commands::DebugFiveWhys { .. }
             | Commands::Oracle { .. }
             | Commands::PerfectionScore { .. }

@@ -149,7 +149,8 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
 
     match cmd {
         // Core analysis commands
-        AnalyzeCommands::Complexity { .. }
+        AnalyzeCommands::Bottleneck { .. }
+        | AnalyzeCommands::Complexity { .. }
         | AnalyzeCommands::Churn { .. }
         | AnalyzeCommands::DeadCode { .. }
         | AnalyzeCommands::Defects { .. }
@@ -208,6 +209,7 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
 /// Route core analysis commands
 async fn route_core_analysis(cmd: AnalyzeCommands) -> Result<()> {
     match cmd {
+        AnalyzeCommands::Bottleneck { .. } => core_routes::route_bottleneck_analysis(cmd).await,
         AnalyzeCommands::Complexity { .. } => core_routes::route_complexity_analysis(cmd).await,
         AnalyzeCommands::Churn { .. } => core_routes::route_churn_analysis(cmd).await,
         AnalyzeCommands::DeadCode { .. } => core_routes::route_dead_code_analysis(cmd).await,

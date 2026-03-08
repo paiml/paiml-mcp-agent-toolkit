@@ -29,7 +29,31 @@ use std::path::PathBuf;
 #[cfg_attr(test, derive(Debug))]
 pub enum AnalyzeCommands {
     // ── Core Analysis ──────────────────────────────────────────────
-    // Churn, Complexity, Dag, DeadCode, Defects
+    // Bottleneck, Churn, Complexity, Dag, DeadCode, Defects
+    /// Detect architectural churn bottleneck files
+    #[command(visible_aliases = &["btn", "hotspot"])]
+    Bottleneck {
+        /// Project path
+        #[arg(short = 'p', long, default_value = ".")]
+        path: std::path::PathBuf,
+
+        /// Analysis period in days
+        #[arg(long, default_value = "30")]
+        period: u32,
+
+        /// Minimum touches to flag a file
+        #[arg(long, default_value = "5")]
+        threshold: usize,
+
+        /// Output format
+        #[arg(short = 'f', long, value_enum, default_value = "table")]
+        format: OutputFormat,
+
+        /// Output file
+        #[arg(short = 'o', long)]
+        output: Option<std::path::PathBuf>,
+    },
+
     /// Analyze code churn (change frequency)
     #[command(visible_aliases = &["ch"])]
     Churn {

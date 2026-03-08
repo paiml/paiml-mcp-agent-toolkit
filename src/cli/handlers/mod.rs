@@ -13,11 +13,13 @@ pub mod analyze_defects_handler; // Known Defects: Project-wide defect scanning
 #[cfg(test)]
 pub mod annotation_tdd_tests;
 pub mod big_o_handlers;
+pub mod bottleneck_handler; // Architectural churn bottleneck detection
 pub mod brick_score_handlers; // PMAT-446: ComputeBrick profiling score
 pub mod bug_report_handler; // Issue #81: Auto GitHub bug reports from errors
 pub mod cache;
 #[cfg(feature = "mutation-testing")]
 pub mod cargo_mutants_backend; // Sprint 70: cargo-mutants wrapper
+pub mod ci_local_handler; // Local CI simulation to avoid push-wait-fix loops
 pub mod churn_formatter;
 pub mod cleanup_resources_handler; // Issue #86: System resource cleanup
 pub mod complexity_handlers;
@@ -107,6 +109,7 @@ pub mod tdg_history_tests; // Sprint 65 Phase 3: TDG History Commands
 pub mod telemetry_handlers;
 pub mod test_discovery_handlers; // GH-98: Systematic test discovery and fixing
 pub mod test_handlers;
+pub mod test_stability_handler; // Flaky test detection and timeout sensitivity analysis
 pub mod timeline_mode; // Sprint 78: TUI-006 - Timeline CLI integration
 pub mod unified_context_advanced;
 #[cfg(test)]

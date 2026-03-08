@@ -1158,6 +1158,34 @@ pub enum Commands {
         command: SpecCommands,
     },
 
+    /// Run local CI simulation (quality gates, clippy, tests, cross-compilation)
+    #[command(visible_aliases = &["ci", "local-ci"])]
+    CiLocal {
+        /// Project path
+        #[arg(short = 'p', long, default_value = ".")]
+        path: std::path::PathBuf,
+
+        /// Run quick subset only (fmt + clippy + test-fast)
+        #[arg(long)]
+        quick: bool,
+
+        /// Run specific matrix (e.g., "clippy", "test", "cross", "bench", "fmt")
+        #[arg(long)]
+        matrix: Option<String>,
+
+        /// Auto-fix issues (cargo fmt, clippy --fix)
+        #[arg(long)]
+        fix: bool,
+
+        /// Output format
+        #[arg(short = 'f', long, value_enum, default_value = "text")]
+        format: OutputFormat,
+
+        /// Verbose output
+        #[arg(short = 'v', long)]
+        verbose: bool,
+    },
+
     /// PMAT compliance checking and migration system
     #[command(visible_aliases = &["compliance"])]
     Comply {
@@ -1263,6 +1291,30 @@ pub enum Commands {
     TestDiscovery {
         #[command(subcommand)]
         command: TestDiscoveryCommands,
+    },
+
+    /// Detect flaky and timeout-sensitive tests
+    #[command(name = "test-stability", visible_aliases = &["test-flaky", "flaky"])]
+    TestStability {
+        /// Project path
+        #[arg(short = 'p', long, default_value = ".")]
+        path: std::path::PathBuf,
+
+        /// Number of test runs
+        #[arg(short = 'n', long, default_value = "3")]
+        runs: usize,
+
+        /// Filter tests by name pattern
+        #[arg(long)]
+        filter: Option<String>,
+
+        /// Output format
+        #[arg(short = 'f', long, value_enum, default_value = "text")]
+        format: crate::cli::enums::OutputFormat,
+
+        /// Output file
+        #[arg(short = 'o', long)]
+        output: Option<std::path::PathBuf>,
     },
 
     /// Fault localization using Spectrum-Based Fault Localization (SBFL)
