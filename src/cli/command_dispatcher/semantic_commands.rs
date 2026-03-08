@@ -143,13 +143,13 @@ impl CommandDispatcher {
         match semantic_cmd {
             SemanticCommands::Search {
                 query,
-                mode,
+                search_mode,
                 language,
                 limit,
                 format,
             } => {
                 // Convert SearchMode to string
-                let mode_str = match mode {
+                let mode_str = match search_mode {
                     SearchMode::Keyword => "keyword",
                     SearchMode::Vector => "vector",
                     SearchMode::Hybrid => "hybrid",

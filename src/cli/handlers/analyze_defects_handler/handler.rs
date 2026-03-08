@@ -88,6 +88,10 @@ pub(crate) fn collect_rust_files(path: &Path) -> Result<Vec<std::path::PathBuf>>
 }
 
 pub(crate) fn is_hidden(entry: &walkdir::DirEntry) -> bool {
+    // Never filter out the root entry (depth 0) — fixes `--path .` scanning 0 files
+    if entry.depth() == 0 {
+        return false;
+    }
     entry
         .file_name()
         .to_str()

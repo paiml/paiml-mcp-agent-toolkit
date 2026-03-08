@@ -66,8 +66,8 @@ pub enum SemanticCommands {
         query: String,
 
         /// Search mode
-        #[arg(long, value_enum, default_value = "hybrid")]
-        mode: SearchMode,
+        #[arg(long = "search-mode", value_enum, default_value = "hybrid")]
+        search_mode: SearchMode,
 
         /// Filter by language
         #[arg(long)]
@@ -78,7 +78,7 @@ pub enum SemanticCommands {
         limit: usize,
 
         /// Output format
-        #[arg(long, value_enum, default_value = "summary")]
+        #[arg(long, value_enum, default_value = "table")]
         format: OutputFormat,
     },
 
@@ -92,7 +92,7 @@ pub enum SemanticCommands {
         limit: usize,
 
         /// Output format
-        #[arg(long, value_enum, default_value = "summary")]
+        #[arg(long, value_enum, default_value = "table")]
         format: OutputFormat,
     },
 }

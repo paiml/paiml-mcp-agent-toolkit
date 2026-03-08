@@ -70,9 +70,35 @@ pub struct ChecklistCategories {
 pub struct ChecklistItem {
     pub id: String,
     pub description: String,
+    #[serde(deserialize_with = "deserialize_bool_lenient")]
     pub checked: bool,
+    #[serde(deserialize_with = "deserialize_bool_lenient")]
     pub automated: bool,
     pub evidence: Option<String>,
+}
+
+/// Deserialize a bool that may have been serialized as a string ("false"/"true")
+fn deserialize_bool_lenient<'de, D>(deserializer: D) -> std::result::Result<bool, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    use serde::de;
+
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum BoolOrString {
+        Bool(bool),
+        Str(String),
+    }
+
+    match BoolOrString::deserialize(deserializer)? {
+        BoolOrString::Bool(b) => Ok(b),
+        BoolOrString::Str(s) => match s.to_lowercase().as_str() {
+            "true" | "yes" | "1" => Ok(true),
+            "false" | "no" | "0" => Ok(false),
+            other => Err(de::Error::custom(format!("invalid bool string: {other}"))),
+        },
+    }
 }
 
 /// QA Validation Result

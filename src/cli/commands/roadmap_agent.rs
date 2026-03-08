@@ -74,7 +74,7 @@ pub enum RoadmapCommands {
         task: Option<String>,
 
         /// Output format
-        #[arg(long, value_enum, default_value = "human")]
+        #[arg(long, value_enum, default_value = "table")]
         format: OutputFormat,
     },
 
