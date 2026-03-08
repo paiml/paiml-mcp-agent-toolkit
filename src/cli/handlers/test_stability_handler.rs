@@ -124,8 +124,7 @@ fn run_stability_analysis(
         let max = durations.iter().cloned().fold(0.0f64, f64::max);
 
         let mut sorted_durations = durations.clone();
-        sorted_durations
-            .sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+        sorted_durations.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
         let p95_idx =
             ((sorted_durations.len() as f64 * 0.95) as usize).min(sorted_durations.len() - 1);
         let p95 = sorted_durations[p95_idx];
@@ -266,9 +265,7 @@ fn run_test_suite(path: &Path, filter: Option<&str>) -> Result<Vec<(String, bool
 fn parse_text_test_output(output: &str, results: &mut Vec<(String, bool, f64)>) {
     for line in output.lines() {
         let line = line.trim();
-        if line.starts_with("test ")
-            && (line.ends_with("... ok") || line.ends_with("... FAILED"))
-        {
+        if line.starts_with("test ") && (line.ends_with("... ok") || line.ends_with("... FAILED")) {
             let passed = line.ends_with("... ok");
             let name = line
                 .strip_prefix("test ")

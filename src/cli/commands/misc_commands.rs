@@ -17,3 +17,6 @@ include!("misc_commands_spec_debug.rs");
 
 // TDG, Storage, Diagnostic, and Baseline command types
 include!("misc_commands_tdg_storage.rs");
+
+// Stack sync command types
+include!("misc_commands_stack.rs");

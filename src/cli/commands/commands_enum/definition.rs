@@ -1367,10 +1367,11 @@ pub enum Commands {
     /// Examines function call graphs within a file and clusters related functions.
     /// Each cluster gets a semantic name based on dominant types, themes, or prefixes.
     /// Use --execute to create split files with include!() pattern.
+    /// Use --auto to scan the project and split all oversized files.
     #[command(visible_aliases = &["sp"])]
     Split {
-        /// File to analyze for splitting
-        file: PathBuf,
+        /// File to analyze for splitting (required unless --auto is used)
+        file: Option<PathBuf>,
 
         /// Project path (defaults to current directory)
         #[arg(short = 'p', long, default_value = ".")]
@@ -1395,6 +1396,22 @@ pub enum Commands {
         /// Louvain resolution parameter (higher = more clusters)
         #[arg(long, default_value_t = 1.0)]
         resolution: f64,
+
+        /// Automatically find and split all oversized files in the project
+        #[arg(long)]
+        auto: bool,
+
+        /// Maximum lines per file before splitting (used with --auto)
+        #[arg(long, default_value_t = 500)]
+        max_lines: usize,
+
+        /// Preview split plan without making changes (used with --auto)
+        #[arg(long)]
+        dry_run: bool,
+
+        /// Auto-commit each split (used with --auto)
+        #[arg(long)]
+        commit: bool,
     },
 
     /// CUDA-SIMD Technical Debt Gradient (100-point Popper falsification scoring)
@@ -1467,5 +1484,15 @@ pub enum Commands {
         /// Project path
         #[arg(short = 'p', long, default_value = ".")]
         path: PathBuf,
+    },
+
+    /// Cross-repo dependency coordination for the sovereign AI stack
+    ///
+    /// Discovers batuta stack repos, checks dependency versions against crates.io,
+    /// and optionally syncs them to the latest published versions.
+    #[command(visible_aliases = &["stk"])]
+    Stack {
+        #[command(subcommand)]
+        command: StackCommands,
     },
 }

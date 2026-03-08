@@ -48,7 +48,7 @@ use super::config_hooks::HooksCommands;
 use super::misc_commands::{
     ComplyCommands, CudaTdgCommand, CudaTdgOutputFormat, DebugCommands, KaizenOutputFormat,
     MaintainCommands, OracleCommands, PerfectionScoreOutputFormat, ProjectDiagOutputFormat,
-    QualityGatesCommand, SpecCommands, TdgCommand,
+    QualityGatesCommand, SpecCommands, StackCommands, TdgCommand,
 };
 use super::org_prompt::{OrgCommands, PromptCommands};
 use super::quality_commands::{EnforceCommands, QddCommands};

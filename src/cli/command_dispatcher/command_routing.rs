@@ -373,21 +373,56 @@ impl CommandDispatcher {
                 output,
                 min_cluster_lines,
                 resolution,
+                auto,
+                max_lines,
+                dry_run,
+                commit,
             } => {
-                let fmt = match format.as_str() {
-                    "json" => handlers::split_handler::SplitOutputFormat::Json,
-                    _ => handlers::split_handler::SplitOutputFormat::Text,
-                };
-                handlers::split_handler::handle_split(handlers::split_handler::SplitConfig {
-                    file,
-                    project_path: path,
-                    execute,
-                    format: fmt,
-                    output,
-                    min_cluster_lines,
-                    resolution,
-                })
-                .await
+                if auto {
+                    // --auto mode: scan project for oversized files
+                    handlers::split_auto_handler::handle_split_auto(
+                        &path,
+                        max_lines,
+                        file.as_deref(),
+                        dry_run,
+                        commit,
+                    )
+                    .await
+                } else {
+                    // Original single-file split mode
+                    let file = file.ok_or_else(|| {
+                        anyhow::anyhow!(
+                            "FILE argument is required unless --auto is used.\n\
+                             Usage: pmat split <FILE> or pmat split --auto"
+                        )
+                    })?;
+                    let fmt = match format.as_str() {
+                        "json" => handlers::split_handler::SplitOutputFormat::Json,
+                        _ => handlers::split_handler::SplitOutputFormat::Text,
+                    };
+                    handlers::split_handler::handle_split(handlers::split_handler::SplitConfig {
+                        file,
+                        project_path: path,
+                        execute,
+                        format: fmt,
+                        output,
+                        min_cluster_lines,
+                        resolution,
+                    })
+                    .await
+                }
+            }
+
+            Commands::Stack { command } => {
+                use crate::cli::commands::misc_commands::StackCommands;
+                match command {
+                    StackCommands::Status { format } => {
+                        handlers::stack_sync_handler::handle_stack_status(&format).await
+                    }
+                    StackCommands::Sync { apply, dry_run } => {
+                        handlers::stack_sync_handler::handle_stack_sync(apply, dry_run).await
+                    }
+                }
             }
 
             // Quality and analysis commands delegated to reduce cognitive complexity

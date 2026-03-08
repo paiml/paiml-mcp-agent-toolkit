@@ -25,11 +25,29 @@ pub async fn handle_hooks_command(cmd: &HooksCommands) -> Result<()> {
             force,
             backup,
             tdg_enforcement,
-        } => handle_install(&hooks_cmd, *force, *backup, *interactive, *tdg_enforcement).await,
+            stack,
+            update,
+        } => {
+            if *stack {
+                return crate::cli::handlers::hooks_stack_handler::handle_hooks_install_stack(
+                    *update,
+                )
+                .await;
+            }
+            handle_install(&hooks_cmd, *force, *backup, *interactive, *tdg_enforcement).await
+        }
         HooksCommands::Uninstall { restore_backup } => {
             handle_uninstall(&hooks_cmd, *restore_backup).await
         }
-        HooksCommands::Status => handle_status(&hooks_cmd).await,
+        HooksCommands::Status { stack, format } => {
+            if *stack {
+                return crate::cli::handlers::hooks_stack_handler::handle_hooks_status_stack(
+                    format,
+                )
+                .await;
+            }
+            handle_status(&hooks_cmd).await
+        }
         HooksCommands::Verify { fix } => handle_verify(&hooks_cmd, *fix).await,
         HooksCommands::Refresh => handle_refresh(&hooks_cmd).await,
         HooksCommands::Run {

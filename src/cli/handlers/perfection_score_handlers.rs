@@ -54,12 +54,7 @@ fn format_text(result: &PerfectionScoreResult, breakdown: bool) -> String {
     // Main score display
     out.push_str(&format!(
         "  Total: {} points\n",
-        c::score(
-            result.total_score,
-            f64::from(result.max_score),
-            80.0,
-            60.0
-        )
+        c::score(result.total_score, f64::from(result.max_score), 80.0, 60.0)
     ));
     out.push_str(&format!("  Grade: {}\n", c::grade(&result.grade)));
 
@@ -67,13 +62,12 @@ fn format_text(result: &PerfectionScoreResult, breakdown: bool) -> String {
         if gap > 0.0 {
             out.push_str(&format!(
                 "  Target Gap: {}{:.1} points needed{}\n",
-                c::YELLOW, gap, c::RESET
+                c::YELLOW,
+                gap,
+                c::RESET
             ));
         } else {
-            out.push_str(&format!(
-                "  {}Target achieved!{}\n",
-                c::GREEN, c::RESET
-            ));
+            out.push_str(&format!("  {}Target achieved!{}\n", c::GREEN, c::RESET));
         }
     }
 
@@ -91,20 +85,12 @@ fn format_text(result: &PerfectionScoreResult, breakdown: bool) -> String {
                 "  {:25} {} {} pts ({})\n",
                 cat.name,
                 progress_bar,
-                c::score(
-                    cat.earned_points,
-                    f64::from(cat.max_points),
-                    80.0,
-                    60.0
-                ),
+                c::score(cat.earned_points, f64::from(cat.max_points), 80.0, 60.0),
                 c::grade(&cat.grade)
             ));
             if let Some(details) = &cat.details {
                 if !details.is_empty() {
-                    out.push_str(&format!(
-                        "    {}└─ {}{}\n",
-                        c::DIM, details, c::RESET
-                    ));
+                    out.push_str(&format!("    {}└─ {}{}\n", c::DIM, details, c::RESET));
                 }
             }
         }

@@ -397,11 +397,40 @@ fn format_deep_context_text(
     let _ = writeln!(&mut out);
 
     let _ = writeln!(&mut out, "{}\n", c::subheader("Summary"));
-    let _ = writeln!(&mut out, "  Files Analyzed:         {}", c::number(&report.file_count.to_string()));
-    let _ = writeln!(&mut out, "  Analysis Duration:      {}", c::number(&format!("{:?}", report.analysis_duration)));
-    let _ = writeln!(&mut out, "  Total Functions:        {}", c::number(&report.complexity_metrics.total_functions.to_string()));
-    let _ = writeln!(&mut out, "  High Complexity Funcs:  {}", if report.complexity_metrics.high_complexity_count > 0 { format!("{}{}{}", c::YELLOW, report.complexity_metrics.high_complexity_count, c::RESET) } else { c::number(&report.complexity_metrics.high_complexity_count.to_string()) });
-    let _ = writeln!(&mut out, "  Average Complexity:     {}\n", c::number(&format!("{:.1}", report.complexity_metrics.avg_complexity)));
+    let _ = writeln!(
+        &mut out,
+        "  Files Analyzed:         {}",
+        c::number(&report.file_count.to_string())
+    );
+    let _ = writeln!(
+        &mut out,
+        "  Analysis Duration:      {}",
+        c::number(&format!("{:?}", report.analysis_duration))
+    );
+    let _ = writeln!(
+        &mut out,
+        "  Total Functions:        {}",
+        c::number(&report.complexity_metrics.total_functions.to_string())
+    );
+    let _ = writeln!(
+        &mut out,
+        "  High Complexity Funcs:  {}",
+        if report.complexity_metrics.high_complexity_count > 0 {
+            format!(
+                "{}{}{}",
+                c::YELLOW,
+                report.complexity_metrics.high_complexity_count,
+                c::RESET
+            )
+        } else {
+            c::number(&report.complexity_metrics.high_complexity_count.to_string())
+        }
+    );
+    let _ = writeln!(
+        &mut out,
+        "  Average Complexity:     {}\n",
+        c::number(&format!("{:.1}", report.complexity_metrics.avg_complexity))
+    );
 
     if !report.file_complexity_details.is_empty() {
         let _ = writeln!(&mut out, "{}\n", c::subheader("Top Files by Complexity"));
@@ -429,7 +458,12 @@ fn format_deep_context_text(
                 c::number(&format!("{:.1}", file_detail.avg_complexity)),
                 c::number(&file_detail.function_count.to_string()),
                 if file_detail.high_complexity_functions > 0 {
-                    format!("{}{}{}", c::YELLOW, file_detail.high_complexity_functions, c::RESET)
+                    format!(
+                        "{}{}{}",
+                        c::YELLOW,
+                        file_detail.high_complexity_functions,
+                        c::RESET
+                    )
                 } else {
                     c::number(&file_detail.high_complexity_functions.to_string())
                 },

@@ -19,8 +19,8 @@ pub mod bug_report_handler; // Issue #81: Auto GitHub bug reports from errors
 pub mod cache;
 #[cfg(feature = "mutation-testing")]
 pub mod cargo_mutants_backend; // Sprint 70: cargo-mutants wrapper
-pub mod ci_local_handler; // Local CI simulation to avoid push-wait-fix loops
 pub mod churn_formatter;
+pub mod ci_local_handler; // Local CI simulation to avoid push-wait-fix loops
 pub mod cleanup_resources_handler; // Issue #86: System resource cleanup
 pub mod complexity_handlers;
 pub mod comply_cb_detect; // CB pattern detection extracted for file health (CB-040)
@@ -52,6 +52,7 @@ pub mod graph_context_integration_tests;
 pub mod handler_utils; // Unit-testable pure functions extracted from handlers
 pub mod health_handler;
 pub mod hooks_command_handlers;
+pub mod hooks_stack_handler; // Stack-wide hook management for sovereign AI repos
 pub mod incremental_coverage_handler;
 pub mod kaizen_handler; // GH-213: Autonomous continuous improvement (Toyota Way Kaizen)
 pub mod lint_hotspot_handlers;
@@ -96,8 +97,10 @@ pub mod satd_handler;
 pub mod similarity_handler;
 pub mod spec_falsify_handler;
 pub mod spec_handlers; // master-plan-pmat-work-system.md: Spec management commands
+pub mod split_auto_handler; // File split --auto: automated project-wide file splitting
 pub mod split_handler; // File split: semantic file splitting via Louvain
 pub mod sql_handler; // GH-218: Direct SQL access to function index database
+pub mod stack_sync_handler; // Cross-repo dependency coordination for sovereign AI stack
 pub mod subagent_handlers;
 pub mod tdg_diagnostic_handler;
 pub mod tdg_formatter;

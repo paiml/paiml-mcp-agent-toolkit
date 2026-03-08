@@ -7,6 +7,8 @@ async fn test_hooks_install() {
         force: false,
         backup: true,
         tdg_enforcement: false,
+        stack: false,
+        update: false,
     };
 
     let result = handle_hooks_command(&cmd).await;
@@ -16,7 +18,10 @@ async fn test_hooks_install() {
 
 #[tokio::test]
 async fn test_hooks_status() {
-    let cmd = HooksCommands::Status;
+    let cmd = HooksCommands::Status {
+        stack: false,
+        format: crate::cli::enums::OutputFormat::Table,
+    };
 
     let result = handle_hooks_command(&cmd).await;
     // May fail if not in a git repository - just ensure no panic

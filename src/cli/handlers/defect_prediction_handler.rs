@@ -73,9 +73,28 @@ pub async fn handle_analyze_defect_prediction(config: DefectPredictionConfig) ->
 fn print_analysis_header(project_path: &Path, high_risk_only: bool, include_low_confidence: bool) {
     use crate::cli::colors as c;
     eprintln!("{}", c::dim("Analyzing defect probability..."));
-    eprintln!("  {}Project path:{} {}", c::BOLD, c::RESET, c::path(&project_path.display().to_string()));
-    eprintln!("  {}High risk only:{} {}{}{}", c::BOLD, c::RESET, c::BOLD_WHITE, high_risk_only, c::RESET);
-    eprintln!("  {}Include low confidence:{} {}{}{}", c::BOLD, c::RESET, c::BOLD_WHITE, include_low_confidence, c::RESET);
+    eprintln!(
+        "  {}Project path:{} {}",
+        c::BOLD,
+        c::RESET,
+        c::path(&project_path.display().to_string())
+    );
+    eprintln!(
+        "  {}High risk only:{} {}{}{}",
+        c::BOLD,
+        c::RESET,
+        c::BOLD_WHITE,
+        high_risk_only,
+        c::RESET
+    );
+    eprintln!(
+        "  {}Include low confidence:{} {}{}{}",
+        c::BOLD,
+        c::RESET,
+        c::BOLD_WHITE,
+        include_low_confidence,
+        c::RESET
+    );
 }
 
 /// Output results in the requested format
@@ -134,8 +153,12 @@ fn format_summary(result: &DefectPredictionResult) -> String {
             "  {}. {} - {}{:.1}% risk{} ({}{:?}{})",
             c::number(&(i + 1).to_string()),
             c::path(&prediction.file_path),
-            risk_color, prediction.defect_probability * 100.0, c::RESET,
-            risk_color, prediction.risk_level, c::RESET,
+            risk_color,
+            prediction.defect_probability * 100.0,
+            c::RESET,
+            risk_color,
+            prediction.risk_level,
+            c::RESET,
         );
     }
 
@@ -155,26 +178,46 @@ fn format_detailed(result: &DefectPredictionResult) -> String {
     use std::fmt::Write;
 
     let mut output = String::new();
-    let _ = writeln!(output, "{}\n", c::header("Defect Prediction Detailed Report"));
+    let _ = writeln!(
+        output,
+        "{}\n",
+        c::header("Defect Prediction Detailed Report")
+    );
     let _ = writeln!(
         output,
         "  {}Total files analyzed:{} {}{}{}",
-        c::BOLD, c::RESET, c::BOLD_WHITE, result.total_files_analyzed, c::RESET
+        c::BOLD,
+        c::RESET,
+        c::BOLD_WHITE,
+        result.total_files_analyzed,
+        c::RESET
     );
     let _ = writeln!(
         output,
         "  {}High risk files:{} {}{}{}",
-        c::BOLD, c::RESET, c::RED, result.high_risk_files, c::RESET
+        c::BOLD,
+        c::RESET,
+        c::RED,
+        result.high_risk_files,
+        c::RESET
     );
     let _ = writeln!(
         output,
         "  {}Medium risk files:{} {}{}{}",
-        c::BOLD, c::RESET, c::YELLOW, result.medium_risk_files, c::RESET
+        c::BOLD,
+        c::RESET,
+        c::YELLOW,
+        result.medium_risk_files,
+        c::RESET
     );
     let _ = writeln!(
         output,
         "  {}Low risk files:{} {}{}{}\n",
-        c::BOLD, c::RESET, c::GREEN, result.low_risk_files, c::RESET
+        c::BOLD,
+        c::RESET,
+        c::GREEN,
+        result.low_risk_files,
+        c::RESET
     );
 
     let _ = writeln!(output, "{}", c::subheader("File Analysis"));
@@ -189,44 +232,76 @@ fn format_detailed(result: &DefectPredictionResult) -> String {
         let _ = writeln!(
             output,
             "    {}Risk Level:{} {}{:?}{}",
-            c::BOLD, c::RESET, risk_color, prediction.risk_level, c::RESET
+            c::BOLD,
+            c::RESET,
+            risk_color,
+            prediction.risk_level,
+            c::RESET
         );
         let _ = writeln!(
             output,
             "    {}Defect Probability:{} {}{:.1}%{}",
-            c::BOLD, c::RESET, c::BOLD_WHITE, prediction.defect_probability * 100.0, c::RESET
+            c::BOLD,
+            c::RESET,
+            c::BOLD_WHITE,
+            prediction.defect_probability * 100.0,
+            c::RESET
         );
         let _ = writeln!(
             output,
             "    {}Confidence:{} {}{:.1}%{}",
-            c::BOLD, c::RESET, c::BOLD_WHITE, prediction.confidence * 100.0, c::RESET
+            c::BOLD,
+            c::RESET,
+            c::BOLD_WHITE,
+            prediction.confidence * 100.0,
+            c::RESET
         );
 
         let _ = writeln!(output, "    {}Risk Metrics:{}", c::BOLD, c::RESET);
         let _ = writeln!(
             output,
             "      {}Complexity:{} {}{:.1}{}",
-            c::BOLD, c::RESET, c::BOLD_WHITE, prediction.metrics.complexity_score, c::RESET
+            c::BOLD,
+            c::RESET,
+            c::BOLD_WHITE,
+            prediction.metrics.complexity_score,
+            c::RESET
         );
         let _ = writeln!(
             output,
             "      {}Churn:{} {}{:.1}{}",
-            c::BOLD, c::RESET, c::BOLD_WHITE, prediction.metrics.churn_score, c::RESET
+            c::BOLD,
+            c::RESET,
+            c::BOLD_WHITE,
+            prediction.metrics.churn_score,
+            c::RESET
         );
         let _ = writeln!(
             output,
             "      {}Coupling:{} {}{:.1}{}",
-            c::BOLD, c::RESET, c::BOLD_WHITE, prediction.metrics.coupling_score, c::RESET
+            c::BOLD,
+            c::RESET,
+            c::BOLD_WHITE,
+            prediction.metrics.coupling_score,
+            c::RESET
         );
         let _ = writeln!(
             output,
             "      {}Size:{} {}{:.1}{}",
-            c::BOLD, c::RESET, c::BOLD_WHITE, prediction.metrics.size_score, c::RESET
+            c::BOLD,
+            c::RESET,
+            c::BOLD_WHITE,
+            prediction.metrics.size_score,
+            c::RESET
         );
         let _ = writeln!(
             output,
             "      {}Duplication:{} {}{:.1}{}",
-            c::BOLD, c::RESET, c::BOLD_WHITE, prediction.metrics.duplication_score, c::RESET
+            c::BOLD,
+            c::RESET,
+            c::BOLD_WHITE,
+            prediction.metrics.duplication_score,
+            c::RESET
         );
 
         if !prediction.contributing_factors.is_empty() {

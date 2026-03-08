@@ -227,12 +227,7 @@ fn run_cmd(path: &Path, cmd: &str, args: &[&str]) -> Result<String> {
 }
 
 /// Run a command with environment variables
-fn run_cmd_with_env(
-    path: &Path,
-    cmd: &str,
-    args: &[&str],
-    env: &[(&str, &str)],
-) -> Result<String> {
+fn run_cmd_with_env(path: &Path, cmd: &str, args: &[&str], env: &[(&str, &str)]) -> Result<String> {
     let mut command = std::process::Command::new(cmd);
     command.args(args).current_dir(path);
 

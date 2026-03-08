@@ -77,16 +77,8 @@ async fn handle_cache_stats(detailed: bool, format: &str, history: bool) -> Resu
             println!("{}", c::rule());
             println!();
             println!("{}", c::subheader("Orchestrator Performance:"));
-            println!(
-                "   {}: {}",
-                c::dim("Strategy Switches"),
-                c::number("0")
-            );
-            println!(
-                "   {}: {}",
-                c::dim("Evaluations"),
-                c::number("0")
-            );
+            println!("   {}: {}", c::dim("Strategy Switches"), c::number("0"));
+            println!("   {}: {}", c::dim("Evaluations"), c::number("0"));
             println!(
                 "   {}: {}",
                 c::dim("Overall Effectiveness"),
@@ -99,11 +91,7 @@ async fn handle_cache_stats(detailed: bool, format: &str, history: bool) -> Resu
                 c::dim("Request Rate"),
                 c::number("100.0")
             );
-            println!(
-                "   {}: {} MB",
-                c::dim("Working Set"),
-                c::number("64.0")
-            );
+            println!("   {}: {} MB", c::dim("Working Set"), c::number("64.0"));
             println!(
                 "   {}: {}",
                 c::dim("Cache Pressure"),

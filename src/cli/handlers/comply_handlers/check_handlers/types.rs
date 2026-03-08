@@ -222,10 +222,7 @@ pub(crate) fn print_compliance_text(report: &ComplianceReport) {
     println!("\n{}", c::rule());
     println!("{}", c::header("PMAT Compliance Report"));
     println!("{}", c::rule());
-    println!(
-        "\nProject Version: {}",
-        c::number(&report.project_version)
-    );
+    println!("\nProject Version: {}", c::number(&report.project_version));
     println!("Current PMAT:    {}", c::number(&report.current_version));
     println!(
         "Versions Behind: {}",

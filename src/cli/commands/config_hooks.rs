@@ -72,6 +72,14 @@ pub enum HooksCommands {
         /// Enable TDG quality enforcement hooks
         #[arg(long)]
         tdg_enforcement: bool,
+
+        /// Install hooks across all sovereign AI stack repos
+        #[arg(long)]
+        stack: bool,
+
+        /// Update existing hooks when using --stack (overwrite)
+        #[arg(long, requires = "stack")]
+        update: bool,
     },
 
     /// Remove PMAT-managed hooks
@@ -82,7 +90,15 @@ pub enum HooksCommands {
     },
 
     /// Show hook installation status
-    Status,
+    Status {
+        /// Show status across all sovereign AI stack repos
+        #[arg(long)]
+        stack: bool,
+
+        /// Output format for stack status
+        #[arg(long, value_enum, default_value = "table")]
+        format: OutputFormat,
+    },
 
     /// Verify hooks work with current configuration
     Verify {

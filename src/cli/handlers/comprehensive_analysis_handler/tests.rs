@@ -391,7 +391,8 @@ mod tests {
     #[test]
     fn test_format_result_summary() {
         let result = create_basic_result();
-        let formatted = strip_ansi(&format_result(result, ComprehensiveOutputFormat::Summary, false).unwrap());
+        let formatted =
+            strip_ansi(&format_result(result, ComprehensiveOutputFormat::Summary, false).unwrap());
         assert!(formatted.contains("Executive Summary"));
     }
 

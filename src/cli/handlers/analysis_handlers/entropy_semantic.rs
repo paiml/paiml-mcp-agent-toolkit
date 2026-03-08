@@ -96,12 +96,29 @@ fn format_summary_report(report: &crate::entropy::EntropyReport, top_violations:
          {}Total Violations:{} {}{}{}\n\
          {}Potential LOC Reduction:{} {}{}{} lines ({}{:.1}%{})\n\n\
          {}Top Violations:{}\n{}\n",
-        c::BOLD, c::UNDERLINE, c::RESET,
-        c::BOLD, c::RESET, c::BOLD_WHITE, report.total_files_analyzed, c::RESET,
-        c::BOLD, c::RESET, c::BOLD_WHITE, report.actionable_violations.len(), c::RESET,
-        c::BOLD, c::RESET, c::BOLD_WHITE, report.total_loc_reduction(), c::RESET,
-        c::BOLD_WHITE, report.reduction_percentage(), c::RESET,
-        c::BOLD, c::RESET,
+        c::BOLD,
+        c::UNDERLINE,
+        c::RESET,
+        c::BOLD,
+        c::RESET,
+        c::BOLD_WHITE,
+        report.total_files_analyzed,
+        c::RESET,
+        c::BOLD,
+        c::RESET,
+        c::BOLD_WHITE,
+        report.actionable_violations.len(),
+        c::RESET,
+        c::BOLD,
+        c::RESET,
+        c::BOLD_WHITE,
+        report.total_loc_reduction(),
+        c::RESET,
+        c::BOLD_WHITE,
+        report.reduction_percentage(),
+        c::RESET,
+        c::BOLD,
+        c::RESET,
         format_violation_list(&violations)
     )
 }
@@ -158,10 +175,13 @@ pub(crate) fn format_violation_list(
             format!(
                 "  {}. {}{:?}{} {} (saves {} lines)\n     {}Fix:{} {}",
                 c::number(&(i + 1).to_string()),
-                sev_color, v.severity, c::RESET,
+                sev_color,
+                v.severity,
+                c::RESET,
                 v.message,
                 c::number(&v.estimated_loc_reduction.to_string()),
-                c::BOLD, c::RESET,
+                c::BOLD,
+                c::RESET,
                 v.fix_suggestion
             )
         })

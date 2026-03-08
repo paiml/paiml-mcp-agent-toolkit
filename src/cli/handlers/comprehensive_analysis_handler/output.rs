@@ -212,19 +212,57 @@ pub(super) fn format_as_text(
     use std::fmt::Write;
 
     let mut output = String::new();
-    writeln!(&mut output, "{}", c::header("Comprehensive Code Analysis Report"))?;
+    writeln!(
+        &mut output,
+        "{}",
+        c::header("Comprehensive Code Analysis Report")
+    )?;
     writeln!(&mut output)?;
 
     if executive_summary {
         writeln!(&mut output, "{}\n", c::subheader("Executive Summary"))?;
-        writeln!(&mut output, "  Project analysis completed with {} total files analyzed.\n", c::number(&result.summary.total_files.to_string()))?;
-        writeln!(&mut output, "  Quality Score: {}", c::pct(result.summary.quality_score, 80.0, 50.0))?;
-        writeln!(&mut output, "  Total Files:   {}", c::number(&result.summary.total_files.to_string()))?;
-        writeln!(&mut output, "  Total Issues:  {}", c::number(&result.summary.total_issues.to_string()))?;
-        writeln!(&mut output, "  Critical:      {}", if result.summary.critical_issues > 0 { format!("{}{}{}", c::BOLD_RED, result.summary.critical_issues, c::RESET) } else { c::number(&result.summary.critical_issues.to_string()) })?;
+        writeln!(
+            &mut output,
+            "  Project analysis completed with {} total files analyzed.\n",
+            c::number(&result.summary.total_files.to_string())
+        )?;
+        writeln!(
+            &mut output,
+            "  Quality Score: {}",
+            c::pct(result.summary.quality_score, 80.0, 50.0)
+        )?;
+        writeln!(
+            &mut output,
+            "  Total Files:   {}",
+            c::number(&result.summary.total_files.to_string())
+        )?;
+        writeln!(
+            &mut output,
+            "  Total Issues:  {}",
+            c::number(&result.summary.total_issues.to_string())
+        )?;
+        writeln!(
+            &mut output,
+            "  Critical:      {}",
+            if result.summary.critical_issues > 0 {
+                format!(
+                    "{}{}{}",
+                    c::BOLD_RED,
+                    result.summary.critical_issues,
+                    c::RESET
+                )
+            } else {
+                c::number(&result.summary.critical_issues.to_string())
+            }
+        )?;
         writeln!(&mut output)?;
         if !result.summary.recommendations.is_empty() {
-            writeln!(&mut output, "  {}Key Recommendations{}\n", c::BOLD, c::RESET)?;
+            writeln!(
+                &mut output,
+                "  {}Key Recommendations{}\n",
+                c::BOLD,
+                c::RESET
+            )?;
             for rec in &result.summary.recommendations {
                 writeln!(&mut output, "    {} {rec}", c::dim("-"))?;
             }
@@ -234,14 +272,46 @@ pub(super) fn format_as_text(
 
     if let Some(complexity) = &result.complexity {
         writeln!(&mut output, "{}\n", c::subheader("Complexity Analysis"))?;
-        writeln!(&mut output, "  Files Analyzed:     {}", c::number(&complexity.total_files.to_string()))?;
-        writeln!(&mut output, "  Average Complexity: {}", c::number(&format!("{:.1}", complexity.average_complexity)))?;
-        writeln!(&mut output, "  Max Complexity:     {}", c::number(&complexity.max_complexity.to_string()))?;
-        writeln!(&mut output, "  Violations:         {}", if complexity.violations.is_empty() { c::number("0") } else { format!("{}{}{}", c::YELLOW, complexity.violations.len(), c::RESET) })?;
+        writeln!(
+            &mut output,
+            "  Files Analyzed:     {}",
+            c::number(&complexity.total_files.to_string())
+        )?;
+        writeln!(
+            &mut output,
+            "  Average Complexity: {}",
+            c::number(&format!("{:.1}", complexity.average_complexity))
+        )?;
+        writeln!(
+            &mut output,
+            "  Max Complexity:     {}",
+            c::number(&complexity.max_complexity.to_string())
+        )?;
+        writeln!(
+            &mut output,
+            "  Violations:         {}",
+            if complexity.violations.is_empty() {
+                c::number("0")
+            } else {
+                format!("{}{}{}", c::YELLOW, complexity.violations.len(), c::RESET)
+            }
+        )?;
         if !complexity.violations.is_empty() {
-            writeln!(&mut output, "\n  {}Top Complexity Violations{}\n", c::BOLD, c::RESET)?;
+            writeln!(
+                &mut output,
+                "\n  {}Top Complexity Violations{}\n",
+                c::BOLD,
+                c::RESET
+            )?;
             for (i, v) in complexity.violations.iter().take(5).enumerate() {
-                writeln!(&mut output, "    {}. {} - {} (complexity: {})", c::number(&(i + 1).to_string()), c::path(&v.file_path), c::label(&v.function_name), c::number(&v.complexity.to_string()))?;
+                writeln!(
+                    &mut output,
+                    "    {}. {} - {} (complexity: {})",
+                    c::number(&(i + 1).to_string()),
+                    c::path(&v.file_path),
+                    c::label(&v.function_name),
+                    c::number(&v.complexity.to_string())
+                )?;
             }
         }
         writeln!(&mut output)?;
@@ -249,26 +319,69 @@ pub(super) fn format_as_text(
 
     if let Some(dead_code) = &result.dead_code {
         writeln!(&mut output, "{}\n", c::subheader("Dead Code Analysis"))?;
-        writeln!(&mut output, "  Files Analyzed: {}", c::number(&dead_code.total_files.to_string()))?;
-        writeln!(&mut output, "  Dead Items:     {}", c::number(&dead_code.dead_items.len().to_string()))?;
-        writeln!(&mut output, "  Dead Code:      {}", c::pct(dead_code.dead_percentage, 5.0, 15.0))?;
+        writeln!(
+            &mut output,
+            "  Files Analyzed: {}",
+            c::number(&dead_code.total_files.to_string())
+        )?;
+        writeln!(
+            &mut output,
+            "  Dead Items:     {}",
+            c::number(&dead_code.dead_items.len().to_string())
+        )?;
+        writeln!(
+            &mut output,
+            "  Dead Code:      {}",
+            c::pct(dead_code.dead_percentage, 5.0, 15.0)
+        )?;
         if !dead_code.dead_items.is_empty() {
             writeln!(&mut output, "\n  {}Dead Code Items{}\n", c::BOLD, c::RESET)?;
             for (i, item) in dead_code.dead_items.iter().take(5).enumerate() {
-                writeln!(&mut output, "    {}. {} - {} ({:?})", c::number(&(i + 1).to_string()), c::path(&item.file_path), c::label(&item.item_name), item.item_type)?;
+                writeln!(
+                    &mut output,
+                    "    {}. {} - {} ({:?})",
+                    c::number(&(i + 1).to_string()),
+                    c::path(&item.file_path),
+                    c::label(&item.item_name),
+                    item.item_type
+                )?;
             }
         }
         writeln!(&mut output)?;
     }
 
     if let Some(satd) = &result.satd {
-        writeln!(&mut output, "{}\n", c::subheader("Technical Debt (SATD) Analysis"))?;
-        writeln!(&mut output, "  Files Analyzed: {}", c::number(&satd.total_files.to_string()))?;
-        writeln!(&mut output, "  Violations:     {}", if satd.violations.is_empty() { c::number("0") } else { format!("{}{}{}", c::YELLOW, satd.violations.len(), c::RESET) })?;
+        writeln!(
+            &mut output,
+            "{}\n",
+            c::subheader("Technical Debt (SATD) Analysis")
+        )?;
+        writeln!(
+            &mut output,
+            "  Files Analyzed: {}",
+            c::number(&satd.total_files.to_string())
+        )?;
+        writeln!(
+            &mut output,
+            "  Violations:     {}",
+            if satd.violations.is_empty() {
+                c::number("0")
+            } else {
+                format!("{}{}{}", c::YELLOW, satd.violations.len(), c::RESET)
+            }
+        )?;
         if !satd.violations.is_empty() {
             writeln!(&mut output, "\n  {}SATD Violations{}\n", c::BOLD, c::RESET)?;
             for (i, v) in satd.violations.iter().take(5).enumerate() {
-                writeln!(&mut output, "    {}. {}:{} - {} ({:?})", c::number(&(i + 1).to_string()), c::path(&v.file_path), c::number(&v.line_number.to_string()), v.violation_type, v.severity)?;
+                writeln!(
+                    &mut output,
+                    "    {}. {}:{} - {} ({:?})",
+                    c::number(&(i + 1).to_string()),
+                    c::path(&v.file_path),
+                    c::number(&v.line_number.to_string()),
+                    v.violation_type,
+                    v.severity
+                )?;
             }
         }
         writeln!(&mut output)?;
