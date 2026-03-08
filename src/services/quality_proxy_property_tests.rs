@@ -7,57 +7,21 @@ mod property_tests {
     use crate::services::quality_proxy::QualityProxyService;
     use proptest::prelude::*;
 
+    const SAMPLE_GOOD_CODE: &str = "/// A well-documented function\n/// \n/// This function does something useful.\npub fn good_function(x: i32) -> i32 {\n    x * 2\n}";
+    const SAMPLE_SATD_CODE: &str =
+        "fn bad_function() {\n    // TODO: implement this\n    unimplemented!()\n}";
+    const SAMPLE_COMPLEX_CODE: &str = "fn complex_function(a: i32, b: i32, c: i32) -> i32 {\n    if a > 0 { if b > 0 { if c > 0 { return a + b + c; } } }\n    0\n}";
+    const SAMPLE_UNDOC_CODE: &str = "pub fn undocumented(x: i32) -> i32 {\n    x + 1\n}";
+    const KNOWN_COMPLEXITY_9_CODE: &str = "fn complex(a: i32, b: i32, c: i32, d: i32) -> i32 {\n    if a > 0 {\n        if b > 0 {\n            if c > 0 {\n                if d > 0 {\n                    for i in 0..10 {\n                        if i % 2 == 0 {\n                            for j in 0..5 {\n                                if j > 2 { return a + b + c + d + i + j; }\n                            }\n                        }\n                    }\n                }\n            }\n        }\n    }\n    0\n}";
+
     /// Generate arbitrary Rust code for testing
     fn arb_rust_code() -> impl Strategy<Value = String> {
-        prop_oneof![
-            // High quality code with docs
-            Just(
-                r#"/// A well-documented function
-/// 
-/// This function does something useful.
-pub fn good_function(x: i32) -> i32 {
-    x * 2
-}"#
-                .to_string()
-            ),
-            // Code with SATD
-            Just(
-                r#"fn bad_function() {
-    // TODO: implement this
-    unimplemented!()
-}"#
-                .to_string()
-            ),
-            // Complex code
-            Just(
-                r#"fn complex_function(a: i32, b: i32, c: i32) -> i32 {
-    if a > 0 {
-        if b > 0 {
-            if c > 0 {
-                for i in 0..10 {
-                    if i % 2 == 0 {
-                        for j in 0..5 {
-                            if j > 2 {
-                                return a + b + c + i + j;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-    0
-}"#
-                .to_string()
-            ),
-            // Code without docs
-            Just(
-                r#"pub fn undocumented(x: i32) -> i32 {
-    x + 1
-}"#
-                .to_string()
-            ),
-        ]
+        prop::sample::select(vec![
+            SAMPLE_GOOD_CODE.to_string(),
+            SAMPLE_SATD_CODE.to_string(),
+            SAMPLE_COMPLEX_CODE.to_string(),
+            SAMPLE_UNDOC_CODE.to_string(),
+        ])
     }
 
     /// Generate arbitrary proxy operation
@@ -143,11 +107,6 @@ pub fn good_function(x: i32) -> i32 {
             file_path in "[a-z]+\\.rs",
             config in arb_quality_config(),
         ) {
-            // Skip slow property tests in CI to prevent timeout
-            if std::env::var("SKIP_SLOW_TESTS").is_ok() || std::env::var("CI").is_ok() {
-                prop_assume!(false); // Skip this test case
-            }
-
             let rt = tokio::runtime::Runtime::new().unwrap();
 
             let service = QualityProxyService::new();
@@ -208,34 +167,11 @@ pub fn {}({}: i32) -> i32 {{
             threshold in 3u32..=8u32,
         ) {
             let rt = tokio::runtime::Runtime::new().unwrap();
-
-            // Create code with known complexity of 9
-            let complex_code = r#"fn complex(a: i32, b: i32, c: i32, d: i32) -> i32 {
-    if a > 0 {
-        if b > 0 {
-            if c > 0 {
-                if d > 0 {
-                    for i in 0..10 {
-                        if i % 2 == 0 {
-                            for j in 0..5 {
-                                if j > 2 {
-                                    return a + b + c + d + i + j;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-    0
-}"#;
-
             let service = QualityProxyService::new();
             let request = ProxyRequest {
                 operation: ProxyOperation::Write,
                 file_path,
-                content: Some(complex_code.to_string()),
+                content: Some(KNOWN_COMPLEXITY_9_CODE.to_string()),
                 old_content: None,
                 new_content: None,
                 mode: ProxyMode::Strict,
@@ -254,7 +190,6 @@ pub fn {}({}: i32) -> i32 {{
                 prop_assert!(matches!(response.status, ProxyStatus::Rejected));
                 prop_assert!(!response.quality_report.passed);
             } else {
-                // Should be accepted when threshold >= 9
                 prop_assert!(matches!(response.status, ProxyStatus::Accepted));
                 prop_assert!(response.quality_report.passed);
             }
