@@ -9,6 +9,7 @@ use super::{Scorer, ScorerConfig};
 use crate::services::repo_score::error::Result;
 use crate::services::repo_score::models::*;
 use async_trait::async_trait;
+#[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 
@@ -267,6 +268,9 @@ mod tests {
             permissions.set_mode(0o755);
             fs::set_permissions(&hook_path, permissions).unwrap();
         }
+
+        #[cfg(not(unix))]
+        let _ = executable;
     }
 
     const LINTING_HOOK: &str = r#"#!/bin/bash
