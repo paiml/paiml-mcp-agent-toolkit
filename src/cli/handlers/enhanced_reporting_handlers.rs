@@ -268,12 +268,12 @@ async fn write_report_output(
 ) -> Result<()> {
     if let Some(output_path) = output {
         tokio::fs::write(&output_path, &formatted_output).await?;
-        info!("📄 Report saved to: {}", output_path.display());
+        eprintln!("📄 Report saved to: {}", output_path.display());
     } else {
         let service = DefectReportService::new();
         let filename = service.generate_filename(service_format);
         tokio::fs::write(&filename, &formatted_output).await?;
-        info!("📄 Report saved to: {}", filename);
+        eprintln!("📄 Report saved to: {}", filename);
     }
     Ok(())
 }

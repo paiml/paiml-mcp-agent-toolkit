@@ -107,7 +107,7 @@ fn count_source_files(project_path: &Path) -> usize {
 }
 
 /// Check if a file has one of the given extensions.
-fn has_source_extension(path: &Path, extensions: &[&str]) -> bool {
+fn has_matching_extension(path: &Path, extensions: &[&str]) -> bool {
     path.extension()
         .and_then(|e| e.to_str())
         .is_some_and(|ext| extensions.contains(&ext))
@@ -132,7 +132,7 @@ fn count_files_recursive(dir: &Path, extensions: &[&str], depth: usize) -> usize
     let mut count = 0;
     for entry in entries.flatten() {
         let path = entry.path();
-        if path.is_file() && has_source_extension(&path, extensions) {
+        if path.is_file() && has_matching_extension(&path, extensions) {
             count += 1;
         } else if path.is_dir() && is_traversable_dir(&path) {
             count += count_files_recursive(&path, extensions, depth + 1);

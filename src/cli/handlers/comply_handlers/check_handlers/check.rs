@@ -40,16 +40,16 @@ pub(crate) async fn handle_check(
     failures_only: bool,
     format: ComplyOutputFormat,
 ) -> Result<()> {
-    println!("Checking PMAT compliance for {}", project_path.display());
+    eprintln!("Checking PMAT compliance for {}", project_path.display());
 
     let yaml_config = PmatYamlConfig::load(project_path).unwrap_or_default();
     let comply_config = &yaml_config.comply;
 
     let config_path = project_path.join(".pmat.yaml");
     if config_path.exists() {
-        println!("  Using configuration from .pmat.yaml");
+        eprintln!("  Using configuration from .pmat.yaml");
         if !comply_config.suppressions.is_empty() {
-            println!(
+            eprintln!(
                 "  {} suppression rule(s) loaded",
                 comply_config.suppressions.len()
             );

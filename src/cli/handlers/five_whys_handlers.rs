@@ -22,11 +22,11 @@ pub async fn handle_debug(
     // Create analyzer
     let analyzer = FiveWhysAnalyzer::new();
 
-    // Run Five Whys analysis
-    println!("🔍 Analyzing: {}", issue);
-    println!("   Depth: {} iterations", depth);
-    println!("   Path: {}", path.display());
-    println!();
+    // Run Five Whys analysis (status to stderr to keep stdout clean for --format json)
+    eprintln!("🔍 Analyzing: {}", issue);
+    eprintln!("   Depth: {} iterations", depth);
+    eprintln!("   Path: {}", path.display());
+    eprintln!();
 
     let analysis = analyzer.analyze(issue, path, depth).await?;
 

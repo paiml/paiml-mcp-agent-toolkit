@@ -87,6 +87,11 @@ pub async fn handle_search(
 ) -> Result<()> {
     let results = search_templates(server.clone(), &query, toolchain.as_deref()).await?;
 
+    if results.is_empty() {
+        eprintln!("No templates found matching '{}'", query);
+        eprintln!("Hint: use 'pmat list' to see all available templates");
+        return Ok(());
+    }
     for (i, result) in results.iter().take(limit).enumerate() {
         println!(
             "{:2}. {} (score: {:.2})",
