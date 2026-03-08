@@ -20,14 +20,18 @@ NC='\033[0m' # No Color
 
 # Test configuration
 TEST_PROJECT="test_project"
-BINARY="./target/debug/pmat"
 
-# Ensure binary exists
-if [[ ! -f "$BINARY" ]]; then
-    echo -e "${RED}❌ PMAT binary not found at $BINARY${NC}"
-    echo "Please run 'cargo build' first"
+# Find binary: prefer release, fall back to debug
+if [[ -f "./target/release/pmat" ]]; then
+    BINARY="./target/release/pmat"
+elif [[ -f "./target/debug/pmat" ]]; then
+    BINARY="./target/debug/pmat"
+else
+    echo -e "${RED}❌ PMAT binary not found in target/release or target/debug${NC}"
+    echo "Please run 'cargo build' or 'cargo build --release' first"
     exit 1
 fi
+echo "Using binary: $BINARY"
 
 # Ensure test project exists
 if [[ ! -d "$TEST_PROJECT" ]]; then
