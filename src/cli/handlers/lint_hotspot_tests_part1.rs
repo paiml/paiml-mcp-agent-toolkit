@@ -498,3 +498,4 @@ mod coverage_tests {
         assert_eq!(deserialized.total_violations, hotspot.total_violations);
         assert_eq!(deserialized.sloc, hotspot.sloc);
     }
+}
