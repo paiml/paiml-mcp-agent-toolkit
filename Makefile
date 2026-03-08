@@ -393,8 +393,7 @@ test-safe:
 # Run all examples
 test-examples:
 	@echo "📘 Running all cargo examples..."
-	@cd server && \
-	for example in examples/*.rs; do \
+	@for example in examples/*.rs; do \
 		if [ -f "$$example" ]; then \
 			example_name=$$(basename "$$example" .rs); \
 			echo "  Running example: $$example_name"; \
@@ -411,7 +410,7 @@ examples: test-examples
 
 # Run a specific example: make example NAME=complexity_demo
 example:
-	@cd server && cargo run --example $(NAME)
+	@cargo run --example $(NAME)
 
 # Main test target - runs all required tests
 test: test-fast test-doc test-property test-examples
