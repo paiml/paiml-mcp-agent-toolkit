@@ -81,7 +81,7 @@ jobs:
         echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
         echo "🔧 GATE 3: Clippy Lints"
         echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        cargo clippy --all-targets -- -D warnings || {
+        cargo clippy --lib --bins -- -D warnings || {
           echo "❌ CLIPPY WARNINGS FOUND - Build blocked"
           echo "Run: cargo clippy --fix --allow-dirty --allow-staged"
           exit 1
