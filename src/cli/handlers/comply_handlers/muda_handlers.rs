@@ -15,6 +15,7 @@
 //! Score: 0-100 (lower is better, 0 = zero waste)
 
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::path::Path;
 
 /// Muda Waste Report aggregating all seven wastes
@@ -38,6 +39,9 @@ pub struct MudaReport {
     pub total_score: f64,
     /// Grade based on total score
     pub grade: MudaGrade,
+    /// Maps each Muda category to its top contributing files (up to 5 per category)
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub file_details: HashMap<String, Vec<String>>,
 }
 
 /// Muda grade classification
@@ -95,6 +99,25 @@ pub fn calculate_muda_score(project_path: &Path) -> MudaReport {
     let motion = measure_motion(project_path);
     let defects = measure_defects(project_path);
 
+    // Collect file details for categories with concrete file mappings
+    let mut file_details = HashMap::new();
+    let overproduction_files = collect_overproduction_files(project_path);
+    if !overproduction_files.is_empty() {
+        file_details.insert("Overproduction".to_string(), overproduction_files);
+    }
+    let inventory_files = collect_inventory_files(project_path);
+    if !inventory_files.is_empty() {
+        file_details.insert("Inventory".to_string(), inventory_files);
+    }
+    let over_processing_files = collect_over_processing_files(project_path);
+    if !over_processing_files.is_empty() {
+        file_details.insert("Over-processing".to_string(), over_processing_files);
+    }
+    let defect_files = collect_defect_files(project_path);
+    if !defect_files.is_empty() {
+        file_details.insert("Defects".to_string(), defect_files);
+    }
+
     // Weighted average (weights sum to 1.0)
     // Inventory elevated: stale SATD is a primary waste signal
     let total_score = (defects * 0.25)
@@ -118,6 +141,7 @@ pub fn calculate_muda_score(project_path: &Path) -> MudaReport {
         defects,
         total_score,
         grade,
+        file_details,
     }
 }
 

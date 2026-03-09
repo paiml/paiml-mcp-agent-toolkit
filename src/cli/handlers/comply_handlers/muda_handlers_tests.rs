@@ -137,4 +137,212 @@ fn contains_todo() {} // no marker, just identifier
         // Multiple quoted segments
         assert_eq!(strip_quoted_strings(r#"vec!["TODO", "FIXME"]"#), "vec![, ]");
     }
+
+    #[test]
+    fn test_file_details_populated_on_self() {
+        let project_path = PathBuf::from(".");
+        let report = calculate_muda_score(&project_path);
+        // On a real Rust project, at least some file details should be populated
+        // (e.g. Defects from .unwrap() usage, Inventory from SATD markers)
+        // file_details is a HashMap<String, Vec<String>>
+        for (_category, files) in &report.file_details {
+            // Each entry should have at most 5 files
+            assert!(files.len() <= 5, "File details capped at 5 per category");
+            for f in files {
+                // Each file entry should contain a path-like string
+                assert!(!f.is_empty(), "File detail entry should not be empty");
+            }
+        }
+    }
+
+    #[test]
+    fn test_file_details_empty_on_nonexistent() {
+        let path = PathBuf::from("/nonexistent/path");
+        let report = calculate_muda_score(&path);
+        // Nonexistent path should have empty file_details
+        assert!(
+            report.file_details.is_empty(),
+            "Nonexistent path should have no file details"
+        );
+    }
+
+    #[test]
+    fn test_collect_inventory_files_on_self() {
+        let project_path = PathBuf::from(".");
+        let files = collect_inventory_files(&project_path);
+        // Capped at 5
+        assert!(files.len() <= 5);
+        for f in &files {
+            assert!(f.contains("SATD"), "Inventory files should indicate SATD count");
+        }
+    }
+
+    #[test]
+    fn test_collect_defect_files_on_self() {
+        let project_path = PathBuf::from(".");
+        let files = collect_defect_files(&project_path);
+        // Capped at 5
+        assert!(files.len() <= 5);
+        // On a real project with .unwrap() calls, we should get results
+        for f in &files {
+            assert!(
+                f.contains("defect pts") || f.contains("unwrap"),
+                "Defect files should indicate defect type: {}",
+                f
+            );
+        }
+    }
+
+    #[test]
+    fn test_collect_over_processing_files_on_self() {
+        let project_path = PathBuf::from(".");
+        let files = collect_over_processing_files(&project_path);
+        // Capped at 5
+        assert!(files.len() <= 5);
+        for f in &files {
+            assert!(
+                f.contains("cc="),
+                "Over-processing files should show complexity: {}",
+                f
+            );
+        }
+    }
+
+    #[test]
+    fn test_collect_overproduction_files_nonexistent() {
+        let path = PathBuf::from("/nonexistent/path");
+        let files = collect_overproduction_files(&path);
+        assert!(files.is_empty());
+    }
+
+    #[test]
+    fn test_collect_inventory_files_nonexistent() {
+        let path = PathBuf::from("/nonexistent/path");
+        let files = collect_inventory_files(&path);
+        assert!(files.is_empty());
+    }
+
+    #[test]
+    fn test_collect_defect_files_nonexistent() {
+        let path = PathBuf::from("/nonexistent/path");
+        let files = collect_defect_files(&path);
+        assert!(files.is_empty());
+    }
+
+    #[test]
+    fn test_collect_over_processing_files_nonexistent() {
+        let path = PathBuf::from("/nonexistent/path");
+        let files = collect_over_processing_files(&path);
+        assert!(files.is_empty());
+    }
+
+    #[test]
+    fn test_estimate_max_complexity_simple() {
+        let content = "fn simple() {\n    let x = 1;\n}\n";
+        assert_eq!(estimate_max_complexity(content), 1);
+    }
+
+    #[test]
+    fn test_estimate_max_complexity_branching() {
+        let content = r#"
+fn complex() {
+    if x > 0 {
+        if y > 0 {
+            for i in 0..10 {
+                match z {
+                    1 => {},
+                    _ => {},
+                }
+            }
+        }
+    }
+    while running {
+        if a && b {
+            break;
+        }
+    }
+}
+"#;
+        let cc = estimate_max_complexity(content);
+        // if + if + for + match + while + if + (&&) = 7 + base 1 = 8
+        assert!(cc >= 7, "Expected high complexity, got {}", cc);
+    }
+
+    #[test]
+    fn test_estimate_max_complexity_multiple_fns() {
+        let content = r#"
+fn simple() {
+    let x = 1;
+}
+
+fn complex() {
+    if a {
+        if b {
+            if c {
+                for i in items {
+                    match x {
+                        _ => {}
+                    }
+                }
+            }
+        }
+    }
+}
+"#;
+        let cc = estimate_max_complexity(content);
+        // The complex fn has: if + if + if + for + match = 5 + base 1 = 6
+        assert!(cc >= 5, "Expected max from complex fn, got {}", cc);
+    }
+
+    #[test]
+    fn test_muda_report_serialization_with_file_details() {
+        let mut file_details = HashMap::new();
+        file_details.insert(
+            "Defects".to_string(),
+            vec!["src/main.rs (5 unwrap)".to_string()],
+        );
+        let report = MudaReport {
+            overproduction: 10.0,
+            waiting: 5.0,
+            inventory: 20.0,
+            transport: 3.0,
+            over_processing: 15.0,
+            motion: 8.0,
+            defects: 12.0,
+            total_score: 11.25,
+            grade: MudaGrade::Lean,
+            file_details,
+        };
+        let json = serde_json::to_string(&report).unwrap();
+        assert!(json.contains("file_details"));
+        assert!(json.contains("src/main.rs"));
+
+        // Deserialize back
+        let parsed: MudaReport = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed.file_details.len(), 1);
+        assert!(parsed.file_details.contains_key("Defects"));
+    }
+
+    #[test]
+    fn test_muda_report_serialization_empty_file_details() {
+        let report = MudaReport {
+            overproduction: 0.0,
+            waiting: 0.0,
+            inventory: 0.0,
+            transport: 0.0,
+            over_processing: 0.0,
+            motion: 0.0,
+            defects: 0.0,
+            total_score: 0.0,
+            grade: MudaGrade::Lean,
+            file_details: HashMap::new(),
+        };
+        let json = serde_json::to_string(&report).unwrap();
+        // Empty file_details should be skipped in serialization
+        assert!(
+            !json.contains("file_details"),
+            "Empty file_details should be skipped: {}",
+            json
+        );
+    }
 }

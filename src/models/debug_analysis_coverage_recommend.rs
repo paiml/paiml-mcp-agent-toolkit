@@ -270,6 +270,8 @@
             satd_markers: 7,
             tdg_score: 65.5,
             git_churn_high: true,
+            evoscore_trajectory: 0.0,
+            coverage_delta: 0.0,
         };
 
         let json = serde_json::to_string(&summary).expect("Serialization should succeed");

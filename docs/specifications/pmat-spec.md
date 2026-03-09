@@ -312,23 +312,23 @@ signal quality (does it correlate with real defects?), and cost (runtime + maint
 
 ### Planned Improvements
 
-**1. Rust Project Score v3.0 — Rebalanced weights** (repo-health.md)
+**1. Rust Project Score v3.0 — Rebalanced weights** (repo-health.md) **[DONE]**
 
-Current 274-point scale has Tooling at 47%. Normalize to 100-point scale with
-equal-weight categories. Absorb Popper Score as 11th category. Drop GPU/SIMD
-for non-GPU projects instead of awarding free 100%.
+Added 11th scorer (Reproducibility) wrapping Popper B-F categories. Added
+falsifiability gateway (Cat A < 60% caps grade at F). SPEC_VERSION bumped
+to "3.0". Total max points: 289 across 11 categories.
 
-**2. Popper Score — Absorb into Rust Project Score** (code-quality.md)
+**2. Popper Score — Absorb into Rust Project Score** (code-quality.md) **[DONE]**
 
-Keep falsifiability gateway (Category A >= 60%) as a standalone precondition.
-Fold Categories B-F into Rust Project Score's new "Reproducibility" category.
-Deprecate `pmat popper-score` as top-level command.
+Falsifiability gateway (Category A >= 60%) integrated into RPS v3.0 orchestrator.
+Categories B-F wrapped in `ReproducibilityScorer` (15 max points). `pmat popper-score`
+command now shows deprecation warning pointing to `pmat rust-project-score`.
 
-**3. Five Whys — Diversify evidence sources** (code-quality.md)
+**3. Five Whys — Diversify evidence sources** (code-quality.md) **[DONE]**
 
-Replace 25% TDG weight with: 15% EvoScore trajectory + 10% coverage delta.
-Reduces redundancy with TDG while adding the temporal dimension. Add
-`--include-evoscore` flag when EvoScore data is available.
+v2 weights implemented: Complexity 25%, SATD 20%, Git churn 15%, EvoScore
+trajectory 15%, Coverage delta 15%, Dead code 10%. TDG weight removed (0%)
+as redundant with complexity+churn.
 
 **4. EvoScore — Build data pipeline** (swe-ci-evolution.md) **[DONE]**
 
@@ -342,11 +342,12 @@ via coverage-diff across commits.
 `--rank-by priority` implemented. Sorts by `tdg_score * (1 + churn_score)`. High-TDG files that never change are less urgent than
 high-TDG files that change weekly. Surface in `pmat query --churn`.
 
-**6. Muda Waste — Connect to TDG hotspots** (repo-health.md)
+**6. Muda Waste — Connect to TDG hotspots** (repo-health.md) **[DONE]**
 
-Map Muda categories to concrete files: Inventory waste → dead code files,
-Over-processing waste → high-complexity files, Defect waste → files with
-CB-120 violations. Currently abstract; make it point to specific code.
+`MudaReport.file_details: HashMap<String, Vec<String>>` populated by
+`collect_overproduction_files()`, `collect_inventory_files()`,
+`collect_over_processing_files()`, `collect_defect_files()`. Maps waste
+categories to concrete file paths.
 
 ## Architectural Principles
 

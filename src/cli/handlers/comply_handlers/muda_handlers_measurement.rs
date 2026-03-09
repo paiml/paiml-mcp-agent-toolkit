@@ -190,3 +190,87 @@ fn strip_quoted_strings(s: &str) -> String {
     }
     result
 }
+
+/// Collect top files with dead code from the dead-code cache.
+/// Returns up to 5 file paths sorted by dead item count descending.
+fn collect_overproduction_files(project_path: &Path) -> Vec<String> {
+    let cache_path = project_path.join(".pmat/dead-code-cache.json");
+    if let Ok(content) = std::fs::read_to_string(&cache_path) {
+        if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
+            // Try "files" map: { "path": { "dead_count": N } }
+            if let Some(files) = json.get("files").and_then(|v| v.as_object()) {
+                let mut file_scores: Vec<(&str, u64)> = files
+                    .iter()
+                    .filter_map(|(path, val)| {
+                        let count = val
+                            .get("dead_count")
+                            .and_then(|c| c.as_u64())
+                            .unwrap_or(0);
+                        if count > 0 {
+                            Some((path.as_str(), count))
+                        } else {
+                            None
+                        }
+                    })
+                    .collect();
+                file_scores.sort_by(|a, b| b.1.cmp(&a.1));
+                return file_scores
+                    .into_iter()
+                    .take(5)
+                    .map(|(p, c)| format!("{} ({} dead)", p, c))
+                    .collect();
+            }
+            // Try "dead_items" array: [{ "file": "path", ... }]
+            if let Some(items) = json.get("dead_items").and_then(|v| v.as_array()) {
+                let mut file_counts: HashMap<&str, usize> = HashMap::new();
+                for item in items {
+                    if let Some(file) = item.get("file").and_then(|f| f.as_str()) {
+                        *file_counts.entry(file).or_insert(0) += 1;
+                    }
+                }
+                let mut sorted: Vec<(&&str, &usize)> = file_counts.iter().collect();
+                sorted.sort_by(|a, b| b.1.cmp(a.1));
+                return sorted
+                    .into_iter()
+                    .take(5)
+                    .map(|(p, c)| format!("{} ({} dead)", p, c))
+                    .collect();
+            }
+        }
+    }
+    Vec::new()
+}
+
+/// Collect top files with stale SATD markers (TODO/FIXME/HACK).
+/// Returns up to 5 file paths sorted by SATD count descending.
+fn collect_inventory_files(project_path: &Path) -> Vec<String> {
+    let src_dir = project_path.join("src");
+    if !src_dir.exists() {
+        return Vec::new();
+    }
+
+    let mut file_counts: Vec<(String, usize)> = collect_rs_source_files(&src_dir)
+        .iter()
+        .filter_map(|p| {
+            let content = std::fs::read_to_string(p).ok()?;
+            let count = count_satd_in_content(&content);
+            if count > 0 {
+                let rel = p
+                    .strip_prefix(project_path)
+                    .unwrap_or(p)
+                    .to_string_lossy()
+                    .to_string();
+                Some((rel, count))
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    file_counts.sort_by(|a, b| b.1.cmp(&a.1));
+    file_counts
+        .into_iter()
+        .take(5)
+        .map(|(p, c)| format!("{} ({} SATD)", p, c))
+        .collect()
+}

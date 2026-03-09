@@ -121,8 +121,11 @@ impl FiveWhysAnalyzer {
         Ok(question)
     }
 
-    /// Gather evidence from real project data.
-    /// Scans SATD markers, measures git churn, reads TDG baseline, and estimates complexity.
+    /// Gather evidence from real project data (v2 weights, PMAT-510).
+    ///
+    /// v2 evidence sources: Complexity (25%), SATD (20%), Git churn (15%),
+    /// EvoScore trajectory (15%), Coverage delta (15%), Dead code (10%).
+    /// TDG removed (redundant with complexity+churn).
     async fn gather_evidence(&self, path: &Path) -> Result<Vec<Evidence>> {
         let mut evidence = Vec::new();
 
@@ -136,14 +139,19 @@ impl FiveWhysAnalyzer {
             evidence.push(churn_ev);
         }
 
-        // Real TDG evidence: read baseline if available
-        if let Some(tdg_ev) = Self::gather_tdg_evidence(path) {
-            evidence.push(tdg_ev);
-        }
-
         // Real complexity evidence: count Rust source files and estimate complexity
         if let Some(cx_ev) = Self::gather_complexity_evidence(path) {
             evidence.push(cx_ev);
+        }
+
+        // EvoScore trajectory (CB-142): is the affected area improving or regressing?
+        if let Some(evo_ev) = Self::gather_evoscore_evidence(path) {
+            evidence.push(evo_ev);
+        }
+
+        // Coverage delta: did recent changes decrease test coverage?
+        if let Some(cov_ev) = Self::gather_coverage_delta_evidence(path) {
+            evidence.push(cov_ev);
         }
 
         Ok(evidence)
@@ -236,47 +244,9 @@ impl FiveWhysAnalyzer {
         ))
     }
 
-    /// Read TDG baseline average score if available.
-    fn gather_tdg_evidence(path: &Path) -> Option<Evidence> {
-        let baseline_path = path.join(".pmat/baseline.json");
-        let content = std::fs::read_to_string(&baseline_path).ok()?;
-        let data: serde_json::Value = serde_json::from_str(&content).ok()?;
-        let avg_score = data
-            .get("summary")
-            .and_then(|s| s.get("avg_score"))
-            .and_then(|v| v.as_f64())
-            .unwrap_or(0.0);
-        let total_files = data
-            .get("summary")
-            .and_then(|s| s.get("total_files"))
-            .and_then(|v| v.as_u64())
-            .unwrap_or(0);
-        let description = if avg_score >= 80.0 {
-            format!(
-                "Strong TDG baseline: {:.1}/100 across {} files",
-                avg_score, total_files
-            )
-        } else if avg_score >= 50.0 {
-            format!(
-                "Moderate TDG score: {:.1}/100 across {} files — room for improvement",
-                avg_score, total_files
-            )
-        } else if total_files == 0 {
-            "No TDG baseline available — run `pmat tdg` to generate".to_string()
-        } else {
-            format!(
-                "Low TDG score: {:.1}/100 across {} files — significant debt",
-                avg_score, total_files
-            )
-        };
-        Some(Evidence::new(
-            EvidenceSource::TDG,
-            path.to_path_buf(),
-            "tdg_score".to_string(),
-            json!(avg_score),
-            description,
-        ))
-    }
+    // NOTE: gather_tdg_evidence removed in v2 (PMAT-510).
+    // TDG weight set to 0% — redundant with complexity + churn.
+    // EvidenceSource::TDG variant kept for backward compat (deserialization).
 
     /// Estimate complexity by counting Rust source lines and deeply-nested functions.
     fn gather_complexity_evidence(path: &Path) -> Option<Evidence> {
@@ -300,6 +270,168 @@ impl FiveWhysAnalyzer {
             path.to_path_buf(),
             "estimated_complexity".to_string(),
             json!({"total_lines": total_lines, "deep_nesting": deep_nesting_count, "threshold": 20}),
+            description,
+        ))
+    }
+
+    /// Compute EvoScore trajectory from .pmat-metrics/ test data (CB-142).
+    ///
+    /// Uses the same gamma-weighted computation as `check_swe_ci_evoscore`.
+    /// Returns None (neutral) if insufficient data (<3 commits).
+    fn gather_evoscore_evidence(path: &Path) -> Option<Evidence> {
+        let metrics_dir = path.join(".pmat-metrics");
+        if !metrics_dir.exists() {
+            return None;
+        }
+
+        // Collect commit test data files
+        let mut test_files: Vec<std::path::PathBuf> = Vec::new();
+        if let Ok(entries) = std::fs::read_dir(&metrics_dir) {
+            for entry in entries.flatten() {
+                let p = entry.path();
+                if let Some(name) = p.file_name().and_then(|n| n.to_str()) {
+                    if name.starts_with("commit-") && name.ends_with("-tests.json") {
+                        test_files.push(p);
+                    }
+                }
+            }
+        }
+        test_files.sort();
+
+        let mut test_data: Vec<(u64, u64)> = Vec::new(); // (pass, total)
+        for file_path in &test_files {
+            if let Ok(content) = std::fs::read_to_string(file_path) {
+                if let Ok(data) = serde_json::from_str::<serde_json::Value>(&content) {
+                    let pass = data["pass"].as_u64().unwrap_or(0);
+                    let total = data["total"].as_u64().unwrap_or(0);
+                    if total > 0 {
+                        test_data.push((pass, total));
+                    }
+                }
+            }
+        }
+
+        // Need at least 3 commits for meaningful trajectory
+        if test_data.len() < 3 {
+            return None;
+        }
+
+        // Compute EvoScore with gamma = 1.5 (matches CB-142 comply check)
+        let gamma: f64 = 1.5;
+        let base_pass = test_data[0].0 as f64;
+        let oracle_pass = test_data.iter().map(|(p, _)| *p).max().unwrap_or(0) as f64;
+
+        let mut weighted_sum = 0.0;
+        let mut weight_total = 0.0;
+
+        for (i, (pass, _total)) in test_data.iter().enumerate().skip(1) {
+            let current_pass = *pass as f64;
+            let a_c = if current_pass >= base_pass {
+                let gap = oracle_pass - base_pass;
+                if gap > 0.0 {
+                    (current_pass - base_pass) / gap
+                } else {
+                    1.0
+                }
+            } else if base_pass > 0.0 {
+                (current_pass - base_pass) / base_pass
+            } else {
+                0.0
+            };
+
+            let weight = gamma.powi(i as i32);
+            weighted_sum += weight * a_c;
+            weight_total += weight;
+        }
+
+        let evoscore = if weight_total > 0.0 {
+            weighted_sum / weight_total
+        } else {
+            0.0
+        };
+
+        let description = if evoscore >= 0.5 {
+            format!(
+                "Positive trajectory: EvoScore {:.3} — area is improving",
+                evoscore
+            )
+        } else if evoscore >= 0.0 {
+            format!(
+                "Mixed trajectory: EvoScore {:.3} — some improvement, some regression",
+                evoscore
+            )
+        } else {
+            format!(
+                "Negative trajectory: EvoScore {:.3} — area is regressing",
+                evoscore
+            )
+        };
+
+        Some(Evidence::new(
+            EvidenceSource::EvoScoreTrajectory,
+            path.to_path_buf(),
+            "evoscore_trajectory".to_string(),
+            json!({"evoscore": evoscore, "commits": test_data.len(), "gamma": gamma}),
+            description,
+        ))
+    }
+
+    /// Compute coverage delta from .pmat/coverage-cache.json.
+    ///
+    /// Reads cached coverage data and computes a simple coverage ratio.
+    /// Returns None if no coverage data is available.
+    fn gather_coverage_delta_evidence(path: &Path) -> Option<Evidence> {
+        let cache_path = path.join(".pmat/coverage-cache.json");
+        let content = std::fs::read_to_string(&cache_path).ok()?;
+        let data: serde_json::Value = serde_json::from_str(&content).ok()?;
+
+        let files = data.get("files")?.as_object()?;
+        if files.is_empty() {
+            return None;
+        }
+
+        // Compute aggregate coverage from line hit data
+        let mut total_lines: usize = 0;
+        let mut covered_lines: usize = 0;
+
+        for (_file_path, line_hits) in files {
+            if let Some(hits_map) = line_hits.as_object() {
+                for (_line_no, hit_count) in hits_map {
+                    total_lines += 1;
+                    if hit_count.as_u64().unwrap_or(0) > 0 {
+                        covered_lines += 1;
+                    }
+                }
+            }
+        }
+
+        let coverage_pct = if total_lines > 0 {
+            covered_lines as f64 / total_lines as f64 * 100.0
+        } else {
+            return None;
+        };
+
+        // Delta: compare against 85% baseline (industry standard target)
+        // Positive delta = above target, negative = below target
+        let delta = coverage_pct - 85.0;
+
+        let description = if delta >= 0.0 {
+            format!(
+                "Coverage {:.1}% (delta +{:.1}% vs 85% baseline) — above target",
+                coverage_pct, delta
+            )
+        } else {
+            format!(
+                "Coverage {:.1}% (delta {:.1}% vs 85% baseline) — below target",
+                coverage_pct, delta
+            )
+        };
+
+        Some(Evidence::new(
+            EvidenceSource::CoverageDelta,
+            path.to_path_buf(),
+            "coverage_delta".to_string(),
+            json!({"coverage_pct": coverage_pct, "delta": delta, "total_lines": total_lines, "covered_lines": covered_lines}),
             description,
         ))
     }
@@ -361,8 +493,9 @@ impl FiveWhysAnalyzer {
 struct EvidenceSignals {
     high_complexity: bool,
     satd_present: bool,
-    low_tdg: bool,
     high_churn: bool,
+    regressing_evoscore: bool,
+    low_coverage: bool,
 }
 
 impl EvidenceSignals {
@@ -378,9 +511,6 @@ impl EvidenceSignals {
                         > 20.0
             }),
             satd_present: evidence.iter().any(|e| e.source == EvidenceSource::SATD),
-            low_tdg: evidence.iter().any(|e| {
-                e.source == EvidenceSource::TDG && e.value.as_f64().unwrap_or(100.0) < 50.0
-            }),
             high_churn: evidence.iter().any(|e| {
                 e.source == EvidenceSource::GitChurn
                     && e.value
@@ -388,6 +518,22 @@ impl EvidenceSignals {
                         .and_then(|v| v.as_u64())
                         .unwrap_or(0)
                         > 10
+            }),
+            regressing_evoscore: evidence.iter().any(|e| {
+                e.source == EvidenceSource::EvoScoreTrajectory
+                    && e.value
+                        .get("evoscore")
+                        .and_then(|v| v.as_f64())
+                        .unwrap_or(0.0)
+                        < 0.0
+            }),
+            low_coverage: evidence.iter().any(|e| {
+                e.source == EvidenceSource::CoverageDelta
+                    && e.value
+                        .get("delta")
+                        .and_then(|v| v.as_f64())
+                        .unwrap_or(0.0)
+                        < 0.0
             }),
         }
     }
@@ -413,7 +559,7 @@ impl EvidenceSignals {
     }
 
     fn depth_2_hypothesis(&self) -> String {
-        if self.low_tdg {
+        if self.low_coverage {
             "Insufficient test coverage allowed defect to slip through".to_string()
         } else if self.high_complexity {
             "Complex control flow makes code difficult to understand and maintain".to_string()
@@ -423,7 +569,9 @@ impl EvidenceSignals {
     }
 
     fn depth_3_hypothesis(&self) -> String {
-        if self.high_churn {
+        if self.regressing_evoscore {
+            "Quality trajectory is declining — area has been getting worse over time".to_string()
+        } else if self.high_churn {
             "Frequent changes indicate unstable or poorly understood code".to_string()
         } else if self.satd_present {
             "Technical debt accumulated, indicating deferred maintenance".to_string()
@@ -434,7 +582,11 @@ impl EvidenceSignals {
 }
 
 impl FiveWhysAnalyzer {
-    /// Calculate confidence score based on evidence strength
+    /// Calculate confidence score based on evidence strength (v2 weights, PMAT-510).
+    ///
+    /// v2 weights: Complexity 25%, SATD 20%, GitChurn 15%,
+    /// EvoScoreTrajectory 15%, CoverageDelta 15%, DeadCode 10%.
+    /// TDG weight removed (0%) — redundant with complexity+churn.
     pub fn calculate_confidence(&self, evidence: &[Evidence]) -> Result<f64> {
         if evidence.is_empty() {
             return Ok(0.3); // Low confidence with no evidence
@@ -470,11 +622,8 @@ impl FiveWhysAnalyzer {
                     let severity = (count as f64).min(10.0) / 10.0;
                     (0.20, 1.0 + severity)
                 }
-                EvidenceSource::TDG => {
-                    let score = ev.value.as_f64().unwrap_or(50.0);
-                    let severity = (50.0 - score).max(0.0) / 50.0;
-                    (0.25, 1.0 + severity)
-                }
+                // v2: TDG removed (redundant with complexity+churn). Weight = 0.
+                EvidenceSource::TDG => (0.0, 1.0),
                 EvidenceSource::GitChurn => {
                     let commits = ev
                         .value
@@ -482,10 +631,39 @@ impl FiveWhysAnalyzer {
                         .and_then(|v| v.as_u64())
                         .unwrap_or(0);
                     let severity = (commits as f64).min(20.0) / 20.0;
-                    (0.20, 1.0 + severity)
+                    (0.15, 1.0 + severity)
                 }
                 EvidenceSource::DeadCode => (0.10, 1.0),
                 EvidenceSource::ManualInspection => (0.15, 1.0),
+                EvidenceSource::EvoScoreTrajectory => {
+                    let evoscore = ev
+                        .value
+                        .get("evoscore")
+                        .and_then(|v| v.as_f64())
+                        .unwrap_or(0.0);
+                    // Negative evoscore = regressing = higher severity
+                    // Positive evoscore = improving = lower severity
+                    let severity = if evoscore < 0.0 {
+                        1.0 + (-evoscore).min(1.0) // Regression amplifies confidence
+                    } else {
+                        1.0 // Improvement is neutral
+                    };
+                    (0.15, severity)
+                }
+                EvidenceSource::CoverageDelta => {
+                    let delta = ev
+                        .value
+                        .get("delta")
+                        .and_then(|v| v.as_f64())
+                        .unwrap_or(0.0);
+                    // Negative delta = below 85% baseline = higher severity
+                    let severity = if delta < 0.0 {
+                        1.0 + (-delta / 85.0).min(1.0) // Scale by baseline
+                    } else {
+                        1.0
+                    };
+                    (0.15, severity)
+                }
             };
 
             confidence += evidence_weight * severity_multiplier;
@@ -513,7 +691,7 @@ impl FiveWhysAnalyzer {
         Ok(Some(last_why.hypothesis.clone()))
     }
 
-    /// Generate actionable recommendations
+    /// Generate actionable recommendations (v2 evidence sources, PMAT-510)
     pub fn generate_recommendations(
         &self,
         whys: &[WhyIteration],
@@ -533,12 +711,6 @@ impl FiveWhysAnalyzer {
             .iter()
             .any(|w| w.evidence.iter().any(|e| e.source == EvidenceSource::SATD));
 
-        let has_low_tdg = whys.iter().any(|w| {
-            w.evidence.iter().any(|e| {
-                e.source == EvidenceSource::TDG && e.value.as_f64().unwrap_or(100.0) < 50.0
-            })
-        });
-
         let has_high_churn = whys.iter().any(|w| {
             w.evidence.iter().any(|e| {
                 e.source == EvidenceSource::GitChurn
@@ -547,6 +719,28 @@ impl FiveWhysAnalyzer {
                         .and_then(|v| v.as_u64())
                         .unwrap_or(0)
                         > 10
+            })
+        });
+
+        let has_regressing_evoscore = whys.iter().any(|w| {
+            w.evidence.iter().any(|e| {
+                e.source == EvidenceSource::EvoScoreTrajectory
+                    && e.value
+                        .get("evoscore")
+                        .and_then(|v| v.as_f64())
+                        .unwrap_or(0.0)
+                        < 0.0
+            })
+        });
+
+        let has_low_coverage = whys.iter().any(|w| {
+            w.evidence.iter().any(|e| {
+                e.source == EvidenceSource::CoverageDelta
+                    && e.value
+                        .get("delta")
+                        .and_then(|v| v.as_f64())
+                        .unwrap_or(0.0)
+                        < 0.0
             })
         });
 
@@ -565,9 +759,17 @@ impl FiveWhysAnalyzer {
             ));
         }
 
-        if has_low_tdg {
+        if has_low_coverage {
             recommendations.push(Recommendation::high(
-                "Add comprehensive test coverage (target: ≥85%) using EXTREME TDD".to_string(),
+                "Add comprehensive test coverage (target: >=85%) using EXTREME TDD".to_string(),
+                None,
+            ));
+        }
+
+        if has_regressing_evoscore {
+            recommendations.push(Recommendation::high(
+                "Quality trajectory is declining — investigate and reverse regression trend"
+                    .to_string(),
                 None,
             ));
         }

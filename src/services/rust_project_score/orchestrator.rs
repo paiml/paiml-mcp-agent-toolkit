@@ -24,6 +24,7 @@ use super::gpu_simd_scorer::GpuSimdScorer;
 use super::known_defects_scorer::KnownDefectsScorer;
 use super::models::*;
 use super::performance_scorer::PerformanceScorer;
+use super::reproducibility_scorer::ReproducibilityScorer;
 use super::rust_tooling_scorer::RustToolingScorer;
 use super::scorer::{Scorer, ScorerError, ScorerResult};
 use super::testing_scorer::TestingScorer;
@@ -34,16 +35,19 @@ use std::path::Path;
 
 /// Rust Project Score specification version
 /// This tracks the scoring methodology version, not the PMAT binary version
-pub const SPEC_VERSION: &str = "2.3";
+/// v3.0: Added Reproducibility category (Popper B-F absorption) + falsifiability gateway
+pub const SPEC_VERSION: &str = "3.0";
 
-/// Orchestrates all 10 category scorers to produce unified project score
+/// Orchestrates all 11 category scorers to produce unified project score
+///
+/// v3.0: Added Reproducibility scorer (Popper B-F absorption) + falsifiability gateway
 pub struct RustProjectScoreOrchestrator {
-    /// All 10 category scorers
+    /// All 11 category scorers
     scorers: Vec<Box<dyn Scorer>>,
 }
 
 impl RustProjectScoreOrchestrator {
-    /// Create a new orchestrator with all 10 scorers
+    /// Create a new orchestrator with all 11 scorers (v3.0)
     pub fn new() -> Self {
         let scorers: Vec<Box<dyn Scorer>> = vec![
             Box::new(RustToolingScorer::new()),
@@ -56,6 +60,8 @@ impl RustProjectScoreOrchestrator {
             Box::new(KnownDefectsScorer::new()),
             Box::new(GpuSimdScorer::new()),
             Box::new(BuildPerfScorer::new()),
+            // v3.0: Popper B-F absorption
+            Box::new(ReproducibilityScorer::new()),
         ];
 
         Self { scorers }
@@ -234,8 +240,24 @@ impl RustProjectScoreOrchestrator {
             0.0
         };
 
-        // Grade based on normalized percentage
-        let grade = Grade::from_normalized(percentage);
+        // v3.0: Falsifiability gateway (Jidoka) — if Cat A < 60%, cap at grade F
+        let gateway_failed =
+            super::reproducibility_scorer::check_falsifiability_gateway(project_path).is_none();
+
+        let grade = if gateway_failed {
+            Grade::F
+        } else {
+            Grade::from_normalized(percentage)
+        };
+
+        if gateway_failed {
+            all_recommendations.insert(
+                0,
+                "GATEWAY FAILED: Falsifiability score < 60%. Add testable claims and \
+                 test coverage to unlock higher grades. See `pmat popper-score` for details."
+                    .to_string(),
+            );
+        }
 
         Ok(ProjectScore {
             total_earned,
@@ -298,15 +320,15 @@ mod tests {
     fn test_orchestrator_creation() {
         let orch = RustProjectScoreOrchestrator::new();
         assert_eq!(orch.name(), format!("Rust Project Score v{}", SPEC_VERSION));
-        // max_points is dynamically computed from all 10 scorers
-        // 130 + 26 + 20 + 15 + 10 + 12 + 16 + 20 + 10 + 15 = 274
-        assert_eq!(orch.max_points(), 274.0);
+        // max_points is dynamically computed from all 11 scorers
+        // 130 + 26 + 20 + 15 + 10 + 12 + 16 + 20 + 10 + 15 + 15 = 289
+        assert_eq!(orch.max_points(), 289.0);
     }
 
     #[test]
     fn test_scorer_count() {
         let orch = RustProjectScoreOrchestrator::new();
-        assert_eq!(orch.scorers.len(), 10);
+        assert_eq!(orch.scorers.len(), 11);
     }
 
     #[test]

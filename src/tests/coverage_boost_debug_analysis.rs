@@ -236,6 +236,8 @@ fn test_evidence_summary_serde() {
         satd_markers: 5,
         tdg_score: 2.1,
         git_churn_high: true,
+        evoscore_trajectory: 0.0,
+        coverage_delta: 0.0,
     };
     let json = serde_json::to_string(&summary).unwrap();
     let back: EvidenceSummary = serde_json::from_str(&json).unwrap();

@@ -11,33 +11,23 @@ pmat five-whys "Stack overflow in parser"
 pmat why "Memory leak in cache" --depth 3
 ```
 
-### Evidence Sources (Current)
+### Evidence Sources (v2 — Implemented, PMAT-510)
 
-| Source | Weight | Description |
-|--------|--------|-------------|
-| Complexity | 25% | Cyclomatic/cognitive complexity |
-| TDG | 25% | Technical debt gradient |
-| SATD | 20% | Self-admitted technical debt |
-| Git churn | 20% | Change frequency |
-| Dead code | 10% | Unused code ratio |
-
-### Evidence Sources (Planned v2)
-
-Reduce TDG overlap (complexity 25% + TDG 25% = 50% redundant). Add temporal
+Reduced TDG overlap (was complexity 25% + TDG 25% = 50% redundant). Added temporal
 and coverage signals that answer "is it getting worse?" not just "is it bad?"
 
 | Source | Weight | Description |
 |--------|--------|-------------|
-| Complexity | 25% | Cyclomatic/cognitive complexity (unchanged) |
-| SATD | 20% | Self-admitted technical debt (unchanged) |
-| Git churn | 15% | Change frequency (reduced from 20%) |
-| EvoScore trajectory | 15% | Is the affected area improving or regressing? |
+| Complexity | 25% | Cyclomatic/cognitive complexity |
+| SATD | 20% | Self-admitted technical debt |
+| Git churn | 15% | Change frequency (reduced from 20% in v1) |
+| EvoScore trajectory | 15% | Is the affected area improving or regressing? (CB-142) |
 | Coverage delta | 15% | Did recent changes decrease coverage? |
-| Dead code | 10% | Unused code ratio (unchanged) |
+| Dead code | 10% | Unused code ratio |
 
-Removes direct TDG dependency (TDG already incorporates complexity + churn).
-Adds EvoScore for "is the bug area getting better?" and coverage delta for
-"did recent changes reduce test safety?" Requires `--include-evoscore` flag.
+Removed direct TDG dependency (TDG already incorporates complexity + churn).
+EvoScore reads `.pmat-metrics/commit-*-tests.json` (falls back to neutral if <3 commits).
+Coverage delta reads `.pmat/coverage-cache.json` (falls back to neutral if unavailable).
 
 ### Output Formats
 

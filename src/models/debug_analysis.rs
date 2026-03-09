@@ -88,14 +88,23 @@ impl Evidence {
 }
 
 /// Source of evidence (which PMAT service)
+///
+/// v2 weights (PMAT-510): Complexity 25%, SATD 20%, GitChurn 15%,
+/// EvoScoreTrajectory 15%, CoverageDelta 15%, DeadCode 10%.
+/// TDG removed (redundant with complexity+churn). ManualInspection kept for manual overrides.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum EvidenceSource {
     Complexity,
     SATD,
     DeadCode,
     GitChurn,
+    /// Kept for backward compatibility but no longer weighted in v2
     TDG,
     ManualInspection,
+    /// CB-142 EvoScore trajectory: is the affected area improving or regressing?
+    EvoScoreTrajectory,
+    /// Coverage delta: did recent changes decrease test coverage?
+    CoverageDelta,
 }
 
 /// Actionable recommendation
@@ -143,6 +152,12 @@ pub struct EvidenceSummary {
     pub satd_markers: usize,
     pub tdg_score: f64,
     pub git_churn_high: bool,
+    /// CB-142 EvoScore trajectory: positive = improving, negative = regressing
+    #[serde(default)]
+    pub evoscore_trajectory: f64,
+    /// Coverage delta: positive = coverage increased, negative = decreased
+    #[serde(default)]
+    pub coverage_delta: f64,
 }
 
 impl EvidenceSummary {
@@ -188,6 +203,20 @@ impl EvidenceSummary {
                 if commits > 10 {
                     self.git_churn_high = true;
                 }
+            }
+            EvidenceSource::EvoScoreTrajectory => {
+                self.evoscore_trajectory = evidence
+                    .value
+                    .get("evoscore")
+                    .and_then(|v| v.as_f64())
+                    .unwrap_or(0.0);
+            }
+            EvidenceSource::CoverageDelta => {
+                self.coverage_delta = evidence
+                    .value
+                    .get("delta")
+                    .and_then(|v| v.as_f64())
+                    .unwrap_or(0.0);
             }
             _ => {}
         }
