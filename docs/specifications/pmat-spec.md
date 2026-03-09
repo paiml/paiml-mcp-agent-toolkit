@@ -294,6 +294,61 @@ Architect-programmer dual-agent protocol for requirement-driven development.
 
 ---
 
+## Scoring Systems Evaluation
+
+Eight scoring systems exist. Evaluated for: actionability (does it tell you what to fix?),
+signal quality (does it correlate with real defects?), and cost (runtime + maintenance).
+
+| Score | Granularity | Actionability | Signal | Cost | Verdict |
+|-------|-------------|---------------|--------|------|---------|
+| TDG | Per-file | **High** — pinpoints files | Complexity + churn + coverage + duplication | O(n) files, seconds | **Keep: core metric** |
+| Rust Project Score | Per-project | **High** — category breakdown with recommendations | 10 categories, 274 pts | Minutes (runs tools) | **Keep: project dashboard** |
+| Popper Score | Per-project | **Medium** — flags missing infra | File existence checks mostly | Seconds (file scans) | **Simplify** (see below) |
+| Muda Waste | Per-project | **Medium** — 5 waste categories | Over/Wait/Inv/Proc/Def | Seconds | **Keep: lean signal** |
+| EvoScore | Per-project | **Low** — says "regressing" not "where" | Test pass trajectory | Requires historical data | **Keep: trend only** |
+| Comply Checks | Per-finding | **High** — exact file:line | 90+ pattern-specific checks | Seconds to minutes | **Keep: core enforcement** |
+| Coverage % | Per-function | **High** — exact uncovered lines | Direct test gap signal | Minutes (llvm-cov) | **Keep: core metric** |
+| Five Whys | Per-issue | **High** — root cause chain | Evidence-weighted hypotheses | Seconds | **Keep: debugging tool** |
+
+### Assessment Notes
+
+**TDG (A-tier)**: Most valuable metric. Per-file granularity means developers know exactly
+what to fix. Composite formula (complexity + churn + coverage + duplication) captures
+multiple debt dimensions. O(1) cached lookups. Grade gate (CB-200) is the most actionable
+quality enforcement. No changes needed.
+
+**Rust Project Score (A-tier)**: Valuable as project-level dashboard. 10 categories give
+balanced view. Recommendations are directly actionable ("run cargo clippy --fix"). The 274
+point scale is oddly specific — consider normalizing to percentage-only for communication.
+Scores Rust Tooling at 130 points (47% of total) which overweights CI/CD relative to code
+quality. Category weights should be reviewed.
+
+**Comply Checks (A-tier)**: Most actionable enforcement. File:line precision. CB-120 series
+(OIP Tarantula) catches real bugs (serde panics, NaN comparisons). CB-500+ language checks
+provide concrete per-violation feedback. No changes needed.
+
+**Coverage (A-tier)**: Direct signal — uncovered lines are provably untested. `pmat query
+--coverage-gaps` ranks by impact score (missed_lines * pagerank / complexity). No changes.
+
+**Muda Waste (B-tier)**: Useful lean signal. Five waste categories (overproduction, waiting,
+inventory, over-processing, defects) map to real project problems. Current score of 36.3/100
+is actionable. Keep as-is.
+
+**Five Whys (B-tier)**: Valuable debugging tool but evidence sources overlap with TDG
+(complexity 25% + TDG 25% = 50% redundant with TDG). Would benefit from incorporating
+EvoScore trajectory as evidence. Keep but note overlap.
+
+**Popper Score (C-tier, simplify)**: Mostly checks file existence (LICENSE, benches/,
+Cargo.lock, CI config). 87.5/100 tells you infrastructure is present but says nothing about
+code quality. Overlap with Rust Project Score (which checks the same infrastructure plus
+code metrics). **Recommendation**: Fold Popper checks into Rust Project Score as a
+"Reproducibility & Transparency" category rather than maintaining as separate command.
+
+**EvoScore (C-tier, invest)**: Promising concept but currently non-functional (no data
+pipeline). When activated, it answers a question no other metric answers: "is the project
+improving?" However, per-project granularity limits actionability. **Recommendation**:
+Implement `pmat test --record` and per-function EvoScore to increase granularity.
+
 ## Architectural Principles
 
 1. **Sovereign AI (80/20 Batuta Stack)**: Prefer batuta stack (aprender, trueno, renacer, certeza) over external deps

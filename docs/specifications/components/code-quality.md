@@ -47,13 +47,26 @@ pmat auto-fix --dry-run                   # Preview changes
 
 ## Popper Falsifiability Score
 
-### 100-Point Scoring
+### 100-Point Scoring (6 Categories)
 
-Quality claims must be falsifiable and evidence-based:
-- Testability (30 pts): Can claims be tested?
-- Reproducibility (25 pts): Are results reproducible?
-- Specificity (25 pts): Are claims specific and measurable?
-- Scope (20 pts): Are claims appropriately scoped?
+| Category | Points | What It Checks |
+|----------|--------|----------------|
+| A. Falsifiability & Testability | 25 | Claims testable, mutation testing, property tests, benchmarks |
+| B. Reproducibility Infrastructure | 25 | Cargo.lock, Nix/devcontainer, Makefile, install docs |
+| C. Transparency & Openness | 20 | LICENSE, README, API docs, CHANGELOG, ADRs |
+| D. Statistical Rigor | 15 | Sample sizes, confidence intervals, effect sizes |
+| E. Historical Integrity | 10 | CODEOWNERS, roadmap, release tags, semver |
+| F. ML/AI Reproducibility | 5 | Model versioning, dataset docs, seed configs |
+
+### Real-World Assessment
+
+**Current score: 87.5/100 (A-).** Mostly infrastructure-existence checks (does LICENSE
+exist? does CI run?). Overlap with Rust Project Score categories: Documentation (15 pts),
+Rust Tooling & CI/CD (130 pts), and Testing Excellence (20 pts) cover similar ground.
+
+**Recommendation**: Consider folding into Rust Project Score as a "Reproducibility &
+Transparency" category rather than maintaining as a separate top-level command. The
+falsifiability gateway (Category A >= 60%) is the most unique/valuable part.
 
 ## Entropy & Similarity Detection
 

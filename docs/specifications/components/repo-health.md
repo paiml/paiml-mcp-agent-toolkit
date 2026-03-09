@@ -27,6 +27,26 @@ pmat rust-project-score --format json -o score.json
 | GPU/SIMD Quality | 10 | CUDA-TDG, barrier safety |
 | Formal Verification | 16 | Miri, Kani, Verus, specs |
 
+### Real-World Assessment
+
+**Current score: 167.4/274 (71.2%, Grade B).** Category breakdown reveals imbalance:
+
+| Category | % of Total | Assessment |
+|----------|-----------|------------|
+| Rust Tooling & CI/CD | **47%** (130/274) | Overweighted. Dominates score. A project with perfect CI but bad code gets a B. |
+| Code Quality | 9% (26/274) | Underweighted relative to importance. |
+| Testing Excellence | 7% (20/274) | Reasonable for its scope. |
+| Formal Verification | 6% (16/274) | Aspirational — most projects won't have Miri/Kani/Verus. |
+| GPU/SIMD Quality | 4% (10/274) | Niche — only relevant to GPU projects. Returns 100% for non-GPU projects (free points). |
+
+**Weight imbalance**: Rust Tooling at 130 points means clippy + fmt + edition + MSRV + CI + audit
+together outweigh Code Quality + Testing + Documentation + Performance combined (71 pts).
+A project passing `cargo fmt` and `cargo clippy` with CI configured scores higher than one
+with 95% test coverage, low complexity, and zero dead code but no CI.
+
+**Recommendation**: Rebalance so Code Quality + Testing >= Tooling. Consider normalizing
+to 100-point scale with equal-weighted categories (10 pts each).
+
 ### Peer-Reviewed Basis
 
 Scoring derived from 15 peer-reviewed papers (2022-2025) on Rust project quality.
