@@ -303,7 +303,7 @@ Requires threading `comply_config` into `check_swe_ci_evoscore()`.
 | `-meta.json` fallback | Implemented | `check_mono_spec.rs:254-281` |
 | CB-142 comply check | Implemented | `check_mono_spec.rs:217-359` |
 | Unit tests (3 cases) | Implemented | `check_mono_spec.rs:461-500` |
-| `pmat test --record` | Not implemented | — |
+| `pmat test --record` | Implemented | `src/cli/command_dispatcher/test_record.rs` |
 | Configurable gamma | Not implemented | Hardcoded to 1.5 |
 | Configurable window | Not implemented | No time-based filtering |
 | CI source: github | Not implemented | Local files only |

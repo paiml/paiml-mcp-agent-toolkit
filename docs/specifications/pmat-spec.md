@@ -330,17 +330,16 @@ Replace 25% TDG weight with: 15% EvoScore trajectory + 10% coverage delta.
 Reduces redundancy with TDG while adding the temporal dimension. Add
 `--include-evoscore` flag when EvoScore data is available.
 
-**4. EvoScore — Build data pipeline** (swe-ci-evolution.md)
+**4. EvoScore — Build data pipeline** (swe-ci-evolution.md) **[DONE]**
 
-Implement `pmat test --record` to parse `cargo test` output and write
+`pmat test --record` implemented. Parses `cargo test` output and writes
 `commit-<sha>-tests.json`. Add Makefile `test-record` target. Read gamma
 from `.pmat.yaml` options instead of hardcoding. Add per-function EvoScore
 via coverage-diff across commits.
 
-**5. TDG — Add churn-weighted priority** (quality-testing.md)
+**5. TDG — Add churn-weighted priority** (quality-testing.md) **[DONE]**
 
-New field `tdg_priority = tdg_score * churn_factor` for ranking which files
-to fix first. High-TDG files that never change are less urgent than
+`--rank-by priority` implemented. Sorts by `tdg_score * (1 + churn_score)`. High-TDG files that never change are less urgent than
 high-TDG files that change weekly. Surface in `pmat query --churn`.
 
 **6. Muda Waste — Connect to TDG hotspots** (repo-health.md)
