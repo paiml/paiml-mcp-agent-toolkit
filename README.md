@@ -7,7 +7,7 @@
 
 [![Crates.io](https://img.shields.io/crates/v/pmat.svg)](https://crates.io/crates/pmat)
 [![Documentation](https://docs.rs/pmat/badge.svg)](https://docs.rs/pmat)
-[![Tests](https://img.shields.io/badge/tests-21200%2B%20passing-brightgreen)](https://github.com/paiml/paiml-mcp-agent-toolkit)
+[![Tests](https://img.shields.io/badge/tests-21600%2B%20passing-brightgreen)](https://github.com/paiml/paiml-mcp-agent-toolkit)
 [![Coverage](https://img.shields.io/badge/coverage-99.66%25-brightgreen)](https://github.com/paiml/paiml-mcp-agent-toolkit)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Rust](https://img.shields.io/badge/rust-1.80+-orange.svg)](https://www.rust-lang.org)
@@ -26,7 +26,7 @@
 - **Context Generation** - Deep analysis for Claude, GPT, and other LLMs
 - **Technical Debt Grading** - A+ through F scoring with 6 orthogonal metrics
 - **Mutation Testing** - Test suite quality validation (85%+ kill rate)
-- **Repository Scoring** - Quantitative health assessment (0-211 scale)
+- **Repository Scoring** - Quantitative health assessment (0-289 scale, 11 categories)
 - **Git History RAG** - Semantic search across commit history with RRF fusion
 - **Semantic Search** - Natural language code discovery
 - **Compliance Governance** - 30+ checks across code quality, best practices, and reproducibility
@@ -123,7 +123,7 @@ pmat mutate --failures-only            # CI optimization
 
 ### Repository Health Scoring
 
-Evidence-based quality metrics (0-211 scale):
+Evidence-based quality metrics (0-289 scale, 11 categories):
 
 ```bash
 pmat rust-project-score                # Fast mode (~3 min)
@@ -248,18 +248,12 @@ pmat semantic search "error handling patterns"
 ### CI/CD Integration
 
 ```yaml
-# .github/workflows/quality.yml
-name: Quality Gates
-on: [push, pull_request]
-
-jobs:
-  quality:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - run: cargo install pmat
-      - run: pmat analyze tdg --fail-on-violation --min-grade B
-      - run: pmat mutate --target src/ --threshold 80
+# Add to your CI pipeline
+steps:
+  - uses: actions/checkout@v4
+  - run: cargo install pmat
+  - run: pmat analyze tdg --fail-on-violation --min-grade B
+  - run: pmat mutate --target src/ --threshold 80
 ```
 
 ### Quality Baseline Workflow
