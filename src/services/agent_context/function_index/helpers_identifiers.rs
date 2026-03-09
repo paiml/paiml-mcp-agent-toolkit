@@ -1,15 +1,25 @@
 /// Extract identifiers from source for better search
 pub(super) fn extract_identifiers(source: &str) -> String {
-    let mut identifiers = Vec::new();
+    // Estimate capacity: ~1 identifier per 10 chars, avg 8 chars + space
+    let estimated_len = source.len() / 5;
+    let mut result = String::with_capacity(estimated_len.min(4096));
 
     for word in source.split(|c: char| !c.is_alphanumeric() && c != '_') {
         let trimmed = word.trim();
         if trimmed.len() >= 3 && !is_keyword(trimmed) {
-            identifiers.push(trimmed.to_lowercase());
+            if !result.is_empty() {
+                result.push(' ');
+            }
+            // Lowercase directly into the result string (avoids intermediate String alloc)
+            for c in trimmed.chars() {
+                for lc in c.to_lowercase() {
+                    result.push(lc);
+                }
+            }
         }
     }
 
-    identifiers.join(" ")
+    result
 }
 
 /// Check if word is a language keyword

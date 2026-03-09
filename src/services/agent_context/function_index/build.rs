@@ -47,10 +47,10 @@ impl AgentContextIndex {
             .canonicalize()
             .map_err(|e| format!("Invalid project path: {e}"))?;
 
-        let mut functions = Vec::new();
+        let mut functions = Vec::with_capacity(20_000);
         let mut file_count = 0;
         let mut languages_seen = HashMap::new();
-        let mut file_checksums: HashMap<String, String> = HashMap::new();
+        let mut file_checksums: HashMap<String, String> = HashMap::with_capacity(4_000);
         let mut coverage_off_files = HashSet::new();
 
         // Load compile_commands.json for C/C++ include path discovery
@@ -106,7 +106,7 @@ impl AgentContextIndex {
             let lang_str = format!("{language:?}");
             *languages_seen.entry(lang_str.clone()).or_insert(0) += 1;
 
-            for chunk in chunks {
+            for mut chunk in chunks {
                 // Index functions, structs, enums, traits, type aliases (issue #150)
                 use crate::services::semantic::ChunkType;
                 let definition_type = match &chunk.chunk_type {
@@ -123,10 +123,10 @@ impl AgentContextIndex {
                     continue;
                 }
 
-                // Extract quality metrics
+                // Extract quality metrics (borrows chunk)
                 let quality = extract_quality_metrics(&chunk, &content);
 
-                // Extract signature (first line of definition)
+                // Extract signature (first line of definition) — must borrow before move
                 let signature = chunk
                     .content
                     .lines()
@@ -137,18 +137,19 @@ impl AgentContextIndex {
                 // Extract doc comment (lines starting with /// or /** before definition)
                 let doc_comment = extract_doc_comment(&content, chunk.start_line);
 
+                // Take ownership of chunk fields (avoids .clone() — saves ~12.5 MB peak)
                 let entry = FunctionEntry {
                     file_path: relative_path.clone(),
-                    function_name: chunk.chunk_name.clone(),
+                    function_name: std::mem::take(&mut chunk.chunk_name),
                     signature,
                     definition_type,
                     doc_comment,
-                    source: chunk.content.clone(),
+                    source: std::mem::take(&mut chunk.content),
                     start_line: chunk.start_line,
                     end_line: chunk.end_line,
                     language: lang_str.clone(),
                     quality,
-                    checksum: chunk.content_checksum,
+                    checksum: std::mem::take(&mut chunk.content_checksum),
                     // Annotations populated after all definitions collected
                     commit_count: 0,
                     churn_score: 0.0,

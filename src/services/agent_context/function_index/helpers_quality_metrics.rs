@@ -420,11 +420,31 @@ pub(super) fn extract_doc_comment(content: &str, start_line: usize) -> Option<St
         return None;
     }
 
-    let lines: Vec<&str> = content.lines().collect();
-    let mut doc_lines = Vec::new();
+    // Build byte-offset index for lines preceding start_line (avoids collecting ALL lines)
+    // Only index lines we might need — up to start_line-1
+    let target = start_line - 1; // 0-indexed line we scan backward from
+    let mut line_starts: Vec<usize> = Vec::with_capacity(target + 1);
+    line_starts.push(0);
+    for (i, byte) in content.bytes().enumerate() {
+        if byte == b'\n' && line_starts.len() <= target {
+            line_starts.push(i + 1);
+        }
+    }
 
-    for i in (0..start_line - 1).rev() {
-        let line = lines.get(i)?.trim();
+    if line_starts.len() <= target {
+        return None;
+    }
+
+    let mut doc_lines = Vec::new();
+    for i in (0..target).rev() {
+        let start = line_starts[i];
+        let end = if i + 1 < line_starts.len() {
+            // Strip trailing newline
+            line_starts[i + 1].saturating_sub(1)
+        } else {
+            content.len()
+        };
+        let line = content.get(start..end).unwrap_or("").trim();
         match classify_doc_line(line) {
             DocLineKind::DocComment(text) => doc_lines.push(text),
             DocLineKind::BlockCommentBody(text) => doc_lines.push(text),

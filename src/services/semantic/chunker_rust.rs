@@ -36,6 +36,7 @@ fn extract_rust_items(node: Node, source: &str, chunks: &mut Vec<CodeChunk>) {
                 .get(start_byte..node.end_byte())
                 .unwrap_or_default()
                 .to_string();
+            let checksum = compute_checksum(&content);
 
             chunks.push(CodeChunk {
                 file_path: String::new(),
@@ -44,8 +45,8 @@ fn extract_rust_items(node: Node, source: &str, chunks: &mut Vec<CodeChunk>) {
                 language: "rust".to_string(),
                 start_line: node.start_position().row + 1,
                 end_line: node.end_position().row + 1,
-                content: content.clone(),
-                content_checksum: compute_checksum(&content),
+                content,
+                content_checksum: checksum,
             });
         }
 
