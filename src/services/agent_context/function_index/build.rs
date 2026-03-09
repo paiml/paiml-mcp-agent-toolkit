@@ -96,16 +96,16 @@ impl AgentContextIndex {
                 .to_string();
 
             // Compute SHA256 checksum for incremental updates
-            let checksum = compute_file_sha256(&content);
+            let checksum = compute_file_sha256(content);
             file_checksums.insert(relative_path.clone(), checksum);
 
             // Detect module-level coverage(off) — cached for O(1) query-time lookup
-            if has_coverage_off(&content) {
+            if has_coverage_off(content) {
                 coverage_off_files.insert(relative_path.clone());
             }
 
             // Extract functions using AST chunker
-            let chunks = match chunk_code(&content, language) {
+            let chunks = match chunk_code(content, language) {
                 Ok(c) => c,
                 Err(_) => continue, // Skip parse errors
             };
@@ -131,7 +131,7 @@ impl AgentContextIndex {
                 }
 
                 // Extract quality metrics (borrows chunk)
-                let quality = extract_quality_metrics(&chunk, &content);
+                let quality = extract_quality_metrics(&chunk, content);
 
                 // Extract signature (first line of definition) — must borrow before move
                 let signature = chunk
@@ -142,7 +142,7 @@ impl AgentContextIndex {
                     .to_string();
 
                 // Extract doc comment (lines starting with /// or /** before definition)
-                let doc_comment = extract_doc_comment(&content, chunk.start_line);
+                let doc_comment = extract_doc_comment(content, chunk.start_line);
 
                 // Take ownership of chunk fields (avoids .clone() — saves ~12.5 MB peak)
                 let entry = FunctionEntry {
