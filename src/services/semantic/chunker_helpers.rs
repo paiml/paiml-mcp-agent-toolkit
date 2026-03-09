@@ -87,6 +87,7 @@ fn push_chunk(
     node: Node,
     content: String,
 ) {
+    let checksum = compute_checksum(&content);
     chunks.push(CodeChunk {
         file_path: String::new(),
         chunk_type,
@@ -94,8 +95,8 @@ fn push_chunk(
         language: language.to_string(),
         start_line: node.start_position().row + 1,
         end_line: node.end_position().row + 1,
-        content: content.clone(),
-        content_checksum: compute_checksum(&content),
+        content,
+        content_checksum: checksum,
     });
 }
 

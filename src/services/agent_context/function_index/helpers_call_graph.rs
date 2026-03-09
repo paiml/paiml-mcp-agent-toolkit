@@ -95,8 +95,14 @@ fn record_call_edges_from_source(
         };
         for &callee_idx in callee_indices {
             if callee_idx != caller_idx && seen.insert(callee_idx) {
-                calls.entry(caller_idx).or_default().push(callee_idx);
-                called_by.entry(callee_idx).or_default().push(caller_idx);
+                calls
+                    .entry(caller_idx)
+                    .or_insert_with(|| Vec::with_capacity(8))
+                    .push(callee_idx);
+                called_by
+                    .entry(callee_idx)
+                    .or_insert_with(|| Vec::with_capacity(4))
+                    .push(caller_idx);
             }
         }
     }
