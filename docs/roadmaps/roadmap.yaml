@@ -2501,11 +2501,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'New task: docs/specifications/pmat-spec.md'
-  status: inprogress
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-03-09T16:34:36.248692623+00:00
-  updated: 2026-03-09T16:34:36.248692623+00:00
+  updated: 2026-03-09T17:25:57.724313275+00:00
   spec: null
   acceptance_criteria: []
   phases: []
