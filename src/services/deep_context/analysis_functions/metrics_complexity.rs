@@ -99,82 +99,23 @@ async fn analyze_files_complexity(
         .await
 }
 
-#[allow(clippy::manual_map)] // Complex async + feature-gate pattern, not easily simplified
 async fn analyze_single_file_complexity(
     file_path: &std::path::Path,
 ) -> Option<crate::services::complexity::FileComplexityMetrics> {
     let ext = file_path.extension()?.to_str()?;
 
+    // All cached languages use process-global DashMap populated by the AST phase
+    // (which runs first in the two-phase execution model). No fallback parsing needed —
+    // this eliminates ~2 GB of redundant syn::parse_file() / tree-sitter allocations.
     match ext {
-        "rs" => {
-            // OPTIMIZATION: Check unified cache first (from analyze_rust_language)
-            // This avoids the second parse that analyze_rust_file_with_complexity would do
-            let cached = RUST_UNIFIED_CACHE.with(|cache| cache.borrow().get(file_path).cloned());
-
-            if let Some(metrics) = cached {
-                Some(metrics)
-            } else {
-                // Fallback to old path if not in cache (shouldn't happen in normal flow)
-                use crate::services::ast_rust::analyze_rust_file_with_complexity;
-                analyze_rust_file_with_complexity(file_path).await.ok()
-            }
-        }
+        "rs" => RUST_UNIFIED_CACHE.get(file_path).map(|r| r.value().clone()),
         "ts" | "js" | "jsx" | "tsx" => {
-            // OPTIMIZATION: Check TypeScript unified cache first (from analyze_typescript_language)
-            // This avoids the second parse that analyze_typescript_file_with_complexity would do
-            let cached =
-                TYPESCRIPT_UNIFIED_CACHE.with(|cache| cache.borrow().get(file_path).cloned());
-
-            if let Some(metrics) = cached {
-                Some(metrics)
-            } else {
-                // Fallback to old path if not in cache (shouldn't happen in normal flow)
-                #[cfg(feature = "typescript-ast")]
-                {
-                    use crate::services::ast_typescript::analyze_typescript_file_with_complexity;
-                    analyze_typescript_file_with_complexity(file_path)
-                        .await
-                        .ok()
-                }
-                #[cfg(not(feature = "typescript-ast"))]
-                None
-            }
+            TYPESCRIPT_UNIFIED_CACHE.get(file_path).map(|r| r.value().clone())
         }
-        "py" => {
-            // OPTIMIZATION: Check Python unified cache first (from analyze_python_language)
-            // This avoids the second parse that analyze_python_file_with_complexity would do
-            let cached = PYTHON_UNIFIED_CACHE.with(|cache| cache.borrow().get(file_path).cloned());
-
-            if let Some(metrics) = cached {
-                Some(metrics)
-            } else {
-                // Fallback to old path if not in cache (shouldn't happen in normal flow)
-                #[cfg(feature = "python-ast")]
-                {
-                    use crate::services::ast_python::analyze_python_file_with_complexity;
-                    analyze_python_file_with_complexity(file_path, None)
-                        .await
-                        .ok()
-                }
-                #[cfg(not(feature = "python-ast"))]
-                None
-            }
-        }
-        "go" => {
-            // OPTIMIZATION: Check Go unified cache first (from analyze_go_language)
-            // This avoids the second parse - TICKET-3004
-            GO_UNIFIED_CACHE.with(|cache| cache.borrow().get(file_path).cloned())
-        }
-        "wat" | "wasm" => {
-            // OPTIMIZATION: Check WASM unified cache first (from analyze_wasm_language)
-            // This avoids the second parse - TICKET-3005
-            WASM_UNIFIED_CACHE.with(|cache| cache.borrow().get(file_path).cloned())
-        }
-        "sh" | "bash" => {
-            // OPTIMIZATION: Check Bash unified cache first (from analyze_bash_language)
-            // This avoids the second parse - TICKET-3006
-            BASH_UNIFIED_CACHE.with(|cache| cache.borrow().get(file_path).cloned())
-        }
+        "py" => PYTHON_UNIFIED_CACHE.get(file_path).map(|r| r.value().clone()),
+        "go" => GO_UNIFIED_CACHE.get(file_path).map(|r| r.value().clone()),
+        "wat" | "wasm" => WASM_UNIFIED_CACHE.get(file_path).map(|r| r.value().clone()),
+        "sh" | "bash" => BASH_UNIFIED_CACHE.get(file_path).map(|r| r.value().clone()),
         "lua" => analyze_lua_complexity_metrics(file_path).await,
         _ => None,
     }

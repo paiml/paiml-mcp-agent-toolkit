@@ -1,9 +1,11 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
 
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use tracing::debug;
 
+use crate::services::cache::{CacheConfig, SessionCacheManager};
 use crate::services::deep_context::analyzer_core::types::{
     AnalysisResult, ParallelAnalysisResults,
 };
@@ -16,34 +18,107 @@ impl DeepContextAnalyzer {
         project_path: &std::path::Path,
         progress: &crate::services::progress::ProgressTracker,
     ) -> anyhow::Result<ParallelAnalysisResults> {
-        // Step 1: Spawn all analysis tasks with progress tracking
-        let mut join_set = self.spawn_analysis_tasks(project_path)?;
-
-        // Create sub-progress bars for different analyses
         let analysis_count = self.config.include_analyses.len() as u64;
         let analysis_progress = progress.create_sub_progress("Running analyses", analysis_count);
 
-        // Step 2: Collect and process results - NO TIMEOUT!
-        let results = self
+        let mut results = ParallelAnalysisResults::default();
+
+        // Phase 1: Run AST analysis FIRST to populate process-global DashMap caches.
+        // The AST phase parses every Rust/TS/Python file once and stores complexity
+        // metrics in RUST_UNIFIED_CACHE etc. Subsequent phases get 100% cache hits
+        // instead of redundantly calling syn::parse_file() (~3 GB savings).
+        if self.config.include_analyses.contains(&AnalysisType::Ast) {
+            let file_classifier_config = self.config.file_classifier_config.clone();
+            let path = project_path.to_path_buf();
+            let ast_result = tokio::spawn(async move {
+                AnalysisResult::Ast(
+                    crate::services::deep_context::analyze_ast_contexts(
+                        &path,
+                        file_classifier_config,
+                    )
+                    .await,
+                )
+            })
+            .await?;
+            self.integrate_analysis_result(&mut results, ast_result);
+            analysis_progress.inc(1);
+        }
+
+        // Phase 2: Spawn remaining analyses in parallel (they benefit from populated caches)
+        let mut join_set = self.spawn_remaining_tasks(project_path)?;
+
+        // Collect remaining results
+        let remaining = self
             .collect_analysis_results_with_progress(&mut join_set, &analysis_progress)
             .await?;
+
+        // Merge remaining results into the aggregate
+        self.merge_results(&mut results, remaining);
 
         analysis_progress.finish_with_message("Analyses complete");
         Ok(results)
     }
 
-    /// Spawn all configured analysis tasks
-    pub(crate) fn spawn_analysis_tasks(
+    /// Spawn all configured analysis tasks EXCEPT AST (which runs in Phase 1)
+    pub(crate) fn spawn_remaining_tasks(
         &self,
         project_path: &std::path::Path,
     ) -> anyhow::Result<tokio::task::JoinSet<AnalysisResult>> {
         let mut join_set = tokio::task::JoinSet::new();
 
+        // Shared cache for Provability and DAG — both call analyze_project_with_cache(),
+        // so the second one to parse any file gets a cache hit (saves ~1 GB syn allocations)
+        let shared_cache = Arc::new(SessionCacheManager::new(CacheConfig::default()));
+
         for analysis_type in &self.config.include_analyses {
-            self.spawn_analysis_task(&mut join_set, project_path, analysis_type)?;
+            // Skip AST — already ran in Phase 1
+            if matches!(analysis_type, AnalysisType::Ast) {
+                continue;
+            }
+            self.spawn_analysis_task(
+                &mut join_set,
+                project_path,
+                analysis_type,
+                &shared_cache,
+            )?;
         }
 
         Ok(join_set)
+    }
+
+    /// Merge partial results from remaining analyses into the main results
+    fn merge_results(
+        &self,
+        target: &mut ParallelAnalysisResults,
+        source: ParallelAnalysisResults,
+    ) {
+        if source.ast_contexts.is_some() {
+            target.ast_contexts = source.ast_contexts;
+        }
+        if source.complexity_report.is_some() {
+            target.complexity_report = source.complexity_report;
+        }
+        if source.churn_analysis.is_some() {
+            target.churn_analysis = source.churn_analysis;
+        }
+        if source.dead_code_results.is_some() {
+            target.dead_code_results = source.dead_code_results;
+        }
+        if source.duplicate_code_results.is_some() {
+            target.duplicate_code_results = source.duplicate_code_results;
+        }
+        if source.satd_results.is_some() {
+            target.satd_results = source.satd_results;
+        }
+        if source.provability_results.is_some() {
+            target.provability_results = source.provability_results;
+        }
+        if source.dependency_graph.is_some() {
+            target.dependency_graph = source.dependency_graph;
+        }
+        if source.big_o_analysis.is_some() {
+            target.big_o_analysis = source.big_o_analysis;
+        }
     }
 
     /// Spawn a single analysis task based on type
@@ -52,6 +127,7 @@ impl DeepContextAnalyzer {
         join_set: &mut tokio::task::JoinSet<AnalysisResult>,
         project_path: &std::path::Path,
         analysis_type: &AnalysisType,
+        shared_cache: &Arc<SessionCacheManager>,
     ) -> anyhow::Result<()> {
         let path = project_path.to_path_buf();
 
@@ -62,8 +138,12 @@ impl DeepContextAnalyzer {
             AnalysisType::DeadCode => self.spawn_dead_code_analysis(join_set, path),
             AnalysisType::DuplicateCode => self.spawn_duplicate_analysis(join_set, path),
             AnalysisType::Satd => self.spawn_satd_analysis(join_set, path),
-            AnalysisType::Provability => self.spawn_provability_analysis(join_set, path),
-            AnalysisType::Dag => self.spawn_dag_analysis(join_set, path),
+            AnalysisType::Provability => {
+                self.spawn_provability_analysis(join_set, path, shared_cache.clone())
+            }
+            AnalysisType::Dag => {
+                self.spawn_dag_analysis(join_set, path, shared_cache.clone())
+            }
             AnalysisType::TechnicalDebtGradient => Ok(()), // Computed in correlate_defects
             AnalysisType::BigO => self.spawn_big_o_analysis(join_set, path),
         }
@@ -160,10 +240,15 @@ impl DeepContextAnalyzer {
         &self,
         join_set: &mut tokio::task::JoinSet<AnalysisResult>,
         path: PathBuf,
+        cache: Arc<SessionCacheManager>,
     ) -> anyhow::Result<()> {
         join_set.spawn(async move {
             AnalysisResult::Provability(
-                crate::services::deep_context::analysis_functions::analyze_provability(&path).await,
+                crate::services::deep_context::analysis_functions::analyze_provability_with_cache(
+                    &path,
+                    Some(cache),
+                )
+                .await,
             )
         });
         Ok(())
@@ -173,12 +258,17 @@ impl DeepContextAnalyzer {
         &self,
         join_set: &mut tokio::task::JoinSet<AnalysisResult>,
         path: PathBuf,
+        cache: Arc<SessionCacheManager>,
     ) -> anyhow::Result<()> {
         let dag_type = self.config.dag_type.clone();
         join_set.spawn(async move {
             AnalysisResult::Dag(
-                crate::services::deep_context::analysis_functions::analyze_dag(&path, dag_type)
-                    .await,
+                crate::services::deep_context::analysis_functions::analyze_dag_with_cache(
+                    &path,
+                    dag_type,
+                    Some(cache),
+                )
+                .await,
             )
         });
         Ok(())

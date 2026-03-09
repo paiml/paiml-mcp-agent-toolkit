@@ -150,7 +150,9 @@ fn profile_deep_context(project_path: &Path) {
     let config = DeepContextConfig::default();
     let analyzer = DeepContextAnalyzer::new(config);
 
-    let rt = tokio::runtime::Builder::new_current_thread()
+    // Use multi-thread runtime to match production behavior — analysis tasks
+    // are spawned via JoinSet and run on different worker threads.
+    let rt = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
         .expect("tokio runtime");

@@ -146,7 +146,14 @@ pub async fn analyze_satd(path: &std::path::Path) -> anyhow::Result<SATDAnalysis
 pub async fn analyze_provability(
     path: &std::path::Path,
 ) -> anyhow::Result<Vec<crate::services::lightweight_provability_analyzer::ProofSummary>> {
-    use crate::services::context::{analyze_project, AstItem};
+    analyze_provability_with_cache(path, None).await
+}
+
+pub async fn analyze_provability_with_cache(
+    path: &std::path::Path,
+    cache_manager: Option<std::sync::Arc<crate::services::cache::SessionCacheManager>>,
+) -> anyhow::Result<Vec<crate::services::lightweight_provability_analyzer::ProofSummary>> {
+    use crate::services::context::{analyze_project_with_cache, AstItem};
     use crate::services::lightweight_provability_analyzer::{
         FunctionId, LightweightProvabilityAnalyzer,
     };
@@ -162,8 +169,8 @@ pub async fn analyze_provability(
     // Detect the primary language of the project
     let language = detect_project_language(path);
 
-    // Discover functions from the project using AST analysis
-    let project_context = match analyze_project(path, language).await {
+    // Discover functions from the project using AST analysis (with shared cache)
+    let project_context = match analyze_project_with_cache(path, language, cache_manager).await {
         Ok(context) => context,
         Err(e) => {
             warn!("AST analysis failed for provability: {:?}", e);
@@ -256,8 +263,16 @@ pub async fn analyze_dag(
     path: &std::path::Path,
     dag_type: DagType,
 ) -> anyhow::Result<DependencyGraph> {
+    analyze_dag_with_cache(path, dag_type, None).await
+}
+
+pub async fn analyze_dag_with_cache(
+    path: &std::path::Path,
+    dag_type: DagType,
+    cache_manager: Option<std::sync::Arc<crate::services::cache::SessionCacheManager>>,
+) -> anyhow::Result<DependencyGraph> {
     use crate::services::{
-        context::analyze_project,
+        context::analyze_project_with_cache,
         dag_builder::{
             filter_call_edges, filter_import_edges, filter_inheritance_edges, DagBuilder,
         },
@@ -272,11 +287,14 @@ pub async fn analyze_dag(
     // Detect the primary language of the project
     let language = detect_project_language(path);
 
-    // Analyze the project to get AST information - NO TIMEOUT!
-    let project_context = analyze_project(path, language).await.map_err(|e| {
-        warn!("AST analysis failed for DAG: {:?}", e);
-        anyhow::anyhow!("AST analysis failed: {}", e)
-    })?;
+    // Analyze the project to get AST information (with shared cache)
+    let project_context =
+        analyze_project_with_cache(path, language, cache_manager)
+            .await
+            .map_err(|e| {
+                warn!("AST analysis failed for DAG: {:?}", e);
+                anyhow::anyhow!("AST analysis failed: {}", e)
+            })?;
 
     // Smart bounds: limit graph size to 200 nodes (was 400)
     let graph = DagBuilder::build_from_project_with_limit(&project_context, 200);
