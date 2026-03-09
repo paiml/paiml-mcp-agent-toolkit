@@ -301,10 +301,26 @@ fn test_count_params() {
 }
 
 #[test]
-fn test_normalize_source() {
-    assert_eq!(normalize_source("fn foo() { }"), "fnfoo(){}");
-    assert_eq!(normalize_source("  fn  foo ( ) {\n}"), "fnfoo(){}");
-    assert_eq!(normalize_source("FN FOO()"), "fnfoo()");
+fn test_normalize_source_hash() {
+    // Same content with different whitespace produces same hash
+    assert_eq!(
+        normalize_source_hash("fn foo() { }"),
+        normalize_source_hash("fn foo() {}")
+    );
+    assert_eq!(
+        normalize_source_hash("  fn  foo ( ) {\n}"),
+        normalize_source_hash("fn foo(){}"),
+    );
+    // Case-insensitive: FN FOO() == fn foo()
+    assert_eq!(
+        normalize_source_hash("FN FOO()"),
+        normalize_source_hash("fn foo()"),
+    );
+    // Different content produces different hash
+    assert_ne!(
+        normalize_source_hash("fn foo()"),
+        normalize_source_hash("fn bar()"),
+    );
 }
 
 #[test]

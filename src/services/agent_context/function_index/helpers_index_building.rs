@@ -47,9 +47,12 @@ pub(crate) fn build_indices_without_corpus(functions: &[FunctionEntry]) -> Build
 }
 
 fn build_indices_impl(functions: &[FunctionEntry], include_corpus: bool) -> BuildIndicesResult {
+    // Estimate unique names ~60% of functions, unique files ~20% of functions
+    let name_cap = functions.len() * 3 / 5;
+    let file_cap = functions.len() / 5;
     let mut result = BuildIndicesResult {
-        name_index: HashMap::new(),
-        file_index: HashMap::new(),
+        name_index: HashMap::with_capacity(name_cap),
+        file_index: HashMap::with_capacity(file_cap),
         corpus: if include_corpus {
             Vec::with_capacity(functions.len())
         } else {
