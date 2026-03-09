@@ -36,7 +36,10 @@ impl CommandExecutor {
                 dry_run,
             } => {
                 if record {
-                    crate::cli::command_dispatcher::test_record::execute_test_record(from_stdin, dry_run).await
+                    crate::cli::command_dispatcher::test_record::execute_test_record(
+                        from_stdin, dry_run,
+                    )
+                    .await
                 } else {
                     crate::cli::handlers::test_handlers::handle_test(
                         suite, iterations, memory, throughput, regression, timeout, output, perf,

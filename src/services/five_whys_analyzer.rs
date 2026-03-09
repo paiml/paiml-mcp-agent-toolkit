@@ -529,11 +529,7 @@ impl EvidenceSignals {
             }),
             low_coverage: evidence.iter().any(|e| {
                 e.source == EvidenceSource::CoverageDelta
-                    && e.value
-                        .get("delta")
-                        .and_then(|v| v.as_f64())
-                        .unwrap_or(0.0)
-                        < 0.0
+                    && e.value.get("delta").and_then(|v| v.as_f64()).unwrap_or(0.0) < 0.0
             }),
         }
     }
@@ -736,11 +732,7 @@ impl FiveWhysAnalyzer {
         let has_low_coverage = whys.iter().any(|w| {
             w.evidence.iter().any(|e| {
                 e.source == EvidenceSource::CoverageDelta
-                    && e.value
-                        .get("delta")
-                        .and_then(|v| v.as_f64())
-                        .unwrap_or(0.0)
-                        < 0.0
+                    && e.value.get("delta").and_then(|v| v.as_f64()).unwrap_or(0.0) < 0.0
             })
         });
 

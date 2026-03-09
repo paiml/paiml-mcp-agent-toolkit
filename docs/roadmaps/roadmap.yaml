@@ -2481,11 +2481,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: Implement 6 scoring system improvements from pmat-spec.md
-  status: inprogress
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-03-09T14:59:18Z
-  updated: 2026-03-09T15:57:53Z
+  updated: 2026-03-09T17:29:01Z
   spec: null
   acceptance_criteria:
   - 1. Rust Project Score v3.0 rebalance (10pts/category). 2. Absorb Popper into RPS. 3. Five Whys v2 evidence diversification. 4. pmat test --record for EvoScore. 5. TDG churn-weighted priority. 6. Muda-to-code file mapping.

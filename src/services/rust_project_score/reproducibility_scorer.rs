@@ -203,7 +203,11 @@ mod tests {
 
         // Create signals for Popper B-F
         fs::write(temp_dir.path().join("Cargo.lock"), "# Lock").unwrap();
-        fs::write(temp_dir.path().join("Cargo.toml"), "[package]\nname = \"test\"").unwrap();
+        fs::write(
+            temp_dir.path().join("Cargo.toml"),
+            "[package]\nname = \"test\"",
+        )
+        .unwrap();
         fs::write(temp_dir.path().join("Makefile"), "build:\n\tcargo build").unwrap();
         fs::write(
             temp_dir.path().join("LICENSE"),
@@ -222,7 +226,11 @@ mod tests {
         let result = scorer.score(temp_dir.path()).unwrap();
 
         // Should earn meaningful points
-        assert!(result.earned > 3.0, "Expected >3 earned, got {}", result.earned);
+        assert!(
+            result.earned > 3.0,
+            "Expected >3 earned, got {}",
+            result.earned
+        );
         assert_eq!(result.max, 15.0);
     }
 
