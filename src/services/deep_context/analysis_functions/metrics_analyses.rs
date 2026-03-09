@@ -153,7 +153,15 @@ pub async fn analyze_provability_with_cache(
     path: &std::path::Path,
     cache_manager: Option<std::sync::Arc<crate::services::cache::SessionCacheManager>>,
 ) -> anyhow::Result<Vec<crate::services::lightweight_provability_analyzer::ProofSummary>> {
-    use crate::services::context::{analyze_project_with_cache, AstItem};
+    analyze_provability_with_context(path, cache_manager, None).await
+}
+
+pub async fn analyze_provability_with_context(
+    path: &std::path::Path,
+    cache_manager: Option<std::sync::Arc<crate::services::cache::SessionCacheManager>>,
+    prebuilt_context: Option<std::sync::Arc<crate::services::context::ProjectContext>>,
+) -> anyhow::Result<Vec<crate::services::lightweight_provability_analyzer::ProofSummary>> {
+    use crate::services::context::AstItem;
     use crate::services::lightweight_provability_analyzer::{
         FunctionId, LightweightProvabilityAnalyzer,
     };
@@ -166,15 +174,18 @@ pub async fn analyze_provability_with_cache(
     // No timeouts - use proper concurrency instead
     let start = Instant::now();
 
-    // Detect the primary language of the project
-    let language = detect_project_language(path);
-
-    // Discover functions from the project using AST analysis (with shared cache)
-    let project_context = match analyze_project_with_cache(path, language, cache_manager).await {
-        Ok(context) => context,
-        Err(e) => {
-            warn!("AST analysis failed for provability: {:?}", e);
-            return Ok(vec![]);
+    // Reuse pre-built ProjectContext from AST phase if available (saves ~1 GB syn parsing)
+    let project_context = if let Some(ctx) = prebuilt_context {
+        (*ctx).clone()
+    } else {
+        use crate::services::context::analyze_project_with_cache;
+        let language = detect_project_language(path);
+        match analyze_project_with_cache(path, language, cache_manager).await {
+            Ok(context) => context,
+            Err(e) => {
+                warn!("AST analysis failed for provability: {:?}", e);
+                return Ok(vec![]);
+            }
         }
     };
 
@@ -271,30 +282,36 @@ pub async fn analyze_dag_with_cache(
     dag_type: DagType,
     cache_manager: Option<std::sync::Arc<crate::services::cache::SessionCacheManager>>,
 ) -> anyhow::Result<DependencyGraph> {
-    use crate::services::{
-        context::analyze_project_with_cache,
-        dag_builder::{
-            filter_call_edges, filter_import_edges, filter_inheritance_edges, DagBuilder,
-        },
+    analyze_dag_with_context(path, dag_type, cache_manager, None).await
+}
+
+pub async fn analyze_dag_with_context(
+    path: &std::path::Path,
+    dag_type: DagType,
+    cache_manager: Option<std::sync::Arc<crate::services::cache::SessionCacheManager>>,
+    prebuilt_context: Option<std::sync::Arc<crate::services::context::ProjectContext>>,
+) -> anyhow::Result<DependencyGraph> {
+    use crate::services::dag_builder::{
+        filter_call_edges, filter_import_edges, filter_inheritance_edges, DagBuilder,
     };
     use std::time::Instant;
 
     info!("Starting DAG analysis for path: {:?}", path);
     let _start = Instant::now();
 
-    // No timeout - efficient DAG analysis
-
-    // Detect the primary language of the project
-    let language = detect_project_language(path);
-
-    // Analyze the project to get AST information (with shared cache)
-    let project_context =
+    // Reuse pre-built ProjectContext from AST phase if available (saves ~1 GB syn parsing)
+    let project_context = if let Some(ctx) = prebuilt_context {
+        (*ctx).clone()
+    } else {
+        use crate::services::context::analyze_project_with_cache;
+        let language = detect_project_language(path);
         analyze_project_with_cache(path, language, cache_manager)
             .await
             .map_err(|e| {
                 warn!("AST analysis failed for DAG: {:?}", e);
                 anyhow::anyhow!("AST analysis failed: {}", e)
-            })?;
+            })?
+    };
 
     // Smart bounds: limit graph size to 200 nodes (was 400)
     let graph = DagBuilder::build_from_project_with_limit(&project_context, 200);

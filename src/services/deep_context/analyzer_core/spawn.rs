@@ -27,6 +27,8 @@ impl DeepContextAnalyzer {
         // The AST phase parses every Rust/TS/Python file once and stores complexity
         // metrics in RUST_UNIFIED_CACHE etc. Subsequent phases get 100% cache hits
         // instead of redundantly calling syn::parse_file() (~3 GB savings).
+        let mut prebuilt_context: Option<Arc<crate::services::context::ProjectContext>> = None;
+
         if self.config.include_analyses.contains(&AnalysisType::Ast) {
             let file_classifier_config = self.config.file_classifier_config.clone();
             let path = project_path.to_path_buf();
@@ -40,12 +42,40 @@ impl DeepContextAnalyzer {
                 )
             })
             .await?;
+
+            // Extract ProjectContext from AST results for Provability/DAG reuse.
+            // This eliminates 2 full analyze_project() calls (~2 GB syn parsing).
+            if let AnalysisResult::Ast(Ok(ref ast_contexts)) = ast_result {
+                let files: Vec<crate::services::context::FileContext> =
+                    ast_contexts.iter().map(|efc| efc.base.clone()).collect();
+                let summary = crate::services::context::ProjectSummary {
+                    total_files: files.len(),
+                    total_functions: files
+                        .iter()
+                        .flat_map(|f| f.items.iter())
+                        .filter(|i| matches!(i, crate::services::context::AstItem::Function { .. }))
+                        .count(),
+                    total_structs: 0,
+                    total_enums: 0,
+                    total_traits: 0,
+                    total_impls: 0,
+                    dependencies: vec![],
+                };
+                prebuilt_context = Some(Arc::new(crate::services::context::ProjectContext {
+                    project_type: "rust".to_string(),
+                    files,
+                    summary,
+                    graph: None,
+                }));
+            }
+
             self.integrate_analysis_result(&mut results, ast_result);
             analysis_progress.inc(1);
         }
 
         // Phase 2: Spawn remaining analyses in parallel (they benefit from populated caches)
-        let mut join_set = self.spawn_remaining_tasks(project_path)?;
+        let mut join_set =
+            self.spawn_remaining_tasks(project_path, prebuilt_context)?;
 
         // Collect remaining results
         let remaining = self
@@ -63,11 +93,11 @@ impl DeepContextAnalyzer {
     pub(crate) fn spawn_remaining_tasks(
         &self,
         project_path: &std::path::Path,
+        prebuilt_context: Option<Arc<crate::services::context::ProjectContext>>,
     ) -> anyhow::Result<tokio::task::JoinSet<AnalysisResult>> {
         let mut join_set = tokio::task::JoinSet::new();
 
-        // Shared cache for Provability and DAG — both call analyze_project_with_cache(),
-        // so the second one to parse any file gets a cache hit (saves ~1 GB syn allocations)
+        // Shared cache as fallback for Provability/DAG if no pre-built context
         let shared_cache = Arc::new(SessionCacheManager::new(CacheConfig::default()));
 
         for analysis_type in &self.config.include_analyses {
@@ -80,6 +110,7 @@ impl DeepContextAnalyzer {
                 project_path,
                 analysis_type,
                 &shared_cache,
+                &prebuilt_context,
             )?;
         }
 
@@ -128,6 +159,7 @@ impl DeepContextAnalyzer {
         project_path: &std::path::Path,
         analysis_type: &AnalysisType,
         shared_cache: &Arc<SessionCacheManager>,
+        prebuilt_context: &Option<Arc<crate::services::context::ProjectContext>>,
     ) -> anyhow::Result<()> {
         let path = project_path.to_path_buf();
 
@@ -138,12 +170,18 @@ impl DeepContextAnalyzer {
             AnalysisType::DeadCode => self.spawn_dead_code_analysis(join_set, path),
             AnalysisType::DuplicateCode => self.spawn_duplicate_analysis(join_set, path),
             AnalysisType::Satd => self.spawn_satd_analysis(join_set, path),
-            AnalysisType::Provability => {
-                self.spawn_provability_analysis(join_set, path, shared_cache.clone())
-            }
-            AnalysisType::Dag => {
-                self.spawn_dag_analysis(join_set, path, shared_cache.clone())
-            }
+            AnalysisType::Provability => self.spawn_provability_analysis(
+                join_set,
+                path,
+                shared_cache.clone(),
+                prebuilt_context.clone(),
+            ),
+            AnalysisType::Dag => self.spawn_dag_analysis(
+                join_set,
+                path,
+                shared_cache.clone(),
+                prebuilt_context.clone(),
+            ),
             AnalysisType::TechnicalDebtGradient => Ok(()), // Computed in correlate_defects
             AnalysisType::BigO => self.spawn_big_o_analysis(join_set, path),
         }
@@ -241,12 +279,14 @@ impl DeepContextAnalyzer {
         join_set: &mut tokio::task::JoinSet<AnalysisResult>,
         path: PathBuf,
         cache: Arc<SessionCacheManager>,
+        prebuilt: Option<Arc<crate::services::context::ProjectContext>>,
     ) -> anyhow::Result<()> {
         join_set.spawn(async move {
             AnalysisResult::Provability(
-                crate::services::deep_context::analysis_functions::analyze_provability_with_cache(
+                crate::services::deep_context::analysis_functions::analyze_provability_with_context(
                     &path,
                     Some(cache),
+                    prebuilt,
                 )
                 .await,
             )
@@ -259,14 +299,16 @@ impl DeepContextAnalyzer {
         join_set: &mut tokio::task::JoinSet<AnalysisResult>,
         path: PathBuf,
         cache: Arc<SessionCacheManager>,
+        prebuilt: Option<Arc<crate::services::context::ProjectContext>>,
     ) -> anyhow::Result<()> {
         let dag_type = self.config.dag_type.clone();
         join_set.spawn(async move {
             AnalysisResult::Dag(
-                crate::services::deep_context::analysis_functions::analyze_dag_with_cache(
+                crate::services::deep_context::analysis_functions::analyze_dag_with_context(
                     &path,
                     dag_type,
                     Some(cache),
+                    prebuilt,
                 )
                 .await,
             )

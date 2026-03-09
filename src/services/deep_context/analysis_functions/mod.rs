@@ -38,8 +38,9 @@ pub use scripting::{
 // Metrics / analysis
 pub use metrics::{
     analyze_big_o, analyze_churn, analyze_complexity, analyze_dag, analyze_dag_with_cache,
-    analyze_dead_code, analyze_duplicate_code, analyze_provability,
-    analyze_provability_with_cache, analyze_satd, detect_project_language,
+    analyze_dag_with_context, analyze_dead_code, analyze_duplicate_code, analyze_provability,
+    analyze_provability_with_cache, analyze_provability_with_context, analyze_satd,
+    detect_project_language,
 };
 
 // Tests extracted to deep_context_tests.rs for file health compliance (CB-040)
