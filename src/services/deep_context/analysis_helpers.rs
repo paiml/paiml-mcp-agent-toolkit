@@ -55,7 +55,9 @@ fn categorize_files_in_parallel(
         .collect()
 }
 
-/// Filter categorized files to extract only source files
+/// Filter categorized files to extract only source files.
+/// Skips test files (*_tests.rs, *_test.rs, tests/*) since they don't contribute
+/// to complexity/provability/DAG analysis and avoid ~475 MB of syn parsing.
 fn filter_and_categorize_files(
     categorized_files: Vec<(PathBuf, crate::services::file_discovery::FileCategory)>,
 ) -> Vec<PathBuf> {
@@ -63,10 +65,18 @@ fn filter_and_categorize_files(
 
     let mut source_files = Vec::new();
     let mut skipped_files = 0;
+    let mut skipped_test_files = 0;
 
     for (file_path, category) in categorized_files {
         match category {
             FileCategory::SourceCode => {
+                // Skip test files from deep context AST analysis — they are noise
+                // for complexity, provability, and DAG phases, and parsing them
+                // with syn wastes ~475 MB of allocations.
+                if is_test_file(&file_path) {
+                    skipped_test_files += 1;
+                    continue;
+                }
                 source_files.push(file_path);
             }
             FileCategory::GeneratedOutput | FileCategory::TestArtifact => {
@@ -83,12 +93,38 @@ fn filter_and_categorize_files(
     }
 
     info!(
-        "Discovered {} source files for AST analysis (skipped {} generated/test files)",
+        "Discovered {} source files for AST analysis (skipped {} generated + {} test files)",
         source_files.len(),
-        skipped_files
+        skipped_files,
+        skipped_test_files
     );
 
     source_files
+}
+
+/// Check if a file is a test file based on naming conventions.
+/// Matches: *_tests.rs, *_test.rs, tests/*.rs, test_*.rs
+fn is_test_file(path: &std::path::Path) -> bool {
+    let file_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+
+    // Common Rust test file patterns
+    if file_name.ends_with("_tests.rs")
+        || file_name.ends_with("_test.rs")
+        || file_name.starts_with("test_")
+    {
+        return true;
+    }
+
+    // Files in tests/ directory
+    for component in path.components() {
+        if let std::path::Component::Normal(c) = component {
+            if c == "tests" {
+                return true;
+            }
+        }
+    }
+
+    false
 }
 
 /// Analyze source files and create enhanced contexts
