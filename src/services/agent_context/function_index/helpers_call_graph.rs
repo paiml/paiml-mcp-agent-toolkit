@@ -84,8 +84,8 @@ fn record_call_edges_from_source(
     name_index: &HashMap<String, Vec<usize>>,
     calls: &mut HashMap<usize, Vec<usize>>,
     called_by: &mut HashMap<usize, Vec<usize>>,
+    seen: &mut std::collections::HashSet<usize>,
 ) {
-    let mut seen: std::collections::HashSet<usize> = std::collections::HashSet::new();
     for ident in source.split(|c: char| !c.is_alphanumeric() && c != '_') {
         if ident.len() < 3 || is_keyword(ident) || is_generic_callee(ident) {
             continue;
@@ -109,14 +109,19 @@ pub(crate) fn build_call_graph(
     let capacity = functions.len() / 2;
     let mut calls: HashMap<usize, Vec<usize>> = HashMap::with_capacity(capacity);
     let mut called_by: HashMap<usize, Vec<usize>> = HashMap::with_capacity(capacity);
+    // Reuse seen set across all functions to avoid per-function allocation
+    let mut seen: std::collections::HashSet<usize> =
+        std::collections::HashSet::with_capacity(64);
 
     for (caller_idx, func) in functions.iter().enumerate() {
+        seen.clear();
         record_call_edges_from_source(
             caller_idx,
             &func.source,
             name_index,
             &mut calls,
             &mut called_by,
+            &mut seen,
         );
     }
 

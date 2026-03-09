@@ -23,14 +23,32 @@ pub(crate) fn parse_workspace_siblings(content: &str) -> Vec<String> {
 ///
 /// Used by find_similar() when corpus was not pre-built (SQLite load path).
 pub(crate) fn build_corpus_entry(func: &FunctionEntry) -> String {
-    format!(
-        "{name} {name} {sig} {sig} {doc} {doc} {path} {idents}",
-        name = func.function_name,
-        sig = func.signature,
-        doc = func.doc_comment.as_deref().unwrap_or(""),
-        path = func.file_path,
-        idents = extract_identifiers(&func.source)
-    )
+    let doc = func.doc_comment.as_deref().unwrap_or("");
+    // Estimate: known fields + ~20% of source for identifiers
+    let cap = func.function_name.len() * 2
+        + func.signature.len() * 2
+        + doc.len() * 2
+        + func.file_path.len()
+        + func.source.len().min(4096) / 5
+        + 8;
+    let mut s = String::with_capacity(cap);
+    s.push_str(&func.function_name);
+    s.push(' ');
+    s.push_str(&func.function_name);
+    s.push(' ');
+    s.push_str(&func.signature);
+    s.push(' ');
+    s.push_str(&func.signature);
+    s.push(' ');
+    s.push_str(doc);
+    s.push(' ');
+    s.push_str(doc);
+    s.push(' ');
+    s.push_str(&func.file_path);
+    s.push(' ');
+    // Append identifiers directly — avoids intermediate 16MB String allocation
+    append_identifiers(&func.source, &mut s);
+    s
 }
 
 /// Build name_index, file_index, and corpus from functions.

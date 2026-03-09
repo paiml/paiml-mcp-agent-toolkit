@@ -2,7 +2,8 @@
 fn chunk_rust_file(source: &str) -> Result<Vec<CodeChunk>, String> {
     let tree = parse_rust(source)?;
     let root = tree.root_node();
-    let mut chunks = Vec::new();
+    // Pre-allocate: typical Rust file has ~10-20 top-level items
+    let mut chunks = Vec::with_capacity(16);
 
     extract_rust_items(root, source, &mut chunks);
 

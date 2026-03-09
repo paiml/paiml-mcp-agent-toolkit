@@ -52,6 +52,8 @@ impl AgentContextIndex {
         let mut languages_seen = HashMap::new();
         let mut file_checksums: HashMap<String, String> = HashMap::with_capacity(4_000);
         let mut coverage_off_files = HashSet::new();
+        // Reusable read buffer — avoids allocating a new String per file (~33 MB saved)
+        let mut read_buf = String::with_capacity(32 * 1024);
 
         // Load compile_commands.json for C/C++ include path discovery
         let _compile_commands = load_compile_commands(&project_root);
@@ -76,9 +78,14 @@ impl AgentContextIndex {
                 None => continue,
             };
 
-            // Read file content
-            let content = match fs::read_to_string(path) {
-                Ok(c) => c,
+            // Read file content into reusable buffer
+            read_buf.clear();
+            let content = match std::fs::File::open(path)
+                .and_then(|mut f| {
+                    use std::io::Read;
+                    f.read_to_string(&mut read_buf)
+                }) {
+                Ok(_) => read_buf.as_str(),
                 Err(_) => continue, // Skip binary/unreadable files
             };
 

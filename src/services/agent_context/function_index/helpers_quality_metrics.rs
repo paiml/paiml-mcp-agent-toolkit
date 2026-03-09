@@ -420,37 +420,62 @@ pub(super) fn extract_doc_comment(content: &str, start_line: usize) -> Option<St
         return None;
     }
 
-    // Build byte-offset index for lines preceding start_line (avoids collecting ALL lines)
-    // Only index lines we might need — up to start_line-1
-    let target = start_line - 1; // 0-indexed line we scan backward from
-    let mut line_starts: Vec<usize> = Vec::with_capacity(target + 1);
-    line_starts.push(0);
-    for (i, byte) in content.bytes().enumerate() {
-        if byte == b'\n' && line_starts.len() <= target {
-            line_starts.push(i + 1);
+    // Find byte offset of start_line by counting newlines (0 alloc)
+    let bytes = content.as_bytes();
+    let mut line_num = 1usize;
+    let mut def_line_start = 0usize;
+    for (i, &b) in bytes.iter().enumerate() {
+        if line_num >= start_line {
+            def_line_start = i;
+            break;
+        }
+        if b == b'\n' {
+            line_num += 1;
+            if line_num >= start_line {
+                def_line_start = i + 1;
+                break;
+            }
         }
     }
-
-    if line_starts.len() <= target {
+    if line_num < start_line {
         return None;
     }
 
+    // Scan backward line-by-line from (start_line - 1) without allocating a line-offset Vec
     let mut doc_lines = Vec::new();
-    for i in (0..target).rev() {
-        let start = line_starts[i];
-        let end = if i + 1 < line_starts.len() {
-            // Strip trailing newline
-            line_starts[i + 1].saturating_sub(1)
+    let mut end = def_line_start; // exclusive end of current line (before its \n)
+    // Skip trailing \n before def line
+    if end > 0 && bytes[end.saturating_sub(1)] == b'\n' {
+        end = end.saturating_sub(1);
+    }
+    let mut pos = end;
+    loop {
+        // Find start of this line
+        let line_start = if pos == 0 {
+            0
         } else {
-            content.len()
+            match content[..pos].rfind('\n') {
+                Some(nl) => nl + 1,
+                None => 0,
+            }
         };
-        let line = content.get(start..end).unwrap_or("").trim();
+        let line = content.get(line_start..pos).unwrap_or("").trim();
         match classify_doc_line(line) {
             DocLineKind::DocComment(text) => doc_lines.push(text),
             DocLineKind::BlockCommentBody(text) => doc_lines.push(text),
             DocLineKind::BlockCommentStart | DocLineKind::Other => break,
-            DocLineKind::SkipLine => continue,
+            DocLineKind::SkipLine => {
+                if line_start == 0 {
+                    break;
+                }
+                pos = line_start.saturating_sub(1);
+                continue;
+            }
         }
+        if line_start == 0 {
+            break;
+        }
+        pos = line_start.saturating_sub(1);
     }
 
     if doc_lines.is_empty() {
