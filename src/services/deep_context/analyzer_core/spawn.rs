@@ -74,8 +74,7 @@ impl DeepContextAnalyzer {
         }
 
         // Phase 2: Spawn remaining analyses in parallel (they benefit from populated caches)
-        let mut join_set =
-            self.spawn_remaining_tasks(project_path, prebuilt_context)?;
+        let mut join_set = self.spawn_remaining_tasks(project_path, prebuilt_context)?;
 
         // Collect remaining results
         let remaining = self
@@ -118,11 +117,7 @@ impl DeepContextAnalyzer {
     }
 
     /// Merge partial results from remaining analyses into the main results
-    fn merge_results(
-        &self,
-        target: &mut ParallelAnalysisResults,
-        source: ParallelAnalysisResults,
-    ) {
+    fn merge_results(&self, target: &mut ParallelAnalysisResults, source: ParallelAnalysisResults) {
         if source.ast_contexts.is_some() {
             target.ast_contexts = source.ast_contexts;
         }
