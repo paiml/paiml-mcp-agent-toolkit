@@ -175,13 +175,19 @@ pub async fn analyze_provability_with_context(
     let start = Instant::now();
 
     // Reuse pre-built ProjectContext from AST phase if available (saves ~1 GB syn parsing)
-    let project_context = if let Some(ctx) = prebuilt_context {
-        (*ctx).clone()
+    // Use owned context only when we need to call analyze_project_with_cache;
+    // otherwise borrow from Arc to avoid cloning the entire ProjectContext.
+    let owned_context;
+    let project_context: &crate::services::context::ProjectContext = if let Some(ref ctx) = prebuilt_context {
+        ctx.as_ref()
     } else {
         use crate::services::context::analyze_project_with_cache;
         let language = detect_project_language(path);
         match analyze_project_with_cache(path, language, cache_manager).await {
-            Ok(context) => context,
+            Ok(context) => {
+                owned_context = context;
+                &owned_context
+            }
             Err(e) => {
                 warn!("AST analysis failed for provability: {:?}", e);
                 return Ok(vec![]);
@@ -300,21 +306,24 @@ pub async fn analyze_dag_with_context(
     let _start = Instant::now();
 
     // Reuse pre-built ProjectContext from AST phase if available (saves ~1 GB syn parsing)
-    let project_context = if let Some(ctx) = prebuilt_context {
-        (*ctx).clone()
+    // Borrow from Arc to avoid cloning the entire ProjectContext.
+    let owned_context;
+    let project_context: &crate::services::context::ProjectContext = if let Some(ref ctx) = prebuilt_context {
+        ctx.as_ref()
     } else {
         use crate::services::context::analyze_project_with_cache;
         let language = detect_project_language(path);
-        analyze_project_with_cache(path, language, cache_manager)
+        owned_context = analyze_project_with_cache(path, language, cache_manager)
             .await
             .map_err(|e| {
                 warn!("AST analysis failed for DAG: {:?}", e);
                 anyhow::anyhow!("AST analysis failed: {}", e)
-            })?
+            })?;
+        &owned_context
     };
 
     // Smart bounds: limit graph size to 200 nodes (was 400)
-    let graph = DagBuilder::build_from_project_with_limit(&project_context, 200);
+    let graph = DagBuilder::build_from_project_with_limit(project_context, 200);
 
     // Apply filters based on DAG type
     let filtered_graph = match dag_type {

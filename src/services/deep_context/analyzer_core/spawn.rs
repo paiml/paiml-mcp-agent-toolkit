@@ -372,42 +372,43 @@ impl DeepContextAnalyzer {
         Ok(results)
     }
 
-    /// Integrate a single analysis result into the final results
+    /// Integrate a single analysis result into the final results.
+    /// Takes ownership and moves data to avoid cloning large structures.
     pub(crate) fn integrate_analysis_result(
         &self,
         results: &mut ParallelAnalysisResults,
         result: AnalysisResult,
     ) {
-        match &result {
+        match result {
             AnalysisResult::Ast(Ok(data)) => {
-                results.ast_contexts = Some(data.clone());
+                results.ast_contexts = Some(data);
             }
             AnalysisResult::Complexity(Ok(data)) => {
-                results.complexity_report = Some(data.clone());
+                results.complexity_report = Some(data);
             }
             AnalysisResult::Churn(Ok(data)) => {
-                results.churn_analysis = Some(data.clone());
+                results.churn_analysis = Some(data);
             }
             AnalysisResult::DeadCode(Ok(data)) => {
-                results.dead_code_results = Some(data.clone());
+                results.dead_code_results = Some(data);
             }
             AnalysisResult::DuplicateCode(Ok(data)) => {
-                results.duplicate_code_results = Some(data.clone());
+                results.duplicate_code_results = Some(data);
             }
             AnalysisResult::Satd(Ok(data)) => {
-                results.satd_results = Some(data.clone());
+                results.satd_results = Some(data);
             }
             AnalysisResult::Provability(Ok(data)) => {
-                results.provability_results = Some(data.clone());
+                results.provability_results = Some(data);
             }
             AnalysisResult::Dag(Ok(data)) => {
-                results.dependency_graph = Some(data.clone());
+                results.dependency_graph = Some(data);
             }
             AnalysisResult::BigO(Ok(data)) => {
-                results.big_o_analysis = Some(data.clone());
+                results.big_o_analysis = Some(data);
             }
             // Handle errors with helper
-            _ => self.log_integration_error(&result),
+            other => self.log_integration_error(&other),
         }
     }
 
