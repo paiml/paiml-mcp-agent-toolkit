@@ -61,7 +61,12 @@ pub async fn analyze_duplicate_code(
 fn discover_project_files(path: &std::path::Path) -> anyhow::Result<Vec<std::path::PathBuf>> {
     use crate::services::file_discovery::ProjectFileDiscovery;
     let discovery_service = ProjectFileDiscovery::new(path.to_path_buf());
-    discovery_service.discover_files()
+    let files = discovery_service.discover_files()?;
+    // Skip test files — they add noise to duplicate/clone detection
+    Ok(files
+        .into_iter()
+        .filter(|f| !crate::services::deep_context::is_test_file(f))
+        .collect())
 }
 
 fn filter_and_categorize_files_for_duplicates(
