@@ -201,6 +201,41 @@ EvoScore:    8.114 / 12.1875 = 0.666 → Pass
 | Mature | 1.5 | Penalize regressions in established codebase |
 | Legacy rescue | 2.0 | Heavily reward sustained improvement |
 
+## Relationship to TDG
+
+EvoScore and TDG are **independent, complementary metrics** — not candidates for merging.
+
+| Dimension | TDG (CB-200) | EvoScore (CB-142) |
+|-----------|-------------|-------------------|
+| Question answered | "Is this code well-structured now?" | "Is the project improving over time?" |
+| Granularity | Per-file (4435 files) | Per-project (single scalar) |
+| Input | AST, source code | Test pass/fail across commits |
+| Timescale | Instantaneous snapshot | Rolling window (90 days) |
+| Determinism | Same source = same score | Depends on git history + CI state |
+| Toyota Way | Jidoka (stop-the-line) | Kaizen (continuous improvement) |
+
+**Why they must stay separate:**
+1. TDG is per-file; EvoScore is per-project — no meaningful per-file EvoScore without per-file test attribution
+2. TDG is deterministic and cached for O(1) pre-commit gates; EvoScore needs disk I/O across N commit files
+3. Combining them loses both signals — a project can have excellent TDG but stagnant EvoScore (or vice versa)
+
+### Future Cross-Metric Work
+
+These extensions bridge the gap without merging the metrics:
+
+**Churn-weighted TDG** — `tdg_priority = tdg_score * git_churn_factor`. High-TDG files
+that change often are worse than high-TDG files that never change. Stays per-file and
+deterministic for a given commit. Data source: `pmat query --churn`.
+
+**Per-function EvoScore** — Track individual function test coverage trajectories across
+commits. Requires mapping test failures to specific functions (via coverage data). Would
+enable "this function's tests are regressing" alerts at the function level.
+
+**Dashboard correlation** — Show TDG grade distribution trends alongside EvoScore in
+`pmat rust-project-score` output. Let humans observe the relationship without
+algorithmically coupling the metrics. E.g., "TDG avg improved 2.3 points while EvoScore
+held at 0.7 — quality improving without regression."
+
 ## Implementation Status
 
 | Feature | Status | Location |
