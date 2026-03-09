@@ -51,7 +51,7 @@ pub fn filter_inheritance_edges(graph: DependencyGraph) -> DependencyGraph {
     graph.filter_by_edge_type(EdgeType::Inherits)
 }
 
-/// Add `PageRank` scores to all nodes in the graph
+/// Add `PageRank` scores to all nodes in the graph (in-place mutation, no clone)
 ///
 /// # Examples
 ///
@@ -60,28 +60,27 @@ pub fn filter_inheritance_edges(graph: DependencyGraph) -> DependencyGraph {
 /// use pmat::models::dag::DependencyGraph;
 ///
 /// let graph = DependencyGraph::new();
-/// let scored_graph = add_pagerank_scores(&graph);
+/// let scored_graph = add_pagerank_scores(graph);  // takes ownership, no clone
 /// // Graph nodes now have PageRank scores in metadata
 /// ```
 #[must_use]
-pub fn add_pagerank_scores(graph: &DependencyGraph) -> DependencyGraph {
+pub fn add_pagerank_scores(mut graph: DependencyGraph) -> DependencyGraph {
     if graph.nodes.is_empty() {
-        return graph.clone();
+        return graph;
     }
 
-    let scores = compute_pagerank_scores(graph);
+    let scores = compute_pagerank_scores(&graph);
 
-    // Create a new graph with centrality scores in metadata
-    let node_ids: Vec<&String> = graph.nodes.keys().collect();
-    let mut new_graph = graph.clone();
-    for (id, node) in &mut new_graph.nodes {
-        if let Some(idx) = node_ids.iter().position(|&nid| nid == id) {
+    // Mutate nodes in-place to add centrality scores (avoids full graph clone)
+    let node_ids: Vec<String> = graph.nodes.keys().cloned().collect();
+    for (idx, id) in node_ids.iter().enumerate() {
+        if let Some(node) = graph.nodes.get_mut(id) {
             node.metadata
                 .insert("centrality".to_string(), scores[idx].to_string());
         }
     }
 
-    new_graph
+    graph
 }
 
 /// Prune graph using `PageRank` algorithm to keep only the most important nodes

@@ -286,7 +286,7 @@ fn test_filter_inheritance_edges_returns_empty_when_no_inherits() {
 #[test]
 fn test_add_pagerank_scores_empty_graph() {
     let graph = DependencyGraph::new();
-    let scored = add_pagerank_scores(&graph);
+    let scored = add_pagerank_scores(graph);
     assert!(scored.nodes.is_empty());
 }
 
@@ -297,7 +297,7 @@ fn test_add_pagerank_scores_single_node() {
         .nodes
         .insert("a".to_string(), create_test_node("a", NodeType::Function));
 
-    let scored = add_pagerank_scores(&graph);
+    let scored = add_pagerank_scores(graph);
     assert_eq!(scored.nodes.len(), 1);
 }
 
@@ -307,7 +307,7 @@ fn test_add_pagerank_scores_preserves_structure() {
     let node_count = graph.nodes.len();
     let edge_count = graph.edges.len();
 
-    let scored = add_pagerank_scores(&graph);
+    let scored = add_pagerank_scores(graph);
 
     assert_eq!(scored.nodes.len(), node_count);
     assert_eq!(scored.edges.len(), edge_count);
@@ -334,7 +334,7 @@ fn test_add_pagerank_scores_with_chain() {
         .edges
         .push(create_test_edge("b", "c", EdgeType::Calls));
 
-    let scored = add_pagerank_scores(&graph);
+    let scored = add_pagerank_scores(graph);
     assert_eq!(scored.nodes.len(), 3);
 }
 
@@ -541,8 +541,9 @@ fn test_graph_manipulation_chain() {
     let filtered = filter_call_edges(graph);
     assert_eq!(filtered.edges.len(), 1);
 
-    let scored = add_pagerank_scores(&filtered);
-    assert_eq!(scored.nodes.len(), filtered.nodes.len());
+    let filtered_len = filtered.nodes.len();
+    let scored = add_pagerank_scores(filtered);
+    assert_eq!(scored.nodes.len(), filtered_len);
 
     let pruned = prune_graph_pagerank(&scored, 3);
     assert!(pruned.nodes.len() <= 3);

@@ -81,10 +81,10 @@ impl DagBuilder {
         project: &ProjectContext,
         max_nodes: usize,
     ) -> DependencyGraph {
-        let mut graph = Self::build_from_project(project);
+        let graph = Self::build_from_project(project);
 
-        // Always calculate PageRank scores for centrality
-        graph = add_pagerank_scores(&graph);
+        // Always calculate PageRank scores for centrality (takes ownership, no clone)
+        let graph = add_pagerank_scores(graph);
 
         if graph.edges.len() > 400 {
             // Safety margin for Mermaid - prune but keep scores

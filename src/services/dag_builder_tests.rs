@@ -95,7 +95,7 @@ mod tests {
     #[test]
     fn test_add_pagerank_scores() {
         let graph = create_test_graph();
-        let scored = add_pagerank_scores(&graph);
+        let scored = add_pagerank_scores(graph.clone());
 
         // Should have same number of nodes and edges
         assert_eq!(scored.nodes.len(), graph.nodes.len());
@@ -110,7 +110,7 @@ mod tests {
     #[test]
     fn test_add_pagerank_scores_empty_graph() {
         let graph = DependencyGraph::new();
-        let scored = add_pagerank_scores(&graph);
+        let scored = add_pagerank_scores(graph.clone());
 
         assert!(scored.nodes.is_empty());
         assert!(scored.edges.is_empty());
@@ -167,7 +167,7 @@ mod tests {
         });
 
         // With 3 edges, no pruning needed, but order should still work
-        let scored = add_pagerank_scores(&graph);
+        let scored = add_pagerank_scores(graph.clone());
         assert_eq!(scored.edges.len(), 3);
     }
 
