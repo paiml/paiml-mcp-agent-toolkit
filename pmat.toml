@@ -48,7 +48,7 @@ target_memory_mb = 47
 
 [mcp]
 server_name = "pmat-mcp-server"
-server_version = "3.6.1"
+server_version = "3.7.0"
 enable_compression = true
 request_timeout_seconds = 30
 max_request_size = 10485760

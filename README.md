@@ -388,7 +388,7 @@ PMAT is built on the PAIML Sovereign Stack - pure-Rust, SIMD-accelerated librari
 | [trueno-db](https://crates.io/crates/trueno-db) | Embedded analytics database | 0.3.15 |
 | [trueno-viz](https://crates.io/crates/trueno-viz) | Terminal graph visualization | 0.2.1 |
 | [trueno-zram-core](https://crates.io/crates/trueno-zram-core) | SIMD LZ4/ZSTD compression (optional) | 0.3.0 |
-| **pmat** | Code analysis toolkit | 3.6.1 |
+| **pmat** | Code analysis toolkit | 3.7.0 |
 
 **Key Benefits:**
 - Pure Rust (no C dependencies, no FFI)
