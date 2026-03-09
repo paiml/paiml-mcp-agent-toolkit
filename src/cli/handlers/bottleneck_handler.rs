@@ -7,6 +7,9 @@ use anyhow::Result;
 use std::collections::HashMap;
 use std::path::Path;
 
+/// Git churn data: (file touch counts, commit file groups, total commits)
+type GitChurnData = (HashMap<String, usize>, Vec<Vec<String>>, usize);
+
 /// A detected bottleneck file
 #[derive(Debug, serde::Serialize)]
 struct BottleneckFile {
@@ -89,6 +92,7 @@ fn analyze_bottlenecks(path: &Path, period: u32, threshold: usize) -> Result<Bot
         .iter()
         .filter(|(_, &count)| count >= threshold)
         .filter(|(path, _)| !is_generated_file(path))
+        .filter(|(file_path, _)| file_sizes.contains_key(file_path.as_str()))
         .map(|(file_path, &touches)| {
             let lines = file_sizes.get(file_path.as_str()).copied().unwrap_or(0);
             let authors = file_authors.get(file_path.as_str()).copied().unwrap_or(1);
@@ -129,10 +133,7 @@ fn analyze_bottlenecks(path: &Path, period: u32, threshold: usize) -> Result<Bot
 }
 
 /// Get file touch counts from git log
-fn get_git_churn(
-    path: &Path,
-    period: u32,
-) -> Result<(HashMap<String, usize>, Vec<Vec<String>>, usize)> {
+fn get_git_churn(path: &Path, period: u32) -> Result<GitChurnData> {
     let output = std::process::Command::new("git")
         .args([
             "log",

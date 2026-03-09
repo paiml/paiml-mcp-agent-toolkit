@@ -34,7 +34,7 @@ Successfully implemented complete TDG Baseline System with content-hash tracking
 
 ### Files Created/Modified
 - ✅ `server/src/tdg/baseline.rs` - NEW (742 lines)
-- ✅ `docs/specifications/tdg-enforcement-system.md` - NEW (6,000+ lines)
+- ✅ `docs/specifications/components/quality-testing.md` - NEW (6,000+ lines)
 - ✅ `server/src/tdg/mod.rs` - Modified (exports + Hash derive)
 - ✅ `server/src/tdg/storage.rs` - Modified (Default impl)
 - ✅ `server/src/cli/commands.rs` - Modified (+68 lines)
@@ -688,7 +688,7 @@ stage('Quality Gate') {
 
 ## Specification Reference
 
-Complete system specification: `docs/specifications/tdg-enforcement-system.md`
+Complete system specification: `docs/specifications/components/quality-testing.md`
 
 **Contents**:
 - Problem statement

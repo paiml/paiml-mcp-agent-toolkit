@@ -1,6 +1,6 @@
 # Phase 1 Baseline Metrics - Dependency Reduction
 **Date**: 2025-11-20
-**Spec**: docs/specifications/reduce-dependencies-maintain-functionality-speedup-compile-testing-spec.md v1.1
+**Spec**: docs/specifications/components/build-performance.md v1.1
 
 ## Tooling Installed
 

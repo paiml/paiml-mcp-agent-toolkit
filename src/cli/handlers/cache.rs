@@ -101,9 +101,8 @@ async fn handle_cache_stats(detailed: bool, format: &str, history: bool) -> Resu
             if detailed {
                 println!("{}", c::subheader("Detailed Analysis:"));
                 println!(
-                    "   {}: {}",
-                    c::dim("Implementation"),
-                    "Simplified cache strategy system"
+                    "   {}: Simplified cache strategy system",
+                    c::dim("Implementation")
                 );
             }
             if history {

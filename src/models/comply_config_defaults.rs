@@ -191,6 +191,39 @@ fn default_checks() -> HashMap<String, CheckConfig> {
         },
     );
 
+    // CB-140: Mono-spec structure enforcement
+    checks.insert(
+        "cb-140".to_string(),
+        CheckConfig {
+            enabled: true,
+            severity: CheckSeverity::Warning,
+            threshold: Some(500.0), // Max lines per spec file
+            options: HashMap::new(),
+        },
+    );
+
+    // CB-141: Memory profiling infrastructure
+    checks.insert(
+        "cb-141".to_string(),
+        CheckConfig {
+            enabled: true,
+            severity: CheckSeverity::Warning,
+            threshold: None,
+            options: HashMap::new(),
+        },
+    );
+
+    // CB-142: SWE-CI EvoScore
+    checks.insert(
+        "cb-142".to_string(),
+        CheckConfig {
+            enabled: true,
+            severity: CheckSeverity::Info,
+            threshold: Some(0.5), // Minimum EvoScore for pass
+            options: HashMap::new(),
+        },
+    );
+
     // CB-200: TDG Grade Gate (#214) — "A" or Fail
     checks.insert(
         "cb-200".to_string(),

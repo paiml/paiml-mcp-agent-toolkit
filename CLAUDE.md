@@ -277,7 +277,7 @@ pmat rust-project-score --failures-only    # Show only failures
 
 **Categories**: Rust Tooling (25pts), Code Quality (26pts), Testing (20pts), Documentation (15pts), Performance (10pts), Dependency Health (12pts).
 
-Spec: `docs/specifications/rust-project-score-v1.1-update.md` | Location: `server/src/services/rust_project_score/`
+Spec: `docs/specifications/components/repo-health.md` | Location: `server/src/services/rust_project_score/`
 
 ---
 

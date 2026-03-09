@@ -446,7 +446,7 @@ fn test_streaming_format_documented() {
     // This test drives documentation requirement
     // Expected: Streaming format is documented in specification
 
-    // Will verify in GREEN phase that docs/specifications/pmat-recording-format.md
+    // Will verify in GREEN phase that docs/specifications/components/infrastructure.md
     // includes streaming serialization details
 
     assert!(true, "Streaming serialization format must be documented");

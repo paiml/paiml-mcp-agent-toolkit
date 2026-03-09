@@ -1,15 +1,26 @@
 /// Extract identifiers from source for better search
 pub(super) fn extract_identifiers(source: &str) -> String {
-    let mut identifiers = Vec::new();
+    let mut result = String::with_capacity(source.len().min(4096) / 5);
+    append_identifiers(source, &mut result);
+    result
+}
 
+/// Append extracted identifiers directly into an existing String buffer.
+/// Avoids intermediate String allocation when called from build_corpus_entry.
+pub(super) fn append_identifiers(source: &str, buf: &mut String) {
     for word in source.split(|c: char| !c.is_alphanumeric() && c != '_') {
         let trimmed = word.trim();
         if trimmed.len() >= 3 && !is_keyword(trimmed) {
-            identifiers.push(trimmed.to_lowercase());
+            if !buf.is_empty() {
+                buf.push(' ');
+            }
+            for c in trimmed.chars() {
+                for lc in c.to_lowercase() {
+                    buf.push(lc);
+                }
+            }
         }
     }
-
-    identifiers.join(" ")
 }
 
 /// Check if word is a language keyword

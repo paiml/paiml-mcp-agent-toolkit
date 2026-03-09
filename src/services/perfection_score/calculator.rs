@@ -84,35 +84,16 @@ impl PerfectionScoreCalculator {
             self.get_popper_score(project_path),
         );
 
-        let mut categories = Vec::new();
-
-        // 1. TDG Score (40 pts)
-        categories.push(CategoryScore::new(
-            "Technical Debt Grade",
-            tdg_score,
-            self.weights.tdg,
-        ));
-
-        // 2. Repo Score (30 pts)
-        categories.push(CategoryScore::new(
-            "Repository Health",
-            repo_score,
-            self.weights.repo_score,
-        ));
-
-        // 3. Rust Project Score (30 pts)
-        categories.push(CategoryScore::new(
-            "Rust Project Quality",
-            rust_score,
-            self.weights.rust_score,
-        ));
-
-        // 4. Popper Score (25 pts)
-        categories.push(CategoryScore::new(
-            "Popperian Falsifiability",
-            popper_score,
-            self.weights.popper_score,
-        ));
+        let mut categories = vec![
+            CategoryScore::new("Technical Debt Grade", tdg_score, self.weights.tdg),
+            CategoryScore::new("Repository Health", repo_score, self.weights.repo_score),
+            CategoryScore::new("Rust Project Quality", rust_score, self.weights.rust_score),
+            CategoryScore::new(
+                "Popperian Falsifiability",
+                popper_score,
+                self.weights.popper_score,
+            ),
+        ];
 
         // Categories 5-8 are cheap filesystem checks — run sequentially
 

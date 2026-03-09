@@ -420,17 +420,62 @@ pub(super) fn extract_doc_comment(content: &str, start_line: usize) -> Option<St
         return None;
     }
 
-    let lines: Vec<&str> = content.lines().collect();
-    let mut doc_lines = Vec::new();
+    // Find byte offset of start_line by counting newlines (0 alloc)
+    let bytes = content.as_bytes();
+    let mut line_num = 1usize;
+    let mut def_line_start = 0usize;
+    for (i, &b) in bytes.iter().enumerate() {
+        if line_num >= start_line {
+            def_line_start = i;
+            break;
+        }
+        if b == b'\n' {
+            line_num += 1;
+            if line_num >= start_line {
+                def_line_start = i + 1;
+                break;
+            }
+        }
+    }
+    if line_num < start_line {
+        return None;
+    }
 
-    for i in (0..start_line - 1).rev() {
-        let line = lines.get(i)?.trim();
+    // Scan backward line-by-line from (start_line - 1) without allocating a line-offset Vec
+    let mut doc_lines = Vec::new();
+    let mut end = def_line_start; // exclusive end of current line (before its \n)
+    // Skip trailing \n before def line
+    if end > 0 && bytes[end.saturating_sub(1)] == b'\n' {
+        end = end.saturating_sub(1);
+    }
+    let mut pos = end;
+    loop {
+        // Find start of this line
+        let line_start = if pos == 0 {
+            0
+        } else {
+            match content[..pos].rfind('\n') {
+                Some(nl) => nl + 1,
+                None => 0,
+            }
+        };
+        let line = content.get(line_start..pos).unwrap_or("").trim();
         match classify_doc_line(line) {
             DocLineKind::DocComment(text) => doc_lines.push(text),
             DocLineKind::BlockCommentBody(text) => doc_lines.push(text),
             DocLineKind::BlockCommentStart | DocLineKind::Other => break,
-            DocLineKind::SkipLine => continue,
+            DocLineKind::SkipLine => {
+                if line_start == 0 {
+                    break;
+                }
+                pos = line_start.saturating_sub(1);
+                continue;
+            }
         }
+        if line_start == 0 {
+            break;
+        }
+        pos = line_start.saturating_sub(1);
     }
 
     if doc_lines.is_empty() {

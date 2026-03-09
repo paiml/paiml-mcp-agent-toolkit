@@ -28,12 +28,8 @@ pub async fn analyze_typescript_language(
         .await
         .map_err(|e| anyhow::anyhow!("Unified TypeScript analysis failed: {}", e))?;
 
-    // Store complexity metrics in thread-local cache for later retrieval
-    TYPESCRIPT_UNIFIED_CACHE.with(|cache| {
-        cache
-            .borrow_mut()
-            .insert(file_path.to_path_buf(), analysis.file_metrics.clone());
-    });
+    // Store complexity metrics in process-global cache for cross-task sharing
+    TYPESCRIPT_UNIFIED_CACHE.insert(file_path.to_path_buf(), analysis.file_metrics.clone());
 
     Ok(analysis.ast_items)
 }
@@ -51,12 +47,8 @@ pub async fn analyze_python_language(
         .await
         .map_err(|e| anyhow::anyhow!("Unified Python analysis failed: {}", e))?;
 
-    // Store complexity metrics in thread-local cache for later retrieval
-    PYTHON_UNIFIED_CACHE.with(|cache| {
-        cache
-            .borrow_mut()
-            .insert(file_path.to_path_buf(), analysis.file_metrics.clone());
-    });
+    // Store complexity metrics in process-global cache for cross-task sharing
+    PYTHON_UNIFIED_CACHE.insert(file_path.to_path_buf(), analysis.file_metrics.clone());
 
     Ok(analysis.ast_items)
 }
@@ -81,12 +73,8 @@ pub async fn analyze_bash_language(
     let analyzer = UnifiedBashAnalyzer::new(file_path.to_path_buf());
     match analyzer.analyze().await {
         Ok(analysis) => {
-            // Store complexity metrics in thread-local cache
-            BASH_UNIFIED_CACHE.with(|cache| {
-                cache
-                    .borrow_mut()
-                    .insert(file_path.to_path_buf(), analysis.file_metrics.clone());
-            });
+            // Store complexity metrics in process-global cache for cross-task sharing
+            BASH_UNIFIED_CACHE.insert(file_path.to_path_buf(), analysis.file_metrics.clone());
             tracing::debug!("Bash analysis returned {} items", analysis.ast_items.len());
             Ok(analysis.ast_items)
         }

@@ -18,7 +18,7 @@ use super::types::*;
 pub(crate) fn check_muda_waste_score(project_path: &Path) -> ComplianceCheck {
     use crate::cli::handlers::comply_handlers::muda_handlers;
     let report = muda_handlers::calculate_muda_score(project_path);
-    let message = format!(
+    let mut message = format!(
         "Muda Score: {:.1}/100 ({}) - Over:{:.0} Wait:{:.0} Inv:{:.0} Proc:{:.0} Def:{:.0}",
         report.total_score,
         report.grade,
@@ -28,6 +28,14 @@ pub(crate) fn check_muda_waste_score(project_path: &Path) -> ComplianceCheck {
         report.over_processing,
         report.defects
     );
+
+    // Append file-level details for non-zero categories
+    for (category, files) in &report.file_details {
+        if !files.is_empty() {
+            message.push_str(&format!("\n    {}: {}", category, files.join(", ")));
+        }
+    }
+
     let (status, severity) = match report.grade {
         muda_handlers::MudaGrade::Lean | muda_handlers::MudaGrade::Efficient => {
             (CheckStatus::Pass, Severity::Info)

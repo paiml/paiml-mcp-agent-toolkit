@@ -112,7 +112,17 @@ async fn handle_analyze_lint_hotspot_with_params(params: LintHotspotParams) -> R
 
     log_analysis_start(&params.format);
 
-    let mut result = run_analysis_by_mode(&params).await?;
+    let result = run_analysis_by_mode(&params).await;
+
+    let mut result = match result {
+        Ok(r) => r,
+        Err(e) if e.to_string().contains("No lint violations found") => {
+            use crate::cli::colors as c;
+            eprintln!("{}", c::pass("No lint violations found — project is clean"));
+            return Ok(());
+        }
+        Err(e) => return Err(e),
+    };
 
     apply_file_filters(&mut result, &params)?;
 

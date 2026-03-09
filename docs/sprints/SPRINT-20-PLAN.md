@@ -371,7 +371,7 @@ fn test_scaffold_agent_dry_run() {
 
 - Sprint 19 Summary: `docs/sprints/SPRINT-19-SUMMARY.md`
 - Dogfooding Results: `docs/dogfooding/SPRINT-19-DOGFOODING-RESULTS.md`
-- Original Spec: `docs/specifications/scaffold-maintain-spec.md`
+- Original Spec: `docs/specifications/components/infrastructure.md`
 
 ---
 

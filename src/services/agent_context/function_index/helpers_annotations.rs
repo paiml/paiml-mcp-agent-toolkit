@@ -70,19 +70,19 @@ pub(super) fn populate_cached_annotations(
 }
 
 /// Match a git log file path against the known file set, handling path migrations.
-fn match_git_path(line: &str, files: &std::collections::HashSet<&String>) -> Option<String> {
+fn match_git_path<'a>(line: &'a str, files: &std::collections::HashSet<&str>) -> Option<&'a str> {
     let trimmed = line.trim();
     if trimmed.is_empty() {
         return None;
     }
-    // Exact match
-    if files.contains(&trimmed.to_string()) {
-        return Some(trimmed.to_string());
+    // Exact match (no allocation — compare &str directly)
+    if files.contains(trimmed) {
+        return Some(trimmed);
     }
     // Handle path migrations (e.g., server/src/foo.rs -> src/foo.rs)
     let normalized = trimmed.strip_prefix("server/").unwrap_or(trimmed);
-    if files.contains(&normalized.to_string()) {
-        return Some(normalized.to_string());
+    if files.contains(normalized) {
+        return Some(normalized);
     }
     None
 }
@@ -93,7 +93,7 @@ pub(super) fn get_file_commit_counts<'a>(
     project_root: &std::path::Path,
     files: impl Iterator<Item = &'a String>,
 ) -> HashMap<String, u32> {
-    let files: std::collections::HashSet<_> = files.collect();
+    let files: std::collections::HashSet<&str> = files.map(String::as_str).collect();
     if files.is_empty() {
         return HashMap::new();
     }
@@ -110,11 +110,11 @@ pub(super) fn get_file_commit_counts<'a>(
         return HashMap::new();
     }
 
-    let mut result = HashMap::new();
+    let mut result: HashMap<String, u32> = HashMap::with_capacity(files.len());
     let stdout = String::from_utf8_lossy(&output.stdout);
     for line in stdout.lines() {
         if let Some(path) = match_git_path(line, &files) {
-            *result.entry(path).or_insert(0) += 1;
+            *result.entry(path.to_string()).or_insert(0) += 1;
         }
     }
     result
@@ -123,20 +123,12 @@ pub(super) fn get_file_commit_counts<'a>(
 /// Detect code clones by normalized source hash
 #[allow(clippy::cast_possible_truncation)]
 pub(super) fn detect_code_clones(functions: &[FunctionEntry]) -> HashMap<usize, u32> {
-    use std::collections::hash_map::DefaultHasher;
-    use std::hash::{Hash, Hasher};
-
     let mut result = HashMap::new();
-    let mut hash_to_indices: HashMap<u64, Vec<usize>> = HashMap::new();
+    let mut hash_to_indices: HashMap<u64, Vec<usize>> = HashMap::with_capacity(functions.len());
 
     for (i, func) in functions.iter().enumerate() {
-        // Normalize source: remove whitespace, lowercase identifiers
-        let normalized = normalize_source(&func.source);
-
-        let mut hasher = DefaultHasher::new();
-        normalized.hash(&mut hasher);
-        let hash = hasher.finish();
-
+        // Hash normalized source inline (avoids allocating intermediate String)
+        let hash = normalize_source_hash(&func.source);
         hash_to_indices.entry(hash).or_default().push(i);
     }
 
@@ -153,13 +145,20 @@ pub(super) fn detect_code_clones(functions: &[FunctionEntry]) -> HashMap<usize, 
     result
 }
 
-/// Normalize source code for clone detection
-pub(super) fn normalize_source(source: &str) -> String {
-    source
-        .chars()
-        .filter(|c| !c.is_whitespace())
-        .collect::<String>()
-        .to_lowercase()
+/// Normalize source code for clone detection.
+/// Hashes inline instead of building an intermediate String (saves ~2 allocs per function).
+pub(super) fn normalize_source_hash(source: &str) -> u64 {
+    use std::collections::hash_map::DefaultHasher;
+    use std::hash::{Hash, Hasher};
+    let mut hasher = DefaultHasher::new();
+    for c in source.chars() {
+        if !c.is_whitespace() {
+            for lc in c.to_lowercase() {
+                lc.hash(&mut hasher);
+            }
+        }
+    }
+    hasher.finish()
 }
 
 /// Compute pattern diversity per file (unique AST patterns / total patterns)
@@ -441,14 +440,17 @@ fn detect_ptx_empty_loop(source: &str, faults: &mut Vec<String>) {
     if !source.contains("__global__") && !source.contains("__device__") {
         return;
     }
-    let lines: Vec<&str> = source.lines().collect();
-    for (i, line) in lines.iter().enumerate() {
+    // Use peekable iterator instead of collecting all lines into a Vec
+    let mut lines = source.lines().peekable();
+    while let Some(line) = lines.next() {
         let t = line.trim();
-        if (t.starts_with("for") || t.starts_with("while")) && i + 1 < lines.len() {
-            let next = lines[i + 1].trim();
-            if next == "{}" || next == "{ }" || next == ";" {
-                faults.push("PTX_EMPTY_LOOP".to_string());
-                return;
+        if t.starts_with("for") || t.starts_with("while") {
+            if let Some(&next) = lines.peek() {
+                let next = next.trim();
+                if next == "{}" || next == "{ }" || next == ";" {
+                    faults.push("PTX_EMPTY_LOOP".to_string());
+                    return;
+                }
             }
         }
     }
@@ -526,8 +528,9 @@ pub(crate) fn compute_name_frequency(
     if total == 0 {
         return HashMap::new();
     }
-    name_index
-        .iter()
-        .map(|(name, indices)| (name.clone(), indices.len() as f32 / total as f32))
-        .collect()
+    let mut result = HashMap::with_capacity(name_index.len());
+    for (name, indices) in name_index {
+        result.insert(name.clone(), indices.len() as f32 / total as f32);
+    }
+    result
 }

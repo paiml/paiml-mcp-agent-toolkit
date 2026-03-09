@@ -383,7 +383,7 @@ git config core.hooksPath .git-hooks
 
 ## 📚 Documentation
 
-- **Specification**: `docs/specifications/claude-agent-integration.md`
+- **Specification**: `docs/specifications/components/agent-integration.md`
 - **Implementation**: `docs/claude-integration-implementation.md`
 - **Complete Guide**: This document
 - **Hook Documentation**: `.git-hooks/README.md`

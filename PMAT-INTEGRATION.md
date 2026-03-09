@@ -438,7 +438,7 @@ pmat show-metrics --trend
 - **PMAT Repository**: https://github.com/paiml/paiml-mcp-agent-toolkit
 - **bashrs Repository**: https://github.com/paiml/bashrs
 - **O(1) Quality Gates Spec**: `docs/specifications/quick-test-build-O(1)-checking.md`
-- **Rust Project Score v2.1**: `docs/specifications/rust-project-score-v1.1-update.md`
+- **Rust Project Score v2.1**: `docs/specifications/components/repo-health.md`
 - **Documentation Accuracy**: `docs/specifications/documentation-accuracy-enforcement.md`
 - **TDG Framework**: `docs/specifications/tdg-framework.md`
 

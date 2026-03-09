@@ -17,6 +17,7 @@ server/assets/vendor/
 **/target/
 **/*.rs.bk
 *.pdb
+dhat-heap*.json
 # Cargo.lock - TRACKED for binary crates (reproducible builds)
 # Cargo Lambda
 .aws-sam/

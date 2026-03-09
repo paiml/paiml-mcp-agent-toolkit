@@ -77,31 +77,32 @@ pub(crate) fn is_test_chunk(chunk_name: &str, file_path: &str) -> bool {
 /// any known function name. If a match is found (and it's not a self-reference),
 /// records a call edge. Generic method names (new, clone, etc.) are excluded to
 /// prevent O(n^2) edge explosion.
-/// Extract meaningful identifiers from source code for call graph analysis.
-fn extract_call_identifiers(source: &str) -> Vec<&str> {
-    source
-        .split(|c: char| !c.is_alphanumeric() && c != '_')
-        .filter(|s| s.len() >= 3 && !is_keyword(s) && !is_generic_callee(s))
-        .collect()
-}
-
-/// Record call edges from a single caller to its callees.
-fn record_call_edges(
+/// Record call edges by iterating identifiers inline (avoids collecting into Vec).
+fn record_call_edges_from_source(
     caller_idx: usize,
-    idents: &[&str],
+    source: &str,
     name_index: &HashMap<String, Vec<usize>>,
     calls: &mut HashMap<usize, Vec<usize>>,
     called_by: &mut HashMap<usize, Vec<usize>>,
+    seen: &mut std::collections::HashSet<usize>,
 ) {
-    let mut seen: std::collections::HashSet<usize> = std::collections::HashSet::new();
-    for ident in idents {
-        let Some(callee_indices) = name_index.get(*ident) else {
+    for ident in source.split(|c: char| !c.is_alphanumeric() && c != '_') {
+        if ident.len() < 3 || is_keyword(ident) || is_generic_callee(ident) {
+            continue;
+        }
+        let Some(callee_indices) = name_index.get(ident) else {
             continue;
         };
         for &callee_idx in callee_indices {
             if callee_idx != caller_idx && seen.insert(callee_idx) {
-                calls.entry(caller_idx).or_default().push(callee_idx);
-                called_by.entry(callee_idx).or_default().push(caller_idx);
+                calls
+                    .entry(caller_idx)
+                    .or_insert_with(|| Vec::with_capacity(8))
+                    .push(callee_idx);
+                called_by
+                    .entry(callee_idx)
+                    .or_insert_with(|| Vec::with_capacity(4))
+                    .push(caller_idx);
             }
         }
     }
@@ -111,12 +112,23 @@ pub(crate) fn build_call_graph(
     functions: &[FunctionEntry],
     name_index: &HashMap<String, Vec<usize>>,
 ) -> (HashMap<usize, Vec<usize>>, HashMap<usize, Vec<usize>>) {
-    let mut calls: HashMap<usize, Vec<usize>> = HashMap::new();
-    let mut called_by: HashMap<usize, Vec<usize>> = HashMap::new();
+    let capacity = functions.len() / 2;
+    let mut calls: HashMap<usize, Vec<usize>> = HashMap::with_capacity(capacity);
+    let mut called_by: HashMap<usize, Vec<usize>> = HashMap::with_capacity(capacity);
+    // Reuse seen set across all functions to avoid per-function allocation
+    let mut seen: std::collections::HashSet<usize> =
+        std::collections::HashSet::with_capacity(64);
 
     for (caller_idx, func) in functions.iter().enumerate() {
-        let idents = extract_call_identifiers(&func.source);
-        record_call_edges(caller_idx, &idents, name_index, &mut calls, &mut called_by);
+        seen.clear();
+        record_call_edges_from_source(
+            caller_idx,
+            &func.source,
+            name_index,
+            &mut calls,
+            &mut called_by,
+            &mut seen,
+        );
     }
 
     (calls, called_by)

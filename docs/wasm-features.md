@@ -712,7 +712,7 @@ Static Analysis Results Interchange Format for CI/CD:
 ## Related Documentation
 
 - [WASM Analysis Guide](./wasm-analysis-guide.md) - Detailed usage guide
-- [WASM Quality Assurance Specification](./specifications/wasm-quality-assurance.md) - Technical specification
+- [WASM Quality Assurance Specification](./specifications/components/wasm.md) - Technical specification
 - [Quality Gates Guide](./quality-gates.md) - Integration with quality gates
 - [MCP Integration](./mcp-integration.md) - Using WASM analysis via MCP
 

@@ -31,6 +31,9 @@ use super::check_extended::{
     check_golden_trace_drift, check_muda_waste_score, check_paiml_deps_workspace,
     check_reproducibility_level, check_sovereign_stack_patterns,
 };
+use super::check_mono_spec::{
+    check_memory_profiling, check_mono_spec_structure, check_swe_ci_evoscore,
+};
 use super::types::*;
 
 /// Check project compliance with current PMAT version
@@ -128,6 +131,17 @@ pub(crate) async fn handle_check(
             "cb-130",
             comply_config,
         ),
+        filter_check_by_config(
+            check_mono_spec_structure(project_path),
+            "cb-140",
+            comply_config,
+        ),
+        filter_check_by_config(
+            check_memory_profiling(project_path),
+            "cb-141",
+            comply_config,
+        ),
+        filter_check_by_config(check_swe_ci_evoscore(project_path), "cb-142", comply_config),
         filter_check_by_config(
             check_tdg_grade_gate(project_path, comply_config),
             "cb-200",

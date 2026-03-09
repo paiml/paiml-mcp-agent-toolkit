@@ -121,15 +121,13 @@ async fn show_system_telemetry() -> Result<()> {
         for (service_name, service_data) in &system_data.services {
             println!("  {}", c::label(service_name));
             println!(
-                "    {}: {} ({}{}{}: {}, {}{}{}: {})",
+                "    {}: {} ({}Success{}: {}, {}Failed{}: {})",
                 c::dim("Operations"),
                 c::number(&service_data.total_operations.to_string()),
                 c::GREEN,
-                "Success",
                 c::RESET,
                 service_data.successful_operations,
                 c::RED,
-                "Failed",
                 c::RESET,
                 service_data.failed_operations
             );

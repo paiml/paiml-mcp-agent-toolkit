@@ -44,7 +44,7 @@ fun test_extract_single_link() { ... }
 ```
 
 **Related**:
-- Spec: `docs/specifications/doc-validate.md` §3.2.1
+- Spec: `docs/specifications/components/documentation.md` §3.2.1
 - Roadmap: `docs/execution/doc-validate-roadmap.md` Phase 1
 
 ---
@@ -84,7 +84,7 @@ fun test_classify_internal_link() { ... }
 
 **Related**:
 - Depends on: PMAT-1001
-- Spec: `docs/specifications/doc-validate.md` §3.2.1
+- Spec: `docs/specifications/components/documentation.md` §3.2.1
 
 ---
 
@@ -186,7 +186,7 @@ async fun test_validate_missing_internal_link() { ... }
 ```
 
 **Related**:
-- Spec: `docs/specifications/doc-validate.md` §3.2.2
+- Spec: `docs/specifications/components/documentation.md` §3.2.2
 
 ---
 
@@ -293,7 +293,7 @@ Configure reqwest HTTP client with timeouts and basic settings.
 - [ ] Unit tests for client configuration
 
 **Related**:
-- Spec: `docs/specifications/doc-validate.md` §3.2.2
+- Spec: `docs/specifications/components/documentation.md` §3.2.2
 
 ---
 
@@ -501,7 +501,7 @@ Add new `validate-docs` subcommand to PMAT CLI.
 - [ ] Help text is clear and complete
 
 **Related**:
-- Spec: `docs/specifications/doc-validate.md` §3.3
+- Spec: `docs/specifications/components/documentation.md` §3.3
 
 ---
 
@@ -603,7 +603,7 @@ Support loading configuration from .toml file.
 - [ ] Integration tests with config file
 
 **Related**:
-- Spec: `docs/specifications/doc-validate.md` §7.1
+- Spec: `docs/specifications/components/documentation.md` §7.1
 
 ---
 

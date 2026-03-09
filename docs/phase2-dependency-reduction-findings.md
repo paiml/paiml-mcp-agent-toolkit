@@ -384,7 +384,7 @@ All planned categories (1-6) resolved with just 2 commits:
 
 ## References
 
-- **Specification**: `docs/specifications/reduce-dependencies-maintain-functionality-speedup-compile-testing-spec.md`
+- **Specification**: `docs/specifications/components/build-performance.md`
 - **Error Logs**:
   - `/tmp/phase2-minimal-build.log` (147 errors, 32 files)
   - `/tmp/rust-only-build.log` (110 errors, 22 files)

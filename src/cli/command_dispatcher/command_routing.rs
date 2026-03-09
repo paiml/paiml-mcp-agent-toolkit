@@ -180,6 +180,19 @@ impl CommandDispatcher {
                 }
 
                 let sql = query.as_deref().unwrap_or("grade-dist");
+
+                // Support `.schema` and `.tables` dot-commands
+                if sql.eq_ignore_ascii_case(".schema") {
+                    return sql_handler::handle_schema(&db_path);
+                }
+                if sql.eq_ignore_ascii_case(".tables") {
+                    return sql_handler::handle_sql(
+                        "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name",
+                        sql_handler::SqlOutputFormat::Table,
+                        &db_path,
+                    );
+                }
+
                 let fmt = sql_handler::SqlOutputFormat::from_str_opt(&format);
                 sql_handler::handle_sql(sql, fmt, &db_path)
             }
@@ -306,11 +319,18 @@ impl CommandDispatcher {
                 timeout,
                 output,
                 perf,
+                record,
+                from_stdin,
+                dry_run,
             } => {
-                Self::execute_test_command(
-                    suite, iterations, memory, throughput, regression, timeout, output, perf,
-                )
-                .await
+                if record {
+                    crate::cli::command_dispatcher::test_record::execute_test_record(from_stdin, dry_run).await
+                } else {
+                    Self::execute_test_command(
+                        suite, iterations, memory, throughput, regression, timeout, output, perf,
+                    )
+                    .await
+                }
             }
             Commands::Memory { command } => Self::execute_memory_command(command).await,
             Commands::Cache { command } => Self::execute_cache_command(command).await,

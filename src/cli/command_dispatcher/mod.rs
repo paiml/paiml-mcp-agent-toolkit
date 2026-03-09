@@ -22,6 +22,7 @@ mod roadmap_commands;
 mod scaffold_commands;
 mod semantic_commands;
 mod test_commands;
+pub(crate) mod test_record;
 
 // Work and spec handlers extracted for file health compliance (CB-040)
 #[path = "command_dispatcher_work.rs"]

@@ -9,7 +9,7 @@
 ## What Was Delivered
 
 ### 1. Comprehensive Specification ✅
-**File**: `docs/specifications/doc-validate.md`
+**File**: `docs/specifications/components/documentation.md`
 
 - Complete technical specification with EXTREME TDD approach
 - Architecture design with all core components
@@ -291,7 +291,7 @@ All required dependencies are already in `Cargo.toml`:
 
 ## Files Created
 
-1. `docs/specifications/doc-validate.md` - Full specification
+1. `docs/specifications/components/documentation.md` - Full specification
 2. `docs/execution/doc-validate-roadmap.md` - Implementation roadmap
 3. `.github/ISSUE_TEMPLATE/doc-validate-tickets.md` - GitHub issue templates
 4. `scripts/create-doc-validate-issues.sh` - Issue creation script

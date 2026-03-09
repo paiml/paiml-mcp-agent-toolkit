@@ -464,7 +464,7 @@ pub fn check_documentation_quality() -> Result<()> {
 6. `server/tests/mcp_docs_enforcement.rs` (550 lines)
 
 **Documentation**:
-7. `docs/specifications/CLI_MCP_DOCUMENTATION_ENFORCEMENT.md` (600+ lines)
+7. `docs/specifications/components/documentation.md` (600+ lines)
 8. `docs/tickets/TICKET-PMAT-7001.md` (420+ lines)
 9. `docs/tickets/PMAT-7001-RED-PHASE-RESULTS.md` (comprehensive)
 10. `docs/tickets/PMAT-7001-GREEN-PHASE-RESULTS.md` (comprehensive)

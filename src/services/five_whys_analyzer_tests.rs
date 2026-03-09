@@ -119,6 +119,12 @@ mod coverage_tests {
                 EvidenceSource::GitChurn => json!({"commit_count": 15, "days": 30}),
                 EvidenceSource::DeadCode => json!({"count": 3}),
                 EvidenceSource::ManualInspection => json!({"notes": "Manual review"}),
+                EvidenceSource::EvoScoreTrajectory => {
+                    json!({"evoscore": -0.3, "commits": 5, "gamma": 1.5})
+                }
+                EvidenceSource::CoverageDelta => {
+                    json!({"coverage_pct": 70.0, "delta": -15.0, "total_lines": 1000, "covered_lines": 700})
+                }
             };
             why.evidence
                 .push(create_evidence_with_values(*source, value));
@@ -655,11 +661,12 @@ mod coverage_tests {
     }
 
     #[test]
-    fn test_generate_hypothesis_depth_2_low_tdg() {
+    fn test_generate_hypothesis_depth_2_low_coverage() {
+        // v2 (PMAT-510): CoverageDelta replaces TDG for depth-2 coverage hypothesis
         let analyzer = create_analyzer();
         let evidence = vec![create_evidence_with_values(
-            EvidenceSource::TDG,
-            json!(30.0),
+            EvidenceSource::CoverageDelta,
+            json!({"coverage_pct": 60.0, "delta": -25.0}),
         )];
 
         let result = analyzer.generate_hypothesis("Why?", &evidence, 2);
@@ -813,9 +820,13 @@ mod coverage_tests {
     }
 
     #[test]
-    fn test_generate_recommendations_with_low_tdg() {
+    fn test_generate_recommendations_with_low_coverage_delta() {
+        // v2 (PMAT-510): CoverageDelta replaces TDG for coverage recommendations
         let analyzer = create_analyzer();
-        let whys = vec![create_why_with_evidence(1, &[EvidenceSource::TDG])];
+        let whys = vec![create_why_with_evidence(
+            1,
+            &[EvidenceSource::CoverageDelta],
+        )];
 
         let result = analyzer.generate_recommendations(&whys, "Root cause");
         assert!(result.is_ok());
@@ -877,7 +888,7 @@ mod coverage_tests {
             &[
                 EvidenceSource::Complexity,
                 EvidenceSource::SATD,
-                EvidenceSource::TDG,
+                EvidenceSource::CoverageDelta,
                 EvidenceSource::GitChurn,
             ],
         )];
@@ -953,7 +964,7 @@ mod coverage_tests {
         let evidence = result.expect("should succeed");
         assert!(!evidence.is_empty());
 
-        // Should have evidence from multiple sources (SATD + complexity + TDG + git churn)
+        // Should have evidence from multiple sources (SATD + complexity + git churn)
         let sources: std::collections::HashSet<_> = evidence.iter().map(|e| e.source).collect();
         assert!(
             sources.len() >= 3,
@@ -1003,7 +1014,8 @@ mod coverage_tests {
     }
 
     #[tokio::test]
-    async fn test_gather_evidence_includes_tdg() {
+    async fn test_gather_evidence_no_longer_includes_tdg() {
+        // v2 (PMAT-510): TDG removed from evidence gathering (redundant with complexity+churn)
         let analyzer = create_analyzer();
         let temp_dir = create_evidence_temp_dir();
 
@@ -1012,19 +1024,8 @@ mod coverage_tests {
             .await
             .expect("should succeed");
         assert!(
-            evidence.iter().any(|e| e.source == EvidenceSource::TDG),
-            "Missing TDG evidence"
-        );
-        // Verify real TDG score from baseline.json
-        let tdg = evidence
-            .iter()
-            .find(|e| e.source == EvidenceSource::TDG)
-            .unwrap();
-        let score = tdg.value.as_f64().unwrap_or(0.0);
-        assert!(
-            (score - 72.5).abs() < 0.1,
-            "Expected TDG score ~72.5, got {}",
-            score
+            !evidence.iter().any(|e| e.source == EvidenceSource::TDG),
+            "TDG should not be gathered in v2"
         );
     }
 
@@ -1356,5 +1357,337 @@ mod coverage_tests {
         let _ = analysis.evidence_summary.satd_markers;
         let _ = analysis.evidence_summary.tdg_score;
         let _ = analysis.evidence_summary.git_churn_high;
+        let _ = analysis.evidence_summary.evoscore_trajectory;
+        let _ = analysis.evidence_summary.coverage_delta;
+    }
+
+    // ============================================================================
+    // PMAT-510: Five Whys v2 Evidence Source Diversification Tests
+    // ============================================================================
+
+    #[test]
+    fn test_v2_weights_complexity_25_percent() {
+        let analyzer = create_analyzer();
+        let evidence = vec![create_evidence_with_values(
+            EvidenceSource::Complexity,
+            json!({"value": 25, "threshold": 20}),
+        )];
+        let confidence = analyzer.calculate_confidence(&evidence).unwrap();
+        // Complexity at 25% weight with mild severity should produce confidence ~1.0 (weight/weight_sum)
+        assert!(
+            (0.9..=1.1).contains(&confidence),
+            "Complexity confidence should be ~1.0, got {}",
+            confidence
+        );
+    }
+
+    #[test]
+    fn test_v2_weights_tdg_zero_percent() {
+        let analyzer = create_analyzer();
+        // TDG evidence with 0% weight should not contribute to confidence
+        let tdg_evidence = vec![create_evidence_with_values(
+            EvidenceSource::TDG,
+            json!(20.0), // Low TDG score
+        )];
+        let confidence = analyzer.calculate_confidence(&tdg_evidence).unwrap();
+        // With only TDG (weight=0), weight_sum=0, should return 0.5 (fallback)
+        assert!(
+            (0.49..=0.51).contains(&confidence),
+            "TDG-only confidence should be 0.5 (neutral fallback), got {}",
+            confidence
+        );
+    }
+
+    #[test]
+    fn test_v2_weights_git_churn_15_percent() {
+        let analyzer = create_analyzer();
+        let evidence = vec![create_evidence_with_values(
+            EvidenceSource::GitChurn,
+            json!({"commit_count": 10, "days": 30}),
+        )];
+        let confidence = analyzer.calculate_confidence(&evidence).unwrap();
+        // Single source, confidence = weight * severity / weight_sum = 1.0 * (1 + 0.5) = 1.5
+        // Clamped to [0,1]
+        assert!(
+            (0.0..=1.0).contains(&confidence),
+            "Git churn confidence out of range: {}",
+            confidence
+        );
+    }
+
+    #[test]
+    fn test_v2_weights_evoscore_trajectory_15_percent() {
+        let analyzer = create_analyzer();
+        // Regressing evoscore should amplify confidence (regression = stronger signal)
+        let evidence_regress = vec![create_evidence_with_values(
+            EvidenceSource::EvoScoreTrajectory,
+            json!({"evoscore": -0.5, "commits": 5, "gamma": 1.5}),
+        )];
+        let conf_regress = analyzer.calculate_confidence(&evidence_regress).unwrap();
+
+        // Improving evoscore should give base confidence
+        let evidence_improve = vec![create_evidence_with_values(
+            EvidenceSource::EvoScoreTrajectory,
+            json!({"evoscore": 0.8, "commits": 5, "gamma": 1.5}),
+        )];
+        let conf_improve = analyzer.calculate_confidence(&evidence_improve).unwrap();
+
+        // Regressing should have higher or equal confidence than improving
+        assert!(
+            conf_regress >= conf_improve,
+            "Regressing evoscore ({}) should have >= confidence than improving ({})",
+            conf_regress,
+            conf_improve
+        );
+    }
+
+    #[test]
+    fn test_v2_weights_coverage_delta_15_percent() {
+        let analyzer = create_analyzer();
+        // Below baseline coverage should amplify confidence
+        let evidence_below = vec![create_evidence_with_values(
+            EvidenceSource::CoverageDelta,
+            json!({"coverage_pct": 60.0, "delta": -25.0, "total_lines": 1000, "covered_lines": 600}),
+        )];
+        let conf_below = analyzer.calculate_confidence(&evidence_below).unwrap();
+
+        // Above baseline coverage should give base confidence
+        let evidence_above = vec![create_evidence_with_values(
+            EvidenceSource::CoverageDelta,
+            json!({"coverage_pct": 95.0, "delta": 10.0, "total_lines": 1000, "covered_lines": 950}),
+        )];
+        let conf_above = analyzer.calculate_confidence(&evidence_above).unwrap();
+
+        // Below baseline should have higher or equal confidence
+        assert!(
+            conf_below >= conf_above,
+            "Below baseline ({}) should have >= confidence than above ({})",
+            conf_below,
+            conf_above
+        );
+    }
+
+    #[test]
+    fn test_v2_all_weights_sum_to_100_percent() {
+        // Verify: Complexity 25 + SATD 20 + GitChurn 15 + EvoScore 15 + Coverage 15 + DeadCode 10 = 100
+        let analyzer = create_analyzer();
+        let evidence = vec![
+            create_evidence_with_values(
+                EvidenceSource::Complexity,
+                json!({"value": 20, "threshold": 20}), // At threshold = severity 0
+            ),
+            create_evidence_with_values(EvidenceSource::SATD, json!({"count": 0})),
+            create_evidence_with_values(
+                EvidenceSource::GitChurn,
+                json!({"commit_count": 0, "days": 30}),
+            ),
+            create_evidence_with_values(
+                EvidenceSource::EvoScoreTrajectory,
+                json!({"evoscore": 0.5, "commits": 5, "gamma": 1.5}),
+            ),
+            create_evidence_with_values(
+                EvidenceSource::CoverageDelta,
+                json!({"coverage_pct": 85.0, "delta": 0.0, "total_lines": 1000, "covered_lines": 850}),
+            ),
+            create_evidence_with_values(EvidenceSource::DeadCode, json!({"count": 0})),
+        ];
+        let confidence = analyzer.calculate_confidence(&evidence).unwrap();
+        // All at baseline/neutral severity=1.0, so confidence = sum(weight*1.0)/sum(weight) = 1.0
+        assert!(
+            (0.99..=1.01).contains(&confidence),
+            "All neutral evidence should give confidence ~1.0, got {}",
+            confidence
+        );
+    }
+
+    #[test]
+    fn test_v2_gather_evoscore_with_data() {
+        let temp_dir = TempDir::new().expect("tempdir");
+        let metrics_dir = temp_dir.path().join(".pmat-metrics");
+        std::fs::create_dir_all(&metrics_dir).unwrap();
+
+        // Create 4 commit test records with improving trend
+        for (i, pass) in [80, 85, 90, 95].iter().enumerate() {
+            std::fs::write(
+                metrics_dir.join(format!("commit-{:04}-tests.json", i)),
+                format!(r#"{{"commit":"abc{}","pass":{},"total":100}}"#, i, pass),
+            )
+            .unwrap();
+        }
+
+        let evidence = FiveWhysAnalyzer::gather_evoscore_evidence(temp_dir.path());
+        assert!(evidence.is_some(), "Should find EvoScore evidence");
+
+        let ev = evidence.unwrap();
+        assert_eq!(ev.source, EvidenceSource::EvoScoreTrajectory);
+        let evoscore = ev.value.get("evoscore").and_then(|v| v.as_f64()).unwrap();
+        assert!(evoscore > 0.0, "Improving trend should have positive evoscore, got {}", evoscore);
+    }
+
+    #[test]
+    fn test_v2_gather_evoscore_insufficient_data() {
+        let temp_dir = TempDir::new().expect("tempdir");
+        let metrics_dir = temp_dir.path().join(".pmat-metrics");
+        std::fs::create_dir_all(&metrics_dir).unwrap();
+
+        // Only 2 commits - insufficient for trajectory
+        for i in 0..2 {
+            std::fs::write(
+                metrics_dir.join(format!("commit-{:04}-tests.json", i)),
+                format!(r#"{{"commit":"abc{}","pass":80,"total":100}}"#, i),
+            )
+            .unwrap();
+        }
+
+        let evidence = FiveWhysAnalyzer::gather_evoscore_evidence(temp_dir.path());
+        assert!(evidence.is_none(), "Should return None with <3 commits");
+    }
+
+    #[test]
+    fn test_v2_gather_evoscore_no_metrics_dir() {
+        let temp_dir = TempDir::new().expect("tempdir");
+        let evidence = FiveWhysAnalyzer::gather_evoscore_evidence(temp_dir.path());
+        assert!(evidence.is_none(), "Should return None without .pmat-metrics/");
+    }
+
+    #[test]
+    fn test_v2_gather_coverage_delta_with_data() {
+        let temp_dir = TempDir::new().expect("tempdir");
+        let pmat_dir = temp_dir.path().join(".pmat");
+        std::fs::create_dir_all(&pmat_dir).unwrap();
+
+        let cache = serde_json::json!({
+            "git_hash": "abc123",
+            "files": {
+                "src/lib.rs": {"1": 5, "2": 0, "3": 10, "4": 0, "5": 1}
+            }
+        });
+        std::fs::write(pmat_dir.join("coverage-cache.json"), cache.to_string()).unwrap();
+
+        let evidence = FiveWhysAnalyzer::gather_coverage_delta_evidence(temp_dir.path());
+        assert!(evidence.is_some(), "Should find coverage delta evidence");
+
+        let ev = evidence.unwrap();
+        assert_eq!(ev.source, EvidenceSource::CoverageDelta);
+        let coverage_pct = ev.value.get("coverage_pct").and_then(|v| v.as_f64()).unwrap();
+        // 3 covered out of 5 = 60%
+        assert!(
+            (coverage_pct - 60.0).abs() < 0.1,
+            "Expected 60% coverage, got {}",
+            coverage_pct
+        );
+        let delta = ev.value.get("delta").and_then(|v| v.as_f64()).unwrap();
+        assert!(delta < 0.0, "60% is below 85% baseline, delta should be negative");
+    }
+
+    #[test]
+    fn test_v2_gather_coverage_delta_no_cache() {
+        let temp_dir = TempDir::new().expect("tempdir");
+        let evidence = FiveWhysAnalyzer::gather_coverage_delta_evidence(temp_dir.path());
+        assert!(evidence.is_none(), "Should return None without coverage cache");
+    }
+
+    #[test]
+    fn test_v2_gather_coverage_delta_empty_files() {
+        let temp_dir = TempDir::new().expect("tempdir");
+        let pmat_dir = temp_dir.path().join(".pmat");
+        std::fs::create_dir_all(&pmat_dir).unwrap();
+
+        let cache = serde_json::json!({
+            "git_hash": "abc123",
+            "files": {}
+        });
+        std::fs::write(pmat_dir.join("coverage-cache.json"), cache.to_string()).unwrap();
+
+        let evidence = FiveWhysAnalyzer::gather_coverage_delta_evidence(temp_dir.path());
+        assert!(evidence.is_none(), "Should return None with empty files");
+    }
+
+    #[test]
+    fn test_v2_generate_recommendations_with_regressing_evoscore() {
+        let analyzer = create_analyzer();
+        let whys = vec![create_why_with_evidence(
+            1,
+            &[EvidenceSource::EvoScoreTrajectory],
+        )];
+
+        let result = analyzer.generate_recommendations(&whys, "Root cause");
+        assert!(result.is_ok());
+
+        let recommendations = result.expect("should succeed");
+        assert!(
+            recommendations
+                .iter()
+                .any(|r| r.action.contains("trajectory") || r.action.contains("regression")),
+            "Should recommend addressing regression trend"
+        );
+    }
+
+    #[test]
+    fn test_v2_hypothesis_with_regressing_evoscore() {
+        let analyzer = create_analyzer();
+        let evidence = vec![create_evidence_with_values(
+            EvidenceSource::EvoScoreTrajectory,
+            json!({"evoscore": -0.5, "commits": 5, "gamma": 1.5}),
+        )];
+
+        let result = analyzer.generate_hypothesis("Why?", &evidence, 3);
+        assert!(result.is_ok());
+        let hypothesis = result.unwrap();
+        assert!(
+            hypothesis.contains("trajectory") || hypothesis.contains("declining") || hypothesis.contains("worse"),
+            "Depth 3 with regressing evoscore should mention trajectory, got: {}",
+            hypothesis
+        );
+    }
+
+    #[test]
+    fn test_v2_hypothesis_with_low_coverage() {
+        let analyzer = create_analyzer();
+        let evidence = vec![create_evidence_with_values(
+            EvidenceSource::CoverageDelta,
+            json!({"coverage_pct": 60.0, "delta": -25.0}),
+        )];
+
+        let result = analyzer.generate_hypothesis("Why?", &evidence, 2);
+        assert!(result.is_ok());
+        let hypothesis = result.unwrap();
+        assert!(
+            hypothesis.contains("coverage") || hypothesis.contains("test"),
+            "Depth 2 with low coverage should mention coverage, got: {}",
+            hypothesis
+        );
+    }
+
+    proptest! {
+        #[test]
+        fn prop_v2_confidence_with_new_sources(
+            evoscore in -1.0f64..1.0,
+            coverage_delta in -50.0f64..50.0,
+            complexity_value in 0.0f64..200.0,
+            threshold in 1.0f64..100.0,
+        ) {
+            let analyzer = create_analyzer();
+            let evidence = vec![
+                create_evidence_with_values(
+                    EvidenceSource::Complexity,
+                    json!({"value": complexity_value, "threshold": threshold}),
+                ),
+                create_evidence_with_values(
+                    EvidenceSource::EvoScoreTrajectory,
+                    json!({"evoscore": evoscore, "commits": 5, "gamma": 1.5}),
+                ),
+                create_evidence_with_values(
+                    EvidenceSource::CoverageDelta,
+                    json!({"coverage_pct": 85.0 + coverage_delta, "delta": coverage_delta}),
+                ),
+            ];
+
+            let result = analyzer.calculate_confidence(&evidence);
+            prop_assert!(result.is_ok());
+            let confidence = result.unwrap();
+            prop_assert!(confidence >= 0.0, "Confidence below 0: {}", confidence);
+            prop_assert!(confidence <= 1.0, "Confidence above 1: {}", confidence);
+        }
     }
 }

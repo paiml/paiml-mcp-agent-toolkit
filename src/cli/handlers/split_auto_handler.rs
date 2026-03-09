@@ -285,7 +285,7 @@ fn estimate_splits(line_count: usize, max_lines: usize) -> usize {
     }
     // Number of splits = ceil(line_count / max_lines) - 1
     // (the original file stays, everything else is extracted)
-    let chunks = (line_count + max_lines - 1) / max_lines;
+    let chunks = line_count.div_ceil(max_lines);
     if chunks > 1 {
         chunks - 1
     } else {
@@ -325,7 +325,7 @@ fn is_top_level_item(line: &str) -> Option<(&str, &str)> {
     ];
 
     for kw in &keywords {
-        if after_vis.starts_with(kw) {
+        if let Some(rest) = after_vis.strip_prefix(kw) {
             let kind = kw.split_whitespace().next().unwrap_or(kw.trim());
             // Normalize "async fn" to "fn" and "impl<" to "impl"
             let kind = match kind {
@@ -333,7 +333,6 @@ fn is_top_level_item(line: &str) -> Option<(&str, &str)> {
                 "macro_rules!" => "macro",
                 _ => kind.trim_end_matches('<'),
             };
-            let rest = &after_vis[kw.len()..];
             let name = extract_item_name(rest);
             return Some((kind, name));
         }
@@ -475,17 +474,15 @@ fn find_split_points(content: &str) -> Vec<TopLevelItem> {
         }
 
         // Detect top-level item start (only when at brace depth 0 or about to enter)
-        if brace_depth == 0 || (brace_depth == 1 && current_item.is_none()) {
-            if current_item.is_some() && brace_depth == 0 {
-                // Close the current item
-                if let Some((kind, name, start)) = current_item.take() {
-                    items.push(TopLevelItem {
-                        kind,
-                        name,
-                        start_line: start,
-                        end_line: line_num,
-                    });
-                }
+        if brace_depth == 0 && current_item.is_some() {
+            // Close the current item
+            if let Some((kind, name, start)) = current_item.take() {
+                items.push(TopLevelItem {
+                    kind,
+                    name,
+                    start_line: start,
+                    end_line: line_num,
+                });
             }
         }
 

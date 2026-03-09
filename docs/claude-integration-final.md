@@ -560,7 +560,7 @@ println!("Debug: {:#?}", snapshot);
 
 ## 📚 References
 
-- **Specification**: `docs/specifications/claude-agent-integration.md`
+- **Specification**: `docs/specifications/components/agent-integration.md`
 - **Implementation**: `docs/claude-integration-implementation.md`
 - **Examples**: `server/examples/claude_integration_example.rs`
 - **Tests**: `server/src/claude_integration/tests.rs`

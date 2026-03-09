@@ -612,7 +612,7 @@ pub enum AnalyzeCommands {
         rules: Vec<String>,
 
         /// Output format
-        #[arg(long, value_enum, default_value = "human")]
+        #[arg(short = 'f', long, value_enum, default_value = "human")]
         format: MakefileOutputFormat,
 
         /// Fix auto-fixable issues
@@ -653,7 +653,7 @@ pub enum AnalyzeCommands {
         analysis_depth: usize,
 
         /// Output format
-        #[arg(long, value_enum, default_value = "summary")]
+        #[arg(short = 'f', long, value_enum, default_value = "summary")]
         format: ProvabilityOutputFormat,
 
         /// Show only high-confidence results
@@ -1374,7 +1374,7 @@ pub enum AnalyzeCommands {
         project_path: Option<PathBuf>,
 
         /// Output format
-        #[arg(long, value_enum, default_value = "summary")]
+        #[arg(short = 'f', long, value_enum, default_value = "summary")]
         format: EntropyOutputFormat,
 
         /// Output file path

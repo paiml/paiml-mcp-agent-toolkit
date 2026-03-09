@@ -6,15 +6,15 @@ This index provides quick access to all PMAT feature documentation, including bo
 ## Core Features
 
 ### ✅ Quality Analysis & Enforcement
-- [**TDG (Technical Debt Grading)**](./specifications/tdg-specification.md) - Comprehensive code quality scoring system
-- [**Quality Gates**](./specifications/quality-gate-specification.md) - Enforced quality standards
-- [**QDD (Quality-Driven Development)**](./specifications/qdd-tool-specification.md) - TDD with quality guarantees
-- [**Complexity Analysis**](./specifications/complexity-specification.md) - Cyclomatic and cognitive complexity
+- [**TDG (Technical Debt Grading)**](./specifications/components/quality-testing.md) - Comprehensive code quality scoring system
+- [**Quality Gates**](./specifications/components/quality-gates.md) - Enforced quality standards
+- [**QDD (Quality-Driven Development)**](./specifications/components/infrastructure.md) - TDD with quality guarantees
+- [**Complexity Analysis**](./specifications/components/code-quality.md) - Cyclomatic and cognitive complexity
 
 ### ✅ Automated Code Improvement
 - [**🔧 Clippy Automation Guide**](./clippy-automatic-fixes-guide.md) - Comprehensive guide to automatic clippy fixes
 - [**📊 Clippy Automation Summary**](./clippy-automation-summary.md) - Executive summary with metrics and ROI
-- [**Refactoring Engine**](./specifications/refactoring-specification.md) - AI-powered code refactoring
+- [**Refactoring Engine**](./specifications/components/infrastructure.md) - AI-powered code refactoring
 
 ### ✅ Build System Support
 - [**🔨 Makefile Linting**](./makefile-linting-guide.md) - Comprehensive Makefile analysis and auto-fix
@@ -38,9 +38,9 @@ This index provides quick access to all PMAT feature documentation, including bo
   - Interactive and batch generation modes
 
 ### ✅ Integration Interfaces
-- [**MCP Server**](./specifications/mcp-specification.md) - Model Context Protocol integration
-- [**HTTP API**](./specifications/http-api-specification.md) - RESTful API with WebSocket support
-- [**CLI Interface**](./specifications/cli-specification.md) - Command-line interface
+- [**MCP Server**](./specifications/components/mcp-protocol.md) - Model Context Protocol integration
+- [**HTTP API**](./specifications/components/cli-api.md) - RESTful API with WebSocket support
+- [**CLI Interface**](./specifications/components/cli-api.md) - Command-line interface
 
 ## Language Support
 

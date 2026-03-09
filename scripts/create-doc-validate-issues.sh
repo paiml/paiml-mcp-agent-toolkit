@@ -57,7 +57,7 @@ fun test_extract_single_link() { ... }
 \`\`\`
 
 **Related**:
-- Spec: \`docs/specifications/doc-validate.md\` §3.2.1
+- Spec: \`docs/specifications/components/documentation.md\` §3.2.1
 - Roadmap: \`docs/execution/doc-validate-roadmap.md\` Phase 1"
 
 # PMAT-1002

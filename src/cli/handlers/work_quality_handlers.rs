@@ -280,9 +280,8 @@ fn falsify_test_regression(
     use std::process::Command;
 
     println!(
-        "   {} {}",
-        c::label(&format!("[{}/{}]", step, total)),
-        "Hypothesis: No regressions introduced"
+        "   {} Hypothesis: No regressions introduced",
+        c::label(&format!("[{}/{}]", step, total))
     );
     println!("      {}", c::dim("Falsification: Running tests..."));
 
@@ -313,9 +312,8 @@ fn falsify_coverage_regression(
 ) -> (bool, Vec<String>) {
     println!();
     println!(
-        "   {} {}",
-        c::label(&format!("[{}/{}]", step, total)),
-        "Hypothesis: Coverage maintained or improved"
+        "   {} Hypothesis: Coverage maintained or improved",
+        c::label(&format!("[{}/{}]", step, total))
     );
     println!(
         "      {}",
@@ -386,9 +384,8 @@ fn parse_coverage_trend(path: &std::path::Path) -> Option<(f32, f32)> {
 fn falsify_binary_bloat(project_path: &PathBuf, step: usize, total: usize) -> (bool, Vec<String>) {
     println!();
     println!(
-        "   {} {}",
-        c::label(&format!("[{}/{}]", step, total)),
-        "Hypothesis: No dependency bloat"
+        "   {} Hypothesis: No dependency bloat",
+        c::label(&format!("[{}/{}]", step, total))
     );
 
     let release_binary = project_path.join("target/release/pmat");

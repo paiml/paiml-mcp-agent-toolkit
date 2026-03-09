@@ -61,7 +61,12 @@ pub async fn analyze_duplicate_code(
 fn discover_project_files(path: &std::path::Path) -> anyhow::Result<Vec<std::path::PathBuf>> {
     use crate::services::file_discovery::ProjectFileDiscovery;
     let discovery_service = ProjectFileDiscovery::new(path.to_path_buf());
-    discovery_service.discover_files()
+    let files = discovery_service.discover_files()?;
+    // Skip test files — they add noise to duplicate/clone detection
+    Ok(files
+        .into_iter()
+        .filter(|f| !crate::services::deep_context::is_test_file(f))
+        .collect())
 }
 
 fn filter_and_categorize_files_for_duplicates(
@@ -146,7 +151,22 @@ pub async fn analyze_satd(path: &std::path::Path) -> anyhow::Result<SATDAnalysis
 pub async fn analyze_provability(
     path: &std::path::Path,
 ) -> anyhow::Result<Vec<crate::services::lightweight_provability_analyzer::ProofSummary>> {
-    use crate::services::context::{analyze_project, AstItem};
+    analyze_provability_with_cache(path, None).await
+}
+
+pub async fn analyze_provability_with_cache(
+    path: &std::path::Path,
+    cache_manager: Option<std::sync::Arc<crate::services::cache::SessionCacheManager>>,
+) -> anyhow::Result<Vec<crate::services::lightweight_provability_analyzer::ProofSummary>> {
+    analyze_provability_with_context(path, cache_manager, None).await
+}
+
+pub async fn analyze_provability_with_context(
+    path: &std::path::Path,
+    cache_manager: Option<std::sync::Arc<crate::services::cache::SessionCacheManager>>,
+    prebuilt_context: Option<std::sync::Arc<crate::services::context::ProjectContext>>,
+) -> anyhow::Result<Vec<crate::services::lightweight_provability_analyzer::ProofSummary>> {
+    use crate::services::context::AstItem;
     use crate::services::lightweight_provability_analyzer::{
         FunctionId, LightweightProvabilityAnalyzer,
     };
@@ -159,15 +179,24 @@ pub async fn analyze_provability(
     // No timeouts - use proper concurrency instead
     let start = Instant::now();
 
-    // Detect the primary language of the project
-    let language = detect_project_language(path);
-
-    // Discover functions from the project using AST analysis
-    let project_context = match analyze_project(path, language).await {
-        Ok(context) => context,
-        Err(e) => {
-            warn!("AST analysis failed for provability: {:?}", e);
-            return Ok(vec![]);
+    // Reuse pre-built ProjectContext from AST phase if available (saves ~1 GB syn parsing)
+    // Use owned context only when we need to call analyze_project_with_cache;
+    // otherwise borrow from Arc to avoid cloning the entire ProjectContext.
+    let owned_context;
+    let project_context: &crate::services::context::ProjectContext = if let Some(ref ctx) = prebuilt_context {
+        ctx.as_ref()
+    } else {
+        use crate::services::context::analyze_project_with_cache;
+        let language = detect_project_language(path);
+        match analyze_project_with_cache(path, language, cache_manager).await {
+            Ok(context) => {
+                owned_context = context;
+                &owned_context
+            }
+            Err(e) => {
+                warn!("AST analysis failed for provability: {:?}", e);
+                return Ok(vec![]);
+            }
         }
     };
 
@@ -256,30 +285,50 @@ pub async fn analyze_dag(
     path: &std::path::Path,
     dag_type: DagType,
 ) -> anyhow::Result<DependencyGraph> {
-    use crate::services::{
-        context::analyze_project,
-        dag_builder::{
-            filter_call_edges, filter_import_edges, filter_inheritance_edges, DagBuilder,
-        },
+    analyze_dag_with_cache(path, dag_type, None).await
+}
+
+pub async fn analyze_dag_with_cache(
+    path: &std::path::Path,
+    dag_type: DagType,
+    cache_manager: Option<std::sync::Arc<crate::services::cache::SessionCacheManager>>,
+) -> anyhow::Result<DependencyGraph> {
+    analyze_dag_with_context(path, dag_type, cache_manager, None).await
+}
+
+pub async fn analyze_dag_with_context(
+    path: &std::path::Path,
+    dag_type: DagType,
+    cache_manager: Option<std::sync::Arc<crate::services::cache::SessionCacheManager>>,
+    prebuilt_context: Option<std::sync::Arc<crate::services::context::ProjectContext>>,
+) -> anyhow::Result<DependencyGraph> {
+    use crate::services::dag_builder::{
+        filter_call_edges, filter_import_edges, filter_inheritance_edges, DagBuilder,
     };
     use std::time::Instant;
 
     info!("Starting DAG analysis for path: {:?}", path);
     let _start = Instant::now();
 
-    // No timeout - efficient DAG analysis
-
-    // Detect the primary language of the project
-    let language = detect_project_language(path);
-
-    // Analyze the project to get AST information - NO TIMEOUT!
-    let project_context = analyze_project(path, language).await.map_err(|e| {
-        warn!("AST analysis failed for DAG: {:?}", e);
-        anyhow::anyhow!("AST analysis failed: {}", e)
-    })?;
+    // Reuse pre-built ProjectContext from AST phase if available (saves ~1 GB syn parsing)
+    // Borrow from Arc to avoid cloning the entire ProjectContext.
+    let owned_context;
+    let project_context: &crate::services::context::ProjectContext = if let Some(ref ctx) = prebuilt_context {
+        ctx.as_ref()
+    } else {
+        use crate::services::context::analyze_project_with_cache;
+        let language = detect_project_language(path);
+        owned_context = analyze_project_with_cache(path, language, cache_manager)
+            .await
+            .map_err(|e| {
+                warn!("AST analysis failed for DAG: {:?}", e);
+                anyhow::anyhow!("AST analysis failed: {}", e)
+            })?;
+        &owned_context
+    };
 
     // Smart bounds: limit graph size to 200 nodes (was 400)
-    let graph = DagBuilder::build_from_project_with_limit(&project_context, 200);
+    let graph = DagBuilder::build_from_project_with_limit(project_context, 200);
 
     // Apply filters based on DAG type
     let filtered_graph = match dag_type {

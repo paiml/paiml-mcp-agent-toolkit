@@ -106,8 +106,8 @@ async fn handle_diff(
         } else {
             for entry in breaking {
                 println!(
-                    "  {}{}[BREAKING]{} v{}: {}",
-                    c::BOLD_RED, "", c::RESET,
+                    "  {}[BREAKING]{} v{}: {}",
+                    c::BOLD_RED, c::RESET,
                     entry.version, entry.description
                 );
             }

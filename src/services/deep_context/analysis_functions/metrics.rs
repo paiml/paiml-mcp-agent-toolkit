@@ -6,25 +6,31 @@ use crate::models::churn::CodeChurnAnalysis;
 use crate::models::dag::DependencyGraph;
 use crate::services::complexity::{ComplexityReport, FileComplexityMetrics};
 use crate::services::satd_detector::SATDAnalysisResult;
+use dashmap::DashMap;
 use rayon::prelude::*;
-use rustc_hash::FxHashMap;
-use std::cell::RefCell;
 use std::path::PathBuf;
+use std::sync::LazyLock;
 use tracing::{info, warn};
 
 use super::super::DagType;
 
-// Re-export thread-local caches so sibling submodules can access them
-// These are defined here because metrics.rs owns the complexity cache logic
+// Process-global caches shared across all tokio tasks.
+// Previously these were thread_local! RefCell<FxHashMap> which couldn't share
+// across the parallel analysis phases (AST, Complexity, Provability, DAG).
+// DashMap provides lock-free concurrent reads/writes across threads.
 
-thread_local! {
-    pub static RUST_UNIFIED_CACHE: RefCell<FxHashMap<PathBuf, FileComplexityMetrics>> = RefCell::new(FxHashMap::default());
-    pub static TYPESCRIPT_UNIFIED_CACHE: RefCell<FxHashMap<PathBuf, FileComplexityMetrics>> = RefCell::new(FxHashMap::default());
-    pub static PYTHON_UNIFIED_CACHE: RefCell<FxHashMap<PathBuf, FileComplexityMetrics>> = RefCell::new(FxHashMap::default());
-    pub static GO_UNIFIED_CACHE: RefCell<FxHashMap<PathBuf, FileComplexityMetrics>> = RefCell::new(FxHashMap::default());
-    pub static WASM_UNIFIED_CACHE: RefCell<FxHashMap<PathBuf, FileComplexityMetrics>> = RefCell::new(FxHashMap::default());
-    pub static BASH_UNIFIED_CACHE: RefCell<FxHashMap<PathBuf, FileComplexityMetrics>> = RefCell::new(FxHashMap::default());
-}
+pub(super) static RUST_UNIFIED_CACHE: LazyLock<DashMap<PathBuf, FileComplexityMetrics>> =
+    LazyLock::new(|| DashMap::with_capacity(1024));
+pub(super) static TYPESCRIPT_UNIFIED_CACHE: LazyLock<DashMap<PathBuf, FileComplexityMetrics>> =
+    LazyLock::new(|| DashMap::with_capacity(256));
+pub(super) static PYTHON_UNIFIED_CACHE: LazyLock<DashMap<PathBuf, FileComplexityMetrics>> =
+    LazyLock::new(|| DashMap::with_capacity(256));
+pub(super) static GO_UNIFIED_CACHE: LazyLock<DashMap<PathBuf, FileComplexityMetrics>> =
+    LazyLock::new(|| DashMap::with_capacity(256));
+pub(super) static WASM_UNIFIED_CACHE: LazyLock<DashMap<PathBuf, FileComplexityMetrics>> =
+    LazyLock::new(|| DashMap::with_capacity(64));
+pub(super) static BASH_UNIFIED_CACHE: LazyLock<DashMap<PathBuf, FileComplexityMetrics>> =
+    LazyLock::new(|| DashMap::with_capacity(64));
 
 // Language detection and complexity analysis (detect_language, analyze_complexity, Lua helpers)
 include!("metrics_complexity.rs");

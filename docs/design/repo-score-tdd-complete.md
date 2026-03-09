@@ -358,7 +358,7 @@ Total: 12 files, 82 test cases, 2,565 lines
 
 | Document | Status | Size |
 |----------|--------|------|
-| **docs/specifications/repo-score-spec.md** | ✅ Complete | 810 lines |
+| **docs/specifications/components/repo-health.md** | ✅ Complete | 810 lines |
 | **docs/design/repo-score-implementation.md** | ✅ Complete | 5,800 lines |
 | **REPO-SCORE-EVALUATION.md** | ✅ Complete | 450 lines |
 | **docs/design/repo-score-tdd-status.md** | ✅ Complete | 400 lines |

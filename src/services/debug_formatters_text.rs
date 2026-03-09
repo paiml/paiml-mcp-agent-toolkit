@@ -88,6 +88,53 @@ pub fn format_text(analysis: &DebugAnalysis) -> Result<String> {
             format!("{}NORMAL{}", c::GREEN, c::RESET)
         }
     ));
+    if analysis.evidence_summary.evoscore_trajectory != 0.0 {
+        output.push_str(&format!(
+            "   EvoScore trajectory: {}\n",
+            if analysis.evidence_summary.evoscore_trajectory >= 0.5 {
+                format!(
+                    "{}{:.3} (improving){}",
+                    c::GREEN,
+                    analysis.evidence_summary.evoscore_trajectory,
+                    c::RESET
+                )
+            } else if analysis.evidence_summary.evoscore_trajectory >= 0.0 {
+                format!(
+                    "{}{:.3} (mixed){}",
+                    c::YELLOW,
+                    analysis.evidence_summary.evoscore_trajectory,
+                    c::RESET
+                )
+            } else {
+                format!(
+                    "{}{:.3} (regressing){}",
+                    c::RED,
+                    analysis.evidence_summary.evoscore_trajectory,
+                    c::RESET
+                )
+            }
+        ));
+    }
+    if analysis.evidence_summary.coverage_delta != 0.0 {
+        output.push_str(&format!(
+            "   Coverage delta: {}\n",
+            if analysis.evidence_summary.coverage_delta >= 0.0 {
+                format!(
+                    "{}+{:.1}% (above baseline){}",
+                    c::GREEN,
+                    analysis.evidence_summary.coverage_delta,
+                    c::RESET
+                )
+            } else {
+                format!(
+                    "{}{:.1}% (below baseline){}",
+                    c::RED,
+                    analysis.evidence_summary.coverage_delta,
+                    c::RESET
+                )
+            }
+        ));
+    }
 
     Ok(output)
 }

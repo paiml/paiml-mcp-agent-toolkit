@@ -121,7 +121,7 @@ async fn main() {
     let exit_code = match run_main().await {
         Ok(()) => ExitCode::Success,
         Err(e) => {
-            error!("Error: {}", e);
+            error!("Error: {:#}", e);
             categorize_error(&e)
         }
     };

@@ -376,5 +376,5 @@ fn main() -> anyhow::Result<()> {
 ## See Also
 
 - [TDG Guide](./TDG_GUIDE.md) - General Technical Debt Gradient
-- [CUDA-SIMD TDG Specification](./specifications/cuda-simd-tdg.md) - Full specification
+- [CUDA-SIMD TDG Specification](./specifications/components/language-support.md) - Full specification
 - [CI/CD Integration](./integrations/ci-cd-integration.md) - GitHub Actions setup

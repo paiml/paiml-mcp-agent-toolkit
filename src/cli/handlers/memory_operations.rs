@@ -239,10 +239,10 @@ async fn handle_memory_pressure(threshold: f64, watch: &Option<u64>) -> Result<(
         );
 
         if stats.allocation_pressure > threshold {
-            println!("{}: {}", c::label("Status"), format!("{}WARNING - Above threshold{}", c::YELLOW, c::RESET));
+            println!("{}: {}WARNING - Above threshold{}", c::label("Status"), c::YELLOW, c::RESET);
             println!("{}", c::dim("Recommendation: Consider running 'pmat memory cleanup'"));
         } else {
-            println!("{}: {}", c::label("Status"), format!("{}OK - Below threshold{}", c::GREEN, c::RESET));
+            println!("{}: {}OK - Below threshold{}", c::label("Status"), c::GREEN, c::RESET);
         }
     }
 

@@ -39,7 +39,7 @@ Fix deep context output quality issues identified in user review to ensure annot
 
 ### G. Shell Script AST Support
 **Problem**: Need to verify shell script analysis per spec
-**Solution**: Implement proper shell script AST parsing per docs/specifications/shell-support-spec.md
+**Solution**: Implement proper shell script AST parsing per docs/specifications/components/language-support.md
 **Files**: Language detection and parsing
 
 ### H. Auto-scaling Concurrency
@@ -103,7 +103,7 @@ Fix deep context output quality issues identified in user review to ensure annot
 - Test files for EXTREME TDD validation
 
 ### Specifications to Review
-- `docs/specifications/shell-support-spec.md` - Shell script requirements
+- `docs/specifications/components/language-support.md` - Shell script requirements
 - Existing concurrency patterns for auto-scaling implementation
 
 This roadmap ensures systematic improvement with quality gates and regression prevention.

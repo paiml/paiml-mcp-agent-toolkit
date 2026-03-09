@@ -135,7 +135,7 @@ pub struct BaseAnalysisContract {
 ## References
 - [Uniform Contracts Roadmap](../execution/roadmap.md)
 - Contract System Documentation (removed: `../../server/src/contracts/README.md` no longer exists)
-- [Implementation Specifications](../../specifications/)
+- [Implementation Specifications](../../specifications/pmat-spec.md)
 
 ---
 **Authors**: Claude Agent  

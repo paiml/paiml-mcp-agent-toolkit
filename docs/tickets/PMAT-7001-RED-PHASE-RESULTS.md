@@ -179,7 +179,7 @@ but '-q' is in use by both 'quality' and 'quiet'
 
 ## Files Created
 
-1. **Specification**: `docs/specifications/CLI_MCP_DOCUMENTATION_ENFORCEMENT.md` (600+ lines)
+1. **Specification**: `docs/specifications/components/documentation.md` (600+ lines)
 2. **Ticket**: `docs/tickets/TICKET-PMAT-7001.md` (420+ lines)
 3. **CLI Tests**: `server/tests/cli_docs_enforcement.rs` (483 lines)
 4. **MCP Tests**: `server/tests/mcp_docs_enforcement.rs` (550 lines)

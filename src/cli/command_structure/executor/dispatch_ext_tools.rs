@@ -31,11 +31,21 @@ impl CommandExecutor {
                 timeout,
                 output,
                 perf,
+                record,
+                from_stdin,
+                dry_run,
             } => {
-                crate::cli::handlers::test_handlers::handle_test(
-                    suite, iterations, memory, throughput, regression, timeout, output, perf,
-                )
-                .await
+                if record {
+                    crate::cli::command_dispatcher::test_record::execute_test_record(
+                        from_stdin, dry_run,
+                    )
+                    .await
+                } else {
+                    crate::cli::handlers::test_handlers::handle_test(
+                        suite, iterations, memory, throughput, regression, timeout, output, perf,
+                    )
+                    .await
+                }
             }
             Commands::Memory { command } => {
                 crate::cli::command_dispatcher::CommandDispatcher::execute_memory_command(command)

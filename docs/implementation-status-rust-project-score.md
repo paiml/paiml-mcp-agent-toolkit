@@ -21,7 +21,7 @@ This document tracks the successful implementation of Rust Project Score from v1
 
 ### ✅ STEP 0: Understand Specification (COMPLETED)
 
-**Specification**: `docs/specifications/rust-project-score-v1.1-update.md` (465 lines)
+**Specification**: `docs/specifications/components/repo-health.md` (465 lines)
 
 **Key Requirements Extracted**:
 
@@ -686,7 +686,7 @@ Successfully scored the paiml-mcp-agent-toolkit project:
 **Start Date**: 2025-11-20
 **Completion Date**: 2025-11-20
 **Status**: All 5 phases complete, production-ready, dogfooding validated
-**Specification**: `docs/specifications/learn-from-rust-giants-spec.md`
+**Specification**: `docs/specifications/components/code-quality.md`
 
 ### Objectives
 

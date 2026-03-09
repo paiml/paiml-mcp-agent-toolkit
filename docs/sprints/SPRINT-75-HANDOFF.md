@@ -35,7 +35,7 @@ This sprint establishes the foundation for Sprint 71-74's time-travel debugging 
 - 11 GREEN unit tests verifying implementation
 
 **Key Files**:
-- `docs/specifications/pmat-recording-format.md` (404 lines)
+- `docs/specifications/components/infrastructure.md` (404 lines)
 - `server/src/services/dap/recording.rs` (355 lines)
 - `server/tests/recording_format_tests.rs` (316 lines)
 
@@ -293,7 +293,7 @@ All quality gates passed:
 
 ### Created
 - `docs/sprints/SPRINT-75-KICKOFF.md` (266 lines)
-- `docs/specifications/pmat-recording-format.md` (404 lines)
+- `docs/specifications/components/infrastructure.md` (404 lines)
 - `server/tests/recording_format_tests.rs` (316 lines)
 - `server/tests/snapshot_serialization_tests.rs` (451 lines)
 - `server/tests/replay_integration_tests.rs` (363 lines)

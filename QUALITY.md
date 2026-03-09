@@ -358,7 +358,7 @@ All quality thresholds are based on peer-reviewed research:
 - GitHub Repository: https://github.com/paiml/paiml-mcp-agent-toolkit
 - crates.io: https://crates.io/crates/pmat
 - Known Defects Spec: `docs/specifications/known-defects-v2.1.md`
-- Rust Project Score Spec: `docs/specifications/rust-project-score-v1.1-update.md`
+- Rust Project Score Spec: `docs/specifications/components/repo-health.md`
 
 ## Support
 

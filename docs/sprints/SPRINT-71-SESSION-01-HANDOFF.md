@@ -45,7 +45,7 @@ Continued Sprint 71 implementation using EXTREME TDD methodology (RED → GREEN 
 
 ### 4. Documentation (b1d94d39)
 - `docs/sprints/SPRINT-71-KICKOFF.md` - Sprint kickoff guide
-- `docs/specifications/tracing-bug-discovery-tdg-git-expansion-spec.md` - Full specification
+- `docs/specifications/components/infrastructure.md` - Full specification
 
 ## Technical Notes
 

@@ -38,7 +38,7 @@ Sprint 74 delivered the CLI interface for time-travel debugging:
 - Define Snapshot structure (timestamp, variables, stack frames)
 
 **REFACTOR Phase**:
-- Document specification in `docs/specifications/pmat-recording-format.md`
+- Document specification in `docs/specifications/components/infrastructure.md`
 - Add format validation helpers
 
 **COMMIT Phase**:
@@ -47,7 +47,7 @@ Sprint 74 delivered the CLI interface for time-travel debugging:
 **Expected Files**:
 - `server/tests/recording_format_tests.rs` (NEW)
 - `server/src/services/dap/recording.rs` (NEW - types only)
-- `docs/specifications/pmat-recording-format.md` (NEW)
+- `docs/specifications/components/infrastructure.md` (NEW)
 
 ---
 

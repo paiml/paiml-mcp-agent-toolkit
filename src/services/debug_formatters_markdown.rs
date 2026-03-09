@@ -98,6 +98,30 @@ pub fn format_markdown(analysis: &DebugAnalysis) -> Result<String> {
             "✅"
         }
     ));
+    if analysis.evidence_summary.evoscore_trajectory != 0.0 {
+        let (label, icon) = if analysis.evidence_summary.evoscore_trajectory >= 0.5 {
+            ("improving", "✅")
+        } else if analysis.evidence_summary.evoscore_trajectory >= 0.0 {
+            ("mixed", "⚠️")
+        } else {
+            ("regressing", "❌")
+        };
+        output.push_str(&format!(
+            "| EvoScore trajectory | {:.3} ({}) | {} |\n",
+            analysis.evidence_summary.evoscore_trajectory, label, icon,
+        ));
+    }
+    if analysis.evidence_summary.coverage_delta != 0.0 {
+        let (label, icon) = if analysis.evidence_summary.coverage_delta >= 0.0 {
+            ("above baseline", "✅")
+        } else {
+            ("below baseline", "❌")
+        };
+        output.push_str(&format!(
+            "| Coverage delta | {:.1}% ({}) | {} |\n",
+            analysis.evidence_summary.coverage_delta, label, icon,
+        ));
+    }
 
     Ok(output)
 }

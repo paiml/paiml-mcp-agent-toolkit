@@ -82,9 +82,7 @@ fn find_contract_files(contracts_dir: &Path) -> Vec<String> {
     {
         let path = entry.path();
         if path.is_file()
-            && (path
-                .extension()
-                .map_or(false, |e| e == "yaml" || e == "yml"))
+            && (path.extension().is_some_and(|e| e == "yaml" || e == "yml"))
             && !is_binding_file(path)
         {
             // Quick check: does it look like a provable-contract file?
@@ -107,7 +105,7 @@ fn find_contract_files(contracts_dir: &Path) -> Vec<String> {
 /// Check if a YAML file is a binding registry (not a contract)
 fn is_binding_file(path: &Path) -> bool {
     path.file_name()
-        .map_or(false, |n| n.to_string_lossy().contains("binding"))
+        .is_some_and(|n| n.to_string_lossy().contains("binding"))
 }
 
 /// Run `pv lint` and parse the result
@@ -387,7 +385,7 @@ fn build_provable_contracts_result(
 
     // Lint results
     if lint.passed {
-        parts.push(format!("{}", c::pass("lint passed")));
+        parts.push(c::pass("lint passed").to_string());
     } else {
         has_errors = true;
         parts.push(format!(

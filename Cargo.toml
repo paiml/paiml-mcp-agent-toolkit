@@ -1,6 +1,6 @@
 [package]
 name = "pmat"
-version = "3.6.1"
+version = "3.7.0"
 edition = "2021"
 rust-version = "1.80.0"
 authors = ["Pragmatic AI Labs"]
@@ -284,6 +284,7 @@ prettyplease = { version = "0.2.37", optional = true }
 fs2 = "0.4.3"
 
 [dev-dependencies]
+dhat = "0.3"
 tokio-test = "0.4"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 pretty_assertions = "1.4"

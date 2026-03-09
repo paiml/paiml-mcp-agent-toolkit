@@ -325,7 +325,7 @@ Options:
 - `server/src/tdg/analyzer_ast.rs` - Analyzer integration
 - `server/src/cli/handlers/tdg_handlers.rs` - CLI handler
 - `server/src/mcp_pmcp/tool_functions.rs` - MCP integration
-- `docs/specifications/git-commit-correlation-spec.md` - Full spec
+- `docs/specifications/components/semantic-search.md` - Full spec
 
 **How to Continue**:
 1. Read `docs/sprints/SPRINT-65-PHASE1-2-COMPLETION.md` for context

@@ -236,6 +236,9 @@ fn test_rankby_from_str() {
         RankBy::CrossProject
     );
     assert_eq!("xproject".parse::<RankBy>().unwrap(), RankBy::CrossProject);
+    assert_eq!("priority".parse::<RankBy>().unwrap(), RankBy::Priority);
+    assert_eq!("tdg-priority".parse::<RankBy>().unwrap(), RankBy::Priority);
+    assert_eq!("churn-priority".parse::<RankBy>().unwrap(), RankBy::Priority);
     assert!("invalid".parse::<RankBy>().is_err());
 }
 

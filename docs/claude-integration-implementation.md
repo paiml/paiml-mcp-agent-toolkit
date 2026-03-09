@@ -1,6 +1,6 @@
 # Claude Agent SDK Integration - Implementation Summary
 
-Implementation of the Claude Agent SDK integration per `docs/specifications/claude-agent-integration.md`.
+Implementation of the Claude Agent SDK integration per `docs/specifications/components/agent-integration.md`.
 
 ## Implementation Status
 
@@ -183,7 +183,7 @@ bridge/
 
 ## Adherence to Specification
 
-This implementation follows the EXTREME TDD methodology specified in `docs/specifications/claude-agent-integration.md`:
+This implementation follows the EXTREME TDD methodology specified in `docs/specifications/components/agent-integration.md`:
 
 - ✅ **Red Phase**: Tests written first (tests.rs)
 - ✅ **Green Phase**: Minimal implementation (TypeScript bridge)
@@ -199,6 +199,6 @@ All core architectural decisions from the specification are implemented:
 
 ## References
 
-- Specification: `docs/specifications/claude-agent-integration.md`
+- Specification: `docs/specifications/components/agent-integration.md`
 - Implementation: `server/src/claude_integration/`
 - Bridge: `bridge/src/`

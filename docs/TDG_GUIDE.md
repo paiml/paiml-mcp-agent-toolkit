@@ -466,7 +466,7 @@ done
 
 ## API Reference
 
-See the [TDG specification](../specifications/tdg-simplified-spec.md) for complete implementation details.
+See the [TDG specification](../specifications/components/quality-testing.md) for complete implementation details.
 
 For integration examples and advanced usage, see:
 - [MCP Integration Guide](api-guide.md#mcp-tools)

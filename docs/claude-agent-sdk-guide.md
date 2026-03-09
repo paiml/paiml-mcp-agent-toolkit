@@ -550,7 +550,7 @@ A: Yes. Uses `Arc<RwLock<...>>` for safe concurrent access.
 
 ## Resources
 
-- **Specification**: `docs/specifications/claude-agent-integration.md`
+- **Specification**: `docs/specifications/components/agent-integration.md`
 - **Implementation Report**: `docs/claude-integration-final.md`
 - **Example Code**: `server/examples/claude_integration_example.rs`
 - **Unit Tests**: `server/src/claude_integration/tests.rs`

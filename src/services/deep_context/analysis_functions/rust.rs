@@ -15,12 +15,8 @@ pub async fn analyze_rust_language(
         .await
         .map_err(|e| anyhow::anyhow!("Unified Rust analysis failed: {}", e))?;
 
-    // Store complexity metrics in thread-local cache for later retrieval
-    RUST_UNIFIED_CACHE.with(|cache| {
-        cache
-            .borrow_mut()
-            .insert(file_path.to_path_buf(), analysis.file_metrics.clone());
-    });
+    // Store complexity metrics in process-global cache for cross-task sharing
+    RUST_UNIFIED_CACHE.insert(file_path.to_path_buf(), analysis.file_metrics.clone());
 
     Ok(analysis.ast_items)
 }

@@ -38,6 +38,13 @@ pub async fn handle_popper_score(
     failures_only: bool,
     output: Option<&Path>,
 ) -> Result<()> {
+    // PMAT-510: Deprecation notice — Popper categories B-F absorbed into RPS v3.0
+    eprintln!(
+        "Note: `pmat popper-score` is deprecated. Popper categories B-F are now \
+         integrated into `pmat rust-project-score` as the Reproducibility category. \
+         Category A (Falsifiability) remains as the gateway check in RPS v3.0."
+    );
+
     // Validate path exists
     if !path.exists() {
         anyhow::bail!("Path not found: {}", path.display());

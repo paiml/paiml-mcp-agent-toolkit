@@ -70,7 +70,7 @@ pub enum ScaffoldCommands {
         name: String,
 
         /// WASM framework (wasm-labs, pure-wasm)
-        #[arg(short, long, default_value = "wasm-labs")]
+        #[arg(short = 'w', long, default_value = "wasm-labs")]
         framework: String,
 
         /// Features to include (comma-separated)

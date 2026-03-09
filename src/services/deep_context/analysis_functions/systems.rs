@@ -25,12 +25,8 @@ pub async fn analyze_go_language(
         let analyzer = UnifiedGoAnalyzer::new(file_path.to_path_buf());
         match analyzer.analyze().await {
             Ok(analysis) => {
-                // Store complexity metrics in thread-local cache
-                GO_UNIFIED_CACHE.with(|cache| {
-                    cache
-                        .borrow_mut()
-                        .insert(file_path.to_path_buf(), analysis.file_metrics.clone());
-                });
+                // Store complexity metrics in process-global cache for cross-task sharing
+                GO_UNIFIED_CACHE.insert(file_path.to_path_buf(), analysis.file_metrics.clone());
                 Ok(analysis.ast_items)
             }
             Err(_) => {
@@ -128,12 +124,8 @@ pub async fn analyze_wasm_language(
         let analyzer = UnifiedWasmAnalyzer::new(file_path.to_path_buf());
         match analyzer.analyze().await {
             Ok(analysis) => {
-                // Store complexity metrics in thread-local cache
-                WASM_UNIFIED_CACHE.with(|cache| {
-                    cache
-                        .borrow_mut()
-                        .insert(file_path.to_path_buf(), analysis.file_metrics.clone());
-                });
+                // Store complexity metrics in process-global cache for cross-task sharing
+                WASM_UNIFIED_CACHE.insert(file_path.to_path_buf(), analysis.file_metrics.clone());
                 Ok(analysis.ast_items)
             }
             Err(_) => {

@@ -34,7 +34,7 @@ async fn show_configuration_overview(config_service: &ConfigurationService) -> R
 
     println!("{}", c::subheader("Quality Gates:"));
     println!("  {}: {}", c::label("Max Complexity"), c::number(&config.quality.max_complexity.to_string()));
-    println!("  {}: {}", c::label("Min Coverage"), c::pct(config.quality.min_coverage as f64, 80.0, 60.0));
+    println!("  {}: {}", c::label("Min Coverage"), c::pct(config.quality.min_coverage, 80.0, 60.0));
     println!(
         "  {}: {}",
         c::label("Allow SATD"),

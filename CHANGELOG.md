@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.7.0] - 2026-03-09
+
+### Added
+- **RPS v3.0**: New Reproducibility scorer wrapping Popper categories B-F (15 pts), bringing RPS to 11 categories / 289 max points
+- **Falsifiability Gateway**: Popper Category A < 60% caps RPS grade at F (Jidoka principle)
+- **PMAT-510 Scoring Improvements**: Five Whys v2 evidence weights, Muda file mapping, EvoScore CB-142, `--rank-by priority` churn-weighted TDG sorting
+- **New commands**: `ci-local`, `bottleneck`, `test-stability`, `stack scaffold`, `split --auto`, `test --record`
+- **Mono-spec**: 124 specs consolidated into single pmat-spec.md with CB-140/141/142 comply checks
+- **CI/CD**: Unified gate workflows, provable-contracts CB-1200 quality gate
+- **Popper deprecation**: `pmat popper-score` shows deprecation warning, B-F folded into RPS
+
+### Changed
+- RPS spec version from 2.3 to 3.0
+- Five Whys v2 evidence weights: removed TDG (redundant), added EvoScore trajectory (15%) and coverage delta (15%)
+
+### Fixed
+- 348 bug fixes including clean-room CI failures, doctest failures, binary path issues, entropy fallback, graph assertions
+- Feature gates for `--no-default-features` compilation (B4 gate)
+- Rust 1.94 clippy/fmt compatibility
+- 72 broken spec links and 4 falsified spec claims
+
+### Performance
+- -2.57 GB peak memory in deep context pipeline (eliminated redundant syn parsing)
+- -59% index build allocations via dhat-rs profiling
+- -44 MB peak from graph clone elimination in PageRank scoring
+- Test file exclusion from dead code/duplicate analysis (-30 MB)
+
 ## [3.6.1] - 2026-02-27
 
 ### Fixed
@@ -525,7 +552,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Comprehensive system prompt with all scoring rules
     - Available to Claude Code and other MCP clients
   - **Documentation:**
-    - Complete specification (docs/specifications/repo-score-spec.md)
+    - Complete specification (docs/specifications/components/repo-health.md)
     - Implementation guide (docs/design/repo-score-implementation-complete.md)
     - User guide: pmat-book Chapter 31 (https://paiml.github.io/pmat-book/ch31-00-repo-score.html)
     - Command reference updated in Appendix B

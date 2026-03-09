@@ -70,7 +70,7 @@ fn write_summary_header(output: &mut String, total_functions: usize) -> Result<(
 fn write_scoring_model(output: &mut String) -> Result<()> {
     use crate::cli::colors as c;
     writeln!(output, "\n{}\n", c::subheader("Scoring Model (4 factors, equally weighted)"))?;
-    writeln!(output, "  {}{:<14}{} {:<14} {:<14} {}", c::BOLD, "Factor", c::RESET, "100%", "50%", "0%")?;
+    writeln!(output, "  {}{:<14}{} {:<14} {:<14} 0%", c::BOLD, "Factor", c::RESET, "100%", "50%")?;
     writeln!(output, "  {}", c::separator())?;
     writeln!(output, "  {:<14} {}NotNull{}       {}MaybeNull{}    {}Unknown/Null{}", "Nullability", c::GREEN, c::RESET, c::YELLOW, c::RESET, c::RED, c::RESET)?;
     writeln!(output, "  {:<14} {}Both bounds{}   {}One bound{}    {}No bounds{}", "Bounds", c::GREEN, c::RESET, c::YELLOW, c::RESET, c::RED, c::RESET)?;

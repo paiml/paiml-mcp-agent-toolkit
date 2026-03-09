@@ -289,11 +289,7 @@ fn handle_dry_run(
     if let Some(func) = function {
         println!("  {} {}", c::label("Target function:"), func);
     }
-    println!(
-        "  {} {}",
-        c::label("Quality profile:"),
-        format!("{profile:?}")
-    );
+    println!("  {} {profile:?}", c::label("Quality profile:"));
     println!(
         "  {} {}",
         c::label("Max complexity:"),

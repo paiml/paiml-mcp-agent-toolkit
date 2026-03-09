@@ -213,7 +213,7 @@ recorder.save_to_file("session.pmat")?; // Write all snapshots at once
 
 **Files**:
 - `server/tests/recording_workflow_e2e_tests.rs` (new)
-- `docs/specifications/recording-capture-workflow.md` (new)
+- `docs/specifications/components/infrastructure.md` (new)
 - `server/examples/recording_capture_demo.rs` (new)
 
 **Estimated Effort**: 3-4 hours
@@ -390,7 +390,7 @@ anyhow::Context::context(
 ## Documentation Deliverables
 
 ### Specifications
-1. `docs/specifications/recording-capture-workflow.md` (300-400 lines)
+1. `docs/specifications/components/infrastructure.md` (300-400 lines)
    - Architecture diagram
    - API reference (ExecutionRecorder extensions)
    - CLI workflow examples
@@ -486,8 +486,8 @@ Can defer CAPTURE-002 to Sprint 77 if needed.
 - **Sprint 75**: .pmat format and RecordingWriter
 
 ### Specifications
-- `docs/specifications/pmat-recording-format.md` (Sprint 75)
-- `docs/specifications/dap-protocol-support.md` (Sprint 71)
+- `docs/specifications/components/infrastructure.md` (Sprint 75)
+- `docs/specifications/components/infrastructure.md` (Sprint 71)
 
 ### Related Files
 - `server/src/services/dap/execution_recorder.rs` (Sprint 72)

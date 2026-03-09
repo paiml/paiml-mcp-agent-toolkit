@@ -82,7 +82,7 @@
 - Missing SPRINT summaries: SPRINT-16-SUMMARY.md, SPRINT-17-SUMMARY.md, SPRINT-18-SUMMARY.md
 - Missing testing docs: docs/testing/STRATEGY.md
 - Missing tickets docs: docs/tickets/README.md, scaffolding-quickstart.md
-- Missing specification: docs/specifications/multi-language-mutation.md
+- Missing specification: docs/specifications/components/code-quality.md (was multi-language-mutation.md)
 - Missing assets: docs/assets/cross-language-dependencies.png
 - Incorrect paths: docs/server/src/contracts/README.md, docs/specifications/docs/SPECIFICATION.md
 

@@ -294,6 +294,6 @@ pmat analyze wasm module.wasm
 
 ## Related Documentation
 
-- [WASM Quality Assurance Specification](specifications/wasm-quality-assurance.md)
+- [WASM Quality Assurance Specification](specifications/components/wasm.md)
 - [Quality Gates Guide](quality-gates.md)
 - [MCP Integration](mcp-integration.md)

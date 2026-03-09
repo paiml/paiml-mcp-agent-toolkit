@@ -62,6 +62,20 @@
                 serde_json::json!({"notes": "Reviewed by engineer"}),
                 "Manual code review".to_string(),
             ),
+            EvidenceSource::EvoScoreTrajectory => Evidence::new(
+                source,
+                PathBuf::from("src/test.rs"),
+                "evoscore_trajectory".to_string(),
+                serde_json::json!({"evoscore": -0.3}),
+                "EvoScore regressing".to_string(),
+            ),
+            EvidenceSource::CoverageDelta => Evidence::new(
+                source,
+                PathBuf::from("src/test.rs"),
+                "coverage_delta".to_string(),
+                serde_json::json!({"delta": -2.5}),
+                "Coverage decreased".to_string(),
+            ),
         }
     }
 

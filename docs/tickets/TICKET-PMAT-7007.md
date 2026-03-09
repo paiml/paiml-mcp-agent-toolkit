@@ -428,7 +428,7 @@ README.md                                            (add Claude Code section)
 ## References
 
 - [VoltAgent Sub-Agents](https://github.com/VoltAgent/awesome-claude-code-subagents)
-- [Learning System Ideas](../specifications/learning-system-ideas.md#priority-0)
+- [Learning System Ideas](../specifications/components/infrastructure.md#priority-0)
 - [Existing Agent Scaffold](../../server/src/scaffold/agent/)
 
 ---

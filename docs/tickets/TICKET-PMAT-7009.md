@@ -694,7 +694,7 @@ Cargo.toml                                       (already has rusqlite)
 
 ## References
 
-- [Learning System Ideas](../specifications/learning-system-ideas.md#12-pattern-learning)
+- [Learning System Ideas](../specifications/components/infrastructure.md#12-pattern-learning)
 - [Existing ML Predictor](../../server/src/services/mutation/ml_predictor.rs)
 - [Memory Manager](../../server/src/services/memory_manager.rs)
 

@@ -13,12 +13,13 @@ pub async fn analyze_dead_code(
     let discovery_service = ProjectFileDiscovery::new(path.to_path_buf());
     let all_files = discovery_service.discover_files()?;
 
-    // Filter for source code files
+    // Filter for source code files, excluding test files
     let files: Vec<_> = all_files
         .into_iter()
         .filter(|file| {
             if let Some(ext) = file.extension().and_then(|e| e.to_str()) {
                 matches!(ext, "rs" | "ts" | "js" | "py")
+                    && !crate::services::deep_context::is_test_file(file)
             } else {
                 false
             }

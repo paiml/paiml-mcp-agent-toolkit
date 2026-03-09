@@ -2,7 +2,8 @@
 fn chunk_rust_file(source: &str) -> Result<Vec<CodeChunk>, String> {
     let tree = parse_rust(source)?;
     let root = tree.root_node();
-    let mut chunks = Vec::new();
+    // Pre-allocate: typical Rust file has ~10-20 top-level items
+    let mut chunks = Vec::with_capacity(16);
 
     extract_rust_items(root, source, &mut chunks);
 
@@ -36,6 +37,7 @@ fn extract_rust_items(node: Node, source: &str, chunks: &mut Vec<CodeChunk>) {
                 .get(start_byte..node.end_byte())
                 .unwrap_or_default()
                 .to_string();
+            let checksum = compute_checksum(&content);
 
             chunks.push(CodeChunk {
                 file_path: String::new(),
@@ -44,8 +46,8 @@ fn extract_rust_items(node: Node, source: &str, chunks: &mut Vec<CodeChunk>) {
                 language: "rust".to_string(),
                 start_line: node.start_position().row + 1,
                 end_line: node.end_position().row + 1,
-                content: content.clone(),
-                content_checksum: compute_checksum(&content),
+                content,
+                content_checksum: checksum,
             });
         }
 
