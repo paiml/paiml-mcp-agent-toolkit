@@ -236,6 +236,64 @@ enable "this function's tests are regressing" alerts at the function level.
 algorithmically coupling the metrics. E.g., "TDG avg improved 2.3 points while EvoScore
 held at 0.7 — quality improving without regression."
 
+## Planned: `pmat test --record`
+
+### Design
+
+New subcommand that wraps `cargo test`, parses output, and writes test data:
+
+```bash
+pmat test --record                    # Run cargo test, write results
+pmat test --record --dry-run          # Show what would be recorded
+pmat test --record --from-stdin       # Parse piped cargo test output
+```
+
+### Implementation
+
+1. Run `cargo test --no-fail-fast 2>&1` and capture output
+2. Parse summary line: `test result: ok. N passed; M failed; K ignored`
+3. Get current commit: `git rev-parse --short HEAD`
+4. Write `.pmat-metrics/commit-<sha>-tests.json`:
+   ```json
+   {"commit":"abc1234","pass":19795,"total":19795,"failed":0,"ignored":167,
+    "timestamp":"2026-03-09T14:00:00Z"}
+   ```
+5. Print summary: "Recorded: 19795/19795 pass (commit abc1234)"
+
+### Makefile Integration
+
+```makefile
+test-record:
+	cargo test --no-fail-fast 2>&1 | pmat test --record --from-stdin
+```
+
+### Per-Function EvoScore (Phase 2)
+
+Track coverage trajectory per function across commits:
+
+1. After `pmat test --record`, also run `cargo llvm-cov --json`
+2. For each function, record `{function, covered_lines, total_lines}`
+3. Store in `.pmat-metrics/commit-<sha>-coverage.json`
+4. CB-142 computes per-function EvoScore: which functions are losing coverage?
+5. Surface via `pmat query --coverage --evoscore` — shows functions trending down
+
+This bridges the granularity gap: project EvoScore says "regressing",
+per-function EvoScore says "parser::tokenize lost 12 lines of coverage in 3 commits".
+
+### Configurable Gamma (Phase 2)
+
+Read from `.pmat.yaml` options map instead of hardcoding:
+
+```rust
+let gamma = comply_config
+    .and_then(|c| c.checks.get("cb-142"))
+    .and_then(|c| c.options.get("gamma"))
+    .and_then(|v| v.parse::<f64>().ok())
+    .unwrap_or(1.5);
+```
+
+Requires threading `comply_config` into `check_swe_ci_evoscore()`.
+
 ## Implementation Status
 
 | Feature | Status | Location |

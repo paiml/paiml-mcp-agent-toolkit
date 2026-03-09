@@ -11,7 +11,7 @@ pmat five-whys "Stack overflow in parser"
 pmat why "Memory leak in cache" --depth 3
 ```
 
-### Evidence Sources
+### Evidence Sources (Current)
 
 | Source | Weight | Description |
 |--------|--------|-------------|
@@ -20,6 +20,24 @@ pmat why "Memory leak in cache" --depth 3
 | SATD | 20% | Self-admitted technical debt |
 | Git churn | 20% | Change frequency |
 | Dead code | 10% | Unused code ratio |
+
+### Evidence Sources (Planned v2)
+
+Reduce TDG overlap (complexity 25% + TDG 25% = 50% redundant). Add temporal
+and coverage signals that answer "is it getting worse?" not just "is it bad?"
+
+| Source | Weight | Description |
+|--------|--------|-------------|
+| Complexity | 25% | Cyclomatic/cognitive complexity (unchanged) |
+| SATD | 20% | Self-admitted technical debt (unchanged) |
+| Git churn | 15% | Change frequency (reduced from 20%) |
+| EvoScore trajectory | 15% | Is the affected area improving or regressing? |
+| Coverage delta | 15% | Did recent changes decrease coverage? |
+| Dead code | 10% | Unused code ratio (unchanged) |
+
+Removes direct TDG dependency (TDG already incorporates complexity + churn).
+Adds EvoScore for "is the bug area getting better?" and coverage delta for
+"did recent changes reduce test safety?" Requires `--include-evoscore` flag.
 
 ### Output Formats
 
@@ -64,9 +82,20 @@ pmat auto-fix --dry-run                   # Preview changes
 exist? does CI run?). Overlap with Rust Project Score categories: Documentation (15 pts),
 Rust Tooling & CI/CD (130 pts), and Testing Excellence (20 pts) cover similar ground.
 
-**Recommendation**: Consider folding into Rust Project Score as a "Reproducibility &
-Transparency" category rather than maintaining as a separate top-level command. The
-falsifiability gateway (Category A >= 60%) is the most unique/valuable part.
+### Planned: Absorb into Rust Project Score v3.0
+
+**Phase 1 — Keep gateway, deprecate command**: `pmat popper-score` emits deprecation
+warning pointing to `pmat rust-project-score`. Category A (Falsifiability >= 60%) becomes
+a precondition in Rust Project Score — if it fails, the project gets grade F regardless
+of other scores. This is the unique value: "are your claims testable?"
+
+**Phase 2 — Fold B-F into Reproducibility category**: Categories B (Reproducibility
+Infrastructure), C (Transparency), D (Statistical Rigor), E (Historical Integrity), and
+F (ML/AI Reproducibility) become subchecks of the new 10-point Reproducibility category
+in Rust Project Score v3.0. See repo-health.md for the full rebalanced design.
+
+**What stays unique**: The falsifiability gateway. No other metric asks "can this project's
+claims be disproven?" That's worth keeping as a hard gate.
 
 ## Entropy & Similarity Detection
 

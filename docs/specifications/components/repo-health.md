@@ -44,8 +44,34 @@ together outweigh Code Quality + Testing + Documentation + Performance combined 
 A project passing `cargo fmt` and `cargo clippy` with CI configured scores higher than one
 with 95% test coverage, low complexity, and zero dead code but no CI.
 
-**Recommendation**: Rebalance so Code Quality + Testing >= Tooling. Consider normalizing
-to 100-point scale with equal-weighted categories (10 pts each).
+### v3.0 Rebalanced Design
+
+Normalize to 100-point scale. Each category 10 points. Add Reproducibility (from Popper).
+Drop GPU/SIMD for non-GPU projects (conditional category).
+
+| Category | v2.3 pts | v3.0 pts | Change |
+|----------|----------|----------|--------|
+| Code Quality | 26 (9%) | 10 (10%) | Normalized weight |
+| Testing Excellence | 20 (7%) | 10 (10%) | +3% weight |
+| Rust Tooling & CI/CD | 130 (47%) | 10 (10%) | **-37% weight** (was dominating) |
+| Documentation | 15 (5%) | 10 (10%) | +5% weight |
+| Build Performance | 15 (5%) | 10 (10%) | +5% weight |
+| Performance & Benchmarking | 10 (4%) | 10 (10%) | +6% weight |
+| Dependency Health | 12 (4%) | 10 (10%) | +6% weight |
+| Known Defects | 20 (7%) | 10 (10%) | +3% weight |
+| Formal Verification | 16 (6%) | 10 (10%) | +4% weight |
+| Reproducibility (NEW) | — | 10 (10%) | Absorbs Popper B-F |
+| GPU/SIMD Quality | 10 (4%) | conditional | Only scored if GPU files present |
+
+**Key principle**: Equal weights prevent any single category from dominating.
+The normalized percentage (avg of category %) already does this in v2.3 output,
+so v3.0 aligns the raw points with the display.
+
+**Popper absorption**: Popper Categories B-F (Reproducibility, Transparency,
+Statistical Rigor, Historical Integrity) become subchecks of the new
+Reproducibility category. Popper Category A (Falsifiability Gateway) stays
+as a standalone precondition — project must score >= 60% on falsifiability
+before the full score is computed.
 
 ### Peer-Reviewed Basis
 
@@ -115,6 +141,22 @@ Files exceeding line limits are flagged:
 | Build performance | 15% | cargo build --timings |
 | Documentation | 15% | pmat validate-readme |
 | Code freshness | 15% | git log |
+
+## Muda-to-Code Mapping (Planned)
+
+Currently Muda waste categories are abstract project-level numbers. Improvement:
+map each waste type to concrete files using existing PMAT data.
+
+| Muda Category | Data Source | Maps To |
+|---------------|-------------|---------|
+| Inventory | `pmat analyze dead-code` | Files with dead functions (CB-304) |
+| Over-processing | `pmat analyze complexity` | Files with complexity > 20 |
+| Defects | `pmat comply check` | Files with CB-120 violations (serde panics, NaN) |
+| Waiting | `cargo build --timings` | Slowest compilation units |
+| Overproduction | `pmat query --duplicates` | Files with code clones |
+
+This would change the Muda output from "Inventory: 16" to
+"Inventory: 16 (129 dead items in src/services/cache/, src/workflow/)".
 
 ## Key Files
 

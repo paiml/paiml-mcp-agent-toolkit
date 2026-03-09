@@ -49,6 +49,27 @@ Popper tells you "LICENSE exists." TDG is 10x more actionable per point.
 Both useful at different zoom levels — TDG for daily development, Rust Project Score for
 quarterly project health reviews.
 
+### Planned: Churn-Weighted TDG Priority
+
+New computed field for ranking which files to fix first:
+
+```
+tdg_priority = tdg_score * (1 + churn_factor)
+```
+
+Where `churn_factor` = normalized commit count in 90-day window (0.0-1.0).
+
+**Rationale**: A file with TDG grade C that changes 3x/week is more urgent than a
+file with TDG grade C that hasn't changed in 6 months. The static file's debt is
+dormant; the active file's debt compounds with every change.
+
+**Surfacing**: `pmat query --churn` already shows churn data. Add `--rank-by priority`
+to sort by `tdg_priority` instead of raw TDG score. Also add to `pmat tdg --hotspots`
+output so the top-10 list reflects actual urgency, not just static severity.
+
+**Data source**: Git log already parsed for `--churn` enrichment. No new I/O needed.
+Computation is O(1) per function (multiply two cached values).
+
 ### Transactional Updates
 
 TDG scores use BLAKE3 hashing for incremental updates:

@@ -310,44 +310,44 @@ signal quality (does it correlate with real defects?), and cost (runtime + maint
 | Coverage % | Per-function | **High** — exact uncovered lines | Direct test gap signal | Minutes (llvm-cov) | **Keep: core metric** |
 | Five Whys | Per-issue | **High** — root cause chain | Evidence-weighted hypotheses | Seconds | **Keep: debugging tool** |
 
-### Assessment Notes
+### Planned Improvements
 
-**TDG (A-tier)**: Most valuable metric. Per-file granularity means developers know exactly
-what to fix. Composite formula (complexity + churn + coverage + duplication) captures
-multiple debt dimensions. O(1) cached lookups. Grade gate (CB-200) is the most actionable
-quality enforcement. No changes needed.
+**1. Rust Project Score v3.0 — Rebalanced weights** (repo-health.md)
 
-**Rust Project Score (A-tier)**: Valuable as project-level dashboard. 10 categories give
-balanced view. Recommendations are directly actionable ("run cargo clippy --fix"). The 274
-point scale is oddly specific — consider normalizing to percentage-only for communication.
-Scores Rust Tooling at 130 points (47% of total) which overweights CI/CD relative to code
-quality. Category weights should be reviewed.
+Current 274-point scale has Tooling at 47%. Normalize to 100-point scale with
+equal-weight categories. Absorb Popper Score as 11th category. Drop GPU/SIMD
+for non-GPU projects instead of awarding free 100%.
 
-**Comply Checks (A-tier)**: Most actionable enforcement. File:line precision. CB-120 series
-(OIP Tarantula) catches real bugs (serde panics, NaN comparisons). CB-500+ language checks
-provide concrete per-violation feedback. No changes needed.
+**2. Popper Score — Absorb into Rust Project Score** (code-quality.md)
 
-**Coverage (A-tier)**: Direct signal — uncovered lines are provably untested. `pmat query
---coverage-gaps` ranks by impact score (missed_lines * pagerank / complexity). No changes.
+Keep falsifiability gateway (Category A >= 60%) as a standalone precondition.
+Fold Categories B-F into Rust Project Score's new "Reproducibility" category.
+Deprecate `pmat popper-score` as top-level command.
 
-**Muda Waste (B-tier)**: Useful lean signal. Five waste categories (overproduction, waiting,
-inventory, over-processing, defects) map to real project problems. Current score of 36.3/100
-is actionable. Keep as-is.
+**3. Five Whys — Diversify evidence sources** (code-quality.md)
 
-**Five Whys (B-tier)**: Valuable debugging tool but evidence sources overlap with TDG
-(complexity 25% + TDG 25% = 50% redundant with TDG). Would benefit from incorporating
-EvoScore trajectory as evidence. Keep but note overlap.
+Replace 25% TDG weight with: 15% EvoScore trajectory + 10% coverage delta.
+Reduces redundancy with TDG while adding the temporal dimension. Add
+`--include-evoscore` flag when EvoScore data is available.
 
-**Popper Score (C-tier, simplify)**: Mostly checks file existence (LICENSE, benches/,
-Cargo.lock, CI config). 87.5/100 tells you infrastructure is present but says nothing about
-code quality. Overlap with Rust Project Score (which checks the same infrastructure plus
-code metrics). **Recommendation**: Fold Popper checks into Rust Project Score as a
-"Reproducibility & Transparency" category rather than maintaining as separate command.
+**4. EvoScore — Build data pipeline** (swe-ci-evolution.md)
 
-**EvoScore (C-tier, invest)**: Promising concept but currently non-functional (no data
-pipeline). When activated, it answers a question no other metric answers: "is the project
-improving?" However, per-project granularity limits actionability. **Recommendation**:
-Implement `pmat test --record` and per-function EvoScore to increase granularity.
+Implement `pmat test --record` to parse `cargo test` output and write
+`commit-<sha>-tests.json`. Add Makefile `test-record` target. Read gamma
+from `.pmat.yaml` options instead of hardcoding. Add per-function EvoScore
+via coverage-diff across commits.
+
+**5. TDG — Add churn-weighted priority** (quality-testing.md)
+
+New field `tdg_priority = tdg_score * churn_factor` for ranking which files
+to fix first. High-TDG files that never change are less urgent than
+high-TDG files that change weekly. Surface in `pmat query --churn`.
+
+**6. Muda Waste — Connect to TDG hotspots** (repo-health.md)
+
+Map Muda categories to concrete files: Inventory waste → dead code files,
+Over-processing waste → high-complexity files, Defect waste → files with
+CB-120 violations. Currently abstract; make it point to specific code.
 
 ## Architectural Principles
 
