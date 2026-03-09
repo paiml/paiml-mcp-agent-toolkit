@@ -698,7 +698,7 @@ cargo run --example feature_052_filtering
   - Tests: 1,886 lines (Phase 1: 570 + Phase 2: 283 + Phase 3: 316 + Phase 4: 717)
 - **Total Tests**: 64 RED tests (Phase 1: 15 + Phase 2: 12 + Phase 3: 11 + Phase 4: 26)
 - **Total Commits**: 15 commits (4 phases + release + link fixes + packaging)
-- **Specification**: `docs/specifications/tdg-enforcement-system.md` (6,000+ lines)
+- **Specification**: `docs/specifications/components/quality-testing.md` (6,000+ lines)
 - **Completion Documentation**:
   - docs/sprints/SPRINT-66-PHASE1-COMPLETION.md
   - docs/sprints/SPRINT-66-PHASE2-COMPLETION.md
@@ -3399,7 +3399,7 @@ pmat scaffold export-tool-mapping -o <file>
 **Duration:** 7 hours (4h RED + 3h GREEN)
 **Focus:** EXTREME TDD documentation quality enforcement for CLI and MCP
 **Methodology:** RED → GREEN → REFACTOR (Phases 1-2 complete)
-**Specification:** `docs/specifications/CLI_MCP_DOCUMENTATION_ENFORCEMENT.md`
+**Specification:** `docs/specifications/components/documentation.md`
 **Ticket:** `docs/tickets/TICKET-PMAT-7001.md`
 **Reports:** `docs/tickets/PMAT-7001-{RED,GREEN,SUMMARY}.md`
 
@@ -3523,7 +3523,7 @@ pmat scaffold export-tool-mapping -o <file>
 
 **Status:** ✅ Released (October 6, 2025)
 **Focus:** Extreme TDD project scaffolding and maintenance automation
-**Specification:** `docs/specifications/scaffold-maintain-spec.md`
+**Specification:** `docs/specifications/components/infrastructure.md`
 
 **Objective:**
 Build a comprehensive system for scaffolding new projects (agents, WASM) and maintaining existing projects with extreme quality standards. This system will enforce:
@@ -4430,7 +4430,7 @@ Build a comprehensive system for scaffolding new projects (agents, WASM) and mai
 - ✅ AST visitor pattern
 - ✅ Mutation scoring & weak spot detection
 - ✅ 22 tests passing, >90% coverage
-- 📋 Specification: `docs/specifications/mutant-fuzz-ast-testing.md`
+- 📋 Specification: `docs/specifications/components/quality-testing.md`
 - 📋 Roadmap: GitHub #56-60 (Phases 2-5, 67-84 days)
 
 **Quality Improvements**

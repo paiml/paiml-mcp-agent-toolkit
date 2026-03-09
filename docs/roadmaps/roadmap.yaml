@@ -1205,7 +1205,7 @@ roadmap:
   updated: 2026-02-14T11:44:43Z
   spec: null
   acceptance_criteria:
-  - 'Implement 5 new compliance checks from OIP Tarantula analysis: CB-120 NaN-unsafe comparison, CB-121 lock poisoning, CB-122 serde safety, CB-123 ignored tests, CB-124 coverage threshold. Spec: docs/specifications/improve-pmat-comply.md v2.1.0'
+  - 'Implement 5 new compliance checks from OIP Tarantula analysis: CB-120 NaN-unsafe comparison, CB-121 lock poisoning, CB-122 serde safety, CB-123 ignored tests, CB-124 coverage threshold. Spec: docs/specifications/components/repo-health.md v2.1.0'
   phases: []
   subtasks: []
   estimated_effort: null
@@ -1259,7 +1259,7 @@ roadmap:
   updated: 2026-02-01T13:26:33Z
   spec: null
   acceptance_criteria:
-  - 'Implement section 8.10 from docs/specifications/improve-pmat-comply.md: coverage 95%, SATD zero-tolerance, dead code zero-tolerance, lint gate'
+  - 'Implement section 8.10 from docs/specifications/components/repo-health.md: coverage 95%, SATD zero-tolerance, dead code zero-tolerance, lint gate'
   phases: []
   subtasks: []
   estimated_effort: null
@@ -1316,7 +1316,7 @@ roadmap:
   assigned_to: null
   created: 2026-02-01T15:14:14.906952123+00:00
   updated: 2026-02-01T15:15:00+00:00
-  spec: docs/specifications/improve-pmat-comply.md
+  spec: docs/specifications/components/repo-health.md
   acceptance_criteria:
   - Aggregate waste score from dead code, slow tests, SATD, complexity, and dependency metrics
   - Score range 0-100 (lower is better)
@@ -1339,7 +1339,7 @@ roadmap:
   assigned_to: null
   created: 2026-02-01T15:23:02.168510460+00:00
   updated: 2026-02-01T15:23:30+00:00
-  spec: docs/specifications/improve-pmat-comply.md
+  spec: docs/specifications/components/repo-health.md
   acceptance_criteria:
   - Detect reproducibility level Bronze/Silver/Gold
   - Check Cargo.lock, Dockerfile, make reproduce, seeded RNG
@@ -1358,7 +1358,7 @@ roadmap:
   assigned_to: null
   created: 2026-02-01T16:00:00+00:00
   updated: 2026-02-01T16:00:00+00:00
-  spec: docs/specifications/improve-pmat-comply.md
+  spec: docs/specifications/components/repo-health.md
   acceptance_criteria:
   - Detect simulation projects (simular/trueno-sim deps)
   - Scan pub fn for LaTeX math notation in doc comments
@@ -1378,7 +1378,7 @@ roadmap:
   assigned_to: null
   created: 2026-02-01T16:00:00+00:00
   updated: 2026-02-01T16:00:00+00:00
-  spec: docs/specifications/improve-pmat-comply.md
+  spec: docs/specifications/components/repo-health.md
   acceptance_criteria:
   - Layer 2 (review) generates evidence-based reviewer checklist
   - Layer 3 (audit) generates governance artifact with sovereign trail

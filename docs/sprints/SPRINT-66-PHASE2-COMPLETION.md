@@ -417,7 +417,7 @@ pmat tdg check-quality \
 
 ## References
 
-- **Specification**: `docs/specifications/tdg-enforcement-system.md`
+- **Specification**: `docs/specifications/components/quality-testing.md`
 - **Phase 1 Completion**: `docs/sprints/SPRINT-66-PHASE1-COMPLETION.md`
 - **Roadmap**: `ROADMAP.md` (updated)
 - **Commit**: 654d0f87

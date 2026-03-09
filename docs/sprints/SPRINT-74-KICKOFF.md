@@ -5,7 +5,7 @@
 **Status**: Ready to Begin
 **Date**: October 30, 2025
 **Prerequisites**: Sprints 71, 72, 73 complete (infrastructure ready)
-**Related Spec**: `docs/specifications/tracing-bug-discovery-tdg-git-expansion-spec.md`
+**Related Spec**: `docs/specifications/components/infrastructure.md`
 
 ---
 

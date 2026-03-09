@@ -244,7 +244,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("=== Demo Complete ===");
     println!("\nFor more information:");
-    println!("  - Specification: docs/specifications/unified-cli-mcp-help-integration.md");
+    println!("  - Specification: docs/specifications/components/cli-api.md");
     println!("  - GitHub Issue: #118");
     println!("  - Toyota Way principles: Jidoka, Poka-yoke, Genchi Genbutsu");
 

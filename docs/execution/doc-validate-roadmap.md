@@ -14,7 +14,7 @@
 
 Implementation roadmap for the documentation link validation feature in PMAT. This feature will validate all markdown links (internal and external) and fail builds on 404 errors.
 
-**Specification**: See `docs/specifications/doc-validate.md`
+**Specification**: See `docs/specifications/components/documentation.md`
 
 ## Sprint Goal
 
@@ -312,6 +312,6 @@ tokio-test = "0.4"
 4. Weekly quality gate checks
 
 **Related Documents**:
-- Specification: `docs/specifications/doc-validate.md`
+- Specification: `docs/specifications/components/documentation.md`
 - GitHub Project: TBD
 - Coverage Reports: `target/llvm-cov/html/index.html`

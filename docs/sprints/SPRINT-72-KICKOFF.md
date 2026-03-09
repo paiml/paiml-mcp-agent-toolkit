@@ -13,7 +13,7 @@
 
 Sprint 72 implements **Time-Travel Debugging**, the second phase of PMAT's Interactive Tracing & Debugging capabilities. This builds on Sprint 71's DAP foundation to enable recording execution, taking snapshots, and replaying program state forward/backward.
 
-**Parent Specification**: `docs/specifications/tracing-bug-discovery-tdg-git-expansion-spec.md`
+**Parent Specification**: `docs/specifications/components/infrastructure.md`
 **Related**: Part 1, Feature 1.2 (Time-Travel Debugging)
 
 ---
@@ -595,7 +595,7 @@ cargo test dap
 
 ## References
 
-- **Parent Spec**: `docs/specifications/tracing-bug-discovery-tdg-git-expansion-spec.md`
+- **Parent Spec**: `docs/specifications/components/infrastructure.md`
 - **Sprint 71 Docs**: `docs/sprints/SPRINT-71-*.md`
 - **Related Projects**:
   - rr-debugger (C/C++ time-travel debugging)

@@ -1,6 +1,6 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
 //! Data models for pmat repo-score
-//! Implements the scoring system defined in docs/specifications/repo-score-spec.md
+//! Implements the scoring system defined in docs/specifications/components/repo-health.md
 //!
 //! PMAT-454: All scores normalized to 0-100 for display
 

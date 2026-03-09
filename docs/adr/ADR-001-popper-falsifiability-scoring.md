@@ -113,5 +113,5 @@ pub trait PopperScorer: Send + Sync {
 ## References
 
 - Popper, K. (1959). *The Logic of Scientific Discovery*
-- [docs/specifications/popper-nullification-100point-score.md](../specifications/popper-nullification-100point-score.md)
+- [docs/specifications/components/code-quality.md](../specifications/components/code-quality.md)
 - [Chapter 37: Popper Falsifiability Score](https://paiml.github.io/pmat-book/ch37-00-popper-score.html)

@@ -159,7 +159,7 @@ fn test_tdg_auto_fail_on_critical_defect() {
 
 ## Dependencies
 
-- Specification: `docs/specifications/known-defects-languages-spec.md` ✅
+- Specification: `docs/specifications/components/language-support.md` ✅
 - Issue #2: `pmat analyze defects` command (can be parallel)
 
 ## Success Metrics
@@ -172,4 +172,4 @@ fn test_tdg_auto_fail_on_critical_defect() {
 ## References
 
 - Cloudflare incident: https://blog.cloudflare.com/2025-01-18-outage
-- Spec: `docs/specifications/known-defects-languages-spec.md`
+- Spec: `docs/specifications/components/language-support.md`

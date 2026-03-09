@@ -525,7 +525,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Comprehensive system prompt with all scoring rules
     - Available to Claude Code and other MCP clients
   - **Documentation:**
-    - Complete specification (docs/specifications/repo-score-spec.md)
+    - Complete specification (docs/specifications/components/repo-health.md)
     - Implementation guide (docs/design/repo-score-implementation-complete.md)
     - User guide: pmat-book Chapter 31 (https://paiml.github.io/pmat-book/ch31-00-repo-score.html)
     - Command reference updated in Appendix B

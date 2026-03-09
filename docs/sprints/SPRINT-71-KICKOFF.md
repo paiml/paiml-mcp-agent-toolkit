@@ -12,7 +12,7 @@
 
 Sprint 71 implements the **Debug Adapter Protocol (DAP) Server Foundation**, the first phase of PMAT's Interactive Tracing & Debugging capabilities (Spec Part 1).
 
-**Parent Specification**: `docs/specifications/tracing-bug-discovery-tdg-git-expansion-spec.md`
+**Parent Specification**: `docs/specifications/components/infrastructure.md`
 
 ---
 

@@ -1,5 +1,5 @@
 // Claude Agent SDK Integration Module
-// Implements EXTREME TDD methodology per docs/specifications/claude-agent-integration.md
+// Implements EXTREME TDD methodology per docs/specifications/components/agent-integration.md
 
 pub mod bridge;
 pub mod cache;

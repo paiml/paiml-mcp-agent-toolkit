@@ -1,7 +1,7 @@
 # QA Validation Protocol: pmat comply v2.3.0
 
 **Target Release:** pmat v2.3.0
-**Spec Reference:** `docs/specifications/improve-pmat-comply.md`
+**Spec Reference:** `docs/specifications/components/repo-health.md`
 **Pass Criteria:** 100% of applicable checks must pass.
 **Falsification Logic:** Any finding where `pmat comply` fails to detect a violation (False Negative) or flags valid code (False Positive) is a blocking regression.
 

@@ -2,9 +2,9 @@
 
 > Sub-spec of [pmat-spec.md](../pmat-spec.md) | Component 16
 
-## Rust Project Score v1.1
+## Rust Project Score v2.3
 
-### 106-Point Scoring
+### 274-Point Scoring
 
 ```bash
 pmat rust-project-score              # Fast mode (~2-3 min)
@@ -12,22 +12,26 @@ pmat rust-project-score --full       # Full mode (~10-15 min)
 pmat rust-project-score --format json -o score.json
 ```
 
-### Categories
+### Categories (10)
 
 | Category | Points | Checks |
 |----------|--------|--------|
-| Rust Tooling | 25 | clippy, fmt, edition, MSRV |
+| Rust Tooling & CI/CD | 130 | clippy, fmt, edition, MSRV, CI, audit |
 | Code Quality | 26 | complexity, TDG grades, dead code |
-| Testing | 20 | coverage, mutation, property tests |
+| Testing Excellence | 20 | coverage, mutation, property tests |
 | Documentation | 15 | doc-tests, README, API docs |
-| Performance | 10 | benchmarks, binary size, build time |
+| Build Performance | 15 | build time, incremental, caching |
+| Performance & Benchmarking | 10 | benchmarks, binary size |
 | Dependency Health | 12 | audit, outdated, count |
+| Known Defects | 20 | P0 defects, unwrap audit |
+| GPU/SIMD Quality | 10 | CUDA-TDG, barrier safety |
+| Formal Verification | 16 | Miri, Kani, Verus, specs |
 
 ### Peer-Reviewed Basis
 
 Scoring derived from 15 peer-reviewed papers (2022-2025) on Rust project quality.
 
-## pmat comply (33+ Checks)
+## pmat comply (90+ Checks)
 
 ### Check Categories
 

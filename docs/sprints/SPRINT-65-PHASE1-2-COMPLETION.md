@@ -246,7 +246,7 @@ MCP Client → TdgTool Handler → analyze_tdg()
 
 ## Next Steps (Phase 3)
 
-According to `docs/specifications/git-commit-correlation-spec.md`, Phase 3 implements TDG History Commands:
+According to `docs/specifications/components/semantic-search.md`, Phase 3 implements TDG History Commands:
 
 ### Commands to Implement
 1. `pmat tdg history` - View TDG at specific commits
@@ -297,7 +297,7 @@ These queries will need indexes on commit_sha, author, and branch fields.
 - **TDG System**: Existing time-series tracking infrastructure
 
 ### Specification
-- Full spec: `docs/specifications/git-commit-correlation-spec.md`
+- Full spec: `docs/specifications/components/semantic-search.md`
 - 1,520 lines documenting full vision
 - 6-phase implementation plan
 

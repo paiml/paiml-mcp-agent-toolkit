@@ -10,7 +10,7 @@
 
 ## 1. Executive Summary
 
-This document specifies the implementation of `pmat repo-score`, a new PMAT command that evaluates repository health using the scoring system defined in `docs/specifications/repo-score-spec.md`.
+This document specifies the implementation of `pmat repo-score`, a new PMAT command that evaluates repository health using the scoring system defined in `docs/specifications/components/repo-health.md`.
 
 **Goals:**
 - ✅ Provide automated repository quality assessment (0-100 score + bonus)
@@ -1355,7 +1355,7 @@ server/src/
 server/Cargo.toml                                      # Add dependencies (if any)
 
 docs/
-├── specifications/repo-score-spec.md                  # Already created ✅
+├── specifications/components/repo-health.md           # Already created ✅
 └── design/repo-score-implementation.md                # This document ✅
 ```
 

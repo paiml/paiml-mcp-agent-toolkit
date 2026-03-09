@@ -387,7 +387,7 @@ services/
 
 ## References
 
-- **Specification**: [CLI_MCP_DOCUMENTATION_ENFORCEMENT.md](../specifications/CLI_MCP_DOCUMENTATION_ENFORCEMENT.md)
+- **Specification**: [CLI_MCP_DOCUMENTATION_ENFORCEMENT.md](../specifications/components/documentation.md)
 - **Ticket**: [TICKET-PMAT-7001.md](../tickets/TICKET-PMAT-7001.md)
 - **Phase 3 Results**: [PMAT-7001-REFACTOR-PHASE-RESULTS.md](../tickets/PMAT-7001-REFACTOR-PHASE-RESULTS.md)
 - **Changelog**: [CHANGELOG.md](../../CHANGELOG.md)

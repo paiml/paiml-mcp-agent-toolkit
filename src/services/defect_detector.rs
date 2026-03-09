@@ -6,7 +6,7 @@
 //! - TDG analyzer (auto-fail on critical defects)
 //! - analyze defects command (project-wide scanning)
 //!
-//! Based on specification: docs/specifications/known-defects-languages-spec.md
+//! Based on specification: docs/specifications/components/language-support.md
 
 use regex::Regex;
 use serde::{Deserialize, Serialize};

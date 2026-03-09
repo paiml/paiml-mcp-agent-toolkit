@@ -488,6 +488,6 @@ Together, they form a powerful combination that:
 - **Maintains Quality Standards**: Without sacrificing velocity
 
 For more information, see:
-- [Unified Quality Specification](specifications/PMAT_COMPLETE_UNIFIED_SPEC.md)
-- [AGENTS.md Specification](specifications/agents.md)
+- [Unified Quality Specification](specifications/pmat-spec.md)
+- [AGENTS.md Specification](specifications/components/agent-integration.md)
 - [Main README](../README.md)

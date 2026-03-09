@@ -61,8 +61,8 @@ Welcome to the PMAT (Pragmatic AI MCP Agent Toolkit) documentation.
 
 #### Specifications
 - **[specifications/](./specifications/)** - Feature specifications
-  - [roadmap-todo-quality-gate-spec.md](./specifications/roadmap-todo-quality-gate-spec.md) - Roadmap management spec
-  - [publish-mcp-registry.md](./specifications/publish-mcp-registry.md) - MCP Registry publishing specification
+  - [roadmap-todo-quality-gate-spec.md](./specifications/components/work-management.md) - Roadmap management spec
+  - [publish-mcp-registry.md](./specifications/components/mcp-protocol.md) - MCP Registry publishing specification
 
 ### Release Information
 - **[release-process.md](./release-process.md)** - Release workflow and procedures

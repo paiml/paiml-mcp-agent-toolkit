@@ -792,9 +792,9 @@ docs/mutation-testing.md                                       (+300 lines TS ex
 ## References
 
 ### Specifications
-- [Mutant-Fuzz-AST Testing Spec](../specifications/mutant-fuzz-ast-testing.md)
+- [Mutant-Fuzz-AST Testing Spec](../specifications/components/quality-testing.md)
 - [Mutation Testing Status](../../MUTATION_TESTING_STATUS.md)
-- [Multi-Language Mutation Testing](../specifications/multi-language-mutation.md)
+- [Multi-Language Mutation Testing](../specifications/components/code-quality.md)
 
 ### Existing Code
 - [Rust Mutation Adapter](../../server/src/services/mutation/rust_adapter.rs)

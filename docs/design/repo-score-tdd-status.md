@@ -9,7 +9,7 @@
 ## Completed Deliverables
 
 ### 1. Specification Document ✅
-**File:** `docs/specifications/repo-score-spec.md`
+**File:** `docs/specifications/components/repo-health.md`
 **Size:** 810 lines
 **Contents:**
 - Complete scoring criteria (6 categories, 100 base points + 10 bonus)

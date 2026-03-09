@@ -478,7 +478,7 @@ Can defer TIMELINE-003 to Sprint 78 if needed.
 - **Sprint 76**: Recording capture + CLI workflow
 
 ### Specifications
-- `docs/specifications/pmat-recording-format.md` (Sprint 75)
+- `docs/specifications/components/infrastructure.md` (Sprint 75)
 - `server/examples/recording_capture_demo.rs` (Sprint 76)
 
 ---

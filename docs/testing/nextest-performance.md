@@ -143,7 +143,7 @@ cargo nextest run --profile ci
 - Issue #89: Dependency deduplication (completed)
 - Issue #90: Missing cargo config
 - Issue #91: Dependency bloat
-- Specification: `docs/specifications/build-performance-optimization-v1.0.md`
+- Specification: `docs/specifications/components/build-performance.md`
 - Configuration: `.config/nextest.toml`
 - CI Workflows: `.github/workflows/quality.yml`, `.github/workflows/parallel-tests.yml`
 

@@ -617,7 +617,7 @@ pmat tdg check-regression ${FLAGS}
 
 ## References
 
-- **Specification**: `docs/specifications/tdg-enforcement-system.md` (Section: Phase 3)
+- **Specification**: `docs/specifications/components/quality-testing.md` (Section: Phase 3)
 - **Phase 1 Completion**: `docs/sprints/SPRINT-66-PHASE1-COMPLETION.md`
 - **Phase 2 Completion**: `docs/sprints/SPRINT-66-PHASE2-COMPLETION.md`
 - **Roadmap**: `ROADMAP.md`

@@ -1,6 +1,6 @@
 # PMAT Comply Configuration (v2.8)
 # Copy this to .pmat.yaml and customize as needed.
-# Spec: docs/specifications/improve-pmat-comply.md (COMPLY-044)
+# Spec: docs/specifications/components/repo-health.md (COMPLY-044)
 
 comply:
   # Individual check configurations

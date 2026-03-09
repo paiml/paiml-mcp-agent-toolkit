@@ -240,7 +240,7 @@ fn test_format_specification_exists() {
     // Expected: File format is documented in docs/specifications/
 
     // Will verify in GREEN phase that documentation exists:
-    // let spec_path = std::path::Path::new("docs/specifications/pmat-recording-format.md");
+    // let spec_path = std::path::Path::new("docs/specifications/components/infrastructure.md");
     // assert!(spec_path.exists(), "Format specification must be documented");
 
     assert!(true, "Format specification must be written");

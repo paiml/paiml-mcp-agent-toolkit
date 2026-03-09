@@ -229,8 +229,8 @@ documentation-accuracy-enforcement-toyota-way-addendum, doc-validate.
 
 **Sub-spec**: [components/repo-health.md](components/repo-health.md)
 
-Rust project score (106 points, 6 categories). Repository health scoring.
-File health (max-lines enforcement). `pmat comply` quality checks (33+ checks).
+Rust project score (10 categories). Repository health scoring.
+File health (max-lines enforcement). `pmat comply` quality checks (90+ checks).
 
 **Consolidated from**: rust-project-score, rust-project-score-v1.1-update,
 current-rust-project-score-implementation-v1, repo-score-spec, repo-score-adjust,

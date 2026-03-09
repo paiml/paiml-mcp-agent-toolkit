@@ -2,7 +2,7 @@
 // pmat repo-score module
 // Repository health scoring system
 //
-// Specification: docs/specifications/repo-score-spec.md
+// Specification: docs/specifications/components/repo-health.md
 // Design: docs/design/repo-score-implementation.md
 
 pub mod aggregator;

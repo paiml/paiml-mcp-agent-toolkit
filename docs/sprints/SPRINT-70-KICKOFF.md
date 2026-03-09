@@ -16,7 +16,7 @@
 - 178 mutants generated across 2 Rust modules
 - 0 mutants killed by tests (100% survival rate)
 - Generic operators (AOR, ROR, COR, UOR) produce invalid/irrelevant mutations
-- See: `docs/specifications/enhance-pmat-mutation-spec.md`
+- See: `docs/specifications/components/code-quality.md`
 
 **Solution**: Wrap cargo-mutants (proven ≥90% kill rate) instead of re-implementing language-specific operators.
 

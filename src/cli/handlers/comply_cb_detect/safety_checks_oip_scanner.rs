@@ -3,7 +3,7 @@
 
 // =============================================================================
 // OIP Tarantula Pattern Detection (CB-120 through CB-124)
-// Spec: docs/specifications/improve-pmat-comply.md v2.1.0
+// Spec: docs/specifications/components/repo-health.md v2.1.0
 // =============================================================================
 
 /// CB-120: Detect NaN-unsafe floating-point comparisons

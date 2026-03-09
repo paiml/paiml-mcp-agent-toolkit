@@ -545,7 +545,7 @@ let workflow = WorkflowBuilder::new("pr-review")
 ## References
 
 - [VoltAgent Workflows](https://github.com/VoltAgent/voltagent)
-- [Learning System Ideas](../specifications/learning-system-ideas.md#11-declarative-workflow-api)
+- [Learning System Ideas](../specifications/components/infrastructure.md#11-declarative-workflow-api)
 - [Existing Workflow Executor](../../server/src/workflow/executor.rs)
 
 ---

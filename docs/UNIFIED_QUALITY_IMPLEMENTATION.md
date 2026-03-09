@@ -8,7 +8,7 @@
 
 ## Executive Summary
 
-Successfully implemented the **PMAT Unified Quality Enforcement Specification** as defined in `docs/specifications/PMAT_COMPLETE_UNIFIED_SPEC.md`. This comprehensive implementation delivers a dual-track quality enforcement system with immediate production value and a clear research pathway.
+Successfully implemented the **PMAT Unified Quality Enforcement Specification** as defined in `docs/specifications/pmat-spec.md`. This comprehensive implementation delivers a dual-track quality enforcement system with immediate production value and a clear research pathway.
 
 ## Implementation Overview
 

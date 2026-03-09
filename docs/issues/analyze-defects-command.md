@@ -273,7 +273,7 @@ defects:
 
 ## Dependencies
 
-- Specification: `docs/specifications/known-defects-languages-spec.md` ✅
+- Specification: `docs/specifications/components/language-support.md` ✅
 - Issue #1: TDG integration (can be parallel)
 
 ## Success Metrics
@@ -292,5 +292,5 @@ defects:
 
 ## References
 
-- Specification: `docs/specifications/known-defects-languages-spec.md`
+- Specification: `docs/specifications/components/language-support.md`
 - Cloudflare incident: https://blog.cloudflare.com/2025-01-18-outage
