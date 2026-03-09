@@ -151,9 +151,9 @@ Evidence-based patterns from high-scoring Rust projects:
 
 | File | Purpose |
 |------|---------|
-| `src/cli/handlers/five_whys_handler.rs` | Five Whys implementation |
+| `src/cli/handlers/five_whys_handlers.rs` | Five Whys CLI handler |
 | `src/services/language_analyzer.rs` | Complexity analysis |
-| `src/services/satd_detector.rs` | SATD detection |
+| `src/services/satd_detector/mod.rs` | SATD detection |
 | `src/services/lightweight_provability_analyzer.rs` | Provability analysis |
 
 ## References

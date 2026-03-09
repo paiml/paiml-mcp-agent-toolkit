@@ -153,8 +153,8 @@ Every feature must have tests across:
 
 | File | Purpose |
 |------|---------|
-| `src/services/tdg/` | TDG scoring implementation |
-| `src/services/tdg/tdg_graph.rs` | TdgGraph with O(1) dependency tracking |
+| `src/tdg/` | TDG scoring implementation |
+| `src/tdg/tdg_graph.rs` | TdgGraph with O(1) dependency tracking |
 | `src/cli/handlers/comply_handlers/check_handlers/check_tdg_grade.rs` | CB-200 TDG gate |
 | `Makefile` (coverage target) | Canonical coverage invocation |
 

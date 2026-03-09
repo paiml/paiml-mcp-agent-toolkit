@@ -61,7 +61,7 @@ into subsequent iterations, making long-term decision quality observable.
 
 ## Architect-Programmer Protocol
 
-**Status**: Not yet implemented. Future `pmat evolve` command.
+**Status**: Planned (not yet implemented). Will be a dual-agent protocol.
 
 ### Architect Agent
 
@@ -307,7 +307,7 @@ Requires threading `comply_config` into `check_swe_ci_evoscore()`.
 | Configurable gamma | Not implemented | Hardcoded to 1.5 |
 | Configurable window | Not implemented | No time-based filtering |
 | CI source: github | Not implemented | Local files only |
-| Architect-Programmer | Not implemented | Future `pmat evolve` |
+| Architect-Programmer | Planned | Dual-agent protocol (future work) |
 
 ## Key Files
 
