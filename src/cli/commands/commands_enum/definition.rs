@@ -776,6 +776,18 @@ pub enum Commands {
         /// Show detailed performance metrics
         #[arg(long)]
         perf: bool,
+
+        /// Record cargo test results to .pmat-metrics/ for EvoScore (CB-142)
+        #[arg(long)]
+        record: bool,
+
+        /// Parse cargo test output from stdin instead of running cargo test
+        #[arg(long, requires = "record")]
+        from_stdin: bool,
+
+        /// Show what would be recorded without writing files
+        #[arg(long, requires = "record")]
+        dry_run: bool,
     },
 
     /// Memory management and optimization
