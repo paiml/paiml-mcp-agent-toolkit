@@ -82,11 +82,9 @@ impl Scorer for ReproducibilityScorer {
         let mut total_earned = 0.0_f64;
         let mut total_max = 0.0_f64;
 
-        for cat in [&b, &c, &d, &e] {
-            if let Some(score) = cat {
-                total_earned += score.earned;
-                total_max += score.max;
-            }
+        for score in [&b, &c, &d, &e].into_iter().flatten() {
+            total_earned += score.earned;
+            total_max += score.max;
         }
 
         // Category F (ML) is conditional — only include if applicable
