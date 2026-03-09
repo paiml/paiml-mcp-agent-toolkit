@@ -195,6 +195,20 @@ impl AgentContextIndex {
                         .then_with(|| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal))
                 });
             }
+            super::types::RankBy::Priority => {
+                ranked.sort_by(|a, b| {
+                    let priority_a = self.functions.get(a.0).map_or(0.0, |f| {
+                        f.quality.tdg_score * (1.0 + f.quality.churn_score)
+                    });
+                    let priority_b = self.functions.get(b.0).map_or(0.0, |f| {
+                        f.quality.tdg_score * (1.0 + f.quality.churn_score)
+                    });
+                    priority_b
+                        .partial_cmp(&priority_a)
+                        .unwrap_or(std::cmp::Ordering::Equal)
+                        .then_with(|| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal))
+                });
+            }
         }
     }
 

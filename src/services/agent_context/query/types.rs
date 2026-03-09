@@ -31,6 +31,8 @@ pub enum RankBy {
     Impact,
     /// Rank by cross-project importance (PageRank boosted by cross-project callers)
     CrossProject,
+    /// Rank by TDG churn-weighted priority (tdg_score * (1 + churn_score))
+    Priority,
 }
 
 impl std::str::FromStr for RankBy {
@@ -44,7 +46,8 @@ impl std::str::FromStr for RankBy {
             "indegree" | "callers" => Ok(RankBy::InDegree),
             "impact" | "roi" | "coverage" => Ok(RankBy::Impact),
             "cross-project" | "crossproject" | "xproject" => Ok(RankBy::CrossProject),
-            _ => Err(format!("Unknown rank-by: '{}'. Valid: relevance, pagerank, centrality, indegree, impact, cross-project", s)),
+            "priority" | "tdg-priority" | "churn-priority" => Ok(RankBy::Priority),
+            _ => Err(format!("Unknown rank-by: '{}'. Valid: relevance, pagerank, centrality, indegree, impact, cross-project, priority", s)),
         }
     }
 }
