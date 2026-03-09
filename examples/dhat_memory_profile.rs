@@ -61,7 +61,9 @@ fn main() {
         }
     }
 
-    eprintln!("\n=== Done. View dhat-heap.json at https://nnethercote.github.io/dh_view/dh_view.html ===");
+    eprintln!(
+        "\n=== Done. View dhat-heap.json at https://nnethercote.github.io/dh_view/dh_view.html ==="
+    );
 }
 
 fn profile_index_build(project_path: &Path) {

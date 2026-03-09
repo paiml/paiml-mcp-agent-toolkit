@@ -82,9 +82,7 @@ fn find_contract_files(contracts_dir: &Path) -> Vec<String> {
     {
         let path = entry.path();
         if path.is_file()
-            && (path
-                .extension()
-                .is_some_and(|e| e == "yaml" || e == "yml"))
+            && (path.extension().is_some_and(|e| e == "yaml" || e == "yml"))
             && !is_binding_file(path)
         {
             // Quick check: does it look like a provable-contract file?

@@ -80,11 +80,10 @@ impl AgentContextIndex {
 
             // Read file content into reusable buffer
             read_buf.clear();
-            let content = match std::fs::File::open(path)
-                .and_then(|mut f| {
-                    use std::io::Read;
-                    f.read_to_string(&mut read_buf)
-                }) {
+            let content = match std::fs::File::open(path).and_then(|mut f| {
+                use std::io::Read;
+                f.read_to_string(&mut read_buf)
+            }) {
                 Ok(_) => read_buf.as_str(),
                 Err(_) => continue, // Skip binary/unreadable files
             };

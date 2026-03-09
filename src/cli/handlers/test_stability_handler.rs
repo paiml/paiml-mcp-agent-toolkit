@@ -207,10 +207,7 @@ fn run_stability_analysis(
 
 /// Run the test suite once and parse results
 fn run_test_suite(path: &Path, filter: Option<&str>) -> Result<Vec<(String, bool, f64)>> {
-    let mut args = vec![
-        "test".to_string(),
-        "--lib".to_string(),
-    ];
+    let mut args = vec!["test".to_string(), "--lib".to_string()];
 
     if let Some(f) = filter {
         args.push(f.to_string());

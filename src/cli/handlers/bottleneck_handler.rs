@@ -133,10 +133,7 @@ fn analyze_bottlenecks(path: &Path, period: u32, threshold: usize) -> Result<Bot
 }
 
 /// Get file touch counts from git log
-fn get_git_churn(
-    path: &Path,
-    period: u32,
-) -> Result<GitChurnData> {
+fn get_git_churn(path: &Path, period: u32) -> Result<GitChurnData> {
     let output = std::process::Command::new("git")
         .args([
             "log",
