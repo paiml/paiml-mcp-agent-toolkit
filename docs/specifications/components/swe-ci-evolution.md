@@ -23,11 +23,11 @@ a(c) = {
 
 Where:
 - `n(c)` = number of passing tests in codebase state c
-- `n(c₀)` = passing tests in base state (before changes)
-- `n(c*)` = passing tests in oracle state (ideal target)
+- `n(c₀)` = passing tests in base state (first commit in window)
+- `n(c*)` = passing tests in oracle state (max observed across all commits)
 
 **Properties**:
-- `a(c) = 1` means complete gap closure (all oracle tests pass)
+- `a(c) = 1` means complete gap closure (reached oracle level)
 - `a(c) = 0` means no progress from baseline
 - `a(c) = -1` means all originally-passing tests now fail
 
@@ -61,6 +61,8 @@ into subsequent iterations, making long-term decision quality observable.
 
 ## Architect-Programmer Protocol
 
+**Status**: Not yet implemented. Future `pmat evolve` command.
+
 ### Architect Agent
 
 Three-step analysis:
@@ -75,46 +77,92 @@ Three-step implementation:
 2. **Plan**: Outline programming effort needed
 3. **Code**: Implement specifications
 
-**Key insight**: The Programmer is driven by the requirements document, not
-directly by the test gap. This aligns with CI's rapid iteration philosophy.
-
 ## PMAT Integration
 
-### EvoScore from Git History
+### Data Recording
 
-PMAT computes EvoScore from real git history + CI results:
+**Status**: No automated recording command exists yet. Data must be written
+manually or by CI scripts.
 
+Test results are stored as JSON files in `.pmat-metrics/`:
+
+**Primary format** (`commit-<sha>-tests.json`):
+```json
+{"commit": "abc123", "pass": 19500, "total": 19700}
 ```
-For each commit c_i in range [base..HEAD]:
-  1. Count passing tests: n(c_i) from CI results or local test run
-  2. Compute a(c_i) relative to base commit
-  3. Accumulate into EvoScore with gamma weighting
+
+**Fallback format** (`commit-<sha>-meta.json` with `tests` key):
+```json
+{"commit": "abc123", "tests": {"pass": 19500, "total": 19700}}
 ```
 
-### Data Sources
+Files are sorted lexicographically by filename to determine chronological
+order. Use zero-padded or timestamp-prefixed names if order matters.
 
-| Source | Purpose |
-|--------|---------|
-| `git log` | Commit sequence and timestamps |
-| `.pmat-metrics/commit-*.json` | Per-commit test results |
-| CI pipeline results | Pass/fail counts per commit |
-| `.pmat/context.db` | Function-level quality metrics |
+### Recording Methods
+
+**CI pipeline (recommended)**:
+```bash
+# In .github/workflows/ci.yml or post-test hook:
+SHA=$(git rev-parse --short HEAD)
+RESULT=$(cargo test 2>&1 | grep "test result:")
+PASS=$(echo "$RESULT" | grep -oP '\d+ passed' | grep -oP '\d+')
+FAIL=$(echo "$RESULT" | grep -oP '\d+ failed' | grep -oP '\d+')
+TOTAL=$((PASS + FAIL))
+echo "{\"commit\":\"$SHA\",\"pass\":$PASS,\"total\":$TOTAL}" \
+  > .pmat-metrics/commit-${SHA}-tests.json
+```
+
+**Manual seeding** (for bootstrapping):
+```bash
+# Record current test state
+cargo test 2>&1 | grep "test result"
+# → test result: ok. 19795 passed; 0 failed; 167 ignored
+echo '{"commit":"current","pass":19795,"total":19795}' \
+  > .pmat-metrics/commit-$(date +%Y%m%d)-tests.json
+```
 
 ### Configuration
 
-```yaml
-# .pmat.yaml
-comply:
-  checks:
-    cb-142:
-      enabled: true
-      severity: info
-      options:
-        gamma: 1.5          # Future-weighting factor (1.0 = equal, higher = penalize early debt)
-        window: 90           # Days of git history to analyze
-        min_commits: 10      # Minimum commits for meaningful score
-        ci_source: "local"   # "local" (run tests) or "github" (fetch CI results)
-```
+CB-142 is registered in `comply_config_defaults.rs` with:
+- **Severity**: Info
+- **Threshold**: 0.5 (minimum EvoScore for Pass)
+
+The following are hardcoded in the implementation (not yet configurable):
+- **gamma**: 1.5
+- **min_commits**: 3
+
+## Comply Check: CB-142
+
+### Data Loading
+
+1. Scan `.pmat-metrics/` for `commit-*-tests.json` files
+2. Parse each: extract `pass` and `total` fields, skip if `total == 0`
+3. If no `-tests.json` found, fall back to `commit-*-meta.json` files
+   with a `tests` sub-object containing `pass` and `total`
+4. Sort files by filename (lexicographic) for chronological order
+5. If fewer than 3 data points, return Skip
+
+### Computation
+
+1. **Base state** (`c₀`): first file's pass count
+2. **Oracle** (`c*`): max pass count across all files
+3. For each subsequent commit `c_i` (i=1..N):
+   - If `pass >= base_pass`: `a(c) = (pass - base) / (oracle - base)`
+     (or 1.0 if oracle == base)
+   - If `pass < base_pass`: `a(c) = (pass - base) / base`
+     (or 0.0 if base == 0)
+4. Weight: `w_i = gamma^i` where i is the 0-based index in the sequence
+5. EvoScore: `sum(w_i * a_i) / sum(w_i)`
+
+### Scoring
+
+| EvoScore | CB-142 Status | Severity |
+|----------|---------------|----------|
+| >= 0.5 | Pass | Info |
+| 0.0 - 0.5 | Warn | Warning |
+| < 0.0 | Fail | Error |
+| < 3 data points | Skip | Info |
 
 ### Score Interpretation
 
@@ -126,38 +174,23 @@ comply:
 | -0.5 - 0.0 | Poor: net regression trend |
 | -1.0 - -0.5 | Critical: systemic quality degradation |
 
-## Comply Check: CB-142
+### Numerical Example
 
-### Computation
+5 commits: pass counts [18000, 18500, 18200, 19000, 19500], total=19700 each.
 
-CB-142 computes EvoScore over the configured window:
+```
+base = 18000, oracle = 19500, gap = 1500
 
-1. Enumerate commits in window: `git log --since="90 days ago" --format="%H"`
-2. For each commit, load or compute test pass count from `.pmat-metrics/`
-3. Compute `a(c_i)` for each commit relative to oldest commit in window
-4. Compute weighted EvoScore with configured gamma
+a(c₁) = (18500 - 18000) / 1500 = 0.333
+a(c₂) = (18200 - 18000) / 1500 = 0.133
+a(c₃) = (19000 - 18000) / 1500 = 0.667
+a(c₄) = (19500 - 18000) / 1500 = 1.000
 
-### Scoring
-
-| EvoScore | CB-142 Status | Severity |
-|----------|---------------|----------|
-| >= 0.5 | Pass | Info |
-| 0.0 - 0.5 | Warn | Warning |
-| < 0.0 | Fail | Error |
-
-### Fallback
-
-If insufficient data (< min_commits), CB-142 returns Skip with message:
-"Insufficient commit history for EvoScore (need >= 10 commits with test data)"
-
-## Implementation Notes
-
-### Computing n(c) Efficiently
-
-For local computation without full CI replay:
-1. Use `cargo test --no-fail-fast 2>&1 | grep "test result"` to count pass/fail
-2. Cache results in `.pmat-metrics/commit-<sha>-tests.json`
-3. For historical commits, only compute if cached data missing
+weights (γ=1.5): γ¹=1.5, γ²=2.25, γ³=3.375, γ⁴=5.0625
+numerator:   1.5(0.333) + 2.25(0.133) + 3.375(0.667) + 5.0625(1.000) = 8.114
+denominator: 1.5 + 2.25 + 3.375 + 5.0625 = 12.1875
+EvoScore:    8.114 / 12.1875 = 0.666 → Pass
+```
 
 ### Gamma Selection Guide
 
@@ -168,12 +201,29 @@ For local computation without full CI replay:
 | Mature | 1.5 | Penalize regressions in established codebase |
 | Legacy rescue | 2.0 | Heavily reward sustained improvement |
 
-## Future Work
+## Implementation Status
 
-1. **Per-function EvoScore**: Track evolution at function granularity
-2. **Cross-project EvoScore**: Compare evolution trajectories across repos
-3. **Predictive EvoScore**: ML model predicting future trajectory
-4. **Architect-Programmer mode**: `pmat evolve` command implementing the dual-agent protocol
+| Feature | Status | Location |
+|---------|--------|----------|
+| EvoScore math | Implemented | `check_mono_spec.rs:296-332` |
+| `-tests.json` loading | Implemented | `check_mono_spec.rs:224-251` |
+| `-meta.json` fallback | Implemented | `check_mono_spec.rs:254-281` |
+| CB-142 comply check | Implemented | `check_mono_spec.rs:217-359` |
+| Unit tests (3 cases) | Implemented | `check_mono_spec.rs:461-500` |
+| `pmat test --record` | Not implemented | — |
+| Configurable gamma | Not implemented | Hardcoded to 1.5 |
+| Configurable window | Not implemented | No time-based filtering |
+| CI source: github | Not implemented | Local files only |
+| Architect-Programmer | Not implemented | Future `pmat evolve` |
+
+## Key Files
+
+| File | Purpose |
+|------|---------|
+| `src/cli/handlers/comply_handlers/check_handlers/check_mono_spec.rs` | CB-142 implementation |
+| `src/models/comply_config_defaults.rs` | CB-142 registration (severity: Info, threshold: 0.5) |
+| `.pmat-metrics/commit-*-tests.json` | Primary test data (not yet generated) |
+| `.pmat-metrics/commit-*-meta.json` | Fallback data (exists but lacks `tests` key) |
 
 ## References
 
