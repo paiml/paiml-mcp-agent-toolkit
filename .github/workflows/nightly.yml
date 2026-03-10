@@ -78,13 +78,13 @@ jobs:
         if: matrix.cross
         run: cargo install cross --git https://github.com/cross-rs/cross
 
+      - name: Build release binary (cross)
+        if: matrix.cross
+        run: cross build --release --target ${{ matrix.target }}
+
       - name: Build release binary
-        run: |
-          if [ "${{ matrix.cross }}" = "true" ]; then
-            cross build --release --target ${{ matrix.target }}
-          else
-            cargo build --release --target ${{ matrix.target }}
-          fi
+        if: ${{ !matrix.cross }}
+        run: cargo build --release --target ${{ matrix.target }}
 
       - name: Package (unix)
         if: runner.os != 'Windows'
