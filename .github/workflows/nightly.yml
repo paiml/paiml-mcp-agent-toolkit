@@ -80,6 +80,8 @@ jobs:
 
       - name: Build release binary (cross)
         if: matrix.cross
+        env:
+          CROSS_NO_WARNINGS: "0"
         run: cross build --release --target ${{ matrix.target }}
 
       - name: Build release binary
