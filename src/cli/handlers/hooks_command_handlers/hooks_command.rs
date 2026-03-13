@@ -83,11 +83,14 @@ impl HooksCommand {
             fs::set_permissions(&hook_path, perms)?;
         }
 
+        // Install pre-push hook (fast local gate)
+        self.install_pre_push_hook()?;
+
         Ok(HookInstallResult {
             success: true,
             hook_created: true,
             backup_created,
-            message: "Pre-commit hook installed successfully".to_string(),
+            message: "Pre-commit and pre-push hooks installed successfully".to_string(),
         })
     }
 
@@ -311,5 +314,90 @@ impl HooksCommand {
             checks_failed,
             output: combined_output,
         })
+    }
+
+    /// Install pre-push hook (fast local quality gate).
+    fn install_pre_push_hook(&self) -> Result<()> {
+        let hook_path = self.hooks_dir.join("pre-push");
+
+        let hook_content = r#"#!/usr/bin/env bash
+# PMAT Pre-Push Quality Gate
+# auto-managed by PMAT — DO NOT EDIT
+#
+# Fast local gate (~1-3 min) to catch issues before push.
+# Full clean-room verification runs remotely after push.
+# Bypass with: git push --no-verify
+
+set -euo pipefail
+
+# Skip for non-Rust repos
+if [ ! -f Cargo.toml ]; then
+    exit 0
+fi
+
+echo "🔍 PMAT Pre-Push Quality Gate"
+echo "=============================="
+
+FAILED=0
+
+# 1. Format check (fastest, ~2s)
+echo -n "  Format check... "
+if cargo fmt --all -- --check > /dev/null 2>&1; then
+    echo "✅"
+else
+    echo "❌"
+    echo "   Run: cargo fmt --all"
+    FAILED=1
+fi
+
+# 2. Compilation check (~10-30s)
+echo -n "  Cargo check... "
+if cargo check --all-targets 2> /dev/null; then
+    echo "✅"
+else
+    echo "❌"
+    FAILED=1
+fi
+
+# 3. Clippy (~10-30s, incremental)
+echo -n "  Clippy... "
+if cargo clippy --all-targets -- -D warnings 2> /dev/null; then
+    echo "✅"
+else
+    echo "❌"
+    FAILED=1
+fi
+
+# 4. Unit tests (~30-60s)
+echo -n "  Unit tests... "
+if cargo test --lib --quiet 2> /dev/null; then
+    echo "✅"
+else
+    echo "❌"
+    FAILED=1
+fi
+
+if [ "$FAILED" -ne 0 ]; then
+    echo ""
+    echo "❌ Pre-push gate FAILED — fix issues before pushing"
+    echo "   Bypass (emergency): git push --no-verify"
+    exit 1
+fi
+
+echo ""
+echo "✅ Pre-push gate passed"
+"#;
+
+        fs::write(&hook_path, hook_content)?;
+
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mut perms = fs::metadata(&hook_path)?.permissions();
+            perms.set_mode(0o755);
+            fs::set_permissions(&hook_path, perms)?;
+        }
+
+        Ok(())
     }
 }

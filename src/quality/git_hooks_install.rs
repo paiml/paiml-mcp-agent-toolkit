@@ -136,45 +136,71 @@ echo "✅ Commit message format valid"
         let hook_path = hooks_dir.join("pre-push");
 
         let hook_content = r#"#!/usr/bin/env bash
-# PMAT Pre-Push Quality Verification
+# PMAT Pre-Push Quality Gate
+# auto-managed by PMAT — DO NOT EDIT
+#
+# Fast local gate (~1-3 min) to catch issues before push.
+# Full clean-room verification runs remotely after push.
+# Bypass with: git push --no-verify
 
-echo "🚀 Running pre-push quality verification..."
+set -euo pipefail
 
-# Build in release mode
-cargo build --release || {
-    echo "❌ Release build failed"
-    exit 1
-}
-
-# Run all tests
-cargo test --all-features || {
-    echo "❌ Tests failed"
-    exit 1
-}
-
-# Run clippy
-cargo clippy -- -D warnings || {
-    echo "❌ Clippy warnings found"
-    exit 1
-}
-
-# Check format
-cargo fmt -- --check || {
-    echo "❌ Code not formatted"
-    echo "Run 'cargo fmt' to fix"
-    exit 1
-}
-
-# Verify coverage
-if command -v cargo-llvm-cov &> /dev/null; then
-    COVERAGE=$(cargo llvm-cov report --summary-only | grep "TOTAL" | awk '{print $10}' | sed 's/%//')
-    if (( $(echo "$COVERAGE < 95.0" | bc -l) )); then
-        echo "❌ Coverage $COVERAGE% is below 95%"
-        exit 1
-    fi
+# Skip for non-Rust repos
+if [ ! -f Cargo.toml ]; then
+    exit 0
 fi
 
-echo "✅ All pre-push checks passed!"
+echo "🔍 PMAT Pre-Push Quality Gate"
+echo "=============================="
+
+FAILED=0
+
+# 1. Format check (fastest, ~2s)
+echo -n "  Format check... "
+if cargo fmt --all -- --check > /dev/null 2>&1; then
+    echo "✅"
+else
+    echo "❌"
+    echo "   Run: cargo fmt --all"
+    FAILED=1
+fi
+
+# 2. Compilation check (~10-30s)
+echo -n "  Cargo check... "
+if cargo check --all-targets 2> /dev/null; then
+    echo "✅"
+else
+    echo "❌"
+    FAILED=1
+fi
+
+# 3. Clippy (~10-30s, incremental)
+echo -n "  Clippy... "
+if cargo clippy --all-targets -- -D warnings 2> /dev/null; then
+    echo "✅"
+else
+    echo "❌"
+    FAILED=1
+fi
+
+# 4. Unit tests (~30-60s)
+echo -n "  Unit tests... "
+if cargo test --lib --quiet 2> /dev/null; then
+    echo "✅"
+else
+    echo "❌"
+    FAILED=1
+fi
+
+if [ "$FAILED" -ne 0 ]; then
+    echo ""
+    echo "❌ Pre-push gate FAILED — fix issues before pushing"
+    echo "   Bypass (emergency): git push --no-verify"
+    exit 1
+fi
+
+echo ""
+echo "✅ Pre-push gate passed"
 "#;
 
         let mut file = fs::File::create(&hook_path)?;
