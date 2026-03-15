@@ -73,7 +73,11 @@ impl TDGCalculator {
         for (i, &value) in sorted.iter().enumerate() {
             gini_sum += (2.0 * (i + 1) as f64 - sorted.len() as f64 - 1.0) * f64::from(value);
         }
-        let gini = gini_sum / (sorted.len() as f64 * f64::from(sum));
+        let gini = if sum == 0 {
+            0.0
+        } else {
+            gini_sum / (sorted.len() as f64 * f64::from(sum))
+        };
 
         let percentile_idx = ((sorted.len() as f64 * 0.9) as usize).min(sorted.len() - 1);
         let percentile_90 = f64::from(sorted[percentile_idx]);

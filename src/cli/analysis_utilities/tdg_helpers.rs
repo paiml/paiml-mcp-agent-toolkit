@@ -23,7 +23,7 @@ pub fn identify_primary_factor(components: &crate::models::tdg::TDGComponents) -
 
     factors.sort_unstable_by(|a, b| {
         b.0.partial_cmp(&a.0)
-            .expect("NaN values should not occur in factor scores")
+            .unwrap_or(std::cmp::Ordering::Equal)
     });
     factors[0].1.to_string()
 }
@@ -69,7 +69,7 @@ fn apply_results_filtering(
     results.sort_unstable_by(|a, b| {
         b.0.value
             .partial_cmp(&a.0.value)
-            .expect("NaN values should not occur in complexity scores")
+            .unwrap_or(std::cmp::Ordering::Equal)
     });
 
     // Apply top_files limit
@@ -107,7 +107,7 @@ fn create_summary_from_file_results(
     let mut sorted_values = tdg_values;
     sorted_values.sort_unstable_by(|a, b| {
         a.partial_cmp(b)
-            .expect("NaN values should not occur in numeric data")
+            .unwrap_or(std::cmp::Ordering::Equal)
     });
 
     let p95_tdg = percentile(&sorted_values, 0.95);
