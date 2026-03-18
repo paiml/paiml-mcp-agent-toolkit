@@ -4,8 +4,12 @@
 fn format_text(
     score: &crate::services::rust_project_score::orchestrator::ProjectScore,
     recommendations: &[String],
-    _verbose: bool,
+    verbose: bool,
 ) -> String {
+    // GH-46: --verbose not yet implemented for project score text output
+    if verbose {
+        eprintln!("Warning: --verbose is not yet implemented for project score text output. Flag ignored.");
+    }
     use crate::cli::colors as c;
     use crate::services::rust_project_score::orchestrator::SPEC_VERSION;
 
@@ -100,8 +104,12 @@ fn format_text(
 fn format_markdown(
     score: &crate::services::rust_project_score::orchestrator::ProjectScore,
     recommendations: &[String],
-    _verbose: bool,
+    verbose: bool,
 ) -> String {
+    // GH-46: --verbose not yet implemented for project score markdown output
+    if verbose {
+        eprintln!("Warning: --verbose is not yet implemented for project score markdown output. Flag ignored.");
+    }
     use crate::services::rust_project_score::orchestrator::SPEC_VERSION;
 
     let mut output = String::new();

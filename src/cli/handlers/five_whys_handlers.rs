@@ -16,9 +16,17 @@ pub async fn handle_debug(
     format: DebugOutputFormat,
     output: Option<&Path>,
     path: &Path,
-    _context: Option<&Path>,
-    _auto_analyze: bool,
+    context: Option<&Path>,
+    auto_analyze: bool,
 ) -> Result<()> {
+    // GH-46: --context and --auto-analyze not yet implemented
+    if context.is_some() {
+        eprintln!("Warning: --context is not yet implemented. Flag ignored.");
+    }
+    if auto_analyze {
+        eprintln!("Warning: --auto-analyze is not yet implemented. Flag ignored.");
+    }
+
     // Create analyzer
     let analyzer = FiveWhysAnalyzer::new();
 

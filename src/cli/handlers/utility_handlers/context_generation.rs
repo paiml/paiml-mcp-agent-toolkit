@@ -44,8 +44,12 @@ async fn generate_enhanced_ast_context(
     project_path: &Path,
     context: &crate::services::deep_context::DeepContext,
     format: ContextFormat,
-    _include_large_files: bool,
+    include_large_files: bool,
 ) -> Result<String> {
+    // GH-46: --include-large-files not yet implemented
+    if include_large_files {
+        eprintln!("Warning: --include-large-files is not yet implemented. Flag ignored.");
+    }
     match format {
         ContextFormat::Json => generate_json_context(toolchain, project_path, context),
         ContextFormat::Sarif => generate_sarif_stub(toolchain, project_path),
