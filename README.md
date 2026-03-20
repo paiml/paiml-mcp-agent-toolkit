@@ -1,9 +1,14 @@
-# PMAT
+<h1 align="center">PMAT</h1>
+
+<p align="center">
+  <img src="docs/images/pmat-logo.svg" alt="PMAT" width="500">
+</p>
+
+<p align="center">
+  <strong>Zero-configuration AI context generation for any codebase</strong>
+</p>
 
 <div align="center">
-  <img src="docs/images/pmat-logo.svg" alt="PMAT" width="500">
-
-  <p><strong>Zero-configuration AI context generation for any codebase</strong></p>
 
 [![Crates.io](https://img.shields.io/crates/v/pmat.svg)](https://crates.io/crates/pmat)
 [![Documentation](https://docs.rs/pmat/badge.svg)](https://docs.rs/pmat)
