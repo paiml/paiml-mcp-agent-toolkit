@@ -24,6 +24,14 @@
 
 ---
 
+## Table of Contents
+
+- [What is PMAT?](#what-is-pmat)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Features](#features)
+- [Architecture](#architecture)
+
 ## What is PMAT?
 
 **PMAT** (Pragmatic Multi-language Agent Toolkit) provides everything needed to analyze code quality and generate AI-ready context:
