@@ -38,10 +38,7 @@ fn check_makefile(project_path: &Path, violations: &mut Vec<CbPatternViolation>)
         // Check `cd <dir>` patterns
         if let Some(pos) = trimmed.find("cd ") {
             let rest = &trimmed[pos + 3..];
-            let dir = rest
-                .split([';', '&', ' ', '/'])
-                .next()
-                .unwrap_or("");
+            let dir = rest.split([';', '&', ' ', '/']).next().unwrap_or("");
             if !dir.is_empty()
                 && !dir.starts_with('$')
                 && !dir.starts_with('-')
@@ -95,7 +92,9 @@ fn check_ci_workflows(project_path: &Path, violations: &mut Vec<CbPatternViolati
 
             // Check working-directory references
             if let Some(pos) = trimmed.find("working-directory:") {
-                let dir = trimmed[pos + 18..].trim().trim_matches(|c| c == '\'' || c == '"');
+                let dir = trimmed[pos + 18..]
+                    .trim()
+                    .trim_matches(|c| c == '\'' || c == '"');
                 if !dir.starts_with('$') && !dir.starts_with('.') {
                     let target = project_path.join(dir);
                     if !target.exists() {

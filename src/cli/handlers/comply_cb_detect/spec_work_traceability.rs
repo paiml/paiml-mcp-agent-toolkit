@@ -34,7 +34,11 @@ pub fn detect_cb148_spec_work_gaps(project_path: &Path) -> Vec<CbPatternViolatio
             Ok(c) => c,
             Err(_) => continue,
         };
-        let filename = path.file_name().unwrap_or_default().to_string_lossy().to_string();
+        let filename = path
+            .file_name()
+            .unwrap_or_default()
+            .to_string_lossy()
+            .to_string();
 
         for (i, line) in content.lines().enumerate() {
             // Look for planned markers in section headers
@@ -60,7 +64,8 @@ pub fn detect_cb148_spec_work_gaps(project_path: &Path) -> Vec<CbPatternViolatio
                     file: format!("docs/specifications/components/{filename}"),
                     line: i + 1,
                     description: format!(
-                        "Planned section has no work ticket: {}", trimmed.chars().take(80).collect::<String>()
+                        "Planned section has no work ticket: {}",
+                        trimmed.chars().take(80).collect::<String>()
                     ),
                     severity: Severity::Info,
                 });

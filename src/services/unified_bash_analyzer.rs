@@ -171,7 +171,9 @@ impl UnifiedBashAnalyzer {
 
             // Function end (closing brace at function level)
             if brace_depth == 0 && current_function.is_some() && trimmed == "}" {
-                let name = current_function.take().expect("guarded by is_some() check above");
+                let name = current_function
+                    .take()
+                    .expect("guarded by is_some() check above");
                 functions.push(FunctionComplexity {
                     name,
                     line_start: line_start as u32,

@@ -5,7 +5,11 @@ use super::types::{EnforcementResult, EnforcementState, QualityProfile, QualityV
 use crate::cli::colors as c;
 
 fn parse_line_num(location: &str) -> i32 {
-    location.split(':').nth(1).and_then(|s| s.parse().ok()).unwrap_or(1)
+    location
+        .split(':')
+        .nth(1)
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(1)
 }
 use crate::cli::EnforceOutputFormat;
 use anyhow::Result;

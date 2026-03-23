@@ -326,7 +326,6 @@ fn compute_evoscore(path: &Path) -> f64 {
     (rate * 100.0).clamp(0.0, 100.0)
 }
 
-
 // Computation functions (PV lint, coverage, DBC, etc.) extracted for CB-040
 include!("score_handler_compute.rs");
 

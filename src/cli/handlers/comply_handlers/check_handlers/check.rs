@@ -127,7 +127,11 @@ pub(crate) async fn handle_check(
             comply_config,
         ),
         filter_check_by_config(check_stale_paths(project_path), "cb-533", comply_config),
-        filter_check_by_config(check_spec_work_traceability(project_path), "cb-148", comply_config),
+        filter_check_by_config(
+            check_spec_work_traceability(project_path),
+            "cb-148",
+            comply_config,
+        ),
         filter_check_by_config(
             check_agent_context_adoption(project_path),
             "cb-130",
@@ -205,25 +209,53 @@ pub(crate) async fn handle_check(
     ));
 
     // PV Lint quality gate (CB-1201)
-    checks.push(filter_check_by_config(check_pv_lint(project_path), "cb-1201", comply_config));
+    checks.push(filter_check_by_config(
+        check_pv_lint(project_path),
+        "cb-1201",
+        comply_config,
+    ));
 
     // Contract coverage gate (CB-1202)
-    checks.push(filter_check_by_config(check_contract_coverage(project_path), "cb-1202", comply_config));
+    checks.push(filter_check_by_config(
+        check_contract_coverage(project_path),
+        "cb-1202",
+        comply_config,
+    ));
 
     // Annotation coverage gate (CB-1203)
-    checks.push(filter_check_by_config(check_annotation_coverage(project_path), "cb-1203", comply_config));
+    checks.push(filter_check_by_config(
+        check_annotation_coverage(project_path),
+        "cb-1203",
+        comply_config,
+    ));
 
     // Build.rs contract pipeline gate (CB-1204)
-    checks.push(filter_check_by_config(check_build_rs_pipeline(project_path), "cb-1204", comply_config));
+    checks.push(filter_check_by_config(
+        check_build_rs_pipeline(project_path),
+        "cb-1204",
+        comply_config,
+    ));
 
     // Provability invariant gate (CB-1205) — pv-compatibility spec §2.2
-    checks.push(filter_check_by_config(check_provability_invariant(project_path), "cb-1205", comply_config));
+    checks.push(filter_check_by_config(
+        check_provability_invariant(project_path),
+        "cb-1205",
+        comply_config,
+    ));
 
     // Verification level distribution (CB-1206) — pv-compatibility spec §2.3
-    checks.push(filter_check_by_config(check_verification_levels(project_path), "cb-1206", comply_config));
+    checks.push(filter_check_by_config(
+        check_verification_levels(project_path),
+        "cb-1206",
+        comply_config,
+    ));
 
     // Contract drift detection (CB-1207) — pv-compatibility spec CD5
-    checks.push(filter_check_by_config(check_contract_drift(project_path), "cb-1207", comply_config));
+    checks.push(filter_check_by_config(
+        check_contract_drift(project_path),
+        "cb-1207",
+        comply_config,
+    ));
 
     let failures = checks
         .iter()
@@ -276,7 +308,12 @@ pub(crate) async fn handle_check(
             let contracts_dir = project_path.join("contracts");
             if contracts_dir.exists() {
                 if let Ok(output) = std::process::Command::new("pv")
-                    .args(["lint", &contracts_dir.display().to_string(), "--format", "sarif"])
+                    .args([
+                        "lint",
+                        &contracts_dir.display().to_string(),
+                        "--format",
+                        "sarif",
+                    ])
                     .stdout(std::process::Stdio::piped())
                     .stderr(std::process::Stdio::null())
                     .output()
@@ -312,31 +349,63 @@ pub(crate) async fn handle_check(
 /// Extract equation names from contract YAMLs that have preconditions or postconditions.
 fn collect_contract_equation_names(contracts_dir: &Path) -> Vec<String> {
     let mut eq_names = Vec::new();
-    let headers = ["equations", "metadata", "falsification_tests",
-        "kani_harnesses", "proof_obligations", "qa_gate", "implementation",
-        "enforcement", "version", "created", "author", "description",
-        "references", "issues"];
-    let Ok(entries) = std::fs::read_dir(contracts_dir) else { return eq_names };
+    let headers = [
+        "equations",
+        "metadata",
+        "falsification_tests",
+        "kani_harnesses",
+        "proof_obligations",
+        "qa_gate",
+        "implementation",
+        "enforcement",
+        "version",
+        "created",
+        "author",
+        "description",
+        "references",
+        "issues",
+    ];
+    let Ok(entries) = std::fs::read_dir(contracts_dir) else {
+        return eq_names;
+    };
     for entry in entries.flatten() {
-        if entry.path().extension().map_or(true, |e| e != "yaml") { continue; }
-        let Ok(content) = std::fs::read_to_string(entry.path()) else { continue };
+        if entry.path().extension().map_or(true, |e| e != "yaml") {
+            continue;
+        }
+        let Ok(content) = std::fs::read_to_string(entry.path()) else {
+            continue;
+        };
         let lines: Vec<&str> = content.lines().collect();
         for (i, line) in lines.iter().enumerate() {
             let trimmed = line.trim();
-            if !trimmed.ends_with(':') || trimmed.starts_with('#')
-                || trimmed.starts_with('-') || trimmed.contains(' ')
-                || !line.starts_with("  ") || line.starts_with("    ") { continue; }
+            if !trimmed.ends_with(':')
+                || trimmed.starts_with('#')
+                || trimmed.starts_with('-')
+                || trimmed.contains(' ')
+                || !line.starts_with("  ")
+                || line.starts_with("    ")
+            {
+                continue;
+            }
             let name = trimmed.trim_end_matches(':');
-            if headers.contains(&name) { continue; }
+            if headers.contains(&name) {
+                continue;
+            }
             // Look ahead for preconditions/postconditions
-            let has_pre_post = lines[i + 1..].iter().take_while(|next| {
-                let nt = next.trim();
-                !(next.starts_with("  ") && !next.starts_with("    ")
-                    && nt.ends_with(':') && !nt.starts_with('#') && !nt.starts_with('-'))
-            }).any(|next| {
-                let nt = next.trim();
-                nt == "preconditions:" || nt == "postconditions:"
-            });
+            let has_pre_post = lines[i + 1..]
+                .iter()
+                .take_while(|next| {
+                    let nt = next.trim();
+                    !(next.starts_with("  ")
+                        && !next.starts_with("    ")
+                        && nt.ends_with(':')
+                        && !nt.starts_with('#')
+                        && !nt.starts_with('-'))
+                })
+                .any(|next| {
+                    let nt = next.trim();
+                    nt == "preconditions:" || nt == "postconditions:"
+                });
             if has_pre_post {
                 eq_names.push(name.to_string());
             }
@@ -426,10 +495,13 @@ pub(crate) fn check_annotation_coverage(project_path: &Path) -> ComplianceCheck 
     });
 
     // Also collect contract YAML stems for #[contract("stem", equation = "eq")] matching
-    let mut yaml_stems: std::collections::HashMap<String, String> = std::collections::HashMap::new();
+    let mut yaml_stems: std::collections::HashMap<String, String> =
+        std::collections::HashMap::new();
     if let Ok(entries) = std::fs::read_dir(&contracts_dir) {
         for entry in entries.flatten() {
-            if entry.path().extension().map_or(true, |e| e != "yaml") { continue; }
+            if entry.path().extension().map_or(true, |e| e != "yaml") {
+                continue;
+            }
             if let Some(stem) = entry.path().file_stem().and_then(|s| s.to_str()) {
                 if let Ok(content) = std::fs::read_to_string(entry.path()) {
                     yaml_stems.insert(stem.to_string(), content);
@@ -455,7 +527,10 @@ pub(crate) fn check_annotation_coverage(project_path: &Path) -> ComplianceCheck 
     for eq in &eq_names {
         // Strategy 1: Check if any #[contract] attribute references this equation
         let attr_pattern = format!("equation = \"{eq}\"");
-        if contract_attr_lines.iter().any(|line| line.contains(&attr_pattern)) {
+        if contract_attr_lines
+            .iter()
+            .any(|line| line.contains(&attr_pattern))
+        {
             bound_fns += 1;
             with_macro += 1;
             continue; // Covered by #[contract] macro — assertions come from YAML
@@ -482,7 +557,9 @@ pub(crate) fn check_annotation_coverage(project_path: &Path) -> ComplianceCheck 
                     if has_macro {
                         with_macro += 1;
                     } else {
-                        let rel = entry.path().strip_prefix(project_path)
+                        let rel = entry
+                            .path()
+                            .strip_prefix(project_path)
                             .unwrap_or(entry.path());
                         missing.push(format!("{eq} in {}", rel.display()));
                     }
@@ -511,8 +588,14 @@ pub(crate) fn check_annotation_coverage(project_path: &Path) -> ComplianceCheck 
             status: CheckStatus::Fail,
             message: format!(
                 "{}/{} contract-bound fns lack macros: {}",
-                missing.len(), bound_fns,
-                missing.iter().take(3).cloned().collect::<Vec<_>>().join(", ")
+                missing.len(),
+                bound_fns,
+                missing
+                    .iter()
+                    .take(3)
+                    .cloned()
+                    .collect::<Vec<_>>()
+                    .join(", ")
             ),
             severity: Severity::Error,
         }
@@ -581,7 +664,8 @@ pub(crate) fn check_build_rs_pipeline(project_path: &Path) -> ComplianceCheck {
         return ComplianceCheck {
             name: "CB-1204: Build.rs Pipeline".into(),
             status: CheckStatus::Fail,
-            message: "Contracts have preconditions but no build.rs to emit assertion env vars".into(),
+            message: "Contracts have preconditions but no build.rs to emit assertion env vars"
+                .into(),
             severity: Severity::Error,
         };
     }
@@ -628,15 +712,27 @@ pub(crate) fn check_provability_invariant(project_path: &Path) -> ComplianceChec
     if let Ok(entries) = std::fs::read_dir(&contracts_dir) {
         for entry in entries.flatten() {
             let p = entry.path();
-            if p.extension().map_or(true, |e| e != "yaml") { continue; }
-            if p.file_name().is_some_and(|n| n.to_string_lossy().contains("binding")) { continue; }
-            let Ok(content) = std::fs::read_to_string(&p) else { continue };
+            if p.extension().map_or(true, |e| e != "yaml") {
+                continue;
+            }
+            if p.file_name()
+                .is_some_and(|n| n.to_string_lossy().contains("binding"))
+            {
+                continue;
+            }
+            let Ok(content) = std::fs::read_to_string(&p) else {
+                continue;
+            };
 
             // Skip data registries
-            if content.contains("registry: true") { continue; }
+            if content.contains("registry: true") {
+                continue;
+            }
 
             let has_obligations = content.contains("proof_obligations:");
-            if !has_obligations { continue; }
+            if !has_obligations {
+                continue;
+            }
 
             kernel_contracts += 1;
             let stem = p.file_stem().and_then(|s| s.to_str()).unwrap_or("?");
@@ -645,10 +741,14 @@ pub(crate) fn check_provability_invariant(project_path: &Path) -> ComplianceChec
             let has_falsification = content.contains("falsification_tests:");
 
             if !has_kani {
-                violations.push(format!("{stem}: has proof_obligations but no kani_harnesses"));
+                violations.push(format!(
+                    "{stem}: has proof_obligations but no kani_harnesses"
+                ));
             }
             if !has_falsification {
-                violations.push(format!("{stem}: has proof_obligations but no falsification_tests"));
+                violations.push(format!(
+                    "{stem}: has proof_obligations but no falsification_tests"
+                ));
             }
         }
     }
@@ -676,7 +776,12 @@ pub(crate) fn check_provability_invariant(project_path: &Path) -> ComplianceChec
             message: format!(
                 "{} violation(s): {}",
                 violations.len(),
-                violations.iter().take(3).cloned().collect::<Vec<_>>().join("; ")
+                violations
+                    .iter()
+                    .take(3)
+                    .cloned()
+                    .collect::<Vec<_>>()
+                    .join("; ")
             ),
             severity: Severity::Warning,
         }
@@ -688,7 +793,8 @@ pub(crate) fn check_provability_invariant(project_path: &Path) -> ComplianceChec
 /// pv-compatibility spec §2.3
 pub(crate) fn check_verification_levels(project_path: &Path) -> ComplianceCheck {
     // Resolve to absolute path so .parent() works correctly from "."
-    let abs_path = std::fs::canonicalize(project_path).unwrap_or_else(|_| project_path.to_path_buf());
+    let abs_path =
+        std::fs::canonicalize(project_path).unwrap_or_else(|_| project_path.to_path_buf());
     let ps_path = abs_path
         .parent()
         .map(|p| p.join("provable-contracts").join("proof-status.json"));
@@ -721,11 +827,26 @@ pub(crate) fn check_verification_levels(project_path: &Path) -> ComplianceCheck 
     };
 
     let totals = val.get("totals");
-    let obligations = totals.and_then(|t| t.get("obligations")).and_then(|v| v.as_u64()).unwrap_or(0);
-    let tests = totals.and_then(|t| t.get("falsification_tests")).and_then(|v| v.as_u64()).unwrap_or(0);
-    let kani = totals.and_then(|t| t.get("kani_harnesses")).and_then(|v| v.as_u64()).unwrap_or(0);
-    let lean = totals.and_then(|t| t.get("lean_proved")).and_then(|v| v.as_u64()).unwrap_or(0);
-    let contracts = totals.and_then(|t| t.get("contracts")).and_then(|v| v.as_u64()).unwrap_or(0);
+    let obligations = totals
+        .and_then(|t| t.get("obligations"))
+        .and_then(|v| v.as_u64())
+        .unwrap_or(0);
+    let tests = totals
+        .and_then(|t| t.get("falsification_tests"))
+        .and_then(|v| v.as_u64())
+        .unwrap_or(0);
+    let kani = totals
+        .and_then(|t| t.get("kani_harnesses"))
+        .and_then(|v| v.as_u64())
+        .unwrap_or(0);
+    let lean = totals
+        .and_then(|t| t.get("lean_proved"))
+        .and_then(|v| v.as_u64())
+        .unwrap_or(0);
+    let contracts = totals
+        .and_then(|t| t.get("contracts"))
+        .and_then(|v| v.as_u64())
+        .unwrap_or(0);
 
     if obligations == 0 {
         return ComplianceCheck {
@@ -781,10 +902,20 @@ pub(crate) fn check_contract_drift(project_path: &Path) -> ComplianceCheck {
     if let Ok(entries) = std::fs::read_dir(&contracts_dir) {
         for entry in entries.flatten() {
             let p = entry.path();
-            if p.extension().map_or(true, |e| e != "yaml") { continue; }
-            if p.file_name().is_some_and(|n| n.to_string_lossy().contains("binding")) { continue; }
-            let Ok(meta) = std::fs::metadata(&p) else { continue };
-            let Ok(yaml_mtime) = meta.modified() else { continue };
+            if p.extension().map_or(true, |e| e != "yaml") {
+                continue;
+            }
+            if p.file_name()
+                .is_some_and(|n| n.to_string_lossy().contains("binding"))
+            {
+                continue;
+            }
+            let Ok(meta) = std::fs::metadata(&p) else {
+                continue;
+            };
+            let Ok(yaml_mtime) = meta.modified() else {
+                continue;
+            };
             total += 1;
 
             // Check git log for the contract's last commit vs now
@@ -799,7 +930,8 @@ pub(crate) fn check_contract_drift(project_path: &Path) -> ComplianceCheck {
             if let Ok(o) = output {
                 if let Ok(ts_str) = String::from_utf8(o.stdout) {
                     if let Ok(ts) = ts_str.trim().parse::<u64>() {
-                        let contract_commit = std::time::UNIX_EPOCH + std::time::Duration::from_secs(ts);
+                        let contract_commit =
+                            std::time::UNIX_EPOCH + std::time::Duration::from_secs(ts);
                         let now = std::time::SystemTime::now();
                         if let Ok(age) = now.duration_since(contract_commit) {
                             // Contract not touched in >90 days AND yaml is old
@@ -838,7 +970,9 @@ pub(crate) fn check_contract_drift(project_path: &Path) -> ComplianceCheck {
         ComplianceCheck {
             name: "CB-1207: Contract Drift".into(),
             status: CheckStatus::Warn,
-            message: format!("{stale}/{total} contract(s) stale (>90 days since last commit), {fresh} fresh"),
+            message: format!(
+                "{stale}/{total} contract(s) stale (>90 days since last commit), {fresh} fresh"
+            ),
             severity: Severity::Warning,
         }
     }
@@ -859,9 +993,22 @@ pub(crate) fn check_contract_coverage(project_path: &Path) -> ComplianceCheck {
 
     // Critical ML/GPU/data keywords that REQUIRE contracts
     let critical_keywords = [
-        "forward", "backward", "optimizer", "checkpoint", "loss", "gradient",
-        "sampling", "kv_cache", "tokenize", "quantize", "kernel", "dispatch",
-        "softmax", "matmul", "gemm", "batch",
+        "forward",
+        "backward",
+        "optimizer",
+        "checkpoint",
+        "loss",
+        "gradient",
+        "sampling",
+        "kv_cache",
+        "tokenize",
+        "quantize",
+        "kernel",
+        "dispatch",
+        "softmax",
+        "matmul",
+        "gemm",
+        "batch",
     ];
 
     // Count which keywords appear in public functions
@@ -876,11 +1023,16 @@ pub(crate) fn check_contract_coverage(project_path: &Path) -> ComplianceCheck {
             .filter(|e| e.path().extension().is_some_and(|ext| ext == "rs"))
             .any(|e| {
                 std::fs::read_to_string(e.path())
-                    .map(|c| c.contains(&format!("pub fn {keyword}")) || c.contains(&format!("pub async fn {keyword}")))
+                    .map(|c| {
+                        c.contains(&format!("pub fn {keyword}"))
+                            || c.contains(&format!("pub async fn {keyword}"))
+                    })
                     .unwrap_or(false)
             });
 
-        if !has_fn { continue; }
+        if !has_fn {
+            continue;
+        }
         keywords_found.push(*keyword);
 
         // Check if any contract mentions this keyword
@@ -888,13 +1040,19 @@ pub(crate) fn check_contract_coverage(project_path: &Path) -> ComplianceCheck {
             let has_contract = walkdir::WalkDir::new(&contracts_dir)
                 .into_iter()
                 .flatten()
-                .filter(|e| e.path().extension().is_some_and(|ext| ext == "yaml" || ext == "yml"))
+                .filter(|e| {
+                    e.path()
+                        .extension()
+                        .is_some_and(|ext| ext == "yaml" || ext == "yml")
+                })
                 .any(|e| {
                     std::fs::read_to_string(e.path())
                         .map(|c| c.to_lowercase().contains(keyword))
                         .unwrap_or(false)
                 });
-            if has_contract { keywords_covered += 1; }
+            if has_contract {
+                keywords_covered += 1;
+            }
         }
     }
 
@@ -908,13 +1066,23 @@ pub(crate) fn check_contract_coverage(project_path: &Path) -> ComplianceCheck {
     }
 
     let coverage_pct = keywords_covered * 100 / keywords_found.len();
-    let uncovered: Vec<&&str> = keywords_found.iter()
+    let uncovered: Vec<&&str> = keywords_found
+        .iter()
         .filter(|k| {
-            !contracts_dir.exists() || !walkdir::WalkDir::new(&contracts_dir)
-                .into_iter()
-                .flatten()
-                .filter(|e| e.path().extension().is_some_and(|ext| ext == "yaml" || ext == "yml"))
-                .any(|e| std::fs::read_to_string(e.path()).map(|c| c.to_lowercase().contains(**k)).unwrap_or(false))
+            !contracts_dir.exists()
+                || !walkdir::WalkDir::new(&contracts_dir)
+                    .into_iter()
+                    .flatten()
+                    .filter(|e| {
+                        e.path()
+                            .extension()
+                            .is_some_and(|ext| ext == "yaml" || ext == "yml")
+                    })
+                    .any(|e| {
+                        std::fs::read_to_string(e.path())
+                            .map(|c| c.to_lowercase().contains(**k))
+                            .unwrap_or(false)
+                    })
         })
         .collect();
 
@@ -922,7 +1090,10 @@ pub(crate) fn check_contract_coverage(project_path: &Path) -> ComplianceCheck {
         ComplianceCheck {
             name: "CB-1202: Contract Coverage".into(),
             status: CheckStatus::Pass,
-            message: format!("{keywords_covered}/{} critical keywords covered ({coverage_pct}%)", keywords_found.len()),
+            message: format!(
+                "{keywords_covered}/{} critical keywords covered ({coverage_pct}%)",
+                keywords_found.len()
+            ),
             severity: Severity::Info,
         }
     } else {
@@ -961,7 +1132,8 @@ pub(crate) fn check_pv_lint(project_path: &Path) -> ComplianceCheck {
         .stderr(std::process::Stdio::null())
         .output()
         .map(|o| {
-            String::from_utf8(o.stdout).ok()
+            String::from_utf8(o.stdout)
+                .ok()
                 .and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok())
                 .and_then(|v| v.get("passed")?.as_bool())
                 .unwrap_or(false)
@@ -1008,13 +1180,17 @@ fn count_contract_test_refs(project_path: &Path) -> (usize, usize, usize) {
     if let Ok(entries) = std::fs::read_dir(&contracts_dir) {
         for entry in entries.flatten() {
             let p = entry.path();
-            if p.extension().map_or(true, |e| e != "yaml" && e != "yml") { continue; }
+            if p.extension().map_or(true, |e| e != "yaml" && e != "yml") {
+                continue;
+            }
             if let Ok(content) = std::fs::read_to_string(&p) {
                 for line in content.lines() {
                     if let Some(pos) = line.find("test:") {
                         let rest = line[pos + 5..].trim().trim_matches('"');
-                        let name = rest.split(|c: char| !c.is_alphanumeric() && c != '_')
-                            .next().unwrap_or("");
+                        let name = rest
+                            .split(|c: char| !c.is_alphanumeric() && c != '_')
+                            .next()
+                            .unwrap_or("");
                         if name.starts_with("test_") || name.starts_with("prop_") {
                             refs.push(name.to_string());
                         }
@@ -1024,33 +1200,45 @@ fn count_contract_test_refs(project_path: &Path) -> (usize, usize, usize) {
         }
     }
 
-    if refs.is_empty() { return (0, 0, 0); }
+    if refs.is_empty() {
+        return (0, 0, 0);
+    }
 
     let mut src_tests = std::collections::HashSet::new();
     if src_dir.exists() {
         for entry in walkdir::WalkDir::new(&src_dir).into_iter().flatten() {
-            if entry.path().extension().map_or(true, |e| e != "rs") { continue; }
+            if entry.path().extension().map_or(true, |e| e != "rs") {
+                continue;
+            }
             if let Ok(content) = std::fs::read_to_string(entry.path()) {
                 for line in content.lines() {
                     if let Some(pos) = line.find("fn test_").or_else(|| line.find("fn prop_")) {
                         let rest = &line[pos + 3..];
-                        let name = rest.split(|c: char| !c.is_alphanumeric() && c != '_')
-                            .next().unwrap_or("");
-                        if !name.is_empty() { src_tests.insert(name.to_string()); }
+                        let name = rest
+                            .split(|c: char| !c.is_alphanumeric() && c != '_')
+                            .next()
+                            .unwrap_or("");
+                        if !name.is_empty() {
+                            src_tests.insert(name.to_string());
+                        }
                     }
                 }
             }
         }
     }
 
-    let existing = refs.iter().filter(|t| src_tests.contains(t.as_str())).count();
+    let existing = refs
+        .iter()
+        .filter(|t| src_tests.contains(t.as_str()))
+        .count();
     let missing = refs.len() - existing;
     (refs.len(), existing, missing)
 }
 
 /// CB-533: Stale path references in Makefiles and CI workflows.
 pub(crate) fn check_stale_paths(project_path: &Path) -> ComplianceCheck {
-    let violations = crate::cli::handlers::comply_cb_detect::detect_cb533_stale_path_references(project_path);
+    let violations =
+        crate::cli::handlers::comply_cb_detect::detect_cb533_stale_path_references(project_path);
     if violations.is_empty() {
         ComplianceCheck {
             name: "CB-533: Stale Path References".into(),
@@ -1071,7 +1259,8 @@ pub(crate) fn check_stale_paths(project_path: &Path) -> ComplianceCheck {
 
 /// CB-148: Spec-work traceability.
 pub(crate) fn check_spec_work_traceability(project_path: &Path) -> ComplianceCheck {
-    let violations = crate::cli::handlers::comply_cb_detect::detect_cb148_spec_work_gaps(project_path);
+    let violations =
+        crate::cli::handlers::comply_cb_detect::detect_cb148_spec_work_gaps(project_path);
     if violations.is_empty() {
         ComplianceCheck {
             name: "CB-148: Spec-Work Traceability".into(),
@@ -1083,7 +1272,10 @@ pub(crate) fn check_spec_work_traceability(project_path: &Path) -> ComplianceChe
         ComplianceCheck {
             name: "CB-148: Spec-Work Traceability".into(),
             status: CheckStatus::Warn,
-            message: format!("{} planned section(s) without work tickets", violations.len()),
+            message: format!(
+                "{} planned section(s) without work tickets",
+                violations.len()
+            ),
             severity: Severity::Warning,
         }
     }

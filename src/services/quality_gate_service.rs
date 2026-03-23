@@ -247,8 +247,10 @@ impl QualityGateService {
                                 let tool_name = format!("MCP tool: {}", tool.name);
                                 for issue in report.issues {
                                     violations.push(Violation {
-                                        file: tool_name.clone(), line: None,
-                                        severity: Severity::Error, message: issue,
+                                        file: tool_name.clone(),
+                                        line: None,
+                                        severity: Severity::Error,
+                                        message: issue,
                                     });
                                 }
                             }
