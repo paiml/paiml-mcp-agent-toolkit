@@ -171,6 +171,14 @@ mod tests {
     }
 
     #[test]
+    fn test_language_from_extension_lean() {
+        assert_eq!(
+            Language::from_extension(Path::new("Basic.lean")),
+            Language::Lean
+        );
+    }
+
+    #[test]
     fn test_language_from_extension_no_extension() {
         assert_eq!(
             Language::from_extension(Path::new("Makefile")),
@@ -192,6 +200,7 @@ mod tests {
         assert_eq!(format!("{}", Language::Swift), "Swift");
         assert_eq!(format!("{}", Language::Kotlin), "Kotlin");
         assert_eq!(format!("{}", Language::Ruchy), "Ruchy");
+        assert_eq!(format!("{}", Language::Lean), "Lean");
         assert_eq!(format!("{}", Language::Unknown), "Unknown");
     }
 
@@ -208,6 +217,7 @@ mod tests {
         assert_eq!(Language::Ruby.confidence(), 0.85);
         assert_eq!(Language::Swift.confidence(), 0.85);
         assert_eq!(Language::Kotlin.confidence(), 0.85);
+        assert_eq!(Language::Lean.confidence(), 0.95);
         assert_eq!(Language::Unknown.confidence(), 0.5);
     }
 
@@ -276,6 +286,19 @@ mod tests {
         let rules = LanguageRules::go_rules();
         assert_eq!(rules.language, Language::Go);
         assert_eq!(rules.function_style, NamingStyle::PascalCase);
+    }
+
+    #[test]
+    fn test_lean_language_rules() {
+        let rules = LanguageRules::for_language(Language::Lean);
+        assert_eq!(rules.language, Language::Lean);
+        assert_eq!(rules.function_style, NamingStyle::CamelCase);
+        assert_eq!(rules.type_style, NamingStyle::PascalCase);
+    }
+
+    #[test]
+    fn test_lean_language_confidence() {
+        assert_eq!(Language::Lean.confidence(), 0.95);
     }
 
     #[test]

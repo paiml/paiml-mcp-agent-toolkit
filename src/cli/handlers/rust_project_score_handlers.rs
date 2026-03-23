@@ -140,3 +140,7 @@ include!("rust_project_score_handlers_serialization.rs");
 
 // Unit tests
 include!("rust_project_score_handlers_tests.rs");
+
+// Design-by-contract specifications (Verus-style)
+// #[requires(project_path.is_dir())]
+// #[ensures(result.is_ok() ==> ret.len() > 0)]

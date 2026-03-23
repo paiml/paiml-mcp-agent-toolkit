@@ -137,27 +137,27 @@ test-pre-commit-fast:
 test-unit:
 	@echo "🚀 Running unit tests (<10s feedback)..."
 	@CORES=$$(nproc) && THREADS=$$((CORES > 2 ? CORES - 2 : 1)) && \
-	PROPTEST_CASES=2 cd server && cargo test --test unit_core -- --test-threads=$${THREADS}
+	PROPTEST_CASES=2 cargo test --test unit_core -- --test-threads=$${THREADS}
 	@echo "✅ Unit tests completed!"
 
 test-services:
 	@echo "🔧 Running service integration tests (<30s)..."
-	@PROPTEST_CASES=2 cd server && cargo test --test services_integration --features integration-tests -- --test-threads=4
+	@PROPTEST_CASES=2 cargo test --test services_integration --features integration-tests -- --test-threads=4
 	@echo "✅ Service tests completed!"
 
 test-protocols:
 	@echo "🌐 Running protocol adapter tests (<45s)..."
-	@PROPTEST_CASES=2 cd server && cargo test --test protocol_adapters --features integration-tests -- --test-threads=2
+	@PROPTEST_CASES=2 cargo test --test protocol_adapters --features integration-tests -- --test-threads=2
 	@echo "✅ Protocol tests completed!"
 
 test-e2e:
 	@echo "🎯 Running end-to-end system tests (<120s)..."
-	@PROPTEST_CASES=2 cd server && cargo test --test e2e_system --features e2e-tests -- --test-threads=1
+	@PROPTEST_CASES=2 cargo test --test e2e_system --features e2e-tests -- --test-threads=1
 	@echo "✅ E2E tests completed!"
 
 test-performance:
 	@echo "📊 Running performance regression tests..."
-	@PROPTEST_CASES=2 cd server && cargo test --test performance_regression --features perf-tests -- --test-threads=1
+	@PROPTEST_CASES=2 cargo test --test performance_regression --features perf-tests -- --test-threads=1
 	@echo "✅ Performance tests completed!"
 
 test-property:
@@ -378,7 +378,7 @@ coverage-stratified: coverage
 test-slow-integration:
 	@echo "🐌 Running slow integration tests with timeouts..."
 	@echo "⚠️  These tests may take 5-10 minutes and are not part of fast coverage"
-	@PROPTEST_CASES=2 cd server && cargo test --test slow_integration --release -- --test-threads=1 --ignored
+	@PROPTEST_CASES=2 cargo test --test slow_integration --release -- --test-threads=1 --ignored
 	@echo "✅ Slow integration tests completed!"
 
 # Test with manual thread control - use when automatic detection isn't working
@@ -1050,7 +1050,7 @@ context-benchmark-legacy: release context-legacy
 # Validate dependencies before installation
 deps-validate:
 	@echo "🔍 Validating dependencies..."
-	@cd server && cargo tree --duplicate | grep -v "^$$" || echo "✅ No duplicate dependencies"
+	@cargo tree --duplicate | grep -v "^$$" || echo "✅ No duplicate dependencies"
 	@cd $(PWD)/../$(notdir $(PWD)) && cargo audit || echo "⚠️  Security issues found"
 
 # Install MCP server
@@ -1097,7 +1097,7 @@ server-build-binary: ## Build server binary
 
 server-build-docker: ## Build Docker image  
 	@echo "🐳 Building Docker image..."
-	@cd server && docker build -t paiml-mcp-agent-toolkit .
+	@docker build -t paiml-mcp-agent-toolkit .
 
 server-run-mcp: ## Run MCP server in STDIO mode
 	@echo "🚀 Starting MCP server..."
@@ -2024,7 +2024,7 @@ setup-mermaid-validator:
 # Run Mermaid specification compliance tests
 test-mermaid-spec: setup-mermaid-validator
 	@echo "🧪 Running Mermaid specification compliance tests..."
-	PROPTEST_CASES=2 cd server && cargo test mermaid_spec_compliance --features mermaid-spec-tests -- --nocapture
+	PROPTEST_CASES=2 cargo test mermaid_spec_compliance --features mermaid-spec-tests -- --nocapture
 
 # Validate all generated Mermaid artifacts
 validate-mermaid-artifacts: setup-mermaid-validator
@@ -2038,23 +2038,23 @@ validate-mermaid-artifacts: setup-mermaid-validator
 # Generate compliance report for Mermaid diagrams
 mermaid-compliance-report: setup-mermaid-validator
 	@echo "📊 Generating Mermaid compliance report..."
-	cd server && cargo test mermaid_spec_compliance --features mermaid-spec-tests -- --nocapture > ../mermaid-compliance.txt 2>&1 || true
+	cargo test mermaid_spec_compliance --features mermaid-spec-tests -- --nocapture > ../mermaid-compliance.txt 2>&1 || true
 	@echo "Report saved to mermaid-compliance.txt"
 
 # Deterministic Artifact Generation Targets
 generate-artifacts:
 	@echo "🎯 Generating deterministic artifacts..."
-	cd server && cargo run --release -- generate-artifacts --output ../artifacts/ --deterministic
+	cargo run --release -- generate-artifacts --output ../artifacts/ --deterministic
 
 # Test deterministic generation (multiple runs should be identical)
 test-determinism:
 	@echo "🔬 Testing artifact generation determinism..."
-	PROPTEST_CASES=2 cd server && cargo test determinism_tests -- --nocapture
+	PROPTEST_CASES=2 cargo test determinism_tests -- --nocapture
 
 # Verify artifact integrity using stored hashes
 verify-artifacts:
 	@echo "🔐 Verifying artifact integrity..."
-	cd server && cargo run --release -- verify-artifacts --path ../artifacts/
+	cargo run --release -- verify-artifacts --path ../artifacts/
 
 # SATD (Self-Admitted Technical Debt) Analysis Targets using built binary
 analyze-satd: release
@@ -2095,8 +2095,8 @@ validate-all-specs: test-mermaid-spec test-determinism analyze-satd
 # Performance testing for all specifications
 benchmark-specs:
 	@echo "⚡ Running specification performance benchmarks..."
-	cd server && cargo test --release test_validation_performance --ignored -- --nocapture
-	cd server && cargo test --release test_artifact_generation_determinism --ignored -- --nocapture
+	cargo test --release test_validation_performance --ignored -- --nocapture
+	cargo test --release test_artifact_generation_determinism --ignored -- --nocapture
 
 # =============================================================================
 # KAIZEN - Toyota Way Continuous Improvement
@@ -2197,13 +2197,13 @@ context-benchmark: release
 # Context generation (optimized for large codebases)
 context: release
 	@echo '📊 Generating context for source code...'
-	@cd server && ../target/release/pmat context --format markdown --output ../deep_context.md
+	@target/release/pmat context --format markdown --output deep_context.md
 	@echo '✅ Context generated: deep_context.md'
 	@echo '📏 File size:' && ls -lh deep_context.md | awk '{print $$5}'
 
 context-json: release
 	@echo '📊 Generating JSON context for source code...'
-	@cd server && ../target/release/pmat context --format json --output ../deep_context.json
+	@target/release/pmat context --format json --output deep_context.json
 	@echo '✅ Context generated: deep_context.json'
 	@echo '📏 File size:' && ls -lh deep_context.json | awk '{print $$5}'
 

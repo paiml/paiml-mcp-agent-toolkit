@@ -121,6 +121,7 @@ impl Default for LocalEmbedder {
     }
 }
 
-// Ensure Send + Sync for thread safety
+// SAFETY: LocalEmbedder contains only owned data (dimension: usize, no interior mutability)
+// and implements no shared mutable state, making it safe to send between and share across threads.
 unsafe impl Send for LocalEmbedder {}
 unsafe impl Sync for LocalEmbedder {}

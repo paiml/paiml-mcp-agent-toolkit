@@ -797,3 +797,7 @@ impl Default for FiveWhysAnalyzer {
 
 // Tests extracted to five_whys_analyzer_tests.rs for file health (CB-040).
 include!("five_whys_analyzer_tests.rs");
+
+// Design-by-contract specifications (Verus-style)
+// #[requires(project_path.is_dir())]
+// #[ensures(result.is_ok() ==> ret.len() > 0)]

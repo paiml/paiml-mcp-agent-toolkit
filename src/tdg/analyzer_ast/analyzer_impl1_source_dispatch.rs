@@ -28,6 +28,9 @@ impl TdgAnalyzerAst {
             Language::Sql => self.analyze_sql_heuristic(source, &mut score, &mut tracker)?,
             Language::Scala => self.analyze_scala_heuristic(source, &mut score, &mut tracker)?,
             Language::Yaml => self.analyze_yaml_heuristic(source, &mut score, &mut tracker)?,
+            Language::Lean => {
+                self.analyze_lean_heuristic(source, &mut score, &mut tracker)?;
+            }
             Language::Markdown => {
                 self.analyze_markdown_heuristic(source, &mut score, &mut tracker)?;
             }
@@ -61,8 +64,15 @@ impl TdgAnalyzerAst {
                 .map(|d| d.instances.len())
                 .sum();
 
-            score.critical_defects_count = critical_count;
-            score.has_critical_defects = critical_count > 0;
+            // Lean-specific: sorry = critical defect (proof incompleteness)
+            let lean_sorry_count = if language == Language::Lean {
+                count_lean_sorry_ast(source)
+            } else {
+                0
+            };
+
+            score.critical_defects_count = critical_count + lean_sorry_count;
+            score.has_critical_defects = score.critical_defects_count > 0;
         }
 
         score.calculate_total();

@@ -2,9 +2,14 @@
 // Cache-aware: uses FileCache if available, falls back to filesystem
 
 fn count_deep_nesting(content: &str) -> usize {
+    // 10 levels of 4-space indent = 40 chars. Rust match/if-let chains
+    // commonly reach 8 levels (32 chars), so threshold at 10 levels.
     content
         .lines()
-        .filter(|line| line.chars().take_while(|c| c.is_whitespace()).count() > 32)
+        .filter(|line| {
+            let indent = line.chars().take_while(|c| c.is_whitespace()).count();
+            indent > 40
+        })
         .count()
 }
 
@@ -14,9 +19,20 @@ fn analyze_unsafe_in_content(content: &str) -> (usize, usize) {
     let mut documented = 0;
 
     for (i, line) in lines.iter().enumerate() {
-        if line.contains("unsafe") && line.contains("{") {
+        let t = line.trim();
+        // Skip lines that mention "unsafe" in non-code contexts
+        if t.starts_with("//") || t.starts_with("*") || t.starts_with("\"")
+            || t.starts_with("r#") || t.starts_with("r\"") || t.starts_with("let ")
+            || t.contains(".contains(\"unsafe") || t.contains(".starts_with(\"unsafe")
+            || t.contains("\"unsafe {\"") || t.contains("\"unsafe{\"")
+        {
+            continue;
+        }
+        if t.starts_with("unsafe {") || t.starts_with("unsafe{")
+            || t.contains("= unsafe {") || t.contains("} unsafe {")
+        {
             unsafe_blocks += 1;
-            let start = i.saturating_sub(5);
+            let start = i.saturating_sub(10);
             if lines[start..=i]
                 .iter()
                 .any(|l| l.contains("SAFETY:") || l.contains("Safety:"))

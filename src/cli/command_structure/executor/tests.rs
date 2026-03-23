@@ -251,13 +251,13 @@ mod tests {
 
         // ComplyCommands::Check is the correct variant
         let command = Commands::Comply {
-            command: ComplyCommands::Check {
+            command: Some(ComplyCommands::Check {
                 path: std::path::PathBuf::from("."),
                 strict: false,
                 failures_only: false,
                 format: crate::cli::commands::ComplyOutputFormat::Text,
                 include_project: vec![],
-            },
+            }),
         };
 
         let result = executor.execute(command).await;

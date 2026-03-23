@@ -78,6 +78,7 @@ fn measure_defects(project_path: &Path) -> f64 {
 
     let mut stub_count = 0usize;
     let mut unwrap_count = 0usize;
+    let mut total_lines = 0usize;
 
     if let Ok(entries) = walkdir::WalkDir::new(&src_dir)
         .max_depth(5)
@@ -89,6 +90,7 @@ fn measure_defects(project_path: &Path) -> f64 {
                 && !e.path().to_string_lossy().contains("test")
         }) {
             if let Ok(content) = std::fs::read_to_string(entry.path()) {
+                total_lines += content.lines().count();
                 stub_count += content.matches("todo!()").count();
                 stub_count += content.matches("unimplemented!()").count();
                 unwrap_count += content.matches(".unwrap()").count();
@@ -96,9 +98,13 @@ fn measure_defects(project_path: &Path) -> f64 {
         }
     }
 
-    // Stubs are critical (10 points each), unwraps are moderate (1 point each)
-    let score = (stub_count as f64 * 10.0) + (unwrap_count as f64 * 0.5);
-    score.clamp(0.0, 100.0)
+    // Size-normalized defect density (per 1000 lines)
+    let kloc = (total_lines as f64 / 1000.0).max(1.0);
+    let stub_density = stub_count as f64 / kloc;
+    let unwrap_density = unwrap_count as f64 / kloc;
+    let stub_score = (stub_density * 5.0).min(50.0);
+    let unwrap_score = (unwrap_density * 2.0).min(50.0);
+    (stub_score + unwrap_score).clamp(0.0, 100.0)
 }
 
 /// Collect top files with high complexity (cyclomatic > 15).

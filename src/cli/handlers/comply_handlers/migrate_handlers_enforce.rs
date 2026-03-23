@@ -43,7 +43,7 @@ fn print_enforce_result(format: &ComplyOutputFormat, hooks_dir: &Path) -> Result
             println!("Pushes will validate ComputeBrick compliance.");
             println!("Use '{}' to remove hooks.", c::label("pmat comply enforce --disable"));
         }
-        ComplyOutputFormat::Json => {
+        ComplyOutputFormat::Json | ComplyOutputFormat::Sarif => {
             let result = serde_json::json!({
                 "status": "success",
                 "hooks_installed": ["pre-commit", "pre-push"],
@@ -172,7 +172,9 @@ async fn handle_report(
 
             out
         }
-        ComplyOutputFormat::Json => serde_json::to_string_pretty(&report)?,
+        ComplyOutputFormat::Json | ComplyOutputFormat::Sarif => {
+            serde_json::to_string_pretty(&report)?
+        }
         ComplyOutputFormat::Markdown => {
             let mut out = String::new();
             out.push_str("# PMAT Compliance Report\n\n");

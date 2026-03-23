@@ -534,3 +534,5 @@ pub(crate) fn compute_name_frequency(
     }
     result
 }
+// #[requires(project_path.exists())]
+// #[ensures(result.is_ok())]

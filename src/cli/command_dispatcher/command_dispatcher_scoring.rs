@@ -80,6 +80,26 @@ impl CommandDispatcher {
                 )
                 .await
             }
+            Commands::Score {
+                path,
+                gate,
+                format,
+                output,
+                trend,
+                regression_check,
+                stack,
+            } => {
+                handlers::handle_score(
+                    &path,
+                    gate,
+                    &format,
+                    output.as_deref(),
+                    trend,
+                    regression_check,
+                    stack,
+                )
+                .await
+            }
             Commands::RepoScore {
                 path,
                 format,

@@ -12,6 +12,7 @@ impl LanguageRules {
             Language::Go => Self::go_rules(),
             Language::Ruchy => Self::ruchy_rules(),
             Language::Lua => Self::lua_rules(),
+            Language::Lean => Self::lean_rules(),
             Language::Sql => Self::sql_rules(),
             Language::Scala => Self::scala_rules(),
             Language::Yaml => Self::yaml_rules(),
@@ -94,6 +95,17 @@ impl LanguageRules {
             type_style: NamingStyle::PascalCase,
             constant_style: NamingStyle::ScreamingSnakeCase,
             variable_style: NamingStyle::SnakeCase,
+        }
+    }
+
+    #[must_use]
+    pub fn lean_rules() -> Self {
+        LanguageRules {
+            language: Language::Lean,
+            function_style: NamingStyle::CamelCase,  // Lean 4 uses camelCase for defs
+            type_style: NamingStyle::PascalCase,     // Types/structures use PascalCase
+            constant_style: NamingStyle::CamelCase,  // Constants also camelCase in Lean
+            variable_style: NamingStyle::CamelCase,  // Variables use camelCase
         }
     }
 

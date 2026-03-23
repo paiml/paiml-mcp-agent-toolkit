@@ -1,6 +1,6 @@
 [package]
 name = "pmat"
-version = "3.7.1"
+version = "3.8.0"
 edition = "2021"
 rust-version = "1.80.0"
 authors = ["Pragmatic AI Labs"]
@@ -741,3 +741,14 @@ opt-level = 0
 [profile.dist]
 inherits = "release"
 lto = "thin"
+
+[workspace.lints.rust]
+unsafe_op_in_unsafe_fn = "warn"
+unreachable_pub = "warn"
+unused_lifetimes = "warn"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -2 }
+checked_conversions = "warn"
+fallible_impl_from = "warn"

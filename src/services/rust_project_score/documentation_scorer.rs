@@ -38,7 +38,8 @@ impl Default for DocumentationScorer {
     }
 }
 
-// Ensure Send + Sync for parallel execution
+// SAFETY: DocumentationScorer holds only a PathBuf (owned, Send+Sync) and no interior mutability,
+// making it safe to send between and share across threads for parallel scoring.
 unsafe impl Send for DocumentationScorer {}
 unsafe impl Sync for DocumentationScorer {}
 

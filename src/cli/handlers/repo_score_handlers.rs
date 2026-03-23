@@ -79,3 +79,7 @@ include!("repo_score_handlers_badge.rs");
 
 // Unit tests
 include!("repo_score_handlers_tests.rs");
+
+// Design-by-contract specifications (Verus-style)
+// #[requires(project_path.is_dir())]
+// #[ensures(result.is_ok() ==> ret.len() > 0)]

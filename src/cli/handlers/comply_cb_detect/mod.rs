@@ -14,7 +14,9 @@ mod rust_best_practices;
 mod rust_best_practices_extended;
 mod safety_checks;
 mod scala_best_practices;
+mod spec_work_traceability;
 mod sql_best_practices;
+mod stale_paths;
 mod types;
 mod yaml_best_practices;
 
@@ -28,7 +30,9 @@ pub use rust_best_practices::*;
 pub use rust_best_practices_extended::*;
 pub use safety_checks::*;
 pub use scala_best_practices::*;
+pub use spec_work_traceability::*;
 pub use sql_best_practices::*;
+pub use stale_paths::*;
 pub use types::*;
 pub use yaml_best_practices::*;
 

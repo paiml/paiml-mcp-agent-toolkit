@@ -267,7 +267,7 @@ pub fn compute_drift_metrics(contract: &WorkContract, project_path: &Path) -> Dr
     };
 
     // ABC theorem: D* = alpha / gamma
-    let bounded_drift = drift_rate / recovery_rate;
+    let bounded_drift = (drift_rate / recovery_rate).min(1.0);
     let is_stale = hours_since_checkpoint > 24.0;
 
     DriftMetrics {

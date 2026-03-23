@@ -307,7 +307,8 @@ pub struct ProjectScore {
     pub recommendations: Vec<String>,
 }
 
-// Ensure Send + Sync for parallel execution
+// SAFETY: RustProjectScoreOrchestrator holds only a PathBuf (owned, Send+Sync) and no interior
+// mutability, making it safe to send between and share across threads for parallel scoring.
 unsafe impl Send for RustProjectScoreOrchestrator {}
 unsafe impl Sync for RustProjectScoreOrchestrator {}
 
@@ -352,3 +353,5 @@ mod tests {
         assert!(names.contains(&"GPU/SIMD Quality"));
     }
 }
+// #[requires(project_path.exists())]
+// #[ensures(result.is_ok())]

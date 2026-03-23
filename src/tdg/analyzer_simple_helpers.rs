@@ -98,6 +98,7 @@ impl TdgAnalyzer {
                     | "vendor"
                     | ".idea"
                     | ".vscode"
+                    | ".lake"
             )
         } else {
             false
@@ -125,11 +126,95 @@ impl TdgAnalyzer {
                     | "swift"
                     | "kt"
                     | "kts"
+                    | "lean"
             )
         } else {
             false
         }
     }
+}
+
+/// Count `sorry` occurrences in Lean source (proof incompleteness).
+/// Skips line comments (`--`) and nested block comments (`/- ... -/`).
+/// Uses word-boundary checking to avoid false positives from identifiers.
+fn count_lean_sorry(source: &str) -> usize {
+    let mut count = 0;
+    let mut in_block_comment: i32 = 0;
+
+    for line in source.lines() {
+        let trimmed = line.trim();
+
+        // Skip line comments
+        if trimmed.starts_with("--") {
+            continue;
+        }
+
+        // Strip block comments
+        let cleaned = strip_lean_block_comments(trimmed, &mut in_block_comment);
+
+        // If still inside a block comment, skip
+        if in_block_comment > 0 {
+            continue;
+        }
+
+        // Word-boundary check: sorry must be a standalone word
+        if contains_lean_sorry_word(&cleaned) {
+            count += 1;
+        }
+    }
+
+    count
+}
+
+/// Strips Lean block comment content (`/- ... -/`) from a line.
+fn strip_lean_block_comments(line: &str, depth: &mut i32) -> String {
+    let bytes = line.as_bytes();
+    let mut result = String::with_capacity(line.len());
+    let mut i = 0;
+
+    while i < bytes.len() {
+        if i + 1 < bytes.len() && bytes[i] == b'/' && bytes[i + 1] == b'-' {
+            *depth += 1;
+            i += 2;
+            continue;
+        }
+        if i + 1 < bytes.len() && bytes[i] == b'-' && bytes[i + 1] == b'/' && *depth > 0 {
+            *depth -= 1;
+            i += 2;
+            continue;
+        }
+        if *depth == 0 {
+            result.push(bytes[i] as char);
+        }
+        i += 1;
+    }
+
+    result
+}
+
+/// Checks if a line contains "sorry" as a standalone word.
+fn contains_lean_sorry_word(line: &str) -> bool {
+    let bytes = line.as_bytes();
+    let sorry = b"sorry";
+
+    let mut pos = 0;
+    while pos + sorry.len() <= bytes.len() {
+        if let Some(idx) = line[pos..].find("sorry") {
+            let abs_idx = pos + idx;
+            let before_ok =
+                abs_idx == 0 || !bytes[abs_idx - 1].is_ascii_alphanumeric() && bytes[abs_idx - 1] != b'_';
+            let after_ok = abs_idx + sorry.len() >= bytes.len()
+                || !bytes[abs_idx + sorry.len()].is_ascii_alphanumeric()
+                    && bytes[abs_idx + sorry.len()] != b'_';
+            if before_ok && after_ok {
+                return true;
+            }
+            pos = abs_idx + 1;
+        } else {
+            break;
+        }
+    }
+    false
 }
 
 /// Count control flow keywords in a single trimmed line.

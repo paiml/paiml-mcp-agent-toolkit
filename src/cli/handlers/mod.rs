@@ -94,6 +94,7 @@ pub mod repo_score_handlers; // Sprint 48: Repository health scoring
 pub mod roadmap_handler;
 pub mod rust_project_score_handlers; // Sprint 3: Rust Project Score v1.1
 pub mod satd_handler;
+pub mod score_handler;
 pub mod similarity_handler;
 pub mod spec_falsify_handler;
 pub mod spec_handlers; // master-plan-pmat-work-system.md: Spec management commands
@@ -189,6 +190,7 @@ pub use repo_score_handlers::handle_repo_score; // Sprint 48: Repository health 
 pub use roadmap_handler::handle_maintain_roadmap; // TICKET-PMAT-5032
 pub use rust_project_score_handlers::handle_rust_project_score; // Sprint 3: Rust Project Score v1.1
 pub use satd_handler::handle_analyze_satd;
+pub use score_handler::handle_score;
 pub use tdg_handlers::handle_tdg_command;
 pub use telemetry_handlers::handle_telemetry;
 pub use test_handlers::handle_test;

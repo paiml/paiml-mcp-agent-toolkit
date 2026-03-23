@@ -232,6 +232,7 @@ impl TdgAnalyzerAst {
                     | "vendor"
                     | ".idea"
                     | ".vscode"
+                    | ".lake"
                     | "tests"
             )
         } else {
@@ -265,6 +266,7 @@ impl TdgAnalyzerAst {
                     | "dml"
                     | "scala"
                     | "sc"
+                    | "lean"
                     | "yaml"
                     | "yml"
                     | "md"

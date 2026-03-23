@@ -3,6 +3,10 @@
 
 use super::types::{EnforcementResult, EnforcementState, QualityProfile, QualityViolation};
 use crate::cli::colors as c;
+
+fn parse_line_num(location: &str) -> i32 {
+    location.split(':').nth(1).and_then(|s| s.parse().ok()).unwrap_or(1)
+}
 use crate::cli::EnforceOutputFormat;
 use anyhow::Result;
 
@@ -84,9 +88,7 @@ pub fn output_result(
                                         "uri": v.location.split(':').next().unwrap_or(&v.location)
                                     },
                                     "region": {
-                                        "startLine": v.location.split(':').nth(1)
-                                            .and_then(|s| s.parse::<i32>().ok())
-                                            .unwrap_or(1)
+                                        "startLine": parse_line_num(&v.location)
                                     }
                                 }
                             }]

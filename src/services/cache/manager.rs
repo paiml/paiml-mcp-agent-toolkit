@@ -337,7 +337,8 @@ impl SessionCacheManager {
     }
 }
 
-// Safe to send between threads
+// SAFETY: SessionCacheManager holds Arc<RwLock<...>> caches (Send+Sync), CacheConfig (owned),
+// Uuid (Copy), and Instant (Copy). All fields are Send+Sync, making the struct safe to share.
 unsafe impl Send for SessionCacheManager {}
 unsafe impl Sync for SessionCacheManager {}
 

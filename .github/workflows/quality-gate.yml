@@ -1,0 +1,69 @@
+# PMAT Unified Quality Gate
+# Single composite score gate for CI. Runs `pmat score --gate` and uploads results.
+# See docs/specifications/components/scoring-convergence.md §3
+#
+# Add to branch protection: require "quality-gate / score" to pass.
+
+name: Quality Gate
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+concurrency:
+  group: quality-gate-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  RUST_MIN_STACK: "8388608"
+  CARGO_TERM_COLOR: always
+
+jobs:
+  score:
+    name: pmat score
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for git churn/evoscore
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
+
+      - name: Install pmat
+        run: cargo install --path . --locked
+
+      - name: Run unified quality gate
+        run: pmat score --gate 60 --format json -o score.json
+
+      - name: Upload score artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pmat-score
+          path: score.json
+        if: always()
+
+      - name: Post score summary
+        if: always()
+        run: |
+          if [ -f score.json ]; then
+            COMPOSITE=$(python3 -c "import json; print(f'{json.load(open(\"score.json\"))[\"composite\"]:.1f}')")
+            GRADE=$(python3 -c "import json; print(json.load(open('score.json'))['grade'])")
+            echo "### PMAT Score: ${COMPOSITE}/100 (${GRADE})" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            python3 -c "
+import json
+d = json.load(open('score.json'))
+s = d['sub_scores']
+print('| Sub-Score | Value |')
+print('|-----------|-------|')
+for k, v in s.items():
+    print(f'| {k} | {v:.1f} |')
+            " >> "$GITHUB_STEP_SUMMARY"
+          fi

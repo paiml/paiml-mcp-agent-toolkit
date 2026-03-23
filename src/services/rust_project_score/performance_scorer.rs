@@ -39,7 +39,8 @@ impl Default for PerformanceScorer {
     }
 }
 
-// Ensure Send + Sync for parallel execution
+// SAFETY: PerformanceScorer holds only a PathBuf (owned, Send+Sync) and no interior mutability,
+// making it safe to send between and share across threads for parallel scoring.
 unsafe impl Send for PerformanceScorer {}
 unsafe impl Sync for PerformanceScorer {}
 

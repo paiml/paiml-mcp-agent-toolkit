@@ -98,6 +98,7 @@ impl Scorer for KnownDefectsScorer {
     }
 }
 
-// Ensure Send + Sync for parallel execution
+// SAFETY: KnownDefectsScorer holds only a PathBuf (owned, Send+Sync) and no interior mutability,
+// making it safe to send between and share across threads for parallel scoring.
 unsafe impl Send for KnownDefectsScorer {}
 unsafe impl Sync for KnownDefectsScorer {}

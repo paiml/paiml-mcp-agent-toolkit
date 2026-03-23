@@ -242,19 +242,17 @@ impl QualityGateService {
                 Ok(tools) => {
                     for tool in tools {
                         match validate_mcp_documentation(&tool) {
-                            Ok(report) => {
-                                if !report.is_valid() {
-                                    passed = false;
-                                    for issue in report.issues {
-                                        violations.push(Violation {
-                                            file: format!("MCP tool: {}", tool.name),
-                                            line: None,
-                                            severity: Severity::Error,
-                                            message: issue,
-                                        });
-                                    }
+                            Ok(report) if !report.is_valid() => {
+                                passed = false;
+                                let tool_name = format!("MCP tool: {}", tool.name);
+                                for issue in report.issues {
+                                    violations.push(Violation {
+                                        file: tool_name.clone(), line: None,
+                                        severity: Severity::Error, message: issue,
+                                    });
                                 }
                             }
+                            Ok(_) => {}
                             Err(e) => {
                                 passed = false;
                                 violations.push(Violation {

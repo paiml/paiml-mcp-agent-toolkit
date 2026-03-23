@@ -307,6 +307,10 @@ pub enum Commands {
         /// Maximum lines of code per suggested extraction module (used with --extract-candidates)
         #[arg(long, value_name = "LINES", default_value_t = 500)]
         max_module_lines: usize,
+
+        /// Delegate to `pv query` for cross-project contract search
+        #[arg(long, help = "Search provable-contracts YAML via pv query")]
+        contracts: bool,
     },
 
     // ── Analysis & Demo commands ───────────────────────────────────
@@ -511,8 +515,27 @@ pub enum Commands {
         perf: bool,
     },
 
+    /// Unified quality score — geometric composite (0-100)
+    #[command(name = "score")]
+    Score {
+        #[arg(short = 'p', long, default_value = ".", help = "Project path to score")]
+        path: PathBuf,
+        #[arg(long, help = "Minimum score threshold (exit 1 if below)")]
+        gate: Option<f64>,
+        #[arg(short = 'f', long, value_enum, default_value = "text", help = "Output format")]
+        format: RepoScoreOutputFormat,
+        #[arg(short = 'o', long, help = "Write output to file")]
+        output: Option<PathBuf>,
+        #[arg(long, help = "Show score trend over recent commits")]
+        trend: bool,
+        #[arg(long, help = "Check for score regression vs previous commit")]
+        regression_check: bool,
+        #[arg(long, help = "Score entire sovereign stack")]
+        stack: bool,
+    },
+
     /// Calculate repository health score (0-110 scale)
-    #[command(name = "repo-score", visible_aliases = &["score", "health"])]
+    #[command(name = "repo-score", visible_aliases = &["health"])]
     RepoScore {
         /// Repository path to score (defaults to current directory)
         #[arg(short = 'p', long, default_value = ".")]
@@ -1198,11 +1221,11 @@ pub enum Commands {
         verbose: bool,
     },
 
-    /// PMAT compliance checking and migration system
+    /// PMAT compliance checking and migration system (runs check by default)
     #[command(visible_aliases = &["compliance"])]
     Comply {
         #[command(subcommand)]
-        command: ComplyCommands,
+        command: Option<ComplyCommands>,
     },
 
     /// Autonomous continuous improvement (Toyota Way Kaizen)

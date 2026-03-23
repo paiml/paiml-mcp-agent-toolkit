@@ -140,7 +140,11 @@ impl CommandExecutor {
                 docs_only,
                 extract_candidates,
                 max_module_lines,
+                contracts,
             } => {
+                if contracts {
+                    return crate::cli::command_dispatcher::handle_pv_query_delegation(&query, limit, &format);
+                }
                 // Default is to show code; --summary disables it
                 let show_code = !summary;
                 let effective_docs = !no_docs;

@@ -469,6 +469,116 @@ fn foo() {
         assert_eq!(score.language, Language::JavaScript);
         Ok(())
     }
+
+    #[test]
+    fn test_analyze_file_lean() -> Result<()> {
+        let mut temp_file = NamedTempFile::with_suffix(".lean")?;
+        writeln!(
+            temp_file,
+            r#"
+-- A simple Lean 4 module
+import Mathlib.Data.Nat.Basic
+
+def add (x y : Nat) : Nat := x + y
+
+theorem add_comm (a b : Nat) : a + b = b + a := by
+  omega
+"#
+        )?;
+        let analyzer = TdgAnalyzer::new()?;
+        let score = analyzer.analyze_file(temp_file.path())?;
+        assert_eq!(score.language, Language::Lean);
+        assert!(score.total > 0.0);
+        assert!(!score.has_critical_defects, "Clean Lean file should not have critical defects");
+        Ok(())
+    }
+
+    #[test]
+    fn test_analyze_lean_with_sorry_gets_grade_f() -> Result<()> {
+        let mut temp_file = NamedTempFile::with_suffix(".lean")?;
+        writeln!(
+            temp_file,
+            r#"
+import Mathlib.Data.Nat.Basic
+
+theorem hard_theorem : 1 + 1 = 2 := by
+  sorry
+
+def unfinished : Nat := sorry
+"#
+        )?;
+        let analyzer = TdgAnalyzer::new()?;
+        let score = analyzer.analyze_file(temp_file.path())?;
+        assert_eq!(score.language, Language::Lean);
+        assert!(score.has_critical_defects, "Lean file with sorry should have critical defects");
+        assert_eq!(score.critical_defects_count, 2, "Should detect 2 sorry occurrences");
+        assert_eq!(score.total, 0.0, "Files with sorry should score 0");
+        assert_eq!(score.grade, crate::tdg::grade::Grade::F, "Files with sorry should get grade F");
+        Ok(())
+    }
+
+    #[test]
+    fn test_analyze_lean_sorry_in_comment_not_counted() {
+        let source = "-- sorry this is a comment\ntheorem real : True := by trivial";
+        let analyzer = TdgAnalyzer::new().unwrap();
+        let score = analyzer.analyze_source(source, Language::Lean, None).unwrap();
+        assert!(!score.has_critical_defects, "sorry in comments should not trigger critical defects");
+    }
+
+    #[test]
+    fn test_analyze_lean_sorry_in_block_comment_not_counted() {
+        let source = "/- sorry in block comment -/\ntheorem real : True := by trivial";
+        let analyzer = TdgAnalyzer::new().unwrap();
+        let score = analyzer.analyze_source(source, Language::Lean, None).unwrap();
+        assert!(!score.has_critical_defects, "sorry in block comments should not trigger critical defects");
+    }
+
+    #[test]
+    fn test_analyze_lean_sorry_in_identifier_not_counted() {
+        let source = "def sorry_helper := 42";
+        let analyzer = TdgAnalyzer::new().unwrap();
+        let score = analyzer.analyze_source(source, Language::Lean, None).unwrap();
+        assert!(!score.has_critical_defects, "sorry as part of identifier should not trigger critical defects");
+    }
+
+    #[test]
+    fn test_should_analyze_lean_file() {
+        let analyzer = TdgAnalyzer::new().unwrap();
+        assert!(analyzer.should_analyze_file(Path::new("Basic.lean")));
+    }
+
+    #[test]
+    fn test_should_skip_lake_directory() {
+        let analyzer = TdgAnalyzer::new().unwrap();
+        assert!(analyzer.should_skip_directory(Path::new(".lake")));
+    }
+
+    #[test]
+    fn test_lean_coupling_detects_imports() {
+        let source = r#"
+import Mathlib.Data.Nat.Basic
+import Mathlib.Tactic
+open Nat
+"#;
+        let analyzer = TdgAnalyzer::new().unwrap();
+        let mut tracker = PenaltyTracker::new();
+        let score = analyzer.analyze_coupling(source, &mut tracker);
+        assert!(score > 0.0, "Lean coupling analysis should detect imports");
+    }
+
+    #[test]
+    fn test_lean_documentation_detection() {
+        let source = r#"
+-- | A documented function
+/-- Documentation comment -/
+/-! Module documentation -/
+def foo : Nat := 42
+"#;
+        let analyzer = TdgAnalyzer::new().unwrap();
+        let mut tracker = PenaltyTracker::new();
+        let score = analyzer.analyze_documentation(source, Language::Lean, &mut tracker);
+        assert!(score > 0.0, "Lean documentation analysis should detect doc comments");
+    }
 }
 
 #[cfg_attr(coverage_nightly, coverage(off))]

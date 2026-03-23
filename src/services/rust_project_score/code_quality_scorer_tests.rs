@@ -92,10 +92,10 @@ mod tests {
         )
         .unwrap();
 
-        // Create code with 3 deeply nested lines (indent > 32 chars)
+        // Create code with 3 deeply nested lines (indent > 40 chars threshold)
         let deep_code = format!(
             "fn main() {{\n{}",
-            "                                    nested();\n".repeat(3)
+            "                                             nested();\n".repeat(3) // 45 spaces
         );
         fs::write(temp_dir.path().join("src/lib.rs"), deep_code).unwrap();
 
@@ -118,10 +118,10 @@ mod tests {
         )
         .unwrap();
 
-        // Create code with >20 deeply nested lines
+        // Create code with >20 deeply nested lines (indent > 40 chars threshold)
         let deep_code = format!(
             "fn main() {{\n{}",
-            "                                    nested();\n".repeat(25)
+            "                                             nested();\n".repeat(25) // 45 spaces
         );
         fs::write(temp_dir.path().join("src/lib.rs"), deep_code).unwrap();
 

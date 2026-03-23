@@ -247,6 +247,8 @@ pub enum ComplyOutputFormat {
     Json,
     /// Markdown report format
     Markdown,
+    /// SARIF format for GitHub Code Scanning (delegates contract checks to pv lint)
+    Sarif,
 }
 
 /// Project diagnostics output formats (lltop Tab 8)

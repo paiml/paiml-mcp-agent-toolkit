@@ -13,28 +13,51 @@ impl FormalVerificationScorer {
     /// Score Lean 4 proofs. For Lean-only projects (no Cargo.toml), Lean proofs ARE
     /// the formal verification mechanism — scale to fill available points (13pts).
     /// For mixed Rust+Lean projects, use the standard 3-point allocation.
+    ///
+    /// Also gives partial credit to consumer repos that reference Lean theorems
+    /// via `lean_theorem:` in their contract YAML files (even without lean/ subdir).
     fn score_lean(&self, project_path: &Path) -> f64 {
-        if !self.is_lean_project(project_path) {
-            return 0.0;
+        if self.is_lean_project(project_path) {
+            let is_rust = project_path.join("Cargo.toml").exists();
+            let lean_max = if is_rust {
+                LEAN_POINTS
+            } else {
+                MAX_POINTS - MIRI_POINTS
+            };
+
+            let theorems = self.count_lean_theorems(project_path);
+            let sorrys = self.count_lean_sorrys(project_path);
+
+            return if theorems > 0 {
+                let proven = theorems.saturating_sub(sorrys);
+                let ratio = proven as f64 / theorems as f64;
+                lean_max * ratio
+            } else {
+                lean_max * 0.1
+            };
         }
 
-        let is_rust = project_path.join("Cargo.toml").exists();
-        let lean_max = if is_rust {
-            LEAN_POINTS
-        } else {
-            MAX_POINTS - MIRI_POINTS
-        };
-
-        let theorems = self.count_lean_theorems(project_path);
-        let sorrys = self.count_lean_sorrys(project_path);
-
-        if theorems > 0 {
-            let proven = theorems.saturating_sub(sorrys);
-            let ratio = proven as f64 / theorems as f64;
-            lean_max * ratio
-        } else {
-            lean_max * 0.1
+        // Consumer repos: check for lean_theorem references in contracts/ YAML
+        let contracts_dir = project_path.join("contracts");
+        if contracts_dir.exists() {
+            let mut lean_refs = 0usize;
+            if let Ok(entries) = std::fs::read_dir(&contracts_dir) {
+                for entry in entries.flatten() {
+                    if entry.path().extension().is_some_and(|e| e == "yaml") {
+                        if let Ok(content) = std::fs::read_to_string(entry.path()) {
+                            lean_refs += content.matches("lean_theorem:").count();
+                        }
+                    }
+                }
+            }
+            if lean_refs > 0 {
+                // Partial credit: contracts reference Lean proofs (proven in provable-contracts)
+                let ratio = (lean_refs as f64 / 10.0).min(1.0);
+                return LEAN_POINTS * ratio * 0.8; // 80% of max (proofs are external)
+            }
         }
+
+        0.0
     }
 
     /// Count theorems and lemmas in .lean files

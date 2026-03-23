@@ -151,7 +151,7 @@ impl UnifiedWasmAnalyzer {
 
             // Function end (closing parenthesis at same level)
             if trimmed == ")" && current_function.is_some() {
-                let name = current_function.take().unwrap();
+                let name = current_function.take().expect("guarded by is_some() check above");
                 functions.push(FunctionComplexity {
                     name,
                     line_start: line_start as u32,

@@ -76,6 +76,7 @@ impl TdgAnalyzer {
                     || trimmed.starts_with("import ")
                     || trimmed.starts_with("from ")
                     || trimmed.starts_with("#include ")
+                    || trimmed.starts_with("open ")
             })
             .count();
 
@@ -155,6 +156,11 @@ fn count_doc_lines(source: &str, language: Language) -> usize {
                 Language::Python => trimmed.starts_with("\"\"\"") || trimmed.starts_with("'''"),
                 Language::JavaScript | Language::TypeScript => {
                     trimmed.starts_with("/**") || trimmed.starts_with('*')
+                }
+                Language::Lean => {
+                    trimmed.starts_with("/--") // Lean doc comments
+                        || trimmed.starts_with("/-!")  // Lean module doc comments
+                        || trimmed.starts_with("--")   // Lean line comments (doc-like)
                 }
                 _ => trimmed.starts_with("//") || trimmed.starts_with("/*"),
             }

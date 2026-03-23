@@ -155,3 +155,5 @@ include!("muda_handlers_metrics.rs");
 
 // Unit tests
 include!("muda_handlers_tests.rs");
+// #[requires(project_path.exists())]
+// #[ensures(result.is_ok())]

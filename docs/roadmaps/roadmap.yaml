@@ -2513,3 +2513,161 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: PMAT-511
+  github_issue: null
+  item_type: task
+  title: 'PMAT-520: CB-1201 PV Lint gate in pmat comply + pmat score sub-score'
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-03-21T12:00:26Z
+  updated: 2026-03-21T12:00:26Z
+  spec: null
+  acceptance_criteria:
+  - 'Integrate pv lint into pmat comply as CB-1201 check and into pmat score as 8th sub-score. Run pv lint --format json when contracts/ exists. Extract mean_score from gates[2].detail.mean_score. Ref: scoring-convergence.md §10'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - scoring
+  - pv-lint
+  notes: null
+- id: PMAT-520
+  github_issue: null
+  item_type: task
+  title: 'New task: PMAT-520'
+  status: completed
+  priority: medium
+  assigned_to: null
+  created: 2026-03-21T12:00:26.425355806+00:00
+  updated: 2026-03-21T12:07:13Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-521
+  github_issue: null
+  item_type: task
+  title: 'PMAT-521: provable-contracts Gate 4+5 — source verification + test execution'
+  status: planned
+  priority: critical
+  assigned_to: null
+  created: 2026-03-21T12:38:08Z
+  updated: 2026-03-21T12:38:08Z
+  spec: null
+  acceptance_criteria:
+  - 'provable-contracts pv lint has no source verification. Gate 4: resolve test: names against fn test_* in source, FAIL on missing. Gate 5: run cargo test on referenced tests, FAIL on failure. Parse tests_file/tests_module from Contract struct. Five Whys: audit_contract only checks YAML-internal consistency, never reads source code. Trueno: 85/105 contract tests missing, pv lint reports 0 findings.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - provable-contracts
+  - critical
+  notes: null
+- id: PMAT-522
+  github_issue: null
+  item_type: task
+  title: 'PMAT-522: Escape-proof contract enforcement pipeline — build.rs codegen + Lean sorry check'
+  status: completed
+  priority: critical
+  assigned_to: null
+  created: 2026-03-21T15:10:03Z
+  updated: 2026-03-21T15:14:19Z
+  spec: null
+  acceptance_criteria:
+  - 'Implement the six-stage escape-proof pipeline from provable-contracts spec §13. build.rs reads YAML preconditions/postconditions and generates debug_assert!(). Lean sorry detection blocks compilation. #[contract] macro inserts generated assertions. pv lint Gate 5 enforces preconditions exist. pmat comply CB-1203 checks annotation coverage. Ref: provable-contracts/docs/specifications/sub/escape-proof-enforcement.md'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - provable-contracts
+  - enforcement
+  notes: null
+- id: PMAT-523
+  github_issue: null
+  item_type: task
+  title: 'PV-COMPAT: Implement pv-compatibility spec — align pmat with provable-contracts scoring'
+  status: completed
+  priority: medium
+  assigned_to: null
+  created: 2026-03-22T14:54:34Z
+  updated: 2026-03-22T15:15:55Z
+  spec: null
+  acceptance_criteria:
+  - 'Implement docs/specifications/pv-compatibility.md: P0 items first (CB-1201 use pv score dimensions, parse proof-status.json), then P1 (CB-1205 provability invariant, CD1-CD5 codebase scoring). Cargo install and dogfood after each change.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-524
+  github_issue: null
+  item_type: task
+  title: 'PV-COMPAT-P2: CB-1206 verification levels + drift detection + CD1-CD5 codebase scoring'
+  status: completed
+  priority: medium
+  assigned_to: null
+  created: 2026-03-22T15:18:21Z
+  updated: 2026-03-22T15:28:15Z
+  spec: null
+  acceptance_criteria:
+  - 'Remaining pv-compatibility items: CB-1206 verification level distribution, CD5 drift detection, CD1-CD5 codebase scoring in pmat score.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-525
+  github_issue: null
+  item_type: task
+  title: 'PV-COMPAT-FINAL: Drift detection (CD5) + SARIF pipeline + pv query integration'
+  status: completed
+  priority: medium
+  assigned_to: null
+  created: 2026-03-22T15:30:08Z
+  updated: 2026-03-22T15:43:43Z
+  spec: null
+  acceptance_criteria:
+  - 'Final pv-compatibility items: CD5 drift detection (contract freshness vs git), SARIF output from pv lint, pv query cross-project delegation.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-526
+  github_issue: null
+  item_type: task
+  title: 'PV-COMPAT-QUERY: pv query cross-project integration + score improvements'
+  status: completed
+  priority: medium
+  assigned_to: null
+  created: 2026-03-22T15:46:57Z
+  updated: 2026-03-22T15:57:49Z
+  spec: null
+  acceptance_criteria:
+  - 'Final pv-compatibility item: integrate pv query for cross-project contract search. Also improve PV Lint score by adding pmat''s own contracts for critical algorithms.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-527
+  github_issue: null
+  item_type: task
+  title: 'PV-COMPAT-FALSIFY: Falsify pv-compatibility implementation + bug hunt + fix pmat comply'
+  status: completed
+  priority: medium
+  assigned_to: null
+  created: 2026-03-22T16:04:56Z
+  updated: 2026-03-23T17:05:05Z
+  spec: null
+  acceptance_criteria:
+  - Falsify all 8 pv-compatibility implementations. Test edge cases, verify scoring is honest, hunt bugs across entire project, fix any pmat comply failures.
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null

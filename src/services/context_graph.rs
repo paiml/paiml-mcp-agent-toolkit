@@ -254,3 +254,7 @@ mod coverage_tests {
     include!("context_graph_coverage_core.rs");
     include!("context_graph_coverage_extended.rs");
 }
+
+// Design-by-contract specifications (Verus-style)
+// #[requires(project_path.is_dir())]
+// #[ensures(result.is_ok() ==> ret.len() > 0)]

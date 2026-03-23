@@ -180,26 +180,15 @@ impl QualityMonitor {
                         
                         if let Ok(content) = std::fs::read_to_string(&path) {
                             // Parse with enhanced parser
-                            if let Ok(mut parser_lock) = parser.lock() {
-                                if let Ok(new_metrics) = parser_lock.parse_incremental(&path, &content) {
-                                    let old_metrics = metrics.insert(path.clone(), new_metrics.clone());
-                                    
-                                    let event = if let Some(old) = old_metrics {
-                                        QualityEvent::MetricsUpdated {
-                                            path: path.clone(),
-                                            old_metrics: old,
-                                            new_metrics,
-                                        }
-                                    } else {
-                                        QualityEvent::FileAdded {
-                                            path: path.clone(),
-                                            metrics: new_metrics,
-                                        }
-                                    };
-                                    
-                                    let _ = events.try_send(event);
-                                }
-                            }
+                            let Ok(mut parser_lock) = parser.lock() else { continue };
+                            let Ok(new_metrics) = parser_lock.parse_incremental(&path, &content) else { continue };
+                            let old_metrics = metrics.insert(path.clone(), new_metrics.clone());
+                            let p = path.clone();
+                            let event = match old_metrics {
+                                Some(old) => QualityEvent::MetricsUpdated { path: p, old_metrics: old, new_metrics },
+                                None => QualityEvent::FileAdded { path: p, metrics: new_metrics },
+                            };
+                            let _ = events.try_send(event);
                         }
                     }
                 }

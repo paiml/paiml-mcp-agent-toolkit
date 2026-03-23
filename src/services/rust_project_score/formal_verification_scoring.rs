@@ -91,46 +91,37 @@ impl FormalVerificationScorer {
         }
     }
 
-    /// Score Verus specifications (5 points)
+    /// Score contract-based verification (5 points).
+    ///
+    /// Scores `#[contract("yaml", equation = "eq")]` annotations —
+    /// provable-contracts macros that inject YAML-driven debug_assert
+    /// backed by Lean proofs and Kani harnesses.
+    ///
+    /// Also includes Verus specs if present (decreases, recommends, proof fn).
     fn score_verus(
         &self,
         project_path: &Path,
-        mode: ScoringMode,
+        _mode: ScoringMode,
         cache: Option<&FileCache>,
     ) -> f64 {
+        let contract_macros = self.count_contract_macros(project_path, cache);
         let verus_specs = self.count_verus_specs(project_path, cache);
-        let has_vstd = self.has_vstd_dependency(project_path);
-        if verus_specs == 0 && !has_vstd {
-            return 0.0;
-        }
-        let use_partial =
-            mode == ScoringMode::Quick || mode == ScoringMode::Fast || !self.is_verus_available();
-        let spec_score = if use_partial {
-            Self::verus_partial_score(verus_specs)
-        } else {
-            Self::verus_full_score(verus_specs)
-        };
-        VERUS_POINTS * spec_score
-    }
+        let total = contract_macros + verus_specs;
 
-    /// Verus scoring when tool is unavailable or in quick/fast mode
-    fn verus_partial_score(verus_specs: usize) -> f64 {
-        match verus_specs {
-            0 => 0.2,
-            1..=5 => 0.4,
-            6..=20 => 0.6,
-            _ => 0.8,
+        if total == 0 {
+            // Check for contracts/ directory with YAML — partial credit
+            let has_contracts = project_path.join("contracts").exists();
+            return if has_contracts { VERUS_POINTS * 0.2 } else { 0.0 };
         }
-    }
 
-    /// Verus scoring when tool is available and in full mode
-    fn verus_full_score(verus_specs: usize) -> f64 {
-        match verus_specs {
-            0 => 0.3,
-            1..=5 => 0.6,
-            6..=20 => 0.8,
+        // Score based on annotation density
+        let score = match total {
+            1..=3 => 0.4,
+            4..=10 => 0.6,
+            11..=25 => 0.8,
             _ => 1.0,
-        }
+        };
+        VERUS_POINTS * score
     }
 
     /// Internal scoring logic with cache support
@@ -176,23 +167,24 @@ impl FormalVerificationScorer {
     }
 
     fn recommend_verus(&self, project_path: &Path, recs: &mut Vec<String>) {
-        let unsafe_count = self.count_unsafe_blocks(project_path, None);
-        let verus_specs = self.count_verus_specs(project_path, None);
-        let has_vstd = self.has_vstd_dependency(project_path);
-        if verus_specs == 0 && !has_vstd && unsafe_count > 0 {
+        let contract_macros = self.count_contract_macros(project_path, None);
+        let has_contracts_dir = project_path.join("contracts").exists();
+
+        if contract_macros == 0 && has_contracts_dir {
             recs.push(
-                "Consider Verus for formal verification of unsafe code: https://verus-lang.github.io/verus/guide/"
+                "Add #[contract(\"yaml-name\", equation = \"eq\")] to production functions \
+                 to enable YAML-driven assertion injection"
                     .into(),
             );
-        } else if (verus_specs > 0 || has_vstd) && !self.is_verus_available() {
-            recs.push(
-                "Install Verus to verify specs: https://github.com/verus-lang/verus#building"
-                    .into(),
-            );
-        } else if verus_specs < 5 && has_vstd {
-            recs.push(
-                "Add more #[requires], #[ensures] specs to increase verification coverage".into(),
-            );
+        } else if contract_macros == 0 && !has_contracts_dir {
+            let verus_specs = self.count_verus_specs(project_path, None);
+            if verus_specs == 0 {
+                recs.push(
+                    "Consider provable-contracts for formal verification: \
+                     add contracts/ YAML and #[contract] macros"
+                        .into(),
+                );
+            }
         }
     }
 

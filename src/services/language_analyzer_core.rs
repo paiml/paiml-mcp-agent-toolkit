@@ -139,7 +139,7 @@ impl LanguageAnalyzer {
             // Other comment styles
             Language::Clojure => CommentStyle::Semicolon,
             Language::Erlang | Language::Matlab => CommentStyle::Percent,
-            Language::SQL | Language::Haskell => CommentStyle::DoubleDash,
+            Language::SQL | Language::Haskell | Language::Lean => CommentStyle::DoubleDash,
             Language::XML => CommentStyle::Xml,
 
             // No comment style

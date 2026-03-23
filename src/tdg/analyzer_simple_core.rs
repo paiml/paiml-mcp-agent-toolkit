@@ -40,6 +40,15 @@ impl TdgAnalyzer {
         score.doc_coverage = self.analyze_documentation(source, language, &mut tracker);
         score.consistency_score = self.analyze_consistency(source, language, &mut tracker);
 
+        // Lean-specific: detect `sorry` (proof incompleteness = critical defect)
+        if language == Language::Lean {
+            let sorry_count = count_lean_sorry(source);
+            if sorry_count > 0 {
+                score.has_critical_defects = true;
+                score.critical_defects_count = sorry_count;
+            }
+        }
+
         score.penalties_applied = tracker.get_attributions();
         score.calculate_total();
 

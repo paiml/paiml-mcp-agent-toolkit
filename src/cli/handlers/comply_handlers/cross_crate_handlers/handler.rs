@@ -144,7 +144,9 @@ fn emit_report(
 ) -> Result<()> {
     let output_text = match format {
         ComplyOutputFormat::Text => format_text(report),
-        ComplyOutputFormat::Json => serde_json::to_string_pretty(report)?,
+        ComplyOutputFormat::Json | ComplyOutputFormat::Sarif => {
+            serde_json::to_string_pretty(report)?
+        }
         ComplyOutputFormat::Markdown => format_markdown(report),
     };
 

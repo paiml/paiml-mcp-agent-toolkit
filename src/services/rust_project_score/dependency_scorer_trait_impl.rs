@@ -71,6 +71,7 @@ impl Scorer for DependencyScorer {
     }
 }
 
-// Ensure Send + Sync for parallel execution
+// SAFETY: DependencyScorer holds only a PathBuf (owned, Send+Sync) and no interior mutability,
+// making it safe to send between and share across threads for parallel scoring.
 unsafe impl Send for DependencyScorer {}
 unsafe impl Sync for DependencyScorer {}

@@ -72,6 +72,7 @@ impl Scorer for CodeQualityScorer {
     }
 }
 
-// Ensure Send + Sync for parallel execution
+// SAFETY: CodeQualityScorer holds only a PathBuf (owned, Send+Sync) and no interior mutability,
+// making it safe to send between and share across threads for parallel scoring.
 unsafe impl Send for CodeQualityScorer {}
 unsafe impl Sync for CodeQualityScorer {}

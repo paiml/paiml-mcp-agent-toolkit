@@ -162,8 +162,8 @@ pub struct Counter {
 
         let scorer = FormalVerificationScorer::new();
         let count = scorer.count_verus_specs(temp_dir.path(), None);
-        // Should find: 2x requires, 2x ensures, 1x decreases, 1x invariant = 6
-        assert_eq!(count, 6);
+        // Only counts Verus-specific: 1x decreases (requires/ensures are provable-contracts macros)
+        assert_eq!(count, 1);
     }
 
     #[test]
@@ -211,33 +211,30 @@ serde = "1.0"
     }
 
     #[test]
-    fn test_verus_specs_give_points() {
+    fn test_contract_macros_give_points() {
         let temp_dir = TempDir::new().expect("internal error");
         let src_dir = temp_dir.path().join("src");
+        let contracts_dir = temp_dir.path().join("contracts");
         std::fs::create_dir_all(&src_dir).expect("internal error");
+        std::fs::create_dir_all(&contracts_dir).expect("internal error");
 
-        // Create file with Verus specifications
+        // Create file with #[contract] macros
         std::fs::write(
             src_dir.join("lib.rs"),
             r#"
-#[requires(x > 0)]
-#[ensures(result > 0)]
-pub fn verified_fn(x: u32) -> u32 { x }
+#[contract("softmax-v1", equation = "softmax")]
+pub fn softmax(x: &[f32]) -> Vec<f32> { vec![1.0] }
+
+#[provable_contracts_macros::contract("relu-v1", equation = "relu")]
+pub fn relu(x: &[f32]) -> Vec<f32> { vec![0.0] }
 "#,
         )
         .expect("internal error");
 
-        // Create Cargo.toml with vstd
+        // Create Cargo.toml
         std::fs::write(
             temp_dir.path().join("Cargo.toml"),
-            r#"[package]
-name = "verus-project"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-vstd = { path = "../vstd" }
-"#,
+            "[package]\nname = \"test\"\nversion = \"0.1.0\"",
         )
         .expect("internal error");
 
@@ -246,7 +243,7 @@ vstd = { path = "../vstd" }
             .score_with_mode(temp_dir.path(), ScoringMode::Quick)
             .expect("internal error");
 
-        // Should get Miri points (no unsafe) + some Verus points
+        // Should get Miri points (no unsafe) + contract points
         assert!(result.earned > MIRI_POINTS);
     }
 }

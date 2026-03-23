@@ -25,8 +25,11 @@
 | 16 | [Repository Health](#16-repository-health) | [repo-health.md](components/repo-health.md) | Active |
 | 17 | [WASM](#17-wasm) | [wasm.md](components/wasm.md) | Active |
 | 18 | [Infrastructure](#18-infrastructure) | [infrastructure.md](components/infrastructure.md) | Active |
+| 19 | [PV Compatibility](#19-pv-compatibility) | [pv-compatibility.md](components/pv-compatibility.md) | Active |
 | 19 | [Memory Profiling](#19-memory-profiling) | [memory-profiling.md](components/memory-profiling.md) | Active |
 | 20 | [SWE-CI & Evolution](#20-swe-ci--evolution) | [swe-ci-evolution.md](components/swe-ci-evolution.md) | Active |
+| 21 | [Scoring Convergence & Hardening](#21-scoring-convergence--hardening) | [scoring-convergence.md](components/scoring-convergence.md) | Active |
+| 22 | [Provable Contracts Integration](#22-provable-contracts-integration) | [provable-contracts.md](components/provable-contracts.md) | Active |
 
 ---
 
@@ -291,6 +294,34 @@ Architect-programmer dual-agent protocol for requirement-driven development.
 **Key formula**: `e = [sum(gamma^i * a(c_i))] / [sum(gamma^i)]` where gamma >= 1.
 
 **Comply check**: CB-142 computes EvoScore from git history and CI results.
+
+---
+
+## 21. Scoring Convergence & Hardening
+
+**Sub-spec**: [components/scoring-convergence.md](components/scoring-convergence.md)
+
+**ONE canonical command**: `pmat score` produces geometric composite (0-100) from
+7 sub-scores (RPS, comply, coverage, muda, evoscore, DBC, file health). Planned
+8th sub-score: PV Lint (`pv lint --format json`). `pmat comply` defaults to
+`check` (no subcommand needed). Deep `pmat query --score-diagnosis` integration.
+CI via `quality-gate.yml`. Pre-push hook with `pmat score --gate 60`.
+
+**New comply checks**: CB-145 (regression), CB-146 (cross-validation), CB-147
+(composite gate), CB-148 (spec-work), CB-150 (stack quality), CB-533 (stale paths),
+CB-1201 (PV Lint gate), CB-1202 (contract coverage), CB-1250 (work-DBC binding).
+
+---
+
+## 22. Provable Contracts Integration
+
+**Sub-spec**: [components/provable-contracts.md](components/provable-contracts.md)
+
+ONE contract type: `#[core::contracts::requires]`/`#[ensures]` (Rust nightly
+#128044). Compiler-enforced, zero cost by default, opt-in runtime checks via
+`-Z contract-checks=yes`. No external crates. YAML contracts + `pv lint`
+enforce until nightly stabilizes. 98 contracts across sovereign stack.
+CB-1203: annotation coverage.
 
 ---
 

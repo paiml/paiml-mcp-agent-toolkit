@@ -38,7 +38,9 @@ pub(crate) async fn handle_review(
     let checklist = build_review_checklist(&repro, golden, &muda, git_clean);
 
     let content = match format {
-        ComplyOutputFormat::Json => serde_json::to_string_pretty(&checklist)?,
+        ComplyOutputFormat::Json | ComplyOutputFormat::Sarif => {
+            serde_json::to_string_pretty(&checklist)?
+        }
         ComplyOutputFormat::Markdown | ComplyOutputFormat::Text => {
             format_review_markdown(&checklist)
         }
@@ -258,7 +260,9 @@ pub(crate) async fn handle_audit(
     };
 
     let content = match format {
-        ComplyOutputFormat::Json => serde_json::to_string_pretty(&artifact)?,
+        ComplyOutputFormat::Json | ComplyOutputFormat::Sarif => {
+            serde_json::to_string_pretty(&artifact)?
+        }
         ComplyOutputFormat::Markdown | ComplyOutputFormat::Text => format_audit_markdown(&artifact),
     };
 

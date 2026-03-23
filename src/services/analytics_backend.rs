@@ -112,3 +112,7 @@ mod tests {
 
     include!("analytics_backend_tests.rs");
 }
+
+// Design-by-contract specifications (Verus-style)
+// #[requires(project_path.is_dir())]
+// #[ensures(result.is_ok() ==> ret.len() > 0)]

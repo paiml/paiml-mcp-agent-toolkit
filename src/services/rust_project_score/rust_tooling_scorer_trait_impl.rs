@@ -91,6 +91,7 @@ impl Scorer for RustToolingScorer {
     }
 }
 
-// Ensure Send + Sync for parallel execution
+// SAFETY: RustToolingScorer holds only a PathBuf (owned, Send+Sync) and no interior mutability,
+// making it safe to send between and share across threads for parallel scoring.
 unsafe impl Send for RustToolingScorer {}
 unsafe impl Sync for RustToolingScorer {}
