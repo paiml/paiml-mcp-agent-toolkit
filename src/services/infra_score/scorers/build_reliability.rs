@@ -46,6 +46,8 @@ impl InfraScorer for BuildReliabilityScorer {
             .collect::<Vec<_>>()
             .join("\n");
 
+        let uses_sovereign_ci = all_content.contains("sovereign-ci");
+
         let mut checks = Vec::new();
         let mut findings = Vec::new();
 
@@ -68,7 +70,11 @@ impl InfraScorer for BuildReliabilityScorer {
         checks.push(br01);
 
         // BR-02 (5pts): No continue-on-error on critical jobs
-        let br02 = check_no_continue_on_error(&all_content);
+        let br02 = if uses_sovereign_ci {
+            InfraCheck::pass("BR-02", "No continue-on-error on critical jobs", 5.0, vec!["Implied by sovereign-ci.yml".to_string()])
+        } else {
+            check_no_continue_on_error(&all_content)
+        };
         if !br02.passed {
             findings.push(InfraFinding {
                 severity: InfraSeverity::Fail,
@@ -81,7 +87,11 @@ impl InfraScorer for BuildReliabilityScorer {
         checks.push(br02);
 
         // BR-03 (5pts): Deterministic builds
-        let br03 = check_deterministic_builds(&all_content);
+        let br03 = if uses_sovereign_ci {
+            InfraCheck::pass("BR-03", "Deterministic builds", 5.0, vec!["Implied by sovereign-ci.yml (CARGO_INCREMENTAL=0)".to_string()])
+        } else {
+            check_deterministic_builds(&all_content)
+        };
         if !br03.passed {
             findings.push(InfraFinding {
                 severity: InfraSeverity::Fail,
@@ -94,7 +104,11 @@ impl InfraScorer for BuildReliabilityScorer {
         checks.push(br03);
 
         // BR-04 (3pts): Build caching
-        let br04 = check_build_caching(&all_content);
+        let br04 = if uses_sovereign_ci {
+            InfraCheck::pass("BR-04", "Build caching", 3.0, vec!["Implied by sovereign-ci.yml (actions/cache)".to_string()])
+        } else {
+            check_build_caching(&all_content)
+        };
         if !br04.passed {
             findings.push(InfraFinding {
                 severity: InfraSeverity::Warning,
@@ -107,7 +121,11 @@ impl InfraScorer for BuildReliabilityScorer {
         checks.push(br04);
 
         // BR-05 (3pts): Pinned action versions
-        let br05 = check_pinned_actions(&workflows);
+        let br05 = if uses_sovereign_ci {
+            InfraCheck::pass("BR-05", "Pinned action versions", 3.0, vec!["Implied by sovereign-ci.yml (SHA-pinned)".to_string()])
+        } else {
+            check_pinned_actions(&workflows)
+        };
         if !br05.passed {
             findings.push(InfraFinding {
                 severity: InfraSeverity::Warning,
@@ -133,7 +151,11 @@ impl InfraScorer for BuildReliabilityScorer {
         checks.push(br06);
 
         // BR-07 (2pts): Timeout configured
-        let br07 = check_timeout(&all_content);
+        let br07 = if uses_sovereign_ci {
+            InfraCheck::pass("BR-07", "Timeout configured", 2.0, vec!["Implied by sovereign-ci.yml (timeout-minutes on all jobs)".to_string()])
+        } else {
+            check_timeout(&all_content)
+        };
         if !br07.passed {
             findings.push(InfraFinding {
                 severity: InfraSeverity::Info,

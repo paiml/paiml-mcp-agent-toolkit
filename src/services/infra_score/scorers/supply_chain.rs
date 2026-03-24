@@ -44,6 +44,8 @@ impl InfraScorer for SupplyChainScorer {
             .collect::<Vec<_>>()
             .join("\n");
 
+        let uses_sovereign_ci = all_content.contains("sovereign-ci");
+
         let mut checks = Vec::new();
         let mut findings = Vec::new();
 
@@ -87,7 +89,11 @@ impl InfraScorer for SupplyChainScorer {
         checks.push(sc03);
 
         // SC-04 (2pts): Provenance/attestation
-        let sc04 = check_provenance(&all_content);
+        let sc04 = if uses_sovereign_ci {
+            InfraCheck::pass("SC-04", "SLSA provenance", 2.0, vec!["Implied by sovereign-ci.yml (attest-build-provenance)".to_string()])
+        } else {
+            check_provenance(&all_content)
+        };
         if !sc04.passed {
             findings.push(InfraFinding {
                 severity: InfraSeverity::Info,

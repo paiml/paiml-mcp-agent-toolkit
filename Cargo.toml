@@ -303,6 +303,7 @@ ureq = "3.0"
 flate2 = "1.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+serde_yaml_ng = "0.10"
 # hex removed: generated code now uses inline hex_decode_templates() (CB-081)
 sha2 = "0.10"  # For O(1) build artifact hash caching
 # capnpc = "0.20" # REMOVED: Unused Cap'n Proto compiler
