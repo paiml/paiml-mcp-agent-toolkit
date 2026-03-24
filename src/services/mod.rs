@@ -184,6 +184,7 @@ pub mod github_integration;
 pub mod hallucination_detector; // Sprint 37: Semantic entropy-based hallucination detection
 pub mod incremental_churn;
 pub mod incremental_coverage_analyzer;
+pub mod infra_score; // Infra Score: CI/CD infrastructure quality scoring (PMAT-150)
 pub mod language_override; // BUG-012: CLI language override support
 pub mod lightweight_provability_analyzer;
 pub mod makefile_compressor;
