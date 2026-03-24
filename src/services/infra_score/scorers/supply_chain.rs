@@ -504,3 +504,55 @@ jobs:
         assert!((result.score - 15.0).abs() < f64::EPSILON);
     }
 }
+
+/// HD-01: Check for untrusted context interpolation in run: blocks
+fn check_dangerous_workflow(workflows: &[(String, String)]) -> InfraCheck {
+    let dangerous_patterns = [
+        "github.event.pull_request.title",
+        "github.event.pull_request.body",
+        "github.event.pull_request.head_ref",
+        "github.event.issue.title",
+        "github.event.issue.body",
+        "github.event.comment.body",
+        "github.event.review.body",
+        "github.head_ref",
+    ];
+
+    let mut in_run_block = false;
+    let mut violations = Vec::new();
+
+    for (name, content) in workflows {
+        for (line_no, line) in content.lines().enumerate() {
+            let trimmed = line.trim();
+            if trimmed.starts_with("run:") || trimmed.starts_with("- run:") {
+                in_run_block = true;
+            } else if !trimmed.starts_with('-') && !trimmed.starts_with('#') && !line.starts_with(' ') && !line.starts_with('\t') {
+                in_run_block = false;
+            }
+
+            if in_run_block {
+                for pattern in &dangerous_patterns {
+                    if trimmed.contains(pattern) {
+                        violations.push(format!("{}:{}: ${{{{ {} }}}}", name, line_no + 1, pattern));
+                    }
+                }
+            }
+        }
+    }
+
+    if violations.is_empty() {
+        InfraCheck::pass(
+            "HD-01",
+            "No dangerous workflow patterns",
+            3.0,
+            vec!["No untrusted context interpolation in run: blocks".to_string()],
+        )
+    } else {
+        InfraCheck::fail(
+            "HD-01",
+            "No dangerous workflow patterns",
+            3.0,
+            violations,
+        )
+    }
+}
