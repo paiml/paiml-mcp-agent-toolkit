@@ -44,11 +44,18 @@ impl InfraScorer for QualityPipelineScorer {
             .collect::<Vec<_>>()
             .join("\n");
 
+        // Check if sovereign-ci.yml is used — it provides test, lint, coverage, security, fmt
+        let uses_sovereign_ci = all_content.contains("sovereign-ci");
+
         let mut checks = Vec::new();
         let mut findings = Vec::new();
 
         // QP-01 (5pts): Test job
-        let qp01 = check_test_job(&all_content);
+        let qp01 = if uses_sovereign_ci {
+            InfraCheck::pass("QP-01", "Test job", 5.0, vec!["Provided by sovereign-ci.yml".to_string()])
+        } else {
+            check_test_job(&all_content)
+        };
         if !qp01.passed {
             findings.push(InfraFinding {
                 severity: InfraSeverity::Fail,

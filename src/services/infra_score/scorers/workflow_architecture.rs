@@ -47,6 +47,7 @@ impl InfraScorer for WorkflowArchitectureScorer {
 
         // WA-01 (5pts): Reusable workflow call
         let wa01 = check_reusable_workflow(&workflows);
+        let uses_sovereign_ci = wa01.passed && wa01.evidence.iter().any(|e| e.contains("sovereign-ci"));
         if !wa01.passed {
             findings.push(InfraFinding {
                 severity: InfraSeverity::Fail,
@@ -59,7 +60,12 @@ impl InfraScorer for WorkflowArchitectureScorer {
         checks.push(wa01);
 
         // WA-02 (5pts): Self-hosted runners
-        let wa02 = check_self_hosted(&all_content);
+        // If sovereign-ci.yml is used, auto-pass (it runs on self-hosted)
+        let wa02 = if uses_sovereign_ci {
+            InfraCheck::pass("WA-02", "Self-hosted runners", 5.0, vec!["Implied by sovereign-ci.yml (self-hosted clean-room)".to_string()])
+        } else {
+            check_self_hosted(&all_content)
+        };
         if !wa02.passed {
             findings.push(InfraFinding {
                 severity: InfraSeverity::Fail,
@@ -98,7 +104,12 @@ impl InfraScorer for WorkflowArchitectureScorer {
         checks.push(wa04);
 
         // WA-05 (3pts): Gate/aggregation job
-        let wa05 = check_gate_job(&all_content);
+        // If sovereign-ci.yml is used, auto-pass (it has a gate job)
+        let wa05 = if uses_sovereign_ci {
+            InfraCheck::pass("WA-05", "Gate job", 3.0, vec!["Implied by sovereign-ci.yml (gate job with if: always())".to_string()])
+        } else {
+            check_gate_job(&all_content)
+        };
         if !wa05.passed {
             findings.push(InfraFinding {
                 severity: InfraSeverity::Warning,
