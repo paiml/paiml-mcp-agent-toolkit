@@ -19,18 +19,20 @@ impl InfraScoreAggregator {
     pub async fn aggregate(&self, repo_path: &Path) -> anyhow::Result<InfraScore> {
         let start = Instant::now();
 
-        // Run all 5 scorers
+        // Run all 5 base scorers + 1 bonus scorer
         let wa_scorer = WorkflowArchitectureScorer::new();
         let br_scorer = BuildReliabilityScorer::new();
         let qp_scorer = QualityPipelineScorer::new();
         let dr_scorer = DeploymentReleaseScorer::new();
         let sc_scorer = SupplyChainScorer::new();
+        let pv_scorer = ProvableContractsScorer::new();
 
         let workflow_architecture = wa_scorer.score(repo_path).await?;
         let build_reliability = br_scorer.score(repo_path).await?;
         let quality_pipeline = qp_scorer.score(repo_path).await?;
         let deployment_release = dr_scorer.score(repo_path).await?;
         let supply_chain = sc_scorer.score(repo_path).await?;
+        let provable_contracts = pv_scorer.score(repo_path).await?;
 
         let categories = InfraCategoryScores {
             workflow_architecture,
@@ -38,6 +40,7 @@ impl InfraScoreAggregator {
             quality_pipeline,
             deployment_release,
             supply_chain,
+            provable_contracts,
         };
 
         let total_score = categories.total();

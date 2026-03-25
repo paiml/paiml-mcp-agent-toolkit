@@ -1,17 +1,19 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
-//! Infra-score scorers — 5 dimensions, 100 points total.
+//! Infra-score scorers — 5 base dimensions (100 pts) + 1 bonus (10 pts).
 //!
 //! Each scorer implements `InfraScorer` and evaluates one dimension
 //! of CI/CD infrastructure quality.
 
 pub mod build_reliability;
 pub mod deployment_release;
+pub mod provable_contracts;
 pub mod quality_pipeline;
 pub mod supply_chain;
 pub mod workflow_architecture;
 
 pub use build_reliability::BuildReliabilityScorer;
 pub use deployment_release::DeploymentReleaseScorer;
+pub use provable_contracts::ProvableContractsScorer;
 pub use quality_pipeline::QualityPipelineScorer;
 pub use supply_chain::SupplyChainScorer;
 pub use workflow_architecture::WorkflowArchitectureScorer;

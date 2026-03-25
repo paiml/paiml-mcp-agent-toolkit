@@ -44,6 +44,7 @@ pub struct InfraCategoryScores {
     pub quality_pipeline: InfraCategoryScore,       // 20 points
     pub deployment_release: InfraCategoryScore,     // 15 points
     pub supply_chain: InfraCategoryScore,           // 15 points
+    pub provable_contracts: InfraCategoryScore,     // 10 points (bonus)
 }
 
 /// Individual category score (mirrors repo_score CategoryScore)
@@ -171,12 +172,18 @@ impl InfraGrade {
 }
 
 impl InfraCategoryScores {
+    /// Total base score (100 points max, excluding bonus)
     pub fn total(&self) -> f64 {
         self.workflow_architecture.score
             + self.build_reliability.score
             + self.quality_pipeline.score
             + self.deployment_release.score
             + self.supply_chain.score
+    }
+
+    /// Total including provable contracts bonus (110 max)
+    pub fn total_with_bonus(&self) -> f64 {
+        self.total() + self.provable_contracts.score
     }
 }
 
@@ -188,6 +195,7 @@ impl Default for InfraCategoryScores {
             quality_pipeline: InfraCategoryScore::empty(20.0),
             deployment_release: InfraCategoryScore::empty(15.0),
             supply_chain: InfraCategoryScore::empty(15.0),
+            provable_contracts: InfraCategoryScore::empty(10.0),
         }
     }
 }
@@ -323,6 +331,7 @@ mod tests {
             quality_pipeline: InfraCategoryScore { score: 18.0, max_score: 20.0, percentage: 90.0, checks: vec![], findings: vec![] },
             deployment_release: InfraCategoryScore { score: 12.0, max_score: 15.0, percentage: 80.0, checks: vec![], findings: vec![] },
             supply_chain: InfraCategoryScore { score: 10.0, max_score: 15.0, percentage: 66.7, checks: vec![], findings: vec![] },
+            provable_contracts: InfraCategoryScore { score: 5.0, max_score: 10.0, percentage: 50.0, checks: vec![], findings: vec![] },
         };
         assert!((scores.total() - 82.0).abs() < f64::EPSILON);
     }
