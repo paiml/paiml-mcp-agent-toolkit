@@ -284,6 +284,7 @@ prettyplease = { version = "0.2.37", optional = true }
 fs2 = "0.4.3"
 
 [dev-dependencies]
+provable-contracts = { path = "../provable-contracts/crates/provable-contracts" }
 dhat = "0.3"
 tokio-test = "0.4"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
@@ -556,6 +557,10 @@ required-features = ["e2e-tests"]
 name = "performance_regression"
 path = "tests/performance/regression.rs"
 required-features = ["perf-tests"]
+
+[[test]]
+name = "contract_traits"
+path = "tests/contract_traits.rs"
 
 # Examples for deterministic MCP agents course
 [[example]]
