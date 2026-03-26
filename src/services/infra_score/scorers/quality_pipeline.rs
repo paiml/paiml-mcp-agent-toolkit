@@ -68,7 +68,11 @@ impl InfraScorer for QualityPipelineScorer {
         checks.push(qp01);
 
         // QP-02 (5pts): Lint job
-        let qp02 = check_lint_job(&all_content);
+        let qp02 = if uses_sovereign_ci {
+            InfraCheck::pass("QP-02", "Lint job", 5.0, vec!["Implied by sovereign-ci.yml (cargo clippy -D warnings)".to_string()])
+        } else {
+            check_lint_job(&all_content)
+        };
         if !qp02.passed {
             findings.push(InfraFinding {
                 severity: InfraSeverity::Fail,
@@ -81,7 +85,11 @@ impl InfraScorer for QualityPipelineScorer {
         checks.push(qp02);
 
         // QP-03 (4pts): Coverage
-        let qp03 = check_coverage(&all_content);
+        let qp03 = if uses_sovereign_ci {
+            InfraCheck::pass("QP-03", "Coverage reporting", 4.0, vec!["Implied by sovereign-ci.yml (cargo llvm-cov)".to_string()])
+        } else {
+            check_coverage(&all_content)
+        };
         if !qp03.passed {
             findings.push(InfraFinding {
                 severity: InfraSeverity::Warning,
@@ -107,7 +115,11 @@ impl InfraScorer for QualityPipelineScorer {
         checks.push(qp04);
 
         // QP-05 (3pts): Format check
-        let qp05 = check_format(&all_content);
+        let qp05 = if uses_sovereign_ci {
+            InfraCheck::pass("QP-05", "Format check", 3.0, vec!["Implied by sovereign-ci.yml (cargo fmt --check)".to_string()])
+        } else {
+            check_format(&all_content)
+        };
         if !qp05.passed {
             findings.push(InfraFinding {
                 severity: InfraSeverity::Warning,

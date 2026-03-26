@@ -52,6 +52,7 @@ pub mod graph_context_integration_tests;
 pub mod handler_utils; // Unit-testable pure functions extracted from handlers
 pub mod health_handler;
 pub mod hooks_command_handlers;
+pub mod infra_score_handlers; // Infra Score: CI/CD infrastructure quality scoring
 pub mod hooks_stack_handler; // Stack-wide hook management for sovereign AI repos
 pub mod incremental_coverage_handler;
 pub mod kaizen_handler; // GH-213: Autonomous continuous improvement (Toyota Way Kaizen)
@@ -158,6 +159,7 @@ pub use doc_validate_handlers::ValidateDocsCmd;
 pub use duplication_analysis::handle_analyze_duplicates;
 pub use enforce_handlers::route_enforce_command;
 pub use extract_handler::handle_extract_list; // GH-215: pmat extract --list
+pub use infra_score_handlers::handle_infra_score; // Infra Score
 pub use generation_handlers::{
     handle_generate,
     handle_list_agent_templates,

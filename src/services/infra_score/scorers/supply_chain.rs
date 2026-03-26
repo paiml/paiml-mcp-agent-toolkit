@@ -118,6 +118,18 @@ impl InfraScorer for SupplyChainScorer {
         }
         checks.push(sc05);
 
+        // HD-01 (advisory): Dangerous workflow pattern detection
+        let hd01 = check_dangerous_workflow(&workflows);
+        if !hd01.passed {
+            findings.push(InfraFinding {
+                severity: InfraSeverity::Warning,
+                check_id: "HD-01".to_string(),
+                message: "Untrusted context interpolation in run: blocks.".to_string(),
+                location: Some(".github/workflows/".to_string()),
+                impact_points: 0.0, // Advisory — no point deduction
+            });
+        }
+
         Ok(InfraCategoryScore::new(self.max_score(), checks, findings))
     }
 }

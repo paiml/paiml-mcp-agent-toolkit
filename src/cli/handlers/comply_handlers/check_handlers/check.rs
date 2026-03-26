@@ -826,27 +826,64 @@ pub(crate) fn check_verification_levels(project_path: &Path) -> ComplianceCheck 
         };
     };
 
-    let totals = val.get("totals");
-    let obligations = totals
-        .and_then(|t| t.get("obligations"))
-        .and_then(|v| v.as_u64())
-        .unwrap_or(0);
-    let tests = totals
-        .and_then(|t| t.get("falsification_tests"))
-        .and_then(|v| v.as_u64())
-        .unwrap_or(0);
-    let kani = totals
-        .and_then(|t| t.get("kani_harnesses"))
-        .and_then(|v| v.as_u64())
-        .unwrap_or(0);
-    let lean = totals
-        .and_then(|t| t.get("lean_proved"))
-        .and_then(|v| v.as_u64())
-        .unwrap_or(0);
-    let contracts = totals
-        .and_then(|t| t.get("contracts"))
-        .and_then(|v| v.as_u64())
-        .unwrap_or(0);
+    // Collect contract stems from this project's contracts/ directory
+    let project_stems = collect_project_contract_stems(project_path);
+
+    // If the project has no provable-contract YAML files, skip — don't report global totals
+    if project_stems.is_empty() {
+        return ComplianceCheck {
+            name: "CB-1206: Verification Levels".into(),
+            status: CheckStatus::Skip,
+            message: "No provable-contract YAML files found — skipping verification level check".into(),
+            severity: Severity::Info,
+        };
+    }
+
+    // Filter proof-status.json contracts to only those belonging to this project
+    let (obligations, tests, kani, lean, contracts) =
+        if let Some(contracts_arr) = val.get("contracts").and_then(|v| v.as_array()) {
+            let mut ob = 0u64;
+            let mut ts = 0u64;
+            let mut ka = 0u64;
+            let mut le = 0u64;
+            let mut ct = 0u64;
+            for entry in contracts_arr {
+                let stem = entry
+                    .get("stem")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
+                if !project_stems.contains(stem) {
+                    continue;
+                }
+                ct += 1;
+                ob += entry
+                    .get("obligations")
+                    .and_then(|v| v.as_u64())
+                    .unwrap_or(0);
+                ts += entry
+                    .get("falsification_tests")
+                    .and_then(|v| v.as_u64())
+                    .unwrap_or(0);
+                ka += entry
+                    .get("kani_harnesses")
+                    .and_then(|v| v.as_u64())
+                    .unwrap_or(0);
+                le += entry
+                    .get("lean_proved")
+                    .and_then(|v| v.as_u64())
+                    .unwrap_or(0);
+            }
+            (ob, ts, ka, le, ct)
+        } else {
+            // Fallback to totals if no contracts array (old format)
+            let totals = val.get("totals");
+            let ob = totals.and_then(|t| t.get("obligations")).and_then(|v| v.as_u64()).unwrap_or(0);
+            let ts = totals.and_then(|t| t.get("falsification_tests")).and_then(|v| v.as_u64()).unwrap_or(0);
+            let ka = totals.and_then(|t| t.get("kani_harnesses")).and_then(|v| v.as_u64()).unwrap_or(0);
+            let le = totals.and_then(|t| t.get("lean_proved")).and_then(|v| v.as_u64()).unwrap_or(0);
+            let ct = totals.and_then(|t| t.get("contracts")).and_then(|v| v.as_u64()).unwrap_or(0);
+            (ob, ts, ka, le, ct)
+        };
 
     if obligations == 0 {
         return ComplianceCheck {
@@ -881,6 +918,42 @@ pub(crate) fn check_verification_levels(project_path: &Path) -> ComplianceCheck 
     }
 }
 
+/// Collect contract YAML stems from the project's contracts/ directory (recursive).
+/// Returns a set of stems (e.g., "softmax-kernel-v1") for filtering proof-status.json.
+fn collect_project_contract_stems(project_path: &Path) -> std::collections::HashSet<String> {
+    let contracts_dir = project_path.join("contracts");
+    let mut stems = std::collections::HashSet::new();
+    if !contracts_dir.exists() {
+        return stems;
+    }
+    collect_stems_recursive(&contracts_dir, &mut stems);
+    stems
+}
+
+fn collect_stems_recursive(dir: &Path, stems: &mut std::collections::HashSet<String>) {
+    let entries = match std::fs::read_dir(dir) {
+        Ok(e) => e,
+        Err(_) => return,
+    };
+    for entry in entries.filter_map(|e| e.ok()) {
+        let path = entry.path();
+        if path.is_dir() {
+            collect_stems_recursive(&path, stems);
+        } else if path.extension().is_some_and(|e| e == "yaml" || e == "yml") {
+            // Skip binding files
+            if path
+                .file_name()
+                .is_some_and(|n| n.to_string_lossy().contains("binding"))
+            {
+                continue;
+            }
+            if let Some(stem) = path.file_stem() {
+                stems.insert(stem.to_string_lossy().into_owned());
+            }
+        }
+    }
+}
+
 /// CB-1207: Contract drift — are contracts stale relative to source changes?
 /// A contract YAML older than its bound source files by >30 days = drift.
 /// pv-compatibility spec CD5.
@@ -899,47 +972,65 @@ pub(crate) fn check_contract_drift(project_path: &Path) -> ComplianceCheck {
     let mut stale = 0usize;
     let mut total = 0usize;
 
-    if let Ok(entries) = std::fs::read_dir(&contracts_dir) {
-        for entry in entries.flatten() {
-            let p = entry.path();
-            if p.extension().map_or(true, |e| e != "yaml") {
-                continue;
-            }
-            if p.file_name()
-                .is_some_and(|n| n.to_string_lossy().contains("binding"))
+    for entry in walkdir::WalkDir::new(&contracts_dir)
+        .max_depth(3)
+        .into_iter()
+        .filter_map(|e| e.ok())
+    {
+        let p = entry.path();
+        if !p.is_file() {
+            continue;
+        }
+        if p.extension().map_or(true, |e| e != "yaml" && e != "yml") {
+            continue;
+        }
+        if p.file_name()
+            .is_some_and(|n| n.to_string_lossy().contains("binding"))
+        {
+            continue;
+        }
+        // Only count files with provable-contracts schema markers (matches CB-1200)
+        if let Ok(content) = std::fs::read_to_string(p) {
+            if !content.contains("proof_obligations")
+                && !content.contains("equations:")
+                && !content.contains("falsification_tests")
+                && !content.contains("kani_harnesses")
             {
                 continue;
             }
-            let Ok(meta) = std::fs::metadata(&p) else {
-                continue;
-            };
-            let Ok(yaml_mtime) = meta.modified() else {
-                continue;
-            };
-            total += 1;
+        } else {
+            continue;
+        }
+        let Ok(meta) = std::fs::metadata(p) else {
+            continue;
+        };
+        let Ok(yaml_mtime) = meta.modified() else {
+            continue;
+        };
+        total += 1;
 
-            // Check git log for the contract's last commit vs now
-            let output = std::process::Command::new("git")
-                .args(["log", "-1", "--format=%ct", "--"])
-                .arg(p.file_name().unwrap_or_default())
-                .current_dir(&contracts_dir)
-                .stdout(std::process::Stdio::piped())
-                .stderr(std::process::Stdio::null())
-                .output();
+        // Check git log for the contract's last commit vs now
+        let rel_path = p.strip_prefix(project_path).unwrap_or(p);
+        let output = std::process::Command::new("git")
+            .args(["log", "-1", "--format=%ct", "--"])
+            .arg(rel_path)
+            .current_dir(project_path)
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::null())
+            .output();
 
-            if let Ok(o) = output {
-                if let Ok(ts_str) = String::from_utf8(o.stdout) {
-                    if let Ok(ts) = ts_str.trim().parse::<u64>() {
-                        let contract_commit =
-                            std::time::UNIX_EPOCH + std::time::Duration::from_secs(ts);
-                        let now = std::time::SystemTime::now();
-                        if let Ok(age) = now.duration_since(contract_commit) {
-                            // Contract not touched in >90 days AND yaml is old
-                            if age > thirty_days * 3 {
-                                if let Ok(yaml_age) = now.duration_since(yaml_mtime) {
-                                    if yaml_age > thirty_days * 3 {
-                                        stale += 1;
-                                    }
+        if let Ok(o) = output {
+            if let Ok(ts_str) = String::from_utf8(o.stdout) {
+                if let Ok(ts) = ts_str.trim().parse::<u64>() {
+                    let contract_commit =
+                        std::time::UNIX_EPOCH + std::time::Duration::from_secs(ts);
+                    let now = std::time::SystemTime::now();
+                    if let Ok(age) = now.duration_since(contract_commit) {
+                        // Contract not touched in >90 days AND yaml is old
+                        if age > thirty_days * 3 {
+                            if let Ok(yaml_age) = now.duration_since(yaml_mtime) {
+                                if yaml_age > thirty_days * 3 {
+                                    stale += 1;
                                 }
                             }
                         }
@@ -1124,21 +1215,40 @@ pub(crate) fn check_pv_lint(project_path: &Path) -> ComplianceCheck {
         };
     }
 
-    // Step 1: Run pv lint
-    let pv_passed = std::process::Command::new("pv")
+    // Step 1: Run pv lint — capture output for error detail
+    let (pv_passed, pv_error_detail) = std::process::Command::new("pv")
         .args(["lint", "--format", "json"])
         .current_dir(project_path)
         .stdout(std::process::Stdio::piped())
-        .stderr(std::process::Stdio::null())
+        .stderr(std::process::Stdio::piped())
         .output()
         .map(|o| {
-            String::from_utf8(o.stdout)
+            let json_val = String::from_utf8(o.stdout)
                 .ok()
-                .and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok())
+                .and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok());
+            let passed = json_val
+                .as_ref()
                 .and_then(|v| v.get("passed")?.as_bool())
-                .unwrap_or(false)
+                .unwrap_or(false);
+            // Extract first error finding for diagnostics
+            let detail = json_val
+                .as_ref()
+                .and_then(|v| v.get("findings")?.as_array())
+                .and_then(|arr| arr.iter().find(|f| {
+                    f.get("severity").and_then(|s| s.as_str()) == Some("error")
+                        || f.get("severity").and_then(|s| s.as_str()) == Some("ERROR")
+                }))
+                .and_then(|f| f.get("message").and_then(|m| m.as_str()))
+                .map(|s| s.to_string())
+                .or_else(|| {
+                    // Fallback: first line of stderr
+                    String::from_utf8(o.stderr).ok()
+                        .and_then(|s| s.lines().next().map(|l| l.trim().to_string()))
+                        .filter(|s| !s.is_empty())
+                });
+            (passed, detail)
         })
-        .unwrap_or(false);
+        .unwrap_or((false, None));
 
     // Step 2: Check test fulfillment
     let (total_refs, existing, missing) = count_contract_test_refs(project_path);
@@ -1156,10 +1266,14 @@ pub(crate) fn check_pv_lint(project_path: &Path) -> ComplianceCheck {
     }
 
     if !pv_passed {
+        let msg = match pv_error_detail {
+            Some(detail) => format!("PV Lint failed: {detail}"),
+            None => "PV Lint failed".into(),
+        };
         return ComplianceCheck {
             name: "CB-1201: PV Lint".into(),
             status: CheckStatus::Warn,
-            message: "PV Lint failed".into(),
+            message: msg,
             severity: Severity::Warning,
         };
     }

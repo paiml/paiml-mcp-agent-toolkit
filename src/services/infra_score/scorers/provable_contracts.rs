@@ -121,7 +121,7 @@ impl InfraScorer for ProvableContractsScorer {
     }
 }
 
-/// PV-04: Check contracts/ directory exists with YAML files
+/// PV-04: Check contracts/ directory exists with YAML files (recursive)
 fn check_contracts_exist(contracts_dir: &Path) -> InfraCheck {
     if !contracts_dir.exists() {
         return InfraCheck::fail(
@@ -132,18 +132,7 @@ fn check_contracts_exist(contracts_dir: &Path) -> InfraCheck {
         );
     }
 
-    let yaml_count = std::fs::read_dir(contracts_dir)
-        .map(|entries| {
-            entries
-                .filter_map(|e| e.ok())
-                .filter(|e| {
-                    e.path()
-                        .extension()
-                        .is_some_and(|ext| ext == "yaml" || ext == "yml")
-                })
-                .count()
-        })
-        .unwrap_or(0);
+    let yaml_count = count_yaml_files_recursive(contracts_dir);
 
     if yaml_count > 0 {
         InfraCheck::pass(
@@ -160,6 +149,44 @@ fn check_contracts_exist(contracts_dir: &Path) -> InfraCheck {
             vec!["contracts/ exists but contains no YAML files".to_string()],
         )
     }
+}
+
+/// Recursively count provable-contract YAML files in a directory tree.
+/// Excludes binding files and non-contract YAMLs (matching CB-1200 logic).
+fn count_yaml_files_recursive(dir: &Path) -> usize {
+    let mut count = 0;
+    let entries = match std::fs::read_dir(dir) {
+        Ok(e) => e,
+        Err(_) => return 0,
+    };
+    for entry in entries.filter_map(|e| e.ok()) {
+        let path = entry.path();
+        if path.is_dir() {
+            count += count_yaml_files_recursive(&path);
+        } else if path
+            .extension()
+            .is_some_and(|ext| ext == "yaml" || ext == "yml")
+        {
+            // Skip binding files
+            if path
+                .file_name()
+                .is_some_and(|n| n.to_string_lossy().contains("binding"))
+            {
+                continue;
+            }
+            // Only count files with provable-contracts schema markers
+            if let Ok(content) = std::fs::read_to_string(&path) {
+                if content.contains("proof_obligations")
+                    || content.contains("equations:")
+                    || content.contains("falsification_tests")
+                    || content.contains("kani_harnesses")
+                {
+                    count += 1;
+                }
+            }
+        }
+    }
+    count
 }
 
 /// PV-01: Run pv lint (via CLI if available, else check YAML structure)
@@ -239,12 +266,12 @@ async fn check_pv_score(contracts_dir: &Path) -> InfraCheck {
             vec!["Mean contract score below 0.5".to_string()],
         ),
         Err(_) => {
-            // pv not available — pass with warning
-            InfraCheck::pass(
+            // pv not available — cannot verify score, fail with guidance
+            InfraCheck::fail(
                 "PV-02",
                 "Contract score >= 0.5",
                 3.0,
-                vec!["pv not available; skipped (contracts exist)".to_string()],
+                vec!["pv CLI not installed; install: cargo install provable-contracts-cli".to_string()],
             )
         }
     }
@@ -265,15 +292,16 @@ async fn check_proof_level(contracts_dir: &Path) -> InfraCheck {
     match output {
         Ok(out) if out.status.success() => {
             let stdout = String::from_utf8_lossy(&out.stdout);
-            // Check if any contract has level >= 2
-            let has_l2 = stdout.contains("\"level\":2")
-                || stdout.contains("\"level\":3")
-                || stdout.contains("\"level\":4")
-                || stdout.contains("\"level\":5")
-                || stdout.contains("\"level\": 2")
-                || stdout.contains("\"level\": 3")
-                || stdout.contains("\"level\": 4")
-                || stdout.contains("\"level\": 5");
+            // Check if any contract has proof_level >= L2
+            // pv outputs: "proof_level": "L3" (string format)
+            let has_l2 = stdout.contains("\"proof_level\": \"L2\"")
+                || stdout.contains("\"proof_level\": \"L3\"")
+                || stdout.contains("\"proof_level\": \"L4\"")
+                || stdout.contains("\"proof_level\": \"L5\"")
+                || stdout.contains("\"proof_level\":\"L2\"")
+                || stdout.contains("\"proof_level\":\"L3\"")
+                || stdout.contains("\"proof_level\":\"L4\"")
+                || stdout.contains("\"proof_level\":\"L5\"");
             if has_l2 {
                 InfraCheck::pass(
                     "PV-03",
@@ -291,12 +319,12 @@ async fn check_proof_level(contracts_dir: &Path) -> InfraCheck {
             }
         }
         _ => {
-            // pv not available — pass with warning
-            InfraCheck::pass(
+            // pv not available — cannot verify proof level, fail with guidance
+            InfraCheck::fail(
                 "PV-03",
                 "Proof level L2+",
                 2.0,
-                vec!["pv not available; skipped (contracts exist)".to_string()],
+                vec!["pv CLI not installed; install: cargo install provable-contracts-cli".to_string()],
             )
         }
     }

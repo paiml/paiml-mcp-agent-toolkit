@@ -58,6 +58,7 @@ pub struct QualityReport {
 
 /// Quality gate configuration
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
 pub struct GateConfig {
     /// Run clippy
     pub run_clippy: bool,

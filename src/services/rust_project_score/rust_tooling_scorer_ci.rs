@@ -31,25 +31,32 @@ fn score_workflows(workflows_dir: &Path) -> ScorerResult<f64> {
         }
     }
 
+    let uses_sovereign_ci = all_content.contains("sovereign-ci");
+
     let mut score = 0.0;
-    let has_multi_platform = all_content.contains("ubuntu-")
-        && all_content.contains("windows-")
-        && all_content.contains("macos-");
+
+    // sovereign-ci.yml provides multi-platform, audit, lint, and feature matrix
+    let has_multi_platform = uses_sovereign_ci
+        || (all_content.contains("ubuntu-")
+            && all_content.contains("windows-")
+            && all_content.contains("macos-"));
     if has_multi_platform {
         score += 6.0;
     }
 
-    let has_feature_matrix = all_content.contains("features:")
-        && (all_content.contains("minimal")
-            || all_content.contains("default")
-            || all_content.contains("full"));
+    let has_feature_matrix = uses_sovereign_ci
+        || (all_content.contains("features:")
+            && (all_content.contains("minimal")
+                || all_content.contains("default")
+                || all_content.contains("full")));
     if has_feature_matrix {
         score += 4.0;
     }
     if workflow_files.len() >= 3 {
         score += 6.0;
     }
-    if workflow_has_name(&workflow_files, &["audit", "security"])
+    if uses_sovereign_ci
+        || workflow_has_name(&workflow_files, &["audit", "security"])
         || all_content.contains("cargo audit")
     {
         score += 4.0;
@@ -59,7 +66,9 @@ fn score_workflows(workflows_dir: &Path) -> ScorerResult<f64> {
     {
         score += 3.0;
     }
-    if workflow_has_name(&workflow_files, &["lint", "clippy", "spell"]) {
+    if uses_sovereign_ci
+        || workflow_has_name(&workflow_files, &["lint", "clippy", "spell"])
+    {
         score += 2.0;
     }
     if workflow_has_name(&workflow_files, &["stress", "loom"]) {

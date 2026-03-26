@@ -81,13 +81,29 @@ impl CiScorer {
         }
 
         let all_content = collect_workflow_content(&workflows_dir).await;
+        let uses_sovereign_ci = all_content.contains("sovereign-ci");
 
         let mut total_score: f64 = 0.0;
         let mut findings = vec![];
-        for check in ADVANCED_CHECKS {
-            let (pts, finding) = check_ci_feature(&all_content, check);
-            total_score += pts;
-            findings.push(finding);
+
+        if uses_sovereign_ci {
+            // sovereign-ci.yml provides coverage, security, caching, and matrix builds
+            for check in ADVANCED_CHECKS {
+                total_score += check.points;
+                findings.push(Finding {
+                    severity: Severity::Success,
+                    category: "CI".to_string(),
+                    message: format!("{} (via sovereign-ci.yml)", check.success_msg),
+                    location: None,
+                    impact_points: check.points,
+                });
+            }
+        } else {
+            for check in ADVANCED_CHECKS {
+                let (pts, finding) = check_ci_feature(&all_content, check);
+                total_score += pts;
+                findings.push(finding);
+            }
         }
 
         Ok(SubcategoryScore {

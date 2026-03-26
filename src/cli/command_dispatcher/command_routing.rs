@@ -294,6 +294,7 @@ impl CommandDispatcher {
             | Commands::BrickScore { .. }
             | Commands::PopperScore { .. }
             | Commands::DemoScore { .. }
+            | Commands::InfraScore { .. }
             | Commands::Serve { .. }) => Self::route_scoring_command(cmd).await,
             Commands::CiLocal {
                 path,

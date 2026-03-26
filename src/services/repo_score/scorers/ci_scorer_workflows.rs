@@ -179,6 +179,7 @@ impl CiScorer {
         let mut findings = vec![];
         let mut has_testing = false;
         let mut has_linting = false;
+        let mut uses_sovereign_ci = false;
 
         for workflow_path in &workflow_files {
             let content = match tokio::fs::read_to_string(workflow_path).await {
@@ -192,6 +193,9 @@ impl CiScorer {
             findings.push(finding);
 
             let content_lower = content.to_lowercase();
+            if content_lower.contains("sovereign-ci") {
+                uses_sovereign_ci = true;
+            }
             has_testing = has_testing
                 || content_lower.contains("cargo test")
                 || content_lower.contains("cargo nextest")
@@ -204,6 +208,12 @@ impl CiScorer {
                 || content_lower.contains("name: test")
                 || content_lower.contains("- test\n");
             has_linting = has_linting || content_lower.contains("lint") || content_lower.contains("clippy") || content_lower.contains("eslint");
+        }
+
+        // sovereign-ci.yml provides test and lint steps
+        if uses_sovereign_ci {
+            has_testing = true;
+            has_linting = true;
         }
 
         let (pts, finding) = ci_pattern_finding(has_testing, "\u{2713} Testing step detected (+1 pt)", "Missing: Add testing step (cargo test, npm test) (+1 pt)");

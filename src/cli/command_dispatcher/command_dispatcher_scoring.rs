@@ -192,6 +192,22 @@ impl CommandDispatcher {
                 )
                 .await
             }
+            Commands::InfraScore {
+                path,
+                format,
+                verbose,
+                failures_only,
+                output,
+            } => {
+                handlers::handle_infra_score(
+                    &path,
+                    &format,
+                    verbose,
+                    failures_only,
+                    output.as_deref(),
+                )
+                .await
+            }
             Commands::Serve {
                 port,
                 host,

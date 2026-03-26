@@ -699,6 +699,40 @@ pub enum Commands {
         hardware: Option<PathBuf>,
     },
 
+    /// Infrastructure Score (0-100 + 10 bonus) for CI/CD quality
+    ///
+    /// Evaluates GitHub Actions workflows across 5 dimensions:
+    /// - Workflow Architecture (25 pts)
+    /// - Build Reliability (25 pts)
+    /// - Quality Pipeline (20 pts)
+    /// - Deployment & Release (15 pts)
+    /// - Supply Chain Security (15 pts)
+    /// - Provable Contracts (10 pts bonus)
+    ///
+    /// Hard cutoff: <90 = auto-fail.
+    #[command(name = "infra-score", visible_aliases = &["infra", "ci-score"])]
+    InfraScore {
+        /// Project path (defaults to current directory)
+        #[arg(short = 'p', long, default_value = ".")]
+        path: PathBuf,
+
+        /// Output format
+        #[arg(short = 'f', long, value_enum, default_value = "text")]
+        format: RepoScoreOutputFormat,
+
+        /// Enable verbose output (show per-check details)
+        #[arg(short = 'v', long)]
+        verbose: bool,
+
+        /// Show only failures and recommendations
+        #[arg(long)]
+        failures_only: bool,
+
+        /// Output file path
+        #[arg(short = 'o', long)]
+        output: Option<PathBuf>,
+    },
+
     /// Audit dependencies for Sovereign AI stack migration
     ///
     /// Analyzes Cargo.toml and identifies:

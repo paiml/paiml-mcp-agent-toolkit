@@ -16,12 +16,22 @@ use std::path::{Path, PathBuf};
 
 /// TOML configuration structure
 #[derive(Debug, serde::Deserialize)]
+#[serde(default)]
 struct GateConfigToml {
     gates: GateConfigInner,
 }
 
+impl Default for GateConfigToml {
+    fn default() -> Self {
+        Self {
+            gates: GateConfigInner::default(),
+        }
+    }
+}
+
 /// Inner gate configuration
 #[derive(Debug, serde::Deserialize)]
+#[serde(default)]
 struct GateConfigInner {
     run_clippy: bool,
     clippy_strict: bool,
@@ -31,6 +41,21 @@ struct GateConfigInner {
     min_coverage: f64,
     check_complexity: bool,
     max_complexity: u32,
+}
+
+impl Default for GateConfigInner {
+    fn default() -> Self {
+        Self {
+            run_clippy: true,
+            clippy_strict: true,
+            run_tests: true,
+            test_timeout: 300,
+            check_coverage: true,
+            min_coverage: 80.0,
+            check_complexity: true,
+            max_complexity: 10,
+        }
+    }
 }
 
 impl From<GateConfigToml> for GateConfig {
