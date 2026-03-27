@@ -28,23 +28,23 @@ pub struct InfraScore {
 /// A+ (95-100), A (90-94), B (80-89) AUTO-FAIL, C (60-79) AUTO-FAIL, D (40-59) AUTO-FAIL, F (0-39) AUTO-FAIL
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 pub enum InfraGrade {
-    APlus,  // 95-100
-    A,      // 90-94
-    B,      // 80-89 — AUTO-FAIL
-    C,      // 60-79 — AUTO-FAIL
-    D,      // 40-59 — AUTO-FAIL
-    F,      // 0-39  — AUTO-FAIL
+    APlus, // 95-100
+    A,     // 90-94
+    B,     // 80-89 — AUTO-FAIL
+    C,     // 60-79 — AUTO-FAIL
+    D,     // 40-59 — AUTO-FAIL
+    F,     // 0-39  — AUTO-FAIL
 }
 
 /// Category scores (100 points total)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InfraCategoryScores {
-    pub workflow_architecture: InfraCategoryScore,  // 25 points
-    pub build_reliability: InfraCategoryScore,      // 25 points
-    pub quality_pipeline: InfraCategoryScore,       // 20 points
-    pub deployment_release: InfraCategoryScore,     // 15 points
-    pub supply_chain: InfraCategoryScore,           // 15 points
-    pub provable_contracts: InfraCategoryScore,     // 10 points (bonus)
+    pub workflow_architecture: InfraCategoryScore, // 25 points
+    pub build_reliability: InfraCategoryScore,     // 25 points
+    pub quality_pipeline: InfraCategoryScore,      // 20 points
+    pub deployment_release: InfraCategoryScore,    // 15 points
+    pub supply_chain: InfraCategoryScore,          // 15 points
+    pub provable_contracts: InfraCategoryScore,    // 10 points (bonus)
 }
 
 /// Individual category score (mirrors repo_score CategoryScore)
@@ -60,10 +60,10 @@ pub struct InfraCategoryScore {
 /// Individual check result (e.g., WA-01, BR-03)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InfraCheck {
-    pub id: String,        // "WA-01", "BR-03", etc.
-    pub name: String,      // Human-readable name
-    pub score: f64,        // Earned points
-    pub max_score: f64,    // Maximum possible
+    pub id: String,     // "WA-01", "BR-03", etc.
+    pub name: String,   // Human-readable name
+    pub score: f64,     // Earned points
+    pub max_score: f64, // Maximum possible
     pub passed: bool,
     pub evidence: Vec<String>,
 }
@@ -211,11 +211,7 @@ impl InfraCategoryScore {
         }
     }
 
-    pub fn new(
-        max_score: f64,
-        checks: Vec<InfraCheck>,
-        findings: Vec<InfraFinding>,
-    ) -> Self {
+    pub fn new(max_score: f64, checks: Vec<InfraCheck>, findings: Vec<InfraFinding>) -> Self {
         let score: f64 = checks.iter().map(|c| c.score).sum();
         let percentage = if max_score > 0.0 {
             (score / max_score) * 100.0
@@ -256,7 +252,13 @@ impl InfraCheck {
         }
     }
 
-    pub fn partial(id: &str, name: &str, score: f64, max_score: f64, evidence: Vec<String>) -> Self {
+    pub fn partial(
+        id: &str,
+        name: &str,
+        score: f64,
+        max_score: f64,
+        evidence: Vec<String>,
+    ) -> Self {
         Self {
             id: id.to_string(),
             name: name.to_string(),
@@ -326,33 +328,85 @@ mod tests {
     #[test]
     fn test_infra_category_scores_total() {
         let scores = InfraCategoryScores {
-            workflow_architecture: InfraCategoryScore { score: 20.0, max_score: 25.0, percentage: 80.0, checks: vec![], findings: vec![] },
-            build_reliability: InfraCategoryScore { score: 22.0, max_score: 25.0, percentage: 88.0, checks: vec![], findings: vec![] },
-            quality_pipeline: InfraCategoryScore { score: 18.0, max_score: 20.0, percentage: 90.0, checks: vec![], findings: vec![] },
-            deployment_release: InfraCategoryScore { score: 12.0, max_score: 15.0, percentage: 80.0, checks: vec![], findings: vec![] },
-            supply_chain: InfraCategoryScore { score: 10.0, max_score: 15.0, percentage: 66.7, checks: vec![], findings: vec![] },
-            provable_contracts: InfraCategoryScore { score: 5.0, max_score: 10.0, percentage: 50.0, checks: vec![], findings: vec![] },
+            workflow_architecture: InfraCategoryScore {
+                score: 20.0,
+                max_score: 25.0,
+                percentage: 80.0,
+                checks: vec![],
+                findings: vec![],
+            },
+            build_reliability: InfraCategoryScore {
+                score: 22.0,
+                max_score: 25.0,
+                percentage: 88.0,
+                checks: vec![],
+                findings: vec![],
+            },
+            quality_pipeline: InfraCategoryScore {
+                score: 18.0,
+                max_score: 20.0,
+                percentage: 90.0,
+                checks: vec![],
+                findings: vec![],
+            },
+            deployment_release: InfraCategoryScore {
+                score: 12.0,
+                max_score: 15.0,
+                percentage: 80.0,
+                checks: vec![],
+                findings: vec![],
+            },
+            supply_chain: InfraCategoryScore {
+                score: 10.0,
+                max_score: 15.0,
+                percentage: 66.7,
+                checks: vec![],
+                findings: vec![],
+            },
+            provable_contracts: InfraCategoryScore {
+                score: 5.0,
+                max_score: 10.0,
+                percentage: 50.0,
+                checks: vec![],
+                findings: vec![],
+            },
         };
         assert!((scores.total() - 82.0).abs() < f64::EPSILON);
     }
 
     #[test]
     fn test_infra_check_pass() {
-        let check = InfraCheck::pass("WA-01", "Reusable workflow", 5.0, vec!["found uses: org/.github".to_string()]);
+        let check = InfraCheck::pass(
+            "WA-01",
+            "Reusable workflow",
+            5.0,
+            vec!["found uses: org/.github".to_string()],
+        );
         assert!(check.passed);
         assert!((check.score - 5.0).abs() < f64::EPSILON);
     }
 
     #[test]
     fn test_infra_check_fail() {
-        let check = InfraCheck::fail("WA-01", "Reusable workflow", 5.0, vec!["no reusable workflow found".to_string()]);
+        let check = InfraCheck::fail(
+            "WA-01",
+            "Reusable workflow",
+            5.0,
+            vec!["no reusable workflow found".to_string()],
+        );
         assert!(!check.passed);
         assert!((check.score - 0.0).abs() < f64::EPSILON);
     }
 
     #[test]
     fn test_infra_check_partial() {
-        let check = InfraCheck::partial("BR-01", "CI success rate", 3.0, 5.0, vec!["7/10 passed".to_string()]);
+        let check = InfraCheck::partial(
+            "BR-01",
+            "CI success rate",
+            3.0,
+            5.0,
+            vec!["7/10 passed".to_string()],
+        );
         assert!(!check.passed);
         assert!((check.score - 3.0).abs() < f64::EPSILON);
     }

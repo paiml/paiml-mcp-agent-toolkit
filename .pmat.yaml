@@ -14,6 +14,10 @@ comply:
       enabled: false
   thresholds:
     min_tdg_grade: "A"
+    pv_lint_is_error: true
+    min_binding_existence: 95
+    require_all_traits: true
+    min_kani_coverage: 0
     tdg_exclude_paths:
       - "examples/*"
       - "src/tdg/analyzer_ast/analyzer_impl2_heuristics_lean.rs"
@@ -33,7 +37,7 @@ comply:
       files: ["docs/roadmaps/roadmap.yaml"]
       reason: "Long description text falsely matched as secret pattern"
     - rules: ["CB-954"]
-      files: [".github/workflows/release.yml", ".github/workflows/ci.yml"]
+      files: [".github/workflows/release.yml", ".github/workflows/ci.yml", ".github/workflows/nightly-bench.yml"]
       reason: "secrets: inherit is standard GHA reusable workflow syntax"
     - rules: ["CB-951"]
       files: [".github/workflows/release.yml"]

@@ -9,7 +9,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   bench:
-    uses: paiml/.github/.github/workflows/sovereign-ci.yml@main
+    uses: paiml/.github/.github/workflows/sovereign-ci.yml@a6c9ab522c012cb140cb2294c6c7a6f901dd6623 # main
     with:
       repo: ${{ github.event.repository.name }}
       run_benchmarks: true

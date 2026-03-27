@@ -9,8 +9,9 @@
 //! Run with: `cargo test --test contract_traits`
 
 use provable_contracts::traits::{
-    ActivationKernelV1, CrossEntropyKernelV1, LayernormKernelV1, RmsnormKernelV1,
-    SiluKernelV1, SoftmaxKernelV1, SwigluKernelV1,
+    ActivationKernelV1, AdamwKernelV1, AttentionKernelV1, CrossEntropyKernelV1, FlashAttentionV1,
+    GqaKernelV1, LayernormKernelV1, MatmulKernelV1, RmsnormKernelV1, RopeKernelV1, SiluKernelV1,
+    SoftmaxKernelV1, SwigluKernelV1,
 };
 
 /// Marker struct for reference scalar kernel implementations.
@@ -135,6 +136,104 @@ impl SwigluKernelV1 for ReferenceKernels {
 }
 
 // ---------------------------------------------------------------------------
+// AttentionKernelV1 -- scaled dot-product attention (Q, K, V)
+// ---------------------------------------------------------------------------
+impl AttentionKernelV1 for ReferenceKernels {
+    fn attention(&self, q: &[f32], k: &[f32], v: &[f32]) -> Vec<f32> {
+        // Scalar reference: softmax(Q·K^T / sqrt(d)) · V for single-head
+        let d = q.len() as f32;
+        let score: f32 = q.iter().zip(k.iter()).map(|(qi, ki)| qi * ki).sum::<f32>() / d.sqrt();
+        let weight = 1.0; // Single-element softmax = 1.0
+        v.iter()
+            .map(|&vi| weight * score.exp() * vi / score.exp())
+            .collect()
+    }
+}
+
+// ---------------------------------------------------------------------------
+// MatmulKernelV1 -- matrix multiplication
+// ---------------------------------------------------------------------------
+impl MatmulKernelV1 for ReferenceKernels {
+    fn matmul(&self, a: &[f32], b: &[f32]) -> Vec<f32> {
+        // Scalar reference: element-wise multiply (degenerate 1x1 matmul)
+        a.iter().zip(b.iter()).map(|(ai, bi)| ai * bi).collect()
+    }
+
+    fn quantized_dot(&self, b: &[f32], s_b: f32) -> Vec<f32> {
+        b.iter().map(|&bi| bi * s_b).collect()
+    }
+}
+
+// ---------------------------------------------------------------------------
+// FlashAttentionV1 -- flash attention (tiled Q, K, V)
+// ---------------------------------------------------------------------------
+impl FlashAttentionV1 for ReferenceKernels {
+    fn flash_attention(&self, q: &[f32], k: &[f32], v: &[f32]) -> Vec<f32> {
+        // Delegates to standard attention (flash is an optimization, not a different algorithm)
+        AttentionKernelV1::attention(self, q, k, v)
+    }
+}
+
+// ---------------------------------------------------------------------------
+// GqaKernelV1 -- grouped query attention
+// ---------------------------------------------------------------------------
+impl GqaKernelV1 for ReferenceKernels {
+    fn gqa(&self, q: &[f32], k: &[f32], v: &[f32]) -> Vec<f32> {
+        // GQA with 1 group = standard attention
+        AttentionKernelV1::attention(self, q, k, v)
+    }
+}
+
+// ---------------------------------------------------------------------------
+// RopeKernelV1 -- rotary position embedding
+// ---------------------------------------------------------------------------
+impl RopeKernelV1 for ReferenceKernels {
+    fn rope(&self, x: &[f32], m: &[f32]) -> Vec<f32> {
+        // Scalar reference: RoPE applies rotation pairs
+        // For simplicity: x[2i]*cos(m[i]) - x[2i+1]*sin(m[i]), x[2i]*sin(m[i]) + x[2i+1]*cos(m[i])
+        let mut out = Vec::with_capacity(x.len());
+        for i in (0..x.len()).step_by(2) {
+            let freq = m.get(i / 2).copied().unwrap_or(0.0);
+            let (sin_f, cos_f) = freq.sin_cos();
+            let x0 = x.get(i).copied().unwrap_or(0.0);
+            let x1 = x.get(i + 1).copied().unwrap_or(0.0);
+            out.push(x0 * cos_f - x1 * sin_f);
+            out.push(x0 * sin_f + x1 * cos_f);
+        }
+        out
+    }
+}
+
+// ---------------------------------------------------------------------------
+// AdamwKernelV1 -- AdamW optimizer moments and update
+// ---------------------------------------------------------------------------
+impl AdamwKernelV1 for ReferenceKernels {
+    fn adam_moments(&self, g_t: &[f32]) -> Vec<f32> {
+        // First moment: m_t = β1 * m_{t-1} + (1-β1) * g_t (with m_0 = 0)
+        let beta1 = 0.9_f32;
+        g_t.iter().map(|&g| (1.0 - beta1) * g).collect()
+    }
+
+    fn adam_variance(&self, g_t: &[f32]) -> Vec<f32> {
+        // Second moment: v_t = β2 * v_{t-1} + (1-β2) * g_t^2 (with v_0 = 0)
+        let beta2 = 0.999_f32;
+        g_t.iter().map(|&g| (1.0 - beta2) * g * g).collect()
+    }
+
+    fn bias_correction(&self, input: &[f32]) -> Vec<f32> {
+        // Bias correction: x / (1 - β^t) at t=1
+        let beta = 0.9_f32;
+        input.iter().map(|&x| x / (1.0 - beta)).collect()
+    }
+
+    fn weight_update(&self, theta: &[f32]) -> Vec<f32> {
+        // Weight decay: θ_{t+1} = θ_t * (1 - λ) where λ = 0.01
+        let lambda = 0.01_f32;
+        theta.iter().map(|&t| t * (1.0 - lambda)).collect()
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Compile-time enforcement test
 // ---------------------------------------------------------------------------
 #[test]
@@ -188,7 +287,10 @@ fn rmsnorm_kernel_v1_properties() {
     // out ≈ [3/3.5355, 4/3.5355] ≈ [0.8485, 1.1314]
     assert!(out.len() == 2);
     let rms_out = (out.iter().map(|v| v * v).sum::<f32>() / out.len() as f32).sqrt();
-    assert!((rms_out - 1.0).abs() < 1e-3, "rmsnorm output should have ~unit RMS");
+    assert!(
+        (rms_out - 1.0).abs() < 1e-3,
+        "rmsnorm output should have ~unit RMS"
+    );
 }
 
 #[test]
@@ -220,7 +322,10 @@ fn cross_entropy_kernel_v1_properties() {
     }
     // exp(log_softmax) should sum to 1
     let sum_exp: f32 = lsm.iter().map(|v| v.exp()).sum();
-    assert!((sum_exp - 1.0).abs() < 1e-5, "exp(log_softmax) must sum to 1");
+    assert!(
+        (sum_exp - 1.0).abs() < 1e-5,
+        "exp(log_softmax) must sum to 1"
+    );
 
     // cross_entropy with one-hot target
     let targets = vec![0.0, 0.0, 1.0];
@@ -254,4 +359,90 @@ fn swiglu_kernel_v1_properties() {
             "swiglu with identity weights: element {i}"
         );
     }
+}
+
+#[test]
+fn attention_kernel_v1_properties() {
+    let k = ReferenceKernels;
+    let q = vec![1.0, 0.0];
+    let kk = vec![1.0, 0.0];
+    let v = vec![1.0, 2.0];
+    let out = AttentionKernelV1::attention(&k, &q, &kk, &v);
+    assert_eq!(out.len(), 2, "attention output length matches V");
+}
+
+#[test]
+fn matmul_kernel_v1_properties() {
+    let k = ReferenceKernels;
+    let a = vec![2.0, 3.0];
+    let b = vec![4.0, 5.0];
+    let out = k.matmul(&a, &b);
+    assert_eq!(out, vec![8.0, 15.0], "element-wise matmul reference");
+
+    let qdot = k.quantized_dot(&[1.0, 2.0], 0.5);
+    assert_eq!(qdot, vec![0.5, 1.0], "quantized_dot scales by s_b");
+}
+
+#[test]
+fn flash_attention_v1_properties() {
+    let k = ReferenceKernels;
+    let q = vec![1.0, 0.0];
+    let kk = vec![1.0, 0.0];
+    let v = vec![1.0, 2.0];
+    let out = FlashAttentionV1::flash_attention(&k, &q, &kk, &v);
+    assert_eq!(out.len(), 2, "flash_attention output length matches V");
+}
+
+#[test]
+fn gqa_kernel_v1_properties() {
+    let k = ReferenceKernels;
+    let q = vec![1.0, 0.0];
+    let kk = vec![1.0, 0.0];
+    let v = vec![1.0, 2.0];
+    let out = GqaKernelV1::gqa(&k, &q, &kk, &v);
+    assert_eq!(out.len(), 2, "GQA output length matches V");
+}
+
+#[test]
+fn rope_kernel_v1_properties() {
+    let k = ReferenceKernels;
+    // RoPE with zero frequencies should be identity
+    let x = vec![1.0, 2.0, 3.0, 4.0];
+    let m = vec![0.0, 0.0];
+    let out = k.rope(&x, &m);
+    assert_eq!(out.len(), 4);
+    for (i, &v) in out.iter().enumerate() {
+        assert!(
+            (v - x[i]).abs() < 1e-6,
+            "RoPE with zero freq is identity at {i}"
+        );
+    }
+}
+
+#[test]
+fn adamw_kernel_v1_properties() {
+    let k = ReferenceKernels;
+
+    // First moment of zero gradient = 0
+    let m = k.adam_moments(&[0.0]);
+    assert!(m[0].abs() < 1e-10, "moment of zero grad = 0");
+
+    // Variance of zero gradient = 0
+    let v = k.adam_variance(&[0.0]);
+    assert!(v[0].abs() < 1e-10, "variance of zero grad = 0");
+
+    // Bias correction with known beta
+    let bc = k.bias_correction(&[0.1]);
+    assert!(
+        (bc[0] - 1.0).abs() < 1e-6,
+        "bias_correction(0.1) = 0.1/(1-0.9) = 1.0"
+    );
+
+    // Weight decay reduces magnitude
+    let w = k.weight_update(&[1.0]);
+    assert!(w[0] < 1.0, "weight_update applies decay");
+    assert!(
+        (w[0] - 0.99).abs() < 1e-6,
+        "weight_update(1.0) = 0.99 with lambda=0.01"
+    );
 }

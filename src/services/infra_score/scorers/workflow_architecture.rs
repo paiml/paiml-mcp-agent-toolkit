@@ -40,14 +40,19 @@ impl InfraScorer for WorkflowArchitectureScorer {
 
     async fn score(&self, repo_path: &Path) -> anyhow::Result<InfraCategoryScore> {
         let workflows = read_workflow_files(repo_path);
-        let all_content: String = workflows.iter().map(|(_, c)| c.as_str()).collect::<Vec<_>>().join("\n");
+        let all_content: String = workflows
+            .iter()
+            .map(|(_, c)| c.as_str())
+            .collect::<Vec<_>>()
+            .join("\n");
 
         let mut checks = Vec::new();
         let mut findings = Vec::new();
 
         // WA-01 (5pts): Reusable workflow call
         let wa01 = check_reusable_workflow(&workflows);
-        let uses_sovereign_ci = wa01.passed && wa01.evidence.iter().any(|e| e.contains("sovereign-ci"));
+        // Check ALL workflow content for sovereign-ci (not just WA-01 evidence)
+        let uses_sovereign_ci = all_content.contains("sovereign-ci");
         if !wa01.passed {
             findings.push(InfraFinding {
                 severity: InfraSeverity::Fail,
@@ -62,7 +67,12 @@ impl InfraScorer for WorkflowArchitectureScorer {
         // WA-02 (5pts): Self-hosted runners
         // If sovereign-ci.yml is used, auto-pass (it runs on self-hosted)
         let wa02 = if uses_sovereign_ci {
-            InfraCheck::pass("WA-02", "Self-hosted runners", 5.0, vec!["Implied by sovereign-ci.yml (self-hosted clean-room)".to_string()])
+            InfraCheck::pass(
+                "WA-02",
+                "Self-hosted runners",
+                5.0,
+                vec!["Implied by sovereign-ci.yml (self-hosted clean-room)".to_string()],
+            )
         } else {
             check_self_hosted(&all_content)
         };
@@ -83,7 +93,8 @@ impl InfraScorer for WorkflowArchitectureScorer {
             findings.push(InfraFinding {
                 severity: InfraSeverity::Warning,
                 check_id: "WA-03".to_string(),
-                message: "No workflow_dispatch trigger found. Add manual trigger capability.".to_string(),
+                message: "No workflow_dispatch trigger found. Add manual trigger capability."
+                    .to_string(),
                 location: Some(".github/workflows/".to_string()),
                 impact_points: -3.0,
             });
@@ -106,7 +117,12 @@ impl InfraScorer for WorkflowArchitectureScorer {
         // WA-05 (3pts): Gate/aggregation job
         // If sovereign-ci.yml is used, auto-pass (it has a gate job)
         let wa05 = if uses_sovereign_ci {
-            InfraCheck::pass("WA-05", "Gate job", 3.0, vec!["Implied by sovereign-ci.yml (gate job with if: always())".to_string()])
+            InfraCheck::pass(
+                "WA-05",
+                "Gate job",
+                3.0,
+                vec!["Implied by sovereign-ci.yml (gate job with if: always())".to_string()],
+            )
         } else {
             check_gate_job(&all_content)
         };
@@ -227,7 +243,9 @@ fn check_workflow_dispatch(content: &str) -> InfraCheck {
 
 /// WA-04: Check for concurrency with cancel-in-progress
 fn check_concurrency(content: &str) -> InfraCheck {
-    let has_concurrency = content.lines().any(|l| l.trim().starts_with("concurrency:") || l.trim() == "concurrency:");
+    let has_concurrency = content
+        .lines()
+        .any(|l| l.trim().starts_with("concurrency:") || l.trim() == "concurrency:");
     let has_cancel = content.lines().any(|l| {
         let t = l.trim();
         t.contains("cancel-in-progress") && t.contains("true")
@@ -292,7 +310,10 @@ fn check_branch_protection(repo_path: &Path) -> InfraCheck {
                 "WA-06",
                 "Branch protection",
                 3.0,
-                vec![format!("Found branch protection indicator: .github/{}", indicator)],
+                vec![format!(
+                    "Found branch protection indicator: .github/{}",
+                    indicator
+                )],
             );
         }
     }
@@ -305,7 +326,10 @@ fn check_branch_protection(repo_path: &Path) -> InfraCheck {
                 "WA-06",
                 "Branch protection",
                 3.0,
-                vec![format!("Workflow {} uses pull_request trigger (implies branch protection)", name)],
+                vec![format!(
+                    "Workflow {} uses pull_request trigger (implies branch protection)",
+                    name
+                )],
             );
         }
     }
@@ -368,9 +392,11 @@ mod tests {
 
     #[test]
     fn test_wa01_reusable_workflow_pass() {
-        let workflows = vec![
-            ("ci.yml".to_string(), "jobs:\n  gate:\n    uses: paiml/.github/.github/workflows/unified-gate.yml@main".to_string()),
-        ];
+        let workflows = vec![(
+            "ci.yml".to_string(),
+            "jobs:\n  gate:\n    uses: paiml/.github/.github/workflows/unified-gate.yml@main"
+                .to_string(),
+        )];
         let check = check_reusable_workflow(&workflows);
         assert!(check.passed);
         assert!((check.score - 5.0).abs() < f64::EPSILON);
@@ -378,18 +404,20 @@ mod tests {
 
     #[test]
     fn test_wa01_reusable_workflow_fail() {
-        let workflows = vec![
-            ("ci.yml".to_string(), "jobs:\n  test:\n    runs-on: ubuntu-latest".to_string()),
-        ];
+        let workflows = vec![(
+            "ci.yml".to_string(),
+            "jobs:\n  test:\n    runs-on: ubuntu-latest".to_string(),
+        )];
         let check = check_reusable_workflow(&workflows);
         assert!(!check.passed);
     }
 
     #[test]
     fn test_wa01_ignores_actions_uses() {
-        let workflows = vec![
-            ("ci.yml".to_string(), "    - uses: actions/checkout@v4".to_string()),
-        ];
+        let workflows = vec![(
+            "ci.yml".to_string(),
+            "    - uses: actions/checkout@v4".to_string(),
+        )];
         let check = check_reusable_workflow(&workflows);
         assert!(!check.passed);
     }

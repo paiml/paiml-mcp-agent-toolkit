@@ -186,6 +186,36 @@ pub struct ComplyThresholds {
     /// File path patterns to exclude from TDG grade gate (glob syntax)
     #[serde(default)]
     pub tdg_exclude_paths: Vec<String>,
+
+    // --- Provable Contracts enforcement (L0.5 through L5) ---
+
+    /// Treat pv lint failure as error (not warning). Default: false
+    #[serde(default)]
+    pub pv_lint_is_error: bool,
+
+    /// Minimum binding existence percentage (0-100). Default: 80
+    #[serde(default = "default_min_binding_existence")]
+    pub min_binding_existence: f64,
+
+    /// Require all 13 tier-1 contract traits for PASS. Default: false
+    #[serde(default)]
+    pub require_all_traits: bool,
+
+    /// Minimum Kani coverage percentage (0-100) for CB-1206. Default: 0 (advisory)
+    #[serde(default)]
+    pub min_kani_coverage: f64,
+
+    /// Minimum verification level: "L0", "L1", "L2", "L3", "L4", "L5". Default: "L0"
+    #[serde(default = "default_min_verification_level")]
+    pub min_verification_level: String,
+}
+
+fn default_min_binding_existence() -> f64 {
+    80.0
+}
+
+fn default_min_verification_level() -> String {
+    "L0".to_string()
 }
 
 /// Output format configuration

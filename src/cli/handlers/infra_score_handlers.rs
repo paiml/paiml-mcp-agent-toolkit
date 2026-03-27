@@ -70,7 +70,12 @@ fn format_text_output(
         "  Score: {}{:.1}\x1b[0m/\x1b[2m100.0\x1b[0m",
         score_color, result.total_score
     );
-    let _ = writeln!(out, "  Grade: {}{}\x1b[0m", score_color, result.grade.as_str());
+    let _ = writeln!(
+        out,
+        "  Grade: {}{}\x1b[0m",
+        score_color,
+        result.grade.as_str()
+    );
     if result.auto_fail {
         let _ = writeln!(out, "  Status: \x1b[31mAUTO-FAIL\x1b[0m (< 90 required)");
     } else {
@@ -96,10 +101,16 @@ fn format_text_output(
     // Categories
     let _ = writeln!(out, "\n\x1b[1mCategories\x1b[0m");
     let categories = [
-        ("Workflow Architecture", &result.categories.workflow_architecture),
+        (
+            "Workflow Architecture",
+            &result.categories.workflow_architecture,
+        ),
         ("Build Reliability", &result.categories.build_reliability),
         ("Quality Pipeline", &result.categories.quality_pipeline),
-        ("Deployment & Release", &result.categories.deployment_release),
+        (
+            "Deployment & Release",
+            &result.categories.deployment_release,
+        ),
         ("Supply Chain Security", &result.categories.supply_chain),
     ];
 

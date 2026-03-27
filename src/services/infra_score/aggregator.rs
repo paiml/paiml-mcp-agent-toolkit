@@ -73,7 +73,10 @@ impl InfraScoreAggregator {
     }
 
     /// Generate recommendations from failed checks across all categories
-    fn generate_recommendations(&self, categories: &InfraCategoryScores) -> Vec<InfraRecommendation> {
+    fn generate_recommendations(
+        &self,
+        categories: &InfraCategoryScores,
+    ) -> Vec<InfraRecommendation> {
         let mut recs = Vec::new();
 
         self.recommend_from_category(&categories.workflow_architecture, &mut recs);
@@ -283,7 +286,11 @@ jobs:
         let aggregator = InfraScoreAggregator::new();
         let result = aggregator.aggregate(repo.as_ref()).await.unwrap();
 
-        assert!(!result.auto_fail, "Score {:.1} should not auto-fail", result.total_score);
+        assert!(
+            !result.auto_fail,
+            "Score {:.1} should not auto-fail",
+            result.total_score
+        );
         assert!(
             result.total_score >= 90.0,
             "Expected >=90, got {:.1}",

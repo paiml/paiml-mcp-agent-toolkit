@@ -48,6 +48,11 @@ impl Default for ComplyThresholds {
             slow_coverage_minutes: default_slow_coverage(),
             min_tdg_grade: default_min_tdg_grade(),
             tdg_exclude_paths: Vec::new(),
+            pv_lint_is_error: false,
+            min_binding_existence: default_min_binding_existence(),
+            require_all_traits: false,
+            min_kani_coverage: 0.0,
+            min_verification_level: default_min_verification_level(),
         }
     }
 }

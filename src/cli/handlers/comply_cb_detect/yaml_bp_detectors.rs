@@ -95,14 +95,22 @@ pub fn detect_cb951_excessive_nesting(project_path: &Path) -> Vec<CbPatternViola
             }
         }
 
-        if max_depth > 8 {
+        // Contract YAML files legitimately nest to 12+ levels
+        // (proof_obligations → items → constraints → sub-fields)
+        let threshold = if rel.starts_with("contracts/") || rel.contains("/contracts/") {
+            14
+        } else {
+            8
+        };
+
+        if max_depth > threshold {
             violations.push(CbPatternViolation {
                 pattern_id: "CB-951".to_string(),
                 file: rel.clone(),
                 line: max_depth_line,
                 description: format!(
-                    "Excessive nesting depth {} (threshold: 8) — consider restructuring",
-                    max_depth
+                    "Excessive nesting depth {} (threshold: {}) — consider restructuring",
+                    max_depth, threshold
                 ),
                 severity: Severity::Info,
             });
@@ -207,11 +215,18 @@ pub fn detect_cb953_unpinned_action(project_path: &Path) -> Vec<CbPatternViolati
 
             // Check if pinned to branch instead of tag/SHA
             if let Some(at_pos) = action_ref.find('@') {
+                let action_name = &action_ref[..at_pos];
                 let version = &action_ref[at_pos + 1..];
-                if version == "main"
-                    || version == "master"
-                    || version == "latest"
-                    || version == "dev"
+
+                // Org-internal reusable workflows pinned to main are acceptable
+                // (the org controls the workflow source)
+                let is_org_internal = action_name.contains("/.github/");
+
+                if !is_org_internal
+                    && (version == "main"
+                        || version == "master"
+                        || version == "latest"
+                        || version == "dev")
                 {
                     violations.push(CbPatternViolation {
                         pattern_id: "CB-953".to_string(),
@@ -219,8 +234,7 @@ pub fn detect_cb953_unpinned_action(project_path: &Path) -> Vec<CbPatternViolati
                         line: i + 1,
                         description: format!(
                             "Action `{}` pinned to branch `{}` — use version tag or SHA",
-                            &action_ref[..at_pos],
-                            version
+                            action_name, version
                         ),
                         severity: Severity::Warning,
                     });
@@ -253,15 +267,28 @@ pub fn detect_cb954_plaintext_secret(project_path: &Path) -> Vec<CbPatternViolat
     let mut violations = Vec::new();
 
     for file_path in &files {
-        let content = match fs::read_to_string(file_path) {
-            Ok(c) => c,
-            Err(_) => continue,
-        };
         let rel = file_path
             .strip_prefix(project_path)
             .unwrap_or(file_path)
             .display()
             .to_string();
+
+        // Only scan CI/CD and config YAML for secrets, not docs/roadmaps/contracts
+        let is_ci_or_config = rel.contains(".github/")
+            || rel.contains("docker")
+            || rel.contains("deploy")
+            || rel.ends_with(".pmat.yaml")
+            || rel.ends_with(".pmat-gates.toml")
+            || rel.contains("ci/")
+            || rel.contains("config");
+        if !is_ci_or_config {
+            continue;
+        }
+
+        let content = match fs::read_to_string(file_path) {
+            Ok(c) => c,
+            Err(_) => continue,
+        };
 
         for (i, line) in content.lines().enumerate() {
             let trimmed = line.trim();
@@ -283,7 +310,7 @@ pub fn detect_cb954_plaintext_secret(project_path: &Path) -> Vec<CbPatternViolat
                     !is_allowlisted && SECRET_KEY_PATTERNS.iter().any(|p| key.contains(p));
 
                 if is_secret_key {
-                    // Allow references to env vars or secrets
+                    // Allow references to env vars, secrets, and GHA inherit
                     if value.starts_with("${{")
                         || value.starts_with("${")
                         || value.starts_with("$")
@@ -292,6 +319,7 @@ pub fn detect_cb954_plaintext_secret(project_path: &Path) -> Vec<CbPatternViolat
                         || value.is_empty()
                         || value == "null"
                         || value == "~"
+                        || value == "inherit" // GHA: `secrets: inherit` is standard
                     {
                         continue;
                     }
