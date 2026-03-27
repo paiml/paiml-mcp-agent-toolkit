@@ -816,16 +816,38 @@ pub(crate) fn check_binding_existence(project_path: &Path, thresholds: &ComplyTh
         }
     };
 
+    // Detect enforcement level: build.rs, traits, or paper-only
+    let has_buildrs = detect_buildrs_enforcement(project_path);
+    let has_traits = project_path.join("tests").join("contract_traits.rs").exists();
+    let enforcement = match (has_buildrs, has_traits) {
+        (true, true) => "L3",
+        (false, true) => "L2",
+        (true, false) => "L1",
+        (false, false) => "L0",
+    };
+
     let (total, unique_fns, verified, missing) =
         cross_reference_bindings(&binding_entries, &known_fns);
     let missing_count = unique_fns - verified;
+
+    // Paper-only (L0) bindings with no compile-time enforcement are ghost bindings
+    if enforcement == "L0" && total > 0 {
+        return ComplianceCheck {
+            name: "CB-1208: Binding Existence".into(),
+            status: CheckStatus::Fail,
+            message: format!(
+                "L0 paper-only: {total} bindings but no build.rs or trait enforcement — ghost bindings"
+            ),
+            severity: Severity::Error,
+        };
+    }
 
     if missing_count == 0 {
         ComplianceCheck {
             name: "CB-1208: Binding Existence".into(),
             status: CheckStatus::Pass,
             message: format!(
-                "{verified}/{unique_fns} bound functions verified in src/ ({total} total binding entries)"
+                "{verified}/{unique_fns} bound functions verified ({enforcement}) ({total} total binding entries)"
             ),
             severity: Severity::Info,
         }
@@ -846,12 +868,25 @@ pub(crate) fn check_binding_existence(project_path: &Path, thresholds: &ComplyTh
             name: "CB-1208: Binding Existence".into(),
             status,
             message: format!(
-                "{missing_count}/{unique_fns} bound fns not found in src/ ({pct:.0}% verified, threshold: {threshold:.0}%): {}",
+                "{missing_count}/{unique_fns} bound fns not found ({enforcement}, {pct:.0}% verified, threshold: {threshold:.0}%): {}",
                 missing.join(", ")
             ),
             severity,
         }
     }
+}
+
+/// Detect if build.rs has contract enforcement (reads binding.yaml or contracts/)
+fn detect_buildrs_enforcement(project_path: &Path) -> bool {
+    let build_rs = project_path.join("build.rs");
+    if !build_rs.exists() {
+        return false;
+    }
+    std::fs::read_to_string(build_rs)
+        .map(|c| {
+            c.contains("binding") || c.contains("contract") || c.contains("AllImplemented")
+        })
+        .unwrap_or(false)
 }
 
 /// CB-1209: Contract Trait Enforcement — compiler-enforced via `pv scaffold --trait`
