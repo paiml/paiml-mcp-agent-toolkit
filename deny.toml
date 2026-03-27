@@ -1,14 +1,25 @@
 # cargo-deny configuration
-# https://embarkstudios.github.io/cargo-deny/
+# Deployed from paiml/infra — do not edit manually.
+# Spec: docs/specifications/unified-ci-pipeline.md
+
+[graph]
+targets = []
+all-features = false
+no-default-features = false
 
 [advisories]
-# Advisory database configuration
-db-path = "~/.cargo/advisory-db"
-db-urls = ["https://github.com/rustsec/advisory-db"]
-ignore = []
+ignore = [
+    # Unmaintained transitive deps with no available fix.
+    # Reviewed 2026-03-26 — all are deep transitive, no direct usage.
+    { id = "RUSTSEC-2024-0384", reason = "instant: transitive via web-time, no replacement available" },
+    { id = "RUSTSEC-2024-0436", reason = "paste: transitive via simba/nalgebra/parquet, use pastey when upstream migrates" },
+    { id = "RUSTSEC-2025-0119", reason = "number_prefix: transitive via indicatif, no replacement available" },
+    { id = "RUSTSEC-2025-0141", reason = "bincode: transitive, widely used, no drop-in replacement" },
+    { id = "RUSTSEC-2025-0134", reason = "rustls-pemfile: transitive, no safe upgrade available" },
+    { id = "RUSTSEC-2026-0002", reason = "lru 0.12.5: transitive via ratatui, fixed in 0.16 but ratatui pins 0.12" },
+]
 
 [licenses]
-# License policy using new v2 syntax
 allow = [
     "MIT",
     "Apache-2.0",
@@ -17,31 +28,26 @@ allow = [
     "BSD-3-Clause",
     "ISC",
     "Unicode-3.0",
+    "Unicode-DFS-2016",
     "Zlib",
+    "BSL-1.0",
+    "OpenSSL",
+    "0BSD",
+    "CC0-1.0",
+    "MPL-2.0",
+    "CDLA-Permissive-2.0",
+    "MIT-0",
 ]
 confidence-threshold = 0.8
 
-[licenses.private]
-# Private/unpublished crates are exempt
-ignore = false
-registries = []
-
 [bans]
-# Dependency bans
 multiple-versions = "warn"
-wildcards = "allow"
+wildcards = "deny"
 highlight = "all"
-workspace-default-features = "allow"
-external-default-features = "allow"
-allow = []
-deny = []
-skip = []
-skip-tree = []
 
 [sources]
-# Source repository policy
-unknown-registry = "warn"
-unknown-git = "warn"
+unknown-registry = "deny"
+unknown-git = "deny"
 allow-registry = ["https://github.com/rust-lang/crates.io-index"]
 allow-git = []
 
