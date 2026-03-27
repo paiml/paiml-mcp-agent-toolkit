@@ -314,6 +314,11 @@ pub async fn handle_analyze_complexity(
         }
     }
 
+    // Validate path exists
+    if !project_path.exists() {
+        anyhow::bail!("Path not found: {}", project_path.display());
+    }
+
     // Create configuration and analyze files
     let config = ComplexityConfig::from_args(
         project_path,

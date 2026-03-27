@@ -77,7 +77,12 @@ impl ProjectScore {
     #[must_use]
     pub fn average(&self) -> TdgScore {
         if self.files.is_empty() {
-            return TdgScore::default();
+            // No files analyzed — return zero score, not perfect score
+            let mut empty = TdgScore::default();
+            empty.total = 0.0;
+            empty.grade = crate::tdg::Grade::F;
+            empty.confidence = 0.0;
+            return empty;
         }
 
         let mut avg = TdgScore::default();
