@@ -1520,3 +1520,116 @@ fn count_contract_test_refs(project_path: &Path) -> (usize, usize, usize) {
     let missing = refs.len() - existing;
     (refs.len(), existing, missing)
 }
+
+/// CB-1210: Precondition/Postcondition Quality — detect mass-generated boilerplate
+///
+/// Falsification finding F2: all 427 preconditions are identical `!input.is_empty()`.
+/// F4: zero postconditions exist. This means pv codegen assertions are trivially true.
+pub(crate) fn check_precondition_quality(project_path: &Path) -> ComplianceCheck {
+    let contracts_dir = project_path.join("contracts");
+    if !contracts_dir.exists() {
+        return ComplianceCheck {
+            name: "CB-1210: Precondition Quality".into(),
+            status: CheckStatus::Skip,
+            message: "No contracts/ directory".into(),
+            severity: Severity::Info,
+        };
+    }
+
+    let mut preconditions: Vec<String> = Vec::new();
+    let mut has_postconditions = false;
+
+    for entry in walkdir::WalkDir::new(&contracts_dir)
+        .max_depth(3)
+        .into_iter()
+        .filter_map(|e| e.ok())
+    {
+        let path = entry.path();
+        if !path.is_file() {
+            continue;
+        }
+        if !path.extension().is_some_and(|e| e == "yaml" || e == "yml") {
+            continue;
+        }
+        if path.file_name().is_some_and(|n| n.to_string_lossy().contains("binding")) {
+            continue;
+        }
+        if let Ok(content) = std::fs::read_to_string(path) {
+            let mut in_preconditions = false;
+            let mut in_postconditions = false;
+            for line in content.lines() {
+                let trimmed = line.trim();
+                if trimmed == "preconditions:" {
+                    in_preconditions = true;
+                    in_postconditions = false;
+                    continue;
+                }
+                if trimmed == "postconditions:" {
+                    in_postconditions = true;
+                    in_preconditions = false;
+                    has_postconditions = true;
+                    continue;
+                }
+                if !trimmed.starts_with('-') && !trimmed.starts_with('#') && !line.starts_with(' ') {
+                    in_preconditions = false;
+                    in_postconditions = false;
+                }
+                if in_preconditions && trimmed.starts_with("- ") {
+                    preconditions.push(trimmed.trim_start_matches("- ").trim_matches('\'').to_string());
+                }
+                let _ = in_postconditions; // used for has_postconditions flag
+            }
+        }
+    }
+
+    if preconditions.is_empty() {
+        return ComplianceCheck {
+            name: "CB-1210: Precondition Quality".into(),
+            status: CheckStatus::Skip,
+            message: "No preconditions found in contracts".into(),
+            severity: Severity::Info,
+        };
+    }
+
+    // Check diversity: what % are identical?
+    let total = preconditions.len();
+    let mut freq: std::collections::HashMap<&str, usize> = std::collections::HashMap::new();
+    for p in &preconditions {
+        *freq.entry(p.as_str()).or_insert(0) += 1;
+    }
+    let (most_common, most_count) = freq.iter().max_by_key(|(_, c)| *c).unwrap();
+    let diversity_pct = (1.0 - (*most_count as f64 / total as f64)) * 100.0;
+    let unique_count = freq.len();
+
+    let mut issues = Vec::new();
+    if diversity_pct < 10.0 {
+        issues.push(format!(
+            "{most_count}/{total} preconditions are identical: `{most_common}`"
+        ));
+    }
+    if !has_postconditions {
+        issues.push("0 postconditions across all contracts".to_string());
+    }
+
+    if issues.is_empty() {
+        ComplianceCheck {
+            name: "CB-1210: Precondition Quality".into(),
+            status: CheckStatus::Pass,
+            message: format!(
+                "{total} preconditions, {unique_count} unique ({diversity_pct:.0}% diverse), postconditions: {}",
+                if has_postconditions { "present" } else { "none" }
+            ),
+            severity: Severity::Info,
+        }
+    } else {
+        ComplianceCheck {
+            name: "CB-1210: Precondition Quality".into(),
+            status: CheckStatus::Warn,
+            message: format!(
+                "Low quality: {}",
+                issues.join("; ")
+            ),
+            severity: Severity::Warning,
+        }
+    }
+}

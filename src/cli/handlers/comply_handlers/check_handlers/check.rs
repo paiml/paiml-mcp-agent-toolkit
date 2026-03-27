@@ -271,6 +271,13 @@ pub(crate) async fn handle_check(
         comply_config,
     ));
 
+    // Precondition/postcondition quality (CB-1210) — detect mass-generated boilerplate
+    checks.push(filter_check_by_config(
+        check_precondition_quality(project_path),
+        "cb-1210",
+        comply_config,
+    ));
+
     let failures = checks
         .iter()
         .filter(|c| c.status == CheckStatus::Fail)
