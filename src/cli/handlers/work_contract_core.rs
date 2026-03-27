@@ -77,6 +77,55 @@ pub struct WorkContract {
     /// 5-dimension contract score (DBC spec §13.4)
     #[serde(default)]
     pub contract_score: Option<ContractScore>,
+
+    // === PROVABLE-CONTRACTS INTEGRATION (work-management spec §2) ===
+
+    /// Verification level target: L0 (review) through L5 (Lean proof)
+    #[serde(default = "default_verification_level")]
+    pub verification_level: String,
+
+    /// Research and specification references
+    #[serde(default)]
+    pub references: WorkReferences,
+
+    /// Chain-of-thought audit trail (mirrors pv-spec Section 23)
+    #[serde(default)]
+    pub chain_of_thought: Vec<ChainOfThoughtStep>,
+}
+
+fn default_verification_level() -> String {
+    "L3".to_string()
+}
+
+/// Research references linking work item to papers and specs
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct WorkReferences {
+    /// arXiv paper IDs (e.g., ["2509.06250", "2510.12047"])
+    #[serde(default)]
+    pub arxiv: Vec<String>,
+
+    /// Specification section references (e.g., "pv-spec.md §23")
+    #[serde(default)]
+    pub spec_sections: Vec<String>,
+
+    /// Five-whys report ID that originated this work item
+    #[serde(default)]
+    pub five_whys_id: Option<String>,
+
+    /// Batuta oracle query results that informed the approach
+    #[serde(default)]
+    pub oracle_context: Option<String>,
+}
+
+/// A single step in the chain-of-thought reasoning audit trail
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ChainOfThoughtStep {
+    /// Step number (1-based)
+    pub step: u32,
+    /// The question being answered
+    pub question: String,
+    /// The answer/reasoning
+    pub answer: String,
 }
 
 fn default_contract_version() -> String {
@@ -111,6 +160,9 @@ impl WorkContract {
             inherited_postconditions: Vec::new(),
             contract_quality: None,
             contract_score: None,
+            verification_level: default_verification_level(),
+            references: WorkReferences::default(),
+            chain_of_thought: Vec::new(),
         }
     }
 
@@ -187,6 +239,9 @@ impl WorkContract {
             inherited_postconditions: Vec::new(),
             contract_quality: Some(quality),
             contract_score: None,
+            verification_level: default_verification_level(),
+            references: WorkReferences::default(),
+            chain_of_thought: Vec::new(),
         };
 
         // §5.3-5.4: Subcontracting validation for iteration > 1
