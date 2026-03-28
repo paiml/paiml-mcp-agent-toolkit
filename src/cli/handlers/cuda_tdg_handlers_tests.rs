@@ -831,12 +831,14 @@ mod coverage_tests {
 
     #[tokio::test]
     async fn test_handle_cuda_tdg_command_quality_gate_failure() {
+        // Default report mode (command: None) should NOT hard-fail on score.
+        // Quality gate enforcement is only in `pmat cuda-tdg gate` subcommand.
         let temp_dir = TempDir::new().unwrap();
         let config = CudaTdgCommandConfig {
             path: temp_dir.path().to_path_buf(),
             command: None,
             format: CudaTdgOutputFormat::Terminal,
-            min_score: 100.0, // Impossible threshold
+            min_score: 100.0, // High threshold — but default mode doesn't enforce
             fail_on_p0: false,
             simd: true,
             wgpu: true,
@@ -845,9 +847,7 @@ mod coverage_tests {
         };
 
         let result = handle_cuda_tdg_command(config).await;
-        assert!(result.is_err());
-        let err = result.unwrap_err().to_string();
-        assert!(err.contains("Quality gate failed"));
+        assert!(result.is_ok(), "default report mode should not hard-fail");
     }
 
     // Tests for handle_cuda_tdg_subcommand

@@ -56,13 +56,8 @@ pub async fn handle_cuda_tdg_command(config: CudaTdgCommandConfig) -> Result<()>
     let output = format_result(&result, &config)?;
     write_output(&output, &config)?;
 
-    if !analyzer.passes_quality_gate(&result) {
-        return Err(anyhow!(
-            "Quality gate failed: score {:.1} < min {:.1}",
-            result.score.total,
-            config.min_score
-        ));
-    }
+    // Quality gate enforcement is only in `pmat cuda-tdg gate` subcommand.
+    // Default report mode prints results without hard-failing.
 
     Ok(())
 }

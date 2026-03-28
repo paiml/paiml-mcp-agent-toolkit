@@ -55,8 +55,7 @@ impl InfraScorer for BuildReliabilityScorer {
         let br01 = check_ci_success_rate(repo_path).await;
         if !br01.passed {
             findings.push(InfraFinding {
-                severity: if br01.evidence.iter().any(|e| e.contains("skipped"))
-                {
+                severity: if br01.evidence.iter().any(|e| e.contains("skipped")) {
                     InfraSeverity::Info
                 } else {
                     InfraSeverity::Fail
@@ -71,7 +70,12 @@ impl InfraScorer for BuildReliabilityScorer {
 
         // BR-02 (5pts): No continue-on-error on critical jobs
         let br02 = if uses_sovereign_ci {
-            InfraCheck::pass("BR-02", "No continue-on-error on critical jobs", 5.0, vec!["Implied by sovereign-ci.yml".to_string()])
+            InfraCheck::pass(
+                "BR-02",
+                "No continue-on-error on critical jobs",
+                5.0,
+                vec!["Implied by sovereign-ci.yml".to_string()],
+            )
         } else {
             check_no_continue_on_error(&all_content)
         };
@@ -88,7 +92,12 @@ impl InfraScorer for BuildReliabilityScorer {
 
         // BR-03 (5pts): Deterministic builds
         let br03 = if uses_sovereign_ci {
-            InfraCheck::pass("BR-03", "Deterministic builds", 5.0, vec!["Implied by sovereign-ci.yml (CARGO_INCREMENTAL=0)".to_string()])
+            InfraCheck::pass(
+                "BR-03",
+                "Deterministic builds",
+                5.0,
+                vec!["Implied by sovereign-ci.yml (CARGO_INCREMENTAL=0)".to_string()],
+            )
         } else {
             check_deterministic_builds(&all_content)
         };
@@ -96,7 +105,9 @@ impl InfraScorer for BuildReliabilityScorer {
             findings.push(InfraFinding {
                 severity: InfraSeverity::Fail,
                 check_id: "BR-03".to_string(),
-                message: "No deterministic build flags found. Use --locked and/or CARGO_INCREMENTAL=0.".to_string(),
+                message:
+                    "No deterministic build flags found. Use --locked and/or CARGO_INCREMENTAL=0."
+                        .to_string(),
                 location: Some(".github/workflows/".to_string()),
                 impact_points: -5.0,
             });
@@ -105,7 +116,12 @@ impl InfraScorer for BuildReliabilityScorer {
 
         // BR-04 (3pts): Build caching
         let br04 = if uses_sovereign_ci {
-            InfraCheck::pass("BR-04", "Build caching", 3.0, vec!["Implied by sovereign-ci.yml (actions/cache)".to_string()])
+            InfraCheck::pass(
+                "BR-04",
+                "Build caching",
+                3.0,
+                vec!["Implied by sovereign-ci.yml (actions/cache)".to_string()],
+            )
         } else {
             check_build_caching(&all_content)
         };
@@ -122,7 +138,12 @@ impl InfraScorer for BuildReliabilityScorer {
 
         // BR-05 (3pts): Pinned action versions
         let br05 = if uses_sovereign_ci {
-            InfraCheck::pass("BR-05", "Pinned action versions", 3.0, vec!["Implied by sovereign-ci.yml (SHA-pinned)".to_string()])
+            InfraCheck::pass(
+                "BR-05",
+                "Pinned action versions",
+                3.0,
+                vec!["Implied by sovereign-ci.yml (SHA-pinned)".to_string()],
+            )
         } else {
             check_pinned_actions(&workflows)
         };
@@ -130,7 +151,8 @@ impl InfraScorer for BuildReliabilityScorer {
             findings.push(InfraFinding {
                 severity: InfraSeverity::Warning,
                 check_id: "BR-05".to_string(),
-                message: "Some actions are not pinned to SHA or tag (using @master/@main).".to_string(),
+                message: "Some actions are not pinned to SHA or tag (using @master/@main)."
+                    .to_string(),
                 location: Some(".github/workflows/".to_string()),
                 impact_points: -3.0,
             });
@@ -152,7 +174,12 @@ impl InfraScorer for BuildReliabilityScorer {
 
         // BR-07 (2pts): Timeout configured
         let br07 = if uses_sovereign_ci {
-            InfraCheck::pass("BR-07", "Timeout configured", 2.0, vec!["Implied by sovereign-ci.yml (timeout-minutes on all jobs)".to_string()])
+            InfraCheck::pass(
+                "BR-07",
+                "Timeout configured",
+                2.0,
+                vec!["Implied by sovereign-ci.yml (timeout-minutes on all jobs)".to_string()],
+            )
         } else {
             check_timeout(&all_content)
         };
@@ -203,7 +230,12 @@ async fn check_ci_success_rate(repo_path: &Path) -> InfraCheck {
                         "BR-01",
                         "CI success rate",
                         5.0,
-                        vec![format!("{}/{} runs succeeded ({:.0}%)", successes, runs.len(), rate * 100.0)],
+                        vec![format!(
+                            "{}/{} runs succeeded ({:.0}%)",
+                            successes,
+                            runs.len(),
+                            rate * 100.0
+                        )],
                     )
                 } else {
                     let partial_score = (rate * 5.0).round().min(4.0);
@@ -212,7 +244,12 @@ async fn check_ci_success_rate(repo_path: &Path) -> InfraCheck {
                         "CI success rate",
                         partial_score,
                         5.0,
-                        vec![format!("{}/{} runs succeeded ({:.0}%) — need >=90%", successes, runs.len(), rate * 100.0)],
+                        vec![format!(
+                            "{}/{} runs succeeded ({:.0}%) — need >=90%",
+                            successes,
+                            runs.len(),
+                            rate * 100.0
+                        )],
                     )
                 }
             } else {
@@ -239,12 +276,10 @@ async fn check_ci_success_rate(repo_path: &Path) -> InfraCheck {
 /// BR-02: No continue-on-error on test/lint jobs
 fn check_no_continue_on_error(content: &str) -> InfraCheck {
     // Simple heuristic: if continue-on-error: true appears near test/lint context, fail
-    let has_continue_on_error = content
-        .lines()
-        .any(|l| {
-            let t = l.trim();
-            t.starts_with("continue-on-error:") && t.contains("true")
-        });
+    let has_continue_on_error = content.lines().any(|l| {
+        let t = l.trim();
+        t.starts_with("continue-on-error:") && t.contains("true")
+    });
 
     if has_continue_on_error {
         InfraCheck::fail(
@@ -356,12 +391,7 @@ fn check_pinned_actions(workflows: &[(String, String)]) -> InfraCheck {
             vec![format!("All {} action references are pinned", total_uses)],
         )
     } else {
-        InfraCheck::fail(
-            "BR-05",
-            "Pinned action versions",
-            3.0,
-            unpinned_examples,
-        )
+        InfraCheck::fail("BR-05", "Pinned action versions", 3.0, unpinned_examples)
     }
 }
 
@@ -379,7 +409,11 @@ fn extract_uses_value(line: &str) -> Option<&str> {
 fn check_no_or_true(content: &str) -> InfraCheck {
     let has_or_true = content.lines().any(|l| {
         let t = l.trim();
-        t.contains("|| true") && (t.contains("test") || t.contains("lint") || t.contains("clippy") || t.contains("check"))
+        t.contains("|| true")
+            && (t.contains("test")
+                || t.contains("lint")
+                || t.contains("clippy")
+                || t.contains("check"))
     });
 
     if has_or_true {
@@ -401,7 +435,9 @@ fn check_no_or_true(content: &str) -> InfraCheck {
 
 /// BR-07: Timeout configured on jobs
 fn check_timeout(content: &str) -> InfraCheck {
-    let has_timeout = content.lines().any(|l| l.trim().starts_with("timeout-minutes:"));
+    let has_timeout = content
+        .lines()
+        .any(|l| l.trim().starts_with("timeout-minutes:"));
 
     if has_timeout {
         InfraCheck::pass(
@@ -447,13 +483,16 @@ mod tests {
 
     #[test]
     fn test_br02_no_continue_on_error_pass() {
-        let check = check_no_continue_on_error("runs-on: ubuntu-latest\nsteps:\n  - run: cargo test");
+        let check =
+            check_no_continue_on_error("runs-on: ubuntu-latest\nsteps:\n  - run: cargo test");
         assert!(check.passed);
     }
 
     #[test]
     fn test_br02_continue_on_error_fail() {
-        let check = check_no_continue_on_error("  test:\n    continue-on-error: true\n    runs-on: ubuntu-latest");
+        let check = check_no_continue_on_error(
+            "  test:\n    continue-on-error: true\n    runs-on: ubuntu-latest",
+        );
         assert!(!check.passed);
     }
 
@@ -495,27 +534,31 @@ mod tests {
 
     #[test]
     fn test_br05_pinned_pass() {
-        let workflows = vec![
-            ("ci.yml".to_string(), "    - uses: actions/checkout@v4\n    - uses: dtolnay/rust-toolchain@stable".to_string()),
-        ];
+        let workflows = vec![(
+            "ci.yml".to_string(),
+            "    - uses: actions/checkout@v4\n    - uses: dtolnay/rust-toolchain@stable"
+                .to_string(),
+        )];
         let check = check_pinned_actions(&workflows);
         assert!(check.passed);
     }
 
     #[test]
     fn test_br05_unpinned_fail() {
-        let workflows = vec![
-            ("ci.yml".to_string(), "    - uses: actions/checkout@main".to_string()),
-        ];
+        let workflows = vec![(
+            "ci.yml".to_string(),
+            "    - uses: actions/checkout@main".to_string(),
+        )];
         let check = check_pinned_actions(&workflows);
         assert!(!check.passed);
     }
 
     #[test]
     fn test_br05_no_actions() {
-        let workflows = vec![
-            ("ci.yml".to_string(), "steps:\n  - run: cargo test".to_string()),
-        ];
+        let workflows = vec![(
+            "ci.yml".to_string(),
+            "steps:\n  - run: cargo test".to_string(),
+        )];
         let check = check_pinned_actions(&workflows);
         assert!(check.passed);
     }
@@ -546,8 +589,14 @@ mod tests {
 
     #[test]
     fn test_extract_uses_value() {
-        assert_eq!(extract_uses_value("    - uses: actions/checkout@v4"), Some("actions/checkout@v4"));
-        assert_eq!(extract_uses_value("uses: some/action@main"), Some("some/action@main"));
+        assert_eq!(
+            extract_uses_value("    - uses: actions/checkout@v4"),
+            Some("actions/checkout@v4")
+        );
+        assert_eq!(
+            extract_uses_value("uses: some/action@main"),
+            Some("some/action@main")
+        );
         assert_eq!(extract_uses_value("run: cargo test"), None);
     }
 

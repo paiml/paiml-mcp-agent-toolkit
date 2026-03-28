@@ -52,7 +52,12 @@ impl InfraScorer for QualityPipelineScorer {
 
         // QP-01 (5pts): Test job
         let qp01 = if uses_sovereign_ci {
-            InfraCheck::pass("QP-01", "Test job", 5.0, vec!["Provided by sovereign-ci.yml".to_string()])
+            InfraCheck::pass(
+                "QP-01",
+                "Test job",
+                5.0,
+                vec!["Provided by sovereign-ci.yml".to_string()],
+            )
         } else {
             check_test_job(&all_content)
         };
@@ -60,7 +65,8 @@ impl InfraScorer for QualityPipelineScorer {
             findings.push(InfraFinding {
                 severity: InfraSeverity::Fail,
                 check_id: "QP-01".to_string(),
-                message: "No test job found in CI workflows. Add `cargo test` or equivalent.".to_string(),
+                message: "No test job found in CI workflows. Add `cargo test` or equivalent."
+                    .to_string(),
                 location: Some(".github/workflows/".to_string()),
                 impact_points: -5.0,
             });
@@ -69,7 +75,12 @@ impl InfraScorer for QualityPipelineScorer {
 
         // QP-02 (5pts): Lint job
         let qp02 = if uses_sovereign_ci {
-            InfraCheck::pass("QP-02", "Lint job", 5.0, vec!["Implied by sovereign-ci.yml (cargo clippy -D warnings)".to_string()])
+            InfraCheck::pass(
+                "QP-02",
+                "Lint job",
+                5.0,
+                vec!["Implied by sovereign-ci.yml (cargo clippy -D warnings)".to_string()],
+            )
         } else {
             check_lint_job(&all_content)
         };
@@ -86,7 +97,12 @@ impl InfraScorer for QualityPipelineScorer {
 
         // QP-03 (4pts): Coverage
         let qp03 = if uses_sovereign_ci {
-            InfraCheck::pass("QP-03", "Coverage reporting", 4.0, vec!["Implied by sovereign-ci.yml (cargo llvm-cov)".to_string()])
+            InfraCheck::pass(
+                "QP-03",
+                "Coverage reporting",
+                4.0,
+                vec!["Implied by sovereign-ci.yml (cargo llvm-cov)".to_string()],
+            )
         } else {
             check_coverage(&all_content)
         };
@@ -116,7 +132,12 @@ impl InfraScorer for QualityPipelineScorer {
 
         // QP-05 (3pts): Format check
         let qp05 = if uses_sovereign_ci {
-            InfraCheck::pass("QP-05", "Format check", 3.0, vec!["Implied by sovereign-ci.yml (cargo fmt --check)".to_string()])
+            InfraCheck::pass(
+                "QP-05",
+                "Format check",
+                3.0,
+                vec!["Implied by sovereign-ci.yml (cargo fmt --check)".to_string()],
+            )
         } else {
             check_format(&all_content)
         };
@@ -185,7 +206,10 @@ fn check_lint_job(content: &str) -> InfraCheck {
             let evidence = if strict {
                 format!("Found lint with -D warnings: {}", pattern)
             } else {
-                format!("Found lint command: {} (consider adding -D warnings)", pattern)
+                format!(
+                    "Found lint command: {} (consider adding -D warnings)",
+                    pattern
+                )
             };
             return InfraCheck::pass("QP-02", "Lint job", 5.0, vec![evidence]);
         }

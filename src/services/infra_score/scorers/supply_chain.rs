@@ -90,7 +90,12 @@ impl InfraScorer for SupplyChainScorer {
 
         // SC-04 (2pts): Provenance/attestation
         let sc04 = if uses_sovereign_ci {
-            InfraCheck::pass("SC-04", "SLSA provenance", 2.0, vec!["Implied by sovereign-ci.yml (attest-build-provenance)".to_string()])
+            InfraCheck::pass(
+                "SC-04",
+                "SLSA provenance",
+                2.0,
+                vec!["Implied by sovereign-ci.yml (attest-build-provenance)".to_string()],
+            )
         } else {
             check_provenance(&all_content)
         };
@@ -306,7 +311,10 @@ fn check_provenance(content: &str) -> InfraCheck {
 /// SC-05: Signed commits configuration
 fn check_signed_commits(repo_path: &Path, content: &str) -> InfraCheck {
     // Check for GPG/SSH signing indicators
-    if content.contains("verify-signatures") || content.contains("gpg") || content.contains("signed") {
+    if content.contains("verify-signatures")
+        || content.contains("gpg")
+        || content.contains("signed")
+    {
         return InfraCheck::pass(
             "SC-05",
             "Signed commits",
@@ -376,9 +384,10 @@ mod tests {
     #[test]
     fn test_sc01_pr_trigger() {
         let tmp = TempDir::new().unwrap();
-        let workflows = vec![
-            ("ci.yml".to_string(), "on:\n  pull_request:\n    branches: [main]".to_string()),
-        ];
+        let workflows = vec![(
+            "ci.yml".to_string(),
+            "on:\n  pull_request:\n    branches: [main]".to_string(),
+        )];
         let check = check_branch_protection(tmp.path(), &workflows);
         assert!(check.passed);
     }
@@ -392,7 +401,8 @@ mod tests {
 
     #[test]
     fn test_sc02_clean() {
-        let check = check_no_hardcoded_secrets("run: cargo test\nenv:\n  TOKEN: ${{ secrets.MY_TOKEN }}");
+        let check =
+            check_no_hardcoded_secrets("run: cargo test\nenv:\n  TOKEN: ${{ secrets.MY_TOKEN }}");
         assert!(check.passed);
     }
 
@@ -404,7 +414,8 @@ mod tests {
 
     #[test]
     fn test_sc02_github_token() {
-        let check = check_no_hardcoded_secrets("env:\n  TOKEN: ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
+        let check =
+            check_no_hardcoded_secrets("env:\n  TOKEN: ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
         assert!(!check.passed);
     }
 
@@ -538,14 +549,23 @@ fn check_dangerous_workflow(workflows: &[(String, String)]) -> InfraCheck {
             let trimmed = line.trim();
             if trimmed.starts_with("run:") || trimmed.starts_with("- run:") {
                 in_run_block = true;
-            } else if !trimmed.starts_with('-') && !trimmed.starts_with('#') && !line.starts_with(' ') && !line.starts_with('\t') {
+            } else if !trimmed.starts_with('-')
+                && !trimmed.starts_with('#')
+                && !line.starts_with(' ')
+                && !line.starts_with('\t')
+            {
                 in_run_block = false;
             }
 
             if in_run_block {
                 for pattern in &dangerous_patterns {
                     if trimmed.contains(pattern) {
-                        violations.push(format!("{}:{}: ${{{{ {} }}}}", name, line_no + 1, pattern));
+                        violations.push(format!(
+                            "{}:{}: ${{{{ {} }}}}",
+                            name,
+                            line_no + 1,
+                            pattern
+                        ));
                     }
                 }
             }
@@ -560,11 +580,6 @@ fn check_dangerous_workflow(workflows: &[(String, String)]) -> InfraCheck {
             vec!["No untrusted context interpolation in run: blocks".to_string()],
         )
     } else {
-        InfraCheck::fail(
-            "HD-01",
-            "No dangerous workflow patterns",
-            3.0,
-            violations,
-        )
+        InfraCheck::fail("HD-01", "No dangerous workflow patterns", 3.0, violations)
     }
 }

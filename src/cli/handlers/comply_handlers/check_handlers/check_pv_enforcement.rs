@@ -1597,7 +1597,15 @@ pub(crate) fn check_precondition_quality(project_path: &Path) -> ComplianceCheck
     for p in &preconditions {
         *freq.entry(p.as_str()).or_insert(0) += 1;
     }
-    let (most_common, most_count) = freq.iter().max_by_key(|(_, c)| *c).unwrap();
+    let Some((most_common, most_count)) = freq.iter().max_by_key(|(_, c)| *c) else {
+        // unreachable: preconditions is non-empty (checked above), so freq is non-empty
+        return ComplianceCheck {
+            name: "CB-1210: Precondition Quality".into(),
+            status: CheckStatus::Skip,
+            message: "No preconditions found in contracts".into(),
+            severity: Severity::Info,
+        };
+    };
     let diversity_pct = (1.0 - (*most_count as f64 / total as f64)) * 100.0;
     let unique_count = freq.len();
 

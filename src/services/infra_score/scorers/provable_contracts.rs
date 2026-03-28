@@ -271,7 +271,10 @@ async fn check_pv_score(contracts_dir: &Path) -> InfraCheck {
                 "PV-02",
                 "Contract score >= 0.5",
                 3.0,
-                vec!["pv CLI not installed; install: cargo install provable-contracts-cli".to_string()],
+                vec![
+                    "pv CLI not installed; install: cargo install provable-contracts-cli"
+                        .to_string(),
+                ],
             )
         }
     }
@@ -324,7 +327,10 @@ async fn check_proof_level(contracts_dir: &Path) -> InfraCheck {
                 "PV-03",
                 "Proof level L2+",
                 2.0,
-                vec!["pv CLI not installed; install: cargo install provable-contracts-cli".to_string()],
+                vec![
+                    "pv CLI not installed; install: cargo install provable-contracts-cli"
+                        .to_string(),
+                ],
             )
         }
     }

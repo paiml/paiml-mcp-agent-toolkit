@@ -124,7 +124,11 @@ fn check_release_workflow(workflows: &[(String, String)]) -> InfraCheck {
     for (name, content) in workflows {
         let name_lower = name.to_lowercase();
         for pattern in &release_names {
-            if name_lower.contains(pattern) || content.to_lowercase().contains(&format!("name: {}", pattern)) {
+            if name_lower.contains(pattern)
+                || content
+                    .to_lowercase()
+                    .contains(&format!("name: {}", pattern))
+            {
                 return InfraCheck::pass(
                     "DR-01",
                     "Release workflow",
@@ -158,9 +162,15 @@ fn check_cross_platform(content: &str) -> InfraCheck {
     let mut targets = 0u32;
 
     let platform_indicators = [
-        "ubuntu", "linux", "x86_64-unknown-linux",
-        "macos", "darwin", "x86_64-apple", "aarch64-apple",
-        "windows", "x86_64-pc-windows",
+        "ubuntu",
+        "linux",
+        "x86_64-unknown-linux",
+        "macos",
+        "darwin",
+        "x86_64-apple",
+        "aarch64-apple",
+        "windows",
+        "x86_64-pc-windows",
     ];
 
     let content_lower = content.to_lowercase();
@@ -170,7 +180,10 @@ fn check_cross_platform(content: &str) -> InfraCheck {
             // Group by OS family
             let family = if indicator.contains("linux") || indicator.contains("ubuntu") {
                 "linux"
-            } else if indicator.contains("macos") || indicator.contains("darwin") || indicator.contains("apple") {
+            } else if indicator.contains("macos")
+                || indicator.contains("darwin")
+                || indicator.contains("apple")
+            {
                 "macos"
             } else {
                 "windows"
@@ -190,14 +203,20 @@ fn check_cross_platform(content: &str) -> InfraCheck {
             "DR-02",
             "Cross-platform builds",
             3.0,
-            vec![format!("Found {} platform targets: {:?}", targets, seen_platforms)],
+            vec![format!(
+                "Found {} platform targets: {:?}",
+                targets, seen_platforms
+            )],
         )
     } else {
         InfraCheck::fail(
             "DR-02",
             "Cross-platform builds",
             3.0,
-            vec![format!("Only {} platform target(s) found, need >=2", targets)],
+            vec![format!(
+                "Only {} platform target(s) found, need >=2",
+                targets
+            )],
         )
     }
 }
@@ -265,7 +284,11 @@ fn check_semver(cargo_toml: Option<&str>) -> InfraCheck {
     if let Some(content) = cargo_toml {
         for line in content.lines() {
             let trimmed = line.trim();
-            if trimmed.starts_with("version") && trimmed.contains('=') {
+            // Skip workspace-inherited fields like `version.workspace = true`
+            if trimmed.starts_with("version")
+                && trimmed.contains('=')
+                && !trimmed.contains(".workspace")
+            {
                 // Extract version string
                 if let Some(version_str) = extract_version_string(trimmed) {
                     if is_semver(&version_str) {
@@ -280,10 +303,26 @@ fn check_semver(cargo_toml: Option<&str>) -> InfraCheck {
                             "DR-05",
                             "Semantic versioning",
                             2.0,
-                            vec![format!("Version {} does not follow semver (x.y.z)", version_str)],
+                            vec![format!(
+                                "Version {} does not follow semver (x.y.z)",
+                                version_str
+                            )],
                         );
                     }
                 }
+            }
+        }
+
+        // If we found no direct version line, check for workspace inheritance
+        for line in content.lines() {
+            let trimmed = line.trim();
+            if trimmed.starts_with("version") && trimmed.contains(".workspace") {
+                return InfraCheck::pass(
+                    "DR-05",
+                    "Semantic versioning",
+                    2.0,
+                    vec!["Version inherited from workspace (version.workspace = true)".to_string()],
+                );
             }
         }
     }
@@ -310,7 +349,12 @@ fn extract_version_string(line: &str) -> Option<String> {
 
 /// Check if a version string follows semver (x.y.z with optional pre-release)
 fn is_semver(version: &str) -> bool {
-    let parts: Vec<&str> = version.split('-').next().unwrap_or(version).split('.').collect();
+    let parts: Vec<&str> = version
+        .split('-')
+        .next()
+        .unwrap_or(version)
+        .split('.')
+        .collect();
     if parts.len() < 2 || parts.len() > 3 {
         return false;
     }
@@ -335,27 +379,27 @@ mod tests {
 
     #[test]
     fn test_dr01_nightly_workflow() {
-        let workflows = vec![
-            ("nightly.yml".to_string(), "name: Nightly\non: schedule".to_string()),
-        ];
+        let workflows = vec![(
+            "nightly.yml".to_string(),
+            "name: Nightly\non: schedule".to_string(),
+        )];
         let check = check_release_workflow(&workflows);
         assert!(check.passed);
     }
 
     #[test]
     fn test_dr01_schedule_trigger() {
-        let workflows = vec![
-            ("build.yml".to_string(), "on:\n  schedule:\n    - cron: '0 4 * * *'".to_string()),
-        ];
+        let workflows = vec![(
+            "build.yml".to_string(),
+            "on:\n  schedule:\n    - cron: '0 4 * * *'".to_string(),
+        )];
         let check = check_release_workflow(&workflows);
         assert!(check.passed);
     }
 
     #[test]
     fn test_dr01_no_release() {
-        let workflows = vec![
-            ("ci.yml".to_string(), "on: push\njobs:\n  test:".to_string()),
-        ];
+        let workflows = vec![("ci.yml".to_string(), "on: push\njobs:\n  test:".to_string())];
         let check = check_release_workflow(&workflows);
         assert!(!check.passed);
     }
@@ -376,7 +420,8 @@ mod tests {
 
     #[test]
     fn test_dr02_rust_targets() {
-        let content = "target: [x86_64-unknown-linux-gnu, x86_64-apple-darwin, x86_64-pc-windows-msvc]";
+        let content =
+            "target: [x86_64-unknown-linux-gnu, x86_64-apple-darwin, x86_64-pc-windows-msvc]";
         let check = check_cross_platform(content);
         assert!(check.passed);
     }
@@ -439,9 +484,29 @@ mod tests {
     }
 
     #[test]
+    fn test_dr05_workspace_inherited_version() {
+        let toml = "[package]\nname = \"my-crate\"\nversion.workspace = true";
+        let check = check_semver(Some(toml));
+        assert!(
+            check.passed,
+            "workspace-inherited version should pass DR-05"
+        );
+        assert!(
+            check.evidence[0].contains("workspace"),
+            "should mention workspace inheritance"
+        );
+    }
+
+    #[test]
     fn test_extract_version_string() {
-        assert_eq!(extract_version_string("version = \"1.2.3\""), Some("1.2.3".to_string()));
-        assert_eq!(extract_version_string("version = \"0.1.0-alpha\""), Some("0.1.0-alpha".to_string()));
+        assert_eq!(
+            extract_version_string("version = \"1.2.3\""),
+            Some("1.2.3".to_string())
+        );
+        assert_eq!(
+            extract_version_string("version = \"0.1.0-alpha\""),
+            Some("0.1.0-alpha".to_string())
+        );
     }
 
     #[test]

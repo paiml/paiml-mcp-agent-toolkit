@@ -99,7 +99,11 @@ pub struct PerfectionScoreResult {
 
 impl PerfectionScoreResult {
     pub fn new(categories: Vec<CategoryScore>) -> Self {
-        let total_score: f64 = categories.iter().map(|c| c.earned_points).sum();
+        let total_score: f64 = categories
+            .iter()
+            .map(|c| c.earned_points)
+            .sum::<f64>()
+            .clamp(0.0, f64::from(MAX_PERFECTION_SCORE));
         let max_score = MAX_PERFECTION_SCORE;
         let grade = Self::calculate_overall_grade(total_score);
         let recommendations = Self::generate_recommendations(&categories);

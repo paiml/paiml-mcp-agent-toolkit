@@ -15,18 +15,10 @@ use anyhow::Result;
 use std::path::{Path, PathBuf};
 
 /// TOML configuration structure
-#[derive(Debug, serde::Deserialize)]
+#[derive(Debug, Default, serde::Deserialize)]
 #[serde(default)]
 struct GateConfigToml {
     gates: GateConfigInner,
-}
-
-impl Default for GateConfigToml {
-    fn default() -> Self {
-        Self {
-            gates: GateConfigInner::default(),
-        }
-    }
 }
 
 /// Inner gate configuration
