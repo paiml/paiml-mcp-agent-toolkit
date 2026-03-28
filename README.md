@@ -202,13 +202,36 @@ pmat comply migrate                    # Update to latest version
 - **CB-900**: Markdown link validation
 - **CB-1000**: MLOps model quality
 
-Configure via `.pmat-gates.toml`:
+**Provable-Contracts Enforcement (CB-1200..1210):**
+- **CB-1208**: Binding existence — verifies `binding.yaml` functions exist in `src/`, detects ghost bindings (L0-L3 enforcement levels)
+- **CB-1209**: Contract trait enforcement — checks `tests/contract_traits.rs` for compiler-verified trait impls (13 kernel traits)
+- **CB-1210**: Precondition quality — flags mass-generated boilerplate and missing postconditions
 
-```toml
-[tdg]
-min_grade = "A"
-exclude = ["examples/**", "scripts/**"]
+Configure via `.pmat.yaml`:
+
+```yaml
+comply:
+  thresholds:
+    min_tdg_grade: "A"
+    pv_lint_is_error: true        # CB-1201: FAIL on pv lint failure
+    min_binding_existence: 95     # CB-1208: 95% binding verification
+    require_all_traits: true      # CB-1209: 13/13 traits required
+    min_kani_coverage: 20         # CB-1206: minimum Kani proof %
 ```
+
+### Infrastructure Score (`pmat infra-score`)
+
+CI/CD quality scoring (0-100 + 10 bonus for provable-contracts):
+
+```bash
+pmat infra-score                       # Text output
+pmat infra-score --format json         # Machine-readable
+pmat infra-score -v --failures-only    # Show only failing checks
+```
+
+**Categories:** Workflow Architecture (25pts), Build Reliability (25pts),
+Quality Pipeline (20pts), Deployment & Release (15pts), Supply Chain (15pts),
+Provable Contracts bonus (10pts).
 
 ### Document Search (`pmat query --docs`)
 

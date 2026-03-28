@@ -2,110 +2,101 @@
 
 > Sub-spec of [pmat-spec.md](../pmat-spec.md) | Component 22
 
-## Problem Statement
+## Enforcement Chain: CB-1200 through CB-1210
 
-Provable contracts (YAML declarations) are Generation 1: separate from code,
-drift-prone, easily gamed. `pv lint` Gate 4 catches missing test references,
-but cannot verify that contracts match the actual implementation semantics.
+pmat enforces provable-contracts compliance via 11 checks spanning
+the full verification ladder (L0-L5):
 
-The sovereign stack has 98 contracts across 4 repos (trueno 27, entrenar 11,
-realizar 11, aprender 49) with 175 test references. But the contracts live
-in YAML files separate from the functions they specify — a fundamental
-architectural weakness.
+| Check | Level | What it enforces | Catches |
+|-------|-------|-----------------|---------|
+| CB-1200 | L0.5 | Contract existence + pv lint + binding coverage | Missing contracts |
+| CB-1201 | L0.5 | pv lint pass/fail with error detail | Schema violations |
+| CB-1202 | L1 | Critical keyword coverage (forward, backward, kernel, etc.) | Uncontracted critical fns |
+| CB-1203 | L3 | `#[contract]` annotation coverage on bound functions | Missing compile-time assertions |
+| CB-1204 | L1 | build.rs pipeline (superseded by traits at L2+) | Missing build enforcement |
+| CB-1205 | L4 | Provability invariant (obligations → kani harnesses) | Missing Kani coverage |
+| CB-1206 | L4/L5 | Verification level distribution per-project | Kani/Lean coverage gaps |
+| CB-1207 | — | Contract drift (stale YAML vs source) | Outdated contracts |
+| **CB-1208** | **L1-L3** | **Binding existence + enforcement level (L0-L3)** | **Ghost bindings, paper-only repos** |
+| **CB-1209** | **L2** | **Contract trait enforcement (13 kernel traits)** | **Missing trait impls** |
+| **CB-1210** | **L3** | **Precondition quality + postcondition existence** | **Mass-generated boilerplate** |
 
-## Contract Standard: Escape-Proof Pipeline
+### Enforcement Levels (detected by CB-1208)
 
-ONE type of contract. Six stages. Skip one → compile error.
+| Level | Mechanism | Repos | What it proves |
+|-------|-----------|-------|---------------|
+| L3 | build.rs + traits | aprender, entrenar, forjar, realizar, ruchy, simular | Function exists + right signature + build enforced |
+| L2 | traits only | bashrs | Function exists + right signature |
+| L1 | build.rs only | trueno | YAML says "implemented" |
+| L0 | paper-only | 18 repos | **Nothing — ghost bindings** |
 
-```
-Equation (YAML) → Lean 4 proof → pv lint → build.rs codegen → #[contract] macro → tests
-```
+L0 repos with binding.yaml but no enforcement **FAIL** CB-1208.
 
-- **YAML**: equation + preconditions + postconditions + lean_theorem
-- **Lean 4**: proves mathematical properties (no sorry allowed)
-- **build.rs**: generates `debug_assert!()` from YAML preconditions
-- **#[contract] macro**: inserts assertions, checks binding env var
-- **Zero cost in release** — all `debug_assert!()`, stripped by compiler
-- **Cannot escape** — missing stage = compile_error!
+## Configurable Thresholds
 
-Full spec: `../provable-contracts/docs/specifications/sub/escape-proof-enforcement.md`
-
-## Generation 1: Current State (YAML)
+Configure strictness in `.pmat.yaml`:
 
 ```yaml
-# contracts/gemv-kernel-v1.yaml
-equations:
-  gemv:
-    formula: "c[j] += Σ a[k] * B[k*N + j]"
-falsification_tests:
-  - id: F-GEMV-001
-    test: "test_gemv_basic"
-    if_fails: "SIMD and scalar paths diverge"
+comply:
+  thresholds:
+    pv_lint_is_error: true        # CB-1201: WARN → FAIL on lint failure
+    min_binding_existence: 95     # CB-1208: % threshold for binding verification
+    require_all_traits: true      # CB-1209: require 13/13 traits
+    min_kani_coverage: 20         # CB-1206: minimum Kani proof %
 ```
 
-Enforced by:
-- `pv lint` Gate 1-3: YAML structure, audit, score
-- `pv lint` Gate 4: test references resolve to `fn test_*` in src/
-- `pmat comply` CB-1201: PV Lint pass rate
-- `pmat comply` CB-1202: contract coverage (critical keywords)
-- `pmat score` PV Lint sub-score: weighted gates + fulfillment
+## Infra-Score PV Bonus (PV-01..PV-04)
 
-### Limitations
-- Contract file can be edited without touching the implementation
-- No compile-time guarantee that preconditions are checked
-- `test:` references are string matches, not compiler-verified
-- `old()` pre-state capture requires manual test setup
+`pmat infra-score` awards up to 10 bonus points for provable-contracts:
 
-## Integration with pv lint
+| Check | Points | What it checks |
+|-------|--------|---------------|
+| PV-04 | 2 | contracts/ directory exists with schema-valid YAML |
+| PV-01 | 3 | `pv lint` passes (falls back to YAML structure check) |
+| PV-02 | 3 | `pv score >= 0.5` (FAILs without pv CLI) |
+| PV-03 | 2 | At least one contract at proof level L2+ |
 
-**Gate 6: Annotation Verification** — verify that functions with YAML
-contracts also have `#[core::contracts::requires]`/`#[ensures]` in source.
+## Finding Missing Contracts
 
+```bash
+# Full audit
+pmat comply check
+
+# Which bound functions don't exist in source?
+pmat comply check 2>&1 | grep 'CB-1208'
+
+# Are contract traits implemented?
+pmat comply check 2>&1 | grep 'CB-1209'
+
+# Are preconditions real or mass-generated?
+pmat comply check 2>&1 | grep 'CB-1210'
+
+# Which critical functions lack contracts?
+pmat comply check 2>&1 | grep 'CB-1202'
 ```
-pv lint Gate 6: annotate
-  For each equation in contracts/*.yaml:
-    1. Find the implementing function via .pv.toml binding
-    2. Check source for #[core::contracts::requires/ensures]
-    3. ERROR if contracted function has no annotation
-```
-
-### pmat comply CB-1203: Annotation Coverage
-
-Checks that source files with contract-related code have
-`core::contracts` annotations. Currently advisory (Gen 2 adoption).
-
-## Implementation Plan
-
-### Phase 1: Add `#![feature(contracts)]` to sovereign stack crates
-
-Annotate the top 10 critical functions per repo with
-`#[core::contracts::requires]`/`#[core::contracts::ensures]`.
-No external dependencies needed.
-
-### Phase 2: `pv lint` Gate 6
-
-Verify YAML equations have matching `core::contracts` annotations.
-
-### Phase 3: CI enforcement
-
-`RUSTFLAGS="-Z contract-checks=yes" cargo test` in CI to run
-contracts as runtime checks during testing only.
 
 ## Key Files
 
-| File | Status | Purpose |
-|------|--------|---------|
-| provable-contracts `gates.rs` | Exists | Gates 1-4 implemented |
-| provable-contracts `gates.rs` | Planned | Gate 6 annotation check |
-| pmat `check.rs` | Exists | CB-1201, CB-1202 |
-| pmat `check.rs` | Planned | CB-1203 annotation coverage |
-| pmat `score_handler.rs` | Exists | PV Lint sub-score |
+| File | Purpose |
+|------|---------|
+| `check_pv_enforcement.rs` | CB-1201..1210 implementation |
+| `check_provable_contracts.rs` | CB-1200 detection + pv lint/score |
+| `infra_score_handlers.rs` | `pmat infra-score` CLI handler |
+| `provable_contracts.rs` (infra_score) | PV-01..PV-04 bonus scorer |
+| `comply_config_types.rs` | PV threshold configuration |
 
 ## References
 
-- `contracts` crate: https://crates.io/crates/contracts
-- Flux (PLDI 2023): https://github.com/flux-rs/flux
-- Creusot: https://github.com/creusot-rs/creusot
+### Provable-Contracts Spec
+- pv-spec.md §2: Verification Ladder (L0-L5)
+- pv-spec.md §23: Contract-Trait Enforcement
+- pv-spec.md §27: The One Way (unified enforcement)
+
+### arXiv
+- Dardik & Kang (2025). arXiv:2509.06250. Assume-guarantee contracts.
+- Li et al. (2025). arXiv:2510.12047. LLMs and formal contracts.
+- Le Blanc & Lam (2024). arXiv:2410.01981. Rust verification landscape.
+
+### Foundational
+- Meyer (1988). Design by Contract. Preconditions, postconditions, invariants.
 - `core::contracts` RFC: rust-lang/rust#128045
-- Eiffel DbC: Meyer, B. (1992) "Applying Design by Contract"
-- Scoring convergence: [scoring-convergence.md](scoring-convergence.md) §10
