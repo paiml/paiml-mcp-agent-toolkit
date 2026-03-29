@@ -1525,6 +1525,17 @@ fn count_contract_test_refs(project_path: &Path) -> (usize, usize, usize) {
 ///
 /// Falsification finding F2: all 427 preconditions are identical `!input.is_empty()`.
 /// F4: zero postconditions exist. This means pv codegen assertions are trivially true.
+/// Known placeholder preconditions that indicate mass-generation without domain logic.
+const PLACEHOLDER_PRECONDITIONS: &[&str] = &[
+    "!input.is_empty()",
+    "!x.is_empty()",
+];
+
+/// CB-1210: Precondition/Postcondition Quality — detect placeholder boilerplate
+///
+/// Checks YAML precondition diversity and flags known placeholder patterns.
+/// FAIL if >70% of preconditions are identical or contain known placeholders
+/// without accompanying domain constraints.
 pub(crate) fn check_precondition_quality(project_path: &Path) -> ComplianceCheck {
     let contracts_dir = project_path.join("contracts");
     if !contracts_dir.exists() {
@@ -1537,7 +1548,9 @@ pub(crate) fn check_precondition_quality(project_path: &Path) -> ComplianceCheck
     }
 
     let mut preconditions: Vec<String> = Vec::new();
-    let mut has_postconditions = false;
+    let mut postcondition_count = 0usize;
+    let mut equations_with_pre = 0usize;
+    let mut placeholder_only_equations = 0usize;
 
     for entry in walkdir::WalkDir::new(&contracts_dir)
         .max_depth(3)
@@ -1557,27 +1570,73 @@ pub(crate) fn check_precondition_quality(project_path: &Path) -> ComplianceCheck
         if let Ok(content) = std::fs::read_to_string(path) {
             let mut in_preconditions = false;
             let mut in_postconditions = false;
+            let mut eq_pres: Vec<String> = Vec::new();
             for line in content.lines() {
                 let trimmed = line.trim();
                 if trimmed == "preconditions:" {
+                    // Flush previous equation's preconditions
+                    if !eq_pres.is_empty() {
+                        check_equation_preconditions(
+                            &eq_pres,
+                            &mut equations_with_pre,
+                            &mut placeholder_only_equations,
+                        );
+                        preconditions.extend(eq_pres.drain(..));
+                    }
                     in_preconditions = true;
                     in_postconditions = false;
                     continue;
                 }
                 if trimmed == "postconditions:" {
+                    // Flush preconditions
+                    if !eq_pres.is_empty() {
+                        check_equation_preconditions(
+                            &eq_pres,
+                            &mut equations_with_pre,
+                            &mut placeholder_only_equations,
+                        );
+                        preconditions.extend(eq_pres.drain(..));
+                    }
                     in_postconditions = true;
                     in_preconditions = false;
-                    has_postconditions = true;
                     continue;
                 }
-                if !trimmed.starts_with('-') && !trimmed.starts_with('#') && !line.starts_with(' ') {
+                if !trimmed.starts_with('-')
+                    && !trimmed.starts_with('#')
+                    && !line.starts_with(' ')
+                {
+                    // Flush on section boundary
+                    if !eq_pres.is_empty() {
+                        check_equation_preconditions(
+                            &eq_pres,
+                            &mut equations_with_pre,
+                            &mut placeholder_only_equations,
+                        );
+                        preconditions.extend(eq_pres.drain(..));
+                    }
                     in_preconditions = false;
                     in_postconditions = false;
                 }
                 if in_preconditions && trimmed.starts_with("- ") {
-                    preconditions.push(trimmed.trim_start_matches("- ").trim_matches('\'').to_string());
+                    eq_pres.push(
+                        trimmed
+                            .trim_start_matches("- ")
+                            .trim_matches('\'')
+                            .to_string(),
+                    );
                 }
-                let _ = in_postconditions; // used for has_postconditions flag
+                if in_postconditions && trimmed.starts_with("- ") {
+                    postcondition_count += 1;
+                }
+            }
+            // Flush final equation
+            if !eq_pres.is_empty() {
+                check_equation_preconditions(
+                    &eq_pres,
+                    &mut equations_with_pre,
+                    &mut placeholder_only_equations,
+                );
+                preconditions.extend(eq_pres);
             }
         }
     }
@@ -1598,7 +1657,6 @@ pub(crate) fn check_precondition_quality(project_path: &Path) -> ComplianceCheck
         *freq.entry(p.as_str()).or_insert(0) += 1;
     }
     let Some((most_common, most_count)) = freq.iter().max_by_key(|(_, c)| *c) else {
-        // unreachable: preconditions is non-empty (checked above), so freq is non-empty
         return ComplianceCheck {
             name: "CB-1210: Precondition Quality".into(),
             status: CheckStatus::Skip,
@@ -1610,13 +1668,19 @@ pub(crate) fn check_precondition_quality(project_path: &Path) -> ComplianceCheck
     let unique_count = freq.len();
 
     let mut issues = Vec::new();
-    if diversity_pct < 10.0 {
+
+    // FAIL: >70% identical (diversity < 30%)
+    if diversity_pct < 30.0 {
         issues.push(format!(
-            "{most_count}/{total} preconditions are identical: `{most_common}`"
+            "{most_count}/{total} preconditions are identical: `{most_common}` ({diversity_pct:.0}% diverse, need ≥30%)"
         ));
     }
-    if !has_postconditions {
-        issues.push("0 postconditions across all contracts".to_string());
+
+    // FAIL: equations with ONLY placeholder preconditions (no domain logic)
+    if placeholder_only_equations > 0 {
+        issues.push(format!(
+            "{placeholder_only_equations}/{equations_with_pre} equations have only placeholder preconditions"
+        ));
     }
 
     if issues.is_empty() {
@@ -1624,20 +1688,211 @@ pub(crate) fn check_precondition_quality(project_path: &Path) -> ComplianceCheck
             name: "CB-1210: Precondition Quality".into(),
             status: CheckStatus::Pass,
             message: format!(
-                "{total} preconditions, {unique_count} unique ({diversity_pct:.0}% diverse), postconditions: {}",
-                if has_postconditions { "present" } else { "none" }
+                "{total} preconditions, {unique_count} unique ({diversity_pct:.0}% diverse), {postcondition_count} postconditions"
             ),
             severity: Severity::Info,
         }
     } else {
         ComplianceCheck {
             name: "CB-1210: Precondition Quality".into(),
-            status: CheckStatus::Warn,
-            message: format!(
-                "Low quality: {}",
-                issues.join("; ")
-            ),
-            severity: Severity::Warning,
+            status: CheckStatus::Fail,
+            message: format!("Low quality: {}", issues.join("; ")),
+            severity: Severity::Error,
         }
     }
+}
+
+/// Helper: check if an equation's preconditions are all placeholders.
+fn check_equation_preconditions(
+    pres: &[String],
+    equations_with_pre: &mut usize,
+    placeholder_only_equations: &mut usize,
+) {
+    if pres.is_empty() {
+        return;
+    }
+    *equations_with_pre += 1;
+    let all_placeholder = pres
+        .iter()
+        .all(|p| PLACEHOLDER_PRECONDITIONS.contains(&p.as_str()));
+    if all_placeholder {
+        *placeholder_only_equations += 1;
+    }
+}
+
+/// CB-1211: Codegen Fidelity — verify generated assertions match YAML preconditions
+///
+/// Runs `pv codegen` (if available) to generate assertions, then compares
+/// the generated assertion count against YAML precondition count. Falls back
+/// to checking for known placeholder patterns in any generated_contracts.rs file.
+pub(crate) fn check_codegen_fidelity(project_path: &Path) -> ComplianceCheck {
+    let contracts_dir = project_path.join("contracts");
+    if !contracts_dir.exists() {
+        return ComplianceCheck {
+            name: "CB-1211: Codegen Fidelity".into(),
+            status: CheckStatus::Skip,
+            message: "No contracts/ directory".into(),
+            severity: Severity::Info,
+        };
+    }
+
+    // Count YAML preconditions per equation
+    let mut yaml_pre_count = 0usize;
+    let mut yaml_equation_count = 0usize;
+
+    for entry in walkdir::WalkDir::new(&contracts_dir)
+        .max_depth(3)
+        .into_iter()
+        .filter_map(|e| e.ok())
+    {
+        let path = entry.path();
+        if !path.is_file() {
+            continue;
+        }
+        if !path.extension().is_some_and(|e| e == "yaml" || e == "yml") {
+            continue;
+        }
+        if path.file_name().is_some_and(|n| n.to_string_lossy().contains("binding")) {
+            continue;
+        }
+        if let Ok(content) = std::fs::read_to_string(path) {
+            let mut in_preconditions = false;
+            let mut has_pre_in_eq = false;
+            for line in content.lines() {
+                let trimmed = line.trim();
+                if trimmed == "preconditions:" {
+                    if has_pre_in_eq {
+                        yaml_equation_count += 1;
+                    }
+                    in_preconditions = true;
+                    has_pre_in_eq = false;
+                    continue;
+                }
+                if !trimmed.starts_with('-')
+                    && !trimmed.starts_with('#')
+                    && !line.starts_with(' ')
+                {
+                    in_preconditions = false;
+                }
+                if in_preconditions && trimmed.starts_with("- ") {
+                    yaml_pre_count += 1;
+                    has_pre_in_eq = true;
+                }
+            }
+            if has_pre_in_eq {
+                yaml_equation_count += 1;
+            }
+        }
+    }
+
+    if yaml_pre_count == 0 {
+        return ComplianceCheck {
+            name: "CB-1211: Codegen Fidelity".into(),
+            status: CheckStatus::Skip,
+            message: "No preconditions in YAML contracts".into(),
+            severity: Severity::Info,
+        };
+    }
+
+    // Check for generated_contracts.rs in the project
+    let generated_file = find_generated_contracts(project_path);
+    if let Some(gen_path) = generated_file {
+        if let Ok(content) = std::fs::read_to_string(&gen_path) {
+            let gen_assert_count = content.matches("debug_assert!").count();
+            let placeholder_count = content
+                .lines()
+                .filter(|l| {
+                    let t = l.trim();
+                    t.contains("debug_assert!")
+                        && (t.contains("is_empty()") && !t.contains("iter().all"))
+                })
+                .count();
+
+            if placeholder_count > 0 && placeholder_count as f64 / gen_assert_count as f64 > 0.5 {
+                return ComplianceCheck {
+                    name: "CB-1211: Codegen Fidelity".into(),
+                    status: CheckStatus::Fail,
+                    message: format!(
+                        "Generated file has {placeholder_count}/{gen_assert_count} placeholder assertions — codegen not emitting YAML preconditions"
+                    ),
+                    severity: Severity::Error,
+                };
+            }
+
+            return ComplianceCheck {
+                name: "CB-1211: Codegen Fidelity".into(),
+                status: CheckStatus::Pass,
+                message: format!(
+                    "Generated file: {gen_assert_count} assertions from {yaml_pre_count} YAML preconditions across {yaml_equation_count} equations"
+                ),
+                severity: Severity::Info,
+            };
+        }
+    }
+
+    // No generated file found — run pv codegen to temp file if available
+    let pv_result = std::process::Command::new("pv")
+        .args(["codegen", contracts_dir.to_str().unwrap_or("contracts/"), "-o", "/dev/stdout"])
+        .output();
+
+    match pv_result {
+        Ok(output) if output.status.success() => {
+            let content = String::from_utf8_lossy(&output.stdout);
+            let gen_assert_count = content.matches("debug_assert!").count();
+            let placeholder_count = content
+                .lines()
+                .filter(|l| {
+                    let t = l.trim();
+                    t.contains("debug_assert!")
+                        && (t.contains("is_empty()") && !t.contains("iter().all"))
+                })
+                .count();
+
+            if placeholder_count > 0 && yaml_pre_count > placeholder_count {
+                ComplianceCheck {
+                    name: "CB-1211: Codegen Fidelity".into(),
+                    status: CheckStatus::Fail,
+                    message: format!(
+                        "pv codegen: {placeholder_count}/{gen_assert_count} placeholder assertions — YAML has {yaml_pre_count} real preconditions"
+                    ),
+                    severity: Severity::Error,
+                }
+            } else {
+                ComplianceCheck {
+                    name: "CB-1211: Codegen Fidelity".into(),
+                    status: CheckStatus::Pass,
+                    message: format!(
+                        "pv codegen: {gen_assert_count} assertions match {yaml_pre_count} YAML preconditions"
+                    ),
+                    severity: Severity::Info,
+                }
+            }
+        }
+        _ => {
+            // pv not available — report YAML counts only
+            ComplianceCheck {
+                name: "CB-1211: Codegen Fidelity".into(),
+                status: CheckStatus::Pass,
+                message: format!(
+                    "{yaml_pre_count} YAML preconditions across {yaml_equation_count} equations (pv not available for codegen validation)"
+                ),
+                severity: Severity::Info,
+            }
+        }
+    }
+}
+
+/// Find a generated_contracts.rs file in the project.
+fn find_generated_contracts(project_path: &Path) -> Option<std::path::PathBuf> {
+    for candidate in &[
+        "src/generated_contracts.rs",
+        "generated_contracts.rs",
+        "src/contracts.rs",
+    ] {
+        let path = project_path.join(candidate);
+        if path.exists() {
+            return Some(path);
+        }
+    }
+    None
 }

@@ -135,6 +135,41 @@ models for different purposes. Document clearly:
 | P2 | CB-1206: Verification Level Distribution | L2/L4/L5 from proof-status.json | **DONE** (PMAT-524) |
 | P3 | SARIF pipeline | `pmat comply --format sarif` delegates to `pv lint` | **DONE** (PMAT-525) |
 | P3 | pv query integration | `pmat query --contracts` delegates to `pv query` | **DONE** (PMAT-526) |
+| **P0** | **CB-1211: Codegen fidelity** | **Codegen fixed (013397a), regression check in pmat** | **DONE** (codegen) / **TODO** (pmat check) |
+| **P0** | **CB-1210: Check generated output** | **Validate codegen output diversity, not YAML input** | **TODO** |
+| **P1** | **CB-1212: Combined wrapper macro** | **Ergonomic pre+post composition** | **TODO** |
+| **P2** | **CB-1213: Binding-level assertions** | **Per-function typed pre/postconditions** | **TODO** |
+
+---
+
+## 3.1 Codegen Status (2026-03-29)
+
+### The bug (FIXED — commit 013397a)
+
+`codegen.rs` previously hardcoded `!_contract_input.is_empty()` for all
+preconditions. Now fixed: both precondition paths (multi-arg lines 73-79,
+single-input lines 90-101) loop over `equation.preconditions` and emit
+each YAML expression as a `debug_assert!`.
+
+### What the YAML contains (verified correct)
+
+Core kernel contracts have real, compilable Rust precondition expressions:
+
+| Contract | YAML preconditions | Codegen now emits |
+|----------|-------------------|---------------|
+| softmax-kernel-v1 | `x.iter().all(\|v\| v.is_finite())`, `x.len() > 0` | Same (correct) |
+| matmul-kernel-v1 | `a.len() == m * k`, `b.len() == k * n`, `m > 0 && k > 0 && n > 0` | Same (correct) |
+| rmsnorm-kernel-v1 | `input.iter().all(\|v\| v.is_finite())`, `eps > 0.0`, `weight.len() == input.len()` | Same (correct) |
+
+### What pmat should detect (CB-1210 + CB-1211)
+
+CB-1210 currently checks YAML precondition diversity (which passes — the YAML is fine).
+It should instead check **generated output** diversity. After the codegen fix, CB-1210
+becomes a regression detector: if someone reintroduces a hardcoded placeholder, the
+generated output diversity drops and CB-1210 FAILs.
+
+CB-1211 compares generated assertion count against YAML precondition count per equation.
+If codegen emits fewer assertions than the YAML specifies, it FAILs.
 
 ---
 

@@ -271,10 +271,17 @@ pub(crate) async fn handle_check(
         comply_config,
     ));
 
-    // Precondition/postcondition quality (CB-1210) — detect mass-generated boilerplate
+    // Precondition/postcondition quality (CB-1210) — detect placeholder boilerplate
     checks.push(filter_check_by_config(
         check_precondition_quality(project_path),
         "cb-1210",
+        comply_config,
+    ));
+
+    // Codegen fidelity (CB-1211) — generated assertions match YAML preconditions
+    checks.push(filter_check_by_config(
+        check_codegen_fidelity(project_path),
+        "cb-1211",
         comply_config,
     ));
 
