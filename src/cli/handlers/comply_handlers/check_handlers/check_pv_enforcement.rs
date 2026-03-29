@@ -1798,12 +1798,20 @@ pub(crate) fn check_codegen_fidelity(project_path: &Path) -> ComplianceCheck {
     let generated_file = find_generated_contracts(project_path);
     if let Some(gen_path) = generated_file {
         if let Ok(content) = std::fs::read_to_string(&gen_path) {
-            let gen_assert_count = content.matches("debug_assert!").count();
+            // Only count debug_assert! in code lines, not comments
+            let gen_assert_count = content
+                .lines()
+                .filter(|l| {
+                    let t = l.trim();
+                    !t.starts_with("//") && t.contains("debug_assert!")
+                })
+                .count();
             let placeholder_count = content
                 .lines()
                 .filter(|l| {
                     let t = l.trim();
-                    t.contains("debug_assert!")
+                    !t.starts_with("//")
+                        && t.contains("debug_assert!")
                         && (t.contains("is_empty()") && !t.contains("iter().all"))
                 })
                 .count();
@@ -1838,12 +1846,19 @@ pub(crate) fn check_codegen_fidelity(project_path: &Path) -> ComplianceCheck {
     match pv_result {
         Ok(output) if output.status.success() => {
             let content = String::from_utf8_lossy(&output.stdout);
-            let gen_assert_count = content.matches("debug_assert!").count();
+            let gen_assert_count = content
+                .lines()
+                .filter(|l| {
+                    let t = l.trim();
+                    !t.starts_with("//") && t.contains("debug_assert!")
+                })
+                .count();
             let placeholder_count = content
                 .lines()
                 .filter(|l| {
                     let t = l.trim();
-                    t.contains("debug_assert!")
+                    !t.starts_with("//")
+                        && t.contains("debug_assert!")
                         && (t.contains("is_empty()") && !t.contains("iter().all"))
                 })
                 .count();
