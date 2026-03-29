@@ -878,15 +878,32 @@ pub(crate) fn check_binding_existence(project_path: &Path, thresholds: &ComplyTh
 
 /// Detect if build.rs has contract enforcement (reads binding.yaml or contracts/)
 fn detect_buildrs_enforcement(project_path: &Path) -> bool {
+    // Check root build.rs
     let build_rs = project_path.join("build.rs");
-    if !build_rs.exists() {
-        return false;
+    if build_rs.exists() {
+        if let Ok(c) = std::fs::read_to_string(&build_rs) {
+            if c.contains("binding") || c.contains("contract") || c.contains("AllImplemented") {
+                return true;
+            }
+        }
     }
-    std::fs::read_to_string(build_rs)
-        .map(|c| {
-            c.contains("binding") || c.contains("contract") || c.contains("AllImplemented")
-        })
-        .unwrap_or(false)
+    // Check workspace member crates (crates/*/build.rs)
+    if let Ok(entries) = std::fs::read_dir(project_path.join("crates")) {
+        for entry in entries.flatten() {
+            let member_build = entry.path().join("build.rs");
+            if member_build.exists() {
+                if let Ok(c) = std::fs::read_to_string(&member_build) {
+                    if c.contains("binding")
+                        || c.contains("contract")
+                        || c.contains("AllImplemented")
+                    {
+                        return true;
+                    }
+                }
+            }
+        }
+    }
+    false
 }
 
 /// CB-1209: Contract Trait Enforcement — compiler-enforced via `pv scaffold --trait`
