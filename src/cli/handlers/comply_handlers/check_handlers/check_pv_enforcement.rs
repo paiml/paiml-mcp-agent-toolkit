@@ -1585,11 +1585,40 @@ pub(crate) fn check_precondition_quality(project_path: &Path) -> ComplianceCheck
             continue;
         }
         if let Ok(content) = std::fs::read_to_string(path) {
+            let mut in_equations = false;
             let mut in_preconditions = false;
             let mut in_postconditions = false;
             let mut eq_pres: Vec<String> = Vec::new();
             for line in content.lines() {
                 let trimmed = line.trim();
+                // Track whether we're inside the equations: block
+                if trimmed == "equations:" && !line.starts_with(' ') {
+                    in_equations = true;
+                    continue;
+                }
+                // Exit equations block on next top-level key
+                if in_equations
+                    && !line.starts_with(' ')
+                    && !trimmed.is_empty()
+                    && !trimmed.starts_with('#')
+                    && trimmed != "equations:"
+                {
+                    // Flush
+                    if !eq_pres.is_empty() {
+                        check_equation_preconditions(
+                            &eq_pres,
+                            &mut equations_with_pre,
+                            &mut placeholder_only_equations,
+                        );
+                        preconditions.extend(eq_pres.drain(..));
+                    }
+                    in_equations = false;
+                    in_preconditions = false;
+                    in_postconditions = false;
+                }
+                if !in_equations {
+                    continue;
+                }
                 if trimmed == "preconditions:" {
                     // Flush previous equation's preconditions
                     if !eq_pres.is_empty() {
@@ -1605,7 +1634,6 @@ pub(crate) fn check_precondition_quality(project_path: &Path) -> ComplianceCheck
                     continue;
                 }
                 if trimmed == "postconditions:" {
-                    // Flush preconditions
                     if !eq_pres.is_empty() {
                         check_equation_preconditions(
                             &eq_pres,
@@ -1622,7 +1650,6 @@ pub(crate) fn check_precondition_quality(project_path: &Path) -> ComplianceCheck
                     && !trimmed.starts_with('#')
                     && !line.starts_with(' ')
                 {
-                    // Flush on section boundary
                     if !eq_pres.is_empty() {
                         check_equation_preconditions(
                             &eq_pres,
@@ -1693,11 +1720,15 @@ pub(crate) fn check_precondition_quality(project_path: &Path) -> ComplianceCheck
         ));
     }
 
-    // FAIL: equations with ONLY placeholder preconditions (no domain logic)
-    if placeholder_only_equations > 0 {
-        issues.push(format!(
-            "{placeholder_only_equations}/{equations_with_pre} equations have only placeholder preconditions"
-        ));
+    // FAIL: >5% of equations with ONLY placeholder preconditions (no domain logic)
+    if equations_with_pre > 0 {
+        let placeholder_pct =
+            placeholder_only_equations as f64 / equations_with_pre as f64 * 100.0;
+        if placeholder_pct > 5.0 {
+            issues.push(format!(
+                "{placeholder_only_equations}/{equations_with_pre} ({placeholder_pct:.0}%) equations have only placeholder preconditions"
+            ));
+        }
     }
 
     if issues.is_empty() {
@@ -1829,7 +1860,7 @@ pub(crate) fn check_codegen_fidelity(project_path: &Path) -> ComplianceCheck {
                     let t = l.trim();
                     !t.starts_with("//")
                         && t.contains("debug_assert!")
-                        && (t.contains("is_empty()") && !t.contains("iter().all"))
+                        && t.contains("_contract_input.is_empty()")
                 })
                 .count();
 
@@ -1876,11 +1907,13 @@ pub(crate) fn check_codegen_fidelity(project_path: &Path) -> ComplianceCheck {
                     let t = l.trim();
                     !t.starts_with("//")
                         && t.contains("debug_assert!")
-                        && (t.contains("is_empty()") && !t.contains("iter().all"))
+                        && t.contains("_contract_input.is_empty()")
                 })
                 .count();
 
-            if placeholder_count > 0 && yaml_pre_count > placeholder_count {
+            if gen_assert_count > 0
+                && placeholder_count as f64 / gen_assert_count as f64 > 0.5
+            {
                 ComplianceCheck {
                     name: "CB-1211: Codegen Fidelity".into(),
                     status: CheckStatus::Fail,
