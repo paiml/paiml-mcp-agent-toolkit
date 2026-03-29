@@ -1,10 +1,11 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
-//! Provable Contracts Scorer (Bonus: 10 points)
+//! Provable Contracts Scorer (Bonus: 12 points)
 //!
 //! PV-01 (3pts): pv lint passes (contracts validate)
 //! PV-02 (3pts): pv score >= 0.5 mean
 //! PV-03 (2pts): At least 1 contract at proof level L2+
 //! PV-04 (2pts): contracts/ directory exists with >= 1 YAML file
+//! PV-05 (2pts): Enforcement quality — contract call sites found in source
 
 use super::InfraScorer;
 use crate::services::infra_score::models::*;
@@ -32,7 +33,7 @@ impl InfraScorer for ProvableContractsScorer {
     }
 
     fn max_score(&self) -> f64 {
-        10.0
+        12.0
     }
 
     async fn score(&self, repo_path: &Path) -> anyhow::Result<InfraCategoryScore> {
@@ -68,6 +69,12 @@ impl InfraScorer for ProvableContractsScorer {
             checks.push(InfraCheck::fail(
                 "PV-03",
                 "Proof level L2+",
+                2.0,
+                vec!["Skipped — no contracts/ directory".to_string()],
+            ));
+            checks.push(InfraCheck::fail(
+                "PV-05",
+                "Enforcement quality",
                 2.0,
                 vec!["Skipped — no contracts/ directory".to_string()],
             ));
@@ -116,6 +123,19 @@ impl InfraScorer for ProvableContractsScorer {
             });
         }
         checks.push(pv03);
+
+        // PV-05 (2pts): Enforcement quality — contract call sites in source
+        let pv05 = check_enforcement(repo_path).await;
+        if !pv05.passed {
+            findings.push(InfraFinding {
+                severity: InfraSeverity::Info,
+                check_id: "PV-05".to_string(),
+                message: "No contract call sites in source. Add contract_pre_*/contract_post_* macro invocations.".to_string(),
+                location: Some("src/".to_string()),
+                impact_points: -2.0,
+            });
+        }
+        checks.push(pv05);
 
         Ok(InfraCategoryScore::new(self.max_score(), checks, findings))
     }
@@ -334,6 +354,92 @@ async fn check_proof_level(contracts_dir: &Path) -> InfraCheck {
             )
         }
     }
+}
+
+/// PV-05: Check enforcement quality via `pv coverage --enforcement`
+async fn check_enforcement(repo_path: &Path) -> InfraCheck {
+    // Find binding.yaml
+    let canonical = std::fs::canonicalize(repo_path).unwrap_or_else(|_| repo_path.to_path_buf());
+    let project_name = canonical.file_name().and_then(|n| n.to_str()).unwrap_or("");
+    let binding = canonical
+        .parent()
+        .map(|p| {
+            p.join("provable-contracts")
+                .join("contracts")
+                .join(project_name)
+                .join("binding.yaml")
+        })
+        .filter(|p| p.exists());
+
+    let binding_path = match binding {
+        Some(p) => p,
+        None => {
+            return InfraCheck::fail(
+                "PV-05",
+                "Enforcement quality",
+                2.0,
+                vec!["No binding.yaml found".to_string()],
+            );
+        }
+    };
+
+    let output = tokio::process::Command::new("pv")
+        .args([
+            "coverage",
+            "--enforcement",
+            ".",
+            "--binding",
+            &binding_path.to_string_lossy(),
+        ])
+        .current_dir(repo_path)
+        .output()
+        .await;
+
+    match output {
+        Ok(out) if out.status.success() => {
+            let stdout = String::from_utf8_lossy(&out.stdout);
+            let stderr = String::from_utf8_lossy(&out.stderr);
+            let combined = format!("{stdout}{stderr}");
+
+            // Parse E0/E1/E2 counts
+            let e0 = parse_enforcement_metric(&combined, "E0");
+            let e1 = parse_enforcement_metric(&combined, "E1");
+            let e2 = parse_enforcement_metric(&combined, "E2");
+            let total = e0 + e1 + e2;
+
+            if total > 0 {
+                InfraCheck::pass(
+                    "PV-05",
+                    "Enforcement quality",
+                    2.0,
+                    vec![format!("{total} call sites (E0={e0}, E1={e1}, E2={e2})")],
+                )
+            } else {
+                InfraCheck::fail(
+                    "PV-05",
+                    "Enforcement quality",
+                    2.0,
+                    vec!["0 contract call sites in source".to_string()],
+                )
+            }
+        }
+        _ => InfraCheck::fail(
+            "PV-05",
+            "Enforcement quality",
+            2.0,
+            vec!["pv CLI not available".to_string()],
+        ),
+    }
+}
+
+/// Parse E-level count from pv coverage output
+fn parse_enforcement_metric(output: &str, level: &str) -> usize {
+    output
+        .lines()
+        .find(|l| l.contains(&format!("{level} (")))
+        .and_then(|l| l.split(':').last())
+        .and_then(|v| v.trim().parse().ok())
+        .unwrap_or(0)
 }
 
 /// Fallback: check YAML files have basic contract structure

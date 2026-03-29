@@ -30,9 +30,9 @@ Now fixed: lines 73-79 (multi-arg) and 90-101 (single-input) loop over
 rmsnorm: `eps > 0.0`). Both precondition and postcondition codegen now
 iterate YAML and emit real assertions.
 
-## Enforcement Chain: CB-1200 through CB-1213
+## Enforcement Chain: CB-1200 through CB-1214
 
-pmat enforces provable-contracts compliance via 14 checks spanning
+pmat enforces provable-contracts compliance via 15 checks spanning
 the full verification ladder (L0-L5):
 
 | Check | Level | What it enforces | Catches |
@@ -51,6 +51,7 @@ the full verification ladder (L0-L5):
 | **CB-1211** | **L3** | **Codegen fidelity — assertion count matches YAML** | **Codegen dropping preconditions** |
 | **CB-1212** | **L3** | **Postcondition codegen — wrapper macro pattern** | **Unenforced postconditions** |
 | **CB-1213** | **L3** | **Binding-level typed assertions** | **Generic contracts on typed functions** |
+| **CB-1214** | **L3** | **Enforcement quality — call-site penetration × quality** | **Contracts exist but never invoked** |
 
 ### Enforcement Levels (detected by CB-1208)
 
@@ -183,11 +184,29 @@ comply:
     min_generated_diversity: 30     # CB-1210: % unique assertions in generated output (FAIL below)
     require_wrapper_macros: false   # CB-1212: WARN-only (set true to FAIL)
     require_binding_assertions: false  # CB-1213: WARN-only (set true to FAIL)
+    min_enforcement_quality: 0.3      # CB-1214: FAIL if quality below threshold
 ```
 
-## Infra-Score PV Bonus (PV-01..PV-04)
+### CB-1214: Enforcement Quality (NEW)
 
-`pmat infra-score` awards up to 10 bonus points for provable-contracts:
+Runs `pv coverage --enforcement <src> --binding <binding.yaml>` and parses
+the enforcement score. Classifies contract call sites:
+
+| Level | Score | Meaning |
+|-------|-------|---------|
+| E0 | 0.1 | Generic `!is_empty()` assertion at call site |
+| E1 | 0.5 | Domain-specific precondition check only |
+| E2 | 1.0 | Both precondition and postcondition checks |
+
+**Quality** = weighted average of E levels across call sites.
+**Enforcement** = penetration (call sites / bindings) × quality.
+
+FAIL if quality < 0.3 (more than 70% of call sites are E0 generic).
+WARN if 0 call sites found (contracts exist but are never invoked).
+
+## Infra-Score PV Bonus (PV-01..PV-05)
+
+`pmat infra-score` awards up to 12 bonus points for provable-contracts:
 
 | Check | Points | What it checks |
 |-------|--------|---------------|
@@ -195,6 +214,7 @@ comply:
 | PV-01 | 3 | `pv lint` passes (falls back to YAML structure check) |
 | PV-02 | 3 | `pv score >= 0.5` (FAILs without pv CLI) |
 | PV-03 | 2 | At least one contract at proof level L2+ |
+| PV-05 | 2 | Enforcement quality — `pv coverage --enforcement` finds call sites |
 
 ## Finding Missing Contracts
 

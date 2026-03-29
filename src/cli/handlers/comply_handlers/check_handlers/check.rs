@@ -285,6 +285,13 @@ pub(crate) async fn handle_check(
         comply_config,
     ));
 
+    // Enforcement quality (CB-1214) — contract call-site penetration × quality
+    checks.push(filter_check_by_config(
+        check_enforcement_quality(project_path),
+        "cb-1214",
+        comply_config,
+    ));
+
     let failures = checks
         .iter()
         .filter(|c| c.status == CheckStatus::Fail)

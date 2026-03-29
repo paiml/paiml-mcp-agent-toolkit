@@ -1961,3 +1961,154 @@ fn find_generated_contracts(project_path: &Path) -> Option<std::path::PathBuf> {
     }
     None
 }
+
+/// CB-1214: Enforcement Quality — measures actual contract call-site penetration
+///
+/// Runs `pv coverage --enforcement <src> --binding <binding.yaml>` and parses
+/// the enforcement score (penetration × quality). E0=0.1, E1=0.5, E2=1.0.
+pub(crate) fn check_enforcement_quality(project_path: &Path) -> ComplianceCheck {
+    let contracts_dir = project_path.join("contracts");
+    if !contracts_dir.exists() {
+        return ComplianceCheck {
+            name: "CB-1214: Enforcement Quality".into(),
+            status: CheckStatus::Skip,
+            message: "No contracts/ directory".into(),
+            severity: Severity::Info,
+        };
+    }
+
+    // Find binding.yaml — check sibling provable-contracts repo
+    let binding_path = find_binding_yaml(project_path);
+    let binding_arg = match &binding_path {
+        Some(p) => p.to_string_lossy().to_string(),
+        None => {
+            return ComplianceCheck {
+                name: "CB-1214: Enforcement Quality".into(),
+                status: CheckStatus::Skip,
+                message: "No binding.yaml found".into(),
+                severity: Severity::Info,
+            };
+        }
+    };
+
+    // Run pv coverage --enforcement
+    let pv_result = std::process::Command::new("pv")
+        .args([
+            "coverage",
+            "--enforcement",
+            ".",
+            "--binding",
+            &binding_arg,
+        ])
+        .current_dir(project_path)
+        .output();
+
+    match pv_result {
+        Ok(output) if output.status.success() => {
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            let combined = format!("{stdout}{stderr}");
+
+            // Parse enforcement metrics from output
+            let e0 = parse_metric(&combined, "E0 (generic !is_empty):");
+            let e1 = parse_metric(&combined, "E1 (domain pre-checks):");
+            let e2 = parse_metric(&combined, "E2 (pre + post checks):");
+            let quality = parse_float_metric(&combined, "Quality score:");
+            let enforcement = parse_float_metric(&combined, "Enforcement score:");
+
+            let total_sites = e0 + e1 + e2;
+
+            if total_sites == 0 {
+                return ComplianceCheck {
+                    name: "CB-1214: Enforcement Quality".into(),
+                    status: CheckStatus::Warn,
+                    message: "0 contract call sites found in source — contracts exist but are not invoked".into(),
+                    severity: Severity::Warning,
+                };
+            }
+
+            let message = format!(
+                "{total_sites} call sites (E0={e0}, E1={e1}, E2={e2}), quality={quality:.2}, enforcement={enforcement:.4}"
+            );
+
+            // FAIL only if quality < 0.3 AND >5 call sites (real regression, not early adoption)
+            if quality < 0.3 && total_sites > 5 {
+                ComplianceCheck {
+                    name: "CB-1214: Enforcement Quality".into(),
+                    status: CheckStatus::Fail,
+                    message: format!("Low enforcement quality: {message}"),
+                    severity: Severity::Error,
+                }
+            } else if quality < 0.3 {
+                ComplianceCheck {
+                    name: "CB-1214: Enforcement Quality".into(),
+                    status: CheckStatus::Warn,
+                    message: format!("Early adoption (E0-only): {message}"),
+                    severity: Severity::Warning,
+                }
+            } else {
+                ComplianceCheck {
+                    name: "CB-1214: Enforcement Quality".into(),
+                    status: CheckStatus::Pass,
+                    message,
+                    severity: Severity::Info,
+                }
+            }
+        }
+        _ => ComplianceCheck {
+            name: "CB-1214: Enforcement Quality".into(),
+            status: CheckStatus::Skip,
+            message: "pv CLI not available".into(),
+            severity: Severity::Info,
+        },
+    }
+}
+
+/// Find binding.yaml for a project — checks sibling provable-contracts repo.
+fn find_binding_yaml(project_path: &Path) -> Option<std::path::PathBuf> {
+    let canonical = std::fs::canonicalize(project_path).ok()?;
+    let project_name = canonical.file_name()?.to_str()?;
+    // Check sibling ../provable-contracts/contracts/<project>/binding.yaml
+    let sibling = canonical
+        .parent()?
+        .join("provable-contracts")
+        .join("contracts")
+        .join(project_name)
+        .join("binding.yaml");
+    if sibling.exists() {
+        return Some(sibling);
+    }
+    // Check local contracts/binding.yaml
+    let local = project_path.join("contracts").join("binding.yaml");
+    if local.exists() {
+        return Some(local);
+    }
+    None
+}
+
+/// Parse an integer metric from pv coverage output (e.g., "E0 (generic !is_empty):  3")
+fn parse_metric(output: &str, label: &str) -> usize {
+    output
+        .lines()
+        .find(|l| l.contains(label))
+        .and_then(|l| l.split(':').last())
+        .and_then(|v| v.trim().parse().ok())
+        .unwrap_or(0)
+}
+
+/// Parse a float metric from pv coverage output (e.g., "Quality score:  0.55 ...")
+fn parse_float_metric(output: &str, label: &str) -> f64 {
+    output
+        .lines()
+        .find(|l| l.contains(label))
+        .and_then(|l| {
+            l.split(':')
+                .last()?
+                .trim()
+                .split_whitespace()
+                .next()?
+                .parse()
+                .ok()
+        })
+        .unwrap_or(0.0)
+}
