@@ -384,6 +384,7 @@ pub(crate) async fn handle_check(
 // Provable-contracts enforcement checks (CB-1201 through CB-1209)
 // Extracted for file health (CB-040) — check_pv_enforcement.rs
 include!("check_pv_enforcement.rs");
+include!("check_pv_quality.rs");
 
 /// CB-533: Stale path references in Makefiles and CI workflows.
 pub(crate) fn check_stale_paths(project_path: &Path) -> ComplianceCheck {
