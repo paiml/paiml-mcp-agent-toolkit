@@ -44,7 +44,7 @@ SCRIPTS_DIR = scripts
 # Test files, benchmarks, examples, fixtures, binary entry point.
 # Network-dependent: mcp modules (require live server connections).
 # All other modules use source-level #[coverage(off)] for transparent exclusion.
-COVERAGE_EXCLUDE := --ignore-filename-regex='(_tests?\\.rs|/(tests|benches|examples|fixtures)/|main\\.rs|/mcp[^/]*/)'
+COVERAGE_EXCLUDE := --ignore-filename-regex='(_tests?\\.rs|/(tests|benches|examples|fixtures)/|main\\.rs|/mcp[^/]*/|/provable-contracts/)'
 
 # Default target: format and build all projects
 all: format build

@@ -9,9 +9,9 @@ Five Whys (2026-03-29):
 1. **Why are generated assertions useless?** Every generated precondition
    is `!_contract_input.is_empty()`, regardless of what the YAML says.
 2. **Why does codegen emit the same assertion for all equations?**
-   `codegen.rs` line 60 hardcodes `!_contract_input.is_empty()` instead
+   `codegen.rs` hardcoded `!_contract_input.is_empty()` instead
    of looping over `equation.preconditions` — the same pattern that
-   already works correctly for postconditions on lines 78-84.
+   already works correctly for postconditions in `emit_postcondition_macro()`.
 3. **Why wasn't this caught?** CB-1210 checks YAML precondition diversity
    (which is fine — the YAML has real expressions), not generated output
    diversity. Nobody validated that codegen output matches YAML input.
@@ -22,8 +22,9 @@ Five Whys (2026-03-29):
 
 **The bug (FIXED — provable-contracts commit 013397a):** `codegen.rs`
 previously hardcoded `!_contract_input.is_empty()` for all preconditions.
-Now fixed: lines 73-79 (multi-arg) and 90-101 (single-input) loop over
-`equation.preconditions` and emit each YAML expression as a `debug_assert!`.
+Now fixed: `emit_precondition_macro()` loops over `equation.preconditions`
+in both the domain-specific (multi-arg) and single-input paths, emitting
+each YAML expression as a `debug_assert!`.
 
 **What works:** YAML contracts contain domain-specific Rust expressions
 (softmax: `x.iter().all(|v| v.is_finite())`; matmul: `a.len() == m * k`;
@@ -32,8 +33,9 @@ iterate YAML and emit real assertions.
 
 ## Enforcement Chain: CB-1200 through CB-1214
 
-pmat enforces provable-contracts compliance via 15 checks spanning
-the full verification ladder (L0-L5):
+pmat enforces provable-contracts compliance via 13 implemented checks
+(2 more specified but not yet implemented) spanning the verification
+ladder (L0-L5):
 
 | Check | Level | What it enforces | Catches |
 |-------|-------|-----------------|---------|
@@ -47,10 +49,10 @@ the full verification ladder (L0-L5):
 | CB-1207 | — | Contract drift (stale YAML vs source) | Outdated contracts |
 | **CB-1208** | **L1-L3** | **Binding existence + enforcement level (L0-L3)** | **Ghost bindings, paper-only repos** |
 | **CB-1209** | **L2** | **Contract trait enforcement (13 kernel traits)** | **Missing trait impls** |
-| **CB-1210** | **L3** | **Generated assertion diversity** | **Codegen emitting identical placeholders** |
-| **CB-1211** | **L3** | **Codegen fidelity — assertion count matches YAML** | **Codegen dropping preconditions** |
-| **CB-1212** | **L3** | **Postcondition codegen — wrapper macro pattern** | **Unenforced postconditions** |
-| **CB-1213** | **L3** | **Binding-level typed assertions** | **Generic contracts on typed functions** |
+| **CB-1210** | **L3** | **YAML precondition diversity** | **Mass-generated placeholder preconditions in YAML** |
+| **CB-1211** | **L3** | **Codegen fidelity — placeholder ratio check** | **Codegen emitting placeholder assertions** |
+| **CB-1212** | **L3** | **Postcondition codegen — wrapper macro pattern** | **NOT IMPLEMENTED** |
+| **CB-1213** | **L3** | **Binding-level typed assertions** | **NOT IMPLEMENTED** |
 | **CB-1214** | **L3** | **Enforcement quality — call-site penetration × quality** | **Contracts exist but never invoked** |
 
 ### Enforcement Levels (detected by CB-1208)
@@ -60,49 +62,50 @@ the full verification ladder (L0-L5):
 | L3 | build.rs + traits | aprender, entrenar, forjar, realizar, ruchy, simular | Function exists + right signature + build enforced |
 | L2 | traits only | bashrs | Function exists + right signature |
 | L1 | build.rs only | trueno | YAML says "implemented" |
-| L0 | paper-only | 18 repos | **Nothing — ghost bindings** |
+| L0 | paper-only | 19 repos | **Nothing — ghost bindings** |
 
 L0 repos with binding.yaml but no enforcement **FAIL** CB-1208.
 
 ## CB-1210..1213: Contract Enforcement Quality (NEW)
 
-### CB-1210: Precondition Quality (STRENGTHENED — WARN → FAIL)
+### CB-1210: Precondition Quality
 
-**Previous behavior:** WARN when >90% of YAML preconditions are identical.
-**Problem:** The YAML preconditions are already diverse and correct. CB-1210
-was checking the wrong thing — it should check *generated output*, not YAML input.
+**What it checks:** Scans YAML contract preconditions for diversity and
+flags mass-generated placeholder patterns. FAIL when:
 
-**New behavior:** Check the **generated** `contract_pre_*` macros. FAIL when:
+1. **YAML precondition diversity < 30%** — >70% of preconditions across all
+   equations are identical (suggests mass-generation without domain logic)
+2. **>5% of equations have only placeholder preconditions** — equations whose
+   preconditions are all known placeholders like `!input.is_empty()`
 
-1. **Generated output diversity < 30%** — codegen emits the same `debug_assert!`
-   for >70% of equations (symptom of the hardcoded placeholder bug)
-2. **Generated output doesn't match YAML** — a generated assertion is a known
-   placeholder (`!_contract_input.is_empty()`) but the source YAML has
-   domain-specific expressions like `x.iter().all(|v| v.is_finite())`
-
-**Note:** The YAML data is correct. Core kernels already have real Rust
-expressions. The fix is in codegen, not in contract authoring.
+**Note:** CB-1210 checks YAML *authoring* quality. CB-1211 checks *codegen*
+fidelity (whether generated `debug_assert!` output matches the YAML).
 
 ### CB-1211: Codegen Fidelity (NEW)
 
-**What it checks:** Generated `debug_assert!` count and content must match
-the source YAML for each equation.
+**What it checks:** Generated `debug_assert!` assertions in
+`generated_contracts.rs` should not be dominated by placeholder patterns.
 
-**Detection:** For each contract YAML, count preconditions. Then count
-`debug_assert!` lines in the generated `contract_pre_*` macro. FAIL if:
+**Detection:** Count total `debug_assert!` lines in the generated file
+(excluding comments). Count how many contain the known placeholder
+`_contract_input.is_empty()`. FAIL if:
 
-1. YAML has N preconditions but generated macro has <N assertions
-2. Generated macro contains `!_contract_input.is_empty()` but YAML doesn't
+1. Placeholder assertions are >50% of total generated assertions
+2. Falls back to running `pv codegen` if no generated file exists
 
 **Status: FIXED** (provable-contracts commit `013397a`). Codegen now
-loops over `equation.preconditions` at lines 73-79 (multi-arg) and
-90-101 (single-input), mirroring the postcondition pattern.
+loops over `equation.preconditions` via `emit_precondition_macro()`,
+mirroring the postcondition pattern in `emit_postcondition_macro()`.
 
 CB-1211 remains as a **regression detector**: if a future change
-reintroduces hardcoded placeholders, the assertion-count-vs-YAML check
-catches it.
+reintroduces hardcoded placeholders, the placeholder-ratio check catches it.
 
-**Severity:** FAIL.
+**Note:** Generated assertion count may be less than YAML precondition count
+because codegen's `has_unbound_vars()` skips assertions whose variables
+can't be mapped to the macro's input parameter (e.g., multi-arg equations
+where `m`, `k`, `n` aren't bound). This is expected behavior, not a failure.
+
+**Severity:** FAIL (placeholder ratio >50%). SKIP when unable to verify.
 
 ### CB-1212: Combined Wrapper Macro (NEW)
 
@@ -110,10 +113,11 @@ catches it.
 codegen should emit a combined `contract_*` wrapper in addition to the
 separate `contract_pre_*` / `contract_post_*` macros.
 
-**Why:** The separate `contract_post_*` macro works (lines 70-88 emit real
-YAML postconditions), but callers must manually capture the return value
-and call the post macro. A combined wrapper makes postcondition enforcement
-automatic.
+**Why:** The separate `contract_post_*` macro works (`emit_postcondition_macro()`
+emits real YAML postconditions), but callers must manually capture the return
+value and call the post macro. A combined wrapper makes postcondition
+enforcement automatic. Codegen already emits the wrapper via
+`emit_combined_macro()` — this check validates its presence.
 
 **Combined pattern (generated alongside existing separate macros):**
 
@@ -179,13 +183,16 @@ comply:
     min_binding_existence: 95     # CB-1208: % threshold for binding verification
     require_all_traits: true      # CB-1209: require 13/13 traits
     min_kani_coverage: 20         # CB-1206: minimum Kani proof %
-    # NEW: codegen enforcement
-    codegen_fidelity: true          # CB-1211: FAIL if generated assertions don't match YAML
-    min_generated_diversity: 30     # CB-1210: % unique assertions in generated output (FAIL below)
-    require_wrapper_macros: false   # CB-1212: WARN-only (set true to FAIL)
-    require_binding_assertions: false  # CB-1213: WARN-only (set true to FAIL)
-    min_enforcement_quality: 0.3      # CB-1214: FAIL if quality below threshold
 ```
+
+**Hardcoded thresholds** (not yet configurable):
+
+| Check | Threshold | Value |
+|-------|-----------|-------|
+| CB-1210 | Precondition diversity minimum | 30% |
+| CB-1210 | Placeholder-only equation maximum | 5% |
+| CB-1211 | Placeholder assertion ratio maximum | 50% |
+| CB-1214 | Enforcement quality minimum | 0.3 (with >30 call sites AND mixed E-levels) |
 
 ### CB-1214: Enforcement Quality (NEW)
 
@@ -201,8 +208,24 @@ the enforcement score. Classifies contract call sites:
 **Quality** = weighted average of E levels across call sites.
 **Enforcement** = penetration (call sites / bindings) × quality.
 
-FAIL if quality < 0.3 (more than 70% of call sites are E0 generic).
+FAIL if quality < 0.3 AND >30 call sites AND has mixed E-levels (mature repo regressed).
+WARN if quality < 0.3 with E0-only (legitimate transition — macros invoked but generic).
 WARN if 0 call sites found (contracts exist but are never invoked).
+SKIP if `pv` CLI not available.
+
+**Expected `pv coverage --enforcement` output format:**
+
+```
+E0 (<description>):  <count>
+E1 (<description>):  <count>
+E2 (<description>):  <count>
+Quality score:  <float>
+Enforcement score:  <float>
+```
+
+Both CB-1214 and PV-05 parse E-levels via prefix matching (`"E0 ("`)
+followed by colon-split to extract the count. Quality/enforcement scores
+are parsed by label then first whitespace-separated float.
 
 ## Infra-Score PV Bonus (PV-01..PV-05)
 
@@ -239,12 +262,13 @@ pmat comply check 2>&1 | grep 'CB-1202'
 
 | File | Purpose |
 |------|---------|
-| `check_pv_enforcement.rs` | CB-1201..1213 implementation |
+| `check_pv_enforcement.rs` | CB-1201..1209 enforcement checks |
+| `check_pv_quality.rs` | CB-1210, CB-1211, CB-1214 quality checks |
 | `check_provable_contracts.rs` | CB-1200 detection + pv lint/score |
 | `infra_score_handlers.rs` | `pmat infra-score` CLI handler |
-| `provable_contracts.rs` (infra_score) | PV-01..PV-04 bonus scorer |
+| `provable_contracts.rs` (infra_score) | PV-01..PV-05 bonus scorer |
 | `comply_config_types.rs` | PV threshold configuration |
-| `codegen.rs` (provable-contracts) | **Root cause** — precondition codegen ignores YAML |
+| `codegen.rs` (provable-contracts) | Precondition codegen (fixed in 013397a) |
 
 ## Remediation Roadmap
 
@@ -253,12 +277,13 @@ pmat comply check 2>&1 | grep 'CB-1202'
 Fixed in provable-contracts commit `013397a`. Codegen now loops over
 `equation.preconditions` and emits each YAML expression.
 
-### Fix 2: Combined wrapper macro (CB-1212) — ~20 lines
+### Fix 2: Combined wrapper macro (CB-1212) — codegen DONE, pmat check TODO
 
-Add a third macro `contract_<eq>!` that composes the existing `contract_pre_*`
-and `contract_post_*` macros around a body expression. Ergonomic, not blocking.
+Codegen already emits `contract_<eq>!` wrapper macros via
+`emit_combined_macro()` in `codegen.rs`. The pmat check to detect
+repos missing the wrapper pattern is not yet implemented.
 
-**Scope:** `codegen.rs` `generate_from_contract()`.
+**Scope:** pmat `check_pv_quality.rs` (new check function).
 
 ### Fix 3: Binding-level assertions (CB-1213) — schema + codegen
 
@@ -273,7 +298,7 @@ back to equation-level assertions otherwise.
 | Fix | Check | Impact | Effort | Status |
 |-----|-------|--------|--------|--------|
 | 1 | CB-1211 | 516 real assertions | ~10 lines | **DONE** (013397a) |
-| 2 | CB-1212 | Ergonomic postconditions | ~20 lines | **TODO** |
+| 2 | CB-1212 | Ergonomic postconditions | Codegen done, pmat check ~20 lines | **PARTIAL** |
 | 3 | CB-1213 | Per-binding type safety | Schema + codegen | **TODO** |
 
 ## References

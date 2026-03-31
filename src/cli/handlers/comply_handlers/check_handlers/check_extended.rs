@@ -355,7 +355,10 @@ fn classify_file_health(file_path: &std::path::PathBuf, content: &str) -> (usize
     let is_test_file = file_path.to_string_lossy().contains("/tests/")
         || file_path
             .file_name()
-            .map(|f| f.to_string_lossy().starts_with("test"))
+            .map(|f| {
+                let name = f.to_string_lossy();
+                name.starts_with("test") || name.ends_with("_tests.rs")
+            })
             .unwrap_or(false);
     let critical_threshold = if is_test_file { 4000 } else { 2000 };
     let problem_threshold = if is_test_file { 2000 } else { 1000 };

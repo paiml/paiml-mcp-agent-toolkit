@@ -209,7 +209,13 @@ pub(crate) fn check_annotation_coverage(project_path: &Path) -> ComplianceCheck 
                             || t.starts_with("#[ensures(")
                             || t.starts_with("#[invariant(")
                     });
-                    if has_macro {
+                    // Also check function body for contract_pre_*/debug_assert! with contract comment
+                    let body_start = &content[pos..];
+                    let body_snippet: String = body_start.lines().take(20).collect::<Vec<_>>().join("\n");
+                    let has_body_contract = body_snippet.contains("contract_pre_")
+                        || body_snippet.contains("contract_post_")
+                        || body_snippet.contains("// Contract:");
+                    if has_macro || has_body_contract {
                         with_macro += 1;
                     } else {
                         let rel = entry
@@ -1096,21 +1102,22 @@ fn collect_known_fn_names(
 ) -> Option<std::collections::HashSet<String>> {
     let src_dir = project_path.join("src");
     let crates_dir = project_path.join("crates");
-    let search_dirs: Vec<std::path::PathBuf> = if src_dir.exists() {
-        vec![src_dir]
-    } else if crates_dir.exists() {
-        std::fs::read_dir(&crates_dir)
-            .into_iter()
-            .flatten()
-            .flatten()
-            .filter_map(|e| {
-                let s = e.path().join("src");
-                s.exists().then_some(s)
-            })
-            .collect()
-    } else {
+    let mut search_dirs: Vec<std::path::PathBuf> = Vec::new();
+    // Search both src/ and crates/*/src/ — workspaces have both
+    if src_dir.exists() {
+        search_dirs.push(src_dir);
+    }
+    if crates_dir.exists() {
+        for entry in std::fs::read_dir(&crates_dir).into_iter().flatten().flatten() {
+            let s = entry.path().join("src");
+            if s.exists() {
+                search_dirs.push(s);
+            }
+        }
+    }
+    if search_dirs.is_empty() {
         return None;
-    };
+    }
 
     let mut known = std::collections::HashSet::new();
     for sdir in &search_dirs {

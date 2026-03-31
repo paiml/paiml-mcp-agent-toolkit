@@ -14,16 +14,16 @@ these correctly.
 
 ### Current Integration Depth
 
-| pv-spec Feature | pmat Status | Gap |
+| pv-spec Feature | pmat Status | Check |
 |---|---|---|
-| Verification Ladder (L1-L5) | Not checked | Critical |
-| Provability Invariant | Delegated to `pv lint` boolean | No per-obligation enforcement |
-| Contract Score (D1-D5) | Custom formula, wrong dimensions | Replace with pv score |
-| Codebase Score (CD1-CD5) | File-existence heuristic | Replace with pv score |
-| SARIF output | Not consumed | No GitHub Code Scanning |
-| proof-status.json | Checks existence only | Parse L4/L5 levels |
-| Drift Detection (CD5) | Not implemented | Stale contracts undetected |
-| pv query cross-project | Not integrated | Separate tool silos |
+| Verification Ladder (L1-L5) | **Implemented** | CB-1206: `check_verification_levels()` |
+| Provability Invariant | **Implemented** | CB-1205: `check_provability_invariant()` |
+| Contract Score (D1-D5) | **Implemented** | CB-1201: delegates to `pv score --format json` |
+| Codebase Score (CD1-CD5) | **Implemented** | Blended pv-score + pipeline depth |
+| SARIF output | **Implemented** | `pmat comply check --format sarif` |
+| proof-status.json | **Implemented** | CB-1206: parses L2/L4/L5 distribution |
+| Drift Detection (CD5) | **Implemented** | CB-1207: `check_contract_drift()` (90-day staleness) |
+| pv query cross-project | **Implemented** | `pmat query --contracts` delegates to `pv query` |
 
 ---
 
@@ -135,9 +135,10 @@ models for different purposes. Document clearly:
 | P2 | CB-1206: Verification Level Distribution | L2/L4/L5 from proof-status.json | **DONE** (PMAT-524) |
 | P3 | SARIF pipeline | `pmat comply --format sarif` delegates to `pv lint` | **DONE** (PMAT-525) |
 | P3 | pv query integration | `pmat query --contracts` delegates to `pv query` | **DONE** (PMAT-526) |
-| **P0** | **CB-1211: Codegen fidelity** | **Codegen fixed (013397a), regression check in pmat** | **DONE** (codegen) / **TODO** (pmat check) |
-| **P0** | **CB-1210: Check generated output** | **Validate codegen output diversity, not YAML input** | **TODO** |
-| **P1** | **CB-1212: Combined wrapper macro** | **Ergonomic pre+post composition** | **TODO** |
+| **P0** | **CB-1211: Codegen fidelity** | **Placeholder ratio check on generated output** | **DONE** |
+| **P0** | **CB-1210: Precondition quality** | **YAML precondition diversity + placeholder detection** | **DONE** |
+| **P0** | **CB-1214: Enforcement quality** | **Call-site penetration via `pv coverage --enforcement`** | **DONE** |
+| **P1** | **CB-1212: Combined wrapper macro** | **Codegen done; pmat check TODO** | **PARTIAL** |
 | **P2** | **CB-1213: Binding-level assertions** | **Per-function typed pre/postconditions** | **TODO** |
 
 ---
@@ -147,9 +148,9 @@ models for different purposes. Document clearly:
 ### The bug (FIXED — commit 013397a)
 
 `codegen.rs` previously hardcoded `!_contract_input.is_empty()` for all
-preconditions. Now fixed: both precondition paths (multi-arg lines 73-79,
-single-input lines 90-101) loop over `equation.preconditions` and emit
-each YAML expression as a `debug_assert!`.
+preconditions. Now fixed: `emit_precondition_macro()` loops over
+`equation.preconditions` in both domain-specific (multi-arg) and
+single-input paths, emitting each YAML expression as a `debug_assert!`.
 
 ### What the YAML contains (verified correct)
 
@@ -163,13 +164,11 @@ Core kernel contracts have real, compilable Rust precondition expressions:
 
 ### What pmat should detect (CB-1210 + CB-1211)
 
-CB-1210 currently checks YAML precondition diversity (which passes — the YAML is fine).
-It should instead check **generated output** diversity. After the codegen fix, CB-1210
-becomes a regression detector: if someone reintroduces a hardcoded placeholder, the
-generated output diversity drops and CB-1210 FAILs.
-
-CB-1211 compares generated assertion count against YAML precondition count per equation.
-If codegen emits fewer assertions than the YAML specifies, it FAILs.
+CB-1210 checks YAML precondition diversity — flags mass-generated placeholder
+patterns. CB-1211 checks codegen fidelity — flags when >50% of generated
+`debug_assert!` assertions are known placeholders. Together they catch both
+YAML authoring regressions and codegen regressions. CB-1214 checks call-site
+enforcement quality via `pv coverage --enforcement`.
 
 ---
 

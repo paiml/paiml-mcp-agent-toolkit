@@ -287,7 +287,7 @@ dependencies = [
  "getrandom 0.2.17",
  "memmap2",
  "minijinja",
- "provable-contracts-macros",
+ "provable-contracts-macros 0.1.1",
  "rand 0.9.2",
  "rand_chacha 0.9.0",
  "rayon",
@@ -310,7 +310,7 @@ dependencies = [
  "getrandom 0.2.17",
  "memmap2",
  "minijinja",
- "provable-contracts-macros",
+ "provable-contracts-macros 0.1.1",
  "rand 0.9.2",
  "rand_chacha 0.9.0",
  "rayon",
@@ -5011,7 +5011,7 @@ dependencies = [
 
 [[package]]
 name = "pmat"
-version = "3.9.0"
+version = "3.10.0"
 dependencies = [
  "actix",
  "actix-rt",
@@ -5446,8 +5446,9 @@ dependencies = [
 
 [[package]]
 name = "provable-contracts"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
+ "provable-contracts-macros 0.2.0",
  "regex",
  "serde",
  "serde_json",
@@ -5460,6 +5461,15 @@ name = "provable-contracts-macros"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c383d865124fe9fda96af4a04d0c2641bcb93e16eb5e13f7c665f98c15333447"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.117",
+]
+
+[[package]]
+name = "provable-contracts-macros"
+version = "0.2.0"
 dependencies = [
  "proc-macro2",
  "quote",

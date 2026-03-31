@@ -324,7 +324,7 @@ pub(crate) fn check_codegen_fidelity(project_path: &Path) -> ComplianceCheck {
                 })
                 .count();
 
-            if placeholder_count > 0 && placeholder_count as f64 / gen_assert_count as f64 > 0.5 {
+            if placeholder_count > 0 && placeholder_count as f64 / gen_assert_count.max(1) as f64 > 0.5 {
                 return ComplianceCheck {
                     name: "CB-1211: Codegen Fidelity".into(),
                     status: CheckStatus::Fail,
@@ -335,12 +335,26 @@ pub(crate) fn check_codegen_fidelity(project_path: &Path) -> ComplianceCheck {
                 };
             }
 
+            // Detect full-corpus generated file (assertions >> local YAML)
+            let source_note = if gen_assert_count > yaml_pre_count * 5 && yaml_pre_count > 0 {
+                format!("{gen_assert_count} assertions (full-corpus file), {yaml_pre_count} local YAML preconditions, 0 placeholders")
+            } else {
+                format!("{gen_assert_count} assertions from {yaml_pre_count} YAML preconditions across {yaml_equation_count} equations")
+            };
+
+            if gen_assert_count == 0 && yaml_pre_count > 0 {
+                return ComplianceCheck {
+                    name: "CB-1211: Codegen Fidelity".into(),
+                    status: CheckStatus::Warn,
+                    message: format!("Generated file: 0 assertions from {yaml_pre_count} YAML preconditions — all skipped (unbound vars)"),
+                    severity: Severity::Warning,
+                };
+            }
+
             return ComplianceCheck {
                 name: "CB-1211: Codegen Fidelity".into(),
                 status: CheckStatus::Pass,
-                message: format!(
-                    "Generated file: {gen_assert_count} assertions from {yaml_pre_count} YAML preconditions across {yaml_equation_count} equations"
-                ),
+                message: format!("Generated file: {source_note}"),
                 severity: Severity::Info,
             };
         }
@@ -382,6 +396,15 @@ pub(crate) fn check_codegen_fidelity(project_path: &Path) -> ComplianceCheck {
                     ),
                     severity: Severity::Error,
                 }
+            } else if gen_assert_count == 0 && yaml_pre_count > 0 {
+                ComplianceCheck {
+                    name: "CB-1211: Codegen Fidelity".into(),
+                    status: CheckStatus::Warn,
+                    message: format!(
+                        "pv codegen: 0 assertions from {yaml_pre_count} YAML preconditions — all skipped (unbound vars)"
+                    ),
+                    severity: Severity::Warning,
+                }
             } else {
                 ComplianceCheck {
                     name: "CB-1211: Codegen Fidelity".into(),
@@ -394,12 +417,12 @@ pub(crate) fn check_codegen_fidelity(project_path: &Path) -> ComplianceCheck {
             }
         }
         _ => {
-            // pv not available — report YAML counts only
+            // pv not available and no generated file — cannot verify
             ComplianceCheck {
                 name: "CB-1211: Codegen Fidelity".into(),
-                status: CheckStatus::Pass,
+                status: CheckStatus::Skip,
                 message: format!(
-                    "{yaml_pre_count} YAML preconditions across {yaml_equation_count} equations (pv not available for codegen validation)"
+                    "{yaml_pre_count} YAML preconditions across {yaml_equation_count} equations (pv not available, no generated file)"
                 ),
                 severity: Severity::Info,
             }
@@ -469,10 +492,11 @@ pub(crate) fn check_enforcement_quality(project_path: &Path) -> ComplianceCheck 
             let stderr = String::from_utf8_lossy(&output.stderr);
             let combined = format!("{stdout}{stderr}");
 
-            // Parse enforcement metrics from output
-            let e0 = parse_metric(&combined, "E0 (generic !is_empty):");
-            let e1 = parse_metric(&combined, "E1 (domain pre-checks):");
-            let e2 = parse_metric(&combined, "E2 (pre + post checks):");
+            // Parse enforcement metrics from output — use prefix matching
+            // to be resilient to label text changes in pv CLI
+            let e0 = parse_metric(&combined, "E0 (");
+            let e1 = parse_metric(&combined, "E1 (");
+            let e2 = parse_metric(&combined, "E2 (");
             let quality = parse_float_metric(&combined, "Quality score:");
             let enforcement = parse_float_metric(&combined, "Enforcement score:");
 
@@ -491,8 +515,10 @@ pub(crate) fn check_enforcement_quality(project_path: &Path) -> ComplianceCheck 
                 "{total_sites} call sites (E0={e0}, E1={e1}, E2={e2}), quality={quality:.2}, enforcement={enforcement:.4}"
             );
 
-            // FAIL only if quality < 0.3 AND >30 call sites (mature repo, not early adoption)
-            if quality < 0.3 && total_sites > 30 {
+            // FAIL only if quality < 0.3 AND has E1/E2 mix (mature repo with regression)
+            // E0-only repos are in legitimate transition — WARN, don't FAIL
+            let has_mixed_levels = e1 > 0 || e2 > 0;
+            if quality < 0.3 && total_sites > 30 && has_mixed_levels {
                 ComplianceCheck {
                     name: "CB-1214: Enforcement Quality".into(),
                     status: CheckStatus::Fail,
