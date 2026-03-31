@@ -285,6 +285,10 @@ impl CommandDispatcher {
                 }
             }
             Commands::Prompt(prompt_cmd) => handlers::handle_prompt_command(prompt_cmd).await,
+            Commands::Explain { pattern } => {
+                handle_explain(pattern.as_deref());
+                Ok(())
+            }
             // Scoring and reporting commands delegated to reduce cognitive complexity
             cmd @ (Commands::QualityGate { .. }
             | Commands::Report { .. }
@@ -483,6 +487,36 @@ impl CommandDispatcher {
             | Commands::CudaTdg { .. }
             | Commands::DepsAudit { .. }
             | Commands::Kaizen { .. }) => Self::route_quality_command(cmd).await,
+        }
+    }
+}
+
+/// Handle `pmat explain <PATTERN>` — look up check/metric explanations.
+fn handle_explain(pattern: Option<&str>) {
+    match pattern {
+        Some(pat) => {
+            let results = crate::explain::lookup(pat);
+            if results.is_empty() {
+                eprintln!("No checks matching '{pat}'. Run `pmat explain` to list all.");
+                std::process::exit(1);
+            }
+            for (i, e) in results.iter().enumerate() {
+                if i > 0 {
+                    println!();
+                }
+                print!("{}", crate::explain::format_explanation(e));
+            }
+        }
+        None => {
+            println!("Available checks and metrics:\n");
+            for (domain, checks) in crate::explain::list_all() {
+                println!("{domain}:");
+                for e in checks {
+                    println!("  {:<10} {}", e.id, e.name);
+                }
+                println!();
+            }
+            println!("Usage: pmat explain <ID>  (e.g., pmat explain CB-1210)");
         }
     }
 }

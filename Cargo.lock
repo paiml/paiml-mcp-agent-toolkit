@@ -5446,9 +5446,9 @@ dependencies = [
 
 [[package]]
 name = "provable-contracts"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
- "provable-contracts-macros 0.2.0",
+ "provable-contracts-macros 0.2.1",
  "regex",
  "serde",
  "serde_json",
@@ -5469,7 +5469,7 @@ dependencies = [
 
 [[package]]
 name = "provable-contracts-macros"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "proc-macro2",
  "quote",

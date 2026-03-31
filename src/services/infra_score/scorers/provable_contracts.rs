@@ -437,7 +437,7 @@ fn parse_enforcement_metric(output: &str, level: &str) -> usize {
     output
         .lines()
         .find(|l| l.contains(&format!("{level} (")))
-        .and_then(|l| l.split(':').last())
+        .and_then(|l| l.split(':').next_back())
         .and_then(|v| v.trim().parse().ok())
         .unwrap_or(0)
 }

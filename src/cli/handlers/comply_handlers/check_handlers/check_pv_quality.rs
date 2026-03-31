@@ -70,7 +70,7 @@ pub(crate) fn check_precondition_quality(project_path: &Path) -> ComplianceCheck
                             &mut equations_with_pre,
                             &mut placeholder_only_equations,
                         );
-                        preconditions.extend(eq_pres.drain(..));
+                        preconditions.append(&mut eq_pres);
                     }
                     in_equations = false;
                     in_preconditions = false;
@@ -87,7 +87,7 @@ pub(crate) fn check_precondition_quality(project_path: &Path) -> ComplianceCheck
                             &mut equations_with_pre,
                             &mut placeholder_only_equations,
                         );
-                        preconditions.extend(eq_pres.drain(..));
+                        preconditions.append(&mut eq_pres);
                     }
                     in_preconditions = true;
                     in_postconditions = false;
@@ -100,7 +100,7 @@ pub(crate) fn check_precondition_quality(project_path: &Path) -> ComplianceCheck
                             &mut equations_with_pre,
                             &mut placeholder_only_equations,
                         );
-                        preconditions.extend(eq_pres.drain(..));
+                        preconditions.append(&mut eq_pres);
                     }
                     in_postconditions = true;
                     in_preconditions = false;
@@ -116,7 +116,7 @@ pub(crate) fn check_precondition_quality(project_path: &Path) -> ComplianceCheck
                             &mut equations_with_pre,
                             &mut placeholder_only_equations,
                         );
-                        preconditions.extend(eq_pres.drain(..));
+                        preconditions.append(&mut eq_pres);
                     }
                     in_preconditions = false;
                     in_postconditions = false;
@@ -577,7 +577,7 @@ fn parse_metric(output: &str, label: &str) -> usize {
     output
         .lines()
         .find(|l| l.contains(label))
-        .and_then(|l| l.split(':').last())
+        .and_then(|l| l.split(':').next_back())
         .and_then(|v| v.trim().parse().ok())
         .unwrap_or(0)
 }
@@ -589,8 +589,7 @@ fn parse_float_metric(output: &str, label: &str) -> f64 {
         .find(|l| l.contains(label))
         .and_then(|l| {
             l.split(':')
-                .last()?
-                .trim()
+                .next_back()?
                 .split_whitespace()
                 .next()?
                 .parse()

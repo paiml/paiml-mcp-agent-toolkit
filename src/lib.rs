@@ -129,6 +129,7 @@ pub mod contracts; // Uniform contracts across ALL interfaces (CLI, MCP, HTTP)
 pub mod demo;
 pub mod docs_enforcement; // Documentation quality enforcement (TICKET-PMAT-7001)
 pub mod entropy; // Actionable entropy analysis
+pub mod explain; // Check/metric explanation registry (--explain)
 pub mod graph; // Graph-theoretic analysis for dependency networks
 pub mod handlers;
 pub mod maintenance; // Roadmap and ticket maintenance system (Sprint 17)

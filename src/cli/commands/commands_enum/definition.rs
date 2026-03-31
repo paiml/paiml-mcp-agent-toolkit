@@ -1220,6 +1220,17 @@ pub enum Commands {
         fast: bool,
     },
 
+    /// Explain what a check, metric, or grade means
+    ///
+    /// Look up any check ID (CB-1210, PV-05, TDG-A) to see what it checks,
+    /// why it matters, when it fails, and how to fix it.
+    #[command(visible_aliases = &["explain-check", "what-is"])]
+    Explain {
+        /// Check ID or search pattern (e.g., CB-1210, PV-05, TDG-A, "precondition")
+        /// Omit to list all available checks.
+        pattern: Option<String>,
+    },
+
     /// Specification management and validation
     #[command(name = "spec", visible_aliases = &["specification"])]
     Spec {
