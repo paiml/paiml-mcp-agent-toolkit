@@ -1515,8 +1515,28 @@ fn count_contract_test_refs(project_path: &Path) -> (usize, usize, usize) {
     }
 
     let mut src_tests = std::collections::HashSet::new();
-    if src_dir.exists() {
-        for entry in walkdir::WalkDir::new(&src_dir).into_iter().flatten() {
+    // Scan src/, tests/, crates/, and workspace member directories
+    let mut scan_dirs = vec![src_dir.clone()];
+    scan_dirs.push(project_path.join("tests"));
+    scan_dirs.push(project_path.join("crates"));
+    // Workspace members: root-level dirs with Cargo.toml
+    if let Ok(entries) = std::fs::read_dir(project_path) {
+        for entry in entries.flatten() {
+            let p = entry.path();
+            if p.is_dir() && p.join("Cargo.toml").exists() {
+                let name = p.file_name().unwrap_or_default();
+                if name != "src" && name != "crates" && name != "tests" && name != "contracts" {
+                    scan_dirs.push(p.join("src"));
+                    scan_dirs.push(p.join("tests"));
+                }
+            }
+        }
+    }
+    for dir in &scan_dirs {
+        if !dir.exists() {
+            continue;
+        }
+        for entry in walkdir::WalkDir::new(dir).into_iter().flatten() {
             if entry.path().extension().map_or(true, |e| e != "rs") {
                 continue;
             }
