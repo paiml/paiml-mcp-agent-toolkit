@@ -1,5 +1,6 @@
 // SATD (Self-Admitted Technical Debt) Analysis Tool
 
+/// MCP args for analyze.satd: paths to scan for self-admitted technical debt, optional include_resolved flag.
 #[derive(Debug, Deserialize)]
 struct SatdArgs {
     paths: Vec<String>,
@@ -72,6 +73,7 @@ impl ToolHandler for SatdTool {
 
 // Dead Code Analysis Tool
 
+/// MCP args for analyze.dead-code: paths to scan for unreachable code, optional include_tests flag.
 #[derive(Debug, Deserialize)]
 struct DeadCodeArgs {
     paths: Vec<String>,

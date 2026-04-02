@@ -16,6 +16,7 @@ pub use self::DefectAwarePromptTool as GenerateDefectAwarePromptTool;
 
 // Defect-Aware Prompt Generation Tool
 
+/// MCP args for generate_defect_aware_prompt: task description, context string, and OIP summary_path.
 #[derive(Debug, Deserialize)]
 struct DefectAwarePromptArgs {
     task: String,

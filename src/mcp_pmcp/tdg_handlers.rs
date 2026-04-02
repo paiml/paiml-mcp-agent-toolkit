@@ -25,6 +25,7 @@ use tracing::debug;
 
 // === Argument Types ===
 
+/// MCP args for tdg.system_diagnostics: optional detailed flag and list of components to inspect.
 #[derive(Debug, Deserialize)]
 struct TdgSystemDiagnosticsArgs {
     #[serde(default)]
@@ -33,6 +34,7 @@ struct TdgSystemDiagnosticsArgs {
     components: Vec<String>,
 }
 
+/// MCP args for tdg.storage_management: action name (compact, purge, etc.) with freeform options.
 #[derive(Debug, Deserialize)]
 struct TdgStorageManagementArgs {
     action: String,
@@ -40,6 +42,7 @@ struct TdgStorageManagementArgs {
     options: Value,
 }
 
+/// MCP args for tdg.analyze_with_storage: paths to analyze, optional storage_backend and priority.
 #[derive(Debug, Deserialize)]
 struct TdgAnalyzeWithStorageArgs {
     paths: Vec<String>,
@@ -49,6 +52,7 @@ struct TdgAnalyzeWithStorageArgs {
     priority: Option<String>,
 }
 
+/// MCP args for tdg.performance_metrics: optional include_history flag and list of metric names.
 #[derive(Debug, Deserialize)]
 struct TdgPerformanceMetricsArgs {
     #[serde(default)]
@@ -59,6 +63,7 @@ struct TdgPerformanceMetricsArgs {
     metrics: Vec<String>,
 }
 
+/// MCP args for tdg.configure_storage: backend_type with optional path, cache_size_mb, and compression.
 #[derive(Debug, Deserialize)]
 struct TdgConfigureStorageArgs {
     backend_type: String,
@@ -70,6 +75,7 @@ struct TdgConfigureStorageArgs {
     compression: Option<bool>,
 }
 
+/// MCP args for tdg.health_check: flags for include_recommendations, check_storage, and check_performance.
 #[derive(Debug, Deserialize)]
 struct TdgHealthCheckArgs {
     #[serde(default = "default_true")]

@@ -89,13 +89,7 @@ pub struct DetectionConfig {
     pub detector_specific: DetectorSpecificConfig,
 }
 
-/// Output format options
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub enum OutputFormat {
-    Json,
-    Yaml,
-    Summary,
-}
+pub use crate::contracts::OutputFormat;
 
 /// Detector-specific configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]

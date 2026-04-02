@@ -1,5 +1,6 @@
 // TDG (Technical Debt Grading) Analysis Tool
 
+/// MCP args for analyze.tdg: paths to grade, optional threshold, top_files limit, component breakdown, and git context.
 #[derive(Debug, Deserialize)]
 struct TdgArgs {
     paths: Vec<String>,
@@ -94,6 +95,7 @@ impl ToolHandler for TdgTool {
 
 // TDG Comparison Tool
 
+/// MCP args for analyze.tdg_compare: two paths (path1, path2) to diff TDG scores, optional git context.
 #[derive(Debug, Deserialize)]
 struct TdgCompareArgs {
     path1: String,

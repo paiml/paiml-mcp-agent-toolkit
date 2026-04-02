@@ -1,5 +1,6 @@
 // Lint Hotspot Analysis Tool
 
+/// MCP args for analyze.lint-hotspot: paths to scan for lint violations, optional top_files limit.
 #[derive(Debug, Deserialize)]
 struct LintHotspotArgs {
     paths: Vec<String>,
@@ -42,6 +43,7 @@ impl ToolHandler for LintHotspotTool {
 
 // Churn Analysis Tool
 
+/// MCP args for analyze.churn: paths to analyze for git change frequency, optional days window and top_files limit.
 #[derive(Debug, Deserialize)]
 struct ChurnArgs {
     paths: Vec<String>,
@@ -86,6 +88,7 @@ impl ToolHandler for ChurnTool {
 
 // Coupling Analysis Tool
 
+/// MCP args for analyze.coupling: paths to analyze for module coupling, optional similarity threshold.
 #[derive(Debug, Deserialize)]
 struct CouplingArgs {
     paths: Vec<String>,

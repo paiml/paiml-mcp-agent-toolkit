@@ -8,6 +8,7 @@ use tracing::debug;
 
 // Quality Gate Check Tool
 
+/// MCP args for quality.gate: paths to check, optional strict mode and single-file override.
 #[derive(Debug, Deserialize)]
 struct QualityGateArgs {
     paths: Vec<String>,
@@ -34,6 +35,7 @@ impl Default for QualityGateTool {
 
 // Quality Gate Summary Tool
 
+/// MCP args for quality.gate_summary: paths to summarize with optional output format.
 #[derive(Debug, Deserialize)]
 struct QualityGateSummaryArgs {
     paths: Vec<String>,
@@ -58,6 +60,7 @@ impl Default for QualityGateSummaryTool {
 
 // Quality Gate Baseline Tool
 
+/// MCP args for quality.gate_baseline: paths to snapshot with optional output file path.
 #[derive(Debug, Deserialize)]
 struct QualityGateBaselineArgs {
     paths: Vec<String>,
@@ -82,6 +85,7 @@ impl Default for QualityGateBaselineTool {
 
 // Quality Gate Compare Tool
 
+/// MCP args for quality.gate_compare: baseline file path and current paths to diff against it.
 #[derive(Debug, Deserialize)]
 struct QualityGateCompareArgs {
     baseline: String,

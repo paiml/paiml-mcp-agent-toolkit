@@ -49,15 +49,7 @@ pub struct AnalysisOptions {
     pub output_format: OutputFormat,
 }
 
-/// Output format options
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum OutputFormat {
-    Json,
-    Yaml,
-    Plain,
-    Markdown,
-}
+pub use crate::contracts::OutputFormat;
 
 impl Default for AnalysisOptions {
     fn default() -> Self {

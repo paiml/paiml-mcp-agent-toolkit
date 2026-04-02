@@ -3,6 +3,7 @@
 
 // Context Generate Tool
 
+/// MCP args for context.generate: paths to analyze, optional output format, max_depth, and dependency inclusion.
 #[derive(Debug, Deserialize)]
 struct ContextGenerateArgs {
     paths: Vec<String>,
@@ -60,6 +61,7 @@ impl ToolHandler for ContextGenerateTool {
 
 // Context Analyze Tool
 
+/// MCP args for context.analyze: paths to inspect and list of analysis_types to run.
 #[derive(Debug, Deserialize)]
 struct ContextAnalyzeArgs {
     paths: Vec<String>,
@@ -100,6 +102,7 @@ impl ToolHandler for ContextAnalyzeTool {
 
 // Context Summary Tool
 
+/// MCP args for context.summary: paths to summarize with optional detail level.
 #[derive(Debug, Deserialize)]
 struct ContextSummaryArgs {
     paths: Vec<String>,

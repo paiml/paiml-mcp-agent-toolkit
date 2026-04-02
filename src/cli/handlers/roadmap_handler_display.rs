@@ -23,6 +23,9 @@ async fn show_health_report(
         OutputFormat::Table => {
             print_health_console(&sprints);
         }
+        _ => {
+            print_health_console(&sprints);
+        }
     }
 
     Ok(())

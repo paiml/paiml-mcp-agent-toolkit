@@ -1,14 +1,4 @@
-/// Output format for reports
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
-pub enum OutputFormat {
-    /// Terminal-friendly text with ASCII art
-    #[default]
-    Text,
-    /// Structured JSON
-    Json,
-    /// Markdown for documentation
-    Markdown,
-}
+pub use crate::contracts::OutputFormat;
 
 /// Color mode for terminal output
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]

@@ -34,6 +34,7 @@ pub async fn handle_list(
                 templates.iter().map(std::convert::AsRef::as_ref).collect();
             println!("{}", serde_yaml_ng::to_string(&templates_deref)?);
         }
+        _ => super::super::analysis_utilities::print_table(&templates),
     }
     Ok(())
 }

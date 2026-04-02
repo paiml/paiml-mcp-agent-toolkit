@@ -1,5 +1,6 @@
 // Complexity Analysis Tool
 
+/// MCP args for analyze.complexity: paths to scan, optional top_files limit and complexity threshold.
 #[derive(Debug, Deserialize)]
 struct ComplexityArgs {
     paths: Vec<String>,

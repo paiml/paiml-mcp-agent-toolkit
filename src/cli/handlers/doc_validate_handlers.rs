@@ -2,20 +2,11 @@
 
 use crate::services::doc_validator::{DocValidator, ValidationStatus, ValidatorConfig};
 use anyhow::Result;
-use clap::{Parser, ValueEnum};
+use clap::Parser;
 use std::path::PathBuf;
 use std::process::ExitCode;
 
-/// Output format for validation results
-#[derive(Debug, Clone, ValueEnum)]
-pub enum OutputFormat {
-    /// Human-readable text output
-    Text,
-    /// JSON output for programmatic consumption
-    Json,
-    /// JUnit XML for CI integration
-    Junit,
-}
+pub use crate::contracts::OutputFormat;
 
 /// Validate documentation links
 #[derive(Parser, Debug)]
@@ -80,9 +71,10 @@ impl ValidateDocsCmd {
 
         // Output results
         match self.output {
-            OutputFormat::Text => self.print_text_summary(&summary),
+            OutputFormat::Text | OutputFormat::Plain => self.print_text_summary(&summary),
             OutputFormat::Json => self.print_json_summary(&summary)?,
             OutputFormat::Junit => self.print_junit_summary(&summary)?,
+            _ => self.print_text_summary(&summary),
         }
 
         // Exit with error code if broken links found and fail_on_error is true

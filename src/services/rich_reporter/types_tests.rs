@@ -368,7 +368,7 @@ fn test_metric_trend_serialization() {
 #[test]
 fn test_output_format_default() {
     let format = OutputFormat::default();
-    assert_eq!(format, OutputFormat::Text);
+    assert_eq!(format, OutputFormat::Table);
 }
 
 #[test]

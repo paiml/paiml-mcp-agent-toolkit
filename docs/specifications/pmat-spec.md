@@ -30,6 +30,7 @@
 | 20 | [SWE-CI & Evolution](#20-swe-ci--evolution) | [swe-ci-evolution.md](components/swe-ci-evolution.md) | Active |
 | 21 | [Scoring Convergence & Hardening](#21-scoring-convergence--hardening) | [scoring-convergence.md](components/scoring-convergence.md) | Active |
 | 22 | [Provable Contracts Integration](#22-provable-contracts-integration) | [provable-contracts.md](components/provable-contracts.md) | Active |
+| 23 | [Contract Surface Types](#23-contract-surface-types) | [contract-surface-types.md](components/contract-surface-types.md) | Active |
 
 ---
 
@@ -322,6 +323,22 @@ ONE contract type: `#[core::contracts::requires]`/`#[ensures]` (Rust nightly
 `-Z contract-checks=yes`. No external crates. YAML contracts + `pv lint`
 enforce until nightly stabilizes. 98 contracts across sovereign stack.
 CB-1203: annotation coverage.
+
+---
+
+## 23. Contract Surface Types
+
+**Sub-spec**: [components/contract-surface-types.md](components/contract-surface-types.md)
+
+Six contract surface types (CLI, HTTP, MCP, Config, Library, PV Schema) with
+anti-leak enforcement via CB-1305 contract class classifier. Resolution hierarchy:
+org commits > batuta oracle > arXiv > web search > chain of thought > five-whys.
+New checks CB-1300..1314 prevent whack-a-mole drift from provable-contracts.
+
+**Key insight**: CB-1305 is the anti-leak gate -- classifies every contract YAML
+and flags unrecognized structures instead of silently skipping them.
+
+**Consolidated from**: provable-contracts leak analysis, contract-surface-types (new).
 
 ---
 

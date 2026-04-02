@@ -292,6 +292,63 @@ pub(crate) async fn handle_check(
         comply_config,
     ));
 
+    // Contract Surface Type checks (CB-1300..1305) — Component 23
+    // CB-1300: CLI argument contract coverage (OutputFormat duplication)
+    checks.push(filter_check_by_config(
+        check_cli_arg_contracts(project_path),
+        "cb-1300",
+        comply_config,
+    ));
+
+    // CB-1302: MCP tool schema coverage
+    checks.push(filter_check_by_config(
+        check_mcp_schema_contracts(project_path),
+        "cb-1302",
+        comply_config,
+    ));
+
+    // CB-1303: Config contract validation (CI drift, Cargo.toml)
+    checks.push(filter_check_by_config(
+        check_config_contracts(project_path),
+        "cb-1303",
+        comply_config,
+    ));
+
+    // CB-1304: Sovereign dep version contracts (batuta stack)
+    checks.push(filter_check_by_config(
+        check_sovereign_dep_contracts(project_path),
+        "cb-1304",
+        comply_config,
+    ));
+
+    // CB-1305: Contract surface classification — THE ANTI-LEAK GATE
+    checks.push(filter_check_by_config(
+        check_contract_surface_classification(project_path),
+        "cb-1305",
+        comply_config,
+    ));
+
+    // CB-1306: TUI widget lifecycle contracts (presentar)
+    checks.push(filter_check_by_config(
+        check_tui_widget_contracts(project_path),
+        "cb-1306",
+        comply_config,
+    ));
+
+    // CB-1307: WASM FFI boundary contracts
+    checks.push(filter_check_by_config(
+        check_wasm_ffi_contracts(project_path),
+        "cb-1307",
+        comply_config,
+    ));
+
+    // CB-1308: Verification ladder — L5 as default
+    checks.push(filter_check_by_config(
+        check_verification_ladder(project_path),
+        "cb-1308",
+        comply_config,
+    ));
+
     let failures = checks
         .iter()
         .filter(|c| c.status == CheckStatus::Fail)
@@ -385,6 +442,7 @@ pub(crate) async fn handle_check(
 // Extracted for file health (CB-040) — check_pv_enforcement.rs
 include!("check_pv_enforcement.rs");
 include!("check_pv_quality.rs");
+include!("check_contract_surfaces.rs");
 
 /// CB-533: Stale path references in Makefiles and CI workflows.
 pub(crate) fn check_stale_paths(project_path: &Path) -> ComplianceCheck {

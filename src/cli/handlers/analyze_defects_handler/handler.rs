@@ -62,9 +62,10 @@ pub async fn handle_analyze_defects(
 
     // Output in requested format
     match format {
-        OutputFormat::Text => print_text_report(&report),
+        OutputFormat::Text | OutputFormat::Plain => print_text_report(&report),
         OutputFormat::Json => print_json_report(&report)?,
         OutputFormat::Junit => print_junit_report(&report)?,
+        _ => print_text_report(&report),
     }
 
     Ok(exit_code)

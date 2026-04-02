@@ -4,12 +4,7 @@
 use crate::services::defect_detector::DefectPattern;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Copy)]
-pub enum OutputFormat {
-    Text,
-    Json,
-    Junit,
-}
+pub use crate::contracts::OutputFormat;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct DefectSummary {

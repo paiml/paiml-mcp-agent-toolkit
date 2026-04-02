@@ -3,6 +3,7 @@
 
 // Git Clone Tool
 
+/// MCP args for git.clone: repository URL with optional target_dir, branch, and shallow depth.
 #[derive(Debug, Deserialize)]
 struct GitCloneArgs {
     url: String,
@@ -56,6 +57,7 @@ impl ToolHandler for GitCloneTool {
 
 // Git Status Tool
 
+/// MCP args for git.status: path to the repository to query for working-tree status.
 #[derive(Debug, Deserialize)]
 struct GitStatusArgs {
     path: String,

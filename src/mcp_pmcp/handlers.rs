@@ -11,6 +11,7 @@ use tracing::debug;
 
 // --- Argument/result types ---
 
+/// MCP args for refactor.start: target file paths and optional refactoring configuration.
 #[derive(Debug, Deserialize)]
 struct RefactorStartArgs {
     targets: Vec<String>,

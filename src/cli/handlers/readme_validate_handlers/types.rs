@@ -1,19 +1,10 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
 //! Types and command definitions for README validation
 
-use clap::{Parser, ValueEnum};
+use clap::Parser;
 use std::path::PathBuf;
 
-/// Output format for validation results
-#[derive(Debug, Clone, ValueEnum)]
-pub enum OutputFormat {
-    /// Human-readable text output
-    Text,
-    /// JSON output for programmatic consumption
-    Json,
-    /// JUnit XML for CI integration
-    Junit,
-}
+pub use crate::contracts::OutputFormat;
 
 /// Validate README and documentation for hallucinations
 ///

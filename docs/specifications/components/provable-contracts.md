@@ -301,6 +301,16 @@ back to equation-level assertions otherwise.
 | 2 | CB-1212 | Ergonomic postconditions | Codegen done, pmat check ~20 lines | **PARTIAL** |
 | 3 | CB-1213 | Per-binding type safety | Schema + codegen | **TODO** |
 
+## Anti-Leak Extension: Contract Surface Types
+
+The whack-a-mole problem -- provable-contracts evolving faster than pmat's
+hardcoded checks -- is addressed by Component 23:
+[contract-surface-types.md](contract-surface-types.md).
+
+CB-1305 classifies every contract YAML against known classes and flags
+unrecognized structures. Six surface types (CLI, HTTP, MCP, Config,
+Library, PV Schema) extend enforcement beyond kernel-math contracts.
+
 ## References
 
 ### Provable-Contracts Spec

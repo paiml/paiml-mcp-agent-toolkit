@@ -50,14 +50,7 @@ impl Default for AnalysisOptions {
     }
 }
 
-/// Output format for results
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum OutputFormat {
-    Json,
-    Text,
-    Markdown,
-}
+pub use crate::contracts::OutputFormat;
 
 /// Output from analysis operations
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -461,6 +461,9 @@ pub async fn handle_stack_status(format: &OutputFormat) -> Result<()> {
         OutputFormat::Table => {
             print_status_table(&repos, &all_deps, &latest_versions, &status);
         }
+        _ => {
+            print_status_table(&repos, &all_deps, &latest_versions, &status);
+        }
     }
 
     Ok(())

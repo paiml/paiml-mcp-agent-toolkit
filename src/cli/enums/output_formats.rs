@@ -5,23 +5,7 @@ use clap::ValueEnum;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
-/// Output format for general commands
-#[derive(Clone, Debug, ValueEnum, PartialEq)]
-pub enum OutputFormat {
-    Table,
-    Json,
-    Yaml,
-}
-
-impl fmt::Display for OutputFormat {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            OutputFormat::Table => write!(f, "table"),
-            OutputFormat::Json => write!(f, "json"),
-            OutputFormat::Yaml => write!(f, "yaml"),
-        }
-    }
-}
+pub use crate::contracts::OutputFormat;
 
 /// Output format for query command (PMAT-470: RAG agent context)
 #[derive(Clone, Debug, ValueEnum, PartialEq, Default)]

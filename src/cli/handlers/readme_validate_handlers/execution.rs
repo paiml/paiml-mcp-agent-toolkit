@@ -74,7 +74,7 @@ impl ValidateReadmeCmd {
 
         // Output results
         match self.output {
-            OutputFormat::Text => self.print_text_summary(
+            OutputFormat::Text | OutputFormat::Plain => self.print_text_summary(
                 &all_results,
                 verified_count,
                 contradiction_count,
@@ -82,6 +82,12 @@ impl ValidateReadmeCmd {
             ),
             OutputFormat::Json => self.print_json_summary(&all_results)?,
             OutputFormat::Junit => self.print_junit_summary(&all_results)?,
+            _ => self.print_text_summary(
+                &all_results,
+                verified_count,
+                contradiction_count,
+                unverified_count,
+            ),
         }
 
         // Determine exit code

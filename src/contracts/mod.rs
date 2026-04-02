@@ -21,7 +21,9 @@ pub mod uniform_cli_commands;
 pub mod versioning;
 
 use crate::utils::path_validator::PathValidator;
+use clap::ValueEnum;
 use serde::{Deserialize, Serialize};
+use std::fmt;
 use std::path::PathBuf;
 use thiserror::Error;
 
@@ -43,8 +45,9 @@ pub enum ContractError {
     InvalidValue(String),
 }
 
-/// Output formats supported by ALL commands
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Default)]
+/// Canonical output format — ONE type for the entire codebase (CB-1300).
+/// Modules use the subset of variants they need and match with `_ =>`.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default, ValueEnum)]
 #[serde(rename_all = "lowercase")]
 pub enum OutputFormat {
     #[default]
@@ -54,6 +57,25 @@ pub enum OutputFormat {
     Markdown,
     Csv,
     Summary,
+    Text,
+    Plain,
+    Junit,
+}
+
+impl fmt::Display for OutputFormat {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            OutputFormat::Table => write!(f, "table"),
+            OutputFormat::Json => write!(f, "json"),
+            OutputFormat::Yaml => write!(f, "yaml"),
+            OutputFormat::Markdown => write!(f, "markdown"),
+            OutputFormat::Csv => write!(f, "csv"),
+            OutputFormat::Summary => write!(f, "summary"),
+            OutputFormat::Text => write!(f, "text"),
+            OutputFormat::Plain => write!(f, "plain"),
+            OutputFormat::Junit => write!(f, "junit"),
+        }
+    }
 }
 
 /// SATD severity levels

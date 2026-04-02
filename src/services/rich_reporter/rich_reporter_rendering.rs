@@ -338,9 +338,10 @@ impl RichReporter {
     /// Render based on configured format
     pub fn render(&self) -> String {
         match self.config.format {
-            OutputFormat::Text => self.render_text(),
+            OutputFormat::Text | OutputFormat::Plain => self.render_text(),
             OutputFormat::Json => self.render_json(),
             OutputFormat::Markdown => self.render_markdown(),
+            _ => self.render_text(),
         }
     }
 
