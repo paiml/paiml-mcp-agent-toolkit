@@ -5027,6 +5027,7 @@ dependencies = [
  "blake3",
  "bytemuck",
  "bytes",
+ "cc",
  "chrono",
  "clap",
  "cpp_demangle",
