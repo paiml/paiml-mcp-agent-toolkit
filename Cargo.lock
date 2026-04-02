@@ -1122,9 +1122,9 @@ dependencies = [
 
 [[package]]
 name = "cc"
-version = "1.2.58"
+version = "1.2.49"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e1e928d4b69e3077709075a938a05ffbedfa53a84c8f766efbf8220bb1ff60e1"
+checksum = "90583009037521a116abf44494efecd645ba48b6622457080f080b85544e2215"
 dependencies = [
  "find-msvc-tools",
  "jobserver",
@@ -5011,7 +5011,7 @@ dependencies = [
 
 [[package]]
 name = "pmat"
-version = "3.10.0"
+version = "3.11.0"
 dependencies = [
  "actix",
  "actix-rt",
