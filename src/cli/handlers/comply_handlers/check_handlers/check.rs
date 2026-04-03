@@ -387,16 +387,39 @@ pub(crate) async fn handle_check(
         comply_config,
     ));
 
+    let report = build_compliance_report(checks, project_version, failures_only);
+    let failures = report
+        .checks
+        .iter()
+        .filter(|c| c.status == CheckStatus::Fail)
+        .count();
+    let warnings = report
+        .checks
+        .iter()
+        .filter(|c| c.status == CheckStatus::Warn)
+        .count();
+
+    output_compliance_report(&report, format, project_path)?;
+
+    let _ = update_last_check_timestamp(project_path);
+    if !report.is_compliant {
+        std::process::exit(1);
+    }
+    if strict && warnings > 0 && failures == 0 {
+        std::process::exit(2);
+    }
+    Ok(())
+}
+
+fn build_compliance_report(
+    checks: Vec<ComplianceCheck>,
+    project_version: &str,
+    failures_only: bool,
+) -> ComplianceReport {
     let failures = checks
         .iter()
         .filter(|c| c.status == CheckStatus::Fail)
         .count();
-    let warnings = checks
-        .iter()
-        .filter(|c| c.status == CheckStatus::Warn)
-        .count();
-    let is_compliant = failures == 0;
-
     let breaking_changes = get_breaking_changes_since(project_version);
     let versions_behind = calculate_versions_behind(project_version);
 
@@ -411,10 +434,10 @@ pub(crate) async fn handle_check(
         recommendations.push("Review breaking changes with 'pmat comply diff'".to_string());
     }
 
-    let report = ComplianceReport {
-        project_version: project_version.clone(),
+    ComplianceReport {
+        project_version: project_version.to_string(),
         current_version: PMAT_VERSION.to_string(),
-        is_compliant,
+        is_compliant: failures == 0,
         versions_behind,
         checks: if failures_only {
             checks
@@ -427,52 +450,52 @@ pub(crate) async fn handle_check(
         breaking_changes,
         recommendations,
         timestamp: Utc::now(),
-    };
+    }
+}
 
+fn output_compliance_report(
+    report: &ComplianceReport,
+    format: ComplyOutputFormat,
+    project_path: &Path,
+) -> Result<()> {
     match format {
-        ComplyOutputFormat::Text => print_compliance_text(&report),
-        ComplyOutputFormat::Json => println!("{}", serde_json::to_string_pretty(&report)?),
-        ComplyOutputFormat::Markdown => print_compliance_markdown(&report),
-        ComplyOutputFormat::Sarif => {
-            // Delegate to pv lint for SARIF if contracts exist
-            if let Some(contracts_dir) = resolve_contracts_dir(&project_path) {
-                if let Ok(output) = std::process::Command::new("pv")
-                    .args([
-                        "lint",
-                        &contracts_dir.display().to_string(),
-                        "--format",
-                        "sarif",
-                    ])
-                    .stdout(std::process::Stdio::piped())
-                    .stderr(std::process::Stdio::null())
-                    .output()
-                {
-                    if let Ok(sarif) = String::from_utf8(output.stdout) {
-                        if !sarif.is_empty() {
-                            println!("{sarif}");
-                            if !output.status.success() {
-                                return Err(anyhow::anyhow!("pv lint SARIF: non-zero exit"));
-                            }
-                            return Ok(());
-                        }
-                    }
-                }
-            }
-            // Fallback: JSON output
-            println!("{}", serde_json::to_string_pretty(&report)?);
-        }
-    }
-
-    let _ = update_last_check_timestamp(project_path);
-    // Always exit 1 when there are failures (NON-COMPLIANT)
-    if !is_compliant {
-        std::process::exit(1);
-    }
-    // In strict mode, warnings also cause failure (exit 2)
-    if strict && warnings > 0 {
-        std::process::exit(2);
+        ComplyOutputFormat::Text => print_compliance_text(report),
+        ComplyOutputFormat::Json => println!("{}", serde_json::to_string_pretty(report)?),
+        ComplyOutputFormat::Markdown => print_compliance_markdown(report),
+        ComplyOutputFormat::Sarif => output_sarif_or_fallback(report, project_path)?,
     }
     Ok(())
+}
+
+fn output_sarif_or_fallback(report: &ComplianceReport, project_path: &Path) -> Result<()> {
+    if let Some(sarif) = try_pv_lint_sarif(project_path) {
+        println!("{sarif}");
+        return Ok(());
+    }
+    // Fallback: JSON output
+    println!("{}", serde_json::to_string_pretty(report)?);
+    Ok(())
+}
+
+fn try_pv_lint_sarif(project_path: &Path) -> Option<String> {
+    let contracts_dir = resolve_contracts_dir(project_path)?;
+    let output = std::process::Command::new("pv")
+        .args([
+            "lint",
+            &contracts_dir.display().to_string(),
+            "--format",
+            "sarif",
+        ])
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::null())
+        .output()
+        .ok()?;
+    let sarif = String::from_utf8(output.stdout).ok()?;
+    if sarif.is_empty() {
+        None
+    } else {
+        Some(sarif)
+    }
 }
 
 // Provable-contracts enforcement checks (CB-1201 through CB-1209)
