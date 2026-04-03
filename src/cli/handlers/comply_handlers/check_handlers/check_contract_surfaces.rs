@@ -31,15 +31,17 @@ const GENERIC_PLACEHOLDERS: &[&str] = &[
 /// WARN on unknown structure. FAIL if >20% unclassified.
 /// Also detects semantic leaks: API-pattern contracts disguised as kernel-math.
 pub(crate) fn check_contract_surface_classification(project_path: &Path) -> ComplianceCheck {
-    let contracts_dir = project_path.join("contracts");
-    if !contracts_dir.exists() {
-        return ComplianceCheck {
-            name: "CB-1305: Contract Surface Classification".into(),
-            status: CheckStatus::Skip,
-            message: "No contracts/ directory".into(),
-            severity: Severity::Info,
-        };
-    }
+    let contracts_dir = match resolve_contracts_dir(project_path) {
+        Some(d) => d,
+        None => {
+            return ComplianceCheck {
+                name: "CB-1305: Contract Surface Classification".into(),
+                status: CheckStatus::Skip,
+                message: "No contract YAML files found".into(),
+                severity: Severity::Info,
+            };
+        }
+    };
 
     let mut total_contracts = 0usize;
     let mut kernel_math = 0usize;
@@ -771,15 +773,17 @@ pub(crate) fn check_wasm_ffi_contracts(project_path: &Path) -> ComplianceCheck {
 /// Every contract YAML without lean_theorem is a FAIL, listed by name.
 /// Behaves like `pmat tdg` — names every violating file.
 pub(crate) fn check_verification_ladder(project_path: &Path) -> ComplianceCheck {
-    let contracts_dir = project_path.join("contracts");
-    if !contracts_dir.exists() {
-        return ComplianceCheck {
-            name: "CB-1308: Verification Ladder (L5)".into(),
-            status: CheckStatus::Skip,
-            message: "No contracts/ directory".into(),
-            severity: Severity::Info,
-        };
-    }
+    let contracts_dir = match resolve_contracts_dir(project_path) {
+        Some(d) => d,
+        None => {
+            return ComplianceCheck {
+                name: "CB-1308: Verification Ladder (L5)".into(),
+                status: CheckStatus::Skip,
+                message: "No contract YAML files found".into(),
+                severity: Severity::Info,
+            };
+        }
+    };
 
     let mut total = 0usize;
     let mut l5_count = 0usize;

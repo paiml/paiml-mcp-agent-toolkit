@@ -609,15 +609,65 @@ pub(crate) fn check_verification_levels(project_path: &Path, thresholds: &Comply
     }
 }
 
-/// Collect contract YAML stems from the project's contracts/ directory (recursive).
-/// Returns a set of stems (e.g., "softmax-kernel-v1") for filtering proof-status.json.
-fn collect_project_contract_stems(project_path: &Path) -> std::collections::HashSet<String> {
-    let contracts_dir = project_path.join("contracts");
-    let mut stems = std::collections::HashSet::new();
-    if !contracts_dir.exists() {
-        return stems;
+/// Quick check if a directory contains any contract YAML files (not just binding.yaml).
+fn has_contract_yamls(dir: &Path) -> bool {
+    std::fs::read_dir(dir).into_iter().flatten().flatten().any(|e| {
+        let p = e.path();
+        p.is_file()
+            && p.extension().is_some_and(|ext| ext == "yaml" || ext == "yml")
+            && !p.file_name().is_some_and(|n| n.to_string_lossy().contains("binding"))
+    })
+}
+
+/// Resolve the contracts directory for a project.
+/// Checks local `contracts/` first (if it has YAMLs), then sibling `../provable-contracts/contracts/<name>/`.
+/// Tries both the directory name and the Cargo.toml package name (e.g., paiml-mcp-agent-toolkit → pmat).
+fn resolve_contracts_dir(project_path: &Path) -> Option<std::path::PathBuf> {
+    let local = project_path.join("contracts");
+    if local.exists() && has_contract_yamls(&local) {
+        return Some(local);
     }
-    collect_stems_recursive(&contracts_dir, &mut stems);
+    // Sibling provable-contracts repo (the convention for batuta stack)
+    let abs = std::fs::canonicalize(project_path).ok()?;
+    let parent = abs.parent()?;
+    let pv_contracts = parent.join("provable-contracts").join("contracts");
+    if !pv_contracts.exists() {
+        return None;
+    }
+    // Try 1: directory name
+    let dir_name = abs.file_name()?.to_str()?;
+    let sibling = pv_contracts.join(dir_name);
+    if sibling.exists() {
+        return Some(sibling);
+    }
+    // Try 2: Cargo.toml package name (handles paiml-mcp-agent-toolkit → pmat)
+    let cargo_toml = project_path.join("Cargo.toml");
+    if let Ok(content) = std::fs::read_to_string(&cargo_toml) {
+        for line in content.lines() {
+            let trimmed = line.trim();
+            if trimmed.starts_with("name") && trimmed.contains('=') {
+                if let Some(name) = trimmed.split('=').nth(1) {
+                    let pkg = name.trim().trim_matches('"');
+                    let by_pkg = pv_contracts.join(pkg);
+                    if by_pkg.exists() {
+                        return Some(by_pkg);
+                    }
+                }
+                break;
+            }
+        }
+    }
+    None
+}
+
+/// Collect contract YAML stems from the project's contracts directory (recursive).
+/// Returns a set of stems (e.g., "softmax-kernel-v1") for filtering proof-status.json.
+/// Checks local `contracts/` then sibling `../provable-contracts/contracts/<project>/`.
+fn collect_project_contract_stems(project_path: &Path) -> std::collections::HashSet<String> {
+    let mut stems = std::collections::HashSet::new();
+    if let Some(contracts_dir) = resolve_contracts_dir(project_path) {
+        collect_stems_recursive(&contracts_dir, &mut stems);
+    }
     stems
 }
 
@@ -649,15 +699,17 @@ fn collect_stems_recursive(dir: &Path, stems: &mut std::collections::HashSet<Str
 /// A contract YAML older than its bound source files by >30 days = drift.
 /// pv-compatibility spec CD5.
 pub(crate) fn check_contract_drift(project_path: &Path) -> ComplianceCheck {
-    let contracts_dir = project_path.join("contracts");
-    if !contracts_dir.exists() {
-        return ComplianceCheck {
-            name: "CB-1207: Contract Drift".into(),
-            status: CheckStatus::Skip,
-            message: "No contracts/ directory".into(),
-            severity: Severity::Info,
-        };
-    }
+    let contracts_dir = match resolve_contracts_dir(project_path) {
+        Some(d) => d,
+        None => {
+            return ComplianceCheck {
+                name: "CB-1207: Contract Drift".into(),
+                status: CheckStatus::Skip,
+                message: "No contracts directory found (local or sibling)".into(),
+                severity: Severity::Info,
+            };
+        }
+    };
 
     let thirty_days = std::time::Duration::from_secs(30 * 24 * 3600);
     let mut stale = 0usize;
@@ -767,15 +819,17 @@ pub(crate) fn check_contract_drift(project_path: &Path) -> ComplianceCheck {
 /// the YAML status field (self-attestation) without verifying the Rust function exists.
 /// 16,977 bindings across the stack but only 35 have #[contract] annotations.
 pub(crate) fn check_binding_existence(project_path: &Path, thresholds: &ComplyThresholds) -> ComplianceCheck {
-    let contracts_dir = project_path.join("contracts");
-    if !contracts_dir.exists() {
-        return ComplianceCheck {
-            name: "CB-1208: Binding Existence".into(),
-            status: CheckStatus::Skip,
-            message: "No contracts/ directory".into(),
-            severity: Severity::Info,
-        };
-    }
+    let contracts_dir = match resolve_contracts_dir(project_path) {
+        Some(d) => d,
+        None => {
+            return ComplianceCheck {
+                name: "CB-1208: Binding Existence".into(),
+                status: CheckStatus::Skip,
+                message: "No binding entries with status: implemented".into(),
+                severity: Severity::Info,
+            };
+        }
+    };
 
     let abs_path =
         std::fs::canonicalize(project_path).unwrap_or_else(|_| project_path.to_path_buf());

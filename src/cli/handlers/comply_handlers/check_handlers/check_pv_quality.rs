@@ -14,15 +14,17 @@ const PLACEHOLDER_PRECONDITIONS: &[&str] = &[
 /// FAIL if >70% of preconditions are identical or contain known placeholders
 /// without accompanying domain constraints.
 pub(crate) fn check_precondition_quality(project_path: &Path) -> ComplianceCheck {
-    let contracts_dir = project_path.join("contracts");
-    if !contracts_dir.exists() {
-        return ComplianceCheck {
-            name: "CB-1210: Precondition Quality".into(),
-            status: CheckStatus::Skip,
-            message: "No contracts/ directory".into(),
-            severity: Severity::Info,
-        };
-    }
+    let contracts_dir = match resolve_contracts_dir(project_path) {
+        Some(d) => d,
+        None => {
+            return ComplianceCheck {
+                name: "CB-1210: Precondition Quality".into(),
+                status: CheckStatus::Skip,
+                message: "No preconditions found in contracts".into(),
+                severity: Severity::Info,
+            };
+        }
+    };
 
     let mut preconditions: Vec<String> = Vec::new();
     let mut postcondition_count = 0usize;
@@ -234,15 +236,17 @@ fn check_equation_preconditions(
 /// the generated assertion count against YAML precondition count. Falls back
 /// to checking for known placeholder patterns in any generated_contracts.rs file.
 pub(crate) fn check_codegen_fidelity(project_path: &Path) -> ComplianceCheck {
-    let contracts_dir = project_path.join("contracts");
-    if !contracts_dir.exists() {
-        return ComplianceCheck {
-            name: "CB-1211: Codegen Fidelity".into(),
-            status: CheckStatus::Skip,
-            message: "No contracts/ directory".into(),
-            severity: Severity::Info,
-        };
-    }
+    let contracts_dir = match resolve_contracts_dir(project_path) {
+        Some(d) => d,
+        None => {
+            return ComplianceCheck {
+                name: "CB-1211: Codegen Fidelity".into(),
+                status: CheckStatus::Skip,
+                message: "No preconditions in YAML contracts".into(),
+                severity: Severity::Info,
+            };
+        }
+    };
 
     // Count YAML preconditions per equation
     let mut yaml_pre_count = 0usize;
@@ -450,12 +454,11 @@ fn find_generated_contracts(project_path: &Path) -> Option<std::path::PathBuf> {
 /// Runs `pv coverage --enforcement <src> --binding <binding.yaml>` and parses
 /// the enforcement score (penetration × quality). E0=0.1, E1=0.5, E2=1.0.
 pub(crate) fn check_enforcement_quality(project_path: &Path) -> ComplianceCheck {
-    let contracts_dir = project_path.join("contracts");
-    if !contracts_dir.exists() {
+    if resolve_contracts_dir(project_path).is_none() {
         return ComplianceCheck {
             name: "CB-1214: Enforcement Quality".into(),
             status: CheckStatus::Skip,
-            message: "No contracts/ directory".into(),
+            message: "No binding.yaml found".into(),
             severity: Severity::Info,
         };
     }

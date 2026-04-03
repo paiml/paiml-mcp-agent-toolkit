@@ -3,6 +3,62 @@
 // Detects if a project uses provable-contracts YAML contract files
 // and validates them via `pv lint`. Integrates contract quality scoring
 // into pmat comply quality gates.
+
+/// Quick check if a directory contains any contract YAML files (not just binding.yaml).
+fn has_contract_yamls(dir: &Path) -> bool {
+    std::fs::read_dir(dir)
+        .into_iter()
+        .flatten()
+        .flatten()
+        .any(|e| {
+            let p = e.path();
+            p.is_file()
+                && p.extension()
+                    .is_some_and(|ext| ext == "yaml" || ext == "yml")
+                && !p
+                    .file_name()
+                    .is_some_and(|n| n.to_string_lossy().contains("binding"))
+        })
+}
+
+/// Resolve the contracts directory — local first (if has YAMLs), then sibling provable-contracts.
+/// Tries directory name, then Cargo.toml package name (e.g., paiml-mcp-agent-toolkit → pmat).
+fn resolve_contracts_dir(project_path: &Path) -> Option<std::path::PathBuf> {
+    let local = project_path.join("contracts");
+    if local.exists() && has_contract_yamls(&local) {
+        return Some(local);
+    }
+    let abs = std::fs::canonicalize(project_path).ok()?;
+    let parent = abs.parent()?;
+    let pv_contracts = parent.join("provable-contracts").join("contracts");
+    if !pv_contracts.exists() {
+        return None;
+    }
+    // Try directory name
+    let dir_name = abs.file_name()?.to_str()?;
+    let sibling = pv_contracts.join(dir_name);
+    if sibling.exists() {
+        return Some(sibling);
+    }
+    // Try Cargo.toml package name
+    let cargo_toml = project_path.join("Cargo.toml");
+    if let Ok(content) = std::fs::read_to_string(&cargo_toml) {
+        for line in content.lines() {
+            let trimmed = line.trim();
+            if trimmed.starts_with("name") && trimmed.contains('=') {
+                if let Some(name) = trimmed.split('=').nth(1) {
+                    let pkg = name.trim().trim_matches('"');
+                    let by_pkg = pv_contracts.join(pkg);
+                    if by_pkg.exists() {
+                        return Some(by_pkg);
+                    }
+                }
+                break;
+            }
+        }
+    }
+    None
+}
 //
 // Auto-skips if no contracts/ directory or *.yaml contract files found.
 
@@ -22,13 +78,15 @@ use super::types::*;
 /// - Any validation errors or warnings
 pub(crate) fn check_provable_contracts(project_path: &Path) -> ComplianceCheck {
     // Phase 1: Detect if this project uses provable-contracts
-    let contracts_dir = project_path.join("contracts");
-    if !contracts_dir.exists() || !contracts_dir.is_dir() {
-        return skip_check(
-            "CB-1200: Provable Contracts",
-            "No contracts/ directory found",
-        );
-    }
+    let contracts_dir = match resolve_contracts_dir(project_path) {
+        Some(d) => d,
+        None => {
+            return skip_check(
+                "CB-1200: Provable Contracts",
+                "No provable-contract YAML files found in contracts/",
+            );
+        }
+    };
 
     let contract_files = find_contract_files(&contracts_dir);
     if contract_files.is_empty() {
@@ -110,7 +168,8 @@ fn is_binding_file(path: &Path) -> bool {
 
 /// Run `pv lint` and parse the result
 fn run_pv_lint(project_path: &Path) -> PvLintResult {
-    let contracts_dir = project_path.join("contracts");
+    let contracts_dir =
+        resolve_contracts_dir(project_path).unwrap_or_else(|| project_path.join("contracts"));
 
     let output = std::process::Command::new("pv")
         .args([
@@ -186,7 +245,8 @@ fn run_pv_score(contracts_dir: &Path) -> PvScoreResult {
 
 /// Check binding.yaml coverage for the project
 fn check_binding_coverage(project_path: &Path) -> BindingResult {
-    let contracts_dir = project_path.join("contracts");
+    let contracts_dir =
+        resolve_contracts_dir(project_path).unwrap_or_else(|| project_path.join("contracts"));
 
     // Look for binding.yaml files in contracts/
     let binding_files: Vec<_> = walkdir::WalkDir::new(&contracts_dir)
@@ -476,7 +536,7 @@ mod tests {
         let temp = tempfile::tempdir().unwrap();
         let check = check_provable_contracts(temp.path());
         assert_eq!(check.status, CheckStatus::Skip);
-        assert!(check.message.contains("No contracts/"));
+        assert!(check.message.contains("No provable-contract"));
     }
 
     #[test]

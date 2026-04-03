@@ -397,8 +397,7 @@ pub(crate) async fn handle_check(
         ComplyOutputFormat::Markdown => print_compliance_markdown(&report),
         ComplyOutputFormat::Sarif => {
             // Delegate to pv lint for SARIF if contracts exist
-            let contracts_dir = project_path.join("contracts");
-            if contracts_dir.exists() {
+            if let Some(contracts_dir) = resolve_contracts_dir(&project_path) {
                 if let Ok(output) = std::process::Command::new("pv")
                     .args([
                         "lint",
