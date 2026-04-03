@@ -554,23 +554,13 @@ pub(crate) fn check_enforcement_quality(project_path: &Path) -> ComplianceCheck 
 }
 
 /// Find binding.yaml for a project — checks sibling provable-contracts repo.
+/// Tries directory name, then Cargo.toml package name.
 fn find_binding_yaml(project_path: &Path) -> Option<std::path::PathBuf> {
-    let canonical = std::fs::canonicalize(project_path).ok()?;
-    let project_name = canonical.file_name()?.to_str()?;
-    // Check sibling ../provable-contracts/contracts/<project>/binding.yaml
-    let sibling = canonical
-        .parent()?
-        .join("provable-contracts")
-        .join("contracts")
-        .join(project_name)
-        .join("binding.yaml");
-    if sibling.exists() {
-        return Some(sibling);
-    }
-    // Check local contracts/binding.yaml
-    let local = project_path.join("contracts").join("binding.yaml");
-    if local.exists() {
-        return Some(local);
+    // Use resolve_contracts_dir which handles dir name + Cargo.toml name
+    let contracts_dir = resolve_contracts_dir(project_path)?;
+    let binding = contracts_dir.join("binding.yaml");
+    if binding.exists() {
+        return Some(binding);
     }
     None
 }
