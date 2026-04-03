@@ -372,6 +372,26 @@ pub(crate) async fn handle_check(
         comply_config,
     ));
     checks.push(filter_check_by_config(
+        check_agent_comply_usage(project_path),
+        "cb-1404",
+        comply_config,
+    ));
+    checks.push(filter_check_by_config(
+        check_agent_references_present(project_path),
+        "cb-1405",
+        comply_config,
+    ));
+    checks.push(filter_check_by_config(
+        check_agent_chain_of_thought(project_path),
+        "cb-1406",
+        comply_config,
+    ));
+    checks.push(filter_check_by_config(
+        check_agent_five_whys_linked(project_path),
+        "cb-1407",
+        comply_config,
+    ));
+    checks.push(filter_check_by_config(
         check_agent_evidence_executable(project_path),
         "cb-1408",
         comply_config,

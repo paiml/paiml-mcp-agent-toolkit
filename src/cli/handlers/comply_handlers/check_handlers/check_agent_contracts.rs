@@ -353,6 +353,269 @@ pub(crate) fn check_assume_guarantee_chain(project_path: &Path) -> ComplianceChe
     }
 }
 
+/// CB-1404: Agent Comply Check Usage
+///
+/// Checks that work contracts have falsification receipts — evidence that
+/// `pmat comply check` or `pmat work checkpoint` was run during the task.
+/// Agents that complete without running comply are operating blind.
+pub(crate) fn check_agent_comply_usage(project_path: &Path) -> ComplianceCheck {
+    let work_dir = project_path.join(".pmat-work");
+    if !work_dir.exists() {
+        return ComplianceCheck {
+            name: "CB-1404: Agent Comply Usage".into(),
+            status: CheckStatus::Skip,
+            message: "No .pmat-work/ directory found".into(),
+            severity: Severity::Info,
+        };
+    }
+
+    let mut total_contracts = 0usize;
+    let mut contracts_with_receipts = 0usize;
+
+    if let Ok(entries) = fs::read_dir(&work_dir) {
+        for entry in entries.flatten() {
+            let contract_path = entry.path().join("contract.json");
+            if !contract_path.exists() {
+                continue;
+            }
+            total_contracts += 1;
+
+            // Check for falsification receipt (evidence of comply/checkpoint run)
+            let receipt_dir = entry.path().join("falsification");
+            let has_receipt = receipt_dir.exists()
+                && fs::read_dir(&receipt_dir)
+                    .map(|d| d.count() > 0)
+                    .unwrap_or(false);
+
+            if has_receipt {
+                contracts_with_receipts += 1;
+            }
+        }
+    }
+
+    if total_contracts == 0 {
+        return ComplianceCheck {
+            name: "CB-1404: Agent Comply Usage".into(),
+            status: CheckStatus::Skip,
+            message: "No work contracts found".into(),
+            severity: Severity::Info,
+        };
+    }
+
+    let ratio = contracts_with_receipts as f64 / total_contracts as f64;
+    if ratio >= 0.8 {
+        ComplianceCheck {
+            name: "CB-1404: Agent Comply Usage".into(),
+            status: CheckStatus::Pass,
+            message: format!(
+                "{}/{} contract(s) have falsification receipts (comply was run)",
+                contracts_with_receipts, total_contracts
+            ),
+            severity: Severity::Info,
+        }
+    } else {
+        ComplianceCheck {
+            name: "CB-1404: Agent Comply Usage".into(),
+            status: CheckStatus::Warn,
+            message: format!(
+                "Only {}/{} contract(s) have receipts — agents should run pmat comply before completing",
+                contracts_with_receipts, total_contracts
+            ),
+            severity: Severity::Warning,
+        }
+    }
+}
+
+/// CB-1405: Contract References Present
+///
+/// Checks that work contracts have research references (arXiv, spec sections,
+/// or oracle links). Contracts without references lack traceability.
+pub(crate) fn check_agent_references_present(project_path: &Path) -> ComplianceCheck {
+    let work_dir = project_path.join(".pmat-work");
+    if !work_dir.exists() {
+        return ComplianceCheck {
+            name: "CB-1405: Contract References".into(),
+            status: CheckStatus::Skip,
+            message: "No .pmat-work/ directory found".into(),
+            severity: Severity::Info,
+        };
+    }
+
+    let mut total_contracts = 0usize;
+    let mut contracts_with_refs = 0usize;
+
+    if let Ok(entries) = fs::read_dir(&work_dir) {
+        for entry in entries.flatten() {
+            let contract_path = entry.path().join("contract.json");
+            if !contract_path.exists() {
+                continue;
+            }
+            total_contracts += 1;
+
+            if let Ok(content) = fs::read_to_string(&contract_path) {
+                let has_refs = content.contains("\"arxiv\"")
+                    || content.contains("\"spec_sections\"")
+                    || content.contains("\"five_whys_id\"")
+                    || content.contains("\"references\"");
+                if has_refs {
+                    contracts_with_refs += 1;
+                }
+            }
+        }
+    }
+
+    if total_contracts == 0 {
+        return ComplianceCheck {
+            name: "CB-1405: Contract References".into(),
+            status: CheckStatus::Skip,
+            message: "No work contracts found".into(),
+            severity: Severity::Info,
+        };
+    }
+
+    ComplianceCheck {
+        name: "CB-1405: Contract References".into(),
+        status: CheckStatus::Pass,
+        message: format!(
+            "{}/{} contract(s) have references (arXiv, spec, five-whys)",
+            contracts_with_refs, total_contracts
+        ),
+        severity: Severity::Info,
+    }
+}
+
+/// CB-1406: Chain-of-Thought Audit Trail
+///
+/// Checks that work contracts have chain-of-thought entries. The audit trail
+/// documents decision history for future inspection.
+pub(crate) fn check_agent_chain_of_thought(project_path: &Path) -> ComplianceCheck {
+    let work_dir = project_path.join(".pmat-work");
+    if !work_dir.exists() {
+        return ComplianceCheck {
+            name: "CB-1406: Chain-of-Thought Audit".into(),
+            status: CheckStatus::Skip,
+            message: "No .pmat-work/ directory found".into(),
+            severity: Severity::Info,
+        };
+    }
+
+    let mut total_contracts = 0usize;
+    let mut contracts_with_cot = 0usize;
+
+    if let Ok(entries) = fs::read_dir(&work_dir) {
+        for entry in entries.flatten() {
+            let contract_path = entry.path().join("contract.json");
+            if !contract_path.exists() {
+                continue;
+            }
+            total_contracts += 1;
+
+            if let Ok(content) = fs::read_to_string(&contract_path) {
+                // chain_of_thought field with at least one entry
+                let has_cot = content.contains("\"chain_of_thought\"")
+                    && !content.contains("\"chain_of_thought\": []")
+                    && !content.contains("\"chain_of_thought\":[]");
+                if has_cot {
+                    contracts_with_cot += 1;
+                }
+            }
+        }
+    }
+
+    if total_contracts == 0 {
+        return ComplianceCheck {
+            name: "CB-1406: Chain-of-Thought Audit".into(),
+            status: CheckStatus::Skip,
+            message: "No work contracts found".into(),
+            severity: Severity::Info,
+        };
+    }
+
+    ComplianceCheck {
+        name: "CB-1406: Chain-of-Thought Audit".into(),
+        status: CheckStatus::Pass,
+        message: format!(
+            "{}/{} contract(s) have chain-of-thought audit trail",
+            contracts_with_cot, total_contracts
+        ),
+        severity: Severity::Info,
+    }
+}
+
+/// CB-1407: Five Whys Linked for Defects
+///
+/// For work contracts related to defects (status=blocked, or tagged as bug/fix),
+/// checks that a five_whys_id reference exists in the contract references.
+pub(crate) fn check_agent_five_whys_linked(project_path: &Path) -> ComplianceCheck {
+    let work_dir = project_path.join(".pmat-work");
+    if !work_dir.exists() {
+        return ComplianceCheck {
+            name: "CB-1407: Five Whys Linked".into(),
+            status: CheckStatus::Skip,
+            message: "No .pmat-work/ directory found".into(),
+            severity: Severity::Info,
+        };
+    }
+
+    let mut defect_contracts = 0usize;
+    let mut defects_with_whys = 0usize;
+
+    if let Ok(entries) = fs::read_dir(&work_dir) {
+        for entry in entries.flatten() {
+            let contract_path = entry.path().join("contract.json");
+            if !contract_path.exists() {
+                continue;
+            }
+
+            if let Ok(content) = fs::read_to_string(&contract_path) {
+                // Detect defect-related contracts
+                let is_defect = content.contains("\"bug\"")
+                    || content.contains("\"fix\"")
+                    || content.contains("\"defect\"")
+                    || content.contains("\"blocked\"");
+
+                if is_defect {
+                    defect_contracts += 1;
+                    if content.contains("\"five_whys_id\"") {
+                        defects_with_whys += 1;
+                    }
+                }
+            }
+        }
+    }
+
+    if defect_contracts == 0 {
+        return ComplianceCheck {
+            name: "CB-1407: Five Whys Linked".into(),
+            status: CheckStatus::Pass,
+            message: "No defect-related contracts found (check N/A)".into(),
+            severity: Severity::Info,
+        };
+    }
+
+    if defects_with_whys == defect_contracts {
+        ComplianceCheck {
+            name: "CB-1407: Five Whys Linked".into(),
+            status: CheckStatus::Pass,
+            message: format!(
+                "{}/{} defect contract(s) have five_whys_id reference",
+                defects_with_whys, defect_contracts
+            ),
+            severity: Severity::Info,
+        }
+    } else {
+        ComplianceCheck {
+            name: "CB-1407: Five Whys Linked".into(),
+            status: CheckStatus::Warn,
+            message: format!(
+                "{}/{} defect contract(s) lack five_whys_id — use pmat five-whys for root cause",
+                defect_contracts - defects_with_whys, defect_contracts
+            ),
+            severity: Severity::Warning,
+        }
+    }
+}
+
 /// CB-1408: Agent Evidence Executability
 ///
 /// Checks that work contracts have valid evidence mechanisms — either
@@ -935,6 +1198,130 @@ mod tests_agent_contracts {
             "Expected Skip or Pass, got {:?}",
             result.status
         );
+    }
+
+    // --- CB-1404 tests ---
+
+    #[test]
+    fn test_cb1404_skip_no_work_dir() {
+        let tmp = tempfile::tempdir().expect("create tempdir");
+        let result = check_agent_comply_usage(tmp.path());
+        assert_eq!(result.status, CheckStatus::Skip);
+    }
+
+    #[test]
+    fn test_cb1404_pass_with_receipts() {
+        let tmp = tempfile::tempdir().expect("create tempdir");
+        let work_dir = tmp.path().join(".pmat-work").join("PMAT-010");
+        let receipt_dir = work_dir.join("falsification");
+        std::fs::create_dir_all(&receipt_dir).unwrap();
+        std::fs::write(work_dir.join("contract.json"), r#"{"version": "5.0"}"#).unwrap();
+        std::fs::write(receipt_dir.join("receipt-1.json"), "{}").unwrap();
+        let result = check_agent_comply_usage(tmp.path());
+        assert_eq!(result.status, CheckStatus::Pass);
+    }
+
+    #[test]
+    fn test_cb1404_warn_no_receipts() {
+        let tmp = tempfile::tempdir().expect("create tempdir");
+        let work_dir = tmp.path().join(".pmat-work").join("PMAT-011");
+        std::fs::create_dir_all(&work_dir).unwrap();
+        std::fs::write(work_dir.join("contract.json"), r#"{"version": "5.0"}"#).unwrap();
+        let result = check_agent_comply_usage(tmp.path());
+        assert_eq!(result.status, CheckStatus::Warn);
+    }
+
+    // --- CB-1405 tests ---
+
+    #[test]
+    fn test_cb1405_skip_no_work_dir() {
+        let tmp = tempfile::tempdir().expect("create tempdir");
+        let result = check_agent_references_present(tmp.path());
+        assert_eq!(result.status, CheckStatus::Skip);
+    }
+
+    #[test]
+    fn test_cb1405_pass_with_references() {
+        let tmp = tempfile::tempdir().expect("create tempdir");
+        let work_dir = tmp.path().join(".pmat-work").join("PMAT-012");
+        std::fs::create_dir_all(&work_dir).unwrap();
+        std::fs::write(
+            work_dir.join("contract.json"),
+            r#"{"references": {"arxiv": "2602.22302", "spec_sections": ["§3"]}}"#,
+        )
+        .unwrap();
+        let result = check_agent_references_present(tmp.path());
+        assert_eq!(result.status, CheckStatus::Pass);
+        assert!(result.message.contains("1/1"));
+    }
+
+    // --- CB-1406 tests ---
+
+    #[test]
+    fn test_cb1406_skip_no_work_dir() {
+        let tmp = tempfile::tempdir().expect("create tempdir");
+        let result = check_agent_chain_of_thought(tmp.path());
+        assert_eq!(result.status, CheckStatus::Skip);
+    }
+
+    #[test]
+    fn test_cb1406_pass_with_cot() {
+        let tmp = tempfile::tempdir().expect("create tempdir");
+        let work_dir = tmp.path().join(".pmat-work").join("PMAT-013");
+        std::fs::create_dir_all(&work_dir).unwrap();
+        std::fs::write(
+            work_dir.join("contract.json"),
+            r#"{"chain_of_thought": [{"step": "Analyzed root cause", "timestamp": "2026-04-03"}]}"#,
+        )
+        .unwrap();
+        let result = check_agent_chain_of_thought(tmp.path());
+        assert_eq!(result.status, CheckStatus::Pass);
+        assert!(result.message.contains("1/1"));
+    }
+
+    // --- CB-1407 tests ---
+
+    #[test]
+    fn test_cb1407_pass_no_defects() {
+        let tmp = tempfile::tempdir().expect("create tempdir");
+        let work_dir = tmp.path().join(".pmat-work").join("PMAT-014");
+        std::fs::create_dir_all(&work_dir).unwrap();
+        std::fs::write(
+            work_dir.join("contract.json"),
+            r#"{"title": "New feature", "type": "feature"}"#,
+        )
+        .unwrap();
+        let result = check_agent_five_whys_linked(tmp.path());
+        assert_eq!(result.status, CheckStatus::Pass);
+    }
+
+    #[test]
+    fn test_cb1407_warn_defect_without_whys() {
+        let tmp = tempfile::tempdir().expect("create tempdir");
+        let work_dir = tmp.path().join(".pmat-work").join("PMAT-015");
+        std::fs::create_dir_all(&work_dir).unwrap();
+        std::fs::write(
+            work_dir.join("contract.json"),
+            r#"{"title": "fix bug", "type": "fix"}"#,
+        )
+        .unwrap();
+        let result = check_agent_five_whys_linked(tmp.path());
+        assert_eq!(result.status, CheckStatus::Warn);
+    }
+
+    #[test]
+    fn test_cb1407_pass_defect_with_whys() {
+        let tmp = tempfile::tempdir().expect("create tempdir");
+        let work_dir = tmp.path().join(".pmat-work").join("PMAT-016");
+        std::fs::create_dir_all(&work_dir).unwrap();
+        std::fs::write(
+            work_dir.join("contract.json"),
+            r#"{"title": "fix bug", "type": "fix",
+                "references": {"five_whys_id": "5W-2026-001"}}"#,
+        )
+        .unwrap();
+        let result = check_agent_five_whys_linked(tmp.path());
+        assert_eq!(result.status, CheckStatus::Pass);
     }
 
     // --- CB-1410 tests ---
