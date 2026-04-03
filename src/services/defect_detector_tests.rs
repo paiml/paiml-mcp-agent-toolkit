@@ -109,6 +109,101 @@ mod tests {
         }
     }
 
+    // Issue #279: .unwrap() inside #[cfg(feature)] blocks should not be detected
+    #[test]
+    fn test_skips_unwrap_in_cfg_feature_block() {
+        let detector = RustDefectDetector::new();
+        let code = r#"
+            #[cfg(feature = "cuda")]
+            impl GpuBackend {
+                fn init() {
+                    let device = adapter.request_device().unwrap();
+                }
+            }
+        "#;
+
+        let path = PathBuf::from("src/gpu/wgpu.rs");
+        let defects = detector.detect(code, &path);
+
+        assert_eq!(
+            defects.len(),
+            0,
+            "unwrap() inside #[cfg(feature)] blocks should be skipped (issue #279)"
+        );
+    }
+
+    #[test]
+    fn test_skips_unwrap_in_cfg_target_block() {
+        let detector = RustDefectDetector::new();
+        let code = r#"
+            #[cfg(target_os = "linux")]
+            fn platform_init() {
+                let fd = open_device().unwrap();
+            }
+        "#;
+
+        let path = PathBuf::from("src/platform.rs");
+        let defects = detector.detect(code, &path);
+
+        assert_eq!(
+            defects.len(),
+            0,
+            "unwrap() inside #[cfg(target_os)] should be skipped"
+        );
+    }
+
+    #[test]
+    fn test_detects_unwrap_outside_cfg_block() {
+        let detector = RustDefectDetector::new();
+        let code = r#"
+            #[cfg(feature = "cuda")]
+            impl GpuBackend {
+                fn init() {
+                    let device = adapter.request_device().unwrap();
+                }
+            }
+
+            fn regular_code() {
+                let x = Some(42).unwrap();
+            }
+        "#;
+
+        let path = PathBuf::from("src/gpu/wgpu.rs");
+        let defects = detector.detect(code, &path);
+
+        assert_eq!(
+            defects.len(),
+            1,
+            "unwrap() OUTSIDE #[cfg] block should still be detected"
+        );
+        assert_eq!(defects[0].instances.len(), 1);
+    }
+
+    #[test]
+    fn test_skips_unwrap_in_nested_cfg_block() {
+        let detector = RustDefectDetector::new();
+        let code = r#"
+            #[cfg(feature = "cuda")]
+            mod gpu {
+                fn inner() {
+                    let x = something.unwrap();
+                    if true {
+                        let y = other.unwrap();
+                    }
+                }
+            }
+        "#;
+
+        let path = PathBuf::from("src/gpu.rs");
+        let defects = detector.detect(code, &path);
+
+        assert_eq!(
+            defects.len(),
+            0,
+            "unwrap() in nested scopes inside #[cfg] should be skipped"
+        );
+    }
+
     #[test]
     fn test_excludes_fuzz_directory() {
         let detector = RustDefectDetector::new();

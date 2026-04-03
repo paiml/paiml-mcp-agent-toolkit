@@ -101,13 +101,66 @@ impl RustDefectDetector {
 
     fn detect_unwraps(&self, content: &str, file_path: &Path) -> Vec<DefectInstance> {
         let mut instances = Vec::new();
+        // Track #[cfg(...)] blocks via brace depth so we can skip .unwrap()
+        // inside conditional compilation code (issue #279).
+        let mut brace_depth: i32 = 0;
+        let mut cfg_entry_depth: Option<i32> = None; // depth when #[cfg] was seen
+        let mut pending_cfg = false;
+        let mut in_block_comment = false;
 
         for (line_num, line) in content.lines().enumerate() {
             let trimmed = line.trim();
-            // Skip doc comments - they contain examples, not production code
-            if trimmed.starts_with("///") || trimmed.starts_with("//!") {
+
+            // Track block comments (simplified — no nesting)
+            if in_block_comment {
+                if trimmed.contains("*/") {
+                    in_block_comment = false;
+                }
                 continue;
             }
+            if trimmed.starts_with("/*") {
+                in_block_comment = !trimmed.contains("*/");
+                continue;
+            }
+
+            // Skip doc comments and line comments
+            if trimmed.starts_with("///")
+                || trimmed.starts_with("//!")
+                || trimmed.starts_with("//")
+            {
+                continue;
+            }
+
+            // Detect #[cfg(...)] attributes — marks the next braced item as cfg-gated
+            if trimmed.starts_with("#[cfg(") || trimmed.starts_with("#[cfg_attr(") {
+                pending_cfg = true;
+            }
+
+            // Track brace depth and cfg block boundaries
+            for ch in line.chars() {
+                if ch == '{' {
+                    if pending_cfg && cfg_entry_depth.is_none() {
+                        cfg_entry_depth = Some(brace_depth);
+                        pending_cfg = false;
+                    }
+                    brace_depth += 1;
+                } else if ch == '}' {
+                    brace_depth -= 1;
+                    if let Some(entry) = cfg_entry_depth {
+                        if brace_depth <= entry {
+                            cfg_entry_depth = None;
+                        }
+                    }
+                }
+            }
+
+            // Skip .unwrap() detection inside #[cfg] blocks — conditional
+            // compilation code may use .unwrap() in feature-gated contexts
+            // where it's acceptable (e.g., GPU init, platform-specific code).
+            if cfg_entry_depth.is_some() {
+                continue;
+            }
+
             for mat in self.unwrap_regex.find_iter(line) {
                 instances.push(DefectInstance {
                     file: file_path.to_string_lossy().to_string(),

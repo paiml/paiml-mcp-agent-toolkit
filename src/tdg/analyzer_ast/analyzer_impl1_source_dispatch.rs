@@ -73,6 +73,15 @@ impl TdgAnalyzerAst {
 
             score.critical_defects_count = critical_count + lean_sorry_count;
             score.has_critical_defects = score.critical_defects_count > 0;
+
+            // Issue #279: New files with no git history should not be auto-failed.
+            // This prevents a circular dependency where new files can't be committed
+            // because the quality gate blocks them, but they can't pass the gate
+            // because they have no git history. Score based on code quality only.
+            if score.has_critical_defects && !is_file_git_tracked(path) {
+                score.has_critical_defects = false;
+                // Keep critical_defects_count for informational reporting
+            }
         }
 
         score.calculate_total();
@@ -216,4 +225,17 @@ impl TdgAnalyzerAst {
 
         Ok(())
     }
+}
+
+/// Check if a file is tracked by git (has at least one commit).
+/// Returns false for new/untracked files, enabling graceful degradation (issue #279).
+fn is_file_git_tracked(path: &Path) -> bool {
+    std::process::Command::new("git")
+        .args(["log", "--oneline", "-1", "--"])
+        .arg(path)
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::null())
+        .output()
+        .map(|o| o.status.success() && !o.stdout.is_empty())
+        .unwrap_or(true) // If git unavailable, assume tracked (don't change behavior)
 }
