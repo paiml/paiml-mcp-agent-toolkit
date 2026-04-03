@@ -380,14 +380,20 @@ pub(crate) fn check_agent_comply_usage(project_path: &Path) -> ComplianceCheck {
             }
             total_contracts += 1;
 
-            // Check for falsification receipt (evidence of comply/checkpoint run)
-            let receipt_dir = entry.path().join("falsification");
-            let has_receipt = receipt_dir.exists()
-                && fs::read_dir(&receipt_dir)
+            // Check for evidence of comply/checkpoint run:
+            // - falsification/ dir with receipts (from pmat work complete)
+            // - checkpoints/ dir with checkpoint files (from pmat work checkpoint)
+            // - trend/ dir with metrics snapshots
+            let has_falsification = entry.path().join("falsification").exists()
+                && fs::read_dir(entry.path().join("falsification"))
+                    .map(|d| d.count() > 0)
+                    .unwrap_or(false);
+            let has_checkpoints = entry.path().join("checkpoints").exists()
+                && fs::read_dir(entry.path().join("checkpoints"))
                     .map(|d| d.count() > 0)
                     .unwrap_or(false);
 
-            if has_receipt {
+            if has_falsification || has_checkpoints {
                 contracts_with_receipts += 1;
             }
         }
@@ -1217,6 +1223,18 @@ mod tests_agent_contracts {
         std::fs::create_dir_all(&receipt_dir).unwrap();
         std::fs::write(work_dir.join("contract.json"), r#"{"version": "5.0"}"#).unwrap();
         std::fs::write(receipt_dir.join("receipt-1.json"), "{}").unwrap();
+        let result = check_agent_comply_usage(tmp.path());
+        assert_eq!(result.status, CheckStatus::Pass);
+    }
+
+    #[test]
+    fn test_cb1404_pass_with_checkpoints() {
+        let tmp = tempfile::tempdir().expect("create tempdir");
+        let work_dir = tmp.path().join(".pmat-work").join("PMAT-010b");
+        let checkpoint_dir = work_dir.join("checkpoints");
+        std::fs::create_dir_all(&checkpoint_dir).unwrap();
+        std::fs::write(work_dir.join("contract.json"), r#"{"version": "5.0"}"#).unwrap();
+        std::fs::write(checkpoint_dir.join("checkpoint-1.json"), "{}").unwrap();
         let result = check_agent_comply_usage(tmp.path());
         assert_eq!(result.status, CheckStatus::Pass);
     }
