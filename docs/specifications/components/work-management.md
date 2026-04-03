@@ -46,6 +46,11 @@ Kernel verification:           Task verification:
 - **Bruni et al. (2026).** "Agent Behavioral Contracts." arXiv:2602.22302.
   Extends Eiffel DbC to multi-agent systems. Directly applicable to
   pmat work contracts for autonomous agent tasks (pmat agent).
+  **ENFORCEMENT**: CB-1400..1410 in [agent-integration.md](agent-integration.md)
+  mandate that all agents write contracts BEFORE code. Agent work items
+  inherit the same DbC v5.0 structure but with additional constraints:
+  autonomous agents MUST achieve >= L1 verification (recommended L3+),
+  and sub-agent contracts compose via assume-guarantee chains.
 
 - **Yang et al. (2025).** "CodeCureAgent: Automatic Classification and
   Repair of Static Analysis Warnings." arXiv:2509.11787. LLM-assisted
@@ -216,6 +221,19 @@ Roadmap items for provable-contracts client repos should include:
 - **Verification level target**: Which L-level the feature achieves
 - **Contract stems affected**: Which YAML contracts are relevant
 - **Binding coverage delta**: Expected change in CB-1208 coverage
+
+### Agent Contract Requirement
+
+When an agent creates or completes a work item, the contract MUST exist
+BEFORE any code changes. This is enforced by CB-1400 (agent contract
+existence). See [agent-integration.md](agent-integration.md) for the
+full agent contract-first specification and CB-1400..1410 check details.
+
+Agent-created work items automatically inherit:
+- `verification_level: "L3"` minimum (not L0)
+- `chain_of_thought` requirement (audit trail mandatory)
+- `evidence` commands that are executable (not just descriptions)
+- Assume-guarantee linkage when multiple agents collaborate
 
 ## Storage
 

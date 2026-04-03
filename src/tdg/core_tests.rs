@@ -119,6 +119,7 @@ fn test_tdg_score_calculate_total() {
         doc_coverage: 9.0,
         consistency_score: 8.0,
         entropy_score: 12.0, // Will be clamped to 10.0 by calculate_total()
+        has_contract_coverage: true, // Enable to test raw grade mapping
         ..TdgScore::default()
     };
 
@@ -186,6 +187,67 @@ fn test_tdg_score_critical_defects_autofail() {
 
     assert_eq!(score.total, 0.0);
     assert_eq!(score.grade, Grade::F);
+}
+
+#[test]
+fn test_tdg_score_contract_coverage_caps_a_to_aminus() {
+    // A file scoring A+ (95+) without contract coverage should be capped at A-
+    let mut score = TdgScore {
+        structural_complexity: 25.0,
+        semantic_complexity: 20.0,
+        duplication_ratio: 20.0,
+        coupling_score: 15.0,
+        doc_coverage: 10.0,
+        consistency_score: 10.0,
+        has_contract_coverage: false,
+        ..TdgScore::default()
+    };
+
+    score.calculate_total();
+
+    // Total is 100 (perfect), but without contract coverage, capped at A-
+    assert!(score.total >= 90.0);
+    assert_eq!(score.grade, Grade::AMinus);
+}
+
+#[test]
+fn test_tdg_score_contract_coverage_allows_a() {
+    // A file scoring A+ with contract coverage should keep A+
+    let mut score = TdgScore {
+        structural_complexity: 25.0,
+        semantic_complexity: 20.0,
+        duplication_ratio: 20.0,
+        coupling_score: 15.0,
+        doc_coverage: 10.0,
+        consistency_score: 10.0,
+        has_contract_coverage: true,
+        ..TdgScore::default()
+    };
+
+    score.calculate_total();
+
+    assert!(score.total >= 95.0);
+    assert_eq!(score.grade, Grade::APLus);
+}
+
+#[test]
+fn test_tdg_score_contract_coverage_no_effect_below_aminus() {
+    // A file scoring B+ without contract coverage should stay B+
+    let mut score = TdgScore {
+        structural_complexity: 20.0,
+        semantic_complexity: 16.0,
+        duplication_ratio: 16.0,
+        coupling_score: 12.0,
+        doc_coverage: 8.0,
+        consistency_score: 8.0,
+        has_contract_coverage: false,
+        ..TdgScore::default()
+    };
+
+    score.calculate_total();
+
+    // Total is 80 → B+, no cap applied
+    assert_eq!(score.grade, Grade::BPlus);
 }
 
 #[test]

@@ -349,6 +349,44 @@ pub(crate) async fn handle_check(
         comply_config,
     ));
 
+    // Agent contract-first enforcement (CB-1400..1410) — Component 10
+    // Enforces provable-contract-first design for all agents/sub-agents.
+    checks.push(filter_check_by_config(
+        check_agent_contract_existence(project_path),
+        "cb-1400",
+        comply_config,
+    ));
+    checks.push(filter_check_by_config(
+        check_agent_contract_falsifiability(project_path),
+        "cb-1401",
+        comply_config,
+    ));
+    checks.push(filter_check_by_config(
+        check_agent_verification_level(project_path),
+        "cb-1402",
+        comply_config,
+    ));
+    checks.push(filter_check_by_config(
+        check_assume_guarantee_chain(project_path),
+        "cb-1403",
+        comply_config,
+    ));
+    checks.push(filter_check_by_config(
+        check_agent_evidence_executable(project_path),
+        "cb-1408",
+        comply_config,
+    ));
+    checks.push(filter_check_by_config(
+        check_no_l0_autonomous_code(project_path),
+        "cb-1409",
+        comply_config,
+    ));
+    checks.push(filter_check_by_config(
+        check_subagent_contract_composition(project_path),
+        "cb-1410",
+        comply_config,
+    ));
+
     let failures = checks
         .iter()
         .filter(|c| c.status == CheckStatus::Fail)
@@ -442,6 +480,7 @@ pub(crate) async fn handle_check(
 include!("check_pv_enforcement.rs");
 include!("check_pv_quality.rs");
 include!("check_contract_surfaces.rs");
+include!("check_agent_contracts.rs");
 
 /// CB-533: Stale path references in Makefiles and CI workflows.
 pub(crate) fn check_stale_paths(project_path: &Path) -> ComplianceCheck {

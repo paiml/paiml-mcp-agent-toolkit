@@ -23,6 +23,7 @@ pub struct TdgScore {
     pub penalties_applied: Vec<PenaltyAttribution>,
     pub critical_defects_count: usize, // Known Defects v2.1: Count of critical defects
     pub has_critical_defects: bool,    // Known Defects v2.1: Auto-fail flag
+    pub has_contract_coverage: bool,   // CB-1400: Provable-contract coverage (caps A→A- if false)
 }
 
 impl Default for TdgScore {
@@ -43,6 +44,7 @@ impl Default for TdgScore {
             penalties_applied: Vec::new(),
             critical_defects_count: 0,
             has_critical_defects: false,
+            has_contract_coverage: false,
         }
     }
 }
@@ -90,6 +92,16 @@ impl TdgScore {
             self.grade = Grade::F;
         } else {
             self.grade = Grade::from_score(self.total);
+
+            // CB-1400: Provable-contract coverage required for A-tier grades.
+            // A "perfect" file without contract coverage caps at A-.
+            // This enforces contract-first design as a hard requirement for
+            // the highest quality tier — you cannot be truly "excellent"
+            // without provable guarantees.
+            // Note: Grade enum ordering is APLus < A < AMinus (lower = better)
+            if !self.has_contract_coverage && self.grade < Grade::AMinus {
+                self.grade = Grade::AMinus;
+            }
         }
     }
 

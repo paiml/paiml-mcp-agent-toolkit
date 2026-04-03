@@ -291,6 +291,9 @@ fn func5() -> i32 { return 42; }
                 doc_coverage: *doc,
                 consistency_score: *cons,
                 entropy_score: *ent,
+                // Enable contract coverage so grade mapping is tested
+                // without the CB-1400 A- cap (tested separately)
+                has_contract_coverage: true,
                 ..Default::default()
             };
             score.calculate_total();

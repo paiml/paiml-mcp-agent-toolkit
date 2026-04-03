@@ -119,7 +119,7 @@ sovereign deps meet version minimums, edition = 2021.
 
 ### Type 6: Provable-Contracts Schema Extensions
 
-Five contract classes recognized by CB-1305:
+Seven contract classes recognized by CB-1305:
 
 | Class | Discriminator | Example |
 |-------|--------------|---------|
@@ -127,9 +127,51 @@ Five contract classes recognized by CB-1305:
 | cross-language | `equations:` + `enforcement_level:` | cuda-kernel-safety-v1 |
 | schema-registry | `weight_roles:` / `architecture_map:` | architecture-requirements-v1 |
 | invariants-only | `invariants:` without `equations:` | qk-norm-apr-loader-v1 |
+| **regex-contract** | `regex:` or `regex_invariants:` in postconditions | cli-output-format-v1 |
+| **refinement-type** | `type_enforcement:` with `validated_types:` or `type_class_contracts:` | tensor-layout-v1 |
 | semantic-leak | ALL assertions are generic placeholders | configuration-v1 |
 
 **CB-1305:** WARN on unclassified. FAIL if >20%. **IMPL.**
+
+#### Regex Contract Class
+
+Contracts that assert output shape via regex patterns. Used for CLI output,
+serialization, protocol messages, log formats. Must have at least one
+`regex:` field in postconditions or `regex_invariants:` at equation level.
+
+```yaml
+equations:
+  format_output:
+    postconditions:
+      - regex: '^\{"version":"\d+\.\d+\.\d+"'
+        target: result
+    regex_invariants:
+      - pattern: '^[A-Z]+-\d+$'
+        target: ticket_id
+```
+
+Verification: L3 via `Regex::is_match()` assertion, L4 via Kani
+bounded regex matching, L5 via Lean regex language containment proof.
+
+#### Refinement Type Contract Class
+
+Contracts that use the newtype/phantom pattern (Haskell/F# style) to make
+invalid states unrepresentable at compile time. Must have `type_enforcement:`
+with `validated_types:` or `type_class_contracts:`.
+
+```yaml
+type_enforcement:
+  validated_types:
+    NonEmptyVec:
+      refinement: "self.len() > 0"
+      eliminates: "index-out-of-bounds"
+  type_class_contracts:
+    Invertible:
+      laws: ["∀ x. inverse(forward(x)) ≈ x"]
+```
+
+Verification: L2 via Rust compiler (private field + `Result` constructor),
+L4 via Kani/proptest for type class laws, L5 via Lean type class proofs.
 
 ### Type 7: TUI Widget Lifecycle (presentar)
 

@@ -146,31 +146,9 @@ function signature parameters, not the generic equation parameters.
 **Problem:** A contract equation uses `x`, `m`, `k`, `n` — but the bound
 function might use `logits`, `rows`, `cols`. The binding must translate.
 
-**Schema extension for binding.yaml:**
-
-```yaml
-bindings:
-  - contract: softmax-kernel-v1
-    equation: softmax
-    function: softmax
-    module_path: trueno::blis::softmax::softmax
-    signature: "fn(&[f32]) -> Vec<f32>"
-    status: implemented
-    # NEW: typed assertions per binding
-    preconditions:
-      - 'logits.iter().all(|v| v.is_finite())'
-      - 'logits.len() <= 131072'  # max context window
-    postconditions:
-      - '(result.iter().sum::<f32>() - 1.0).abs() < 1e-5'
-```
-
-**Detection:** For each binding with `status: implemented`:
-1. WARN if no `preconditions` field (inherits generic equation preconditions)
-2. FAIL if binding `preconditions` contains known placeholders
-3. INFO if binding adds domain constraints beyond the equation
-   (e.g., `logits.len() <= 131072` — deployment-specific bound)
-
-**Severity:** WARN. Binding-level assertions are an upgrade path, not blocking.
+**Schema:** Adds optional `preconditions`/`postconditions` fields to binding
+entries using actual function parameter names (not equation variables).
+WARN if missing. FAIL if placeholders. INFO if domain-specific constraints added.
 
 ## Configurable Thresholds
 
@@ -301,6 +279,176 @@ back to equation-level assertions otherwise.
 | 2 | CB-1212 | Ergonomic postconditions | Codegen done, pmat check ~20 lines | **PARTIAL** |
 | 3 | CB-1213 | Per-binding type safety | Schema + codegen | **TODO** |
 
+## Contract Expression Languages
+
+Contracts are not limited to Rust expressions. The YAML schema supports
+three assertion language families, each mapped to a verification backend.
+
+### Expression Language 1: Rust Expressions (Default)
+
+Standard Rust boolean expressions in `preconditions`/`postconditions`.
+Compiled to `debug_assert!` via codegen.
+
+```yaml
+preconditions:
+  - 'x.iter().all(|v| v.is_finite())'
+  - 'a.len() == m * k'
+  - 'eps > 0.0'
+postconditions:
+  - '(result.iter().sum::<f32>() - 1.0).abs() < 1e-5'
+```
+
+**Verification backend:** `debug_assert!` + Kani bounded model checking.
+
+### Expression Language 2: Regex Contracts
+
+Regex patterns as first-class contract assertions. Use for string-producing
+functions (CLI output, serializers, parsers, formatters, protocol messages).
+
+```yaml
+equations:
+  parse_ticket_id:
+    preconditions:
+      - 'input.len() > 0'
+    postconditions:
+      - regex: '^(PMAT|GH|EPIC)-\d+$'
+        target: result
+        description: Ticket ID must match canonical format
+    regex_invariants:
+      - pattern: '^\d{4}-\d{2}-\d{2}T'
+        target: timestamp_field
+        description: ISO 8601 timestamp format
+    proof_obligations:
+      - type: regex_exhaustiveness
+        property: All valid inputs produce regex-matching outputs
+        formal: "∀ input ∈ ValidTicketRef → output ∈ L(^(PMAT|GH|EPIC)-\\d+$)"
+        verification: kani  # or: lean, proptest
+```
+
+**Schema fields:**
+- `regex:` — PCRE2/Rust regex pattern the target must match
+- `target:` — which value to test (`result`, `output`, named field)
+- `regex_invariants:` — regex patterns that must hold at every checkpoint
+- `proof_obligations.type: regex_exhaustiveness` — prove ALL valid inputs
+  produce regex-matching output (Kani can bounded-verify this)
+
+**Verification backends:**
+- **L3**: `debug_assert!(Regex::new(pattern).unwrap().is_match(&target))`
+- **L4**: Kani harness — bounded model check that the regex matches for
+  all inputs within the precondition domain
+- **L5**: Lean theorem — prove regex language containment:
+  `∀ x, precondition(x) → output(x) ∈ L(regex)`
+
+**Use cases:**
+- CLI exit code format: `regex: '^\d+$'` with range constraint
+- JSON serialization shape: `regex: '^\{"version":"\d+\.\d+\.\d+"'`
+- Log format: `regex: '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}'`
+- SARIF output: `regex: '^\{"\\$schema":"https://.*sarif'`
+- Commit message: `regex: '^(feat|fix|docs|refactor|test|chore)(\(.+\))?: .+'`
+- Semantic version: `regex: '^\d+\.\d+\.\d+(-[a-zA-Z0-9.]+)?$'`
+- Module path: `regex: '^[a-z_][a-z0-9_]*(::[a-z_][a-z0-9_]*)*$'`
+
+### Expression Language 3: Refinement Types (Haskell/F# Style)
+
+Type-level contracts using the newtype/phantom pattern — bad states
+are **unrepresentable**. Inspired by Liquid Haskell, F* refinement types,
+and Idris dependent types.
+
+```yaml
+type_enforcement:
+  principle: "Poka-Yoke via refinement types (Shingo 1986)"
+  validated_types:
+    NonEmptyVec:
+      inner: Vec<T>
+      refinement: "self.len() > 0"
+      constructor: "fn new(data: Vec<T>) -> Result<Self, EmptyError>"
+      eliminates: "index-out-of-bounds on .first()/.last()"
+
+    BoundedFloat:
+      inner: f32
+      refinement: "self >= 0.0 && self <= 1.0"
+      constructor: "fn new(val: f32) -> Result<Self, OutOfRange>"
+      eliminates: "NaN propagation, division by zero in normalization"
+
+    ValidRegex:
+      inner: String
+      refinement: "Regex::new(&self).is_ok()"
+      constructor: "fn new(pattern: &str) -> Result<Self, regex::Error>"
+      eliminates: "regex compilation failure at call site"
+
+    ValidatedTensor:
+      inner: Vec<f32>
+      refinement: |
+        self.len() == shape.product()
+        && self.iter().all(|v| v.is_finite())
+        && zero_pct(self) < 0.5
+      constructor: "fn new(data, shape) -> Result<Self, ContractError>"
+      eliminates: "shape mismatch, NaN, degenerate weights"
+
+  # Haskell-style type class contracts
+  type_class_contracts:
+    Invertible:
+      laws:
+        - "∀ x. inverse(forward(x)) ≈ x"
+        - "∀ x. forward(inverse(x)) ≈ x"
+      instances: [Tokenizer, Encoder, Serializer]
+      verification: lean  # Prove via Lean type class instance
+
+    Idempotent:
+      laws:
+        - "∀ x. f(f(x)) = f(x)"
+      instances: [normalize, constrain_layout, deduplicate]
+      verification: kani  # Bounded check via Kani
+
+    Commutative:
+      laws:
+        - "∀ x y. f(x, y) = f(y, x)"
+      instances: [rect_intersection, merge_scores]
+      verification: proptest  # Property-based test
+
+  # F#-style units of measure
+  units_of_measure:
+    Milliseconds:
+      base: f64
+      conversion: "1000.0 * Seconds"
+    Bytes:
+      base: u64
+      conversion: "1024 * Kilobytes"
+    TokensPerSecond:
+      base: f64
+      dimension: "Tokens / Seconds"
+```
+
+**Verification backends:**
+- **L2**: Rust compiler (private inner field, `Result` constructor)
+- **L3**: `debug_assert!` on refinement predicate in constructor
+- **L4**: Kani proof that constructor rejects all invalid values;
+  proptest for type class laws
+- **L5**: Lean theorem for type class laws and refinement soundness
+
+**References:**
+- Vazou et al. (2014). Liquid Haskell: Refinement types via SMT.
+- Swamy et al. (2016). F*: Dependent types for program verification.
+- Brady (2013). Idris: Dependent types for systems programming.
+- tensor-layout-v1.yaml: Existing `ValidatedEmbedding`/`ValidatedWeight`.
+
+## Verification Backends: Lean (L5) and Kani (L4)
+
+Full specification in [verification-backends.md](verification-backends.md)
+(Component 24).
+
+**Lean (L5):** Mandatory for all contracts with `equations:`. Every equation
+MUST have `lean_theorem:` with `status: proved` (zero `sorry`). Contracts can
+embed dual expressions (`rust:` + `lean:`) verified independently. Checks:
+CB-1500 (`lake build`), CB-1501 (theorem resolution), CB-1502 (sorry=0),
+CB-1503 (Lean >= 4.12.0).
+
+**Kani (L4):** Bounded model checking for exhaustive property verification up
+to configurable bounds. Contracts reference harnesses via `kani_harness:`.
+Kani can bounded-verify regex postconditions. Checks: CB-1510 (`cargo kani`),
+CB-1511 (assume/precondition alignment), CB-1512 (obligation coverage),
+CB-1513 (bound >= 4).
+
 ## Anti-Leak Extension: Contract Surface Types
 
 The whack-a-mole problem -- provable-contracts evolving faster than pmat's
@@ -310,6 +458,23 @@ hardcoded checks -- is addressed by Component 23:
 CB-1305 classifies every contract YAML against known classes and flags
 unrecognized structures. Six surface types (CLI, HTTP, MCP, Config,
 Library, PV Schema) extend enforcement beyond kernel-math contracts.
+
+## Agent Contract-First Enforcement
+
+The same provable-contracts methodology extends to ALL agents and sub-agents
+operating in pmat-governed projects. Component 10
+([agent-integration.md](agent-integration.md)) specifies:
+
+- **CB-1400..1410**: Agent-specific compliance checks
+- **Contract-first workflow**: Contract YAML or contract.json MUST exist
+  before any code generation
+- **Verification level floor**: Autonomous agents MUST achieve >= L1
+  (recommended L3+). L0 (paper-only) is FAIL for autonomous agents.
+- **Assume-guarantee composition**: Multi-agent chains validated via
+  CB-1410 (sub-agent requires = parent ensures)
+
+This closes the gap where an agent could modify code in a provable-contracts
+client repo without creating or updating the corresponding contract YAML.
 
 ## References
 

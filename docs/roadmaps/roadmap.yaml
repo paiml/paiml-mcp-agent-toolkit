@@ -2671,3 +2671,224 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: PMAT-528
+  github_issue: null
+  item_type: task
+  title: 'CB-1305: Contract Surface Type Classification & Anti-Leak Gate'
+  status: completed
+  priority: high
+  assigned_to: null
+  created: 2026-04-02T14:17:33Z
+  updated: 2026-04-02T14:32:56Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-529
+  github_issue: null
+  item_type: task
+  title: 'CB-1302/1310-1314: MCP schema contracts + PV extension classes'
+  status: completed
+  priority: high
+  assigned_to: null
+  created: 2026-04-02T14:40:06Z
+  updated: 2026-04-02T14:47:47Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-530
+  github_issue: null
+  item_type: task
+  title: 'CB-1300 fix: unify OutputFormat + harden CB-1305 classifier'
+  status: completed
+  priority: high
+  assigned_to: null
+  created: 2026-04-02T14:51:10Z
+  updated: 2026-04-02T14:59:49Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-531
+  github_issue: null
+  item_type: task
+  title: 'CB-1300 fix: converge 9 OutputFormat enums to ONE canonical type'
+  status: completed
+  priority: high
+  assigned_to: null
+  created: 2026-04-02T15:01:31Z
+  updated: 2026-04-02T15:16:03Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-532
+  github_issue: null
+  item_type: task
+  title: 'CB-1302 fix: add doc comments to 25 MCP arg structs'
+  status: completed
+  priority: high
+  assigned_to: null
+  created: 2026-04-02T15:16:50Z
+  updated: 2026-04-02T15:33:54Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-533
+  github_issue: null
+  item_type: task
+  title: 'Contract surfaces for presentar: TUI widget lifecycle + WASM FFI boundary'
+  status: completed
+  priority: high
+  assigned_to: null
+  created: 2026-04-02T15:23:27Z
+  updated: 2026-04-02T15:33:54Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-534
+  github_issue: null
+  item_type: task
+  title: 'L5 enforcement: verification ladder check + fix upstream dep violations'
+  status: completed
+  priority: high
+  assigned_to: null
+  created: 2026-04-02T15:35:44Z
+  updated: 2026-04-02T15:49:25Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-535
+  github_issue: null
+  item_type: task
+  title: 'Fix L5 violations: add lean_theorem to realizar + aprender contracts'
+  status: completed
+  priority: high
+  assigned_to: null
+  created: 2026-04-02T15:52:14Z
+  updated: 2026-04-02T16:13:48Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-536
+  github_issue: null
+  item_type: task
+  title: 'Fix CB-1203: add contract macro to aprender::silu'
+  status: completed
+  priority: high
+  assigned_to: null
+  created: 2026-04-02T16:31:59Z
+  updated: 2026-04-02T16:33:49Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-537
+  github_issue: null
+  item_type: task
+  title: 'CB-1303 fix: add RUST_MIN_STACK to CI across sovereign stack'
+  status: completed
+  priority: medium
+  assigned_to: null
+  created: 2026-04-02T21:49:37Z
+  updated: 2026-04-02T21:55:18Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-538
+  github_issue: null
+  item_type: task
+  title: 'Clear final 2 WARNs: pv-contracts semantic leaks + aprender WASM docs'
+  status: completed
+  priority: medium
+  assigned_to: null
+  created: 2026-04-02T21:57:15Z
+  updated: 2026-04-02T22:06:30Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-539
+  github_issue: null
+  item_type: task
+  title: 'PMAT-032: Provable contracts §32-34 — 160 contracts, 27/27 sovereign stack'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-04-03T09:09:55Z
+  updated: 2026-04-03T09:09:55Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-033
+  github_issue: null
+  item_type: feature
+  title: 'CB-1400..1410: Agent contract-first enforcement checks (Refs PMAT-032)'
+  status: inprogress
+  priority: high
+  assigned_to: null
+  created: 2026-04-03T15:00:00Z
+  updated: 2026-04-03T09:24:32.466548128+00:00
+  spec: docs/specifications/components/agent-integration.md
+  acceptance_criteria:
+  - CB-1400 agent contract existence check implemented
+  - CB-1401 contract falsifiability validation
+  - CB-1402 verification level floor for autonomous agents
+  - CB-1403 assume-guarantee chain validation
+  - CB-1408 evidence command executability check
+  - CB-1409 no L0 autonomous code enforcement
+  - CB-1410 sub-agent contract composition check
+  - All checks integrated into handle_check() dispatcher
+  - Tests for each check (at least 2 per CB)
+  - Dogfood via apr-cli to verify cross-project enforcement
+  phases: []
+  subtasks: []
+  estimated_effort: 2d
+  labels:
+  - provable-contracts
+  - agent-enforcement
+  - comply
+  notes: null

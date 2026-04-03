@@ -31,6 +31,7 @@
 | 21 | [Scoring Convergence & Hardening](#21-scoring-convergence--hardening) | [scoring-convergence.md](components/scoring-convergence.md) | Active |
 | 22 | [Provable Contracts Integration](#22-provable-contracts-integration) | [provable-contracts.md](components/provable-contracts.md) | Active |
 | 23 | [Contract Surface Types](#23-contract-surface-types) | [contract-surface-types.md](components/contract-surface-types.md) | Active |
+| 24 | [Verification Backends](#24-verification-backends) | [verification-backends.md](components/verification-backends.md) | Active |
 
 ---
 
@@ -159,8 +160,17 @@ model-serialization-manifest, model-serialization-realizar-integration, ml-model
 
 **Sub-spec**: [components/agent-integration.md](components/agent-integration.md)
 
+**MANDATORY: Provable-contract-first design for ALL agents and sub-agents.**
+No agent may generate code without a prior contract (YAML or contract.json).
+CB-1400..1410 enforce contract existence, falsifiability, verification level,
+and assume-guarantee chains for multi-agent workflows. Minimum L1 for
+autonomous agents (recommended L3+). Based on Bruni et al. (2026,
+arXiv:2602.22302) Agent Behavioral Contracts.
+
 Claude Agent SDK integration. AGENTS.md protocol bridging. Multi-agent workflows
 with Actix actor framework. Claude Code skills integration.
+
+**Agent instructions**: [provable-contract-first-agents.md](../agent-instructions/provable-contract-first-agents.md)
 
 **Consolidated from**: agents, claude-agent-integration, claude-code-agent-mode-spec,
 claude-skills-spec-v1, claude-sub-agents-spec-actix.
@@ -318,11 +328,18 @@ CB-1201 (PV Lint gate), CB-1202 (contract coverage), CB-1250 (work-DBC binding).
 
 **Sub-spec**: [components/provable-contracts.md](components/provable-contracts.md)
 
-ONE contract type: `#[core::contracts::requires]`/`#[ensures]` (Rust nightly
-#128044). Compiler-enforced, zero cost by default, opt-in runtime checks via
-`-Z contract-checks=yes`. No external crates. YAML contracts + `pv lint`
-enforce until nightly stabilizes. 98 contracts across sovereign stack.
-CB-1203: annotation coverage.
+Three contract expression languages: **Rust expressions** (default),
+**regex patterns** (for string-producing functions), and **refinement types**
+(Haskell/F# style — bad states unrepresentable). Two verification backends:
+**Lean** (L5 mandatory — full theorem proving) and **Kani** (L4 — bounded
+model checking). YAML contracts + `pv lint` enforce. 285+ contracts across
+sovereign stack. CB-1203: annotation coverage. CB-1500..1513: Lean/Kani
+verification pipeline checks.
+
+Regex contracts use `regex:` fields in postconditions; Kani can bounded-verify
+regex matching; Lean can prove language containment. Refinement type contracts
+use `type_enforcement:` with `validated_types:` (newtype pattern) and
+`type_class_contracts:` (algebraic laws like Invertible, Idempotent, Commutative).
 
 ---
 
@@ -330,15 +347,33 @@ CB-1203: annotation coverage.
 
 **Sub-spec**: [components/contract-surface-types.md](components/contract-surface-types.md)
 
-Six contract surface types (CLI, HTTP, MCP, Config, Library, PV Schema) with
-anti-leak enforcement via CB-1305 contract class classifier. Resolution hierarchy:
-org commits > batuta oracle > arXiv > web search > chain of thought > five-whys.
-New checks CB-1300..1314 prevent whack-a-mole drift from provable-contracts.
+Eight contract surface types (CLI, HTTP, MCP, Config, Library, PV Schema,
+TUI Widget, WASM FFI) plus two contract classes (**regex-contract**,
+**refinement-type**) with anti-leak enforcement via CB-1305 contract class
+classifier (7 classes). Resolution hierarchy: org commits > batuta oracle >
+arXiv > web search > chain of thought > five-whys. New checks CB-1300..1314
+prevent whack-a-mole drift from provable-contracts.
 
 **Key insight**: CB-1305 is the anti-leak gate -- classifies every contract YAML
 and flags unrecognized structures instead of silently skipping them.
 
 **Consolidated from**: provable-contracts leak analysis, contract-surface-types (new).
+
+---
+
+## 24. Verification Backends
+
+**Sub-spec**: [components/verification-backends.md](components/verification-backends.md)
+
+**Lean (L5):** Full theorem proving — mandatory for all equation contracts.
+`lean_theorem:` with `status: proved`, zero `sorry` budget. Dual expression
+language (`rust:` + `lean:`) verified independently. Can prove regex language
+containment and refinement type soundness universally. Checks: CB-1500..1503.
+
+**Kani (L4):** Bounded model checking via SAT/SMT. Exhaustive verification up
+to configurable bounds. Verifies regex postconditions, refinement type
+constructors, and type class laws (idempotency, commutativity, invertibility)
+for all inputs within bound. Checks: CB-1510..1513.
 
 ---
 
@@ -404,6 +439,7 @@ categories to concrete file paths.
 3. **Popperian Falsification**: Quality claims must be falsifiable and evidence-based
 4. **O(1) Operations**: Metric caching, hash-based validation, CSR graph lookups
 5. **Mono-Spec Enforcement**: This document is the single source of truth (CB-140 comply check)
+6. **Contract-First Agent Design**: No agent or sub-agent may write code before writing a provable contract. Enforced by CB-1400..1410. Verification ladder (L0-L5) applies to agent tasks, not just kernels. Assume-guarantee chains (Dardik & Kang, 2509.06250) compose multi-agent contracts. See [agent-integration.md](components/agent-integration.md)
 
 ## Compliance Checks (pmat comply)
 
@@ -412,6 +448,13 @@ categories to concrete file paths.
 | CB-140 | Mono-Spec Structure | Validates pmat-spec.md exists, TOC links resolve, components <500 lines |
 | CB-141 | Memory Profiling | Penalizes repos without dhat-rs or equivalent heap profiling |
 | CB-142 | SWE-CI EvoScore | Computes evolution score from git history + CI pass rates |
+| CB-1400 | Agent Contract Existence | FAIL if agent modifies code without prior contract (YAML or contract.json) |
+| CB-1401 | Agent Contract Falsifiability | FAIL if contract has no falsifiable claims (just descriptions) |
+| CB-1402 | Agent Verification Level | FAIL if autonomous agent operates at L0 without human approval |
+| CB-1403 | Assume-Guarantee Chain | WARN if multi-agent ensure/require chain is broken |
+| CB-1408 | Agent Evidence Executable | FAIL if contract evidence commands are not executable or passing |
+| CB-1409 | No L0 Autonomous Code | FAIL if AI-authored commit has no corresponding contract |
+| CB-1410 | Sub-Agent Composition | WARN if sub-agent contracts don't compose (output ⊇ next input) |
 
 ## Version History
 

@@ -126,6 +126,9 @@ mod red_phase_tests {
     #[test]
     fn red_test_grade_must_match_normalized_score() {
         let mut score = TdgScore::default();
+        // Enable contract coverage so this test validates raw grade mapping
+        // (the contract cap is tested separately in test_tdg_score_contract_coverage_*)
+        score.has_contract_coverage = true;
 
         // Test various score levels
         let test_cases = vec![
@@ -302,8 +305,14 @@ mod property_tests {
 
             score.calculate_total();
 
-            // Verify grade matches the score range
-            let expected_grade = crate::tdg::Grade::from_score(score.total);
+            // Verify grade matches the score range, accounting for
+            // CB-1400 contract coverage cap (A/A+ → A- without contracts)
+            let raw_grade = crate::tdg::Grade::from_score(score.total);
+            let expected_grade = if !score.has_contract_coverage && raw_grade < crate::tdg::Grade::AMinus {
+                crate::tdg::Grade::AMinus
+            } else {
+                raw_grade
+            };
             prop_assert_eq!(score.grade, expected_grade);
         }
     }

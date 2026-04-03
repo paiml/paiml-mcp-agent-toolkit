@@ -28,6 +28,45 @@ Where:
 | D | 0.6 - 0.8 | Refactor next sprint |
 | F | 0.8 - 1.0 | Immediate action |
 
+### Provable-Contract Coverage Gate (CB-1400)
+
+**A file cannot achieve grade A or A+ without provable-contract coverage.**
+
+| Has Contract Coverage | Max Possible Grade |
+|-----------------------|-------------------|
+| Yes | A+ (95-100) |
+| No | A- (85-89) — hard cap |
+
+This enforces contract-first design as a hard requirement for the highest
+quality tier. A "perfect" file (100/100 on all metrics) without a corresponding
+entry in `binding.yaml` will be graded A-, not A+. The cap is applied in
+`TdgScore::calculate_total()` after all metric components are computed.
+
+**Contract coverage detected via (any of):**
+1. **YAML binding** — `binding.yaml` with `status: implemented` and `module_path` matching the file
+2. **Inline Rust contracts** — `#[requires(`, `#[ensures(`, `contract_pre_*` macros in source
+3. **Regex contracts** — `regex:` or `regex_invariants:` in the function's contract YAML
+4. **Refinement types** — `type_enforcement:` with `validated_types:` wrapping the function's types
+5. **Lean theorems** — `lean_theorem:` referencing a proved theorem for the function
+6. **Kani harnesses** — `kani_harness:` referencing a verified harness for the function
+
+A file qualifies for A/A+ if ANY of its functions have contract coverage
+through any of these mechanisms.
+
+**Three contract expression languages:**
+
+| Language | Example | L3 Verification | L4 Verification | L5 Verification |
+|----------|---------|-----------------|-----------------|-----------------|
+| Rust expressions | `x.iter().all(\|v\| v.is_finite())` | `debug_assert!` | Kani bounded check | Lean theorem |
+| Regex patterns | `regex: '^(PMAT\|GH)-\d+$'` | `Regex::is_match()` | Kani bounded regex | Lean language containment |
+| Refinement types | `refinement: "self.len() > 0"` | `Result` constructor | Kani/proptest | Lean type class proof |
+
+**Rationale:** You cannot claim "excellent" quality without provable guarantees.
+Metrics measure observable properties (complexity, duplication, coverage), but
+only contracts prove behavioral correctness. This aligns with Meyer (1988)
+Design by Contract, Vazou et al. (2014) Liquid Haskell refinement types,
+and Li et al. (2025, arXiv:2510.12047) on formal contracts for LLM-generated code.
+
 ### TDG Enforcement (CB-200)
 
 `pmat comply` check CB-200 validates minimum grade gate:

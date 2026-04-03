@@ -191,6 +191,7 @@ mod storage_impl_tests {
                 penalties_applied: vec![],
                 critical_defects_count: 0,
                 has_critical_defects: false,
+                has_contract_coverage: false,
             },
             components: ComponentScores::default(),
             semantic_sig: create_test_semantic_signature(),
