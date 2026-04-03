@@ -73,20 +73,26 @@ fn evaluate_single_invariant(
         }
         FalsificationMethod::LintPass => check_lint_invariant(project_path, clause),
         FalsificationMethod::ComplexityRegression => {
-            // Complexity check is expensive — report as checked but defer
-            // full evaluation to `work complete` for now.
+            // DBC §checkpoint_verification: deferred checks return consistent "deferred" status
+            // so that repeated checkpoints produce identical results (idempotency invariant)
             InvariantResult {
                 clause_id: clause.id.clone(),
                 passed: true,
-                explanation: format!("{}: deferred to completion", clause.description),
+                explanation: format!(
+                    "{}: deferred to completion (not evaluated at checkpoint)",
+                    clause.description
+                ),
             }
         }
         FalsificationMethod::ManifestIntegrity => check_compiles_invariant(project_path, clause),
-        // SATD, dead code, fix chain — checked at completion for now
+        // SATD, dead code, fix chain — return consistent deferred status for idempotency
         _ => InvariantResult {
             clause_id: clause.id.clone(),
             passed: true,
-            explanation: format!("{}: deferred to completion", clause.description),
+            explanation: format!(
+                "{}: deferred to completion (not evaluated at checkpoint)",
+                clause.description
+            ),
         },
     }
 }

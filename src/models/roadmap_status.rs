@@ -87,6 +87,41 @@ impl ItemStatus {
         }
     }
 
+    /// Validate a state transition against the work-dbc-v1 adjacency matrix.
+    ///
+    /// Valid transitions (contract §work_lifecycle):
+    ///   Planned    → InProgress, Cancelled
+    ///   InProgress → Blocked, Review, Completed
+    ///   Blocked    → InProgress
+    ///   Review     → InProgress, Completed
+    ///   Completed  → (terminal, no outgoing)
+    ///   Cancelled  → (terminal, no outgoing)
+    pub fn can_transition_to(self, target: Self) -> bool {
+        matches!(
+            (self, target),
+            (Self::Planned, Self::InProgress)
+                | (Self::Planned, Self::Cancelled)
+                | (Self::InProgress, Self::Blocked)
+                | (Self::InProgress, Self::Review)
+                | (Self::InProgress, Self::Completed)
+                | (Self::Blocked, Self::InProgress)
+                | (Self::Review, Self::InProgress)
+                | (Self::Review, Self::Completed)
+        )
+    }
+
+    /// Human-readable name for display
+    pub fn display_name(self) -> &'static str {
+        match self {
+            Self::Planned => "Planned",
+            Self::InProgress => "InProgress",
+            Self::Blocked => "Blocked",
+            Self::Review => "Review",
+            Self::Completed => "Completed",
+            Self::Cancelled => "Cancelled",
+        }
+    }
+
     /// Get all valid status strings for help text
     pub fn valid_values() -> &'static [&'static str] {
         &[

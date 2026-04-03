@@ -617,6 +617,66 @@ fn test_item_status_valid_values() {
 }
 
 // ============================================================================
+// Tests for ItemStatus::can_transition_to (DBC §work_lifecycle)
+// ============================================================================
+
+#[test]
+fn test_lifecycle_valid_transitions() {
+    // Planned -> InProgress, Cancelled
+    assert!(ItemStatus::Planned.can_transition_to(ItemStatus::InProgress));
+    assert!(ItemStatus::Planned.can_transition_to(ItemStatus::Cancelled));
+    // InProgress -> Blocked, Review, Completed
+    assert!(ItemStatus::InProgress.can_transition_to(ItemStatus::Blocked));
+    assert!(ItemStatus::InProgress.can_transition_to(ItemStatus::Review));
+    assert!(ItemStatus::InProgress.can_transition_to(ItemStatus::Completed));
+    // Blocked -> InProgress
+    assert!(ItemStatus::Blocked.can_transition_to(ItemStatus::InProgress));
+    // Review -> InProgress, Completed
+    assert!(ItemStatus::Review.can_transition_to(ItemStatus::InProgress));
+    assert!(ItemStatus::Review.can_transition_to(ItemStatus::Completed));
+}
+
+#[test]
+fn test_lifecycle_invalid_planned_to_completed() {
+    // FALSIFY-WDB-001: Planned->Completed is INVALID (no skip)
+    assert!(!ItemStatus::Planned.can_transition_to(ItemStatus::Completed));
+}
+
+#[test]
+fn test_lifecycle_terminal_states() {
+    // FALSIFY-WDB-006: Completed and Cancelled are terminal (no outgoing edges)
+    for target in [
+        ItemStatus::Planned,
+        ItemStatus::InProgress,
+        ItemStatus::Blocked,
+        ItemStatus::Review,
+        ItemStatus::Completed,
+        ItemStatus::Cancelled,
+    ] {
+        assert!(
+            !ItemStatus::Completed.can_transition_to(target),
+            "Completed should not transition to {:?}",
+            target
+        );
+        assert!(
+            !ItemStatus::Cancelled.can_transition_to(target),
+            "Cancelled should not transition to {:?}",
+            target
+        );
+    }
+}
+
+#[test]
+fn test_lifecycle_display_name() {
+    assert_eq!(ItemStatus::Planned.display_name(), "Planned");
+    assert_eq!(ItemStatus::InProgress.display_name(), "InProgress");
+    assert_eq!(ItemStatus::Completed.display_name(), "Completed");
+    assert_eq!(ItemStatus::Cancelled.display_name(), "Cancelled");
+    assert_eq!(ItemStatus::Blocked.display_name(), "Blocked");
+    assert_eq!(ItemStatus::Review.display_name(), "Review");
+}
+
+// ============================================================================
 // Tests for RoadmapItem methods
 // ============================================================================
 

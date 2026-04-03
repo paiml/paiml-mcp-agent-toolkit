@@ -67,6 +67,15 @@ pub(super) async fn resolve_yaml_ticket(
 
     if let Some(existing) = service.find_item(id)? {
         println!("   {}", c::pass("Found existing ticket"));
+        // DBC §work_lifecycle: Validate state transition before starting
+        if !existing.status.can_transition_to(ItemStatus::InProgress) {
+            anyhow::bail!(
+                "Invalid transition: {} → InProgress. \
+                 {} is a terminal state and cannot be restarted.",
+                existing.status.display_name(),
+                existing.status.display_name(),
+            );
+        }
         let mut item = existing;
         item.status = ItemStatus::InProgress;
         item.updated = chrono::Utc::now().to_rfc3339();

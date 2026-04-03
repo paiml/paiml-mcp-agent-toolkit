@@ -523,6 +523,18 @@ pub async fn handle_work_complete(
         .find_item(&id)?
         .with_context(|| format!("Item not found: {}", id))?;
 
+    // DBC §work_lifecycle: Validate state transition (Planned→Completed is INVALID)
+    if !item.status.can_transition_to(ItemStatus::Completed) {
+        anyhow::bail!(
+            "Invalid transition: {} → Completed. \
+             Item must be InProgress or Review to complete. \
+             Current status: {}. Run 'pmat work start {}' first.",
+            item.status.display_name(),
+            item.status.display_name(),
+            id
+        );
+    }
+
     run_quality_check(&project_path, skip_quality).await?;
 
     // DbC §4.3: Final invariant check before postcondition evaluation
