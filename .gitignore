@@ -269,3 +269,4 @@ satd-report.json
 golden_traces/
 /.cargo/
 !/.cargo/config.toml
+.pv/
