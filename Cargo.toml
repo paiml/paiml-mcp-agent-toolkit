@@ -283,9 +283,6 @@ sourcemap = { version = "9.0", optional = true }  # Only needed for deep-wasm so
 prettyplease = { version = "0.2.37", optional = true }
 fs2 = "0.4.3"
 
-# Pin cc to avoid 1.2.50+ which has broken apple_sdk_name() on Linux
-# See: https://github.com/rust-lang/cc-rs/issues — target::TargetInfo API break
-cc = ">=1.2.26, <1.2.50"
 
 [dev-dependencies]
 provable-contracts = { path = "../provable-contracts/crates/provable-contracts" }
