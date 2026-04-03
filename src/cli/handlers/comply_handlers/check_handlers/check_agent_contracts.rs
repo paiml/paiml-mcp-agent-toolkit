@@ -225,10 +225,10 @@ pub(crate) fn check_agent_verification_level(project_path: &Path) -> ComplianceC
 
                 if content.contains("\"verification_level\"") {
                     // Check for L0 — paper-only, unacceptable for autonomous agents
-                    if content.contains("\"L0\"") || content.contains("\"l0\"") {
-                        if l0_contracts.len() < 5 {
-                            l0_contracts.push(id);
-                        }
+                    if (content.contains("\"L0\"") || content.contains("\"l0\""))
+                        && l0_contracts.len() < 5
+                    {
+                        l0_contracts.push(id);
                     }
                     // L1+ is acceptable
                 } else {
