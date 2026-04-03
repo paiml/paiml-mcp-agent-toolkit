@@ -204,6 +204,14 @@ pub async fn handle_work_edit(
     if let Some(s) = status {
         let new_status = crate::models::roadmap::ItemStatus::from_string(&s)
             .map_err(|e| anyhow::anyhow!("Invalid status '{}': {}", s, e))?;
+        // DBC §work_lifecycle: Validate state transition via adjacency matrix
+        if !updated_item.status.can_transition_to(new_status) {
+            anyhow::bail!(
+                "Invalid transition: {} → {}. See work-dbc-v1.yaml §work_lifecycle for valid transitions.",
+                updated_item.status.display_name(),
+                new_status.display_name(),
+            );
+        }
         updated_item.status = new_status;
         changes.push(format!("status: {}", s));
     }
