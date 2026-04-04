@@ -2,9 +2,9 @@
 
 > Sub-spec of [pmat-spec.md](../pmat-spec.md) | Component 16
 
-## Rust Project Score v2.3
+## Rust Project Score v3.0
 
-### 274-Point Scoring
+### 289-Point Scoring
 
 ```bash
 pmat rust-project-score              # Fast mode (~2-3 min)
@@ -12,24 +12,25 @@ pmat rust-project-score --full       # Full mode (~10-15 min)
 pmat rust-project-score --format json -o score.json
 ```
 
-### Categories (10)
+### Categories (11)
 
 | Category | Points | Checks |
 |----------|--------|--------|
 | Rust Tooling & CI/CD | 130 | clippy, fmt, edition, MSRV, CI, audit |
 | Code Quality | 26 | complexity, TDG grades, dead code |
 | Testing Excellence | 20 | coverage, mutation, property tests |
-| Documentation | 15 | doc-tests, README, API docs |
-| Build Performance | 15 | build time, incremental, caching |
-| Performance & Benchmarking | 10 | benchmarks, binary size |
-| Dependency Health | 12 | audit, outdated, count |
 | Known Defects | 20 | P0 defects, unwrap audit |
-| GPU/SIMD Quality | 10 | CUDA-TDG, barrier safety |
+| Documentation | 15 | doc-tests, README, API docs |
+| Reproducibility | 15 | Popper falsifiability, statistical rigor |
 | Formal Verification | 16 | Miri, Kani, Verus, specs |
+| Build Performance | 15 | build time, incremental, caching |
+| Dependency Health | 12 | audit, outdated, count |
+| Performance & Benchmarking | 10 | benchmarks, binary size |
+| GPU/SIMD Quality | 10 | CUDA-TDG, barrier safety |
 
 ### Real-World Assessment
 
-**Current score: 167.4/274 (71.2%, Grade B).** Category breakdown reveals imbalance:
+**Current score: 193.5/289 (75.5%, Grade B).** Category breakdown reveals imbalance:
 
 | Category | % of Total | Assessment |
 |----------|-----------|------------|
