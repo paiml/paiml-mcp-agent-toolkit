@@ -77,8 +77,8 @@ and Li et al. (2025, arXiv:2510.12047) on formal contracts for LLM-generated cod
 ### Real-World Assessment
 
 **TDG is the most actionable metric in PMAT.** Per-file granularity means developers know
-exactly what to fix. Average score of 95.2/100 across 4435 files with clear grade distribution
-(A+: 2658, A: 1595, F: 8) identifies the 8 problem files immediately. CB-200 grade gate
+exactly what to fix. Average score of 95.2/100 across 4464 files with clear grade distribution
+(A-: 4364, B+: 40, B: 30, F: 9) identifies the 9 problem files immediately. CB-200 grade gate
 enforces minimum quality at commit time. No changes recommended.
 
 **Versus Popper Score (87.5)**: TDG tells you "query_handler.rs has complexity 15 and 3% duplication."

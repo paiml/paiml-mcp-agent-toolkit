@@ -117,8 +117,8 @@ echo "{\"commit\":\"$SHA\",\"pass\":$PASS,\"total\":$TOTAL}" \
 ```bash
 # Record current test state
 cargo test 2>&1 | grep "test result"
-# → test result: ok. 19795 passed; 0 failed; 167 ignored
-echo '{"commit":"current","pass":19795,"total":19795}' \
+# → test result: ok. 21841 passed; 0 failed; 203 ignored (as of v3.11.1)
+echo '{"commit":"current","pass":21841,"total":21841}' \
   > .pmat-metrics/commit-$(date +%Y%m%d)-tests.json
 ```
 
@@ -302,7 +302,7 @@ Requires threading `comply_config` into `check_swe_ci_evoscore()`.
 | `-tests.json` loading | Implemented | `check_mono_spec.rs:224-251` |
 | `-meta.json` fallback | Implemented | `check_mono_spec.rs:254-281` |
 | CB-142 comply check | Implemented | `check_mono_spec.rs:217-359` |
-| Unit tests (3 cases) | Implemented | `check_mono_spec.rs:461-500` |
+| Unit tests (10 cases) | Implemented | `check_mono_spec.rs:366-500` |
 | `pmat test --record` | Implemented | `src/cli/command_dispatcher/test_record.rs` |
 | Configurable gamma | Not implemented | Hardcoded to 1.5 |
 | Configurable window | Not implemented | No time-based filtering |
