@@ -824,14 +824,19 @@ fn build_split_targets(plan: &SplitPlan, original_content: &str) -> Result<Vec<S
 
     for cluster in &plan.clusters {
         let mut content = String::new();
+        let has_impl = cluster.items.iter().any(|i| i.kind == "impl");
 
-        // Add use block at top of each submodule
-        for use_line in &plan.use_block {
-            content.push_str(use_line);
-            content.push('\n');
-        }
-        if !plan.use_block.is_empty() {
-            content.push('\n');
+        // Add use block only for mod-style submodules (not include!() clusters).
+        // include!() inherits the parent scope — adding `use` would be redundant
+        // and can cause "unused import" warnings or shadow issues.
+        if !has_impl {
+            for use_line in &plan.use_block {
+                content.push_str(use_line);
+                content.push('\n');
+            }
+            if !plan.use_block.is_empty() {
+                content.push('\n');
+            }
         }
 
         // Add the items
@@ -874,9 +879,18 @@ fn execute_split_plan(plan: &SplitPlan, targets: &[SplitTarget], commit: bool) -
         new_content.push('\n');
     }
 
-    // Add mod declarations for each new submodule
+    // Add mod or include!() declarations for each new submodule.
+    // impl blocks MUST use include!() because they share the parent scope
+    // (struct definitions, use imports). mod creates a separate scope which
+    // breaks method resolution. Free functions use mod (proper isolation).
+    let mut include_clusters = Vec::new();
     for cluster in &plan.clusters {
-        new_content.push_str(&format!("mod {};\n", cluster.suggested_name));
+        let has_impl = cluster.items.iter().any(|i| i.kind == "impl");
+        if has_impl {
+            include_clusters.push(&cluster.suggested_name);
+        } else {
+            new_content.push_str(&format!("mod {};\n", cluster.suggested_name));
+        }
     }
     new_content.push('\n');
 
@@ -942,6 +956,12 @@ fn execute_split_plan(plan: &SplitPlan, targets: &[SplitTarget], commit: bool) -
 
         new_content.push_str(line);
         new_content.push('\n');
+    }
+
+    // Append include!() for clusters with impl blocks.
+    // These must come after remaining items so they share the same scope.
+    for name in &include_clusters {
+        new_content.push_str(&format!("include!(\"{name}.rs\");\n"));
     }
 
     std::fs::write(&plan.source_file, &new_content)
