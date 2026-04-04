@@ -13,36 +13,45 @@ fn count_deep_nesting(content: &str) -> usize {
         .count()
 }
 
+/// Returns true if the trimmed line mentions "unsafe" in a non-code context
+/// (comments, string literals, variable bindings, or string-matching expressions).
+fn is_non_code_unsafe(trimmed: &str) -> bool {
+    const SKIP_PREFIXES: &[&str] = &["//", "*", "\"", "r#", "r\"", "let "];
+    const SKIP_CONTAINS: &[&str] = &[
+        ".contains(\"unsafe",
+        ".starts_with(\"unsafe",
+        "\"unsafe {\"",
+        "\"unsafe{\"",
+    ];
+    SKIP_PREFIXES.iter().any(|p| trimmed.starts_with(p))
+        || SKIP_CONTAINS.iter().any(|s| trimmed.contains(s))
+}
+
+/// Returns true if the trimmed line introduces an `unsafe` block.
+fn is_unsafe_block(trimmed: &str) -> bool {
+    const PATTERNS: &[&str] = &["unsafe {", "unsafe{", "= unsafe {", "} unsafe {"];
+    PATTERNS.iter().any(|p| {
+        trimmed.starts_with(p) || trimmed.contains(p)
+    })
+}
+
+/// Returns true if any line in the slice contains a SAFETY documentation comment.
+fn has_safety_comment(lines: &[&str]) -> bool {
+    lines.iter().any(|l| l.contains("SAFETY:") || l.contains("Safety:"))
+}
+
 fn analyze_unsafe_in_content(content: &str) -> (usize, usize) {
     let lines: Vec<&str> = content.lines().collect();
-    let mut unsafe_blocks = 0;
-    let mut documented = 0;
-
-    for (i, line) in lines.iter().enumerate() {
-        let t = line.trim();
-        // Skip lines that mention "unsafe" in non-code contexts
-        if t.starts_with("//") || t.starts_with("*") || t.starts_with("\"")
-            || t.starts_with("r#") || t.starts_with("r\"") || t.starts_with("let ")
-            || t.contains(".contains(\"unsafe") || t.contains(".starts_with(\"unsafe")
-            || t.contains("\"unsafe {\"") || t.contains("\"unsafe{\"")
-        {
-            continue;
-        }
-        if t.starts_with("unsafe {") || t.starts_with("unsafe{")
-            || t.contains("= unsafe {") || t.contains("} unsafe {")
-        {
-            unsafe_blocks += 1;
+    lines
+        .iter()
+        .enumerate()
+        .filter(|(_, line)| !is_non_code_unsafe(line.trim()))
+        .filter(|(_, line)| is_unsafe_block(line.trim()))
+        .fold((0, 0), |(blocks, docs), (i, _)| {
             let start = i.saturating_sub(10);
-            if lines[start..=i]
-                .iter()
-                .any(|l| l.contains("SAFETY:") || l.contains("Safety:"))
-            {
-                documented += 1;
-            }
-        }
-    }
-
-    (unsafe_blocks, documented)
+            let is_documented = has_safety_comment(&lines[start..=i]);
+            (blocks + 1, docs + usize::from(is_documented))
+        })
 }
 
 fn count_dead_code_attrs(content: &str) -> usize {

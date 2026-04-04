@@ -72,6 +72,15 @@ impl TemplateRenderer {
 
         Ok(Self { env })
     }
+
+    /// Create a bare renderer without custom helpers.
+    /// This is a fallback that cannot fail, used when `new()` returns an error
+    /// to avoid panicking in production code (e.g., `Default` impls).
+    pub fn new_bare() -> Self {
+        let mut env = minijinja::Environment::new();
+        env.set_undefined_behavior(minijinja::UndefinedBehavior::Chainable);
+        Self { env }
+    }
 }
 
 pub fn render_template(

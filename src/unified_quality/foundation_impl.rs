@@ -99,39 +99,86 @@ impl QualityMonitor {
         match event.kind {
             EventKind::Create(_) | EventKind::Modify(_) => {
                 for path in event.paths {
-                    if Self::should_analyze(&path, &config.watch_patterns) {
-                        if let Ok(content) = std::fs::read_to_string(&path) {
-                            let _change = FileChange {
-                                path: path.clone(),
-                                content: content.clone(),
-                                old_tree: None,
-                                timestamp: SystemTime::now(),
-                            };
-
-                            let Ok(mut parser_lock) = parser.lock() else { continue };
-                            let Ok(new_metrics) = parser_lock.parse_incremental(&path.to_path_buf(), &content) else { continue };
-                            let old_metrics = metrics.insert(path.clone(), new_metrics.clone());
-                            let p = path.clone();
-                            let event = match old_metrics {
-                                Some(old) => QualityEvent::MetricsUpdated { path: p, old_metrics: old, new_metrics },
-                                None => QualityEvent::FileAdded { path: p, metrics: new_metrics },
-                            };
-                            let _ = events.try_send(event);
-                        }
-                    }
+                    Self::handle_file_changed(path, events, metrics, parser, &config.watch_patterns);
                 }
             }
             EventKind::Remove(_) => {
                 for path in event.paths {
-                    if let Some((_, metrics)) = metrics.remove(&path) {
-                        let _ = events.try_send(QualityEvent::FileRemoved {
-                            path,
-                            last_metrics: metrics,
-                        });
-                    }
+                    Self::handle_file_removed(path, events, metrics);
                 }
             }
             _ => {}
+        }
+    }
+
+    /// Process a single file create/modify event
+    #[cfg(feature = "watch")]
+    fn handle_file_changed(
+        path: PathBuf,
+        events: &crossbeam_channel::Sender<QualityEvent>,
+        metrics: &Arc<dashmap::DashMap<PathBuf, Metrics>>,
+        parser: &Arc<std::sync::Mutex<EnhancedParser>>,
+        watch_patterns: &[String],
+    ) {
+        if !Self::should_analyze(&path, watch_patterns) {
+            return;
+        }
+
+        let Ok(content) = std::fs::read_to_string(&path) else {
+            return;
+        };
+
+        let _change = FileChange {
+            path: path.clone(),
+            content: content.clone(),
+            old_tree: None,
+            timestamp: SystemTime::now(),
+        };
+
+        let Ok(mut parser_lock) = parser.lock() else {
+            return;
+        };
+        let Ok(new_metrics) = parser_lock.parse_incremental(&path, &content) else {
+            return;
+        };
+
+        let old_metrics = metrics.insert(path.clone(), new_metrics.clone());
+        let event = Self::build_quality_event(path, old_metrics, new_metrics);
+        let _ = events.try_send(event);
+    }
+
+    /// Process a single file removal event
+    #[cfg(feature = "watch")]
+    fn handle_file_removed(
+        path: PathBuf,
+        events: &crossbeam_channel::Sender<QualityEvent>,
+        metrics: &Arc<dashmap::DashMap<PathBuf, Metrics>>,
+    ) {
+        if let Some((_, last_metrics)) = metrics.remove(&path) {
+            let _ = events.try_send(QualityEvent::FileRemoved {
+                path,
+                last_metrics,
+            });
+        }
+    }
+
+    /// Build the appropriate quality event based on whether metrics existed before
+    #[cfg(feature = "watch")]
+    fn build_quality_event(
+        path: PathBuf,
+        old_metrics: Option<Metrics>,
+        new_metrics: Metrics,
+    ) -> QualityEvent {
+        match old_metrics {
+            Some(old) => QualityEvent::MetricsUpdated {
+                path,
+                old_metrics: old,
+                new_metrics,
+            },
+            None => QualityEvent::FileAdded {
+                path,
+                metrics: new_metrics,
+            },
         }
     }
 

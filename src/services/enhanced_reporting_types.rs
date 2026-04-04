@@ -230,6 +230,18 @@ pub struct BigOAnalysis {
 
 impl Default for EnhancedReportingService {
     fn default() -> Self {
-        Self::new().expect("Failed to create reporting service")
+        match Self::new() {
+            Ok(service) => service,
+            Err(e) => {
+                // Log the error but do not panic in production.
+                // TemplateRenderer::new() is effectively infallible (creates minijinja env),
+                // but we handle the theoretical failure gracefully.
+                tracing::error!("Failed to create reporting service: {e}");
+                // Retry with a bare environment as last resort
+                Self {
+                    renderer: crate::services::renderer::TemplateRenderer::new_bare(),
+                }
+            }
+        }
     }
 }

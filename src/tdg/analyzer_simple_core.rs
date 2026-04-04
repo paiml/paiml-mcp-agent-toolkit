@@ -70,20 +70,7 @@ impl TdgAnalyzer {
             }
             match self.analyze_file(file) {
                 Ok(mut score) => {
-                    // CB-1400: Mark files with provable-contract coverage
-                    if !contracted_paths.is_empty() {
-                        if let Some(ref fp) = score.file_path {
-                            let rel = fp.strip_prefix(dir).unwrap_or(fp);
-                            let rel_str = rel.to_string_lossy();
-                            score.has_contract_coverage = contracted_paths
-                                .iter()
-                                .any(|cp| rel_str.contains(cp));
-                            if score.has_contract_coverage {
-                                // Recalculate to apply/lift the A- cap
-                                score.calculate_total();
-                            }
-                        }
-                    }
+                    apply_contract_coverage(&mut score, dir, &contracted_paths);
                     scores.push(score);
                 }
                 Err(e) => {
@@ -112,6 +99,26 @@ impl TdgAnalyzer {
         };
 
         Ok(Comparison::new(score1, score2))
+    }
+}
+
+/// CB-1400: Apply provable-contract coverage to a TDG score.
+///
+/// If the score's file path matches any contracted path fragment, marks
+/// `has_contract_coverage = true` and recalculates to apply/lift the A- cap.
+fn apply_contract_coverage(score: &mut TdgScore, dir: &Path, contracted_paths: &[String]) {
+    if contracted_paths.is_empty() {
+        return;
+    }
+    let fp = match score.file_path {
+        Some(ref fp) => fp,
+        None => return,
+    };
+    let rel = fp.strip_prefix(dir).unwrap_or(fp);
+    let rel_str = rel.to_string_lossy();
+    score.has_contract_coverage = contracted_paths.iter().any(|cp| rel_str.contains(cp));
+    if score.has_contract_coverage {
+        score.calculate_total();
     }
 }
 

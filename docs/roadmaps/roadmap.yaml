@@ -2464,11 +2464,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: pre-commit hook must gate on cargo fmt --check
-  status: planned
+  status: inprogress
   priority: medium
   assigned_to: null
   created: 2026-03-07T22:06:19Z
-  updated: 2026-03-07T22:06:19Z
+  updated: 2026-04-04T19:58:54.303998395+00:00
   spec: null
   acceptance_criteria:
   - 'The PMAT-generated pre-commit hook runs complexity, SATD, and commit message checks but does NOT run ''cargo fmt --check''. This causes repeated CI L1 failures across the sovereign stack (trueno, provable-contracts, bashrs, pmat itself) when Claude Code instances push unformatted code. Fix: add a cargo fmt --check gate to the pre-commit hook template. It should only run on staged .rs files (fast path) and block the commit if formatting differs.'
@@ -2552,11 +2552,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'PMAT-521: provable-contracts Gate 4+5 — source verification + test execution'
-  status: planned
+  status: inprogress
   priority: critical
   assigned_to: null
   created: 2026-03-21T12:38:08Z
-  updated: 2026-03-21T12:38:08Z
+  updated: 2026-04-04T19:59:14.056482280+00:00
   spec: null
   acceptance_criteria:
   - 'provable-contracts pv lint has no source verification. Gate 4: resolve test: names against fn test_* in source, FAIL on missing. Gate 5: run cargo test on referenced tests, FAIL on failure. Parse tests_file/tests_module from Contract struct. Five Whys: audit_contract only checks YAML-internal consistency, never reads source code. Trueno: 85/105 contract tests missing, pv lint reports 0 findings.'
@@ -2851,11 +2851,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'PMAT-032: Provable contracts §32-34 — 160 contracts, 27/27 sovereign stack'
-  status: planned
+  status: inprogress
   priority: medium
   assigned_to: null
   created: 2026-04-03T09:09:55Z
-  updated: 2026-04-03T09:09:55Z
+  updated: 2026-04-04T19:59:14.392862560+00:00
   spec: null
   acceptance_criteria: []
   phases: []
