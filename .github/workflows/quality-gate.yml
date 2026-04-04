@@ -57,13 +57,5 @@ jobs:
             GRADE=$(python3 -c "import json; print(json.load(open('score.json'))['grade'])")
             echo "### PMAT Score: ${COMPOSITE}/100 (${GRADE})" >> "$GITHUB_STEP_SUMMARY"
             echo "" >> "$GITHUB_STEP_SUMMARY"
-            python3 -c "
-import json
-d = json.load(open('score.json'))
-s = d['sub_scores']
-print('| Sub-Score | Value |')
-print('|-----------|-------|')
-for k, v in s.items():
-    print(f'| {k} | {v:.1f} |')
-            " >> "$GITHUB_STEP_SUMMARY"
+            python3 -c "import json; d=json.load(open('score.json')); s=d['sub_scores']; print('| Sub-Score | Value |'); print('|-----------|-------|'); [print(f'| {k} | {v:.1f} |') for k,v in s.items()]" >> "$GITHUB_STEP_SUMMARY"
           fi
