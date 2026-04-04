@@ -158,14 +158,15 @@ impl TdgAnalyzerAst {
         let files = self.discover_files(dir)?;
         let mut scores = Vec::new();
 
-        for file in files {
-            match self.analyze_file(&file).await {
+        for file in &files {
+            // Skip include!() fragment files — they aren't standalone Rust modules
+            if crate::cli::language_analyzer::is_include_fragment(file) {
+                continue;
+            }
+            match self.analyze_file(file).await {
                 Ok(score) => scores.push(score),
                 Err(e) => {
-                    // Suppress warnings for include!() fragment files (PMAT-507)
-                    if !crate::cli::language_analyzer::is_include_fragment(&file) {
-                        eprintln!("Warning: Failed to analyze {}: {}", file.display(), e);
-                    }
+                    eprintln!("Warning: Failed to analyze {}: {}", file.display(), e);
                 }
             }
         }

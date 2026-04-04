@@ -1,4 +1,3 @@
-#![cfg_attr(coverage_nightly, coverage(off))]
 //! Centralized check/metric explanation registry.
 //!
 //! Provides `--explain <ID>` for all scoring commands (comply, score, tdg,

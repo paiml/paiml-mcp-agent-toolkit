@@ -62,8 +62,13 @@ impl TdgAnalyzer {
         // CB-1400: Resolve contract coverage for A-tier gating
         let contracted_paths = collect_contracted_file_paths(dir);
 
-        for file in files {
-            match self.analyze_file(&file) {
+        for file in &files {
+            // Skip include!() fragment files — they aren't standalone Rust modules
+            // and tree-sitter can't parse them, resulting in false 0.0 (F-grade) scores
+            if crate::cli::language_analyzer::is_include_fragment(file) {
+                continue;
+            }
+            match self.analyze_file(file) {
                 Ok(mut score) => {
                     // CB-1400: Mark files with provable-contract coverage
                     if !contracted_paths.is_empty() {

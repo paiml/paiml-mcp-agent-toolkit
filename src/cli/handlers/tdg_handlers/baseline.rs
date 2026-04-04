@@ -168,6 +168,12 @@ async fn analyze_baseline_files(
         }
 
         let file_path = entry.path();
+        // Skip include!() fragment files — they aren't standalone Rust modules
+        // and tree-sitter can't parse them, resulting in false F-grade scores
+        if crate::cli::language_analyzer::is_include_fragment(file_path) {
+            files_skipped += 1;
+            continue;
+        }
         match analyzer.analyze_file(file_path).await {
             Ok(score) => {
                 let content = fs::read(file_path)?;

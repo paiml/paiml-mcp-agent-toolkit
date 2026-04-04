@@ -55,7 +55,53 @@ pub fn is_include_fragment(path: &Path) -> bool {
     // Benchmark fragments
     let is_bench_fragment =
         path.components().any(|c| c.as_os_str() == "benchmarks") && name.starts_with("measure_");
-    is_part_file || is_test_fragment || is_template_fragment || is_bench_fragment
+    // Impl fragments: file is include!()'d by a sibling with matching prefix
+    // e.g. muda_handlers_metrics.rs is included by muda_handlers.rs
+    let is_impl_fragment = is_included_by_sibling(path, name);
+    is_part_file
+        || is_test_fragment
+        || is_template_fragment
+        || is_bench_fragment
+        || is_impl_fragment
+}
+
+/// Check if a sibling file includes this file via include!() macro.
+/// Detects impl-fragment files like `foo_bar.rs` included by `foo.rs`.
+/// Tries progressively shorter prefixes: for `context_graph_coverage_fixtures`,
+/// tries `context_graph_coverage.rs`, `context_graph.rs`, `context.rs`.
+fn is_included_by_sibling(path: &Path, name: &str) -> bool {
+    let Some(dir) = path.parent() else {
+        return false;
+    };
+    let filename = path.file_name().and_then(|f| f.to_str()).unwrap_or("");
+    let needle = format!("include!(\"{filename}\")");
+    // Try progressively shorter prefixes by stripping trailing _segment
+    let mut candidate = name.to_string();
+    loop {
+        if let Some(pos) = candidate.rfind('_') {
+            candidate.truncate(pos);
+            let parent_path = dir.join(format!("{candidate}.rs"));
+            if parent_path.exists() {
+                if let Ok(content) = std::fs::read_to_string(&parent_path) {
+                    if content.contains(&needle) {
+                        return true;
+                    }
+                }
+            }
+            // Also check mod.rs in a subdirectory with that name
+            let mod_path = dir.join(&candidate).join("mod.rs");
+            if mod_path.exists() {
+                if let Ok(content) = std::fs::read_to_string(&mod_path) {
+                    if content.contains(&needle) {
+                        return true;
+                    }
+                }
+            }
+        } else {
+            break;
+        }
+    }
+    false
 }
 
 async fn try_ast_analysis(path: &Path, language: Language) -> Option<FileComplexityMetrics> {
