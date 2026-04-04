@@ -67,7 +67,7 @@ Documentation follows Toyota Way principles:
 
 | File | Purpose |
 |------|---------|
-| `src/cli/handlers/validate_readme_handler.rs` | README validation |
+| `src/cli/handlers/readme_validate_handlers/` | README validation (module) |
 | `src/services/doc_validator.rs` | Link and reference checking |
 
 ## References

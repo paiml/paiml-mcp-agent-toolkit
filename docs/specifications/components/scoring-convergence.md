@@ -10,7 +10,7 @@ results, none gate each other:
 | Command | Scale | Writes metrics? | Gates anything? |
 |---------|-------|-----------------|-----------------|
 | `pmat comply check` | pass/fail + exit code | `.pmat/project.toml` (config + timestamp) | Exit code only |
-| `pmat rust-project-score` | 289 pts, grade A-F | Nothing | Nothing |
+| `pmat rust-project-score` | 274 pts, grade A-F | Nothing | Nothing |
 | `pmat repo-score` | 0-110, separate formula | Optional `--output` file, `--update-badge` | Nothing |
 | `pmat work score <id>` | DBC 5-dim, 0-1 | `.pmat-work/` contract files | `work complete` only |
 

@@ -17,7 +17,7 @@ Minimal default features for fast builds with opt-in heavy dependencies:
 
 ```toml
 [features]
-default = ["core-languages", "viz"]
+default = ["core-languages", "viz", "http-client"]
 core-languages = []          # Rust, Python, TypeScript, JavaScript
 extended-languages = []      # Go, JVM, C++, CUDA, etc.
 viz = []                     # Terminal visualization

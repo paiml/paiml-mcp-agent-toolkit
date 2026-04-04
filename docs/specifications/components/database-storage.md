@@ -6,10 +6,10 @@
 
 ```
 .pmat/
-├── context.db          # SQLite + FTS5 (primary, 52 MB for 18K functions)
+├── context.db          # SQLite + FTS5 (primary, ~58 MB for 18K functions)
 ├── context.idx         # Legacy LZ4 blob (fallback)
 ├── coverage-cache.json # LLVM coverage data
-├── workspace.db        # Cross-project workspace index (275 MB for 90K functions)
+├── workspace.db        # Cross-project workspace index (~152 MB for 90K functions)
 ├── workspace.idx       # Legacy workspace blob
 ├── dead-code-cache.json
 └── bug-hunter-cache/
@@ -91,9 +91,9 @@ All caches keyed on git HEAD hash:
 
 | File | Purpose |
 |------|---------|
-| `src/services/sqlite_backend.rs` | SQLite + FTS5 backend |
+| `src/services/agent_context/function_index/sqlite_backend/` | SQLite + FTS5 backend (module) |
 | `src/services/context_graph.rs` | trueno-graph CSR database |
-| `src/services/cache.rs` | SessionCacheManager |
+| `src/services/cache/manager.rs` | SessionCacheManager |
 
 ## References
 

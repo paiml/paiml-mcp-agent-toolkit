@@ -49,12 +49,12 @@ trueno-graph provides:
 
 1. **Context Generation** (`context.rs`, `context_graph.rs`):
    - `analyze_project_with_cache()` builds ProjectContextGraph
-   - 8/8 tests passing
+   - 7/7 tests passing (context_graph_tests.rs)
 
 2. **TDG Analysis** (`tdg/tdg_graph.rs`):
    - TdgGraph provides O(1) function dependency tracking
    - PageRank criticality scoring
-   - 7/7 tests passing
+   - 14/14 tests passing (tdg_graph_tests.rs)
 
 ### Key Insight
 
