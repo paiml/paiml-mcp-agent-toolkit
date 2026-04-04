@@ -149,10 +149,10 @@ by document frequency descending for deterministic HashMap iteration.
 
 | File | Purpose |
 |------|---------|
-| `src/services/sqlite_backend.rs` | SQLite + FTS5 backend |
-| `src/cli/handlers/query_handler.rs` | pmat query command handler |
-| `src/services/git_history.rs` | Git history search |
-| `src/services/commit_embedder.rs` | TF-IDF commit embeddings |
+| `src/services/agent_context/function_index/sqlite_backend/` | SQLite + FTS5 backend (module) |
+| `src/cli/handlers/query_handler/` | pmat query command handler (module) |
+| `src/services/git_history/` | Git history search (module) |
+| `src/services/git_history/commit_embedder.rs` | TF-IDF commit embeddings |
 
 ## References
 

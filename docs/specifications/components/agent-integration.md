@@ -286,7 +286,7 @@ Agent contract compliance feeds into the composite score:
 |------|---------|
 | `src/mcp_server/` | MCP server implementation |
 | `src/mcp_pmcp/` | PMCP protocol handler |
-| `AGENTS.md` | Agent protocol declaration |
+| `CLAUDE.md` / `AGENT.md` (planned) | Agent protocol declaration |
 | `CLAUDE.md` | Claude Code agent instructions |
 | `src/cli/handlers/comply_handlers/` | Compliance check handlers |
 | `src/cli/handlers/work_contract.rs` | DbC v5.0 contract engine |

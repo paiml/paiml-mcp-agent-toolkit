@@ -240,12 +240,12 @@ pmat comply check 2>&1 | grep 'CB-1202'
 
 | File | Purpose |
 |------|---------|
-| `check_pv_enforcement.rs` | CB-1201..1209 enforcement checks |
-| `check_pv_quality.rs` | CB-1210, CB-1211, CB-1214 quality checks |
-| `check_provable_contracts.rs` | CB-1200 detection + pv lint/score |
-| `infra_score_handlers.rs` | `pmat infra-score` CLI handler |
-| `provable_contracts.rs` (infra_score) | PV-01..PV-05 bonus scorer |
-| `comply_config_types.rs` | PV threshold configuration |
+| `src/cli/handlers/comply_handlers/check_handlers/check_pv_enforcement.rs` | CB-1201..1209 enforcement checks |
+| `src/cli/handlers/comply_handlers/check_handlers/check_pv_quality.rs` | CB-1210, CB-1211, CB-1214 quality checks |
+| `src/cli/handlers/comply_handlers/check_handlers/check_provable_contracts.rs` | CB-1200 detection + pv lint/score |
+| `src/cli/handlers/infra_score_handlers.rs` | `pmat infra-score` CLI handler |
+| `src/services/infra_score/aggregator.rs` | PV-01..PV-05 bonus scorer |
+| `src/models/comply_config_types.rs` | PV threshold configuration |
 | `codegen.rs` (provable-contracts) | Precondition codegen (fixed in 013397a) |
 
 ## Remediation Roadmap

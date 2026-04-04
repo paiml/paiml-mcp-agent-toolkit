@@ -87,8 +87,8 @@ MinHash + LSH for code clone detection:
 
 | File | Purpose |
 |------|---------|
-| `src/services/commit_embedder.rs` | TF-IDF commit embeddings |
-| `src/services/duplicate_detector.rs` | MinHash/LSH clone detection |
+| `src/services/git_history/commit_embedder.rs` | TF-IDF commit embeddings |
+| `src/services/detection/duplicates.rs` | MinHash/LSH clone detection |
 | `src/services/big_o_analyzer.rs` | Algorithmic complexity analysis |
 
 ## References

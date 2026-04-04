@@ -266,9 +266,9 @@ comply:
 
 | File | Purpose |
 |------|---------|
-| `src/cli/handlers/work_handlers.rs` | Work command handler |
+| `src/cli/handlers/work_handlers/` | Work command handler (module) |
 | `src/cli/handlers/work_contract.rs` | DbC v5.0 contract engine |
-| `src/cli/handlers/work_falsification.rs` | Popperian falsification executor |
+| `src/cli/handlers/work_contract_falsification.rs` | Popperian falsification executor |
 | `src/cli/handlers/work_ledger.rs` | Append-only receipt tracking |
 | `src/cli/handlers/five_whys_handlers.rs` | Toyota Way root cause analysis |
 | `src/cli/handlers/comply_handlers/check_handlers/check_pv_enforcement.rs` | CB-1201..1209 |

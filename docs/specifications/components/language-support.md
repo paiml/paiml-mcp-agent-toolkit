@@ -86,7 +86,7 @@ match ext {
 | File | Purpose |
 |------|---------|
 | `src/services/language_analyzer.rs` | Multi-language complexity analysis |
-| `src/services/duplicate_detector.rs` | Cross-language clone detection |
+| `src/services/detection/duplicates.rs` | Cross-language clone detection |
 | `src/services/context.rs` | AST parsing per language |
 
 ## References

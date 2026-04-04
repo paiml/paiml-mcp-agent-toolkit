@@ -59,8 +59,8 @@ Convert demo visualizations from JavaScript to pure WASM:
 
 | File | Purpose |
 |------|---------|
-| `src/services/wasm_analyzer.rs` | WASM bytecode analysis |
-| `src/models/wasm.rs` | WASM analysis types |
+| `src/services/wasm/` | WASM bytecode analysis (module) |
+| `src/services/wasm/binary.rs` | WASM binary format parsing |
 
 ## References
 
