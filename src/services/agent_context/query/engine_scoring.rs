@@ -205,8 +205,8 @@ impl AgentContextIndex {
             }
         }
 
-        // Exclude content pattern (like grep -v)
-        if let Some(exclude) = &options.exclude_pattern {
+        // Exclude content patterns (like grep -v, repeatable)
+        for exclude in &options.exclude_pattern {
             let exclude_lower = exclude.to_lowercase();
             let haystack =
                 format!("{} {} {}", func.function_name, func.signature, func.source).to_lowercase();

@@ -248,9 +248,9 @@ pub enum Commands {
         #[arg(short = 'i', long)]
         ignore_case: bool,
 
-        /// Exclude results matching this content pattern (like grep -v)
+        /// Exclude results matching content patterns (like grep -v, repeatable)
         #[arg(long, value_name = "PATTERN")]
-        exclude: Option<String>,
+        exclude: Vec<String>,
 
         /// Exclude results from files matching this glob (like rg --glob '!PATTERN', repeatable)
         #[arg(long, value_name = "GLOB")]

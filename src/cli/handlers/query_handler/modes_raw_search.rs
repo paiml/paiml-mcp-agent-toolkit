@@ -45,7 +45,7 @@ pub(super) fn handle_raw_search_mode(
     ignore_case: bool,
     language: &Option<String>,
     exclude_file: &[String],
-    exclude: &Option<String>,
+    exclude: &[String],
     files_with_matches: bool,
     count: bool,
     context_lines: Option<usize>,
@@ -70,7 +70,7 @@ pub(super) fn handle_raw_search_mode(
         limit,
         language_filter: language.as_deref(),
         exclude_file_pattern: excl_files,
-        exclude_pattern: exclude.as_deref(),
+        exclude_pattern: exclude.iter().map(|s| s.as_str()).collect(),
         files_with_matches,
         count_mode: count,
     };
@@ -136,7 +136,7 @@ pub(super) fn run_raw_search_for_merge(
     ignore_case: bool,
     language: &Option<String>,
     exclude_file: &[String],
-    exclude: &Option<String>,
+    exclude: &[String],
     context_lines: Option<usize>,
     after_context: Option<usize>,
     before_context: Option<usize>,
@@ -160,7 +160,7 @@ pub(super) fn run_raw_search_for_merge(
         limit: remaining + indexed_results.len(), // over-fetch to account for dedup
         language_filter: language.as_deref(),
         exclude_file_pattern: excl_refs,
-        exclude_pattern: exclude.as_deref(),
+        exclude_pattern: exclude.iter().map(|s| s.as_str()).collect(),
         files_with_matches: false,
         count_mode: false,
     };
@@ -191,7 +191,7 @@ pub(super) fn run_raw_files_for_merge(
     ignore_case: bool,
     language: &Option<String>,
     exclude_file: &[String],
-    exclude: &Option<String>,
+    exclude: &[String],
     project_path: &std::path::Path,
 ) -> Vec<String> {
     let excl_refs: Vec<&str> = exclude_file.iter().map(|s| s.as_str()).collect();
@@ -204,7 +204,7 @@ pub(super) fn run_raw_files_for_merge(
         limit: 0,
         language_filter: language.as_deref(),
         exclude_file_pattern: excl_refs,
-        exclude_pattern: exclude.as_deref(),
+        exclude_pattern: exclude.iter().map(|s| s.as_str()).collect(),
         files_with_matches: true,
         count_mode: false,
     };
@@ -222,7 +222,7 @@ pub(super) fn run_raw_counts_for_merge(
     ignore_case: bool,
     language: &Option<String>,
     exclude_file: &[String],
-    exclude: &Option<String>,
+    exclude: &[String],
     project_path: &std::path::Path,
 ) -> Vec<crate::services::agent_context::FileMatchCount> {
     let excl_refs: Vec<&str> = exclude_file.iter().map(|s| s.as_str()).collect();
@@ -235,7 +235,7 @@ pub(super) fn run_raw_counts_for_merge(
         limit: 0,
         language_filter: language.as_deref(),
         exclude_file_pattern: excl_refs,
-        exclude_pattern: exclude.as_deref(),
+        exclude_pattern: exclude.iter().map(|s| s.as_str()).collect(),
         files_with_matches: false,
         count_mode: true,
     };

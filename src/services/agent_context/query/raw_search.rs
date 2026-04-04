@@ -47,8 +47,8 @@ pub struct RawSearchOptions<'a> {
     pub language_filter: Option<&'a str>,
     /// Exclude files matching these glob patterns (repeatable)
     pub exclude_file_pattern: Vec<&'a str>,
-    /// Exclude results matching this content pattern
-    pub exclude_pattern: Option<&'a str>,
+    /// Exclude results matching content patterns (repeatable)
+    pub exclude_pattern: Vec<&'a str>,
     /// Only return file paths (like rg -l)
     pub files_with_matches: bool,
     /// Only return match counts per file (like rg -c)

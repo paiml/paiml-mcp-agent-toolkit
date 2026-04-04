@@ -55,7 +55,7 @@ pub async fn handle_query(
     raw: bool,
     case_sensitive: bool,
     ignore_case: bool,
-    exclude: Option<String>,
+    exclude: Vec<String>,
     exclude_file: Vec<String>,
     files_with_matches: bool,
     count: bool,
@@ -183,7 +183,7 @@ pub async fn handle_query(
     let merge_exclude = if is_regex_or_literal {
         exclude.clone()
     } else {
-        None
+        Vec::new()
     };
 
     let options = build_query_options(

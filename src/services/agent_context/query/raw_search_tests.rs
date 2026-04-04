@@ -42,7 +42,7 @@ mod tests {
             limit: 100,
             language_filter: None,
             exclude_file_pattern: vec![],
-            exclude_pattern: None,
+            exclude_pattern: vec![],
             files_with_matches: false,
             count_mode: false,
         };
@@ -70,7 +70,7 @@ mod tests {
             limit: 100,
             language_filter: None,
             exclude_file_pattern: vec![],
-            exclude_pattern: None,
+            exclude_pattern: vec![],
             files_with_matches: false,
             count_mode: false,
         };
@@ -96,7 +96,7 @@ mod tests {
             limit: 100,
             language_filter: None,
             exclude_file_pattern: vec![],
-            exclude_pattern: None,
+            exclude_pattern: vec![],
             files_with_matches: true,
             count_mode: false,
         };
@@ -121,7 +121,7 @@ mod tests {
             limit: 100,
             language_filter: None,
             exclude_file_pattern: vec![],
-            exclude_pattern: None,
+            exclude_pattern: vec![],
             files_with_matches: false,
             count_mode: true,
         };
@@ -149,7 +149,7 @@ mod tests {
             limit: 100,
             language_filter: Some("rust"),
             exclude_file_pattern: vec![],
-            exclude_pattern: None,
+            exclude_pattern: vec![],
             files_with_matches: false,
             count_mode: false,
         };
@@ -177,7 +177,7 @@ mod tests {
             limit: 100,
             language_filter: Some("rust"),
             exclude_file_pattern: vec![],
-            exclude_pattern: None,
+            exclude_pattern: vec![],
             files_with_matches: false,
             count_mode: false,
         };
@@ -207,7 +207,7 @@ mod tests {
             limit: 100,
             language_filter: None,
             exclude_file_pattern: vec![],
-            exclude_pattern: None,
+            exclude_pattern: vec![],
             files_with_matches: false,
             count_mode: false,
         };
@@ -233,7 +233,7 @@ mod tests {
             limit: 100,
             language_filter: None,
             exclude_file_pattern: vec![],
-            exclude_pattern: Some("Serialize"),
+            exclude_pattern: vec!["Serialize"],
             files_with_matches: false,
             count_mode: false,
         };

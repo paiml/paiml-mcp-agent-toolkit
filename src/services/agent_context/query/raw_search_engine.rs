@@ -183,11 +183,27 @@ fn build_search_patterns(options: &RawSearchOptions) -> Result<(Regex, Option<Re
     }
     .map_err(|e| format!("Invalid regex pattern: {e}"))?;
 
-    let exclude_regex = options
-        .exclude_pattern
-        .map(|p| Regex::new(&format!("(?i){}", regex::escape(p))))
-        .transpose()
-        .map_err(|e| format!("Invalid exclude pattern: {e}"))?;
+    let mut exclude_regexes = Vec::new();
+    for p in &options.exclude_pattern {
+        let r = Regex::new(&format!("(?i){}", regex::escape(p)))
+            .map_err(|e| format!("Invalid exclude pattern: {e}"))?;
+        exclude_regexes.push(r);
+    }
+    let exclude_regex = if exclude_regexes.is_empty() {
+        None
+    } else if exclude_regexes.len() == 1 {
+        Some(exclude_regexes.remove(0))
+    } else {
+        // Combine into single alternation regex for efficiency
+        let combined = options
+            .exclude_pattern
+            .iter()
+            .map(|p| regex::escape(p))
+            .collect::<Vec<_>>()
+            .join("|");
+        Some(Regex::new(&format!("(?i)(?:{})", combined))
+            .map_err(|e| format!("Invalid exclude pattern: {e}"))?)
+    };
 
     Ok((regex, exclude_regex))
 }

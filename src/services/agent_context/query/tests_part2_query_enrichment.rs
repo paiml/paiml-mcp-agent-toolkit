@@ -362,7 +362,7 @@ fn test_query_exclude_pattern() {
             "handle",
             QueryOptions {
                 limit: 20,
-                exclude_pattern: Some("error".to_string()),
+                exclude_pattern: vec!["error".to_string()],
                 ..Default::default()
             },
         )

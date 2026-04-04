@@ -202,7 +202,7 @@ pub(super) struct MergeContext<'a> {
     pub(super) ignore_case: bool,
     pub(super) language: &'a Option<String>,
     pub(super) exclude_file: &'a [String],
-    pub(super) exclude: &'a Option<String>,
+    pub(super) exclude: &'a [String],
     pub(super) project_path: &'a std::path::Path,
     pub(super) is_regex_or_literal: bool,
 }
@@ -228,7 +228,7 @@ pub(super) fn build_query_options(
     literal: bool,
     case_sensitive: bool,
     ignore_case: bool,
-    exclude: Option<String>,
+    exclude: Vec<String>,
     exclude_file: Vec<String>,
 ) -> QueryOptions {
     let rank_by_enum = rank_by

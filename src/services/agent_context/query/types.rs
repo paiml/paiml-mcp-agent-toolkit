@@ -104,8 +104,8 @@ pub struct QueryOptions {
     /// Case sensitivity control
     #[serde(default)]
     pub case_sensitivity: CaseSensitivity,
-    /// Exclude results matching this content pattern
-    pub exclude_pattern: Option<String>,
+    /// Exclude results matching content patterns (repeatable)
+    pub exclude_pattern: Vec<String>,
     /// Exclude results from files matching these glob patterns (repeatable)
     pub exclude_file_pattern: Vec<String>,
 }
