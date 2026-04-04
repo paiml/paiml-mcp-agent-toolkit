@@ -21,7 +21,7 @@ classifies contracts by surface, enforces L5, names every violating file.
 
 ## Contract Entity Inventory
 
-### Contracted Domains (12 domains, 285 contracts, 100% L5)
+### Contracted Domains (12 domains, ~289 contracts verified L5, 376 total YAML)
 
 | Domain | Count | Repos | Key Entities |
 |--------|-------|-------|-------------|

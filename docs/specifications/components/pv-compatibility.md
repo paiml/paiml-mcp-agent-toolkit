@@ -130,7 +130,7 @@ models for different purposes. Document clearly:
 | P0 | Parse proof-status.json levels | Real L4/L5 coverage | **DONE** (PMAT-523) |
 | P1 | CB-1205: Provability Invariant | Catches missing kani/tests | **DONE** (PMAT-523) |
 | P1 | CD1-CD5 codebase scoring | Blended pv-score + pipeline depth | **DONE** (PMAT-523) |
-| P2 | CB-1206: Verification Level Distribution | 425 obligations; L2/L4/L5 from proof-status.json | **DONE** (PMAT-524) |
+| P2 | CB-1206: Verification Level Distribution | L2/L4/L5 from proof-status.json | **DONE** (PMAT-524) |
 | P2 | CB-1207: Contract Drift Detection | 90-day staleness check via git log | **DONE** (PMAT-525) |
 | P3 | SARIF pipeline | `pmat comply --format sarif` delegates to `pv lint` | **DONE** (PMAT-525) |
 | P3 | pv query integration | `pmat query --contracts` delegates to `pv query` | **DONE** (PMAT-526) |
@@ -234,7 +234,7 @@ enforcement quality via `pv coverage --enforcement`.
 
 - 2505.19271 — VerifyThisBench: 580 Verification Tasks (2025).
   Benchmark for Design by Contract verification tools.
-  Our 138 YAML contracts + 618 obligations are comparable in scale.
+  Our 376 YAML contracts + ~292 obligation keys are comparable in scale.
 
 - 2602.22302 — Agent Behavioral Contracts (Bruni et al. 2026).
   Extends Eiffel DbC to multi-agent systems. Relevant to
