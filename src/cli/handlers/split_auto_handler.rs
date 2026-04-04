@@ -384,6 +384,7 @@ fn find_split_points(content: &str) -> Vec<TopLevelItem> {
 
     for (i, line) in lines.iter().enumerate() {
         let line_num = i + 1; // 1-based
+        let depth_before_line = brace_depth;
 
         // Process character by character for accurate brace counting
         let chars: Vec<char> = line.chars().collect();
@@ -473,26 +474,44 @@ fn find_split_points(content: &str) -> Vec<TopLevelItem> {
             j += 1;
         }
 
-        // Detect top-level item start (only when at brace depth 0 or about to enter)
-        if brace_depth == 0 && current_item.is_some() {
-            // Close the current item
-            if let Some((kind, name, start)) = current_item.take() {
-                items.push(TopLevelItem {
-                    kind,
-                    name,
-                    start_line: start,
-                    end_line: line_num,
-                });
+        // Close current item when brace depth returns to the item's start depth.
+        // Top-level items close at depth 0, impl-internal methods close at depth 1.
+        if current_item.is_some() {
+            let is_impl_method = current_item.as_ref().is_some_and(|(k, _, _)| k == "impl");
+            let close_depth = if is_impl_method { 1 } else { 0 };
+            if brace_depth == close_depth {
+                if let Some((kind, name, start)) = current_item.take() {
+                    items.push(TopLevelItem {
+                        kind,
+                        name,
+                        start_line: start,
+                        end_line: line_num,
+                    });
+                }
             }
         }
 
-        // Detect new top-level item only when no item is active
-        if current_item.is_none() && brace_depth <= 1 {
-            // Look back for doc comments / attributes
-            if let Some((kind, name)) = is_top_level_item(line) {
+        // Detect new item only when no item is active.
+        // At brace_depth 0: top-level items (fn, struct, impl, etc.)
+        // At brace_depth 1: methods inside an impl block (indented by 4 spaces)
+        if current_item.is_none() && depth_before_line <= 1 {
+            let check_line = if depth_before_line == 1 {
+                // Inside an impl block — strip standard 4-space indentation
+                // so is_top_level_item can detect "pub fn method(..."
+                line.strip_prefix("    ").unwrap_or(line)
+            } else {
+                line
+            };
+            if let Some((kind, name)) = is_top_level_item(check_line) {
                 let attr_start = find_attribute_start(&lines, i);
                 let start = attr_start + 1; // 1-based
-                current_item = Some((kind.to_string(), name.to_string(), start));
+                let effective_kind = if depth_before_line == 1 {
+                    // Methods inside impl are always include!() targets
+                    "impl"
+                } else {
+                    kind
+                };
+                current_item = Some((effective_kind.to_string(), name.to_string(), start));
             }
         }
     }
