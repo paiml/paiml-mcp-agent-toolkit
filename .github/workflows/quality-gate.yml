@@ -30,6 +30,12 @@ jobs:
         with:
           fetch-depth: 0  # Full history for git churn/evoscore
 
+      - name: Checkout provable-contracts (path dep)
+        uses: actions/checkout@v4
+        with:
+          repository: paiml/provable-contracts
+          path: ../provable-contracts
+
       - uses: dtolnay/rust-toolchain@stable
 
       - uses: Swatinem/rust-cache@v2

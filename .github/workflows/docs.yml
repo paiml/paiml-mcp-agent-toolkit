@@ -24,7 +24,13 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
-      
+
+      - name: Checkout provable-contracts (path dep)
+        uses: actions/checkout@v4
+        with:
+          repository: paiml/provable-contracts
+          path: ../provable-contracts
+
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
       
