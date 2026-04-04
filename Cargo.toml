@@ -285,7 +285,7 @@ fs2 = "0.4.3"
 
 
 [dev-dependencies]
-provable-contracts = { path = "../provable-contracts/crates/provable-contracts" }
+provable-contracts = { version = "0.2", path = "../provable-contracts/crates/provable-contracts" }
 dhat = "0.3"
 tokio-test = "0.4"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
