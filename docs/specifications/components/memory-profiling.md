@@ -12,7 +12,7 @@ the tooling, methodology, and compliance enforcement for memory profiling.
 ### Setup
 
 ```rust
-// In profiling binary (e.g., examples/dhat_profile.rs)
+// In profiling binary (e.g., examples/dhat_memory_profile.rs)
 #[global_allocator]
 static ALLOC: dhat::Alloc = dhat::Alloc;
 
@@ -30,14 +30,14 @@ fn main() {
 dhat = "0.3"
 
 [[example]]
-name = "dhat_profile"
-path = "examples/dhat_profile.rs"
+name = "dhat_memory_profile"
+path = "examples/dhat_memory_profile.rs"
 ```
 
 ### Running Profiles
 
 ```bash
-cargo run --example dhat_profile --release 2>&1 | tee dhat-output.txt
+cargo run --example dhat_memory_profile --release 2>&1 | tee dhat-output.txt
 ```
 
 ## Key Metrics
@@ -124,7 +124,7 @@ fn is_test_file(path: &Path) -> bool {
 # In CI pipeline
 - name: Memory regression check
   run: |
-    cargo run --example dhat_profile --release 2>&1 | tee dhat.txt
+    cargo run --example dhat_memory_profile --release 2>&1 | tee dhat.txt
     peak=$(grep "At t-gmax" dhat.txt | grep -o '[0-9,]*' | head -1 | tr -d ',')
     if [ "$peak" -gt "$MEMORY_THRESHOLD" ]; then
       echo "FAIL: Peak memory ${peak} exceeds threshold ${MEMORY_THRESHOLD}"
@@ -152,7 +152,7 @@ Store baselines in `.pmat-metrics/memory-baseline.json`:
 CB-141 checks for memory profiling infrastructure:
 
 1. **dhat dependency**: `Cargo.toml` contains `dhat` in `[dev-dependencies]`
-2. **Profile binary**: `examples/dhat_profile.rs` or similar exists
+2. **Profile binary**: `examples/dhat_memory_profile.rs` or similar exists
 3. **Baseline file**: `.pmat-metrics/memory-baseline.json` exists
 
 ### Scoring
