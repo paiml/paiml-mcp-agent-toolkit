@@ -1,10 +1,10 @@
 {
   "results": {
     "passed": false,
-    "total_violations": 121,
-    "complexity_violations": 108,
+    "total_violations": 170,
+    "complexity_violations": 156,
     "dead_code_violations": 0,
-    "satd_violations": 13,
+    "satd_violations": 14,
     "entropy_violations": 0,
     "security_violations": 0,
     "duplicate_violations": 0,
@@ -15,6 +15,13 @@
     "violations": []
   },
   "violations": [
+    {
+      "check_type": "complexity",
+      "severity": "warning",
+      "file": "./build.rs",
+      "line": 1383,
+      "message": "generate_stub_compressed_templates: cognitive-complexity - Cognitive complexity of 24 exceeds recommended complexity of 23 (complexity: 24, threshold: 23)"
+    },
     {
       "check_type": "complexity",
       "severity": "warning",
@@ -74,6 +81,76 @@
     {
       "check_type": "complexity",
       "severity": "error",
+      "file": "./src/cli/handlers/comply_handlers/check_handlers/check.rs",
+      "line": 40,
+      "message": "handle_check: cognitive-complexity - Cognitive complexity of 45 exceeds maximum allowed complexity of 25 (complexity: 45, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/comply_handlers/check_handlers/check_contract_surfaces.rs",
+      "line": 33,
+      "message": "check_contract_surface_classification: cognitive-complexity - Cognitive complexity of 50 exceeds maximum allowed complexity of 25 (complexity: 50, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/comply_handlers/check_handlers/check_contract_surfaces.rs",
+      "line": 179,
+      "message": "check_cli_arg_contracts: cognitive-complexity - Cognitive complexity of 32 exceeds maximum allowed complexity of 25 (complexity: 32, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/comply_handlers/check_handlers/check_contract_surfaces.rs",
+      "line": 420,
+      "message": "check_mcp_schema_contracts: cognitive-complexity - Cognitive complexity of 55 exceeds maximum allowed complexity of 25 (complexity: 55, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/comply_handlers/check_handlers/check_contract_surfaces.rs",
+      "line": 521,
+      "message": "check_tui_widget_contracts: cognitive-complexity - Cognitive complexity of 36 exceeds maximum allowed complexity of 25 (complexity: 36, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/comply_handlers/check_handlers/check_contract_surfaces.rs",
+      "line": 622,
+      "message": "check_wasm_ffi_contracts: cyclomatic-complexity - Cyclomatic complexity of 37 exceeds maximum allowed complexity of 30 (complexity: 37, threshold: 30)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/comply_handlers/check_handlers/check_contract_surfaces.rs",
+      "line": 622,
+      "message": "check_wasm_ffi_contracts: cognitive-complexity - Cognitive complexity of 179 exceeds maximum allowed complexity of 25 (complexity: 179, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/comply_handlers/check_handlers/check_contract_surfaces.rs",
+      "line": 773,
+      "message": "check_verification_ladder: cognitive-complexity - Cognitive complexity of 48 exceeds maximum allowed complexity of 25 (complexity: 48, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/comply_handlers/check_handlers/check_contract_surfaces.rs",
+      "line": 970,
+      "message": "is_generic_api_pattern: cognitive-complexity - Cognitive complexity of 27 exceeds maximum allowed complexity of 25 (complexity: 27, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/comply_handlers/check_handlers/check_contract_surfaces.rs",
+      "line": 1078,
+      "message": "extract_dep_version: cognitive-complexity - Cognitive complexity of 50 exceeds maximum allowed complexity of 25 (complexity: 50, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
       "file": "./src/cli/handlers/comply_handlers/check_handlers/check_mono_spec.rs",
       "line": 16,
       "message": "check_mono_spec_structure: cognitive-complexity - Cognitive complexity of 62 exceeds maximum allowed complexity of 25 (complexity: 62, threshold: 25)"
@@ -112,6 +189,125 @@
       "file": "./src/cli/handlers/comply_handlers/check_handlers/check_provable_contracts.rs",
       "line": 188,
       "message": "check_binding_coverage: cognitive-complexity - Cognitive complexity of 34 exceeds maximum allowed complexity of 25 (complexity: 34, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/comply_handlers/check_handlers/check_pv_enforcement.rs",
+      "line": 5,
+      "message": "collect_contract_equation_names: cognitive-complexity - Cognitive complexity of 57 exceeds maximum allowed complexity of 25 (complexity: 57, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/comply_handlers/check_handlers/check_pv_enforcement.rs",
+      "line": 77,
+      "message": "check_annotation_coverage: cyclomatic-complexity - Cyclomatic complexity of 34 exceeds maximum allowed complexity of 30 (complexity: 34, threshold: 30)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/comply_handlers/check_handlers/check_pv_enforcement.rs",
+      "line": 77,
+      "message": "check_annotation_coverage: cognitive-complexity - Cognitive complexity of 111 exceeds maximum allowed complexity of 25 (complexity: 111, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/comply_handlers/check_handlers/check_pv_enforcement.rs",
+      "line": 278,
+      "message": "check_build_rs_pipeline: cognitive-complexity - Cognitive complexity of 37 exceeds maximum allowed complexity of 25 (complexity: 37, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/comply_handlers/check_handlers/check_pv_enforcement.rs",
+      "line": 381,
+      "message": "check_provability_invariant: cognitive-complexity - Cognitive complexity of 47 exceeds maximum allowed complexity of 25 (complexity: 47, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/comply_handlers/check_handlers/check_pv_enforcement.rs",
+      "line": 651,
+      "message": "check_contract_drift: cognitive-complexity - Cognitive complexity of 85 exceeds maximum allowed complexity of 25 (complexity: 85, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "warning",
+      "file": "./src/cli/handlers/comply_handlers/check_handlers/check_pv_enforcement.rs",
+      "line": 769,
+      "message": "check_binding_existence: cognitive-complexity - Cognitive complexity of 25 exceeds recommended complexity of 23 (complexity: 25, threshold: 23)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/comply_handlers/check_handlers/check_pv_enforcement.rs",
+      "line": 886,
+      "message": "detect_buildrs_enforcement: cognitive-complexity - Cognitive complexity of 47 exceeds maximum allowed complexity of 25 (complexity: 47, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/comply_handlers/check_handlers/check_pv_enforcement.rs",
+      "line": 1140,
+      "message": "extract_names_from_source: cognitive-complexity - Cognitive complexity of 35 exceeds maximum allowed complexity of 25 (complexity: 35, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/comply_handlers/check_handlers/check_pv_enforcement.rs",
+      "line": 1206,
+      "message": "parse_binding_entries: cognitive-complexity - Cognitive complexity of 28 exceeds maximum allowed complexity of 25 (complexity: 28, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "warning",
+      "file": "./src/cli/handlers/comply_handlers/check_handlers/check_pv_enforcement.rs",
+      "line": 1264,
+      "message": "check_contract_coverage: cognitive-complexity - Cognitive complexity of 25 exceeds recommended complexity of 23 (complexity: 25, threshold: 23)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "warning",
+      "file": "./src/cli/handlers/comply_handlers/check_handlers/check_pv_enforcement.rs",
+      "line": 1485,
+      "message": "count_contract_test_refs: cyclomatic-complexity - Cyclomatic complexity of 29 exceeds recommended complexity of 28 (complexity: 29, threshold: 28)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/comply_handlers/check_handlers/check_pv_enforcement.rs",
+      "line": 1485,
+      "message": "count_contract_test_refs: cognitive-complexity - Cognitive complexity of 110 exceeds maximum allowed complexity of 25 (complexity: 110, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/comply_handlers/check_handlers/check_pv_quality.rs",
+      "line": 16,
+      "message": "check_precondition_quality: cyclomatic-complexity - Cyclomatic complexity of 37 exceeds maximum allowed complexity of 30 (complexity: 37, threshold: 30)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/comply_handlers/check_handlers/check_pv_quality.rs",
+      "line": 16,
+      "message": "check_precondition_quality: cognitive-complexity - Cognitive complexity of 146 exceeds maximum allowed complexity of 25 (complexity: 146, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/comply_handlers/check_handlers/check_pv_quality.rs",
+      "line": 236,
+      "message": "check_codegen_fidelity: cyclomatic-complexity - Cyclomatic complexity of 38 exceeds maximum allowed complexity of 30 (complexity: 38, threshold: 30)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/comply_handlers/check_handlers/check_pv_quality.rs",
+      "line": 236,
+      "message": "check_codegen_fidelity: cognitive-complexity - Cognitive complexity of 123 exceeds maximum allowed complexity of 25 (complexity: 123, threshold: 25)"
     },
     {
       "check_type": "complexity",
@@ -243,7 +439,7 @@
       "check_type": "complexity",
       "severity": "error",
       "file": "./src/cli/handlers/comply_handlers/muda_handlers_metrics.rs",
-      "line": 156,
+      "line": 162,
       "message": "estimate_max_complexity: cognitive-complexity - Cognitive complexity of 64 exceeds maximum allowed complexity of 25 (complexity: 64, threshold: 25)"
     },
     {
@@ -273,6 +469,20 @@
       "file": "./src/cli/handlers/hooks_command_handlers/command_dispatch.rs",
       "line": 259,
       "message": "handle_run: cognitive-complexity - Cognitive complexity of 47 exceeds maximum allowed complexity of 25 (complexity: 47, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/infra_score_handlers.rs",
+      "line": 47,
+      "message": "format_text_output: cyclomatic-complexity - Cyclomatic complexity of 35 exceeds maximum allowed complexity of 30 (complexity: 35, threshold: 30)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/infra_score_handlers.rs",
+      "line": 47,
+      "message": "format_text_output: cognitive-complexity - Cognitive complexity of 89 exceeds maximum allowed complexity of 25 (complexity: 89, threshold: 25)"
     },
     {
       "check_type": "complexity",
@@ -382,6 +592,55 @@
     {
       "check_type": "complexity",
       "severity": "error",
+      "file": "./src/cli/handlers/score_handler.rs",
+      "line": 44,
+      "message": "handle_score: cognitive-complexity - Cognitive complexity of 27 exceeds maximum allowed complexity of 25 (complexity: 27, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/score_handler.rs",
+      "line": 289,
+      "message": "compute_evoscore: cognitive-complexity - Cognitive complexity of 27 exceeds maximum allowed complexity of 25 (complexity: 27, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/score_handler_compute.rs",
+      "line": 11,
+      "message": "compute_pv_lint: cognitive-complexity - Cognitive complexity of 38 exceeds maximum allowed complexity of 25 (complexity: 38, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/score_handler_compute.rs",
+      "line": 147,
+      "message": "compute_pipeline_depth: cognitive-complexity - Cognitive complexity of 35 exceeds maximum allowed complexity of 25 (complexity: 35, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/score_handler_compute.rs",
+      "line": 258,
+      "message": "compute_contract_drift: cognitive-complexity - Cognitive complexity of 81 exceeds maximum allowed complexity of 25 (complexity: 81, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/cli/handlers/score_handler_display.rs",
+      "line": 49,
+      "message": "read_latest_composite: cognitive-complexity - Cognitive complexity of 30 exceeds maximum allowed complexity of 25 (complexity: 30, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "warning",
+      "file": "./src/cli/handlers/score_handler_display.rs",
+      "line": 71,
+      "message": "load_score_history: cognitive-complexity - Cognitive complexity of 24 exceeds recommended complexity of 23 (complexity: 24, threshold: 23)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
       "file": "./src/cli/handlers/spec_falsify_handler.rs",
       "line": 58,
       "message": "handle_spec_falsification: cognitive-complexity - Cognitive complexity of 33 exceeds maximum allowed complexity of 25 (complexity: 33, threshold: 25)"
@@ -467,14 +726,14 @@
       "check_type": "complexity",
       "severity": "error",
       "file": "./src/cli/handlers/stack_sync_handler.rs",
-      "line": 469,
+      "line": 472,
       "message": "print_status_table: cognitive-complexity - Cognitive complexity of 26 exceeds maximum allowed complexity of 25 (complexity: 26, threshold: 25)"
     },
     {
       "check_type": "complexity",
       "severity": "error",
       "file": "./src/cli/handlers/stack_sync_handler.rs",
-      "line": 551,
+      "line": 554,
       "message": "handle_stack_sync: cognitive-complexity - Cognitive complexity of 57 exceeds maximum allowed complexity of 25 (complexity: 57, threshold: 25)"
     },
     {
@@ -718,6 +977,69 @@
     {
       "check_type": "complexity",
       "severity": "error",
+      "file": "./src/services/infra_score/scorers/build_reliability.rs",
+      "line": 352,
+      "message": "check_pinned_actions: cognitive-complexity - Cognitive complexity of 35 exceeds maximum allowed complexity of 25 (complexity: 35, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "warning",
+      "file": "./src/services/infra_score/scorers/deployment_release.rs",
+      "line": 160,
+      "message": "check_cross_platform: cognitive-complexity - Cognitive complexity of 24 exceeds recommended complexity of 23 (complexity: 24, threshold: 23)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/services/infra_score/scorers/deployment_release.rs",
+      "line": 283,
+      "message": "check_semver: cognitive-complexity - Cognitive complexity of 45 exceeds maximum allowed complexity of 25 (complexity: 45, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/services/infra_score/scorers/mod.rs",
+      "line": 39,
+      "message": "read_workflow_files: cognitive-complexity - Cognitive complexity of 26 exceeds maximum allowed complexity of 25 (complexity: 26, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/services/infra_score/scorers/provable_contracts.rs",
+      "line": 176,
+      "message": "count_yaml_files_recursive: cognitive-complexity - Cognitive complexity of 39 exceeds maximum allowed complexity of 25 (complexity: 39, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/services/infra_score/scorers/provable_contracts.rs",
+      "line": 446,
+      "message": "check_yaml_structure: cognitive-complexity - Cognitive complexity of 28 exceeds maximum allowed complexity of 25 (complexity: 28, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/services/infra_score/scorers/supply_chain.rs",
+      "line": 532,
+      "message": "check_dangerous_workflow: cognitive-complexity - Cognitive complexity of 34 exceeds maximum allowed complexity of 25 (complexity: 34, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/services/infra_score/scorers/workflow_architecture.rs",
+      "line": 171,
+      "message": "check_reusable_workflow: cognitive-complexity - Cognitive complexity of 26 exceeds maximum allowed complexity of 25 (complexity: 26, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/services/rust_project_score/code_quality_scoring_heuristics.rs",
+      "line": 16,
+      "message": "analyze_unsafe_in_content: cognitive-complexity - Cognitive complexity of 38 exceeds maximum allowed complexity of 25 (complexity: 38, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
       "file": "./src/services/rust_project_score/documentation_scorer_changelog.rs",
       "line": 36,
       "message": "has_version_heading: cognitive-complexity - Cognitive complexity of 32 exceeds maximum allowed complexity of 25 (complexity: 32, threshold: 25)"
@@ -767,6 +1089,20 @@
     {
       "check_type": "complexity",
       "severity": "error",
+      "file": "./src/tdg/analyzer_ast/analyzer_impl2_heuristics_lean.rs",
+      "line": 264,
+      "message": "contains_lean_sorry_word_ast: cognitive-complexity - Cognitive complexity of 28 exceeds maximum allowed complexity of 25 (complexity: 28, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
+      "file": "./src/tdg/analyzer_simple_helpers.rs",
+      "line": 196,
+      "message": "contains_lean_sorry_word: cognitive-complexity - Cognitive complexity of 28 exceeds maximum allowed complexity of 25 (complexity: 28, threshold: 25)"
+    },
+    {
+      "check_type": "complexity",
+      "severity": "error",
       "file": "./src/unified_protocol/service/handlers_dispatch.rs",
       "line": 83,
       "message": "route_mcp_method: cognitive-complexity - Cognitive complexity of 37 exceeds maximum allowed complexity of 25 (complexity: 37, threshold: 25)"
@@ -784,6 +1120,13 @@
       "file": "./src/cli/commands/cli_struct.rs",
       "line": 22,
       "message": "Design: Find self-admitted technical debt markers (at column 1)"
+    },
+    {
+      "check_type": "satd",
+      "severity": "info",
+      "file": "./src/cli/handlers/comply_handlers/check_handlers/check_pv_quality.rs",
+      "line": 363,
+      "message": "Design: No generated file found — run pv codegen to temp file if available (at column 5)"
     },
     {
       "check_type": "satd",
@@ -852,7 +1195,7 @@
       "check_type": "satd",
       "severity": "error",
       "file": "./src/services/rust_project_score/code_quality_scoring_heuristics.rs",
-      "line": 63,
+      "line": 79,
       "message": "Defect: #237 bug 3: Must be recursive — read_dir is non-recursive and missed 98%+ of code (at column 5)"
     },
     {
