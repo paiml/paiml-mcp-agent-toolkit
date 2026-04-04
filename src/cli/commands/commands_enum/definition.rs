@@ -252,9 +252,9 @@ pub enum Commands {
         #[arg(long, value_name = "PATTERN")]
         exclude: Option<String>,
 
-        /// Exclude results from files matching this glob (like rg --glob '!PATTERN')
+        /// Exclude results from files matching this glob (like rg --glob '!PATTERN', repeatable)
         #[arg(long, value_name = "GLOB")]
-        exclude_file: Option<String>,
+        exclude_file: Vec<String>,
 
         /// Show only file paths with matches (like rg -l / grep -l)
         #[arg(long)]

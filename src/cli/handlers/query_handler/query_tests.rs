@@ -41,7 +41,7 @@ async fn test_handle_query_empty_project() {
         false,  // case_sensitive
         false,  // ignore_case
         None,   // exclude
-        None,   // exclude_file
+        Vec::new(),   // exclude_file
         false,  // files_with_matches
         false,  // count
         None,   // after_context
@@ -118,7 +118,7 @@ fn main() {
         false,  // case_sensitive
         false,  // ignore_case
         None,   // exclude
-        None,   // exclude_file
+        Vec::new(),   // exclude_file
         false,  // files_with_matches
         false,  // count
         None,   // after_context

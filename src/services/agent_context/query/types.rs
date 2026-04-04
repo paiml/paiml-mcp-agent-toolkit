@@ -106,8 +106,8 @@ pub struct QueryOptions {
     pub case_sensitivity: CaseSensitivity,
     /// Exclude results matching this content pattern
     pub exclude_pattern: Option<String>,
-    /// Exclude results from files matching this glob pattern
-    pub exclude_file_pattern: Option<String>,
+    /// Exclude results from files matching these glob patterns (repeatable)
+    pub exclude_file_pattern: Vec<String>,
 }
 
 /// A search result with relevance score

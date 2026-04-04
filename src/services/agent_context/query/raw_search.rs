@@ -45,8 +45,8 @@ pub struct RawSearchOptions<'a> {
     pub limit: usize,
     /// Filter to files matching this language extension
     pub language_filter: Option<&'a str>,
-    /// Exclude files matching this glob pattern
-    pub exclude_file_pattern: Option<&'a str>,
+    /// Exclude files matching these glob patterns (repeatable)
+    pub exclude_file_pattern: Vec<&'a str>,
     /// Exclude results matching this content pattern
     pub exclude_pattern: Option<&'a str>,
     /// Only return file paths (like rg -l)

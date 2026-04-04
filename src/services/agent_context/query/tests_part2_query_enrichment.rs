@@ -397,7 +397,7 @@ fn test_query_exclude_file_pattern() {
             "handle",
             QueryOptions {
                 limit: 20,
-                exclude_file_pattern: Some("utils.rs".to_string()),
+                exclude_file_pattern: vec!["utils.rs".to_string()],
                 ..Default::default()
             },
         )

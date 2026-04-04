@@ -194,13 +194,19 @@ fn build_search_patterns(options: &RawSearchOptions) -> Result<(Regex, Option<Re
 
 /// Build the exclude file glob from options.
 fn build_exclude_glob(options: &RawSearchOptions) -> Option<globset::GlobSet> {
-    options.exclude_file_pattern.and_then(|g| {
-        globset::GlobBuilder::new(&format!("**{g}**"))
+    if options.exclude_file_pattern.is_empty() {
+        return None;
+    }
+    let mut builder = globset::GlobSetBuilder::new();
+    for g in &options.exclude_file_pattern {
+        if let Ok(glob) = globset::GlobBuilder::new(&format!("**{g}**"))
             .case_insensitive(true)
             .build()
-            .ok()
-            .and_then(|gb| globset::GlobSetBuilder::new().add(gb).build().ok())
-    })
+        {
+            builder.add(glob);
+        }
+    }
+    builder.build().ok().filter(|gs| !gs.is_empty())
 }
 
 /// Walk project files and collect matches into the accumulator.

@@ -44,7 +44,7 @@ pub(super) fn handle_raw_search_mode(
     literal: bool,
     ignore_case: bool,
     language: &Option<String>,
-    exclude_file: &Option<String>,
+    exclude_file: &[String],
     exclude: &Option<String>,
     files_with_matches: bool,
     count: bool,
@@ -57,14 +57,10 @@ pub(super) fn handle_raw_search_mode(
     let ctx_after = context_lines.or(after_context).unwrap_or(0);
     let ctx_before = context_lines.or(before_context).unwrap_or(0);
     // When --exclude-tests is set in raw mode, filter test file paths
-    let effective_exclude_file = if exclude_tests && exclude_file.is_none() {
-        Some("test".to_string())
-    } else {
-        None
-    };
-    let excl_file_ref = effective_exclude_file
-        .as_deref()
-        .or(exclude_file.as_deref());
+    let mut excl_files: Vec<&str> = exclude_file.iter().map(|s| s.as_str()).collect();
+    if exclude_tests && excl_files.is_empty() {
+        excl_files.push("test");
+    }
     let raw_opts = RawSearchOptions {
         pattern: query,
         literal,
@@ -73,7 +69,7 @@ pub(super) fn handle_raw_search_mode(
         after_context: ctx_after,
         limit,
         language_filter: language.as_deref(),
-        exclude_file_pattern: excl_file_ref,
+        exclude_file_pattern: excl_files,
         exclude_pattern: exclude.as_deref(),
         files_with_matches,
         count_mode: count,
@@ -139,7 +135,7 @@ pub(super) fn run_raw_search_for_merge(
     literal: bool,
     ignore_case: bool,
     language: &Option<String>,
-    exclude_file: &Option<String>,
+    exclude_file: &[String],
     exclude: &Option<String>,
     context_lines: Option<usize>,
     after_context: Option<usize>,
@@ -154,6 +150,7 @@ pub(super) fn run_raw_search_for_merge(
 
     let ctx_after = context_lines.or(after_context).unwrap_or(0);
     let ctx_before = context_lines.or(before_context).unwrap_or(0);
+    let excl_refs: Vec<&str> = exclude_file.iter().map(|s| s.as_str()).collect();
     let raw_opts = RawSearchOptions {
         pattern: query,
         literal,
@@ -162,7 +159,7 @@ pub(super) fn run_raw_search_for_merge(
         after_context: ctx_after,
         limit: remaining + indexed_results.len(), // over-fetch to account for dedup
         language_filter: language.as_deref(),
-        exclude_file_pattern: exclude_file.as_deref(),
+        exclude_file_pattern: excl_refs,
         exclude_pattern: exclude.as_deref(),
         files_with_matches: false,
         count_mode: false,
@@ -193,10 +190,11 @@ pub(super) fn run_raw_files_for_merge(
     literal: bool,
     ignore_case: bool,
     language: &Option<String>,
-    exclude_file: &Option<String>,
+    exclude_file: &[String],
     exclude: &Option<String>,
     project_path: &std::path::Path,
 ) -> Vec<String> {
+    let excl_refs: Vec<&str> = exclude_file.iter().map(|s| s.as_str()).collect();
     let raw_opts = RawSearchOptions {
         pattern: query,
         literal,
@@ -205,7 +203,7 @@ pub(super) fn run_raw_files_for_merge(
         after_context: 0,
         limit: 0,
         language_filter: language.as_deref(),
-        exclude_file_pattern: exclude_file.as_deref(),
+        exclude_file_pattern: excl_refs,
         exclude_pattern: exclude.as_deref(),
         files_with_matches: true,
         count_mode: false,
@@ -223,10 +221,11 @@ pub(super) fn run_raw_counts_for_merge(
     literal: bool,
     ignore_case: bool,
     language: &Option<String>,
-    exclude_file: &Option<String>,
+    exclude_file: &[String],
     exclude: &Option<String>,
     project_path: &std::path::Path,
 ) -> Vec<crate::services::agent_context::FileMatchCount> {
+    let excl_refs: Vec<&str> = exclude_file.iter().map(|s| s.as_str()).collect();
     let raw_opts = RawSearchOptions {
         pattern: query,
         literal,
@@ -235,7 +234,7 @@ pub(super) fn run_raw_counts_for_merge(
         after_context: 0,
         limit: 0,
         language_filter: language.as_deref(),
-        exclude_file_pattern: exclude_file.as_deref(),
+        exclude_file_pattern: excl_refs,
         exclude_pattern: exclude.as_deref(),
         files_with_matches: false,
         count_mode: true,

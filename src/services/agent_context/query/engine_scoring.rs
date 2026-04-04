@@ -215,8 +215,8 @@ impl AgentContextIndex {
             }
         }
 
-        // Exclude file pattern (like rg --glob '!pattern')
-        if let Some(exclude_file) = &options.exclude_file_pattern {
+        // Exclude file patterns (like rg --glob '!pattern', repeatable)
+        for exclude_file in &options.exclude_file_pattern {
             if func.file_path.contains(exclude_file) || glob_matches(exclude_file, &func.file_path)
             {
                 return false;
