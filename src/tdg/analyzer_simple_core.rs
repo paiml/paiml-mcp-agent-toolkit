@@ -88,7 +88,7 @@ impl TdgAnalyzer {
                 }
                 Err(e) => {
                     // Suppress warnings for include!() fragment files (PMAT-507)
-                    if !crate::cli::language_analyzer::is_include_fragment(&file) {
+                    if !crate::cli::language_analyzer::is_include_fragment(file) {
                         eprintln!("Warning: Failed to analyze {}: {}", file.display(), e);
                     }
                 }

@@ -77,28 +77,24 @@ fn is_included_by_sibling(path: &Path, name: &str) -> bool {
     let needle = format!("include!(\"{filename}\")");
     // Try progressively shorter prefixes by stripping trailing _segment
     let mut candidate = name.to_string();
-    loop {
-        if let Some(pos) = candidate.rfind('_') {
-            candidate.truncate(pos);
-            let parent_path = dir.join(format!("{candidate}.rs"));
-            if parent_path.exists() {
-                if let Ok(content) = std::fs::read_to_string(&parent_path) {
-                    if content.contains(&needle) {
-                        return true;
-                    }
+    while let Some(pos) = candidate.rfind('_') {
+        candidate.truncate(pos);
+        let parent_path = dir.join(format!("{candidate}.rs"));
+        if parent_path.exists() {
+            if let Ok(content) = std::fs::read_to_string(&parent_path) {
+                if content.contains(&needle) {
+                    return true;
                 }
             }
-            // Also check mod.rs in a subdirectory with that name
-            let mod_path = dir.join(&candidate).join("mod.rs");
-            if mod_path.exists() {
-                if let Ok(content) = std::fs::read_to_string(&mod_path) {
-                    if content.contains(&needle) {
-                        return true;
-                    }
+        }
+        // Also check mod.rs in a subdirectory with that name
+        let mod_path = dir.join(&candidate).join("mod.rs");
+        if mod_path.exists() {
+            if let Ok(content) = std::fs::read_to_string(&mod_path) {
+                if content.contains(&needle) {
+                    return true;
                 }
             }
-        } else {
-            break;
         }
     }
     false
