@@ -262,11 +262,11 @@ Evidence sources: complexity (25%), TDG (25%), SATD (20%), git churn (20%), dead
 
 ---
 
-## Rust Project Score v1.1
+## Rust Project Score v3.0
 
 **Command**: `pmat rust-project-score` (alias: `rust-score`) | **Status**: Production-ready
 
-106-point scoring across 6 categories based on 15 peer-reviewed papers (2022-2025).
+289-point scoring across 11 categories based on 15 peer-reviewed papers (2022-2025).
 
 ```bash
 pmat rust-project-score                    # Fast mode (~2-3 min, skips clippy/mutation/build)
@@ -275,7 +275,7 @@ pmat rust-project-score --format json -o score.json  # CI/CD
 pmat rust-project-score --failures-only    # Show only failures
 ```
 
-**Categories**: Rust Tooling (25pts), Code Quality (26pts), Testing (20pts), Documentation (15pts), Performance (10pts), Dependency Health (12pts).
+**Categories**: Rust Tooling & CI/CD (130pts), Code Quality (26pts), Testing (20pts), Known Defects (20pts), Formal Verification (16pts), Documentation (15pts), Reproducibility (15pts), Build Performance (15pts), Dependency Health (12pts), Performance & Benchmarking (10pts), GPU/SIMD Quality (10pts).
 
 Spec: `docs/specifications/components/repo-health.md` | Location: `server/src/services/rust_project_score/`
 
