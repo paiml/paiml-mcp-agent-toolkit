@@ -535,14 +535,47 @@ pub(crate) fn check_hook_single_writer(project_path: &Path) -> ComplianceCheck {
                 scan_for_hook_writes(&path, results);
             } else if path.extension().is_some_and(|e| e == "rs") {
                 if let Ok(content) = fs::read_to_string(&path) {
-                    // Look for patterns that write to .git/hooks
+                    // Look for patterns that write to .git/hooks OUTSIDE #[cfg(test)]
                     let writes_hooks = content.contains("hooks/pre-commit")
                         || content.contains("hooks/pre-push")
                         || content.contains("hooks/post-commit");
-                    let does_write = content.contains("fs::write")
-                        || content.contains("write_all")
-                        || content.contains("OpenOptions");
-                    if writes_hooks && does_write {
+                    if !writes_hooks { continue; }
+                    // Scan line-by-line, skipping test modules
+                    let mut in_test_module = false;
+                    let mut brace_depth_at_test = 0i32;
+                    let mut brace_depth = 0i32;
+                    let mut found_prod_write = false;
+                    for line in content.lines() {
+                        let t = line.trim();
+                        if t.contains("#[cfg(test)]") {
+                            in_test_module = true;
+                            brace_depth_at_test = brace_depth;
+                        }
+                        for c in line.chars() {
+                            if c == '{' { brace_depth += 1; }
+                            if c == '}' {
+                                brace_depth -= 1;
+                                if in_test_module && brace_depth <= brace_depth_at_test {
+                                    in_test_module = false;
+                                }
+                            }
+                        }
+                        if in_test_module { continue; }
+                        if t.starts_with("//") { continue; }
+                        // Count write operations targeting hook paths or tmp paths
+                        // (for atomic writes). Excludes writes to arbitrary user paths
+                        // like output_path (prompt generators mention hooks in strings).
+                        let is_write = t.contains("fs::write") || t.contains("write_all")
+                            || t.contains("OpenOptions") || t.contains("fs::rename");
+                        let targets_hook = t.contains("hook_path") || t.contains("precommit")
+                            || t.contains("pre_commit") || t.contains("hooks/")
+                            || t.contains("tmp_path");
+                        if is_write && targets_hook {
+                            found_prod_write = true;
+                            break;
+                        }
+                    }
+                    if found_prod_write {
                         let rel = path
                             .strip_prefix(dir.parent().unwrap_or(dir))
                             .unwrap_or(&path);
@@ -719,15 +752,42 @@ pub(crate) fn check_hook_atomic_writes(project_path: &Path) -> ComplianceCheck {
                     let has_atomic =
                         content.contains("rename") || content.contains("atomic_write");
                     if has_direct_write && !has_atomic {
-                        // Exclude files where hook refs are only in strings/comments
-                        // (e.g., recommendation messages, scorers reading hooks)
-                        let writes_to_hook = content.lines().any(|line| {
+                        // Scan for fs::write that:
+                        // 1. is in code (not comments)
+                        // 2. targets a hook path
+                        // 3. is OUTSIDE #[cfg(test)] modules
+                        let mut in_test_module = false;
+                        let mut brace_depth_at_test = 0i32;
+                        let mut brace_depth = 0i32;
+                        let mut found_prod_write = false;
+                        for line in content.lines() {
                             let t = line.trim();
-                            t.contains("fs::write") && !t.starts_with("//") && !t.starts_with("///")
+                            // Track #[cfg(test)] modules via brace depth
+                            if t.starts_with("#[cfg(test)]") || t.contains("#[cfg(test)]") {
+                                in_test_module = true;
+                                brace_depth_at_test = brace_depth;
+                            }
+                            // Count braces (crude but sufficient for detecting module boundaries)
+                            for c in line.chars() {
+                                if c == '{' { brace_depth += 1; }
+                                if c == '}' {
+                                    brace_depth -= 1;
+                                    if in_test_module && brace_depth <= brace_depth_at_test {
+                                        in_test_module = false;
+                                    }
+                                }
+                            }
+                            if in_test_module { continue; }
+                            if t.starts_with("//") || t.starts_with("///") { continue; }
+                            if t.contains("fs::write")
                                 && (t.contains("hook_path") || t.contains("precommit")
                                     || t.contains("pre_commit") || t.contains("hooks/"))
-                        });
-                        if writes_to_hook {
+                            {
+                                found_prod_write = true;
+                                break;
+                            }
+                        }
+                        if found_prod_write {
                             let name = path.file_name().map(|f| f.to_string_lossy().to_string())
                                 .unwrap_or_default();
                             results.push(name);
