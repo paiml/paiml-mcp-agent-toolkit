@@ -299,7 +299,7 @@ fire-and-forget with no closed-loop regeneration.
 | Repo | Pass | Warn | Fail | CB-1354 | Notes |
 |------|------|------|------|---------|-------|
 | pmat | **75** | 7 | 0 | **4/4** | 4 bindings, 82 work contracts, 2 pv assertions |
-| aprender | **72** | 15 | 0 | **4/4** | 5 bindings, 32 work contracts. GH #673-676 filed for gaps |
+| aprender | **71** | 16 | 0 | **4/4** | 5 bindings, 35 work contracts. GH #673-676 filed. 3 bugs confirmed (GH-664/666/672) |
 | trueno | **65** | 18 | 0 | 1/4 | Only pv CLI |
 | realizar | **63** | 18 | 0 | 1/4 | Only pv CLI |
 
