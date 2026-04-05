@@ -345,22 +345,25 @@ fn print_status_json(repos: &[StackRepo]) {
     println!("[\n{}\n]", entries.join(",\n"));
 }
 
-/// Write hook content to disk and set executable permission.
+/// Write hook content to disk atomically (temp + rename, CB-1334).
 fn write_hook(hook_path: &PathBuf, content: &str) -> Result<()> {
     // Ensure the hooks directory exists
     if let Some(parent) = hook_path.parent() {
         std::fs::create_dir_all(parent)?;
     }
 
-    std::fs::write(hook_path, content)?;
+    // Atomic write: temp file + rename
+    let tmp_path = hook_path.with_extension("tmp");
+    std::fs::write(&tmp_path, content)?;
 
-    // Set executable permission on Unix
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
         let perms = std::fs::Permissions::from_mode(0o755);
-        std::fs::set_permissions(hook_path, perms)?;
+        std::fs::set_permissions(&tmp_path, perms)?;
     }
+
+    std::fs::rename(&tmp_path, hook_path)?;
 
     Ok(())
 }

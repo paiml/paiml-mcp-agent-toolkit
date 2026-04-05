@@ -8,19 +8,21 @@ pub fn install_pre_commit_hook(project_dir: &Path, script: &str) -> Result<()> {
 
     let hook_path = project_dir.join(".git/hooks/pre-commit");
 
-    // Write hook script
-    fs::write(&hook_path, script).map_err(ScaffoldError::IoError)?;
+    // Atomic write: temp file + rename (CB-1334)
+    let tmp_path = hook_path.with_extension("tmp");
+    fs::write(&tmp_path, script).map_err(ScaffoldError::IoError)?;
 
-    // Make executable (chmod +x)
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
-        let mut perms = fs::metadata(&hook_path)
+        let mut perms = fs::metadata(&tmp_path)
             .map_err(ScaffoldError::IoError)?
             .permissions();
         perms.set_mode(0o755);
-        fs::set_permissions(&hook_path, perms).map_err(ScaffoldError::IoError)?;
+        fs::set_permissions(&tmp_path, perms).map_err(ScaffoldError::IoError)?;
     }
+
+    fs::rename(&tmp_path, &hook_path).map_err(ScaffoldError::IoError)?;
 
     Ok(())
 }
@@ -38,17 +40,21 @@ pub fn install_post_commit_hook(project_dir: &Path) -> Result<()> {
     let hook_path = project_dir.join(".git/hooks/post-commit");
     let script = generate_post_commit_hook();
 
-    fs::write(&hook_path, script).map_err(ScaffoldError::IoError)?;
+    // Atomic write: temp file + rename (CB-1334)
+    let tmp_path = hook_path.with_extension("tmp");
+    fs::write(&tmp_path, &script).map_err(ScaffoldError::IoError)?;
 
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
-        let mut perms = fs::metadata(&hook_path)
+        let mut perms = fs::metadata(&tmp_path)
             .map_err(ScaffoldError::IoError)?
             .permissions();
         perms.set_mode(0o755);
-        fs::set_permissions(&hook_path, perms).map_err(ScaffoldError::IoError)?;
+        fs::set_permissions(&tmp_path, perms).map_err(ScaffoldError::IoError)?;
     }
+
+    fs::rename(&tmp_path, &hook_path).map_err(ScaffoldError::IoError)?;
 
     Ok(())
 }

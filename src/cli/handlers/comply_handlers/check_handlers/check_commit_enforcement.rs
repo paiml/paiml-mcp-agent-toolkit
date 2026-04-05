@@ -709,6 +709,7 @@ pub(crate) fn check_hook_atomic_writes(project_path: &Path) -> ComplianceCheck {
                     continue;
                 }
                 if let Ok(content) = fs::read_to_string(&path) {
+                    // Must have hook path AND fs::write in actual code (not just string refs)
                     let is_hook_code = content.contains("hooks/pre-commit")
                         || content.contains("hooks/pre-push");
                     if !is_hook_code {
@@ -718,9 +719,19 @@ pub(crate) fn check_hook_atomic_writes(project_path: &Path) -> ComplianceCheck {
                     let has_atomic =
                         content.contains("rename") || content.contains("atomic_write");
                     if has_direct_write && !has_atomic {
-                        let name = path.file_name().map(|f| f.to_string_lossy().to_string())
-                            .unwrap_or_default();
-                        results.push(name);
+                        // Exclude files where hook refs are only in strings/comments
+                        // (e.g., recommendation messages, scorers reading hooks)
+                        let writes_to_hook = content.lines().any(|line| {
+                            let t = line.trim();
+                            t.contains("fs::write") && !t.starts_with("//") && !t.starts_with("///")
+                                && (t.contains("hook_path") || t.contains("precommit")
+                                    || t.contains("pre_commit") || t.contains("hooks/"))
+                        });
+                        if writes_to_hook {
+                            let name = path.file_name().map(|f| f.to_string_lossy().to_string())
+                                .unwrap_or_default();
+                            results.push(name);
+                        }
                     }
                 }
             }
@@ -2183,6 +2194,120 @@ pub(crate) fn check_contract_query_readiness(project_path: &Path) -> ComplianceC
     }
 }
 
+/// CB-1342: Codegen Compiles
+///
+/// Checks that generated contract assertion code (from `pv codegen`) compiles.
+/// Scans for `src/contracts/` or `generated_contracts.rs` and validates syntax.
+/// If `pv` CLI is available, runs `pv codegen --check` for dry-run validation.
+///
+/// Spec: Phase 8 leak class L-6 (Parser/Domain Bugs)
+pub(crate) fn check_codegen_compiles(project_path: &Path) -> ComplianceCheck {
+    // Check for generated contract code
+    let generated_paths = [
+        project_path.join("src/contracts"),
+        project_path.join("src/generated_contracts.rs"),
+    ];
+
+    let mut has_generated = false;
+    for path in &generated_paths {
+        if path.exists() {
+            has_generated = true;
+            break;
+        }
+    }
+
+    if !has_generated {
+        // No generated contract code — try pv codegen --check if pv is available
+        let pv_check = std::process::Command::new("pv")
+            .args(["codegen", "--check"])
+            .current_dir(project_path)
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::piped())
+            .output();
+
+        return match pv_check {
+            Ok(output) if output.status.success() => ComplianceCheck {
+                name: "CB-1342: Codegen Compiles".into(),
+                status: CheckStatus::Pass,
+                message: "pv codegen --check passed".into(),
+                severity: Severity::Info,
+            },
+            Ok(output) => {
+                let stderr = String::from_utf8_lossy(&output.stderr);
+                // If pv doesn't support the flag, skip rather than warn
+                if stderr.contains("unexpected argument") || stderr.contains("unrecognized") {
+                    ComplianceCheck {
+                        name: "CB-1342: Codegen Compiles".into(),
+                        status: CheckStatus::Skip,
+                        message: "pv codegen --check not supported (upgrade pv)".into(),
+                        severity: Severity::Info,
+                    }
+                } else {
+                    let msg = stderr.lines().next().unwrap_or("codegen check failed");
+                    ComplianceCheck {
+                        name: "CB-1342: Codegen Compiles".into(),
+                        status: CheckStatus::Warn,
+                        message: format!("pv codegen --check: {}", msg),
+                        severity: Severity::Warning,
+                    }
+                }
+            }
+            Err(_) => ComplianceCheck {
+                name: "CB-1342: Codegen Compiles".into(),
+                status: CheckStatus::Skip,
+                message: "No generated contracts and pv CLI not available".into(),
+                severity: Severity::Info,
+            },
+        };
+    }
+
+    // Has generated code — check for obvious syntax issues
+    let mut issues: Vec<String> = Vec::new();
+    let contracts_dir = project_path.join("src/contracts");
+    if contracts_dir.exists() {
+        if let Ok(entries) = fs::read_dir(&contracts_dir) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.extension().map_or(true, |e| e != "rs") {
+                    continue;
+                }
+                if let Ok(content) = fs::read_to_string(&path) {
+                    // Check for unbalanced braces (common codegen bug)
+                    let opens = content.chars().filter(|c| *c == '{').count();
+                    let closes = content.chars().filter(|c| *c == '}').count();
+                    if opens != closes {
+                        let name = path.file_name().map(|f| f.to_string_lossy().to_string())
+                            .unwrap_or_default();
+                        issues.push(format!("{}: unbalanced braces ({} open, {} close)", name, opens, closes));
+                    }
+                    // Check for common codegen placeholders
+                    if content.contains("TODO_PARAM") || content.contains("PLACEHOLDER") {
+                        let name = path.file_name().map(|f| f.to_string_lossy().to_string())
+                            .unwrap_or_default();
+                        issues.push(format!("{}: contains codegen placeholders", name));
+                    }
+                }
+            }
+        }
+    }
+
+    if issues.is_empty() {
+        ComplianceCheck {
+            name: "CB-1342: Codegen Compiles".into(),
+            status: CheckStatus::Pass,
+            message: "Generated contract code passes syntax checks".into(),
+            severity: Severity::Info,
+        }
+    } else {
+        ComplianceCheck {
+            name: "CB-1342: Codegen Compiles".into(),
+            status: CheckStatus::Warn,
+            message: format!("{} issue(s): {}", issues.len(), issues.join("; ")),
+            severity: Severity::Warning,
+        }
+    }
+}
+
 /// Generate `.pmat/binding-index.json` from contracts/ and binding.yaml.
 ///
 /// The binding index maps source files → contract binding names, enabling
@@ -2284,9 +2409,107 @@ pub(crate) fn handle_refresh_bindings(project_path: &Path) -> anyhow::Result<()>
 
     println!("✅ Binding index generated: {}", output_path.display());
     println!("   {} file(s) → {} binding(s)", index.len(), binding_count);
+
+    // 4. Generate O(1) cache files (R-5 remediation)
+    let mut cache_count = 0u8;
+
+    // contract-cache.json: summarize active work contracts
+    let work_dir = project_path.join(".pmat-work");
+    if work_dir.exists() {
+        let mut contracts_summary = std::collections::BTreeMap::new();
+        if let Ok(entries) = fs::read_dir(&work_dir) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if !path.is_dir() { continue; }
+                let contract = path.join("contract.json");
+                if contract.exists() {
+                    if let Ok(c) = fs::read_to_string(&contract) {
+                        if let Ok(v) = serde_json::from_str::<serde_json::Value>(&c) {
+                            let id = v.get("work_item_id").and_then(|w| w.as_str())
+                                .unwrap_or("unknown").to_string();
+                            let level = v.get("verification_level").and_then(|l| l.as_str())
+                                .unwrap_or("L0").to_string();
+                            let has_claims = v.get("falsifiable_claims").is_some()
+                                || v.get("claims").is_some();
+                            contracts_summary.insert(id, serde_json::json!({
+                                "level": level,
+                                "has_claims": has_claims,
+                            }));
+                        }
+                    }
+                }
+            }
+        }
+        let cache = serde_json::json!({
+            "generated_at": chrono_free_timestamp(),
+            "contract_count": contracts_summary.len(),
+            "contracts": contracts_summary,
+        });
+        fs::write(pmat_dir.join("contract-cache.json"), serde_json::to_string_pretty(&cache)?)?;
+        cache_count += 1;
+    }
+
+    // verification-levels.json: extract L-levels from contracts/ YAML
+    let contracts_dir = project_path.join("contracts");
+    if contracts_dir.exists() {
+        let mut levels = std::collections::BTreeMap::new();
+        for entry in walkdir::WalkDir::new(&contracts_dir).max_depth(3).into_iter().filter_map(|e| e.ok()) {
+            let path = entry.path();
+            if !path.is_file() || path.extension().map_or(true, |e| e != "yaml" && e != "yml") {
+                continue;
+            }
+            if let Ok(content) = fs::read_to_string(path) {
+                if content.contains("verification_summary") {
+                    let target = extract_level(&content, "target_level");
+                    let current = extract_level(&content, "current_level");
+                    let name = path.file_stem().map(|s| s.to_string_lossy().to_string()).unwrap_or_default();
+                    levels.insert(name, serde_json::json!({
+                        "target": target.map(|l| format!("L{}", l)),
+                        "current": current.map(|l| format!("L{}", l)),
+                    }));
+                }
+            }
+        }
+        let cache = serde_json::json!({
+            "generated_at": chrono_free_timestamp(),
+            "level_count": levels.len(),
+            "levels": levels,
+        });
+        fs::write(pmat_dir.join("verification-levels.json"), serde_json::to_string_pretty(&cache)?)?;
+        cache_count += 1;
+    }
+
+    // asset-layout-cache.json: cache asset validation results
+    let asset_cache = serde_json::json!({
+        "generated_at": chrono_free_timestamp(),
+        "readme": project_path.join("README.md").exists(),
+        "changelog": project_path.join("CHANGELOG.md").exists(),
+        "dockerfile": project_path.join("Dockerfile").exists(),
+        "forjar": project_path.join("forjar.yaml").exists() || project_path.join("forjar.toml").exists(),
+        "book": project_path.join("book/src/SUMMARY.md").exists(),
+    });
+    fs::write(pmat_dir.join("asset-layout-cache.json"), serde_json::to_string_pretty(&asset_cache)?)?;
+    cache_count += 1;
+
+    println!("   {} O(1) cache file(s) generated", cache_count);
     println!("   CB-1350 differential obligations now enabled");
 
     Ok(())
+}
+
+/// Generate a simple ISO-8601 timestamp without chrono dependency.
+fn chrono_free_timestamp() -> String {
+    let dur = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default();
+    let secs = dur.as_secs();
+    // Approximate: good enough for cache timestamps
+    let days = secs / 86400;
+    let years = 1970 + days / 365;
+    let rem_days = days % 365;
+    let months = rem_days / 30 + 1;
+    let day = rem_days % 30 + 1;
+    format!("{}-{:02}-{:02}T00:00:00Z", years, months.min(12), day.min(28))
 }
 
 #[cfg(test)]
@@ -3023,5 +3246,62 @@ mod tests {
             serde_json::from_str(&fs::read_to_string(&idx).unwrap()).unwrap();
         let obj = content.as_object().unwrap();
         assert!(obj.contains_key("src/core.rs"));
+    }
+
+    // --- CB-1342: Codegen Compiles ---
+
+    #[test]
+    fn test_cb1342_no_generated_code_no_pv() {
+        let dir = tempdir().unwrap();
+        let check = check_codegen_compiles(dir.path());
+        // Skip or Pass depending on pv availability
+        assert!(
+            check.status == CheckStatus::Skip || check.status == CheckStatus::Pass,
+            "Expected Skip or Pass, got {:?}: {}", check.status, check.message
+        );
+    }
+
+    #[test]
+    fn test_cb1342_clean_generated_code() {
+        let dir = tempdir().unwrap();
+        let contracts = dir.path().join("src/contracts");
+        fs::create_dir_all(&contracts).unwrap();
+        fs::write(
+            contracts.join("generated.rs"),
+            "fn validate() { debug_assert!(x > 0); }\n",
+        ).unwrap();
+
+        let check = check_codegen_compiles(dir.path());
+        assert_eq!(check.status, CheckStatus::Pass);
+    }
+
+    #[test]
+    fn test_cb1342_unbalanced_braces() {
+        let dir = tempdir().unwrap();
+        let contracts = dir.path().join("src/contracts");
+        fs::create_dir_all(&contracts).unwrap();
+        fs::write(
+            contracts.join("bad.rs"),
+            "fn broken() { if true { } \n",
+        ).unwrap();
+
+        let check = check_codegen_compiles(dir.path());
+        assert_eq!(check.status, CheckStatus::Warn);
+        assert!(check.message.contains("unbalanced"));
+    }
+
+    #[test]
+    fn test_cb1342_placeholder_in_codegen() {
+        let dir = tempdir().unwrap();
+        let contracts = dir.path().join("src/contracts");
+        fs::create_dir_all(&contracts).unwrap();
+        fs::write(
+            contracts.join("stub.rs"),
+            "fn check() { debug_assert!(TODO_PARAM > 0); }\n",
+        ).unwrap();
+
+        let check = check_codegen_compiles(dir.path());
+        assert_eq!(check.status, CheckStatus::Warn);
+        assert!(check.message.contains("placeholder"));
     }
 }

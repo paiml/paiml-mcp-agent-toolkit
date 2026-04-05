@@ -543,6 +543,12 @@ pub(crate) async fn handle_check(
         "cb-1354",
         comply_config,
     ));
+    // Phase 8: Codegen compiles (CB-1342)
+    checks.push(filter_check_by_config(
+        check_codegen_compiles(project_path),
+        "cb-1342",
+        comply_config,
+    ));
 
     let report = build_compliance_report(checks, project_version, failures_only);
     let failures = report
