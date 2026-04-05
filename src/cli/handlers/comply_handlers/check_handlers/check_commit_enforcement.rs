@@ -2582,8 +2582,9 @@ fn generate_work_contract_yamls(project_path: &Path) -> anyhow::Result<usize> {
         }
 
         // Build YAML (hand-written to avoid serde_yaml dependency)
+        // Quote name: always, to safely handle colons/special chars in IDs
         let mut yaml = format!("# Auto-generated from .pmat-work/{}/contract.json\n", safe_id);
-        yaml.push_str(&format!("name: {}\n", id));
+        yaml.push_str(&format!("name: \"{}\"\n", yaml_escape_string(id)));
         yaml.push_str("surface: work-contract\n");
         yaml.push_str(&format!(
             "verification_summary:\n  target_level: {}\n  current_level: {}\n",

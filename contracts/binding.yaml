@@ -1,33 +1,17 @@
-# PMAT Binding Index — maps source files to contract obligations
-# Generated as seed for pmat comply refresh-bindings
-# See: docs/specifications/components/commit-level-contract-enforcement.md
-
-- name: handle_refresh_bindings
-  source_file: src/cli/handlers/comply_handlers/check_handlers/check_commit_enforcement.rs
+version: 1.0.0
+target_crate: pmat
+bindings:
+- contract: pmat-core.yaml
+  equation: refresh_bindings
+  module_path: pmat::cli::handlers::comply_handlers::check_handlers::check_commit_enforcement
+  function: handle_refresh_bindings
+  signature: 'fn handle_refresh_bindings(project_path: &Path) -> anyhow::Result<()>'
   status: implemented
-  contract: pmat-core
-
-- name: check_codegen_compiles
-  source_file: src/cli/handlers/comply_handlers/check_handlers/check_commit_enforcement.rs
+  notes: Generates .pmat/binding-index.json + 3 O(1) cache files + contracts/work/*.yaml
+- contract: pmat-core.yaml
+  equation: check_compliance
+  module_path: pmat::cli::handlers::comply_handlers
+  function: handle_check
+  signature: 'fn handle_check(project_path: &Path, strict: bool) -> anyhow::Result<()>'
   status: implemented
-  contract: pmat-core
-
-- name: handle_contract_gaps
-  source_file: src/cli/command_dispatcher/contract_query_handlers.rs
-  status: implemented
-  contract: pmat-core
-
-- name: handle_asset_contracts
-  source_file: src/cli/command_dispatcher/contract_query_handlers.rs
-  status: implemented
-  contract: pmat-core
-
-- name: ContractIndex::load
-  source_file: src/services/contract_index.rs
-  status: implemented
-  contract: pmat-core
-
-- name: validate_all_assets
-  source_file: src/services/asset_validator.rs
-  status: implemented
-  contract: pmat-core
+  notes: Runs all CB checks and reports status

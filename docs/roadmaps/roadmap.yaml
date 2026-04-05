@@ -2517,11 +2517,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'PMAT-520: CB-1201 PV Lint gate in pmat comply + pmat score sub-score'
-  status: planned
+  status: inprogress
   priority: high
   assigned_to: null
   created: 2026-03-21T12:00:26Z
-  updated: 2026-03-21T12:00:26Z
+  updated: 2026-04-05T11:47:53.194491247+00:00
   spec: null
   acceptance_criteria:
   - 'Integrate pv lint into pmat comply as CB-1201 check and into pmat score as 8th sub-score. Run pv lint --format json when contracts/ exists. Extract mean_score from gates[2].detail.mean_score. Ref: scoring-convergence.md §10'
@@ -2867,7 +2867,7 @@ roadmap:
   github_issue: null
   item_type: feature
   title: 'CB-1400..1410: Agent contract-first enforcement checks (Refs PMAT-032)'
-  status: inprogress
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-04-03T15:00:00Z
