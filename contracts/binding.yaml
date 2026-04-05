@@ -4,6 +4,7 @@ bindings:
 - contract: pmat-core.yaml
   equation: refresh_bindings
   module_path: pmat::cli::handlers::comply_handlers::check_handlers::check_commit_enforcement
+  source_file: src/cli/handlers/comply_handlers/check_handlers/check_commit_enforcement.rs
   function: handle_refresh_bindings
   signature: 'fn handle_refresh_bindings(project_path: &Path) -> anyhow::Result<()>'
   status: implemented
@@ -11,7 +12,22 @@ bindings:
 - contract: pmat-core.yaml
   equation: check_compliance
   module_path: pmat::cli::handlers::comply_handlers
+  source_file: src/cli/handlers/comply_handlers/check_handlers/check.rs
   function: handle_check
   signature: 'fn handle_check(project_path: &Path, strict: bool) -> anyhow::Result<()>'
   status: implemented
   notes: Runs all CB checks and reports status
+- contract: pmat-core.yaml
+  equation: refresh_bindings
+  source_file: src/services/contract_index.rs
+  function: ContractIndex::load
+  signature: 'fn load(project_path: &Path) -> Option<Self>'
+  status: implemented
+  notes: R-9 ContractIndex service
+- contract: pmat-core.yaml
+  equation: check_compliance
+  source_file: src/services/asset_validator.rs
+  function: validate_all_assets
+  signature: 'fn validate_all_assets(project_path: &Path) -> Vec<AssetValidationResult>'
+  status: implemented
+  notes: R-10 asset_validator service

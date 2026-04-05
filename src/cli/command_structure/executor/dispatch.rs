@@ -165,7 +165,13 @@ impl CommandExecutor {
                         &format,
                     );
                 }
-                let _ = (min_level, max_level, contract_score);
+                if min_level.is_some() || max_level.is_some() || contract_score {
+                    eprintln!(
+                        "error: --min-level, --max-level, --contract-score not yet implemented."
+                    );
+                    eprintln!("  Use --contract-gaps to find functions without bindings.");
+                    std::process::exit(2);
+                }
                 // Default is to show code; --summary disables it
                 let show_code = !summary;
                 let effective_docs = !no_docs;

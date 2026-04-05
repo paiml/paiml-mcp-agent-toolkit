@@ -2470,12 +2470,25 @@ pub(crate) fn handle_refresh_bindings(project_path: &Path) -> anyhow::Result<()>
 
             for line in content.lines() {
                 let trimmed = line.trim();
-                if trimmed.starts_with("- name:") || trimmed.starts_with("- module_path:") {
+                // Entry boundary markers for various binding formats
+                let is_entry_start = trimmed.starts_with("- name:")
+                    || trimmed.starts_with("- module_path:")
+                    || trimmed.starts_with("- contract:");
+                if is_entry_start {
                     // Flush previous entry
                     if let (Some(file), Some(name)) = (current_file.take(), current_name.take()) {
                         index.entry(file).or_default().push(name);
                         binding_count += 1;
                     }
+                    // Extract name from - name: or - module_path: (skip - contract:)
+                    if !trimmed.starts_with("- contract:") {
+                        if let Some(val) = trimmed.split(':').nth(1) {
+                            current_name = Some(val.trim().trim_matches('"').trim_matches('\'').to_string());
+                        }
+                    }
+                }
+                // Capture function: as the binding name (for pv binding format)
+                if trimmed.starts_with("function:") && current_name.is_none() {
                     if let Some(val) = trimmed.split(':').nth(1) {
                         current_name = Some(val.trim().trim_matches('"').trim_matches('\'').to_string());
                     }

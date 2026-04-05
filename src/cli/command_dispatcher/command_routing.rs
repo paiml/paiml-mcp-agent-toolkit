@@ -122,9 +122,15 @@ impl CommandDispatcher {
                 if asset_contracts {
                     return crate::cli::command_dispatcher::contract_query_handlers::handle_asset_contracts(&project_path, &format);
                 }
-                // min-level/max-level/contract-score are applied as post-filters
-                // in the query handler (they modify result ranking, not dispatch)
-                let _ = (min_level, max_level, contract_score);
+                // min-level/max-level/contract-score require ContractIndex integration
+                // into the query pipeline — not yet implemented. Error explicitly.
+                if min_level.is_some() || max_level.is_some() || contract_score {
+                    eprintln!("error: --min-level, --max-level, --contract-score not yet implemented.");
+                    eprintln!("  Use --contract-gaps to find functions without bindings.");
+                    eprintln!("  Use --asset-contracts to check non-code asset compliance.");
+                    eprintln!("  Track at: docs/specifications/components/commit-level-contract-enforcement.md R-6");
+                    std::process::exit(2);
+                }
                 // Default is to show code; --summary disables it
                 let show_code = !summary;
                 let effective_docs = !no_docs;
