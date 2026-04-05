@@ -77,15 +77,16 @@ and Li et al. (2025, arXiv:2510.12047) on formal contracts for LLM-generated cod
 ### Real-World Assessment
 
 **TDG is the most actionable metric in PMAT.** Per-file granularity means developers know
-exactly what to fix. Average score of 95.5/100 across 2305 analyzed files (2198 include-fragments
-skipped) with grade distribution (A-: 2240, B+: 28, B: 21, F: 1). CB-200 grade gate
+exactly what to fix. Average score of 95.6/100 across 2305 analyzed files (2198 include-fragments
+skipped) with grade distribution (A-: 2241, B+: 28, B: 21, C+: 3, C: 1, F: 0). CB-200 grade gate
 enforces minimum quality at commit time. Include-fragment files (tree-sitter can't parse
-non-standalone Rust) are now auto-detected and excluded from TDG scoring.
+non-standalone Rust) are now auto-detected and excluded from TDG scoring. False-positive
+unwrap detection inside string literals (e.g. documentation text) was fixed in v3.11.1.
 
 **Versus Popper Score (87.5)**: TDG tells you "query_handler.rs has complexity 15 and 3% duplication."
 Popper tells you "LICENSE exists." TDG is 10x more actionable per point.
 
-**Versus Rust Project Score (75.5%)**: TDG is per-file, Rust Project Score is per-project.
+**Versus Rust Project Score (75.5%, Grade B)**: TDG is per-file, Rust Project Score is per-project.
 Both useful at different zoom levels — TDG for daily development, Rust Project Score for
 quarterly project health reviews.
 
