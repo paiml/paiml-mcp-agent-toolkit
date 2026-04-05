@@ -1,0 +1,33 @@
+# PMAT Binding Index — maps source files to contract obligations
+# Generated as seed for pmat comply refresh-bindings
+# See: docs/specifications/components/commit-level-contract-enforcement.md
+
+- name: handle_refresh_bindings
+  source_file: src/cli/handlers/comply_handlers/check_handlers/check_commit_enforcement.rs
+  status: implemented
+  contract: pmat-core
+
+- name: check_codegen_compiles
+  source_file: src/cli/handlers/comply_handlers/check_handlers/check_commit_enforcement.rs
+  status: implemented
+  contract: pmat-core
+
+- name: handle_contract_gaps
+  source_file: src/cli/command_dispatcher/contract_query_handlers.rs
+  status: implemented
+  contract: pmat-core
+
+- name: handle_asset_contracts
+  source_file: src/cli/command_dispatcher/contract_query_handlers.rs
+  status: implemented
+  contract: pmat-core
+
+- name: ContractIndex::load
+  source_file: src/services/contract_index.rs
+  status: implemented
+  contract: pmat-core
+
+- name: validate_all_assets
+  source_file: src/services/asset_validator.rs
+  status: implemented
+  contract: pmat-core

@@ -148,19 +148,19 @@ impl CommandExecutor {
                 asset_contracts,
             } => {
                 if contracts {
-                    return crate::cli::command_dispatcher::handle_pv_query_delegation(
+                    return crate::cli::command_dispatcher::contract_query_handlers::handle_pv_query_delegation(
                         &query, limit, &format,
                     );
                 }
                 if contract_gaps {
-                    return crate::cli::command_dispatcher::handle_contract_gaps(
+                    return crate::cli::command_dispatcher::contract_query_handlers::handle_contract_gaps(
                         &project_path,
                         limit,
                         &format,
                     );
                 }
                 if asset_contracts {
-                    return crate::cli::command_dispatcher::handle_asset_contracts(
+                    return crate::cli::command_dispatcher::contract_query_handlers::handle_asset_contracts(
                         &project_path,
                         &format,
                     );

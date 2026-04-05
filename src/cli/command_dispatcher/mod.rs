@@ -28,6 +28,9 @@ pub(crate) mod test_record;
 #[path = "command_dispatcher_work.rs"]
 mod command_dispatcher_work;
 
+// Contract query handlers extracted for CB-040 file health (command_routing.rs was F-grade)
+pub(crate) mod contract_query_handlers;
+
 // Scoring and infrastructure handlers extracted for cognitive complexity reduction
 #[path = "command_dispatcher_scoring.rs"]
 mod command_dispatcher_scoring;
