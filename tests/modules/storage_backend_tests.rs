@@ -109,6 +109,7 @@ fn test_bincode_tdgscore_serialization() {
         penalties_applied: Vec::new(),
         critical_defects_count: 0,
         has_critical_defects: false,
+        has_contract_coverage: false,
     };
 
     let serialized = bincode::serialize(&score).expect("Failed to serialize TdgScore");
@@ -187,6 +188,7 @@ async fn test_tiered_storage_with_backends() {
             penalties_applied: Vec::new(),
             critical_defects_count: 0,
             has_critical_defects: false,
+            has_contract_coverage: false,
         },
         components: ComponentScores {
             complexity_breakdown: HashMap::new(),
