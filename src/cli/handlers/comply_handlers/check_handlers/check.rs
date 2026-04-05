@@ -468,6 +468,33 @@ pub(crate) async fn handle_check(
         "cb-1337",
         comply_config,
     ));
+    // Phase 2: L-Level Ratchet
+    checks.push(filter_check_by_config(
+        check_verification_ratchet(project_path),
+        "cb-1330",
+        comply_config,
+    ));
+    // Phase 8: Falsify leak remediation
+    checks.push(filter_check_by_config(
+        check_no_ghost_bindings(project_path),
+        "cb-1338",
+        comply_config,
+    ));
+    checks.push(filter_check_by_config(
+        check_no_placeholder_preconditions(project_path),
+        "cb-1339",
+        comply_config,
+    ));
+    checks.push(filter_check_by_config(
+        check_enforcement_penetration(project_path),
+        "cb-1340",
+        comply_config,
+    ));
+    checks.push(filter_check_by_config(
+        check_assertion_placement(project_path),
+        "cb-1343",
+        comply_config,
+    ));
 
     let report = build_compliance_report(checks, project_version, failures_only);
     let failures = report
