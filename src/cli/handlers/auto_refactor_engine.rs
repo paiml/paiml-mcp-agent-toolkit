@@ -436,7 +436,7 @@ async fn find_high_complexity_functions(project_path: &Path) -> Result<Vec<(Path
     for entry in WalkDir::new(project_path)
         .into_iter()
         .filter_map(|e| e.ok())
-        .filter(|e| e.path().extension().map_or(false, |ext| ext == "rs"))
+        .filter(|e| e.path().extension().is_some_and(|ext| ext == "rs"))
     {
         let path = entry.path();
         if let Ok(content) = fs::read_to_string(path).await {

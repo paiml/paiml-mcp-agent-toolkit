@@ -184,7 +184,7 @@ coupling_penalty_curve = "Quadratic"
         assert_eq!(curve.apply(0.5, 1.0), 0.0);
         assert_eq!(curve.apply(1.0, 1.0), 0.0);
         // Value > 1.0 should use ln
-        let result = curve.apply(2.718281828, 1.0);
+        let result = curve.apply(std::f32::consts::E, 1.0);
         assert!((result - 1.0).abs() < 0.01); // ln(e) ≈ 1
         let result2 = curve.apply(10.0, 2.0);
         assert!(result2 > 4.0); // ln(10) * 2 ≈ 4.6
@@ -204,7 +204,7 @@ coupling_penalty_curve = "Quadratic"
         let curve = PenaltyCurve::Exponential;
         assert_eq!(curve.apply(0.0, 1.0), 1.0); // e^0 = 1
         let result = curve.apply(1.0, 1.0);
-        assert!((result - 2.718281828).abs() < 0.01); // e^1 ≈ 2.718
+        assert!((result - std::f32::consts::E).abs() < 0.01); // e^1 ≈ 2.718
         let result2 = curve.apply(2.0, 0.5);
         assert!(result2 > 3.5); // e^2 * 0.5 ≈ 3.7
     }

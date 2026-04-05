@@ -75,7 +75,7 @@ fn process_watch_event(
 fn should_ignore_dir(dir: &Path, ignore_patterns: &[String]) -> bool {
     dir.file_name()
         .and_then(|n| n.to_str())
-        .map_or(false, |name| ignore_patterns.iter().any(|p| name == p))
+        .is_some_and(|name| ignore_patterns.iter().any(|p| name == p))
 }
 
 fn try_discover_agents_file(
@@ -275,7 +275,7 @@ impl AgentsMdDiscovery {
             return;
         };
         for entry in entries.flatten() {
-            if entry.file_type().map_or(false, |ft| ft.is_dir()) {
+            if entry.file_type().is_some_and(|ft| ft.is_dir()) {
                 self.discover_recursive(&entry.path(), depth + 1, files);
             }
         }

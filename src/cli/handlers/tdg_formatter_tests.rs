@@ -180,7 +180,7 @@ mod coverage_tests {
             total_files: 10,
             critical_files: 1,
             warning_files: 3,
-            average_tdg: 3.14159265,
+            average_tdg: std::f64::consts::PI,
             p95_tdg: 7.777777,
             p99_tdg: 9.123456789,
             estimated_debt_hours: 100.123456,

@@ -657,7 +657,8 @@ async fn test_handle_validate_agent_template_nonexistent_file() {
     let result = handle_validate_agent_template(path).await;
     // The function calls std::process::exit(1), so we can't easily test failure case
     // without mocking, but we can verify the path is checked
-    assert!(result.is_err() || true); // Either error or the function exits
+    // The function calls std::process::exit(1) on failure, so we just verify it returns at all
+    let _ = result;
 }
 
 #[tokio::test]

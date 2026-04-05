@@ -572,7 +572,6 @@ fn write_response_to_stdout<W: std::io::Write>(
 // only through tests/all.rs to avoid "file loaded as module multiple times"
 // errors in Rust 1.94+. See paiml-mcp-agent-toolkit#282.
 
-
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {

@@ -430,7 +430,8 @@ mod tests {
         // With default state, shouldn't need snapshot
         let should = manager.should_snapshot(&state).await;
         // Result depends on state values
-        assert!(!should || should); // Just verify no panic
+        // Just verify no panic; result depends on state values
+        let _ = should;
     }
 
     #[tokio::test]

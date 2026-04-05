@@ -46,7 +46,8 @@ mod tests {
     fn test_service_registry_builder_new() {
         let builder = ServiceRegistryBuilder::new();
         let registry = builder.build();
-        assert!(registry.list_services().is_empty() || true);
+        // Verify builder produces a valid registry (may or may not have default services)
+        let _ = registry.list_services();
     }
 
     #[tokio::test]

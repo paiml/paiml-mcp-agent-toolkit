@@ -281,9 +281,9 @@ fn test_query_literal_mode() {
     // May or may not find matches depending on test data
     for r in &results {
         // If there's a match, the source should contain the literal
-        assert!(
-            r.function_name.contains("unwrap()") || r.signature.contains("unwrap()") || true, // source is not in result unless include_source
-        );
+        // Source is not in result unless include_source, so we just verify no panic
+        let _ = &r.function_name;
+        let _ = &r.signature;
     }
 }
 

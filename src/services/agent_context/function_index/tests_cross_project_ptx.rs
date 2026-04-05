@@ -115,7 +115,8 @@ fn test_get_by_name() {
     let index = make_test_index();
     let funcs = index.get_by_name("main");
     // "main" exists in test fixture
-    assert!(!funcs.is_empty() || true); // May or may not exist
+    // "main" may or may not exist depending on test fixture
+    let _ = funcs;
     let missing = index.get_by_name("nonexistent_function_xyz");
     assert!(missing.is_empty());
 }

@@ -63,7 +63,7 @@ impl DuplicationDetector {
             )
         } else {
             let text = get_node_text(node, source);
-            text.chars().next().map_or(false, |c| c.is_uppercase())
+            text.chars().next().is_some_and(|c| c.is_uppercase())
         }
     }
 

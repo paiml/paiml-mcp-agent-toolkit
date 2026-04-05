@@ -8,7 +8,7 @@ impl RustAdapter {
 
 impl LanguageAdapter for RustAdapter {
     fn detect(&self, path: &Path) -> bool {
-        path.extension().map_or(false, |ext| ext == "rs")
+        path.extension().is_some_and(|ext| ext == "rs")
     }
 
     fn parse(&self, source: &str) -> Result<Tree> {
@@ -39,7 +39,7 @@ impl PythonAdapter {
 
 impl LanguageAdapter for PythonAdapter {
     fn detect(&self, path: &Path) -> bool {
-        path.extension().map_or(false, |ext| ext == "py")
+        path.extension().is_some_and(|ext| ext == "py")
     }
 
     fn parse(&self, source: &str) -> Result<Tree> {
@@ -70,7 +70,7 @@ impl JavaScriptAdapter {
 
 impl LanguageAdapter for JavaScriptAdapter {
     fn detect(&self, path: &Path) -> bool {
-        path.extension().map_or(false, |ext| ext == "js" || ext == "jsx")
+        path.extension().is_some_and(|ext| ext == "js" || ext == "jsx")
     }
 
     fn parse(&self, source: &str) -> Result<Tree> {
@@ -101,7 +101,7 @@ impl TypeScriptAdapter {
 
 impl LanguageAdapter for TypeScriptAdapter {
     fn detect(&self, path: &Path) -> bool {
-        path.extension().map_or(false, |ext| ext == "ts" || ext == "tsx")
+        path.extension().is_some_and(|ext| ext == "ts" || ext == "tsx")
     }
 
     fn parse(&self, source: &str) -> Result<Tree> {
@@ -132,7 +132,7 @@ impl GoAdapter {
 
 impl LanguageAdapter for GoAdapter {
     fn detect(&self, path: &Path) -> bool {
-        path.extension().map_or(false, |ext| ext == "go")
+        path.extension().is_some_and(|ext| ext == "go")
     }
 
     fn parse(&self, source: &str) -> Result<Tree> {
@@ -163,7 +163,7 @@ impl LuaAdapter {
 
 impl LanguageAdapter for LuaAdapter {
     fn detect(&self, path: &Path) -> bool {
-        path.extension().map_or(false, |ext| ext == "lua")
+        path.extension().is_some_and(|ext| ext == "lua")
     }
 
     fn parse(&self, source: &str) -> Result<Tree> {

@@ -58,7 +58,7 @@ impl AssetType {
     }
 
     /// Parse from string (for --asset CLI flag).
-    pub fn from_str(s: &str) -> Option<Self> {
+    pub fn parse(s: &str) -> Option<Self> {
         match s.to_lowercase().as_str() {
             "readme" => Some(Self::Readme),
             "dockerfile" => Some(Self::Dockerfile),
@@ -462,13 +462,10 @@ mod tests {
 
     #[test]
     fn test_asset_type_from_str() {
-        assert_eq!(AssetType::from_str("readme"), Some(AssetType::Readme));
-        assert_eq!(
-            AssetType::from_str("DOCKERFILE"),
-            Some(AssetType::Dockerfile)
-        );
-        assert_eq!(AssetType::from_str("mdbook"), Some(AssetType::MdBook));
-        assert_eq!(AssetType::from_str("unknown"), None);
+        assert_eq!(AssetType::parse("readme"), Some(AssetType::Readme));
+        assert_eq!(AssetType::parse("DOCKERFILE"), Some(AssetType::Dockerfile));
+        assert_eq!(AssetType::parse("mdbook"), Some(AssetType::MdBook));
+        assert_eq!(AssetType::parse("unknown"), None);
     }
 
     #[test]

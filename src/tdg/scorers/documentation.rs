@@ -186,7 +186,7 @@ impl DocumentationScorer {
             "function_declaration" | "type_declaration" | "var_declaration" | "const_declaration" => {
                 if let Some(name) = node.child_by_field_name("name") {
                     let item_name = get_node_text(name, source).to_string();
-                    if item_name.chars().next().map_or(false, |c| c.is_uppercase()) {
+                    if item_name.chars().next().is_some_and(|c| c.is_uppercase()) {
                         items.push(PublicItem {
                             name: item_name,
                             kind: node.kind().to_string(),

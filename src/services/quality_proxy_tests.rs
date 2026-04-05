@@ -224,7 +224,8 @@ pub fn greet(name: &str) -> String {
         let config = QualityConfig::default();
         assert!(config.max_complexity > 0);
         // Just verify defaults are reasonable
-        assert!(!config.allow_satd || config.allow_satd); // Either value is valid
+        // Just verify default is constructed without panic
+        let _ = config.allow_satd;
     }
 
     #[test]
