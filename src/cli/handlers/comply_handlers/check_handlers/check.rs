@@ -426,6 +426,11 @@ pub(crate) async fn handle_check(
         comply_config,
     ));
     checks.push(filter_check_by_config(
+        check_forjar_contract(project_path),
+        "cb-1323",
+        comply_config,
+    ));
+    checks.push(filter_check_by_config(
         check_mdbook_contract(project_path),
         "cb-1324",
         comply_config,
@@ -498,6 +503,11 @@ pub(crate) async fn handle_check(
     checks.push(filter_check_by_config(
         check_enforcement_penetration(project_path),
         "cb-1340",
+        comply_config,
+    ));
+    checks.push(filter_check_by_config(
+        check_spec_number_accuracy(project_path),
+        "cb-1341",
         comply_config,
     ));
     checks.push(filter_check_by_config(
