@@ -64,17 +64,17 @@ libc = { version = "0.2", optional = true }
 # Migration to aprender complete (Sprint 45)
 # Graph algorithms enhanced (Sprint 46) - added 8 new centrality & structural stats
 # See: docs/specifications/aprender-ml-integration.md
-aprender = "0.27.1"  # PAIML next-gen ML (TDG 94.1/100, zero deps, SafeTensors support, text vectorization, LDA topic modeling)
+aprender = "0.27.5"  # PAIML next-gen ML (TDG 94.1/100, zero deps, SafeTensors support, text vectorization, LDA topic modeling)
 
 # High-Performance Compute (SIMD/GPU)
 trueno = { version = "0.17", optional = true }
-trueno-db = { version = "0.3.15", optional = true, default-features = false }
+trueno-db = { version = "0.3.16", optional = true, default-features = false }
 
 # Semantic Search Stack (Pure Rust - Zero API Keys)
 # See: docs/specifications/semantic-search-feature.md
 trueno-graph = { version = "0.1.17", default-features = false }  # GPU-first graph database (CSR, PageRank, Louvain) — no arrow/parquet
-trueno-rag = "0.2"  # Pure-Rust RAG pipeline with VectorStore (replaces TursoVectorDB rusqlite implementation)
-trueno-viz = { version = "0.2", optional = true, features = ["terminal", "graph"] }  # Terminal graph visualization
+trueno-rag = "0.2.4"  # Pure-Rust RAG pipeline with VectorStore (replaces TursoVectorDB rusqlite implementation)
+trueno-viz = { version = "0.2.3", optional = true, features = ["terminal", "graph"] }  # Terminal graph visualization
 
 # Analytics GPU dependencies (optional, gated by analytics-gpu feature)
 # Issue #79: Feature-gated architecture to prevent +3.8 MB binary bloat
@@ -142,7 +142,7 @@ syntect = { version = "5.2", default-features = false, features = ["default-fanc
 # Storage
 # libsql = "0.9.24"  # REMOVED: Not used directly (migration to rusqlite complete)
 lz4_flex = "0.11"  # Keep for backward compat, trueno-zram-core adapter available
-trueno-zram-core = { version = "0.3", optional = true }  # SIMD compression (sovereign stack)
+trueno-zram-core = { version = "0.3.1", optional = true }  # SIMD compression (sovereign stack)
 rusqlite = { version = "0.32", features = ["bundled"] }  # SQLite with bundled library
 # sled = REMOVED (unmaintained, migrated to libsql/trueno-db)
 # rocksdb = { version = "0.22", default-features = false, features = ["zstd"] }
@@ -203,7 +203,7 @@ tree-sitter-rust = { version = "0.23", optional = true }
 # tree-sitter-haskell = { version = "0.23", optional = true }
 # tree-sitter-ocaml = { version = "0.23", optional = true }
 # For Ruchy language support (Ruby alternative parser)
-ruchy = { version = "4.2", optional = true }
+ruchy = { version = "4.2.1", optional = true }
 # logos removed - unused (PMAT-478 audit)
 # For Kotlin parsing (conditional) - DISABLED due to tree-sitter version conflict
 # tree-sitter-kotlin = { version = "0.3.8", optional = true }
