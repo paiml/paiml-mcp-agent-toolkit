@@ -340,18 +340,18 @@ Extend TDG to grade non-code assets contributing to project-level aggregate:
 
 ## Implementation Phases
 
-| Phase | Description | Dependencies |
-|-------|-------------|-------------|
-| 0 | O(1) cache infrastructure | None |
-| 1 | Work Item → YAML Contract | Phase 0 |
-| 2 | L-Level Ratchet | Phase 0 |
-| 3a | README layout contract (CB-1320) | Phase 0 |
-| 3b | Remaining asset contracts (CB-1321..1326) | Phase 3a |
-| 4 | Differential obligation verification | Phase 0, 2 |
-| 5 | Assume-guarantee chains | Phase 1, 4 |
-| 6 | `pmat query --contracts` enrichment | Phase 0 |
-| 7 | Hook subsystem consolidation (CB-1333..1337) | None |
-| 8 | Falsify leak remediation (CB-1338..1343) | None |
+| Phase | Description | Dependencies | Status |
+|-------|-------------|-------------|--------|
+| 0 | O(1) cache infrastructure | None | **CB-1332 done** |
+| 1 | Work Item → YAML Contract | Phase 0 | Planned |
+| 2 | L-Level Ratchet | Phase 0 | Planned |
+| 3a | README layout contract (CB-1320) | Phase 0 | **CB-1320 done** |
+| 3b | Remaining asset contracts (CB-1321..1326) | Phase 3a | **CB-1325 done**, rest planned |
+| 4 | Differential obligation verification | Phase 0, 2 | Planned |
+| 5 | Assume-guarantee chains | Phase 1, 4 | Planned |
+| 6 | `pmat query --contracts` enrichment | Phase 0 | Planned |
+| 7 | Hook subsystem consolidation (CB-1333..1337) | None | **CB-1335, CB-1337 done** + H-3 timestamp bug fixed |
+| 8 | Falsify leak remediation (CB-1338..1343) | None | Planned |
 
 ---
 
@@ -391,5 +391,6 @@ Extend TDG to grade non-code assets contributing to project-level aggregate:
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.2 | 2026-04-05 | Implement 5 CB checks (CB-1320, CB-1325, CB-1332, CB-1335, CB-1337). Fix H-3 timestamp bug in hook_generation.rs. Update phase status |
 | 1.1 | 2026-04-05 | Condensed from 1921→~490 lines (CB-140 compliance). Removed verbose YAML examples, kept design decisions and CB check definitions |
 | 1.0 | 2026-04-05 | Initial: 8 phases, asset contracts, hook consolidation, falsify leak remediation |

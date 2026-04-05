@@ -407,6 +407,36 @@ pub(crate) async fn handle_check(
         comply_config,
     ));
 
+    // Commit-Level Contract Enforcement (CB-1320..1343) — Component 25
+    // Phase 3a: Asset layout contracts
+    checks.push(filter_check_by_config(
+        check_readme_layout(project_path),
+        "cb-1320",
+        comply_config,
+    ));
+    checks.push(filter_check_by_config(
+        check_changelog_contract(project_path),
+        "cb-1325",
+        comply_config,
+    ));
+    // Phase cache infrastructure
+    checks.push(filter_check_by_config(
+        check_cache_staleness(project_path),
+        "cb-1332",
+        comply_config,
+    ));
+    // Phase 7: Hook consolidation
+    checks.push(filter_check_by_config(
+        check_hook_determinism(project_path),
+        "cb-1335",
+        comply_config,
+    ));
+    checks.push(filter_check_by_config(
+        check_hook_performance(project_path),
+        "cb-1337",
+        comply_config,
+    ));
+
     let report = build_compliance_report(checks, project_version, failures_only);
     let failures = report
         .checks
@@ -524,6 +554,7 @@ include!("check_pv_enforcement.rs");
 include!("check_pv_quality.rs");
 include!("check_contract_surfaces.rs");
 include!("check_agent_contracts.rs");
+include!("check_commit_enforcement.rs");
 
 /// CB-533: Stale path references in Makefiles and CI workflows.
 pub(crate) fn check_stale_paths(project_path: &Path) -> ComplianceCheck {
