@@ -171,42 +171,60 @@ fn check_contracts_exist(contracts_dir: &Path) -> InfraCheck {
     }
 }
 
+/// Check whether a path has a YAML extension (.yaml or .yml).
+fn is_yaml_file(path: &Path) -> bool {
+    path.extension()
+        .is_some_and(|ext| ext == "yaml" || ext == "yml")
+}
+
+/// Check whether a filename indicates a binding file (excluded from contract counts).
+fn is_binding_file(path: &Path) -> bool {
+    path.file_name()
+        .is_some_and(|n| n.to_string_lossy().contains("binding"))
+}
+
+/// Check whether file content contains provable-contracts schema markers.
+fn has_contract_markers(content: &str) -> bool {
+    const MARKERS: &[&str] = &[
+        "proof_obligations",
+        "equations:",
+        "falsification_tests",
+        "kani_harnesses",
+    ];
+    MARKERS.iter().any(|m| content.contains(m))
+}
+
+/// Check whether a single file is a valid provable-contract YAML.
+fn is_provable_contract_file(path: &Path) -> bool {
+    if !is_yaml_file(path) || is_binding_file(path) {
+        return false;
+    }
+    std::fs::read_to_string(path)
+        .map(|content| has_contract_markers(&content))
+        .unwrap_or(false)
+}
+
 /// Recursively count provable-contract YAML files in a directory tree.
 /// Excludes binding files and non-contract YAMLs (matching CB-1200 logic).
 fn count_yaml_files_recursive(dir: &Path) -> usize {
-    let mut count = 0;
     let entries = match std::fs::read_dir(dir) {
         Ok(e) => e,
         Err(_) => return 0,
     };
-    for entry in entries.filter_map(|e| e.ok()) {
-        let path = entry.path();
-        if path.is_dir() {
-            count += count_yaml_files_recursive(&path);
-        } else if path
-            .extension()
-            .is_some_and(|ext| ext == "yaml" || ext == "yml")
-        {
-            // Skip binding files
-            if path
-                .file_name()
-                .is_some_and(|n| n.to_string_lossy().contains("binding"))
-            {
-                continue;
+
+    entries
+        .filter_map(|e| e.ok())
+        .map(|entry| {
+            let path = entry.path();
+            if path.is_dir() {
+                count_yaml_files_recursive(&path)
+            } else if is_provable_contract_file(&path) {
+                1
+            } else {
+                0
             }
-            // Only count files with provable-contracts schema markers
-            if let Ok(content) = std::fs::read_to_string(&path) {
-                if content.contains("proof_obligations")
-                    || content.contains("equations:")
-                    || content.contains("falsification_tests")
-                    || content.contains("kani_harnesses")
-                {
-                    count += 1;
-                }
-            }
-        }
-    }
-    count
+        })
+        .sum()
 }
 
 /// PV-01: Run pv lint (via CLI if available, else check YAML structure)
@@ -442,6 +460,19 @@ fn parse_enforcement_metric(output: &str, level: &str) -> usize {
         .unwrap_or(0)
 }
 
+/// Check whether a single YAML file has basic contract structure (name + equations/obligations).
+fn has_basic_contract_structure(path: &Path) -> bool {
+    if !is_yaml_file(path) {
+        return false;
+    }
+    let content = match std::fs::read_to_string(path) {
+        Ok(c) => c,
+        Err(_) => return false,
+    };
+    content.contains("name:")
+        && (content.contains("equations:") || content.contains("obligations:"))
+}
+
 /// Fallback: check YAML files have basic contract structure
 fn check_yaml_structure(contracts_dir: &Path) -> bool {
     let entries = match std::fs::read_dir(contracts_dir) {
@@ -449,23 +480,9 @@ fn check_yaml_structure(contracts_dir: &Path) -> bool {
         Err(_) => return false,
     };
 
-    for entry in entries.filter_map(|e| e.ok()) {
-        let path = entry.path();
-        if path
-            .extension()
-            .is_some_and(|ext| ext == "yaml" || ext == "yml")
-        {
-            if let Ok(content) = std::fs::read_to_string(&path) {
-                // Basic structure check: has name, equations, obligations
-                if content.contains("name:")
-                    && (content.contains("equations:") || content.contains("obligations:"))
-                {
-                    return true;
-                }
-            }
-        }
-    }
-    false
+    entries
+        .filter_map(|e| e.ok())
+        .any(|entry| has_basic_contract_structure(&entry.path()))
 }
 
 #[cfg(test)]

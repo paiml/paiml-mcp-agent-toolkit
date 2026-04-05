@@ -528,48 +528,57 @@ jobs:
     }
 }
 
+const DANGEROUS_PATTERNS: &[&str] = &[
+    "github.event.pull_request.title",
+    "github.event.pull_request.body",
+    "github.event.pull_request.head_ref",
+    "github.event.issue.title",
+    "github.event.issue.body",
+    "github.event.comment.body",
+    "github.event.review.body",
+    "github.head_ref",
+];
+
+/// Returns true if this line starts a `run:` block.
+fn is_run_block_start(trimmed: &str) -> bool {
+    trimmed.starts_with("run:") || trimmed.starts_with("- run:")
+}
+
+/// Returns true if this line exits a `run:` block (a non-continuation, non-indented line).
+fn is_run_block_end(trimmed: &str, raw: &str) -> bool {
+    !trimmed.starts_with('-')
+        && !trimmed.starts_with('#')
+        && !raw.starts_with(' ')
+        && !raw.starts_with('\t')
+}
+
+/// Collect dangerous pattern violations from a single workflow file.
+fn collect_dangerous_violations(name: &str, content: &str, violations: &mut Vec<String>) {
+    let mut in_run_block = false;
+    for (line_no, line) in content.lines().enumerate() {
+        let trimmed = line.trim();
+        if is_run_block_start(trimmed) {
+            in_run_block = true;
+        } else if is_run_block_end(trimmed, line) {
+            in_run_block = false;
+        }
+        if !in_run_block {
+            continue;
+        }
+        for pattern in DANGEROUS_PATTERNS {
+            if trimmed.contains(pattern) {
+                violations.push(format!("{}:{}: ${{{{ {} }}}}", name, line_no + 1, pattern));
+            }
+        }
+    }
+}
+
 /// HD-01: Check for untrusted context interpolation in run: blocks
 fn check_dangerous_workflow(workflows: &[(String, String)]) -> InfraCheck {
-    let dangerous_patterns = [
-        "github.event.pull_request.title",
-        "github.event.pull_request.body",
-        "github.event.pull_request.head_ref",
-        "github.event.issue.title",
-        "github.event.issue.body",
-        "github.event.comment.body",
-        "github.event.review.body",
-        "github.head_ref",
-    ];
-
-    let mut in_run_block = false;
     let mut violations = Vec::new();
 
     for (name, content) in workflows {
-        for (line_no, line) in content.lines().enumerate() {
-            let trimmed = line.trim();
-            if trimmed.starts_with("run:") || trimmed.starts_with("- run:") {
-                in_run_block = true;
-            } else if !trimmed.starts_with('-')
-                && !trimmed.starts_with('#')
-                && !line.starts_with(' ')
-                && !line.starts_with('\t')
-            {
-                in_run_block = false;
-            }
-
-            if in_run_block {
-                for pattern in &dangerous_patterns {
-                    if trimmed.contains(pattern) {
-                        violations.push(format!(
-                            "{}:{}: ${{{{ {} }}}}",
-                            name,
-                            line_no + 1,
-                            pattern
-                        ));
-                    }
-                }
-            }
-        }
+        collect_dangerous_violations(name, content, &mut violations);
     }
 
     if violations.is_empty() {

@@ -279,59 +279,76 @@ fn check_registry_publishing(cargo_toml: Option<&str>) -> InfraCheck {
     )
 }
 
-/// DR-05: Semantic versioning (x.y.z pattern)
-fn check_semver(cargo_toml: Option<&str>) -> InfraCheck {
-    if let Some(content) = cargo_toml {
-        for line in content.lines() {
-            let trimmed = line.trim();
-            // Skip workspace-inherited fields like `version.workspace = true`
-            if trimmed.starts_with("version")
-                && trimmed.contains('=')
-                && !trimmed.contains(".workspace")
-            {
-                // Extract version string
-                if let Some(version_str) = extract_version_string(trimmed) {
-                    if is_semver(&version_str) {
-                        return InfraCheck::pass(
-                            "DR-05",
-                            "Semantic versioning",
-                            2.0,
-                            vec![format!("Version {} follows semver", version_str)],
-                        );
-                    } else {
-                        return InfraCheck::fail(
-                            "DR-05",
-                            "Semantic versioning",
-                            2.0,
-                            vec![format!(
-                                "Version {} does not follow semver (x.y.z)",
-                                version_str
-                            )],
-                        );
-                    }
-                }
-            }
-        }
+/// Result of searching Cargo.toml for a version declaration.
+enum VersionFound {
+    /// A direct version string like `version = "1.2.3"`.
+    Direct(String),
+    /// Version inherited from workspace (`version.workspace = true`).
+    Workspace,
+    /// No version declaration found.
+    None,
+}
 
-        // If we found no direct version line, check for workspace inheritance
-        for line in content.lines() {
-            let trimmed = line.trim();
-            if trimmed.starts_with("version") && trimmed.contains(".workspace") {
-                return InfraCheck::pass(
-                    "DR-05",
-                    "Semantic versioning",
-                    2.0,
-                    vec!["Version inherited from workspace (version.workspace = true)".to_string()],
-                );
-            }
+/// Scan Cargo.toml content for a version declaration.
+fn find_version_declaration(content: &str) -> VersionFound {
+    // First pass: look for a direct version assignment (not workspace-inherited).
+    for line in content.lines() {
+        let trimmed = line.trim();
+        if !trimmed.starts_with("version") || !trimmed.contains('=') {
+            continue;
+        }
+        if trimmed.contains(".workspace") {
+            continue;
+        }
+        if let Some(version_str) = extract_version_string(trimmed) {
+            return VersionFound::Direct(version_str);
         }
     }
 
+    // Second pass: check for workspace inheritance.
+    for line in content.lines() {
+        let trimmed = line.trim();
+        if trimmed.starts_with("version") && trimmed.contains(".workspace") {
+            return VersionFound::Workspace;
+        }
+    }
+
+    VersionFound::None
+}
+
+/// DR-05: Semantic versioning (x.y.z pattern)
+fn check_semver(cargo_toml: Option<&str>) -> InfraCheck {
+    let Some(content) = cargo_toml else {
+        return semver_fail("No version found");
+    };
+
+    match find_version_declaration(content) {
+        VersionFound::Direct(ref v) if is_semver(v) => InfraCheck::pass(
+            "DR-05",
+            "Semantic versioning",
+            2.0,
+            vec![format!("Version {} follows semver", v)],
+        ),
+        VersionFound::Direct(ref v) => {
+            semver_fail(&format!("Version {} does not follow semver (x.y.z)", v))
+        }
+        VersionFound::Workspace => InfraCheck::pass(
+            "DR-05",
+            "Semantic versioning",
+            2.0,
+            vec!["Version inherited from workspace (version.workspace = true)".to_string()],
+        ),
+        VersionFound::None => semver_fail("No version found"),
+    }
+}
+
+/// Helper to construct a DR-05 failure.
+fn semver_fail(reason: &str) -> InfraCheck {
     InfraCheck::fail(
         "DR-05",
         "Semantic versioning",
         2.0,
-        vec!["No version found".to_string()],
+        vec![reason.to_string()],
     )
 }
 

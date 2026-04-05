@@ -161,7 +161,11 @@ impl RustDefectDetector {
                 continue;
             }
 
-            for mat in self.unwrap_regex.find_iter(line) {
+            // Strip string literal contents to avoid false positives on
+            // documentation strings like: "Detects .unwrap() panics"
+            let code_only = strip_string_literals(line);
+
+            for mat in self.unwrap_regex.find_iter(&code_only) {
                 instances.push(DefectInstance {
                     file: file_path.to_string_lossy().to_string(),
                     line: line_num + 1,
@@ -184,4 +188,39 @@ impl Default for RustDefectDetector {
     fn default() -> Self {
         Self::new()
     }
+}
+
+/// Strip contents of string literals to prevent false-positive defect detection.
+/// Replaces `"..."` contents with spaces (preserving column offsets).
+fn strip_string_literals(line: &str) -> String {
+    let bytes = line.as_bytes();
+    let len = bytes.len();
+    let mut out = Vec::with_capacity(len);
+    let mut i = 0;
+
+    while i < len {
+        if bytes[i] == b'"' {
+            out.push(b'"');
+            i += 1;
+            while i < len && bytes[i] != b'"' {
+                if bytes[i] == b'\\' && i + 1 < len {
+                    out.push(b' ');
+                    out.push(b' ');
+                    i += 2;
+                } else {
+                    out.push(b' ');
+                    i += 1;
+                }
+            }
+            if i < len {
+                out.push(b'"');
+                i += 1;
+            }
+        } else {
+            out.push(bytes[i]);
+            i += 1;
+        }
+    }
+
+    String::from_utf8(out).unwrap_or_else(|_| line.to_string())
 }

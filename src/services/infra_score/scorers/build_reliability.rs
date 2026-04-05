@@ -348,6 +348,38 @@ fn check_build_caching(content: &str) -> InfraCheck {
     }
 }
 
+/// Returns true if a `uses:` value references an unpinned branch (main/master/HEAD).
+fn is_unpinned_action(uses_value: &str) -> bool {
+    if let Some(at_pos) = uses_value.rfind('@') {
+        let ref_part = &uses_value[at_pos + 1..];
+        matches!(ref_part, "main" | "master" | "HEAD")
+    } else {
+        false
+    }
+}
+
+/// Collect pinned/unpinned stats from a single workflow file.
+fn collect_pin_stats(
+    name: &str,
+    content: &str,
+    total: &mut u32,
+    unpinned: &mut u32,
+    examples: &mut Vec<String>,
+) {
+    for line in content.lines() {
+        let Some(uses_value) = extract_uses_value(line.trim()) else {
+            continue;
+        };
+        *total += 1;
+        if is_unpinned_action(uses_value) {
+            *unpinned += 1;
+            if examples.len() < 3 {
+                examples.push(format!("{}:{}", name, uses_value));
+            }
+        }
+    }
+}
+
 /// BR-05: Pinned action versions (SHA or tag, not @master/@main branch)
 fn check_pinned_actions(workflows: &[(String, String)]) -> InfraCheck {
     let mut total_uses = 0u32;
@@ -355,26 +387,16 @@ fn check_pinned_actions(workflows: &[(String, String)]) -> InfraCheck {
     let mut unpinned_examples = Vec::new();
 
     for (name, content) in workflows {
-        for line in content.lines() {
-            let trimmed = line.trim();
-            if let Some(uses_value) = extract_uses_value(trimmed) {
-                total_uses += 1;
-                // Check if pinned: should have @<sha> or @v<number> or @<tag>, not @main/@master
-                if let Some(at_pos) = uses_value.rfind('@') {
-                    let ref_part = &uses_value[at_pos + 1..];
-                    if ref_part == "main" || ref_part == "master" || ref_part == "HEAD" {
-                        unpinned += 1;
-                        if unpinned_examples.len() < 3 {
-                            unpinned_examples.push(format!("{}:{}", name, uses_value));
-                        }
-                    }
-                }
-            }
-        }
+        collect_pin_stats(
+            name,
+            content,
+            &mut total_uses,
+            &mut unpinned,
+            &mut unpinned_examples,
+        );
     }
 
     if total_uses == 0 {
-        // No actions used at all — pass (nothing to pin)
         return InfraCheck::pass(
             "BR-05",
             "Pinned action versions",
