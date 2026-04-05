@@ -311,6 +311,9 @@ pub(super) fn apply_result_filters_coverage(
     path_pattern: &Option<String>,
     exclude_tests: bool,
 ) {
+    // Always exclude test fixture directories (not part of the project)
+    results.retain(|r| !is_test_fixture_path(&r.file_path));
+
     if let Some(ref lang) = language {
         let lang_lower = lang.to_lowercase();
         results.retain(|r| r.language.to_lowercase() == lang_lower);
@@ -321,6 +324,15 @@ pub(super) fn apply_result_filters_coverage(
     if exclude_tests {
         results.retain(|r| !is_test_function(r));
     }
+}
+
+/// Check if a file path belongs to a test fixture directory (not real project code).
+fn is_test_fixture_path(path: &str) -> bool {
+    path.contains("comprehensive_language_test/")
+        || path.contains("fixtures/")
+        || path.contains("test_fixtures/")
+        || path.contains("testdata/")
+        || path.contains("test_enhanced_naming/")
 }
 
 /// Apply post-enrichment re-sort for Impact ranking
