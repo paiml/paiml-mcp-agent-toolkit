@@ -284,14 +284,24 @@ learning-system-ideas, refactoring-specification, unified-quality-driven-develop
 
 ---
 
-## 19. Memory Profiling
+## 19. PV Compatibility
+
+**Sub-spec**: [components/pv-compatibility.md](components/pv-compatibility.md)
+
+Cross-project provable-contracts compatibility layer. `pv lint`, `pv score`,
+`pv audit` integration with pmat. Drift detection across sovereign stack repos.
+Verification level tracking and contract-to-source binding validation.
+
+**Consolidated from**: pv-compatibility analysis, provable-contracts integration.
+
+---
+
+## 19b. Memory Profiling
 
 **Sub-spec**: [components/memory-profiling.md](components/memory-profiling.md)
 
 Heap allocation profiling with dhat-rs. Peak memory tracking. Allocation hotspot
-detection. Memory regression gates for CI. Required for production Rust projects.
-
-**Comply check**: CB-140 penalizes repos without memory profiling infrastructure.
+detection. Memory regression gates for CI. CB-141 penalizes repos without profiling.
 
 ---
 

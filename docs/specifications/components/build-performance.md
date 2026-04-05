@@ -59,7 +59,7 @@ Scientific approach to dependency removal:
 | trueno-db | 0.3.15 | Columnar storage |
 | trueno-rag | 0.2 | RAG pipeline |
 | trueno-viz | 0.2 | Terminal visualization |
-| aprender | 0.27.5 | ML, stats, text similarity |
+| aprender | 0.27.1 | ML, stats, text similarity |
 | organizational-intelligence-plugin | 0.3.4 | GitHub org analysis |
 
 ### Sovereign Stack Priority

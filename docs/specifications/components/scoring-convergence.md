@@ -184,11 +184,11 @@ pmat query --score-diagnosis --limit 5
 #   src/services/lightweight_provability.rs:analyze       cc=80  grade=F
 #
 # Dragging Muda (63.7):
-#   Inventory: 129 dead items — top: src/services/cache.rs (23 dead)
+#   Inventory: 132 dead items — top: src/services/cache.rs (23 dead)
 #   Over-processing: cc>20 in 5 files — top: c_visitor.rs (cc=81)
 #
 # Dragging File Health (71.0):
-#   46 files >1000 lines — top: definition.rs (1280 lines)
+#   14 files >1000 lines — top: definition.rs (1280 lines)
 ```
 
 This replaces ad-hoc investigation with a single query that maps the
