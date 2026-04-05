@@ -141,10 +141,18 @@ impl CommandExecutor {
                 extract_candidates,
                 max_module_lines,
                 contracts,
+                contract_gaps,
             } => {
                 if contracts {
                     return crate::cli::command_dispatcher::handle_pv_query_delegation(
                         &query, limit, &format,
+                    );
+                }
+                if contract_gaps {
+                    return crate::cli::command_dispatcher::handle_contract_gaps(
+                        &project_path,
+                        limit,
+                        &format,
                     );
                 }
                 // Default is to show code; --summary disables it

@@ -311,6 +311,10 @@ pub enum Commands {
         /// Delegate to `pv query` for cross-project contract search
         #[arg(long, help = "Search provable-contracts YAML via pv query")]
         contracts: bool,
+
+        /// Show functions WITHOUT contract bindings, ranked by importance
+        #[arg(long, help = "Find undercontracted functions (no binding in binding-index.json)")]
+        contract_gaps: bool,
     },
 
     // ── Analysis & Demo commands ───────────────────────────────────

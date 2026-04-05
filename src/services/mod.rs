@@ -54,6 +54,7 @@ pub mod analysis_service;
 pub mod analyzer; // Toyota Way: Unified analyzer framework
 pub mod ast; // Toyota Way: Unified AST module (consolidates 25+ AST files)
 pub mod commit_classifier; // Sovereign Stack: ML-based commit classification
+pub mod contract_index; // R-9: O(1) contract binding lookup from binding-index.json
 #[cfg(feature = "dap")]
 pub mod dap; // Sprint 71: Debug Adapter Protocol server (optional - 13 transitive deps)
 pub mod detection; // Toyota Way: Unified detection framework (consolidates detection services)

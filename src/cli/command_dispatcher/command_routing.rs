@@ -104,10 +104,15 @@ impl CommandDispatcher {
                 extract_candidates,
                 max_module_lines,
                 contracts,
+                contract_gaps,
             } => {
                 // Delegate to pv query for contract searches
                 if contracts {
                     return handle_pv_query_delegation(&query, limit, &format);
+                }
+                // Contract gaps: show functions without bindings
+                if contract_gaps {
+                    return handle_contract_gaps(&project_path, limit, &format);
                 }
                 // Default is to show code; --summary disables it
                 let show_code = !summary;
@@ -562,6 +567,92 @@ pub(crate) fn handle_pv_query_delegation(
             eprintln!("error: `pv` CLI not found. Install with:");
             eprintln!("  cargo install --path ../provable-contracts/crates/provable-contracts-cli");
             std::process::exit(1);
+        }
+    }
+}
+
+/// Show functions without contract bindings, ranked by importance.
+/// Uses ContractIndex from .pmat/binding-index.json + function index.
+pub(crate) fn handle_contract_gaps(
+    project_path: &std::path::Path,
+    limit: usize,
+    format: &crate::cli::QueryOutputFormat,
+) -> anyhow::Result<()> {
+    use crate::services::contract_index::ContractIndex;
+
+    let idx = ContractIndex::load(project_path);
+    if idx.is_none() {
+        eprintln!("No .pmat/binding-index.json found. Run: pmat comply refresh-bindings");
+        std::process::exit(1);
+    }
+    let idx = idx.unwrap();
+
+    // Load function index to get all source files
+    let pmat_idx_path = project_path.join(".pmat/context.db");
+    let legacy_idx = project_path.join(".pmat/context.idx");
+
+    // Collect source files from the project
+    let src_dir = project_path.join("src");
+    let mut all_files: Vec<String> = Vec::new();
+    if src_dir.exists() {
+        collect_rs_files(&src_dir, project_path, &mut all_files);
+    }
+
+    let gaps = idx.find_gaps(&all_files);
+    let bound_count = all_files.len() - gaps.len();
+
+    if matches!(format, crate::cli::QueryOutputFormat::Json) {
+        let json = serde_json::json!({
+            "total_files": all_files.len(),
+            "bound_files": bound_count,
+            "gap_files": gaps.len(),
+            "gaps": gaps.iter().take(limit).collect::<Vec<_>>(),
+        });
+        println!("{}", serde_json::to_string_pretty(&json)?);
+    } else {
+        println!(
+            "Contract gaps: {}/{} source file(s) lack bindings\n",
+            gaps.len(),
+            all_files.len()
+        );
+        if idx.total_bindings > 0 {
+            let pct = bound_count as f64 / all_files.len().max(1) as f64 * 100.0;
+            println!(
+                "Coverage: {:.1}% ({} bound, {} total bindings)\n",
+                pct, bound_count, idx.total_bindings
+            );
+        }
+        for (i, gap) in gaps.iter().enumerate().take(limit) {
+            println!("  {}. {}", i + 1, gap);
+        }
+        if gaps.len() > limit {
+            println!("  ... and {} more", gaps.len() - limit);
+        }
+        let _ = (pmat_idx_path, legacy_idx); // suppress unused warnings
+    }
+
+    Ok(())
+}
+
+/// Recursively collect .rs files relative to project root.
+fn collect_rs_files(dir: &std::path::Path, root: &std::path::Path, out: &mut Vec<String>) {
+    let entries = match std::fs::read_dir(dir) {
+        Ok(e) => e,
+        Err(_) => return,
+    };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.is_dir() {
+            // Skip test directories and target
+            let name = path.file_name().unwrap_or_default().to_str().unwrap_or("");
+            if name == "target" || name == ".git" {
+                continue;
+            }
+            collect_rs_files(&path, root, out);
+        } else if path.extension().map_or(false, |e| e == "rs") {
+            if let Ok(rel) = path.strip_prefix(root) {
+                out.push(rel.to_string_lossy().to_string());
+            }
         }
     }
 }
