@@ -391,20 +391,43 @@ Extend TDG to grade non-code assets contributing to project-level aggregate:
 
 ---
 
-## Implementation Phases
+## Implementation Status
 
-| Phase | Description | Dependencies | Status |
-|-------|-------------|-------------|--------|
-| 0 | O(1) cache infrastructure | None | **CB-1332 done** |
-| 1 | Work Item → YAML Contract | Phase 0 | **CB-1331 done** |
-| 2 | L-Level Ratchet | Phase 0 | **CB-1330 done** |
-| 3a | README layout contract (CB-1320) | Phase 0 | **CB-1320 done** |
-| 3b | Remaining asset contracts (CB-1321..1326) | Phase 3a | **All 6 done** (CB-1321..1326) |
-| 4 | Differential obligation verification | Phase 0, 2 | **CB-1350, CB-1351 done** |
-| 5 | Assume-guarantee chains | Phase 1, 4 | **CB-1352, CB-1353 done** |
-| 6 | `pmat query --contracts` enrichment | Phase 0 | **CB-1354 done** (`--contracts` delegates to pv) |
-| 7 | Hook subsystem consolidation (CB-1333..1337) | None | **All 5 done**. H-3 fixed. Dogfood: 7 writers (CB-1333), 0 injections (CB-1336✓), 6 non-atomic (CB-1334, tdg fixed) |
-| 8 | Falsify leak remediation (CB-1338..1343) | None | **CB-1338..1341, CB-1343 done**. CB-1342 (codegen compiles) needs `pv` tooling |
+**Detection layer (complete):** 28 CB checks, 94 tests, dogfooded on 4 repos.
+**Infrastructure layer (incomplete):** 8 of 14 claimed artifacts missing.
+
+| Phase | Checks | Infrastructure | Status |
+|-------|--------|---------------|--------|
+| 0 Cache | CB-1332 ✓ | No O(1) caches built | **Checks done, caches missing** |
+| 1 Work→YAML | CB-1331 ✓ | No `contracts/work/<ID>.yaml` gen | **Check done, YAML gen missing** |
+| 2 Ratchet | CB-1330 ✓ | No `verification-levels.json` | **Check done, cache missing** |
+| 3 Assets | CB-1320..1326 ✓ | No `asset-layout-cache.json`, no `asset_validator/` | **Checks done, service missing** |
+| 4 Diff Obligations | CB-1350,1351 ✓ | `binding-index.json` ✓ via `refresh-bindings` | **Complete** |
+| 5 A/G Chains | CB-1352,1353 ✓ | Reads `.pmat-work/` directly | **Complete** |
+| 6 Query Enrich | CB-1354 ✓ | 5 of 6 query flags missing, no `contract_index.rs` | **Check done, flags missing** |
+| 7 Hooks | CB-1333..1337 ✓ | No `hook_registry.rs`; 7 writers, 6 non-atomic | **Checks done, consolidation missing** |
+| 8 Falsify Leaks | CB-1338..1343 ✓ | CB-1342 not wired | **5/6 checks done** |
+
+---
+
+## Remediation Backlog (Prioritized)
+
+Priority: **P0** = blocks real enforcement, **P1** = completes spec claim, **P2** = nice to have.
+
+| # | Falsification | Fix | Priority | Effort |
+|---|--------------|-----|----------|--------|
+| R-1 | CB-1342 not wired into comply dispatch | Add to `check.rs` dispatch, implement pv codegen check | P0 | Small |
+| R-2 | 6 non-atomic hook writers (CB-1334) | Apply `atomic_write_hook` pattern to remaining 6 files | P0 | Medium |
+| R-3 | 7 hook writers (CB-1333) | Route all writes through `HookRegistry` facade | P1 | Large |
+| R-4 | No `contracts/work/<ID>.yaml` generation | Extend `pmat work start` to emit provable-contracts YAML | P1 | Medium |
+| R-5 | No O(1) caches (3 files) | `pmat work checkpoint` writes contract-cache, verification-levels, asset-layout-cache | P1 | Medium |
+| R-6 | 5 query flags missing | Implement `--contract-gaps`, `--min-level`, `--max-level`, `--contract-score`, `--asset-contracts` | P2 | Large |
+| R-7 | No `ratchet-override` CLI | Add `pmat comply ratchet-override` subcommand | P2 | Small |
+| R-8 | No `asset validate` CLI | Add `pmat asset validate` subcommand | P2 | Small |
+| R-9 | No `contract_index.rs` service | Lazy-loaded ContractIndex from binding-index.json | P2 | Medium |
+| R-10 | No `asset_validator/` service | Extract inline validation from check functions | P2 | Medium |
+
+**Next actions:** R-1 (wire CB-1342), R-2 (remaining atomic writes), R-4 (YAML gen).
 
 ---
 
@@ -447,15 +470,8 @@ Extend TDG to grade non-code assets contributing to project-level aggregate:
 
 | Version | Date | Changes |
 |---------|------|---------|
-| 2.1 | 2026-04-05 | **Falsification audit**: 14 claims tested, 8 unimplemented artifacts identified. Key Files table updated with EXISTS/PLANNED status. Honest summary added. |
-| 2.0 | 2026-04-05 | Dogfood remediation: CB-1336 fixed (0 injections), CB-1334 tdg_hooks atomic, CB-1402 fixed (81/81 L1+), `pmat comply refresh-bindings` command, aprender 4/4 readiness. 94 tests |
-| 1.9 | 2026-04-05 | Phase 5: CB-1352 (A/G chains), CB-1353 (cycle detection). Phase 6: CB-1354 (query readiness). **All 8 phases implemented** (28 checks, CB-1342 deferred). 62 tests |
-| 1.8 | 2026-04-05 | Phase 4: CB-1350 (differential obligations), CB-1351 (binding index freshness). **23/24 checks implemented** (CB-1342 deferred). 49 tests |
-| 1.7 | 2026-04-05 | CB-1323 (forjar), CB-1341 (spec accuracy). **All 21 checks implemented** except CB-1342 (needs pv tooling). 40 tests |
-| 1.6 | 2026-04-05 | CB-1322 (SVG), CB-1324 (mdBook). 19/21 live |
-| 1.5 | 2026-04-05 | Phase 2+8: CB-1330, CB-1338..1340, CB-1343. 17/21 live. aprender: 85 bindings 0 ghosts, 16.1% penetration |
-| 1.4 | 2026-04-05 | CB-1331 (work YAML) + CB-1334 (atomic writes). 11/21 live. Phase 7 complete |
-| 1.3 | 2026-04-05 | CB-1321 (Dockerfile), CB-1326 (badges), CB-1333 (single writer), CB-1336 (injection). 9/21 live |
-| 1.2 | 2026-04-05 | Implement 5 CB checks (CB-1320, CB-1325, CB-1332, CB-1335, CB-1337). Fix H-3 timestamp bug in hook_generation.rs |
-| 1.1 | 2026-04-05 | Condensed from 1921→~490 lines (CB-140 compliance). Removed verbose YAML examples, kept design decisions and CB check definitions |
-| 1.0 | 2026-04-05 | Initial: 8 phases, asset contracts, hook consolidation, falsify leak remediation |
+| 2.2 | 2026-04-05 | Prioritized remediation backlog (R-1..R-10) replacing phase table. Honest implementation status. |
+| 2.1 | 2026-04-05 | **Falsification audit**: 14 claims tested, 8 unimplemented artifacts identified. |
+| 2.0 | 2026-04-05 | Dogfood remediation: CB-1336, CB-1334 (tdg), CB-1402 (81/81 L1+), `refresh-bindings`. 94 tests |
+| 1.9 | 2026-04-05 | Phases 4-6: CB-1350..1354. All 8 phases detection-complete (28 checks). |
+| 1.0–1.8 | 2026-04-05 | Initial spec through Phase 3+7+8 CB checks. See git log for details. |
