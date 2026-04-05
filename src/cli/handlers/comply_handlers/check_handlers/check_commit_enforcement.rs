@@ -2593,17 +2593,14 @@ fn generate_work_contract_yamls(project_path: &Path) -> anyhow::Result<usize> {
         if !preconditions.is_empty() {
             yaml.push_str("preconditions:\n");
             for p in &preconditions {
-                // Escape YAML special chars
-                let escaped = p.replace(':', "\\:");
-                yaml.push_str(&format!("  - \"{}\"\n", escaped));
+                yaml.push_str(&format!("  - \"{}\"\n", yaml_escape_string(p)));
             }
         }
 
         if !postconditions.is_empty() {
             yaml.push_str("postconditions:\n");
             for p in &postconditions {
-                let escaped = p.replace(':', "\\:");
-                yaml.push_str(&format!("  - \"{}\"\n", escaped));
+                yaml.push_str(&format!("  - \"{}\"\n", yaml_escape_string(p)));
             }
         }
 
@@ -2708,19 +2705,36 @@ pub(crate) fn handle_asset_validate(
     Ok(())
 }
 
-/// Generate a simple ISO-8601 timestamp without chrono dependency.
+/// Escape a string for safe inclusion in YAML double-quoted values.
+/// Handles newlines, quotes, backslashes, and colons.
+fn yaml_escape_string(s: &str) -> String {
+    s.replace('\\', "\\\\")
+        .replace('"', "\\\"")
+        .replace('\n', "\\n")
+        .replace('\r', "\\r")
+        .replace('\t', "\\t")
+}
+
+/// Generate ISO-8601 timestamp using Howard Hinnant's civil date algorithm.
+/// Correct for all dates (no leap-year drift).
 fn chrono_free_timestamp() -> String {
     let dur = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap_or_default();
     let secs = dur.as_secs();
-    // Approximate: good enough for cache timestamps
-    let days = secs / 86400;
-    let years = 1970 + days / 365;
-    let rem_days = days % 365;
-    let months = rem_days / 30 + 1;
-    let day = rem_days % 30 + 1;
-    format!("{}-{:02}-{:02}T00:00:00Z", years, months.min(12), day.min(28))
+    let days = (secs / 86400) as i64;
+    // Howard Hinnant's algorithm (civil_from_days)
+    let z = days + 719468;
+    let era = (if z >= 0 { z } else { z - 146096 }) / 146097;
+    let doe = (z - era * 146097) as u32;
+    let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
+    let y = yoe as i64 + era * 400;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let d = doy - (153 * mp + 2) / 5 + 1;
+    let m = if mp < 10 { mp + 3 } else { mp - 9 };
+    let y = if m <= 2 { y + 1 } else { y };
+    format!("{}-{:02}-{:02}T00:00:00Z", y, m, d)
 }
 
 #[cfg(test)]

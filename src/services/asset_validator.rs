@@ -291,10 +291,20 @@ fn validate_badges(project_path: &Path) -> AssetValidationResult {
     }
     let content = std::fs::read_to_string(&readme).unwrap_or_default();
     let mut missing = Vec::new();
-    if !content.contains("actions/workflows") && !content.contains("ci.yml") {
+    // Match the same patterns as CB-1326 inline check
+    let ci_patterns = [
+        "actions/workflows",
+        "github.com/",
+        "ci.svg",
+        "build.svg",
+        "passing",
+        "ci.yml",
+    ];
+    if !ci_patterns.iter().any(|p| content.contains(p)) {
         missing.push("CI status".into());
     }
-    if !content.contains("crates.io") && !content.contains("crate") {
+    let version_patterns = ["crates.io", "version", "crate-", "crate"];
+    if !version_patterns.iter().any(|p| content.contains(p)) {
         missing.push("version/crate".into());
     }
     if !content.to_lowercase().contains("license") {
