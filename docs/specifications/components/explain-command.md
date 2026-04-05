@@ -1,6 +1,6 @@
 # Explain Command Specification
 
-> Sub-spec of [pmat-spec.md](../pmat-spec.md) | Component 23
+> Sub-spec of [pmat-spec.md](../pmat-spec.md) | Supplementary to Component 12 (CLI & HTTP API)
 
 ## Root-Cause Analysis: Why Users Can't Understand Check Results
 

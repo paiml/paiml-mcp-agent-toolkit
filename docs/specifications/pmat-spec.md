@@ -195,7 +195,7 @@ Registry publishing. Acceptance testing with mock servers.
 
 CLI command structure (clap). HTTP API with Actix-web.
 Unified --help generation across CLI, MCP, and HTTP.
-Acceptance testing for both interfaces.
+`pmat explain` check registry ([explain-command.md](components/explain-command.md)).
 
 **Consolidated from**: cli-specification, http-api-specification, cli-acceptance-testing,
 http-api-acceptance-testing, unified-cli-mcp-help-integration.
