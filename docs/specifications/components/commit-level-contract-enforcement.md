@@ -294,6 +294,21 @@ fire-and-forget with no closed-loop regeneration.
 | Repos with enforcement | "26/26 Grade A" | 7/26 | ~18/26 |
 | Enforcement rate | implied 100% | ~1% | ~60% (kaizen Grade A) |
 
+### Dogfood Results (2026-04-05)
+
+| Repo | CB-1354 Readiness | CB-1350 Status | Warnings | Notes |
+|------|-------------------|---------------|----------|-------|
+| pmat | 2/4 | Skip (empty index) | 7 (infra) | Missing contracts/YAML, binding.yaml |
+| aprender | **4/4** | Pass | 4 | Full contract infrastructure |
+| trueno | 1/4 | Skip (empty index) | 3 | Only pv CLI |
+| realizar | 1/4 | Skip (empty index) | 5 | Only pv CLI |
+
+**Resolved this session:** CB-1336 (0 injections), CB-1334 (tdg_hooks atomic),
+CB-1402 (81/81 L1+), CB-1331 (0 invalid contracts).
+
+**Remaining warnings (all repos):** CB-1333 (7 writers), CB-1334 (6 non-atomic),
+CB-1404 (low receipt rate), CB-1354 (infra gaps in pmat/trueno/realizar).
+
 ---
 
 ## TDG Integration
@@ -355,7 +370,7 @@ Extend TDG to grade non-code assets contributing to project-level aggregate:
 | 4 | Differential obligation verification | Phase 0, 2 | **CB-1350, CB-1351 done** |
 | 5 | Assume-guarantee chains | Phase 1, 4 | **CB-1352, CB-1353 done** |
 | 6 | `pmat query --contracts` enrichment | Phase 0 | **CB-1354 done** (`--contracts` delegates to pv) |
-| 7 | Hook subsystem consolidation (CB-1333..1337) | None | **All 5 done**. H-3 fixed. Dogfood: 7 writers, 3 injections, non-atomic writes |
+| 7 | Hook subsystem consolidation (CB-1333..1337) | None | **All 5 done**. H-3 fixed. Dogfood: 7 writers (CB-1333), 0 injections (CB-1336✓), 6 non-atomic (CB-1334, tdg fixed) |
 | 8 | Falsify leak remediation (CB-1338..1343) | None | **CB-1338..1341, CB-1343 done**. CB-1342 (codegen compiles) needs `pv` tooling |
 
 ---
@@ -396,6 +411,7 @@ Extend TDG to grade non-code assets contributing to project-level aggregate:
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 2.0 | 2026-04-05 | Dogfood remediation: CB-1336 fixed (0 injections), CB-1334 tdg_hooks atomic, CB-1402 fixed (81/81 L1+), `pmat comply refresh-bindings` command, aprender 4/4 readiness. 94 tests |
 | 1.9 | 2026-04-05 | Phase 5: CB-1352 (A/G chains), CB-1353 (cycle detection). Phase 6: CB-1354 (query readiness). **All 8 phases implemented** (28 checks, CB-1342 deferred). 62 tests |
 | 1.8 | 2026-04-05 | Phase 4: CB-1350 (differential obligations), CB-1351 (binding index freshness). **23/24 checks implemented** (CB-1342 deferred). 49 tests |
 | 1.7 | 2026-04-05 | CB-1323 (forjar), CB-1341 (spec accuracy). **All 21 checks implemented** except CB-1342 (needs pv tooling). 40 tests |

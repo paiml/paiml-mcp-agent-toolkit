@@ -7,6 +7,25 @@ use anyhow::{Context, Result};
 use std::fs;
 use std::path::Path;
 
+/// Atomic write: write to temp file then rename (CB-1334 fix).
+/// Ensures hook file is never partial — old or new, never corrupt.
+fn atomic_write_hook(hook_path: &Path, content: &str) -> Result<()> {
+    let tmp_path = hook_path.with_extension("tmp");
+    fs::write(&tmp_path, content).context("Failed to write temp hook file")?;
+
+    // Set executable before rename so the file is ready immediately
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut perms = fs::metadata(&tmp_path)?.permissions();
+        perms.set_mode(0o755);
+        fs::set_permissions(&tmp_path, perms)?;
+    }
+
+    fs::rename(&tmp_path, hook_path).context("Failed to rename temp hook to final path")?;
+    Ok(())
+}
+
 /// Escape shell metacharacters in template substitution values (CB-1336 fix).
 /// Prevents injection when config values like baseline_path contain shell metacharacters.
 fn shell_escape(s: &str) -> String {
@@ -117,17 +136,8 @@ pub(crate) fn install_tdg_pre_commit_hook(hooks_dir: &Path, config: &TdgHooksCon
                 .to_string(),
         );
 
-    // Write hook file (non-atomic — tracked as CB-1334 tech debt)
-    fs::write(&hook_path, hook_content)?;
-
-    // Make executable on Unix
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        let mut perms = fs::metadata(&hook_path)?.permissions();
-        perms.set_mode(0o755);
-        fs::set_permissions(&hook_path, perms)?;
-    }
+    // Atomic write: temp file + rename (CB-1334)
+    atomic_write_hook(&hook_path, &hook_content)?;
 
     Ok(())
 }
@@ -157,17 +167,8 @@ pub(crate) fn install_tdg_post_commit_hook(
             &config.baseline.store_in_git.to_string(),
         );
 
-    // Write hook file (non-atomic — tracked as CB-1334 tech debt)
-    fs::write(&hook_path, hook_content)?;
-
-    // Make executable on Unix
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        let mut perms = fs::metadata(&hook_path)?.permissions();
-        perms.set_mode(0o755);
-        fs::set_permissions(&hook_path, perms)?;
-    }
+    // Atomic write: temp file + rename (CB-1334)
+    atomic_write_hook(&hook_path, &hook_content)?;
 
     Ok(())
 }
