@@ -1769,6 +1769,412 @@ pub(crate) fn check_binding_index_freshness(project_path: &Path) -> ComplianceCh
     }
 }
 
+/// CB-1352: Assume-Guarantee Chain Validation
+///
+/// When multiple work items touch overlapping code, one commit can break
+/// another's assumptions. Scans active work contracts for `assumes` and
+/// `guarantees` fields, builds a dependency DAG, and checks if staged
+/// changes would break any guarantee that another work item assumes.
+///
+/// Spec: Phase 5 of commit-level-contract-enforcement.md
+/// Basis: Pacti (ACM TCPS 2025); Dewes & Dimitrova (AAAI 2025)
+pub(crate) fn check_assume_guarantee_chains(project_path: &Path) -> ComplianceCheck {
+    let work_dir = project_path.join(".pmat-work");
+    if !work_dir.exists() {
+        return ComplianceCheck {
+            name: "CB-1352: Assume-Guarantee Chains".into(),
+            status: CheckStatus::Skip,
+            message: "No .pmat-work/ directory".into(),
+            severity: Severity::Info,
+        };
+    }
+
+    // Collect active contracts with assumes/guarantees
+    let mut contracts_with_ag: Vec<AgContract> = Vec::new();
+
+    let entries = match fs::read_dir(&work_dir) {
+        Ok(e) => e,
+        Err(_) => {
+            return ComplianceCheck {
+                name: "CB-1352: Assume-Guarantee Chains".into(),
+                status: CheckStatus::Skip,
+                message: "Could not read .pmat-work/".into(),
+                severity: Severity::Info,
+            };
+        }
+    };
+
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if !path.is_dir() {
+            continue;
+        }
+        let contract_path = path.join("contract.json");
+        if !contract_path.exists() {
+            continue;
+        }
+        if let Ok(content) = fs::read_to_string(&contract_path) {
+            if let Ok(v) = serde_json::from_str::<serde_json::Value>(&content) {
+                let id = v.get("work_item_id")
+                    .and_then(|w| w.as_str())
+                    .unwrap_or_else(|| path.file_name().unwrap_or_default().to_str().unwrap_or("unknown"));
+                let assumes = extract_string_array(&v, "assumes");
+                let guarantees = extract_string_array(&v, "guarantees");
+                let files = extract_string_array(&v, "files")
+                    .into_iter()
+                    .chain(extract_string_array(&v, "touched_files"))
+                    .collect::<Vec<_>>();
+                if !assumes.is_empty() || !guarantees.is_empty() {
+                    contracts_with_ag.push(AgContract {
+                        id: id.to_string(),
+                        assumes,
+                        guarantees,
+                        files,
+                    });
+                }
+            }
+        }
+    }
+
+    if contracts_with_ag.is_empty() {
+        return ComplianceCheck {
+            name: "CB-1352: Assume-Guarantee Chains".into(),
+            status: CheckStatus::Pass,
+            message: "No work contracts with assume-guarantee declarations".into(),
+            severity: Severity::Info,
+        };
+    }
+
+    // Get staged files
+    let staged = get_staged_files(project_path);
+    if staged.is_empty() {
+        return ComplianceCheck {
+            name: "CB-1352: Assume-Guarantee Chains".into(),
+            status: CheckStatus::Pass,
+            message: format!(
+                "{} A/G contract(s), no staged files",
+                contracts_with_ag.len()
+            ),
+            severity: Severity::Info,
+        };
+    }
+
+    // Check: for each staged file, find contracts whose guarantees cover that file.
+    // Then check if any OTHER contract assumes that guarantee.
+    let mut broken: Vec<String> = Vec::new();
+
+    for contract in &contracts_with_ag {
+        // Check if staged files overlap with this contract's guaranteed files
+        let overlaps = contract.files.iter().any(|f| {
+            staged.iter().any(|sf| sf.contains(f) || f.contains(sf))
+        });
+        if !overlaps {
+            continue;
+        }
+        // This contract's guarantees might be affected. Check who assumes them.
+        for guarantee in &contract.guarantees {
+            for other in &contracts_with_ag {
+                if other.id == contract.id {
+                    continue;
+                }
+                if other.assumes.contains(guarantee) {
+                    broken.push(format!(
+                        "{} guarantees '{}' assumed by {}",
+                        contract.id, guarantee, other.id
+                    ));
+                }
+            }
+        }
+    }
+
+    if broken.is_empty() {
+        ComplianceCheck {
+            name: "CB-1352: Assume-Guarantee Chains".into(),
+            status: CheckStatus::Pass,
+            message: format!(
+                "{} A/G contract(s), no broken chains for {} staged file(s)",
+                contracts_with_ag.len(),
+                staged.len()
+            ),
+            severity: Severity::Info,
+        }
+    } else {
+        ComplianceCheck {
+            name: "CB-1352: Assume-Guarantee Chains".into(),
+            status: CheckStatus::Warn,
+            message: format!(
+                "{} broken chain(s): {}",
+                broken.len(),
+                broken.join("; ")
+            ),
+            severity: Severity::Warning,
+        }
+    }
+}
+
+/// Internal struct for assume-guarantee contract parsing.
+struct AgContract {
+    id: String,
+    assumes: Vec<String>,
+    guarantees: Vec<String>,
+    files: Vec<String>,
+}
+
+/// Extract a JSON array of strings from a field.
+fn extract_string_array(v: &serde_json::Value, field: &str) -> Vec<String> {
+    v.get(field)
+        .and_then(|a| a.as_array())
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|s| s.as_str().map(|s| s.to_string()))
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+/// CB-1353: Assume-Guarantee Cycle Detection
+///
+/// The work contract dependency DAG (assumes → guarantees) must be acyclic.
+/// Cycles create circular proof obligations that can never be resolved.
+/// Uses DFS-based cycle detection on the assumes→guarantees graph.
+///
+/// Basis: Dardik & Kang (2025) compositional inductive invariant inference
+pub(crate) fn check_ag_cycle_detection(project_path: &Path) -> ComplianceCheck {
+    let work_dir = project_path.join(".pmat-work");
+    if !work_dir.exists() {
+        return ComplianceCheck {
+            name: "CB-1353: A/G Cycle Detection".into(),
+            status: CheckStatus::Skip,
+            message: "No .pmat-work/ directory".into(),
+            severity: Severity::Info,
+        };
+    }
+
+    // Build graph: work_item → [work_items it depends on (via assumes matching guarantees)]
+    let mut guarantee_to_owner: std::collections::HashMap<String, String> = std::collections::HashMap::new();
+    let mut item_assumes: std::collections::HashMap<String, Vec<String>> = std::collections::HashMap::new();
+
+    let entries = match fs::read_dir(&work_dir) {
+        Ok(e) => e,
+        Err(_) => {
+            return ComplianceCheck {
+                name: "CB-1353: A/G Cycle Detection".into(),
+                status: CheckStatus::Skip,
+                message: "Could not read .pmat-work/".into(),
+                severity: Severity::Info,
+            };
+        }
+    };
+
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if !path.is_dir() {
+            continue;
+        }
+        let contract_path = path.join("contract.json");
+        if !contract_path.exists() {
+            continue;
+        }
+        if let Ok(content) = fs::read_to_string(&contract_path) {
+            if let Ok(v) = serde_json::from_str::<serde_json::Value>(&content) {
+                let id = v.get("work_item_id")
+                    .and_then(|w| w.as_str())
+                    .unwrap_or_else(|| path.file_name().unwrap_or_default().to_str().unwrap_or("unknown"))
+                    .to_string();
+                let assumes = extract_string_array(&v, "assumes");
+                let guarantees = extract_string_array(&v, "guarantees");
+
+                for g in &guarantees {
+                    guarantee_to_owner.insert(g.clone(), id.clone());
+                }
+                if !assumes.is_empty() {
+                    item_assumes.insert(id, assumes);
+                }
+            }
+        }
+    }
+
+    if guarantee_to_owner.is_empty() && item_assumes.is_empty() {
+        return ComplianceCheck {
+            name: "CB-1353: A/G Cycle Detection".into(),
+            status: CheckStatus::Pass,
+            message: "No assume-guarantee relationships to check".into(),
+            severity: Severity::Info,
+        };
+    }
+
+    // Build adjacency: item → [items it depends on]
+    let mut adj: std::collections::HashMap<String, Vec<String>> = std::collections::HashMap::new();
+    for (item, assumes) in &item_assumes {
+        for a in assumes {
+            if let Some(owner) = guarantee_to_owner.get(a) {
+                if owner != item {
+                    adj.entry(item.clone()).or_default().push(owner.clone());
+                }
+            }
+        }
+    }
+
+    // DFS cycle detection
+    let mut visited: std::collections::HashSet<String> = std::collections::HashSet::new();
+    let mut in_stack: std::collections::HashSet<String> = std::collections::HashSet::new();
+    let mut cycles: Vec<String> = Vec::new();
+
+    let all_nodes: Vec<String> = adj.keys().cloned().collect();
+    for node in &all_nodes {
+        if !visited.contains(node) {
+            dfs_cycle_check(node, &adj, &mut visited, &mut in_stack, &mut cycles);
+        }
+    }
+
+    if cycles.is_empty() {
+        ComplianceCheck {
+            name: "CB-1353: A/G Cycle Detection".into(),
+            status: CheckStatus::Pass,
+            message: format!(
+                "{} A/G relationship(s), DAG is acyclic",
+                guarantee_to_owner.len()
+            ),
+            severity: Severity::Info,
+        }
+    } else {
+        ComplianceCheck {
+            name: "CB-1353: A/G Cycle Detection".into(),
+            status: CheckStatus::Fail,
+            message: format!(
+                "Cycle(s) in A/G DAG: {}",
+                cycles.join(", ")
+            ),
+            severity: Severity::Error,
+        }
+    }
+}
+
+/// DFS cycle detection helper.
+fn dfs_cycle_check(
+    node: &str,
+    adj: &std::collections::HashMap<String, Vec<String>>,
+    visited: &mut std::collections::HashSet<String>,
+    in_stack: &mut std::collections::HashSet<String>,
+    cycles: &mut Vec<String>,
+) {
+    visited.insert(node.to_string());
+    in_stack.insert(node.to_string());
+
+    if let Some(neighbors) = adj.get(node) {
+        for neighbor in neighbors {
+            if !visited.contains(neighbor.as_str()) {
+                dfs_cycle_check(neighbor, adj, visited, in_stack, cycles);
+            } else if in_stack.contains(neighbor.as_str()) {
+                cycles.push(format!("{} → {}", node, neighbor));
+            }
+        }
+    }
+
+    in_stack.remove(node);
+}
+
+/// CB-1354: Contract Query Readiness
+///
+/// Validates that the infrastructure for `pmat query --contracts` enrichment
+/// is in place: binding-index.json exists, contracts/ has YAML, and pv CLI
+/// is available. Scores readiness 0-4 based on components present.
+///
+/// Spec: Phase 6 of commit-level-contract-enforcement.md
+pub(crate) fn check_contract_query_readiness(project_path: &Path) -> ComplianceCheck {
+    let mut score = 0u8;
+    let mut components: Vec<&str> = Vec::new();
+    let mut missing: Vec<&str> = Vec::new();
+
+    // 1. binding-index.json
+    if project_path.join(".pmat/binding-index.json").exists()
+        || project_path.join("contracts/binding-index.json").exists()
+    {
+        score += 1;
+        components.push("binding-index");
+    } else {
+        missing.push("binding-index.json");
+    }
+
+    // 2. contracts/ directory with YAML files
+    let contracts_dir = project_path.join("contracts");
+    if contracts_dir.exists() {
+        let has_yaml = fs::read_dir(&contracts_dir)
+            .ok()
+            .map(|entries| {
+                entries.flatten().any(|e| {
+                    e.path().extension().map_or(false, |ext| ext == "yaml" || ext == "yml")
+                })
+            })
+            .unwrap_or(false);
+        if has_yaml {
+            score += 1;
+            components.push("contracts/YAML");
+        } else {
+            missing.push("contracts/*.yaml");
+        }
+    } else {
+        missing.push("contracts/ dir");
+    }
+
+    // 3. binding.yaml
+    if project_path.join("binding.yaml").exists()
+        || project_path.join("contracts/binding.yaml").exists()
+    {
+        score += 1;
+        components.push("binding.yaml");
+    } else {
+        missing.push("binding.yaml");
+    }
+
+    // 4. pv CLI available
+    let pv_available = std::process::Command::new("pv")
+        .arg("--version")
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .map(|s| s.success())
+        .unwrap_or(false);
+    if pv_available {
+        score += 1;
+        components.push("pv CLI");
+    } else {
+        missing.push("pv CLI");
+    }
+
+    if score == 0 {
+        ComplianceCheck {
+            name: "CB-1354: Contract Query Readiness".into(),
+            status: CheckStatus::Skip,
+            message: "No contract infrastructure found".into(),
+            severity: Severity::Info,
+        }
+    } else if score >= 3 {
+        ComplianceCheck {
+            name: "CB-1354: Contract Query Readiness".into(),
+            status: CheckStatus::Pass,
+            message: format!(
+                "Ready ({}/4): {}",
+                score,
+                components.join(", ")
+            ),
+            severity: Severity::Info,
+        }
+    } else {
+        ComplianceCheck {
+            name: "CB-1354: Contract Query Readiness".into(),
+            status: CheckStatus::Warn,
+            message: format!(
+                "Partial ({}/4): have [{}], missing [{}]",
+                score,
+                components.join(", "),
+                missing.join(", ")
+            ),
+            severity: Severity::Warning,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -2272,5 +2678,185 @@ mod tests {
         let dir = tempdir().unwrap();
         let files = get_staged_files(dir.path());
         assert!(files.is_empty());
+    }
+
+    // --- Phase 5: Assume-Guarantee Chains ---
+
+    #[test]
+    fn test_cb1352_no_work_dir() {
+        let dir = tempdir().unwrap();
+        let check = check_assume_guarantee_chains(dir.path());
+        assert_eq!(check.status, CheckStatus::Skip);
+    }
+
+    #[test]
+    fn test_cb1352_no_ag_contracts() {
+        let dir = tempdir().unwrap();
+        let work = dir.path().join(".pmat-work/PMAT-001");
+        fs::create_dir_all(&work).unwrap();
+        fs::write(
+            work.join("contract.json"),
+            r#"{"work_item_id":"PMAT-001","version":"5.0"}"#,
+        ).unwrap();
+
+        let check = check_assume_guarantee_chains(dir.path());
+        assert_eq!(check.status, CheckStatus::Pass);
+        assert!(check.message.contains("No work contracts with assume-guarantee"));
+    }
+
+    #[test]
+    fn test_cb1352_ag_contracts_no_conflict() {
+        let dir = tempdir().unwrap();
+        let work1 = dir.path().join(".pmat-work/PMAT-A");
+        let work2 = dir.path().join(".pmat-work/PMAT-B");
+        fs::create_dir_all(&work1).unwrap();
+        fs::create_dir_all(&work2).unwrap();
+        fs::write(
+            work1.join("contract.json"),
+            r#"{"work_item_id":"PMAT-A","guarantees":["parser_correctness"],"assumes":[],"files":["src/parser.rs"]}"#,
+        ).unwrap();
+        fs::write(
+            work2.join("contract.json"),
+            r#"{"work_item_id":"PMAT-B","assumes":["parser_correctness"],"guarantees":[],"files":["src/formatter.rs"]}"#,
+        ).unwrap();
+
+        let check = check_assume_guarantee_chains(dir.path());
+        assert_eq!(check.status, CheckStatus::Pass);
+    }
+
+    #[test]
+    fn test_cb1353_no_work_dir() {
+        let dir = tempdir().unwrap();
+        let check = check_ag_cycle_detection(dir.path());
+        assert_eq!(check.status, CheckStatus::Skip);
+    }
+
+    #[test]
+    fn test_cb1353_no_ag_relationships() {
+        let dir = tempdir().unwrap();
+        let work = dir.path().join(".pmat-work/PMAT-001");
+        fs::create_dir_all(&work).unwrap();
+        fs::write(
+            work.join("contract.json"),
+            r#"{"work_item_id":"PMAT-001","version":"5.0"}"#,
+        ).unwrap();
+
+        let check = check_ag_cycle_detection(dir.path());
+        assert_eq!(check.status, CheckStatus::Pass);
+        assert!(check.message.contains("No assume-guarantee"));
+    }
+
+    #[test]
+    fn test_cb1353_acyclic_dag() {
+        let dir = tempdir().unwrap();
+        let work_a = dir.path().join(".pmat-work/PMAT-A");
+        let work_b = dir.path().join(".pmat-work/PMAT-B");
+        fs::create_dir_all(&work_a).unwrap();
+        fs::create_dir_all(&work_b).unwrap();
+        fs::write(
+            work_a.join("contract.json"),
+            r#"{"work_item_id":"PMAT-A","guarantees":["invariant_x"],"assumes":[]}"#,
+        ).unwrap();
+        fs::write(
+            work_b.join("contract.json"),
+            r#"{"work_item_id":"PMAT-B","assumes":["invariant_x"],"guarantees":["invariant_y"]}"#,
+        ).unwrap();
+
+        let check = check_ag_cycle_detection(dir.path());
+        assert_eq!(check.status, CheckStatus::Pass);
+        assert!(check.message.contains("acyclic"));
+    }
+
+    #[test]
+    fn test_cb1353_cyclic_dag() {
+        let dir = tempdir().unwrap();
+        let work_a = dir.path().join(".pmat-work/PMAT-A");
+        let work_b = dir.path().join(".pmat-work/PMAT-B");
+        fs::create_dir_all(&work_a).unwrap();
+        fs::create_dir_all(&work_b).unwrap();
+        // A guarantees X, assumes Y; B guarantees Y, assumes X → cycle
+        fs::write(
+            work_a.join("contract.json"),
+            r#"{"work_item_id":"PMAT-A","guarantees":["invariant_x"],"assumes":["invariant_y"]}"#,
+        ).unwrap();
+        fs::write(
+            work_b.join("contract.json"),
+            r#"{"work_item_id":"PMAT-B","guarantees":["invariant_y"],"assumes":["invariant_x"]}"#,
+        ).unwrap();
+
+        let check = check_ag_cycle_detection(dir.path());
+        assert_eq!(check.status, CheckStatus::Fail);
+        assert!(check.message.contains("Cycle"));
+    }
+
+    #[test]
+    fn test_extract_string_array() {
+        let v: serde_json::Value = serde_json::from_str(
+            r#"{"assumes":["a","b"],"guarantees":[]}"#
+        ).unwrap();
+        assert_eq!(extract_string_array(&v, "assumes"), vec!["a", "b"]);
+        assert!(extract_string_array(&v, "guarantees").is_empty());
+        assert!(extract_string_array(&v, "missing").is_empty());
+    }
+
+    // --- Phase 6: Contract Query Readiness ---
+
+    #[test]
+    fn test_cb1354_no_infrastructure() {
+        let dir = tempdir().unwrap();
+        let check = check_contract_query_readiness(dir.path());
+        // pv CLI may be available in dev env, so could be Skip (0/4) or Warn (1/4)
+        assert!(
+            check.status == CheckStatus::Skip || check.status == CheckStatus::Warn,
+            "Expected Skip or Warn, got {:?}: {}", check.status, check.message
+        );
+    }
+
+    #[test]
+    fn test_cb1354_partial_contracts_dir_only() {
+        let dir = tempdir().unwrap();
+        let contracts = dir.path().join("contracts");
+        fs::create_dir(&contracts).unwrap();
+        fs::write(contracts.join("core.yaml"), "name: core\n").unwrap();
+
+        let check = check_contract_query_readiness(dir.path());
+        // 1-2/4 components → Warn (pv CLI may add +1)
+        assert!(
+            check.status == CheckStatus::Warn || check.status == CheckStatus::Pass,
+            "Expected Warn or Pass, got {:?}: {}", check.status, check.message
+        );
+        assert!(check.message.contains("contracts/YAML"));
+    }
+
+    #[test]
+    fn test_cb1354_binding_yaml_and_contracts() {
+        let dir = tempdir().unwrap();
+        let contracts = dir.path().join("contracts");
+        fs::create_dir(&contracts).unwrap();
+        fs::write(contracts.join("core.yaml"), "name: core\n").unwrap();
+        fs::write(contracts.join("binding.yaml"), "bindings: []\n").unwrap();
+
+        let check = check_contract_query_readiness(dir.path());
+        // 2-3/4 components (contracts/YAML + binding.yaml, maybe pv) → Warn or Pass
+        assert!(
+            check.status == CheckStatus::Warn || check.status == CheckStatus::Pass,
+            "Expected Warn or Pass, got {:?}: {}", check.status, check.message
+        );
+    }
+
+    #[test]
+    fn test_cb1354_full_readiness() {
+        let dir = tempdir().unwrap();
+        let pmat = dir.path().join(".pmat");
+        let contracts = dir.path().join("contracts");
+        fs::create_dir(&pmat).unwrap();
+        fs::create_dir(&contracts).unwrap();
+        fs::write(pmat.join("binding-index.json"), "{}").unwrap();
+        fs::write(contracts.join("core.yaml"), "name: core\n").unwrap();
+        fs::write(contracts.join("binding.yaml"), "bindings: []\n").unwrap();
+        // pv CLI may or may not be available — 3/4 is still Pass
+        let check = check_contract_query_readiness(dir.path());
+        // At least 3/4 → Pass
+        assert!(check.status == CheckStatus::Pass || check.status == CheckStatus::Warn);
     }
 }

@@ -526,6 +526,23 @@ pub(crate) async fn handle_check(
         "cb-1351",
         comply_config,
     ));
+    // Phase 5: Assume-guarantee chains
+    checks.push(filter_check_by_config(
+        check_assume_guarantee_chains(project_path),
+        "cb-1352",
+        comply_config,
+    ));
+    checks.push(filter_check_by_config(
+        check_ag_cycle_detection(project_path),
+        "cb-1353",
+        comply_config,
+    ));
+    // Phase 6: Contract query readiness
+    checks.push(filter_check_by_config(
+        check_contract_query_readiness(project_path),
+        "cb-1354",
+        comply_config,
+    ));
 
     let report = build_compliance_report(checks, project_version, failures_only);
     let failures = report
