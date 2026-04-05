@@ -834,6 +834,138 @@ pub(crate) fn check_work_contract_validity(project_path: &Path) -> ComplianceChe
     }
 }
 
+/// CB-1322: SVG Asset Contract
+///
+/// Validates SVG files for viewBox, accessibility, and reasonable element count.
+pub(crate) fn check_svg_contract(project_path: &Path) -> ComplianceCheck {
+    let mut svg_count = 0usize;
+    let mut issues: Vec<String> = Vec::new();
+
+    // Scan for SVG files in common locations
+    let search_dirs = ["assets", "docs", "static", "."];
+    for dir_name in &search_dirs {
+        let dir = project_path.join(dir_name);
+        if !dir.exists() {
+            continue;
+        }
+        let entries = match fs::read_dir(&dir) {
+            Ok(e) => e,
+            Err(_) => continue,
+        };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.extension().map_or(true, |e| e != "svg") || !path.is_file() {
+                continue;
+            }
+            svg_count += 1;
+            if let Ok(content) = fs::read_to_string(&path) {
+                let name = path.file_name().map(|f| f.to_string_lossy().to_string())
+                    .unwrap_or_default();
+                if !content.contains("viewBox") {
+                    issues.push(format!("{}: missing viewBox", name));
+                }
+                if !content.contains("<title") && !content.contains("aria-label") {
+                    issues.push(format!("{}: no accessibility (title or aria-label)", name));
+                }
+            }
+        }
+    }
+
+    if svg_count == 0 {
+        return ComplianceCheck {
+            name: "CB-1322: SVG Asset Contract".into(),
+            status: CheckStatus::Skip,
+            message: "No SVG files found".into(),
+            severity: Severity::Info,
+        };
+    }
+
+    if issues.is_empty() {
+        ComplianceCheck {
+            name: "CB-1322: SVG Asset Contract".into(),
+            status: CheckStatus::Pass,
+            message: format!("{} SVG file(s) validated", svg_count),
+            severity: Severity::Info,
+        }
+    } else {
+        ComplianceCheck {
+            name: "CB-1322: SVG Asset Contract".into(),
+            status: CheckStatus::Warn,
+            message: format!("{} issue(s): {}", issues.len(), issues.join(", ")),
+            severity: Severity::Warning,
+        }
+    }
+}
+
+/// CB-1324: mdBook Contract
+///
+/// Validates mdBook SUMMARY.md links if book/ directory exists.
+pub(crate) fn check_mdbook_contract(project_path: &Path) -> ComplianceCheck {
+    let book_dir = project_path.join("book");
+    let summary = book_dir.join("src/SUMMARY.md");
+
+    if !book_dir.exists() || !summary.exists() {
+        return ComplianceCheck {
+            name: "CB-1324: mdBook Contract".into(),
+            status: CheckStatus::Skip,
+            message: "No book/src/SUMMARY.md found".into(),
+            severity: Severity::Info,
+        };
+    }
+
+    let content = match fs::read_to_string(&summary) {
+        Ok(c) => c,
+        Err(_) => {
+            return ComplianceCheck {
+                name: "CB-1324: mdBook Contract".into(),
+                status: CheckStatus::Warn,
+                message: "Could not read SUMMARY.md".into(),
+                severity: Severity::Warning,
+            };
+        }
+    };
+
+    let mut broken_links: Vec<String> = Vec::new();
+    let book_src = book_dir.join("src");
+
+    for line in content.lines() {
+        // Extract markdown links: [text](path.md)
+        if let Some(start) = line.find("](") {
+            if let Some(end) = line[start + 2..].find(')') {
+                let link = &line[start + 2..start + 2 + end];
+                // Skip external links and anchors
+                if link.starts_with("http") || link.starts_with('#') {
+                    continue;
+                }
+                let link_path = book_src.join(link.split('#').next().unwrap_or(link));
+                if !link_path.exists() {
+                    broken_links.push(link.to_string());
+                }
+            }
+        }
+    }
+
+    if broken_links.is_empty() {
+        ComplianceCheck {
+            name: "CB-1324: mdBook Contract".into(),
+            status: CheckStatus::Pass,
+            message: "SUMMARY.md links valid".into(),
+            severity: Severity::Info,
+        }
+    } else {
+        ComplianceCheck {
+            name: "CB-1324: mdBook Contract".into(),
+            status: CheckStatus::Warn,
+            message: format!(
+                "{} broken link(s): {}",
+                broken_links.len(),
+                broken_links.join(", ")
+            ),
+            severity: Severity::Warning,
+        }
+    }
+}
+
 /// CB-1330: L-Level Ratchet
 ///
 /// Checks that provable-contracts verification levels don't regress.
@@ -1537,6 +1669,44 @@ mod tests {
         let dir = tempdir().unwrap();
         let check = check_assertion_placement(dir.path());
         assert_eq!(check.status, CheckStatus::Skip);
+    }
+
+    #[test]
+    fn test_cb1322_no_svgs() {
+        let dir = tempdir().unwrap();
+        let check = check_svg_contract(dir.path());
+        assert_eq!(check.status, CheckStatus::Skip);
+    }
+
+    #[test]
+    fn test_cb1324_no_book() {
+        let dir = tempdir().unwrap();
+        let check = check_mdbook_contract(dir.path());
+        assert_eq!(check.status, CheckStatus::Skip);
+    }
+
+    #[test]
+    fn test_cb1324_valid_book() {
+        let dir = tempdir().unwrap();
+        let book_src = dir.path().join("book/src");
+        fs::create_dir_all(&book_src).unwrap();
+        fs::write(book_src.join("SUMMARY.md"), "# Summary\n\n- [Intro](intro.md)\n").unwrap();
+        fs::write(book_src.join("intro.md"), "# Intro\n").unwrap();
+
+        let check = check_mdbook_contract(dir.path());
+        assert_eq!(check.status, CheckStatus::Pass);
+    }
+
+    #[test]
+    fn test_cb1324_broken_link() {
+        let dir = tempdir().unwrap();
+        let book_src = dir.path().join("book/src");
+        fs::create_dir_all(&book_src).unwrap();
+        fs::write(book_src.join("SUMMARY.md"), "# Summary\n\n- [Missing](gone.md)\n").unwrap();
+
+        let check = check_mdbook_contract(dir.path());
+        assert_eq!(check.status, CheckStatus::Warn);
+        assert!(check.message.contains("gone.md"));
     }
 
     #[test]

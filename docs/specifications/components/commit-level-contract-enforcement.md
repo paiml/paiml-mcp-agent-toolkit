@@ -346,7 +346,7 @@ Extend TDG to grade non-code assets contributing to project-level aggregate:
 | 1 | Work Item → YAML Contract | Phase 0 | **CB-1331 done** |
 | 2 | L-Level Ratchet | Phase 0 | **CB-1330 done** |
 | 3a | README layout contract (CB-1320) | Phase 0 | **CB-1320 done** |
-| 3b | Remaining asset contracts (CB-1321..1326) | Phase 3a | **CB-1321, CB-1325, CB-1326 done**. CB-1322..1324 planned |
+| 3b | Remaining asset contracts (CB-1321..1326) | Phase 3a | **CB-1321, CB-1322, CB-1324, CB-1325, CB-1326 done**. CB-1323 (forjar) planned |
 | 4 | Differential obligation verification | Phase 0, 2 | Planned |
 | 5 | Assume-guarantee chains | Phase 1, 4 | Planned |
 | 6 | `pmat query --contracts` enrichment | Phase 0 | Planned |
@@ -391,7 +391,8 @@ Extend TDG to grade non-code assets contributing to project-level aggregate:
 
 | Version | Date | Changes |
 |---------|------|---------|
-| 1.5 | 2026-04-05 | Phase 2+8: CB-1330 (ratchet), CB-1338..1340 (ghost/placeholder/penetration), CB-1343 (placement). **17/21 checks live**. Dogfood: aprender 85 bindings 0 ghosts, 16.1% penetration |
+| 1.6 | 2026-04-05 | CB-1322 (SVG), CB-1324 (mdBook). **19/21 checks live**. Remaining: CB-1323 (forjar), CB-1341/1342 (need pv tooling) |
+| 1.5 | 2026-04-05 | Phase 2+8: CB-1330, CB-1338..1340, CB-1343. 17/21 live. aprender: 85 bindings 0 ghosts, 16.1% penetration |
 | 1.4 | 2026-04-05 | CB-1331 (work YAML) + CB-1334 (atomic writes). 11/21 live. Phase 7 complete |
 | 1.3 | 2026-04-05 | CB-1321 (Dockerfile), CB-1326 (badges), CB-1333 (single writer), CB-1336 (injection). 9/21 live |
 | 1.2 | 2026-04-05 | Implement 5 CB checks (CB-1320, CB-1325, CB-1332, CB-1335, CB-1337). Fix H-3 timestamp bug in hook_generation.rs |

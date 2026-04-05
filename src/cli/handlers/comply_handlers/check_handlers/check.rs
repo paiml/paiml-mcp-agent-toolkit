@@ -421,6 +421,16 @@ pub(crate) async fn handle_check(
         comply_config,
     ));
     checks.push(filter_check_by_config(
+        check_svg_contract(project_path),
+        "cb-1322",
+        comply_config,
+    ));
+    checks.push(filter_check_by_config(
+        check_mdbook_contract(project_path),
+        "cb-1324",
+        comply_config,
+    ));
+    checks.push(filter_check_by_config(
         check_changelog_contract(project_path),
         "cb-1325",
         comply_config,
