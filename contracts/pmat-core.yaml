@@ -31,14 +31,40 @@ proof_obligations:
   property: TDG baseline valid JSON after every commit
   formal: is_json(.pmat/baseline.json)
   applies_to: all
+  check: contract_tests::FALSIFY-PMAT-001
+  severity: ERROR
 - type: invariant
   property: Pre-commit hook < 30s
   formal: hook_duration < 30.seconds
   applies_to: all
+  check: contract_tests::FALSIFY-PMAT-002
+  severity: ERROR
 - type: bound
   property: CB checks handle missing files gracefully
   formal: file.missing() implies check_result == Skip
   applies_to: all
+  check: contract_tests::FALSIFY-PMAT-003
+  severity: WARNING
+falsification_tests:
+- id: FALSIFY-PMAT-001
+  rule: TDG baseline valid JSON
+  prediction: .pmat/baseline.json is parseable as JSON after every commit
+  test: Post-commit hook verifies JSON parses, fails commit if corrupt
+  if_fails: TDG baseline corrupted, subsequent commits cannot compute drift
+- id: FALSIFY-PMAT-002
+  rule: Pre-commit hook performance budget
+  prediction: hook completes in under 30 seconds
+  test: .pmat-metrics/hook-timing.jsonl shows p95 < 30000ms over 10 runs
+  if_fails: Hook exceeds budget, developers bypass with --no-verify
+- id: FALSIFY-PMAT-003
+  rule: CB check graceful degradation
+  prediction: missing files produce Skip status, never panic
+  test: cargo test --lib -- check_handlers -- with tempdir (no files)
+  if_fails: Check panics on missing input, breaks CI for clean projects
+kani_harnesses: []
 verification_summary:
-  target_level: L1
-  current_level: L1
+  total_obligations: 3
+  l2_property_tested: 3
+  l3_kani_proved: 0
+  l4_lean_proved: 0
+  l4_sorry_count: 0
