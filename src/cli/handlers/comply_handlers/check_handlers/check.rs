@@ -430,6 +430,12 @@ pub(crate) async fn handle_check(
         "cb-1326",
         comply_config,
     ));
+    // Phase 1: Work contract validity
+    checks.push(filter_check_by_config(
+        check_work_contract_validity(project_path),
+        "cb-1331",
+        comply_config,
+    ));
     // Phase 0: Cache infrastructure
     checks.push(filter_check_by_config(
         check_cache_staleness(project_path),
@@ -440,6 +446,11 @@ pub(crate) async fn handle_check(
     checks.push(filter_check_by_config(
         check_hook_single_writer(project_path),
         "cb-1333",
+        comply_config,
+    ));
+    checks.push(filter_check_by_config(
+        check_hook_atomic_writes(project_path),
+        "cb-1334",
         comply_config,
     ));
     checks.push(filter_check_by_config(

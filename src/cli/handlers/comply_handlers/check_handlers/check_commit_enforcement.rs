@@ -668,6 +668,172 @@ pub(crate) fn check_hook_no_injection(project_path: &Path) -> ComplianceCheck {
     }
 }
 
+/// CB-1334: Hook Atomic Writes
+///
+/// Checks that hook file writes use write-then-rename (atomic) pattern,
+/// not direct fs::write to the hook path. Scans src/ for fs::write calls
+/// to .git/hooks/ paths without a tmp+rename pattern nearby.
+pub(crate) fn check_hook_atomic_writes(project_path: &Path) -> ComplianceCheck {
+    let src_dir = project_path.join("src");
+    if !src_dir.exists() {
+        return ComplianceCheck {
+            name: "CB-1334: Hook Atomic Writes".into(),
+            status: CheckStatus::Skip,
+            message: "No src/ directory".into(),
+            severity: Severity::Info,
+        };
+    }
+
+    let mut non_atomic: Vec<String> = Vec::new();
+
+    fn scan_atomicity(dir: &Path, results: &mut Vec<String>) {
+        let entries = match fs::read_dir(dir) {
+            Ok(e) => e,
+            Err(_) => return,
+        };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                scan_atomicity(&path, results);
+            } else if path.extension().map_or(false, |e| e == "rs") {
+                let path_str = path.to_str().unwrap_or("");
+                if path_str.contains("test") || path_str.contains("check_handlers") {
+                    continue;
+                }
+                if let Ok(content) = fs::read_to_string(&path) {
+                    let is_hook_code = content.contains("hooks/pre-commit")
+                        || content.contains("hooks/pre-push");
+                    if !is_hook_code {
+                        continue;
+                    }
+                    let has_direct_write = content.contains("fs::write");
+                    let has_atomic =
+                        content.contains("rename") || content.contains("atomic_write");
+                    if has_direct_write && !has_atomic {
+                        let name = path.file_name().map(|f| f.to_string_lossy().to_string())
+                            .unwrap_or_default();
+                        results.push(name);
+                    }
+                }
+            }
+        }
+    }
+
+    scan_atomicity(&src_dir, &mut non_atomic);
+
+    if non_atomic.is_empty() {
+        ComplianceCheck {
+            name: "CB-1334: Hook Atomic Writes".into(),
+            status: CheckStatus::Pass,
+            message: "All hook writes use atomic pattern or no direct writes found".into(),
+            severity: Severity::Info,
+        }
+    } else {
+        ComplianceCheck {
+            name: "CB-1334: Hook Atomic Writes".into(),
+            status: CheckStatus::Warn,
+            message: format!(
+                "{} file(s) write hooks non-atomically (use write-then-rename): {}",
+                non_atomic.len(),
+                non_atomic.join(", ")
+            ),
+            severity: Severity::Warning,
+        }
+    }
+}
+
+/// CB-1331: Work Contract YAML Validity
+///
+/// Validates that active work contracts in .pmat-work/ have valid structure.
+pub(crate) fn check_work_contract_validity(project_path: &Path) -> ComplianceCheck {
+    let work_dir = project_path.join(".pmat-work");
+    if !work_dir.exists() {
+        return ComplianceCheck {
+            name: "CB-1331: Work Contract Validity".into(),
+            status: CheckStatus::Skip,
+            message: "No .pmat-work/ directory".into(),
+            severity: Severity::Info,
+        };
+    }
+
+    let mut valid = 0usize;
+    let mut invalid: Vec<String> = Vec::new();
+
+    let entries = match fs::read_dir(&work_dir) {
+        Ok(e) => e,
+        Err(_) => {
+            return ComplianceCheck {
+                name: "CB-1331: Work Contract Validity".into(),
+                status: CheckStatus::Warn,
+                message: "Could not read .pmat-work/".into(),
+                severity: Severity::Warning,
+            };
+        }
+    };
+
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if !path.is_dir() {
+            continue;
+        }
+        let contract = path.join("contract.json");
+        if !contract.exists() {
+            let name = path.file_name().map(|f| f.to_string_lossy().to_string())
+                .unwrap_or_default();
+            invalid.push(format!("{} (missing contract.json)", name));
+            continue;
+        }
+        // Validate JSON structure
+        match fs::read_to_string(&contract) {
+            Ok(content) => {
+                let parsed: Result<serde_json::Value, _> = serde_json::from_str(&content);
+                match parsed {
+                    Ok(v) => {
+                        if v.get("version").is_some() && v.get("work_item_id").is_some() {
+                            valid += 1;
+                        } else {
+                            let name = path.file_name().map(|f| f.to_string_lossy().to_string())
+                                .unwrap_or_default();
+                            invalid.push(format!("{} (missing version or work_item_id)", name));
+                        }
+                    }
+                    Err(_) => {
+                        let name = path.file_name().map(|f| f.to_string_lossy().to_string())
+                            .unwrap_or_default();
+                        invalid.push(format!("{} (invalid JSON)", name));
+                    }
+                }
+            }
+            Err(_) => {
+                let name = path.file_name().map(|f| f.to_string_lossy().to_string())
+                    .unwrap_or_default();
+                invalid.push(format!("{} (unreadable)", name));
+            }
+        }
+    }
+
+    if invalid.is_empty() {
+        ComplianceCheck {
+            name: "CB-1331: Work Contract Validity".into(),
+            status: CheckStatus::Pass,
+            message: format!("{} valid work contract(s)", valid),
+            severity: Severity::Info,
+        }
+    } else {
+        ComplianceCheck {
+            name: "CB-1331: Work Contract Validity".into(),
+            status: CheckStatus::Warn,
+            message: format!(
+                "{} valid, {} invalid: {}",
+                valid,
+                invalid.len(),
+                invalid.join("; ")
+            ),
+            severity: Severity::Warning,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -885,5 +1051,60 @@ mod tests {
 
         let check = check_hook_no_injection(dir.path());
         assert_eq!(check.status, CheckStatus::Pass);
+    }
+
+    #[test]
+    fn test_cb1334_no_src() {
+        let dir = tempdir().unwrap();
+        let check = check_hook_atomic_writes(dir.path());
+        assert_eq!(check.status, CheckStatus::Skip);
+    }
+
+    #[test]
+    fn test_cb1334_atomic_write() {
+        let dir = tempdir().unwrap();
+        let src = dir.path().join("src");
+        fs::create_dir_all(&src).unwrap();
+        fs::write(
+            src.join("hooks.rs"),
+            "fn install() { let p = \"hooks/pre-commit\"; fs::write(&tmp, c); fs::rename(&tmp, p); }",
+        ).unwrap();
+
+        let check = check_hook_atomic_writes(dir.path());
+        assert_eq!(check.status, CheckStatus::Pass);
+    }
+
+    #[test]
+    fn test_cb1331_no_work_dir() {
+        let dir = tempdir().unwrap();
+        let check = check_work_contract_validity(dir.path());
+        assert_eq!(check.status, CheckStatus::Skip);
+    }
+
+    #[test]
+    fn test_cb1331_valid_contract() {
+        let dir = tempdir().unwrap();
+        let work = dir.path().join(".pmat-work/PMAT-001");
+        fs::create_dir_all(&work).unwrap();
+        fs::write(
+            work.join("contract.json"),
+            r#"{"version":"5.0","work_item_id":"PMAT-001"}"#,
+        ).unwrap();
+
+        let check = check_work_contract_validity(dir.path());
+        assert_eq!(check.status, CheckStatus::Pass);
+        assert!(check.message.contains("1 valid"));
+    }
+
+    #[test]
+    fn test_cb1331_invalid_json() {
+        let dir = tempdir().unwrap();
+        let work = dir.path().join(".pmat-work/PMAT-BAD");
+        fs::create_dir_all(&work).unwrap();
+        fs::write(work.join("contract.json"), "not json").unwrap();
+
+        let check = check_work_contract_validity(dir.path());
+        assert_eq!(check.status, CheckStatus::Warn);
+        assert!(check.message.contains("invalid JSON"));
     }
 }
