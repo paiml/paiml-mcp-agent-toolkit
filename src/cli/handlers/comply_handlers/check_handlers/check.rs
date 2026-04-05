@@ -515,6 +515,17 @@ pub(crate) async fn handle_check(
         "cb-1343",
         comply_config,
     ));
+    // Phase 4: Differential obligation verification
+    checks.push(filter_check_by_config(
+        check_differential_obligations(project_path),
+        "cb-1350",
+        comply_config,
+    ));
+    checks.push(filter_check_by_config(
+        check_binding_index_freshness(project_path),
+        "cb-1351",
+        comply_config,
+    ));
 
     let report = build_compliance_report(checks, project_version, failures_only);
     let failures = report

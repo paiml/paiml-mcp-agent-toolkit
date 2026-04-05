@@ -335,6 +335,8 @@ Extend TDG to grade non-code assets contributing to project-level aggregate:
 | CB-1341 | 8 | Error | Spec numbers from tooling |
 | CB-1342 | 8 | Error | Codegen compiles |
 | CB-1343 | 8 | Warning | Assertion placement after guards |
+| CB-1350 | 4 | Warning | Differential obligations (staged files → binding lookup) |
+| CB-1351 | 4 | Error | Binding index freshness (7d warn, 30d error) |
 
 ---
 
@@ -347,7 +349,7 @@ Extend TDG to grade non-code assets contributing to project-level aggregate:
 | 2 | L-Level Ratchet | Phase 0 | **CB-1330 done** |
 | 3a | README layout contract (CB-1320) | Phase 0 | **CB-1320 done** |
 | 3b | Remaining asset contracts (CB-1321..1326) | Phase 3a | **All 6 done** (CB-1321..1326) |
-| 4 | Differential obligation verification | Phase 0, 2 | Planned |
+| 4 | Differential obligation verification | Phase 0, 2 | **CB-1350, CB-1351 done** |
 | 5 | Assume-guarantee chains | Phase 1, 4 | Planned |
 | 6 | `pmat query --contracts` enrichment | Phase 0 | Planned |
 | 7 | Hook subsystem consolidation (CB-1333..1337) | None | **All 5 done**. H-3 fixed. Dogfood: 7 writers, 3 injections, non-atomic writes |
@@ -391,6 +393,7 @@ Extend TDG to grade non-code assets contributing to project-level aggregate:
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.8 | 2026-04-05 | Phase 4: CB-1350 (differential obligations), CB-1351 (binding index freshness). **23/24 checks implemented** (CB-1342 deferred). 49 tests |
 | 1.7 | 2026-04-05 | CB-1323 (forjar), CB-1341 (spec accuracy). **All 21 checks implemented** except CB-1342 (needs pv tooling). 40 tests |
 | 1.6 | 2026-04-05 | CB-1322 (SVG), CB-1324 (mdBook). 19/21 live |
 | 1.5 | 2026-04-05 | Phase 2+8: CB-1330, CB-1338..1340, CB-1343. 17/21 live. aprender: 85 bindings 0 ghosts, 16.1% penetration |

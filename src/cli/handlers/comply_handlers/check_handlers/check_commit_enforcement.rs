@@ -1502,6 +1502,273 @@ pub(crate) fn check_spec_number_accuracy(project_path: &Path) -> ComplianceCheck
     }
 }
 
+/// CB-1350: Differential Obligation Verification
+///
+/// At commit time, only obligations whose bound functions were modified need
+/// re-checking. Reads `.pmat/binding-index.json` (file→binding reverse index)
+/// and cross-references with staged files to identify affected obligations.
+/// Reports unverified obligations for modified bindings.
+///
+/// Spec: Phase 4 of commit-level-contract-enforcement.md
+/// Basis: Mugnier et al. (OOPSLA 2025) proof brittleness; Cedar (ICSE 2025)
+pub(crate) fn check_differential_obligations(project_path: &Path) -> ComplianceCheck {
+    let binding_index_path = project_path.join(".pmat/binding-index.json");
+
+    // Skip if no binding index exists
+    if !binding_index_path.exists() {
+        // Also try contracts/ location
+        let alt = project_path.join("contracts/binding-index.json");
+        if !alt.exists() {
+            return ComplianceCheck {
+                name: "CB-1350: Differential Obligations".into(),
+                status: CheckStatus::Skip,
+                message: "No .pmat/binding-index.json (run pmat comply refresh-bindings)".into(),
+                severity: Severity::Info,
+            };
+        }
+    }
+
+    let idx_path = if binding_index_path.exists() {
+        binding_index_path
+    } else {
+        project_path.join("contracts/binding-index.json")
+    };
+
+    let content = match fs::read_to_string(&idx_path) {
+        Ok(c) => c,
+        Err(_) => {
+            return ComplianceCheck {
+                name: "CB-1350: Differential Obligations".into(),
+                status: CheckStatus::Warn,
+                message: "Could not read binding-index.json".into(),
+                severity: Severity::Warning,
+            };
+        }
+    };
+
+    let index: serde_json::Value = match serde_json::from_str(&content) {
+        Ok(v) => v,
+        Err(_) => {
+            return ComplianceCheck {
+                name: "CB-1350: Differential Obligations".into(),
+                status: CheckStatus::Warn,
+                message: "binding-index.json is not valid JSON".into(),
+                severity: Severity::Warning,
+            };
+        }
+    };
+
+    // Get staged files via git diff --cached
+    let staged_files = get_staged_files(project_path);
+    if staged_files.is_empty() {
+        return ComplianceCheck {
+            name: "CB-1350: Differential Obligations".into(),
+            status: CheckStatus::Pass,
+            message: "No staged files (no obligations to check)".into(),
+            severity: Severity::Info,
+        };
+    }
+
+    // Cross-reference staged files against binding index
+    // binding-index.json maps: { "file_path": ["binding_name", ...], ... }
+    let bindings_obj = match index.as_object() {
+        Some(obj) => obj,
+        None => {
+            return ComplianceCheck {
+                name: "CB-1350: Differential Obligations".into(),
+                status: CheckStatus::Warn,
+                message: "binding-index.json is not a JSON object".into(),
+                severity: Severity::Warning,
+            };
+        }
+    };
+
+    let mut affected_bindings: Vec<String> = Vec::new();
+    let mut total_bindings = 0usize;
+
+    for (file_key, bindings) in bindings_obj {
+        if let Some(arr) = bindings.as_array() {
+            total_bindings += arr.len();
+            // Check if any staged file matches this binding's source
+            if staged_files.iter().any(|sf| file_key.contains(sf) || sf.contains(file_key)) {
+                for b in arr {
+                    if let Some(name) = b.as_str() {
+                        affected_bindings.push(name.to_string());
+                    } else if let Some(obj) = b.as_object() {
+                        if let Some(name) = obj.get("name").and_then(|n| n.as_str()) {
+                            affected_bindings.push(name.to_string());
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if total_bindings == 0 {
+        return ComplianceCheck {
+            name: "CB-1350: Differential Obligations".into(),
+            status: CheckStatus::Pass,
+            message: "Binding index is empty (no obligations tracked)".into(),
+            severity: Severity::Info,
+        };
+    }
+
+    if affected_bindings.is_empty() {
+        ComplianceCheck {
+            name: "CB-1350: Differential Obligations".into(),
+            status: CheckStatus::Pass,
+            message: format!(
+                "{} staged file(s), 0/{} binding(s) affected",
+                staged_files.len(),
+                total_bindings
+            ),
+            severity: Severity::Info,
+        }
+    } else {
+        // Check if there's a cached verdict for affected bindings
+        let verdict_path = project_path.join(".pmat/obligation-verdicts.json");
+        let verified = if let Ok(verdicts_str) = fs::read_to_string(&verdict_path) {
+            if let Ok(verdicts) = serde_json::from_str::<serde_json::Value>(&verdicts_str) {
+                affected_bindings.iter().filter(|b| {
+                    verdicts.get(b.as_str()).and_then(|v| v.as_str()) == Some("pass")
+                }).count()
+            } else {
+                0
+            }
+        } else {
+            0
+        };
+
+        let unverified = affected_bindings.len() - verified;
+        if unverified == 0 {
+            ComplianceCheck {
+                name: "CB-1350: Differential Obligations".into(),
+                status: CheckStatus::Pass,
+                message: format!(
+                    "{} affected binding(s), all verified from cache",
+                    affected_bindings.len()
+                ),
+                severity: Severity::Info,
+            }
+        } else {
+            let display: Vec<&str> = affected_bindings.iter().take(5).map(|s| s.as_str()).collect();
+            ComplianceCheck {
+                name: "CB-1350: Differential Obligations".into(),
+                status: CheckStatus::Warn,
+                message: format!(
+                    "{} affected binding(s), {} unverified: {}{}",
+                    affected_bindings.len(),
+                    unverified,
+                    display.join(", "),
+                    if affected_bindings.len() > 5 { "..." } else { "" }
+                ),
+                severity: Severity::Warning,
+            }
+        }
+    }
+}
+
+/// Get staged files from git diff --cached --name-only.
+/// Returns relative file paths. Falls back to empty vec if git not available.
+fn get_staged_files(project_path: &Path) -> Vec<String> {
+    let output = std::process::Command::new("git")
+        .args(["diff", "--cached", "--name-only"])
+        .current_dir(project_path)
+        .output();
+
+    match output {
+        Ok(o) if o.status.success() => {
+            String::from_utf8_lossy(&o.stdout)
+                .lines()
+                .filter(|l| !l.is_empty())
+                .map(|l| l.to_string())
+                .collect()
+        }
+        _ => Vec::new(),
+    }
+}
+
+/// CB-1351: Binding Index Freshness
+///
+/// Checks that `.pmat/binding-index.json` exists and is not stale.
+/// Staleness: >7 days = warning, >30 days = error.
+/// Freshness is essential for O(1) differential obligation checks.
+pub(crate) fn check_binding_index_freshness(project_path: &Path) -> ComplianceCheck {
+    let idx_path = project_path.join(".pmat/binding-index.json");
+    let alt_path = project_path.join("contracts/binding-index.json");
+
+    let path = if idx_path.exists() {
+        idx_path
+    } else if alt_path.exists() {
+        alt_path
+    } else {
+        return ComplianceCheck {
+            name: "CB-1351: Binding Index Freshness".into(),
+            status: CheckStatus::Skip,
+            message: "No binding-index.json found".into(),
+            severity: Severity::Info,
+        };
+    };
+
+    let metadata = match fs::metadata(&path) {
+        Ok(m) => m,
+        Err(_) => {
+            return ComplianceCheck {
+                name: "CB-1351: Binding Index Freshness".into(),
+                status: CheckStatus::Warn,
+                message: "Could not read binding-index.json metadata".into(),
+                severity: Severity::Warning,
+            };
+        }
+    };
+
+    let modified = match metadata.modified() {
+        Ok(t) => t,
+        Err(_) => {
+            return ComplianceCheck {
+                name: "CB-1351: Binding Index Freshness".into(),
+                status: CheckStatus::Warn,
+                message: "Could not determine binding-index.json age".into(),
+                severity: Severity::Warning,
+            };
+        }
+    };
+
+    let age = std::time::SystemTime::now()
+        .duration_since(modified)
+        .unwrap_or_default();
+    let days = age.as_secs() / 86400;
+
+    if days > 30 {
+        ComplianceCheck {
+            name: "CB-1351: Binding Index Freshness".into(),
+            status: CheckStatus::Fail,
+            message: format!(
+                "binding-index.json is {} days old (>30 days, run pmat comply refresh-bindings)",
+                days
+            ),
+            severity: Severity::Error,
+        }
+    } else if days > 7 {
+        ComplianceCheck {
+            name: "CB-1351: Binding Index Freshness".into(),
+            status: CheckStatus::Warn,
+            message: format!(
+                "binding-index.json is {} days old (>7 days, consider refreshing)",
+                days
+            ),
+            severity: Severity::Warning,
+        }
+    } else {
+        ComplianceCheck {
+            name: "CB-1351: Binding Index Freshness".into(),
+            status: CheckStatus::Pass,
+            message: format!("binding-index.json fresh ({} day(s) old)", days),
+            severity: Severity::Info,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1919,5 +2186,91 @@ mod tests {
         let check = check_spec_number_accuracy(dir.path());
         assert_eq!(check.status, CheckStatus::Warn);
         assert!(check.message.contains("big.md"));
+    }
+
+    // --- Phase 4: Differential Obligation Verification ---
+
+    #[test]
+    fn test_cb1350_no_binding_index() {
+        let dir = tempdir().unwrap();
+        let check = check_differential_obligations(dir.path());
+        assert_eq!(check.status, CheckStatus::Skip);
+        assert!(check.message.contains("binding-index.json"));
+    }
+
+    #[test]
+    fn test_cb1350_empty_binding_index() {
+        let dir = tempdir().unwrap();
+        let pmat = dir.path().join(".pmat");
+        fs::create_dir(&pmat).unwrap();
+        fs::write(pmat.join("binding-index.json"), "{}").unwrap();
+
+        let check = check_differential_obligations(dir.path());
+        // No staged files in a tempdir (not a git repo), so should pass
+        assert_eq!(check.status, CheckStatus::Pass);
+    }
+
+    #[test]
+    fn test_cb1350_invalid_json() {
+        let dir = tempdir().unwrap();
+        let pmat = dir.path().join(".pmat");
+        fs::create_dir(&pmat).unwrap();
+        fs::write(pmat.join("binding-index.json"), "not json").unwrap();
+
+        let check = check_differential_obligations(dir.path());
+        assert_eq!(check.status, CheckStatus::Warn);
+        assert!(check.message.contains("not valid JSON"));
+    }
+
+    #[test]
+    fn test_cb1350_binding_index_with_entries() {
+        let dir = tempdir().unwrap();
+        let pmat = dir.path().join(".pmat");
+        fs::create_dir(&pmat).unwrap();
+        fs::write(
+            pmat.join("binding-index.json"),
+            r#"{"src/lib.rs": ["validate_input", "parse_config"]}"#,
+        ).unwrap();
+
+        // Not a git repo, so no staged files → pass
+        let check = check_differential_obligations(dir.path());
+        assert_eq!(check.status, CheckStatus::Pass);
+    }
+
+    #[test]
+    fn test_cb1351_no_binding_index() {
+        let dir = tempdir().unwrap();
+        let check = check_binding_index_freshness(dir.path());
+        assert_eq!(check.status, CheckStatus::Skip);
+    }
+
+    #[test]
+    fn test_cb1351_fresh_binding_index() {
+        let dir = tempdir().unwrap();
+        let pmat = dir.path().join(".pmat");
+        fs::create_dir(&pmat).unwrap();
+        fs::write(pmat.join("binding-index.json"), "{}").unwrap();
+
+        let check = check_binding_index_freshness(dir.path());
+        assert_eq!(check.status, CheckStatus::Pass);
+        assert!(check.message.contains("fresh"));
+    }
+
+    #[test]
+    fn test_cb1351_contracts_alt_path() {
+        let dir = tempdir().unwrap();
+        let contracts = dir.path().join("contracts");
+        fs::create_dir(&contracts).unwrap();
+        fs::write(contracts.join("binding-index.json"), "{}").unwrap();
+
+        let check = check_binding_index_freshness(dir.path());
+        assert_eq!(check.status, CheckStatus::Pass);
+    }
+
+    #[test]
+    fn test_get_staged_files_non_git() {
+        let dir = tempdir().unwrap();
+        let files = get_staged_files(dir.path());
+        assert!(files.is_empty());
     }
 }
