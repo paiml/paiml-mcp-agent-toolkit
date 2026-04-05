@@ -789,12 +789,18 @@ pub(crate) fn check_work_contract_validity(project_path: &Path) -> ComplianceChe
                 let parsed: Result<serde_json::Value, _> = serde_json::from_str(&content);
                 match parsed {
                     Ok(v) => {
-                        if v.get("version").is_some() && v.get("work_item_id").is_some() {
+                        // Accept v4 contracts (work_item_id only) and v5 (version + work_item_id)
+                        let has_id = v.get("work_item_id").is_some();
+                        let has_claims = v.get("claims").is_some()
+                            || v.get("require").is_some()
+                            || v.get("ensure").is_some()
+                            || v.get("falsifiable_claims").is_some();
+                        if has_id || has_claims {
                             valid += 1;
                         } else {
                             let name = path.file_name().map(|f| f.to_string_lossy().to_string())
                                 .unwrap_or_default();
-                            invalid.push(format!("{} (missing version or work_item_id)", name));
+                            invalid.push(format!("{} (missing work_item_id and claims)", name));
                         }
                     }
                     Err(_) => {
