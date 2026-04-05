@@ -147,6 +147,8 @@ Files exceeding line limits are flagged:
 
 ## Muda-to-Code Mapping (Planned)
 
+> Tracked in PMAT-540 (repo-health enhancements).
+
 Currently Muda waste categories are abstract project-level numbers. Improvement:
 map each waste type to concrete files using existing PMAT data.
 

@@ -74,6 +74,8 @@ Rust Tooling & CI/CD (130 pts), and Testing Excellence (20 pts) cover similar gr
 
 ### Planned: Absorb into Rust Project Score v3.0
 
+> Tracked in PMAT-510 (popper-score → rust-project-score absorption).
+
 **Phase 1 — Keep gateway, deprecate command**: `pmat popper-score` emits deprecation
 warning pointing to `pmat rust-project-score`. Category A (Falsifiability >= 60%) becomes
 a precondition in Rust Project Score — if it fails, the project gets grade F regardless

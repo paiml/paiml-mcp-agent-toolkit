@@ -238,6 +238,8 @@ held at 0.7 — quality improving without regression."
 
 ## Planned: `pmat test --record`
 
+> Tracked in PMAT-540 (SWE-CI evolution — pmat test --record implementation).
+
 ### Design
 
 New subcommand that wraps `cargo test`, parses output, and writes test data:
