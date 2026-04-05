@@ -75,6 +75,13 @@ pmat query --regex "fn\s+handle_\w+" --limit 10
 pmat query --literal "unwrap()" --limit 10
 ```
 
+### Browse Mode (empty query)
+
+When query is empty, results are sorted by PageRank for enrichment-only flags
+(e.g., `pmat query --churn --limit 10`). All QueryOptions filters
+(`--exclude-file`, `--exclude`, `--language`, etc.) are applied via
+`passes_filters()` — fixed in v3.11.1 (previously bypassed).
+
 ### Coverage Gaps (`--coverage-gaps`)
 
 ```bash
@@ -82,6 +89,10 @@ pmat query --coverage-gaps --rank-by impact --limit 20
 ```
 
 Impact score: `missed_lines * pagerank / complexity`
+
+Test fixture directories (`comprehensive_language_test/`, `fixtures/`, `testdata/`)
+are excluded from coverage-gaps results to prevent non-project files from ranking
+above actual source code.
 
 ## Enrichment Flags
 

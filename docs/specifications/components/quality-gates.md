@@ -87,6 +87,16 @@ Using Aprender ML for predicting quality issues:
 ### Implementation
 
 Hook runs `pmat analyze complexity --file` using `language_analyzer.rs` RustAnalyzer.
+Pre-commit also gates on `cargo fmt --check` (PMAT-509, implemented).
+
+### Current State (v3.11.1)
+
+`pmat quality-gate` reports 157 total violations:
+- 142 complexity violations (most at 24 vs 23 threshold — 1 point over recommended)
+- 15 SATD violations (informational, no critical)
+- 0 dead code, 0 security, 0 duplicate violations
+
+8 functions with cognitive complexity >30 were reduced to <25 in v3.11.1.
 
 ### Known Issues
 

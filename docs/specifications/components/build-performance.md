@@ -50,6 +50,18 @@ Scientific approach to dependency removal:
 
 ## Dependency Policy
 
+### Sovereign Stack Versions (v3.11.1)
+
+| Crate | Version | Purpose |
+|-------|---------|---------|
+| trueno | 0.17 | SIMD/GPU compute |
+| trueno-graph | 0.1.17 | CSR graph, PageRank |
+| trueno-db | 0.3.15 | Columnar storage |
+| trueno-rag | 0.2 | RAG pipeline |
+| trueno-viz | 0.2 | Terminal visualization |
+| aprender | 0.27.5 | ML, stats, text similarity |
+| organizational-intelligence-plugin | 0.3.4 | GitHub org analysis |
+
 ### Sovereign Stack Priority
 
 | External Dep | Batuta Alternative | Action |

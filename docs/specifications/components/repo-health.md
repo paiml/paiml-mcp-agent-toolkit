@@ -30,7 +30,9 @@ pmat rust-project-score --format json -o score.json
 
 ### Real-World Assessment
 
-**Current score: 193.5/289 (75.5%, Grade B).** Category breakdown reveals imbalance:
+**Current score: 193.5/289 (75.5%, Grade B).** Known Defects (100%), GPU/SIMD (100%),
+Performance (100%) are perfect. Code Quality (46%) and Formal Verification (43%)
+are weakest. Category breakdown reveals imbalance:
 
 | Category | % of Total | Assessment |
 |----------|-----------|------------|

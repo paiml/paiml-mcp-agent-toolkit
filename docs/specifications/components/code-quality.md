@@ -147,6 +147,37 @@ Evidence-based patterns from high-scoring Rust projects:
 - Documentation: doc-tests for all public APIs
 - Performance: benchmark before optimizing
 
+## Defect Detection Accuracy
+
+### String Literal False-Positive Fix (v3.11.1)
+
+`detect_unwraps()` and `count_unwraps()` now strip string literal contents before
+regex matching. Previously, documentation text like `"Detects .unwrap() panics"`
+was counted as a real `.unwrap()` defect, causing false F-grades on data-heavy
+files (e.g., `src/explain.rs` check explanation registry).
+
+Implementation: `strip_string_literals()` in `defect_detector_rust.rs` replaces
+quoted string contents with spaces while preserving column offsets, then runs the
+`.unwrap()` regex on the stripped line. Comments (`//`, `///`, `//!`, `/* */`)
+were already skipped.
+
+### Cognitive Complexity Reductions (v3.11.1)
+
+8 functions refactored below the 25-point cognitive complexity threshold:
+
+| Function | File | Before | After |
+|----------|------|--------|-------|
+| `collect` | `oracle/signal_collector_impls.rs` | 41 | <25 |
+| `analyze_unsafe_in_content` | `rust_project_score/code_quality_scoring_heuristics.rs` | 38 | <25 |
+| `handle_fs_event` | `unified_quality/foundation_impl.rs` | 32 | <25 |
+| `analyze_project` | `tdg/analyzer_simple_core.rs` | 29 | <25 |
+| `check_semver` | `infra_score/scorers/deployment_release.rs` | 45 | <25 |
+| `count_yaml_files_recursive` | `infra_score/scorers/provable_contracts.rs` | 39 | <25 |
+| `check_pinned_actions` | `infra_score/scorers/build_reliability.rs` | 35 | <25 |
+| `check_dangerous_workflow` | `infra_score/scorers/supply_chain.rs` | 34 | <25 |
+
+Quality gate violations reduced from 165 to 157.
+
 ## Key Files
 
 | File | Purpose |
@@ -154,6 +185,7 @@ Evidence-based patterns from high-scoring Rust projects:
 | `src/cli/handlers/five_whys_handlers.rs` | Five Whys CLI handler |
 | `src/services/language_analyzer.rs` | Complexity analysis |
 | `src/services/satd_detector/mod.rs` | SATD detection |
+| `src/services/defect_detector_rust.rs` | Unwrap/panic defect detection |
 | `src/services/lightweight_provability_analyzer.rs` | Provability analysis |
 
 ## References
