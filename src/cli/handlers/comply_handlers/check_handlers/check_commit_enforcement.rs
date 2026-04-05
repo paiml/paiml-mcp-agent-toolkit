@@ -1128,7 +1128,7 @@ pub(crate) fn check_verification_ratchet(project_path: &Path) -> ComplianceCheck
 
 /// Extract numeric level from "target_level: L3" or "current_level: L1" patterns.
 /// Count `{` and `}` on a line, ignoring those inside string/char literals.
-/// Used by CB-1333/CB-1334 brace-depth tracking for #[cfg(test)] detection.
+/// Handles Rust string forms: "...", '...', r"...", r#"..."#, r##"..."## etc.
 /// Returns (open_count, close_count).
 fn count_braces_outside_literals(line: &str) -> (i64, i64) {
     let mut opens = 0i64;
@@ -1136,22 +1136,65 @@ fn count_braces_outside_literals(line: &str) -> (i64, i64) {
     let mut in_string = false;
     let mut in_char = false;
     let mut escape = false;
-    for c in line.chars() {
+    let mut raw_hashes = 0usize; // For raw strings, number of # delimiters; 0 = not raw
+    let bytes = line.as_bytes();
+    let mut i = 0;
+    while i < bytes.len() {
+        let b = bytes[i];
+        // Detect start of raw string: r#...#"  or r"
+        if !in_string && !in_char && b == b'r' {
+            // Look ahead for ' or " preceded by optional #s
+            let mut j = i + 1;
+            let mut hashes = 0;
+            while j < bytes.len() && bytes[j] == b'#' {
+                hashes += 1;
+                j += 1;
+            }
+            if j < bytes.len() && bytes[j] == b'"' {
+                in_string = true;
+                raw_hashes = hashes;
+                i = j + 1;
+                continue;
+            }
+        }
         if escape {
             escape = false;
+            i += 1;
             continue;
         }
-        if c == '\\' && (in_string || in_char) {
+        if b == b'\\' && (in_string || in_char) && raw_hashes == 0 {
             escape = true;
+            i += 1;
             continue;
         }
-        match c {
-            '"' if !in_char => in_string = !in_string,
-            '\'' if !in_string => in_char = !in_char,
-            '{' if !in_string && !in_char => opens += 1,
-            '}' if !in_string && !in_char => closes += 1,
-            _ => {}
+        if in_string && b == b'"' {
+            // Regular string ends at unescaped "
+            if raw_hashes == 0 {
+                in_string = false;
+            } else {
+                // Raw string ends at " followed by raw_hashes #s
+                let mut k = i + 1;
+                let mut matched = 0;
+                while k < bytes.len() && matched < raw_hashes && bytes[k] == b'#' {
+                    matched += 1;
+                    k += 1;
+                }
+                if matched == raw_hashes {
+                    in_string = false;
+                    raw_hashes = 0;
+                    i = k;
+                    continue;
+                }
+            }
+        } else if !in_string && !in_char && b == b'"' {
+            in_string = true;
+        } else if b == b'\'' && !in_string {
+            in_char = !in_char;
+        } else if !in_string && !in_char {
+            if b == b'{' { opens += 1; }
+            else if b == b'}' { closes += 1; }
         }
+        i += 1;
     }
     (opens, closes)
 }
@@ -3255,6 +3298,23 @@ mod tests {
         assert_eq!(count_braces_outside_literals(r#"fn f() { let s = "{"; }"#), (1, 1));
         // Escaped quotes in strings
         assert_eq!(count_braces_outside_literals(r#"let s = "\"{\"";"#), (0, 0));
+        // Raw strings r"..." — internal braces ignored
+        assert_eq!(count_braces_outside_literals(r##"let s = r"{{{{";"##), (0, 0));
+        // Raw string r#"..."# with embedded quotes and braces
+        assert_eq!(
+            count_braces_outside_literals(r######"let s = r#"end" fn foo() { "start"#;"######),
+            (0, 0)
+        );
+        // Raw string should NOT leak its content as real braces
+        assert_eq!(
+            count_braces_outside_literals(r##"fn f() { let s = r#"}"#; }"##),
+            (1, 1)
+        );
+        // r##"..."## — double hash raw strings
+        assert_eq!(
+            count_braces_outside_literals(r####"let s = r##"contains # and {"##;"####),
+            (0, 0)
+        );
     }
 
     #[test]
