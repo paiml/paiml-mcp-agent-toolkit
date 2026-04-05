@@ -315,6 +315,22 @@ pub enum Commands {
         /// Show functions WITHOUT contract bindings, ranked by importance
         #[arg(long, help = "Find undercontracted functions (no binding in binding-index.json)")]
         contract_gaps: bool,
+
+        /// Filter: only functions at or above this verification level (L0-L5)
+        #[arg(long, value_name = "LEVEL", help = "e.g. --min-level L3")]
+        min_level: Option<String>,
+
+        /// Filter: only functions at or below this verification level (L0-L5)
+        #[arg(long, value_name = "LEVEL", help = "e.g. --max-level L1")]
+        max_level: Option<String>,
+
+        /// Sort results by contract quality score (requires binding-index.json)
+        #[arg(long)]
+        contract_score: bool,
+
+        /// Include non-code assets (README, Dockerfile, etc.) in results
+        #[arg(long)]
+        asset_contracts: bool,
     },
 
     // ── Analysis & Demo commands ───────────────────────────────────

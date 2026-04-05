@@ -52,6 +52,7 @@
 // Service architecture (SPECIFICATION.md Section 2)
 pub mod analysis_service;
 pub mod analyzer; // Toyota Way: Unified analyzer framework
+pub mod asset_validator; // R-10: Non-code asset layout validation service
 pub mod ast; // Toyota Way: Unified AST module (consolidates 25+ AST files)
 pub mod commit_classifier; // Sovereign Stack: ML-based commit classification
 pub mod contract_index; // R-9: O(1) contract binding lookup from binding-index.json

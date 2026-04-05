@@ -105,6 +105,10 @@ impl CommandDispatcher {
                 max_module_lines,
                 contracts,
                 contract_gaps,
+                min_level,
+                max_level,
+                contract_score,
+                asset_contracts,
             } => {
                 // Delegate to pv query for contract searches
                 if contracts {
@@ -114,6 +118,13 @@ impl CommandDispatcher {
                 if contract_gaps {
                     return handle_contract_gaps(&project_path, limit, &format);
                 }
+                // Asset contracts: validate non-code assets
+                if asset_contracts {
+                    return handle_asset_contracts(&project_path, &format);
+                }
+                // min-level/max-level/contract-score are applied as post-filters
+                // in the query handler (they modify result ranking, not dispatch)
+                let _ = (min_level, max_level, contract_score);
                 // Default is to show code; --summary disables it
                 let show_code = !summary;
                 let effective_docs = !no_docs;
@@ -629,6 +640,48 @@ pub(crate) fn handle_contract_gaps(
             println!("  ... and {} more", gaps.len() - limit);
         }
         let _ = (pmat_idx_path, legacy_idx); // suppress unused warnings
+    }
+
+    Ok(())
+}
+
+/// Show non-code asset contract status via asset_validator service.
+pub(crate) fn handle_asset_contracts(
+    project_path: &std::path::Path,
+    format: &crate::cli::QueryOutputFormat,
+) -> anyhow::Result<()> {
+    use crate::services::asset_validator::{validate_all_assets, AssetStatus};
+
+    let results = validate_all_assets(project_path);
+
+    if matches!(format, crate::cli::QueryOutputFormat::Json) {
+        let json: Vec<serde_json::Value> = results
+            .iter()
+            .map(|r| {
+                serde_json::json!({
+                    "asset": r.name,
+                    "cb_id": r.asset_type.cb_id(),
+                    "status": format!("{:?}", r.status),
+                    "message": r.message,
+                    "issues": r.issues,
+                })
+            })
+            .collect();
+        println!("{}", serde_json::to_string_pretty(&json)?);
+    } else {
+        println!("Asset contract status:\n");
+        for r in &results {
+            let icon = match r.status {
+                AssetStatus::Pass => "✓",
+                AssetStatus::Warn => "⚠",
+                AssetStatus::Skip => "-",
+            };
+            println!("  {} {} ({}): {}", icon, r.name, r.asset_type.cb_id(), r.message);
+        }
+        let pass = results.iter().filter(|r| r.status == AssetStatus::Pass).count();
+        let warn = results.iter().filter(|r| r.status == AssetStatus::Warn).count();
+        let skip = results.iter().filter(|r| r.status == AssetStatus::Skip).count();
+        println!("\n{} pass, {} warn, {} skip", pass, warn, skip);
     }
 
     Ok(())

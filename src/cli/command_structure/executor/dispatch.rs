@@ -142,6 +142,10 @@ impl CommandExecutor {
                 max_module_lines,
                 contracts,
                 contract_gaps,
+                min_level,
+                max_level,
+                contract_score,
+                asset_contracts,
             } => {
                 if contracts {
                     return crate::cli::command_dispatcher::handle_pv_query_delegation(
@@ -155,6 +159,13 @@ impl CommandExecutor {
                         &format,
                     );
                 }
+                if asset_contracts {
+                    return crate::cli::command_dispatcher::handle_asset_contracts(
+                        &project_path,
+                        &format,
+                    );
+                }
+                let _ = (min_level, max_level, contract_score);
                 // Default is to show code; --summary disables it
                 let show_code = !summary;
                 let effective_docs = !no_docs;
