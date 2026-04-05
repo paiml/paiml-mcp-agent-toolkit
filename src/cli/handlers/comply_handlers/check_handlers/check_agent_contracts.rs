@@ -141,8 +141,9 @@ pub(crate) fn check_agent_contract_falsifiability(project_path: &Path) -> Compli
                     || content.contains("\"ensure\":")
                     || content.contains("\"invariant\":");
 
-                // Check for falsifiable claims
-                let has_claims = content.contains("\"claims\":");
+                // Check for falsifiable claims (v4 "claims" or v5 "falsifiable_claims")
+                let has_claims = content.contains("\"claims\":")
+                    || content.contains("\"falsifiable_claims\":");
 
                 if (has_evidence && has_dbc) || has_claims {
                     contracts_with_evidence += 1;
@@ -666,14 +667,21 @@ pub(crate) fn check_agent_evidence_executable(project_path: &Path) -> Compliance
             if let Ok(content) = fs::read_to_string(&contract_path) {
                 let id = entry.file_name().to_string_lossy().to_string();
 
-                // Check for Popperian falsification methods
+                // Check for Popperian falsification methods (named variants)
                 let has_methods = valid_methods
                     .iter()
                     .any(|m| content.contains(m));
 
+                // Check for falsification_method fields (v5.0 arbitrary commands/strings)
+                let has_falsification_method = content.contains("\"falsification_method\":")
+                    && !content.contains("\"falsification_method\": \"\"");
+
                 // Check for evidence command strings
                 let has_evidence_cmds = content.contains("\"evidence\":")
                     && !content.contains("\"evidence\": \"\"");
+
+                // Any of these counts as executable evidence
+                let has_methods = has_methods || has_falsification_method;
 
                 // Check for placeholder-dominated evidence
                 let is_placeholder = has_evidence_cmds
