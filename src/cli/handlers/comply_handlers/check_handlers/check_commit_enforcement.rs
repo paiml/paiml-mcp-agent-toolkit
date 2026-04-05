@@ -1387,12 +1387,53 @@ pub(crate) fn check_enforcement_penetration(project_path: &Path) -> ComplianceCh
             if path.is_dir() && !path.to_str().unwrap_or("").contains("test") {
                 count_enforcement(&path, calls, fns);
             } else if path.extension().is_some_and(|e| e == "rs") {
+                // Skip test files by filename
+                let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+                if name.contains("test") || name.contains("_tests") {
+                    continue;
+                }
                 if let Ok(content) = fs::read_to_string(&path) {
+                    // Skip #[cfg(test)] modules using the same pending_test logic
+                    let mut pending_test = false;
+                    let mut in_test_module = false;
+                    let mut brace_depth_at_test = 0i32;
+                    let mut brace_depth = 0i32;
                     for line in content.lines() {
-                        if line.contains("fn ") && !line.trim().starts_with("//") {
+                        let t = line.trim();
+                        if t.contains("#[cfg(test)]") {
+                            pending_test = true;
+                        }
+                        let old_depth = brace_depth;
+                        let (opens, closes) = count_braces_outside_literals(line);
+                        brace_depth += (opens - closes) as i32;
+                        if pending_test && brace_depth > old_depth {
+                            in_test_module = true;
+                            pending_test = false;
+                            brace_depth_at_test = old_depth;
+                        }
+                        if in_test_module && brace_depth <= brace_depth_at_test {
+                            in_test_module = false;
+                        }
+                        if in_test_module { continue; }
+                        // Skip comments, doc comments, and string contents
+                        if t.starts_with("//") || t.starts_with("///") || t.starts_with("/*") || t.starts_with("*") {
+                            continue;
+                        }
+                        // Match actual function definitions: must have "fn <name>(" or "fn <name><"
+                        // and start with keywords that precede fn (pub, fn, async, const, unsafe, extern)
+                        let is_fn_def = (t.starts_with("fn ") || t.starts_with("pub fn ")
+                            || t.starts_with("async fn ") || t.starts_with("pub async fn ")
+                            || t.starts_with("const fn ") || t.starts_with("pub const fn ")
+                            || t.starts_with("unsafe fn ") || t.starts_with("pub unsafe fn ")
+                            || t.starts_with("pub(crate) fn ") || t.starts_with("pub(super) fn ")
+                            || t.starts_with("pub(crate) async fn ") || t.starts_with("pub(crate) const fn ")
+                            || t.starts_with("pub(crate) unsafe fn "))
+                            && (t.contains("(") || t.contains("<"));
+                        if is_fn_def {
                             *fns += 1;
                         }
-                        if line.contains("debug_assert!") || line.contains("contract_") || line.contains("requires!") || line.contains("ensures!") {
+                        if line.contains("debug_assert!") || line.contains("contract_")
+                            || line.contains("requires!") || line.contains("ensures!") {
                             *calls += 1;
                         }
                     }
