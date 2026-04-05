@@ -36,11 +36,11 @@ are weakest. Category breakdown reveals imbalance:
 
 | Category | % of Total | Assessment |
 |----------|-----------|------------|
-| Rust Tooling & CI/CD | **47%** (130/274) | Overweighted. Dominates score. A project with perfect CI but bad code gets a B. |
-| Code Quality | 9% (26/274) | Underweighted relative to importance. |
-| Testing Excellence | 7% (20/274) | Reasonable for its scope. |
-| Formal Verification | 6% (16/274) | Aspirational — most projects won't have Miri/Kani/Verus. |
-| GPU/SIMD Quality | 4% (10/274) | Niche — only relevant to GPU projects. Returns 100% for non-GPU projects (free points). |
+| Rust Tooling & CI/CD | **45%** (130/289) | Overweighted. Dominates score. A project with perfect CI but bad code gets a B. |
+| Code Quality | 9% (26/289) | Underweighted relative to importance. |
+| Testing Excellence | 7% (20/289) | Reasonable for its scope. |
+| Formal Verification | 6% (16/289) | Aspirational — most projects won't have Miri/Kani/Verus. |
+| GPU/SIMD Quality | 3% (10/289) | Niche — only relevant to GPU projects. Returns 100% for non-GPU projects (free points). |
 
 **Weight imbalance**: Rust Tooling at 130 points means clippy + fmt + edition + MSRV + CI + audit
 together outweigh Code Quality + Testing + Documentation + Performance combined (71 pts).
@@ -159,7 +159,7 @@ map each waste type to concrete files using existing PMAT data.
 | Overproduction | `pmat query --duplicates` | Files with code clones |
 
 This would change the Muda output from "Inventory: 16" to
-"Inventory: 16 (129 dead items in src/services/cache/, src/workflow/)".
+"Inventory: 16 (132 dead items in src/services/cache/, src/workflow/)".
 
 ## Key Files
 
