@@ -541,6 +541,7 @@ pub(crate) fn check_hook_single_writer(project_path: &Path) -> ComplianceCheck {
                         || content.contains("hooks/post-commit");
                     if !writes_hooks { continue; }
                     // Scan line-by-line, skipping test modules
+                    let mut pending_test = false;
                     let mut in_test_module = false;
                     let mut brace_depth_at_test = 0i32;
                     let mut brace_depth = 0i32;
@@ -548,17 +549,18 @@ pub(crate) fn check_hook_single_writer(project_path: &Path) -> ComplianceCheck {
                     for line in content.lines() {
                         let t = line.trim();
                         if t.contains("#[cfg(test)]") {
-                            in_test_module = true;
-                            brace_depth_at_test = brace_depth;
+                            pending_test = true;
                         }
-                        for c in line.chars() {
-                            if c == '{' { brace_depth += 1; }
-                            if c == '}' {
-                                brace_depth -= 1;
-                                if in_test_module && brace_depth <= brace_depth_at_test {
-                                    in_test_module = false;
-                                }
-                            }
+                        let old_depth = brace_depth;
+                        let (opens, closes) = count_braces_outside_literals(line);
+                        brace_depth += (opens - closes) as i32;
+                        if pending_test && brace_depth > old_depth {
+                            in_test_module = true;
+                            pending_test = false;
+                            brace_depth_at_test = old_depth;
+                        }
+                        if in_test_module && brace_depth <= brace_depth_at_test {
+                            in_test_module = false;
                         }
                         if in_test_module { continue; }
                         if t.starts_with("//") { continue; }
@@ -756,26 +758,26 @@ pub(crate) fn check_hook_atomic_writes(project_path: &Path) -> ComplianceCheck {
                         // 1. is in code (not comments)
                         // 2. targets a hook path
                         // 3. is OUTSIDE #[cfg(test)] modules
+                        let mut pending_test = false;
                         let mut in_test_module = false;
                         let mut brace_depth_at_test = 0i32;
                         let mut brace_depth = 0i32;
                         let mut found_prod_write = false;
                         for line in content.lines() {
                             let t = line.trim();
-                            // Track #[cfg(test)] modules via brace depth
-                            if t.starts_with("#[cfg(test)]") || t.contains("#[cfg(test)]") {
-                                in_test_module = true;
-                                brace_depth_at_test = brace_depth;
+                            if t.contains("#[cfg(test)]") {
+                                pending_test = true;
                             }
-                            // Count braces (crude but sufficient for detecting module boundaries)
-                            for c in line.chars() {
-                                if c == '{' { brace_depth += 1; }
-                                if c == '}' {
-                                    brace_depth -= 1;
-                                    if in_test_module && brace_depth <= brace_depth_at_test {
-                                        in_test_module = false;
-                                    }
-                                }
+                            let old_depth = brace_depth;
+                            let (opens, closes) = count_braces_outside_literals(line);
+                            brace_depth += (opens - closes) as i32;
+                            if pending_test && brace_depth > old_depth {
+                                in_test_module = true;
+                                pending_test = false;
+                                brace_depth_at_test = old_depth;
+                            }
+                            if in_test_module && brace_depth <= brace_depth_at_test {
+                                in_test_module = false;
                             }
                             if in_test_module { continue; }
                             if t.starts_with("//") || t.starts_with("///") { continue; }
@@ -1125,6 +1127,35 @@ pub(crate) fn check_verification_ratchet(project_path: &Path) -> ComplianceCheck
 }
 
 /// Extract numeric level from "target_level: L3" or "current_level: L1" patterns.
+/// Count `{` and `}` on a line, ignoring those inside string/char literals.
+/// Used by CB-1333/CB-1334 brace-depth tracking for #[cfg(test)] detection.
+/// Returns (open_count, close_count).
+fn count_braces_outside_literals(line: &str) -> (i64, i64) {
+    let mut opens = 0i64;
+    let mut closes = 0i64;
+    let mut in_string = false;
+    let mut in_char = false;
+    let mut escape = false;
+    for c in line.chars() {
+        if escape {
+            escape = false;
+            continue;
+        }
+        if c == '\\' && (in_string || in_char) {
+            escape = true;
+            continue;
+        }
+        match c {
+            '"' if !in_char => in_string = !in_string,
+            '\'' if !in_string => in_char = !in_char,
+            '{' if !in_string && !in_char => opens += 1,
+            '}' if !in_string && !in_char => closes += 1,
+            _ => {}
+        }
+    }
+    (opens, closes)
+}
+
 fn extract_level(content: &str, field: &str) -> Option<u8> {
     for line in content.lines() {
         let trimmed = line.trim();
@@ -3151,6 +3182,25 @@ mod tests {
         assert_eq!(extract_level("current_level: L1", "current_level"), Some(1));
         assert_eq!(extract_level("target_level: \"L5\"", "target_level"), Some(5));
         assert_eq!(extract_level("no level here", "target_level"), None);
+    }
+
+    #[test]
+    fn test_count_braces_outside_literals() {
+        // Normal code
+        assert_eq!(count_braces_outside_literals("fn foo() {"), (1, 0));
+        assert_eq!(count_braces_outside_literals("}"), (0, 1));
+        assert_eq!(count_braces_outside_literals("{ }"), (1, 1));
+        // Braces inside strings should be IGNORED
+        assert_eq!(count_braces_outside_literals(r#"let s = "{{{{";"#), (0, 0));
+        assert_eq!(count_braces_outside_literals(r#"let s = "}}}}";"#), (0, 0));
+        assert_eq!(count_braces_outside_literals(r#"let s = "{}{{}}{";"#), (0, 0));
+        // Braces inside char literals
+        assert_eq!(count_braces_outside_literals("let c = '{';"), (0, 0));
+        assert_eq!(count_braces_outside_literals("let c = '}';"), (0, 0));
+        // Mixed: real brace outside string literal with braces
+        assert_eq!(count_braces_outside_literals(r#"fn f() { let s = "{"; }"#), (1, 1));
+        // Escaped quotes in strings
+        assert_eq!(count_braces_outside_literals(r#"let s = "\"{\"";"#), (0, 0));
     }
 
     #[test]
