@@ -369,6 +369,305 @@ pub(crate) fn check_hook_performance(project_path: &Path) -> ComplianceCheck {
     }
 }
 
+/// CB-1321: Dockerfile Contract
+///
+/// Validates Dockerfile follows security and best practices:
+/// no :latest tags, no curl|bash, pinned base images.
+pub(crate) fn check_dockerfile_contract(project_path: &Path) -> ComplianceCheck {
+    let dockerfile = project_path.join("Dockerfile");
+    if !dockerfile.exists() {
+        return ComplianceCheck {
+            name: "CB-1321: Dockerfile Contract".into(),
+            status: CheckStatus::Skip,
+            message: "No Dockerfile found".into(),
+            severity: Severity::Info,
+        };
+    }
+
+    let content = match fs::read_to_string(&dockerfile) {
+        Ok(c) => c,
+        Err(_) => {
+            return ComplianceCheck {
+                name: "CB-1321: Dockerfile Contract".into(),
+                status: CheckStatus::Warn,
+                message: "Could not read Dockerfile".into(),
+                severity: Severity::Warning,
+            };
+        }
+    };
+
+    let mut issues: Vec<String> = Vec::new();
+
+    // Check for :latest tags
+    for line in content.lines() {
+        let trimmed = line.trim();
+        if trimmed.starts_with("FROM ") && trimmed.contains(":latest") {
+            issues.push("FROM uses :latest tag (pin to specific version)".into());
+        }
+    }
+
+    // Check for curl|bash anti-pattern
+    if content.contains("curl") && content.contains("| bash")
+        || content.contains("| sh")
+        || content.contains("|bash")
+        || content.contains("|sh")
+    {
+        issues.push("curl piped to shell (use ADD/COPY instead)".into());
+    }
+
+    // Check for running as root (no USER instruction)
+    let has_user = content
+        .lines()
+        .any(|l| l.trim().starts_with("USER ") && !l.trim().starts_with("USER root"));
+    if !has_user {
+        issues.push("no non-root USER instruction".into());
+    }
+
+    if issues.is_empty() {
+        ComplianceCheck {
+            name: "CB-1321: Dockerfile Contract".into(),
+            status: CheckStatus::Pass,
+            message: "Dockerfile follows security best practices".into(),
+            severity: Severity::Info,
+        }
+    } else {
+        ComplianceCheck {
+            name: "CB-1321: Dockerfile Contract".into(),
+            status: CheckStatus::Warn,
+            message: format!("{} issue(s): {}", issues.len(), issues.join(", ")),
+            severity: Severity::Warning,
+        }
+    }
+}
+
+/// CB-1326: Badge Contract
+///
+/// Checks that README has required badges (CI status, version, license).
+pub(crate) fn check_badge_contract(project_path: &Path) -> ComplianceCheck {
+    let readme_path = project_path.join("README.md");
+    if !readme_path.exists() {
+        return ComplianceCheck {
+            name: "CB-1326: Badge Contract".into(),
+            status: CheckStatus::Skip,
+            message: "No README.md found".into(),
+            severity: Severity::Info,
+        };
+    }
+
+    let content = match fs::read_to_string(&readme_path) {
+        Ok(c) => c,
+        Err(_) => {
+            return ComplianceCheck {
+                name: "CB-1326: Badge Contract".into(),
+                status: CheckStatus::Skip,
+                message: "Could not read README.md".into(),
+                severity: Severity::Info,
+            };
+        }
+    };
+
+    let mut present: Vec<&str> = Vec::new();
+    let mut missing: Vec<&str> = Vec::new();
+
+    // Check for common badge types
+    let badge_checks: &[(&str, &[&str])] = &[
+        ("CI status", &["actions/workflows", "github.com/", "ci.svg", "build.svg", "passing"]),
+        ("version/crate", &["crates.io", "version", "crate-"]),
+        ("license", &["license", "License"]),
+    ];
+
+    for (name, patterns) in badge_checks {
+        let found = patterns.iter().any(|p| content.contains(p));
+        if found {
+            present.push(name);
+        } else {
+            missing.push(name);
+        }
+    }
+
+    if missing.is_empty() {
+        ComplianceCheck {
+            name: "CB-1326: Badge Contract".into(),
+            status: CheckStatus::Pass,
+            message: format!("All required badges present: {}", present.join(", ")),
+            severity: Severity::Info,
+        }
+    } else {
+        ComplianceCheck {
+            name: "CB-1326: Badge Contract".into(),
+            status: CheckStatus::Warn,
+            message: format!(
+                "Missing badge(s): {}. Present: {}",
+                missing.join(", "),
+                present.join(", ")
+            ),
+            severity: Severity::Warning,
+        }
+    }
+}
+
+/// CB-1333: Hook Single Writer
+///
+/// Checks that hook files are written by a single codepath (HookRegistry pattern).
+/// Detects multiple independent hook writers by scanning for fs::write to hooks dir.
+pub(crate) fn check_hook_single_writer(project_path: &Path) -> ComplianceCheck {
+    let src_dir = project_path.join("src");
+    if !src_dir.exists() {
+        return ComplianceCheck {
+            name: "CB-1333: Hook Single Writer".into(),
+            status: CheckStatus::Skip,
+            message: "No src/ directory (not a Rust project)".into(),
+            severity: Severity::Info,
+        };
+    }
+
+    // Count files that write to hooks directory
+    let mut hook_writer_files: Vec<String> = Vec::new();
+
+    fn scan_for_hook_writes(dir: &Path, results: &mut Vec<String>) {
+        let entries = match fs::read_dir(dir) {
+            Ok(e) => e,
+            Err(_) => return,
+        };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                scan_for_hook_writes(&path, results);
+            } else if path.extension().map_or(false, |e| e == "rs") {
+                if let Ok(content) = fs::read_to_string(&path) {
+                    // Look for patterns that write to .git/hooks
+                    let writes_hooks = content.contains("hooks/pre-commit")
+                        || content.contains("hooks/pre-push")
+                        || content.contains("hooks/post-commit");
+                    let does_write = content.contains("fs::write")
+                        || content.contains("write_all")
+                        || content.contains("OpenOptions");
+                    if writes_hooks && does_write {
+                        let rel = path
+                            .strip_prefix(dir.parent().unwrap_or(dir))
+                            .unwrap_or(&path);
+                        results.push(rel.display().to_string());
+                    }
+                }
+            }
+        }
+    }
+
+    scan_for_hook_writes(&src_dir, &mut hook_writer_files);
+
+    // Filter out test files and the check itself (contains hook path strings for detection)
+    hook_writer_files.retain(|f| {
+        !f.contains("test")
+            && !f.contains("_tests")
+            && !f.contains("check_commit_enforcement")
+            && !f.contains("check_handlers")
+    });
+
+    if hook_writer_files.len() <= 1 {
+        ComplianceCheck {
+            name: "CB-1333: Hook Single Writer".into(),
+            status: CheckStatus::Pass,
+            message: format!(
+                "{} hook writer module(s) found (target: 1)",
+                hook_writer_files.len()
+            ),
+            severity: Severity::Info,
+        }
+    } else {
+        ComplianceCheck {
+            name: "CB-1333: Hook Single Writer".into(),
+            status: CheckStatus::Warn,
+            message: format!(
+                "{} hook writer modules (should be 1): {}",
+                hook_writer_files.len(),
+                hook_writer_files.join(", ")
+            ),
+            severity: Severity::Warning,
+        }
+    }
+}
+
+/// CB-1336: Hook No Shell Injection
+///
+/// Checks that hook generation code doesn't have unescaped template substitution.
+/// Looks for `replace("{{` patterns without shell escaping.
+pub(crate) fn check_hook_no_injection(project_path: &Path) -> ComplianceCheck {
+    let src_dir = project_path.join("src");
+    if !src_dir.exists() {
+        return ComplianceCheck {
+            name: "CB-1336: Hook No Injection".into(),
+            status: CheckStatus::Skip,
+            message: "No src/ directory".into(),
+            severity: Severity::Info,
+        };
+    }
+
+    let mut injection_risks: Vec<String> = Vec::new();
+
+    fn scan_for_injection(dir: &Path, results: &mut Vec<String>) {
+        let entries = match fs::read_dir(dir) {
+            Ok(e) => e,
+            Err(_) => return,
+        };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                scan_for_injection(&path, results);
+            } else if path.extension().map_or(false, |e| e == "rs") {
+                if let Ok(content) = fs::read_to_string(&path) {
+                    // Skip test files and check files (contain patterns as detection strings)
+                    let path_str = path.to_str().unwrap_or("");
+                    let is_excluded = path_str.contains("test")
+                        || path_str.contains("_tests")
+                        || path_str.contains("check_commit_enforcement")
+                        || path_str.contains("check_handlers");
+                    if is_excluded {
+                        continue;
+                    }
+                    // Look for template substitution in hook-related code
+                    let is_hook_code = content.contains("hook")
+                        && (content.contains("pre-commit") || content.contains("pre-push"));
+                    if !is_hook_code {
+                        continue;
+                    }
+                    // Detect unescaped template substitution
+                    for (i, line) in content.lines().enumerate() {
+                        if line.contains(".replace(") && line.contains("{{") {
+                            let rel = path
+                                .file_name()
+                                .map(|f| f.to_string_lossy().to_string())
+                                .unwrap_or_default();
+                            results.push(format!("{}:{}", rel, i + 1));
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    scan_for_injection(&src_dir, &mut injection_risks);
+
+    if injection_risks.is_empty() {
+        ComplianceCheck {
+            name: "CB-1336: Hook No Injection".into(),
+            status: CheckStatus::Pass,
+            message: "No unescaped template substitution in hook code".into(),
+            severity: Severity::Info,
+        }
+    } else {
+        ComplianceCheck {
+            name: "CB-1336: Hook No Injection".into(),
+            status: CheckStatus::Warn,
+            message: format!(
+                "{} unescaped template substitution(s): {}",
+                injection_risks.len(),
+                injection_risks.join(", ")
+            ),
+            severity: Severity::Warning,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -497,5 +796,94 @@ mod tests {
         let check = check_hook_performance(dir.path());
         assert_eq!(check.status, CheckStatus::Warn);
         assert!(check.message.contains("cargo test"));
+    }
+
+    #[test]
+    fn test_cb1321_no_dockerfile() {
+        let dir = tempdir().unwrap();
+        let check = check_dockerfile_contract(dir.path());
+        assert_eq!(check.status, CheckStatus::Skip);
+    }
+
+    #[test]
+    fn test_cb1321_good_dockerfile() {
+        let dir = tempdir().unwrap();
+        fs::write(
+            dir.path().join("Dockerfile"),
+            "FROM rust:1.80-slim\nRUN apt-get update\nUSER app\nCMD [\"./app\"]\n",
+        ).unwrap();
+
+        let check = check_dockerfile_contract(dir.path());
+        assert_eq!(check.status, CheckStatus::Pass);
+    }
+
+    #[test]
+    fn test_cb1321_latest_tag() {
+        let dir = tempdir().unwrap();
+        fs::write(
+            dir.path().join("Dockerfile"),
+            "FROM ubuntu:latest\nRUN echo hi\n",
+        ).unwrap();
+
+        let check = check_dockerfile_contract(dir.path());
+        assert_eq!(check.status, CheckStatus::Warn);
+        assert!(check.message.contains(":latest"));
+    }
+
+    #[test]
+    fn test_cb1326_badges_present() {
+        let dir = tempdir().unwrap();
+        fs::write(
+            dir.path().join("README.md"),
+            "# Proj\n[![CI](https://github.com/org/repo/actions/workflows/ci.yml/badge.svg)](x)\n[![crates.io](https://crates.io/v/proj)](y)\n## License\nMIT\n",
+        ).unwrap();
+
+        let check = check_badge_contract(dir.path());
+        assert_eq!(check.status, CheckStatus::Pass);
+    }
+
+    #[test]
+    fn test_cb1326_badges_missing() {
+        let dir = tempdir().unwrap();
+        fs::write(dir.path().join("README.md"), "# Proj\nHello\n").unwrap();
+
+        let check = check_badge_contract(dir.path());
+        assert_eq!(check.status, CheckStatus::Warn);
+        assert!(check.message.contains("Missing"));
+    }
+
+    #[test]
+    fn test_cb1333_no_src() {
+        let dir = tempdir().unwrap();
+        let check = check_hook_single_writer(dir.path());
+        assert_eq!(check.status, CheckStatus::Skip);
+    }
+
+    #[test]
+    fn test_cb1333_single_writer() {
+        let dir = tempdir().unwrap();
+        let src = dir.path().join("src/hooks");
+        fs::create_dir_all(&src).unwrap();
+        fs::write(
+            src.join("registry.rs"),
+            "fn install() { let p = \"hooks/pre-commit\"; fs::write(p, content); }",
+        ).unwrap();
+
+        let check = check_hook_single_writer(dir.path());
+        assert_eq!(check.status, CheckStatus::Pass);
+    }
+
+    #[test]
+    fn test_cb1336_no_injection() {
+        let dir = tempdir().unwrap();
+        let src = dir.path().join("src");
+        fs::create_dir_all(&src).unwrap();
+        fs::write(
+            src.join("hooks.rs"),
+            "fn gen() { let s = format!(\"pre-commit hook\"); }",
+        ).unwrap();
+
+        let check = check_hook_no_injection(dir.path());
+        assert_eq!(check.status, CheckStatus::Pass);
     }
 }

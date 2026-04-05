@@ -408,10 +408,16 @@ pub(crate) async fn handle_check(
     ));
 
     // Commit-Level Contract Enforcement (CB-1320..1343) — Component 25
-    // Phase 3a: Asset layout contracts
+    // Commit-Level Contract Enforcement (CB-1320..1343) — Component 25
+    // Phase 3: Asset layout contracts
     checks.push(filter_check_by_config(
         check_readme_layout(project_path),
         "cb-1320",
+        comply_config,
+    ));
+    checks.push(filter_check_by_config(
+        check_dockerfile_contract(project_path),
+        "cb-1321",
         comply_config,
     ));
     checks.push(filter_check_by_config(
@@ -419,7 +425,12 @@ pub(crate) async fn handle_check(
         "cb-1325",
         comply_config,
     ));
-    // Phase cache infrastructure
+    checks.push(filter_check_by_config(
+        check_badge_contract(project_path),
+        "cb-1326",
+        comply_config,
+    ));
+    // Phase 0: Cache infrastructure
     checks.push(filter_check_by_config(
         check_cache_staleness(project_path),
         "cb-1332",
@@ -427,8 +438,18 @@ pub(crate) async fn handle_check(
     ));
     // Phase 7: Hook consolidation
     checks.push(filter_check_by_config(
+        check_hook_single_writer(project_path),
+        "cb-1333",
+        comply_config,
+    ));
+    checks.push(filter_check_by_config(
         check_hook_determinism(project_path),
         "cb-1335",
+        comply_config,
+    ));
+    checks.push(filter_check_by_config(
+        check_hook_no_injection(project_path),
+        "cb-1336",
         comply_config,
     ));
     checks.push(filter_check_by_config(
