@@ -179,8 +179,19 @@ impl RustDefectDetector {
     }
 
     /// Count unwrap() calls (used by rust-project-score)
+    /// Skips comments and string literal contents to avoid false positives.
     pub fn count_unwraps(&self, content: &str) -> usize {
-        self.unwrap_regex.find_iter(content).count()
+        content
+            .lines()
+            .filter(|line| {
+                let trimmed = line.trim();
+                !trimmed.starts_with("//") && !trimmed.starts_with("/*") && !trimmed.is_empty()
+            })
+            .map(|line| {
+                let code = strip_string_literals(line);
+                self.unwrap_regex.find_iter(&code).count()
+            })
+            .sum()
     }
 }
 
