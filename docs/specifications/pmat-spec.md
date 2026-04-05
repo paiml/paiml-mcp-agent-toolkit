@@ -393,7 +393,8 @@ for all inputs within bound. Checks: CB-1510..1513.
 **Sub-spec**: [components/commit-level-contract-enforcement.md](components/commit-level-contract-enforcement.md)
 
 Unifies `pmat work` contracts and `provable-contracts` YAML under a single
-commit-level enforcement pipeline. Six phases:
+commit-level enforcement pipeline. Eight phases, **implementation-complete**
+(29 CB checks, 107 tests, 9/10 remediation done):
 
 **Phase 1: Work Item -> YAML Contract.** `pmat work start` generates both
 `contract.json` (DbC v5.0) and `contracts/work/<ID>.yaml` (provable-contracts
