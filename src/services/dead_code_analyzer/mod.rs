@@ -68,8 +68,4 @@ pub use types::{
 };
 
 pub use analysis::DeadCodeAnalyzer;
-#[cfg(test)]
-pub(crate) use analysis::{
-    calculate_dead_percentage, classify_dead_functions_pure, collect_functions_from_context,
-    compute_reachability, detect_function_calls_in_lines,
-};
+// Test re-exports removed — tests include!() into analysis.rs scope directly.

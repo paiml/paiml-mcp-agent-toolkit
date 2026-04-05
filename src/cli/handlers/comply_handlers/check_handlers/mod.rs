@@ -29,15 +29,4 @@ pub(crate) use check_review_audit::{handle_audit, handle_review};
 pub(crate) use check_sovereign::{check_file_health_multi, generate_file_health_baseline};
 pub(crate) use types::*;
 
-// Additional re-exports needed by test files that reference functions
-// via crate::cli::handlers::comply_handlers::<function_name>.
-// These are only consumed by #[cfg(test)] test modules.
-#[cfg(test)]
-pub(crate) use check_dead_code::*;
-#[cfg(test)]
-pub(crate) use check_extended::{
-    check_dead_code_percentage, check_edd_compliance, check_file_health, check_golden_trace_drift,
-    check_muda_waste_score, check_reproducibility_level,
-};
-#[cfg(test)]
-pub(crate) use check_sovereign::{check_paiml_deps_workspace, check_sovereign_stack_patterns};
+// Test re-exports removed — test files now include!() into check.rs scope directly.

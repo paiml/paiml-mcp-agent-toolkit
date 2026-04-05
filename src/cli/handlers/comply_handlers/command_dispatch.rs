@@ -80,8 +80,19 @@ pub async fn handle_comply_command(command: ComplyCommands) -> Result<()> {
             generate_file_health_baseline(&path, dry_run)
         }
 
-        ComplyCommands::RefreshBindings { path } => {
-            handle_refresh_bindings(&path)
+        ComplyCommands::RefreshBindings { path } => handle_refresh_bindings(&path),
+
+        ComplyCommands::RatchetOverride {
+            path,
+            binding,
+            from,
+            to,
+            reason,
+            work_item,
+        } => handle_ratchet_override(&path, &binding, &from, &to, &reason, work_item.as_deref()),
+
+        ComplyCommands::AssetValidate { path, asset } => {
+            handle_asset_validate(&path, asset.as_deref())
         }
 
         ComplyCommands::CrossCrate {

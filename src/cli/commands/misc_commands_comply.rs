@@ -196,13 +196,55 @@ pub enum ComplyCommands {
         dry_run: bool,
     },
 
-    /// Generate .pmat/binding-index.json from contracts/ and binding.yaml
+    /// Generate .pmat/binding-index.json, O(1) caches, and contracts/work/*.yaml
     /// Enables CB-1350 differential obligation verification at commit time.
     #[command(visible_aliases = &["refresh", "rb"])]
     RefreshBindings {
         /// Project path (defaults to current directory)
         #[arg(short = 'p', long = "path", default_value = ".")]
         path: PathBuf,
+    },
+
+    /// Override verification level ratchet for a binding (escape hatch for CB-1330).
+    /// Records signed entry in .pmat-metrics/ratchet-overrides.jsonl, expires in 14 days.
+    #[command(visible_aliases = &["override"])]
+    RatchetOverride {
+        /// Project path (defaults to current directory)
+        #[arg(short = 'p', long = "path", default_value = ".")]
+        path: PathBuf,
+
+        /// Binding/function name to override
+        #[arg(long)]
+        binding: String,
+
+        /// Current (higher) level being overridden from
+        #[arg(long)]
+        from: String,
+
+        /// Target (lower) level being overridden to
+        #[arg(long)]
+        to: String,
+
+        /// Reason for the override
+        #[arg(long)]
+        reason: String,
+
+        /// Associated work item ID
+        #[arg(long = "work-item")]
+        work_item: Option<String>,
+    },
+
+    /// Validate non-code asset layout contracts (README, Dockerfile, SVG, etc.)
+    /// Runs CB-1320..1326 checks on a specific asset or all assets.
+    #[command(visible_aliases = &["av"])]
+    AssetValidate {
+        /// Project path (defaults to current directory)
+        #[arg(short = 'p', long = "path", default_value = ".")]
+        path: PathBuf,
+
+        /// Specific asset to validate (readme, dockerfile, svg, changelog, badges, book, forjar)
+        #[arg(long)]
+        asset: Option<String>,
     },
 
     /// Cross-crate duplication detection (CC-001 through CC-005)

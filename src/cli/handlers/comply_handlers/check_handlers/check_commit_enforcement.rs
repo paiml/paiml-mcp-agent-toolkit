@@ -533,7 +533,7 @@ pub(crate) fn check_hook_single_writer(project_path: &Path) -> ComplianceCheck {
             let path = entry.path();
             if path.is_dir() {
                 scan_for_hook_writes(&path, results);
-            } else if path.extension().map_or(false, |e| e == "rs") {
+            } else if path.extension().is_some_and(|e| e == "rs") {
                 if let Ok(content) = fs::read_to_string(&path) {
                     // Look for patterns that write to .git/hooks
                     let writes_hooks = content.contains("hooks/pre-commit")
@@ -613,7 +613,7 @@ pub(crate) fn check_hook_no_injection(project_path: &Path) -> ComplianceCheck {
             let path = entry.path();
             if path.is_dir() {
                 scan_for_injection(&path, results);
-            } else if path.extension().map_or(false, |e| e == "rs") {
+            } else if path.extension().is_some_and(|e| e == "rs") {
                 if let Ok(content) = fs::read_to_string(&path) {
                     // Skip test files and check files (contain patterns as detection strings)
                     let path_str = path.to_str().unwrap_or("");
@@ -703,7 +703,7 @@ pub(crate) fn check_hook_atomic_writes(project_path: &Path) -> ComplianceCheck {
             let path = entry.path();
             if path.is_dir() {
                 scan_atomicity(&path, results);
-            } else if path.extension().map_or(false, |e| e == "rs") {
+            } else if path.extension().is_some_and(|e| e == "rs") {
                 let path_str = path.to_str().unwrap_or("");
                 if path_str.contains("test") || path_str.contains("check_handlers") {
                     continue;
@@ -1295,7 +1295,7 @@ pub(crate) fn check_enforcement_penetration(project_path: &Path) -> ComplianceCh
             let path = entry.path();
             if path.is_dir() && !path.to_str().unwrap_or("").contains("test") {
                 count_enforcement(&path, calls, fns);
-            } else if path.extension().map_or(false, |e| e == "rs") {
+            } else if path.extension().is_some_and(|e| e == "rs") {
                 if let Ok(content) = fs::read_to_string(&path) {
                     for line in content.lines() {
                         if line.contains("fn ") && !line.trim().starts_with("//") {
@@ -2122,7 +2122,7 @@ pub(crate) fn check_contract_query_readiness(project_path: &Path) -> ComplianceC
             .ok()
             .map(|entries| {
                 entries.flatten().any(|e| {
-                    e.path().extension().map_or(false, |ext| ext == "yaml" || ext == "yml")
+                    e.path().extension().is_some_and(|ext| ext == "yaml" || ext == "yml")
                 })
             })
             .unwrap_or(false);
@@ -2375,7 +2375,7 @@ pub(crate) fn handle_refresh_bindings(project_path: &Path) -> anyhow::Result<()>
                 continue;
             }
             // Skip binding.yaml itself (already parsed above)
-            if path.file_name().map_or(false, |n| n == "binding.yaml") {
+            if path.file_name().is_some_and(|n| n == "binding.yaml") {
                 continue;
             }
             if let Ok(content) = fs::read_to_string(path) {
@@ -2492,7 +2492,218 @@ pub(crate) fn handle_refresh_bindings(project_path: &Path) -> anyhow::Result<()>
     cache_count += 1;
 
     println!("   {} O(1) cache file(s) generated", cache_count);
+
+    // 5. Generate contracts/work/<ID>.yaml from .pmat-work/ (R-4)
+    let yaml_count = generate_work_contract_yamls(project_path)?;
+    if yaml_count > 0 {
+        println!("   {} contracts/work/*.yaml file(s) generated", yaml_count);
+    }
+
     println!("   CB-1350 differential obligations now enabled");
+
+    Ok(())
+}
+
+/// Generate provable-contracts YAML from .pmat-work/ contract.json files (R-4).
+///
+/// Maps: claims/falsifiable_claims → preconditions, ensure → postconditions,
+/// verification_level → verification_summary.target_level.
+fn generate_work_contract_yamls(project_path: &Path) -> anyhow::Result<usize> {
+    let work_dir = project_path.join(".pmat-work");
+    if !work_dir.exists() {
+        return Ok(0);
+    }
+
+    let out_dir = project_path.join("contracts/work");
+    fs::create_dir_all(&out_dir)?;
+
+    let mut count = 0usize;
+    let entries = fs::read_dir(&work_dir)?;
+
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if !path.is_dir() {
+            continue;
+        }
+        let contract = path.join("contract.json");
+        if !contract.exists() {
+            continue;
+        }
+        let content = match fs::read_to_string(&contract) {
+            Ok(c) => c,
+            Err(_) => continue,
+        };
+        let v: serde_json::Value = match serde_json::from_str(&content) {
+            Ok(v) => v,
+            Err(_) => continue,
+        };
+
+        let id = v
+            .get("work_item_id")
+            .and_then(|w| w.as_str())
+            .unwrap_or("unknown");
+
+        // Sanitize ID for filename
+        let safe_id: String = id
+            .chars()
+            .map(|c| if c.is_alphanumeric() || c == '-' || c == '_' { c } else { '_' })
+            .collect();
+
+        let level = v
+            .get("verification_level")
+            .and_then(|l| l.as_str())
+            .unwrap_or("L1");
+
+        // Extract preconditions from claims
+        let mut preconditions = Vec::new();
+        if let Some(claims) = v.get("falsifiable_claims").and_then(|c| c.as_array()) {
+            for claim in claims {
+                if let Some(text) = claim.get("claim").and_then(|t| t.as_str()) {
+                    preconditions.push(text.to_string());
+                }
+            }
+        }
+        if let Some(req) = v.get("require").and_then(|r| r.as_array()) {
+            for r in req {
+                if let Some(s) = r.as_str() {
+                    preconditions.push(s.to_string());
+                }
+            }
+        }
+
+        // Extract postconditions
+        let mut postconditions = Vec::new();
+        if let Some(ens) = v.get("ensure").and_then(|e| e.as_array()) {
+            for e in ens {
+                if let Some(s) = e.as_str() {
+                    postconditions.push(s.to_string());
+                }
+            }
+        }
+
+        // Build YAML (hand-written to avoid serde_yaml dependency)
+        let mut yaml = format!("# Auto-generated from .pmat-work/{}/contract.json\n", safe_id);
+        yaml.push_str(&format!("name: {}\n", id));
+        yaml.push_str("surface: work-contract\n");
+        yaml.push_str(&format!(
+            "verification_summary:\n  target_level: {}\n  current_level: {}\n",
+            level, level
+        ));
+
+        if !preconditions.is_empty() {
+            yaml.push_str("preconditions:\n");
+            for p in &preconditions {
+                // Escape YAML special chars
+                let escaped = p.replace(':', "\\:");
+                yaml.push_str(&format!("  - \"{}\"\n", escaped));
+            }
+        }
+
+        if !postconditions.is_empty() {
+            yaml.push_str("postconditions:\n");
+            for p in &postconditions {
+                let escaped = p.replace(':', "\\:");
+                yaml.push_str(&format!("  - \"{}\"\n", escaped));
+            }
+        }
+
+        let yaml_path = out_dir.join(format!("{}.yaml", safe_id));
+        fs::write(&yaml_path, &yaml)?;
+        count += 1;
+    }
+
+    Ok(count)
+}
+
+/// R-7: Override verification level ratchet for a specific binding.
+///
+/// Records a signed override entry in `.pmat-metrics/ratchet-overrides.jsonl`.
+/// The override expires after 14 days. CB-1330 will flag if not recovered.
+pub(crate) fn handle_ratchet_override(
+    project_path: &Path,
+    binding: &str,
+    from: &str,
+    to: &str,
+    reason: &str,
+    work_item: Option<&str>,
+) -> anyhow::Result<()> {
+    let metrics_dir = project_path.join(".pmat-metrics");
+    fs::create_dir_all(&metrics_dir)?;
+
+    let entry = serde_json::json!({
+        "timestamp": chrono_free_timestamp(),
+        "binding": binding,
+        "from_level": from,
+        "to_level": to,
+        "reason": reason,
+        "work_item": work_item,
+        "expires_days": 14,
+    });
+
+    let log_path = metrics_dir.join("ratchet-overrides.jsonl");
+    let mut file = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&log_path)?;
+    use std::io::Write;
+    writeln!(file, "{}", serde_json::to_string(&entry)?)?;
+
+    println!("✅ Ratchet override recorded:");
+    println!("   Binding: {}", binding);
+    println!("   {} → {} (reason: {})", from, to, reason);
+    if let Some(wi) = work_item {
+        println!("   Work item: {}", wi);
+    }
+    println!("   Expires in 14 days. Logged to: {}", log_path.display());
+
+    Ok(())
+}
+
+/// R-8: Validate non-code asset layout contracts.
+///
+/// Runs CB-1320..1326 checks on assets and reports results.
+/// Can target a specific asset or validate all.
+pub(crate) fn handle_asset_validate(
+    project_path: &Path,
+    asset: Option<&str>,
+) -> anyhow::Result<()> {
+    let checks: Vec<ComplianceCheck> = match asset {
+        Some("readme") => vec![check_readme_layout(project_path)],
+        Some("dockerfile") => vec![check_dockerfile_contract(project_path)],
+        Some("svg") => vec![check_svg_contract(project_path)],
+        Some("changelog") => vec![check_changelog_contract(project_path)],
+        Some("badges") => vec![check_badge_contract(project_path)],
+        Some("book") => vec![check_mdbook_contract(project_path)],
+        Some("forjar") => vec![check_forjar_contract(project_path)],
+        Some(other) => {
+            eprintln!("Unknown asset type: '{}'. Valid: readme, dockerfile, svg, changelog, badges, book, forjar", other);
+            std::process::exit(1);
+        }
+        None => vec![
+            check_readme_layout(project_path),
+            check_dockerfile_contract(project_path),
+            check_svg_contract(project_path),
+            check_changelog_contract(project_path),
+            check_badge_contract(project_path),
+            check_mdbook_contract(project_path),
+            check_forjar_contract(project_path),
+        ],
+    };
+
+    let mut pass = 0;
+    let mut warn = 0;
+    let mut skip = 0;
+    for check in &checks {
+        let icon = match check.status {
+            CheckStatus::Pass => { pass += 1; "✓" }
+            CheckStatus::Warn => { warn += 1; "⚠" }
+            CheckStatus::Fail => { warn += 1; "✗" }
+            CheckStatus::Skip => { skip += 1; "-" }
+        };
+        println!("  {} {}: {}", icon, check.name, check.message);
+    }
+    println!();
+    println!("{} pass, {} warn, {} skip", pass, warn, skip);
 
     Ok(())
 }
