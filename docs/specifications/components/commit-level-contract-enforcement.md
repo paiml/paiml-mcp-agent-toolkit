@@ -298,16 +298,17 @@ fire-and-forget with no closed-loop regeneration.
 
 | Repo | CB-1354 Readiness | CB-1350 Status | Warnings | Notes |
 |------|-------------------|---------------|----------|-------|
-| pmat | 2/4 | Skip (empty index) | 8 | Missing contracts/YAML, binding.yaml |
+| pmat | **4/4** | Pass | 9 | binding.yaml + pmat-core.yaml + pv CLI + binding-index.json |
 | aprender | **4/4** | Pass | 4 | Full contract infrastructure |
 | trueno | 1/4 | Skip (empty index) | 3 | Only pv CLI |
 | realizar | 1/4 | Skip (empty index) | 5 | Only pv CLI |
 
-**Resolved:** CB-1336 (0 injections), CB-1334 (tdg_hooks atomic),
-CB-1402 (81/81 L1+), CB-1331 (0 invalid contracts).
+**Resolved:** CB-1336 (injections), CB-1334 (tdg atomic), CB-1402 (82/82 L1+),
+CB-1331 (0 invalid), CB-1205 (provability), CB-1211 (codegen generates 2 assertions),
+CB-1354 (pmat 4/4), CB-1330 (ratchet).
 
-**Remaining warnings:** CB-1333 (7 writers), CB-1334 (6 non-atomic),
-CB-1404 (low receipt rate), CB-1354 (infra gaps in pmat/trueno/realizar).
+**Remaining warnings:** CB-1333 (7 writers, deferred R-3), CB-1334 (2 test helpers),
+CB-1404 (17/82 receipts), CB-1340 (1% penetration), CB-148 (2 planned sections).
 
 ### Falsification: Spec Claims vs Reality (2026-04-05)
 
@@ -471,6 +472,7 @@ Priority: **P0** = blocks real enforcement, **P1** = completes spec claim, **P2*
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 2.7 | 2026-04-05 | YAML name quoting fix + pmat-core.yaml real pv schema. CB-1205/CB-1211/CB-1354 all pass. 71/9/0 compliance. |
 | 2.6 | 2026-04-05 | R-10 asset_validator (5 tests), R-6 all 5 flags added, R-3 deferred. **9/10 done. Backlog closed.** |
 | 2.5 | 2026-04-05 | R-9 ContractIndex (4 tests), R-6 partial --contract-gaps. 7/10 done. |
 | 2.4 | 2026-04-05 | R-4 (YAML gen, 81+21 files), R-7 (ratchet-override), R-8 (asset-validate). **6/10 done.** |
