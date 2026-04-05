@@ -7,6 +7,23 @@ use anyhow::{Context, Result};
 use std::fs;
 use std::path::Path;
 
+/// Escape shell metacharacters in template substitution values (CB-1336 fix).
+/// Prevents injection when config values like baseline_path contain shell metacharacters.
+fn shell_escape(s: &str) -> String {
+    let mut escaped = String::with_capacity(s.len());
+    for c in s.chars() {
+        match c {
+            '$' | '`' | '\\' | '"' | '!' | '(' | ')' | '{' | '}' | '|' | '&' | ';' | '<' | '>'
+            | '\'' | '\n' => {
+                escaped.push('\\');
+                escaped.push(c);
+            }
+            _ => escaped.push(c),
+        }
+    }
+    escaped
+}
+
 /// Wrapper function for TDG hooks installation
 pub(crate) async fn install_tdg_hooks_wrapper() -> Result<()> {
     let project_root = std::env::current_dir()?;
@@ -66,12 +83,15 @@ pub(crate) fn install_tdg_pre_commit_hook(hooks_dir: &Path, config: &TdgHooksCon
     // Read template
     let template = include_str!("../../../../templates/hooks/pre-commit-tdg.sh");
 
-    // Substitute configuration values
+    // Substitute configuration values (shell-escaped to prevent injection per CB-1336)
     let hook_content = template
-        .replace("{{BASELINE_PATH}}", &config.baseline.baseline_path)
+        .replace(
+            "{{BASELINE_PATH}}",
+            &shell_escape(&config.baseline.baseline_path),
+        )
         .replace(
             "{{MIN_GRADE}}",
-            config.quality_gates.get_default_min_grade(),
+            &shell_escape(config.quality_gates.get_default_min_grade()),
         )
         .replace(
             "{{MAX_SCORE_DROP}}",
@@ -81,7 +101,10 @@ pub(crate) fn install_tdg_pre_commit_hook(hooks_dir: &Path, config: &TdgHooksCon
             "{{ALLOW_GRADE_DROP}}",
             &config.quality_gates.allow_grade_drop.to_string(),
         )
-        .replace("{{MODE}}", &config.quality_gates.mode.to_string())
+        .replace(
+            "{{MODE}}",
+            &shell_escape(&config.quality_gates.mode.to_string()),
+        )
         .replace(
             "{{BLOCK_ON_REGRESSION}}",
             &config.quality_gates.block_on_regression.to_string(),
@@ -94,7 +117,7 @@ pub(crate) fn install_tdg_pre_commit_hook(hooks_dir: &Path, config: &TdgHooksCon
                 .to_string(),
         );
 
-    // Write hook file
+    // Write hook file (non-atomic — tracked as CB-1334 tech debt)
     fs::write(&hook_path, hook_content)?;
 
     // Make executable on Unix
@@ -119,9 +142,12 @@ pub(crate) fn install_tdg_post_commit_hook(
     // Read template
     let template = include_str!("../../../../templates/hooks/post-commit-tdg.sh");
 
-    // Substitute configuration values
+    // Substitute configuration values (shell-escaped to prevent injection per CB-1336)
     let hook_content = template
-        .replace("{{BASELINE_PATH}}", &config.baseline.baseline_path)
+        .replace(
+            "{{BASELINE_PATH}}",
+            &shell_escape(&config.baseline.baseline_path),
+        )
         .replace(
             "{{AUTO_UPDATE}}",
             &config.baseline.auto_update_on_commit.to_string(),
@@ -131,7 +157,7 @@ pub(crate) fn install_tdg_post_commit_hook(
             &config.baseline.store_in_git.to_string(),
         );
 
-    // Write hook file
+    // Write hook file (non-atomic — tracked as CB-1334 tech debt)
     fs::write(&hook_path, hook_content)?;
 
     // Make executable on Unix

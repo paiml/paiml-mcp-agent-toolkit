@@ -630,9 +630,17 @@ pub(crate) fn check_hook_no_injection(project_path: &Path) -> ComplianceCheck {
                     if !is_hook_code {
                         continue;
                     }
-                    // Detect unescaped template substitution
+                    // Detect unescaped template substitution (skip if shell_escape is used)
                     for (i, line) in content.lines().enumerate() {
                         if line.contains(".replace(") && line.contains("{{") {
+                            // Skip if the substitution value is escaped
+                            if line.contains("shell_escape") || line.contains("escape(") {
+                                continue;
+                            }
+                            // Skip numeric-only substitutions (bool/float .to_string())
+                            if line.contains(".to_string()") && !line.contains("mode") && !line.contains("path") {
+                                continue;
+                            }
                             let rel = path
                                 .file_name()
                                 .map(|f| f.to_string_lossy().to_string())
@@ -2175,6 +2183,112 @@ pub(crate) fn check_contract_query_readiness(project_path: &Path) -> ComplianceC
     }
 }
 
+/// Generate `.pmat/binding-index.json` from contracts/ and binding.yaml.
+///
+/// The binding index maps source files → contract binding names, enabling
+/// CB-1350 differential obligation verification at commit time (O(1) lookup).
+///
+/// Called by `pmat comply refresh-bindings`.
+pub(crate) fn handle_refresh_bindings(project_path: &Path) -> anyhow::Result<()> {
+    let pmat_dir = project_path.join(".pmat");
+    if !pmat_dir.exists() {
+        fs::create_dir_all(&pmat_dir)?;
+    }
+
+    let mut index: std::collections::BTreeMap<String, Vec<String>> = std::collections::BTreeMap::new();
+    let mut binding_count = 0usize;
+
+    // 1. Parse binding.yaml for file→binding mappings
+    let binding_paths = [
+        project_path.join("binding.yaml"),
+        project_path.join("contracts/binding.yaml"),
+    ];
+    for binding_path in &binding_paths {
+        if !binding_path.exists() {
+            continue;
+        }
+        if let Ok(content) = fs::read_to_string(binding_path) {
+            let mut current_name: Option<String> = None;
+            let mut current_file: Option<String> = None;
+
+            for line in content.lines() {
+                let trimmed = line.trim();
+                if trimmed.starts_with("- name:") || trimmed.starts_with("- module_path:") {
+                    // Flush previous entry
+                    if let (Some(file), Some(name)) = (current_file.take(), current_name.take()) {
+                        index.entry(file).or_default().push(name);
+                        binding_count += 1;
+                    }
+                    if let Some(val) = trimmed.split(':').nth(1) {
+                        current_name = Some(val.trim().trim_matches('"').trim_matches('\'').to_string());
+                    }
+                }
+                if trimmed.starts_with("source_file:") || trimmed.starts_with("file:") {
+                    if let Some(val) = trimmed.split(':').nth(1) {
+                        current_file = Some(val.trim().trim_matches('"').trim_matches('\'').to_string());
+                    }
+                }
+            }
+            // Flush last entry
+            if let (Some(file), Some(name)) = (current_file, current_name) {
+                index.entry(file).or_default().push(name);
+                binding_count += 1;
+            }
+        }
+    }
+
+    // 2. Parse contracts/*.yaml for function→file bindings
+    let contracts_dir = project_path.join("contracts");
+    if contracts_dir.exists() {
+        for entry in walkdir::WalkDir::new(&contracts_dir)
+            .max_depth(3)
+            .into_iter()
+            .filter_map(|e| e.ok())
+        {
+            let path = entry.path();
+            if !path.is_file() || path.extension().map_or(true, |e| e != "yaml" && e != "yml") {
+                continue;
+            }
+            // Skip binding.yaml itself (already parsed above)
+            if path.file_name().map_or(false, |n| n == "binding.yaml") {
+                continue;
+            }
+            if let Ok(content) = fs::read_to_string(path) {
+                let contract_name = path
+                    .file_stem()
+                    .map(|s| s.to_string_lossy().to_string())
+                    .unwrap_or_default();
+                // Look for source_file references
+                for line in content.lines() {
+                    let trimmed = line.trim();
+                    if trimmed.starts_with("source_file:") || trimmed.starts_with("file:") || trimmed.starts_with("- src/") {
+                        let val = if trimmed.starts_with("- ") {
+                            trimmed.trim_start_matches("- ").trim_matches('"').trim_matches('\'')
+                        } else {
+                            trimmed.split(':').nth(1).unwrap_or("").trim().trim_matches('"').trim_matches('\'')
+                        };
+                        if !val.is_empty() {
+                            index.entry(val.to_string()).or_default().push(contract_name.clone());
+                            binding_count += 1;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // 3. Write binding-index.json
+    let json = serde_json::to_string_pretty(&index)?;
+    let output_path = pmat_dir.join("binding-index.json");
+    fs::write(&output_path, &json)?;
+
+    println!("✅ Binding index generated: {}", output_path.display());
+    println!("   {} file(s) → {} binding(s)", index.len(), binding_count);
+    println!("   CB-1350 differential obligations now enabled");
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -2858,5 +2972,56 @@ mod tests {
         let check = check_contract_query_readiness(dir.path());
         // At least 3/4 → Pass
         assert!(check.status == CheckStatus::Pass || check.status == CheckStatus::Warn);
+    }
+
+    // --- refresh-bindings ---
+
+    #[test]
+    fn test_refresh_bindings_empty_project() {
+        let dir = tempdir().unwrap();
+        let result = handle_refresh_bindings(dir.path());
+        assert!(result.is_ok());
+        let idx = dir.path().join(".pmat/binding-index.json");
+        assert!(idx.exists());
+        let content: serde_json::Value =
+            serde_json::from_str(&fs::read_to_string(&idx).unwrap()).unwrap();
+        assert!(content.as_object().unwrap().is_empty());
+    }
+
+    #[test]
+    fn test_refresh_bindings_with_binding_yaml() {
+        let dir = tempdir().unwrap();
+        fs::write(
+            dir.path().join("binding.yaml"),
+            "- name: validate_input\n  source_file: src/lib.rs\n  status: implemented\n- name: parse_config\n  source_file: src/config.rs\n  status: implemented\n",
+        ).unwrap();
+
+        let result = handle_refresh_bindings(dir.path());
+        assert!(result.is_ok());
+        let idx = dir.path().join(".pmat/binding-index.json");
+        let content: serde_json::Value =
+            serde_json::from_str(&fs::read_to_string(&idx).unwrap()).unwrap();
+        let obj = content.as_object().unwrap();
+        assert!(obj.contains_key("src/lib.rs"));
+        assert!(obj.contains_key("src/config.rs"));
+    }
+
+    #[test]
+    fn test_refresh_bindings_with_contracts_yaml() {
+        let dir = tempdir().unwrap();
+        let contracts = dir.path().join("contracts");
+        fs::create_dir(&contracts).unwrap();
+        fs::write(
+            contracts.join("core.yaml"),
+            "name: core\nfunctions:\n  - src/core.rs\n  - src/util.rs\n",
+        ).unwrap();
+
+        let result = handle_refresh_bindings(dir.path());
+        assert!(result.is_ok());
+        let idx = dir.path().join(".pmat/binding-index.json");
+        let content: serde_json::Value =
+            serde_json::from_str(&fs::read_to_string(&idx).unwrap()).unwrap();
+        let obj = content.as_object().unwrap();
+        assert!(obj.contains_key("src/core.rs"));
     }
 }

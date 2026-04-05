@@ -80,6 +80,10 @@ pub async fn handle_comply_command(command: ComplyCommands) -> Result<()> {
             generate_file_health_baseline(&path, dry_run)
         }
 
+        ComplyCommands::RefreshBindings { path } => {
+            handle_refresh_bindings(&path)
+        }
+
         ComplyCommands::CrossCrate {
             path,
             crates,

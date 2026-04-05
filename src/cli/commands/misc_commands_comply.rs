@@ -196,6 +196,15 @@ pub enum ComplyCommands {
         dry_run: bool,
     },
 
+    /// Generate .pmat/binding-index.json from contracts/ and binding.yaml
+    /// Enables CB-1350 differential obligation verification at commit time.
+    #[command(visible_aliases = &["refresh", "rb"])]
+    RefreshBindings {
+        /// Project path (defaults to current directory)
+        #[arg(short = 'p', long = "path", default_value = ".")]
+        path: PathBuf,
+    },
+
     /// Cross-crate duplication detection (CC-001 through CC-005)
     /// Detects copy-paste duplication, API divergence, and churn correlation across workspace crates.
     #[command(visible_aliases = &["cc", "xc"])]
