@@ -65,6 +65,7 @@ fn is_non_attribute_line(trimmed: &str) -> bool {
 
 /// Check for cfg(not(...)) coverage exclusion patterns
 fn check_cfg_patterns(path: &Path, content: &str, violations: &mut Vec<GamingViolation>) {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let patterns = [
         ("cfg(not(coverage))", GamingPattern::CfgNotCoverage),
         ("cfg(not(tarpaulin))", GamingPattern::CfgNotTarpaulin),
@@ -113,6 +114,7 @@ fn check_cfg_patterns(path: &Path, content: &str, violations: &mut Vec<GamingVio
 
 /// Check for coverage exclusion comment patterns
 fn check_exclusion_comments(path: &Path, content: &str, violations: &mut Vec<GamingViolation>) {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let comment_patterns = [
         "// LCOV_EXCL_START",
         "// LCOV_EXCL_STOP",
@@ -156,6 +158,7 @@ fn check_codecov_changes(
     project_path: &Path,
     violations: &mut Vec<GamingViolation>,
 ) -> Result<()> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let codecov_path = project_path.join(".codecov.yml");
     let codecov_yaml = project_path.join("codecov.yml");
 
@@ -281,6 +284,7 @@ pub fn detect_critical_file_removals(
 
 /// Check if path is an excluded directory
 fn is_excluded_dir(path: &Path) -> bool {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let path_str = path.to_string_lossy();
     path_str.contains("/target/")
         || path_str.contains("/.git/")
@@ -291,6 +295,7 @@ fn is_excluded_dir(path: &Path) -> bool {
 
 /// Check if file is a source file we should scan
 fn is_source_file(path: &Path) -> bool {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let ext = path.extension().and_then(|e| e.to_str());
     matches!(
         ext,

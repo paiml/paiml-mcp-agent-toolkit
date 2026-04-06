@@ -232,6 +232,11 @@ fn determine_output_format(
 
 /// Log report generation startup info (cognitive complexity ≤2)
 fn log_report_generation_start(project_path: &Path, actual_format: &ReportOutputFormat) {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     info!("📊 Generating comprehensive defect report");
     info!("📂 Project path: {}", project_path.display());
     info!("📄 Output format: {:?}", actual_format);

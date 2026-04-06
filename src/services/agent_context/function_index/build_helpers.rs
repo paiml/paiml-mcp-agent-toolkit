@@ -43,6 +43,7 @@ fn check_mtime_reuse(
     index_built_at: &Option<std::time::SystemTime>,
     existing: &AgentContextIndex,
 ) -> Option<MtimeReuseResult> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let built_at = index_built_at.as_ref()?;
     let mtime = fs::metadata(path).ok()?.modified().ok()?;
     if mtime >= *built_at {

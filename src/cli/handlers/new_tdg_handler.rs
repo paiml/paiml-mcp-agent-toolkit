@@ -23,6 +23,7 @@ pub struct TdgAnalysisConfig {
 /// Check for critical defects in the project (Known Defects v2.1)
 /// Auto-fails TDG analysis if critical defects are found
 async fn check_for_critical_defects(path: &Path) -> Result<()> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     use crate::services::defect_detector::{RustDefectDetector, Severity};
     use walkdir::WalkDir;
 

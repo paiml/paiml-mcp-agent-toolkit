@@ -386,6 +386,11 @@ pub(crate) fn discover_source_files(
 /// Check file health across the project (CB-040)
 /// Analyze a single file for health metrics, returning (critical, problem, over_500) increments
 fn classify_file_health(file_path: &std::path::PathBuf, content: &str) -> (usize, usize, usize) {
+    debug_assert!(
+        file_path.exists(),
+        "file_path must exist: {}",
+        file_path.display()
+    );
     let lines = content.lines().count();
     let is_test_file = file_path.to_string_lossy().contains("/tests/")
         || file_path

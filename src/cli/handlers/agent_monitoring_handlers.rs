@@ -4,6 +4,7 @@ async fn handle_agent_monitor(
     project_id: Option<String>,
     _thresholds: Option<PathBuf>,
 ) -> Result<()> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let project_id = project_id.unwrap_or_else(|| {
         project_path
             .file_name()

@@ -12,6 +12,7 @@ impl LanguageStrategy for RustStrategy {
     }
 
     async fn parse_file(&self, _path: &Path, content: &str) -> Result<AstDag> {
+        debug_assert!(_path.exists(), "_path must exist: {}", _path.display());
         let syn_file = self.parse_syn_file(content)?;
         Ok(self.convert_to_dag(&syn_file))
     }

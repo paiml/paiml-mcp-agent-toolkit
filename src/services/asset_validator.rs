@@ -112,6 +112,11 @@ pub fn validate_asset(project_path: &Path, asset_type: AssetType) -> AssetValida
 }
 
 fn validate_readme(project_path: &Path) -> AssetValidationResult {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let readme = project_path.join("README.md");
     if !readme.exists() {
         return AssetValidationResult {
@@ -165,6 +170,11 @@ fn validate_readme(project_path: &Path) -> AssetValidationResult {
 }
 
 fn validate_dockerfile(project_path: &Path) -> AssetValidationResult {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let dockerfile = project_path.join("Dockerfile");
     if !dockerfile.exists() {
         return AssetValidationResult {
@@ -202,6 +212,11 @@ fn validate_dockerfile(project_path: &Path) -> AssetValidationResult {
 }
 
 fn validate_svg(project_path: &Path) -> AssetValidationResult {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let search_dirs = ["assets", "docs", "static", "."];
     let mut count = 0usize;
     let mut issues = Vec::new();
@@ -256,6 +271,11 @@ fn validate_svg(project_path: &Path) -> AssetValidationResult {
 }
 
 fn validate_changelog(project_path: &Path) -> AssetValidationResult {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let path = project_path.join("CHANGELOG.md");
     if !path.exists() {
         return AssetValidationResult {
@@ -292,6 +312,11 @@ fn validate_changelog(project_path: &Path) -> AssetValidationResult {
 }
 
 fn validate_badges(project_path: &Path) -> AssetValidationResult {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let readme = project_path.join("README.md");
     if !readme.exists() {
         return AssetValidationResult {
@@ -342,6 +367,11 @@ fn validate_badges(project_path: &Path) -> AssetValidationResult {
 }
 
 fn validate_mdbook(project_path: &Path) -> AssetValidationResult {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let summary = project_path.join("book/src/SUMMARY.md");
     if !summary.exists() {
         return AssetValidationResult {
@@ -389,6 +419,11 @@ fn validate_mdbook(project_path: &Path) -> AssetValidationResult {
 }
 
 fn validate_forjar(project_path: &Path) -> AssetValidationResult {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let yaml = project_path.join("forjar.yaml");
     let toml = project_path.join("forjar.toml");
     let path = if yaml.exists() {

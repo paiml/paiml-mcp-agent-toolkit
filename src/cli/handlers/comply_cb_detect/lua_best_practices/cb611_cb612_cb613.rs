@@ -236,6 +236,11 @@ pub fn detect_lua_test_frameworks(project_path: &Path) -> Vec<LuaTestFramework> 
 
 /// Scan Lua test files for require('luaunit'), require('telescope'), or custom test patterns.
 fn scan_test_file_requires(project_path: &Path) -> (bool, bool, bool) {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let lua_files = walkdir_lua_files(project_path);
     let mut luaunit = false;
     let mut telescope = false;
@@ -268,6 +273,11 @@ fn scan_test_file_requires(project_path: &Path) -> (bool, bool, bool) {
 
 /// Check for busted test framework indicators.
 fn has_busted_indicators(project_path: &Path) -> bool {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     // Check for .busted config file
     if project_path.join(".busted").exists() {
         return true;
@@ -283,6 +293,11 @@ fn has_busted_indicators(project_path: &Path) -> bool {
 
 /// Check for Test::Nginx indicators.
 fn has_test_nginx_indicators(project_path: &Path) -> bool {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let t_dir = project_path.join("t");
     if !t_dir.is_dir() {
         return false;
@@ -346,6 +361,11 @@ fn build_require_graph(
     project_path: &Path,
     files: &[PathBuf],
 ) -> std::collections::HashMap<String, Vec<String>> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let mut graph: std::collections::HashMap<String, Vec<String>> =
         std::collections::HashMap::new();
 

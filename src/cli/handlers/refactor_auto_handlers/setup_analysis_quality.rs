@@ -135,6 +135,7 @@ async fn analyze_project_satd(source_files: &[PathBuf]) -> Result<SatdAnalysis> 
 ///
 /// This function has complexity <3 and follows Toyota Way principles.
 async fn analyze_project_coverage(project_path: &Path) -> Result<CoverageAnalysis> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     // Use cargo llvm-cov to get coverage metrics
     let coverage_output = tokio::process::Command::new("cargo")
         .args([

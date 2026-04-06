@@ -47,6 +47,7 @@ fn persist_violations_to_sqlite(
     violations: &[QualityViolation],
     quiet: bool,
 ) {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let db_path = project_path.join(".pmat").join("context.db");
     if !db_path.exists() {
         if !quiet {
@@ -176,6 +177,7 @@ pub(crate) async fn persist_provability_to_sqlite(
     project_path: &std::path::Path,
     quiet: bool,
 ) {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let db_path = project_path.join(".pmat").join("context.db");
     if !db_path.exists() {
         return;

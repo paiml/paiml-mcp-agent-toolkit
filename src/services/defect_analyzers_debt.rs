@@ -21,6 +21,7 @@ impl DefectAnalyzer for SATDDefectAnalyzer {
     type Config = SATDConfig;
 
     async fn analyze(&self, project_path: &Path, config: Self::Config) -> Result<Vec<Defect>> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let mut defects = Vec::new();
 
         // Analyze the project directory

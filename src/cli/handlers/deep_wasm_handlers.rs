@@ -83,6 +83,11 @@ fn create_analysis_request(
     language: Option<DeepWasmLanguage>,
     focus: DeepWasmFocus,
 ) -> DeepWasmAnalysisRequest {
+    debug_assert!(
+        source_path.exists(),
+        "source_path must exist: {}",
+        source_path.display()
+    );
     let source_language = detect_source_language(&source_path, language);
     let analysis_focus = convert_analysis_focus(focus);
 
@@ -102,6 +107,11 @@ fn detect_source_language(
     source_path: &PathBuf,
     language: Option<DeepWasmLanguage>,
 ) -> SourceLanguage {
+    debug_assert!(
+        source_path.exists(),
+        "source_path must exist: {}",
+        source_path.display()
+    );
     match language {
         Some(DeepWasmLanguage::Rust) => SourceLanguage::Rust,
         Some(DeepWasmLanguage::Ruchy) => SourceLanguage::Ruchy,
@@ -112,6 +122,11 @@ fn detect_source_language(
 /// Auto-detects language from file extension
 #[cfg(feature = "deep-wasm")]
 fn auto_detect_language(source_path: &PathBuf) -> SourceLanguage {
+    debug_assert!(
+        source_path.exists(),
+        "source_path must exist: {}",
+        source_path.display()
+    );
     source_path
         .extension()
         .and_then(|ext| ext.to_str())

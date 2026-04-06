@@ -212,6 +212,7 @@ async fn handle_qdd_refactor(
     output: Option<PathBuf>,
     dry_run: bool,
 ) -> Result<()> {
+    debug_assert!(file.exists(), "file must exist: {}", file.display());
     validate_file_exists(&file)?;
 
     let quality_profile = create_quality_profile(profile, max_complexity, min_coverage);
@@ -231,6 +232,7 @@ async fn handle_qdd_refactor(
 
 /// Validate that the target file exists
 fn validate_file_exists(file: &Path) -> Result<()> {
+    debug_assert!(file.exists(), "file must exist: {}", file.display());
     if !file.exists() {
         return Err(anyhow::anyhow!("File does not exist: {}", file.display()));
     }
@@ -265,6 +267,7 @@ fn create_refactor_spec(
     function: Option<String>,
     quality_profile: &QualityProfile,
 ) -> RefactorSpec {
+    debug_assert!(file.exists(), "file must exist: {}", file.display());
     RefactorSpec {
         file_path: file.to_path_buf(),
         function_name: function,
@@ -279,6 +282,7 @@ fn handle_dry_run(
     profile: QddQualityProfile,
     quality_profile: &QualityProfile,
 ) -> Result<()> {
+    debug_assert!(file.exists(), "file must exist: {}", file.display());
     println!(
         "{}",
         c::dim(&format!(
@@ -324,6 +328,7 @@ fn display_refactor_results(
     profile: QddQualityProfile,
     result: &QddResult,
 ) {
+    debug_assert!(file.exists(), "file must exist: {}", file.display());
     println!("{}", c::header("QDD Refactoring Successful!"));
     println!(
         "  {} {}",
@@ -389,6 +394,7 @@ async fn handle_qdd_validate(
     output: Option<PathBuf>,
     strict: bool,
 ) -> Result<()> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let quality_profile = match profile {
         QddQualityProfile::Extreme => QualityProfile::extreme(),
         QddQualityProfile::Standard => QualityProfile::standard(),

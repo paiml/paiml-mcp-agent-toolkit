@@ -93,6 +93,7 @@ async fn analyze_java_file(
     include_metrics: bool,
     include_ast: bool,
 ) -> Result<Value> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     // Read the file content
     let content = fs::read_to_string(path).await?;
 
@@ -184,6 +185,7 @@ async fn analyze_java_directory(
     include_metrics: bool,
     include_ast: bool,
 ) -> Result<Value> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     // Use walkdir to find all Java files
     let java_files = find_java_files(path, max_depth as usize)?;
 
@@ -263,6 +265,7 @@ async fn analyze_java_directory(
 
 /// Helper function to find all Java files in a directory
 fn find_java_files(path: &std::path::Path, max_depth: usize) -> Result<Vec<PathBuf>> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let mut java_files = Vec::new();
 
     let walker = walkdir::WalkDir::new(path)

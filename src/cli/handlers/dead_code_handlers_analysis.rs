@@ -6,6 +6,7 @@ async fn run_dead_code_analysis_with_filters(
     path: &Path,
     filters: DeadCodeAnalysisFilters,
 ) -> Result<crate::models::dead_code::DeadCodeResult> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     use crate::models::dead_code::DeadCodeAnalysisConfig;
     use crate::utils::file_filter::FileFilter;
 
@@ -88,6 +89,7 @@ fn run_multi_language_dead_code(
     filters: &DeadCodeAnalysisFilters,
     language: &str,
 ) -> Result<crate::models::dead_code::DeadCodeResult> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     use crate::models::dead_code::{
         ConfidenceLevel, DeadCodeItem, DeadCodeSummary, DeadCodeType, FileDeadCodeMetrics,
     };

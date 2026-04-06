@@ -23,6 +23,7 @@ pub fn is_source_file(path: &Path) -> bool {
 
 /// Toyota Way: Extract Method - Check source extension (complexity ≤3)
 fn has_source_extension(path: &Path) -> bool {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     matches!(
         path.extension().and_then(|s| s.to_str()),
         Some(
@@ -44,6 +45,7 @@ fn has_source_extension(path: &Path) -> bool {
 
 /// Toyota Way: Extract Method - Check if path contains test directory (complexity ≤5)
 fn is_test_path(path: &Path) -> bool {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let path_str = path.to_string_lossy();
     let test_patterns = [
         "/tests/",
@@ -65,6 +67,7 @@ fn is_test_path(path: &Path) -> bool {
 
 /// Toyota Way: Extract Method - Check if filename is test file (complexity ≤4)
 fn is_test_filename(path: &Path) -> bool {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     path.file_name()
         .and_then(|name| name.to_str())
         .is_some_and(|fname| {

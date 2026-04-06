@@ -1,5 +1,6 @@
 /// Check if directory should be ignored
 pub(super) fn is_ignored_dir(path: &Path) -> bool {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
 
     matches!(
@@ -29,6 +30,7 @@ pub(super) fn is_ignored_dir(path: &Path) -> bool {
 
 /// Detect language from file extension
 pub(super) fn detect_language(path: &Path) -> Option<Language> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let ext = path.extension()?.to_str()?;
     match ext {
         "rs" => Some(Language::Rust),

@@ -117,6 +117,7 @@ pub async fn check_complexity(
 
 /// Load exclude_paths globs from `.pmat-metrics.toml`.
 fn load_exclude_paths(project_path: &Path) -> Vec<glob::Pattern> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let config_path = project_path.join(".pmat-metrics.toml");
     let content = match std::fs::read_to_string(&config_path) {
         Ok(c) => c,

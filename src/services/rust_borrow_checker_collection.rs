@@ -9,6 +9,7 @@ impl RustBorrowChecker {
         rustc_version: &str,
         collection_state: &mut CollectionState,
     ) {
+        debug_assert!(project_root.exists(), "project_root must exist: {}", project_root.display());
         for entry in WalkDir::new(project_root)
             .follow_links(true)
             .into_iter()
@@ -34,6 +35,7 @@ impl RustBorrowChecker {
         rustc_version: &str,
         collection_state: &mut CollectionState,
     ) {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let cache_key = format!(
             "rust_borrow_checker:{}:{}",
             rustc_version,
@@ -79,6 +81,7 @@ impl RustBorrowChecker {
         cache: &Arc<RwLock<ProofCache>>,
         collection_state: &mut CollectionState,
     ) {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         #[cfg(feature = "rust-ast")]
         let file_result = RustBorrowChecker::default().analyze_rust_file(path);
 

@@ -25,6 +25,7 @@ async fn check_file_security(
     patterns: &[(&str, &str)],
     violations: &mut Vec<QualityViolation>,
 ) -> Result<()> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     use regex::Regex;
     use tokio::fs;
 
@@ -137,6 +138,7 @@ async fn collect_file_hashes(
     project_path: &Path,
     file_hashes: &mut std::collections::HashMap<u64, Vec<PathBuf>>,
 ) -> Result<()> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     use walkdir::WalkDir;
 
     for entry in WalkDir::new(project_path) {
@@ -173,11 +175,13 @@ async fn collect_file_hashes(
 
 /// Check if file should be processed for duplicate detection
 fn should_process_file_for_duplicates(path: &Path) -> bool {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     path.is_file() && is_source_file(path) && !is_build_artifact(path)
 }
 
 /// Process a file and return its content hash if valid
 async fn process_file_for_hash(path: &Path) -> Option<u64> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     if let Ok(content) = tokio::fs::read_to_string(path).await {
         let normalized = normalize_code_content(&content);
         if is_file_large_enough(&normalized) {

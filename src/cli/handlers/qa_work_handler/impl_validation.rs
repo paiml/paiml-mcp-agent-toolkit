@@ -107,6 +107,7 @@ async fn handle_validate(
 
 /// Run code quality validation checks
 async fn run_code_quality_checks(project_path: &Path) -> CategoryResult {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let mut items = vec![];
 
     // Check complexity via pmat
@@ -199,6 +200,7 @@ async fn run_code_quality_checks(project_path: &Path) -> CategoryResult {
 
 /// Run testing validation checks
 async fn run_testing_checks(project_path: &Path) -> CategoryResult {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let mut items = vec![];
 
     // Run tests
@@ -275,6 +277,7 @@ async fn run_testing_checks(project_path: &Path) -> CategoryResult {
 
 /// Run documentation validation checks
 async fn run_documentation_checks(project_path: &Path, task_id: &str) -> CategoryResult {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let mut items = vec![];
 
     // Check CHANGELOG
@@ -364,6 +367,7 @@ async fn run_documentation_checks(project_path: &Path, task_id: &str) -> Categor
 
 /// Run process validation checks
 async fn run_process_checks(project_path: &Path, task_id: &str) -> CategoryResult {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let mut items = vec![];
 
     // Check git log for ticket references

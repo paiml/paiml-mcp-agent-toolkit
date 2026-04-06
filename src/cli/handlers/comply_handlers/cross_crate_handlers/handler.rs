@@ -165,6 +165,11 @@ fn emit_report(
 }
 
 fn enforce_strict(report: &CrossCrateReport, strict: bool, workspace_path: &Path) {
+    debug_assert!(
+        workspace_path.exists(),
+        "workspace_path must exist: {}",
+        workspace_path.display()
+    );
     if !strict {
         return;
     }

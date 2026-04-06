@@ -100,6 +100,11 @@ fn collect_example_signatures(
     extractor: &UniversalFeatureExtractor,
     hasher: &MinHashGenerator,
 ) -> Vec<(String, MinHashSignature)> {
+    debug_assert!(
+        examples_dir.exists(),
+        "examples_dir must exist: {}",
+        examples_dir.display()
+    );
     let mut sigs = Vec::new();
 
     let entries = match std::fs::read_dir(examples_dir) {

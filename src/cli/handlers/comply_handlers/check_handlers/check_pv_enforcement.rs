@@ -3,6 +3,7 @@
 
 /// Extract equation names from contract YAMLs that have preconditions or postconditions.
 fn collect_contract_equation_names(contracts_dir: &Path) -> Vec<String> {
+    debug_assert!(contracts_dir.exists(), "contracts_dir must exist: {}", contracts_dir.display());
     let mut eq_names = Vec::new();
     let headers = [
         "equations",
@@ -615,6 +616,7 @@ pub(crate) fn check_verification_levels(project_path: &Path, thresholds: &Comply
 
 /// Quick check if a directory contains any contract YAML files (not just binding.yaml).
 fn has_contract_yamls(dir: &Path) -> bool {
+    debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
     std::fs::read_dir(dir).into_iter().flatten().flatten().any(|e| {
         let p = e.path();
         p.is_file()
@@ -627,6 +629,7 @@ fn has_contract_yamls(dir: &Path) -> bool {
 /// Checks local `contracts/` first (if it has YAMLs), then sibling `../provable-contracts/contracts/<name>/`.
 /// Tries both the directory name and the Cargo.toml package name (e.g., paiml-mcp-agent-toolkit → pmat).
 fn resolve_contracts_dir(project_path: &Path) -> Option<std::path::PathBuf> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     // Prefer sibling provable-contracts repo — contains only provable-contracts YAMLs.
     // Local contracts/ may contain pmat work contracts (different schema) that pv lint
     // cannot parse.
@@ -670,6 +673,7 @@ fn resolve_contracts_dir(project_path: &Path) -> Option<std::path::PathBuf> {
 /// Returns a set of stems (e.g., "softmax-kernel-v1") for filtering proof-status.json.
 /// Checks local `contracts/` then sibling `../provable-contracts/contracts/<project>/`.
 fn collect_project_contract_stems(project_path: &Path) -> std::collections::HashSet<String> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let mut stems = std::collections::HashSet::new();
     if let Some(contracts_dir) = resolve_contracts_dir(project_path) {
         collect_stems_recursive(&contracts_dir, &mut stems);
@@ -678,6 +682,7 @@ fn collect_project_contract_stems(project_path: &Path) -> std::collections::Hash
 }
 
 fn collect_stems_recursive(dir: &Path, stems: &mut std::collections::HashSet<String>) {
+    debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
     let entries = match std::fs::read_dir(dir) {
         Ok(e) => e,
         Err(_) => return,
@@ -946,6 +951,7 @@ pub(crate) fn check_binding_existence(project_path: &Path, thresholds: &ComplyTh
 
 /// Detect if build.rs has contract enforcement (reads binding.yaml or contracts/)
 fn detect_buildrs_enforcement(project_path: &Path) -> bool {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     // Check root build.rs
     let build_rs = project_path.join("build.rs");
     if build_rs.exists() {
@@ -1124,6 +1130,8 @@ fn resolve_binding_files(
     abs_path: &Path,
     project_name: &str,
 ) -> Vec<std::path::PathBuf> {
+    debug_assert!(contracts_dir.exists(), "contracts_dir must exist: {}", contracts_dir.display());
+    debug_assert!(abs_path.exists(), "abs_path must exist: {}", abs_path.display());
     let mut files: Vec<std::path::PathBuf> = Vec::new();
     for entry in walkdir::WalkDir::new(contracts_dir)
         .max_depth(3)
@@ -1163,6 +1171,7 @@ fn resolve_binding_files(
 fn collect_known_fn_names(
     project_path: &Path,
 ) -> Option<std::collections::HashSet<String>> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let src_dir = project_path.join("src");
     let crates_dir = project_path.join("crates");
     let mut search_dirs: Vec<std::path::PathBuf> = Vec::new();
@@ -1550,6 +1559,7 @@ pub(crate) fn check_pv_lint(project_path: &Path, thresholds: &ComplyThresholds) 
 }
 
 fn count_contract_test_refs(project_path: &Path) -> (usize, usize, usize) {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let contracts_dir = project_path.join("contracts");
     let src_dir = project_path.join("src");
     let mut refs = Vec::new();

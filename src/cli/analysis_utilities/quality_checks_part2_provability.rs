@@ -5,6 +5,7 @@ async fn check_provability(
     project_path: &Path,
     min_provability: f64,
 ) -> Result<Vec<QualityViolation>> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let mut violations = Vec::new();
 
     let (current_provability, details) =
@@ -105,6 +106,7 @@ pub async fn calculate_provability_score(project_path: &Path) -> Result<f64> {
 async fn calculate_provability_with_details(
     project_path: &Path,
 ) -> Result<(f64, ViolationDetails)> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     use crate::services::lightweight_provability_analyzer::LightweightProvabilityAnalyzer;
 
     let analyzer = LightweightProvabilityAnalyzer::new();
@@ -176,6 +178,7 @@ fn collect_project_functions(
     project_path: &Path,
     max_count: usize,
 ) -> Vec<crate::services::lightweight_provability_analyzer::FunctionId> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let src_dir = project_path.join("src");
     let scan_root = if src_dir.exists() { &src_dir } else { project_path };
 
@@ -197,6 +200,7 @@ fn collect_project_functions(
 
 /// Collect .rs source files excluding test files.
 fn collect_source_files(root: &Path) -> Vec<std::path::PathBuf> {
+    debug_assert!(root.exists(), "root must exist: {}", root.display());
     walkdir::WalkDir::new(root)
         .max_depth(10)
         .into_iter()

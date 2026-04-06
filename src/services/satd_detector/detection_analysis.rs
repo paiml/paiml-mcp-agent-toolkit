@@ -39,6 +39,7 @@ impl SATDDetector {
 
     /// Toyota Way: Extract Method - check if file should be skipped (complexity <=8)
     async fn should_skip_file(&self, file_path: &Path, include_tests: bool) -> bool {
+        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         // Skip test files if not requested
         if !include_tests && self.is_test_file(file_path) {
             return true;
@@ -67,6 +68,7 @@ impl SATDDetector {
 
     /// Toyota Way: Extract Method - process individual file (complexity <=8)
     async fn process_single_file(&self, file_path: &Path, stats: &mut ProjectAnalysisStats) {
+        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         match tokio::fs::read_to_string(file_path).await {
             Ok(content) => {
                 if content.len() > 10_000_000 {
@@ -101,6 +103,7 @@ impl SATDDetector {
 
     /// Toyota Way: Extract Method - calculate debt age (complexity <=3)
     async fn calculate_project_debt_age(&self, debts: &[TechnicalDebt], root: &Path) -> f64 {
+        debug_assert!(root.exists(), "root must exist: {}", root.display());
         if !debts.is_empty() && root.join(".git").exists() {
             self.calculate_average_debt_age(debts, root)
                 .await
@@ -188,6 +191,7 @@ impl SATDDetector {
     }
 
     async fn should_skip_file_for_analysis(&self, file_path: &Path, include_tests: bool) -> bool {
+        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         // Skip test files unless explicitly requested
         if !include_tests && self.is_test_file(file_path) {
             return true;
@@ -203,6 +207,7 @@ impl SATDDetector {
     }
 
     async fn should_skip_large_file(&self, file_path: &Path) -> bool {
+        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         if let Ok(metadata) = tokio::fs::metadata(file_path).await {
             if metadata.len() > 1_000_000 && self.is_likely_minified_content(file_path).await {
                 return true;
@@ -212,6 +217,7 @@ impl SATDDetector {
     }
 
     async fn process_file_for_debts(&self, file_path: &Path) -> Vec<TechnicalDebt> {
+        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         match tokio::fs::read_to_string(file_path).await {
             Ok(content) => self.extract_debts_from_content(&content, file_path),
             Err(_e) => {

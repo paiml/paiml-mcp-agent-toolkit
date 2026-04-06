@@ -25,6 +25,11 @@ impl HooksCommand {
 
     /// Check if a hook is PMAT-managed
     pub(super) fn is_pmat_managed(&self, hook_path: &Path) -> Result<bool> {
+        debug_assert!(
+            hook_path.exists(),
+            "hook_path must exist: {}",
+            hook_path.display()
+        );
         if !hook_path.exists() {
             return Ok(false);
         }

@@ -126,6 +126,7 @@ impl IncrementalChurnAnalyzer {
 
     /// Get last commit hash for a specific file
     async fn get_file_last_commit_hash(&self, file_path: &Path) -> Result<String, TemplateError> {
+        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         let output = tokio::process::Command::new("git")
             .arg("log")
             .arg("-1")

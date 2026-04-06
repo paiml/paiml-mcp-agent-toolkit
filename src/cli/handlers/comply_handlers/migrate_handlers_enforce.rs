@@ -7,6 +7,7 @@
 /// Install git hooks for mandatory work tracking (W-006)
 /// Implements master-plan-pmat-work-system.md enforcement
 fn remove_pmat_hook(hook_path: &Path, markers: &[&str], hook_name: &str) -> Result<()> {
+    debug_assert!(hook_path.exists(), "hook_path must exist: {}", hook_path.display());
     use crate::cli::colors as c;
     if !hook_path.exists() {
         return Ok(());
@@ -22,6 +23,7 @@ fn remove_pmat_hook(hook_path: &Path, markers: &[&str], hook_name: &str) -> Resu
 }
 
 fn make_hook_executable(_path: &Path) -> Result<()> {
+    debug_assert!(_path.exists(), "_path must exist: {}", _path.display());
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
@@ -33,6 +35,7 @@ fn make_hook_executable(_path: &Path) -> Result<()> {
 }
 
 fn print_enforce_result(format: &ComplyOutputFormat, hooks_dir: &Path) -> Result<()> {
+    debug_assert!(hooks_dir.exists(), "hooks_dir must exist: {}", hooks_dir.display());
     use crate::cli::colors as c;
     match format {
         ComplyOutputFormat::Text => {
@@ -68,6 +71,7 @@ async fn handle_enforce(
     disable: bool,
     format: ComplyOutputFormat,
 ) -> Result<()> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let hooks_dir = project_path.join(".git").join("hooks");
 
     if !hooks_dir.exists() {
@@ -112,6 +116,7 @@ async fn handle_report(
     format: ComplyOutputFormat,
     output: Option<&Path>,
 ) -> Result<()> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     // Load project config
     let config = load_or_create_project_config(project_path)?;
 

@@ -12,6 +12,7 @@ fn has_bounds_check_nearby(content_lines: &[&str], line_num: usize) -> bool {
 
 /// Check a single WGSL file for array accesses without preceding bounds checks (CB-001).
 fn check_wgsl_file_for_bounds_violations(entry: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(entry.exists(), "entry must exist: {}", entry.display());
     let mut violations = Vec::new();
     let content = match fs::read_to_string(entry) {
         Ok(c) => c,
@@ -64,6 +65,7 @@ pub fn detect_cb001_wgsl_no_bounds_check(project_path: &Path) -> Vec<CbPatternVi
 }
 
 pub(super) fn walkdir_wgsl_files(dir: &Path) -> Result<Vec<std::path::PathBuf>, std::io::Error> {
+    debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
     let mut files = Vec::new();
     for entry in std::fs::read_dir(dir)? {
         let entry = entry?;
@@ -103,6 +105,7 @@ fn check_line_for_barrier(
 /// Check a single WGSL file for barrier divergence violations (CB-002).
 /// Reads the file, walks lines tracking conditional depth, and returns violations.
 fn check_wgsl_file_for_barrier_divergence(entry: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(entry.exists(), "entry must exist: {}", entry.display());
     let mut violations = Vec::new();
     let content = match fs::read_to_string(entry) {
         Ok(c) => c,

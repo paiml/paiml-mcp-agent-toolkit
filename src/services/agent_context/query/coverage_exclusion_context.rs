@@ -117,6 +117,7 @@ pub fn classify_exclusions(
 /// Looks for `--ignore-filename-regex='...'` pattern and extracts the
 /// inner regex, converting it from a filename regex to a path-matching regex.
 fn parse_makefile_coverage_exclude(project_path: &Path) -> Option<regex::Regex> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let makefile_path = project_path.join("Makefile");
     let content = std::fs::read_to_string(makefile_path).ok()?;
 
@@ -161,6 +162,7 @@ fn collect_dead_items(file_entry: &serde_json::Value, dead: &mut HashSet<String>
 ///
 /// Returns a set of "file_path::function_name" keys for O(1) lookup.
 fn load_dead_code_functions(project_path: &Path) -> HashSet<String> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let cache_path = project_path.join(".pmat/dead-code-cache.json");
     let mut dead = HashSet::new();
 

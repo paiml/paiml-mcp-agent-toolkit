@@ -449,6 +449,7 @@ unsafe impl Sync for BuildPerfScorer {}
 
 /// Calculate directory size recursively (best-effort)
 fn dir_size(path: &Path) -> std::io::Result<u64> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let mut total = 0u64;
 
     if path.is_dir() {

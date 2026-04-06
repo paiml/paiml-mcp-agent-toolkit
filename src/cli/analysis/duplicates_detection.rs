@@ -96,6 +96,7 @@ async fn run_duplicate_detection(
     include: &Option<String>,
     exclude: &Option<String>,
 ) -> Result<DuplicateReport> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     detect_duplicates(
         project_path,
         detection_type,
@@ -212,6 +213,7 @@ async fn detect_duplicates(
     include: &Option<String>,
     exclude: &Option<String>,
 ) -> Result<DuplicateReport> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let (all_blocks, total_lines, mut file_stats) = collect_code_blocks(
         project_path,
         detection_type,
@@ -248,6 +250,7 @@ async fn collect_code_blocks(
     usize,
     HashMap<String, FileStats>,
 )> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     use walkdir::WalkDir;
 
     let mut all_blocks = Vec::new();
@@ -282,6 +285,7 @@ async fn collect_code_blocks(
 
 /// Check if file should be analyzed
 fn should_analyze_file(path: &Path, include: &Option<String>, exclude: &Option<String>) -> bool {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     path.is_file() && is_source_file(path) && should_process_file(path, include, exclude)
 }
 
@@ -292,6 +296,7 @@ async fn process_source_file(
     min_lines: usize,
     max_tokens: usize,
 ) -> Option<(Vec<(String, String, usize, usize, String)>, usize)> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     if let Ok(content) = tokio::fs::read_to_string(path).await {
         let lines: Vec<&str> = content.lines().collect();
         let blocks = extract_blocks(&lines, path, min_lines, max_tokens, detection_type);

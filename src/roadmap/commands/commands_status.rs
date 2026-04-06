@@ -7,6 +7,7 @@ async fn show_status(
     task_id: Option<&str>,
     format: OutputFormat,
 ) -> Result<()> {
+    debug_assert!(roadmap_path.exists(), "roadmap_path must exist: {}", roadmap_path.display());
     let roadmap = Roadmap::from_file(roadmap_path)?;
 
     if let Some(task_id) = task_id {

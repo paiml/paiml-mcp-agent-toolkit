@@ -175,6 +175,7 @@ fn parse_architecture_analysis_args(
 async fn run_architecture_deep_context_analysis(
     project_path: &Path,
 ) -> Result<crate::services::deep_context::DeepContext, Box<dyn std::error::Error>> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     use crate::services::deep_context::{DeepContextAnalyzer, DeepContextConfig};
 
     let config = DeepContextConfig {
@@ -197,6 +198,7 @@ fn build_architecture_analysis_context(
     project_path: &Path,
     deep_context: &crate::services::deep_context::DeepContext,
 ) -> Result<crate::services::canonical_query::AnalysisContext, String> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     use crate::services::canonical_query::AnalysisContext;
 
     let dag_result = deep_context

@@ -5,6 +5,7 @@ impl DefectAnalyzer for ComplexityDefectAnalyzer {
     type Config = ComplexityConfig;
 
     async fn analyze(&self, project_path: &Path, config: Self::Config) -> Result<Vec<Defect>> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let mut defects = Vec::new();
         let tdg_calculator = crate::services::tdg_calculator::TDGCalculator::new();
 

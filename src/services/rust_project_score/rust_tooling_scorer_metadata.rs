@@ -6,6 +6,7 @@ fn read_cargo_toml(
     project_path: &Path,
     cache: Option<&FileCache>,
 ) -> ScorerResult<String> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let cargo_toml_path = project_path.join("Cargo.toml");
     if !cargo_toml_path.exists() {
         return Err(ScorerError::IoError("Cargo.toml not found".to_string()));

@@ -31,6 +31,7 @@ use std::path::{Path, PathBuf};
 
 /// Helper function to discover source files
 async fn discover_source_files(path: &Path) -> Result<Vec<PathBuf>> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     use walkdir::WalkDir;
 
     let mut files = Vec::new();

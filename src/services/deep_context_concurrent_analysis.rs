@@ -21,6 +21,7 @@ impl ConcurrentDeepContextAnalyzer {
 
     /// Parse all files in parallel using rayon
     async fn parse_files_parallel(&self, path: &Path) -> Result<Arc<AstCache>> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         use crate::services::file_discovery::ProjectFileDiscovery;
 
         let pb = self.create_progress_bar("Parsing files", 100);
@@ -169,16 +170,19 @@ impl ConcurrentDeepContextAnalyzer {
 
     /// Other async analyses
     async fn analyze_satd_async(&self, path: &Path) -> Result<SATDAnalysisResult> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         use crate::services::satd_detector::SATDDetector;
         let detector = SATDDetector::new();
         detector.analyze_project(path, false).await
     }
 
     async fn analyze_churn_async(&self, path: &Path) -> Result<ChurnAnalysis> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         analyze_churn(path, self.config.period_days).await
     }
 
     async fn analyze_dag_async(&self, path: &Path) -> Result<DependencyGraph> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         analyze_dag(path, self.config.dag_type).await
     }
 

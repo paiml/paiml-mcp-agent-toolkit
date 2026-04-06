@@ -304,6 +304,11 @@ async fn list_all_violations(
     profile: &QualityProfile,
     format: EnforceOutputFormat,
 ) -> Result<()> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     eprintln!("{}", c::header("Listing all quality violations..."));
 
     let project_path_buf = project_path.to_path_buf();
@@ -355,6 +360,11 @@ async fn validate_current_state(
     format: EnforceOutputFormat,
     ci_mode: bool,
 ) -> Result<()> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     eprintln!("{}", c::label("Validating current quality state..."));
 
     // Run the analysis step to get current state

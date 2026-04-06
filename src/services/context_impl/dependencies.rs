@@ -15,6 +15,7 @@ fn calculate_item_counts(summary: &mut ProjectSummary, files: &[FileContext]) {
 }
 
 async fn read_dependencies(root_path: &Path, toolchain: &str) -> Vec<String> {
+    debug_assert!(root_path.exists(), "root_path must exist: {}", root_path.display());
     match toolchain {
         "rust" => read_rust_dependencies(root_path).await,
         "deno" => read_deno_dependencies(root_path).await,
@@ -24,6 +25,7 @@ async fn read_dependencies(root_path: &Path, toolchain: &str) -> Vec<String> {
 }
 
 async fn read_rust_dependencies(root_path: &Path) -> Vec<String> {
+    debug_assert!(root_path.exists(), "root_path must exist: {}", root_path.display());
     if let Ok(cargo_content) = tokio::fs::read_to_string(root_path.join("Cargo.toml")).await {
         if let Ok(cargo_toml) = cargo_content.parse::<toml::Value>() {
             if let Some(deps) = cargo_toml.get("dependencies").and_then(|d| d.as_table()) {
@@ -35,6 +37,7 @@ async fn read_rust_dependencies(root_path: &Path) -> Vec<String> {
 }
 
 async fn read_deno_dependencies(root_path: &Path) -> Vec<String> {
+    debug_assert!(root_path.exists(), "root_path must exist: {}", root_path.display());
     let mut dependencies = Vec::new();
 
     // Check deno.json
@@ -59,6 +62,7 @@ async fn read_deno_dependencies(root_path: &Path) -> Vec<String> {
 }
 
 async fn read_python_dependencies(root_path: &Path) -> Vec<String> {
+    debug_assert!(root_path.exists(), "root_path must exist: {}", root_path.display());
     let mut dependencies = Vec::new();
 
     // Check pyproject.toml

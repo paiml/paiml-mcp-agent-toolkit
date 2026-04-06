@@ -27,6 +27,7 @@ fn execute_cleanup(result: &mut CleanupResult) -> Result<()> {
 }
 
 fn cleanup_directory(path: &Path, size_bytes: u64, result: &mut CleanupResult) {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     if !path.is_dir() {
         return;
     }
@@ -43,6 +44,7 @@ fn cleanup_directory(path: &Path, size_bytes: u64, result: &mut CleanupResult) {
 }
 
 fn cleanup_git(path: &Path, result: &mut CleanupResult) {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let Some(repo_path) = path.parent().and_then(|p| p.parent()) else {
         return;
     };
@@ -64,6 +66,7 @@ fn cleanup_git(path: &Path, result: &mut CleanupResult) {
 }
 
 fn cleanup_file(path: &Path, size_bytes: u64, result: &mut CleanupResult) {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     if !path.is_file() {
         return;
     }
@@ -82,6 +85,7 @@ fn cleanup_file(path: &Path, size_bytes: u64, result: &mut CleanupResult) {
 // Helper functions
 
 fn is_hidden(path: &Path) -> bool {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     path.file_name()
         .and_then(|n| n.to_str())
         .map(|n| n.starts_with('.') && n != ".git")
@@ -89,6 +93,7 @@ fn is_hidden(path: &Path) -> bool {
 }
 
 fn is_excluded(path: &Path, exclude: &[String]) -> bool {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let path_str = path.to_string_lossy();
     exclude.iter().any(|pattern| {
         if pattern.contains('*') {
@@ -106,6 +111,7 @@ fn is_excluded(path: &Path, exclude: &[String]) -> bool {
 }
 
 fn calculate_dir_size(path: &Path) -> u64 {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     WalkDir::new(path)
         .into_iter()
         .flatten()
@@ -116,6 +122,7 @@ fn calculate_dir_size(path: &Path) -> u64 {
 }
 
 fn count_loose_objects(objects_dir: &Path) -> usize {
+    debug_assert!(objects_dir.exists(), "objects_dir must exist: {}", objects_dir.display());
     WalkDir::new(objects_dir)
         .max_depth(2)
         .into_iter()

@@ -76,6 +76,11 @@ pub async fn handle_analyze_wasm(
 
 /// Load WASM file from disk (Complexity: 1)
 fn load_wasm_file(wasm_file: &PathBuf) -> Result<Vec<u8>> {
+    debug_assert!(
+        wasm_file.exists(),
+        "wasm_file must exist: {}",
+        wasm_file.display()
+    );
     let binary = std::fs::read(wasm_file)?;
     debug!("Loaded WASM binary: {} bytes", binary.len());
     Ok(binary)
@@ -157,6 +162,11 @@ async fn run_baseline_comparison_if_requested(
 
 /// Load and analyze baseline WASM file (Complexity: 3)
 fn load_and_analyze_baseline(baseline_path: &PathBuf) -> Result<Metrics> {
+    debug_assert!(
+        baseline_path.exists(),
+        "baseline_path must exist: {}",
+        baseline_path.display()
+    );
     let baseline_binary = std::fs::read(baseline_path)?;
     let baseline_analyzer = WasmAnalyzer::new()?;
     let baseline_result = baseline_analyzer.analyze(&baseline_binary)?;

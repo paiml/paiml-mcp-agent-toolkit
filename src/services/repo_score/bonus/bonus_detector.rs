@@ -21,6 +21,11 @@ impl BonusDetector {
 
     /// Detect property-based testing with proptest (+3 points)
     async fn detect_property_tests(&self, repo_path: &Path) -> Result<BonusItem> {
+        debug_assert!(
+            repo_path.exists(),
+            "repo_path must exist: {}",
+            repo_path.display()
+        );
         let mut evidence = vec![];
         let mut detected = false;
 
@@ -63,6 +68,11 @@ impl BonusDetector {
 
     /// Detect fuzzing with cargo-fuzz (+2 points)
     async fn detect_fuzzing(&self, repo_path: &Path) -> Result<BonusItem> {
+        debug_assert!(
+            repo_path.exists(),
+            "repo_path must exist: {}",
+            repo_path.display()
+        );
         let mut evidence = vec![];
         let mut detected = false;
 
@@ -99,6 +109,11 @@ impl BonusDetector {
 
     /// Detect mutation testing with cargo-mutants (+2 points)
     async fn detect_mutation_testing(&self, repo_path: &Path) -> Result<BonusItem> {
+        debug_assert!(
+            repo_path.exists(),
+            "repo_path must exist: {}",
+            repo_path.display()
+        );
         let mut evidence = vec![];
         let mut detected = false;
 
@@ -165,6 +180,11 @@ impl BonusDetector {
 
     /// Detect living documentation with mdBook (+3 points)
     async fn detect_living_docs(&self, repo_path: &Path) -> Result<BonusItem> {
+        debug_assert!(
+            repo_path.exists(),
+            "repo_path must exist: {}",
+            repo_path.display()
+        );
         let mut evidence = vec![];
         let mut detected = false;
 

@@ -153,6 +153,7 @@ fn full_checks() -> Vec<&'static str> {
 
 /// Run a single CI check
 async fn run_check(check: &str, path: &Path, fix: bool, _verbose: bool) -> Result<String> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     match check {
         "cargo-fmt" => {
             if fix {
@@ -224,11 +225,13 @@ async fn run_check(check: &str, path: &Path, fix: bool, _verbose: bool) -> Resul
 
 /// Run a command and capture output
 fn run_cmd(path: &Path, cmd: &str, args: &[&str]) -> Result<String> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     run_cmd_with_env(path, cmd, args, &[])
 }
 
 /// Run a command with environment variables
 fn run_cmd_with_env(path: &Path, cmd: &str, args: &[&str], env: &[(&str, &str)]) -> Result<String> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let mut command = std::process::Command::new(cmd);
     command.args(args).current_dir(path);
 

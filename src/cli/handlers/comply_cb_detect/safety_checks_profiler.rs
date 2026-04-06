@@ -3,6 +3,7 @@
 
 /// Detect ComputeBricks without assertions/validation (CB-BUDGET)
 fn check_brick_file_for_assertions(entry: &Path) -> Option<CbPatternViolation> {
+    debug_assert!(entry.exists(), "entry must exist: {}", entry.display());
     let content = fs::read_to_string(entry).ok()?;
     let is_brick_impl = content.contains("impl") && content.contains("Brick");
     if !is_brick_impl {

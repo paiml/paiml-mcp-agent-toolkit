@@ -75,12 +75,14 @@ impl LanguageStrategy for CStrategy {
 
     #[cfg(feature = "c-ast")]
     async fn parse_file(&self, _path: &Path, content: &str) -> Result<AstDag> {
+        debug_assert!(_path.exists(), "_path must exist: {}", _path.display());
         let tree = self.parse_with_tree_sitter(content)?;
         Ok(self.convert_to_dag(&tree, content))
     }
 
     #[cfg(not(feature = "c-ast"))]
     async fn parse_file(&self, _path: &Path, _content: &str) -> Result<AstDag> {
+        debug_assert!(_path.exists(), "_path must exist: {}", _path.display());
         Err(anyhow::anyhow!(
             "C AST parsing not available - compile with 'c-ast' feature"
         ))
@@ -204,12 +206,14 @@ impl LanguageStrategy for CppStrategy {
 
     #[cfg(feature = "cpp-ast")]
     async fn parse_file(&self, _path: &Path, content: &str) -> Result<AstDag> {
+        debug_assert!(_path.exists(), "_path must exist: {}", _path.display());
         let tree = self.parse_with_tree_sitter(content)?;
         Ok(self.convert_to_dag(&tree, content))
     }
 
     #[cfg(not(feature = "cpp-ast"))]
     async fn parse_file(&self, _path: &Path, _content: &str) -> Result<AstDag> {
+        debug_assert!(_path.exists(), "_path must exist: {}", _path.display());
         Err(anyhow::anyhow!(
             "C++ AST parsing not available - compile with 'cpp-ast' feature"
         ))

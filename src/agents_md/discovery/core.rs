@@ -29,6 +29,7 @@ fn update_cache_for_change(
     path: &Path,
     change: &FileChangeType,
 ) {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     if matches!(change, FileChangeType::Removed) {
         cache.remove(path);
         return;
@@ -73,6 +74,7 @@ fn process_watch_event(
 }
 
 fn should_ignore_dir(dir: &Path, ignore_patterns: &[String]) -> bool {
+    debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
     dir.file_name()
         .and_then(|n| n.to_str())
         .is_some_and(|name| ignore_patterns.iter().any(|p| name == p))
@@ -84,6 +86,7 @@ fn try_discover_agents_file(
     depth: usize,
     cache: &DashMap<PathBuf, AgentsMdFile>,
 ) -> Option<AgentsMdFile> {
+    debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
     let agents_path = dir.join(file_name);
     if PathValidator::ensure_file(&agents_path).is_err() {
         return None;
@@ -237,6 +240,7 @@ impl AgentsMdDiscovery {
 
     /// Get from cache if valid
     pub(super) fn get_from_cache(&self, path: &Path) -> Option<AgentsMdFile> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         self.cache.get(path).map(|entry| entry.clone())
     }
 

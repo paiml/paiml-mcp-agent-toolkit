@@ -81,6 +81,7 @@ const WEB_DEMO_PATHS: &[&str] = &[
 impl DemoScorer {
     /// Score "Wow" Factor (G4: 2 points)
     async fn score_wow_factor(&self, repo_path: &Path) -> Result<SubcategoryScore> {
+        debug_assert!(repo_path.exists(), "repo_path must exist: {}", repo_path.display());
         let mut score: f64 = 0.0;
         let mut findings = vec![];
 

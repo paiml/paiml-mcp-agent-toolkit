@@ -13,6 +13,7 @@ async fn handle_project_quality_gate(
     perf: bool,
     quiet: bool,
 ) -> Result<()> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     use std::time::Instant;
     let mut violations = Vec::new();
     let mut results = QualityGateResults::default();
@@ -110,6 +111,7 @@ async fn run_project_checks(
     perf: bool,
     quiet: bool,
 ) -> Result<()> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     // If checks contains All, just run that single check which will run all checks
     if checks.contains(&QualityCheckType::All) {
         run_single_project_check(

@@ -17,6 +17,7 @@ async fn handle_single_file_refactor(
     dry_run: bool,
     _max_iterations: u32,
 ) -> Result<()> {
+    debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
     eprintln!("🎯 Analyzing single file: {}", file_path.display());
 
     if is_markdown_file(&file_path) {
@@ -34,6 +35,7 @@ async fn handle_regular_file_analysis(
     format: RefactorAutoOutputFormat,
     dry_run: bool,
 ) -> Result<()> {
+    debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
     let lint_violations = get_single_file_lint_violations(file_path).await?;
     eprintln!("📊 Found {} lint violations", lint_violations.len());
 
@@ -294,18 +296,21 @@ async fn get_final_validation(
 
 /// Get lint violations for a single file (helper function)
 async fn get_single_file_lint_violations(_file_path: &Path) -> Result<Vec<ViolationDetailJson>> {
+    debug_assert!(_file_path.exists(), "_file_path must exist: {}", _file_path.display());
     // Use clippy and other linting tools for actual implementation
     Ok(vec![])
 }
 
 /// Count SATD comments in a single file (helper function)
 async fn count_file_satd(_file_path: &Path) -> Result<usize> {
+    debug_assert!(_file_path.exists(), "_file_path must exist: {}", _file_path.display());
     // Parse file content for SATD comment patterns
     Ok(0)
 }
 
 /// Analyze complexity of a single file (helper function)
 async fn analyze_file_complexity(_file_path: &Path) -> Result<QualityMetrics> {
+    debug_assert!(_file_path.exists(), "_file_path must exist: {}", _file_path.display());
     // Use AST-based complexity analysis tools
     Ok(QualityMetrics::default())
 }
@@ -317,6 +322,7 @@ fn generate_single_file_refactor_request(
     _complexity: QualityMetrics,
     _satd_count: usize,
 ) -> Result<serde_json::Value> {
+    debug_assert!(_file_path.exists(), "_file_path must exist: {}", _file_path.display());
     // Generate comprehensive refactoring analysis
     Ok(serde_json::json!({
         "file": "test.rs",

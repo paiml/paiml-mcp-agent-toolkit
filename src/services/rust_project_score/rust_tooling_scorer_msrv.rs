@@ -20,6 +20,7 @@ fn extract_msrv(content: &str) -> Option<String> {
 
 /// Check if any CI workflow tests against a given MSRV version
 fn ci_tests_msrv(project_path: &Path, msrv: &str) -> bool {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let workflows_dir = project_path.join(".github/workflows");
     let entries = match std::fs::read_dir(&workflows_dir) {
         Ok(e) => e,

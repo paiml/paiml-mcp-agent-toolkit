@@ -37,6 +37,11 @@ impl InfraScorer for DeploymentReleaseScorer {
     }
 
     async fn score(&self, repo_path: &Path) -> anyhow::Result<InfraCategoryScore> {
+        debug_assert!(
+            repo_path.exists(),
+            "repo_path must exist: {}",
+            repo_path.display()
+        );
         let workflows = read_workflow_files(repo_path);
         let all_content: String = workflows
             .iter()

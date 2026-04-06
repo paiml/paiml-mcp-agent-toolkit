@@ -8,6 +8,7 @@ fn should_skip_file(
     lang_extensions: &Option<Vec<&str>>,
     exclude_glob: &Option<globset::GlobSet>,
 ) -> bool {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     // Apply language filter
     if let Some(ref exts) = lang_extensions {
         let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
@@ -235,6 +236,7 @@ fn walk_and_collect(
     options: &RawSearchOptions,
     acc: &mut FileMatchAccumulator,
 ) {
+    debug_assert!(project_root.exists(), "project_root must exist: {}", project_root.display());
     let walker = WalkBuilder::new(project_root)
         .hidden(true)
         .git_ignore(true)
@@ -327,6 +329,7 @@ pub fn is_within_indexed_function(
 
 /// Directories to skip during raw search (beyond .gitignore)
 fn is_search_ignored_dir(path: &Path) -> bool {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     path.components().any(|c| {
         let s = c.as_os_str().to_str().unwrap_or("");
         matches!(

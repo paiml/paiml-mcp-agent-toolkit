@@ -66,6 +66,7 @@ async fn run_satd_analysis(
     strict: bool,
     timeout: u64,
 ) -> Result<crate::services::satd_detector::SATDAnalysisResult> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     use crate::services::satd_detector::SATDDetector;
 
     // Create detector

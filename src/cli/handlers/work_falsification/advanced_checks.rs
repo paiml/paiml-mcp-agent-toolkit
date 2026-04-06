@@ -18,6 +18,11 @@ pub(crate) async fn test_satd_detection(
     project_path: &Path,
     baseline_commit: &str,
 ) -> Result<FalsificationResult> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     print!("Detecting SATD markers... ");
 
     // Run pmat analyze satd
@@ -117,6 +122,11 @@ fn detect_new_satd_since_baseline(
     project_path: &Path,
     baseline_commit: &str,
 ) -> Result<Vec<(PathBuf, String)>> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let mut new_satd = Vec::new();
 
     // Get diff of added lines since baseline
@@ -166,6 +176,11 @@ pub(crate) async fn test_dead_code_detection(
     project_path: &Path,
     baseline_commit: &str,
 ) -> Result<FalsificationResult> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     print!("Detecting dead code... ");
 
     // Run pmat analyze dead-code
@@ -324,6 +339,11 @@ pub(crate) async fn test_per_file_coverage(
     project_path: &Path,
     threshold: f64,
 ) -> Result<FalsificationResult> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     print!("Checking per-file coverage... ");
 
     // Try to read per-file coverage from llvm-cov output
@@ -345,6 +365,11 @@ pub(crate) async fn test_per_file_coverage(
 
 /// Test lint pass: O(1) - reads from cached lint status
 pub(crate) async fn test_lint_pass(project_path: &Path) -> Result<FalsificationResult> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     print!("Reading lint cache... ");
 
     // O(1): Read from cache instead of running make lint

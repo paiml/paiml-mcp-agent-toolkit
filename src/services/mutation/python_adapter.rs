@@ -72,6 +72,11 @@ impl LanguageAdapter for PythonAdapter {
     }
 
     async fn run_tests(&self, _source_file: &Path) -> Result<TestRunResult> {
+        debug_assert!(
+            _source_file.exists(),
+            "_source_file must exist: {}",
+            _source_file.display()
+        );
         // Minimal implementation for now
         Ok(TestRunResult {
             passed: true,

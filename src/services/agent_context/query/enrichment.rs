@@ -126,6 +126,11 @@ fn detect_language_for_duplication(
 
 /// Collect unique file contents from query results for analysis.
 fn collect_file_contents(results: &[QueryResult], project_root: &Path) -> HashMap<String, String> {
+    debug_assert!(
+        project_root.exists(),
+        "project_root must exist: {}",
+        project_root.display()
+    );
     let mut contents: HashMap<String, String> = HashMap::new();
     for result in results {
         if contents.contains_key(&result.file_path) {
@@ -269,6 +274,11 @@ pub async fn enrich_results_with_entropy(
 
 /// Run batuta bug-hunter and parse findings into a file->annotations map.
 fn run_batuta_and_parse(project_root: &Path) -> Result<HashMap<String, Vec<String>>, String> {
+    debug_assert!(
+        project_root.exists(),
+        "project_root must exist: {}",
+        project_root.display()
+    );
     use std::process::Command;
 
     let output = Command::new("batuta")

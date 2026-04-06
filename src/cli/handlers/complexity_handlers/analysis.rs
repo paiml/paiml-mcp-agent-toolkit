@@ -18,6 +18,11 @@ pub(crate) async fn analyze_single_file(
     file_path: &Path,
     config: &ComplexityConfig,
 ) -> Result<Vec<FileComplexityMetrics>> {
+    debug_assert!(
+        file_path.exists(),
+        "file_path must exist: {}",
+        file_path.display()
+    );
     eprintln!("🔍 Analyzing complexity of file: {}", file_path.display());
 
     // Ensure file exists and resolve absolute path

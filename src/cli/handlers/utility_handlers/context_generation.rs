@@ -87,6 +87,7 @@ fn find_file_metrics<'a>(
 
 /// Generate minimal SARIF v2.1 stub
 fn generate_sarif_stub(toolchain: &str, project_path: &Path) -> Result<String> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let sarif = serde_json::json!({
         "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
         "version": "2.1.0",
@@ -114,6 +115,7 @@ fn generate_sarif_stub(toolchain: &str, project_path: &Path) -> Result<String> {
 
 /// Detect toolchain or use provided one
 fn detect_or_use_toolchain(toolchain: Option<String>, project_path: &Path) -> Result<String> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     use std::io::{self, Write};
 
     if let Some(t) = toolchain {

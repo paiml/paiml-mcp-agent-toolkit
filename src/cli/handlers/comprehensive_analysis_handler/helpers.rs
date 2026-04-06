@@ -34,6 +34,11 @@ pub(super) async fn run_orchestrated_analysis(
     analysis_path: PathBuf,
     config: &ComprehensiveAnalysisConfig,
 ) -> Result<ComprehensiveAnalysisResult> {
+    debug_assert!(
+        analysis_path.exists(),
+        "analysis_path must exist: {}",
+        analysis_path.display()
+    );
     let registry = Arc::new(ServiceRegistry::new());
     let orchestrator = AnalysisOrchestrator::new(registry);
 
@@ -45,6 +50,7 @@ pub(super) fn create_analysis_request(
     path: PathBuf,
     config: &ComprehensiveAnalysisConfig,
 ) -> ComprehensiveAnalysisRequest {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     ComprehensiveAnalysisRequest {
         path,
         include_complexity: config.include_complexity,

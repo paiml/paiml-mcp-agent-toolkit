@@ -41,6 +41,7 @@ impl DependencyCache {
 
 /// Parse Cargo.lock once and return both transitive count and duplicates
 pub(super) fn parse_cargo_lock(cargo_lock_path: &Path) -> (usize, Vec<DuplicateCrate>) {
+    debug_assert!(cargo_lock_path.exists(), "cargo_lock_path must exist: {}", cargo_lock_path.display());
     let content = match fs::read_to_string(cargo_lock_path) {
         Ok(c) => c,
         Err(_) => return (0, Vec::new()),
@@ -90,6 +91,7 @@ pub(super) fn parse_cargo_lock(cargo_lock_path: &Path) -> (usize, Vec<DuplicateC
 /// Count production-only transitive dependencies using `cargo tree -e no-dev`
 /// Returns None if cargo tree is unavailable or fails
 pub(super) fn count_production_transitive(project_path: &Path) -> Option<usize> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let output = std::process::Command::new("cargo")
         .args(["tree", "-e", "no-dev", "--prefix=none"])
         .current_dir(project_path)
@@ -122,6 +124,8 @@ pub(super) fn get_cached_dependency_analysis(
     project_path: &Path,
     cargo_lock_path: &Path,
 ) -> (usize, Option<usize>, Vec<DuplicateCrate>) {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
+    debug_assert!(cargo_lock_path.exists(), "cargo_lock_path must exist: {}", cargo_lock_path.display());
     // Try to use cached results first
     if let Some(cache) = DependencyCache::load(project_path) {
         if cache.is_valid(cargo_lock_path) {

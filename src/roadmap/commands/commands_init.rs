@@ -8,6 +8,7 @@ async fn init_sprint(
     duration_days: u32,
     priority: &str,
 ) -> Result<()> {
+    debug_assert!(roadmap_path.exists(), "roadmap_path must exist: {}", roadmap_path.display());
     println!("📋 Initializing sprint {version} - {title}");
 
     let mut roadmap = if roadmap_path.exists() {

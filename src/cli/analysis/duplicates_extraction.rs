@@ -217,6 +217,7 @@ fn find_duplicate_blocks(
 
 /// Check if file should be processed
 fn should_process_file(path: &Path, include: &Option<String>, exclude: &Option<String>) -> bool {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let path_str = path.to_string_lossy();
 
     if let Some(excl) = exclude {
@@ -234,6 +235,7 @@ fn should_process_file(path: &Path, include: &Option<String>, exclude: &Option<S
 
 /// Check if file is source code
 fn is_source_file(path: &Path) -> bool {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     matches!(
         path.extension().and_then(|s| s.to_str()),
         Some("rs" | "js" | "ts" | "py" | "java" | "cpp" | "c" | "kt" | "kts")

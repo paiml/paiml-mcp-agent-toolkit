@@ -37,6 +37,11 @@ impl InfraScorer for QualityPipelineScorer {
     }
 
     async fn score(&self, repo_path: &Path) -> anyhow::Result<InfraCategoryScore> {
+        debug_assert!(
+            repo_path.exists(),
+            "repo_path must exist: {}",
+            repo_path.display()
+        );
         let workflows = read_workflow_files(repo_path);
         let all_content: String = workflows
             .iter()
@@ -256,6 +261,11 @@ fn check_coverage(content: &str) -> InfraCheck {
 
 /// QP-04: Security audit (cargo audit, dependabot, CodeQL)
 fn check_security_audit(content: &str, repo_path: &Path) -> InfraCheck {
+    debug_assert!(
+        repo_path.exists(),
+        "repo_path must exist: {}",
+        repo_path.display()
+    );
     let audit_patterns = [
         "cargo audit",
         "cargo-deny",

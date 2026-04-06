@@ -6,6 +6,7 @@
 
 /// Initialize .pmat/project.toml with current version and scaffold config files
 async fn handle_init(project_path: &Path, force: bool) -> Result<()> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     use crate::cli::colors as c;
 
     let config_path = project_path.join(".pmat").join("project.toml");

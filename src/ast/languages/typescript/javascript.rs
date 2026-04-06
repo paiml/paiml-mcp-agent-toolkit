@@ -70,6 +70,7 @@ impl LanguageStrategy for JavaScriptStrategy {
     }
 
     async fn parse_file(&self, path: &Path, content: &str) -> Result<AstDag> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let filename = path.display().to_string();
         let module = self.parse_module(content, &filename)?;
         let ts_strategy = TypeScriptStrategy::new();

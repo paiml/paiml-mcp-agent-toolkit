@@ -107,6 +107,7 @@ impl DemoRunner {
     }
 
     async fn demo_context_generation(&mut self, path: &Path) -> Result<DemoStep> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let request = self.build_mcp_request(
             "generate_context",
             json!({
@@ -142,6 +143,7 @@ impl DemoRunner {
     }
 
     async fn demo_complexity_analysis(&mut self, path: &Path) -> Result<DemoStep> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let request = self.build_mcp_request(
             "analyze_complexity",
             json!({
@@ -186,6 +188,7 @@ impl DemoRunner {
     }
 
     async fn demo_dag_generation(&mut self, path: &Path) -> Result<DemoStep> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let request = self.build_mcp_request(
             "analyze_dag",
             json!({
@@ -233,6 +236,7 @@ impl DemoRunner {
     }
 
     async fn demo_churn_analysis(&mut self, path: &Path) -> Result<DemoStep> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let request = self.build_mcp_request(
             "analyze_code_churn",
             json!({
@@ -275,6 +279,7 @@ impl DemoRunner {
     }
 
     async fn demo_system_architecture(&mut self, path: &Path) -> Result<DemoStep> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         // Use the enhanced canonical query system
         let request = self.build_mcp_request(
             "analyze_system_architecture",
@@ -322,6 +327,7 @@ impl DemoRunner {
     }
 
     async fn demo_defect_analysis(&mut self, path: &Path) -> Result<DemoStep> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let request = self.build_mcp_request(
             "analyze_defect_probability",
             json!({
@@ -367,6 +373,7 @@ impl DemoRunner {
     }
 
     async fn demo_template_generation(&mut self, path: &Path) -> Result<DemoStep> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let request = self.build_mcp_request(
             "generate_template",
             json!({

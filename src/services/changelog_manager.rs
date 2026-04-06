@@ -112,6 +112,7 @@ pub fn add_to_changelog(project_path: &PathBuf, entry: ChangelogEntry) -> Result
 
 /// Create new CHANGELOG.md with standard structure
 fn create_changelog(path: &PathBuf) -> Result<()> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let template = r#"# Changelog
 
 All notable changes to this project will be documented in this file.

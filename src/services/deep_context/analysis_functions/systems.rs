@@ -207,6 +207,11 @@ pub async fn analyze_lean_language(
 async fn analyze_go_file(
     _file_path: &Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
+    debug_assert!(
+        _file_path.exists(),
+        "_file_path must exist: {}",
+        _file_path.display()
+    );
     #[cfg(feature = "go-ast")]
     {
         use crate::services::languages::go;
@@ -226,6 +231,11 @@ async fn analyze_go_file(
 async fn analyze_c_file(
     #[allow(unused_variables)] file_path: &Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
+    debug_assert!(
+        file_path.exists(),
+        "file_path must exist: {}",
+        file_path.display()
+    );
     #[cfg(feature = "c-ast")]
     {
         // Direct delegation to the new implementation
@@ -244,6 +254,11 @@ async fn analyze_c_file(
 async fn analyze_kotlin_file(
     #[allow(unused_variables)] file_path: &Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
+    debug_assert!(
+        file_path.exists(),
+        "file_path must exist: {}",
+        file_path.display()
+    );
     // kotlin-ast feature is disabled
     Ok(Vec::new())
 }
@@ -329,6 +344,11 @@ pub async fn analyze_swift_file(
 async fn analyze_wasm_file(
     _file_path: &Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
+    debug_assert!(
+        _file_path.exists(),
+        "_file_path must exist: {}",
+        _file_path.display()
+    );
     #[cfg(feature = "wasm-ast")]
     {
         use crate::services::languages::wasm::WasmModuleAnalyzer;

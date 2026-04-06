@@ -11,6 +11,7 @@ async fn analyze_file_complexity_async(
     _cyclomatic_threshold: u16,
     _cognitive_threshold: u16,
 ) -> Result<crate::services::complexity::FileComplexityMetrics> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     crate::cli::language_analyzer::analyze_file_complexity(path, _content).await
 }
 */

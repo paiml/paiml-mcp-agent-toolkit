@@ -22,6 +22,11 @@ pub(crate) async fn handle_review(
     format: ComplyOutputFormat,
     output: Option<&Path>,
 ) -> Result<()> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     use crate::cli::handlers::comply_handlers::muda_handlers;
     use crate::cli::handlers::comply_handlers::reproducibility_handlers;
 
@@ -173,6 +178,11 @@ fn format_review_markdown(items: &[ReviewItem]) -> String {
 
 /// Check if git working tree is clean.
 fn check_git_clean(project_path: &Path) -> bool {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     std::process::Command::new("git")
         .args(["status", "--porcelain"])
         .current_dir(project_path)
@@ -205,6 +215,11 @@ pub(crate) async fn handle_audit(
     format: ComplyOutputFormat,
     output: Option<&Path>,
 ) -> Result<()> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     println!("{}", c::header("PMAT Comply Audit (Layer 3: Governance)"));
     println!("{}\n", c::rule());
 
@@ -287,6 +302,11 @@ fn collect_layer1_checks(
     project_path: &Path,
     comply_config: &crate::models::comply_config::ComplyConfig,
 ) -> Vec<ComplianceCheck> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     vec![
         filter_check_by_config(check_compute_brick(project_path), "cb-060", comply_config),
         filter_check_by_config(

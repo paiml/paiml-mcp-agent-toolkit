@@ -1,5 +1,6 @@
 /// Find files with given extensions
 fn find_files_by_extension(path: &Path, extensions: &[&str]) -> Vec<std::path::PathBuf> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     WalkDir::new(path)
         .max_depth(10)
         .into_iter()

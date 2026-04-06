@@ -30,6 +30,7 @@ async fn process_assemblyscript_files(
     wasm_complexity: bool,
     security: bool,
 ) -> Result<Vec<(PathBuf, WasmComplexity)>> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let detector = WasmLanguageDetector::new();
     let mut parser = AssemblyScriptParser::new()?;
     let mut results = Vec::new();
@@ -61,6 +62,7 @@ async fn analyze_single_file(
     wasm_complexity: bool,
     security: bool,
 ) -> Result<Option<(PathBuf, WasmComplexity)>> {
+    debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
     let content = match tokio::fs::read_to_string(file_path).await {
         Ok(content) => content,
         Err(_) => return Ok(None),
@@ -106,6 +108,7 @@ fn process_parsed_ast(
 }
 
 fn validate_ast_security(ast: &AstDag, file_path: &Path) {
+    debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
     let security_validator = WasmSecurityValidator::new();
     if let Err(e) = security_validator.validate_ast(ast) {
         eprintln!("⚠️  Security issue in {}: {}", file_path.display(), e);

@@ -15,6 +15,7 @@ impl LanguageStrategy for PythonStrategy {
 
     #[cfg(feature = "python-ast")]
     async fn parse_file(&self, _path: &Path, content: &str) -> Result<AstDag> {
+        debug_assert!(_path.exists(), "_path must exist: {}", _path.display());
         // Use tree-sitter-python (modern approach)
         let tree = self.parse_with_tree_sitter(content)?;
         Ok(self.convert_tree_to_dag(&tree, content))
@@ -22,6 +23,7 @@ impl LanguageStrategy for PythonStrategy {
 
     #[cfg(not(feature = "python-ast"))]
     async fn parse_file(&self, _path: &Path, _content: &str) -> Result<AstDag> {
+        debug_assert!(_path.exists(), "_path must exist: {}", _path.display());
         Err(anyhow::anyhow!(
             "Python AST parsing not available - compile with 'python-ast' feature"
         ))

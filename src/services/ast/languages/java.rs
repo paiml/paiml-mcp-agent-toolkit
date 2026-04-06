@@ -30,6 +30,7 @@ impl JavaStrategy {
 impl AstStrategy for JavaStrategy {
     /// Analyzes a Java file and returns a FileContext with AST information
     async fn analyze(&self, file_path: &Path, _classifier: &FileClassifier) -> Result<FileContext> {
+        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         // Read the file content
         let content = fs::read_to_string(file_path).await?;
         

@@ -21,6 +21,7 @@ async fn setup_refactoring_context(
     github_issue_url: Option<String>,
     bug_report_path: Option<PathBuf>,
 ) -> Result<RefactorContext> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let start_time = std::time::Instant::now();
 
     // Determine refactoring mode
@@ -109,6 +110,7 @@ async fn discover_source_files(
     patterns: &PatternConfig,
     ignore_patterns: &[String],
 ) -> Result<Vec<PathBuf>> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let mut source_files = Vec::new();
 
     for entry in WalkDir::new(project_path)

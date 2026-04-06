@@ -1,5 +1,6 @@
 /// Handle analyze subcommand
 async fn handle_analyze(path: &PathBuf, config: &CudaTdgCommandConfig) -> Result<()> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let analyzer = CudaSimdAnalyzer::new();
     let result = analyzer.analyze(path)?;
 
@@ -15,6 +16,7 @@ async fn handle_score(
     breakdown: bool,
     config: &CudaTdgCommandConfig,
 ) -> Result<()> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let analyzer = CudaSimdAnalyzer::new();
     let result = analyzer.analyze(path)?;
 
@@ -36,6 +38,7 @@ async fn handle_report(
     output: Option<&PathBuf>,
     config: &CudaTdgCommandConfig,
 ) -> Result<()> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let analyzer = CudaSimdAnalyzer::new();
     let result = analyzer.analyze(path)?;
 
@@ -60,6 +63,7 @@ async fn handle_report(
 
 /// Handle barrier-check subcommand
 async fn handle_barrier_check(path: &PathBuf, config: &CudaTdgCommandConfig) -> Result<()> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let analyzer = CudaSimdAnalyzer::new();
     let result = analyzer.analyze(path)?;
 

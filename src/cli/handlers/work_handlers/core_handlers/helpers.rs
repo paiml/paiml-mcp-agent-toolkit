@@ -35,6 +35,11 @@ pub(super) fn parse_acceptance_criteria(body: &str) -> Vec<String> {
 
 /// Create specification template
 pub(super) fn create_specification_template(spec_path: &PathBuf, item: &RoadmapItem) -> Result<()> {
+    debug_assert!(
+        spec_path.exists(),
+        "spec_path must exist: {}",
+        spec_path.display()
+    );
     use std::fs;
 
     if let Some(parent) = spec_path.parent() {

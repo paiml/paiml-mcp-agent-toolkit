@@ -118,6 +118,7 @@ fn resolve_languages(source: Option<Language>, target: Option<Language>) -> Vec<
 }
 
 async fn collect_language_nodes(path: &Path, max_depth: usize, languages: &[Language]) -> Vec<UnifiedNode> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let mut all_nodes = Vec::new();
     for language in languages {
         match LanguageMapperFactory::create(*language) {

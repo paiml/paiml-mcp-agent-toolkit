@@ -353,6 +353,7 @@ fn print_coverage_analysis_header(
     coverage_threshold: f64,
     format: &IncrementalCoverageOutputFormat,
 ) {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     eprintln!("📊 Analyzing incremental coverage...");
     eprintln!("📁 Project path: {}", project_path.display());
     eprintln!("🌿 Base branch: {base_branch}");

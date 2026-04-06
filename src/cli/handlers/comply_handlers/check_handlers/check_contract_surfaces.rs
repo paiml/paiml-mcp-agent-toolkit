@@ -1024,6 +1024,7 @@ fn check_workflow_contracts(
     issues: &mut Vec<String>,
     checks_run: &mut usize,
 ) {
+    debug_assert!(workflows_dir.exists(), "workflows_dir must exist: {}", workflows_dir.display());
     let Ok(entries) = std::fs::read_dir(workflows_dir) else {
         return;
     };
@@ -1072,6 +1073,7 @@ fn check_cargo_contracts(
     issues: &mut Vec<String>,
     checks_run: &mut usize,
 ) {
+    debug_assert!(cargo_toml.exists(), "cargo_toml must exist: {}", cargo_toml.display());
     let Ok(content) = std::fs::read_to_string(cargo_toml) else {
         return;
     };

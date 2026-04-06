@@ -112,6 +112,7 @@ impl TdgAnalyzer {
 /// If the score's file path matches any contracted path fragment, marks
 /// `has_contract_coverage = true` and recalculates to apply/lift the A- cap.
 fn apply_contract_coverage(score: &mut TdgScore, dir: &Path, contracted_paths: &[String]) {
+    debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
     if contracted_paths.is_empty() {
         return;
     }
@@ -135,6 +136,7 @@ fn apply_contract_coverage(score: &mut TdgScore, dir: &Path, contracted_paths: &
 ///
 /// Returns an empty vec if no contracts found (no A-tier gating applied).
 fn collect_contracted_file_paths(project_path: &Path) -> Vec<String> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let binding_yaml = match resolve_binding_yaml(project_path) {
         Some(p) => p,
         None => return Vec::new(),
@@ -186,6 +188,7 @@ fn collect_contracted_file_paths(project_path: &Path) -> Vec<String> {
 
 /// Resolve binding.yaml for a project — local or sibling provable-contracts.
 fn resolve_binding_yaml(project_path: &Path) -> Option<PathBuf> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     // Local contracts/binding.yaml
     let local = project_path.join("contracts").join("binding.yaml");
     if local.exists() {

@@ -65,6 +65,7 @@ impl DemoScorer {
 }
 
 async fn check_readme_error_section(repo_path: &Path) -> bool {
+    debug_assert!(repo_path.exists(), "repo_path must exist: {}", repo_path.display());
     let readme_path = repo_path.join("README.md");
     if !readme_path.exists() {
         return false;

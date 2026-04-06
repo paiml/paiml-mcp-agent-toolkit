@@ -63,6 +63,7 @@ fn cpp_type_to_ast_item(
 #[async_trait]
 impl AstStrategy for CppAstStrategy {
     async fn analyze(&self, path: &Path, _classifier: &FileClassifier) -> Result<FileContext> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         use crate::services::ast_cpp::CppAstParser;
         use tokio::fs;
 

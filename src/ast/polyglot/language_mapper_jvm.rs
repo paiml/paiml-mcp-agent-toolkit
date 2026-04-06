@@ -46,14 +46,17 @@ impl LanguageMapper for JavaMapper {
     }
 
     async fn map_file(&self, path: &Path) -> Result<Vec<UnifiedNode>> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         self.base.map_file(path).await
     }
 
     async fn map_directory(&self, path: &Path, recursive: bool) -> Result<Vec<UnifiedNode>> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         self.base.map_directory(path, recursive).await
     }
 
     async fn map_source(&self, _source: &str, _path: &Path) -> Result<Vec<UnifiedNode>> {
+        debug_assert!(_path.exists(), "_path must exist: {}", _path.display());
         #[cfg(feature = "java-ast")]
         {
             use crate::services::languages::java::JavaAstVisitor;
@@ -131,14 +134,17 @@ impl LanguageMapper for KotlinMapper {
     }
 
     async fn map_file(&self, path: &Path) -> Result<Vec<UnifiedNode>> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         self.base.map_file(path).await
     }
 
     async fn map_directory(&self, path: &Path, recursive: bool) -> Result<Vec<UnifiedNode>> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         self.base.map_directory(path, recursive).await
     }
 
     async fn map_source(&self, source: &str, path: &Path) -> Result<Vec<UnifiedNode>> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         // Kotlin-specific analysis deferred until kotlin-ast feature is available
         self.base.map_source(source, path).await
     }
@@ -197,14 +203,17 @@ impl LanguageMapper for ScalaMapper {
     }
 
     async fn map_file(&self, path: &Path) -> Result<Vec<UnifiedNode>> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         self.base.map_file(path).await
     }
 
     async fn map_directory(&self, path: &Path, recursive: bool) -> Result<Vec<UnifiedNode>> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         self.base.map_directory(path, recursive).await
     }
 
     async fn map_source(&self, _source: &str, _path: &Path) -> Result<Vec<UnifiedNode>> {
+        debug_assert!(_path.exists(), "_path must exist: {}", _path.display());
         #[cfg(feature = "scala-ast")]
         {
             use crate::services::languages::scala::ScalaAstVisitor;

@@ -3,6 +3,7 @@
 // =============================================================================
 
 fn analyze_rust_dead_code_with_cargo(path: &Path) -> Result<Vec<DeadFunction>> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     // Simple regex-based analyzer (similar to C/Python)
     // In future, could integrate cargo check warnings
 
@@ -14,6 +15,7 @@ fn analyze_rust_dead_code_with_cargo(path: &Path) -> Result<Vec<DeadFunction>> {
 }
 
 fn count_rust_functions(path: &Path) -> Result<usize> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let rust_files = find_files_by_extension(path, &["rs"]);
     let (defined_functions, _) = analyze_rust_files(&rust_files)?;
     Ok(defined_functions.len())

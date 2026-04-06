@@ -172,6 +172,7 @@ fn print_model_inventory_json(entries: &[ModelInventoryEntry], total_size: u64) 
 
 /// Parse .gitattributes files to find LFS-tracked patterns
 fn detect_lfs_patterns(project_path: &std::path::Path) -> Vec<String> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let mut patterns = Vec::new();
     let gitattr_path = project_path.join(".gitattributes");
     if let Ok(content) = std::fs::read_to_string(&gitattr_path) {
@@ -211,6 +212,7 @@ fn is_lfs_tracked(filename: &str, lfs_patterns: &[String]) -> bool {
 fn collect_model_violations(
     project_path: &std::path::Path,
 ) -> Vec<crate::cli::handlers::comply_cb_detect::CbPatternViolation> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let mut all = Vec::new();
     all.extend(
         crate::cli::handlers::comply_cb_detect::detect_cb1000_missing_model_card(project_path),

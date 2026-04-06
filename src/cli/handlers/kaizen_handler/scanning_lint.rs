@@ -3,6 +3,7 @@
 
 /// Scan for clippy warnings using JSON output
 fn scan_clippy(path: &Path) -> Result<Vec<KaizenFinding>> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let output = Command::new("cargo")
         .args(["clippy", "--message-format=json", "--quiet"])
         .current_dir(path)
@@ -62,6 +63,7 @@ fn scan_clippy(path: &Path) -> Result<Vec<KaizenFinding>> {
 
 /// Scan for unformatted files
 fn scan_rustfmt(path: &Path) -> Result<Vec<KaizenFinding>> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let output = Command::new("cargo")
         .args(["fmt", "--", "--check", "-l"])
         .current_dir(path)

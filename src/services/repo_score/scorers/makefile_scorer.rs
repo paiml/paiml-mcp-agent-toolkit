@@ -21,6 +21,11 @@ impl MakefileScorer {
 
     /// Score Makefile presence (D1: 5 points)
     async fn score_makefile_present(&self, repo_path: &Path) -> Result<SubcategoryScore> {
+        debug_assert!(
+            repo_path.exists(),
+            "repo_path must exist: {}",
+            repo_path.display()
+        );
         let makefile_path = repo_path.join("Makefile");
 
         if !makefile_path.exists() {
@@ -96,6 +101,11 @@ impl MakefileScorer {
 
     /// Score required targets (D2: 15 points)
     async fn score_required_targets(&self, repo_path: &Path) -> Result<SubcategoryScore> {
+        debug_assert!(
+            repo_path.exists(),
+            "repo_path must exist: {}",
+            repo_path.display()
+        );
         let makefile_path = repo_path.join("Makefile");
 
         if !makefile_path.exists() {
@@ -242,6 +252,11 @@ impl Scorer for MakefileScorer {
     }
 
     async fn score(&self, repo_path: &Path, config: &ScorerConfig) -> Result<CategoryScore> {
+        debug_assert!(
+            repo_path.exists(),
+            "repo_path must exist: {}",
+            repo_path.display()
+        );
         let d1 = self.score_makefile_present(repo_path).await?;
         let d2 = self.score_required_targets(repo_path).await?;
         let d3 = self.score_target_performance(repo_path, config).await?;

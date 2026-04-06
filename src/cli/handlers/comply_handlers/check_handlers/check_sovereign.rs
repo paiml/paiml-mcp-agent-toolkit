@@ -249,6 +249,11 @@ fn make_paiml_check(status: CheckStatus, message: String, severity: Severity) ->
 }
 
 fn classify_local_deps(src_dir: &Path, paiml_deps: &[&str]) -> (Vec<String>, Vec<String>) {
+    debug_assert!(
+        src_dir.exists(),
+        "src_dir must exist: {}",
+        src_dir.display()
+    );
     use std::process::Command;
     let mut dirty = Vec::new();
     let mut clean = Vec::new();
@@ -527,6 +532,11 @@ pub(crate) fn check_file_health_multi(
 fn analyze_project_health(
     project_path: &Path,
 ) -> Result<crate::services::file_health::FileHealthReport> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     use crate::services::file_health::FileHealthReport;
     let files = discover_source_files(project_path)
         .map_err(|e| anyhow::anyhow!("Failed to discover source files: {}", e))?;

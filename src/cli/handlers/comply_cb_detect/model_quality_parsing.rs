@@ -10,6 +10,7 @@ pub fn walkdir_model_files(dir: &Path) -> Vec<PathBuf> {
 }
 
 fn walk_model_recursive(dir: &Path, files: &mut Vec<PathBuf>) {
+    debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
     let entries = match fs::read_dir(dir) {
         Ok(e) => e,
         Err(_) => return,
@@ -31,6 +32,7 @@ fn walk_model_recursive(dir: &Path, files: &mut Vec<PathBuf>) {
 
 /// Parse minimal header from model file (never loads tensor data).
 fn parse_model_header(path: &Path) -> Option<ModelMetadata> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let ext = path.extension()?.to_str()?;
     let format = ModelFormat::from_extension(ext)?;
     let file_size = fs::metadata(path).ok()?.len();

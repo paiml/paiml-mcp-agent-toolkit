@@ -70,6 +70,7 @@ async fn analyze_single_wasm_file(
     security: bool,
     complexity: bool,
 ) -> Option<(PathBuf, WasmMetrics)> {
+    debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
     match file_path.extension().and_then(|s| s.to_str()) {
         Some("wasm") if include_binary => analyze_wasm_binary(file_path).await,
         Some("wat") if include_text => {
@@ -82,6 +83,7 @@ async fn analyze_single_wasm_file(
 
 /// Analyze WASM binary file (cognitive complexity ≤3)
 async fn analyze_wasm_binary(file_path: &Path) -> Option<(PathBuf, WasmMetrics)> {
+    debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
     let analyzer = WasmBinaryAnalyzer::new();
     match analyzer.analyze_file(file_path).await {
         Ok(analysis) => {
@@ -97,6 +99,7 @@ async fn analyze_wasm_binary(file_path: &Path) -> Option<(PathBuf, WasmMetrics)>
 
 /// Analyze WAT text file (cognitive complexity ≤6)
 async fn analyze_wat_text(file_path: &Path, security: bool, complexity: bool) {
+    debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
     if let Ok(content) = tokio::fs::read_to_string(file_path).await {
         let mut parser = WatParser::new();
         match parser.parse(&content) {
@@ -113,6 +116,7 @@ async fn analyze_wat_text(file_path: &Path, security: bool, complexity: bool) {
 
 /// Process WAT AST for security and complexity (cognitive complexity ≤5)
 fn process_wat_ast(ast: &AstDag, file_path: &Path, security: bool, complexity: bool) {
+    debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
     if complexity {
         let complexity_analyzer = WasmComplexityAnalyzer::new();
         let _ = complexity_analyzer.analyze_ast(ast);

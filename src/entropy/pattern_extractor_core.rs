@@ -33,6 +33,7 @@ impl PatternExtractor {
 
     /// Get project context using pmat context command
     async fn get_project_context(&self, project_path: &Path) -> Result<ProjectContext> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         use std::collections::HashMap;
         use tokio::process::Command;
 
@@ -78,6 +79,7 @@ impl PatternExtractor {
 
     /// Fallback method to scan directory when pmat context fails
     async fn scan_directory_fallback(&self, project_path: &Path) -> Result<ProjectContext> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         use std::fs;
         use walkdir::WalkDir;
 

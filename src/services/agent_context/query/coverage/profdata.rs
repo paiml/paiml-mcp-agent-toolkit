@@ -19,6 +19,11 @@ pub(super) fn load_coverage_from_cache(
     head_hash: &str,
     project_root: &Path,
 ) -> Option<HashMap<String, HashMap<usize, u64>>> {
+    debug_assert!(
+        project_root.exists(),
+        "project_root must exist: {}",
+        project_root.display()
+    );
     let cache_json = std::fs::read_to_string(cache_path).ok()?;
     let cache: CoverageCache = serde_json::from_str(&cache_json).ok()?;
 
@@ -45,6 +50,7 @@ pub(super) fn load_coverage_from_cache(
 /// Get the mtime (seconds since epoch) of a specific directory.
 #[cfg_attr(coverage_nightly, coverage(off))]
 fn dir_mtime(dir: &Path) -> Option<u64> {
+    debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
     std::fs::metadata(dir)
         .ok()
         .and_then(|m| m.modified().ok())
@@ -58,6 +64,16 @@ fn target_dir_from_cargo_config(
     config_path: &Path,
     project_root: &Path,
 ) -> Vec<std::path::PathBuf> {
+    debug_assert!(
+        config_path.exists(),
+        "config_path must exist: {}",
+        config_path.display()
+    );
+    debug_assert!(
+        project_root.exists(),
+        "project_root must exist: {}",
+        project_root.display()
+    );
     let content = match std::fs::read_to_string(config_path) {
         Ok(c) => c,
         Err(_) => return vec![],
@@ -88,6 +104,11 @@ fn target_dir_from_cargo_config(
 /// those directories directly.
 #[cfg_attr(coverage_nightly, coverage(off))]
 fn mnt_target_candidates(project_root: &Path) -> Vec<std::path::PathBuf> {
+    debug_assert!(
+        project_root.exists(),
+        "project_root must exist: {}",
+        project_root.display()
+    );
     let canonical = project_root
         .canonicalize()
         .unwrap_or_else(|_| project_root.to_path_buf());
@@ -123,6 +144,11 @@ fn collect_fast_candidates(
     project_root: &Path,
     stored_path: Option<&str>,
 ) -> Vec<std::path::PathBuf> {
+    debug_assert!(
+        project_root.exists(),
+        "project_root must exist: {}",
+        project_root.display()
+    );
     let mut candidates: Vec<std::path::PathBuf> = Vec::with_capacity(8);
 
     // Fast path: check previously stored directory first
@@ -172,6 +198,11 @@ pub(super) fn get_profdata_mtime_fast(
     project_root: &Path,
     stored_path: Option<&str>,
 ) -> Option<(u64, String)> {
+    debug_assert!(
+        project_root.exists(),
+        "project_root must exist: {}",
+        project_root.display()
+    );
     let candidates = collect_fast_candidates(project_root, stored_path);
 
     // For stored_path, check it specially (it's the raw path, not necessarily llvm-cov-target)
@@ -194,6 +225,11 @@ pub(super) fn get_profdata_mtime_fast(
 /// Try `cargo metadata` to discover target_directory (slow -- subprocess spawn).
 #[cfg_attr(coverage_nightly, coverage(off))]
 fn cargo_metadata_target_dir(project_root: &Path) -> Vec<std::path::PathBuf> {
+    debug_assert!(
+        project_root.exists(),
+        "project_root must exist: {}",
+        project_root.display()
+    );
     let mut result = Vec::new();
     for toolchain_arg in &["+nightly", "+stable"] {
         let output = match std::process::Command::new("cargo")
@@ -238,6 +274,11 @@ pub(super) fn get_profdata_mtime_and_dir(
     project_root: &Path,
     stored_path: Option<&str>,
 ) -> Option<(u64, String)> {
+    debug_assert!(
+        project_root.exists(),
+        "project_root must exist: {}",
+        project_root.display()
+    );
     // Fast path: check previously stored directory first
     if let Some(p) = stored_path {
         if let Some(mtime) = dir_mtime(std::path::Path::new(p)) {
@@ -276,6 +317,11 @@ pub(super) fn run_cargo_llvm_cov_and_cache(
     cache_path: &Path,
     head_hash: &str,
 ) -> Result<HashMap<String, HashMap<usize, u64>>, String> {
+    debug_assert!(
+        project_root.exists(),
+        "project_root must exist: {}",
+        project_root.display()
+    );
     // Try lcov.info fallback first (no subprocess needed)
     if let Some(cov) = try_load_lcov_info(project_root) {
         write_coverage_cache(cache_path, head_hash, project_root, &cov);
@@ -316,6 +362,11 @@ pub(super) fn write_coverage_cache(
     project_root: &Path,
     files: &HashMap<String, HashMap<usize, u64>>,
 ) {
+    debug_assert!(
+        project_root.exists(),
+        "project_root must exist: {}",
+        project_root.display()
+    );
     let (mtime, dir) = get_profdata_mtime_and_dir(project_root, None)
         .map(|(m, d)| (Some(m), Some(d)))
         .unwrap_or((None, None));
@@ -342,6 +393,11 @@ pub(super) fn write_negative_coverage_cache(
     head_hash: &str,
     project_root: &Path,
 ) {
+    debug_assert!(
+        project_root.exists(),
+        "project_root must exist: {}",
+        project_root.display()
+    );
     let (mtime, dir) = get_profdata_mtime_fast(project_root, None)
         .map(|(m, d)| (Some(m), Some(d)))
         .unwrap_or((None, None));
@@ -362,6 +418,11 @@ pub(super) fn write_negative_coverage_cache(
 /// Tries `cargo +nightly` first (matching the toolchain used for instrumented builds),
 /// falls back to default toolchain if nightly is unavailable.
 fn run_llvm_cov_subprocess(project_root: &Path) -> Result<std::process::Output, String> {
+    debug_assert!(
+        project_root.exists(),
+        "project_root must exist: {}",
+        project_root.display()
+    );
     use std::process::{Command, Stdio};
 
     // Try nightly first (profdata is usually generated by nightly toolchain)

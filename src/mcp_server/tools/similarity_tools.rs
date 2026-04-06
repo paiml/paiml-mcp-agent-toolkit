@@ -174,6 +174,7 @@ pub async fn find_refactoring_opportunities(params: Value) -> Result<Value> {
 
 /// Collect files from project directory
 async fn collect_project_files(project_path: &PathBuf) -> Result<Vec<(PathBuf, String)>> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     use walkdir::WalkDir;
     
     let mut files = Vec::new();
@@ -196,10 +197,12 @@ async fn collect_project_files(project_path: &PathBuf) -> Result<Vec<(PathBuf, S
 }
 
 fn is_source_file(path: &std::path::Path) -> bool {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     !has_excluded_directory(path) && has_source_extension(path)
 }
 
 fn has_excluded_directory(path: &std::path::Path) -> bool {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     for component in path.components() {
         if let std::path::Component::Normal(name) = component {
             if is_excluded_directory_name(name) {
@@ -223,6 +226,7 @@ fn is_excluded_directory_name(name: &std::ffi::OsStr) -> bool {
 }
 
 fn has_source_extension(path: &std::path::Path) -> bool {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     if let Some(ext) = path.extension() {
         matches!(
             ext.to_str(),

@@ -2,6 +2,7 @@
 // Included by quality_checks_part2.rs
 
 async fn check_coverage(project_path: &Path, min_coverage: f64) -> Result<Vec<QualityViolation>> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let mut violations = Vec::new();
 
     // Read actual coverage from cache files (#228: was hardcoded 75.0)
@@ -31,12 +32,14 @@ async fn check_coverage(project_path: &Path, min_coverage: f64) -> Result<Vec<Qu
 /// Priority: `.pmat/coverage-cache.json` > `.pmat-metrics/coverage.json`
 /// Computes line coverage from per-file hit data in coverage-cache.json.
 fn read_coverage_from_cache(project_path: &Path) -> Option<f64> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     read_coverage_from_detail_cache(project_path)
         .or_else(|| read_coverage_from_metrics(project_path))
 }
 
 /// Read line coverage from `.pmat/coverage-cache.json` per-file hit data.
 fn read_coverage_from_detail_cache(project_path: &Path) -> Option<f64> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let content = std::fs::read_to_string(project_path.join(".pmat/coverage-cache.json")).ok()?;
     let cache: serde_json::Value = serde_json::from_str(&content).ok()?;
     let files = cache.get("files")?.as_object()?;
@@ -64,6 +67,7 @@ fn compute_line_coverage(files: &serde_json::Map<String, serde_json::Value>) -> 
 
 /// Read aggregate coverage from `.pmat-metrics/coverage.json`.
 fn read_coverage_from_metrics(project_path: &Path) -> Option<f64> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let content =
         std::fs::read_to_string(project_path.join(".pmat-metrics/coverage.json")).ok()?;
     let cache: serde_json::Value = serde_json::from_str(&content).ok()?;
@@ -71,6 +75,7 @@ fn read_coverage_from_metrics(project_path: &Path) -> Option<f64> {
 }
 
 async fn check_sections(project_path: &Path) -> Result<Vec<QualityViolation>> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let mut violations = Vec::new();
 
     // Check for required documentation sections

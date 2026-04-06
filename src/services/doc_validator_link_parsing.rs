@@ -73,6 +73,7 @@ pub fn classify_link(target: &str) -> LinkType {
 
 /// Normalizes a path by resolving `.` and `..` components
 fn normalize_path(path: &Path) -> PathBuf {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let mut components = Vec::new();
 
     for component in path.components() {

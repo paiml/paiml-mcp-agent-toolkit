@@ -128,6 +128,7 @@ impl FiveWhysAnalyzer {
     /// EvoScore trajectory (15%), Coverage delta (15%), Dead code (10%).
     /// TDG removed (redundant with complexity+churn).
     async fn gather_evidence(&self, path: &Path) -> Result<Vec<Evidence>> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let mut evidence = Vec::new();
 
         // Real SATD evidence: count TODO/FIXME/HACK/WORKAROUND in source

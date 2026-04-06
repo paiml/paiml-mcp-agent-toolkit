@@ -235,6 +235,7 @@ impl DogfoodingEngine {
 
     /// Compute DAG metrics
     async fn compute_dag_metrics(&self, root: &Path) -> Result<DagMetrics, TemplateError> {
+        debug_assert!(root.exists(), "root must exist: {}", root.display());
         let ast_forest = self.ast_engine.parse_project(root).await?;
         let dependency_graph = self.ast_engine.extract_dependencies(&ast_forest)?;
 

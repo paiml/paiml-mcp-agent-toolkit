@@ -7,6 +7,11 @@ use super::types::SimpleDeepContext;
 impl SimpleDeepContext {
     /// Extract function names from Rust AST
     pub(super) async fn function_names_for_rust(&self, file_path: &Path) -> Vec<String> {
+        debug_assert!(
+            file_path.exists(),
+            "file_path must exist: {}",
+            file_path.display()
+        );
         use crate::services::ast_rust::analyze_rust_file_with_complexity;
         match analyze_rust_file_with_complexity(file_path).await {
             Ok(metrics) => metrics.functions.iter().map(|f| f.name.clone()).collect(),
@@ -87,6 +92,11 @@ impl SimpleDeepContext {
 
     /// Extract function names from Go AST
     pub(super) async fn function_names_for_go(&self, file_path: &Path) -> Vec<String> {
+        debug_assert!(
+            file_path.exists(),
+            "file_path must exist: {}",
+            file_path.display()
+        );
         #[cfg(feature = "go-ast")]
         {
             use crate::services::languages::go::GoAstVisitor;
@@ -107,6 +117,11 @@ impl SimpleDeepContext {
 
     /// Extract function names from C# AST
     pub(super) async fn function_names_for_csharp(&self, file_path: &Path) -> Vec<String> {
+        debug_assert!(
+            file_path.exists(),
+            "file_path must exist: {}",
+            file_path.display()
+        );
         #[cfg(feature = "csharp-ast")]
         {
             use crate::services::languages::csharp::CSharpAstVisitor;
@@ -127,6 +142,11 @@ impl SimpleDeepContext {
 
     /// Extract function names from Kotlin AST
     pub(super) async fn function_names_for_kotlin(&self, file_path: &Path) -> Vec<String> {
+        debug_assert!(
+            file_path.exists(),
+            "file_path must exist: {}",
+            file_path.display()
+        );
         #[cfg(feature = "kotlin-ast")]
         {
             use crate::services::languages::kotlin::KotlinAstVisitor;
@@ -148,6 +168,11 @@ impl SimpleDeepContext {
     /// Extract function names from Bash AST
     #[allow(unused_variables)]
     pub(super) async fn function_names_for_bash(&self, file_path: &Path) -> Vec<String> {
+        debug_assert!(
+            file_path.exists(),
+            "file_path must exist: {}",
+            file_path.display()
+        );
         #[cfg(feature = "shell-ast")]
         {
             use crate::services::languages::bash::BashScriptAnalyzer;
@@ -167,6 +192,11 @@ impl SimpleDeepContext {
     /// Extract function names from PHP AST
     #[allow(unused_variables)]
     pub(super) async fn function_names_for_php(&self, file_path: &Path) -> Vec<String> {
+        debug_assert!(
+            file_path.exists(),
+            "file_path must exist: {}",
+            file_path.display()
+        );
         #[cfg(feature = "php-ast")]
         {
             use crate::services::languages::php::PhpScriptAnalyzer;
@@ -186,6 +216,11 @@ impl SimpleDeepContext {
     /// Extract function names from Swift AST
     #[allow(unused_variables)]
     pub(super) async fn function_names_for_swift(&self, file_path: &Path) -> Vec<String> {
+        debug_assert!(
+            file_path.exists(),
+            "file_path must exist: {}",
+            file_path.display()
+        );
         #[cfg(feature = "swift-ast")]
         {
             use crate::services::languages::swift::SwiftSourceAnalyzer;
@@ -205,6 +240,11 @@ impl SimpleDeepContext {
     /// Extract function names from Lua AST
     #[allow(unused_variables)]
     pub(super) async fn function_names_for_lua(&self, file_path: &Path) -> Vec<String> {
+        debug_assert!(
+            file_path.exists(),
+            "file_path must exist: {}",
+            file_path.display()
+        );
         self.extract_function_names_heuristic(file_path, "lua")
             .await
             .unwrap_or_default()

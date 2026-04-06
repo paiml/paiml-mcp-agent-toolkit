@@ -2,6 +2,7 @@
 // ============================================================================
 
 fn check_cargo_config(project_path: &Path) -> DiagnosticCheck {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let config_toml = project_path.join(".cargo").join("config.toml");
     let config_legacy = project_path.join(".cargo").join("config");
 
@@ -36,6 +37,7 @@ fn check_cargo_config(project_path: &Path) -> DiagnosticCheck {
 }
 
 fn check_incremental_builds(project_path: &Path) -> DiagnosticCheck {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     // Incremental is on by default for dev builds
     let config_toml = project_path.join(".cargo").join("config.toml");
     let cargo_toml = project_path.join("Cargo.toml");
@@ -77,6 +79,7 @@ fn check_incremental_builds(project_path: &Path) -> DiagnosticCheck {
 }
 
 fn check_codegen_units(project_path: &Path) -> DiagnosticCheck {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let cargo_toml = project_path.join("Cargo.toml");
     let content = std::fs::read_to_string(&cargo_toml).unwrap_or_default();
 
@@ -111,6 +114,7 @@ fn check_codegen_units(project_path: &Path) -> DiagnosticCheck {
 }
 
 fn check_build_system(project_path: &Path) -> DiagnosticCheck {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let makefile = project_path.join("Makefile");
     let justfile = project_path.join("justfile");
     let justfile_cap = project_path.join("Justfile");
@@ -156,6 +160,7 @@ fn check_build_system(project_path: &Path) -> DiagnosticCheck {
 // ============================================================================
 
 fn check_clippy_config(project_path: &Path) -> DiagnosticCheck {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let clippy_toml = project_path.join(".clippy.toml");
     let clippy_toml_alt = project_path.join("clippy.toml");
     let cargo_toml = project_path.join("Cargo.toml");
@@ -195,6 +200,7 @@ fn check_clippy_config(project_path: &Path) -> DiagnosticCheck {
 }
 
 fn check_rustfmt_config(project_path: &Path) -> DiagnosticCheck {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let rustfmt_toml = project_path.join("rustfmt.toml");
     let rustfmt_toml_alt = project_path.join(".rustfmt.toml");
 
@@ -219,6 +225,7 @@ fn check_rustfmt_config(project_path: &Path) -> DiagnosticCheck {
 }
 
 fn check_tests_present(project_path: &Path) -> DiagnosticCheck {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let tests_dir = project_path.join("tests");
     let src_dir = project_path.join("src");
 
@@ -255,6 +262,7 @@ fn check_tests_present(project_path: &Path) -> DiagnosticCheck {
 }
 
 fn check_readme(project_path: &Path) -> DiagnosticCheck {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let readme = project_path.join("README.md");
     let readme_alt = project_path.join("README");
 

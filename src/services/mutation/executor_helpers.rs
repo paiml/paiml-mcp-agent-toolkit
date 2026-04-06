@@ -8,6 +8,7 @@ impl MutantExecutor {
     #[deprecated(since = "2.171.0", note = "Use MutantGuard instead")]
     #[allow(dead_code)]
     async fn create_backup(&self, original_path: &Path) -> Result<PathBuf> {
+        debug_assert!(original_path.exists(), "original_path must exist: {}", original_path.display());
         let backup_path = original_path.with_extension("pmat_backup");
         fs::copy(original_path, &backup_path)
             .await
@@ -19,6 +20,7 @@ impl MutantExecutor {
     #[deprecated(since = "2.171.0", note = "Use MutantGuard instead")]
     #[allow(dead_code)]
     async fn restore_backup(&self, original_path: &Path, backup_path: &Path) -> Result<()> {
+        debug_assert!(original_path.exists(), "original_path must exist: {}", original_path.display());
         fs::copy(backup_path, original_path)
             .await
             .context("Failed to restore backup")?;
@@ -82,6 +84,7 @@ impl MutantExecutor {
     ///
     /// Never partially written (which causes "491 lines -> 5 lines" bug)
     async fn atomic_write(&self, path: &Path, content: &str) -> Result<()> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         use tokio::io::AsyncWriteExt;
 
         // Create scratch file in same directory as target

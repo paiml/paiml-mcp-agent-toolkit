@@ -55,6 +55,11 @@ impl LanguageAdapter for RustAdapter {
     }
 
     async fn run_tests(&self, source_file: &Path) -> Result<TestRunResult> {
+        debug_assert!(
+            source_file.exists(),
+            "source_file must exist: {}",
+            source_file.display()
+        );
         // Get the project root (traverse up from source file)
         let project_root = find_cargo_root(source_file).context("Could not find Cargo.toml")?;
 
@@ -91,6 +96,7 @@ impl Default for RustAdapter {
 
 /// Find Cargo.toml by traversing up from source file
 fn find_cargo_root(start: &Path) -> Option<&Path> {
+    debug_assert!(start.exists(), "start must exist: {}", start.display());
     let mut current = start;
 
     loop {

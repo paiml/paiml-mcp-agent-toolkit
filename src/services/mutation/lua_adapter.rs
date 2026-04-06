@@ -51,6 +51,11 @@ impl LanguageAdapter for LuaAdapter {
     }
 
     async fn run_tests(&self, source_file: &Path) -> Result<TestRunResult> {
+        debug_assert!(
+            source_file.exists(),
+            "source_file must exist: {}",
+            source_file.display()
+        );
         // Try busted first, then lua test runner
         let project_root = find_lua_project_root(source_file);
         if let Some(root) = project_root {
@@ -92,6 +97,7 @@ pub fn find_lua_project_root(start: &Path) -> Option<&Path> {
 
 /// Check if directory contains a .rockspec file.
 fn has_rockspec(dir: &Path) -> bool {
+    debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
     std::fs::read_dir(dir).is_ok_and(|entries| {
         entries.flatten().any(|e| {
             e.path()
@@ -104,6 +110,11 @@ fn has_rockspec(dir: &Path) -> bool {
 
 /// Run busted test framework.
 async fn run_busted_tests(project_root: &Path) -> Result<TestRunResult> {
+    debug_assert!(
+        project_root.exists(),
+        "project_root must exist: {}",
+        project_root.display()
+    );
     let output = tokio::process::Command::new("busted")
         .arg("--output=plainTerminal")
         .current_dir(project_root)

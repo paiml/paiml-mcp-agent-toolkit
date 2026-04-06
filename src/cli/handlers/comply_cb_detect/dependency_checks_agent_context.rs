@@ -72,6 +72,7 @@ fn find_forbidden_patterns(content: &str) -> Vec<ForbiddenPatternMatch> {
 fn check_claude_md_patterns(
     project_path: &Path,
 ) -> (bool, Vec<String>, Vec<ForbiddenPatternMatch>) {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let claude_md_path = project_path.join("CLAUDE.md");
     let content = match fs::read_to_string(&claude_md_path) {
         Ok(c) => c,

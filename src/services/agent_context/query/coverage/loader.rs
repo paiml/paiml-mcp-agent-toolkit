@@ -19,6 +19,12 @@ fn try_load_coverage_from_explicit_path(
     path: &Path,
     project_root: &Path,
 ) -> Result<Option<HashMap<String, HashMap<usize, u64>>>, String> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
+    debug_assert!(
+        project_root.exists(),
+        "project_root must exist: {}",
+        project_root.display()
+    );
     let json = std::fs::read_to_string(path)
         .map_err(|e| format!("Failed to read coverage file {}: {e}", path.display()))?;
     Ok(Some(build_coverage_map(&json, project_root)?))
@@ -29,6 +35,11 @@ fn try_load_coverage_from_explicit_path(
 fn try_load_coverage_from_env(
     project_root: &Path,
 ) -> Result<Option<HashMap<String, HashMap<usize, u64>>>, String> {
+    debug_assert!(
+        project_root.exists(),
+        "project_root must exist: {}",
+        project_root.display()
+    );
     let env_path = match std::env::var("PMAT_COVERAGE_FILE") {
         Ok(p) => p,
         Err(_) => return Ok(None),

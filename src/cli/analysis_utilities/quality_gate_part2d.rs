@@ -3,6 +3,7 @@ fn format_single_file_summary(
     results: &QualityGateResults,
     violations: &[QualityViolation],
 ) -> String {
+    debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
     let mut output = String::new();
 
     format_report_header(&mut output, file_path, results.passed);
@@ -17,6 +18,7 @@ fn format_single_file_summary(
 
 /// Format the report header with title and pass/fail status
 fn format_report_header(output: &mut String, file_path: &Path, passed: bool) {
+    debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
     output.push_str(&format!(
         "# Quality Gate Report: {}\n\n",
         file_path.display()

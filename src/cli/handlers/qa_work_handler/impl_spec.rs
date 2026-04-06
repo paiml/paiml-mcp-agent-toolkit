@@ -1,4 +1,5 @@
 fn print_task_status(task_id: &str, task_dir: &Path) -> Result<()> {
+    debug_assert!(task_dir.exists(), "task_dir must exist: {}", task_dir.display());
     use crate::cli::colors as c;
     let checklist_path = task_dir.join("checklist.yaml");
 
@@ -309,6 +310,7 @@ async fn handle_spec(
 
 /// Resolve target to specification file path
 fn resolve_spec_path(target: &str, project_path: &Path) -> Result<PathBuf> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     // Direct file path
     let direct_path = PathBuf::from(target);
     if direct_path.exists() && direct_path.extension().map(|e| e == "md").unwrap_or(false) {
@@ -367,6 +369,7 @@ fn resolve_spec_path(target: &str, project_path: &Path) -> Result<PathBuf> {
 
 /// Run a validation command and capture output
 async fn run_validation_command(cmd: &str, project_path: &Path) -> Result<String> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let parts: Vec<&str> = cmd.split_whitespace().collect();
     if parts.is_empty() {
         anyhow::bail!("Empty command");

@@ -2,12 +2,14 @@
 // and custom harness scoring against Cargo.toml and GitHub Actions configurations.
 
 fn is_yaml_file(path: &Path) -> bool {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     path.extension()
         .map(|ext| ext == "yml" || ext == "yaml")
         .unwrap_or(false)
 }
 
 fn has_benchmark_workflow(path: &Path) -> bool {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     if !is_yaml_file(path) {
         return false;
     }

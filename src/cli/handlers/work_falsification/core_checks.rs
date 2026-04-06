@@ -64,6 +64,11 @@ pub(crate) async fn test_differential_coverage(
     project_path: &Path,
     baseline_commit: &str,
 ) -> Result<FalsificationResult> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     print!("Analyzing changed lines... ");
 
     // Get changed files since baseline
@@ -104,6 +109,11 @@ pub(crate) async fn test_absolute_coverage(
     project_path: &Path,
     threshold: f64,
 ) -> Result<FalsificationResult> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     print!("Checking coverage threshold... ");
 
     // Try to read coverage from cached metrics
@@ -151,6 +161,11 @@ pub(crate) async fn test_tdg_regression(
     project_path: &Path,
     baseline_tdg: f64,
 ) -> Result<FalsificationResult> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     print!("Checking TDG score... ");
 
     // Read current TDG score from cache

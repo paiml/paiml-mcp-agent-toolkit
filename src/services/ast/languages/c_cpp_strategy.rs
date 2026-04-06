@@ -24,6 +24,11 @@ use super::cpp;
 impl AstStrategy for CStrategy {
     /// Analyze a C source file and extract AST information
     async fn analyze(&self, file_path: &Path, _classifier: &FileClassifier) -> Result<FileContext> {
+        debug_assert!(
+            file_path.exists(),
+            "file_path must exist: {}",
+            file_path.display()
+        );
         // Use our comprehensive C analyzer
         let file_context = c::analyze_c_file(file_path)
             .await
@@ -52,6 +57,11 @@ impl AstStrategy for CStrategy {
 impl AstStrategy for CppStrategy {
     /// Analyze a C++ source file and extract AST information
     async fn analyze(&self, file_path: &Path, _classifier: &FileClassifier) -> Result<FileContext> {
+        debug_assert!(
+            file_path.exists(),
+            "file_path must exist: {}",
+            file_path.display()
+        );
         // Use our comprehensive C++ analyzer
         let file_context = cpp::analyze_cpp_file(file_path)
             .await

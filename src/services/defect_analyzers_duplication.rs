@@ -22,6 +22,7 @@ impl DefectAnalyzer for DuplicationDefectAnalyzer {
     type Config = DuplicationConfig;
 
     async fn analyze(&self, project_path: &Path, config: Self::Config) -> Result<Vec<Defect>> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let mut defects = Vec::new();
         let files = discover_source_files(project_path).await?;
 

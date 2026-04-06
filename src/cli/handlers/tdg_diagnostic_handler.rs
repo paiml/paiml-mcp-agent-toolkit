@@ -90,6 +90,11 @@ async fn show_diagnostics(
     _show_resources: bool,
     format: DiagnosticOutputFormat,
 ) -> Result<()> {
+    debug_assert!(
+        base_path.exists(),
+        "base_path must exist: {}",
+        base_path.display()
+    );
     if !show_storage {
         return Ok(());
     }
@@ -234,6 +239,11 @@ fn show_human_backend_details(
 
 /// Handle storage management commands
 async fn handle_storage_command(command: &StorageCommand, base_path: &PathBuf) -> Result<()> {
+    debug_assert!(
+        base_path.exists(),
+        "base_path must exist: {}",
+        base_path.display()
+    );
     // Create storage instance
     let storage = TieredStorageFactory::create_at_path(base_path)?;
 

@@ -316,6 +316,7 @@ fn print_spec_list(
     dir: &Path,
     format: SpecOutputFormat,
 ) -> anyhow::Result<()> {
+    debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
     match format {
         SpecOutputFormat::Text => {
             use crate::cli::colors as c;

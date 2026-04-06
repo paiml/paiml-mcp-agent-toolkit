@@ -16,6 +16,7 @@ fn churn_score_from_age(days_old: u64) -> f64 {
 impl TDGCalculator {
     /// Calculate churn factor based on git history
     async fn calculate_churn_factor(&self, path: &Path) -> Result<f64> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let analysis = self.get_or_compute_churn_analysis().await?;
         let relative_path = path.strip_prefix(&self.project_root).unwrap_or(path);
 
@@ -74,6 +75,7 @@ impl TDGCalculator {
 
     /// Fallback churn calculation based on file modification time
     async fn calculate_churn_fallback(&self, path: &Path) -> Result<f64> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let Ok(metadata) = tokio::fs::metadata(path).await else {
             return Ok(1.0);
         };

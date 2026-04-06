@@ -29,6 +29,11 @@ impl JavaScriptStrategy {
 #[async_trait]
 impl AstStrategy for JavaScriptStrategy {
     async fn analyze(&self, file_path: &Path, _classifier: &FileClassifier) -> Result<FileContext> {
+        debug_assert!(
+            file_path.exists(),
+            "file_path must exist: {}",
+            file_path.display()
+        );
         // JavaScript analysis (similar to TypeScript but for JS files)
         // Convert TemplateError to anyhow::Error
         let context = crate::services::ast_typescript::analyze_javascript_file(file_path)

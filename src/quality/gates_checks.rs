@@ -189,6 +189,7 @@ pub fn execute_coverage(config: &GateConfig, project_dir: &Path) -> Result<GateR
 /// - Time: O(n) where n is number of files to clean
 /// - Cyclomatic: 3
 fn cleanup_coverage_artifacts(project_dir: &Path) {
+    debug_assert!(project_dir.exists(), "project_dir must exist: {}", project_dir.display());
     // Clean llvm-cov-target in project dir
     let llvm_cov_target = project_dir.join("target").join("llvm-cov-target");
     if llvm_cov_target.exists() {
@@ -210,6 +211,7 @@ fn cleanup_coverage_artifacts(project_dir: &Path) {
 
 /// Remove files older than max_age_secs from a directory
 fn clean_old_files(dir: &Path, max_age_secs: u64) {
+    debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
     use std::time::{Duration, SystemTime};
 
     let max_age = Duration::from_secs(max_age_secs);

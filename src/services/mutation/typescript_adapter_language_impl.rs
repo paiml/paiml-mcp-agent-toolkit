@@ -51,6 +51,7 @@ impl LanguageAdapter for TypeScriptAdapter {
     }
 
     async fn run_tests(&self, source_file: &Path) -> Result<TestRunResult> {
+        debug_assert!(source_file.exists(), "source_file must exist: {}", source_file.display());
         // GREEN PHASE: Real test execution
         use std::time::Instant;
         use tokio::process::Command;

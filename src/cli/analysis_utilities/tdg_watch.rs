@@ -51,6 +51,7 @@ async fn run_tdg_watch_mode(
     critical_only: bool,
     verbose: bool,
 ) -> Result<()> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     use notify::{RecommendedWatcher, RecursiveMode, Watcher};
     use std::sync::mpsc;
     use tokio::time::Duration;

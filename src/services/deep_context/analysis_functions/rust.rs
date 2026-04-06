@@ -31,6 +31,11 @@ pub async fn analyze_rust_language(
 pub(super) async fn analyze_rust_file(
     file_path: &std::path::Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
+    debug_assert!(
+        file_path.exists(),
+        "file_path must exist: {}",
+        file_path.display()
+    );
     use crate::services::ast_rust::analyze_rust_file as analyze_rust;
 
     match analyze_rust(file_path).await {

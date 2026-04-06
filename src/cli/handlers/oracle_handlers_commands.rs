@@ -129,6 +129,7 @@ async fn handle_oracle_single(
 ///
 /// Oracle-driven convergence uses these metrics to guide iterative improvements.
 async fn collect_project_metrics(_path: &Path) -> Result<ProjectMetrics> {
+    debug_assert!(_path.exists(), "_path must exist: {}", _path.display());
     // Stub implementation - full metrics collection would be expensive
     // and is meant for CI/CD pipelines, not interactive use.
     Ok(ProjectMetrics::default())

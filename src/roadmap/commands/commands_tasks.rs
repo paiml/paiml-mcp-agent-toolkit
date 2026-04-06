@@ -7,6 +7,7 @@ async fn start_task(
     create_branch: bool,
     config: &RoadmapConfig,
 ) -> Result<()> {
+    debug_assert!(roadmap_path.exists(), "roadmap_path must exist: {}", roadmap_path.display());
     println!("🚀 Starting task {task_id}");
 
     let mut roadmap = Roadmap::from_file(roadmap_path)?;
@@ -51,6 +52,7 @@ async fn complete_task(
     skip_quality_check: bool,
     config: &RoadmapConfig,
 ) -> Result<()> {
+    debug_assert!(roadmap_path.exists(), "roadmap_path must exist: {}", roadmap_path.display());
     println!("🏁 Completing task {task_id}");
 
     // Run quality checks unless skipped

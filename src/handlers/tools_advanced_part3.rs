@@ -321,6 +321,7 @@ fn parse_makefile_lint_args(
 async fn execute_makefile_linting(
     makefile_path: &std::path::Path,
 ) -> Result<crate::services::makefile_linter::LintResult, String> {
+    debug_assert!(makefile_path.exists(), "makefile_path must exist: {}", makefile_path.display());
     use crate::services::makefile_linter;
 
     makefile_linter::lint_makefile(makefile_path)

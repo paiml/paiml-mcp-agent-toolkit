@@ -27,6 +27,7 @@ impl KotlinStrategy {
 impl AstStrategy for KotlinStrategy {
     /// Analyzes a Kotlin file and returns a FileContext with AST information
     async fn analyze(&self, path: &Path, _classifier: &FileClassifier) -> Result<FileContext> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         use tokio::fs;
 
         // Read file content

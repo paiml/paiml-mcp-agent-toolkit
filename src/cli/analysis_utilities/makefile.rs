@@ -108,6 +108,7 @@ fn format_makefile_output(
     gnu_version: Option<&String>,
     format: MakefileOutputFormat,
 ) -> Result<String> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     match format {
         MakefileOutputFormat::Json => {
             format_makefile_as_json(path, filtered_violations, lint_result, gnu_version)
@@ -127,6 +128,7 @@ fn format_makefile_as_json(
     lint_result: &makefile_linter::LintResult,
     gnu_version: Option<&String>,
 ) -> Result<String> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     Ok(serde_json::to_string_pretty(&serde_json::json!({
         "path": path.display().to_string(),
         "violations": filtered_violations,
@@ -142,6 +144,7 @@ fn format_makefile_as_human(
     lint_result: &makefile_linter::LintResult,
     gnu_version: Option<&String>,
 ) -> Result<String> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let mut output = String::new();
 
     write_makefile_human_header(&mut output, path, lint_result, gnu_version)?;
@@ -247,6 +250,7 @@ fn format_makefile_as_sarif(
     path: &Path,
     filtered_violations: &[makefile_linter::Violation],
 ) -> Result<String> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let sarif = serde_json::json!({
         "version": "2.1.0",
         "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
@@ -290,6 +294,7 @@ fn build_sarif_results(
     path: &Path,
     filtered_violations: &[makefile_linter::Violation],
 ) -> Vec<serde_json::Value> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     filtered_violations
         .iter()
         .map(|violation| {
@@ -338,6 +343,7 @@ fn format_makefile_as_gcc(
     path: &Path,
     filtered_violations: &[makefile_linter::Violation],
 ) -> Result<String> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     use std::fmt::Write;
     let mut output = String::new();
 

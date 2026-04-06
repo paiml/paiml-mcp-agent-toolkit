@@ -159,6 +159,7 @@ fn compute_falsification_coverage(contract: &WorkContract) -> f64 {
 ///
 /// Loads all checkpoints and computes the fraction of invariants that passed.
 fn compute_invariant_health(contract: &WorkContract, project_path: &Path) -> f64 {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let checkpoints = CheckpointRecord::load_all(project_path, &contract.work_item_id);
     if checkpoints.is_empty() {
         // No checkpoints yet — neutral score (not penalized)

@@ -239,6 +239,7 @@ impl TDGCalculator {
 
     /// Discover files for analysis
     async fn discover_files(&self, path: &Path) -> Result<Vec<PathBuf>> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         // Use the proper file discovery service with external dependency filtering
         let discovery = ProjectFileDiscovery::new(path.to_path_buf());
         discovery.discover_files()

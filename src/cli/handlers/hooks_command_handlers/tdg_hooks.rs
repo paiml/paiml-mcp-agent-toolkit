@@ -10,6 +10,11 @@ use std::path::Path;
 /// Atomic write: write to temp file then rename (CB-1334 fix).
 /// Ensures hook file is never partial — old or new, never corrupt.
 fn atomic_write_hook(hook_path: &Path, content: &str) -> Result<()> {
+    debug_assert!(
+        hook_path.exists(),
+        "hook_path must exist: {}",
+        hook_path.display()
+    );
     let tmp_path = hook_path.with_extension("tmp");
     fs::write(&tmp_path, content).context("Failed to write temp hook file")?;
 
@@ -61,6 +66,11 @@ pub(crate) async fn install_tdg_hooks_wrapper() -> Result<()> {
 
 /// Install TDG enforcement hooks
 pub(crate) async fn install_tdg_hooks(project_root: &Path) -> Result<()> {
+    debug_assert!(
+        project_root.exists(),
+        "project_root must exist: {}",
+        project_root.display()
+    );
     let git_dir = project_root.join(".git");
     let hooks_dir = git_dir.join("hooks");
 

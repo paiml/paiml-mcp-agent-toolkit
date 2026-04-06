@@ -205,6 +205,7 @@ fn warn_ignored_parameters(_config: &ComprehensiveConfig) {
 
 /// Find the project root by looking for Cargo.toml
 fn find_project_root(start_path: &Path) -> Result<PathBuf> {
+    debug_assert!(start_path.exists(), "start_path must exist: {}", start_path.display());
     let start_dir = if start_path.is_file() {
         start_path
             .parent()
@@ -218,6 +219,7 @@ fn find_project_root(start_path: &Path) -> Result<PathBuf> {
 }
 
 fn walk_up_to_cargo_toml(start: &Path) -> Option<PathBuf> {
+    debug_assert!(start.exists(), "start must exist: {}", start.display());
     let mut current = start;
     loop {
         if current.join("Cargo.toml").exists() {
@@ -232,5 +234,6 @@ fn walk_up_to_cargo_toml(start: &Path) -> Option<PathBuf> {
 }
 
 fn is_system_root(path: &Path) -> bool {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     path == Path::new("/tmp") || path == Path::new("/") || path == Path::new("/home")
 }

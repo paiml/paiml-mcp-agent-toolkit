@@ -72,6 +72,7 @@ async fn analyze_file_by_toolchain(
     _toolchain: &str,
     cache_manager: Option<Arc<SessionCacheManager>>,
 ) -> Option<FileContext> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     // FIXED: Analyze files by extension, not by toolchain
     // This enables multi-language project analysis for ALL supported languages
     let ext = path.extension().and_then(|s| s.to_str())?;
@@ -170,6 +171,7 @@ async fn analyze_file_by_toolchain(
 
 #[allow(dead_code)]
 async fn analyze_deno_file(path: &Path) -> Option<FileContext> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let ext = path.extension().and_then(|s| s.to_str());
     match ext {
         #[cfg(feature = "typescript-ast")]
@@ -185,6 +187,7 @@ async fn analyze_file_by_toolchain_persistent(
     _toolchain: &str,
     cache_manager: Option<Arc<PersistentCacheManager>>,
 ) -> Option<FileContext> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     // FIXED: Analyze files by extension, not by toolchain
     let ext = path.extension().and_then(|s| s.to_str())?;
 

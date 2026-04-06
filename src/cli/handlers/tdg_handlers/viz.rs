@@ -11,6 +11,7 @@ use std::path::{Path, PathBuf};
 
 /// Collect all Rust files from path, excluding target directory
 fn collect_rust_files(path: &Path) -> Vec<PathBuf> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     use walkdir::WalkDir;
     if path.is_file() {
         return vec![path.to_path_buf()];

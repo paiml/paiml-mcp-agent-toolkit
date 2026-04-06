@@ -88,6 +88,7 @@ fn analyze_file_for_dead_code(
     file_path: &std::path::Path,
     content: &str,
 ) -> crate::models::dead_code::FileDeadCodeMetrics {
+    debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
     use crate::models::dead_code::{ConfidenceLevel, FileDeadCodeMetrics};
 
     let lines: Vec<&str> = content.lines().collect();

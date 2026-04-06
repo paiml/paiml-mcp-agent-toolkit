@@ -43,6 +43,11 @@ struct TdgGateOverrides {
 }
 
 fn load_tdg_gate_overrides(project_path: &Path) -> TdgGateOverrides {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let path = project_path.join(".pmat-gates.toml");
     let content = match std::fs::read_to_string(&path) {
         Ok(c) => c,
@@ -80,6 +85,11 @@ fn load_tdg_gate_overrides(project_path: &Path) -> TdgGateOverrides {
 }
 
 fn is_index_stale(project_path: &Path, db_path: &Path) -> bool {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let db_mtime = match std::fs::metadata(db_path).and_then(|m| m.modified()) {
         Ok(t) => t,
         Err(_) => return true,
@@ -97,6 +107,7 @@ fn is_index_stale(project_path: &Path, db_path: &Path) -> bool {
 }
 
 fn has_newer_source_file(dir: &Path, threshold: std::time::SystemTime) -> bool {
+    debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
     let entries = match std::fs::read_dir(dir) {
         Ok(e) => e,
         Err(_) => return false,
@@ -119,6 +130,7 @@ fn has_newer_source_file(dir: &Path, threshold: std::time::SystemTime) -> bool {
 }
 
 fn is_source_file(path: &Path) -> bool {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     path.extension()
         .and_then(|e| e.to_str())
         .is_some_and(|ext| {
@@ -141,6 +153,11 @@ fn is_source_file(path: &Path) -> bool {
 }
 
 fn rebuild_index(project_path: &Path) -> bool {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     use crate::services::agent_context::AgentContextIndex;
     let index_path = project_path.join(".pmat").join("context.idx");
     eprintln!("\u{1f504} CB-200: context.db is stale \u{2014} rebuilding index...");
@@ -328,6 +345,11 @@ fn evaluate_custom_score(
     project_path: &Path,
     score_def: &crate::models::comply_config::CustomScoreDefinition,
 ) -> ComplianceCheck {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let check_name = format!("CB-1100: Custom Score [{}]", score_def.id);
     let output = match std::process::Command::new("sh")
         .args(["-c", &score_def.command])

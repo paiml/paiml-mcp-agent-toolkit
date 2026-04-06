@@ -2,6 +2,7 @@
 ///
 /// Reads the source file and extracts lines from location.line to location.end_line
 fn extract_code_snippet(file_path: &Path, location: &SourceLocation) -> Result<String> {
+    debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
     let content = fs::read_to_string(file_path)
         .with_context(|| format!("Failed to read source file: {}", file_path.display()))?;
 

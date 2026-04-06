@@ -169,6 +169,11 @@ pub(super) fn parse_lcov_to_coverage_map(
 pub(super) fn try_load_lcov_info(
     project_root: &Path,
 ) -> Option<HashMap<String, HashMap<usize, u64>>> {
+    debug_assert!(
+        project_root.exists(),
+        "project_root must exist: {}",
+        project_root.display()
+    );
     let candidates = [
         project_root.join("target/coverage/lcov.info"),
         project_root.join("target/llvm-cov-target/lcov.info"),
@@ -196,6 +201,11 @@ pub(super) fn try_load_lcov_info(
 pub(super) fn try_load_coverage_json(
     project_root: &Path,
 ) -> Option<HashMap<String, HashMap<usize, u64>>> {
+    debug_assert!(
+        project_root.exists(),
+        "project_root must exist: {}",
+        project_root.display()
+    );
     let candidates = [
         project_root.join("target/coverage/coverage.json"),
         project_root.join("target/llvm-cov-target/coverage.json"),

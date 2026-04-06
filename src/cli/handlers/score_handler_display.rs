@@ -3,6 +3,7 @@
 
 /// CB-150: Print sovereign stack dependency quality.
 fn print_stack_quality(path: &Path) {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let cargo_toml = path.join("Cargo.toml");
     let content = match std::fs::read_to_string(&cargo_toml) {
         Ok(c) => c,
@@ -47,6 +48,7 @@ fn print_stack_quality(path: &Path) {
 }
 
 fn read_latest_composite(metrics_dir: &Path) -> Option<CompositeScore> {
+    debug_assert!(metrics_dir.exists(), "metrics_dir must exist: {}", metrics_dir.display());
     let mut latest: Option<CompositeScore> = None;
     if let Ok(entries) = std::fs::read_dir(metrics_dir) {
         for entry in entries.flatten() {
@@ -69,6 +71,7 @@ fn read_latest_composite(metrics_dir: &Path) -> Option<CompositeScore> {
 
 /// Load historical composite scores from .pmat-metrics/commit-*-meta.json.
 fn load_score_history(path: &Path) -> Vec<CompositeScore> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let metrics_dir = path.join(".pmat-metrics");
     let mut scores = Vec::new();
     if let Ok(entries) = std::fs::read_dir(&metrics_dir) {
@@ -92,6 +95,7 @@ fn load_score_history(path: &Path) -> Vec<CompositeScore> {
 
 /// Check regression against previous commit score. Returns delta (negative = worse).
 fn check_regression(path: &Path, current: &CompositeScore) -> Option<f64> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let history = load_score_history(path);
     let previous = history.iter().rev().find(|s| s.sha != current.sha)?;
     Some(current.composite - previous.composite)
@@ -99,6 +103,7 @@ fn check_regression(path: &Path, current: &CompositeScore) -> Option<f64> {
 
 /// Print sparkline trend of composite scores (CB-145).
 fn print_trend(path: &Path) {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let history = load_score_history(path);
     if history.is_empty() {
         println!("No score history found. Run `pmat score` to generate data.");

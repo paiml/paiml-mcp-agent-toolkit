@@ -58,6 +58,7 @@ fn c_type_to_ast_item(
 #[async_trait]
 impl AstStrategy for CAstStrategy {
     async fn analyze(&self, path: &Path, _classifier: &FileClassifier) -> Result<FileContext> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         use crate::services::ast_c::CAstParser;
         use tokio::fs;
 

@@ -113,6 +113,11 @@ fn scan_targets(
     min_age_days: u32,
     result: &mut CleanupResult,
 ) -> Result<()> {
+    debug_assert!(
+        project_dir.exists(),
+        "project_dir must exist: {}",
+        project_dir.display()
+    );
     if has_all || targets.contains(&CleanupTarget::Rust) {
         scan_rust_targets(project_dir, exclude, min_age_days, result)?;
     }

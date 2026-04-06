@@ -94,6 +94,7 @@ async fn run_all_checks(
     results: &mut QualityGateResults,
     perf: bool,
 ) -> Result<()> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     crate::cli::analysis_utilities::run_single_project_check(
         &QualityCheckType::All,
         project_path,

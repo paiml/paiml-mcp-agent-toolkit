@@ -70,6 +70,7 @@ fn handle_watch_mode() {
 
 /// Print analysis header information
 fn print_analysis_header(project_path: &PathBuf, threshold: f64, top: usize, format: &TdgOutputFormat) {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     eprintln!("🔍 Analyzing Technical Debt Gradient...");
     eprintln!("📁 Project path: {}", project_path.display());
     eprintln!("📊 Threshold: {threshold}");
@@ -96,6 +97,7 @@ fn prepare_files_for_analysis(file: Option<PathBuf>, files: Vec<PathBuf>) -> Vec
 
 /// Perform TDG analysis on the project
 async fn perform_tdg_analysis(project_path: &PathBuf) -> Result<TDGSummary> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let calculator = TDGCalculator::new();
     calculator.analyze_directory(project_path).await
 }

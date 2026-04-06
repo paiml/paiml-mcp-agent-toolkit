@@ -21,6 +21,7 @@ fn scan_single_rs_file(
     check: &mut impl FnMut(&str, &str, usize, &mut Vec<CbPatternViolation>),
     violations: &mut Vec<CbPatternViolation>,
 ) {
+    debug_assert!(entry.exists(), "entry must exist: {}", entry.display());
     let content = match fs::read_to_string(entry) {
         Ok(c) => c,
         Err(_) => return,
@@ -41,6 +42,7 @@ pub(super) fn scan_rs_production_lines(
     skip_test_files: bool,
     mut check: impl FnMut(&str, &str, usize, &mut Vec<CbPatternViolation>),
 ) -> Vec<CbPatternViolation> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let mut violations = Vec::new();
     let src_dir = project_path.join("src");
     if !src_dir.exists() {

@@ -28,6 +28,11 @@ impl RustStrategy {
 #[async_trait]
 impl AstStrategy for RustStrategy {
     async fn analyze(&self, file_path: &Path, _classifier: &FileClassifier) -> Result<FileContext> {
+        debug_assert!(
+            file_path.exists(),
+            "file_path must exist: {}",
+            file_path.display()
+        );
         // Delegate to the existing ast_rust functionality that returns FileContext
         // Convert TemplateError to anyhow::Error
         let context = crate::services::ast_rust::analyze_rust_file(file_path)

@@ -60,6 +60,8 @@ fn find_primary_span(diagnostic: &DiagnosticMessage) -> Option<&DiagnosticSpan> 
 }
 
 fn is_target_file(diagnostic_file: &str, abs_file_path: &Path, file_path: &Path) -> bool {
+    debug_assert!(abs_file_path.exists(), "abs_file_path must exist: {}", abs_file_path.display());
+    debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
     let diagnostic_path = PathBuf::from(diagnostic_file);
     diagnostic_path == *abs_file_path
         || diagnostic_path == *file_path
@@ -71,6 +73,7 @@ fn create_violation_detail(
     span: &DiagnosticSpan,
     diagnostic: &DiagnosticMessage,
 ) -> ViolationDetail {
+    debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
     ViolationDetail {
         file: file_path.to_path_buf(),
         line: span.line_start,

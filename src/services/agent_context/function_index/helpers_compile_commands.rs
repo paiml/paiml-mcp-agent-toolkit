@@ -13,6 +13,7 @@ pub(super) struct CompileCommands {
 /// Load compile_commands.json from project root or common build directories.
 #[cfg_attr(coverage_nightly, coverage(off))]
 pub(super) fn load_compile_commands(project_root: &std::path::Path) -> CompileCommands {
+    debug_assert!(project_root.exists(), "project_root must exist: {}", project_root.display());
     let candidates = [
         project_root.join("compile_commands.json"),
         project_root.join("build/compile_commands.json"),

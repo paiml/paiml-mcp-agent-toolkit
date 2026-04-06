@@ -79,12 +79,14 @@ fn score_from_unsafe(unsafe_blocks: usize, documented: usize) -> f64 {
 }
 
 fn for_each_rs_content_cached(cache: &FileCache, src_path: &Path, mut f: impl FnMut(&str)) {
+    debug_assert!(src_path.exists(), "src_path must exist: {}", src_path.display());
     for (_path, content) in cache.get_rust_files_in_dir(src_path) {
         f(content);
     }
 }
 
 fn for_each_rs_content_fs(src_path: &Path, f: &mut impl FnMut(&str)) {
+    debug_assert!(src_path.exists(), "src_path must exist: {}", src_path.display());
     // #237 bug 3: Must be recursive — read_dir is non-recursive and missed 98%+ of code
     if let Ok(entries) = std::fs::read_dir(src_path) {
         for entry in entries.flatten() {

@@ -36,6 +36,7 @@ async fn analyze_python_file_with_complexity_and_classifier(
     path: &Path,
     _classifier: Option<&FileClassifier>,
 ) -> Result<FileComplexityMetrics, TemplateError> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     // Read the file content
     let content = tokio::fs::read_to_string(path)
         .await

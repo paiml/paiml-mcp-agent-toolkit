@@ -4,6 +4,7 @@ async fn execute_provability_check(
     violations: &mut Vec<QualityViolation>,
     results: &mut QualityGateResults,
 ) -> Result<()> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let threshold = load_provability_threshold(project_path);
     execute_quality_check_template(
         check_provability(project_path, threshold),
@@ -25,6 +26,7 @@ async fn run_all_project_checks(
     perf: bool,
     quiet: bool,
 ) -> Result<()> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     use std::time::Instant;
 
     // Run all checks
@@ -117,6 +119,7 @@ async fn run_entropy_check_gated(
     perf: bool,
     quiet: bool,
 ) -> Result<()> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     use std::time::Instant;
 
     let gate_config = load_entropy_gate_config(project_path);

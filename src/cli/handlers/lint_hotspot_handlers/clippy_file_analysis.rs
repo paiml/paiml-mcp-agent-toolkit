@@ -5,6 +5,7 @@ async fn run_clippy_command(
     project_path: &Path,
     clippy_flags: &str,
 ) -> Result<std::process::Output> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let flags: Vec<&str> = clippy_flags.split_whitespace().collect();
     let mut cmd = Command::new("cargo");
 
@@ -23,6 +24,8 @@ async fn run_clippy_command(
 }
 
 fn resolve_absolute_path(project_path: &Path, file_path: &Path) -> PathBuf {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
+    debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
     if file_path.is_absolute() {
         file_path.to_path_buf()
     } else {
@@ -37,6 +40,7 @@ fn create_single_file_result(
     severity_dist: SeverityDistribution,
     sloc: usize,
 ) -> Result<LintHotspotResult> {
+    debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
     let total_violations = file_violations.len();
     let defect_density = (total_violations as f64 / sloc as f64) * 100.0;
 
@@ -93,6 +97,8 @@ pub(crate) fn count_top_lints(violations: &[ViolationDetail]) -> Vec<(String, us
 
 /// Count source lines in a file
 pub(crate) async fn count_source_lines(project_path: &Path, file_path: &Path) -> Result<usize> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
+    debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
     let full_path = if file_path.is_absolute() {
         file_path.to_path_buf()
     } else {
@@ -113,6 +119,7 @@ pub(crate) async fn execute_clippy_command(
     project_path: &Path,
     flags: &[&str],
 ) -> Result<std::process::Output> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let mut cmd = tokio::process::Command::new("cargo");
     cmd.arg("clippy")
         .arg("--message-format=json")
@@ -143,6 +150,7 @@ async fn calculate_sloc_for_files(
     project_path: &Path,
     workspace_root: Option<&PathBuf>,
 ) -> Result<()> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     for (file_path, metrics) in file_metrics.iter_mut() {
         let actual_path = resolve_file_path(file_path, project_path, workspace_root);
 
@@ -163,6 +171,8 @@ fn resolve_file_path(
     project_path: &Path,
     workspace_root: Option<&PathBuf>,
 ) -> PathBuf {
+    debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     if file_path.exists() {
         return file_path.to_path_buf();
     }
@@ -197,6 +207,7 @@ fn count_sloc(content: &str) -> usize {
 
 /// Log SLOC debug info if enabled
 fn log_sloc_debug(path: &Path, sloc: usize) {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     if std::env::var("LINT_HOTSPOT_DEBUG").is_ok() && sloc > 0 {
         eprintln!("✓ File {} has {} SLOC", path.display(), sloc);
     }
@@ -208,6 +219,8 @@ fn log_file_not_found_debug(
     actual_path: &Path,
     workspace_root: Option<&PathBuf>,
 ) {
+    debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
+    debug_assert!(actual_path.exists(), "actual_path must exist: {}", actual_path.display());
     if std::env::var("LINT_HOTSPOT_DEBUG").is_ok() {
         eprintln!("⚠️  Could not find file: {}", file_path.display());
         eprintln!("   Tried: {}", actual_path.display());

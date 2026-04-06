@@ -19,6 +19,7 @@ fn parse_roadmap_tickets(content: &str) -> Result<HashMap<String, bool>> {
 
 /// Get ticket status from ticket file
 fn get_ticket_status(ticket_path: &Path) -> Result<TicketStatus> {
+    debug_assert!(ticket_path.exists(), "ticket_path must exist: {}", ticket_path.display());
     let content = fs::read_to_string(ticket_path)?;
 
     for line in content.lines().take(10) {
@@ -37,6 +38,7 @@ fn get_ticket_status(ticket_path: &Path) -> Result<TicketStatus> {
 
 /// Parse sprint information from roadmap
 fn parse_sprint_info(content: &str, _tickets_dir: &Path) -> Result<Vec<SprintInfo>> {
+    debug_assert!(_tickets_dir.exists(), "_tickets_dir must exist: {}", _tickets_dir.display());
     let mut sprints = Vec::new();
 
     // Simple parsing: find sprint headers
@@ -168,6 +170,7 @@ fn apply_roadmap_changes(
     changes: &[(String, bool)],
     dry_run: bool,
 ) -> Result<()> {
+    debug_assert!(roadmap_path.exists(), "roadmap_path must exist: {}", roadmap_path.display());
     eprintln!("📝 Changes to apply:");
     for (ticket_id, checked) in changes {
         let action = if *checked { "✓" } else { "☐" };

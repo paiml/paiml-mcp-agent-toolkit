@@ -5,6 +5,7 @@ impl ReadmeScorer {
     /// Score README accuracy (A1: 5 points)
     /// Checks for broken links and valid image references
     async fn score_accuracy(&self, repo_path: &Path) -> Result<SubcategoryScore> {
+        debug_assert!(repo_path.exists(), "repo_path must exist: {}", repo_path.display());
         let readme_path = repo_path.join("README.md");
 
         if !readme_path.exists() {

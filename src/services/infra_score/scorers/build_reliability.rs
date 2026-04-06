@@ -39,6 +39,11 @@ impl InfraScorer for BuildReliabilityScorer {
     }
 
     async fn score(&self, repo_path: &Path) -> anyhow::Result<InfraCategoryScore> {
+        debug_assert!(
+            repo_path.exists(),
+            "repo_path must exist: {}",
+            repo_path.display()
+        );
         let workflows = read_workflow_files(repo_path);
         let all_content: String = workflows
             .iter()
@@ -200,6 +205,11 @@ impl InfraScorer for BuildReliabilityScorer {
 
 /// BR-01: Check last 10 CI runs success rate via gh CLI
 async fn check_ci_success_rate(repo_path: &Path) -> InfraCheck {
+    debug_assert!(
+        repo_path.exists(),
+        "repo_path must exist: {}",
+        repo_path.display()
+    );
     // Try to run gh run list — skip gracefully if gh is not available
     let output = tokio::process::Command::new("gh")
         .args(["run", "list", "--limit", "10", "--json", "conclusion"])

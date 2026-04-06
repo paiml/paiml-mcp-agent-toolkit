@@ -22,6 +22,11 @@ impl PrecommitScorer {
 
     /// Score pre-commit hook presence (B1: 10 points)
     async fn score_hook_present(&self, repo_path: &Path) -> Result<SubcategoryScore> {
+        debug_assert!(
+            repo_path.exists(),
+            "repo_path must exist: {}",
+            repo_path.display()
+        );
         let git_hooks_path = repo_path.join(".git/hooks");
         let precommit_path = git_hooks_path.join("pre-commit");
 
@@ -217,6 +222,11 @@ impl Scorer for PrecommitScorer {
     }
 
     async fn score(&self, repo_path: &Path, config: &ScorerConfig) -> Result<CategoryScore> {
+        debug_assert!(
+            repo_path.exists(),
+            "repo_path must exist: {}",
+            repo_path.display()
+        );
         let b1 = self.score_hook_present(repo_path).await?;
         let b2 = self.score_hook_performance(repo_path, config).await?;
 

@@ -139,6 +139,7 @@ fn resolve_project_path_complexity(project_path_arg: Option<String>) -> PathBuf 
 }
 
 fn detect_toolchain(toolchain_arg: &Option<String>, project_path: &Path) -> String {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     if let Some(t) = toolchain_arg {
         t.clone()
     } else if project_path.join("Cargo.toml").exists() {
@@ -180,6 +181,7 @@ async fn analyze_project_files(
     Vec<crate::services::complexity::FileComplexityMetrics>,
     usize,
 ) {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     use crate::services::file_discovery::ProjectFileDiscovery;
 
     let mut file_metrics = Vec::with_capacity(256);
@@ -215,6 +217,7 @@ async fn analyze_project_files(
 }
 
 fn should_analyze_file(path: &Path, toolchain: &str) -> bool {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     match toolchain {
         "rust" => path.extension().and_then(|s| s.to_str()) == Some("rs"),
         "deno" => matches!(
@@ -227,6 +230,7 @@ fn should_analyze_file(path: &Path, toolchain: &str) -> bool {
 }
 
 fn matches_include_filters(path: &Path, include_patterns: &Option<Vec<String>>) -> bool {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let Some(ref patterns) = include_patterns else {
         return true;
     };
@@ -263,6 +267,7 @@ async fn analyze_file_complexity(
     path: &Path,
     toolchain: &str,
 ) -> Option<crate::services::complexity::FileComplexityMetrics> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     match toolchain {
         "rust" => {
             use crate::services::ast_rust;

@@ -226,6 +226,11 @@ fn create_spec_if_needed(
     id: &str,
     is_github_issue: bool,
 ) -> Result<()> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let spec_path = if is_github_issue {
         project_path.join(format!(
             "docs/specifications/{:03}-spec.md",
@@ -786,6 +791,11 @@ pub async fn handle_work_sync(
 /// Evaluates all invariant clauses and persists a checkpoint record.
 /// If any invariant fails, completion is blocked.
 fn run_final_invariant_check(project_path: &std::path::Path, item_id: &str) -> Result<()> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     use crate::cli::handlers::work_contract::WorkContract;
 
     // Only run invariant check for v5.0 contracts with invariant clauses

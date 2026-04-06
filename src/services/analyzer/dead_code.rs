@@ -146,6 +146,11 @@ impl Analyzer for DeadCodeAnalyzer {
 #[async_trait]
 impl ProjectAnalyzer for DeadCodeAnalyzer {
     async fn analyze_project(&self, project_path: &Path) -> Result<Self::Output> {
+        debug_assert!(
+            project_path.exists(),
+            "project_path must exist: {}",
+            project_path.display()
+        );
         let input = ProjectInput {
             project_path: project_path.to_path_buf(),
         };

@@ -60,6 +60,11 @@ pub async fn handle_analyze_big_o(
 
 /// Print analysis header information
 pub(super) fn print_analysis_header(project_path: &Path, confidence_threshold: u8) {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     info!("🔍 Starting Big-O complexity analysis");
     info!("📂 Project path: {}", project_path.display());
     info!("🎯 Confidence threshold: {}%", confidence_threshold);
@@ -73,6 +78,11 @@ pub(super) fn build_analysis_config(
     confidence_threshold: u8,
     analyze_space: bool,
 ) -> BigOAnalysisConfig {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     BigOAnalysisConfig {
         project_path,
         include_patterns: include,

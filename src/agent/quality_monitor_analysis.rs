@@ -7,6 +7,8 @@ impl QualityMonitorEngine {
         file_path: &PathBuf,
         relative_path: &Path,
     ) -> Result<FileQualityMetrics> {
+        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
+        debug_assert!(relative_path.exists(), "relative_path must exist: {}", relative_path.display());
         use std::fs;
         use std::time::UNIX_EPOCH;
 

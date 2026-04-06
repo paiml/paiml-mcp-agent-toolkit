@@ -156,6 +156,7 @@ fn setup_cache_and_ast_engine(
 
 /// Create engine mode based on refactor mode and checkpoint path
 fn create_engine_mode(params: &ExtractedRefactorParams, checkpoint_path: &Path) -> EngineMode {
+    debug_assert!(checkpoint_path.exists(), "checkpoint_path must exist: {}", checkpoint_path.display());
     match params.mode {
         RefactorMode::Batch => EngineMode::Batch {
             checkpoint_dir: checkpoint_path.to_path_buf(),

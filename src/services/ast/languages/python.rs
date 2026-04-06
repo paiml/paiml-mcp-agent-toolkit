@@ -29,6 +29,11 @@ impl PythonStrategy {
 #[async_trait]
 impl AstStrategy for PythonStrategy {
     async fn analyze(&self, file_path: &Path, _classifier: &FileClassifier) -> Result<FileContext> {
+        debug_assert!(
+            file_path.exists(),
+            "file_path must exist: {}",
+            file_path.display()
+        );
         // Delegate to existing Python analysis
         // Convert TemplateError to anyhow::Error
         let context = crate::services::ast_python::analyze_python_file(file_path)

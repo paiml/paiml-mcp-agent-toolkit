@@ -4,6 +4,7 @@ async fn analyze_scala_file(
     include_metrics: bool,
     include_ast: bool,
 ) -> Result<Value> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let content = fs::read_to_string(path).await?;
     let visitor = ScalaAstVisitor::new(path);
 
@@ -71,6 +72,7 @@ fn count_case_classes(items: &[crate::services::context::AstItem]) -> usize {
 }
 
 fn build_file_summary(path: &std::path::Path, items: &[crate::services::context::AstItem]) -> Value {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let package_name = items
         .iter()
         .find(|item| {
@@ -171,6 +173,7 @@ async fn analyze_scala_directory(
     include_metrics: bool,
     include_ast: bool,
 ) -> Result<Value> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let scala_files = find_scala_files(path, max_depth as usize)?;
 
     if scala_files.is_empty() {
@@ -248,6 +251,7 @@ async fn analyze_scala_directory(
 
 /// Helper function to find all Scala files in a directory
 fn find_scala_files(path: &std::path::Path, max_depth: usize) -> Result<Vec<PathBuf>> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let mut scala_files = Vec::new();
 
     let walker = walkdir::WalkDir::new(path)

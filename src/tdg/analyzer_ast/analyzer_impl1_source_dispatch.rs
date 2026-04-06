@@ -231,6 +231,7 @@ impl TdgAnalyzerAst {
 /// Check if a file is tracked by git (has at least one commit).
 /// Returns false for new/untracked files, enabling graceful degradation (issue #279).
 fn is_file_git_tracked(path: &Path) -> bool {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     std::process::Command::new("git")
         .args(["log", "--oneline", "-1", "--"])
         .arg(path)

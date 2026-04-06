@@ -2,6 +2,7 @@
 // Included from ci_scorer.rs - do NOT add `use` imports or `#!` attributes here.
 
 fn find_yaml_workflow_files(workflows_dir: &Path) -> Vec<std::path::PathBuf> {
+    debug_assert!(workflows_dir.exists(), "workflows_dir must exist: {}", workflows_dir.display());
     let mut files = vec![];
     for entry in WalkDir::new(workflows_dir)
         .max_depth(1)
@@ -20,6 +21,7 @@ fn find_yaml_workflow_files(workflows_dir: &Path) -> Vec<std::path::PathBuf> {
 }
 
 async fn collect_workflow_content(workflows_dir: &Path) -> String {
+    debug_assert!(workflows_dir.exists(), "workflows_dir must exist: {}", workflows_dir.display());
     let mut all_content = String::new();
     for entry in WalkDir::new(workflows_dir)
         .max_depth(1)
@@ -40,6 +42,7 @@ async fn collect_workflow_content(workflows_dir: &Path) -> String {
 }
 
 fn check_workflow_structure(content: &str, workflow_name: &str, workflow_path: &Path) -> (f64, Finding) {
+    debug_assert!(workflow_path.exists(), "workflow_path must exist: {}", workflow_path.display());
     let has_name = content.contains("name:");
     let has_on = content.contains("on:");
     let has_jobs = content.contains("jobs:");
@@ -90,6 +93,7 @@ fn ci_pattern_finding(detected: bool, success_msg: &str, missing_msg: &str) -> (
 impl CiScorer {
     /// Score CI workflows presence (E1: 6 points)
     async fn score_workflows_present(&self, repo_path: &Path) -> Result<SubcategoryScore> {
+        debug_assert!(repo_path.exists(), "repo_path must exist: {}", repo_path.display());
         let workflows_dir = repo_path.join(".github/workflows");
 
         if !workflows_dir.exists() {
@@ -157,6 +161,7 @@ impl CiScorer {
 
     /// Score workflow configuration (E2: 6 points)
     async fn score_workflows_configured(&self, repo_path: &Path) -> Result<SubcategoryScore> {
+        debug_assert!(repo_path.exists(), "repo_path must exist: {}", repo_path.display());
         let workflows_dir = repo_path.join(".github/workflows");
         let empty_result = SubcategoryScore {
             id: "E2".to_string(),

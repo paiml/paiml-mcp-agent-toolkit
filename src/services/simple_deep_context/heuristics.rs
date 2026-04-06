@@ -38,6 +38,11 @@ impl SimpleDeepContext {
 
     /// JS/TS function name extraction with multi-pattern dedup
     pub(super) fn extract_js_ts_function_names(content: &str, file_path: &Path) -> Vec<String> {
+        debug_assert!(
+            file_path.exists(),
+            "file_path must exist: {}",
+            file_path.display()
+        );
         let patterns = [
             r"function\s+(\w+)\s*\(",
             r"(?m)^\s*(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s+)?\([^)]*\)\s*=>",

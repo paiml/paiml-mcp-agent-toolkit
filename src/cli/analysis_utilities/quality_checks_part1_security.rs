@@ -1,5 +1,6 @@
 // Security checking functions - extracted from quality_checks_part1.rs (CB-040)
 async fn check_security(project_path: &Path) -> Result<Vec<QualityViolation>> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let mut violations = Vec::new();
     let patterns = get_security_patterns();
 

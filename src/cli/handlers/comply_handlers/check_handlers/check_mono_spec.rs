@@ -201,6 +201,11 @@ pub(crate) fn check_memory_profiling(project_path: &Path) -> ComplianceCheck {
 
 /// Check if any example file contains dhat or memory profiling patterns
 fn has_profile_example_in_dir(project_path: &Path) -> bool {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let examples_dir = project_path.join("examples");
     if !examples_dir.exists() {
         return false;

@@ -156,6 +156,7 @@ impl UnifiedEngine {
     }
 
     pub(crate) async fn save_checkpoint_to(&self, dir: &Path) -> Result<(), EngineError> {
+        debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
         let state_machine = self.state_machine.read().await;
         let checkpoint_data = serde_json::to_string_pretty(&*state_machine)?;
         let checkpoint_path = dir.join("checkpoint.json");
@@ -164,6 +165,7 @@ impl UnifiedEngine {
     }
 
     pub(crate) async fn load_checkpoint(&mut self, dir: &Path) -> Result<(), EngineError> {
+        debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
         let checkpoint_path = dir.join("checkpoint.json");
         if checkpoint_path.exists() {
             let checkpoint_data = tokio::fs::read_to_string(&checkpoint_path).await?;

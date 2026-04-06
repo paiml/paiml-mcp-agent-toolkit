@@ -8,6 +8,7 @@ async fn generate_todos(
     include_quality_gates: bool,
     config: &RoadmapConfig,
 ) -> Result<()> {
+    debug_assert!(roadmap_path.exists(), "roadmap_path must exist: {}", roadmap_path.display());
     println!("🔄 Generating PDMT todos from roadmap...");
 
     let roadmap = Roadmap::from_file(roadmap_path)?;

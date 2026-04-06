@@ -149,6 +149,11 @@ fn determine_level(
 /// Returns true if a lockfile exists OR if the project has no package manager
 /// (zero-dependency projects like pure Lua have nothing to lock).
 fn check_lockfile(project_path: &Path) -> bool {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     if !project_path.exists() {
         return false;
     }
@@ -190,6 +195,11 @@ fn check_lockfile(project_path: &Path) -> bool {
 
 /// Check for Dockerfile or container configuration
 fn check_dockerfile(project_path: &Path) -> bool {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     project_path.join("Dockerfile").exists()
         || project_path.join("docker-compose.yml").exists()
         || project_path.join("docker-compose.yaml").exists()
@@ -201,6 +211,11 @@ fn check_dockerfile(project_path: &Path) -> bool {
 
 /// Check for CI configuration
 fn check_ci(project_path: &Path) -> bool {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     project_path.join(".github/workflows").exists()
         || project_path.join(".gitlab-ci.yml").exists()
         || project_path.join("Jenkinsfile").exists()
@@ -209,6 +224,11 @@ fn check_ci(project_path: &Path) -> bool {
 
 /// Check for `make reproduce` target in Makefile
 fn check_make_reproduce(project_path: &Path) -> bool {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let makefile = project_path.join("Makefile");
     if !makefile.exists() {
         return false;
@@ -226,6 +246,11 @@ fn check_make_reproduce(project_path: &Path) -> bool {
 
 /// Check for golden trace configuration (renacer.toml)
 fn check_golden_traces(project_path: &Path) -> bool {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let has_config = project_path.join("renacer.toml").exists();
     let has_baseline = project_path.join("golden_traces").exists()
         || project_path.join("golden_traces/baseline").exists();

@@ -137,6 +137,7 @@ pub fn detect_cb020_unsafe_without_safety(project_path: &Path) -> Vec<CbPatternV
 }
 
 fn scan_file_for_unsafe_violations(path: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let content = match fs::read_to_string(path) {
         Ok(c) => c,
         Err(_) => return Vec::new(),

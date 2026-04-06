@@ -117,6 +117,7 @@ impl QualityMonitorEngine {
 
     /// Perform full analysis of a project
     async fn perform_full_analysis(&self, project_id: &str, _project_path: &Path) -> Result<()> {
+        debug_assert!(_project_path.exists(), "_project_path must exist: {}", _project_path.display());
         info!(
             "Performing full quality analysis for project: {}",
             project_id

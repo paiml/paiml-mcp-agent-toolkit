@@ -1,4 +1,5 @@
 pub(super) fn detect_language(path: &std::path::Path) -> String {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
         match ext {
             // Core languages with full support
@@ -73,6 +74,7 @@ pub async fn analyze_complexity(path: &std::path::Path) -> anyhow::Result<Comple
 fn discover_source_files_for_complexity(
     path: &std::path::Path,
 ) -> anyhow::Result<Vec<std::path::PathBuf>> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     use crate::services::file_discovery::{FileDiscoveryConfig, ProjectFileDiscovery};
 
     let discovery_config = FileDiscoveryConfig {
@@ -103,6 +105,7 @@ async fn analyze_files_complexity(
 async fn analyze_single_file_complexity(
     file_path: &std::path::Path,
 ) -> Option<crate::services::complexity::FileComplexityMetrics> {
+    debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
     let ext = file_path.extension()?.to_str()?;
 
     // All cached languages use process-global DashMap populated by the AST phase
@@ -128,6 +131,7 @@ async fn analyze_single_file_complexity(
 async fn analyze_lua_complexity_metrics(
     file_path: &std::path::Path,
 ) -> Option<crate::services::complexity::FileComplexityMetrics> {
+    debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
     use crate::ast::languages::lua::LuaStrategy;
     use crate::ast::languages::LanguageStrategy;
     use crate::services::complexity::{
@@ -164,6 +168,7 @@ async fn analyze_lua_complexity_metrics(
 async fn analyze_lua_complexity_metrics(
     _file_path: &std::path::Path,
 ) -> Option<crate::services::complexity::FileComplexityMetrics> {
+    debug_assert!(_file_path.exists(), "_file_path must exist: {}", _file_path.display());
     None
 }
 

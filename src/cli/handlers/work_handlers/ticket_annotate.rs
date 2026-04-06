@@ -173,6 +173,8 @@ fn calculate_spec_score_simple(spec: &crate::services::spec_parser::ParsedSpec) 
 
 /// Extract file paths mentioned in a spec file (helper for find_related_files)
 fn extract_files_from_spec(spec_path: &Path, project_path: &Path) -> Vec<PathBuf> {
+    debug_assert!(spec_path.exists(), "spec_path must exist: {}", spec_path.display());
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let full_path = project_path.join(spec_path);
     let content = match std::fs::read_to_string(&full_path) {
         Ok(c) => c,
@@ -191,6 +193,7 @@ fn extract_files_from_spec(spec_path: &Path, project_path: &Path) -> Vec<PathBuf
 
 /// Extract file paths from item labels (helper for find_related_files)
 fn extract_files_from_labels(labels: &[String], project_path: &Path) -> Vec<PathBuf> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     labels
         .iter()
         .filter(|label| label.ends_with(".rs") || label.ends_with(".ts"))
@@ -219,6 +222,7 @@ fn find_related_files(
 }
 
 fn analyze_churn_simple(project_path: &Path, files: &[PathBuf], days: u32) -> ChurnResult {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let mut total_commits = 0;
     let mut hotspots = Vec::new();
     let mut repeated_fixes = Vec::new();
@@ -298,6 +302,7 @@ fn tdg_severity_label(score: f64) -> &'static str {
 
 /// Detect project coverage from LCOV report at standard locations.
 fn detect_coverage_percent(project_path: &Path) -> Option<f64> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let candidates = [
         project_path.join("target/coverage/lcov.info"),
         project_path.join("target/llvm-cov/lcov.info"),

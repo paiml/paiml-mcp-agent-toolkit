@@ -438,6 +438,7 @@ pub(crate) fn check_codegen_fidelity(project_path: &Path) -> ComplianceCheck {
 
 /// Find a generated_contracts.rs file in the project.
 fn find_generated_contracts(project_path: &Path) -> Option<std::path::PathBuf> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     for candidate in &[
         "src/generated_contracts.rs",
         "generated_contracts.rs",
@@ -559,6 +560,7 @@ pub(crate) fn check_enforcement_quality(project_path: &Path) -> ComplianceCheck 
 /// Find binding.yaml for a project — checks sibling provable-contracts repo.
 /// Tries directory name, then Cargo.toml package name.
 fn find_binding_yaml(project_path: &Path) -> Option<std::path::PathBuf> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     // Use resolve_contracts_dir which handles dir name + Cargo.toml name
     let contracts_dir = resolve_contracts_dir(project_path)?;
     let binding = contracts_dir.join("binding.yaml");

@@ -1417,6 +1417,7 @@ struct CratePenetration {
 
 /// Count contract enforcement call sites (debug_assert!, contract macros) in a directory tree.
 fn count_enforcement(dir: &Path, calls: &mut usize, fns: &mut usize) {
+    debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
     let entries = match fs::read_dir(dir) {
         Ok(e) => e,
         Err(_) => return,
@@ -1485,6 +1486,7 @@ fn is_enforcement_call(line: &str) -> bool {
 
 /// Measure per-crate penetration for workspace projects.
 fn measure_workspace_crates(project_path: &Path, members: &[String]) -> Vec<CratePenetration> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let mut results = Vec::new();
     // Root crate (the "." member)
     let root_src = project_path.join("src");
@@ -1642,6 +1644,7 @@ pub(crate) fn check_enforcement_penetration(project_path: &Path) -> ComplianceCh
 
 /// Parse workspace members from Cargo.toml [workspace] section.
 fn parse_workspace_members(cargo_toml: &Path) -> Vec<String> {
+    debug_assert!(cargo_toml.exists(), "cargo_toml must exist: {}", cargo_toml.display());
     let content = match fs::read_to_string(cargo_toml) {
         Ok(c) => c,
         Err(_) => return Vec::new(),
@@ -2018,6 +2021,7 @@ pub(crate) fn check_differential_obligations(project_path: &Path) -> ComplianceC
 /// Get staged files from git diff --cached --name-only.
 /// Returns relative file paths. Falls back to empty vec if git not available.
 fn get_staged_files(project_path: &Path) -> Vec<String> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let output = std::process::Command::new("git")
         .args(["diff", "--cached", "--name-only"])
         .current_dir(project_path)
@@ -2856,6 +2860,7 @@ pub(crate) fn handle_refresh_bindings(project_path: &Path) -> anyhow::Result<()>
 /// Maps: claims/falsifiable_claims → preconditions, ensure → postconditions,
 /// verification_level → verification_summary.target_level.
 fn generate_work_contract_yamls(project_path: &Path) -> anyhow::Result<usize> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let work_dir = project_path.join(".pmat-work");
     if !work_dir.exists() {
         return Ok(0);

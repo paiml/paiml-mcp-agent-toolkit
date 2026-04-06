@@ -84,6 +84,7 @@ impl TDGCalculator {
 
     /// Calculate TDG score without caching
     async fn calculate_file_uncached(&self, path: &Path) -> Result<TDGScore> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         // Gather all metrics in parallel
         let (complexity, churn, coupling, duplication, provability) = tokio::try_join!(
             self.calculate_complexity_factor(path),

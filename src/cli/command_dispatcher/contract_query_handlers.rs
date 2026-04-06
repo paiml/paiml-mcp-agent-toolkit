@@ -184,6 +184,8 @@ pub(crate) fn handle_asset_contracts(
 
 /// Recursively collect .rs files relative to project root.
 fn collect_rs_files(dir: &std::path::Path, root: &std::path::Path, out: &mut Vec<String>) {
+    debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
+    debug_assert!(root.exists(), "root must exist: {}", root.display());
     let entries = match std::fs::read_dir(dir) {
         Ok(e) => e,
         Err(_) => return,

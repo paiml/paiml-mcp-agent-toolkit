@@ -11,6 +11,7 @@ fn workflow_has_name(files: &[std::fs::DirEntry], patterns: &[&str]) -> bool {
 
 /// Score GitHub Actions workflow quality (28pts)
 fn score_workflows(workflows_dir: &Path) -> ScorerResult<f64> {
+    debug_assert!(workflows_dir.exists(), "workflows_dir must exist: {}", workflows_dir.display());
     let workflow_files: Vec<_> = std::fs::read_dir(workflows_dir)
         .map_err(|e| ScorerError::IoError(e.to_string()))?
         .filter_map(|entry| entry.ok())
@@ -82,6 +83,7 @@ fn score_workflows(workflows_dir: &Path) -> ScorerResult<f64> {
 /// #244: Makefile given equal base score as justfile (5.0). The Windows argument
 /// is weak for Rust projects that already require Unix-like toolchains.
 fn score_build_automation(project_path: &Path) -> f64 {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let justfile = project_path.join("justfile");
     let makefile = project_path.join("Makefile");
     let xtask = project_path.join("xtask");

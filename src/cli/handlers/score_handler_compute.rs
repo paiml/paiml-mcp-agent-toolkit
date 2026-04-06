@@ -9,6 +9,7 @@
 ///
 /// Falls back to pipeline-depth heuristic if pv CLI is unavailable.
 fn compute_pv_lint(path: &Path) -> f64 {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let contracts_dir = path.join("contracts");
     if !contracts_dir.exists() {
         let pmat_yaml = path.join(".pmat.yaml");
@@ -57,6 +58,7 @@ fn compute_pv_lint(path: &Path) -> f64 {
 /// Call `pv score <contracts_dir> --format json` and parse D1-D5 dimensions.
 /// Returns score on 0-100 scale, or None if pv unavailable.
 fn score_via_pv_score(path: &Path) -> Option<f64> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let contracts_dir = path.join("contracts");
     let output = std::process::Command::new("pv")
         .args(["score", &contracts_dir.display().to_string(), "--format", "json"])
@@ -115,6 +117,7 @@ fn score_via_pv_score(path: &Path) -> Option<f64> {
 
 /// Quick check: does `pv lint` pass all gates?
 fn check_pv_lint_gates(path: &Path) -> bool {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let output = std::process::Command::new("pv")
         .args(["lint", "--format", "json"])
         .current_dir(path)
@@ -145,6 +148,7 @@ fn check_pv_lint_gates(path: &Path) -> bool {
 /// - Kani harnesses defined (5 pts)
 /// - proof-status.json available from provable-contracts (5 pts)
 fn compute_pipeline_depth(path: &Path) -> f64 {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let mut score = 0.0;
     let contracts_dir = path.join("contracts");
 
@@ -256,6 +260,7 @@ fn compute_pipeline_depth(path: &Path) -> f64 {
 /// A contract is "stale" if the YAML is >30 days older than the most recently modified
 /// source file that references it (via #[contract] annotation).
 fn compute_contract_drift(path: &Path) -> (usize, usize, f64) {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let contracts_dir = path.join("contracts");
     if !contracts_dir.exists() {
         return (0, 0, 0.0);
@@ -329,6 +334,7 @@ fn compute_contract_drift(path: &Path) -> (usize, usize, f64) {
 }
 
 fn compute_file_health(path: &Path) -> f64 {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     // Count files by size category for a density-based score
     let src_dir = path.join("src");
     if !src_dir.exists() {
@@ -375,6 +381,7 @@ fn geometric_mean(values: &[f64]) -> f64 {
 }
 
 fn get_head_sha(path: &Path) -> String {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     std::process::Command::new("git")
         .args(["rev-parse", "--short", "HEAD"])
         .current_dir(path)
@@ -386,6 +393,7 @@ fn get_head_sha(path: &Path) -> String {
 }
 
 fn persist_score(path: &Path, score: &CompositeScore) {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let metrics_dir = path.join(".pmat-metrics");
     let _ = std::fs::create_dir_all(&metrics_dir);
     let filename = format!("commit-{}-meta.json", score.sha);

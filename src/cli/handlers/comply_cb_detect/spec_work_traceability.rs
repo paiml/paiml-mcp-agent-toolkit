@@ -82,6 +82,16 @@ pub fn detect_cb148_spec_work_gaps(project_path: &Path) -> Vec<CbPatternViolatio
 }
 
 fn collect_ticket_ids(work_dir: &Path, roadmap: &Path) -> Vec<String> {
+    debug_assert!(
+        work_dir.exists(),
+        "work_dir must exist: {}",
+        work_dir.display()
+    );
+    debug_assert!(
+        roadmap.exists(),
+        "roadmap must exist: {}",
+        roadmap.display()
+    );
     let mut ids = Vec::new();
 
     // From .pmat-work/ directories

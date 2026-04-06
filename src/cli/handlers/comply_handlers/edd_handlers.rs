@@ -120,6 +120,12 @@ fn scan_dir_for_edd(
     documented: &mut usize,
     violations: &mut Vec<EddViolation>,
 ) {
+    debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
+    debug_assert!(
+        project_root.exists(),
+        "project_root must exist: {}",
+        project_root.display()
+    );
     let entries = match std::fs::read_dir(dir) {
         Ok(entries) => entries,
         Err(_) => return,
@@ -146,6 +152,16 @@ fn check_file_edd(
     documented: &mut usize,
     violations: &mut Vec<EddViolation>,
 ) {
+    debug_assert!(
+        file_path.exists(),
+        "file_path must exist: {}",
+        file_path.display()
+    );
+    debug_assert!(
+        project_root.exists(),
+        "project_root must exist: {}",
+        project_root.display()
+    );
     let content = match std::fs::read_to_string(file_path) {
         Ok(c) => c,
         Err(_) => return,

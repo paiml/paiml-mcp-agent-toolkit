@@ -51,6 +51,7 @@ pub(super) fn handle_watch_mode(
     format: ComplexityOutputFormat,
     output: Option<&Path>,
 ) -> Result<()> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     print_watch_mode_intro(path);
     let (mut watcher, rx) = create_file_watcher(path)?;
 
@@ -76,6 +77,7 @@ pub(super) fn handle_watch_mode(
 #[cfg(feature = "watch")]
 /// Print watch mode introduction messages
 fn print_watch_mode_intro(path: &Path) {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     eprintln!("👁️  Starting watch mode for complexity analysis...");
     eprintln!("📁 Watching: {}", path.display());
     eprintln!("🔄 Press Ctrl+C to stop watching\n");
@@ -86,6 +88,7 @@ fn print_watch_mode_intro(path: &Path) {
 fn create_file_watcher(
     path: &Path,
 ) -> Result<(RecommendedWatcher, std::sync::mpsc::Receiver<Event>)> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let (tx, rx) = channel();
 
     let mut watcher = RecommendedWatcher::new(
@@ -195,6 +198,7 @@ fn should_reanalyze(event: &Event, include_patterns: &[String]) -> bool {
 #[cfg(feature = "watch")]
 /// Check if a specific path should be analyzed
 fn should_analyze_path(path: &std::path::Path, include_patterns: &[String]) -> bool {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let Some(path_str) = path.to_str() else {
         return false;
     };

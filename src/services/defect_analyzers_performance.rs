@@ -34,6 +34,7 @@ impl DefectAnalyzer for PerformanceDefectAnalyzer {
     type Config = PerformanceConfig;
 
     async fn analyze(&self, project_path: &Path, config: Self::Config) -> Result<Vec<Defect>> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let mut defects = Vec::new();
         let analysis_config = crate::services::big_o_analyzer::BigOAnalysisConfig {
             project_path: project_path.to_path_buf(),
@@ -149,6 +150,7 @@ impl DefectAnalyzer for ArchitectureDefectAnalyzer {
     type Config = ArchitectureConfig;
 
     async fn analyze(&self, project_path: &Path, _config: Self::Config) -> Result<Vec<Defect>> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let defects = Vec::new();
 
         // Build dependency graph

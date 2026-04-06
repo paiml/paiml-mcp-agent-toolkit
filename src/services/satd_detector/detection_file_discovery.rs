@@ -247,6 +247,7 @@ impl SATDDetector {
 
     /// Check if file content suggests it's minified (has very long lines)
     pub(crate) async fn is_likely_minified_content(&self, path: &Path) -> bool {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         use tokio::io::{AsyncBufReadExt, BufReader};
 
         match tokio::fs::File::open(path).await {

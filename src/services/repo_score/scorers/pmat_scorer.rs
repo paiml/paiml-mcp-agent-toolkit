@@ -20,6 +20,11 @@ impl PmatScorer {
 
     /// Score PMAT configuration presence (F1: 2.5 points)
     async fn score_configuration(&self, repo_path: &Path) -> Result<SubcategoryScore> {
+        debug_assert!(
+            repo_path.exists(),
+            "repo_path must exist: {}",
+            repo_path.display()
+        );
         let pmat_gates_path = repo_path.join(".pmat-gates.toml");
 
         if !pmat_gates_path.exists() {
@@ -89,6 +94,11 @@ impl PmatScorer {
 
     /// Score PMAT violations (F2: 2.5 points)
     async fn score_violations(&self, repo_path: &Path) -> Result<SubcategoryScore> {
+        debug_assert!(
+            repo_path.exists(),
+            "repo_path must exist: {}",
+            repo_path.display()
+        );
         let pmat_gates_path = repo_path.join(".pmat-gates.toml");
 
         if !pmat_gates_path.exists() {
@@ -197,6 +207,11 @@ impl Scorer for PmatScorer {
     }
 
     async fn score(&self, repo_path: &Path, _config: &ScorerConfig) -> Result<CategoryScore> {
+        debug_assert!(
+            repo_path.exists(),
+            "repo_path must exist: {}",
+            repo_path.display()
+        );
         let f1 = self.score_configuration(repo_path).await?;
         let f2 = self.score_violations(repo_path).await?;
 

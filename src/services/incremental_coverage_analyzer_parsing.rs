@@ -1,5 +1,6 @@
 impl IncrementalCoverageAnalyzer {
     async fn parse_file(&self, path: &Path) -> Result<AstNode> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let content = tokio::fs::read_to_string(path).await?;
         let hash = blake3::hash(content.as_bytes());
 

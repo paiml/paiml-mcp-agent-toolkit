@@ -31,6 +31,11 @@ impl TypeScriptStrategy {
 #[async_trait]
 impl AstStrategy for TypeScriptStrategy {
     async fn analyze(&self, file_path: &Path, _classifier: &FileClassifier) -> Result<FileContext> {
+        debug_assert!(
+            file_path.exists(),
+            "file_path must exist: {}",
+            file_path.display()
+        );
         // Delegate to existing TypeScript analysis
         // Convert TemplateError to anyhow::Error
         let context = crate::services::ast_typescript::analyze_typescript_file(file_path)

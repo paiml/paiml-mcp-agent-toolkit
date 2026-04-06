@@ -3,6 +3,7 @@ const SKIPPED_DIRS: &[&str] = &[
 ];
 
 fn is_skipped_dir(path: &Path) -> bool {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     path.file_name()
         .and_then(|n| n.to_str())
         .is_some_and(|name| SKIPPED_DIRS.contains(&name))

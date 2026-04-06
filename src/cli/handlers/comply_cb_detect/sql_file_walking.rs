@@ -10,6 +10,7 @@ pub fn walkdir_sql_files(dir: &Path) -> Vec<PathBuf> {
 }
 
 fn walk_sql_recursive(dir: &Path, files: &mut Vec<PathBuf>) {
+    debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
     let entries = match fs::read_dir(dir) {
         Ok(e) => e,
         Err(_) => return,
@@ -89,6 +90,7 @@ pub fn compute_sql_production_lines(content: &str) -> Vec<(usize, String)> {
 }
 
 fn collect_code_files(dir: &Path, extensions: &[&str], files: &mut Vec<PathBuf>) {
+    debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
     for entry in fs::read_dir(dir).into_iter().flatten().flatten() {
         let path = entry.path();
         let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
@@ -106,6 +108,7 @@ fn collect_code_files(dir: &Path, extensions: &[&str], files: &mut Vec<PathBuf>)
 }
 
 fn is_test_context(path: &Path) -> bool {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let s = path.to_str().unwrap_or("");
     s.contains("test") || s.contains("spec") || s.contains("fixture")
 }

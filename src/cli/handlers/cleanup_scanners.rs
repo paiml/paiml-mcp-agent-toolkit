@@ -8,6 +8,7 @@ fn scan_rust_targets(
     _min_age_days: u32,
     result: &mut CleanupResult,
 ) -> Result<()> {
+    debug_assert!(project_dir.exists(), "project_dir must exist: {}", project_dir.display());
     println!("🦀 Scanning Rust target directories...");
 
     for entry in WalkDir::new(project_dir)
@@ -62,6 +63,7 @@ fn scan_node_targets(
     _min_age_days: u32,
     result: &mut CleanupResult,
 ) -> Result<()> {
+    debug_assert!(project_dir.exists(), "project_dir must exist: {}", project_dir.display());
     println!("📦 Scanning Node.js node_modules...");
 
     let mut node_count = 0;
@@ -114,6 +116,7 @@ fn scan_node_targets(
 
 /// Scan for Git garbage collection opportunities
 fn scan_git_targets(project_dir: &Path, result: &mut CleanupResult) -> Result<()> {
+    debug_assert!(project_dir.exists(), "project_dir must exist: {}", project_dir.display());
     println!("📚 Scanning Git repositories...");
 
     let git_dir = project_dir.join(".git");
@@ -154,6 +157,7 @@ fn scan_log_targets(
     min_age_days: u32,
     result: &mut CleanupResult,
 ) -> Result<()> {
+    debug_assert!(project_dir.exists(), "project_dir must exist: {}", project_dir.display());
     println!("📝 Scanning log files...");
 
     let mut log_count = 0;
@@ -194,6 +198,7 @@ fn scan_log_targets(
 }
 
 fn is_old_enough(path: &Path, min_age_days: u32) -> bool {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     if min_age_days == 0 {
         return true;
     }

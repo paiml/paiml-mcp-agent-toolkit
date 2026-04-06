@@ -23,6 +23,11 @@ pub(crate) async fn run_clippy_analysis(
     project_path: &Path,
     clippy_flags: &str,
 ) -> Result<LintHotspotResult> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let flags: Vec<&str> = clippy_flags.split_whitespace().collect();
     let output = execute_clippy_command(project_path, &flags).await?;
 
@@ -46,6 +51,16 @@ pub(crate) async fn run_clippy_analysis_single_file(
     file_path: &Path,
     clippy_flags: &str,
 ) -> Result<LintHotspotResult> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
+    debug_assert!(
+        file_path.exists(),
+        "file_path must exist: {}",
+        file_path.display()
+    );
     let output = run_clippy_command(project_path, clippy_flags).await?;
     let abs_file_path = resolve_absolute_path(project_path, file_path);
 

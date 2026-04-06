@@ -269,6 +269,8 @@ pub fn should_analyze_file(
 
 /// Check if path matches any of the include patterns
 fn matches_include_patterns(path: &Path, project_path: &Path, include: &[String]) -> bool {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     use glob::Pattern;
 
     let path_str = path.to_string_lossy();
@@ -283,6 +285,7 @@ fn matches_include_patterns(path: &Path, project_path: &Path, include: &[String]
 
 /// Check if path should be excluded from analysis
 fn is_excluded_path(path: &Path) -> bool {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let path_str = path.to_string_lossy();
 
     if is_excluded_directory(&path_str) {
@@ -452,6 +455,7 @@ async fn analyze_complexity_file(
     cyclomatic_threshold: u16,
     cognitive_threshold: u16,
 ) -> Result<Option<crate::services::complexity::FileComplexityMetrics>> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     // PERFORMANCE OPTIMIZATION: Use async file I/O instead of blocking
     match tokio::fs::read_to_string(path).await {
         Ok(content) => {
@@ -474,6 +478,7 @@ async fn analyze_file_complexity_async(
     _cyclomatic_threshold: u16,
     _cognitive_threshold: u16,
 ) -> Result<crate::services::complexity::FileComplexityMetrics> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     crate::cli::language_analyzer::analyze_file_complexity(path, content).await
 }
 

@@ -42,6 +42,7 @@ impl TDGCalculator {
     }
 
     async fn calculate_coupling_factor(&self, path: &Path) -> Result<f64> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let content = tokio::fs::read_to_string(path).await?;
         let import_count = self.count_imports(&content);
 
@@ -73,6 +74,7 @@ impl TDGCalculator {
     }
 
     async fn calculate_duplication_factor(&self, path: &Path) -> Result<f64> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let content = tokio::fs::read_to_string(path).await?;
         let lines: Vec<&str> = content
             .lines()
@@ -102,6 +104,7 @@ impl TDGCalculator {
     }
 
     async fn calculate_domain_risk(&self, path: &Path) -> Result<f64> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let path_str = path.to_string_lossy();
         let mut risk: f64 = 0.0;
 
@@ -119,6 +122,7 @@ impl TDGCalculator {
     }
 
     async fn calculate_provability_factor(&self, path: &Path) -> Result<f64> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let file_name = path
             .file_name()
             .and_then(|n| n.to_str())

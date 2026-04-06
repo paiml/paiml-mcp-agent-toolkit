@@ -22,6 +22,11 @@ pub(super) async fn create_work_contract(
     without: &[String],
     iteration: u32,
 ) {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     println!();
     println!("📋 Creating Work Contract (Popperian Falsification)...");
 
@@ -90,6 +95,11 @@ pub(super) async fn create_work_contract(
 /// Require clauses are client obligations that must hold before work begins.
 /// We evaluate them as lightweight precondition checks (compile, manifest).
 fn evaluate_require_clauses_at_start(project_path: &Path, contract: &WorkContract) {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     use crate::cli::colors as c;
     use crate::cli::handlers::work_contract::{ClauseKind, FalsificationMethod};
 
@@ -194,6 +204,11 @@ fn print_dbc_summary(contract: &WorkContract, without: &[String]) {
 
 /// Write profile override to .pmat-work/config.toml
 fn write_profile_override(project_path: &Path, _item_id: &str, profile_str: &str) {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let config_dir = project_path.join(".pmat-work");
     if std::fs::create_dir_all(&config_dir).is_ok() {
         let config_path = config_dir.join("config.toml");
@@ -209,6 +224,11 @@ fn write_profile_override(project_path: &Path, _item_id: &str, profile_str: &str
 
 /// Build file manifest and attach to contract (helper for create_work_contract)
 pub(super) fn build_and_attach_manifest(project_path: &Path, contract: &mut WorkContract) {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     println!("   📂 Building file manifest...");
     match FileManifest::build(project_path) {
         Ok(manifest) => {
@@ -228,6 +248,11 @@ pub(super) fn build_and_attach_manifest(project_path: &Path, contract: &mut Work
 
 /// Save contract to disk (helper for create_work_contract)
 pub(super) fn save_contract(project_path: &Path, contract: &WorkContract) {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     match contract.save(project_path) {
         Ok(contract_path) => {
             println!("   ✅ Contract saved: {}", contract_path.display());
@@ -240,6 +265,11 @@ pub(super) fn save_contract(project_path: &Path, contract: &WorkContract) {
 
 /// Run quality gates and report results (helper for handle_work_complete)
 pub(super) async fn run_quality_check(project_path: &PathBuf, skip_quality: bool) -> Result<()> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     if skip_quality {
         println!("⚠️  Quality gates SKIPPED (--skip-quality)");
         println!();
@@ -277,6 +307,11 @@ pub(super) async fn run_contract_falsification(
     ticket: &Option<String>,
     id: &str,
 ) -> Result<()> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     if !WorkContract::exists(project_path, item_id) {
         anyhow::bail!(
             "No work contract found for '{}'. Run 'pmat work start {}' to create one.\n\
@@ -319,6 +354,11 @@ pub(super) async fn run_contract_tests(
     ticket: &Option<String>,
     id: &str,
 ) -> Result<()> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let report = run_falsification_tests(project_path, contract).await?;
 
     // Build immutable receipt
@@ -385,6 +425,11 @@ fn attempt_rescue_for_failures(
     profile: &Option<crate::cli::handlers::work_contract::ContractProfile>,
     failures: &[&crate::cli::handlers::work_falsification::types::ClaimResult],
 ) {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     use crate::cli::handlers::work_contract::{
         execute_rescue, is_rescue_enabled, rescue_strategy_for, DbcConfig, RescueRecord,
     };

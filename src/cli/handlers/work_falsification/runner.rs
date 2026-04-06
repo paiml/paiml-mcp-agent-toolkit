@@ -142,6 +142,11 @@ async fn dispatch_falsification_test(
     contract: &WorkContract,
     claim: &FalsifiableClaim,
 ) -> Result<FalsificationResult> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     match claim.falsification_method {
         FalsificationMethod::ManifestIntegrity => {
             core_checks::test_manifest_integrity(project_path, &contract.baseline_file_manifest)
@@ -226,6 +231,11 @@ async fn run_single_falsification(
     contract: &WorkContract,
     claim: &FalsifiableClaim,
 ) -> Result<(FalsificationResult, bool)> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let result = dispatch_falsification_test(project_path, contract, claim).await?;
     let is_blocking = determine_blocking_status(&claim.falsification_method, &contract.thresholds);
     Ok((result, is_blocking))

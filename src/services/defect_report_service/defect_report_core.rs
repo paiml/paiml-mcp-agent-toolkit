@@ -60,6 +60,7 @@ impl DefectReportService {
 
     /// Collect defects from all analyzers (with per-analyzer timeout)
     async fn collect_all_defects(&self, project_path: &Path) -> Result<Vec<Defect>> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         use std::time::Duration;
 
         let semaphore = self.semaphore.clone();

@@ -92,6 +92,7 @@ impl TDGCalculator {
 
     /// Calculate complexity factor (normalized 0-5)
     async fn calculate_complexity_factor(&self, path: &Path) -> Result<f64> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let content = tokio::fs::read_to_string(path).await?;
         let lines: Vec<&str> = content.lines().collect();
 

@@ -11,6 +11,11 @@ use std::process::Command;
 pub(crate) async fn test_supply_chain_integrity(
     project_path: &Path,
 ) -> Result<FalsificationResult> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     print!("Reading deny cache... ");
 
     // O(1): Read from cache instead of running cargo deny
@@ -71,6 +76,11 @@ pub(crate) async fn test_supply_chain_integrity(
 
 /// Test examples compile: O(1) - reads from cached examples status
 pub(crate) async fn test_examples_compile(project_path: &Path) -> Result<FalsificationResult> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     print!("Reading examples cache... ");
 
     // O(1): Read from cache instead of running cargo build
@@ -145,6 +155,11 @@ pub(crate) async fn test_examples_compile(project_path: &Path) -> Result<Falsifi
 /// Returns `Some(result)` if the command executed (pass or fail),
 /// or `None` if `make` was not available.
 fn try_make_validate_book(project_path: &Path) -> Option<FalsificationResult> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let output = Command::new("make")
         .args(["validate-book"])
         .current_dir(project_path)
@@ -171,6 +186,11 @@ fn try_make_validate_book(project_path: &Path) -> Option<FalsificationResult> {
 /// Returns `Some(result)` if the script exists and executed,
 /// or `None` if not available.
 fn try_book_chapter_tests(book_path: &Path) -> Option<FalsificationResult> {
+    debug_assert!(
+        book_path.exists(),
+        "book_path must exist: {}",
+        book_path.display()
+    );
     let test_script = book_path.join("tests/ch13/test_language_examples.sh");
     if !test_script.exists() {
         return None;
@@ -199,6 +219,11 @@ fn try_book_chapter_tests(book_path: &Path) -> Option<FalsificationResult> {
 
 /// Test pmat-book validation: book tests must pass
 pub(crate) async fn test_book_validation(project_path: &Path) -> Result<FalsificationResult> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     print!("Validating pmat-book... ");
 
     // Check if this is the pmat repository by looking for pmat-book sibling
@@ -231,6 +256,11 @@ pub(crate) async fn test_book_validation(project_path: &Path) -> Result<Falsific
 /// Reads `.pmat-work/cross-crate.json` config for sibling project paths and test commands.
 /// Only runs if config exists (opt-in per project).
 pub(crate) async fn test_cross_crate_parity(project_path: &Path) -> Result<FalsificationResult> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     print!("Checking cross-crate config... ");
 
     // Look for cross-crate config
@@ -306,6 +336,11 @@ pub(crate) async fn test_cross_crate_parity(project_path: &Path) -> Result<Falsi
 ///
 /// Reads `.pmat-metrics/benchmark-status.json` for cached benchmark results.
 pub(crate) async fn test_regression_gate(project_path: &Path) -> Result<FalsificationResult> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     print!("Reading benchmark cache... ");
 
     // O(1): Read from cache

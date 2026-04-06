@@ -139,6 +139,11 @@ fn run_diagnostics(
     project_path: &Path,
     category_filter: &Option<String>,
 ) -> Result<DiagnosticReport> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let mut checks = Vec::new();
 
     // Cargo Config category (6 checks)

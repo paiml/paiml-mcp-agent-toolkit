@@ -28,6 +28,7 @@ pub async fn handle_refactor_status(
 /// Validate checkpoint file existence - EXTRACTED FUNCTION
 /// Complexity: 2 (A+ standard)
 fn validate_checkpoint_file(checkpoint: &Path) -> anyhow::Result<()> {
+    debug_assert!(checkpoint.exists(), "checkpoint must exist: {}", checkpoint.display());
     if !checkpoint.exists() {
         return Err(anyhow::anyhow!(
             "Checkpoint file not found: {}",
@@ -40,6 +41,7 @@ fn validate_checkpoint_file(checkpoint: &Path) -> anyhow::Result<()> {
 /// Read checkpoint data from file - EXTRACTED FUNCTION
 /// Complexity: 2 (A+ standard)
 async fn read_checkpoint_data(checkpoint: &PathBuf) -> anyhow::Result<String> {
+    debug_assert!(checkpoint.exists(), "checkpoint must exist: {}", checkpoint.display());
     tokio::fs::read_to_string(checkpoint)
         .await
         .map_err(Into::into)
@@ -122,6 +124,7 @@ fn print_table_footer() {
 /// Format status as summary - EXTRACTED FUNCTION
 /// Complexity: 6 (A+ standard)
 fn format_as_summary(checkpoint_data: &str, checkpoint: &Path) -> anyhow::Result<()> {
+    debug_assert!(checkpoint.exists(), "checkpoint must exist: {}", checkpoint.display());
     let state: serde_json::Value = serde_json::from_str(checkpoint_data)?;
     println!("🔧 Refactor Status Summary");
     println!("   Checkpoint: {}", checkpoint.display());

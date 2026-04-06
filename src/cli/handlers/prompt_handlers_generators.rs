@@ -89,6 +89,7 @@ async fn handle_implement_prompt(
     summary_path: Option<&PathBuf>,
     output: &Option<PathBuf>,
 ) -> Result<()> {
+    debug_assert!(spec_path.exists(), "spec_path must exist: {}", spec_path.display());
     let spec_content = std::fs::read_to_string(spec_path).context(format!(
         "Failed to read specification file: {:?}",
         spec_path
@@ -153,6 +154,7 @@ async fn handle_scaffold_repo_prompt(
     include_roadmap: bool,
     output: &Option<PathBuf>,
 ) -> Result<()> {
+    debug_assert!(spec_path.exists(), "spec_path must exist: {}", spec_path.display());
     let spec_content = std::fs::read_to_string(spec_path).context(format!(
         "Failed to read specification file: {:?}",
         spec_path

@@ -48,6 +48,7 @@ fn extract_git_context(
     path: &Path,
     with_git_context: bool,
 ) -> Option<crate::models::git_context::GitContext> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     if !with_git_context {
         return None;
     }
@@ -281,6 +282,7 @@ pub(super) async fn compare_baseline(
 
 /// Find all baseline files in a directory
 fn find_baseline_files(path: &Path) -> Vec<(PathBuf, crate::tdg::TdgBaseline)> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     use crate::tdg::TdgBaseline;
     use walkdir::WalkDir;
 
@@ -305,6 +307,7 @@ fn find_baseline_files(path: &Path) -> Vec<(PathBuf, crate::tdg::TdgBaseline)> {
 
 /// List all baselines in a directory (Sprint 66 Phase 1)
 async fn list_baselines(path: &Path, format: crate::cli::TdgOutputFormat) -> Result<()> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     println!(
         "{} {}",
         c::header("Listing baselines in:"),

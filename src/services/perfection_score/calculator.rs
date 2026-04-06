@@ -81,6 +81,11 @@ impl PerfectionScoreCalculator {
 
     /// Inner calculation logic, called within the timeout wrapper.
     async fn calculate_inner(&self, project_path: &Path) -> anyhow::Result<PerfectionScoreResult> {
+        debug_assert!(
+            project_path.exists(),
+            "project_path must exist: {}",
+            project_path.display()
+        );
         // Categories 1-4 are expensive and independent — run in parallel
         let (tdg_score, repo_score, rust_score, popper_score) = tokio::join!(
             self.get_tdg_score(project_path),
@@ -145,6 +150,11 @@ impl PerfectionScoreCalculator {
     }
 
     pub(super) async fn get_tdg_score(&self, project_path: &Path) -> f64 {
+        debug_assert!(
+            project_path.exists(),
+            "project_path must exist: {}",
+            project_path.display()
+        );
         // TDG score: 0-5 scale where 0 = excellent, 5 = critical
         // Convert to 0-100 scale where 100 = excellent
         let config = TDGConfig::default();
@@ -166,6 +176,11 @@ impl PerfectionScoreCalculator {
     }
 
     pub(super) async fn get_repo_score(&self, project_path: &Path) -> f64 {
+        debug_assert!(
+            project_path.exists(),
+            "project_path must exist: {}",
+            project_path.display()
+        );
         // Repo Score: 0-100 scale
         let aggregator = ScoreAggregator::new();
         let config = ScorerConfig {
@@ -185,6 +200,11 @@ impl PerfectionScoreCalculator {
     }
 
     pub(super) async fn get_rust_project_score(&self, project_path: &Path) -> f64 {
+        debug_assert!(
+            project_path.exists(),
+            "project_path must exist: {}",
+            project_path.display()
+        );
         // Rust Project Score: 0-134 scale, normalize to 0-100
         let orchestrator = RustProjectScoreOrchestrator::new();
         let mode = if self.fast_mode {
@@ -206,6 +226,11 @@ impl PerfectionScoreCalculator {
     }
 
     pub(super) async fn get_popper_score(&self, project_path: &Path) -> f64 {
+        debug_assert!(
+            project_path.exists(),
+            "project_path must exist: {}",
+            project_path.display()
+        );
         // Popper Score: 0-100 scale
         let orchestrator = PopperOrchestrator::new();
 
@@ -219,6 +244,11 @@ impl PerfectionScoreCalculator {
     }
 
     pub(super) async fn get_coverage_score(&self, project_path: &Path) -> f64 {
+        debug_assert!(
+            project_path.exists(),
+            "project_path must exist: {}",
+            project_path.display()
+        );
         // Coverage: Check .pmat-metrics cache or run estimation
         // Look for cached coverage data in multiple locations (workspace-aware)
         let cache_paths = [
@@ -267,6 +297,11 @@ impl PerfectionScoreCalculator {
     }
 
     pub(super) async fn get_mutation_score(&self, project_path: &Path) -> f64 {
+        debug_assert!(
+            project_path.exists(),
+            "project_path must exist: {}",
+            project_path.display()
+        );
         // Check for mutation testing setup indicators
         let mut score: f64 = 50.0; // Base score
 
@@ -303,6 +338,11 @@ impl PerfectionScoreCalculator {
     }
 
     pub(super) async fn get_documentation_score(&self, project_path: &Path) -> f64 {
+        debug_assert!(
+            project_path.exists(),
+            "project_path must exist: {}",
+            project_path.display()
+        );
         // Check for common documentation files
         let has_readme =
             project_path.join("README.md").exists() || project_path.join("readme.md").exists();
@@ -328,6 +368,11 @@ impl PerfectionScoreCalculator {
     }
 
     pub(super) async fn get_performance_score(&self, project_path: &Path) -> f64 {
+        debug_assert!(
+            project_path.exists(),
+            "project_path must exist: {}",
+            project_path.display()
+        );
         // Check for performance-related files (handle both standalone and workspace projects)
         let has_benches = project_path.join("benches").exists()
             || project_path.join("server/benches").exists()

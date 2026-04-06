@@ -62,6 +62,11 @@ async fn handle_spec_falsification(
     failures_only: bool,
     dry_run: bool,
 ) -> Result<()> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let engine = crate::services::spec_falsification::FalsificationEngine::new(project_path);
 
     // Collect spec files
@@ -184,6 +189,7 @@ async fn handle_spec_falsification(
 
 /// Collect markdown spec files from a directory
 fn collect_spec_files(dir: &Path) -> Result<Vec<PathBuf>> {
+    debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
     let mut files = Vec::new();
     for entry in std::fs::read_dir(dir)? {
         let entry = entry?;

@@ -1,6 +1,7 @@
 
 /// Handle epic summary aggregation (V2)
 fn handle_epic_summary(epic_id: &str, qa_dir: &Path) -> Result<()> {
+    debug_assert!(qa_dir.exists(), "qa_dir must exist: {}", qa_dir.display());
     println!("Epic Summary: {}\n", epic_id);
 
     // Collect all task scores

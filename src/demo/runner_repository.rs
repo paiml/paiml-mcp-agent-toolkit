@@ -130,6 +130,7 @@ fn get_canonical_path(hint: Option<PathBuf>) -> Result<PathBuf> {
 }
 
 fn find_git_root(start_path: &Path) -> Option<PathBuf> {
+    debug_assert!(start_path.exists(), "start_path must exist: {}", start_path.display());
     // Fast path: direct .git check
     if start_path.join(".git").is_dir() {
         return Some(start_path.to_path_buf());

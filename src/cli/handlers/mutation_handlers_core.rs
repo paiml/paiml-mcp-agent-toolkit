@@ -99,6 +99,7 @@ pub async fn handle_mutate(
 
 /// Print mutation testing header
 fn print_header(path: &PathBuf, operators: &Option<Vec<String>>) {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     println!("🧬 Mutation Testing");
     println!("Path: {}", path.display());
 
@@ -111,6 +112,7 @@ fn print_header(path: &PathBuf, operators: &Option<Vec<String>>) {
 
 /// Validate path exists
 fn validate_path(path: &PathBuf) -> Result<()> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     if !path.exists() {
         anyhow::bail!("Path does not exist: {}", path.display());
     }
@@ -153,6 +155,7 @@ async fn execute_mutants(
     distributed: bool,
     workers: usize,
 ) -> Result<Vec<crate::services::mutation::MutationResult>> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     println!("\n🧪 Running tests on mutants...");
 
     let work_dir = path

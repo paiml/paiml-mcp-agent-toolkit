@@ -15,6 +15,7 @@ pub fn detect_cb400_git_hooks_quality(project_path: &Path) -> Vec<CbPatternViola
 }
 
 fn lint_single_hook(hooks_dir: &Path, hook_name: &str) -> Vec<CbPatternViolation> {
+    debug_assert!(hooks_dir.exists(), "hooks_dir must exist: {}", hooks_dir.display());
     let hook_path = hooks_dir.join(hook_name);
     if !hook_path.exists() || hook_path.to_string_lossy().ends_with(".sample") {
         return Vec::new();
@@ -140,6 +141,7 @@ pub fn detect_cb402_shell_script_quality(project_path: &Path) -> Vec<CbPatternVi
 
 /// Run bashrs lint on a file and parse results
 pub(super) fn run_bashrs_lint(path: &Path) -> Result<Vec<BashrsIssue>, String> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     use std::process::Command;
 
     let output = Command::new("bashrs")
@@ -160,6 +162,7 @@ pub(super) fn run_bashrs_lint(path: &Path) -> Result<Vec<BashrsIssue>, String> {
 
 /// Run bashrs make lint on Makefile
 pub(super) fn run_bashrs_make_lint(path: &Path) -> Result<Vec<BashrsIssue>, String> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     use std::process::Command;
 
     let output = Command::new("bashrs")

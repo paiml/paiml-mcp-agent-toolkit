@@ -214,11 +214,13 @@ impl QualityViolation {
 
 // Helper function to check if file is source code
 fn is_source_file(path: &Path) -> bool {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     has_source_extension(path) && !is_excluded_test_path(path) && !is_test_filename(path)
 }
 
 /// Extract Method: Check if path has a source code extension
 fn has_source_extension(path: &Path) -> bool {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     matches!(
         path.extension().and_then(|s| s.to_str()),
         Some("rs" | "js" | "ts" | "py" | "java" | "cpp" | "c")
@@ -227,6 +229,7 @@ fn has_source_extension(path: &Path) -> bool {
 
 /// Extract Method: Check if path should be excluded (test/example directories)
 fn is_excluded_test_path(path: &Path) -> bool {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let path_str = path.to_string_lossy();
     path_str.contains("/tests/")
         || path_str.contains("/test/")
@@ -241,6 +244,7 @@ fn is_excluded_test_path(path: &Path) -> bool {
 
 /// Extract Method: Check if filename follows test patterns
 fn is_test_filename(path: &Path) -> bool {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     if let Some(file_name) = path.file_name() {
         let fname = file_name.to_string_lossy();
         // Use the same logic as is_excluded_filename for consistency

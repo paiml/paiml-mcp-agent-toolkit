@@ -138,6 +138,7 @@ pub(crate) fn build_document_index(
 ///
 /// Mirrors the skip list from `function_index/helpers.rs:is_ignored_dir()`.
 fn is_ignored_dir(path: &Path) -> bool {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
     matches!(
         name,
@@ -166,6 +167,7 @@ fn is_ignored_dir(path: &Path) -> bool {
 
 /// Compute SHA256 checksum of a file's contents.
 fn compute_document_checksum(path: &Path) -> Result<String, String> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let bytes =
         std::fs::read(path).map_err(|e| format!("Failed to read {}: {e}", path.display()))?;
     let mut hasher = Sha256::new();

@@ -324,6 +324,7 @@ pub(in crate::cli::handlers::tdg_handlers) fn display_baseline_table(
     path: &std::path::Path,
     baseline: &crate::tdg::TdgBaseline,
 ) {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     println!("{}", c::path(&path.display().to_string()));
     println!("   {} {}", c::label("Version:"), baseline.version);
     println!(

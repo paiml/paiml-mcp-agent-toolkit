@@ -61,6 +61,7 @@ pub async fn analyze_duplicate_code(
 }
 
 fn discover_project_files(path: &std::path::Path) -> anyhow::Result<Vec<std::path::PathBuf>> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     use crate::services::file_discovery::ProjectFileDiscovery;
     let discovery_service = ProjectFileDiscovery::new(path.to_path_buf());
     let files = discovery_service.discover_files()?;
@@ -98,6 +99,7 @@ fn process_file_for_duplicate_detection(
         crate::services::duplicate_detector::Language,
     )>,
 > {
+    debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
     let ext = match file_path.extension().and_then(|e| e.to_str()) {
         Some(e) => e,
         None => return Ok(None),

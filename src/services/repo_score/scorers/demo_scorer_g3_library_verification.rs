@@ -27,6 +27,7 @@ fn build_usage_patterns() -> std::collections::HashMap<&'static str, &'static [&
 }
 
 fn is_source_file(path: &Path) -> bool {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
     ["rs", "py", "js", "ts"].contains(&ext)
 }
@@ -52,6 +53,7 @@ impl DemoScorer {
     /// Verify that detected libraries are actually used in source code
     /// Implements Genchi Genbutsu principle - go and see the actual usage
     async fn verify_library_usage(&self, src_path: &Path, libs: &[&str]) -> bool {
+        debug_assert!(src_path.exists(), "src_path must exist: {}", src_path.display());
         let usage_patterns = build_usage_patterns();
 
         if let Ok(entries) = std::fs::read_dir(src_path) {

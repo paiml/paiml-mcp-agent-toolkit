@@ -101,6 +101,11 @@ async fn collect_files(
     include: &Option<String>,
     exclude: &Option<String>,
 ) -> Result<Vec<(PathBuf, String)>> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     use walkdir::WalkDir;
     let mut files = Vec::new();
     for entry in WalkDir::new(project_path) {
@@ -116,6 +121,7 @@ async fn collect_files(
 }
 
 fn is_source_file(path: &std::path::Path) -> bool {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     if let Some(ext) = path.extension() {
         matches!(
             ext.to_str(),
@@ -145,6 +151,7 @@ fn should_include_file(
     include: &Option<String>,
     exclude: &Option<String>,
 ) -> bool {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let path_str = path.to_string_lossy();
     if let Some(exclude_pattern) = exclude {
         if path_str.contains(exclude_pattern) {

@@ -37,6 +37,11 @@ impl InfraScorer for SupplyChainScorer {
     }
 
     async fn score(&self, repo_path: &Path) -> anyhow::Result<InfraCategoryScore> {
+        debug_assert!(
+            repo_path.exists(),
+            "repo_path must exist: {}",
+            repo_path.display()
+        );
         let workflows = read_workflow_files(repo_path);
         let all_content: String = workflows
             .iter()
@@ -141,6 +146,11 @@ impl InfraScorer for SupplyChainScorer {
 
 /// SC-01: Branch protection (CODEOWNERS, rulesets, PR requirements)
 fn check_branch_protection(repo_path: &Path, workflows: &[(String, String)]) -> InfraCheck {
+    debug_assert!(
+        repo_path.exists(),
+        "repo_path must exist: {}",
+        repo_path.display()
+    );
     let github_dir = repo_path.join(".github");
 
     // Check for CODEOWNERS
@@ -227,6 +237,11 @@ fn check_no_hardcoded_secrets(content: &str) -> InfraCheck {
 
 /// SC-03: Dependency review (cargo-deny, dependabot, etc.)
 fn check_dependency_review(content: &str, repo_path: &Path) -> InfraCheck {
+    debug_assert!(
+        repo_path.exists(),
+        "repo_path must exist: {}",
+        repo_path.display()
+    );
     // Check workflow content for dependency review tools
     let dep_review_patterns = [
         "cargo-deny",
@@ -310,6 +325,11 @@ fn check_provenance(content: &str) -> InfraCheck {
 
 /// SC-05: Signed commits configuration
 fn check_signed_commits(repo_path: &Path, content: &str) -> InfraCheck {
+    debug_assert!(
+        repo_path.exists(),
+        "repo_path must exist: {}",
+        repo_path.display()
+    );
     // Check for GPG/SSH signing indicators
     if content.contains("verify-signatures")
         || content.contains("gpg")

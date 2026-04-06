@@ -103,6 +103,7 @@ fn load_dead_code_annotations(
     file_annots: &mut HashMap<String, FileAnnotation>,
     hotspots: &mut HashMap<String, FileHotspot>,
 ) {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let dead_code_path = project_path.join(".pmat/dead-code-cache.json");
     let data = match std::fs::read_to_string(&dead_code_path) {
         Ok(d) => d,
@@ -125,6 +126,7 @@ fn load_dead_code_annotations(
 }
 
 fn aggregate_bug_hunter_faults(bug_hunter_dir: &std::path::Path) -> HashMap<String, usize> {
+    debug_assert!(bug_hunter_dir.exists(), "bug_hunter_dir must exist: {}", bug_hunter_dir.display());
     let mut counts: HashMap<String, usize> = HashMap::new();
     let entries = match std::fs::read_dir(bug_hunter_dir) { Ok(e) => e, Err(_) => return counts };
     // Only read the most recent cache file (by mtime) to avoid parsing multiple large JSONs
@@ -148,6 +150,7 @@ fn load_bug_hunter_annotations(
     project_path: &std::path::Path,
     file_annots: &mut HashMap<String, FileAnnotation>,
 ) {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let bug_hunter_dir = project_path.join(".pmat/bug-hunter-cache");
     if !bug_hunter_dir.is_dir() { return; }
     let counts = aggregate_bug_hunter_faults(&bug_hunter_dir);
@@ -203,6 +206,7 @@ fn build_file_annotations(
 
 /// Load work ticket info for issue refs
 fn load_work_ticket(project_path: &std::path::Path, issue_ref: &str) -> Option<WorkTicketInfo> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     // Try matching PMAT-### style refs
     let ticket_id = if issue_ref.starts_with("PMAT-") || issue_ref.starts_with("pmat-") {
         issue_ref.to_uppercase()
@@ -255,6 +259,7 @@ fn load_commit_quality(
     project_path: &std::path::Path,
     commit_hash: &str,
 ) -> Option<CommitQualityMeta> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let short_hash = commit_hash.get(..7.min(commit_hash.len())).unwrap_or(commit_hash);
     let meta_path = project_path
         .join(".pmat-metrics")

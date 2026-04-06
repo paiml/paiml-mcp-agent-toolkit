@@ -7,6 +7,8 @@ async fn show_health_report(
     tickets_dir: &Path,
     format: &OutputFormat,
 ) -> Result<()> {
+    debug_assert!(roadmap_path.exists(), "roadmap_path must exist: {}", roadmap_path.display());
+    debug_assert!(tickets_dir.exists(), "tickets_dir must exist: {}", tickets_dir.display());
     let roadmap_content = fs::read_to_string(roadmap_path).map_err(|_| {
         let error = crate::cli::error_context::roadmap_not_found(roadmap_path);
         anyhow::anyhow!(error.format_detailed())

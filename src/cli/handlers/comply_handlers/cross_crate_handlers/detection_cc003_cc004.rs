@@ -300,6 +300,11 @@ pub(super) fn detect_cc004_churn_correlation(
 
 /// Get files changed in the last N days from git log, grouped by basename.
 fn get_recent_file_changes(crate_path: &Path, window_days: u32) -> HashMap<String, Vec<String>> {
+    debug_assert!(
+        crate_path.exists(),
+        "crate_path must exist: {}",
+        crate_path.display()
+    );
     let since = format!("{}.days", window_days);
     let output = std::process::Command::new("git")
         .args([

@@ -31,6 +31,7 @@ pub async fn analyze_tdg(
 }
 
 async fn analyze_single_tdg_path(analyzer: &crate::tdg::TdgAnalyzer, path: &Path) -> Result<Value> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     // Sprint 65: Get git context from analyzer for output
     let git_context = analyzer.get_git_context();
 

@@ -95,6 +95,7 @@ async fn run_deep_context_analysis_with_config(
     project_path: &Path,
     config: crate::services::deep_context::DeepContextConfig,
 ) -> Result<crate::services::deep_context::DeepContext, Box<dyn std::error::Error>> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     use crate::services::deep_context::DeepContextAnalyzer;
 
     let analyzer = DeepContextAnalyzer::new(config);

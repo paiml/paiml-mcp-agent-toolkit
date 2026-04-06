@@ -142,6 +142,7 @@ pub async fn check_entropy_with_excludes(
 /// Load max_pattern_repetition from config files (#219, #227).
 /// Priority: `.pmat-gates.toml` > `.pmat-metrics.toml` > `pmat.toml [quality]` > default (5).
 fn load_max_pattern_repetition(project_path: &Path) -> usize {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     // Highest priority: .pmat-gates.toml and .pmat-metrics.toml [entropy] section
     for filename in &[".pmat-gates.toml", ".pmat-metrics.toml"] {
         let path = project_path.join(filename);

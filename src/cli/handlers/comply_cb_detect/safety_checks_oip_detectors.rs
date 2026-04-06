@@ -69,6 +69,7 @@ fn should_skip_line(trimmed: &str) -> bool {
 
 /// Check a single Rust file for lock poisoning violations (CB-121).
 fn check_file_for_lock_poisoning(entry: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(entry.exists(), "entry must exist: {}", entry.display());
     let mut violations = Vec::new();
     let content = match fs::read_to_string(entry) {
         Ok(c) => c,
@@ -200,6 +201,7 @@ pub(super) fn has_ignore_documentation(lines: &[&str], line_num: usize, trimmed:
 }
 
 fn check_file_for_undocumented_ignore(entry: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(entry.exists(), "entry must exist: {}", entry.display());
     let content = match fs::read_to_string(entry) {
         Ok(c) => c,
         Err(_) => return vec![],
@@ -274,6 +276,7 @@ fn check_coverage_threshold_line(
 }
 
 fn check_config_file_for_coverage(config_path: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(config_path.exists(), "config_path must exist: {}", config_path.display());
     let content = match fs::read_to_string(config_path) {
         Ok(c) => c,
         Err(_) => return vec![],

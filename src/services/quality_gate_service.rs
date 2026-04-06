@@ -109,6 +109,7 @@ impl QualityGateService {
     }
 
     async fn check_complexity(&self, path: &Path, max: u32) -> Result<QualityCheckResult> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let input = AnalysisInput {
             operation: AnalysisOperation::Complexity,
             path: path.to_path_buf(),
@@ -137,6 +138,7 @@ impl QualityGateService {
     }
 
     async fn check_satd(&self, path: &Path, tolerance: u32) -> Result<QualityCheckResult> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let input = AnalysisInput {
             operation: AnalysisOperation::Satd,
             path: path.to_path_buf(),
@@ -194,6 +196,7 @@ impl QualityGateService {
     }
 
     async fn check_coverage(&self, _path: &Path, min: f64) -> Result<QualityCheckResult> {
+        debug_assert!(_path.exists(), "_path must exist: {}", _path.display());
         // Placeholder for coverage check
         Ok(QualityCheckResult {
             check: format!("Coverage (min: {min}%)"),
@@ -204,6 +207,7 @@ impl QualityGateService {
     }
 
     async fn check_lint(&self, _path: &Path) -> Result<QualityCheckResult> {
+        debug_assert!(_path.exists(), "_path must exist: {}", _path.display());
         // Placeholder for lint check
         Ok(QualityCheckResult {
             check: "Lint".to_string(),
@@ -214,6 +218,7 @@ impl QualityGateService {
     }
 
     async fn check_documentation(&self, _path: &Path) -> Result<QualityCheckResult> {
+        debug_assert!(_path.exists(), "_path must exist: {}", _path.display());
         // Placeholder for documentation check
         Ok(QualityCheckResult {
             check: "Documentation".to_string(),

@@ -32,6 +32,7 @@ async fn handle_agent_mcp_server(config_path: Option<PathBuf>, debug: bool) -> R
 
 /// Load daemon configuration from file
 async fn load_daemon_config(config_path: &PathBuf) -> Result<DaemonConfig> {
+    debug_assert!(config_path.exists(), "config_path must exist: {}", config_path.display());
     if !config_path.exists() {
         return Err(anyhow!("Configuration file not found: {config_path:?}"));
     }

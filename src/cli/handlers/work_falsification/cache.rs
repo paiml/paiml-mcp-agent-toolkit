@@ -177,6 +177,11 @@ async fn capture_metric_from_cache(
     filename: &str,
     field: &str,
 ) -> Result<f64> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let metrics_dir = project_path.join(".pmat-metrics");
     let file_path = metrics_dir.join(filename);
 
@@ -193,6 +198,11 @@ async fn capture_metric_from_cache(
 
 /// Capture coverage from trends cache
 async fn capture_coverage_from_cache(project_path: &Path) -> Result<f64> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let coverage_file = project_path.join(".pmat-metrics/trends/test-coverage.json");
 
     if coverage_file.exists() {

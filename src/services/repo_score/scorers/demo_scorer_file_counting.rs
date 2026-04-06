@@ -1,12 +1,14 @@
 // DemoScorer file counting helpers - extracted for complexity budget
 
 fn is_hidden_dir(path: &Path) -> bool {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     path.file_name()
         .and_then(|n| n.to_str())
         .is_some_and(|s| s.starts_with('.'))
 }
 
 fn has_extension(path: &Path, ext: &str) -> bool {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     path.extension()
         .and_then(|e| e.to_str())
         .is_some_and(|e| e == ext)
@@ -15,6 +17,7 @@ fn has_extension(path: &Path, ext: &str) -> bool {
 impl DemoScorer {
     /// Count files with specific extension
     async fn count_files_by_extension(&self, repo_path: &Path, ext: &str) -> usize {
+        debug_assert!(repo_path.exists(), "repo_path must exist: {}", repo_path.display());
         let mut count = 0;
         let Ok(entries) = std::fs::read_dir(repo_path) else {
             return 0;
@@ -32,6 +35,7 @@ impl DemoScorer {
 
     /// Count code files (rs, py, js, ts, go)
     async fn count_code_files(&self, repo_path: &Path) -> usize {
+        debug_assert!(repo_path.exists(), "repo_path must exist: {}", repo_path.display());
         let mut count = 0;
         let code_exts = ["rs", "py", "js", "ts", "go", "rb", "java", "c", "cpp"];
         for ext in code_exts {

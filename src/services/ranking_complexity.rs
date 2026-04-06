@@ -97,6 +97,7 @@ fn language_score_params(ext: &str) -> Option<(f64, f64, f64, f64, f64, f64)> {
 }
 
 fn score_from_file_size(file_path: &Path, params: (f64, f64, f64, f64, f64, f64)) -> CompositeComplexityScore {
+    debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
     let (size_div, weight, func_div, cyc_div, cog_div, halstead_mul) = params;
     let Ok(metadata) = std::fs::metadata(file_path) else {
         return CompositeComplexityScore::default();

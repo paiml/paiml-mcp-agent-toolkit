@@ -39,6 +39,11 @@ impl InfraScorer for WorkflowArchitectureScorer {
     }
 
     async fn score(&self, repo_path: &Path) -> anyhow::Result<InfraCategoryScore> {
+        debug_assert!(
+            repo_path.exists(),
+            "repo_path must exist: {}",
+            repo_path.display()
+        );
         let workflows = read_workflow_files(repo_path);
         let all_content: String = workflows
             .iter()
@@ -294,6 +299,11 @@ fn check_gate_job(content: &str) -> InfraCheck {
 
 /// WA-06: Check for branch protection indicators in .github/
 fn check_branch_protection(repo_path: &Path) -> InfraCheck {
+    debug_assert!(
+        repo_path.exists(),
+        "repo_path must exist: {}",
+        repo_path.display()
+    );
     let github_dir = repo_path.join(".github");
 
     // Check for various branch protection indicators

@@ -79,6 +79,7 @@ pub async fn handle_bottleneck(
 
 /// Main analysis function
 fn analyze_bottlenecks(path: &Path, period: u32, threshold: usize) -> Result<BottleneckAnalysis> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     // Get per-file touch counts from git log
     let (file_touches, commit_files, total_commits) = get_git_churn(path, period)?;
 
@@ -135,6 +136,7 @@ fn analyze_bottlenecks(path: &Path, period: u32, threshold: usize) -> Result<Bot
 
 /// Get file touch counts from git log
 fn get_git_churn(path: &Path, period: u32) -> Result<GitChurnData> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let output = std::process::Command::new("git")
         .args([
             "log",
@@ -173,6 +175,7 @@ fn get_git_churn(path: &Path, period: u32) -> Result<GitChurnData> {
 
 /// Get file line counts
 fn get_file_sizes(path: &Path, files: &HashMap<String, usize>) -> Result<HashMap<String, usize>> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let mut sizes = HashMap::new();
     for file_path in files.keys() {
         let full_path = path.join(file_path);
@@ -191,6 +194,7 @@ fn get_file_authors(
     period: u32,
     files: &HashMap<String, usize>,
 ) -> Result<HashMap<String, usize>> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let mut author_map: HashMap<String, std::collections::HashSet<String>> = HashMap::new();
 
     let output = std::process::Command::new("git")

@@ -158,6 +158,7 @@ fn dirs_next_home() -> Option<PathBuf> {
 }
 
 fn resolve_repo_path(base: &Path, repo_name: &str) -> PathBuf {
+    debug_assert!(base.exists(), "base must exist: {}", base.display());
     base.join(repo_name)
 }
 

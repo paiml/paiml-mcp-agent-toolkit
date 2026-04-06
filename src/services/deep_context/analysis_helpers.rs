@@ -3,6 +3,7 @@ pub(crate) async fn analyze_ast_contexts(
     path: &std::path::Path,
     _config: Option<FileClassifierConfig>,
 ) -> anyhow::Result<Vec<EnhancedFileContext>> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let _start_time = std::time::Instant::now();
     info!("Starting AST analysis for path: {:?}", path);
 
@@ -18,6 +19,7 @@ pub(crate) async fn analyze_ast_contexts(
 
 /// Discover files and filter for source files only
 fn discover_and_categorize_source_files(path: &std::path::Path) -> anyhow::Result<Vec<PathBuf>> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     use crate::services::file_discovery::ProjectFileDiscovery;
 
     let discovery_config = create_ast_discovery_config();
@@ -153,6 +155,7 @@ async fn analyze_single_file_for_context(
     file_path: &Path,
     file_count: &mut usize,
 ) -> Option<EnhancedFileContext> {
+    debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
     let file_start = std::time::Instant::now();
 
     if let Ok(file_context) = analysis_functions::analyze_single_file(file_path).await {

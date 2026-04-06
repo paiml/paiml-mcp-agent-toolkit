@@ -124,6 +124,7 @@ pub fn detect_project_language_enhanced(path: &Path) -> LanguageDetection {
 
 /// Compute a confidence boost for a detected language based on project indicator files.
 fn compute_confidence_boost(lang: &str, path: &Path) -> f64 {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     if lang == "rust" && path.join("Cargo.toml").exists() {
         10.0
     } else if (lang == "cpp" || lang == "c") && path.join("CMakeLists.txt").exists() {
@@ -269,6 +270,7 @@ pub fn override_multiple_languages(path: &Path, languages: Vec<String>) -> Multi
 
 /// Count files by extension recursively
 fn count_files_by_extension(path: &Path) -> HashMap<String, usize> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     use walkdir::WalkDir;
 
     let mut counts: HashMap<String, usize> = HashMap::new();

@@ -137,6 +137,7 @@ pub async fn handle_score(
 
 /// Compute the geometric composite from all sub-scores.
 async fn compute_composite(path: &Path) -> Result<CompositeScore> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let sha = get_head_sha(path);
     let timestamp = chrono::Utc::now().to_rfc3339();
 
@@ -232,6 +233,7 @@ async fn compute_composite(path: &Path) -> Result<CompositeScore> {
 
 /// Run RPS once, return (percentage, category_percentages).
 fn compute_rps(path: &Path) -> (f64, HashMap<String, f64>) {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let orchestrator = RustProjectScoreOrchestrator::new();
     match orchestrator.score_with_mode(path, ScoringMode::Fast) {
         Ok(score) => {
@@ -254,6 +256,7 @@ fn compute_rps(path: &Path) -> (f64, HashMap<String, f64>) {
 }
 
 async fn compute_comply(path: &Path) -> (f64, usize, usize) {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     // Run pmat comply check --format json as subprocess to avoid internal coupling
     let output = std::process::Command::new("pmat")
         .args(["comply", "check", "--format", "json"])
@@ -289,11 +292,13 @@ async fn compute_comply(path: &Path) -> (f64, usize, usize) {
 }
 
 fn compute_muda_inv(path: &Path) -> f64 {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let report = muda_handlers::calculate_muda_score(path);
     (100.0 - report.total_score).max(0.0)
 }
 
 fn read_coverage_cache(path: &Path) -> f64 {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     // Try .pmat-metrics/coverage.result first
     let coverage_result = path.join(".pmat-metrics/coverage.result");
     if let Ok(content) = std::fs::read_to_string(&coverage_result) {
@@ -308,6 +313,7 @@ fn read_coverage_cache(path: &Path) -> f64 {
 }
 
 fn compute_dbc(path: &Path) -> f64 {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let score = compute_codebase_score(path);
     if score.contract_count == 0 {
         return 50.0; // neutral when no contracts
@@ -323,6 +329,7 @@ fn compute_dbc(path: &Path) -> f64 {
 }
 
 fn compute_evoscore(path: &Path) -> f64 {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     // Read test results from .pmat-metrics/commit-*-tests.json
     let metrics_dir = path.join(".pmat-metrics");
     let mut test_records: Vec<(String, u64, u64)> = Vec::new(); // (sha, pass, total)

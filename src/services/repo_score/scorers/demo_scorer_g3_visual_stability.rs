@@ -14,6 +14,7 @@ const NODE_RICH_LIBS: &[&str] = &[
 const PYTHON_RICH_LIBS: &[&str] = &["rich", "tqdm", "colorama", "click", "typer"];
 
 async fn detect_manifest_libs(repo_path: &Path) -> Vec<&'static str> {
+    debug_assert!(repo_path.exists(), "repo_path must exist: {}", repo_path.display());
     let mut detected: Vec<&str> = vec![];
 
     let cargo_toml = repo_path.join("Cargo.toml");
@@ -71,6 +72,7 @@ async fn check_structured_output(demo_files: &[PathBuf]) -> bool {
 impl DemoScorer {
     /// Score Visual Stability (G3: 2 points)
     async fn score_visual_stability(&self, repo_path: &Path) -> Result<SubcategoryScore> {
+        debug_assert!(repo_path.exists(), "repo_path must exist: {}", repo_path.display());
         let mut score: f64 = 0.0;
         let mut findings = vec![];
 

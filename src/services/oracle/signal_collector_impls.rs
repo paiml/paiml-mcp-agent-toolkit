@@ -53,6 +53,7 @@ impl SignalCollector for RustcCollector {
     }
 
     async fn collect(&self, project_path: &Path) -> Result<Vec<SignalEvidence>> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let output = Command::new("cargo")
             .args(["build", "--message-format=json"])
             .current_dir(project_path)
@@ -88,6 +89,7 @@ impl SignalCollector for ClippyCollector {
     }
 
     async fn collect(&self, project_path: &Path) -> Result<Vec<SignalEvidence>> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let output = Command::new("cargo")
             .args(["clippy", "--message-format=json", "--", "-D", "warnings"])
             .current_dir(project_path)
@@ -124,6 +126,7 @@ impl SignalCollector for TestCollector {
     }
 
     async fn collect(&self, project_path: &Path) -> Result<Vec<SignalEvidence>> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let output = Command::new("cargo")
             .args([
                 "test",

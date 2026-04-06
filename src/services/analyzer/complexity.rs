@@ -104,6 +104,7 @@ pub struct ComplexitySummary {
 
 /// Helper function to find source files
 async fn find_source_files(root: &Path, extensions: &[String]) -> Result<Vec<PathBuf>> {
+    debug_assert!(root.exists(), "root must exist: {}", root.display());
     let mut files = Vec::new();
     let root = root.to_path_buf();
     let extensions = extensions.to_vec();
@@ -142,6 +143,11 @@ async fn find_source_files(root: &Path, extensions: &[String]) -> Result<Vec<Pat
 
 /// Check if file should be analyzed
 fn should_analyze_file(file_path: &Path) -> bool {
+    debug_assert!(
+        file_path.exists(),
+        "file_path must exist: {}",
+        file_path.display()
+    );
     let path_str = file_path.to_string_lossy();
     !path_str.contains("/tests/")
         && !path_str.contains("/test/")
@@ -275,6 +281,11 @@ impl Analyzer for ComplexityAnalyzer {
 #[async_trait]
 impl ProjectAnalyzer for ComplexityAnalyzer {
     async fn analyze_project(&self, project_path: &Path) -> Result<Self::Output> {
+        debug_assert!(
+            project_path.exists(),
+            "project_path must exist: {}",
+            project_path.display()
+        );
         let input = ProjectInput {
             project_path: project_path.to_path_buf(),
         };

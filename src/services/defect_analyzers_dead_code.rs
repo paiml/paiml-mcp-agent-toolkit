@@ -19,6 +19,7 @@ impl DefectAnalyzer for DeadCodeDefectAnalyzer {
     type Config = DeadCodeConfig;
 
     async fn analyze(&self, project_path: &Path, config: Self::Config) -> Result<Vec<Defect>> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let mut defects = Vec::new();
 
         // Build dependency graph

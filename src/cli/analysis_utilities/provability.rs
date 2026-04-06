@@ -52,6 +52,7 @@ async fn get_function_ids(
     project_path: &Path,
     functions: &[String],
 ) -> Result<Vec<crate::services::lightweight_provability_analyzer::FunctionId>> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     use crate::cli::provability_helpers::{discover_project_functions, parse_function_spec};
 
     if functions.is_empty() {
@@ -167,6 +168,7 @@ fn print_defect_analysis_header(
     include_low_confidence: bool,
     format: &DefectPredictionOutputFormat,
 ) {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     eprintln!("🔮 Analyzing defect probability...");
     eprintln!("📁 Project path: {}", project_path.display());
     eprintln!("🎯 High risk only: {high_risk_only}");
@@ -199,6 +201,7 @@ async fn compute_defect_predictions(
     config: &crate::cli::defect_prediction_helpers::DefectPredictionConfig,
     confidence_threshold: f32,
 ) -> Result<Vec<(String, crate::services::defect_probability::DefectScore)>> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     use crate::cli::defect_prediction_helpers::discover_source_files_for_defect_analysis;
     use crate::services::defect_probability::DefectProbabilityCalculator;
 
@@ -227,6 +230,7 @@ fn create_file_metrics(
     file_path: &Path,
     lines: usize,
 ) -> crate::services::defect_probability::FileMetrics {
+    debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
     crate::services::defect_probability::FileMetrics {
         file_path: file_path.to_string_lossy().to_string(),
         churn_score: 0.5,                 // Would be calculated from git history

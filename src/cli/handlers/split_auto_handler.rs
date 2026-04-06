@@ -205,6 +205,11 @@ pub async fn handle_split_auto(
 
 /// Walk the project and find all `.rs` files exceeding `max_lines`.
 fn find_oversized_files(project_path: &Path, max_lines: usize) -> Result<Vec<OversizedFile>> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let mut results = Vec::new();
 
     for entry in WalkDir::new(project_path)
@@ -256,6 +261,7 @@ fn should_skip_dir(entry: &walkdir::DirEntry) -> bool {
 
 /// Returns true if the file should be skipped.
 fn should_skip_file(path: &Path) -> bool {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let file_name = path
         .file_name()
         .map(|f| f.to_string_lossy().to_string())
@@ -608,6 +614,11 @@ fn find_test_block(items: &[TopLevelItem], lines: &[&str]) -> Option<(usize, usi
 
 /// Generate a split plan for a single file.
 fn generate_split_plan(file_path: &Path, content: &str, max_lines: usize) -> SplitPlan {
+    debug_assert!(
+        file_path.exists(),
+        "file_path must exist: {}",
+        file_path.display()
+    );
     let lines: Vec<&str> = content.lines().collect();
     let items = find_split_points(content);
 
@@ -715,6 +726,11 @@ fn group_items_into_clusters(
 
 /// Generate a descriptive submodule name based on the items it contains.
 fn name_submodule(items: &[TopLevelItem], file_path: &Path) -> String {
+    debug_assert!(
+        file_path.exists(),
+        "file_path must exist: {}",
+        file_path.display()
+    );
     let stem = file_path
         .file_stem()
         .map(|s| s.to_string_lossy().to_string())
@@ -789,6 +805,11 @@ fn find_common_prefix(items: &[TopLevelItem]) -> Option<String> {
 // ── Plan display ─────────────────────────────────────────────────────────────
 
 fn print_plan(plan: &SplitPlan, rel_path: &Path) {
+    debug_assert!(
+        rel_path.exists(),
+        "rel_path must exist: {}",
+        rel_path.display()
+    );
     println!(
         "{} {}",
         c::label("Split Plan:"),

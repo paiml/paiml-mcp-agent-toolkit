@@ -5,6 +5,7 @@ async fn handle_gate(
     fail_on_p0: bool,
     config: &CudaTdgCommandConfig,
 ) -> Result<()> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let analyzer_config = CudaSimdConfig {
         min_score,
         fail_on_p0,
@@ -76,6 +77,7 @@ async fn handle_kaizen(
     _since: Option<&str>,
     config: &CudaTdgCommandConfig,
 ) -> Result<()> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let analyzer = CudaSimdAnalyzer::new();
     let result = analyzer.analyze(path)?;
 

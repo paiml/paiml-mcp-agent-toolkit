@@ -225,6 +225,7 @@ impl QualityMonitor {
     
     /// Analyze entire directory
     async fn analyze_directory(&self, path: &Path) -> Result<()> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         use walkdir::WalkDir;
         
         let mut batch = Vec::new();

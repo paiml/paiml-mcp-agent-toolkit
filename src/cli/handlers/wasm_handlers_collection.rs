@@ -1,5 +1,6 @@
 /// Collect `AssemblyScript` files (.as, .ts with AS context)
 fn collect_assemblyscript_files(project_path: &Path) -> Result<Vec<PathBuf>> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let mut files = Vec::new();
 
     for entry in WalkDir::new(project_path)
@@ -15,6 +16,7 @@ fn collect_assemblyscript_files(project_path: &Path) -> Result<Vec<PathBuf>> {
 
 /// Process a single file entry for `AssemblyScript`
 fn process_assemblyscript_entry(path: &Path, files: &mut Vec<PathBuf>) {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let ext = match path.extension().and_then(|s| s.to_str()) {
         Some(ext) => ext,
         None => return,
@@ -29,11 +31,13 @@ fn process_assemblyscript_entry(path: &Path, files: &mut Vec<PathBuf>) {
 
 /// Add an `AssemblyScript` file to the collection
 fn add_assemblyscript_file(path: &Path, files: &mut Vec<PathBuf>) {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     files.push(path.to_path_buf());
 }
 
 /// Check if TypeScript file is actually `AssemblyScript` and add if so
 fn check_and_add_typescript_file(path: &Path, files: &mut Vec<PathBuf>) {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     if is_assemblyscript_typescript(path) {
         files.push(path.to_path_buf());
     }
@@ -41,6 +45,7 @@ fn check_and_add_typescript_file(path: &Path, files: &mut Vec<PathBuf>) {
 
 /// Check if a TypeScript file contains `AssemblyScript` markers
 fn is_assemblyscript_typescript(path: &Path) -> bool {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let content = match std::fs::read_to_string(path) {
         Ok(content) => content,
         Err(_) => return false,
@@ -64,6 +69,7 @@ fn collect_wasm_files(
     include_binary: bool,
     include_text: bool,
 ) -> Result<Vec<PathBuf>> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let mut files = Vec::new();
 
     for entry in WalkDir::new(project_path)

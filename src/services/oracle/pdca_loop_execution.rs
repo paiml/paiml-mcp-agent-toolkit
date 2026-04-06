@@ -152,6 +152,7 @@ impl PdcaLoop {
 
     /// Collect current project metrics
     async fn collect_metrics(&self, project_path: &Path) -> Result<ProjectMetrics> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         // Simplified metrics collection - would integrate with actual PMAT commands
         let signals = self.collector.collect_all(project_path).await?;
 
@@ -181,6 +182,7 @@ impl PdcaLoop {
 
     /// Apply fixes for defects
     async fn apply_fixes(&self, defects: &[&DefectReport], project_path: &Path) -> Result<usize> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let mut fixed_count = 0;
 
         for defect in defects {

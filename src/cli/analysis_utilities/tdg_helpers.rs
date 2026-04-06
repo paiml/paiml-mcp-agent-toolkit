@@ -38,6 +38,8 @@ pub fn estimate_refactoring_hours(tdg_score: f64) -> f64 {
 
 /// Resolve file path relative to project directory
 fn resolve_file_path(project_path: &Path, file_path: PathBuf) -> PathBuf {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
+    debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
     if file_path.is_absolute() {
         file_path
     } else {

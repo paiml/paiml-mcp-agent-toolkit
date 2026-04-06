@@ -66,6 +66,7 @@ impl LanguageStrategy for PlaceholderStrategy {
     }
 
     async fn parse_file(&self, _path: &Path, _content: &str) -> Result<AstDag> {
+        debug_assert!(_path.exists(), "_path must exist: {}", _path.display());
         // Return a basic AST with minimal structure
         Ok(AstDag::new())
     }

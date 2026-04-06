@@ -3,6 +3,7 @@
 pub(crate) async fn analyze_context(
     repo_path: &std::path::Path,
 ) -> Result<crate::services::context::ProjectContext> {
+    debug_assert!(repo_path.exists(), "repo_path must exist: {}", repo_path.display());
     crate::services::context::analyze_project(repo_path, "rust")
         .await
         .map_err(|e| anyhow::anyhow!("Error analyzing project: {e}"))
@@ -11,6 +12,7 @@ pub(crate) async fn analyze_context(
 pub(crate) async fn analyze_complexity(
     repo_path: &std::path::Path,
 ) -> Result<crate::services::complexity::ComplexityReport> {
+    debug_assert!(repo_path.exists(), "repo_path must exist: {}", repo_path.display());
     use crate::services::ast_rust::analyze_rust_file_with_complexity;
     use crate::services::complexity::aggregate_results;
     use walkdir::WalkDir;
@@ -36,6 +38,7 @@ pub(crate) async fn analyze_complexity(
 pub(crate) async fn analyze_dag(
     repo_path: &std::path::Path,
 ) -> Result<crate::models::dag::DependencyGraph> {
+    debug_assert!(repo_path.exists(), "repo_path must exist: {}", repo_path.display());
     use crate::services::dag_builder::DagBuilder;
 
     let context = crate::services::context::analyze_project(repo_path, "rust")
@@ -50,6 +53,7 @@ pub(crate) async fn analyze_dag(
 pub(crate) async fn analyze_churn(
     repo_path: &std::path::Path,
 ) -> Result<crate::models::churn::CodeChurnAnalysis> {
+    debug_assert!(repo_path.exists(), "repo_path must exist: {}", repo_path.display());
     crate::services::git_analysis::GitAnalysisService::analyze_code_churn(repo_path, 30)
         .map_err(|e| anyhow::anyhow!("Error analyzing churn: {e}"))
 }
@@ -58,6 +62,7 @@ pub(crate) async fn analyze_churn(
 pub(crate) async fn analyze_system_architecture(
     repo_path: &std::path::Path,
 ) -> Result<crate::services::canonical_query::QueryResult> {
+    debug_assert!(repo_path.exists(), "repo_path must exist: {}", repo_path.display());
     use crate::services::canonical_query::{
         AnalysisContext, CallGraph, CanonicalQuery, SystemArchitectureQuery,
     };
@@ -95,6 +100,7 @@ pub(crate) async fn analyze_system_architecture(
 pub(crate) async fn analyze_defect_probability(
     repo_path: &std::path::Path,
 ) -> Result<crate::services::defect_probability::ProjectDefectAnalysis> {
+    debug_assert!(repo_path.exists(), "repo_path must exist: {}", repo_path.display());
     use crate::services::defect_probability::{
         DefectProbabilityCalculator, FileMetrics, ProjectDefectAnalysis,
     };

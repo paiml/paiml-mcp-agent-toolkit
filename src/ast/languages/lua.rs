@@ -101,12 +101,14 @@ impl LanguageStrategy for LuaStrategy {
 
     #[cfg(feature = "lua-ast")]
     async fn parse_file(&self, _path: &Path, content: &str) -> Result<AstDag> {
+        debug_assert!(_path.exists(), "_path must exist: {}", _path.display());
         let tree = self.parse_with_tree_sitter(content)?;
         Ok(self.convert_tree_to_dag(&tree, content))
     }
 
     #[cfg(not(feature = "lua-ast"))]
     async fn parse_file(&self, _path: &Path, _content: &str) -> Result<AstDag> {
+        debug_assert!(_path.exists(), "_path must exist: {}", _path.display());
         Err(anyhow::anyhow!(
             "Lua AST parsing not available - compile with 'lua-ast' feature"
         ))

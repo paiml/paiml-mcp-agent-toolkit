@@ -70,6 +70,11 @@ pub async fn handle_analyze_defect_prediction(
 /// Format predictions as summary
 /// Toyota Way: Extract Method - Print analysis header information
 fn print_analysis_header(project_path: &Path, confidence_threshold: f32, high_risk_only: bool) {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     eprintln!("🔮 Analyzing defect probability using ML-based analysis...");
     eprintln!("📁 Project path: {}", project_path.display());
     eprintln!("🎯 Confidence threshold: {confidence_threshold}");
@@ -103,6 +108,11 @@ async fn discover_and_validate_files(
     project_path: &Path,
     config: &DefectPredictionConfig,
 ) -> Result<Vec<(std::path::PathBuf, String, usize)>> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let files = discover_files_for_defect_analysis(project_path, config).await?;
     eprintln!("📂 Found {} files matching criteria", files.len());
 

@@ -83,6 +83,11 @@ fn print_analysis_header(
     target_branch: &Option<String>,
     coverage_threshold: f64,
 ) {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     eprintln!("📊 Analyzing incremental coverage...");
     eprintln!("📁 Project path: {}", project_path.display());
     eprintln!("🌿 Base branch: {base_branch}");

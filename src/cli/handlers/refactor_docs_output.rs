@@ -58,6 +58,7 @@ async fn handle_interactive_mode(mut result: RefactorDocsResult) -> Result<Refac
 
 /// Create backup of files
 async fn create_backup(files: &[CruftFile], backup_dir: &Path) -> Result<()> {
+    debug_assert!(backup_dir.exists(), "backup_dir must exist: {}", backup_dir.display());
     // Create backup directory with timestamp
     let timestamp = chrono::Local::now().format("%Y%m%d_%H%M%S");
     let backup_path = backup_dir.join(format!("refactor_docs_{timestamp}"));

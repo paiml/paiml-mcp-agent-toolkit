@@ -98,6 +98,7 @@ impl WorkContract {
 
 /// Write debt ticket YAML files to .pmat-tickets/
 fn write_debt_tickets(project_path: &Path, debt_items: &[DebtItem]) -> Result<()> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let tickets_dir = project_path.join(".pmat-tickets");
     std::fs::create_dir_all(&tickets_dir)?;
 

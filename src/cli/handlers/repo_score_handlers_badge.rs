@@ -3,6 +3,7 @@
 
 /// Update README.md with repository health badge
 fn update_readme_badge(repo_path: &Path, score: &RepoScore) -> Result<()> {
+    debug_assert!(repo_path.exists(), "repo_path must exist: {}", repo_path.display());
     let readme_path = repo_path.join("README.md");
 
     if !readme_path.exists() {

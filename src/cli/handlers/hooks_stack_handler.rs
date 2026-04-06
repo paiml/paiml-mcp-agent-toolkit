@@ -114,6 +114,11 @@ fi
 
 /// Detect the state of a pre-commit hook in a given repository.
 fn detect_hook_state(repo_path: &PathBuf) -> HookState {
+    debug_assert!(
+        repo_path.exists(),
+        "repo_path must exist: {}",
+        repo_path.display()
+    );
     let hook_path = repo_path.join(".git/hooks/pre-commit");
     if !hook_path.exists() {
         return HookState::Missing;
@@ -347,6 +352,11 @@ fn print_status_json(repos: &[StackRepo]) {
 
 /// Write hook content to disk atomically (temp + rename, CB-1334).
 fn write_hook(hook_path: &PathBuf, content: &str) -> Result<()> {
+    debug_assert!(
+        hook_path.exists(),
+        "hook_path must exist: {}",
+        hook_path.display()
+    );
     // Ensure the hooks directory exists
     if let Some(parent) = hook_path.parent() {
         std::fs::create_dir_all(parent)?;

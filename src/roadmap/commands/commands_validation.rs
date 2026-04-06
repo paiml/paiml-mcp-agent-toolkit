@@ -7,6 +7,7 @@ async fn validate_sprint(
     strict: bool,
     config: &RoadmapConfig,
 ) -> Result<()> {
+    debug_assert!(roadmap_path.exists(), "roadmap_path must exist: {}", roadmap_path.display());
     println!("🔍 Validating sprint {sprint_id} for release...");
 
     let roadmap = Roadmap::from_file(roadmap_path)?;

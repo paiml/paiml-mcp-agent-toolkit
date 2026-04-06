@@ -637,6 +637,11 @@ fn output_compliance_report(
 }
 
 fn output_sarif_or_fallback(report: &ComplianceReport, project_path: &Path) -> Result<()> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     if let Some(sarif) = try_pv_lint_sarif(project_path) {
         println!("{sarif}");
         return Ok(());
@@ -647,6 +652,11 @@ fn output_sarif_or_fallback(report: &ComplianceReport, project_path: &Path) -> R
 }
 
 fn try_pv_lint_sarif(project_path: &Path) -> Option<String> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let contracts_dir = resolve_contracts_dir(project_path)?;
     let output = std::process::Command::new("pv")
         .args([

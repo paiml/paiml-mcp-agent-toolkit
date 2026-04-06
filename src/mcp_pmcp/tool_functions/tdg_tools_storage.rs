@@ -88,6 +88,7 @@ async fn analyze_single_path(
     path: &Path,
     analyzer: &TdgAnalyzer,
 ) -> Result<crate::tdg::ProjectScore> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     if PathValidator::ensure_directory(path).is_ok() {
         analyzer.analyze_project(path).await
     } else {
@@ -123,6 +124,7 @@ fn create_tdg_record(
     file_path: &Path,
     file_score: &crate::tdg::TdgScore,
 ) -> Result<crate::tdg::FullTdgRecord> {
+    debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
     let content = std::fs::read(file_path).unwrap_or_default();
     let hash = blake3::hash(&content);
 
@@ -142,6 +144,7 @@ fn create_file_identity(
     hash: &blake3::Hash,
     content: &[u8],
 ) -> crate::tdg::FileIdentity {
+    debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
     crate::tdg::FileIdentity {
         path: file_path.to_path_buf(),
         content_hash: *hash,
@@ -186,6 +189,7 @@ fn create_analysis_metadata(file_score: &crate::tdg::TdgScore) -> crate::tdg::An
 
 /// Create success result JSON
 fn create_success_result(path: &Path, project_score: &crate::tdg::ProjectScore) -> Value {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     json!({
         "path": path.display().to_string(),
         "total_files": project_score.total_files,
@@ -197,6 +201,7 @@ fn create_success_result(path: &Path, project_score: &crate::tdg::ProjectScore) 
 
 /// Create error result JSON
 fn create_error_result(path: &Path, error: &anyhow::Error) -> Value {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     json!({
         "path": path.display().to_string(),
         "error": error.to_string(),

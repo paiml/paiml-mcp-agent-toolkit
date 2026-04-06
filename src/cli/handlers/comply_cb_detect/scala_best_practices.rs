@@ -39,6 +39,7 @@ pub fn walkdir_scala_files(dir: &Path) -> Vec<PathBuf> {
 }
 
 fn walk_scala_recursive(dir: &Path, files: &mut Vec<PathBuf>) {
+    debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
     let entries = match fs::read_dir(dir) {
         Ok(e) => e,
         Err(_) => return,

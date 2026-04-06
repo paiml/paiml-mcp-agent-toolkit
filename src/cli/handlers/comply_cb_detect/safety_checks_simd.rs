@@ -38,6 +38,7 @@ pub(super) fn compute_target_feature_protected_lines(lines: &[&str]) -> HashSet<
 }
 
 fn check_file_for_simd_violations(entry: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(entry.exists(), "entry must exist: {}", entry.display());
     let content = match fs::read_to_string(entry) {
         Ok(c) => c,
         Err(_) => return vec![],

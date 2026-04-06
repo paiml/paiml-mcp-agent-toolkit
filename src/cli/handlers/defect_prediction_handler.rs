@@ -71,6 +71,11 @@ pub async fn handle_analyze_defect_prediction(config: DefectPredictionConfig) ->
 
 /// Print analysis header information
 fn print_analysis_header(project_path: &Path, high_risk_only: bool, include_low_confidence: bool) {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     use crate::cli::colors as c;
     eprintln!("{}", c::dim("Analyzing defect probability..."));
     eprintln!(

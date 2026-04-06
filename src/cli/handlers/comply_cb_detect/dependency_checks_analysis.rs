@@ -296,6 +296,7 @@ fn process_dependency_line(trimmed: &str, sovereign_found: &mut Vec<String>) -> 
 
 /// Analyze Cargo.toml for dependencies, feature gating, and sovereign crates
 pub(super) fn analyze_cargo_toml(cargo_toml_path: &Path) -> (usize, usize, Vec<String>) {
+    debug_assert!(cargo_toml_path.exists(), "cargo_toml_path must exist: {}", cargo_toml_path.display());
     let content = match fs::read_to_string(cargo_toml_path) {
         Ok(c) => c,
         Err(_) => return (0, 0, Vec::new()),
@@ -363,6 +364,7 @@ pub(super) fn calculate_dependency_score(
 
 /// CB-081-E: Load previous dependency metrics for trend tracking
 pub(super) fn load_dependency_trend(project_path: &Path) -> Option<DependencyTrend> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let metrics_path = project_path
         .join(".pmat")
         .join("metrics")
@@ -394,6 +396,7 @@ pub(super) fn save_dependency_metrics(
     direct: usize,
     transitive: usize,
 ) -> std::io::Result<()> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let metrics_dir = project_path.join(".pmat").join("metrics");
     fs::create_dir_all(&metrics_dir)?;
 
@@ -427,6 +430,7 @@ pub(super) fn calculate_trend_deltas(
     current_direct: usize,
     current_transitive: usize,
 ) -> Option<DependencyTrend> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let metrics_path = project_path
         .join(".pmat")
         .join("metrics")

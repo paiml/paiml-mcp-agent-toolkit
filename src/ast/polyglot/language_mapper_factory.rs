@@ -81,6 +81,7 @@ impl LanguageMapper for StubMapper {
     }
 
     async fn map_file(&self, path: &Path) -> Result<Vec<UnifiedNode>> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         // Validate path first
         PolyglotPathValidator::validate_file_path(path)?;
         // Return an empty list for now - this is just a stub
@@ -88,6 +89,7 @@ impl LanguageMapper for StubMapper {
     }
 
     async fn map_directory(&self, path: &Path, _recursive: bool) -> Result<Vec<UnifiedNode>> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         // Validate path first
         PolyglotPathValidator::validate_directory_path(path)?;
         // Return an empty list for now - this is just a stub
@@ -95,6 +97,7 @@ impl LanguageMapper for StubMapper {
     }
 
     async fn map_source(&self, _source: &str, _path: &Path) -> Result<Vec<UnifiedNode>> {
+        debug_assert!(_path.exists(), "_path must exist: {}", _path.display());
         // Return an empty list for now - this is just a stub
         Ok(Vec::new())
     }

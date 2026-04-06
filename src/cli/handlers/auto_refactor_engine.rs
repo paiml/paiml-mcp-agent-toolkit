@@ -435,6 +435,7 @@ pub async fn apply_automated_refactorings(project_path: &Path) -> Result<()> {
     ///
     /// Returns an error if the operation fails
 async fn find_high_complexity_functions(project_path: &Path) -> Result<Vec<(PathBuf, String, u32)>> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     use crate::services::complexity::analyze_file_complexity;
     use walkdir::WalkDir;
     

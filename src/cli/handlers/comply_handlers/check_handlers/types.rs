@@ -369,6 +369,11 @@ pub(crate) async fn update_project_hooks(
     project_path: &Path,
     dry_run: bool,
 ) -> anyhow::Result<bool> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     use crate::cli::handlers::hooks_command_handlers::HooksCommand;
     let hooks_dir = project_path.join(".git/hooks");
     if !hooks_dir.exists() {

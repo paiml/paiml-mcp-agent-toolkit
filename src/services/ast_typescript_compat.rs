@@ -379,6 +379,7 @@ pub async fn analyze_javascript_file_with_classifier(
 /// Helper function to parse TypeScript/JavaScript content with SWC
 #[cfg(feature = "typescript-ast")]
 fn parse_typescript_content(content: &str, path: &Path) -> Result<Module, anyhow::Error> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let source_map = Arc::new(SourceMap::default());
     let source_file = source_map.new_source_file(
         FileName::Custom(path.display().to_string()).into(),

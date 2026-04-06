@@ -64,6 +64,7 @@ fn collect_scan_directories(
     include_docs: bool,
     additional_dirs: Vec<PathBuf>,
 ) -> Vec<PathBuf> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let mut scan_dirs = Vec::new();
 
     if include_root {

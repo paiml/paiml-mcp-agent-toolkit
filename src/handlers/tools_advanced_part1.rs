@@ -17,6 +17,8 @@ struct AnalyzeDefectProbabilityArgs {
 }
 
 fn get_relative_path(path: &Path, project_path: &Path) -> String {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     path.strip_prefix(project_path)
         .unwrap_or(path)
         .to_string_lossy()
@@ -95,6 +97,8 @@ async fn calculate_file_metrics(
     project_path: PathBuf,
     churn_map: std::collections::HashMap<String, f32>,
 ) -> crate::services::defect_probability::FileMetrics {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     use crate::services::defect_probability::FileMetrics;
 
     let relative_path = get_relative_path(&path, &project_path);
@@ -172,6 +176,7 @@ fn parse_defect_probability_args(
 
 /// Toyota Way: Extract Method - Build churn map from git analysis (complexity ≤5)
 fn build_churn_map(project_path: &Path) -> std::collections::HashMap<String, f32> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     use crate::services::git_analysis::GitAnalysisService;
 
     let churn_analysis = GitAnalysisService::analyze_code_churn(project_path, 30).ok();
@@ -192,6 +197,7 @@ async fn discover_and_analyze_files(
     churn_map: std::collections::HashMap<String, f32>,
     request_id: serde_json::Value,
 ) -> Result<Vec<crate::services::defect_probability::FileMetrics>, McpResponse> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     use crate::services::file_discovery::ProjectFileDiscovery;
     use futures::stream::{self, StreamExt};
 
@@ -341,6 +347,7 @@ async fn run_dead_code_analysis(
     project_path: &Path,
     args: &AnalyzeDeadCodeArgs,
 ) -> Result<crate::models::dead_code::DeadCodeRankingResult, Box<dyn std::error::Error>> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     use crate::models::dead_code::DeadCodeAnalysisConfig;
     use crate::services::dead_code_analyzer::DeadCodeAnalyzer;
 

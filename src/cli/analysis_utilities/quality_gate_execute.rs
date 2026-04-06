@@ -96,6 +96,7 @@ async fn execute_complexity_check(
     violations: &mut Vec<QualityViolation>,
     results: &mut QualityGateResults,
 ) -> Result<()> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     execute_quality_check_template(
         check_complexity(project_path, max_complexity_p99),
         |count| results.complexity_violations = count,
@@ -111,6 +112,7 @@ async fn execute_dead_code_check(
     violations: &mut Vec<QualityViolation>,
     results: &mut QualityGateResults,
 ) -> Result<()> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     execute_quality_check_template(
         check_dead_code(project_path, max_dead_code),
         |count| results.dead_code_violations = count,
@@ -125,6 +127,7 @@ async fn execute_satd_check(
     violations: &mut Vec<QualityViolation>,
     results: &mut QualityGateResults,
 ) -> Result<()> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     execute_quality_check_template(
         check_satd(project_path),
         |count| results.satd_violations = count,
@@ -140,6 +143,7 @@ async fn execute_entropy_check(
     violations: &mut Vec<QualityViolation>,
     results: &mut QualityGateResults,
 ) -> Result<()> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let gate_config = load_entropy_gate_config(project_path);
     if !gate_config.enabled {
         eprintln!("  ⏭️  Entropy check disabled via .pmat-gates.toml");
@@ -172,6 +176,7 @@ async fn execute_security_check(
     violations: &mut Vec<QualityViolation>,
     results: &mut QualityGateResults,
 ) -> Result<()> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     execute_quality_check_template(
         check_security(project_path),
         |count| results.security_violations = count,
@@ -186,6 +191,7 @@ async fn execute_duplicates_check(
     violations: &mut Vec<QualityViolation>,
     results: &mut QualityGateResults,
 ) -> Result<()> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     execute_quality_check_template(
         check_duplicates(project_path),
         |count| results.duplicate_violations = count,
@@ -200,6 +206,7 @@ async fn execute_coverage_check(
     violations: &mut Vec<QualityViolation>,
     results: &mut QualityGateResults,
 ) -> Result<()> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     execute_quality_check_template(
         check_coverage(project_path, 80.0),
         |count| results.coverage_violations = count,
@@ -214,6 +221,7 @@ async fn execute_sections_check(
     violations: &mut Vec<QualityViolation>,
     results: &mut QualityGateResults,
 ) -> Result<()> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     execute_quality_check_template(
         check_sections(project_path),
         |count| results.section_violations = count,

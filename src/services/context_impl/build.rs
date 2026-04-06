@@ -1,5 +1,6 @@
 
 fn build_gitignore(root_path: &Path) -> Result<ignore::gitignore::Gitignore, TemplateError> {
+    debug_assert!(root_path.exists(), "root_path must exist: {}", root_path.display());
     let mut gitignore = GitignoreBuilder::new(root_path);
 
     // Add default ignores
@@ -24,6 +25,7 @@ async fn scan_rust_files_only(
     cache_manager: Option<Arc<SessionCacheManager>>,
     gitignore: &ignore::gitignore::Gitignore,
 ) -> Vec<FileContext> {
+    debug_assert!(root_path.exists(), "root_path must exist: {}", root_path.display());
     const MAX_DEPTH: usize = 5; // Shallower search for performance
     const MAX_FILES: usize = 100; // Even lower limit for fast dead code analysis
     const BATCH_SIZE: usize = 20; // Smaller batches for responsiveness
@@ -100,6 +102,7 @@ async fn scan_and_analyze_files(
     cache_manager: Option<Arc<SessionCacheManager>>,
     gitignore: &ignore::gitignore::Gitignore,
 ) -> Vec<FileContext> {
+    debug_assert!(root_path.exists(), "root_path must exist: {}", root_path.display());
     // FIXED: Add depth limit and file count limit to prevent hanging
     const MAX_DEPTH: usize = 10; // Prevent infinite recursion
     const MAX_FILES: usize = 10000; // Prevent resource exhaustion
@@ -173,6 +176,7 @@ async fn analyze_file_by_toolchain(
     _toolchain: &str,
     cache_manager: Option<Arc<SessionCacheManager>>,
 ) -> Option<FileContext> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     // FIXED: Analyze files by extension, not by toolchain
     // This enables multi-language project analysis for ALL supported languages
     let ext = path.extension().and_then(|s| s.to_str())?;
@@ -292,6 +296,7 @@ async fn analyze_file_by_toolchain(
 
 #[allow(dead_code)]
 async fn analyze_deno_file(path: &Path) -> Option<FileContext> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let ext = path.extension().and_then(|s| s.to_str());
     match ext {
         #[cfg(feature = "typescript-ast")]
