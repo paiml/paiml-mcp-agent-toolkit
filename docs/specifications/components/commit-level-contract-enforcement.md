@@ -298,7 +298,7 @@ fire-and-forget with no closed-loop regeneration.
 
 | Repo | Pass | Warn | Fail | CB-1354 | CB-1340 | Notes |
 |------|------|------|------|---------|---------|-------|
-| pmat | **78** | 5 | 1 | **4/4** | **17.9%** PASS (2705 sites) | FAIL: File Health only. Showcase penetration |
+| pmat | **78** | 5 | 1 | **4/4** | **36.8%** PASS (5553 sites) | FAIL: File Health only. 198x from start |
 | aprender | **74** | 13 | **2** | **4/4** | 43.8% agg, apr-cli:**63%** [CLI] FAIL | FAIL: File Health + CB-1340. #686 open |
 | trueno | **66** | 17 | 3 | 2/4 | Skip (no binding) | FAIL: File Health, CB-200, CB-1308 |
 | realizar | **67** | 18 | **0** | 3/4 | Skip | **Zero FAIL** maintained |
@@ -459,8 +459,8 @@ penetration (53 call sites / 15,073 functions). Target: ≥10%.
 **Phase 2-4 (done):** Automated bulk enforcement across 700+ files. Path
 existence preconditions, non-empty string checks, score range postconditions,
 limit/count positivity checks. Covers handlers, services, models, scaffold,
-MCP tools, quality gates, TDG, workflow, utils. **2705 call sites = 17.9%**.
-CB-1340 PASSES. Trajectory: 0.2% → 6.4% → 11.0% → **17.9%** (97x increase).
+MCP tools, quality gates, TDG, workflow, utils. **5553 call sites = 36.8%**.
+CB-1340 PASSES. Trajectory: 0.2% → 11.0% → 17.9% → **36.8%** (198x increase).
 
 ## Implementation Status
 
@@ -491,7 +491,7 @@ Tools: mdschema, hadolint, rumdl, standard-readme.
 
 | Version | Date | Changes |
 |---------|------|---------|
-| 3.9 | 2026-04-06 | **Self-enforcement 17.9%**: 2705 call sites across 1000+ files. 97x increase. pmat 78/5/1. |
+| 3.10 | 2026-04-06 | **Self-enforcement 36.8%**: 5553 call sites across 1000+ files. 198x increase. pmat 78/5/1. |
 | 3.7-3.8 | 2026-04-06 | Self-enforcement phases: 0.2% → 0.7% → 11.0%. 102 → 1658 call sites. |
 | 3.6 | 2026-04-06 | **Falsified**: `contract_` → `contract_pre_/post_` (struct fields ≠ enforcement). apr-cli honest: 63% (was false 148%). |
 | 3.5 | 2026-04-06 | CB-1340 per-crate: Workspace crates measured individually. CLI ≥95%, others ≥10%. 26 CB checks (was 29), 165+ tests (was 107). |
