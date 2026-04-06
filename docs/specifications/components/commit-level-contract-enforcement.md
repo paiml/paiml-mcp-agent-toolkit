@@ -489,7 +489,7 @@ Priority: **P0** = blocks real enforcement, **P1** = completes spec claim, **P2*
 
 | Version | Date | Changes |
 |---------|------|---------|
-| 3.0 | 2026-04-06 | apr-cli QA: **11 bugs fixed** (#660,662-669,671,672,677), 4 infra issues filed. 39 contracts. **76/6/0.** |
+| 3.1 | 2026-04-06 | **30+ bugs fixed** incl GPU CUDA fallback (#627/637/670). 44 issues closed. **76/6/0.** |
 | 2.3–2.8 | 2026-04-05 | R-1..R-10 remediation, falsification bugs, brace counting, pv binding parser. |
 | 2.0–2.2 | 2026-04-05 | Falsification audit (14 claims), remediation backlog, dogfood remediation. |
 | 1.0–1.9 | 2026-04-05 | Initial spec through all 8 phases. 29 checks, 98→107 tests. |
