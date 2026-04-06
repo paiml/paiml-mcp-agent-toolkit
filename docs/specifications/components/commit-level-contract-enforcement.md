@@ -298,7 +298,7 @@ fire-and-forget with no closed-loop regeneration.
 
 | Repo | Pass | Warn | Fail | CB-1354 | Notes |
 |------|------|------|------|---------|-------|
-| pmat | **75** | 7 | 0 | **4/4** | 4 bindings, 82 work contracts, 2 pv assertions |
+| pmat | **76** | 6 | 0 | **4/4** | 4 bindings, 82 work contracts, 2 pv assertions |
 | aprender | **71** | 16 | 0 | **4/4** | 5 bindings, 39 contracts. GH #673-676. 4 bugs confirmed (664/666/669/672) |
 | trueno | **65** | 18 | 0 | 1/4 | Only pv CLI |
 | realizar | **63** | 18 | 0 | 1/4 | Only pv CLI |
@@ -471,6 +471,7 @@ Priority: **P0** = blocks real enforcement, **P1** = completes spec claim, **P2*
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 2.9 | 2026-04-06 | apr-cli QA: 5 bugs fixed (#664/666/669/671/672), 4 GH issues filed, 39 contracts. **76/6/0.** |
 | 2.8 | 2026-04-05 | Raw string brace counting, CB-1340 accurate fn count, pv binding parser, cross-repo dogfood. **75/7/0.** |
 | 2.7 | 2026-04-05 | YAML name quoting fix + pmat-core.yaml real pv schema. CB-1205/CB-1211/CB-1354 all pass. |
 | 2.6 | 2026-04-05 | R-10 asset_validator (5 tests), R-6 all 5 flags added, R-3 deferred. **9/10 done. Backlog closed.** |
