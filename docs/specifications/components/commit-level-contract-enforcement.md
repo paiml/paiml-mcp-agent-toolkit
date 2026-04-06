@@ -491,5 +491,5 @@ Priority: **P0** = blocks real enforcement, **P1** = completes spec claim, **P2*
 
 | Version | Date | Changes |
 |---------|------|---------|
-| 3.3 | 2026-04-06 | **80 closed** (20 open). Intel/Jetson/GX10/Yoga tested. Fleet deployed. **76/6/0.** |
+| 3.3 | 2026-04-06 | **82 closed** (18 open). All hardware tested. Deep investigation on 3 issues. **76/6/0.** |
 | 1.0–2.8 | 2026-04-05 | Phases 1-8, remediation R-1..R-10, falsification audit, brace counting. |
