@@ -65,6 +65,7 @@ impl WasmBinaryAnalyzer {
 
     /// Analyze raw WASM bytes
     pub fn analyze_bytes(&self, data: &[u8]) -> Result<WasmAnalysis> {
+        debug_assert!(!data.is_empty(), "WASM data must not be empty");
         // Check minimum size and magic bytes
         if data.len() < 8 {
             return Err(anyhow::anyhow!("File too small to be valid WASM"));

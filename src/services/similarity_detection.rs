@@ -201,7 +201,9 @@ impl SimilarityDetector {
     /// Calculate Shannon entropy
     #[must_use]
     pub fn calculate_entropy(&self, text: &str) -> f64 {
-        self.entropy_calculator.calculate(text)
+        let result = self.entropy_calculator.calculate(text);
+        debug_assert!(result >= 0.0, "entropy must be non-negative: {}", result);
+        result
     }
 
     // --- Private helper methods ---

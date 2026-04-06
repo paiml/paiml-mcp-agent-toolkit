@@ -6,6 +6,7 @@ pub async fn handle_spec_score(
     output: Option<&Path>,
     verbose: bool,
 ) -> anyhow::Result<()> {
+    debug_assert!(spec_path.exists(), "spec_path must exist: {}", spec_path.display());
     let parser = SpecParser::new();
     let spec = parser.parse_file(spec_path)?;
 
@@ -49,6 +50,7 @@ pub async fn handle_spec_comply(
     dry_run: bool,
     _format: SpecOutputFormat,
 ) -> anyhow::Result<()> {
+    debug_assert!(spec_path.exists(), "spec_path must exist: {}", spec_path.display());
     let parser = SpecParser::new();
     let spec = parser.parse_file(spec_path)?;
 
@@ -268,6 +270,7 @@ pub async fn handle_spec_list(
     failing_only: bool,
     format: SpecOutputFormat,
 ) -> anyhow::Result<()> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let parser = SpecParser::new();
     let specs = parser.find_specs(path)?;
 

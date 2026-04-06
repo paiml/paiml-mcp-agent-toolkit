@@ -41,6 +41,7 @@ impl PopperOrchestrator {
 
     /// Score a project and return comprehensive PopperScore
     pub fn score(&self, project_path: &Path) -> PopperScorerResult<PopperScore> {
+        debug_assert!(project_path.exists(), "popper score path must exist");
         let project_name = project_path
             .file_name()
             .map(|n| n.to_string_lossy().to_string())

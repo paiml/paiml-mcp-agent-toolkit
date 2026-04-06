@@ -88,6 +88,11 @@ pub struct CategorySummary {
 
 /// Handle the project-diag command
 pub async fn handle_project_diag(config: ProjectDiagConfig) -> Result<()> {
+    debug_assert!(
+        config.path.exists(),
+        "config.path must exist: {}",
+        config.path.display()
+    );
     // Validate path
     if !config.path.exists() {
         anyhow::bail!("Path not found: {}", config.path.display());

@@ -394,6 +394,8 @@ impl LightweightProvabilityAnalyzer {
     /// ```
     #[must_use]
     pub fn calculate_provability_factor(&self, summary: &ProofSummary) -> f64 {
+        debug_assert!((0.0..=1.0).contains(&summary.provability_score),
+            "provability_score must be 0-1: {}", summary.provability_score);
         // Convert provability score (0-1) to factor (0-5) for TDG
         // Higher provability = lower TDG score
         let base_factor = 5.0 * (1.0 - summary.provability_score);

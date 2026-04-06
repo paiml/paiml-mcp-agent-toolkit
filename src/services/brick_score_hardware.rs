@@ -27,12 +27,14 @@ impl SimdWidth {
 
     /// Typical speedup factor (from trueno-zram measurements)
     pub fn compute_speedup(&self) -> f64 {
-        match self {
+        let result = match self {
             SimdWidth::Scalar => 1.0,
             SimdWidth::Neon128 | SimdWidth::Sse2 | SimdWidth::WasmSimd128 => 4.0,
             SimdWidth::Avx2 => 10.0,   // 8-12x measured
             SimdWidth::Avx512 => 12.0, // 8-13x measured
-        }
+        };
+        debug_assert!(result >= 1.0, "speedup must be >= 1.0: {}", result);
+        result
     }
 }
 

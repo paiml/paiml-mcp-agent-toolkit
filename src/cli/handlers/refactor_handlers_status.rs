@@ -8,6 +8,7 @@ pub async fn handle_refactor_status(
     checkpoint: PathBuf,
     format: RefactorOutputFormat,
 ) -> anyhow::Result<()> {
+    debug_assert!(checkpoint.exists(), "checkpoint must exist: {}", checkpoint.display());
     println!("📊 Reading refactor status from: {}", checkpoint.display());
 
     // Delegate file validation to extracted function

@@ -257,10 +257,17 @@ fn append_coverage_counters(summary: &mut String, uncovered_count: usize, partia
 /// Higher impact = more uncovered lines in important, low-complexity code
 /// (i.e., easy wins for coverage improvement).
 pub fn compute_impact_score(missed_lines: u32, pagerank: f32, complexity: u32) -> f32 {
+    debug_assert!(
+        pagerank >= 0.0,
+        "pagerank must be non-negative: {}",
+        pagerank
+    );
     if missed_lines == 0 {
         return 0.0;
     }
     let pr_factor = (pagerank * 10000.0).max(0.1);
     let complexity_factor = (complexity as f32).max(1.0);
-    missed_lines as f32 * pr_factor / complexity_factor
+    let score = missed_lines as f32 * pr_factor / complexity_factor;
+    debug_assert!(score >= 0.0, "impact score must be non-negative: {}", score);
+    score
 }

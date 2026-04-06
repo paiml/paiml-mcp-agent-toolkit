@@ -36,6 +36,11 @@ pub struct IncrementalCoverageConfig {
 ///
 /// This reduces complexity from 26 to ~8 by delegating to the facade service.
 pub async fn handle_analyze_incremental_coverage(config: IncrementalCoverageConfig) -> Result<()> {
+    debug_assert!(
+        config.project_path.exists(),
+        "config.project_path must exist: {}",
+        config.project_path.display()
+    );
     // Print analysis header
     print_analysis_header(
         &config.project_path,

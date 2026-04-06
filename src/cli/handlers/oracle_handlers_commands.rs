@@ -8,6 +8,7 @@ async fn handle_oracle_fix(
     format: OracleOutputFormat,
     output: Option<&Path>,
 ) -> Result<()> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     println!("🔮 PMAT Oracle - PDCA Quality Improvement Loop");
     println!("   Path: {}", path.display());
     println!("   Max iterations: {}", max_iterations);
@@ -64,6 +65,7 @@ async fn handle_oracle_fix(
 
 /// Handle `pmat oracle status` - Show current quality status
 async fn handle_oracle_status(path: &Path, format: OracleOutputFormat) -> Result<()> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     println!("📊 PMAT Oracle - Project Quality Status");
     println!("   Path: {}", path.display());
     println!();
@@ -91,6 +93,7 @@ async fn handle_oracle_single(
     format: OracleOutputFormat,
     output: Option<&Path>,
 ) -> Result<()> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     println!("⚡ PMAT Oracle - Single PDCA Iteration");
     println!("   Path: {}", path.display());
     println!();

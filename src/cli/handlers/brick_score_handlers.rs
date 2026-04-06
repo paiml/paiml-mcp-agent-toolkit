@@ -34,6 +34,7 @@ pub async fn handle_brick_score(
     output: Option<&Path>,
     hardware_path: Option<&Path>,
 ) -> Result<()> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     // Validate path exists
     if !path.exists() {
         anyhow::bail!("Path not found: {}", path.display());

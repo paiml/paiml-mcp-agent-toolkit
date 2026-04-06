@@ -37,6 +37,7 @@ pub struct ProvabilityConfig {
 /// * `Ok(())` - Analysis completed successfully
 /// * `Err(anyhow::Error)` - Analysis failed with detailed error context (cognitive complexity ≤8)
 pub async fn handle_analyze_provability(config: ProvabilityConfig) -> Result<()> {
+    debug_assert!(config.project_path.exists(), "config.project_path must exist: {}", config.project_path.display());
     use crate::services::lightweight_provability_analyzer::LightweightProvabilityAnalyzer;
 
     use crate::cli::colors as c;

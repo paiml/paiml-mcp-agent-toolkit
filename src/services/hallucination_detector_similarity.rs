@@ -67,7 +67,9 @@ impl SemanticSimilarity {
         let boost = self.semantic_keyword_boost(&claim_lower, &fact_lower);
 
         // Combine base score with boost (capped at 1.0)
-        (base_score + boost).min(1.0)
+        let result = (base_score + boost).min(1.0);
+        debug_assert!((0.0..=1.0).contains(&result), "similarity must be 0-1: {}", result);
+        result
     }
 
     /// Extract meaningful keywords (filter stopwords)

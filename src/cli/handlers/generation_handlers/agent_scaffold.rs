@@ -245,6 +245,7 @@ pub async fn handle_list_agent_templates() -> Result<()> {
 
 /// Handle validating an agent template
 pub async fn handle_validate_agent_template(path: PathBuf) -> Result<()> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     use crate::scaffold::agent::TemplateRegistry;
 
     let registry = TemplateRegistry::new();

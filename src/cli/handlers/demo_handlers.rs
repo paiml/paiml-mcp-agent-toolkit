@@ -85,6 +85,11 @@ pub async fn handle_quality_gate(
     output: Option<PathBuf>,
     perf: bool,
 ) -> Result<()> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     // Delegate to main quality gate implementation for now - will be extracted later
     super::super::analysis_utilities::handle_quality_gate(
         project_path,

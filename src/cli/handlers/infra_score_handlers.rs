@@ -18,6 +18,7 @@ pub async fn handle_infra_score(
     failures_only: bool,
     output: Option<&Path>,
 ) -> Result<()> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     if !path.exists() {
         anyhow::bail!("Path not found: {}", path.display());
     }

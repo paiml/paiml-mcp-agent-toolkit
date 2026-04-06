@@ -107,6 +107,8 @@ impl RrfFusion {
             0.0
         };
 
+        debug_assert!(primary_mrr >= 0.0 && primary_mrr <= 1.0, "MRR out of range: {}", primary_mrr);
+        debug_assert!(fused_mrr >= 0.0 && fused_mrr <= 1.0, "MRR out of range: {}", fused_mrr);
         (improvement, primary_mrr, fused_mrr)
     }
 

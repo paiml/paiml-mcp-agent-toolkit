@@ -135,6 +135,11 @@ struct CrossStackAccumulator {
 
 /// Main kaizen handler entry point
 pub async fn handle_kaizen(config: KaizenConfig) -> Result<()> {
+    debug_assert!(
+        config.path.exists(),
+        "config.path must exist: {}",
+        config.path.display()
+    );
     let path = config.path.canonicalize().unwrap_or(config.path.clone());
 
     if config.cross_stack {

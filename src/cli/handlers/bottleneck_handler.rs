@@ -48,6 +48,7 @@ pub async fn handle_bottleneck(
     threshold: usize,
     output: Option<&Path>,
 ) -> Result<()> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     use crate::cli::colors as c;
 
     eprintln!(

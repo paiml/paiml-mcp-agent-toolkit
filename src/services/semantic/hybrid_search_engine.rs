@@ -276,7 +276,10 @@ impl HybridSearchEngine {
     /// # Returns
     /// RRF score (higher is better)
     pub fn compute_rrf_score(rank: usize, k: usize) -> f64 {
-        1.0 / (k as f64 + rank as f64)
+        debug_assert!(k > 0, "RRF k must be positive");
+        let score = 1.0 / (k as f64 + rank as f64);
+        debug_assert!(score > 0.0 && score <= 1.0, "RRF score out of range: {}", score);
+        score
     }
 
     /// Apply filters to results

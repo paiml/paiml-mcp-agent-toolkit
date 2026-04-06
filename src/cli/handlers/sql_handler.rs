@@ -101,6 +101,11 @@ const EXAMPLE_QUERIES: &[(&str, &str)] = &[
 
 /// Handle --schema flag: print table schemas
 pub fn handle_schema(db_path: &Path) -> Result<()> {
+    debug_assert!(
+        db_path.exists(),
+        "db_path must exist: {}",
+        db_path.display()
+    );
     let conn = open_readonly(db_path)?;
     let mut stmt =
         conn.prepare("SELECT sql FROM sqlite_master WHERE type='table' ORDER BY name")?;
@@ -144,6 +149,11 @@ pub fn handle_examples() {
 
 /// Handle SQL query execution
 pub fn handle_sql(query: &str, format: SqlOutputFormat, db_path: &Path) -> Result<()> {
+    debug_assert!(
+        db_path.exists(),
+        "db_path must exist: {}",
+        db_path.display()
+    );
     // Check if query is a named example
     let resolved_query = resolve_query(query);
 

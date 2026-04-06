@@ -90,6 +90,11 @@ async fn check_for_critical_defects(path: &Path) -> Result<()> {
 }
 
 pub async fn handle_analyze_tdg(config: TdgAnalysisConfig) -> Result<()> {
+    debug_assert!(
+        config.path.exists(),
+        "config.path must exist: {}",
+        config.path.display()
+    );
     eprintln!("🔍 Starting TDG (Technical Debt Grading) analysis...");
 
     let analyzer = TdgAnalyzer::new()?;
@@ -174,6 +179,8 @@ pub async fn handle_tdg_compare(
     format: TdgOutputFormat,
     output: Option<PathBuf>,
 ) -> Result<()> {
+    debug_assert!(path1.exists(), "path1 must exist: {}", path1.display());
+    debug_assert!(path2.exists(), "path2 must exist: {}", path2.display());
     eprintln!("🔍 Starting TDG comparison...");
 
     let analyzer = TdgAnalyzer::new()?;

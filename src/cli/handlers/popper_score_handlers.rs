@@ -38,6 +38,7 @@ pub async fn handle_popper_score(
     failures_only: bool,
     output: Option<&Path>,
 ) -> Result<()> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     // PMAT-510: Deprecation notice — Popper categories B-F absorbed into RPS v3.0
     eprintln!(
         "Note: `pmat popper-score` is deprecated. Popper categories B-F are now \

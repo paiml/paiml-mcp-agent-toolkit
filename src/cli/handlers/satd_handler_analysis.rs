@@ -2,6 +2,7 @@
 // BEFORE: Complexity 13 (High entropy, mixed concerns)
 // AFTER: Complexity 6 (A+ standard, single responsibility)
 pub async fn handle_analyze_satd(config: SatdAnalysisConfig) -> Result<()> {
+    debug_assert!(config.path.exists(), "config.path must exist: {}", config.path.display());
     eprintln!("🔍 Analyzing Self-Admitted Technical Debt (SATD)...");
 
     // Delegate filter logging to extracted function

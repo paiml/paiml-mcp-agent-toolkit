@@ -42,6 +42,7 @@ pub async fn handle_analyze_dead_code(
     exclude: Vec<String>,
     max_depth: usize,
 ) -> Result<()> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     eprintln!("☠️ Analyzing dead code in project...");
     eprintln!("⏰ Analysis timeout set to {timeout} seconds");
 

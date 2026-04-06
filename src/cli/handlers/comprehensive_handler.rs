@@ -126,6 +126,11 @@ pub async fn handle_analyze_comprehensive(
     perf: bool,
     executive_summary: bool,
 ) -> Result<()> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let config = ComprehensiveConfig {
         project_path,
         file,

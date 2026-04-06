@@ -19,6 +19,7 @@ pub async fn handle_demo_score(
     failures_only: bool,
     output: Option<&Path>,
 ) -> Result<()> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     // Validate path exists
     if !path.exists() {
         anyhow::bail!("Path not found: {}", path.display());

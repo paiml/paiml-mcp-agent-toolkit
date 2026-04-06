@@ -259,14 +259,22 @@ impl RustProjectScoreOrchestrator {
             );
         }
 
-        Ok(ProjectScore {
+        let result = ProjectScore {
             total_earned,
             total_possible: self.max_points(),
             percentage,
             grade,
             categories,
             recommendations: all_recommendations,
-        })
+        };
+        debug_assert!(result.total_earned >= 0.0, "earned score negative");
+        debug_assert!(result.total_possible > 0.0, "max score must be positive");
+        debug_assert!(
+            result.percentage >= 0.0 && result.percentage <= 100.0,
+            "percentage out of range: {}",
+            result.percentage
+        );
+        Ok(result)
     }
 }
 

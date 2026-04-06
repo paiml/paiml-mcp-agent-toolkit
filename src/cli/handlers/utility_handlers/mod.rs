@@ -119,6 +119,11 @@ pub async fn handle_context(
     language: Option<String>,
     languages: Option<Vec<String>>,
 ) -> Result<()> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     use crate::services::deep_context::{
         AnalysisType, CacheStrategy, DagType, DeepContextAnalyzer, DeepContextConfig,
     };
