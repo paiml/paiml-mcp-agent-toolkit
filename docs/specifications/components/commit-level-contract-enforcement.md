@@ -333,7 +333,8 @@ finetune metrics, #574 tracing, #575 Whisper).
 ### Five Whys: Why Doesn't pmat comply Catch apr-cli Bugs? (2026-04-06)
 
 **Context:** 56 bugs fixed on aprender. ~35 (63%) would have been caught by
-provable-contracts postconditions. Yet `pmat comply check` shows 73/14/0.
+provable-contracts postconditions. `pmat comply check` shows 73/14/2 (was
+73/14/0 — 2 new FAILs: File Health grade C, CB-1308 L4 violations).
 
 1. **Why did 35 catchable bugs slip through?** pmat comply checks contract
    *infrastructure* (do YAMLs exist?) not contract *behavior* (does code obey?).
@@ -408,6 +409,14 @@ or below. No command ships without provable-contracts coverage.
 commands to ship. That approach produced 56 bugs in aprender, 35 of which
 were contract-catchable. Level A enforcement eliminates the "ship now, contract
 later" pattern that caused 63% of preventable defects.
+
+**Tracking issues** (filed 2026-04-06):
+- paiml/aprender#686 — Master: 0 `#[contract]` in apr-cli crate (48 commands)
+- paiml/aprender#687 — 4 contracts stuck at L4, need L5 (Lean proofs)
+- paiml/aprender#688 — ReadOnly commands (28) need no_side_effects annotation
+- paiml/aprender#689 — Mutating commands (16) need exit-code postconditions
+- paiml/aprender#690 — LongRunning commands (4) need graceful_shutdown
+- paiml/aprender#691 — CB-1340 should report per-crate penetration (pmat enhancement)
 
 ### Recommendations
 

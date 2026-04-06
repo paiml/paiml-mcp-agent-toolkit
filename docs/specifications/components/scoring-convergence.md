@@ -363,10 +363,9 @@ and string literals referencing deleted files/directories.
 ### Problem
 
 `pv lint` runs as a standalone tool across the sovereign stack (trueno: 27
-contracts, aprender: 49 contracts + .pv.toml with 55 bindings, entrenar: 2,
-realizar: 2). But `pmat score` doesn't consume its results, and `pmat comply`
-only checks for the existence of `contracts/` (CB-1200) without running
-`pv lint`.
+contracts, aprender: 12 apr-cli YAMLs + 109 bindings implemented, entrenar: 2,
+realizar: 2). `pmat comply` now runs `pv lint` (CB-1201) and checks enforcement
+penetration (CB-1340: aprender at 79.9%). `pmat score` integration via PV-01..PV-05.
 
 ### Design
 

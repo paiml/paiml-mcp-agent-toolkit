@@ -439,6 +439,11 @@ placeholder preconditions (507 `!is_empty()` in PMAT-129), zero enforcement
 (22 falsified claims), parser bugs, assertion misplacement. Design rules with
 CB-1338..1343 break the whack-a-mole cycle.
 
+**apr-cli Level A Enforcement (v3.4):** ALL 48 apr-cli commands require Grade A
+TDG (≤0.2) + L3 provable-contracts enforcement. Zero `#[contract]` annotations
+in apr-cli crate currently (paiml/aprender#686). Crate-wide penetration 79.9%
+masks per-crate gaps (paiml/aprender#691). 6 tracking issues filed (#686-691).
+
 **O(1) Firm Requirement:** All pre-commit checks < 45ms total from cached data.
 No cold verification in the commit path. Caches populated by `pmat work
 checkpoint`, `pmat comply refresh-contracts`, `pmat asset validate`.
