@@ -1457,8 +1457,10 @@ fn is_fn_definition(t: &str) -> bool {
 }
 
 /// Check if a line contains contract enforcement patterns.
+/// Matches actual enforcement macros, not data field names like contract_value.
 fn is_enforcement_call(line: &str) -> bool {
-    line.contains("debug_assert!") || line.contains("contract_")
+    line.contains("debug_assert!") || line.contains("contract_pre_")
+        || line.contains("contract_post_") || line.contains("#[contract")
         || line.contains("requires!") || line.contains("ensures!")
 }
 

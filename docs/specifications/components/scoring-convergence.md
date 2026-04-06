@@ -365,7 +365,7 @@ and string literals referencing deleted files/directories.
 `pv lint` runs as a standalone tool across the sovereign stack (trueno: 27
 contracts, aprender: 12 apr-cli YAMLs + 109 bindings implemented, entrenar: 2,
 realizar: 2). `pmat comply` now runs `pv lint` (CB-1201) and checks enforcement
-penetration (CB-1340: aprender at 79.9%). `pmat score` integration via PV-01..PV-05.
+penetration (CB-1340: aprender at 43.7% aggregate, apr-cli at 63% [CLI, below 95% threshold]). `pmat score` integration via PV-01..PV-05.
 
 ### Design
 

@@ -294,20 +294,21 @@ fire-and-forget with no closed-loop regeneration.
 | Repos with enforcement | "26/26 Grade A" | 7/26 | ~18/26 |
 | Enforcement rate | implied 100% | ~1% | ~60% (kaizen Grade A) |
 
-### Dogfood Results (2026-04-06, pmat v3.11.1 + CB-1340 per-crate)
+### Dogfood Results (2026-04-06, pmat v3.11.1 + CB-1340 per-crate, falsified)
 
 | Repo | Pass | Warn | Fail | CB-1354 | CB-1340 | Notes |
 |------|------|------|------|---------|---------|-------|
-| pmat | **75** | 8 | 1 | **4/4** | 1.6% WARN | FAIL: File Health only |
-| aprender | **74** | 14 | 1 | **4/4** | 102.5% agg, apr-cli:**148%** [CLI] | FAIL: File Health. CB-1308 fixed (27/27 L5) |
+| pmat | **77** | 6 | 1 | **4/4** | 0.2% WARN | FAIL: File Health only. pmat self-enforcement gap exposed |
+| aprender | **74** | 13 | **2** | **4/4** | 43.8% agg, apr-cli:**63%** [CLI] FAIL | FAIL: File Health + CB-1340. #686 still open |
 | trueno | **66** | 17 | 3 | 2/4 | Skip (no binding) | FAIL: File Health, CB-200, CB-1308 |
 | realizar | **67** | 18 | **0** | 3/4 | Skip | **Zero FAIL** maintained |
 
-**CB-1340 per-crate** (this session, #691): Workspace crates now measured
-individually. CLI crates (`*-cli`) require ≥95% penetration — entrypoint for
-the entire stack. Non-CLI crates ≥50 functions require ≥10%. Bench/small
-crates skipped. apr-cli at 148% (well above 95%). aprender-shell and
-aprender-tsp at 0% (WARN, not FAIL — not CLI crates).
+**Falsification (this session):** Initial `contract_` pattern matched struct
+field names (`contract_value`, `contract_name`, `contract_failures`), inflating
+apr-cli from honest **63%** to false **148%**. Fixed: now matches only
+`contract_pre_*`, `contract_post_*`, `#[contract`, `debug_assert!`, `requires!`,
+`ensures!`. apr-cli correctly **FAILS** at 63% < 95% threshold — real gap
+exposed, paiml/aprender#686 still open.
 
 ### apr-cli QA Summary (2026-04-06)
 
@@ -446,7 +447,7 @@ Extend TDG to grade non-code assets contributing to project-level aggregate:
 
 ## CB Check Summary
 
-29 checks across 8 phases. Phase 3: CB-1320..1326 (asset layout — README,
+26 checks across 8 phases (falsified from 29). Phase 3: CB-1320..1326 (asset layout — README,
 Dockerfile, SVG, forjar, mdBook, CHANGELOG, badges). Phase 2: CB-1330
 (L-level ratchet). Phase 1: CB-1331 (work YAML validity). Phase 7:
 CB-1333..1337 (hook safety — single writer, atomic, deterministic, no injection,
@@ -459,7 +460,7 @@ Phase 6: CB-1354 (contract query readiness).
 
 ## Implementation Status
 
-**Detection layer: complete.** 29 CB checks, 107 tests, dogfooded on 4 repos.
+**Detection layer: complete.** 26 CB checks (falsified from claimed 29), 165+ tests in check_handlers scope, dogfooded on 4 repos.
 **Infrastructure: 8/8 phases complete** (R-1..R-10 remediation closed, R-3
 deferred). Phase 3 `asset_validator.rs` (R-10), Phase 6 `contract_index.rs`
 (R-9). HookRegistry deferred — detection via CB-1333..1337 sufficient.
@@ -486,7 +487,8 @@ Tools: mdschema, hadolint, rumdl, standard-readme.
 
 | Version | Date | Changes |
 |---------|------|---------|
-| 3.5 | 2026-04-06 | **CB-1340 per-crate**: Workspace crates measured individually. CLI ≥95%, others ≥10%. apr-cli:148%. aprender CB-1308 fixed (27/27 L5). |
+| 3.6 | 2026-04-06 | **Falsified**: `contract_` → `contract_pre_/post_` (struct fields ≠ enforcement). apr-cli honest: 63% (was false 148%). FAIL fires correctly. |
+| 3.5 | 2026-04-06 | CB-1340 per-crate: Workspace crates measured individually. CLI ≥95%, others ≥10%. 26 CB checks (was 29), 165+ tests (was 107). |
 | 3.4 | 2026-04-06 | **Level A enforcement**: ALL 48 apr-cli commands require Grade A TDG + L3 provable-contracts. No Grade B/C ships. |
 | 3.3 | 2026-04-06 | **82 closed** (18 open). All hardware tested. Deep investigation on 3 issues. **76/6/0.** |
 | 1.0–2.8 | 2026-04-05 | Phases 1-8, remediation R-1..R-10, falsification audit, brace counting. |

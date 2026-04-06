@@ -394,7 +394,7 @@ for all inputs within bound. Checks: CB-1510..1513.
 
 Unifies `pmat work` contracts and `provable-contracts` YAML under a single
 commit-level enforcement pipeline. Eight phases, **implementation-complete**
-(29 CB checks, 107 tests, 9/10 remediation done):
+(26 CB checks, 165+ tests, 9/10 remediation done):
 
 **Phase 1: Work Item -> YAML Contract.** `pmat work start` generates both
 `contract.json` (DbC v5.0) and `contracts/work/<ID>.yaml` (provable-contracts
@@ -494,7 +494,7 @@ All six improvements completed: RPS v3.0, Popper absorbed, Five Whys v2, EvoScor
 
 | Version | Date | Changes |
 |---------|------|---------|
-| 1.3 | 2026-04-06 | CB-1340: per-crate penetration for workspaces. CLI crates require ≥95%. Dogfood: pmat 75/8/1, aprender 74/14/1, realizar 0 FAIL |
+| 1.3 | 2026-04-06 | CB-1340 per-crate + falsification: `contract_` inflated counts fixed. Honest: pmat 0.2%, apr-cli 63% (FAIL, need 95%). 26 CB checks, 165+ tests. |
 | 1.2 | 2026-04-05 | CB-140 compliance: condense pmat-spec.md (543→488), component 25 (1921→395). Fix repo-health.md stale denominators (274→289). Consolidate comply check table |
 | 1.1 | 2026-04-05 | Component 25: Commit-level contract enforcement (8 phases), asset layout contracts (CB-1320..1326), hook consolidation (CB-1333..1337), falsify leak remediation (CB-1338..1343), pmat query --contracts enrichment |
 | 1.0 | 2026-03-09 | Initial mono-spec consolidation from 124 individual specs |
