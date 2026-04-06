@@ -336,7 +336,9 @@ provable-contracts postconditions. Yet `pmat comply check` shows 73/14/0.
 5. **Why isn't insertion automated?** Rust macros can't be auto-inserted. Need
    proc_macros (`#[contract]` attribute) or `build.rs` injection — not implemented.
 
-**Root cause:** No closed-loop from contract to enforcement. Spec Leak L-7.
+**Root cause:** `#[contract]` proc_macro EXISTS (provable-contracts-macros, 432 lines)
+and IS deployed (51 annotations in aprender) — but coverage is 0.7% (51/7700 functions).
+The pipeline works; the bottleneck is annotation coverage, not tooling.
 
 | Defect Class | Count | Contract Catchable? | Fix |
 |-------------|-------|--------------------|----|
@@ -349,10 +351,10 @@ provable-contracts postconditions. Yet `pmat comply check` shows 73/14/0.
 
 ### Recommendations
 
-1. **P0:** Implement `#[contract]` proc_macro for automatic assertion insertion
+1. **P0:** Raise `#[contract]` annotation coverage from 0.7% to 10%+ (51→770 functions)
 2. **P1:** Fix CI RED #681 (trueno softmax postcondition)
 3. **P1:** Fix #674 ghost bindings (run `pv infer` to regenerate from AST)
-4. **P2:** Raise CB-1340 penetration from 1.6% to 10%+ via bulk macro insertion
+4. **P2:** Add `#[contract]` annotations to apr-cli serve/validate/run paths
 
 ### Falsification Summary (2026-04-05)
 
