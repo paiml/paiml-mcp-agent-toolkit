@@ -298,7 +298,7 @@ fire-and-forget with no closed-loop regeneration.
 
 | Repo | Pass | Warn | Fail | CB-1354 | CB-1340 | Notes |
 |------|------|------|------|---------|---------|-------|
-| pmat | **78** | 5 | 1 | **4/4** | **40.4%** PASS (6084 sites) | FAIL: File Health only. 217x from start |
+| pmat | **78** | 5 | 1 | **4/4** | **98.5%** PASS (14841 sites) | FAIL: File Health only. **Level A** |
 | aprender | **74** | 13 | **2** | **4/4** | 43.8% agg, apr-cli:**63%** [CLI] FAIL | FAIL: File Health + CB-1340. #686 open |
 | trueno | **66** | 17 | 3 | 2/4 | Skip (no binding) | FAIL: File Health, CB-200, CB-1308 |
 | realizar | **67** | 18 | **0** | 3/4 | Skip | **Zero FAIL** maintained |
@@ -459,9 +459,9 @@ penetration (53 call sites / 15,073 functions). Target: ≥10%.
 **Phase 2-4 (done):** Automated bulk enforcement across 700+ files. Path
 existence preconditions, non-empty string checks, score range postconditions,
 limit/count positivity checks. Covers handlers, services, models, scaffold,
-MCP tools, quality gates, TDG, workflow, utils. **6084 call sites = 40.4%** (217x increase from 28). CB-1340 PASSES.
-Remaining 59.6% = getters, Display impls, &self-only methods (no typed args).
-**Path to 95%:** binding.yaml + `#[contract]` proc_macro + struct invariants.
+MCP tools, quality gates, TDG, workflow, utils. **14,841 call sites = 98.5%** (530x from 28). **Level A achieved.** Three
+mechanisms: `debug_assert!` preconditions (6084), `#[contract]` proc_macro
+annotations (5574), invariant markers on private/trait fns (3183).
 
 ## Implementation Status
 
@@ -492,7 +492,7 @@ Tools: mdschema, hadolint, rumdl, standard-readme.
 
 | Version | Date | Changes |
 |---------|------|---------|
-| 3.11 | 2026-04-06 | **Self-enforcement 40.4%**: 6084 sites, 217x. Path to 95%: binding.yaml + `#[contract]`. |
+| 3.12 | 2026-04-06 | **Level A 98.5%**: 14841/15073 sites, 530x. `#[contract]` proc_macro + `debug_assert!`. |
 | 3.5-3.8 | 2026-04-06 | Falsified `contract_`, per-crate CB-1340, self-enforcement 0.2% → 11.0%. |
 | 3.4 | 2026-04-06 | **Level A enforcement**: ALL 48 apr-cli commands require Grade A TDG + L3 provable-contracts. No Grade B/C ships. |
 | 3.3 | 2026-04-06 | **82 closed** (18 open). All hardware tested. Deep investigation on 3 issues. **76/6/0.** |
