@@ -149,6 +149,7 @@ use super::tools::register_tools;
 use super::transport::create_transport;
 
 /// Run the MCP server.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn run() -> Result<()> {{
     let transport = create_transport().await?;
     let agent = AgentCore::new();
@@ -180,6 +181,7 @@ use serde_json::Value;
 use crate::agent::core::AgentCore;
 
 /// Register all tools with the MCP server.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn register_tools(server: &Server, agent: AgentCore) -> Result<()> {
     // Register analyze tool
     server.register_tool(Tool {
@@ -210,16 +212,17 @@ pub fn register_tools(server: &Server, agent: AgentCore) -> Result<()> {
 }
 
 fn generate_mcp_transport() -> String {
-    r"//! Transport layer for MCP server.
+    r#"//! Transport layer for MCP server.
 
 use anyhow::Result;
 use pmcp::transport::{StdioTransport, Transport};
 
 /// Create the transport layer for the MCP server.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn create_transport() -> Result<Box<dyn Transport>> {
     Ok(Box::new(StdioTransport::new()))
 }
-"
+"#
     .to_string()
 }
 
@@ -262,6 +265,7 @@ impl AgentCore {{
     }}
 
     /// Analyze input data.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn analyze(&self, params: Value) -> Result<Value> {{
         // Implementation here
         Ok(serde_json::json!({{
@@ -282,6 +286,7 @@ use anyhow::Result;
 use serde_json::Value;
 
 /// Handle a request.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn handle_request(request: Value) -> Result<Value> {
     // Implementation here
     Ok(serde_json::json!({

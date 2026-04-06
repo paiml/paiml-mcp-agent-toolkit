@@ -77,6 +77,7 @@ impl<S: AgentState, C: AgentContext> InvariantChecker<S, C> {
 
     /// Create a new invariant checker with a custom violation handler.
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_handler(
         invariants: Vec<Box<dyn Invariant<S, C>>>,
         handler: ViolationHandler,
@@ -88,6 +89,7 @@ impl<S: AgentState, C: AgentContext> InvariantChecker<S, C> {
     }
 
     /// Check all invariants.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn check(&self, state: &S, ctx: &C) -> Result<()> {
         for invariant in &self.invariants {
             if let Err(e) = invariant.check(state, ctx) {
@@ -110,12 +112,14 @@ impl<S: AgentState, C: AgentContext> InvariantChecker<S, C> {
     }
 
     /// Add an invariant to the checker.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn add_invariant(&mut self, invariant: Box<dyn Invariant<S, C>>) {
         self.invariants.push(invariant);
     }
 
     /// Get the number of invariants.
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn invariant_count(&self) -> usize {
         self.invariants.len()
     }
@@ -137,6 +141,7 @@ impl ViolationHandler {
 
     /// Handle a violation.
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn handle(&self, _violation: &InvariantViolation) -> ViolationAction {
         self.default_action.clone()
     }

@@ -51,6 +51,7 @@ impl ScaffoldEngine {
     /// # Complexity
     /// - Time: O(1) - constant-time validation
     /// - Cyclomatic: 3 (input validation branches)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn validate_config(&self, config: &ScaffoldConfig) -> Result<()> {
         validate_project_name(&config.project_name)?;
         Ok(())
@@ -61,6 +62,7 @@ impl ScaffoldEngine {
     /// # Complexity
     /// - Time: O(1) - single directory creation
     /// - Cyclomatic: 2 (success/error)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn create_directory(&self, name: &str) -> Result<PathBuf> {
         let path = PathBuf::from(name);
 
@@ -78,6 +80,7 @@ impl ScaffoldEngine {
     /// # Complexity
     /// - Time: O(1) - single git command
     /// - Cyclomatic: 2 (success/error)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn init_git(&self, project_dir: &Path) -> Result<()> {
         let output = Command::new("git")
             .args(["init"])
@@ -101,6 +104,7 @@ impl ScaffoldEngine {
     /// # Complexity
     /// - Time: O(n*m) where n=templates, m=avg template size
     /// - Cyclomatic: 6 (validation, creation, git, structure, files, hooks)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn scaffold(&self, config: ScaffoldConfig) -> Result<PathBuf> {
         self.validate_config(&config)?;
         let project_dir = self.create_directory(&config.project_name)?;

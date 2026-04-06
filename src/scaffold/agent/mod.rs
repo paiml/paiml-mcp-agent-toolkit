@@ -61,6 +61,7 @@ use std::path::Path;
 /// # Ok(())
 /// # }
 /// ```
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn scaffold_agent(context: &AgentContext, output: &Path) -> Result<()> {
     let registry = TemplateRegistry::new();
     let generator = registry.get(&context.template_type)?;
